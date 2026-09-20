@@ -1607,24 +1607,174 @@ describe("notices render as named conditions (slice A2)", () => {
   // families PLUS the historical fixtures in GUILT_FIXTURES below; a new
   // reassuring phrasing found in review is added there as a fixture, never
   // patched by narrowing a family.
+  //
+  // Updated for Slice A2-G (families are now GENERATED — see G1/G3/G5
+  // above): OBS-A2c-7's ceiling stays open — "will in no way affect" needs
+  // a fifth NEGATIONS-like token ("in no/any way") this PR does not add,
+  // and "bukan masalah" needs a THIRD ID negator (`bukan`) alongside
+  // `tidak`/`tak`; both are pure-synonym misses ("already settled / a
+  // formality", "sudah final / tinggal formalitas") no finite list closes.
+  // GATE-A2D-REPORT-6919 "Input for PR-G" adds ten more out-of-history
+  // misses on the SAME two axes (idiom outside NEGATIONS, gap width,
+  // register) plus one auxiliary decision (`need`/`dare`) and one `be`-form
+  // decision — the PR body disposes of all thirteen row by row: caught
+  // (widened apostrophe class, `tak`) or declared, never widened past what
+  // G1/G3/G5 specify.
   interface BannedPattern {
     name: string;
     re: RegExp;
   }
 
+  // G1 (Slice A2-G, MANDATE-vo.md): one list each, and the regexes are BUILT
+  // from them — no auxiliary, negation, verb or ID token appears anywhere
+  // else in this guard. buildNegationPatterns() and the property test below
+  // both read these SAME lists, which is exactly why the cardinality pins
+  // just under them have to be LITERAL: a mutation that shrinks a list
+  // shrinks the generator and its own property test symmetrically and
+  // would stay green otherwise — the precise shape (a test deriving its
+  // expectation from the thing under test) that produced this slice's
+  // three reds (OBS-A2c-1, GATE-A2C-REPORT-6859.md). #6859's two
+  // hand-written alternations, and the omission that took three rounds to
+  // surface, are exactly what this construction abolishes.
+  const AUXILIARIES = [
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "can",
+    "could",
+    "shall",
+    "should",
+    "may",
+    "might",
+  ] as const;
+  type Auxiliary = (typeof AUXILIARIES)[number];
+
+  const NEGATIONS = ["not", "n't", "n’t", "never"] as const;
+
+  const EFFECT_VERBS = [
+    "change",
+    "affect",
+    "alter",
+    "impact",
+    "influence",
+    "matter",
+  ] as const;
+
+  // G3: a MAP owned by the generator, keyed by the SAME AUXILIARIES — never
+  // a second list. An auxiliary with no entry here falls through, inside
+  // buildNegationPatterns(), to `<aux>n't` with both apostrophes. Where an
+  // auxiliary holds several forms (`can`), the property test synthesises
+  // one sentence PER FORM, not per combination (G3).
+  const IRREGULAR_CONTRACTIONS: Partial<Record<Auxiliary, readonly string[]>> =
+    {
+      will: ["won't"],
+      can: ["can't", "cannot"],
+      shall: ["shan't"],
+    };
+
+  // GATE-A2D-REPORT-6919 "Input for PR-G": only `'` (straight) and `’`
+  // (curly) were in the apostrophe character class, so a backtick or acute
+  // apostrophe ("don`t") slipped through GREEN. Widened here, in the
+  // matching machinery — this is punctuation normalisation, not a fifth
+  // NEGATIONS token, so NEGATIONS stays pinned at 4.
+  const APOSTROPHES = "['’`´]";
+
+  // Up to two intervening words between the negation and the verb of
+  // effect, unchanged from #6859/#6919. GATE-A2D-REPORT-6919 named this gap
+  // as a structural axis that a third word or a comma defeats ("do not, in
+  // any event, change"; "don't in any way change") — a DECLARED LIMIT for
+  // this PR (see the PR body's disposition table), not cured here: widening
+  // it without a fixed bound chases an open-ended set of adverbial
+  // insertions, and this construction fixes the list-omission defect, not
+  // the gap's word count.
+  const GAP = String.raw`(?:\s+\S+){0,2}`;
+
+  function buildNegationPatterns(): BannedPattern[] {
+    const auxAlt = AUXILIARIES.join("|");
+    const verbAlt = `(?:${EFFECT_VERBS.join("|")})s?`;
+    const spacedNegations = NEGATIONS.filter((n) => !/['’]/.test(n));
+    const regularAuxiliaries = AUXILIARIES.filter(
+      (aux) => !(aux in IRREGULAR_CONTRACTIONS),
+    );
+    const irregularForms = AUXILIARIES.flatMap(
+      (aux) => IRREGULAR_CONTRACTIONS[aux] ?? [],
+    );
+
+    return [
+      {
+        name: "EN negated effect (spaced 'not'/'never'): aux + spaced negation + up to two words + verb of effect",
+        re: new RegExp(
+          String.raw`\b(?:${auxAlt})\s+(?:${spacedNegations.join("|")})\b${GAP}\s+${verbAlt}\b`,
+          "gi",
+        ),
+      },
+      {
+        name: "EN negated effect (contracted auxn't): up to two words + verb of effect",
+        re: new RegExp(
+          String.raw`\b(?:${regularAuxiliaries.join("|")})n${APOSTROPHES}t\b${GAP}\s+${verbAlt}\b`,
+          "gi",
+        ),
+      },
+      {
+        name: "EN negated effect, irregular contractions won't/cannot/can't: up to two words + verb of effect",
+        re: new RegExp(
+          `\\b(?:${irregularForms
+            .map((f) => f.replace(/'/g, APOSTROPHES))
+            .join("|")})\\b${GAP}\\s+${verbAlt}\\b`,
+          "gi",
+        ),
+      },
+    ];
+  }
+
+  // G5: the ID mirror, same construction — `tak` (OBS-A2c-8) now alongside
+  // `tidak`, closing the exact contraction axis OBS-A2c-1 closed on the EN
+  // side. GATE-A2D-REPORT-6919 named the ID side as having NO gap slack at
+  // all, asymmetric with the EN side above ("tidak sama sekali mengubah",
+  // "tidak pernah berpengaruh") — a DECLARED LIMIT for this PR (PR body),
+  // not widened: G5's own text is exactly "tidak/tak (akan)? + verb", no
+  // general gap, and widening it is a spec decision for a future round.
+  const ID_NEGATORS = ["tidak", "tak"] as const;
+  const ID_VERBS = [
+    "mengubah",
+    "berpengaruh",
+    "memengaruhi",
+    "mempengaruhi",
+    "berdampak",
+    "menjadi masalah",
+  ] as const;
+
+  function buildIdNegationPattern(): BannedPattern {
+    const verbAlt = ID_VERBS.map((v) => v.replace(/ /g, "\\s+")).join("|");
+    return {
+      name: "ID negated effect: tidak/tak (akan)? + mengubah/berpengaruh/memengaruhi/mempengaruhi/berdampak/menjadi masalah",
+      re: new RegExp(
+        String.raw`\b(?:${ID_NEGATORS.join("|")})\s+(?:akan\s+)?(?:${verbAlt})\b`,
+        "gi",
+      ),
+    };
+  }
+
+  // GUILT (G1) — the cardinalities are pinned by LITERAL, not derived from
+  // the lists above: the generator and the property test read the SAME
+  // lists, so a mutation that shrinks one shrinks both sides symmetrically
+  // and would otherwise stay green. Delete an entry from any list and this
+  // test names which one, alongside a literal GUILT_FIXTURES row going red
+  // for the same deletion (see the four mutation proofs in the PR body).
+  it("pins the negation generator's own source lists — a shrink here is a guard hole, not a refactor (G1)", () => {
+    expect(AUXILIARIES).toHaveLength(11);
+    expect(NEGATIONS).toHaveLength(4);
+    expect(EFFECT_VERBS).toHaveLength(6);
+    expect(Object.keys(IRREGULAR_CONTRACTIONS)).toHaveLength(3);
+    expect(Object.values(IRREGULAR_CONTRACTIONS).flat()).toHaveLength(4);
+    expect(ID_NEGATORS).toHaveLength(2);
+    expect(ID_VERBS).toHaveLength(6);
+  });
+
   const BANNED_PATTERNS: BannedPattern[] = [
-    {
-      name: "EN negated effect (spaced 'not'): aux + not + up to two words + verb of effect",
-      re: /\b(?:do|does|did|will|would|can|could|shall|should|may|might)\s+not\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
-    },
-    {
-      name: "EN negated effect (contracted auxn't): up to two words + verb of effect",
-      re: /\b(?:do|does|did|would|could|should|may|might)n['’]t\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
-    },
-    {
-      name: "EN negated effect, irregular contractions won't/cannot/can't: up to two words + verb of effect",
-      re: /\b(?:won['’]t|cannot|can['’]t|shan['’]t)\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
-    },
+    ...buildNegationPatterns(),
     {
       name: "EN 'no issue/problem/concern/bearing/effect/impact/risk(s)'",
       re: /\bno\s+(?:issue|problem|concern|bearing|effect|impact|risk)s?\b/gi,
@@ -1633,10 +1783,7 @@ describe("notices render as named conditions (slice A2)", () => {
     { name: "EN stem: approv", re: /approv/gi },
     { name: "EN stem: guarantee", re: /guarantee/gi },
     { name: "EN 'eligible regardless'", re: /eligible\s+regardless/gi },
-    {
-      name: "ID negated effect: tidak (akan)? + mengubah/berpengaruh/memengaruhi/mempengaruhi/berdampak/menjadi masalah",
-      re: /\btidak\s+(?:akan\s+)?(?:mengubah|berpengaruh|memengaruhi|mempengaruhi|berdampak|menjadi\s+masalah)\b/gi,
-    },
+    buildIdNegationPattern(),
     {
       name: "ID 'tanpa masalah/kendala/hambatan'",
       re: /\btanpa\s+(?:masalah|kendala|hambatan)\b/gi,
@@ -1792,6 +1939,114 @@ describe("notices render as named conditions (slice A2)", () => {
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });
 
+  // G2/G3 — the property test enumerates the FULL 11×4×6 EN product (264
+  // combinations) and synthesises ≥264 sentences, one per generated FORM:
+  // most combinations produce exactly one form, but a contracted
+  // combination (NEGATIONS' "n't"/"n’t") on an IRREGULAR_CONTRACTIONS
+  // auxiliary produces one form PER MAP ENTRY instead — `can` holds two
+  // (can't, cannot), which is the "≥264" and the reason the pinned count
+  // below exceeds the bare product. This is what makes an omission
+  // impossible by construction: a token lives in exactly one place (the
+  // lists above), and every token each list holds is proven RED here, in
+  // the SAME run that proves the 28 shipped strings GREEN (G4) — over-
+  // generation (e.g. "does never affect", not real English) is harmless,
+  // because innocence is the only fence on breadth, not this test.
+  interface GeneratedNegationCase {
+    label: string;
+    language: "en" | "id";
+    sentence: string;
+  }
+
+  function buildEnNegationCases(): GeneratedNegationCase[] {
+    const cases: GeneratedNegationCase[] = [];
+    for (const aux of AUXILIARIES) {
+      for (const negation of NEGATIONS) {
+        for (const verb of EFFECT_VERBS) {
+          if (!/['’]/.test(negation)) {
+            // spaced: "not" or "never", a separate word after the aux
+            cases.push({
+              label: `${aux} ${negation} ${verb} (spaced)`,
+              language: "en",
+              sentence: `These ${aux} ${negation} ${verb} the result above.`,
+            });
+            continue;
+          }
+          // contracted: "n't" or "n’t" — the apostrophe THIS combination
+          // carries, used only by the regular fall-through; an irregular
+          // auxiliary ignores it and emits its map's own literal forms.
+          const apostrophe = negation === "n't" ? "'" : "’";
+          const irregular = IRREGULAR_CONTRACTIONS[aux];
+          const forms = irregular ?? [`${aux}n${apostrophe}t`];
+          for (const form of forms) {
+            cases.push({
+              label: `${aux} ${negation} ${verb} → "${form}" (contracted)`,
+              language: "en",
+              sentence: `These ${form} ${verb} the result above.`,
+            });
+          }
+        }
+      }
+    }
+    return cases;
+  }
+
+  function assertAllCasesCaught(cases: GeneratedNegationCase[]): void {
+    const failures = cases.filter((generated) => {
+      const tables = buildInjectedTables({
+        label: generated.label,
+        key: "outcome.conditions.intro",
+        language: generated.language,
+        text: generated.sentence,
+      });
+      const hits = scanConditionsBlock(tables);
+      return !hits.some(
+        (hit) =>
+          hit.key === "outcome.conditions.intro" &&
+          hit.language === generated.language,
+      );
+    });
+    // Asserted on the WHOLE set at once, not a loop stopping at the first —
+    // an omission anywhere in the lists shows up as every case it produced.
+    expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
+  }
+
+  it("property test: every synthesised form of the full 11×4×6 EN negation product is reported by the scan (G2/G3)", () => {
+    const cases = buildEnNegationCases();
+    // 264 combinations, +12 extra forms from `can`'s two-entry map (12
+    // contracted combinations × one extra form each) = 276. A shrink in
+    // any of AUXILIARIES/NEGATIONS/EFFECT_VERBS/IRREGULAR_CONTRACTIONS
+    // moves this number — that is the point of pinning it by literal.
+    expect(cases).toHaveLength(276);
+    assertAllCasesCaught(cases);
+  });
+
+  // G5 — the ID mirror, same construction and same property-test shape:
+  // `["tidak","tak"]` × optional `akan` × the six ID verbs.
+  function buildIdNegationCases(): GeneratedNegationCase[] {
+    const cases: GeneratedNegationCase[] = [];
+    for (const negator of ID_NEGATORS) {
+      for (const withAkan of [false, true]) {
+        for (const verb of ID_VERBS) {
+          const middle = withAkan ? `akan ${verb}` : verb;
+          cases.push({
+            label: `${negator} ${withAkan ? "akan " : ""}${verb}`,
+            language: "id",
+            sentence: `Kondisi ini ${negator} ${middle} hasil di atas.`,
+          });
+        }
+      }
+    }
+    return cases;
+  }
+
+  it("property test: every synthesised form of the full 2×2×6 ID negation product is reported by the scan (G5)", () => {
+    const cases = buildIdNegationCases();
+    // 2 negators × (with/without "akan") × 6 verbs = 24, no multi-form
+    // auxiliary on this side to push it past the bare product.
+    expect(cases).toHaveLength(24);
+    assertAllCasesCaught(cases);
+  });
+
   // V2: the guard's guilt table is the real history, not invented cases.
   // Rows 1-2 are the exact EN/ID intro #6849 shipped — copied by command
   // (`git show 6ff563eb23:.../i18n.ts`), never retyped — the single
@@ -1911,6 +2166,32 @@ describe("notices render as named conditions (slice A2)", () => {
       key: "outcome.conditions.intro",
       language: "en",
       text: "These shan't change the result above.",
+    },
+    // Slice A2-G (G7): three LITERAL rows, one per mutation this PR's
+    // GUILT proofs name — a fixture does not shrink when a list does,
+    // which is what makes each mutation red for the reason it claims (the
+    // property test's own generator would NOT catch the `will` deletion:
+    // see the PR body's mutation 2).
+    {
+      label:
+        "PR-G/1 (G3 mutation proof): literal 'won't' — deleting IRREGULAR_CONTRACTIONS.will makes the property test synthesise and match 'willn't' instead, so only a literal exposes the loss",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These won't change the result above.",
+    },
+    {
+      label:
+        "PR-G/2 (G1 mutation proof): literal 'matter' — EFFECT_VERBS' sixth entry, contracted-family shape",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "This detail doesn't matter for the result above.",
+    },
+    {
+      label:
+        "PR-G/3 (G1/G5 mutation proof, OBS-A2c-8): literal 'tak berpengaruh' — the ID mirror's second negator, the everyday contraction of 'tidak'",
+      key: "outcome.conditions.intro",
+      language: "id",
+      text: "Kondisi ini tak berpengaruh terhadap hasil Anda.",
     },
   ];
 
