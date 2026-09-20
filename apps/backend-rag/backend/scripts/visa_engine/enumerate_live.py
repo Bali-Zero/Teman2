@@ -80,6 +80,12 @@ Usage (from ``apps/backend-rag``)::
       --manifest ../../research/operations/visa-oracle-interview-space-manifest.json \\
       --report /tmp/visa-oracle-live-enumeration-report.json \\
       --max-requests 60 --rate-per-minute 25 --dry-run
+
+``extract_walks`` pre-flights every walk's wire shape (``schema_version``,
+``assessment_id`` as a UUID, ``collected_at`` with an explicit zero UTC
+offset, non-empty ``facts``, well-typed ``disclosed_review_flags``) and
+refuses the first bad one before the driver token is read or any request --
+evaluate or health -- is sent, in ``--dry-run`` and live alike.
 """
 
 from __future__ import annotations
@@ -93,9 +99,10 @@ import os
 import stat
 import sys
 import time
+import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -254,6 +261,68 @@ def manifest_digest(manifest: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+#: B2''-c -- the exact ``schema_version`` the evaluate endpoint's wire
+#: contract accepts today (``models.py``'s ``ApplicantFacts``). A manifest
+#: built against a future schema is refused here, not guessed at.
+_EXPECTED_SCHEMA_VERSION = "1.0.0"
+
+
+def _validate_walk_wire_shape(label: str, walk: Mapping[str, Any]) -> None:
+    """Refuse a walk whose WIRE SHAPE the engine would reject -- mirrors
+    ``ApplicantFacts``/``_validate_utc`` (``backend/services/visa_engine/models.py``)
+    field-for-field so the runner never spends a request finding out the
+    engine would have said ``http_422``. Called from ``extract_walks``, i.e.
+    before any token load or network call, in ``--dry-run`` and live alike.
+    No minting, no repair -- the emitter owns the wire payload; this only
+    refuses. ``facts`` VALUES are never echoed in the raised message.
+    """
+
+    schema_version = walk.get("schema_version")
+    if schema_version != _EXPECTED_SCHEMA_VERSION:
+        raise EnumerateLiveError(
+            f"manifest walk {label!r} has schema_version={schema_version!r}; "
+            f"expected {_EXPECTED_SCHEMA_VERSION!r}"
+        )
+
+    assessment_id = walk.get("assessment_id")
+    try:
+        uuid.UUID(str(assessment_id))
+    except ValueError:
+        raise EnumerateLiveError(
+            f"manifest walk {label!r} has a non-UUID assessment_id: {assessment_id!r}"
+        ) from None
+
+    collected_at = walk.get("collected_at")
+    parsed_collected_at = None
+    if isinstance(collected_at, str):
+        try:
+            parsed_collected_at = datetime.fromisoformat(collected_at)
+        except ValueError:
+            parsed_collected_at = None
+    if (
+        parsed_collected_at is None
+        or parsed_collected_at.tzinfo is None
+        or parsed_collected_at.utcoffset() != timedelta(0)
+    ):
+        # Mirrors models.py's _validate_utc: timezone-aware AND a zero UTC
+        # offset -- a naive string or a non-zero offset (e.g. "+07:00") is
+        # exactly what the engine's field_validator would reject.
+        raise EnumerateLiveError(
+            f"manifest walk {label!r} has a collected_at without an explicit "
+            f"zero UTC offset ('Z' or '+00:00'): {collected_at!r}"
+        )
+
+    facts = walk.get("facts")
+    if not isinstance(facts, dict) or not facts:
+        raise EnumerateLiveError(f"manifest walk {label!r} has an empty or non-object facts")
+
+    flags = walk.get("disclosed_review_flags")
+    if flags is not None and (not isinstance(flags, list) or not all(isinstance(f, str) for f in flags)):
+        raise EnumerateLiveError(
+            f"manifest walk {label!r} has a non-list-of-strings disclosed_review_flags"
+        )
+
+
 def extract_walks(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
     covering = manifest.get("coveringSubset")
     walks = covering.get("walks") if isinstance(covering, Mapping) else None
@@ -272,6 +341,11 @@ def extract_walks(manifest: Mapping[str, Any]) -> list[dict[str, Any]]:
             # network call instead.
             raise EnumerateLiveError(f"manifest has a duplicate walk label: {label!r}")
         seen_labels.add(label)
+        # B2''-c: the manifest is an "engine-ready wire payload" only by the
+        # emitter's convention, not by construction -- validate the SHAPE the
+        # engine would reject (schema_version/assessment_id/collected_at/
+        # facts/disclosed_review_flags) before any token load or network call.
+        _validate_walk_wire_shape(label, walk)
     return walks
 
 
