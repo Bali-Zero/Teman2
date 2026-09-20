@@ -26,12 +26,14 @@ kit/slugs.json.lock (and its transient kit/slugs.json.<pid>.tmp) are kit-interna
 for _claim_slug's fcntl lock and atomic write (PR2g' S6, gate-13 obs 4): neither is a required
 artifact, so both are already excluded from capture by _CAPTURE_REQUIRED's allow-list — no
 separate exclude-list entry is needed, and the <pid> suffix means two crashed concurrent
-writers never collide on the same stale .tmp name.
+writers never collide on the same stale .tmp name. kit/ledger.md.lock is the same kind of file
+for _ledger_lock, and stays out of capture the same way.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import difflib
 import fcntl
 import hashlib
@@ -175,25 +177,52 @@ def _ledger_sha_path(kit: Path) -> Path:
     return kit / "ledger.md.sha"
 
 
+@contextlib.contextmanager
+def _ledger_lock(kit: Path, *, shared: bool = False):
+    """append -> hash -> write .sha is three steps on two files. Unlocked, a second writer's
+    append landing between this writer's hash and its .sha write leaves a .sha that describes
+    fewer rows than the ledger holds, and `check` reports a tamper nobody committed (measured
+    on the unlocked code: 8 processes released together, one row each -> ledger_verify False
+    in 11 of 60 rounds; rows were never lost, only the .sha went stale). Same idiom as
+    _claim_slug: fcntl.flock on a sidecar, held per open file description, so it serializes
+    processes and threads alike. A reader takes it shared and never creates the sidecar — a
+    kit no locked writer has touched has nothing to wait for, and verifying must not write."""
+    lock_path = kit / "ledger.md.lock"
+    if shared and not lock_path.exists():
+        yield
+        return
+    if not shared:
+        lock_path.touch(exist_ok=True)
+    with open(lock_path, "r" if shared else "r+") as lock_f:
+        fcntl.flock(lock_f, fcntl.LOCK_SH if shared else fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_f, fcntl.LOCK_UN)
+
+
 def ledger_append(kit: Path, seat: str, status: str, sha16: str, when: str | None = None) -> str:
-    when = when or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    line = f"{when} | {seat} | {status} | {sha16}\n"
     path = _ledger_path(kit)
-    with open(path, "a") as f:
-        f.write(line)
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    _ledger_sha_path(kit).write_text(digest + "\n")
+    with _ledger_lock(kit):
+        # stamped under the lock, so the ledger's row order and its clock order cannot disagree
+        when = when or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        line = f"{when} | {seat} | {status} | {sha16}\n"
+        with open(path, "a") as f:
+            f.write(line)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        _ledger_sha_path(kit).write_text(digest + "\n")
     return line
 
 
 def ledger_verify(kit: Path) -> tuple[bool, str]:
     path, shapath = _ledger_path(kit), _ledger_sha_path(kit)
-    if not path.exists():
-        return True, "no ledger yet"
-    if not shapath.exists():
-        return False, "ledger.md exists but ledger.md.sha does not"
-    want = shapath.read_text().strip()
-    got = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _ledger_lock(kit, shared=True):
+        if not path.exists():
+            return True, "no ledger yet"
+        if not shapath.exists():
+            return False, "ledger.md exists but ledger.md.sha does not"
+        want = shapath.read_text().strip()
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
     return (got == want), f"expected {want[:16]} got {got[:16]}"
 
 
