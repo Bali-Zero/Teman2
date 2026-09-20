@@ -18,6 +18,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { validate as uuidValidate, version as uuidVersion } from "uuid";
 
 import {
   answersFor,
@@ -29,6 +30,7 @@ import {
   edgeCoverageReport,
   type Manifest,
   REPRESENTATIVE_VALUES,
+  renderCoveringWalks,
   renderManifest,
   typedBranchRelevantQuestionIds,
 } from "../../../../../scripts/visa-oracle/enumerate-interview-space";
@@ -501,4 +503,74 @@ describe("the memo-key projection is injectable, and a guilt/innocence PAIR prov
       withDefault.walksTotalExact,
     );
   }, 30_000);
+});
+
+describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID (B2''-c C2)", () => {
+  // The engine's ApplicantFacts.assessment_id is a uuid.UUID (models.py
+  // ~line 1283); the emitter used to hardcode ASSESSMENT_ID = "x" for every
+  // walk, which is not a UUID at all and tripped the live runner's breaker
+  // at request 3 (all http_422/uuid_parsing). This suite pins the fix: every
+  // rendered walk gets its OWN valid v5 UUID, derived from its label, so the
+  // SAME label always yields the SAME id (determinism keeps the manifest
+  // byte-stable across runs — the B1'' memo-key projection is unaffected).
+  const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
+
+  it("cardinality: the covering subset renders exactly 253 walks (pinned literal, per the measured merge-base manifest)", () => {
+    expect(RENDERED.length).toBe(253);
+  });
+
+  it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {
+    for (const walk of RENDERED) {
+      expect(uuidValidate(walk.assessment_id)).toBe(true);
+      expect(uuidVersion(walk.assessment_id)).toBe(5);
+    }
+  });
+
+  it("guilt+innocence: assessment_id is unique across the covering subset", () => {
+    const ids = RENDERED.map((walk) => walk.assessment_id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("determinism: the same label yields the same assessment_id across two independent enumerations", () => {
+    const firstRun = renderCoveringWalks(REAL_SUBSET.walks);
+    const secondRun = renderCoveringWalks(
+      buildCoveringSubset(REAL_SPACE).walks,
+    );
+    expect(firstRun.length).toBe(secondRun.length);
+    const byLabel = new Map(
+      secondRun.map((walk) => [walk.label, walk.assessment_id]),
+    );
+    for (const walk of firstRun) {
+      expect(byLabel.get(walk.label)).toBe(walk.assessment_id);
+    }
+  });
+
+  it("guilt: restoring the fixed placeholder 'x' for the first walk's assessment_id fails the UUID-validity assertion, naming that walk", () => {
+    // Mirrors the pre-fix defect (ASSESSMENT_ID = "x" for every walk)
+    // without touching production code or the module under test: builds a
+    // walk array identical to RENDERED except the FIRST walk's
+    // assessment_id is forced back to the placeholder, then re-runs the
+    // exact assertion the guilt+innocence test above makes, so a real
+    // regression back to the placeholder is caught by the same check this
+    // suite already ships.
+    const corrupted = RENDERED.map((walk, index) =>
+      index === 0 ? { ...walk, assessment_id: "x" } : walk,
+    );
+    const firstBadIndex = corrupted.findIndex(
+      (walk) => !uuidValidate(walk.assessment_id),
+    );
+    expect(firstBadIndex).toBe(0);
+    expect(corrupted[firstBadIndex].label).toBe(RENDERED[0].label);
+    expect(() => {
+      for (const walk of corrupted) {
+        if (!uuidValidate(walk.assessment_id)) {
+          throw new Error(
+            `assessment_id is not a valid UUID for walk "${walk.label}": ${walk.assessment_id}`,
+          );
+        }
+      }
+    }).toThrow(
+      `assessment_id is not a valid UUID for walk "${RENDERED[0].label}"`,
+    );
+  });
 });
