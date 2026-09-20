@@ -2446,6 +2446,60 @@ def test_condition_notice_order_is_canonical_not_request_order() -> None:
     assert forward.public_id == reversed_request.public_id == baseline.public_id
 
 
+def test_disclosed_review_flag_declaration_order_is_pinned() -> None:
+    """A3-B cure (ruling R-CONTINUE-A3B): the canonical-order tests above only
+    name flags they already know about, so a reorder among the three NEW
+    members (PAST_OVERSTAY, BLACKLIST_ENTRY, IMMIGRATION_INVESTIGATION) is
+    invisible to them — proven RED-that-stayed-GREEN in gate vo-gate-a3b's
+    B1 finding. This test pins the FULL fourteen-member declaration order as
+    a literal tuple, so ANY insertion or move, anywhere in the enum, reds
+    here and names both the live and the pinned tuple."""
+
+    assert tuple(DisclosedReviewFlag) == (
+        DisclosedReviewFlag.CRIMINAL_RECORD,
+        DisclosedReviewFlag.HEALTH_CONCERN,
+        DisclosedReviewFlag.PRIOR_VISA_REFUSAL,
+        DisclosedReviewFlag.NOT_CERTAIN,
+        DisclosedReviewFlag.PEP_OR_SANCTIONS,
+        DisclosedReviewFlag.SOURCE_OF_FUNDS_UNCLEAR,
+        DisclosedReviewFlag.DIPLOMATIC_PASSPORT,
+        DisclosedReviewFlag.AMBIGUOUS_SPONSOR,
+        DisclosedReviewFlag.ACTIVITY_BOUNDARY,
+        DisclosedReviewFlag.MULTI_PURPOSE_TRIP,
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+        DisclosedReviewFlag.PAST_OVERSTAY,
+        DisclosedReviewFlag.BLACKLIST_ENTRY,
+        DisclosedReviewFlag.IMMIGRATION_INVESTIGATION,
+    )
+
+
+def test_condition_notice_order_covers_the_three_new_flags() -> None:
+    """A3-B cure (ruling R-CONTINUE-A3B): same invariant as
+    ``test_condition_notice_order_is_canonical_not_request_order`` above, but
+    the request discloses the three NEW flags in REVERSE declaration order,
+    scrambled together with one OLD released flag
+    (``CONFLICTING_IMMIGRATION_STATUS``, the enum's own neighbour the three
+    new members were appended after) — so a reorder of any new flag relative
+    to that boundary member is directly observable here."""
+
+    baseline = _supported_baseline()
+    request_order = (
+        DisclosedReviewFlag.IMMIGRATION_INVESTIGATION,
+        DisclosedReviewFlag.BLACKLIST_ENTRY,
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+        DisclosedReviewFlag.PAST_OVERSTAY,
+    )
+    conditioned = evaluate_path._apply_disclosed_review_flags(baseline, request_order)
+
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert [notice.code for notice in new_notices] == [
+        "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+        "DISCLOSED_PAST_OVERSTAY_CONDITION",
+        "DISCLOSED_BLACKLIST_ENTRY_CONDITION",
+        "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION",
+    ]
+
+
 def test_released_path_nulls_decision_integrity() -> None:
     """gate vo-gate-a1, OBS-6 LOW: the released (conditioning-only) path
     nulls ``decision_integrity`` defensively rather than carrying over
