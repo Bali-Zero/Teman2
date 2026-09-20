@@ -1,0 +1,168 @@
+base_sha: a43c7febef # pragma: allowlist secret - public Git commit ID
+task_id: voa-verdict-id
+mandate_id: GARUDA-VOA-20260919/FRONT-B
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path, no
+  backend file. `scripts/contract_verify.py`'s floor-needs-brief refused the
+  push naming exactly this: "deterministic floor is 2 but this diff carries no
+  evidence/brief.yml" — the churn (529/137 over 7 files) crosses
+  `evidence_pack_lint.py`'s SIZE_GEAR2_THRESHOLD and stays far below the
+  Gear-3 threshold. This brief declares gear 2, matching the measured floor
+  and not exceeding it.
+l_level: L1
+gate_class: opus
+objective: >-
+  Close the half-translated funnel at the point where it costs the most. The
+  wizard (`/visa/voa`) has answered in Bahasa Indonesia since #6959, but the
+  screen after it did not: the wizard reaches the verdict with
+  `router.push('/visa/voa/<hash>')`, which carries no query string, so a
+  visitor who typed `?lang=id` and answered four questions in Indonesian read
+  the price, the published filing deadline, the four steps and the three
+  limits in English. Two halves in one concern: the language typed once is
+  CARRIED across the navigation (sessionStorage, tab-scoped), and the verdict
+  leg's copy moves into the same EN/ID register the wizard already uses.
+scope:
+  - >-
+    `voa-locale.ts` / `useVoaLocale.ts` — `VOA_LOCALE_SESSION_KEY`
+    (`bz.garuda_voa.preview-locale`); `resolveVoaLocale` gains a `session`
+    input read AFTER an explicit `?lang=` and BEFORE the site preference, so
+    the ruling in force (5a, english-by-default) is untouched for a tab that
+    never asked. Tab scope on purpose: closing the tab ends it, and nothing
+    about a customer's language survives into a later visit.
+  - >-
+    `voa-copy.ts` — the verdict leg's copy in both columns: the frame
+    (ACCEPT / DECLINE / deleted / error / loading), the magic-link entry form,
+    the self-service delete control, the Safe Clock hero, NextSteps.
+  - >-
+    `[hash]/page.tsx`, `SafeClock.tsx`, `NextSteps.tsx` — the consumers. The
+    error state now stores a copy KEY rather than a sentence, so the language
+    can still change after the fetch that set it. Each branch renders
+    `ContentLangSync`, the site's own `<html lang>` protocol (WCAG 3.1.1).
+  - >-
+    `SafeClock.tsx`'s `formatCivilDay(day, locale)` — one `Intl` formatter per
+    language, `en` still `en-GB` byte-for-byte. The DATE is the single fact
+    the hero exists to state; "Saturday, 24 October 2026" inside Indonesian
+    copy is the half-translated screen in its most visible form.
+  - >-
+    `voa-i18n.parity.guard.test.tsx` — scans the four consumers as a SET, and
+    a new test refuses to let that list drift from `voa-copy.guard.test.ts`'s
+    own SCREEN_FILES.
+constraints:
+  - >-
+    One concern. `declineEducation.ts` is NOT in this PR: it is a separate
+    per-reason-code copy table one directory over, already scanned by the
+    claims guard, and its own slice.
+  - >-
+    THE GUARD WAS THE REAL RISK, and it is cicatrix family #3 in both
+    directions at once. Scanning `page.tsx` alone, the parity guard would have
+    called every verdict-leg key an orphan (over-match) AND certified "no
+    hardcoded sentence" over three screens that still held all of theirs
+    (under-match). Both halves are closed by the same list, and both keep
+    their guilt controls.
+  - >-
+    `verdict.stamp.aria` is deliberately NOT a translation of "Approved": in
+    Bahasa "Disetujui" reads as an immigration decision, on the one screen
+    whose whole job is to say Immigration decides. It says "memenuhi syarat"
+    — eligible — which is what the verdict actually is. The reasoning is in
+    the dictionary next to the string.
+  - >-
+    The ruling in force is unchanged. `VOA_LOCALE_RULING` is still
+    `english-by-default`; nothing here flips what a visitor who does not ask
+    is served, and the guard still pins that.
+  - >-
+    apps/mouth merges land STAGED on Vercel. The `Bites:` observation is taken
+    on production after `vercel promote <dpl>`, never inferred from the merge.
+acceptance:
+  - text: >-
+      WHEN `?lang=id` is asked on one screen and a later screen in the same
+      tab is rendered with NO query string, THEN it SHALL still be Indonesian
+      — the navigation that used to drop the language.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "survives the
+      navigation"
+    probe_result: "Tests  1 passed | 31 skipped (32)"
+  - text: >-
+      FALSIFICATION of the row above: a tab that never asked SHALL still read
+      English, and a junk code carried in the session SHALL resolve English.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "never asked"
+    probe_result: "Tests  1 passed | 31 skipped (32)"
+  - text: >-
+      WHEN the Safe Clock hero renders under `?lang=id`, THEN the count, the
+      unit, the note AND the date SHALL be Indonesian — the date asserted as
+      an `Intl` format ("24 Oktober 2026" present, "24 October 2026" absent),
+      which only passing the locale through `formatCivilDay` can produce.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "Safe Clock hero
+      counts"
+    probe_result: "Tests  1 passed | 31 skipped (32)"
+  - text: >-
+      NO KEY IS ORPHANED AND NO SENTENCE IS HARDCODED, measured over the four
+      consumers as a set, both halves keeping their guilt controls.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx
+    probe_result: "Tests  32 passed (32)"
+  - text: >-
+      THE CLAIMS GUARD FOLLOWED THE COPY: every consumer the parity guard
+      scans is also scanned by `voa-copy.guard.test.ts`, and none of the new
+      Indonesian strings trips the banned-claims list or the ID register bans.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-copy.guard.test.ts
+    probe_result: "Tests  103 passed (103)"
+  - text: >-
+      NO REGRESSION on the screen being rewired: the verdict page's own suite
+      (DECLINE education, magic link, delete, tracker events) passes unchanged
+      against the wired file.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/visa/voa/[hash]/page.test.tsx'
+    probe_result: "Tests  14 passed (14)"
+  - text: NO REGRESSION across the whole VOA funnel, nor across the site's i18n layer.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run src/app/visa/voa/
+      src/i18n/
+    probe_result: "voa: 469 passed | 2 skipped (471); i18n: 103 passed (103)"
+  - text: >-
+      TYPES AND LINT: the ID column is `Record<VoaCopyKey, string>`, so a
+      missing or extra Indonesian key is a build error; eslint reports no new
+      error on the touched files.
+    status: verified
+    probe: cd apps/mouth && npx tsc --noEmit
+    probe_result: "exit 0 (also re-run green by the pre-commit typecheck hook)"
+  - text: >-
+      PROOF-OF-LIVE, owed after the merge: `/visa/voa/<hash>?lang=id` on
+      production SHALL serve the Indonesian verdict. On apps/mouth the merge
+      lands STAGED, so this is observed after `vercel promote <dpl>` and not
+      before.
+    status: pending
+    probe: >-
+      vercel promote <dpl> && curl -s
+      "https://balizero.com/visa/voa/<hash>?lang=id" | grep -c "Yang terjadi
+      selanjutnya"
+pii: none
+local_evidence: >-
+  No production read, no client data, no credential touched. Every probe above
+  is unit-level under jsdom with the repo's own `next/navigation` mock. The
+  hash in the pending live probe is a synthetic eligibility-check id created
+  by the funnel itself; no customer record is read to produce it.
+self_report:
+  note: >-
+    Every probe above was run against this PR's own head in this session and
+    its selected-test count pasted next to it; a probe selecting zero tests
+    would be a failure, not a pass. The one row marked `pending` is pending on
+    a REAL EVENT (the Vercel promote of the deployment this merge produces),
+    not on judgement. `declineEducation.ts` remains English-only by design and
+    no observation about it is a red on this brief.
