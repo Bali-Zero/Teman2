@@ -9,6 +9,7 @@ vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
 import {
   GENERIC_NOTICE_CONDITION,
   NOTICE_CONDITION_COPY,
+  REVIEW_REASON_ELEMENTS,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -24,6 +25,7 @@ import {
 } from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
 import { QUESTIONS, type OracleFacts } from "./tree";
+import { VisaOracleResponseError } from "./engine-response";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -305,21 +307,12 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(outcome.reviewReasons[0].message.en).not.toContain("KITAS/KITAP");
   });
 
-  it("falls back to an honest generic sentence for an unmapped review-reason code", () => {
+  it("throws for an unmapped review-reason code outside production", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code = "SOME_FUTURE_RULE_CODE";
-
-    const outcome = buildEngineOutcome(response);
-    expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
-    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
-      throw new Error("unexpected state");
-    const message = outcome.reviewReasons[0].message;
-    expect(message.en).not.toContain("SOME_FUTURE_RULE_CODE");
-    expect(message.en).not.toContain("Verified reason:");
-    expect(message.en.toLowerCase()).not.toContain(
-      "no evaluation was submitted",
+    expect(() => buildEngineOutcome(response)).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
     );
-    expect(message.en.toLowerCase()).toContain("judgment");
   });
 
   it("maps missing engine facts back to editable interview questions", () => {
@@ -1263,7 +1256,7 @@ describe("review reasons cover every code the current pack can emit", () => {
   // evaluate_path.py:
   //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
   //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
-  //   - the decisive-source gate (`_apply_decisive_source_gate` family,
+  //   - the decisive-source authority hold (`_apply_decisive_source_authority_hold` family,
   //     ~line 1030) and the safety-critical source hold
   //     (`_apply_safety_critical_source_hold`, ~line 1136): each forces
   //     `state: HUMAN_REVIEW_REQUIRED` with its own review reasons when a
@@ -1271,7 +1264,74 @@ describe("review reasons cover every code the current pack can emit", () => {
   //     the first cut of this test — `DECISIVE_SOURCE_STALE` is proven
   //     live-emitted in research/visa/2026-08-15-gold-replay-live-post-
   //     notice-report.json (persona 9/10, "actual").
-  const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
+  const EVALUATE_PATH = path.resolve(
+    HERE,
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+  );
+  const evaluatePathText = fs.readFileSync(EVALUATE_PATH, "utf-8");
+
+  function disclosedReviewReasonCodes(): string[] {
+    const start = evaluatePathText.indexOf(
+      "_DISCLOSED_REVIEW_REASON_CODES: MappingProxyType",
+    );
+    const end = evaluatePathText.indexOf("\n\n#: The nine disclosures", start);
+    if (start < 0 || end < 0) {
+      throw new Error("could not isolate _DISCLOSED_REVIEW_REASON_CODES");
+    }
+    const codes =
+      evaluatePathText
+        .slice(start, end)
+        .match(/"[A-Z][A-Z0-9_]*"/g)
+        ?.map((code) => code.slice(1, -1)) ?? [];
+    if (codes.length !== 11) {
+      throw new Error(
+        `expected 11 disclosed review codes, found ${codes.length}`,
+      );
+    }
+    return codes;
+  }
+
+  function minorPrivacyReviewCodes(): string[] {
+    const match = evaluatePathText.match(
+      /MINOR_GUARDIAN_PRIVACY_REVIEW_CODE\s*=\s*"([A-Z][A-Z0-9_]*)"/,
+    );
+    if (!match) throw new Error("could not find minor privacy review code");
+    const codes = [match[1]];
+    if (codes.length !== 1) {
+      throw new Error(`expected 1 minor privacy code, found ${codes.length}`);
+    }
+    return codes;
+  }
+
+  function sourceGateReviewCodes(): string[] {
+    const codes: string[] = [];
+    for (const functionName of [
+      "_apply_decisive_source_authority_hold",
+      "_apply_safety_critical_source_hold",
+    ]) {
+      const start = evaluatePathText.indexOf(`def ${functionName}(`);
+      const end = evaluatePathText.indexOf("\n\ndef ", start + 1);
+      if (start < 0) throw new Error(`could not find ${functionName}`);
+      const body = evaluatePathText.slice(start, end < 0 ? undefined : end);
+      const found = Array.from(
+        body.matchAll(/code\s*=\s*"([A-Z][A-Z0-9_]*)"/g),
+        (match) => match[1],
+      );
+      if (found.length !== 3) {
+        throw new Error(
+          `expected 3 source-gate codes in ${functionName}, found ${found.length}`,
+        );
+      }
+      codes.push(...found);
+    }
+    if (codes.length !== 6) {
+      throw new Error(`expected 6 source-gate codes, found ${codes.length}`);
+    }
+    return codes;
+  }
+
+  const EXPECTED_18 = [
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
     "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
     "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
@@ -1291,6 +1351,11 @@ describe("review reasons cover every code the current pack can emit", () => {
     "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
     "SAFETY_CRITICAL_SOURCE_STALE",
   ];
+  const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
+    ...disclosedReviewReasonCodes(),
+    ...minorPrivacyReviewCodes(),
+    ...sourceGateReviewCodes(),
+  ];
 
   // Real, currently-emittable review reason codes with no copy yet (QW-4a
   // scope: rename the stale keys + prove exhaustiveness; QW-4b, separately
@@ -1309,6 +1374,12 @@ describe("review reasons cover every code the current pack can emit", () => {
   // attach to once the list emptied, so it went with it rather than sit
   // orphaned in an empty array.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
+
+  it("derives and pins every backend-independent review reason by name", () => {
+    expect(PACK_INDEPENDENT_REVIEW_REASON_CODES.slice().sort()).toEqual(
+      EXPECTED_18.slice().sort(),
+    );
+  });
 
   // EMPTY SINCE THE seq-22 ACTIVATION (2026-09-16T20:16:45Z, activation_id
   // 10937ac5, payload 3d7555af…6e37). While seq-20 was in force, the eight
@@ -1443,6 +1514,116 @@ describe("review reasons cover every code the current pack can emit", () => {
       (code) => !allRealCodes.has(code),
     );
     expect(phantomEntries).toEqual([]);
+  });
+});
+
+describe("criminal review elements and unmapped review reasons (slice A5)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    emitVisaOracleTelemetry.mockReset();
+  });
+
+  const copy = REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW!;
+  it.each([
+    [
+      "rule",
+      "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+      "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+    ],
+    [
+      "checked",
+      "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
+      "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+    ],
+    [
+      "prepare",
+      "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
+      "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+    ],
+    [
+      "handling",
+      "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+      "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+    ],
+  ] as const)("pins %s in EN and ID", (field, en, id) => {
+    expect(copy[field]).toEqual({ en, id });
+  });
+
+  it("has exactly four criminal review element fields and exact labels", () => {
+    expect(Object.keys(copy)).toHaveLength(4);
+    expect(translate("en", "outcome.review.element.rule" as I18nKey)).toBe(
+      "Why this is held",
+    );
+    expect(translate("en", "outcome.review.element.checked" as I18nKey)).toBe(
+      "What the reviewer checks",
+    );
+    expect(translate("en", "outcome.review.element.prepare" as I18nKey)).toBe(
+      "What to prepare",
+    );
+    expect(translate("en", "outcome.review.element.handling" as I18nKey)).toBe(
+      "How this is handled",
+    );
+    expect(translate("id", "outcome.review.element.rule" as I18nKey)).toBe(
+      "Mengapa hasil ini ditahan",
+    );
+    expect(translate("id", "outcome.review.element.checked" as I18nKey)).toBe(
+      "Apa yang diperiksa peninjau",
+    );
+    expect(translate("id", "outcome.review.element.prepare" as I18nKey)).toBe(
+      "Apa yang perlu disiapkan",
+    );
+    expect(translate("id", "outcome.review.element.handling" as I18nKey)).toBe(
+      "Bagaimana hal ini ditangani",
+    );
+  });
+
+  it("keeps the activity-boundary hold as a single sentence without elements", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW";
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons).toHaveLength(1);
+    expect(
+      REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
+    ).toBeUndefined();
+  });
+
+  // This throw cannot fire in playwright.config.ts's e2e run because that
+  // runs a production build (NODE_ENV === "production").
+  it("throws for an unmapped review reason outside production (GUILT-a)", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code = "NOT_A_REAL_REVIEW_CODE";
+    expect(() => buildEngineOutcome(response)).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
+    );
+  });
+
+  it("falls back to generic copy and reports one unmapped review code in production (GUILT-b)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const code = "ANOTHER_NOT_REAL_REVIEW_CODE";
+    const first = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    first.decision.review_reasons[0].code = code;
+    const second = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    second.decision.review_reasons[0].code = code;
+    const firstOutcome = buildEngineOutcome(first);
+    if (firstOutcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    const secondOutcome = buildEngineOutcome(second);
+    if (secondOutcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(firstOutcome.reviewReasons[0].message.en).toBe(
+      "Some of your answers need a person's judgment before we can confirm a path.",
+    );
+    expect(secondOutcome.reviewReasons[0].message.en).toBe(
+      "Some of your answers need a person's judgment before we can confirm a path.",
+    );
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
+      event: "visa_oracle_v2_review_reason_unmapped_code",
+      code,
+    });
   });
 });
 
@@ -1937,6 +2118,63 @@ describe("notices render as named conditions (slice A2)", () => {
   it("innocence: all 28 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
+  });
+
+  function a5EntryBuilder(): ConditionsBlockEntry[] {
+    const entries: ConditionsBlockEntry[] = [];
+    const elements = REVIEW_REASON_ELEMENTS.DISCLOSED_CRIMINAL_RECORD_REVIEW!;
+    for (const field of ["rule", "checked", "prepare", "handling"] as const) {
+      entries.push({
+        key: `DISCLOSED_CRIMINAL_RECORD_REVIEW.${field}`,
+        language: "en",
+        text: elements[field].en,
+      });
+      entries.push({
+        key: `DISCLOSED_CRIMINAL_RECORD_REVIEW.${field}`,
+        language: "id",
+        text: elements[field].id,
+      });
+    }
+    for (const language of ["en", "id"] as const) {
+      entries.push({
+        key: "outcome.disclaimer.complex_to_human",
+        language,
+        text: translate(
+          language,
+          "outcome.disclaimer.complex_to_human" as I18nKey,
+        ),
+      });
+    }
+    for (const key of [
+      "outcome.review.element.rule",
+      "outcome.review.element.checked",
+      "outcome.review.element.prepare",
+      "outcome.review.element.handling",
+    ] as const) {
+      entries.push({
+        key,
+        language: "en",
+        text: translate("en", key as I18nKey),
+      });
+      entries.push({
+        key,
+        language: "id",
+        text: translate("id", key as I18nKey),
+      });
+    }
+    return entries;
+  }
+
+  it("pins and scans all 18 A5 strings", () => {
+    const entries = a5EntryBuilder();
+    expect(entries).toHaveLength(18);
+    expect(entries.filter((entry) => findBannedPattern(entry.text))).toEqual(
+      [],
+    );
+  });
+
+  it("a5 scan innocence: the matcher catches a certainty phrase", () => {
+    expect(findBannedPattern("does not change the result")).toBeDefined();
   });
 
   // G2/G3 — the property test enumerates the FULL 11×4×6 EN product (264

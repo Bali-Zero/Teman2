@@ -270,6 +270,92 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     ).toBeVisible();
   });
 
+  test("renders all four criminal-record review elements with their labels, EN and ID", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page);
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_CRIMINAL_RECORD_REVIEW";
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, response),
+    );
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
+    const enRows = page.locator(".oracle-review-elements__row");
+    const en = [
+      [
+        "Why this is held",
+        "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
+      ],
+      [
+        "What the reviewer checks",
+        "A specialist reads what you disclosed against the immigration record requirements for the route you asked about, and decides whether it can be submitted as it stands.",
+      ],
+      [
+        "What to prepare",
+        "Have the dates and the issuing authority of any court or police record ready, together with any document showing the case is closed. Send nothing here — our team tells you where each document goes.",
+      ],
+      [
+        "How this is handled",
+        "A specialist reviews this before we confirm a path, and our team comes back to you with the timing for your case.",
+      ],
+    ] as const;
+    await expect(enRows).toHaveCount(4);
+    for (const [label, text] of en)
+      await expect(enRows.filter({ hasText: label })).toContainText(text);
+    await page
+      .getByRole("button", { name: /switch to bahasa indonesia/i })
+      .click();
+    const idRows = page.locator(".oracle-review-elements__row");
+    const id = [
+      [
+        "Mengapa hasil ini ditahan",
+        "Hasil ini ditahan karena Anda mengungkapkan catatan kriminal atau perkara yang masih berjalan. Ini salah satu dari dua pengungkapan yang masih diteruskan ke seseorang oleh aturan yang telah disahkan; sembilan pengungkapan lainnya kini tetap melekat pada hasil Anda sebagai kondisi bernama.",
+      ],
+      [
+        "Apa yang diperiksa peninjau",
+        "Seorang spesialis membaca apa yang Anda ungkapkan terhadap persyaratan catatan keimigrasian untuk jalur yang Anda tanyakan, lalu menilai apakah berkas tersebut dapat diajukan apa adanya.",
+      ],
+      [
+        "Apa yang perlu disiapkan",
+        "Siapkan tanggal dan instansi penerbit dari setiap catatan pengadilan atau kepolisian, beserta dokumen apa pun yang menunjukkan perkara telah ditutup. Jangan kirimkan apa pun di sini — tim kami akan memberi tahu ke mana setiap dokumen harus dikirim.",
+      ],
+      [
+        "Bagaimana hal ini ditangani",
+        "Seorang spesialis meninjau hal ini sebelum kami mengonfirmasi jalur, dan tim kami akan mengabari Anda mengenai perkiraan waktu untuk kasus Anda.",
+      ],
+    ] as const;
+    await expect(idRows).toHaveCount(4);
+    for (const [label, text] of id)
+      await expect(idRows.filter({ hasText: label })).toContainText(text);
+  });
+
+  test("replaces the old human-review footer with the new one on a SUPPORTED_CANDIDATES verdict with a notice", async ({
+    page,
+  }) => {
+    await seedVerdictResume(page);
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        rule_ids: [],
+        source_refs: [TEST_SOURCE_ID],
+      },
+    ];
+    await page.route("**/api/visa-oracle/evaluate**", (route) =>
+      fulfillJson(route, response),
+    );
+    await page.goto("/visa-oracle");
+    await expectEngineState(page, "SUPPORTED_CANDIDATES");
+    await expect(page.locator(".oracle-disclaimer")).toContainText(
+      "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
+    );
+    await expect(page.locator(".oracle-disclaimer")).not.toContainText(
+      "Complex or flagged cases always go to a human",
+    );
+  });
+
   test("CURATED and malformed JSON fail closed with zero candidates", async ({
     page,
   }) => {
