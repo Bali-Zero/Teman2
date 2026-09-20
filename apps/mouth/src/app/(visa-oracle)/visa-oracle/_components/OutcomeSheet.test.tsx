@@ -551,6 +551,9 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
       {},
     );
     expect(
+      screen.getByText("Copy for DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"),
+    ).toBeInTheDocument();
+    expect(
       container.querySelectorAll(".oracle-review-elements dt"),
     ).toHaveLength(0);
     expect(

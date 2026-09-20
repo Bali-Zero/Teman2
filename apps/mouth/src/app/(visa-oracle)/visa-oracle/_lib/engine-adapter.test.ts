@@ -1585,6 +1585,10 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     expect(outcome.reviewReasons).toHaveLength(1);
+    expect(outcome.reviewReasons[0].message).toEqual({
+      en: "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own, so a person needs to confirm it before a path can be confirmed.",
+      id: "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan, sehingga memerlukan konfirmasi oleh seseorang sebelum jalur dapat dipastikan.",
+    });
     expect(
       REVIEW_REASON_ELEMENTS.DISCLOSED_ACTIVITY_BOUNDARY_REVIEW,
     ).toBeUndefined();
