@@ -289,7 +289,7 @@
   min-height: 48px;
   margin-top: 0.5rem;
   padding: 0 1.1rem;
-  border: 1px solid var(--bz-border-hover);
+  border: 1px solid var(--tx-tertiary);
   border-radius: 999px;
   background: transparent;
   color: var(--bz-accent);
@@ -434,7 +434,7 @@
   min-height: 48px;
   margin-top: 1rem;
   padding: 0 1.25rem;
-  border: 1px solid var(--bz-border-hover);
+  border: 1px solid var(--tx-tertiary);
   border-radius: 999px;
   background: transparent;
   color: var(--bz-accent);

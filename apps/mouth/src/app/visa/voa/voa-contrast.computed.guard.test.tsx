@@ -951,3 +951,111 @@ describe("the entry field is visible (mandate accent 5)", () => {
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// Every control on this funnel has an edge you can see (SC 1.4.11, 3:1).
+//
+// PR 6912 cured ONE field and the measurement that followed found the same
+// shape on seven more declarations. Measured on production, not inferred:
+// the wizard's four fields read 1.42:1 against their own fill — and that fill
+// is itself only 1.09:1 against the page ground, so the 1px rule was the only
+// thing making them look like fields. The delete control's "Cancel" and "Try
+// again" read 1.37:1 with no fill and no colour cue at all, unlike their
+// copper "Yes, delete" sibling. The two pills read 1.78:1 and 1.84:1; those
+// two DO carry copper labels that signal interactivity on their own, so they
+// are cured for consistency rather than as clear-cut failures — stated here
+// so the green is never read as more than it proves.
+//
+// WHAT THIS SECTION DOES NOT SEE, named rather than implied: three sites could
+// not be reached on production and are NOT cured here —
+// `checkout/[resultId]/CheckoutFlow.tsx` (payments are switched off, so the
+// form never mounts), `orders/OrderTracker.tsx`'s Delivered/Exception panels
+// (need a real seeded order), and `upload/UploadFlow.tsx`'s SECONDARY/FIELD
+// (need a photo through the OCR pipeline). Fixing a declaration nobody has
+// ever seen painted is how a guard starts certifying guesses.
+// ---------------------------------------------------------------------------
+
+/** The two weak boundary tokens, by the numbers that retired them. */
+const RETIRED_BOUNDARY_TOKENS = [
+  "--color-border-subtle",
+  "--bz-border-hover",
+] as const;
+
+/** Named literally: a file that disappears must fail here, not silently drop
+ *  out of the sweep (W133 — a test parametrized over the set it tests). */
+const CONTROL_FILES = ["page.tsx", "[hash]/page.tsx", "voa-r19.css"] as const;
+
+describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
+  it.each([".voa-clock__handoff", ".voa-next__ask"])(
+    "%s's boundary clears 3:1 on the ground it sits on",
+    (cls) => {
+      const ratio = contrastRatio(
+        ruleBorderColour(cls),
+        SURFACE_TOKENS["--bz-base"],
+      );
+      expect(ratio, `${cls}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it("GUILTY: both retired tokens fail that floor, on the ground and on a field fill", () => {
+    for (const token of RETIRED_BOUNDARY_TOKENS) {
+      const colour = resolveColor(
+        token === "--color-border-subtle"
+          ? "var(--bz-border)" // what voa-r19.css:42 aliases it to
+          : `var(${token})`,
+        SURFACE_TOKENS,
+      );
+      expect(
+        contrastRatio(colour, SURFACE_TOKENS["--bz-base"]),
+        `${token} on the ground`,
+      ).toBeLessThan(3);
+      expect(
+        contrastRatio(colour, SURFACE_TOKENS["--bz-elevated"]),
+        `${token} on a field fill`,
+      ).toBeLessThan(3);
+    }
+  });
+
+  /**
+   * The inline declarations. This is a SOURCE pin, not a render: jsdom
+   * resolves no cascade, and the two delete-control buttons only paint in a
+   * confirming state. What it proves is narrow and exact — no control on
+   * these three files declares its border with a token measured under 3:1 —
+   * and that is the regression it exists to stop.
+   */
+  it.each(CONTROL_FILES)(
+    "%s declares no control border on a retired token",
+    (rel) => {
+      const src = readFileSync(join(__dirname, rel), "utf-8");
+      for (const token of RETIRED_BOUNDARY_TOKENS) {
+        const re = new RegExp(`border:[^;\n]*${token}`, "i");
+        expect(re.test(src), `${rel} still borders on ${token}`).toBe(false);
+      }
+    },
+  );
+
+  it("GUILTY: the sweep's own regex catches the shape it bans", () => {
+    for (const bad of [
+      `border: "1px solid var(--color-border-subtle)",`,
+      `border: 1px solid var(--bz-border-hover);`,
+    ]) {
+      const hit = RETIRED_BOUNDARY_TOKENS.some((t) =>
+        new RegExp(`border:[^;\n]*${t}`, "i").test(bad),
+      );
+      expect(hit, bad).toBe(true);
+    }
+  });
+
+  it("INNOCENT: it does not convict a DIVIDER on the same token", () => {
+    for (const ok of [
+      "border-top: 1px solid var(--bz-border);",
+      "border-bottom: 1px solid var(--color-border-subtle);",
+      "--color-border-subtle: var(--bz-border);",
+    ]) {
+      const hit = RETIRED_BOUNDARY_TOKENS.some((t) =>
+        new RegExp(`border:[^;\n]*${t}`, "i").test(ok),
+      );
+      expect(hit, ok).toBe(false);
+    }
+  });
+});
