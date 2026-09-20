@@ -171,10 +171,23 @@ def test_no_files_named_is_clean() -> None:
     assert lint.main([]) == 0
 
 
-def test_naming_only_unscannable_files_refuses_to_report_clean(tmp_path: Path) -> None:
-    """cicatrix #2/W84: a lint that scanned nothing must not say 'clean'."""
-    path = _write(tmp_path, "notes.md", "whatever\n")
+def test_naming_only_unreadable_files_refuses_to_report_clean(tmp_path: Path) -> None:
+    """cicatrix #2/W84: a lint whose every in-scope file failed to read must not
+    say 'clean'. An out-of-scope suffix and a deleted path are NOT that."""
+    path = _write(tmp_path, "broken.py", 'x = "unterminated\n')
     assert lint.main([str(path)]) == 2
+
+
+def test_an_out_of_scope_file_is_reported_as_such_and_not_as_scanned(
+    tmp_path: Path, capsys
+) -> None:
+    """The refuting seat's sharpest finding: a run that covered none of the diff
+    printed a count that read like coverage."""
+    doc = _write(tmp_path, "notes.md", "whatever\n")
+    clean = _write(tmp_path, "m.py", "# clean\n")
+    assert lint.main([str(clean), str(doc)]) == 0
+    out = capsys.readouterr().out
+    assert "1 out of scope" in out
 
 
 def test_guilt_exits_one(tmp_path: Path) -> None:
@@ -235,13 +248,18 @@ def test_an_unreadable_list_pardons_nothing(tmp_path: Path, monkeypatch) -> None
 
 
 def test_a_grown_list_is_its_own_failure(monkeypatch) -> None:
-    monkeypatch.setattr(lint, "grandfather_grew", lambda ref: ["new/offender.py"])
+    monkeypatch.setattr(
+        lint, "grandfather_grew", lambda ref: (["new/offender.py"], "")
+    )
     assert lint.main(["--base-ref", "origin/main"]) == 3
 
 
 def test_growth_check_is_silent_when_the_base_ref_is_unreadable() -> None:
-    """An anti-bypass must not turn a shallow checkout into guilt."""
-    assert lint.grandfather_grew("refs/heads/a-ref-that-does-not-exist") == []
+    """An anti-bypass must not turn a shallow checkout into guilt — but it must
+    say so, which is the refuting seat's objection 9."""
+    grew, note = lint.grandfather_grew("refs/heads/a-ref-that-does-not-exist")
+    assert grew == []
+    assert "does not resolve" in note
 
 
 def test_every_frozen_file_still_exists() -> None:
@@ -252,3 +270,129 @@ def test_every_frozen_file_still_exists() -> None:
 
 def test_the_frozen_list_is_not_empty() -> None:
     assert lint.load_grandfathered(), "the committed list must be readable"
+
+
+# ── THE REFUTING SEAT'S CORPUS ─────────────────────────────────────────────
+# Eleven objections, every one reproduced by the seat before it was asserted.
+# Eight broke the first version of this lint. They are pinned here by the
+# seat's own number so a future edit that reopens one is named, not guessed.
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param('# password\n# = "hunter2-real-fixture"\n', id="R1-comment-split"),
+        pytest.param(
+            '"""doc\napi_key\n= "abc123def456"\n"""\n', id="R1-docstring-split"
+        ),
+        pytest.param(
+            'class C:\n    api_key = None\n    """VendorClient(api_key="sk-fixture1234")"""\n',
+            id="R4-attribute-docstring-ast-get-docstring-cannot-see",
+        ),
+    ],
+)
+def test_refutation_python_shapes_that_used_to_slip(tmp_path: Path, body: str) -> None:
+    path = _write(tmp_path, "m.py", body)
+    scanned, findings = lint.scan_file(path)
+    assert scanned and findings
+
+
+def test_refutation_2_a_bare_mapping_value_that_looks_like_a_credential() -> None:
+    assert lint.judge_prose("# config sets password: hunter2-actual-fixture")
+
+
+def test_refutation_2_an_ordinary_english_clause_stays_writable() -> None:
+    assert not lint.judge_prose("# the password: it is never printed")
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        ("c.ts", "// new VendorClient({api_key: 'sk-fixture12345'})\n"),
+        ("c.js", "/* api_key: 'sk-fixture12345' */\n"),
+    ],
+)
+def test_refutation_3_the_suffixes_the_workflow_already_triggers_on(
+    tmp_path: Path, name: str, body: str
+) -> None:
+    scanned, findings = lint.scan_file(_write(tmp_path, name, body))
+    assert scanned and findings
+
+
+def test_refutation_5_a_homoglyph_is_a_DOCUMENTED_LIMIT_not_a_claim() -> None:
+    """Cyrillic a. This guard is built against honest description, not against
+    an author smuggling a credential past themselves. Pinned so the limit is
+    recorded rather than imagined — if a future version closes it, this test
+    fails and the docstring's KNOWN LIMITS section is what must change."""
+    assert not lint.judge_prose('# VendorClient(\u0430pi_key="sk-fixture")')
+
+
+def test_refutation_6_a_backslash_escaped_apostrophe_is_not_a_quote(
+    tmp_path: Path,
+) -> None:
+    """Verified by the seat against bash itself: the line below is a valid
+    shell line whose trailing hash IS a comment."""
+    line = "echo don\\'t worry  # api_key=fixture9999value\n"
+    assert lint._strip_code(line.rstrip("\n")).strip()
+    scanned, findings = lint.scan_file(_write(tmp_path, "e.sh", line))
+    assert scanned and findings
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        pytest.param("Client(api_key=<anthropic-key>)", id="R7-vendor-inside-the-hole"),
+        pytest.param(
+            "VendorClient(api_key=<ANTHROPIC_FIXTURE>)", id="R7-vendor-uppercased"
+        ),
+    ],
+)
+def test_refutation_7_a_hole_excuses_a_value_never_the_vendor(prose: str) -> None:
+    assert lint.judge_prose(prose)
+
+
+def test_refutation_9_an_absent_list_at_the_base_says_so_instead_of_passing() -> None:
+    """An anti-bypass that fails open in silence is indistinguishable from one
+    that passed. The empty tree resolves as a commit and carries no files."""
+    grew, note = lint.grandfather_grew("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    assert grew == []
+    assert note, "the growth check must say when it could not run"
+
+
+def test_refutation_10_a_deletion_only_change_is_not_a_blind_scan(
+    tmp_path: Path,
+) -> None:
+    """A deleted file cannot introduce prose. Failing it as a blind scan would
+    block a legitimate deletion-only PR."""
+    assert lint.main([str(tmp_path / "gone_one.py"), str(tmp_path / "gone_two.py")]) == 0
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        pytest.param(
+            "# call rotate(api_key) after 90 days to comply with SOC2",
+            id="R11-a-bare-mention-inside-parens",
+        ),
+        pytest.param(
+            '# schema allows {"password": null} for anonymous guest sessions',
+            id="R11-a-null-in-a-schema",
+        ),
+        pytest.param(
+            "# the bug: Client(api_key=None) silently no-ops instead of raising",
+            id="R11-a-null-in-a-bug-report",
+        ),
+        pytest.param(
+            "# see generate(access_key) in the SDK reference for signature v4",
+            id="R11-a-cross-reference",
+        ),
+    ],
+)
+def test_refutation_11_ordinary_engineering_prose_must_stay_writable(
+    prose: str,
+) -> None:
+    """The dangerous half. This is a BLOCKING step; a false red teaches people
+    to route around the guard, which is the only way one truly dies. Five of the
+    sixteen files the first pardon list froze were this class of false positive,
+    and requiring a value removed them."""
+    assert not lint.judge_prose(prose)

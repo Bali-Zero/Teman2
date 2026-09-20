@@ -273,8 +273,16 @@ jobs:
         run: |
           set -uo pipefail
           if [ -z "${BASE_SHA:-}" ]; then
-            echo "push build — the pardon-growth check needs a base; scanned at PR time."
-            exit 0
+            # A direct push to main has no PR base, and that is EXACTLY the case
+            # this workflow's own header names as the threat (W41/W42, L2
+            # autonomous direct-push). An earlier draft exited 0 here, which made
+            # a blocking step a no-op on the one event it most needed to run —
+            # found by the refuting seat. So a push scans the whole tree instead.
+            echo "push build — no PR base, scanning the whole tree."
+            git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' \
+              | grep -vE '^(\.venv|node_modules|vendor)/' \
+              | xargs -r python3 scripts/lint/lint_ban_prose.py
+            exit $?
           fi
           CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
           ENUM_RC=$?

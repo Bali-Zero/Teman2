@@ -116,6 +116,36 @@ receipts:
     exit: 0
     ts: 2026-09-20T17:36:00Z
     seat: claude-opus-5
+  - claim: a refuting seat dispatched without the brief broke the first version of the prose lint in 8 of 11 objections, every one reproduced by executing the module; all 11 are addressed or pinned as a documented limit
+    cmd: adversarial subagent, then the objections replayed one by one against the rewrite
+    result: "11 of 11 accounted for; the homoglyph is pinned as a KNOWN LIMIT by a test that asserts it still slips"
+    exit: 0
+    ts: 2026-09-20T17:45:00Z
+    seat: claude-sonnet-5
+  - claim: requiring a VALUE removed 5 of the 16 files the first pardon list froze - they were over-matches on ordinary prose, not debt
+    cmd: repo-wide rescan after the rewrite, pardon list refrozen from the result
+    result: "11 files frozen, down from 16; 42 findings across 10576 scanned"
+    exit: 0
+    ts: 2026-09-20T17:52:00Z
+    seat: claude-opus-5
+  - claim: the step was a NO-OP on every push to main, which falsified the workflow's own W41/W42 threat model; a push now scans the whole tree
+    cmd: the push branch of the step, replayed locally over every tracked source file
+    result: "10576 file(s) scanned across 3 xargs batches, exit 0"
+    exit: 0
+    ts: 2026-09-20T17:55:00Z
+    seat: claude-opus-5
+  - claim: both suites green after the rewrite - 71 carried forward, 63 for the prose lint including the refuting seat's corpus
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 134 passed
+    exit: 0
+    ts: 2026-09-20T17:58:00Z
+    seat: claude-opus-5
+  - claim: the rewritten lint reads this PR's whole surface clean, and reports the 3 out-of-scope files as out of scope rather than as coverage
+    cmd: python3 scripts/lint/lint_ban_prose.py --base-ref origin/main $(the PR's changed set)
+    result: "OK - 9 file(s) scanned (3 out of scope, 0 not on disk), no prose spells a banned shape"
+    exit: 0
+    ts: 2026-09-20T18:00:00Z
+    seat: claude-opus-5
 dissent:
   - seat: codex-gpt-5.6-sol
     objection:
@@ -172,8 +202,39 @@ dissent:
       redaction fixes landed. Sending less signal is correct under the output boundary, but the trade is
       real and is recorded here rather than absorbed silently."
     status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "The blocking prose step exits 0 on every push to main before it computes anything, because
+      its base sha comes from a pull_request context that a push does not have. The workflow's own
+      header justifies the dual trigger as defence against autonomous direct-push - for this step
+      that was exactly the case where it did nothing."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "A changed set of one clean .py and one out-of-scope file printed '1 file(s) scanned, clean'
+      while never reading the file carrying the shape - the same 'scanned nothing, reported clean'
+      lie the lint's own header says it exists to prevent."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "Four ordinary engineering comments red on a BLOCKING step - a bare mention inside parentheses,
+      a null in a schema, a null in a bug report, a cross-reference to an SDK signature. A false red
+      on a blocking gate teaches people to route around it."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "The vendor name written INSIDE the placeholder hole evades the check the comment claims to
+      make, because only the owner was inspected and never the value."
+    status: CONFIRMED
+
 unresolved:
   - "The corpus is not extended with the seats' hard cases in this PR. They are written out verbatim in
     the council transcripts and are the first work of the follow-up; arming the step should wait for
     them, which is why this ships advisory."
   - "Cross-file indirection remains outside the lane's reach by construction."
+  - "A homoglyph defeats every prose predicate and is pinned as a documented limit by a test that
+    asserts it still slips. The guard is built against honest description, not against an author
+    smuggling a credential past themselves."
+  - "Markdown is out of scope. Read as prose it produced 335 findings across 47 documents, and read
+    as narrative only - fences and indented blocks excluded - still 60 across 12. Documents are a
+    second concern and a second PR."
