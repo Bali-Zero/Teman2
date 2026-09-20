@@ -27,6 +27,25 @@
       "ollama_restart_schedule": "weekly sunday 05:00 WITA"
     }
   },
+  "_removed_roles_2026_09_21": {
+    "_why": "Removed, not repointed: grep for get_role/resolve_model_role and for each key across the repo found no live consumer. A role naming an absent model with nobody calling it makes the defined<->live probe DIVERGED forever, and a probe that always shouts is a probe being trained out of existence. Recorded here rather than deleted silently, so restoring one is a lookup and not an excavation.",
+    "sentry": {
+      "was": "qwen3:4b",
+      "why": "only reachable from the cell/main.py ram_gb<=16 branch, which existed for Air — decommissioned 2026-05-05"
+    },
+    "translation": {
+      "was": "gemma3:27b",
+      "why": "mentioned only in federation_capability_table.py as documentation, never resolved as a role"
+    },
+    "kg_json": {
+      "was": "gemma4:26b",
+      "why": "zero occurrences anywhere outside this file"
+    },
+    "reasoning": {
+      "was": "deepseek-r1:32b",
+      "why": "every match in the repo is an unrelated JSON field or docstring, not this role"
+    }
+  },
   "roles": {
     "cron_primary": "qwen3.5:9b",
     "cron_primary_tool_calling": "qwen3:8b",
@@ -36,17 +55,13 @@
     "agy_gemini_pro_high": "agy/Gemini 3.1 Pro (High)",
     "swarm_fast_review": "agy_gemini_flash_high",
     "swarm_deep_review": "agy_gemini_pro_high",
-    "translation": "gemma3:27b",
-    "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
     "ocr_vision": "qwen2.5vl:7b",
     "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
-    "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
-    "sentry": "qwen3:4b",
     "code_review": "qwen3:8b",
     "cell_tier0": "qwen3.5:9b",
-    "cell_tier1": "gemma4:26b",
+    "cell_tier1": "qwen3.8:27b-mlx",
     "sentinel_classifier": "claude --print",
     "dlq_reasoning": "claude --print",
     "aider_fix": "openrouter/deepseek/deepseek-chat-v3-0324",

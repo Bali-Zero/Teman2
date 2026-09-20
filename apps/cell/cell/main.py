@@ -156,8 +156,11 @@ async def main() -> None:
     _topology_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "MODEL_TOPOLOGY.json")
     _hostname = socket.gethostname().removesuffix(".local")
     _ollama_url = "http://127.0.0.1:11434"
-    _model_fast = "qwen3:4b"  # safe default for Air
-    _model_heavy = "qwen3:4b"
+    # Was "qwen3:4b" for both — installed on NEITHER machine, so the "safe default"
+    # was a model ollama cannot load. Air, whose 16GB these defaults were sized for,
+    # was decommissioned 2026-05-05.
+    _model_fast = "qwen3.5:9b"
+    _model_heavy = "qwen3.8:27b-mlx"
     try:
         with open(_topology_path) as _f:
             _topo = json.load(_f)
@@ -165,8 +168,8 @@ async def main() -> None:
             if _node["hostname"] == _hostname:
                 _ollama_url = _node.get("ollama_host", "http://127.0.0.1:11434")
                 break
-        _model_fast = _topo["roles"].get("cell_tier0", "qwen3:4b")
-        _model_heavy = _topo["roles"].get("cell_tier1", "qwen3:4b")
+        _model_fast = _topo["roles"].get("cell_tier0", _model_fast)
+        _model_heavy = _topo["roles"].get("cell_tier1", _model_heavy)
         # On Air (16GB), fall back to sentry model if tier0/tier1 aren't available locally
         for _node in _topo["nodes"].values():
             if _node["hostname"] == _hostname and _node.get("ram_gb", 0) <= 16:
