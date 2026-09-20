@@ -116,6 +116,19 @@ unresolved:
     same file, and nothing yet enforces that it does."
   - "Conditions 1 and 2 of the #6968 ledger row (the trigger narrower than the scanner, and the 16-vs-11
     prose drift) are untouched here and stay open on that row."
+seat_fallback_reason: |
+  agy-gemini-3.1-pro is a RESERVE seat and played in place of tp1-qwen3.8-max, which
+  arsenal_probe.py --read-last reports QUOTA_DEAD (read this turn; it is the last recorded probe,
+  roughly four hours old at the time of writing, not a fresh dial — stated because a stale probe
+  read as live is its own defect). tp1-glm-5.2 and tp1-deepseek-v4-pro are QUOTA_DEAD in the same
+  record, so the TP1 bench was unavailable in full.
+
+  codex-gpt-5.6-sol, the other titolare, was dispatched TWICE and returned nothing within the
+  window: once as a subagent (still running ~45 minutes after dispatch, asked to report what it
+  had and did not) and once directly through the codex CLI (still running when this pack was
+  written). Its absence is recorded in `unresolved` rather than counted, and the reserve does not
+  stand in for it — the quorum here is kimi-code/k3 (titolare) plus one reserve, which is why this
+  field exists at all.
 dissent:
   - seat: agy-gemini-3.1-pro
     objection: "HIGH — test_model_saying_no_cannot_clear_the_grep, the anti-AND test that exists to prove a model false negative cannot open the gate, was vacuous: without the fixture the fence made the client unavailable, the model was never asked, and the test passed on the grep alone. The most important test in the file, and the FIFTH vacuous one in this lane."
