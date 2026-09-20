@@ -43,12 +43,19 @@ def _write_token(path: Path, token: str = "test-driver-token-never-log") -> str:
     return token
 
 
-def _walk(label: str, value: str = "yes") -> dict[str, Any]:
+#: B2''-c: a fixed, obviously-synthetic UUID -- valid shape, no realistic
+#: identity is ever emitted. Used as every test walk's default assessment_id
+#: so the pre-flight (uuid.UUID(str(value))) passes for every EXISTING test;
+#: individual guilt tests below override it with an invalid value.
+_VALID_ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111"
+
+
+def _walk(label: str, value: str = "yes", assessment_id: str = _VALID_ASSESSMENT_ID) -> dict[str, Any]:
     return {
         "label": label,
         "asked": ["some_question"],
         "schema_version": "1.0.0",
-        "assessment_id": "x",
+        "assessment_id": assessment_id,
         "collected_at": "2026-01-01T00:00:00Z",
         "facts": {"some_question": value},
     }
@@ -215,7 +222,7 @@ def test_successful_walk_is_recorded_as_engine_verdict(tmp_path: Path, monkeypat
     assert captured["headers"][enumerate_live.DRIVER_TOKEN_HEADER] == token
     assert captured["json_body"] == {
         "schema_version": "1.0.0",
-        "assessment_id": "x",
+        "assessment_id": _VALID_ASSESSMENT_ID,
         "collected_at": "2026-01-01T00:00:00Z",
         "facts": {"some_question": "yes"},
     }
@@ -592,6 +599,205 @@ def test_duplicate_walk_labels_refuse_before_any_network_call(
     assert "duplicate walk label" in caplog.text
     assert "'dup'" in caplog.text
     assert not report.exists()
+
+
+# ---------------------------------------------------------------------------
+# B2''-c -- wire-shape pre-flight: the engine would 422 on these, so the
+# runner refuses them itself, before the token and before any request
+# (evaluate OR health), in --dry-run and live alike.
+# ---------------------------------------------------------------------------
+
+
+def test_wire_shape_bad_assessment_id_refuses_before_token_and_network_live(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT (a): the exact manifest that tripped the production breaker at
+    request 3 -- assessment_id="x" is the mouth emitter's hardcoded
+    placeholder, not a UUID. No driver-token file is written at all: if the
+    pre-flight ran after the token load, this would surface "driver token
+    file not found" instead of the walk-shape refusal.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("baseline/all-default", assessment_id="x")])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("a rejected wire shape must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "baseline/all-default" in caplog.text
+    assert "assessment_id" in caplog.text
+    assert "driver token file not found" not in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_bad_assessment_id_refuses_before_token_and_network_dry_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT (b): the SAME manifest as the live test above, under --dry-run.
+    On the merge-base this printed `pending=1` (the cause this PR closes --
+    see the merge-base proof pasted in the PR body); the pre-flight now runs
+    in --dry-run too, so it refuses identically to the live path.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("baseline/all-default", assessment_id="x")])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("--dry-run must never call evaluate or health either")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25) + ["--dry-run"]
+    )
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "baseline/all-default" in caplog.text
+    assert "assessment_id" in caplog.text
+    assert "driver token file not found" not in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_collected_at_without_offset_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT (c): a naive datetime string (no 'Z', no '+00:00') mirrors
+    exactly what models.py's _validate_utc rejects."""
+
+    manifest = tmp_path / "manifest.json"
+    walk = _walk("a")
+    walk["collected_at"] = "2026-09-06T00:00:00"
+    _write_manifest(manifest, [walk])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("a rejected wire shape must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "collected_at" in caplog.text
+    assert "'a'" in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_wrong_schema_version_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT (d): a manifest built against a future/other schema version."""
+
+    manifest = tmp_path / "manifest.json"
+    walk = _walk("a")
+    walk["schema_version"] = "2.0.0"
+    _write_manifest(manifest, [walk])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("a rejected wire shape must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "schema_version" in caplog.text
+    assert "2.0.0" in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_empty_facts_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT (e): an empty facts object -- the refusal names the walk and
+    the field, never a facts VALUE (there is none to echo here, but the
+    message never interpolates walk["facts"] at all)."""
+
+    manifest = tmp_path / "manifest.json"
+    walk = _walk("a")
+    walk["facts"] = {}
+    _write_manifest(manifest, [walk])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("a rejected wire shape must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "facts" in caplog.text
+    assert "'a'" in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_non_list_disclosed_review_flags_refuses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Extra coverage beyond the five named guilt cases: the optional
+    disclosed_review_flags field, when present, must be a list of strings."""
+
+    manifest = tmp_path / "manifest.json"
+    walk = _walk("a")
+    walk["disclosed_review_flags"] = "not-a-list"
+    _write_manifest(manifest, [walk])
+    report = tmp_path / "report.json"
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("a rejected wire shape must not call evaluate or health")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    monkeypatch.setattr(enumerate_live, "_get_health", no_network)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    with caplog.at_level(logging.ERROR, logger="visa_engine.enumerate_live"):
+        assert enumerate_live.run(args) == 2
+    assert "disclosed_review_flags" in caplog.text
+    assert not report.exists()
+
+
+def test_wire_shape_valid_uuid4_and_flags_pass_preflight_and_dry_run_still_prints_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """INNOCENCE: a well-formed walk (uuid4 id, 'Z' timestamp, non-empty
+    facts, a list-of-strings disclosed_review_flags) passes extract_walks
+    unchanged and --dry-run still prints its plan -- this PR narrows what a
+    malformed manifest can do, not what a well-formed one can.
+    """
+
+    import uuid as _uuid
+
+    manifest = tmp_path / "manifest.json"
+    walk = _walk("a", assessment_id=str(_uuid.uuid4()))
+    walk["disclosed_review_flags"] = ["DISCLOSED_HEALTH_CONCERN_CONDITION"]
+    _write_manifest(manifest, [walk])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+
+    async def no_network(*_a: object, **_k: object) -> _Response:
+        raise AssertionError("--dry-run must never call the network")
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", no_network)
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=60, rate_per_minute=25) + ["--dry-run"]
+    )
+
+    assert enumerate_live.run(args) == 0
+    assert "pending=1" in capsys.readouterr().out
 
 
 def test_dry_run_reports_version_mismatch_before_a_bad_token_file(
