@@ -579,7 +579,7 @@ test.describe("Visa Oracle v2 state colours — browser-computed fence — page 
       const hexCollided = threw(() =>
         assertDistinct(rowHex, "S8 row1 hex-case"),
       );
-      await hexTag.evaluate((el) => el.remove());
+      await hexTag.evaluate((el: HTMLStyleElement) => el.remove());
       await page.addStyleTag({
         content:
           '.oracle-root[data-oracle-theme="light"]{--oracle-state-likely:rgb(22,104,63)}',
