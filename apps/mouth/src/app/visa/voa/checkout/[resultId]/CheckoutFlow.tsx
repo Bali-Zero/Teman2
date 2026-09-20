@@ -350,7 +350,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
         style={{
           padding: "0.6rem 0.7rem",
           borderRadius: 4,
-          border: "1px solid var(--color-border-subtle)",
+          border: "1px solid var(--tx-tertiary)",
           background: "var(--surface-raised)",
           color: "var(--text-primary)",
         }}
@@ -361,10 +361,23 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * The boundary is `--tx-tertiary`, not the subtle divider token these used to
+ * carry. `--color-border-subtle` resolves to `--bz-border` on this surface and
+ * measures 1.42:1 against `--surface-raised`, under SC 1.4.11's 3:1 for the
+ * boundary of a user-interface component — and the fill is itself 1.09:1
+ * against the page ground, so the 1px rule is the only thing that says
+ * "field". PR 6916 cured the same shape on the wizard and the verdict screen
+ * but could not reach this form on production: payments are switched off, so
+ * `PaymentActivatingPanel` renders instead and these inputs never mount.
+ * `ReadOnlyField` above takes the same value — it is not a control, but it
+ * stands beside these inputs dressed as one, and a field that looks weaker
+ * than its neighbours reads as disabled.
+ */
 const inputStyle: React.CSSProperties = {
   padding: "0.6rem 0.7rem",
   borderRadius: 4,
-  border: "1px solid var(--color-border-subtle)",
+  border: "1px solid var(--tx-tertiary)",
   background: "var(--surface-raised)",
   color: "var(--text-primary)",
   fontSize: "1rem",

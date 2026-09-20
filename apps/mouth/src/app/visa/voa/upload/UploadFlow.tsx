@@ -75,13 +75,21 @@ const PRIMARY: React.CSSProperties = {
   color: "var(--bz-base)",
 };
 
+/**
+ * `--bz-border-hover` measured 1.83:1 against `--bz-elevated` — under SC
+ * 1.4.11's 3:1, and `FIELD` is a real input in the manual-correction form, so
+ * its boundary is load-bearing. `SECONDARY` ("Retake photo instead") carries a
+ * white label that signals a control on its own, so it takes the same value
+ * for CONSISTENCY rather than as a clear-cut failure: a secondary button with
+ * a fainter edge than the field above it reads as disabled.
+ */
 const SECONDARY: React.CSSProperties = {
-  borderColor: "var(--bz-border-hover)",
+  borderColor: "var(--tx-tertiary)",
   color: "var(--tx-pure)",
 };
 
 const FIELD: React.CSSProperties = {
-  borderColor: "var(--bz-border-hover)",
+  borderColor: "var(--tx-tertiary)",
   background: "var(--bz-elevated)",
   color: "var(--tx-pure)",
 };

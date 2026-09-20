@@ -379,6 +379,12 @@ function DeliveredPanel({
   practice: NonNullable<OrderView["practice"]>;
 }) {
   return (
+    // DELIBERATELY `--color-border-subtle`, and a boundary sweep must leave it
+    // alone. This is a <section> container, not a control: SC 1.4.11 binds
+    // user-interface components and graphical objects, and a card's hairline
+    // outline is a divider. PR 6916 raised every CONTROL boundary on this
+    // funnel to `--tx-tertiary`; raising this one too would make the panel
+    // shout for a floor that does not apply to it. Same for ExceptionPanel.
     <section
       aria-label="Visa delivered"
       style={{
