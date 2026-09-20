@@ -28,12 +28,22 @@
 #   betting on a delay: poll every 0.3s up to JUMP_POLL_MAX_S until a name
 #   appears that was NOT in the snapshot, and raise THAT window by name.
 #
-# BOTH routes stand on the same snapshot, and on the same rule (v2.1): every
-# window name is read BEFORE any gesture, and ONLY a window whose exact name
-# was ABSENT from that snapshot may ever be typed into — including the window
-# the native API hands back by id, whose name is cross-checked before a single
-# character is sent. Two corollaries, both of them cures for a measured way of
-# typing into Zero's OTHER live session:
+# BOTH routes stand on a snapshot taken BEFORE any gesture, and on the same
+# rule — only a window that was NOT there before may be typed into. What COUNTS
+# as "was not there" differs by route, because the evidence differs (v2.3):
+#   · NATIVE proves the birth by ID. `new window` hands back a window id; the
+#     ids of every window are snapshotted first, and an id absent from that
+#     list was created by this call and by nothing else. Measured on M5
+#     2026-09-20 08:49: the window WAS born, and was refused anyway because it
+#     was named `~/nuzantara` like another window already open — the name test
+#     was a second guard over a proof that already held, and it denied a true
+#     case (family #3, guard-over-match). The name is still read and logged for
+#     diagnosis; it no longer decides. When the id list is unreadable the route
+#     falls back to the name rule below rather than typing on no evidence.
+#   · KEYSTROKE has no id to stand on — ⌘N returns nothing — so it keeps the
+#     name rule: only a window whose EXACT name was absent from the snapshot.
+# Two corollaries, both of them cures for a measured way of typing into Zero's
+# OTHER live session:
 #   · an UNREADABLE list is not an empty desktop. With the snapshot empty every
 #     name looks new and the first PRE-EXISTING window takes the keystroke: no
 #     snapshot, no gesture.
@@ -141,6 +151,15 @@ on run argv
       set out to (name of every window) as text
       set AppleScript's text item delimiters to ""
       return out
+    else if act is "window-ids" then
+      -- the id snapshot: what `new window` must NOT hand back for its answer
+      -- to be a birth. Ids are stable handles within a run; they are not
+      -- stable across minutes, which is why this list is read seconds before
+      -- the call and never cached.
+      set AppleScript's text item delimiters to linefeed
+      set out to (id of every window) as text
+      set AppleScript's text item delimiters to ""
+      return out
     else if act is "old-id" then
       -- The ONLY window whose title carries this session id: the title the
       -- gesture stamped on the old claude's tty (or nz-jump's stub name).
@@ -232,7 +251,13 @@ if [ -z "$BEFORE" ]; then
     BEFORE=$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)
 fi
 FRONT_BEFORE=$(printf '%s\n' "$BEFORE" | head -1)
+# The id snapshot is the native route's proof of birth. Only the native
+# dictionary can answer it; when it cannot, BEFORE_IDS stays empty and the
+# route falls back to judging the new window by its name.
+BEFORE_IDS=""
+[ "$SNAP_SRC" = "native" ] && BEFORE_IDS=$("$OSASCRIPT" "$AS_NATIVE" window-ids 2>/dev/null || true)
 log "front window: '${FRONT_BEFORE:-?}' (not assumed ours) pid=${FROM_PID:-?} · windows before ($SNAP_SRC): [$(flat "$BEFORE")]"
+[ "$SNAP_SRC" = "native" ] && log "window ids before: [$(flat "${BEFORE_IDS:-}")]"
 # An UNREADABLE window list is not an empty desktop. With BEFORE empty, every
 # name read after the gesture looks "new", and the first pre-existing window —
 # Zero's other session — would take the keystroke. No snapshot, no gesture.
@@ -244,23 +269,36 @@ if [ "$SNAP_SRC" = "native" ]; then
     if [ -z "$NEW_ID" ]; then
         log "native: new window FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): falling back to keystrokes"
     else
-        # The id is a handle, but the RULE is the name: a window whose name
-        # was already in the snapshot is somebody else's, whatever handed
-        # it to us. Unreadable is refused too — no evidence, no keystroke.
-        # A name carrying OUR session id is our own old window, not a birth.
+        # The PROOF is the id: an id absent from the pre-gesture id snapshot
+        # belongs to a window this call created. The name is read for the log
+        # — titles collide (two sessions are both "Interactive", a fresh
+        # window is named after its cwd like any other), so a name test here
+        # denies true births without catching a single false one.
+        # No id snapshot (dictionary answered names but not ids): fall back to
+        # the name rule rather than type on no evidence at all.
         NEW_NAME=$("$OSASCRIPT" "$AS_NATIVE" name-of-id "$NEW_ID" 2>/dev/null || true)
-        if [ -z "$NEW_NAME" ]; then
-            log "native: window id='$NEW_ID' created but its name is unreadable, so it cannot be checked against the snapshot: nothing typed (window left open)"
+        BIRTH=""
+        if [ -n "$BEFORE_IDS" ]; then
+            if in_snapshot "$BEFORE_IDS" "$NEW_ID"; then
+                log "native: 'new window' handed back id='$NEW_ID', an id ALREADY in the snapshot (no window was born): nothing typed (window left open)"
+                rm -f "$NERR"; exit 1
+            fi
+            BIRTH="id '$NEW_ID' absent from the id snapshot"
+        elif [ -z "$NEW_NAME" ]; then
+            log "native: window id='$NEW_ID' created but neither its id snapshot nor its name is readable: nothing typed (window left open)"
             rm -f "$NERR"; exit 1
         elif in_snapshot "$BEFORE" "$NEW_NAME"; then
-            log "native: window id='$NEW_ID' is named '$NEW_NAME', a name ALREADY in the snapshot (not a birth): nothing typed (window left open)"
+            log "native: no id snapshot, and window id='$NEW_ID' is named '$NEW_NAME', a name ALREADY in the snapshot (not a birth): nothing typed (window left open)"
             rm -f "$NERR"; exit 1
         elif [ -n "$(own_name_in "$NEW_NAME")" ]; then
             log "native: window id='$NEW_ID' is named '$NEW_NAME', which carries THIS session's id (our own window, not a birth): nothing typed (window left open)"
             rm -f "$NERR"; exit 1
-        elif "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
+        else
+            BIRTH="no id snapshot; name '$NEW_NAME' absent from the name snapshot"
+        fi
+        if "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
             ROUTE="native"
-            log "native: new window id='$NEW_ID' name='$NEW_NAME' (absent from the snapshot), 'nz-jump $FROM' sent; old window resolved by stamp after the claim"
+            log "native: new window id='$NEW_ID' name='${NEW_NAME:-?}' ($BIRTH), 'nz-jump $FROM' sent; old window resolved by stamp after the claim"
         else
             log "native: new window id='$NEW_ID' opened but input FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): nothing typed"
             rm -f "$NERR"; exit 1

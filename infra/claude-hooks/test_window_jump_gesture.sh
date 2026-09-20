@@ -68,8 +68,9 @@ case "$(basename "${1:-}")" in
     echo "$act ${3:-}" >> "$d/nativecalls"
     case "$act" in
       window-names) cat "$d/nnames" ;;
+      window-ids)   cat "$d/nids" 2>/dev/null ;;
       old-id)       echo "win-OLD" ;;
-      new-window)   echo "win-NEW" ;;
+      new-window)   cat "$d/newid" 2>/dev/null || echo "win-NEW" ;;
       name-of-id)   if [ "${3:-}" = "win-NEW" ]; then cat "$d/newname"; else echo "old title"; fi ;;
       type-into)    printf '%s\t%s\n' "${3:-}" "${4:-}" >> "$d/typed"; echo ok ;;
       close-window) echo "${3:-}" >> "$d/closed"; echo ok ;;
@@ -97,10 +98,16 @@ SHIMEOF
 # Same sandbox, with Ghostty's native dictionary ANSWERING: $2 = the window
 # names it reports before the gesture, $3 = the name of the window it hands
 # back (win-NEW) when asked to create one.
+# $4 = the ids the dictionary reports before the gesture (default "win-OLD";
+# empty means the id snapshot is unreadable), $5 = the id `new window` hands
+# back (default "win-NEW").
 setup_native() {
     setup "$1" "$2"
     printf '%s\n' "$2" > "$SHIM/nnames"
     printf '%s\n' "$3" > "$SHIM/newname"
+    printf '%s' "${4-win-OLD}" > "$SHIM/nids"
+    [ -s "$SHIM/nids" ] && printf '\n' >> "$SHIM/nids"
+    printf '%s\n' "${5-win-NEW}" > "$SHIM/newid"
     : > "$SHIM/native_on"
 }
 
@@ -203,21 +210,46 @@ check "nz-jump sent to the window the API returned (by id)" \
 check "the old window never got nz-jump" \
       "$(hasnt "$TYPED" "$(typed_line "win-OLD" "nz-jump s-native")")"
 check "System Events was never touched" "$([ ! -s "$SHIM/keyscalls" ] && echo yes || echo no)"
-check "the name was checked against the snapshot before typing" \
-      "$(has "$LOG" "name='~/nuzantara' (absent from the snapshot)")"
+check "the id was checked against the id snapshot before typing" \
+      "$(has "$LOG" "id 'win-NEW' absent from the id snapshot")"
+check "jump.log carries the pre-gesture id list" "$(has "$LOG" "window ids before: [win-OLD]")"
 check "jump.log carries the pre-gesture window list" "$(has "$LOG" "windows before (native): [◑ Interactive]")"
 check "exit 2: typed, but no to_session within JUMP_WAIT_S" "$([ "$RC" = 2 ] && echo yes || echo no)"
 
-# --- innocence: the native route obeys the same snapshot --------------------
-# If the window handed back carries a name that was ALREADY on the desktop,
-# the id proves nothing about a birth: it may be Zero's other session. The
-# name, not the handle, authorises the keystroke.
-echo "[8] native API returns a window whose name was already in the snapshot: nothing may be typed"
-setup_native "s-native-dup" "✳ Interactive di Zero" "✳ Interactive di Zero"
+# --- guilt: the M5 2026-09-20 miss — a born window with a colliding NAME -----
+# The window WAS born (its id is new); it is merely named `~/nuzantara` like a
+# window already open. Refusing it is a guard denying a true case, which is
+# what left the session at the guard inert on 2026-09-20 08:49.
+echo "[8] native API returns a NEW id whose name collides with an existing window: it is typed into"
+setup_native "s-native-dup" "~/nuzantara" "~/nuzantara"
+run_gesture
+check "nz-jump sent to the newly born window" \
+      "$(has "$TYPED" "$(typed_line "win-NEW" "nz-jump s-native-dup")")"
+check "the id, not the name, carried the proof" \
+      "$(has "$LOG" "id 'win-NEW' absent from the id snapshot")"
+check "System Events was never touched" "$([ ! -s "$SHIM/keyscalls" ] && echo yes || echo no)"
+
+# --- innocence: an id that already existed is not a birth -------------------
+# If `new window` hands back an id that was in the snapshot, no window was
+# created and the handle points at somebody's live session.
+echo "[8b] native API hands back an id ALREADY in the snapshot: nothing may be typed"
+setup_native "s-native-oldid" "✳ Interactive di Zero" "✳ Interactive di Zero" "win-OLD
+win-ZERO" "win-ZERO"
 run_gesture
 check "not one character was sent" "$([ ! -s "$TYPED" ] && echo yes || echo no)"
-check "Zero's pre-existing window is never typed into" "$(hasnt "$TYPED" "nz-jump s-native-dup")"
-check "jump.log names the collision" "$(has "$LOG" "a name ALREADY in the snapshot (not a birth): nothing typed")"
+check "Zero's live window is never typed into" "$(hasnt "$TYPED" "nz-jump s-native-oldid")"
+check "jump.log names the non-birth" "$(has "$LOG" "an id ALREADY in the snapshot (no window was born): nothing typed")"
+check "exit 1" "$([ "$RC" = 1 ] && echo yes || echo no)"
+
+# --- innocence: no id snapshot falls back to the name rule ------------------
+# The dictionary answered names but not ids: without the proof the route may
+# not type on a name that was already on the desktop.
+echo "[8c] id snapshot unreadable and the name collides: nothing may be typed"
+setup_native "s-native-noids" "✳ Interactive di Zero" "✳ Interactive di Zero" ""
+run_gesture
+check "not one character was sent" "$([ ! -s "$TYPED" ] && echo yes || echo no)"
+check "jump.log names the fallback and the collision" \
+      "$(has "$LOG" "no id snapshot, and window id='win-NEW' is named")"
 check "exit 1" "$([ "$RC" = 1 ] && echo yes || echo no)"
 
 echo
