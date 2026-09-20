@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { isGarudaVoaPublicEnabled } from "../../flag";
 import { PENDING_COOKIE, decodePending } from "../contract";
+import { ContentLangSync } from "@/i18n/ContentLangSync";
+import { voaCopy, type VoaCopyFn } from "../../voa-copy";
+import { resolveVoaLocale, VOA_LOCALE_COOKIE } from "../../voa-locale";
 
 /**
  * `/visa/voa/auth/continue` — the one page of the magic-link flow a human
@@ -54,14 +57,12 @@ function firstValue(v: string | string[] | undefined): string | undefined {
  * reading two different-looking "invalid" pages side by side could still
  * infer which failure class they hit.
  */
-function InvalidLinkNotice() {
+function InvalidLinkNotice({ t }: { t: VoaCopyFn }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-xl font-semibold">
-        This link has been used or has expired.
-      </h1>
+      <h1 className="text-xl font-semibold">{t("auth.invalid.heading")}</h1>
       <a href="/visa/voa" className="rounded-md bg-black px-6 py-3 text-white">
-        Send me a new link
+        {t("auth.invalid.cta")}
       </a>
     </main>
   );
@@ -130,7 +131,23 @@ export default async function GarudaVoaAuthContinuePage({
     notFound();
   }
 
-  const failed = firstValue((await searchParams).error) !== undefined;
+  const params = await searchParams;
+  const failed = firstValue(params.error) !== undefined;
+
+  /**
+   * THE LANGUAGE ARRIVES BY COOKIE HERE, and it has to. This page is a SERVER
+   * component reached from an EMAIL — a new tab, so the funnel's
+   * sessionStorage carry is gone, and no browser storage is readable from the
+   * server anyway. `VOA_LOCALE_COOKIE` is written client-side only when a
+   * visitor typed `?lang=`, lives one hour, and is the only thing that can
+   * make this screen speak the language the four questions were answered in.
+   * An explicit `?lang=` on THIS url still outranks it.
+   */
+  const locale = resolveVoaLocale({
+    requested: firstValue(params.lang),
+    journey: (await cookies()).get(VOA_LOCALE_COOKIE)?.value ?? null,
+  });
+  const t = voaCopy(locale);
 
   // The cookie is the only thing that proves a token is in flight, and it
   // must decode to a well-formed pair. Without that there is nothing to
@@ -146,7 +163,7 @@ export default async function GarudaVoaAuthContinuePage({
   // spelling it out here narrows `pending` to non-null for the
   // `pending.token` read below.
   if (!ready || pending === null) {
-    return <InvalidLinkNotice />;
+    return <InvalidLinkNotice t={t} />;
   }
 
   // Non-consuming: proves the token is still live AND says whose
@@ -157,25 +174,35 @@ export default async function GarudaVoaAuthContinuePage({
   const maskedEmail = await previewMagicLink(pending.token);
 
   if (maskedEmail === null) {
-    return <InvalidLinkNotice />;
+    return <InvalidLinkNotice t={t} />;
   }
+
+  /**
+   * The masked address keeps its emphasis: it is the whole anti-CSRF
+   * affordance of this screen ("if that is not you, close this page"), so it
+   * is not flattened into the sentence. Splitting the template ON the
+   * placeholder survives a translation that moves it — the parity guard
+   * already pins `{email}` present in both columns, so this always yields the
+   * two halves, in whatever order the language puts them.
+   */
+  const [beforeEmail, afterEmail] = t("auth.continue.whose").split("{email}");
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 p-6 text-center">
-      <h1 className="text-xl font-semibold">Continue your application</h1>
-      <p className="text-gray-600">
-        You&apos;re one step from uploading your documents.
-      </p>
+      <ContentLangSync locale={locale} />
+      <h1 className="text-xl font-semibold">{t("auth.continue.heading")}</h1>
+      <p className="text-gray-600">{t("auth.continue.lead")}</p>
       <p className="text-sm text-gray-500">
-        This link opens the application for <strong>{maskedEmail}</strong>. If
-        that is not you, close this page instead.
+        {beforeEmail}
+        <strong>{maskedEmail}</strong>
+        {afterEmail}
       </p>
       <form method="post" action="/visa/voa/auth/exchange">
         <button
           type="submit"
           className="rounded-md bg-black px-6 py-3 text-white"
         >
-          Continue
+          {t("auth.continue.cta")}
         </button>
       </form>
     </main>

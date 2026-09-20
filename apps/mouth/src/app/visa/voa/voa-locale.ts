@@ -56,6 +56,31 @@ export const SITE_LOCALE_PREFERENCE_KEY = "blog-language";
  */
 export const VOA_LOCALE_SESSION_KEY = "bz.garuda_voa.preview-locale";
 
+/**
+ * THE SAME CHOICE, IN A COOKIE, BECAUSE THE JOURNEY LEAVES THE TAB.
+ *
+ * `VOA_LOCALE_SESSION_KEY` carries the language across `router.push` inside
+ * one tab, which is the whole funnel up to the verdict. The paid half is not
+ * in that tab: the magic link arrives by EMAIL and opens a NEW one, where
+ * sessionStorage is empty and the URL carries no `?lang=`. Without this
+ * cookie, a visitor who answered in Bahasa reads the upload, checkout and
+ * order screens in English — and `auth/continue` is a SERVER component, so it
+ * cannot read browser storage at all, only a cookie.
+ *
+ * SCOPED TO THE JOURNEY, NOT TO THE PERSON. `Max-Age` is one hour because the
+ * magic link itself expires in fifteen minutes: this covers the hop it exists
+ * for and nothing beyond it. That matters — constraint 5a says a visitor who
+ * does not ask reads English, and a durable preference would quietly overrule
+ * it on every later visit. An hour is a journey; a year would be a ruling.
+ *
+ * `SameSite=Lax` so the cookie survives the top-level navigation FROM the
+ * mail client, which is exactly the hop being fixed. No `Secure` flag is set
+ * here because the value is a two-letter language code, not a credential, and
+ * the attribute would make it undebuggable on http://localhost.
+ */
+export const VOA_LOCALE_COOKIE = "bz_voa_lang";
+export const VOA_LOCALE_COOKIE_MAX_AGE_S = 60 * 60;
+
 function asVoaLocale(raw: string | null | undefined): VoaLocale | null {
   if (raw === "id" || raw === "en") return raw;
   return null;
@@ -70,12 +95,15 @@ function asVoaLocale(raw: string | null | undefined): VoaLocale | null {
 export function resolveVoaLocale({
   requested,
   session,
+  journey,
   preference,
   ruling = VOA_LOCALE_RULING,
 }: {
   requested?: string | null;
   /** What `?lang=` set earlier in THIS tab's journey. */
   session?: string | null;
+  /** What `?lang=` set earlier in this BROWSER, within the last hour. */
+  journey?: string | null;
   preference?: string | null;
   ruling?: VoaLocaleRuling;
 }): VoaLocale {
@@ -83,6 +111,9 @@ export function resolveVoaLocale({
   if (asked) return asked;
   const carried = asVoaLocale(session);
   if (carried) return carried;
+  // The tab is gone but the journey is not: the mail client opened a new one.
+  const hopped = asVoaLocale(journey);
+  if (hopped) return hopped;
   if (ruling === "follow-site-preference") {
     return asVoaLocale(preference) ?? "en";
   }

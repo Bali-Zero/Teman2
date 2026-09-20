@@ -199,6 +199,15 @@ const en = {
     "A published deadline is scoped to one office. Tell us where you plan to file and we will confirm yours before you rely on it.",
   "next.ask": "Ask us anything before you pay",
 
+  // --- the magic-link door (a SERVER component, reached from an email) -----
+  "auth.continue.heading": "Continue your application",
+  "auth.continue.lead": "You're one step from uploading your documents.",
+  "auth.continue.whose":
+    "This link opens the application for {email}. If that is not you, close this page instead.",
+  "auth.continue.cta": "Continue",
+  "auth.invalid.heading": "This link has been used or has expired.",
+  "auth.invalid.cta": "Send me a new link",
+
   // --- DECLINE education (owner decision 5 / constraint 5b) -----------------
   // One key per (reason code x sentence). The three sentences are a fixed
   // shape — mirror what the customer declared, name what the permit does not
@@ -516,6 +525,16 @@ const id: Record<VoaCopyKey, string> = {
   "next.limit3.noDeadline":
     "Batas akhir yang dipublikasikan berlaku untuk satu kantor saja. Beri tahu kami di mana Anda berencana mengajukan dan kami akan memastikan tanggal Anda sebelum Anda mengandalkannya.",
   "next.ask": "Tanyakan apa saja sebelum Anda membayar",
+
+  // --- the magic-link door ---------------------------------------------------
+  "auth.continue.heading": "Lanjutkan permohonan Anda",
+  "auth.continue.lead":
+    "Anda tinggal satu langkah dari mengunggah dokumen Anda.",
+  "auth.continue.whose":
+    "Tautan ini membuka permohonan milik {email}. Jika itu bukan Anda, tutup saja halaman ini.",
+  "auth.continue.cta": "Lanjutkan",
+  "auth.invalid.heading": "Tautan ini sudah dipakai atau sudah kedaluwarsa.",
+  "auth.invalid.cta": "Kirimkan tautan baru",
 
   // --- DECLINE education ----------------------------------------------------
   "decline.purpose.tourism": "pariwisata",

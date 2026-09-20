@@ -3,7 +3,11 @@ import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { VOA_COPY, fill, voaCopy, type VoaCopyKey } from "./voa-copy";
-import { resolveVoaLocale, VOA_LOCALE_RULING } from "./voa-locale";
+import {
+  resolveVoaLocale,
+  VOA_LOCALE_COOKIE,
+  VOA_LOCALE_RULING,
+} from "./voa-locale";
 import { NextSteps } from "./NextSteps";
 import { SafeClockHero } from "./SafeClock";
 
@@ -44,6 +48,10 @@ const CONSUMER_FILES = [
   // The DECLINE education table, which lives one tree over (the claims guard
   // reaches it the same way, by the same relative hops).
   "../../../components/garuda/declineEducation.ts",
+  // The magic-link door. A SERVER component, so it reads the journey cookie
+  // instead of the hook — but the copy it renders is the same register's, and
+  // a hardcoded sentence there is exactly as English as one anywhere else.
+  "auth/continue/page.tsx",
 ];
 
 const CONSUMER_SRC: Record<string, string> = Object.fromEntries(
@@ -214,6 +222,27 @@ describe("voa-i18n — the ruling is a variable, and it ships at 5a", () => {
 
   it("a Bahasa site preference alone does NOT flip the funnel", () => {
     expect(resolveVoaLocale({ requested: null, preference: "id" })).toBe("en");
+  });
+
+  /**
+   * THE HOP THE FUNNEL LOSES. The paid half of the journey is reached from an
+   * EMAIL, in a new tab: no sessionStorage, no `?lang=`, and `auth/continue`
+   * is a server component that cannot read browser storage at all. The
+   * journey cookie is the only channel that crosses that gap, and it is
+   * scoped to an hour because the magic link expires in fifteen minutes —
+   * long enough for the hop, too short to become the durable preference
+   * constraint 5a forbids.
+   */
+  it("a language carried by the journey cookie survives into a new tab", () => {
+    expect(resolveVoaLocale({ requested: null, journey: "id" })).toBe("id");
+    // An explicit ?lang= on the new url still outranks the cookie...
+    expect(resolveVoaLocale({ requested: "en", journey: "id" })).toBe("en");
+    // ...the same-tab carry is tried first, and agrees when both are set...
+    expect(resolveVoaLocale({ session: "id", journey: "id" })).toBe("id");
+    // ...and junk in the cookie is an English visitor, not an error.
+    expect(resolveVoaLocale({ requested: null, journey: "de" })).toBe("en");
+    // FALSIFICATION: no cookie, no carry, no query → still English.
+    expect(resolveVoaLocale({})).toBe("en");
   });
 
   it("?lang=id is the preview channel, and it works", () => {
@@ -460,6 +489,11 @@ describe("voa-i18n — the verdict leg renders in Indonesian too", () => {
    */
   beforeEach(() => {
     window.sessionStorage.clear();
+    // ...and the journey cookie, for the same reason and one scope wider:
+    // jsdom keeps ONE document for the whole file, so a test that asked for
+    // Indonesian would hand its cookie to the next one and "English by
+    // default" would be measured on a browser that had already asked.
+    document.cookie = `${VOA_LOCALE_COOKIE}=; Max-Age=0; Path=/`;
   });
 
   it("the Safe Clock hero counts, dates and warns in Indonesian", () => {
@@ -502,7 +536,10 @@ describe("voa-i18n — the verdict leg renders in Indonesian too", () => {
     expect(screen.queryByText(VOA_COPY.id["next.step3"])).toBeNull();
     unmount();
 
+    // A FRESH BROWSER, not just a fresh tab: the first render asked for
+    // Indonesian, so it left both the tab carry AND the journey cookie.
     window.sessionStorage.clear();
+    document.cookie = `${VOA_LOCALE_COOKIE}=; Max-Age=0; Path=/`;
     searchParams.current = new URLSearchParams();
     render(<NextSteps handoffHref="#wa" hasDeadline={false} />);
     expect(screen.getByText(VOA_COPY.en["next.step3.noDeadline"])).toBeTruthy();
