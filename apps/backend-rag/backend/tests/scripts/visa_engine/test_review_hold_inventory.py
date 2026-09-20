@@ -26,10 +26,14 @@ from backend.scripts.visa_engine.review_hold_inventory import (
     orphan_review_gate_items,
     pack_review_rules,
     pack_unknown_escalations,
+    split_disclosed_review_codes,
 )
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.api_models import DisclosedReviewFlag
-from backend.services.visa_engine.evaluate_path import MINOR_GUARDIAN_PRIVACY_REVIEW_CODE
+from backend.services.visa_engine.evaluate_path import (
+    HOLDING_DISCLOSED_FLAGS,
+    MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
+)
 from backend.tests.services.visa_engine.conftest import (
     make_product,
     make_rule_pack_payload,
@@ -99,6 +103,42 @@ def test_every_disclosed_flag_has_exactly_one_code() -> None:
     codes = adapter_review_codes()
     assert len(codes) == 11
     assert set(codes) == set(DisclosedReviewFlag)
+
+
+def test_holding_split_matches_the_2026_09_13_ruling_floor() -> None:
+    """PLAN VISA-ORACLE-DW-20260919 slice A1' (gate vo-gate-a1, OBS-3
+    MEDIUM): the inventory must derive holding vs conditioning from
+    `HOLDING_DISCLOSED_FLAGS` itself, not hand-list the split.
+
+    Unlike `test_inventory_is_a_derivation_not_a_hand_list` below, THIS test
+    hard-pins the membership (`set(holding) ==
+    {CRIMINAL_RECORD, ACTIVITY_BOUNDARY}`, `len(holding) == 2`,
+    `len(conditioning) == 9`) — on purpose: a widening or narrowing of the
+    ruling's floor SHOULD turn this test red, because
+    `split_disclosed_review_codes` deriving its answer from
+    `HOLDING_DISCLOSED_FLAGS` is what the previous gate's OBS-3 asked for,
+    not a promise that the counts float free. What this test proves instead
+    is that the split is a PARTITION of `adapter_review_codes()`'s 11 rows
+    (no code lost, none duplicated, none moved to the wrong side) rather
+    than an independent hand-list that could silently drift from the
+    production mapping — see the final two assertions below."""
+
+    codes = adapter_review_codes()
+    holding, conditioning = split_disclosed_review_codes(codes)
+
+    assert set(holding) == HOLDING_DISCLOSED_FLAGS
+    assert set(holding) == {
+        DisclosedReviewFlag.CRIMINAL_RECORD,
+        DisclosedReviewFlag.ACTIVITY_BOUNDARY,
+    }
+    assert len(holding) == 2
+    assert len(conditioning) == 9
+    assert set(holding) | set(conditioning) == set(DisclosedReviewFlag)
+    assert set(holding) & set(conditioning) == set()
+    # Every code stays paired with its own flag across the split — the
+    # split partitions rows, it never rewrites a code.
+    assert holding == {flag: codes[flag] for flag in holding}
+    assert conditioning == {flag: codes[flag] for flag in conditioning}
 
 
 def test_minor_privacy_code_matches_the_adapter_constant() -> None:

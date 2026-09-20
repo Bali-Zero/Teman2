@@ -152,9 +152,12 @@ def _evaluate(
     # before. It exists because a walk's facts are only HALF its wire request:
     # the browser also sends whatever `mapDisclosedReviewFlags` (fact-mapper.ts)
     # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
-    # whole decision to HUMAN_REVIEW_REQUIRED on any one of them. Evaluating
-    # facts alone therefore measures a funnel the applicant never meets — which
-    # is why the interview-walk census reported 0 human review from the day it
+    # decision to HUMAN_REVIEW_REQUIRED for a flag in `HOLDING_DISCLOSED_FLAGS`
+    # (`CRIMINAL_RECORD` and `ACTIVITY_BOUNDARY`, since PLAN
+    # VISA-ORACLE-DW-20260919 slice A1') and adds a named `notices` condition
+    # for every other flag, keeping the pack's own verdict. Evaluating facts
+    # alone therefore measures a funnel the applicant never meets — which is
+    # why the interview-walk census reported 0 human review from the day it
     # was written (2026-09-06) until the corpus gained this field. The
     # flags are validated through `VisaOracleEvaluateRequest`, never injected
     # into `apply_public_policy_adapters` directly, so an unknown flag name is a
