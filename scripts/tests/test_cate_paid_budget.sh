@@ -73,8 +73,15 @@ new_tree() {
     printf '%s\n' "$d"
 }
 
-run_step() { ( cd "$1" && sh -c "$BLOCK" 2>&1 ); }
-rc_of()    { ( cd "$1" && sh -c "$BLOCK" >/dev/null 2>&1 ); echo $?; }
+# `bash -c`, not `sh -c`. GitHub Actions runs a `run:` block under `bash -e`,
+# and the block's first line is `set -uo pipefail`. On an Ubuntu runner /bin/sh
+# is dash, which has no pipefail: `dash -c "set -uo pipefail; echo X"` exits 2
+# with "Illegal option -o pipefail" before reaching the scan. Measured by the
+# codex-gpt-5.6-sol council seat on this PR. Under `sh` this corpus would have
+# tested a shell the workflow never uses — green here, and green for the wrong
+# reason on macOS, where /bin/sh is bash in POSIX mode and pipefail works.
+run_step() { ( cd "$1" && bash -c "$BLOCK" 2>&1 ); }
+rc_of()    { ( cd "$1" && bash -c "$BLOCK" >/dev/null 2>&1 ); echo $?; }
 
 # expect_rc <expected-rc> <tree> <label> — `if`, not `A && B || C`: with the
 # latter a passing assertion whose `ok` ever returned non-zero would silently

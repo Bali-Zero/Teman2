@@ -1839,8 +1839,38 @@ def _baseline_arg(argv: list[str]) -> Path:
     return BASELINE
 
 
+KNOWN_FLAGS = {"--apply", "--report", "--baseline"}
+
+
+def _reject_unknown(argv: list[str]) -> None:
+    """Refuse a flag this script does not know, instead of absorbing it.
+
+    Measured 2026-09-20: run as `--apply --baseline /tmp/copy.json` on a
+    checkout that predated `--baseline`, the old `set(sys.argv[1:])` parse
+    dropped the flag AND its path on the floor and rewrote the TRACKED
+    `.secrets.baseline` — 616 lines deleted, noticed only by `git status`.
+    A script that MUTATES a tracked file must not silently redirect itself.
+    """
+    skip = False
+    for i, a in enumerate(argv):
+        if skip:
+            skip = False
+            continue
+        if a == "--baseline":
+            skip = True
+            continue
+        if a.startswith("-") and a not in KNOWN_FLAGS:
+            print(f"ERROR: unknown flag {a!r}", file=sys.stderr)
+            print(f"  known: {' '.join(sorted(KNOWN_FLAGS))}", file=sys.stderr)
+            raise SystemExit(2)
+        if not a.startswith("-"):
+            print(f"ERROR: unexpected argument {a!r}", file=sys.stderr)
+            raise SystemExit(2)
+
+
 def main() -> int:
     argv = sys.argv[1:]
+    _reject_unknown(argv)
     args = set(argv)
     apply = "--apply" in args
     report = "--report" in args

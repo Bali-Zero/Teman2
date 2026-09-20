@@ -27,6 +27,11 @@ def main() -> int:
     # `--baseline PATH` reads a COPY instead of the tracked file, so a caller
     # can ask what a scan WOULD say without touching the repo's own baseline.
     argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == "--baseline" or (i > 0 and argv[i - 1] == "--baseline"):
+            continue
+        print(f"ERROR: unexpected argument {a!r} (known: --baseline PATH)", file=sys.stderr)
+        return 2
     if "--baseline" in argv:
         i = argv.index("--baseline")
         if i + 1 >= len(argv):

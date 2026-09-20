@@ -258,3 +258,148 @@ def test_staged_mode_refuses_an_added_offending_line(tmp_path, monkeypatch, caps
         sys.argv = old
     assert rc == 1
     assert "app.py:2" in capsys.readouterr().out
+
+
+# ── the --baseline flag this gate needed, and the near-miss that shaped it ──
+#
+# P3 asks "what WOULD a scan say" and must not answer by mutating the tracked
+# baseline. That is why `--baseline PATH` exists on both detect-secrets
+# scripts. It is also why they now REFUSE an unknown flag: run as
+# `--apply --baseline /tmp/copy.json` on a checkout that predated the flag,
+# the old `set(sys.argv[1:])` parse dropped flag and path on the floor and
+# rewrote the real `.secrets.baseline` — 616 lines deleted, caught only by
+# `git status`.
+
+
+def _run_script(name: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / name), *args],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+    )
+
+
+@pytest.mark.parametrize(
+    "script", ["detect_secrets_auto_triage.py", "detect_secrets_check_unaudited.py"]
+)
+def test_an_unknown_flag_is_refused_not_absorbed(script):
+    r = _run_script(script, "--definitely-not-a-flag")
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "definitely-not-a-flag" in (r.stdout + r.stderr)
+
+
+def test_the_tracked_baseline_is_not_touched_by_an_off_tree_triage(tmp_path):
+    tracked = REPO_ROOT / ".secrets.baseline"
+    before = tracked.read_bytes()
+    copy = tmp_path / "copy.json"
+    copy.write_text(_empty_baseline())
+    r = _run_script("detect_secrets_auto_triage.py", "--apply", "--baseline", str(copy))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert tracked.read_bytes() == before, "an off-tree triage rewrote the tracked baseline"
+
+
+# ── council findings, each one a case that used to pass ─────────────────────
+
+
+def test_innocence_unsetenv_is_a_strip_not_an_assignment():
+    """codex-gpt-5.6-sol: "unsetenv" ends in "setenv".
+
+    Without a word boundary the #40b alternative flagged the defensive STRIP
+    the workflow's own comment calls allowed. Latent in CI, immediate here.
+    """
+    strip = "os." + "unsetenv" + '("ANTHROPIC_API_KEY")'
+    assert cbp.grep_predicates([("app.py", 1, strip)]) == []
+
+
+def test_guilt_a_real_setenv_assignment_still_fires():
+    call = "os." + "setenv" + '("ANTHROPIC_API_KEY", "v")'
+    assert cbp.grep_predicates([("app.py", 1, call)]) != []
+
+
+def test_exclusion_reads_the_whole_output_line_exactly_as_ci_does():
+    """kimi-code/k3: catE pipes `path:lineno:content` into `grep -vE`.
+
+    A path-only copy is STRICTER than the workflow — it refuses a line CI
+    lets through — and that is the direction that trains people to disable it.
+    """
+    line = "client = " + "Anthropic(" + "api_key" + "=contest_winner)"
+    assert cbp.grep_predicates([("app.py", 1, line)]) == []
+    plain = "client = " + "Anthropic(" + "api_key" + "=winner)"
+    assert cbp.grep_predicates([("app.py", 1, plain)]) != []
+
+
+def test_a_quoted_path_header_never_blames_the_previous_file(monkeypatch, capsys):
+    """kimi-code/k3 and codex-gpt-5.6-sol, independently.
+
+    git quotes any non-ASCII path, and the first parser only knew `+++ b/…`,
+    so the quoted file's added lines were recorded under the PREVIOUS file in
+    the diff. Hide one behind an excluded neighbour and it was never judged.
+    `core.quotePath=false` removes that case; anything still unparseable must
+    be COUNTED and announced, never attributed.
+    """
+    call = "client = " + "Anthropic(" + "api_key" + "=os.environ['X'])"
+    diff = (
+        "diff --git a/tests/a.py b/tests/a.py\n"
+        "--- a/tests/a.py\n"
+        "+++ b/tests/a.py\n"
+        "@@ -0,0 +1 @@\n"
+        "+x=1\n"
+        'diff --git "a/caf\\\\303\\\\251.py" "b/caf\\\\303\\\\251.py"\n'
+        '--- "a/caf\\\\303\\\\251.py"\n'
+        '+++ "b/caf\\\\303\\\\251.py"\n'
+        "@@ -0,0 +1 @@\n"
+        f"+{call}\n"
+    )
+    monkeypatch.setattr(cbp, "_git", lambda *a: diff)
+    entries, unattributed = cbp.staged_added_lines()
+    assert unattributed == 1, entries
+    assert all(path == "tests/a.py" for path, _, _ in entries)
+    assert all(call not in text for _, _, text in entries)
+
+
+def test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate(tmp_path, monkeypatch, capsys):
+    """kimi-code/k3: `text=True` decodes strictly.
+
+    A Latin-1 byte anywhere in a staged file made `git diff` output
+    undecodable, and the traceback came out of the pre-commit hook as a hard
+    block on a commit with nothing wrong in it.
+    """
+    d = _repo(tmp_path)
+    (d / "app.py").write_bytes(b'x = "\xe9"\n')
+    subprocess.run(["git", "add", "app.py"], cwd=d, check=True, capture_output=True)
+    monkeypatch.setattr(cbp, "REPO_ROOT", d)
+    monkeypatch.setattr(cbp, "BASELINE", d / ".secrets.baseline")
+    (d / ".secrets.baseline").write_text(_empty_baseline())
+    old = sys.argv
+    sys.argv = ["check_ban_predicates.py", "--staged"]
+    try:
+        rc = cbp.main()
+    finally:
+        sys.argv = old
+    assert rc == 0, capsys.readouterr().out
+
+
+@pytest.mark.skipif(
+    shutil.which("detect-secrets") is None, reason="detect-secrets not installed"
+)
+def test_the_scanner_judges_the_staged_blob_not_the_working_tree(tmp_path, monkeypatch, capsys):
+    """kimi-code/k3: after `git add -p` the unstaged remainder is still on disk.
+
+    Scanning the file as it sits refuses a commit for content the commit does
+    not carry — and contradicts this script's own stated scope.
+    """
+    d = _repo(tmp_path)
+    (d / "app.py").write_text("x = 1\n")
+    subprocess.run(["git", "add", "app.py"], cwd=d, check=True, capture_output=True)
+    # The offending line exists ONLY in the working tree, never in the index.
+    (d / "app.py").write_text('x = 1\n' + "# " + '{"api_key": "opaque-value-here"}' + "\n")
+    monkeypatch.setattr(cbp, "REPO_ROOT", d)
+    baseline = d / ".secrets.baseline"
+    baseline.write_text(_empty_baseline())
+    monkeypatch.setattr(cbp, "BASELINE", baseline)
+    old = sys.argv
+    sys.argv = ["check_ban_predicates.py", "--staged"]
+    try:
+        rc = cbp.main()
+    finally:
+        sys.argv = old
+    assert rc == 0, capsys.readouterr().out

@@ -155,10 +155,20 @@ jobs:
       # ── #40b — ban ASSIGNING a value into ANTHROPIC_API_KEY (export/setenv) ──
       # Allowed: unset / del / .pop / =""/=None (these STRIP, defense-in-depth).
       # Banned: a literal export/setenv that SETS the key to a real value.
+      #
+      # `\bsetenv\(` and not `setenv\(`: without the word boundary the second
+      # alternative matched `os.unsetenv("ANTHROPIC_API_KEY")` — the very STRIP
+      # the line above calls allowed — because "unsetenv" ends in "setenv".
+      # Found 2026-09-20 by the codex-gpt-5.6-sol council seat, which ran the
+      # predicate against that literal rather than reading it. Latent in CI (no
+      # such call exists on main today) but immediate for the pre-commit gate
+      # that transcribes this regex, and a gate that refuses a defensive strip
+      # is one people learn to switch off. `\b` is supported by GNU grep -E and
+      # by the BSD grep on the fleet's macs — verified on both before landing.
       - name: Ban ANTHROPIC_API_KEY=<value> assignment
         run: |
           set -uo pipefail
-          HITS=$(grep -rnE 'export[[:space:]]+ANTHROPIC_API_KEY=[^"'"'"'[:space:]]|setenv\([[:space:]]*["'"'"']ANTHROPIC_API_KEY' \
+          HITS=$(grep -rnE 'export[[:space:]]+ANTHROPIC_API_KEY=[^"'"'"'[:space:]]|\bsetenv\([[:space:]]*["'"'"']ANTHROPIC_API_KEY' \
             --include='*.py' --include='*.sh' . \
             | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/' || true)
           if [ -n "$HITS" ]; then

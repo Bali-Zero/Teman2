@@ -41,10 +41,18 @@ machines, so failing closed would have blocked every commit on the other two.
 The CI job stays the net for that half; this script says so out loud rather
 than printing a green it did not earn.
 
-SCOPE. `--staged` judges the ADDED lines of the staged diff, never whole files:
-a pre-existing line in a file you touched is not yours to answer for, and two
-such lines live in this very workflow. Given explicit paths instead, it judges
-those files whole — that is the mode the corpus and CI use.
+SCOPE, and the two halves differ. The GREP halves judge the ADDED lines of the
+staged diff only: a pre-existing line in a file you touched is not yours to
+answer for, and two such lines live in the workflow this transcribes. The
+SCANNER half judges whole files, because detect-secrets has no line-scoped
+mode and that is also how security.yml runs it — but on the STAGED BLOB, read
+out of the index into a temp tree, never on the file as it sits. After
+`git add -p` the working copy holds content this commit does not carry, and
+refusing a commit for a line it does not contain is the over-match that
+teaches people to keep the kill switch in their shell history.
+
+Given explicit paths instead of `--staged`, both halves judge those files
+whole, from the worktree — the mode the corpus uses.
 
     python3 scripts/check_ban_predicates.py --staged
     python3 scripts/check_ban_predicates.py FILE [FILE ...]
@@ -84,7 +92,7 @@ P1_EXCLUDE = r"\.venv/|node_modules/|/\.git/|tests/|test_"
 # Raw triple-quoted so the regex needs no escaping of its own quotes: an
 # escaped copy is not the same string the workflow greps with, and the parity
 # test in scripts/tests/test_ban_predicates.py compares them literally.
-P2_PATTERN = r"""export[[:space:]]+ANTHROPIC_API_KEY=[^"'[:space:]]|setenv\([[:space:]]*["']ANTHROPIC_API_KEY"""
+P2_PATTERN = r"""export[[:space:]]+ANTHROPIC_API_KEY=[^"'[:space:]]|\bsetenv\([[:space:]]*["']ANTHROPIC_API_KEY"""
 P2_SUFFIXES = (".py", ".sh")
 P2_EXCLUDE = r"\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/"
 
@@ -94,18 +102,32 @@ def _posix_bracket_to_python(pattern: str) -> str:
     return pattern.replace("[[:space:]]", r"\s").replace("[:space:]", r"\s")
 
 
-def _excluded(path: str, exclude: str) -> bool:
-    # grep walks from `.`, so its exclusion regex sees a leading "./".
-    return re.search(exclude, "./" + path.lstrip("./")) is not None
+def _excluded(grep_line: str, exclude: str) -> bool:
+    """Judge what CI judges: the whole `./path:lineno:content` output line.
+
+    catE filters `grep -rnE ... .` through `grep -vE '<exclude>'`, and that
+    second grep reads grep's OUTPUT — path, line number and content together.
+    Applying the same regex to the path alone makes this gate STRICTER than
+    the workflow: `client = VendorClient(key=contest_id)` has "test_" in its
+    content, so CI drops the hit and a path-only copy would refuse the commit.
+    A local gate that reds what CI allows is a gate people learn to disable.
+    (kimi-code/k3, council pass on this PR.)
+    """
+    return re.search(exclude, grep_line) is not None
 
 
-def _in_scope(path: str, suffixes: tuple[str, ...], exclude: str) -> bool:
-    return path.endswith(suffixes) and not _excluded(path, exclude)
+def _grep_line(path: str, lineno: int, text: str) -> str:
+    return f"./{path}:{lineno}:{text}"
 
 
 def _git(*args: str) -> str:
     return subprocess.run(
-        ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, check=False
+        ["git", "-c", "core.quotePath=false", *args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        errors="replace",
+        check=False,
     ).stdout
 
 
@@ -114,25 +136,49 @@ def staged_files() -> list[str]:
     return [line for line in out.splitlines() if line.strip()]
 
 
-def staged_added_lines() -> list[tuple[str, int, str]]:
-    """(path, line number in the new file, text) for every ADDED line."""
+def _header_path(raw: str) -> str | None:
+    """The path on a `+++` header line, or None when there is not one.
+
+    None matters as much as the path. The first version only recognised
+    `+++ b/…` and left `path` at its PREVIOUS value on anything else, so a
+    header git had quoted — `+++ "b/café.py"`, and git quotes any non-ASCII
+    name — sent that file's added lines to the file before it in the diff. If
+    that neighbour was excluded, the lines were never judged at all: a paid
+    call site could be hidden behind an excluded file. `core.quotePath=false`
+    removes the common case; this returns None for whatever is left, so the
+    lines are counted as unattributable rather than blamed on someone else.
+    (kimi-code/k3, council pass on this PR.)
+    """
+    rest = raw[4:]
+    if rest == "/dev/null":
+        return None
+    if rest.startswith("b/"):
+        return rest[2:]
+    return None
+
+
+def staged_added_lines() -> tuple[list[tuple[str, int, str]], int]:
+    """((path, new-file line number, text) for every ADDED line, unattributed)."""
     diff = _git("diff", "--cached", "-U0", "--diff-filter=d")
     entries: list[tuple[str, int, str]] = []
-    path = ""
+    unattributed = 0
+    path: str | None = None
     lineno = 0
     for raw in diff.splitlines():
-        if raw.startswith("+++ b/"):
-            path = raw[6:]
+        if raw.startswith("+++"):
+            path = _header_path(raw)
             continue
         if raw.startswith("@@"):
             m = re.search(r"\+(\d+)", raw)
             lineno = int(m.group(1)) if m else 0
             continue
-        if raw.startswith("+") and not raw.startswith("+++"):
+        if raw.startswith("+"):
             if path:
                 entries.append((path, lineno, raw[1:]))
+            else:
+                unattributed += 1
             lineno += 1
-    return entries
+    return entries, unattributed
 
 
 def whole_file_lines(paths: list[str]) -> list[tuple[str, int, str]]:
@@ -159,14 +205,46 @@ def grep_predicates(entries: list[tuple[str, int, str]]) -> list[str]:
     for label, pattern, suffixes, exclude in checks:
         rx = re.compile(_posix_bracket_to_python(pattern))
         for path, lineno, text in entries:
-            if not _in_scope(path, suffixes, exclude):
+            # --include first, then the match, then the exclusion — the order
+            # the workflow's pipeline applies them in.
+            if not path.endswith(suffixes):
                 continue
-            if rx.search(text):
-                findings.append(f"{label}\n     {path}:{lineno}")
+            if not rx.search(text):
+                continue
+            if _excluded(_grep_line(path, lineno, text), exclude):
+                continue
+            findings.append(f"{label}\n     {path}:{lineno}")
     return findings
 
 
-def detect_secrets_predicate(paths: list[str]) -> tuple[list[str], str | None]:
+def _materialise_staged(paths: list[str], root: Path) -> list[str]:
+    """Write each path's STAGED blob under `root`, keeping the relative path.
+
+    Scanning the working tree instead would judge content this commit does not
+    carry: after `git add -p` the unstaged remainder of a file is still on
+    disk, and a secret there would block a commit that does not contain it —
+    an over-match, and a contradiction of this script's own scope claim.
+    Baseline keys stay repo-relative because the layout is reproduced.
+    (kimi-code/k3, council pass on this PR.)
+    """
+    written = []
+    for rel in paths:
+        blob = subprocess.run(
+            ["git", "show", f":{rel}"], cwd=REPO_ROOT,
+            capture_output=True, check=False,
+        )
+        if blob.returncode != 0:
+            continue
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(blob.stdout)
+        written.append(rel)
+    return written
+
+
+def detect_secrets_predicate(
+    paths: list[str], from_index: bool
+) -> tuple[list[str], str | None]:
     """(findings, skip-reason). Mirrors security.yml's diff-scoped job."""
     if not paths:
         return [], None
@@ -178,36 +256,61 @@ def detect_secrets_predicate(paths: list[str]) -> tuple[list[str], str | None]:
         return [], f"{BASELINE.name} is missing"
 
     with tempfile.TemporaryDirectory() as tmp:
-        scratch = Path(tmp) / "baseline.json"
+        tmp_path = Path(tmp)
+        scratch = tmp_path / "baseline.json"
         scratch.write_text(BASELINE.read_text())
+
+        if from_index:
+            tree = tmp_path / "tree"
+            tree.mkdir()
+            targets = _materialise_staged(paths, tree)
+            cwd = tree
+        else:
+            targets = paths
+            cwd = REPO_ROOT
+        if not targets:
+            return [], "no staged blob could be read"
+
         scan = subprocess.run(
-            ["detect-secrets", "scan", "--baseline", str(scratch), *paths],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+            ["detect-secrets", "scan", "--baseline", str(scratch), *targets],
+            cwd=cwd, capture_output=True, text=True, errors="replace", check=False,
         )
         if scan.returncode != 0:
-            return [], f"detect-secrets scan exited {scan.returncode}"
-        subprocess.run(
-            [sys.executable, str(SCRIPTS_DIR / "detect_secrets_auto_triage.py"),
-             "--apply", "--baseline", str(scratch)],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False,
-        )
+            return [], f"detect-secrets scan ERRORED (exit {scan.returncode})"
+
+        # Keep only the files this commit touches, so residue someone else
+        # left in the tracked baseline cannot red a stranger's commit.
         try:
             data = json.loads(scratch.read_text())
         except (OSError, json.JSONDecodeError) as exc:
             return [], f"baseline copy unreadable ({exc.__class__.__name__})"
+        wanted = set(targets)
+        data["results"] = {
+            k: v for k, v in data.get("results", {}).items() if k in wanted
+        }
+        scratch.write_text(json.dumps(data))
 
-    wanted = set(paths)
-    findings = []
-    for path, hits in data.get("results", {}).items():
-        if path not in wanted:
-            continue
-        for hit in hits:
-            if "is_secret" not in hit:
-                findings.append(
-                    f"P3 detect-secrets  {hit.get('type', '?')}\n"
-                    f"     {path}:{hit.get('line_number', 0)}"
-                )
-    return findings, None
+        subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "detect_secrets_auto_triage.py"),
+             "--apply", "--baseline", str(scratch)],
+            cwd=REPO_ROOT, capture_output=True, text=True, errors="replace", check=False,
+        )
+        # The VERDICT comes from the repo's own gate script, not from a second
+        # reading of the same JSON: one unaudited-residue rule, one place.
+        verdict = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "detect_secrets_check_unaudited.py"),
+             "--baseline", str(scratch)],
+            cwd=REPO_ROOT, capture_output=True, text=True, errors="replace", check=False,
+        )
+        if verdict.returncode == 0:
+            return [], None
+        if verdict.returncode != 1:
+            return [], f"unaudited check ERRORED (exit {verdict.returncode})"
+        lines = [
+            ln.strip() for ln in verdict.stdout.splitlines()
+            if ln.startswith("   ") and ":" in ln
+        ]
+    return [f"P3 detect-secrets\n     {ln}" for ln in lines], None
 
 
 def main() -> int:
@@ -220,13 +323,16 @@ def main() -> int:
         print(__doc__.strip().splitlines()[-4], file=sys.stderr)
         return 2
 
+    unattributed = 0
     if argv[0] == "--staged":
         paths = staged_files()
-        entries = staged_added_lines()
+        entries, unattributed = staged_added_lines()
+        from_index = True
         what = "staged diff"
     else:
         paths = argv
         entries = whole_file_lines(paths)
+        from_index = False
         what = f"{len(paths)} file(s)"
 
     if not paths:
@@ -234,8 +340,16 @@ def main() -> int:
         return 0
 
     findings = grep_predicates(entries)
-    ds_findings, skipped = detect_secrets_predicate(paths)
+    ds_findings, skipped = detect_secrets_predicate(paths, from_index)
     findings.extend(ds_findings)
+
+    if unattributed:
+        # Never silent: these lines were real additions whose file this parser
+        # could not name, so they were judged by nobody.
+        print(
+            f"⚠️  [ban-predicates] {unattributed} added line(s) had no parseable "
+            "file header and were NOT judged (a path git had to quote)."
+        )
 
     if skipped:
         # ONE line, deliberately. This prints on every commit on a machine
