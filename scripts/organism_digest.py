@@ -43,6 +43,7 @@ import json
 import os
 import re
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -86,6 +87,35 @@ def _repo_root() -> Path:
     if override:
         return Path(override)
     return Path(__file__).resolve().parent.parent
+
+
+def _hostname() -> str:
+    """Injectable for the selftest; production reads the real hostname."""
+    return os.environ.get("ORGANISM_DIGEST_HOSTNAME") or socket.gethostname()
+
+
+def _foreign_jurisdiction(organ_id: str) -> bool:
+    """True iff this sidecar names an organ that breathes on ANOTHER host.
+
+    Not a new rule: organism_stale_detector.py (the receptor) has enforced it
+    since 2026-08-07 via `_is_foreign_jurisdiction`, because nothing on this
+    machine ever refreshes another host's organ — the stray file freezes
+    forever and reads as a dead organ that is, in fact, alive where it lives.
+    This digest is the receptor's twin and simply never asked (W132 / superscar
+    #3: the documented cure that reaches one copy of two). Measured on M5
+    2026-09-20: `pro.queue_shepherd` and `pro.wa_bot_throughput_sentinel` were
+    reported "silent 385h" from stamps left here on 2026-09-04, while on Pro
+    both had written an `ok` heartbeat minutes earlier.
+
+    An import failure returns False — never suppress a line because a module
+    would not load; a missing judgement is worse than a noisy one.
+    """
+    try:
+        sys.path.insert(0, str(_repo_root() / "scripts"))
+        from organism_stale_detector import _is_foreign_jurisdiction, _machine_label
+    except Exception:
+        return False
+    return _is_foreign_jurisdiction(organ_id, _machine_label(_hostname()))
 
 
 def _now() -> float:
@@ -305,6 +335,8 @@ def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[st
         m = _ARSENAL_PROBE_STEM_RE.match(path.stem)
         if m and m.group("machine") != ARSENAL_PROBE_PRIMARY_NODE:
             continue  # on-demand elsewhere; no recurring promise here, never "silent"
+        if _foreign_jurisdiction(path.stem):
+            continue  # another host's organ stranded here: it breathes where it lives
         try:
             age_h = (_now() - path.stat().st_mtime) / 3600
             data = json.loads(path.read_text())
@@ -555,6 +587,11 @@ def _selftest() -> int:
             subprocess.run(cmd, cwd=str(fake_repo), env=env, capture_output=True, check=True)
         os.environ["ORGANISM_DIGEST_HOME"] = str(fake_home)
         os.environ["ORGANISM_DIGEST_REPO"] = str(fake_repo)
+        # Jurisdiction must not depend on WHO runs the selftest: pin the host, so
+        # a `pro.*` fixture is native here on every machine. Without this pin the
+        # guilt cases below pass on Pro and fail on M5 — a test that reports the
+        # tester rather than the code.
+        os.environ["ORGANISM_DIGEST_HOSTNAME"] = "Nuzantara"
         try:
             arsenal_json = fake_home / ".organism" / "arsenal" / "last.json"
             known = _known_seats()
@@ -563,7 +600,7 @@ def _selftest() -> int:
             # card, never silence, never a spurious PARTIAL/STALE marker.
             arsenal_json.write_text(json.dumps(
                 {"seats": [{"seat": s, "status": "LIVE"} for s in known]}))
-            hb = fake_home / ".organism" / "last_seen" / "mini.probe.json"
+            hb = fake_home / ".organism" / "last_seen" / "pro.probe.json"
             hb.write_text(json.dumps({"status": "ok"}))
             d = build_digest(24)
             out = render(d)
@@ -644,7 +681,7 @@ def _selftest() -> int:
             # ---- innocence: stale arsenal_probe on a NON-primary node is not "silent"
             # (ledger: "boot-report organ-silence classifier cries wolf" — a one-time
             # on-demand stamp there, not a broken recurring promise)
-            hb3 = fake_home / ".organism" / "last_seen" / "m5.arsenal_probe.json"
+            hb3 = fake_home / ".organism" / "last_seen" / "pro.arsenal_probe.json"
             hb3.write_text(json.dumps({"status": "ok"}))
             os.utime(hb3, (old, old))
             d = build_digest(24)
@@ -668,6 +705,31 @@ def _selftest() -> int:
             expect("innocence: worktree-sourced runtime stamp not flagged silent",
                    not any("wr2.html_apply" in ln for ln in d["organs"]))
 
+            # ---- innocence: another HOST's organ stranded in this machine's
+            # last_seen is not silent here — nothing here ever refreshes it, and
+            # it is breathing where it lives (M5, 2026-09-20: pro.queue_shepherd
+            # read "silent 385h" from a 2026-09-04 stamp while Pro's own copy was
+            # minutes old). Same rule the receptor has applied since 2026-08-07.
+            hb7 = fake_home / ".organism" / "last_seen" / "mini.queue_shepherd.json"
+            hb7.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb7, (old, old))
+            d = build_digest(24)
+            expect("innocence: foreign-host organ not flagged silent",
+                   not any("mini.queue_shepherd" in ln for ln in d["organs"]))
+
+            # ---- guilt, the W94 under-match twin: a DECLARED cross-host mirror
+            # (CROSS_HOST_SIDECAR_SOURCES) is refreshed here on purpose, so its
+            # staleness is a real outage and must still be flagged. Without this
+            # case the exemption above could widen into blindness.
+            hb8 = fake_home / ".organism" / "last_seen" / "infra.eventbus_redis_mini.json"
+            hb8.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb8, (old, old))
+            os.environ["ORGANISM_DIGEST_HOSTNAME"] = "mini-pro2"
+            d = build_digest(24)
+            os.environ["ORGANISM_DIGEST_HOSTNAME"] = "Nuzantara"
+            expect("guilt: declared cross-host mirror still flagged when stale",
+                   any("infra.eventbus_redis_mini" in ln for ln in d["organs"]))
+
             # ---- guilt: same organ, but stamped from a CANONICAL (non-worktree)
             # checkout — e.g. the real deploy-clone daemon — must still flag when
             # stale. Proves the exemption is scoped to .worktrees/, not to any
@@ -683,11 +745,17 @@ def _selftest() -> int:
             expect("guilt: canonical-checkout runtime stamp still flags silent",
                    any("wr2.supervisor.runtime: silent" in ln for ln in d["organs"]))
 
-            # ---- guilt: stale arsenal_probe on its PRIMARY node still flags
+            # ---- guilt: stale arsenal_probe on its PRIMARY node still flags.
+            # Read ON Mini, which is the only host where this sidecar is a
+            # recurring promise — anywhere else it is another host's file and the
+            # jurisdiction rule above answers first. That ordering is the point:
+            # the probe is judged where it runs.
             hb4 = fake_home / ".organism" / "last_seen" / "mini.arsenal_probe.json"
             hb4.write_text(json.dumps({"status": "ok"}))
             os.utime(hb4, (old, old))
+            os.environ["ORGANISM_DIGEST_HOSTNAME"] = "mini-pro2"
             d = build_digest(24)
+            os.environ["ORGANISM_DIGEST_HOSTNAME"] = "Nuzantara"
             expect("guilt: stale primary-node arsenal_probe still flagged",
                    any("mini.arsenal_probe: silent" in ln for ln in d["organs"]))
 
@@ -718,6 +786,7 @@ def _selftest() -> int:
         finally:
             os.environ.pop("ORGANISM_DIGEST_HOME", None)
             os.environ.pop("ORGANISM_DIGEST_REPO", None)
+            os.environ.pop("ORGANISM_DIGEST_HOSTNAME", None)
 
     # ---- roster-drift guard: run against the REAL repo (env overrides are
     # unset again at this point) so it fails the moment MODEL_ROSTER.md's
