@@ -1579,3 +1579,47 @@ corpus di `_alert.sh` (W-famiglia allarmi) che parametrizza su tutti e venti i c
 anziche' su un rappresentante: li' la lista e' l'INVENTARIO da coprire, non l'oracolo da
 verificare. La domanda che separa i due casi: *se muto il codice, questa lista cambia?* Se si',
 non e' un oracolo.
+
+## W134 — la guardia cambia SUPPORTO e le asserzioni vecchie non traslocano: il verde sopravvive al proprio soggetto — 2026-09-20
+
+**TRAUMA:** lane GARUDA-VOA DESIGN (apps/mouth), una sessione, due istanze della stessa forma,
+nessuna delle due rossa in CI.
+
+*Istanza A (#6932).* `voa-no-colour-literal.guard.test.ts` scandisce il **sorgente** dei sei
+schermi cercando un hex o una utility della famiglia rossa. Prende il letterale che qualcuno
+digita in un componente; non puo' prendere un **token che risolve a rosso a un `var()` di
+distanza** — che e' esattamente la forma in cui quella superficie vive: `--accent-funnel`
+risolve a `--color-red-500` per `[data-funnel="visa"]`, e solo la specificita' dei selettori di
+`voa-r19.css` ha mai tenuto quel rosso fuori dallo schermo. La guardia era verde, il ruling
+«niente rosso» viveva in una coincidenza di specificita', e nessuno dei due lo diceva.
+
+*Istanza B (#6947).* La copy del wizard si sposta da `page.tsx` a un dizionario EN/ID
+(`voa-copy.ts`). `voa-copy.guard.test.ts` — claim vietati, letterali di prezzo, leak del Safe
+Clock — continua a scandire `SCREEN_FILES`, cioe' gli **schermi**. Dopo lo spostamento quegli
+schermi non contengono piu' una sola frase: la guardia resta verde misurando **una stanza
+vuota**, mentre un claim vietato digitato in una delle due colonne del dizionario arriva al
+cliente attraverso `page.tsx` esattamente come prima. Misurato in questo turno: l'asserzione che
+lo impedisce (`voa-copy.guard.test.ts` deve nominare `voa-copy.ts`) e' stata osservata **rossa**
+prima di essere resa verde.
+
+**MECCANISMO.** Non e' over-match e non e' under-match: e' un **cambio di supporto**. La guardia
+continua a leggere correttamente *qualcosa* — solo che il suo soggetto si e' spostato altrove:
+da inline a regola CSS, da sorgente a valore risolto, da una grafia a un'altra, dallo schermo al
+dizionario. Le asserzioni non migrano da sole, perche' nessuna di esse nomina il soggetto: ne
+nominano una *rappresentazione*. Il verde che resta certifica la rappresentazione abbandonata,
+ed e' indistinguibile — in CI, in review, nel nome del test — dal verde che certificava il
+soggetto.
+
+**ANTIBODY.** (1) Quando una guardia cambia **cosa legge** — elenco dei file, livello di
+risoluzione (sorgente -> valore calcolato), o rappresentazione — si **enumerano le asserzioni
+vecchie e si riprovano una per una sul supporto nuovo**; una sola non riprovata e' un buco, e il
+conteggio dei test non lo mostra. (2) La PR che **sposta** copy, token o regole sposta nello
+stesso diff l'ancora della guardia che li sorvegliava (`SCREEN_FILES`, il glob, il selettore),
+e la nuova asserzione va vista **rossa prima**. (3) Un ruling che vive nella specificita' di un
+selettore, nell'ordine di due file o nella grafia di un letterale **non e' inchiodato**: si
+pinna sul valore che il browser risolve, mai sulla forma che il sorgente scrive.
+
+**GOTCHA.** La famiglia #3 classica si diagnostica leggendo il regex della guardia; questa no —
+il regex e' corretto. Si diagnostica solo chiedendo *dove vive oggi la cosa che questa guardia
+dice di sorvegliare*, e la risposta cambia con ogni refactor che la review approva perche' «non
+tocca il comportamento».
