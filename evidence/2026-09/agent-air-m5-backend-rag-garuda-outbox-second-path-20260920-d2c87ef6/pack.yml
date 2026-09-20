@@ -1,0 +1,104 @@
+brief_ref: evidence/2026-09/agent-air-m5-backend-rag-garuda-outbox-second-path-20260920-d2c87ef6/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref: |
+  Discharges the PENDING-ARMS row "garuda-outbox-exhaustion-is-only-reported-
+  through-the-channel-that-can-be-the-cause", restated twice on 2026-09-20 as the
+  real cause was measured. The row's own missing-arming-step demanded ONE PR
+  carrying both halves and named the trap to avoid: "a future job will read it is
+  not a consumer".
+lanes:
+  - lane: outbox-second-path-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — wrote the endpoint, the receptor, the
+      wiring and both guilt corpora; also the session that measured the 2026-09-20
+      failure this closes)
+  - lane: outbox-second-path-refute-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: outbox-second-path-refute-kimi
+    role: review
+    seat: kimi-code/k3
+diff:
+  behaviour_change: |
+    One new read-only HTTP route and one new receptor; no existing behaviour is
+    altered. `/health/garuda-outbox` answers aggregate counts plus a server-computed
+    `degraded`, and answers `status: unknown` — never `ok` — when it could not look.
+    `healer-run.sh` gains receptor 9, which pages p0 through the fleet gateway when
+    the verdict is actionable (exit 1) or blind (exit 2). The drain loop, the attempt
+    budget and `_send_outbox_alarm` are untouched: PR #6874's reasoning that a job
+    which stops retrying stops being visible as work owed is deliberately preserved.
+  surface: |
+    One route added to the public health router, one new stdlib-only script, one
+    receptor block plus its page in the healer tick, one mandate entry so the healer
+    session knows what exit 1 and exit 2 mean, one new CI job in the workflow that
+    already owns this family ("an alarm must name a condition some organ will act
+    on"), and two new test files. No migration, no data, no credential, no frontend.
+receipts:
+  - claim: the endpoint's tests pass, including the three GUILT cases and the no-leak shape check
+    cmd: .venv/bin/python3 -m pytest backend/tests/routers/test_health_garuda_outbox.py
+    result: "7 passed in 0.27s"
+    exit: 0
+    ts: 2026-09-20T15:23:00Z
+    seat: claude-opus-5
+  - claim: those GUILT cases really convict — hardcoding `degraded = False` turns two of them red
+    cmd: "mutation on a scratchpad copy: degraded = bool(exhausted or older_24h) -> degraded = False; same pytest"
+    result: "2 failed, 5 passed — test_GUILT_one_exhausted_row_is_degraded and test_GUILT_a_row_stuck_a_day_is_degraded_before_it_exhausts; file restored from the copy afterwards"
+    exit: 1
+    ts: 2026-09-20T15:24:00Z
+    seat: claude-opus-5
+  - claim: the receptor's own corpus and the wiring assertions pass
+    cmd: python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q
+    result: "18 passed in 0.25s — 8 classify cases, the unknown-flag refusal, the kill switch, the unreachable-endpoint case, and 4 wiring assertions (2 of them GUILT twins)"
+    exit: 0
+    ts: 2026-09-20T15:29:00Z
+    seat: claude-opus-5
+  - claim: the paging assertion was UNDER-MATCHED at first, and its guilt twin caught it before the commit
+    cmd: "first predicate: 'garuda-outbox-second-path' in src and 'telegram p0' in src"
+    result: 'the guilt twin stayed GREEN when the page was downgraded to a log line, because every other receptor also says `telegram p0`; predicate narrowed to the exact pairing ''telegram p0 "garuda-outbox-second-path"'', twin then red as intended (family #3, under-match half)'
+    exit: 1
+    ts: 2026-09-20T15:29:00Z
+    seat: claude-opus-5
+  - claim: the receptor runs the way the healer runs it, stdlib only
+    cmd: python3 scripts/healer_receptor_garuda_outbox.py --selftest
+    result: "passed: 8   failed: 0 — two clean cases, three actionable, three blind"
+    exit: 0
+    ts: 2026-09-20T15:20:00Z
+    seat: claude-opus-5
+  - claim: BEFORE the deploy the probe says NO, so a later yes means something
+    cmd: python3 scripts/healer_receptor_garuda_outbox.py --json
+    result: '{"exit": 2, "reason": "could not read https://nuzantara-rag.fly.dev/health/garuda-outbox: HTTP 404"} — and from Mini the same URL returns 404 while /health/live returns 200, so the app is up and the route is simply not there yet'
+    exit: 2
+    ts: 2026-09-20T15:30:00Z
+    seat: claude-opus-5
+  - claim: the pre-existing health router suite is unaffected
+    cmd: .venv/bin/python3 -m pytest backend/tests/routers/test_health.py backend/tests/routers/test_health_garuda_outbox.py
+    result: "21 passed in 0.43s"
+    exit: 0
+    ts: 2026-09-20T15:25:00Z
+    seat: claude-opus-5
+  - claim: the garuda_orders service suite is unchanged by this diff — its failures are the local DB, not the code
+    cmd: .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/
+    result: '217 passed, 118 errors — every error is asyncpg UndefinedTableError on relation "garuda_voa_check_results" (no migrated local test DB on this machine); this diff touches no table and no fixture'
+    exit: 1
+    ts: 2026-09-20T15:26:00Z
+    seat: claude-opus-5
+  - claim: "the arming is NOT the merge — the healer runs a HOME copy, and the pair must be re-synced"
+    cmd: 'ssh mini: git rev-list --count HEAD..origin/main; PlistBuddy -c "Print :ProgramArguments" com.nuzantara.healer.4h.plist; grep healer-run infra/home-fork/declared-pairs.json'
+    result: "0 commits behind (com.nuzantara.git-pull-main.5min keeps the checkout current, HEAD 32864bcdb2 at 15:26Z) — but the plist executes /Users/nuzantara/scripts/healer-run.sh, a DECLARED PAIR of infra/healer/healer-run.sh for machines [mini]. Superscar #1: the file I edited is not the file that runs. The arming gesture is the pair re-sync after merge, named in the PR body rather than assumed."
+    exit: 0
+    ts: 2026-09-20T15:41:00Z
+    seat: claude-opus-5
+  - claim: "the receptor runs on the interpreter that will actually run it, not on mine"
+    cmd: "scp the script to mini:/tmp and run it with /usr/bin/python3 (the plist's shell resolves this one), then delete it"
+    result: "Python 3.9.6 — passed: 8, failed: 0, exit 0. Checked because the file uses PEP 604 shapes (str | None, tuple[int, str]) that would be a runtime error on 3.9 WITHOUT the `from __future__ import annotations` this file carries; with it they are strings and never evaluated. A crash here would not have been silent-safe: healer-run.sh sends stderr to /dev/null and would read the crash as exit 1, i.e. a page about an outbox nobody looked at."
+    exit: 0
+    ts: 2026-09-20T15:42:00Z
+    seat: claude-opus-5
+  - claim: the healer script and the workflow still parse
+    cmd: 'bash -n infra/healer/healer-run.sh; python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/alarm-cure-alignment.yml"))'''
+    result: "both silent/OK"
+    exit: 0
+    ts: 2026-09-20T15:28:00Z
+    seat: claude-opus-5

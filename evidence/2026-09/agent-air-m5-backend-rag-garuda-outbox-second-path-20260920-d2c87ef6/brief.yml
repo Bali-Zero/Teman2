@@ -1,0 +1,69 @@
+task_id: backend-rag-garuda-outbox-second-path-20260920
+gear: 3
+l_level: L2
+objective: |
+  The GARUDA outbox's `exhausted` counter — the rows `drain_once` will never
+  claim again — had exactly ONE non-test consumer on origin/main:
+  `_send_outbox_alarm` in `main_api.py`, which pages over Telegram. Cause and
+  signal shared a wire: when the Telegram path is what broke, the count rises
+  and nothing says so, and the silence is indistinguishable from health
+  (superscar #2; W84 — healthy silence must be provable).
+
+  Measured 2026-09-20 and not hypothetical: row 36
+  (`staff_page_charge_without_webhook` — a charge with no webhook, i.e. money)
+  spent all five attempts on `400 Bad Request: can't parse entities`. The send
+  path was healthy; the MESSAGE was malformed. A real money anomaly went unseen
+  for a day, and the only organ that could have said so pages over the wire that
+  refused it.
+
+  This lands BOTH halves the PENDING-ARMS row demands, because "a future job
+  will read it" is not a consumer: a surface where the counts are readable
+  without Telegram, and the reader that pages over a path the broken one cannot
+  mute. Arming is the healer tick that already runs on Mini — no
+  `launchctl bootstrap`, so no half is silently deferred to an operator.
+assumptions:
+  - text:
+      "MEASURED, and the answer changed the arming step. Mini's checkout is current
+      (0 commits behind origin/main, HEAD 32864bcdb2 at 15:26Z) because
+      com.nuzantara.git-pull-main.5min pulls every five minutes — so the receptor FILE
+      arrives by itself. But the healer plist runs /Users/nuzantara/scripts/healer-run.sh,
+      a HOME COPY, not the repo's infra/healer/healer-run.sh: they are a DECLARED PAIR
+      (infra/home-fork/declared-pairs.json, machines: [mini]). Receptor 9 is therefore
+      NOT armed at merge — it is armed when the pair is re-synced, which is superscar #1
+      (HOME-fork drift) and would have been discovered four hours later by a page that
+      never came."
+    status: verified
+    probe: "on mini: git rev-list --count HEAD..origin/main -> 0; PlistBuddy on
+      com.nuzantara.healer.4h.plist -> /Users/nuzantara/scripts/healer-run.sh; after the
+      merge, cp the repo file onto the live one and python3 scripts/lint_home_fork.py
+      --check reports the pair clean"
+  - text:
+      "The fleet gateway on Mini holds a token Telegram accepts. Measured earlier today
+      on Pro/Mini (@zantara0bot live, getMe 200), not re-measured inside this diff."
+    status: partially-verified
+    probe: "scripts/tg_notify.py --selftest on the paging host"
+constraints:
+  - "Design constraint from the ledger row itself: BOTH halves in one PR. A reader
+    that ships without its surface, or a surface with no reader, is the shape the row
+    forbids."
+  - "No PII and no operational detail on the public surface: aggregate counts only —
+    no id, no job_type, no payload. Whoever is paged reads the detail from the database
+    with a credential (scripts/pg.sh)."
+  - "The receptor is stdlib-only: it runs from launchd on a machine that may be sick,
+    so it must not share a failure mode with what it reports (same rule as tg_notify.py)."
+  - "No change to the drain loop, to attempt budgets, or to `_send_outbox_alarm`. PR
+    #6874's reasoning — a job that stops retrying stops being visible as work owed —
+    stands and is not reversed here."
+acceptance:
+  - text:
+      "With the endpoint deployed, the receptor run from the fleet reads the real queue
+      and says so: exit 0 with the live counts when nothing is owed."
+    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json → exit 0"
+  - text:
+      "Before the deploy the same command reads BLIND rather than clean — a probe that
+      cannot say no proves nothing when it says yes."
+    probe: "measured pre-merge: exit 2, 'HTTP 404' (recorded in the pack's receipts)"
+  - text: "A degraded queue is paged by the healer through tg_notify, not only logged."
+    probe:
+      "the wiring assertions in scripts/tests/test_healer_receptor_garuda_outbox.py,
+      each with a GUILT twin that fails when the call or the page is removed"
