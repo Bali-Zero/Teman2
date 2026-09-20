@@ -11,7 +11,6 @@ CANONICAL_GATEWAY_VERDICTS: Final[frozenset[str]] = frozenset(
         "deduped",
         "p0_overflow_spooled",
         "p0_unsent_spooled",
-        "acted",
     }
 )
 
@@ -37,11 +36,9 @@ def extract_gateway_verdict(stderr: str | None) -> str | None:
 def gateway_delivered(verdict: str | None) -> bool:
     """Whether the gateway reports a real-time Telegram delivery.
 
-    ``acted`` is deliberately NOT a delivery: the gateway routed the condition
-    to the escalation board for a seat to cure, and no human was reached. A
-    caller that records ``alerted=<this>`` keeps telling the truth — it did not
-    page anyone — while the condition is still being worked. Do not widen this
-    to "the gateway accepted it", or a routed p0 becomes indistinguishable from
-    one that woke the owner.
+    ``spooled`` is NOT a delivery: it says the gateway took custody — a digest
+    row, or since 2026-09-21 an escalation-board row for a seat to cure — and
+    no human was reached. A caller recording ``alerted=<this>`` keeps telling
+    the truth while the condition is still being worked.
     """
     return verdict == "sent"

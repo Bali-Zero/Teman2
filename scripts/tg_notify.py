@@ -625,7 +625,12 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
         )
         if routed and _append_board(record, origin_tier=tier):
             _save_state(spool, state)
-            return "acted"
+            # "spooled", not a fourth verdict: 204 callers already know it
+            # ("taken into custody, not handed to a human"), and a NEW word
+            # breaks the class of them that copied the vocabulary instead of
+            # importing tg_gateway_verdict.py. Observability lives where it
+            # belongs — the board row (type=gateway_routed, origin_tier).
+            return "spooled"
 
         if tier == "log":
             _append(spool, "log-only.jsonl", record)
@@ -757,8 +762,9 @@ def selftest() -> int:
         # LANE does (budget, night cap, cron reserve, escalation ladder), and
         # that lane is unchanged by 2026-09-21. Routing is a layer ABOVE it and
         # gets its own block at the end, where it is switched back on. Leaving
-        # it on here would have rewritten ~14 assertions to say "acted" and
-        # quietly deleted the coverage of the budget itself.
+        # it on here would have rewritten ~14 assertions to say "spooled" —
+        # indistinguishable from the digest spool — and quietly deleted the
+        # coverage of the budget itself.
         ACT_ROUTING_ENABLED = False
         # Pin the day/night window, exactly as the two blocks below already do
         # ("the window is pinned by the knobs, not by the wall clock"). Without
@@ -1017,7 +1023,7 @@ def selftest() -> int:
 
                 # GUILT: work an LLM seat can close never reaches the owner.
                 check("p0 a seat can cure is routed",
-                      notify("p0", "cron:x", "the indexer died", "cron-fail:indexer") == "acted")
+                      notify("p0", "cron:x", "the indexer died", "cron-fail:indexer") == "spooled")
                 rows = [json.loads(ln) for ln in board.read_text().splitlines() if ln.strip()]
                 check("routed row lands on the board, pending, auditable",
                       len(rows) == 1 and rows[0]["status"] == "pending"
@@ -1042,7 +1048,7 @@ def selftest() -> int:
 
                 # An explicit act tier is board-only and NORMAL, never HIGH.
                 check("explicit act tier is NORMAL",
-                      notify("act", "seat", "tidy this", "housekeeping:x") == "acted")
+                      notify("act", "seat", "tidy this", "housekeeping:x") == "spooled")
                 rows = [json.loads(ln) for ln in board.read_text().splitlines() if ln.strip()]
                 check("act tier row is NORMAL", rows[-1]["priority"] == "NORMAL")
 

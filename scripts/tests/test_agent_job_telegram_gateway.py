@@ -47,6 +47,14 @@ def test_send_telegram_p0_reaches_dry_run_delivery(monkeypatch, tmp_path):
     monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path))
     monkeypatch.setenv("TG_DRY_RUN", "1")
     monkeypatch.setenv("TG_SECRETS_FILE", "/dev/null")
+    # Routing OFF, because this test's subject is the WIRING — that
+    # `send_telegram` really reaches the gateway's send path instead of merely
+    # exiting 0. Since 2026-09-21 a p0 no longer implies "sent": a key outside
+    # TG_OWNER_FAMILIES is routed to the escalation board and comes back
+    # "spooled", which `gateway_delivered()` correctly reports as
+    # not-delivered. Pinning the knob keeps this pin on the wiring rather than
+    # on the routing table (that one is covered by `tg_notify.py --selftest`).
+    monkeypatch.setenv("TG_ACT_ROUTING_ENABLED", "false")
 
     job = _FakeJob()
     ok = _run(job.send_telegram("hello from test", tier="p0", dedup_key="test-key-p0"))
