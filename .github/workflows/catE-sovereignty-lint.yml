@@ -37,14 +37,28 @@ on:
   pull_request:
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
   push:
     branches:
       - main
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
 
 permissions:
@@ -63,6 +77,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          # three-dot changed-file enumeration needs the merge base
+          fetch-depth: 0
+          filter: blob:none
 
       # ── #40 — ban the PAID Anthropic endpoint (MAX-plan duplication) ────────
       # OK paths (MUST NOT trip): Anthropic(auth_token=...) / ANTHROPIC_AUTH_TOKEN
@@ -109,6 +127,50 @@ jobs:
             exit 1
           fi
           echo "OK: no ANTHROPIC_API_KEY value assignment outside vendor/examples."
+
+      # ── #40c — the same ban, judged as an ENTITY (ADVISORY) ────────────────
+      # #40 and #40b above judge SPELLING: the canonical constructor and the
+      # canonical export. CLAUDE.md §3 says in as many words that this is only a
+      # first pass — "an alias, a renamed env var, a wrapper library or a
+      # Bedrock/Vertex route reaches the same endpoint without either literal,
+      # and is equally banned". This step asks a System One model (Jev) whether
+      # the CHANGED files reach that endpoint, whatever the spelling.
+      #
+      # COMPOSITION IS OR, NEVER AND (cicatrix #3, and the point of the lane):
+      # the two greps above keep their verdict untouched; this can only ADD a
+      # finding. A model that is wrong, hallucinating, steered by an authored
+      # diff, or simply unreachable therefore costs a false alarm at worst — it
+      # can never clear something the greps condemn. `lint_paid_llm_entity.py`
+      # returns "no opinion" (not "no violation") when the service is silent.
+      #
+      # ADVISORY until the bench is re-run by someone other than the lane that
+      # wrote it (see scripts/tests/fixtures/paid_llm_entity/bench_cases.json,
+      # whose _doc says so plainly). --advisory always exits 0; dropping that
+      # flag is the whole of "arming" this, and is a deliberate later PR.
+      #
+      # No key configured = the step still runs, still applies the transcribed
+      # grep predicate, and says so. It never fails for lack of a credential.
+      - name: Paid-endpoint ban judged as an entity (advisory)
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "push build — entity judgment is a PR-time signal, skipped."
+            exit 0
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint_paid_llm_entity.py --advisory
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
       - name: Law-5 autonomous-publish lint (blocking)
