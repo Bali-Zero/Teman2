@@ -25,6 +25,7 @@ wants someone to be able to write.
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -229,7 +230,11 @@ def test_cli_entrypoint_runs(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0
-    assert '"scanned": 1' in proc.stdout
+    # main() prints the JSON document and then its human line; take the object.
+    body = proc.stdout[proc.stdout.index("{") : proc.stdout.rindex("}") + 1]
+    payload = json.loads(body)
+    assert payload["counts"]["scanned"] == 1
+    assert payload["findings"] == []
 
 
 # ── MECHANISM: the grandfather list, and the anti-bypass that keeps it honest ─
@@ -297,8 +302,15 @@ def test_refutation_python_shapes_that_used_to_slip(tmp_path: Path, body: str) -
     assert scanned and findings
 
 
-def test_refutation_2_a_bare_mapping_value_that_looks_like_a_credential() -> None:
-    assert lint.judge_prose("# config sets password: hunter2-actual-fixture")
+def test_refutation_2_an_unquoted_bare_mapping_is_a_DOCUMENTED_LIMIT() -> None:
+    """Round one closed this with a heuristic on what the value looked like.
+    Round two showed that heuristic missing `password: hunterhunter` and
+    condemning `api_key: this-field-is-optional-in-v2-schema` in the same pass.
+    A guard wrong in both directions is worse than an absent predicate
+    (cicatrix #3), so the unquoted form is out of scope and SAID to be, here
+    and in the lint's KNOWN LIMITS. The quoted form below is still judged."""
+    assert not lint.judge_prose("# config sets password: hunter2-actual-fixture")
+    assert lint.judge_prose('# config sets password: "hunter2-actual-fixture"')
 
 
 def test_refutation_2_an_ordinary_english_clause_stays_writable() -> None:
@@ -396,3 +408,127 @@ def test_refutation_11_ordinary_engineering_prose_must_stay_writable(
     sixteen files the first pardon list froze were this class of false positive,
     and requiring a value removed them."""
     assert not lint.judge_prose(prose)
+
+
+# ── THE REFUTING SEAT, ROUND TWO ───────────────────────────────────────────
+# Three fixes from round one turned out to be partial, one new over-match was
+# found in the scanner added for round one, and the corpus itself had a gap.
+
+
+def test_round2_1_a_null_first_token_cannot_stand_in_for_the_whole_value() -> None:
+    """Capturing to the first whitespace let everything after a space hide
+    behind a value whose first token happened to be a null word."""
+    assert lint.judge_prose('# password="None the-rest-of-a-real-fixture-1234"')
+    assert not lint.judge_prose('# password="None"')
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param('# password\n# =\n# "hunter2-fixture"\n', id="three-comment-lines"),
+        pytest.param(
+            '"""\npassword\n=\n"hunter2-fixture"\n"""\n', id="three-docstring-lines"
+        ),
+        pytest.param('# password\n# = "hunter2-fixture"\n', id="two-lines-still-caught"),
+    ],
+)
+def test_round2_2_a_run_is_joined_not_just_a_pair(tmp_path: Path, body: str) -> None:
+    scanned, findings = lint.scan_file(_write(tmp_path, "m.py", body))
+    assert scanned and findings
+
+
+def test_round2_2_joining_a_run_does_not_invent_adjacency() -> None:
+    """The join is only safe because every predicate is adjacency-based."""
+    assert not lint.judge_prose(
+        "password is rotated quarterly and the rotation job = owned by ops"
+    )
+
+
+def test_round2_3_the_bare_mapping_form_keeps_only_its_unambiguous_half() -> None:
+    assert lint.judge_prose('# password: "hunter2-fixture"')
+    assert not lint.judge_prose("# api_key: this-field-is-optional-in-v2-schema")
+    assert not lint.judge_prose("# private_key: see-the-onboarding-doc-for-details")
+
+
+@pytest.mark.parametrize(
+    ("name", "body", "guilty"),
+    [
+        pytest.param(
+            "a.ts",
+            "/* ok */ const password = await vault.getSecret();\n",
+            False,
+            id="a-short-comment-must-not-swallow-the-code-beside-it",
+        ),
+        pytest.param(
+            "b.ts",
+            'const HELP = "https://x/ref?access_key=example_only_demo12345";\n',
+            False,
+            id="a-double-slash-inside-a-string-is-not-a-comment",
+        ),
+        pytest.param(
+            "c.ts",
+            "// VendorClient({api_key: 'sk-fixture12345'})\n",
+            True,
+            id="a-real-line-comment-is-still-read",
+        ),
+        pytest.param(
+            "d.js",
+            "/* api_key: 'sk-fixture12345' */\n",
+            True,
+            id="a-real-block-comment-is-still-read",
+        ),
+    ],
+)
+def test_round2_4_the_c_family_scanner_reads_comments_and_not_code(
+    tmp_path: Path, name: str, body: str, guilty: bool
+) -> None:
+    scanned, findings = lint.scan_file(_write(tmp_path, name, body))
+    assert scanned
+    assert bool(findings) is guilty
+
+
+def test_round2_5_the_whole_tree_is_one_process_not_several(tmp_path: Path) -> None:
+    """xargs would split a long list across processes, and the blind-scan guard
+    can then only ever see one slice. --files-from is what the push build uses."""
+    listing = tmp_path / "list.txt"
+    good = _write(tmp_path, "m.py", "# clean\n")
+    listing.write_text(f"{good}\n")
+    assert lint.main(["--files-from", str(listing)]) == 0
+    assert lint.main(["--files-from", str(tmp_path / "absent.txt")]) == 2
+
+
+def test_round2_7_the_growth_check_is_exercised_for_REAL(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Every other test of this mechanism either stubs `grandfather_grew` out or
+    hits a ref where the file is absent. None of them would notice if the set
+    difference were replaced by a length comparison — so this one builds two
+    real commits and asserts on the real diffing."""
+    repo = tmp_path / "repo"
+    (repo / "infra" / "ban-prose").mkdir(parents=True)
+    listing = repo / "infra" / "ban-prose" / "grandfathered.json"
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    listing.write_text(json.dumps({"files": ["a.py", "b.py"]}))
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True
+    ).stdout.strip()
+
+    monkeypatch.setattr(lint, "REPO_ROOT", repo)
+    monkeypatch.setattr(lint, "GRANDFATHER", listing)
+
+    # Same size, one name swapped — a length comparison would call this clean.
+    listing.write_text(json.dumps({"files": ["a.py", "c.py"]}))
+    grew, note = lint.grandfather_grew(base)
+    assert grew == ["c.py"], f"a renamed pardon must read as growth (note={note!r})"
+
+    # Shrinking is always allowed: remediation must never be punished.
+    listing.write_text(json.dumps({"files": ["a.py"]}))
+    assert lint.grandfather_grew(base) == ([], "")

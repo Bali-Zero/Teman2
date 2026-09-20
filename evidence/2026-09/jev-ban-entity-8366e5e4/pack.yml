@@ -146,6 +146,36 @@ receipts:
     exit: 0
     ts: 2026-09-20T18:00:00Z
     seat: claude-opus-5
+  - claim: a SECOND adversarial pass broke three of the first round's fixes and found one new blocking over-match plus a corpus that stubbed out the mechanism it claimed to test
+    cmd: the same refuting seat, re-dispatched against the rewrite with the changes named
+    result: "3 partial fixes, 1 new BLOCKING over-match, 1 corpus gap, 2 attacks declared FAILED, 1 premise of the conductor's corrected from the repo"
+    exit: 0
+    ts: 2026-09-20T18:20:00Z
+    seat: claude-sonnet-5
+  - claim: the whole tree now runs in ONE process rather than several xargs batches, so the blind-scan guard sees the whole tree and not a slice
+    cmd: python3 scripts/lint/lint_ban_prose.py --files-from <every tracked in-scope path>
+    result: "OK - 10576 file(s) scanned (0 out of scope, 0 not on disk); 4 unreadable reported as a warning"
+    exit: 0
+    ts: 2026-09-20T18:25:00Z
+    seat: claude-opus-5
+  - claim: the anti-bypass is now exercised against two REAL commits - a same-size pardon list with one name swapped reads as growth, which a length comparison would have called clean
+    cmd: python3 -m pytest scripts/tests/test_lint_ban_prose.py -q -k test_round2_7_the_growth_check_is_exercised_for_REAL
+    result: passed
+    exit: 0
+    ts: 2026-09-20T18:30:00Z
+    seat: claude-opus-5
+  - claim: the lint reddened ITS OWN docstring for quoting the code line it was explaining, and the cure is in this diff
+    cmd: python3 scripts/lint/lint_ban_prose.py --files-from <the whole tree>
+    result: "2 findings on scripts/lint/lint_ban_prose.py itself, then 0 after the docstring named the shape instead of quoting it"
+    exit: 0
+    ts: 2026-09-20T18:15:00Z
+    seat: claude-opus-5
+  - claim: both suites green after the second round - 71 carried forward, 75 for the prose lint
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 146 passed
+    exit: 0
+    ts: 2026-09-20T18:32:00Z
+    seat: claude-opus-5
 dissent:
   - seat: codex-gpt-5.6-sol
     objection:

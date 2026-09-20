@@ -61,9 +61,16 @@ KNOWN LIMITS, measured by an adversarial seat rather than guessed:
     against honest description, not against someone smuggling a credential past
     themselves. Named here so the next reader does not mistake silence for
     coverage.
-  - A credential word whose value is unquoted prose is only judged when that
-    value carries a digit or runs long — otherwise "the password: never printed"
-    would red, and that sentence must stay writable.
+  - A credential word followed by a colon and an UNQUOTED value is not judged
+    at all. The heuristic that tried to read it missed a real one and condemned
+    a real sentence in the same pass, and a guard wrong in both directions is
+    worse than an absent predicate (cicatrix #3). A quote is how code writes a
+    string, so only the quoted form is judged.
+  - The base sha a re-run of an existing Actions run sees comes from the
+    ORIGINAL event payload, so the pardon-growth check can compare against a
+    stale main tip on a manual re-run. Named at lower confidence than the rest
+    of this list: it is documented platform behaviour, not something measured
+    here.
 
 Exit codes: 0 clean, 1 guilt, 2 blind scan (a file that exists, is in scope and
 could not be read — a lint that scanned nothing must never report "clean"),
@@ -109,7 +116,10 @@ _WORDS_RE = "|".join(re.escape(w) for w in _CREDENTIAL_WORDS)
 # ends in the same four letters as a credential word, and a pattern built on
 # that suffix would condemn the very route CLAUDE.md §3 points people to.
 
-_VALUE = r"(?P<value>\S+)"
+# A quoted value is captured WHOLE. Capturing to the first whitespace let a
+# value whose first token was literally a null word read as nullish while the
+# real content sat after the space — found by the refuting seat, round 2.
+_VALUE = r"""(?P<value>"[^"]*"|'[^']*'|\S+)"""
 
 # P1 — a constructor or call given a credential keyword argument WITH a value,
 # whatever the callable is called. Catches the aliased-import route, which
@@ -131,13 +141,17 @@ _QUOTED_KEY = re.compile(
     r"['\"](?:" + _WORDS_RE + r")['\"][ \t]*" + r":[ \t]*" + _VALUE, re.IGNORECASE
 )
 
-# P4 — the bare mapping form, where neither side is quoted. Judged only when the
-# value LOOKS like a credential rather than like the rest of a sentence, because
-# this is the one predicate an ordinary English clause can reach.
+# P4 — the bare mapping form with a QUOTED value. A quote is how code writes a
+# string and is not how a sentence writes a word, so this needs no judgment of
+# what the value looks like. The unquoted-both-sides form is deliberately NOT
+# here: the heuristic that tried to read it missed `password: hunterhunter` and
+# condemned `api_key: this-field-is-optional-in-v2-schema` in the same pass —
+# a guard failing in both directions at once is cicatrix #3, and the honest
+# move is one fewer predicate. The gap is in KNOWN LIMITS above.
 _BARE_KEY = re.compile(
-    r"\b(?:" + _WORDS_RE + r")\b[ \t]*" + r":[ \t]*" + _VALUE, re.IGNORECASE
+    r"\b(?:" + _WORDS_RE + r")\b[ \t]*" + r":[ \t]*" + r"""(?P<value>"[^"]*"|'[^']*')""",
+    re.IGNORECASE,
 )
-_CREDENTIAL_LOOKING = re.compile(r"^(?=.*\d)[\w./+=-]{8,}$|^[\w./+=-]{16,}$")
 
 # P5 — the vendor's environment variable given a value. Stripping it is allowed
 # and must stay allowed: an empty string, a null, or a bare mention is innocent.
@@ -209,10 +223,6 @@ def _exempt(name: str, match: re.Match[str]) -> bool:
         # part a placeholder cannot buy back. Only a strip is innocent here,
         # and a strip is already a null.
         return False
-    if name == "bare-key" and not quoted and not _CREDENTIAL_LOOKING.match(core):
-        # An unquoted value that reads like the next word of a sentence, not
-        # like a credential — "the password: never printed" must stay writable.
-        return True
     return bool(_HOLE.match(core))
 
 
@@ -252,23 +262,53 @@ def _strip_code(line: str) -> str:
 
 
 def _slash_comments(text: str) -> list[tuple[int, str]]:
-    """Line and block comments in a C-family source file."""
+    """Line and block comments in a C-family source file.
+
+    Two things this must NOT do, both found by the refuting seat on the first
+    version: run a block comment to end of line instead of to its terminator —
+    which swallowed the CODE after a short comment on the same physical line and
+    condemned a line that fetches a credential from a vault instead of hardcoding
+    it, the exact practice the repo wants — and mistake a double slash inside a
+    string literal, a URL for instance, for the start of a comment. Both shapes
+    are in the corpus as real files rather than quoted here; this docstring is
+    scanned by the predicates it describes.
+    """
     spans: list[tuple[int, str]] = []
     in_block = False
     for n, line in enumerate(text.splitlines(), start=1):
-        if in_block:
-            spans.append((n, line))
-            if "*/" in line:
-                in_block = False
-            continue
-        idx = line.find("//")
-        block = line.find("/*")
-        if block != -1 and (idx == -1 or block < idx):
-            spans.append((n, line[block:]))
-            if "*/" not in line[block + 2 :]:
-                in_block = True
-        elif idx != -1:
-            spans.append((n, line[idx:]))
+        i = 0
+        start = 0 if in_block else None
+        quote = ""
+        while i < len(line):
+            two = line[i : i + 2]
+            if in_block:
+                if two == "*/":
+                    spans.append((n, line[start:i]))
+                    in_block, start, i = False, None, i + 2
+                    continue
+                i += 1
+                continue
+            if quote:
+                if line[i] == "\\":
+                    i += 2
+                    continue
+                if line[i] == quote:
+                    quote = ""
+                i += 1
+                continue
+            if line[i] in "'\"`":
+                quote = line[i]
+                i += 1
+                continue
+            if two == "//":
+                spans.append((n, line[i:]))
+                break
+            if two == "/*":
+                in_block, start, i = True, i + 2, i + 2
+                continue
+            i += 1
+        if in_block and start is not None:
+            spans.append((n, line[start:]))
     return spans
 
 
@@ -305,16 +345,29 @@ def prose_spans(path: Path, text: str) -> list[tuple[int, str]]:
 
 
 def _windowed(spans: list[tuple[int, str]]) -> list[tuple[int, str]]:
-    """Adjacent prose lines, joined. A credential word on one line and its value
-    on the next is one sentence to a reader and two spans to a scanner; without
-    this, splitting the line is all it takes to walk past every predicate."""
-    pairs = []
-    for (n, a), (m, b) in zip(spans, spans[1:]):
-        if m == n + 1:
-            # The comment markers go: a reader does not see them between the
-            # word and its value, and neither should a predicate.
-            pairs.append((n, f"{_unmark(a)} {_unmark(b)}"))
-    return pairs
+    """Each contiguous RUN of prose lines, joined into the one sentence a reader
+    sees. An earlier version joined PAIRS, and one more newline walked past it —
+    the same hole, one hop further out (refuting seat, rounds 1 and 2).
+
+    Joining a whole run is safe rather than reckless because every predicate is
+    ADJACENCY-based: a credential word in one paragraph and an assignment in
+    another still have words between them after the join, and match nothing.
+    The line reported is the run's first; a split shape has no single line.
+    """
+    runs: list[tuple[int, str]] = []
+    start, parts = None, []
+    prev = None
+    for n, span in spans:
+        if prev is not None and n == prev + 1:
+            parts.append(_unmark(span))
+        else:
+            if start is not None and len(parts) > 1:
+                runs.append((start, " ".join(parts)))
+            start, parts = n, [_unmark(span)]
+        prev = n
+    if start is not None and len(parts) > 1:
+        runs.append((start, " ".join(parts)))
+    return runs
 
 
 _MARKER = re.compile(r"^[ \t]*(?:#+|//+|/\*+|\*+)[ \t]*")
@@ -405,6 +458,16 @@ def grandfather_grew(base_ref: str) -> tuple[list[str], str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="files to scan (changed set)")
+    parser.add_argument(
+        "--files-from",
+        default="",
+        help=(
+            "read the file list from a file, one path per line. The whole-tree "
+            "run uses this rather than xargs: xargs splits a long list into "
+            "several processes, and the blind-scan guard below can then only "
+            "ever see one slice of the tree at a time"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--base-ref",
@@ -426,7 +489,19 @@ def main(argv: list[str] | None = None) -> int:
         if note:
             print(f"::warning::lint_ban_prose: growth check did not run — {note}")
 
-    if not args.files:
+    files = list(args.files)
+    if args.files_from:
+        try:
+            files += [
+                ln.strip()
+                for ln in Path(args.files_from).read_text().splitlines()
+                if ln.strip()
+            ]
+        except OSError as exc:
+            print(f"::error::lint_ban_prose: --files-from unreadable: {exc}", file=sys.stderr)
+            return 2
+
+    if not files:
         print("lint_ban_prose: no files given — nothing to scan.")
         return 0
 
@@ -434,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
     counts = {SCANNED: 0, OUT_OF_SCOPE: 0, MISSING: 0, UNREADABLE: 0}
     unreadable: list[str] = []
     findings: list[dict] = []
-    for name in args.files:
+    for name in files:
         status, found = scan_status(Path(name))
         counts[status] += 1
         if status == UNREADABLE:
