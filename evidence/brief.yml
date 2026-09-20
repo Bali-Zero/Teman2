@@ -1,103 +1,148 @@
-gear: 2
-task_id: kbli-inspect-error-detail-20260920
-lane: backend-rag
+gear: 3
+task_id: notify-seat-consumer-20260921
+lane: infra
 host: air-m5 (M5)
-branch: agent/air-m5/backend-rag/kbli-inspect-error-detail-20260920
+branch: agent/air-m5/infra/notify-seat-consumer-20260921
 gate_class: opus
 l_level: L2
 objective: >-
-  Close the second half of ledger row
-  `kbli-inspect-echoes-the-raw-driver-error-to-the-client` (PENDING-ARMS, opened
-  2026-09-19). The row's own arming step demanded two things, and only one was
-  done: `inspect_kbli`'s catch-all stopped interpolating `str(e)` into the
-  response body and grew a guilt/innocence suite, but the row explicitly warned
-  that "a cure applied to 1-of-N call sites is the W89 time bomb" and named
-  `kbli_notebook_chat.py` as the place to check before closing. Checked in this
-  turn: `chat_kbli`'s catch-all ended
-  `raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}")` —
-  the same leak, on the chat surface the WhatsApp bot and the public explorer
-  talk to, where `e` can come from Postgres (table and column names), Qdrant
-  (collection, host:port) or the model provider (an upstream error body with
-  model ids and account state). Census run in this turn: after this PR both
-  KBLI routers return 0 for the interpolated-detail shape.
+  PR #6973 gave tg_notify a fourth tier: a p0 whose dedup-key is not an
+  OWNER_FAMILY stops reaching Telegram and lands on shared/escalations_pro.jsonl
+  as `type=gateway_routed, cure_lane.owner=seat, priority=NORMAL`. Measured in
+  this turn over `~/.organism/tg_spool/archive-p0.jsonl` on Pro, 30 days to
+  2026-09-21: 314 p0, of which 286 take the routed path and 28 still page the
+  owner. NOTHING drained the 286 — so #6973 had moved the noise from Telegram
+  onto the board every session reads at SessionStart, rather than removing it.
+  This PR ships the consumer that closes what it can PROVE is over, plus the
+  launchd organ that runs it (a future cron is not a consumer).
 scope:
   - >-
-    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — the catch-all
-    detail becomes the same stable `"Internal processing error"` the inspect
-    side already returns, and an `except HTTPException: raise` is added above
-    it so the opacity cure cannot absorb a deliberate status raised deeper in
-    the route. The existing `logger.error(..., exc_info=True)` one line above is
-    untouched: it is where the whole string keeps living.
+    scripts/board_seat_consumer.py — reads the board through
+    sentinel_lib.escalations, collapses per job (the board is append-only:
+    mark_resolved appends rather than rewrites, so a per-line status filter
+    reports a healed job open forever), and applies one cure per dedup-key
+    FAMILY, matched as an entity and never as a substring.
   - >-
-    Tests — new `test_kbli_chat_error_opacity.py`, guilt and innocence, built as
-    the sibling of the inspect suite so the pair reads as one fence.
+    Cure `cron-fail:<job>` — closes when the job's own run-state file
+    (~/.agent/decisions/state/<job>.last.json, written by the cron runner and
+    therefore an independent witness) says status=ok with a ts NEWER than the
+    alert. Simulated over the same 30-day archive in this turn: 65 of Pro's 124
+    cron-fail rows read that way right now. No action is taken — the row is
+    stale, and saying so with its proof is the cure.
+  - >-
+    Cure `healer-pro|healer-mini:stale-lock` — the healer's pidfile outlived its
+    run and its pid was recycled, so every 4h tick since has skipped while
+    reporting itself GREEN (superscar #2). The alert text names the cure itself
+    (`rm -f /tmp/nuzantara-healer.pid`) and Zero has run it by hand 13 times in
+    30 days. Removed here only after THIS process re-probes: pid dead, or alive
+    with a command line that is not a healer. Undecidable refuses.
+  - >-
+    infra/launchagents/{com.nuzantara.board-seat-consumer.plist,
+    wrappers/pro-board-seat-consumer.sh} + organs_registry entry + the two
+    declared HOME pairs — the organ, born through scripts/organ_birth.py so it
+    carries the ten genes the conformance gate checks. Its heartbeat note
+    carries closed/left/seen, not just a pulse: an organ reporting "ok" hourly
+    while closing nothing is the exact shape this consumer exists to drain.
+  - >-
+    scripts/tests/test_nlm_alarm_gateway.py — re-tightens the pin #6973
+    loosened (see constraints).
 constraints:
   - >-
-    One concern. The same shape survives at 82 sites across 28 OTHER routers
-    (`analytics.py`, `legal_ingest.py`, `memory_vector.py`, `monitoring_rag.py`
-    lead the count) — several of them authenticated, several not. That is a
-    repo-wide lane with its own blast radius and its own guard, declared here
-    and opened as a ledger row rather than swept into a KBLI PR.
+    NO BLIND KICKSTART. organs_registry.yaml declares a recovery_action for 170
+    organs (109 of them launchctl_kickstart) and no loop has ever executed one.
+    That is not an oversight to close here: every healer tick that met a `dead`
+    organ root-caused it and REFUSED the restart, correctly — iqoo_radar_relay
+    was failing on `Permission denied (publickey)`, which a kickstart
+    reproduces identically. A restart that does not cure is a green run that
+    fixed nothing.
   - >-
-    The client-facing string is the inspect side's exact `"Internal processing
-    error"`, not a new wording. Two dialects of the same 500 is how a consumer
-    ends up keying on one of them.
+    A family with no registered cure stays pending and is COUNTED. Closing a row
+    to make the board shorter is the failure mode, not the goal. Measured: the
+    largest non-cron families have no seat cure at all — `imigrasi-diff` (28/30d
+    on Mini) is a digest travestied as p0, `journey-sentinel` (34) is a declared
+    needs-ruling, `sentinel:quota_exhausted` says in its own text that no
+    operator action fixes it.
   - >-
-    No consumer keys on the old text: `grep -rn "AI Engine error"` over the repo
-    (py/ts/tsx/md) returned exactly the one line being deleted.
+    Locality. The board is ONE git-tracked file shared by three checkouts; a row
+    whose `machine` is not this host is never cured here (superscar #10).
   - >-
-    Merging this deploys it (apps/backend-rag/**). The live observation in
-    `Bites:` is taken after the deploy, never inferred from the merge.
+    Nothing in PR #6973's contract is touched: priority stays NORMAL, the six
+    gateway verdicts are unchanged, OWNER_FAMILIES and TG_ACT_ROUTING_ENABLED
+    are untouched, and the board's fail-OPEN is untouched.
+  - >-
+    TG_BOARD_PATH is NOT used by the new suite. It overrides the gateway's board
+    for a whole process and has already turned 21 unrelated gateway tests red;
+    the fixture monkeypatches the library's own file map instead.
+  - >-
+    Fail-open everywhere: unknown row shapes, an unreadable probe and an
+    exception inside the run all exit 0 with the board untouched. A launchd
+    organ that dies stops draining and nobody notices.
 acceptance:
   - text: >-
-      GUILT, the whole reason for the change: WHEN any non-HTTP exception
-      escapes the chat route, the response body SHALL carry none of the failing
-      layer's own words — not the server message, not the schema name, not the
-      host:port, not the upstream account state.
+      GUILT: WHEN a cron-fail row's job has since reported ok, the row SHALL be
+      closed by a resolution carrying the SAME job (no reader collapses the pair
+      otherwise) and the proof SHALL name the run-state file.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_five_hundred_body_carries_none_of_the_engines_words
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py::test_a_cron_that_recovered_is_closed_with_its_proof
   - text: >-
-      OPACITY IS NOT AMNESIA: WHILE the client reads nothing, the operator SHALL
-      still read the whole exception string at ERROR with its traceback.
+      INNOCENCE, three ways: a job still failing, a job whose last ok PREDATES
+      the alert, and a job with no run-state file at all SHALL all stay open.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_operator_still_reads_the_whole_string_in_the_log
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "still_failing or predates or no_run_state"
   - text: >-
-      INNOCENCE: WHERE an `HTTPException` is raised deeper in the route, it
-      SHALL reach the client with its own status and its own detail instead of
-      being absorbed into the opaque 500.
+      ENTITY, NOT SUBSTRING: `cron-failure:` and `xcron-fail:` both contain the
+      family name and SHALL match no cure.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_an_http_exception_raised_deeper_in_the_route_is_not_absorbed
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py::test_the_family_is_matched_as_an_entity_not_as_a_substring
   - text: >-
-      INNOCENCE: a malformed body is still a 422 that names the field, and a
-      healthy turn is still a 200 with its answer — the tests above must fail
-      for the ERROR, not for the route.
+      THE STALE LOCK, both sides: a recycled pid SHALL lose its pidfile; a LIVE
+      healer SHALL keep it (removing it lets a second 4h session start beside
+      it); an undecidable pid SHALL refuse to cure.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py -k "malformed or healthy"
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "recycled or live_healer or undecidable"
   - text: >-
-      THE PAIR IS ONE FENCE: the inspect suite SHALL still pass unchanged
-      alongside the new one.
+      SCOPE: only gateway_routed rows owned by the seat lane are touched — a
+      HIGH owner=session row and a lane-less row SHALL be invisible to it — and
+      an already-resolved job SHALL NOT be picked up again.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py backend/tests/unit/routers/test_kbli_inspect_error_opacity.py
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "seat_owned or already_resolved"
   - text: >-
-      NO REGRESSION ACROSS THE KBLI SURFACE.
-    probe: pytest backend/tests -k kbli
-  - text: >-
-      PROOF-OF-ARMED for the ledger row, on origin/main after the merge:
-      `grep -c` for the interpolated-detail shape SHALL return 0 in BOTH KBLI
-      routers.
+      BOUNDARIES: a foreign machine's row SHALL be left alone, --dry-run SHALL
+      mutate neither board nor filesystem, the cap SHALL report what it skipped,
+      the kill switch SHALL stop the run, and a raising run SHALL still exit 0.
     probe: >-
-      grep -c 'detail=f"[^"]*{\(e\|e!s\|err\|str(e)\)'
-      apps/backend-rag/backend/app/routers/kbli_notebook.py
-      apps/backend-rag/backend/app/routers/kbli_notebook_chat.py
+      python3 -m pytest scripts/tests/test_board_seat_consumer.py -k "another_machine or dry_run or cap or kill_switch or broken_row"
+  - text: >-
+      THE RE-TIGHTENED PIN: a routed p0 SHALL land on the board and NOT on the
+      spool, and an OWNER_FAMILY p0 SHALL still go out and NOT to the board.
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_alarm_gateway.py::test_a_routed_p0_lands_on_the_board_and_NOT_on_the_spool
+  - text: >-
+      NO REGRESSION in the suite the pin lives in — the 21 tests that go red
+      when TG_BOARD_PATH is exported for a whole run stay green.
+    probe: python3 -m pytest scripts/tests/test_nlm_alarm_gateway.py
+  - text: >-
+      THE ORGAN IS BORN WITH ITS GENES, and the registry still validates.
+    probe: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry
+      apps/organism/organism/organs_registry.yaml
 mutation_evidence: >-
-  Run in this turn, not asserted: reverting both halves of the cure in place
-  (detail back to `f"AI Engine error: {e!s}"`, `except HTTPException: raise`
-  removed) turned the new suite into 17 failed / 3 passed. The three survivors
-  are exactly the three innocence tests that must not depend on the cure (log,
-  422, 200). The file was restored from a `cp` backup, never from `git checkout`.
-pii: none
+  Run in this turn, not asserted, restored from `cp` backups and never from
+  `git checkout --`. (1) Consumer: dropping `state_ts > row_ts` from the
+  cron-fail cure AND deleting the locality guard turned the suite to 2 failed /
+  14 passed — exactly `predates_the_alert` and `another_machine`, the two
+  guards removed, with every innocence test still green. (2) Pin: restoring the
+  bare `glob("*.jsonl")` in `_spooled` turned
+  `test_a_routed_p0_lands_on_the_board_and_NOT_on_the_spool` red and nothing
+  else — the helper had genuinely stopped distinguishing board from spool.
+pii: >-
+  none. The consumer reads dedup-keys, job names and run-state files; error
+  summaries already on the board are not re-emitted anywhere, only counted.
 local_evidence: >-
-  No production read, no client data, no credential touched. Everything in this
-  lane is unit-level: mocked pool, mocked search service, patched LLM gateway.
-  The leak strings in the test are invented fixtures (`kbli_documents_internal_v3`,
-  `qdrant-internal-3.flycast:6333`), not real topology.
+  The 314/286/65/124 figures were computed in this turn by reading
+  ~/.organism/tg_spool/archive-p0.jsonl and ~/.agent/decisions/state/*.last.json
+  over ssh on Pro, and the Mini family counts likewise on Mini — no credential
+  read, no client data, no production write. The live board on both H24 machines
+  currently holds ZERO gateway_routed rows (`grep -c` in this turn), so the
+  first rows this organ drains will be the ones the fleet writes after it lands.
