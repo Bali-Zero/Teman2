@@ -1,103 +1,119 @@
 gear: 2
-task_id: kbli-explorer-copy-burial-20260920
+task_id: vo-a2g-guard-generated
 lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/kbli-explorer-copy-burial-20260920
+branch: agent/air-m5/mouth/vo-a2g-guard-generated
 gate_class: opus
 l_level: L2
+# Floor recomputed WITH this brief staged (scripts/contract_verify.py --head
+# HEAD --json): 2, "brief present" PASS — the brief's own presence is what
+# moves the floor from 1 to 2 (a test-only diff with no brief floors at 1),
+# so gear is declared at the computed floor.
 objective: >-
-  Ledger row `kbli-explorer-copy-line-shares-a-dead-code-as-a-live-listing`
-  (PENDING-ARMS, opened 2026-09-19 by the post-#6847 sweep). The explorer's
-  copy-to-clipboard string is built from `kbliApi.inspect(code)` — the very
-  endpoint `_tombstone_result` tombstones — and it is the one artifact on this
-  surface designed to travel OUT of it, into an email or a chat where none of
-  the surrounding disclosure travels along. MEASURED, not deduced: the
-  production inspect payload for 74100 (read 2026-09-20) carries
-  `licensing_status: NOT_IN_KBLI_2025`, `title: "KBLI 74100 [KBLI 2020 — tidak
-  ada dalam KBLI 2025]"`, `risk_profile: "Not applicable — code absent from
-  KBLI 2025"`, `pma_status: NOT_VERIFIED`, `licenses: []`; run through the
-  pre-cure expression it produces `KBLI 74100 — KBLI 74100 [KBLI 2020 — tidak
-  ada dalam KBLI 2025] | PMA: PMA Not Verified | Risk: Not applicable — code
-  absent from KBLI 2025 | Licenses: Not listed in our data | Sector: N/A`.
-  ONE CORRECTION TO THE ROW: it says the line "asserts a PMA verdict and a risk
-  tier beside it". It does not — both segments decline, which is why this is
-  ledgered as a comprehension defect and not a false statement. What IS wrong:
-  the code is printed twice, the tombstone suffix lands mid-sentence in
-  Indonesian, and "Not listed in our data" reads as a gap in OUR records rather
-  than as a code that cannot be registered at all. Four segments that each
-  decline to answer are a worse artifact to paste into a client's inbox than
-  one sentence that says the code is retired.
+  MANDATE-vo.md, Slice A2-G ("the negation families are GENERATED, and an
+  omission is impossible by construction"), opened after PR-R (#6919,
+  MERGED) shipped the render. Three gates went red on ONE cause — a
+  hand-written regex alternation that omitted a token, three times, each
+  time a different one: "does not change" -> "do not change" -> "don't
+  change" (GATE-A2C-REPORT-6859.md OBS-A2c-1). The diagnosis is the
+  CONSTRUCTION, not the token: three independent hand-written families each
+  re-enumerated the same auxiliary/negation/verb tokens, so a fix to one
+  never propagated to the others. This PR replaces the three EN negation
+  families in the notices guard (engine-adapter.test.ts) with
+  buildNegationPatterns(), built from one AUXILIARIES/NEGATIONS/EFFECT_VERBS
+  list each plus an IRREGULAR_CONTRACTIONS map — a token now lives in
+  exactly one place — and mirrors the same construction for ID
+  (["tidak","tak"], closing OBS-A2c-8). TEST-ONLY: no production file
+  changes, nothing reaches a visitor, not on the release path.
 scope:
   - >-
-    `apps/mouth/src/lib/kbli-licence-summary.ts` — exports
-    `STATUS_RETIRED_KBLI_2020` ("NOT_IN_KBLI_2025") beside the two status
-    tokens this module already owns, so the verdict is read as an ENTITY from a
-    structured field and never as a substring of the title (cicatrix #3).
+    `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts`
+    — AUXILIARIES (11), NEGATIONS (4), EFFECT_VERBS (6),
+    IRREGULAR_CONTRACTIONS (3 keys / 4 forms), ID_NEGATORS (2), ID_VERBS (6);
+    `buildNegationPatterns()` and `buildIdNegationPattern()` replace the
+    three hand-written EN families and the one ID family; a cardinality pin
+    test (G1); two property tests enumerating the full EN 11x4x6 (276
+    synthesised forms) and ID 2x2x6 (24 forms) products against the real
+    scan; three new literal GUILT_FIXTURES rows (won't/matter/tak
+    berpengaruh) tied to the four guilt mutations in the PR body. Every
+    other family, both allowlist entries, all 16 historical fixtures, the
+    innocence test and the iteration pin are unchanged.
   - >-
-    `apps/mouth/src/app/kbli-explorer/components/KBLIInspector.tsx` — new pure
-    `buildInspectorCopyLine(data)` beside the badge helpers it needs: one
-    sentence for a retired code, the existing five-segment line otherwise.
-  - >-
-    `apps/mouth/src/app/kbli-explorer/page.tsx` — `handleCopy` calls the
-    builder; the inline template, and the two imports it alone needed, are
-    gone.
-  - >-
-    Tests — guilt/innocence on the two REAL production payloads (74100 retired,
-    56101 live), including the impostor case that a substring guard fails.
+    `evidence/brief.yml` — this file, PR-G's own (PR-R's own already merged
+    on #6919).
 constraints:
   - >-
-    The RISK half of this row was blocked on the risk doctrine until #6868
-    ruled it (one derivation, `Verify at OSS` as the floor). That cure decided
-    the doctrine, and this PR applies its consequence on the travelling
-    artifact: for a code that cannot be registered there is no risk segment to
-    qualify, so the segment goes rather than gets hedged.
+    No production consequence: only the test file and this brief move. R4
+    (#6919/PR-R) already proved the 16 fixtures RED and 28 GREEN; this PR
+    adds 3 fixtures (total 19 RED, 28 GREEN) and must not move either axis —
+    a PR that generates new families and drops one historical fixture has
+    moved the axis again (MANDATE-vo.md G7).
   - >-
-    The inspector's rendered PANELS are not touched. They sit inside our
-    surface, where the tombstone description is on screen next to them; this
-    row is about the string that leaves it.
+    G1: a token (auxiliary, negation, verb) appears in exactly one list; the
+    cardinalities are pinned by LITERAL (`toHaveLength`), not derived from
+    the lists, because the generator and the property test read the SAME
+    lists and a mutation would otherwise shrink both sides symmetrically and
+    stay green — the exact shape that produced the three reds this slice
+    exists to close.
   - >-
-    Mouth is Vercel: merging does NOT make this live. The git deploy lands
-    STAGED and must be promoted, so the `Bites:` observation is taken on the
-    promoted production URL.
+    G4: over-generation is allowed (e.g. "does never affect" is not English;
+    generating it is harmless); the only fence on breadth is the innocence
+    test — all 28 shipped strings stay GREEN.
+  - >-
+    GATE-A2D-REPORT-6919.md "Input for PR-G": 13 out-of-history evasions,
+    disposed of row by row in the PR body — caught (widened apostrophe
+    class, `tak` negator) or declared as a limit, never widened past what
+    G1/G3/G5 specify, to keep this PR to the one test file.
 acceptance:
   - text: >-
-      GUILT: WHEN the inspect payload carries `licensing_status:
-      NOT_IN_KBLI_2025`, the copied line SHALL contain no `PMA:`, `Risk:`,
-      `Licenses:` or `Sector:` segment, no `[KBLI 2020` fragment, and the code
-      exactly once — and SHALL say the code is retired and cannot be registered
-      on OSS.
+      G1 GUILT: WHEN any of AUXILIARIES/NEGATIONS/EFFECT_VERBS/
+      IRREGULAR_CONTRACTIONS/ID_NEGATORS/ID_VERBS loses an entry SHALL red
+      the pinned cardinality test naming which list, and SHALL red a
+      literal GUILT_FIXTURES row for the same deletion (four mutations
+      proven in the PR body, each on a scratch `cp`, restored and
+      `cmp -s`-verified).
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "drops every segment"
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
+      "pins the negation generator"
   - text: >-
-      THE VERDICT IS AN ENTITY, NOT A SPELLING: WHERE a LIVE record's title
-      merely quotes the tombstone suffix, the line SHALL stay the normal
-      five-segment one. A `title.includes("[KBLI 2020")` guard passes the guilt
-      half and fails this one.
+      G2/G3 PROPERTY TEST: WHEN every one of the full 11x4x6 EN
+      auxiliary/negation/verb combinations is synthesised into a sentence
+      and injected through the real source tables SHALL be reported by the
+      scan, asserted on the whole failure set at once — 276 forms pinned by
+      literal (264 base + 12 from `can`'s two-entry map).
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "structured status"
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
+      "11×4×6 EN negation product"
   - text: >-
-      INNOCENCE: WHERE the code is live (56101), the line SHALL be byte-identical
-      to the expression this cure replaced — same five segments, same order.
+      G5 ID MIRROR: WHEN every one of the full 2x2x6 ID negator/akan/verb
+      combinations is synthesised SHALL be reported by the scan — 24 forms
+      pinned by literal.
     probe: >-
-      npx vitest run
-      src/app/kbli-explorer/components/KBLIInspector.copy-line.test.ts -t
-      "byte-identical"
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
+      "2×2×6 ID negation product"
   - text: >-
-      BOTH MUTATIONS BITE: neutralising the burial branch SHALL red the first
-      test only; replacing the entity check with a title substring SHALL red the
-      second only; innocence SHALL stay green through both.
+      G7 HISTORY HOLDS: PR-R's 16 fixtures stay RED and the 28 shipped
+      strings stay GREEN; 3 new literal fixtures (won't/matter/tak
+      berpengaruh) bring the total to 19 RED, 28 GREEN.
     probe: >-
-      manual mutation, run 2026-09-20 — 1 failed / 2 passed each time, file
-      restored from a `cp` backup and confirmed byte-identical with `cmp -s`
-  - text: NO REGRESSION ON THE EXPLORER OR THE SHARED LIBS.
-    probe: npx vitest run src/app/kbli-explorer src/lib
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
+      "guilt: "
+  - text: NO REGRESSION ON THE VISA ORACLE SUITE OR THE TYPE CHECK.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run --root .
+      'src/app/(visa-oracle)/visa-oracle'
 pii: none
 local_evidence: >-
-  Two reads of the public KBLI inspect endpoint through the PII-free
-  nuzantara-knowledge MCP (codes 74100 and 56101 — a public government
-  classification, not client data). No credentials, no authenticated surface,
-  no client records touched.
+  All 97 tests in engine-adapter.test.ts pass locally, including the
+  cardinality pin, both property tests (276 EN / 24 ID forms) and all 19
+  GUILT_FIXTURES rows; the full visa-oracle suite (44 files, 1099 tests)
+  passes; `tsc --noEmit` is clean. Four mutations were applied to a scratch
+  `cp` of the guard file, each producing the predicted red (pinned length +
+  a literal fixture, or — for the `will` map entry — the fixture alone,
+  since the property test's own fall-through would synthesise "willn't" and
+  stay green), then restored and `cmp -s`-verified byte-identical. No
+  production file changed; no live surface to prove.
