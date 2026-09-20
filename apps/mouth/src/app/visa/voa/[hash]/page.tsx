@@ -576,7 +576,7 @@ function DeleteCheckControl({
             alignSelf: "start",
             padding: "0.6rem 1rem",
             borderRadius: 8,
-            border: "1px solid var(--color-border-subtle)",
+            border: "1px solid var(--tx-tertiary)",
             background: "none",
             color: "inherit",
             fontWeight: 600,
@@ -620,7 +620,7 @@ function DeleteCheckControl({
           style={{
             padding: "0.6rem 1rem",
             borderRadius: 8,
-            border: "1px solid var(--color-border-subtle)",
+            border: "1px solid var(--tx-tertiary)",
             background: "none",
             color: "inherit",
             cursor: isDeleting ? "default" : "pointer",

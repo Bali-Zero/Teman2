@@ -63,10 +63,20 @@ const labelStyle: React.CSSProperties = {
   fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
 };
 
+/**
+ * MEASURED ON PRODUCTION, and the number is why this is `--tx-tertiary` and
+ * not the subtle divider token it used to be. The boundary read
+ * `--color-border-subtle` at 1.42:1 against the field's own fill, under SC
+ * 1.4.11's 3:1 for the boundary of a user-interface component — and the fill
+ * itself (`--surface-raised`) is only 1.09:1 against the page ground, so the
+ * 1px rule was the ONLY thing making these look like fields at all. It now
+ * measures 4.18:1. The same swap, for the same reason, cured the verdict
+ * screen's entry field (PR 6912).
+ */
 const fieldStyle: React.CSSProperties = {
   padding: "0.6rem 0.7rem",
   borderRadius: 4,
-  border: "1px solid var(--color-border-subtle)",
+  border: "1px solid var(--tx-tertiary)",
   background: "var(--surface-raised)",
   color: "var(--text-primary)",
   fontSize: "1rem",
