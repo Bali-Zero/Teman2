@@ -319,13 +319,16 @@ export default function VoaResultPage({
           ariaLabel={`Approved — ${formatIDR(data.price_idr)}`}
         />
       </div>
+      {/* ORDER IS THE POINT, and it was backwards. The step that OPENS the
+          application used to render BELOW "delete this check" — a destructive
+          control ahead of the only forward path on the screen. Reachable only
+          once `data` is set, which itself requires `hash` (see the two effects
+          above), so this is never actually empty at render time. */}
+      <MagicLinkRequestForm resultId={hash ?? ""} />
       <DeleteCheckControl
         resultId={hash ?? ""}
         onDeleted={() => setDeleted(true)}
       />
-      {/* Reachable only once `data` is set, which itself requires `hash` — see the
-          two effects above — so this is never actually empty at render time. */}
-      <MagicLinkRequestForm resultId={hash ?? ""} />
       <AppWhatsAppCTA
         source="garuda_voa"
         headline="Prefer a human to walk you through it?"
@@ -358,6 +361,27 @@ export default function VoaResultPage({
  * same "check your email" copy on success — the endpoint itself is
  * non-enumerating (202 regardless of whether the email matched anything),
  * and this form must not create a second oracle on top of that.
+ *
+ * THIS IS THE DOOR, and it did not look like one. `/visa/voa/upload/{id}` is
+ * behind the `garuda_session` cookie that ONLY the magic-link exchange sets
+ * (`upload/api-client.ts`'s header; `auth/exchange/route.ts` redirects there
+ * after confirming the cookie landed). A direct link from this screen to the
+ * upload page would put an unauthenticated visitor on a screen whose first
+ * request fails — which is why the answer here is copy and hierarchy, not a
+ * new link. Two things were measured before this was rewritten: the screen
+ * carried exactly ONE heading (its own h1), so the entry to the application
+ * was a bare `<label>`; and the email field's boundary read
+ * `--color-border-subtle` at 1.40:1 against its own fill, under SC 1.4.11's
+ * 3:1 for the boundary of an interactive control. Both cures live in
+ * `voa-r19.css`'s `.voa-entry` block, with the arithmetic in its docblock.
+ *
+ * THE SENT-STATE COPY NAMES THE CONFIRMATION, and must keep naming it.
+ * `auth/continue/page.tsx` is, in its own words, "the one page of the
+ * magic-link flow a human sees": it shows WHOSE application the link opens
+ * and offers a Continue button, and it exists because a generic Continue
+ * behind an unbound landing GET was login CSRF (closed 2026-08-29). A
+ * sentence promising the link goes "straight to the passport upload" sells a
+ * flow one step shorter than the one the security fix deliberately built.
  */
 function MagicLinkRequestForm({ resultId }: { resultId: string }) {
   const tracker = useFunnelApp("visa_voa", { trackView: false });
@@ -400,65 +424,56 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
 
   if (status === "sent") {
     return (
-      <p role="status" style={{ margin: 0, lineHeight: 1.6 }}>
-        Check your email for a link to continue — it&apos;s valid for 15
-        minutes.
-      </p>
+      <section aria-labelledby="voa-entry-heading" className="voa-entry">
+        <h2 className="voa-entry__heading" id="voa-entry-heading">
+          Start your application
+        </h2>
+        <p className="voa-entry__status" role="status">
+          Check your email for a link to continue — it&apos;s valid for 15
+          minutes. Opening it asks you to confirm which application it unlocks,
+          and then takes you to the passport upload.
+        </p>
+      </section>
     );
   }
 
   return (
-    <form
-      onSubmit={submit}
-      style={{ display: "grid", gap: "var(--space-2, 0.6rem)", maxWidth: 360 }}
-    >
-      <label htmlFor="voa-email" style={{ fontSize: "0.95rem" }}>
-        Continue by email — we&apos;ll send a one-time link, no password.
-      </label>
-      <input
-        id="voa-email"
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@example.com"
-        style={{
-          padding: "0.6rem 0.7rem",
-          borderRadius: 4,
-          border: "1px solid var(--color-border-subtle)",
-          background: "var(--surface-raised)",
-          color: "var(--text-primary)",
-          fontSize: "1rem",
-        }}
-      />
-      <button
-        type="submit"
-        disabled={status === "sending"}
-        style={{
-          padding: "0.9rem 1.4rem",
-          borderRadius: 8,
-          border: "none",
-          ...VOA_PRIMARY_ACTION_STYLE,
-          fontWeight: 600,
-          cursor: status === "sending" ? "default" : "pointer",
-        }}
-      >
-        {status === "sending" ? "Sending…" : "Email me a link →"}
-      </button>
-      {status === "error" ? (
-        <p
-          role="alert"
-          style={{
-            margin: 0,
-            color: "var(--tx-pure)",
-            borderLeft: "3px solid var(--bz-border)",
-            paddingLeft: "0.75rem",
-          }}
+    <section aria-labelledby="voa-entry-heading" className="voa-entry">
+      <h2 className="voa-entry__heading" id="voa-entry-heading">
+        Start your application
+      </h2>
+      <p className="voa-entry__body">
+        We email you a one-time link — no password. It opens your upload page
+        and expires in 15 minutes, so send it to an inbox only you read.
+      </p>
+      <form className="voa-entry__form" onSubmit={submit}>
+        <label className="voa-entry__label" htmlFor="voa-email">
+          Your email
+        </label>
+        <input
+          className="voa-entry__input"
+          id="voa-email"
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+          type="email"
+          value={email}
+        />
+        <button
+          className="voa-entry__submit"
+          disabled={status === "sending"}
+          style={VOA_PRIMARY_ACTION_STYLE}
+          type="submit"
         >
-          Something went wrong. Please try again.
-        </p>
-      ) : null}
-    </form>
+          {status === "sending" ? "Sending…" : "Email me the link →"}
+        </button>
+        {status === "error" ? (
+          <p className="voa-entry__error" role="alert">
+            Something went wrong. Please try again.
+          </p>
+        ) : null}
+      </form>
+    </section>
   );
 }
 

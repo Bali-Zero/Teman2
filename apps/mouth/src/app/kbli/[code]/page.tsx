@@ -12,17 +12,13 @@ import {
   getGoldContent,
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
-import { formatTimeframe, riskLabelEn } from "@/lib/kbli-derive";
 import { baliBlockClause, isNationalClosure } from "@/lib/kbli-bali-block";
 import {
   isLicensingVerificationPending,
   isPmaVerdictVerified,
 } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
-import {
-  formatPmaOwnership,
-  isSourcedBaliClosure,
-} from "@/lib/kbli-pma-disclosure";
+import { isSourcedBaliClosure } from "@/lib/kbli-pma-disclosure";
 import {
   discloseKbliBaliReason,
   discloseKbliEditorial,
@@ -44,6 +40,7 @@ import {
   KBLIFaqJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
+import { LicensingQuickFacts } from "@/components/kbli/LicensingQuickFacts";
 import { KBLIBaliContext } from "@/components/kbli/KBLIBaliContext";
 import { KBLIEditorial } from "@/components/kbli/KBLIEditorial";
 import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
@@ -939,76 +936,7 @@ export default async function KBLICodePage({
                     />
                   </div>
 
-                  <section className="py-10">
-                    <div
-                      className="overflow-hidden rounded-xl border border-[var(--border)]"
-                      style={{ background: "var(--kbli-bg-elevated)" }}
-                    >
-                      <div
-                        className="grid grid-cols-2 gap-px sm:grid-cols-4"
-                        style={{ background: "var(--kbli-border)" }}
-                      >
-                        <div
-                          className="flex flex-col gap-1 p-4"
-                          style={{ background: "var(--kbli-bg-elevated)" }}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                            Risk Level
-                          </span>
-                          <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {riskLabelEn(kbli.licensing[0].riskCategory) ??
-                              kbli.licensing[0].riskCategory}
-                          </span>
-                        </div>
-                        <div
-                          className="flex flex-col gap-1 p-4"
-                          style={{ background: "var(--kbli-bg-elevated)" }}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                            License Type
-                          </span>
-                          <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.licensing[0].licenseType || "NIB"}
-                          </span>
-                        </div>
-                        <div
-                          className="flex flex-col gap-1 p-4"
-                          style={{ background: "var(--kbli-bg-elevated)" }}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                            Foreign Ownership
-                          </span>
-                          <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {pmaVerdictVerified
-                              ? formatPmaOwnership(kbli.pma)
-                              : "Not verified — confirm in OSS"}
-                          </span>
-                        </div>
-                        <div
-                          className="flex flex-col gap-1 p-4"
-                          style={{ background: "var(--kbli-bg-elevated)" }}
-                        >
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-                            Processing
-                          </span>
-                          <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {formatTimeframe(kbli.licensing[0].timeframe) ??
-                              "Through OSS"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    {/* One grid-level qualifier instead of per-cell noise:
-                        risk, license AND processing above all come from the
-                        same unverified rows (Codex gate round 5). */}
-                    {isLicensingVerificationPending(kbli) && (
-                      <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">
-                        ⏳ The licensing facts above (risk, license, processing)
-                        await KBLI-2025 crosswalk verification — see Sources
-                        &amp; Verification below.
-                      </p>
-                    )}
-                  </section>
+                  <LicensingQuickFacts kbli={kbli} />
                 </>
               )}
 

@@ -300,8 +300,11 @@ describe("buildKbliFaq", () => {
     // Until 2026-09-11 real codes served rows whose provenance awaited
     // crosswalk adjudication (5 on the 2026-08-15 canonical). The September
     // L2 re-ingestion (spec 2026-09-11 §7) gave the last three undisputed ones
-    // (93111, 93112, 93119) an OSS-native scope, and the two left (93114,
-    // 93191) are quarantined, so they read as detached, not pending. The
+    // (93111, 93112, 93119) an OSS-native scope, and of the two left only
+    // 93191 reads as detached — 93114 still reads `pending_crosswalk` with 2
+    // rows served (re-measured 2026-09-20 through `kbli-data.ts`, where it is
+    // the ONLY such record in the 1,559-code canonical; the earlier note here
+    // said both were quarantined). The
     // guilt subject is therefore a real OSS-native record with its licensing
     // provenance set to pending — the builder reads only that status.
     const nativeWithRows = getAllCodes().find(

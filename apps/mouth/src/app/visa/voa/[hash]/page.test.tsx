@@ -158,7 +158,7 @@ describe("VoaResultPage — ACCEPT", () => {
     expect(screen.getByTestId("bz-stamp")).toHaveTextContent(/790/);
     expect(screen.getByText(/Ngurah Rai/i)).toBeInTheDocument();
     // Magic-link email capture is present on the accepted path.
-    expect(screen.getByLabelText(/continue by email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/your email/i)).toBeInTheDocument();
     expect(trackerMocks.resultViewed).toHaveBeenCalledWith("opaque-test-hash");
   });
 
@@ -182,6 +182,46 @@ describe("VoaResultPage — ACCEPT", () => {
     );
   });
 
+  /**
+   * `auth/continue/page.tsx` is "the one page of the magic-link flow a human
+   * sees": it names whose application the link opens and asks for a Continue,
+   * and it is there because a generic Continue behind an unbound landing GET
+   * was login CSRF (closed 2026-08-29). The sent-state copy shipped saying the
+   * link takes you "straight to the passport upload" — one step shorter than
+   * the flow that security fix deliberately built.
+   */
+  it("the sent state names the confirmation step, never promises a straight line", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        verdict: "ACCEPT",
+        reason_codes: [],
+        price_idr: 790000,
+      }),
+    });
+    fetchMock.mockResolvedValueOnce({ status: 202 });
+    renderWithHash();
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-stamp")).toBeInTheDocument(),
+    );
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByLabelText(/your email/i),
+      "customer@example.com",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
+
+    const sent = await screen.findByRole("status");
+    expect(sent.textContent).toMatch(/confirm which application/i);
+    // GUILTY: the exact shape that shipped, and any restatement of it.
+    expect(sent.textContent).not.toMatch(
+      /straight to|directly to|immediately opens/i,
+    );
+  });
+
   it("magic-link request fires emailSubscribed on 202, never the email address", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -199,10 +239,12 @@ describe("VoaResultPage — ACCEPT", () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByLabelText(/continue by email/i),
+      screen.getByLabelText(/your email/i),
       "customer@example.com",
     );
-    await user.click(screen.getByRole("button", { name: /email me a link/i }));
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
 
     await waitFor(() =>
       expect(trackerMocks.emailSubscribed).toHaveBeenCalledWith(
@@ -236,10 +278,12 @@ describe("VoaResultPage — ACCEPT", () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByLabelText(/continue by email/i),
+      screen.getByLabelText(/your email/i),
       "customer@example.com",
     );
-    await user.click(screen.getByRole("button", { name: /email me a link/i }));
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
 
     await waitFor(() =>
       expect(trackerMocks.formSubmitFailed).toHaveBeenCalledWith(

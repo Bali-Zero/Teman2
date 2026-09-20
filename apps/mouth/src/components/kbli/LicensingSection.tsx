@@ -16,7 +16,9 @@ import {
   TRUNCATION_NOTE,
 } from "@/lib/kbli-obligation-truncation";
 import {
+  UNVERIFIED_LICENSING_FACT,
   isLicensingVerificationPending,
+  isLicensingVerifiedForBareClaim,
   isPmaVerdictVerified,
   licensingContentInheritedFrom,
 } from "@/lib/kbli-provenance";
@@ -201,6 +203,7 @@ function KeyFacts({
   pmaVerified,
   notClassifiable = false,
   verificationPending = false,
+  rowsVerified,
 }: {
   licensing: KBLILicenseByScale[];
   pma: KBLIPmaInfo;
@@ -210,10 +213,17 @@ function KeyFacts({
   notClassifiable?: boolean;
   /** rows served but not verified against a KBLI-2025-native OSS source */
   verificationPending?: boolean;
+  /**
+   * `isLicensingVerifiedForBareClaim` — the POSITIVE gate, required rather than
+   * defaulted: a record whose provenance block is absent or unreadable must
+   * withhold the value, and a default of `true` here would be the fail-open
+   * shape this cure exists to remove.
+   */
+  rowsVerified: boolean;
 }) {
   const nationalOwnership = pmaVerified
     ? formatPmaOwnership(pma)
-    : "Not verified — confirm in OSS";
+    : UNVERIFIED_LICENSING_FACT;
   const ownershipValue =
     pmaVerified && baliBlocked
       ? `National: ${nationalOwnership} · blocked in Bali`
@@ -285,22 +295,38 @@ function KeyFacts({
     );
   }
 
+  // A cell states a licensing value only when the record's own provenance says
+  // the rows are OSS-RBA KBLI-2025 native. Otherwise it carries the declared
+  // gap — the treatment Foreign Ownership has always had two cells to the
+  // right. This REVERSES "one grid-level qualifier instead of per-cell noise"
+  // (Codex gate round 5): that trade assumed the qualifier would be noisy, and
+  // the census says it fires on 3 of the 1,342 codes that serve rows, of which
+  // one (49213) prints a full-weight tier on a page that separately states the
+  // rows were removed for want of a verifiable source.
   const facts: { label: string; value: string; accent?: string }[] = [
     {
       label: "Risk Level",
-      value: `${riskEn(primary.riskCategory)} (${primary.riskCategory})`,
+      value: rowsVerified
+        ? `${riskEn(primary.riskCategory)} (${primary.riskCategory})`
+        : UNVERIFIED_LICENSING_FACT,
+      accent: rowsVerified ? undefined : "var(--foreground-muted)",
     },
     {
       label: "License Type",
-      value: primary.licenseType,
+      value: rowsVerified ? primary.licenseType : UNVERIFIED_LICENSING_FACT,
+      accent: rowsVerified ? undefined : "var(--foreground-muted)",
     },
     {
       label: "Processing",
-      value: formatTimeframe(primary.timeframe) ?? "Through OSS",
+      value: rowsVerified
+        ? (formatTimeframe(primary.timeframe) ?? "Through OSS")
+        : UNVERIFIED_LICENSING_FACT,
       // green accent for instant issuance (raw "Otomatis" → formatted "Instant")
-      accent: primary.timeframe?.toLowerCase().includes("otomatis")
-        ? "var(--kbli-pma-open)"
-        : undefined,
+      accent: !rowsVerified
+        ? "var(--foreground-muted)"
+        : primary.timeframe?.toLowerCase().includes("otomatis")
+          ? "var(--kbli-pma-open)"
+          : undefined,
     },
     {
       label: "Foreign Ownership",
@@ -350,14 +376,17 @@ function KeyFacts({
           </div>
         ))}
       </div>
-      {/* One grid-level qualifier instead of per-cell noise: risk, license
-          AND processing above all come from the same unverified rows
-          (Codex gate round 5). */}
-      {verificationPending && (
+      {/* The values are WITHHELD above, not footnoted — so this line says
+          where they went and why, in the two shapes the dataset
+          distinguishes: a pending crosswalk, or rows detached by a
+          code-number collision. */}
+      {!rowsVerified && (
         <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">
-          ⏳ The licensing facts above (risk, license, processing) await
-          KBLI-2025 crosswalk verification — see Sources &amp; Verification
-          below.
+          {notClassifiable
+            ? "⚠ This code's licensing rows were detached after a code-number collision: their source could not be verified as applying to this activity. See Regulatory Divergence above."
+            : verificationPending
+              ? "⏳ We hold PP 28/2025 licensing rows for this code, but their KBLI-2025 crosswalk is not verified — they are listed, unverified, under PP28/2025 Licensing Data below."
+              : "⏳ The provenance of this code's licensing rows is not recorded — see Sources & Verification below."}
         </p>
       )}
     </div>
@@ -1284,6 +1313,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
         pmaVerified={pmaVerified}
         notClassifiable={kbli.provenance?.state === "not_classifiable"}
         verificationPending={isLicensingVerificationPending(kbli)}
+        rowsVerified={isLicensingVerifiedForBareClaim(kbli)}
       />
 
       {/* ── PP28 RAW DATA (collapsible) ── */}
