@@ -120,3 +120,22 @@ are captured in temporary files and at most 4 KiB per stream is read into relay
 memory. Missing runtime dependencies fail closed. `radar health` reports the
 local Termux/SSHD/wake-lock/dependency state only; end-to-end Mac-to-phone
 reachability is proven by the source relay receipt, not by that local command.
+
+## Recovering after a Termux reinstall
+
+A Termux reinstall wipes the whole app home, not just `authorized_keys`:
+`~/.local` (receiver, `radar`, boot hook) and `jq` are gone, and `sshd`
+regenerates host keys, so the pin on Pro and Mini no longer matches. Symptom:
+`SSH transport timed out`, then `ssh_rc=255 security/configuration failure`.
+
+1. `pkg install jq`.
+2. Copy `infra/radar/iqoo/` to the phone, `./install.sh` until `RADAR_INSTALL_OK`.
+3. Re-append to `~/.ssh/authorized_keys` the two `restrict` lines with the forced
+   command, `chmod 600`, preserving any administrator line.
+4. Re-pin the host keys on both source nodes: `ssh-keyscan -p 8022 -t
+   rsa,ecdsa,ed25519` into `known_hosts_iqoo_radar` at `0600`. Without this step
+   the relay stays red even with the right keys.
+5. Run `~/.termux/boot/10-nuzantara-radar` for the wake-lock and `sshd`.
+
+The relay delivers at most 100 capsules per run and holds an exclusive lock: while
+one node drains the backlog the other gets `RADAR_BUSY` (`ssh_rc=75`): not a fault.
