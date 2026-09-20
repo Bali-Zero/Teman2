@@ -116,7 +116,17 @@ def _healer_pidfile(family: str) -> Path | None:
 
 
 def _this_machine() -> str:
-    return os.environ.get("BOARD_CONSUMER_MACHINE", socket.gethostname())
+    """The machine name EXACTLY as the producer writes it.
+
+    tg_notify.py stamps `socket.gethostname().split(".")[0]`. A consumer that
+    compares against the unsplit name matches only while macOS happens to
+    return a bare hostname: the day it returns `Nuzantara.local` instead — a
+    reboot, a network change, HostName unset — every row reads as foreign and
+    this organ runs hourly, heartbeats `ok` and closes nothing. Green and
+    inert is the failure this file exists to drain, so the normalisation is
+    copied from the producer rather than re-invented.
+    """
+    return os.environ.get("BOARD_CONSUMER_MACHINE", socket.gethostname()).split(".")[0]
 
 
 # ------------------------------------------------------------------ cures
