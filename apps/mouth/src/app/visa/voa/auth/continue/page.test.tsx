@@ -29,15 +29,23 @@ const notFoundMock = vi.hoisted(() =>
 );
 const cookieStore = vi.hoisted(() => ({
   value: undefined as string | undefined,
+  /** The journey locale cookie — the only language channel that reaches a
+   *  SERVER component opened from an email. */
+  lang: undefined as string | undefined,
 }));
 
 vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: (name: string) =>
-      name === "garuda_magic_pending" && cookieStore.value !== undefined
-        ? { name, value: cookieStore.value }
-        : undefined,
+    get: (name: string) => {
+      if (name === "garuda_magic_pending" && cookieStore.value !== undefined) {
+        return { name, value: cookieStore.value };
+      }
+      if (name === "bz_voa_lang" && cookieStore.lang !== undefined) {
+        return { name, value: cookieStore.lang };
+      }
+      return undefined;
+    },
   }),
 }));
 
@@ -56,6 +64,7 @@ describe("/visa/voa/auth/continue", () => {
     notFoundMock.mockClear();
     process.env.GARUDA_PUBLIC_ENABLED = "true";
     cookieStore.value = `${RESULT_ID}.${TOKEN}`;
+    cookieStore.lang = undefined;
     // Default: the preview lookup succeeds. Tests for the failure path
     // override this per-test.
     vi.stubGlobal(
@@ -220,5 +229,91 @@ describe("/visa/voa/auth/continue", () => {
     expect(previewFailure.container.innerHTML).toBe(
       cookieFailure.container.innerHTML,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// THE HOP THIS PAGE EXISTS ON THE FAR SIDE OF.
+//
+// The funnel carries `?lang=id` across `router.push` in sessionStorage. This
+// screen is reached from an EMAIL — a new tab, where that carry is gone — and
+// it is a SERVER component, so browser storage is unreadable from here even in
+// principle. The journey cookie is the only channel left, and these are the
+// tests that say so out loud.
+// ---------------------------------------------------------------------------
+describe("/visa/voa/auth/continue — the language survives the email", () => {
+  const original = process.env.GARUDA_PUBLIC_ENABLED;
+
+  beforeEach(() => {
+    notFoundMock.mockClear();
+    process.env.GARUDA_PUBLIC_ENABLED = "true";
+    cookieStore.value = `${RESULT_ID}.${TOKEN}`;
+    cookieStore.lang = undefined;
+    (fetch as Mock).mockReset();
+    (fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ masked_email: MASKED_EMAIL }),
+    });
+  });
+
+  afterEach(() => {
+    process.env.GARUDA_PUBLIC_ENABLED = original;
+  });
+
+  it("speaks Indonesian when the journey cookie says so, with NO query string", async () => {
+    cookieStore.lang = "id";
+    render(await renderPage({}));
+    expect(screen.getByText("Lanjutkan permohonan Anda")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Lanjutkan" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Continue your application")).toBeNull();
+  });
+
+  it("FALSIFICATION: no cookie, no query — the door is English", async () => {
+    render(await renderPage({}));
+    expect(screen.getByText("Continue your application")).toBeInTheDocument();
+    expect(screen.queryByText("Lanjutkan permohonan Anda")).toBeNull();
+  });
+
+  it("an explicit ?lang= on this url outranks the cookie", async () => {
+    cookieStore.lang = "id";
+    render(await renderPage({ lang: "en" }));
+    expect(screen.getByText("Continue your application")).toBeInTheDocument();
+  });
+
+  it("a junk cookie is an English visitor, not an error", async () => {
+    cookieStore.lang = "klingon";
+    render(await renderPage({}));
+    expect(screen.getByText("Continue your application")).toBeInTheDocument();
+    expect(notFoundMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The masked address is the anti-CSRF affordance of this screen ("if that
+   * is not you, close this page"), so it must keep its emphasis in BOTH
+   * languages — the sentence is split on the `{email}` placeholder rather
+   * than flattened, and this is the test that would catch a flattening.
+   */
+  it("the masked address keeps its emphasis in both languages", async () => {
+    for (const lang of ["en", "id"]) {
+      cookieStore.lang = lang;
+      const { container, unmount } = render(await renderPage({}));
+      const strong = container.querySelector("strong");
+      expect(strong?.textContent, lang).toBe(MASKED_EMAIL);
+      unmount();
+    }
+  });
+
+  it("the expired-link notice is Indonesian too", async () => {
+    cookieStore.lang = "id";
+    cookieStore.value = undefined; // no token in flight → InvalidLinkNotice
+    render(await renderPage({}));
+    expect(
+      screen.getByText("Tautan ini sudah dipakai atau sudah kedaluwarsa."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Kirimkan tautan baru" }),
+    ).toBeInTheDocument();
   });
 });
