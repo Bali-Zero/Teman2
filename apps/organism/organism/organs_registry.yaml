@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 0c522fbd51de19405a03841470c7334d586f01a05f1bf9f4bafa1121712c804c # pragma: allowlist secret
+checksum: 172801aa7ade39b67f7c8d0a000eb039d4c78680c1827e25cd8fedadba89cbd3 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3069,5 +3069,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.mailbox_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.board_seat_consumer
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: infra/launchagents/wrappers/pro-board-seat-consumer.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.board-seat-consumer
+  severity_on_silence: warning
+  notes: 'drain the gateway-routed rows a seat can close (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.board_seat_consumer.json
     timestamp_field: ts
     status_field: status
