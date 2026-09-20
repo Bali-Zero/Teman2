@@ -521,7 +521,11 @@ def test_concurrent_reader_always_parses_during_repeated_large_rewrites(tmp_path
     reader_thread = threading.Thread(target=_reader)
     reader_thread.start()
 
-    size = 4_000_000
+    # 40 MB: measured empirically against the M4 mutation (plain chunked write, no
+    # temp+os.replace) -- 4 MB was NOT reliably red (0/5 runs caught a torn read on this
+    # host/filesystem, APFS serialises small single-buffer writes against concurrent
+    # readers closely enough to hide the race); 40 MB is red 5/5.
+    size = 40_000_000
     iterations = 50
     try:
         for i in range(iterations):
