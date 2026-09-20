@@ -1,0 +1,84 @@
+task_id: vo-b2j-enumerate-live
+lane: backend-rag
+machine: air-m5
+base_sha: efbce8059a577d1fb0a8f3c36d3d574fd74fb5c3 # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> deterministic
+  floor 2, brief now present). Net churn over the two CODE files -- enumerate_live.py +
+  test_enumerate_live.py, both NEW files on this branch -- is 1778 insertions / 0 deletions
+  (`git diff --stat <base_sha>..<final-head> -- apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py`),
+  above SIZE_GEAR2_THRESHOLD (400, `scripts/evidence_pack_lint.py`) but below
+  SIZE_GEAR3_THRESHOLD (1828, same file) -- this is exactly the split R-SPLIT-B2 engineered:
+  the lock module landed separately (B2''-a, #6920) so this runner-only PR stays under the
+  Gear-3 line without shaving anything.
+
+objective: >-
+  Conductor ruling R-SPLIT-B2 + the owner decision of 2026-09-20 ("B2-1") authorize ONE more
+  round of Slice B2''-b, the live runner, on a fresh origin/main that contains B2''-a's merge
+  (report_lock.py, PR #6920, merge commit 615a5c920377c6947fca1ee9f88edeaddc927ff7). The raw
+  material (closed PR #6871, head c6f4e5766b298440eaea036bad2a0b27569776d3) carried its own
+  O_EXCL/stale-lock implementation; per R-FLOCK's amendment to this slice, that implementation
+  is deleted from the runner and replaced by an import of report_lock's kernel-held flock
+  (ReportLock/ReportLockError/atomic_write_json). ReportLockError is a RuntimeError, not this
+  module's EnumerateLiveError, so it is caught explicitly and exits 2 with one line, zero
+  requests sent -- the lock is acquired before the driver token is loaded and before any
+  network call. --break-stale-lock and its plumbing are dropped: a kernel-held lock has no
+  stale state to break. On top of the flock migration, this round cures OBS-B (the two request
+  counters were assigned once, after the loop, so an interrupted run showed 0 on disk even
+  after real requests were sent -- V1: assigned inside `_flush()` on every write instead) and
+  OBS-E (`report_version` was written but never read on resume -- V2: a mismatch now refuses
+  before any network call). V3/V4 restate the manifest's real provenance (the B1'' emitter's
+  output, not a checked-in file) and report_lock's own declared limits in this module's
+  docstring, since the runner now depends on that module's guarantees.
+
+scope:
+  - "apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py (new file) -- imports ReportLock/ReportLockError/atomic_write_json from report_lock instead of carrying a local O_EXCL lock class, _pid_alive helper, and _write_report function; drops --break-stale-lock end to end; catches ReportLockError explicitly in run(); V1 moves the two requests_used_* assignments into _flush(); V2 reads report_version on resume and refuses a mismatch before any network call; V3/V4 docstring fixes."
+  - "apps/backend-rag/backend/tests/scripts/visa_engine/test_enumerate_live.py (new file) -- test_stale_lock_is_refused_without_break_stale_flag and test_break_stale_lock_removes_it_and_proceeds deleted (the state they tested no longer exists); test_second_runner_on_a_live_locked_report_refuses_with_one_line_never_a_traceback now holds a REAL ReportLock in-process instead of faking lock-file content (report_lock's own invariant: content is never consulted); test_lock_is_released_after_a_run_so_a_second_run_can_proceed's assertion corrected -- the lockfile is never unlinked by report_lock's design, only the flock is released; two new tests (test_report_lock_error_is_caught_before_evaluate_or_health, test_report_version_mismatch_refuses_before_any_network_call) and one new real-subprocess SIGKILL test (test_v1_counters_are_flushed_before_sigkill_and_accumulate_on_resume) against a counting stub server, proving V1's counters across a kill + resume."
+  - "This brief."
+
+constraints:
+  - >-
+    report_lock.py and its test are untouched by this PR -- byte-identical to what B2''-a
+    merged. The runner never carries its own lock or atomic-write logic again.
+  - >-
+    No `--as-real` escape hatch exists anywhere in this module; every live request is labelled
+    traffic_source=synthetic_driver, unconfigurable. The driver token is read from a file,
+    chmod-checked, never logged, never present in the report.
+  - >-
+    Merging this deploys the backend (apps/backend-rag/**), but nothing in the deployed image
+    imports this script -- it is operator-invoked CLI tooling, never reached by a live request.
+  - >-
+    This builder does not arm. `gh pr merge` is never run from this seat; the PR opens with
+    auto-merge NOT armed and stays that way until a fresh gate's PASS.
+
+acceptance:
+  - "WHEN --max-requests is omitted THEN the run refuses before any network call. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_missing_max_requests_refuses_without_network_call"
+  - "WHEN --rate-per-minute is at or above the router's 30/min ceiling THEN validate_budget refuses. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_rate_per_minute_at_ceiling_refuses"
+  - "WHEN --max-consecutive-harness-reds is 0 THEN validate_budget refuses. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_max_consecutive_harness_reds_must_be_at_least_one"
+  - "WHEN --max-consecutive-harness-reds exceeds --max-requests THEN validate_budget refuses. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_max_consecutive_harness_reds_cannot_exceed_max_requests"
+  - "WHEN --dry-run is passed THEN the plan prints and no network call is made. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_dry_run_validates_and_prints_plan_without_network_call"
+  - "WHEN a walk gets a 200 with a decision body THEN it is recorded as an engine_verdict with the correct shape, and requests_used_this_run/total are 1. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_successful_walk_is_recorded_as_engine_verdict"
+  - "WHEN the engine answers 401 THEN the run stops after exactly ONE request, names the token FILE (never the value). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_401_circuit_breaker_stops_after_exactly_one_request"
+  - "WHEN the engine answers 403 THEN the same immediate-stop rule applies. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_403_circuit_breaker_also_stops_after_one_request"
+  - "WHEN N consecutive harness reds occur THEN the breaker trips at exactly N. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_consecutive_harness_reds_trip_the_breaker"
+  - "WHEN an engine verdict lands between harness reds THEN the consecutive counter resets and the breaker never trips early. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_engine_verdict_resets_the_consecutive_counter"
+  - "WHEN the engine answers 429 THEN it is a harness red (never an engine verdict) and the run stops on its own rule, charging every retry against the budget. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_429_is_a_harness_red_never_an_engine_verdict_and_stops_the_run"
+  - "WHEN a connection error occurs THEN it retries with backoff and eventually succeeds. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_connection_error_retries_with_backoff_then_succeeds"
+  - "WHEN a walk's latest result is a harness red THEN resuming re-attempts it and keeps the full attempts_history (W2). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_harness_red_is_reattempted_on_resume_and_history_is_kept"
+  - "WHEN an existing report's manifest_sha256 does not match the current manifest THEN resume refuses (digest check, independent of the version check -- the report carries a CURRENT report_version so only the digest mismatch fires). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_manifest_report_hash_mismatch_refuses_to_resume"
+  - "WHEN an existing report's report_version is missing or does not match REPORT_VERSION THEN resume refuses with ONE line naming the file and both versions, BEFORE any evaluate or health call (V2 guilt test). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_report_version_mismatch_refuses_before_any_network_call"
+  - "WHEN a second runner starts while a report is locked by a live process THEN it refuses with one line naming the lock, never a traceback, and never writes the report. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_second_runner_on_a_live_locked_report_refuses_with_one_line_never_a_traceback"
+  - "WHEN report_lock.ReportLockError is raised by a live lock THEN it is caught explicitly (exit 2) BEFORE the driver token is loaded and BEFORE any evaluate/health call -- zero requests of either kind. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_report_lock_error_is_caught_before_evaluate_or_health"
+  - "WHEN a run completes THEN the lock is released and a second, sequential run against the same (now-clean) report proceeds without error. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_lock_is_released_after_a_run_so_a_second_run_can_proceed"
+  - "WHEN a REAL subprocess is SIGKILLed mid-sweep against a counting stub server THEN the on-disk requests_used_this_run matches the server's own evaluate count at kill time (within one in-flight request), is never 0 once a walk is recorded, and resuming makes requests_used_total match the server's cumulative count across both runs (V1 guilt test, real process). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_v1_counters_are_flushed_before_sigkill_and_accumulate_on_resume"
+  - "WHEN --max-requests is exhausted mid-sweep THEN the remaining walks stay unrecorded and the counters reflect exactly what was spent. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_max_requests_exhausted_leaves_remaining_walks_unrecorded"
+  - "WHEN a report is resumed across two runs THEN requests_used_total accumulates while requests_used_this_run stays per-run. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_requests_used_total_accumulates_across_resumes_while_this_run_is_per_run"
+  - "WHERE the two /health GETs happen THEN they are declared outside --max-requests everywhere (report header + summary). probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_health_probes_declared_outside_budget_everywhere"
+  - "WHERE the driver token is used THEN it never appears in the report file or in any log line. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_driver_token_never_appears_in_report_or_log"
+  - "WHERE the summary is built THEN engine_verdicts and harness_reds stay two separate tallies, never added together. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py::test_summary_never_adds_engine_verdicts_and_harness_reds_together"
+  - "NO REGRESSION: the full file plus report_lock's own suite are green, and ruff is clean. probe: pytest backend/tests/scripts/visa_engine/test_enumerate_live.py backend/tests/scripts/visa_engine/test_report_lock.py && ruff check backend/scripts/visa_engine/enumerate_live.py backend/tests/scripts/visa_engine/test_enumerate_live.py"
+
+pii_scan: clean
