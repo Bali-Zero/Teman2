@@ -153,7 +153,7 @@ evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/reviews/**
 # is the format the pack's council_run rule reads. Inserted beside its siblings
 # rather than at this file's tail — the merge queue runs no merge driver, so two
 # tail appends collide add/add by construction.
-evidence/2026-09/agent-air-m5-infra-notify-seat-consumer-2-fde79432/*.jsonl
+evidence/2026-09/agent-air-m5-infra-notify-seat-consumer-3-a40dc6e5/*.jsonl
 
 # Cicatrix scar records — the exact bytes are load-bearing, and Prettier rewrites them.
 # Measured 2026-07-30 on origin/main: inside these long paragraphs Prettier parsed literal

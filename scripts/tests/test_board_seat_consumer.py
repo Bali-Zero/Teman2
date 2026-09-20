@@ -445,3 +445,17 @@ def test_an_empty_but_successful_ps_is_undecidable_not_innocent(monkeypatch):
 
     monkeypatch.setattr(bsc.subprocess, "run", lambda *a, **k: _Out())
     assert bsc._pid_is_a_live_healer(4242) is None
+
+
+def test_the_machine_name_is_normalised_the_way_the_gateway_writes_it(world, monkeypatch):
+    """tg_notify stamps socket.gethostname().split(".")[0]. If this consumer
+    compares against the unsplit name, a host that starts reporting
+    `Nuzantara.local` turns every row foreign — hourly, green, closing nothing."""
+    monkeypatch.setenv("BOARD_CONSUMER_MACHINE", f"{MACHINE}.local")
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    _run_state(world, "alpha", "ok", NOW)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert [r["job"] for r in report["resolved"]] == ["cron-fail:alpha"], \
+        "the row was written by the same host — a domain suffix must not orphan it"

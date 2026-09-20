@@ -1,8 +1,8 @@
 gear: 3
-task_id: notify-seat-consumer-2
+task_id: notify-seat-consumer-3
 lane: infra
 host: air-m5 (M5)
-branch: agent/air-m5/infra/notify-seat-consumer-2
+branch: agent/air-m5/infra/notify-seat-consumer-3
 gate_class: opus
 l_level: L2
 objective: >-
@@ -146,7 +146,7 @@ council_findings: >-
   a resolution keyed on `job` alone silenced the same job pending on another machine; and each healer
   family needed its OWN lock (healer-run.sh holds /tmp/nuzantara-healer.pid, pro-healer.sh holds
   /tmp/nuzantara-pro-healer.pid — one shared default read "already gone" on the machine that does not
-  own that path). Test count went 16 -> 34.
+  own that path). Test count went 16 -> 35. The last one arrived after the previous PR was already armed and frozen: the machine field is normalised by the gateway (split on '.') and was not by the consumer, which would have turned every row foreign the first time macOS returned a .local name. That cost PR #6988 rather than being fixed in place, which is the arming contract working as designed.
 mutation_evidence: >-
   Run in this turn, not asserted, restored from `cp` backups and never from
   `git checkout --`. (1) Consumer: dropping `state_ts > row_ts` from the
