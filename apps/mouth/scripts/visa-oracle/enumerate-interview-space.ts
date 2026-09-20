@@ -92,9 +92,13 @@
  *     npm run visa-oracle:enumerate -w apps/mouth -- --dry-run
  *     npm run visa-oracle:enumerate -w apps/mouth
  *
- * Synthetic personas only — the same placeholder identity
- * `generate-walk-corpus.ts` uses (`ASSESSMENT_ID = "x"`, fixed birth dates),
- * never a realistic name/passport/email.
+ * Synthetic personas only — fixed birth dates as `generate-walk-corpus.ts`
+ * uses, never a realistic name/passport/email. Unlike that script's fixed
+ * placeholder (`ASSESSMENT_ID = "x"`), `assessment_id` here is a per-walk
+ * DETERMINISTIC UUID (`uuidv5` of the walk's `label`) — synthetic and
+ * derived, never a person's identity, but shaped like one so the engine's
+ * `ApplicantFacts.assessment_id: uuid.UUID` parses it (see
+ * `ENUMERATOR_ASSESSMENT_NAMESPACE` below).
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -102,6 +106,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { format } from "prettier";
+import { v5 as uuidv5 } from "uuid";
 
 import {
   QUESTIONS,
@@ -129,8 +134,21 @@ export const DEFAULT_OUT_PATH = resolve(
 /** Same frozen clock as the corpus generator, reused rather than redeclared. */
 export const ENUMERATOR_TODAY = CORPUS_TODAY;
 
-/** Fixed synthetic assessment id — no realistic identity is ever emitted. */
-const ASSESSMENT_ID = "x";
+/**
+ * Fixed synthetic namespace for `uuidv5` — one literal UUID, generated once
+ * via `uuidgen` and committed here, never derived from anything real. It
+ * exists only so `uuidv5(label, ENUMERATOR_ASSESSMENT_NAMESPACE)` is
+ * deterministic: the SAME walk label always yields the SAME assessment id,
+ * so the manifest stays byte-stable across runs (the B1'' memo-key
+ * projection depends on that stability). No realistic identity is ever
+ * emitted — this is a synthetic, derived id, never a person's.
+ */
+const ENUMERATOR_ASSESSMENT_NAMESPACE = "1385b38d-b26e-4de8-92ad-6cb3da95a2f4";
+
+/** Per-walk deterministic UUID, derived from the walk's own label. */
+function assessmentIdFor(label: string): string {
+  return uuidv5(label, ENUMERATOR_ASSESSMENT_NAMESPACE);
+}
 
 /**
  * `REPRESENTATIVE_VALUES` must cover every typed (`options: []`) question
@@ -556,7 +574,7 @@ export interface RenderedWalk {
 export function renderCoveringWalks(walks: CoveringWalk[]): RenderedWalk[] {
   return walks.map((walk) => {
     const wire = mapOracleFactsToApplicantFacts(walk.facts, {
-      assessmentId: ASSESSMENT_ID,
+      assessmentId: assessmentIdFor(walk.label),
       collectedAt: ENUMERATOR_TODAY,
     });
     return {
