@@ -358,6 +358,42 @@ except Exception:
     fi
 fi
 
+# Receptor 9: the GARUDA outbox, heard OFF Telegram. `count_undrained`'s
+# `exhausted` had exactly one non-test consumer — `_send_outbox_alarm` in
+# main_api.py, which pages over Telegram — so the number that says "a money
+# page died" could only be heard on the wire that dies with it. Measured
+# 2026-09-20: row 36 (a charge with no webhook) burned five attempts on a
+# `400 can't parse entities` and nothing said so for a day. This receptor
+# reads /health/garuda-outbox over plain HTTP and pages through THIS machine's
+# tg_notify gateway: a different process, a different token, a different
+# machine from the send that broke. exit 2 = BLIND (endpoint unreadable) and is
+# actionable for the same reason as receptor 4's: a receptor that lost its
+# senses is coverage loss, not a quiet day.
+# Kill switch: HEALER_GARUDA_OUTBOX_OFF=1.
+OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py --json 2>/dev/null)
+OUTBOX_EXIT=$?
+if [ "$OUTBOX_EXIT" -eq 1 ] || [ "$OUTBOX_EXIT" -eq 2 ]; then
+    OUTBOX_REASON=$(printf '%s' "$OUTBOX_OUT" | python3 -c "
+import json,sys
+try:
+    print(json.load(sys.stdin).get('reason','?'))
+except Exception:
+    print('?')
+" 2>/dev/null)
+    if [ "$OUTBOX_EXIT" -eq 1 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}garuda-outbox-undrained "
+    else
+        ACTIONABLE=1; REASONS="${REASONS}garuda-outbox-receptor-blind "
+    fi
+    # Paged HERE, not only folded into the tick summary: this is the one
+    # receptor whose whole purpose is to be heard when the API's own alarm
+    # cannot speak, so it must not depend on the summary being read.
+    telegram p0 "garuda-outbox-second-path" "GARUDA outbox (via $(hostname -s), second path): ${OUTBOX_REASON:-?}
+
+Il conteggio arriva da /health/garuda-outbox, non da Telegram dell'API: se questa pagina arriva mentre l'allarme dell'API tace, il canale dell'API e' il sospetto.
+Dettaglio (credenziale richiesta): ./scripts/pg.sh -Atc \"SELECT id, job_type, attempts, created_at FROM garuda_order_outbox WHERE dispatched_at IS NULL ORDER BY created_at;\""
+fi
+
 # ---- receptor 7: runs that started and never came back --------------------
 # The REAL detector for "an autonomous run died and every gauge stayed green",
 # replacing the prose-parsing verdict that measured 10/10 false positives.
