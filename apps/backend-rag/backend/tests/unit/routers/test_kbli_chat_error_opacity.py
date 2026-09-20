@@ -7,8 +7,13 @@ half it did not fix — "check the sibling handlers in the same module and in
 catch-all ended `detail=f"AI Engine error: {e!s}"`, so a fault anywhere in a long
 route handed the caller whatever the failing layer happened to say: Postgres
 (table and column names), Qdrant (collection and host:port), or the model provider
-(an upstream error body with model ids and quota state). The route needs no
-authentication, and the WhatsApp bot sits behind it.
+(an upstream error body with model ids and quota state). The route is public:
+`backend/app/auth/public_endpoints.py` declares `/api/v1/kbli-notebook/`
+PUBLIC_KNOWLEDGE, and the unauthenticated consumers measured on 2026-09-20 are the
+browser chat (`apps/mouth/src/components/kbli/ZantaraChat.tsx`), the mouth API
+client, and the `chat_kbli` MCP tool. The same path WITHOUT the `/api/v1/` prefix
+answers 401, which is how a reachability check on one spelling concludes the
+opposite of the truth.
 
 The cure is opacity in the RESPONSE and nothing else — the log keeps the whole
 string with `exc_info`, which the second guilt test asserts, because a cure that
