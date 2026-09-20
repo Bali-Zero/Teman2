@@ -2064,7 +2064,7 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
     assert reviewed.review_reasons[0].source_refs == ()
 
 
-#: The nine conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
+#: The twelve conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
 #: A1', OD-5): every member of the closed enum except the two
 #: `HOLDING_DISCLOSED_FLAGS` holds — `CRIMINAL_RECORD` per the 2026-09-13
 #: ruling, and `ACTIVITY_BOUNDARY` per gate vo-gate-a1's OBS-1 HIGH (it is
@@ -2227,6 +2227,25 @@ def test_resolve_holding_flags_normalises_case_before_matching(
             DisclosedReviewFlag.HEALTH_CONCERN,
         }
     )
+
+
+def test_resolve_holding_flags_can_widen_to_the_three_new_disclosures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B4: the env kill switch reaches the three new flags too — an operator
+    can widen the hold to any of PAST_OVERSTAY/BLACKLIST_ENTRY/
+    IMMIGRATION_INVESTIGATION without a redeploy."""
+
+    monkeypatch.setenv(
+        evaluate_path._HOLDING_FLAGS_ENV_VAR,
+        "PAST_OVERSTAY,BLACKLIST_ENTRY,IMMIGRATION_INVESTIGATION",
+    )
+    resolved = evaluate_path._resolve_holding_flags()
+    assert DisclosedReviewFlag.PAST_OVERSTAY in resolved
+    assert DisclosedReviewFlag.BLACKLIST_ENTRY in resolved
+    assert DisclosedReviewFlag.IMMIGRATION_INVESTIGATION in resolved
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
 
 
 def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(
@@ -2425,6 +2444,60 @@ def test_condition_notice_order_is_canonical_not_request_order() -> None:
     ]
     assert forward.decision_id == reversed_request.decision_id == baseline.decision_id
     assert forward.public_id == reversed_request.public_id == baseline.public_id
+
+
+def test_disclosed_review_flag_declaration_order_is_pinned() -> None:
+    """A3-B cure (ruling R-CONTINUE-A3B): the canonical-order tests above only
+    name flags they already know about, so a reorder among the three NEW
+    members (PAST_OVERSTAY, BLACKLIST_ENTRY, IMMIGRATION_INVESTIGATION) is
+    invisible to them — proven RED-that-stayed-GREEN in gate vo-gate-a3b's
+    B1 finding. This test pins the FULL fourteen-member declaration order as
+    a literal tuple, so ANY insertion or move, anywhere in the enum, reds
+    here and names both the live and the pinned tuple."""
+
+    assert tuple(DisclosedReviewFlag) == (
+        DisclosedReviewFlag.CRIMINAL_RECORD,
+        DisclosedReviewFlag.HEALTH_CONCERN,
+        DisclosedReviewFlag.PRIOR_VISA_REFUSAL,
+        DisclosedReviewFlag.NOT_CERTAIN,
+        DisclosedReviewFlag.PEP_OR_SANCTIONS,
+        DisclosedReviewFlag.SOURCE_OF_FUNDS_UNCLEAR,
+        DisclosedReviewFlag.DIPLOMATIC_PASSPORT,
+        DisclosedReviewFlag.AMBIGUOUS_SPONSOR,
+        DisclosedReviewFlag.ACTIVITY_BOUNDARY,
+        DisclosedReviewFlag.MULTI_PURPOSE_TRIP,
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+        DisclosedReviewFlag.PAST_OVERSTAY,
+        DisclosedReviewFlag.BLACKLIST_ENTRY,
+        DisclosedReviewFlag.IMMIGRATION_INVESTIGATION,
+    )
+
+
+def test_condition_notice_order_covers_the_three_new_flags() -> None:
+    """A3-B cure (ruling R-CONTINUE-A3B): same invariant as
+    ``test_condition_notice_order_is_canonical_not_request_order`` above, but
+    the request discloses the three NEW flags in REVERSE declaration order,
+    scrambled together with one OLD released flag
+    (``CONFLICTING_IMMIGRATION_STATUS``, the enum's own neighbour the three
+    new members were appended after) — so a reorder of any new flag relative
+    to that boundary member is directly observable here."""
+
+    baseline = _supported_baseline()
+    request_order = (
+        DisclosedReviewFlag.IMMIGRATION_INVESTIGATION,
+        DisclosedReviewFlag.BLACKLIST_ENTRY,
+        DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+        DisclosedReviewFlag.PAST_OVERSTAY,
+    )
+    conditioned = evaluate_path._apply_disclosed_review_flags(baseline, request_order)
+
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert [notice.code for notice in new_notices] == [
+        "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+        "DISCLOSED_PAST_OVERSTAY_CONDITION",
+        "DISCLOSED_BLACKLIST_ENTRY_CONDITION",
+        "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION",
+    ]
 
 
 def test_released_path_nulls_decision_integrity() -> None:

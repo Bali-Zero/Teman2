@@ -21213,7 +21213,10 @@ export interface components {
       | "AMBIGUOUS_SPONSOR"
       | "ACTIVITY_BOUNDARY"
       | "MULTI_PURPOSE_TRIP"
-      | "CONFLICTING_IMMIGRATION_STATUS";
+      | "CONFLICTING_IMMIGRATION_STATUS"
+      | "PAST_OVERSTAY"
+      | "BLACKLIST_ENTRY"
+      | "IMMIGRATION_INVESTIGATION";
     /** DocCountItem */
     DocCountItem: {
       /** Pending Count */
