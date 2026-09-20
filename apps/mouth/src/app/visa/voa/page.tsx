@@ -12,6 +12,9 @@ import {
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
+import { ContentLangSync } from "@/i18n/ContentLangSync";
+import { voaCopy, type VoaCopyKey } from "./voa-copy";
+import { useVoaLocale } from "./useVoaLocale";
 
 /**
  * GARUDA VOA — public eligibility wizard (owner decision 5, "Concept A — The
@@ -19,42 +22,51 @@ import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
  * in `products/garuda-voa/contracts/openapi.yaml` — every field name below
  * matches the frozen contract, nothing renamed on the way to the wire.
  *
- * Constraint 5a: this whole surface is English, no exceptions, no locale
- * switcher — the public API only ever emits reason codes, never prose, so
- * there is nothing here to translate against.
+ * Constraint 5a ("the public funnel is ENGLISH. All of it.") is still what
+ * this surface SERVES: `VOA_LOCALE_RULING` ships as `english-by-default`, so
+ * every visitor who does not type `?lang=id` — including one whose site
+ * language preference is Bahasa — reads English. The copy moved to
+ * `voa-copy.ts` in BOTH languages because the 2026-09-19 mandate's accent (6)
+ * asks for EN/ID parity and the two owner statements collide; `voa-locale.ts`
+ * holds the collision in one variable and explains the resolution. Nothing on
+ * the wire changes with the language: the public API emits reason CODES.
  */
 
-const CASE_TYPES: { id: CaseType; label: string; hint: string }[] = [
+const CASE_TYPES: {
+  id: CaseType;
+  labelKey: VoaCopyKey;
+  hintKey: VoaCopyKey;
+}[] = [
   {
     id: "issuance",
-    label: "Get a new Visa on Arrival",
-    hint: "First time, or a fresh entry",
+    labelKey: "case.issuance.label",
+    hintKey: "case.issuance.hint",
   },
   {
     id: "extension",
-    label: "Extend a Visa on Arrival I already have",
-    hint: "You're already in Indonesia",
+    labelKey: "case.extension.label",
+    hintKey: "case.extension.hint",
   },
 ];
 
-const PURPOSES: { id: Purpose; label: string }[] = [
-  { id: "tourism", label: "Tourism" },
-  { id: "family", label: "Visiting family" },
-  { id: "transit", label: "Transit" },
-  { id: "business-meeting", label: "A business meeting" },
+const PURPOSES: { id: Purpose; labelKey: VoaCopyKey }[] = [
+  { id: "tourism", labelKey: "purpose.tourism" },
+  { id: "family", labelKey: "purpose.family" },
+  { id: "transit", labelKey: "purpose.transit" },
+  { id: "business-meeting", labelKey: "purpose.business-meeting" },
 ];
 
-const NATIONALITIES = [
-  { iso: "USA", label: "United States" },
-  { iso: "GBR", label: "United Kingdom" },
-  { iso: "ITA", label: "Italy" },
-  { iso: "DEU", label: "Germany" },
-  { iso: "FRA", label: "France" },
-  { iso: "AUS", label: "Australia" },
-  { iso: "CAN", label: "Canada" },
-  { iso: "NLD", label: "Netherlands" },
-  { iso: "SGP", label: "Singapore" },
-  { iso: "OTHER", label: "Other" },
+const NATIONALITIES: { iso: string; labelKey: VoaCopyKey }[] = [
+  { iso: "USA", labelKey: "nationality.USA" },
+  { iso: "GBR", labelKey: "nationality.GBR" },
+  { iso: "ITA", labelKey: "nationality.ITA" },
+  { iso: "DEU", labelKey: "nationality.DEU" },
+  { iso: "FRA", labelKey: "nationality.FRA" },
+  { iso: "AUS", labelKey: "nationality.AUS" },
+  { iso: "CAN", labelKey: "nationality.CAN" },
+  { iso: "NLD", labelKey: "nationality.NLD" },
+  { iso: "SGP", labelKey: "nationality.SGP" },
+  { iso: "OTHER", labelKey: "nationality.OTHER" },
 ];
 
 const labelStyle: React.CSSProperties = {
@@ -114,6 +126,8 @@ interface WizardAnswers {
 
 export default function VoaEligibilityPage() {
   const router = useRouter();
+  const locale = useVoaLocale();
+  const t = voaCopy(locale);
   const tracker = useFunnelApp("visa_voa");
   const [submitError, setSubmitError] = useState<React.ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -126,11 +140,14 @@ export default function VoaEligibilityPage() {
   const steps: WizardStep[] = [
     {
       id: "case_type",
-      title: "Your case",
-      summary: (v) => CASE_TYPES.find((c) => c.id === v)?.label ?? "?",
+      title: t("step.case.title"),
+      summary: (v) => {
+        const picked = CASE_TYPES.find((c) => c.id === v);
+        return picked ? t(picked.labelKey) : "?";
+      },
       render: ({ value, setValue }) => (
         <div>
-          <p style={labelStyle}>What are you here for?</p>
+          <p style={labelStyle}>{t("step.case.question")}</p>
           <div
             style={{
               display: "grid",
@@ -148,29 +165,32 @@ export default function VoaEligibilityPage() {
                 }}
                 style={cardButtonStyle(value === c.id)}
               >
-                <div>{c.label}</div>
+                <div>{t(c.labelKey)}</div>
                 <div
                   style={{
                     fontSize: "var(--text-sm, 0.85rem)",
                     color: "var(--color-text-muted)",
                   }}
                 >
-                  {c.hint}
+                  {t(c.hintKey)}
                 </div>
               </button>
             ))}
           </div>
         </div>
       ),
-      validate: (v) => (v ? null : "Pick one."),
+      validate: (v) => (v ? null : t("validate.pickOne")),
     },
     {
       id: "purpose",
-      title: "Purpose",
-      summary: (v) => PURPOSES.find((p) => p.id === v)?.label ?? "?",
+      title: t("step.purpose.title"),
+      summary: (v) => {
+        const picked = PURPOSES.find((p) => p.id === v);
+        return picked ? t(picked.labelKey) : "?";
+      },
       render: ({ value, setValue }) => (
         <div>
-          <p style={labelStyle}>Why are you travelling?</p>
+          <p style={labelStyle}>{t("step.purpose.question")}</p>
           <div
             style={{
               display: "grid",
@@ -185,22 +205,25 @@ export default function VoaEligibilityPage() {
                 onClick={() => setValue(p.id)}
                 style={cardButtonStyle(value === p.id)}
               >
-                {p.label}
+                {t(p.labelKey)}
               </button>
             ))}
           </div>
         </div>
       ),
-      validate: (v) => (v ? null : "Pick one."),
+      validate: (v) => (v ? null : t("validate.pickOne")),
     },
     {
       id: "trip",
-      title: "About you",
+      title: t("step.trip.title"),
       summary: (v) => {
-        const t = v as
+        const trip = v as
           { nationality?: string; travellers?: number } | undefined;
-        return t?.nationality
-          ? `${t.nationality} · ${t.travellers ?? 1} traveller(s)`
+        return trip?.nationality
+          ? t("trip.summary", {
+              nationality: trip.nationality,
+              travellers: trip.travellers ?? 1,
+            })
           : "?";
       },
       render: ({ value, setValue }) => {
@@ -213,7 +236,7 @@ export default function VoaEligibilityPage() {
         return (
           <div style={{ display: "grid", gap: "var(--space-4, 1.2rem)" }}>
             <div>
-              <p style={labelStyle}>What&apos;s your nationality?</p>
+              <p style={labelStyle}>{t("trip.nationality.question")}</p>
               <select
                 value={v.nationality ?? ""}
                 onChange={(e) =>
@@ -225,18 +248,18 @@ export default function VoaEligibilityPage() {
                   width: "100%",
                   maxWidth: 320,
                 }}
-                aria-label="Nationality"
+                aria-label={t("trip.nationality.aria")}
               >
-                <option value="">Select one…</option>
+                <option value="">{t("trip.nationality.placeholder")}</option>
                 {NATIONALITIES.map((n) => (
                   <option key={n.iso} value={n.iso}>
-                    {n.label}
+                    {t(n.labelKey)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <p style={labelStyle}>How many travellers on this application?</p>
+              <p style={labelStyle}>{t("trip.travellers.question")}</p>
               <input
                 type="number"
                 min={1}
@@ -253,7 +276,7 @@ export default function VoaEligibilityPage() {
                   marginTop: "var(--space-2, 0.5rem)",
                   width: 100,
                 }}
-                aria-label="Number of travellers"
+                aria-label={t("trip.travellers.aria")}
               />
             </div>
             <label
@@ -269,20 +292,20 @@ export default function VoaEligibilityPage() {
                 checked={v.self_pay ?? true}
                 onChange={(e) => setValue({ ...v, self_pay: e.target.checked })}
               />
-              I am paying for this application myself
+              {t("trip.selfPay")}
             </label>
           </div>
         );
       },
       validate: (v) => {
-        const t = v as { nationality?: string } | undefined;
-        return t?.nationality ? null : "Pick a nationality.";
+        const trip = v as { nationality?: string } | undefined;
+        return trip?.nationality ? null : t("validate.pickNationality");
       },
     },
     {
       id: "dates",
-      title: "Dates",
-      summary: () => "Confirmed",
+      title: t("step.dates.title"),
+      summary: () => t("step.dates.summary"),
       render: ({ value, setValue }) => {
         const v =
           (value as {
@@ -295,17 +318,17 @@ export default function VoaEligibilityPage() {
         return (
           <div style={{ display: "grid", gap: "var(--space-4, 1.2rem)" }}>
             <div>
-              <p style={labelStyle}>When do you arrive (or did you arrive)?</p>
+              <p style={labelStyle}>{t("dates.entry.question")}</p>
               <input
                 type="date"
                 value={v.entry_date ?? ""}
                 onChange={(e) => setValue({ ...v, entry_date: e.target.value })}
                 style={{ ...fieldStyle, marginTop: "var(--space-2, 0.5rem)" }}
-                aria-label="Entry date"
+                aria-label={t("dates.entry.aria")}
               />
             </div>
             <div>
-              <p style={labelStyle}>Passport expiry date</p>
+              <p style={labelStyle}>{t("dates.passport.question")}</p>
               <input
                 type="date"
                 value={v.passport_expiry_date ?? ""}
@@ -313,15 +336,13 @@ export default function VoaEligibilityPage() {
                   setValue({ ...v, passport_expiry_date: e.target.value })
                 }
                 style={{ ...fieldStyle, marginTop: "var(--space-2, 0.5rem)" }}
-                aria-label="Passport expiry date"
+                aria-label={t("dates.passport.aria")}
               />
             </div>
             {caseType === "extension" ? (
               <>
                 <div>
-                  <p style={labelStyle}>
-                    When does your current Visa on Arrival expire?
-                  </p>
+                  <p style={labelStyle}>{t("dates.voaExpiry.question")}</p>
                   <input
                     type="date"
                     value={v.voa_expiry_date ?? ""}
@@ -332,7 +353,7 @@ export default function VoaEligibilityPage() {
                       ...fieldStyle,
                       marginTop: "var(--space-2, 0.5rem)",
                     }}
-                    aria-label="Current Visa on Arrival expiry date"
+                    aria-label={t("dates.voaExpiry.aria")}
                   />
                 </div>
                 <label
@@ -353,7 +374,7 @@ export default function VoaEligibilityPage() {
                       })
                     }
                   />
-                  I have already extended this Visa on Arrival once
+                  {t("dates.extensionUsed")}
                 </label>
               </>
             ) : null}
@@ -375,16 +396,15 @@ export default function VoaEligibilityPage() {
                     retention_notice_acknowledged: e.target.checked,
                   })
                 }
-                aria-label="Storage and deletion notice acknowledgement"
+                aria-label={t("dates.retention.aria")}
               />
-              I understand how my answers are stored and that I can delete this
-              check any time.
+              {t("dates.retention")}
             </label>
           </div>
         );
       },
       validate: (v) => {
-        const t = v as
+        const answered = v as
           | {
               entry_date?: string;
               passport_expiry_date?: string;
@@ -392,13 +412,13 @@ export default function VoaEligibilityPage() {
               retention_notice_acknowledged?: boolean;
             }
           | undefined;
-        if (!t?.entry_date || !t?.passport_expiry_date)
-          return "Both dates are needed.";
-        if (caseType === "extension" && !t.voa_expiry_date) {
-          return "Your current Visa on Arrival's expiry date is needed.";
+        if (!answered?.entry_date || !answered?.passport_expiry_date)
+          return t("validate.bothDates");
+        if (caseType === "extension" && !answered.voa_expiry_date) {
+          return t("validate.voaExpiry");
         }
-        if (!t.retention_notice_acknowledged)
-          return "Please confirm you've read the storage notice.";
+        if (!answered.retention_notice_acknowledged)
+          return t("validate.retention");
         return null;
       },
     },
@@ -473,17 +493,14 @@ export default function VoaEligibilityPage() {
       tracker.formSubmitFailed("/api/visa/voa/eligibility-checks", status);
       setSubmitError(
         <>
-          We couldn&apos;t check eligibility right now. Please try again, or{" "}
+          {t("error.eligibility.lead")}
           <a
-            href={buildWhatsAppLink(
-              "visa",
-              "Hi Bali Zero, I'd like help with a Visa on Arrival.",
-            )}
+            href={buildWhatsAppLink("visa", t("hero.wa.message"))}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "var(--tx-pure)", textDecoration: "underline" }}
           >
-            message us on WhatsApp
+            {t("error.eligibility.link")}
           </a>
           .
         </>,
@@ -494,73 +511,88 @@ export default function VoaEligibilityPage() {
   };
 
   return (
-    <AppFrame
-      funnel="visa"
-      title="Visa on Arrival"
-      subtitle="Know in 10 seconds, buy in 5 minutes, follow it like a parcel."
-      trustStrip={
-        <AppTrustStrip
-          items={[
-            { value: "4", label: "quick questions" },
-            { value: "1", label: "all-inclusive price" },
-            { value: "0", label: "extra to pay the government after" },
-          ]}
-        />
-      }
-    >
+    <>
       {/*
-       * Measured on production 2026-09-16 at 390px: the only WhatsApp
-       * controls on this page were the nav link (height 0 — it lives inside
-       * the collapsed hamburger) and a footer "Get Started". A visitor who
-       * wants a human had nothing to tap in the first screen. This is that
-       * control, and it is a WhatsAppLeadButton rather than a bare wa.me
-       * anchor so the tap writes a lead_intents row first: a tourist who
-       * leaves the funnel for a human is a lead saved, not a lead lost.
+       * The funnel KNOWS its content language, so it takes ownership of
+       * `<html lang>` through the site's own protocol (i18n/content-locale.ts:
+       * a page that knows wins, the provider yields) instead of inventing a
+       * second writer for the same attribute. A screen reader announcing
+       * Indonesian copy with an English voice is a WCAG 3.1.1/3.1.2 failure,
+       * and under the ruling in force this simply re-states `en`.
        */}
-      <div className="voa-hero-wa">
-        <p className="voa-hero-wa__line">
-          Rather ask a person first? Our visa desk answers on WhatsApp.
-        </p>
-        <WhatsAppLeadButton
-          source="garuda_voa"
-          className="voa-hero-wa__cta"
-          fallbackHref={buildWhatsAppLink(
-            "visa",
-            "Hi Bali Zero, I'd like help with a Visa on Arrival.",
-          )}
-          whatsappContext={[
-            { label: "Page", value: "Visa on Arrival — eligibility wizard" },
-          ]}
-          context={{ surface: "voa_hero" }}
-        >
-          Talk to us on WhatsApp
-        </WhatsAppLeadButton>
-      </div>
-      <AppWizard
-        steps={steps}
-        persistKey="bz.garuda_voa.wizard"
-        onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
-        onAbandon={(step) => tracker.wizardAbandoned(step)}
-        onComplete={onComplete}
-      />
-      {submitting ? (
-        <p style={{ color: "var(--color-text-muted)" }} role="status">
-          Checking…
-        </p>
-      ) : null}
-      {submitError ? (
-        <p
-          role="alert"
-          style={{
-            color: "var(--tx-pure)",
-            margin: 0,
-            borderLeft: "3px solid var(--bz-border)",
-            paddingLeft: "0.75rem",
+      <ContentLangSync locale={locale} />
+      <AppFrame
+        funnel="visa"
+        title={t("frame.title")}
+        subtitle={t("frame.subtitle")}
+        trustStrip={
+          <AppTrustStrip
+            items={[
+              { value: "4", label: t("trust.questions.label") },
+              { value: "1", label: t("trust.price.label") },
+              { value: "0", label: t("trust.government.label") },
+            ]}
+          />
+        }
+      >
+        {/*
+         * Measured on production 2026-09-16 at 390px: the only WhatsApp
+         * controls on this page were the nav link (height 0 — it lives inside
+         * the collapsed hamburger) and a footer "Get Started". A visitor who
+         * wants a human had nothing to tap in the first screen. This is that
+         * control, and it is a WhatsAppLeadButton rather than a bare wa.me
+         * anchor so the tap writes a lead_intents row first: a tourist who
+         * leaves the funnel for a human is a lead saved, not a lead lost.
+         */}
+        <div className="voa-hero-wa">
+          <p className="voa-hero-wa__line">{t("hero.wa.line")}</p>
+          <WhatsAppLeadButton
+            source="garuda_voa"
+            className="voa-hero-wa__cta"
+            fallbackHref={buildWhatsAppLink("visa", t("hero.wa.message"))}
+            whatsappContext={[
+              {
+                label: t("lead.context.pageLabel"),
+                value: t("lead.context.pageValue"),
+              },
+            ]}
+            context={{ surface: "voa_hero" }}
+          >
+            {t("hero.wa.cta")}
+          </WhatsAppLeadButton>
+        </div>
+        <AppWizard
+          steps={steps}
+          labels={{
+            stepOf: (current, total) => t("wizard.stepOf", { current, total }),
+            back: t("wizard.back"),
+            next: t("wizard.next"),
+            finish: t("wizard.finish"),
           }}
-        >
-          {submitError}
-        </p>
-      ) : null}
-    </AppFrame>
+          persistKey="bz.garuda_voa.wizard"
+          onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
+          onAbandon={(step) => tracker.wizardAbandoned(step)}
+          onComplete={onComplete}
+        />
+        {submitting ? (
+          <p style={{ color: "var(--color-text-muted)" }} role="status">
+            {t("status.checking")}
+          </p>
+        ) : null}
+        {submitError ? (
+          <p
+            role="alert"
+            style={{
+              color: "var(--tx-pure)",
+              margin: 0,
+              borderLeft: "3px solid var(--bz-border)",
+              paddingLeft: "0.75rem",
+            }}
+          >
+            {submitError}
+          </p>
+        ) : null}
+      </AppFrame>
+    </>
   );
 }

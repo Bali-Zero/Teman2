@@ -34,6 +34,13 @@ const VOA_DIR = join(__dirname); // apps/mouth/src/app/visa/voa
 /** The six purchase screens plus their copy tables, per DELIBERA (d). */
 const SCREEN_FILES = [
   "page.tsx", // wizard
+  // The wizard's copy MOVED here (EN/ID dictionary, 2026-09-20). Scanning
+  // the screen alone would now measure an empty room: a banned claim typed
+  // into either language column reaches the customer through `page.tsx`
+  // exactly as a literal used to. A guard that changes what it reads and
+  // does not follow the thing it guards is cicatrix family #3 — the
+  // assertion survives in name while its subject has left.
+  "voa-copy.ts",
   "SafeClock.tsx", // the published-deadline hero the verdict screen renders
   "NextSteps.tsx", // "what happens next" / "what we cannot promise"
   "[hash]/page.tsx", // verdict ACCEPT/DECLINE
