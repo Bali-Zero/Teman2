@@ -752,6 +752,35 @@ export function OutcomeSheet({
           </section>
         )}
 
+      {/* Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, R-SEQ): `notices[]`
+          rendered with the verdict, never behind a disclosure glyph — one
+          section shared by every state that can carry a condition, since
+          the backend places no state constraint on this channel. */}
+      {outcome.conditions.length > 0 && (
+        // S6 (GATE-A2-REPORT-6849 LOW-4): `aria-labelledby` names this
+        // region, matching the `oracle-supported-paths-title` pattern below
+        // — `oracle-outcome__conditions` itself carries no CSS rule by
+        // design (Track C owns `oracle.css`; this class is a query hook
+        // for tests only).
+        <section
+          className="oracle-outcome__conditions"
+          aria-labelledby="oracle-conditions-title"
+        >
+          <h2
+            id="oracle-conditions-title"
+            className="oracle-outcome__section-title"
+          >
+            {translate(language, "outcome.conditions.title")}
+          </h2>
+          <p>{translate(language, "outcome.conditions.intro")}</p>
+          <ReasonList
+            language={language}
+            reasons={outcome.conditions}
+            sources={sourceIndex}
+          />
+        </section>
+      )}
+
       {rows.length > 0 && (
         <section className="oracle-print-only">
           <h2 className="oracle-outcome__section-title">

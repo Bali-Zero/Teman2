@@ -1,0 +1,166 @@
+task_id: vo-a1b-disclosure-split
+gear: 2
+l_level: L1
+gate_class: sonnet
+base_sha: 038a571f84846e5a918c3894e71f9f734d320c27 # pragma: allowlist secret - public Git commit ID
+mandate: VISA-ORACLE-DW-20260919
+colour: BLUE
+# Floor measured this session:
+# `python3 scripts/contract_verify.py --local --json`
+# reported `2` (path-only floor, brief present, no pack authored by this diff).
+objective: >-
+  Slice A1' of VISA-ORACLE-DW-20260919/PLAN.md, curing PR #6839 (slice A1,
+  closed) after gate vo-gate-a1 returned REWORK-BUILD with two HIGH findings
+  on a change that deploys to a live public surface on merge. The gate
+  verified A1's core semantics correct field-by-field and told this slice
+  to re-use, not re-derive, them — this PR does exactly that: the disclosure
+  split itself (evaluate_path.py's _apply_disclosed_review_flags, the ten
+  vs. one partition, decision_id/public_id re-seeding on hold only, the
+  co-disclosure naming) is unchanged from #6839.
+  Two fixes: (1) OBS-1 HIGH — ACTIVITY_BOUNDARY is the flag `fact-mapper.ts`
+  raises for what the signed pack CANNOT decide at all (the seven
+  undecidable other_purpose values and diaspora_connection=dual); PLAN's
+  own OD-2/OD-3 defaults name a dead end for that case, not a condition, so
+  releasing it to SUPPORTED_CANDIDATES ahead of the UI that would render
+  the condition (slice A2, dark today) was a legal-exposure regression.
+  HOLDING_DISCLOSED_FLAGS now holds {CRIMINAL_RECORD, ACTIVITY_BOUNDARY};
+  A1' releases NINE flags, not ten. (2) OBS-2 HIGH — the kill switch
+  (_resolve_holding_flags, VISA_ORACLE_HOLDING_FLAGS) failed OPEN whenever
+  every token in the env value was unrecognized after normalisation
+  (lower-case, `*`, `ALL`, wrong separator, quotes, JSON-ish, oversized) —
+  it silently resolved to just the floor instead of failing closed. Tokens
+  are now `.strip().upper()`-normalised (so `health_concern` DOES resolve),
+  and every malformed shape — zero tokens recognized, any unrecognized
+  token mixed with a recognized one, or a value over 512 chars (capped
+  BEFORE parsing) — now fails CLOSED to all eleven flags. Also closes two
+  LOW findings from the same gate: OBS-3 (review_hold_inventory.py now
+  derives holding vs conditioning from HOLDING_DISCLOSED_FLAGS itself via
+  a new split_disclosed_review_codes(), instead of counting all 11
+  disclosed codes as live hold producers), OBS-5 (conditioning flags sorted
+  into DisclosedReviewFlag's declaration order before their notices are
+  built, so two requests differing only in flag order yield identical
+  notices), and OBS-6 (decision_integrity nulled defensively on the
+  released path, closing the latent seal trap if the adapter ordering
+  upstream of seal_decision is ever changed). OBS-4/OBS-7 (LOW/INFO, body
+  hygiene) are addressed in this PR's own body, not in code.
+  Re-measured on signed seq-22 (111-walk W-VO-Q corpus): FUNNEL moves from
+  ENGINE's 94/14/1/3 to 88/14/1/9 — the six ACTIVITY_BOUNDARY walks return
+  to HUMAN_REVIEW_REQUIRED (94-6=88 SUPPORTED_CANDIDATES, 3+6=9
+  HUMAN_REVIEW_REQUIRED), while NOT_CERTAIN's two walks still condition.
+  Per conductor ruling R-SEQ (2026-09-19): A2 (the mouth's notices render)
+  must merge and be promoted BEFORE this PR opens, so this slice is BUILT
+  and HELD, not pushed — the release of nine flags with an invisible
+  condition would repeat the exact exposure gate vo-gate-a1 flagged, just
+  with a smaller set.
+constraints:
+  - No file under apps/backend-rag/backend/db/migrations_v2/ changes; no
+    touch to fly.toml, .env*, or zantara_core.py.
+  - No pack file change (contracts/packs/**) — no fold/compile/sign/activate.
+  - No apps/mouth/** change — notices rendering is slice A2, a separate PR.
+  - _apply_minor_privacy_hold and the _PUBLIC_POLICY_ADAPTERS ordering
+    tuple are untouched, as both the original PLAN and the gate demanded.
+  - No client PII anywhere; synthetic personas/facts only (gold_loader
+    fixtures, the walk corpus); no secret echoed, printed, or committed —
+    the kill switch's fail-closed log lines carry a token COUNT, never the
+    raw env value.
+  - Do not push; do not open a PR. Build and hold locally per R-SEQ.
+acceptance:
+  - text: >-
+      ACTIVITY_BOUNDARY pin (gate OBS-1): HOLDING_DISCLOSED_FLAGS is exactly
+      {CRIMINAL_RECORD, ACTIVITY_BOUNDARY}; applying ACTIVITY_BOUNDARY alone
+      to a SUPPORTED_CANDIDATES baseline forces HUMAN_REVIEW_REQUIRED with
+      candidates=() and the DISCLOSED_ACTIVITY_BOUNDARY_REVIEW code, exactly
+      like CRIMINAL_RECORD.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      "test_holding_set_is_exactly_the_ruling or
+      test_activity_boundary_disclosure_still_holds"
+  - text: >-
+      G1-b GUILT+INNOCENCE per non-criminal, non-boundary flag (now nine,
+      not ten): identical to #6839's proven behaviour, narrowed by one flag.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      "each_non_criminal_flag_keeps_the_pack_verdict or
+      regressing_a_flag_via_holding_env"
+  - text: >-
+      Kill switch fail-closed (gate OBS-2) on every hostile witness: zero
+      tokens recognized (*, ALL, a lone unknown name, wrong separators,
+      quotes, JSON-ish), a recognized token mixed with an unrecognized one,
+      a 100 000-character value, and 5 000 unknown names — all resolve to
+      every flag. Case is normalised before matching (health_concern DOES
+      resolve to just that flag plus the floor).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      resolve_holding_flags
+  - text: >-
+      Canonical notice order (OBS-5) and the released-path seal guard
+      (OBS-6).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      "canonical_request or decision_integrity"
+  - text: >-
+      The A0 inventory (OBS-3) derives holding vs conditioning from
+      HOLDING_DISCLOSED_FLAGS itself: exactly 2 holding, 9 conditioning,
+      partitioning all 11 flags with no overlap.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+  - text: >-
+      The census (this change's own consumer): FUNNEL is 88/14/1/9 on
+      signed seq-22, ENGINE stays 94/14/1/3; the six ACTIVITY_BOUNDARY
+      walks are named individually; C6's one witness
+      (offshore/other/no_paid_activity/medical) is back in the
+      engine-only product gap (`"C6" not in funnel_named`, reversing
+      #6839's `assert "C6" in funnel_named`).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+  - text: >-
+      PLAN's own literal acceptance probe (as written, `-k disclos`) stays
+      green.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/ -k disclos
+  - text: >-
+      ruff check reports zero findings on every file this PR touches.
+    probe: >-
+      cd apps/backend-rag && .venv/bin/ruff check
+      backend/services/visa_engine/evaluate_path.py
+      backend/scripts/visa_engine/review_hold_inventory.py
+      backend/scripts/visa_engine/gold_coverage_eval.py
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+assumptions:
+  - text: >-
+      31 pre-existing DB-integration tests in test_evaluate_endpoint.py
+      (idempotency/retention/DSR suites) error at fixture SETUP with
+      asyncpg.exceptions.UndefinedTableError: relation
+      "public.visa_evaluate_idempotency" does not exist — same 31 the
+      #6839 gate already recorded as environmental (no local Postgres
+      migration 262+ applied in this worktree's test DB), reproduced
+      identically in this session. Zero reds in the two files this PR
+      actually changes tests for; this PR touches no DB or migration code.
+    status: unresolved
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py 2>&1 |
+      tail -5
+  - text: >-
+      Net diff size is above the Builder Contract's "≤ ~400 net lines where
+      the work allows" ceiling — see `git diff --stat` for the exact
+      figure. Reason: most of the excess is re-pinned test/docstring text
+      in test_interview_walk_census.py and new parametrized witness tests
+      in test_evaluate_endpoint.py, both required by the gate's own named
+      fixes (a new census number and a hardened kill switch each need their
+      own coverage); evaluate_path.py's own net addition is one frozenset
+      entry, a length cap constant, a canonical-order dict, and the
+      fail-closed branches in _resolve_holding_flags.
+    status: verified
+    probe: git diff --stat
+appetite:
+  wall_clock_hours: 2

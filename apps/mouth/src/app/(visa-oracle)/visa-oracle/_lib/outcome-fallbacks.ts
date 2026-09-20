@@ -68,6 +68,7 @@ function buildFallback(
     assumptions: options.assumptions ?? [],
     sources: [],
     nextSteps: NEXT_STEPS,
+    conditions: [],
     outage: {
       code: options.code,
       message: OUTAGE_MESSAGES[provenance],
@@ -129,6 +130,7 @@ export function buildDegradedHumanReviewOutcome(options: {
     assumptions: options.assumptions ?? [],
     sources: [],
     nextSteps: NEXT_STEPS,
+    conditions: [],
     reviewReasons: [DEGRADED_REVIEW_REASON],
   };
 }

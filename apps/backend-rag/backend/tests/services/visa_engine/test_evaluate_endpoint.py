@@ -2064,6 +2064,387 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
     assert reviewed.review_reasons[0].source_refs == ()
 
 
+#: The nine conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
+#: A1', OD-5): every member of the closed enum except the two
+#: `HOLDING_DISCLOSED_FLAGS` holds — `CRIMINAL_RECORD` per the 2026-09-13
+#: ruling, and `ACTIVITY_BOUNDARY` per gate vo-gate-a1's OBS-1 HIGH (it is
+#: the flag raised for what the signed pack cannot decide at all, not a
+#: disclosed-but-decided fact).
+_NON_CRIMINAL_DISCLOSED_FLAGS: tuple[DisclosedReviewFlag, ...] = tuple(
+    flag for flag in DisclosedReviewFlag if flag not in evaluate_path.HOLDING_DISCLOSED_FLAGS
+)
+
+
+def _supported_baseline() -> Decision:
+    compiled = gold_loader.load_and_compile_rule_pack()
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    decision = evaluate(
+        facts,
+        compiled,
+        effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+        observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+    assert decision.state.value == "SUPPORTED_CANDIDATES"
+    assert decision.candidates
+    return decision
+
+
+def test_holding_set_is_exactly_the_ruling() -> None:
+    """2026-09-13 ruling + gate vo-gate-a1's OBS-1 HIGH: human review
+    survives for exactly two disclosures — the disclosed criminal matter,
+    and the boundary flag the pack cannot decide at all.
+
+    If a future PR widens or narrows ``HOLDING_DISCLOSED_FLAGS``, this test
+    names the ruling/gate finding it is breaking.
+    """
+
+    assert evaluate_path.HOLDING_DISCLOSED_FLAGS == frozenset(
+        {DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+    )
+
+
+def test_activity_boundary_disclosure_still_holds() -> None:
+    """Pin for gate vo-gate-a1's OBS-1 HIGH fix: ``ACTIVITY_BOUNDARY`` is
+    NOT released to a condition — it still forces
+    ``HUMAN_REVIEW_REQUIRED``, exactly like ``CRIMINAL_RECORD``, until A3
+    sub-classifies the raise in ``fact-mapper.ts``."""
+
+    baseline = _supported_baseline()
+
+    reviewed = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.ACTIVITY_BOUNDARY,),
+    )
+    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.candidates == ()
+    assert [reason.code for reason in reviewed.review_reasons] == [
+        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    ]
+
+
+def test_resolve_holding_flags_defaults_to_the_ruling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+    assert evaluate_path._resolve_holding_flags() == evaluate_path.HOLDING_DISCLOSED_FLAGS
+
+
+def test_resolve_holding_flags_reads_a_valid_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN, NOT_CERTAIN")
+    assert evaluate_path._resolve_holding_flags() == frozenset(
+        {
+            DisclosedReviewFlag.CRIMINAL_RECORD,
+            DisclosedReviewFlag.ACTIVITY_BOUNDARY,
+            DisclosedReviewFlag.HEALTH_CONCERN,
+            DisclosedReviewFlag.NOT_CERTAIN,
+        }
+    )
+
+
+def test_resolve_holding_flags_floor_always_holds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CRIMINAL_RECORD and ACTIVITY_BOUNDARY hold ALWAYS, whatever the env
+    says — neither is in the env override's own token list here."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN")
+    resolved = evaluate_path._resolve_holding_flags()
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
+
+
+def test_resolve_holding_flags_fails_closed_on_a_malformed_value(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An empty entry (stray/trailing comma) is unparseable: hold all eleven."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN,,NOT_CERTAIN")
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert "malformed" in caplog.text
+    assert "HEALTH_CONCERN,,NOT_CERTAIN" not in caplog.text
+
+
+#: gate vo-gate-a1, OBS-2 HIGH — every one of these normalises to ZERO
+#: recognized tokens and must fail CLOSED to all eleven flags, not silently
+#: become a no-op. Each id is the gate's own witness label.
+_ZERO_RECOGNIZED_WITNESSES: tuple[tuple[str, str], ...] = (
+    ("star", "*"),
+    ("all_literal", "ALL"),
+    ("single_unknown_name", "NOT_A_REAL_FLAG"),
+    ("semicolon_separated", "HEALTH_CONCERN;NOT_CERTAIN"),
+    ("space_separated", "HEALTH_CONCERN NOT_CERTAIN"),
+    ("quoted", '"HEALTH_CONCERN"'),
+    ("json_ish", '["HEALTH_CONCERN"]'),
+)
+
+
+@pytest.mark.parametrize(
+    "value", [value for _label, value in _ZERO_RECOGNIZED_WITNESSES], ids=[
+        label for label, _value in _ZERO_RECOGNIZED_WITNESSES
+    ]
+)
+def test_resolve_holding_flags_fails_closed_when_zero_tokens_recognized(
+    value: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """None of these shapes contain a single comma-separated token that
+    matches a ``DisclosedReviewFlag`` after ``.strip().upper()`` — the
+    kill switch must never silently become a no-op on the likelier operator
+    mistake (gate vo-gate-a1, OBS-2 HIGH: this used to FAIL OPEN, resolving
+    to just the default floor, on every one of these)."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, value)
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
+    assert "zero recognized" in caplog.text
+    assert value not in caplog.text
+
+
+@pytest.mark.parametrize("value", ["health_concern", "Health_Concern", "  health_concern  "])
+def test_resolve_holding_flags_normalises_case_before_matching(
+    value: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A lower/mixed-case token now resolves (gate vo-gate-a1, OBS-2 HIGH
+    fix): ``.strip().upper()`` runs before matching, so a case typo holds
+    that flag instead of silently holding only the floor."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, value)
+    resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(
+        {
+            DisclosedReviewFlag.CRIMINAL_RECORD,
+            DisclosedReviewFlag.ACTIVITY_BOUNDARY,
+            DisclosedReviewFlag.HEALTH_CONCERN,
+        }
+    )
+
+
+def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """One recognized token alongside one unrecognized token must fail
+    CLOSED to all eleven (gate vo-gate-a1, OBS-2 HIGH: the non-negotiable is
+    "an operator typo must never be a silent partial" — this is stricter
+    than the pre-cure behaviour, which kept the recognized subset)."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN,NOT_A_REAL_FLAG")
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert "unrecognized" in caplog.text
+    assert "NOT_A_REAL_FLAG" not in caplog.text
+
+
+def test_resolve_holding_flags_fails_closed_on_an_oversized_value(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A 100 000-character value is capped BEFORE parsing, never split or
+    matched token-by-token (gate vo-gate-a1, OBS-2 HIGH witness)."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "X" * 100_000)
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert "exceeds" in caplog.text
+
+
+def test_resolve_holding_flags_fails_closed_on_five_thousand_unknown_names(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """5 000 unknown, comma-separated names — the flood-style operator
+    mistake the length cap exists for (gate vo-gate-a1, OBS-2 HIGH
+    witness)."""
+
+    monkeypatch.setenv(
+        evaluate_path._HOLDING_FLAGS_ENV_VAR,
+        ",".join(f"UNKNOWN_{i}" for i in range(5_000)),
+    )
+    with caplog.at_level(logging.WARNING, logger=evaluate_path.__name__):
+        resolved = evaluate_path._resolve_holding_flags()
+    assert resolved == frozenset(DisclosedReviewFlag)
+    assert "exceeds" in caplog.text
+
+
+def test_criminal_disclosure_still_holds() -> None:
+    baseline = _supported_baseline()
+
+    reviewed = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.CRIMINAL_RECORD,),
+    )
+    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.candidates == ()
+    assert [reason.code for reason in reviewed.review_reasons] == [
+        "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+    ]
+
+
+@pytest.mark.parametrize("flag", _NON_CRIMINAL_DISCLOSED_FLAGS)
+def test_each_non_criminal_flag_keeps_the_pack_verdict(
+    flag: DisclosedReviewFlag,
+) -> None:
+    """G1-b innocence half: the pack's own verdict survives untouched, plus
+    exactly one notice carrying the flag's dedicated ``*_CONDITION`` code."""
+
+    baseline = _supported_baseline()
+
+    conditioned = evaluate_path._apply_disclosed_review_flags(baseline, (flag,))
+
+    assert conditioned.state == baseline.state
+    assert conditioned.candidates == baseline.candidates
+    assert conditioned.missing_facts == baseline.missing_facts
+    assert conditioned.no_path_reasons == baseline.no_path_reasons
+    assert conditioned.quotes == baseline.quotes
+    assert conditioned.decision_id == baseline.decision_id
+    assert conditioned.public_id == baseline.public_id
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert len(new_notices) == 1
+    assert new_notices[0].code == evaluate_path._DISCLOSED_CONDITION_REASON_CODES[flag]
+    assert new_notices[0].source_refs == ()
+
+
+@pytest.mark.parametrize("flag", _NON_CRIMINAL_DISCLOSED_FLAGS)
+def test_regressing_a_flag_via_holding_env_restores_the_hold(
+    monkeypatch: pytest.MonkeyPatch,
+    flag: DisclosedReviewFlag,
+) -> None:
+    """G1-b guilt half: ``VISA_ORACLE_HOLDING_FLAGS`` is the fleet-wide kill
+    switch — listing a flag there restores its hold with no redeploy."""
+
+    baseline = _supported_baseline()
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, flag.value)
+
+    regressed = evaluate_path._apply_disclosed_review_flags(baseline, (flag,))
+
+    assert regressed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert regressed.candidates == ()
+    assert [reason.code for reason in regressed.review_reasons] == [
+        evaluate_path._DISCLOSED_REVIEW_REASON_CODES[flag]
+    ]
+
+
+def test_a_conditioning_flag_never_empties_candidates() -> None:
+    """The guilt test on ordering, not just the count: product codes stay
+    an identical ordered tuple — order is rank."""
+
+    before = _supported_baseline()
+
+    after = evaluate_path._apply_disclosed_review_flags(
+        before,
+        (DisclosedReviewFlag.NOT_CERTAIN,),
+    )
+    assert len(after.candidates) == len(before.candidates)
+    assert tuple(c.product_code for c in after.candidates) == tuple(
+        c.product_code for c in before.candidates
+    )
+
+
+def test_criminal_plus_health_names_both() -> None:
+    """A criminal disclosure that also raises a conditioning flag still
+    names both causes: the hold, and the co-disclosed notice."""
+
+    baseline = _supported_baseline()
+
+    reviewed = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.HEALTH_CONCERN),
+    )
+
+    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.candidates == ()
+    assert [reason.code for reason in reviewed.review_reasons] == [
+        "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+    ]
+    new_notices = reviewed.notices[len(baseline.notices) :]
+    assert [notice.code for notice in new_notices] == ["DISCLOSED_HEALTH_CONCERN_CONDITION"]
+
+
+def test_notice_source_refs_are_empty() -> None:
+    """Projection-integrity guard, asserted directly: a future author who
+    lends a citation to a condition notice fails here, not in a 500 on the
+    wire (``api_models.py:484-495`` requires every notice's ``source_refs``
+    to resolve in ``sources`` — an empty tuple satisfies that vacuously)."""
+
+    baseline = _supported_baseline()
+
+    conditioned = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.NOT_CERTAIN,),
+    )
+    new_notices = conditioned.notices[len(baseline.notices) :]
+    assert new_notices
+    for notice in new_notices:
+        assert notice.source_refs == ()
+
+
+def test_condition_notice_order_is_canonical_not_request_order() -> None:
+    """gate vo-gate-a1, OBS-5 LOW: two requests naming the same conditioning
+    flags in a different order must yield an IDENTICAL ``notices`` tuple —
+    they share the same ``decision_id``/``public_id`` on the released path
+    (neither is re-seeded there), so a request-order-dependent ``notices``
+    would make two logically identical requests diverge only in display
+    order."""
+
+    baseline = _supported_baseline()
+    forward = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (
+            DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+            DisclosedReviewFlag.HEALTH_CONCERN,
+            DisclosedReviewFlag.NOT_CERTAIN,
+        ),
+    )
+    reversed_request = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (
+            DisclosedReviewFlag.NOT_CERTAIN,
+            DisclosedReviewFlag.HEALTH_CONCERN,
+            DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,
+        ),
+    )
+
+    assert forward.notices == reversed_request.notices
+    new_notices = forward.notices[len(baseline.notices) :]
+    assert [notice.code for notice in new_notices] == [
+        "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        "DISCLOSED_UNCERTAINTY_CONDITION",
+        "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+    ]
+    assert forward.decision_id == reversed_request.decision_id == baseline.decision_id
+    assert forward.public_id == reversed_request.public_id == baseline.public_id
+
+
+def test_released_path_nulls_decision_integrity() -> None:
+    """gate vo-gate-a1, OBS-6 LOW: the released (conditioning-only) path
+    nulls ``decision_integrity`` defensively rather than carrying over
+    whatever the incoming decision had. Safe today because this adapter
+    runs strictly before ``seal_decision`` — but this closes the latent
+    trap if that ordering is ever changed upstream, without depending on a
+    contract this function cannot itself enforce."""
+
+    baseline = _supported_baseline()
+    assert baseline.decision_integrity is None
+
+    conditioned = evaluate_path._apply_disclosed_review_flags(
+        baseline,
+        (DisclosedReviewFlag.NOT_CERTAIN,),
+    )
+    assert conditioned.decision_integrity is None
+
+
 def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
     """A minor cannot inherit an automated supported outcome from any path."""
 
@@ -2270,9 +2651,19 @@ async def test_http_offshore_unknown_overstay_remains_needs_input(
     assert "immigration.overstay_days" in decision["missing_facts"]
 
 
-async def test_offshore_positive_overstay_conflict_forces_human_review(
+async def test_offshore_positive_overstay_conflict_names_a_condition(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """CONFLICTING_IMMIGRATION_STATUS is one of A1's ten non-holding flags: it
+    no longer forces review on its own (pre-A1 this test's name was accurate
+    — the flag alone rewrote the decision). The scenario still ends
+    HUMAN_REVIEW_REQUIRED here, but for a different, engine-level reason —
+    ``_facts_with_purposes``'s fixed identity is a minor, so
+    `review.minor-without-guardian` (the PACK's own rule, §1.3c) holds
+    regardless of any disclosure. The conflict flag now only adds its
+    condition notice alongside that hold, per A1's "carry both causes" rule.
+    """
+
     monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
     _patch_engine_chain(monkeypatch)
     wire = _wire_payload(_facts_with_purposes(["TOURISM"]))
@@ -2291,8 +2682,84 @@ async def test_offshore_positive_overstay_conflict_forces_human_review(
         idempotency_key=None,
     )
     assert response.decision.state is DecisionState.HUMAN_REVIEW_REQUIRED
-    assert "CONFLICTING_IMMIGRATION_STATUS_REVIEW" in {
+    assert "CONFLICTING_IMMIGRATION_STATUS_REVIEW" not in {
         reason.code for reason in response.decision.review_reasons
+    }
+    assert "CONFLICTING_IMMIGRATION_STATUS_CONDITION" in {
+        notice.code for notice in response.decision.notices
+    }
+
+
+async def test_http_free_run_public_evaluation_projects_a_supported_condition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """gate vo-gate-a1c's OBS-I: the ONLY existing `run_public_evaluation`
+    test with a conditioning flag
+    (`test_offshore_positive_overstay_conflict_names_a_condition`, above)
+    starts from a `HUMAN_REVIEW_REQUIRED` baseline — the fixed identity is a
+    minor, so the pack's own `review.minor-without-guardian` rule holds
+    regardless of any disclosure. That proves a NOTICE survives the public
+    projection; it does not prove a KEPT CANDIDATE does, because there is no
+    candidate to lose. Every `SUPPORTED_CANDIDATES` + condition assertion
+    elsewhere in this repo calls `_apply_disclosed_review_flags` directly,
+    never through the full `run_public_evaluation` -> `run_evaluation` ->
+    `VisaOracleEvaluateResponse` projection this HTTP-facing wire actually
+    uses.
+
+    `_apply_decisive_source_authority_hold` and
+    `_apply_safety_critical_source_hold` are neutralised to identity for
+    THIS test only, isolating the layer under test the same way
+    `_patch_engine_chain` already isolates binding/verify/compile —
+    measured, not assumed: without this,
+    `run_public_evaluation`/`run_evaluation` against the gold TEST pack
+    ALWAYS end `HUMAN_REVIEW_REQUIRED` with `DECISIVE_PRIMARY_SOURCE_NOT_
+    APPLICABLE`, because those two adapters gate every `SUPPORTED_
+    CANDIDATES`/`NO_SUPPORTED_PATH` decision on the TEST pack's source
+    records being authoritative and fresh AT REAL WALL-CLOCK TIME —
+    `run_public_evaluation` has no parameter to pin `evaluation_time` (only
+    `run_evaluation` does, and `run_public_evaluation` never passes one
+    through). `test_source_projection_exposes_bitemporal_freshness_without_
+    invented_ttl` above independently documents this exact same hold on the
+    same persona through the same unpatched path. Neither adapter is
+    disclosure-related; neutralising them proves nothing about the
+    disclosure layer and everything is otherwise real: the pack, the
+    compiler, the disclosure adapter, and the response projection all run
+    unmodified. `_UntouchedPool` proves the projection needs no live
+    database on this path (`idempotency_key=None`, `_save_evaluate_decision`
+    patched to a recorder).
+    """
+
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    _patch_engine_chain(monkeypatch)
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_decisive_source_authority_hold",
+        lambda decision, compiled: decision,
+    )
+    monkeypatch.setattr(
+        evaluate_path,
+        "_apply_safety_critical_source_hold",
+        lambda decision, compiled: decision,
+    )
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    wire = _wire_payload(facts)
+    wire["disclosed_review_flags"] = ["HEALTH_CONCERN"]
+
+    response = await evaluate_path.run_public_evaluation(
+        _UntouchedPool(),
+        request=VisaOracleEvaluateRequest.model_validate(wire),
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-supported-condition-projection",
+        canonical_request=b"{}",
+        idempotency_key=None,
+    )
+
+    assert response.decision.state is DecisionState.SUPPORTED_CANDIDATES
+    assert [candidate.product_code for candidate in response.decision.candidates] == ["C2"]
+    assert response.decision.review_reasons == ()
+    assert "DISCLOSED_HEALTH_CONCERN_CONDITION" in {
+        notice.code for notice in response.decision.notices
     }
 
 
@@ -2789,9 +3256,14 @@ def test_final_decision_trace_and_integrity_are_deterministic_and_cover_disclosu
     assert first.decision_integrity is not None
     assert verify_decision_seal(first, key=key, trace=evaluation.trace)
 
+    # CRIMINAL_RECORD, not NOT_CERTAIN: since PLAN VISA-ORACLE-DW-20260919
+    # slice A1, only a holding flag rewrites the decision (and nulls
+    # decision_integrity, forcing the reseal this test exercises below); a
+    # conditioning flag like NOT_CERTAIN only appends a notice and leaves
+    # decision_integrity untouched — see test_notice_source_refs_are_empty.
     disclosed = evaluate_path._apply_disclosed_review_flags(
         first,
-        (DisclosedReviewFlag.NOT_CERTAIN,),
+        (DisclosedReviewFlag.CRIMINAL_RECORD,),
     )
     assert disclosed.trace_sha256 == first.trace_sha256
     assert disclosed.decision_integrity is None
