@@ -1,0 +1,32 @@
+task_id: jev-ban-entity-check
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Judge the paid-Anthropic-endpoint ban as an entity rather than as a spelling, as an additive advisory step on the CI lint that already owns that ban.
+constraints:
+  - Composition is OR and never AND — the incumbent greps keep their verdict untouched and the model may only ADD a finding, so no model failure can clear what the repo blocks today.
+  - An absent key or an unreachable service degrades to exactly today's behaviour; the step never fails for lack of a credential.
+  - Advisory only — the step always exits 0 in this PR; arming it is a later, separate decision.
+  - Everything sent externally passes redaction first; values go, structure stays.
+  - The transcribed grep predicate must replicate catE exactly, including its per-suffix file sets, and never widen it.
+acceptance:
+  - text: WHEN the model answers every route 0.0 on a file the incumbent grep condemns the composed verdict SHALL still be a violation.
+    probe: test_model_saying_no_cannot_clear_the_grep
+  - text: WHEN the service returns nothing the composed verdict SHALL fall back to the grep verdict and SHALL NOT raise.
+    probe: test_service_silence_is_not_a_pass
+  - text: WHEN no key is configured the lint SHALL apply the grep predicate, SHALL report that judgment was skipped, and SHALL NOT invent findings.
+    probe: test_no_key_does_not_invent_violations
+  - text: WHEN source text carries a credential-shaped literal the payload leaving the machine SHALL NOT contain it while the surrounding call structure SHALL survive.
+    probe: test_redaction_runs_before_the_payload_leaves
+  - text: WHEN the same banned text appears in a file suffix catE does not scan the transcribed predicate SHALL NOT fire on it.
+    probe: test_grep_is_suffix_scoped_exactly_like_cate
+  - text: Every corpus case labelled missed_by_grep SHALL in fact escape the incumbent predicate, so the lane's headline recall cannot be inflated.
+    probe: test_grep_misses_every_case_marked_missed
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — step "Paid-endpoint ban judged as an entity (advisory)", shipped in this PR and running on its own diff.
+risks:
+  - The 39-case corpus is authored by this lane, so its 16/17 recall on grep-misses and 0/20 false alarms are a self-graded number. An independent refuter adding adversarial cases is the honest next step and is named in the corpus _doc.
+  - One known miss (httpx_async_raw, 0.63) is a raw POST to the endpoint with a header credential. It sits below the 0.80 threshold and is reported rather than tuned away.
+  - The threshold was NOT lowered to the value that maximises the bench; that would be tuning on the test set. Sensitivity is printed instead.
+  - Cross-file indirection is outside the lane's reach: a diff calling a pre-existing wrapper need not reveal that wrapper's endpoint.
+grader: Refuter pass requested from an external seat; no verdict asserted here. Generator is not grader.
