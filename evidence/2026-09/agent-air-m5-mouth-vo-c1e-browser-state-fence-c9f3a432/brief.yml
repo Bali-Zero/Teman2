@@ -1,0 +1,41 @@
+task_id: vo-c1e-browser-state-fence
+gear: 2
+base_sha: a787b7d5e3
+objective: >-
+  Slice C1e (MANDATE-vo.md, R-SUSPEND-C1b option 1): replace the parser-based
+  Visa Oracle outcome-state colour fence — suspended after three gate reds
+  (#6820, #6833, #6845, #6855), always one CSS construct behind the language
+  it read as text — with a Playwright spec that appends the product's own
+  `.oracle-verdict-chip[data-state]` markup into a live, unmodified
+  `.oracle-root` and lets a real Chromium resolve the cascade via
+  `getComputedStyle`, across the six real rendering contexts the product
+  supports (light/dark hydrated, dark system-preference, two pre-hydration
+  cascade states, defensive prefers-contrast), plus a floor guard, the S1-S9
+  permanent regression matrix pinning each historical leak, and a rendered
+  weld (V9) proving the injection technique matches the product's own render.
+
+constraints:
+  - "One new file only: apps/mouth/e2e/visa-oracle-state-colours.spec.ts. oracle.css untouched; the merged C1 fence oracle-state-tokens.test.ts (#6820) untouched and not deleted; no workflow change, no package.json/lockfile change, no new dependency, no new Playwright config."
+  - "Ships as ONE file per conductor ruling R-SIZE-C1e (MANDATE-vo.md, 2026-09-20 06:22Z): the S1-S9 guilt matrix is the instrument's guilt side, not a separable concern — splitting it would leave a fence with no in-suite proof it can go red, the exact failure class R-SIZE-C1e names."
+  - "No file mutation for the guilt cases: every hostile CSS mutation is a string passed to page.addStyleTag inside the suite itself, permanent and CI-enforced — never a copy/restore of oracle.css."
+  - "V9's weld reaches the verdict surface only through the pattern e2e/visa-oracle-process.spec.ts:25,102 already uses (flowReducer replay + addInitScript resume seed + route-mocked evaluate) copied inline into the new file; never readFileSync+regex, never an import from another *.spec.ts, no new scaffolding exported out of visa-oracle-v2.spec.ts."
+
+appetite: { wall_clock_hours: 1 }
+
+acceptance:
+  - text: "All 19 tests pass locally against a real dev server: 6 context rows (including both pre-hydration rows via the _next/static/chunks route-abort + domcontentloaded technique), the floor + floor-guard unit test, S1-S9 (S4b/S5b/S8/S9 PREDICTED by the spec, measured RED in this PR), and the V9 rendered weld."
+    probe: "( cd apps/mouth && NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER=628123456789 /Users/balizero/nuzantara/node_modules/.bin/next dev --webpack -p 3123 & ) ; sleep 3 ; cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3123 /Users/balizero/nuzantara/node_modules/.bin/playwright test --config=playwright.config.ts --project=chromium --reporter=list e2e/visa-oracle-state-colours.spec.ts"
+  - text: "tsc --noEmit -p . exits 0 across the whole apps/mouth project (a real TS2339 on an ElementHandle<Node>.remove() call was caught this way and fixed by typing the callback param, not by loosening the type)."
+    probe: "cd apps/mouth && /Users/balizero/nuzantara/node_modules/.bin/tsc --noEmit -p ."
+  - text: "The new spec's test.describe title ends '— page Page', matching tests.yml:2496's --grep 'page Page|@offline', so CI's E2E Tests (Playwright) job actually RUNS it (not just imports it) — verified after push, by the job's own log/artifact naming the spec and a non-zero passed count."
+    probe: "gh pr checks <PR> ; gh run view <run-id> --log | grep -i 'visa-oracle-state-colours'"
+  - text: "Counter-proof: with assertDistinct neutered to a no-op in a scratch copy (never the tracked file, deleted immediately after the run), S1 no longer detects the leak — the guilt test fails for the OPPOSITE reason (expect(...).toThrow() fails with 'did not throw'), proving S1's redness is driven by assertDistinct's throw and nothing else."
+    probe: "cp apps/mouth/e2e/visa-oracle-state-colours.spec.ts /tmp/counterproof.spec.ts && python3 -c \"import re,sys; p='/tmp/counterproof.spec.ts'; s=open(p).read(); s=re.sub(r'function assertDistinct\\(palette: Palette, label: string\\): void \\{.*?\\n\\}\\n', 'function assertDistinct(_p: Palette, _l: string): void {\\n  return;\\n}\\n', s, count=1, flags=re.S); open(p,'w').write(s)\" && cp /tmp/counterproof.spec.ts apps/mouth/e2e/zz-counterproof-scratch.spec.ts && ( cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3123 /Users/balizero/nuzantara/node_modules/.bin/playwright test --config=playwright.config.ts --project=chromium --grep 'S1 —' e2e/zz-counterproof-scratch.spec.ts ) ; rm apps/mouth/e2e/zz-counterproof-scratch.spec.ts"
+
+assumptions:
+  - text: "F-PRODUCT-1 (verified independently by the conductor on origin/main 5e036547d7, and by this builder before that): engine-adapter.ts:1523 hard-codes legal.status to 'SUPPORTED' unconditionally, so TODAY no real rendered verdict carries any of the four CSS-styled data-state literals (oracle.css:1037-1049 styles only eligible/likely/conditional/likely-not; a real chip's data-state is always 'supported'). This is a declared limit, not a defect in this slice: the fence guards the palette CONTRACT ahead of the surface that will consume it (C2/C3); V9's weld is satisfied as built because it proves the injection technique computes what the product's OWN render computes, on the one state a real verdict reaches today."
+    status: verified
+    probe: "grep -n 'status: \"SUPPORTED\" as const' apps/mouth/src/app/\\(visa-oracle\\)/visa-oracle/_lib/engine-adapter.ts ; grep -n 'oracle-verdict-chip\\[data-state' apps/mouth/src/app/\\(visa-oracle\\)/visa-oracle/oracle.css"
+  - text: "'GREEN' throughout the spec's own §3 guilt table means the four states stay DISTINCT (no collision), not byte-identical to the row's baseline palette. S1's mutation is a two-branch selector list ([theme=dark],[theme=light]) that legitimately changes 'likely' in the dark theme too — measured — without colliding with any dark sibling, so it is GREEN by the distinctness definition even though it is not byte-identical to PALETTE_DARK. The suite's dark-sanity check asserts distinctness, matching this definition."
+    status: verified
+    probe: "grep -n 'S1 —' -A 20 apps/mouth/e2e/visa-oracle-state-colours.spec.ts"
