@@ -106,6 +106,24 @@ def test_a_dict_entry_naming_another_endpoint_does_not_authorize(listing, monkey
 
 
 @pytest.mark.parametrize(
+    "variant",
+    ["HTTPS://API.TYPESAFE.AI/v1/systemone", " " + "https://api.typesafe.ai/v1/systemone" + " ",
+     "https://api.typesafe.ai/v1/systemone/"],
+    ids=["case", "whitespace", "trailing-slash"],
+)
+def test_a_near_miss_spelling_does_not_authorize(listing, monkeypatch, variant):
+    """Today `==` rejects all three. Nothing TESTED that, so a mutant that
+    normalised case or stripped whitespace would have passed the whole corpus
+    — the rejection was true by accident of the operator rather than by a
+    pinned decision. Raised by the kimi-code/k3 review seat."""
+    _, write = listing
+    write({"endpoints": [variant]})
+    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
+
+    assert tc.authorized() is False
+
+
+@pytest.mark.parametrize(
     "payload",
     ["", "{", '{"endpoints": "all"}', '{"other": []}', '{"endpoints": null}'],
     ids=["empty", "truncated", "not-a-list", "missing-key", "null"],

@@ -1,4 +1,5 @@
 brief_ref: evidence/brief.yml
+council_run: council.jsonl
 pii_scan: clean
 plan_ref:
   "Condition 3 of the Gear-3 gate verdict on PR #6968, recorded in the ledger row
@@ -116,6 +117,24 @@ unresolved:
   - "Conditions 1 and 2 of the #6968 ledger row (the trigger narrower than the scanner, and the 16-vs-11
     prose drift) are untouched here and stay open on that row."
 dissent:
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — test_model_saying_no_cannot_clear_the_grep, the anti-AND test that exists to prove a model false negative cannot open the gate, was vacuous: without the fixture the fence made the client unavailable, the model was never asked, and the test passed on the grep alone. The most important test in the file, and the FIFTH vacuous one in this lane."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — AUTHORIZATION.read_text() used the locale default encoding while the shipped file carries non-ASCII in its _doc, so under LC_ALL=C a VALID authorization would decode-fail into a refusal. Fail-closed, but wrong for the wrong reason."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM — claimed scripts/tests/test_vendor_authorization_fence.py is outside the workflow paths:, so the gating tests could be weakened without starting the gate."
+    status: RETRACTED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — nothing TESTED the rejection of a case variant, a whitespace-padded entry or a trailing slash: `==` rejects them today by accident of the operator rather than by a pinned decision, so a normalising mutant would pass the corpus. Three cases added."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — Path(__file__).resolve().parents[1] anchors wherever the file lives, so a COPY of the client outside the repo reads a different authorization file, or none. Raised independently by the gemini seat in the same round."
+    status: PLAUSIBLE
+  - seat: kimi-code/k3
+    objection: "LOW — 'starts the gate' is proven only as 'the workflow runs'. Whether catE is a REQUIRED check is asserted nowhere in the diff; the branch-protection API was not readable from this session, so the blocking half stays unverified."
+    status: CONFIRMED
   - seat: devils-advocate (claude-opus, dispatched WITHOUT the fix list and told to break the fence by executing)
     objection: "HIGH — infra/vendor-authorizations/** is in neither paths: block of catE-sovereignty-lint.yml, so the ONE file a PR must touch to arm a vendor is the one file that does not start the gate. The fence would have shipped with the disease it cures."
     status: CONFIRMED

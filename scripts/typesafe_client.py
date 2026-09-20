@@ -61,7 +61,7 @@ def authorized() -> bool:
     make deleting one file the way to arm every vendor.
     """
     try:
-        listed = json.loads(AUTHORIZATION.read_text())["endpoints"]
+        listed = json.loads(AUTHORIZATION.read_text(encoding="utf-8"))["endpoints"]
     except (OSError, ValueError, KeyError, TypeError, RecursionError):
         # RecursionError is neither a ValueError nor an OSError: deeply nested
         # JSON raises it out of the parser and it would escape into a step

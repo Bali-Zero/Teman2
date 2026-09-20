@@ -183,12 +183,18 @@ def test_service_silence_is_not_a_pass(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is True
 
 
-def test_model_saying_no_cannot_clear_the_grep(monkeypatch):
+def test_model_saying_no_cannot_clear_the_grep(monkeypatch, authorized_vendor):
     """The core anti-AND test.
 
     Even with every route answered 0.0, a file the grep condemns stays
     condemned. If this test ever fails, the composition has been inverted and a
     model false negative can open the gate.
+
+    `authorized_vendor` is not decoration. Without it the on-disk fence makes
+    the client unavailable, the model is never asked, and this test passes on
+    the grep alone — proving nothing about the composition it exists to protect.
+    The most important test in this file was the fifth vacuous one, and it was
+    an external review seat that noticed, after four had already been found.
     """
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
