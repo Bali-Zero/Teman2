@@ -7,10 +7,12 @@ where, and the log line for every miss — the contract that failed live on
 2026-09-09 (Pro 15:36, M5 17:59: ⌘N without a new front window, and the
 guard already claiming "AVVIATO").
 
-Since v2.1 both routes stand on the SAME pre-gesture snapshot (`window-names`
-is the first call either way) and only a window whose name was ABSENT from it
-may be typed into — the native route cross-checks the name of the window its
-own API handed back. The name-level guilt/innocence lives in
+Both routes stand on a pre-gesture snapshot (`window-names` is the first call
+either way) and only a window that was NOT there before may be typed into —
+but since v2.3 (2026-09-20) the EVIDENCE differs per route: native snapshots
+the window IDS too and an id absent from that list is the birth, while the
+keystroke route, which gets no handle from ⌘N, keeps the name rule. The
+per-rule guilt/innocence lives in
 infra/claude-hooks/test_window_jump_gesture.sh; what this file pins is the
 ORDER of the two routes and the ending of the old session.
 
@@ -49,6 +51,8 @@ d="$(dirname "$STUB_LOG")"
 case "$(basename "$1")|$2|$STUB_MODE" in
   *native*"|"*"|native-disabled"|*native*"|"*"|keys-"*) echo "execution error: AppleScript is disabled by the macos-applescript configuration. (-1743)" >&2; exit 1 ;;
   *native*"|window-names|"*)           echo "old title"; exit 0 ;;
+  *native*"|window-ids|native-no-ids") echo ""; exit 0 ;;
+  *native*"|window-ids|"*)             echo "win-OLD"; exit 0 ;;
   *native*"|old-id|native-no-old")     echo ""; exit 0 ;;
   *native*"|old-id|"*)                 echo "win-OLD"; exit 0 ;;
   *native*"|new-window|"*)             echo "win-NEW"; exit 0 ;;
@@ -124,6 +128,20 @@ def _sleeper() -> subprocess.Popen:
 
 
 # ---------------- native route ----------------
+def test_native_route_without_an_id_snapshot_falls_back_to_the_name_rule(tmp_path):
+    # The dictionary answers names but not ids: no proof of birth by handle, so
+    # the route judges the new window by its name exactly as v2.1 did.
+    old = _sleeper()
+    try:
+        home, _ = _home(tmp_path, old.pid)
+        rc, calls, log = _run(home, "native-no-ids")
+    finally:
+        old.kill()
+    assert "window_jump_native.applescript type-into win-NEW nz-jump sess-1234-abcd" in calls
+    assert "no id snapshot; name 'new title' absent from the name snapshot" in log
+    assert rc == 0, log
+
+
 def test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old(tmp_path):
     old = _sleeper()
     try:
@@ -132,11 +150,13 @@ def test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old(tmp_p
     finally:
         old.kill()
     assert rc == 0, log
-    assert calls[:4] == ["window_jump_native.applescript window-names  ",
+    assert calls[:5] == ["window_jump_native.applescript window-names  ",
+                         "window_jump_native.applescript window-ids  ",
                          "window_jump_native.applescript new-window /tmp/wd ",
                          "window_jump_native.applescript name-of-id win-NEW ",
                          "window_jump_native.applescript type-into win-NEW nz-jump sess-1234-abcd"]
-    assert "name='new title' (absent from the snapshot)" in log, "the id is a handle; the NAME authorises the keystroke"
+    assert "id 'win-NEW' absent from the id snapshot" in log, "the id the API created IS the proof of a birth"
+    assert "window ids before: [win-OLD]" in log, "a miss must be diagnosable from the log alone"
     # the old window is asked for only AFTER the claim, and only by the stamp
     assert calls.index("window_jump_native.applescript old-id sess-123 ") > 3
     assert _stamp(home) == STAMP, "the stamp goes to the tty of from_pid, nowhere else"
