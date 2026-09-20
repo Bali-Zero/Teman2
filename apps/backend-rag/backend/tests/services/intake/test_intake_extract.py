@@ -153,7 +153,7 @@ async def test_full_nib_extraction_with_evidence():
         "nib", ["page one text", "page two kbli"], generate_fn=_fake_gen(payload)
     )
     assert out["doc_type"] == "nib"
-    assert out["extraction_model"] == "sea-lion"
+    assert out["extraction_model"] == extract.EXTRACTION_MODEL_LABEL
     assert out["fields"]["nib_number"]["value"] == "1234567890123"
     assert out["fields"]["nib_number"]["source_page"] == 1
     assert out["fields"]["nib_number"]["confidence"] >= 0.6
@@ -341,7 +341,7 @@ async def test_passport_partial_mrz_merges_with_model_output():
     )
     out = await extract.extract_fields("passport", [ocr], generate_fn=_fake_gen(payload))
 
-    assert out["extraction_model"] == "sea-lion"
+    assert out["extraction_model"] == extract.EXTRACTION_MODEL_LABEL
     assert out["deterministic_extractors"] == ["passport_mrz"]
     assert out["fields"]["passport_no"]["value"] == "MODEL123"
     assert out["fields"]["name"]["value"] == "Eriksson Anna Maria"
@@ -587,7 +587,7 @@ async def test_skt_model_alias_fields_map_to_canonical_schema():
     )
 
     assert out["doc_type"] == "skt"
-    assert out["extraction_model"] == "sea-lion"
+    assert out["extraction_model"] == extract.EXTRACTION_MODEL_LABEL
     assert out["fields"]["skt_number"]["value"] == "PEM-00123/WPJ.12/KP.0103/2026"
     assert out["fields"]["npwp_number"]["value"] == "09.876.543.2-901.000"
     assert out["fields"]["name"]["value"] == "PT ZANTARA TEST MANDIRI"
@@ -1845,7 +1845,7 @@ async def test_extract_stage_rejects_wrong_stage():
 async def test_live_sealion_golden_rule_null_on_illegible():
     """Real SEA-LION must null an illegible field, not invent it."""
     if not await is_ollama_available():
-        pytest.skip("SEA-LION/Ollama not reachable (localhost:11434)")
+        pytest.skip("extraction model/Ollama not reachable (localhost:11434)")
     ocr = (
         "NOMOR INDUK BERUSAHA\n"
         "NIB: 9876543210987\n"

@@ -1,6 +1,6 @@
 {
   "_version": "2.0",
-  "_updated": "2026-06-16 (agy swarm commander roles)",
+  "_updated": "2026-09-21 (intake_extraction: absent SEA-LION -> qwen3.8:27b-mlx, measured on pro)",
   "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
@@ -40,7 +40,7 @@
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
     "ocr_vision": "qwen2.5vl:7b",
-    "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
+    "intake_extraction": "qwen3.8:27b-mlx",
     "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
     "sentry": "qwen3:4b",
