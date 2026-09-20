@@ -41,12 +41,43 @@ const CONSUMER_FILES = [
   "[hash]/page.tsx", // the verdict: ACCEPT, DECLINE, deleted, error, loading
   "SafeClock.tsx", // the published-deadline hero
   "NextSteps.tsx", // what happens next / what we cannot promise
+  // The DECLINE education table, which lives one tree over (the claims guard
+  // reaches it the same way, by the same relative hops).
+  "../../../components/garuda/declineEducation.ts",
 ];
 
 const CONSUMER_SRC: Record<string, string> = Object.fromEntries(
   CONSUMER_FILES.map((rel) => [rel, readFileSync(join(VOA_DIR, rel), "utf8")]),
 );
 const ALL_CONSUMER_SRC = Object.values(CONSUMER_SRC).join("\n");
+
+const DECLINE_SRC =
+  CONSUMER_SRC["../../../components/garuda/declineEducation.ts"];
+
+/**
+ * THE ONE FAMILY A SUBSTRING SEARCH CANNOT SEE. The DECLINE sentences are
+ * addressed by a TEMPLATE literal — `t(\`decline.${code}.mirror\`)` — so
+ * `"decline.GROUP_CASE.mirror"` appears nowhere as a literal and the orphan
+ * rule would convict all 57 of them. Weakening the rule for everyone to
+ * accommodate one family is how a guard quietly stops guarding, so instead
+ * the family is RESOLVED the way the code resolves it: expand the reason-code
+ * union against the three parts. What that buys is checked below in both
+ * directions — an unexpanded key still counts as an orphan, and an expansion
+ * with no key in the register still fails.
+ */
+const DECLINE_CODES = (
+  DECLINE_SRC.split("export type DeclineCode =")[1]?.split(";")[0] ?? ""
+)
+  .match(/"[A-Z_]+"/g)!
+  .map((q) => q.slice(1, -1));
+
+const DECLINE_PARTS = ["mirror", "forbids", "alternative"] as const;
+
+const GENERATED = new Set<VoaCopyKey>(
+  DECLINE_CODES.flatMap((c) =>
+    DECLINE_PARTS.map((part) => `decline.${c}.${part}` as VoaCopyKey),
+  ),
+);
 
 const keys = Object.keys(VOA_COPY.en) as VoaCopyKey[];
 
@@ -65,6 +96,7 @@ const SAME_BY_DESIGN: Partial<Record<VoaCopyKey, string>> = {
   "entry.emailPlaceholder": "an example address, not a sentence",
   "verdict.wa.priceLabel": "CRM lead context, English on purpose",
   "purpose.transit": "the same word in both languages",
+  "decline.purpose.transit": "the same word in both languages",
   "nationality.AUS": "the country's name is the same in both languages",
   "lead.context.pageLabel": "CRM lead context, English on purpose",
   "lead.context.pageValue": "CRM lead context, English on purpose",
@@ -125,14 +157,16 @@ describe("voa-i18n — EN and ID are the same funnel, twice", () => {
 
 describe("voa-i18n — every key has a consumer, every sentence has a key", () => {
   it("no key is orphaned: some screen in the leg renders each one", () => {
-    const orphans = keys.filter((k) => !ALL_CONSUMER_SRC.includes(`"${k}"`));
+    const orphans = keys
+      .filter((k) => !GENERATED.has(k))
+      .filter((k) => !ALL_CONSUMER_SRC.includes(`"${k}"`));
     expect(orphans).toEqual([]);
   });
 
   it("is GUILTY of an orphan key (guilt control)", () => {
-    const orphans = [...keys, "frame.subtitle.v2"].filter(
-      (k) => !ALL_CONSUMER_SRC.includes(`"${k}"`),
-    );
+    const orphans = [...keys, "frame.subtitle.v2"]
+      .filter((k) => !GENERATED.has(k as VoaCopyKey))
+      .filter((k) => !ALL_CONSUMER_SRC.includes(`"${k}"`));
     expect(orphans).toEqual(["frame.subtitle.v2"]);
   });
 
@@ -249,13 +283,38 @@ describe("voa-i18n — the banned-claims guard followed the copy", () => {
    * convicted; and there, so a banned claim typed into it is convicted too.
    * Checking the inclusion mechanically is cheaper than remembering it.
    */
+  it("the DECLINE family is generated, and the expansion matches the register", () => {
+    // The union really was read (a silent regex miss would make this vacuous).
+    expect(DECLINE_CODES.length).toBeGreaterThan(15);
+    // Direction 1 — every expansion exists as a key. Types already enforce
+    // this at build time via `DeclineSentenceKey`; asserted here so the
+    // failure names the missing sentence instead of a type error in a file
+    // nobody was editing.
+    const absent = [...GENERATED].filter((k) => !keys.includes(k));
+    expect(absent).toEqual([]);
+    // Direction 2 — every `decline.<CODE>.` key in the register is one the
+    // expansion produces, so a key for a retired code cannot linger.
+    const stray = keys.filter(
+      (k) => /^decline\.[A-Z_]+\./.test(k) && !GENERATED.has(k),
+    );
+    expect(stray).toEqual([]);
+    // ...and the template that makes them reachable is really in the file.
+    for (const part of DECLINE_PARTS) {
+      expect(DECLINE_SRC).toContain(`decline.\${code}.${part}`);
+    }
+  });
+
   it("every consumer this file scans is scanned by the claims guard too", () => {
     const guardSrc = readFileSync(
       join(VOA_DIR, "voa-copy.guard.test.ts"),
       "utf8",
     );
     const missing = CONSUMER_FILES.filter(
-      (rel) => !guardSrc.includes(`"${rel}"`),
+      // BASENAME, not the whole path: the claims guard reaches the
+      // out-of-tree DECLINE table through a multi-argument `join("..", "..",
+      // …)`, so the two lists agree on the FILE while spelling the path
+      // differently. Comparing the literal string would red on formatting.
+      (rel) => !guardSrc.includes(`"${rel.split("/").pop()}"`),
     );
     expect(missing).toEqual([]);
   });
@@ -288,6 +347,13 @@ vi.mock("@balizero/core", async (importOriginal) => {
       wizardAbandoned: vi.fn(),
       formSubmitted: vi.fn(),
       formSubmitFailed: vi.fn(),
+      // The verdict screen's half of the tracker — the wizard never calls
+      // these, and the DECLINE render below would die on the first one.
+      resultViewed: vi.fn(),
+      ctaClicked: vi.fn(),
+      shareClicked: vi.fn(),
+      whatsappHandoff: vi.fn(),
+      emailSubscribed: vi.fn(),
     }),
   };
 });
@@ -402,6 +468,64 @@ describe("voa-i18n — the verdict leg renders in Indonesian too", () => {
     searchParams.current = new URLSearchParams();
     render(<NextSteps handoffHref="#wa" hasDeadline />);
     expect(screen.getByText(VOA_COPY.id["next.heading"])).toBeTruthy();
+  });
+
+  /**
+   * THE DECLINE SCREEN, RENDERED. This is the half of the verdict a refused
+   * visitor reads, and it is built client-side from the answers this tab
+   * holds — so "the copy is in the register" is not enough: the screen has to
+   * pass its own `t` down into the builder, and only a render proves it did.
+   */
+  it("the DECLINE education reaches the screen in Indonesian", async () => {
+    searchParams.current = new URLSearchParams("lang=id");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          verdict: "DECLINE",
+          reason_codes: ["PURPOSE_NOT_ELIGIBLE"],
+        }),
+      })),
+    );
+    const { default: VerdictPage } = await import("./[hash]/page");
+    render(<VerdictPage params={Promise.resolve({ hash: "synthetic" })} />);
+    expect(
+      await screen.findByText(
+        VOA_COPY.id["decline.PURPOSE_NOT_ELIGIBLE.forbids"],
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(VOA_COPY.en["decline.PURPOSE_NOT_ELIGIBLE.forbids"]),
+    ).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * The builder's default argument is what keeps every existing two-argument
+   * caller — and `declineEducation.test.ts`'s English assertions — meaning
+   * what they meant. Pinned, because a later refactor that drops the default
+   * would silently flip those callers to whatever locale happened to be set.
+   */
+  it("buildDeclineEducation still answers English when asked for nothing", async () => {
+    const { buildDeclineEducation } =
+      await import("@/components/garuda/declineEducation");
+    const answers = {
+      case_type: "issuance",
+      nationality: "USA",
+      purpose: "transit",
+      travellers: 3,
+      self_pay: true,
+      extension_already_used: false,
+    } as const;
+    expect(buildDeclineEducation("GROUP_CASE", answers).mirror).toBe(
+      VOA_COPY.en["decline.GROUP_CASE.mirror"].replace("{travellers}", "3"),
+    );
+    expect(
+      buildDeclineEducation("GROUP_CASE", answers, voaCopy("id")).mirror,
+    ).toBe(
+      VOA_COPY.id["decline.GROUP_CASE.mirror"].replace("{travellers}", "3"),
+    );
   });
 
   /** FALSIFICATION: a genuinely fresh tab is still English. */

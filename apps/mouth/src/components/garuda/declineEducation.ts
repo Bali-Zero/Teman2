@@ -21,6 +21,12 @@
  *    than keeps guessing.
  */
 
+import {
+  voaCopy,
+  type VoaCopyFn,
+  type VoaCopyKey,
+} from "../../app/visa/voa/voa-copy";
+
 export type DeclineCode =
   | "NATIONALITY_NOT_ELIGIBLE"
   | "PURPOSE_NOT_ELIGIBLE"
@@ -69,11 +75,38 @@ export interface DeclineEducation {
   routeKind: RouteKind;
 }
 
-const PURPOSE_LABEL: Record<Purpose, string> = {
-  tourism: "tourism",
-  family: "visiting family",
-  transit: "transit",
-  "business-meeting": "a business meeting",
+const PURPOSE_KEY: Record<Purpose, VoaCopyKey> = {
+  tourism: "decline.purpose.tourism",
+  family: "decline.purpose.family",
+  transit: "decline.purpose.transit",
+  "business-meeting": "decline.purpose.business-meeting",
+};
+
+/**
+ * WHERE each code routes. This was the only judgement buried in the old
+ * nineteen-case switch that was not copy; lifting it out is what lets the
+ * three sentences come from the register by key instead of from a literal.
+ */
+const ROUTE: Record<DeclineCode, RouteKind> = {
+  NATIONALITY_NOT_ELIGIBLE: "oracle",
+  PURPOSE_NOT_ELIGIBLE: "oracle",
+  GROUP_CASE: "whatsapp",
+  PASSPORT_TYPE: "whatsapp",
+  PASSPORT_VALIDITY: "whatsapp",
+  NOT_SELF_PAY: "whatsapp",
+  FEEDBACK_REQUIRED: "whatsapp",
+  URGENT_CASE: "whatsapp",
+  SPECIAL_PASSPORT: "whatsapp",
+  PRIOR_ISSUE: "whatsapp",
+  ELIGIBILITY_UNCONFIRMED: "whatsapp",
+  FASTLANE_REQUEST: "whatsapp",
+  EXPIRY_UNKNOWN: "whatsapp",
+  EXPIRES_TOO_SOON: "whatsapp",
+  EXTENSION_ALREADY_USED: "oracle",
+  ARRIVAL_TOO_SOON: "whatsapp",
+  ARRIVAL_DATE_UNCONFIRMED: "whatsapp",
+  ARRIVAL_TOO_FAR: "whatsapp",
+  EXTENSION_EXCEEDS_MAX_STAY: "oracle",
 };
 
 /**
@@ -85,193 +118,48 @@ export function primaryDeclineCode(codes: DeclineCode[]): DeclineCode | null {
   return codes[0] ?? null;
 }
 
+/**
+ * Every sentence this file renders, as a type. If a reason code is added to
+ * `DeclineCode` and its three keys are not added to `voa-copy.ts`, this alias
+ * stops being assignable to `VoaCopyKey` and `_ALL_SENTENCES_PRESENT` below
+ * fails the BUILD — the same "a new code without copy is a compile error"
+ * property the old literal switch had, kept while the copy moved out.
+ */
+type DeclineSentenceKey =
+  `decline.${DeclineCode}.${"mirror" | "forbids" | "alternative"}`;
+
+const _ALL_SENTENCES_PRESENT: DeclineSentenceKey extends VoaCopyKey
+  ? true
+  : never = true;
+void _ALL_SENTENCES_PRESENT;
+
+/**
+ * `t` defaults to English so the existing two-argument callers — and the tests
+ * that assert the English sentences — keep meaning exactly what they meant.
+ * The verdict screen passes its own `t`, which is how a visitor who asked for
+ * Bahasa reads the DECLINE education in Bahasa.
+ */
 export function buildDeclineEducation(
   code: DeclineCode,
   answers: EligibilitySubmission,
+  t: VoaCopyFn = voaCopy("en"),
 ): DeclineEducation {
-  const purposeLabel = PURPOSE_LABEL[answers.purpose];
-  const caseLabel =
-    answers.case_type === "extension"
-      ? "extend a Visa on Arrival you already hold"
-      : "get a new Visa on Arrival";
+  const params = {
+    nationality: answers.nationality,
+    purpose: t(PURPOSE_KEY[answers.purpose]),
+    travellers: answers.travellers,
+    case: t(
+      answers.case_type === "extension"
+        ? "decline.case.extension"
+        : "decline.case.issuance",
+    ),
+  };
 
-  switch (code) {
-    case "NATIONALITY_NOT_ELIGIBLE":
-      return {
-        code,
-        mirror: `You told us you hold a passport from ${answers.nationality}.`,
-        forbids:
-          "The Visa on Arrival is not issued to your nationality — no online form changes that.",
-        alternative:
-          "Our Visa Match tool checks your case against every Bali Zero visa route in under a minute and tells you which one fits.",
-        routeKind: "oracle",
-      };
-    case "PURPOSE_NOT_ELIGIBLE":
-      return {
-        code,
-        mirror: `You told us you're coming for ${purposeLabel}.`,
-        forbids: "The Visa on Arrival doesn't cover that purpose of travel.",
-        alternative:
-          "Here's what does: our Visa Match tool matches your real purpose to the right visa and its cost.",
-        routeKind: "oracle",
-      };
-    case "GROUP_CASE":
-      return {
-        code,
-        mirror: `You told us you're travelling with ${answers.travellers} people on this application.`,
-        forbids:
-          "This online form only files one passport at a time — it can't submit a group together.",
-        alternative:
-          "A consultant can open and track every passport in your group side by side.",
-        routeKind: "whatsapp",
-      };
-    case "PASSPORT_TYPE":
-      return {
-        code,
-        mirror: "You told us about the passport you're travelling on.",
-        forbids:
-          "That passport type needs a manual check before we can confirm the Visa on Arrival applies.",
-        alternative: "A consultant can verify it with you directly.",
-        routeKind: "whatsapp",
-      };
-    case "PASSPORT_VALIDITY":
-      return {
-        code,
-        mirror: "You told us your passport's expiry date.",
-        forbids:
-          "The Visa on Arrival needs more validity left on the passport than yours currently has.",
-        alternative:
-          "Renew the passport and this same online check will clear — or a consultant can confirm the exact margin you need.",
-        routeKind: "whatsapp",
-      };
-    case "NOT_SELF_PAY":
-      return {
-        code,
-        mirror: "You told us someone else is paying for this application.",
-        forbids:
-          "The online checkout only accepts payment from the traveller's own card.",
-        alternative: "A consultant can take a third-party payment for you.",
-        routeKind: "whatsapp",
-      };
-    case "EXTENSION_ALREADY_USED":
-      return {
-        code,
-        mirror: `You told us you want to ${caseLabel}.`,
-        forbids:
-          "A Visa on Arrival can only be extended once, and yours already has been.",
-        alternative:
-          "Our Visa Match tool can find the visa that fits a longer stay from here.",
-        routeKind: "oracle",
-      };
-    case "EXTENSION_EXCEEDS_MAX_STAY":
-      return {
-        code,
-        mirror: `You told us you want to ${caseLabel}.`,
-        forbids:
-          "That extension would take your stay past the maximum the Visa on Arrival allows.",
-        alternative:
-          "Our Visa Match tool can find the right visa for the length of stay you actually need.",
-        routeKind: "oracle",
-      };
-    case "FEEDBACK_REQUIRED":
-      return {
-        code,
-        mirror: "Something in your answers needs a closer look.",
-        forbids: "We can't confirm eligibility automatically for this case.",
-        alternative: "A consultant can review it with you directly.",
-        routeKind: "whatsapp",
-      };
-    case "URGENT_CASE":
-      return {
-        code,
-        mirror: "You told us this case is time-sensitive.",
-        forbids:
-          "The standard online timeline can't be safely compressed further.",
-        alternative: "A consultant can work an urgent case by hand.",
-        routeKind: "whatsapp",
-      };
-    case "SPECIAL_PASSPORT":
-      return {
-        code,
-        mirror: "You told us about the passport you're travelling on.",
-        forbids:
-          "Diplomatic and service passports are handled outside the standard Visa on Arrival flow.",
-        alternative: "A consultant can route it correctly.",
-        routeKind: "whatsapp",
-      };
-    case "PRIOR_ISSUE":
-      return {
-        code,
-        mirror: "You told us about your prior visit to Indonesia.",
-        forbids:
-          "That history needs a case review before the Visa on Arrival can be confirmed.",
-        alternative: "A consultant can review it with you directly.",
-        routeKind: "whatsapp",
-      };
-    case "FASTLANE_REQUEST":
-      return {
-        code,
-        mirror: "You asked about the airport fast-lane service.",
-        forbids: "That's a separate service from the Visa on Arrival itself.",
-        alternative: "A consultant can set up both for you together.",
-        routeKind: "whatsapp",
-      };
-    case "EXPIRY_UNKNOWN":
-      return {
-        code,
-        mirror: "We didn't get a clear passport expiry date from your answer.",
-        forbids: "We can't confirm eligibility without that date.",
-        alternative:
-          "Check your passport's data page and try again, or send it to a consultant.",
-        routeKind: "whatsapp",
-      };
-    case "EXPIRES_TOO_SOON":
-      return {
-        code,
-        mirror: "You told us your passport's expiry date.",
-        forbids:
-          "It expires too soon for the Visa on Arrival to be issued against it.",
-        alternative:
-          "Renew the passport and this same online check will clear.",
-        routeKind: "whatsapp",
-      };
-    case "ARRIVAL_TOO_SOON":
-      return {
-        code,
-        mirror: "You told us your arrival date.",
-        forbids:
-          "It's too close for this online check to confirm eligibility yet.",
-        alternative: "A consultant can fast-track the same case by hand.",
-        routeKind: "whatsapp",
-      };
-    case "ARRIVAL_TOO_FAR":
-      return {
-        code,
-        mirror: "You told us your arrival date.",
-        forbids:
-          "It's too far out for us to quote a price we can stand behind today.",
-        alternative:
-          "Come back closer to your travel date, or ask a consultant to watch it for you.",
-        routeKind: "whatsapp",
-      };
-    case "ARRIVAL_DATE_UNCONFIRMED":
-      return {
-        code,
-        mirror: "You told us your arrival date.",
-        forbids:
-          "It falls outside the period we've currently confirmed with the authorities.",
-        alternative:
-          "A consultant can tell you as soon as that period is confirmed.",
-        routeKind: "whatsapp",
-      };
-    case "ELIGIBILITY_UNCONFIRMED":
-      return {
-        code,
-        mirror: "We tried to confirm your eligibility just now.",
-        forbids:
-          "Our records for this check aren't fresh enough for us to promise a price or a date.",
-        alternative: "A consultant can confirm your case by hand right away.",
-        routeKind: "whatsapp",
-      };
-  }
+  return {
+    code,
+    mirror: t(`decline.${code}.mirror`, params),
+    forbids: t(`decline.${code}.forbids`, params),
+    alternative: t(`decline.${code}.alternative`, params),
+    routeKind: ROUTE[code],
+  };
 }

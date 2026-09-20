@@ -198,6 +198,127 @@ const en = {
   "next.limit3.noDeadline":
     "A published deadline is scoped to one office. Tell us where you plan to file and we will confirm yours before you rely on it.",
   "next.ask": "Ask us anything before you pay",
+
+  // --- DECLINE education (owner decision 5 / constraint 5b) -----------------
+  // One key per (reason code x sentence). The three sentences are a fixed
+  // shape — mirror what the customer declared, name what the permit does not
+  // allow, then the way forward — and they are kept per-code rather than
+  // shared so two codes can diverge without a caller noticing.
+  "decline.purpose.tourism": "tourism",
+  "decline.purpose.family": "visiting family",
+  "decline.purpose.transit": "transit",
+  "decline.purpose.business-meeting": "a business meeting",
+  "decline.case.issuance": "get a new Visa on Arrival",
+  "decline.case.extension": "extend a Visa on Arrival you already hold",
+
+  "decline.NATIONALITY_NOT_ELIGIBLE.mirror":
+    "You told us you hold a passport from {nationality}.",
+  "decline.NATIONALITY_NOT_ELIGIBLE.forbids":
+    "The Visa on Arrival is not issued to your nationality — no online form changes that.",
+  "decline.NATIONALITY_NOT_ELIGIBLE.alternative":
+    "Our Visa Match tool checks your case against every Bali Zero visa route in under a minute and tells you which one fits.",
+  "decline.PURPOSE_NOT_ELIGIBLE.mirror":
+    "You told us you're coming for {purpose}.",
+  "decline.PURPOSE_NOT_ELIGIBLE.forbids":
+    "The Visa on Arrival doesn't cover that purpose of travel.",
+  "decline.PURPOSE_NOT_ELIGIBLE.alternative":
+    "Here's what does: our Visa Match tool matches your real purpose to the right visa and its cost.",
+  "decline.GROUP_CASE.mirror":
+    "You told us you're travelling with {travellers} people on this application.",
+  "decline.GROUP_CASE.forbids":
+    "This online form only files one passport at a time — it can't submit a group together.",
+  "decline.GROUP_CASE.alternative":
+    "A consultant can open and track every passport in your group side by side.",
+  "decline.PASSPORT_TYPE.mirror":
+    "You told us about the passport you're travelling on.",
+  "decline.PASSPORT_TYPE.forbids":
+    "That passport type needs a manual check before we can confirm the Visa on Arrival applies.",
+  "decline.PASSPORT_TYPE.alternative":
+    "A consultant can verify it with you directly.",
+  "decline.PASSPORT_VALIDITY.mirror":
+    "You told us your passport's expiry date.",
+  "decline.PASSPORT_VALIDITY.forbids":
+    "The Visa on Arrival needs more validity left on the passport than yours currently has.",
+  "decline.PASSPORT_VALIDITY.alternative":
+    "Renew the passport and this same online check will clear — or a consultant can confirm the exact margin you need.",
+  "decline.NOT_SELF_PAY.mirror":
+    "You told us someone else is paying for this application.",
+  "decline.NOT_SELF_PAY.forbids":
+    "The online checkout only accepts payment from the traveller's own card.",
+  "decline.NOT_SELF_PAY.alternative":
+    "A consultant can take a third-party payment for you.",
+  "decline.EXTENSION_ALREADY_USED.mirror": "You told us you want to {case}.",
+  "decline.EXTENSION_ALREADY_USED.forbids":
+    "A Visa on Arrival can only be extended once, and yours already has been.",
+  "decline.EXTENSION_ALREADY_USED.alternative":
+    "Our Visa Match tool can find the visa that fits a longer stay from here.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.mirror":
+    "You told us you want to {case}.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.forbids":
+    "That extension would take your stay past the maximum the Visa on Arrival allows.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.alternative":
+    "Our Visa Match tool can find the right visa for the length of stay you actually need.",
+  "decline.FEEDBACK_REQUIRED.mirror":
+    "Something in your answers needs a closer look.",
+  "decline.FEEDBACK_REQUIRED.forbids":
+    "We can't confirm eligibility automatically for this case.",
+  "decline.FEEDBACK_REQUIRED.alternative":
+    "A consultant can review it with you directly.",
+  "decline.URGENT_CASE.mirror": "You told us this case is time-sensitive.",
+  "decline.URGENT_CASE.forbids":
+    "The standard online timeline can't be safely compressed further.",
+  "decline.URGENT_CASE.alternative":
+    "A consultant can work an urgent case by hand.",
+  "decline.SPECIAL_PASSPORT.mirror":
+    "You told us about the passport you're travelling on.",
+  "decline.SPECIAL_PASSPORT.forbids":
+    "Diplomatic and service passports are handled outside the standard Visa on Arrival flow.",
+  "decline.SPECIAL_PASSPORT.alternative":
+    "A consultant can route it correctly.",
+  "decline.PRIOR_ISSUE.mirror":
+    "You told us about your prior visit to Indonesia.",
+  "decline.PRIOR_ISSUE.forbids":
+    "That history needs a case review before the Visa on Arrival can be confirmed.",
+  "decline.PRIOR_ISSUE.alternative":
+    "A consultant can review it with you directly.",
+  "decline.FASTLANE_REQUEST.mirror":
+    "You asked about the airport fast-lane service.",
+  "decline.FASTLANE_REQUEST.forbids":
+    "That's a separate service from the Visa on Arrival itself.",
+  "decline.FASTLANE_REQUEST.alternative":
+    "A consultant can set up both for you together.",
+  "decline.EXPIRY_UNKNOWN.mirror":
+    "We didn't get a clear passport expiry date from your answer.",
+  "decline.EXPIRY_UNKNOWN.forbids":
+    "We can't confirm eligibility without that date.",
+  "decline.EXPIRY_UNKNOWN.alternative":
+    "Check your passport's data page and try again, or send it to a consultant.",
+  "decline.EXPIRES_TOO_SOON.mirror": "You told us your passport's expiry date.",
+  "decline.EXPIRES_TOO_SOON.forbids":
+    "It expires too soon for the Visa on Arrival to be issued against it.",
+  "decline.EXPIRES_TOO_SOON.alternative":
+    "Renew the passport and this same online check will clear.",
+  "decline.ARRIVAL_TOO_SOON.mirror": "You told us your arrival date.",
+  "decline.ARRIVAL_TOO_SOON.forbids":
+    "It's too close for this online check to confirm eligibility yet.",
+  "decline.ARRIVAL_TOO_SOON.alternative":
+    "A consultant can fast-track the same case by hand.",
+  "decline.ARRIVAL_TOO_FAR.mirror": "You told us your arrival date.",
+  "decline.ARRIVAL_TOO_FAR.forbids":
+    "It's too far out for us to quote a price we can stand behind today.",
+  "decline.ARRIVAL_TOO_FAR.alternative":
+    "Come back closer to your travel date, or ask a consultant to watch it for you.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.mirror": "You told us your arrival date.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.forbids":
+    "It falls outside the period we've currently confirmed with the authorities.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.alternative":
+    "A consultant can tell you as soon as that period is confirmed.",
+  "decline.ELIGIBILITY_UNCONFIRMED.mirror":
+    "We tried to confirm your eligibility just now.",
+  "decline.ELIGIBILITY_UNCONFIRMED.forbids":
+    "Our records for this check aren't fresh enough for us to promise a price or a date.",
+  "decline.ELIGIBILITY_UNCONFIRMED.alternative":
+    "A consultant can confirm your case by hand right away.",
   /**
    * Lead context, not customer copy: these two travel to the CRM with a
    * WhatsApp lead (`WhatsAppLeadButton`), where a Bahasa label would split
@@ -395,6 +516,130 @@ const id: Record<VoaCopyKey, string> = {
   "next.limit3.noDeadline":
     "Batas akhir yang dipublikasikan berlaku untuk satu kantor saja. Beri tahu kami di mana Anda berencana mengajukan dan kami akan memastikan tanggal Anda sebelum Anda mengandalkannya.",
   "next.ask": "Tanyakan apa saja sebelum Anda membayar",
+
+  // --- DECLINE education ----------------------------------------------------
+  "decline.purpose.tourism": "pariwisata",
+  "decline.purpose.family": "mengunjungi keluarga",
+  "decline.purpose.transit": "transit",
+  "decline.purpose.business-meeting": "rapat bisnis",
+  "decline.case.issuance": "mengurus Visa on Arrival baru",
+  "decline.case.extension":
+    "memperpanjang Visa on Arrival yang sudah Anda miliki",
+
+  "decline.NATIONALITY_NOT_ELIGIBLE.mirror":
+    "Anda memberi tahu kami bahwa Anda memegang paspor dari {nationality}.",
+  "decline.NATIONALITY_NOT_ELIGIBLE.forbids":
+    "Visa on Arrival tidak diterbitkan untuk kewarganegaraan Anda — tidak ada formulir online yang bisa mengubah hal itu.",
+  "decline.NATIONALITY_NOT_ELIGIBLE.alternative":
+    "Alat Visa Match kami memeriksa kasus Anda terhadap seluruh jalur visa Bali Zero dalam waktu kurang dari satu menit dan menunjukkan mana yang cocok.",
+  "decline.PURPOSE_NOT_ELIGIBLE.mirror":
+    "Anda memberi tahu kami bahwa Anda datang untuk {purpose}.",
+  "decline.PURPOSE_NOT_ELIGIBLE.forbids":
+    "Visa on Arrival tidak mencakup tujuan perjalanan tersebut.",
+  "decline.PURPOSE_NOT_ELIGIBLE.alternative":
+    "Yang mencakupnya: alat Visa Match kami mencocokkan tujuan Anda yang sebenarnya dengan visa yang tepat beserta biayanya.",
+  "decline.GROUP_CASE.mirror":
+    "Anda memberi tahu kami bahwa Anda bepergian dengan {travellers} orang dalam permohonan ini.",
+  "decline.GROUP_CASE.forbids":
+    "Formulir online ini hanya mengajukan satu paspor dalam satu waktu — tidak bisa mengirim satu rombongan sekaligus.",
+  "decline.GROUP_CASE.alternative":
+    "Konsultan dapat membuka dan memantau setiap paspor dalam rombongan Anda secara berdampingan.",
+  "decline.PASSPORT_TYPE.mirror":
+    "Anda memberi tahu kami tentang paspor yang Anda gunakan.",
+  "decline.PASSPORT_TYPE.forbids":
+    "Jenis paspor itu perlu diperiksa secara manual sebelum kami dapat memastikan Visa on Arrival berlaku.",
+  "decline.PASSPORT_TYPE.alternative":
+    "Konsultan dapat memverifikasinya langsung bersama Anda.",
+  "decline.PASSPORT_VALIDITY.mirror":
+    "Anda memberi tahu kami masa berlaku paspor Anda.",
+  "decline.PASSPORT_VALIDITY.forbids":
+    "Visa on Arrival memerlukan sisa masa berlaku paspor yang lebih panjang daripada yang Anda miliki saat ini.",
+  "decline.PASSPORT_VALIDITY.alternative":
+    "Perpanjang paspornya dan pengecekan online yang sama ini akan lolos — atau konsultan dapat memastikan berapa sisa masa berlaku yang Anda perlukan.",
+  "decline.NOT_SELF_PAY.mirror":
+    "Anda memberi tahu kami bahwa orang lain yang membayar permohonan ini.",
+  "decline.NOT_SELF_PAY.forbids":
+    "Pembayaran online hanya menerima kartu milik pelancong itu sendiri.",
+  "decline.NOT_SELF_PAY.alternative":
+    "Konsultan dapat memproses pembayaran dari pihak ketiga untuk Anda.",
+  "decline.EXTENSION_ALREADY_USED.mirror":
+    "Anda memberi tahu kami bahwa Anda ingin {case}.",
+  "decline.EXTENSION_ALREADY_USED.forbids":
+    "Visa on Arrival hanya dapat diperpanjang satu kali, dan milik Anda sudah diperpanjang.",
+  "decline.EXTENSION_ALREADY_USED.alternative":
+    "Alat Visa Match kami dapat menemukan visa yang sesuai untuk masa tinggal lebih panjang dari titik ini.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.mirror":
+    "Anda memberi tahu kami bahwa Anda ingin {case}.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.forbids":
+    "Perpanjangan itu akan membuat masa tinggal Anda melewati batas maksimum yang diizinkan Visa on Arrival.",
+  "decline.EXTENSION_EXCEEDS_MAX_STAY.alternative":
+    "Alat Visa Match kami dapat menemukan visa yang tepat untuk lama tinggal yang benar-benar Anda perlukan.",
+  "decline.FEEDBACK_REQUIRED.mirror":
+    "Ada bagian dari jawaban Anda yang perlu ditinjau lebih dekat.",
+  "decline.FEEDBACK_REQUIRED.forbids":
+    "Kami tidak dapat memastikan kelayakan secara otomatis untuk kasus ini.",
+  "decline.FEEDBACK_REQUIRED.alternative":
+    "Konsultan dapat meninjaunya langsung bersama Anda.",
+  "decline.URGENT_CASE.mirror":
+    "Anda memberi tahu kami bahwa kasus ini mendesak.",
+  "decline.URGENT_CASE.forbids":
+    "Alur waktu online standar tidak dapat dipersingkat lebih jauh dengan aman.",
+  "decline.URGENT_CASE.alternative":
+    "Konsultan dapat menangani kasus mendesak secara manual.",
+  "decline.SPECIAL_PASSPORT.mirror":
+    "Anda memberi tahu kami tentang paspor yang Anda gunakan.",
+  "decline.SPECIAL_PASSPORT.forbids":
+    "Paspor diplomatik dan paspor dinas ditangani di luar alur Visa on Arrival standar.",
+  "decline.SPECIAL_PASSPORT.alternative":
+    "Konsultan dapat mengarahkannya dengan benar.",
+  "decline.PRIOR_ISSUE.mirror":
+    "Anda memberi tahu kami tentang kunjungan Anda sebelumnya ke Indonesia.",
+  "decline.PRIOR_ISSUE.forbids":
+    "Riwayat itu perlu ditinjau sebagai kasus sebelum Visa on Arrival dapat dipastikan.",
+  "decline.PRIOR_ISSUE.alternative":
+    "Konsultan dapat meninjaunya langsung bersama Anda.",
+  "decline.FASTLANE_REQUEST.mirror":
+    "Anda menanyakan layanan jalur cepat di bandara.",
+  "decline.FASTLANE_REQUEST.forbids":
+    "Itu layanan terpisah dari Visa on Arrival itu sendiri.",
+  "decline.FASTLANE_REQUEST.alternative":
+    "Konsultan dapat mengurus keduanya sekaligus untuk Anda.",
+  "decline.EXPIRY_UNKNOWN.mirror":
+    "Kami tidak mendapatkan masa berlaku paspor yang jelas dari jawaban Anda.",
+  "decline.EXPIRY_UNKNOWN.forbids":
+    "Kami tidak dapat memastikan kelayakan tanpa tanggal itu.",
+  "decline.EXPIRY_UNKNOWN.alternative":
+    "Periksa halaman data paspor Anda lalu coba lagi, atau kirimkan ke konsultan.",
+  "decline.EXPIRES_TOO_SOON.mirror":
+    "Anda memberi tahu kami masa berlaku paspor Anda.",
+  "decline.EXPIRES_TOO_SOON.forbids":
+    "Masa berlakunya habis terlalu cepat untuk diterbitkannya Visa on Arrival atas paspor itu.",
+  "decline.EXPIRES_TOO_SOON.alternative":
+    "Perpanjang paspornya dan pengecekan online yang sama ini akan lolos.",
+  "decline.ARRIVAL_TOO_SOON.mirror":
+    "Anda memberi tahu kami tanggal kedatangan Anda.",
+  "decline.ARRIVAL_TOO_SOON.forbids":
+    "Tanggalnya terlalu dekat untuk dapat dipastikan kelayakannya lewat pengecekan online ini.",
+  "decline.ARRIVAL_TOO_SOON.alternative":
+    "Konsultan dapat mempercepat kasus yang sama secara manual.",
+  "decline.ARRIVAL_TOO_FAR.mirror":
+    "Anda memberi tahu kami tanggal kedatangan Anda.",
+  "decline.ARRIVAL_TOO_FAR.forbids":
+    "Tanggalnya terlalu jauh untuk kami memberikan harga yang bisa kami pertanggungjawabkan hari ini.",
+  "decline.ARRIVAL_TOO_FAR.alternative":
+    "Kembalilah mendekati tanggal perjalanan Anda, atau minta konsultan memantaunya untuk Anda.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.mirror":
+    "Anda memberi tahu kami tanggal kedatangan Anda.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.forbids":
+    "Tanggalnya berada di luar periode yang saat ini sudah kami pastikan dengan pihak berwenang.",
+  "decline.ARRIVAL_DATE_UNCONFIRMED.alternative":
+    "Konsultan dapat mengabari Anda begitu periode itu dipastikan.",
+  "decline.ELIGIBILITY_UNCONFIRMED.mirror":
+    "Kami baru saja mencoba memastikan kelayakan Anda.",
+  "decline.ELIGIBILITY_UNCONFIRMED.forbids":
+    "Catatan kami untuk pengecekan ini belum cukup mutakhir untuk menjanjikan harga atau tanggal.",
+  "decline.ELIGIBILITY_UNCONFIRMED.alternative":
+    "Konsultan dapat memastikan kasus Anda secara manual segera.",
   "lead.context.pageLabel": "Page",
   "lead.context.pageValue": "Visa on Arrival — eligibility wizard",
 };
