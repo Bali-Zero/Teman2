@@ -2064,7 +2064,7 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
     assert reviewed.review_reasons[0].source_refs == ()
 
 
-#: The nine conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
+#: The twelve conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
 #: A1', OD-5): every member of the closed enum except the two
 #: `HOLDING_DISCLOSED_FLAGS` holds — `CRIMINAL_RECORD` per the 2026-09-13
 #: ruling, and `ACTIVITY_BOUNDARY` per gate vo-gate-a1's OBS-1 HIGH (it is
@@ -2227,6 +2227,25 @@ def test_resolve_holding_flags_normalises_case_before_matching(
             DisclosedReviewFlag.HEALTH_CONCERN,
         }
     )
+
+
+def test_resolve_holding_flags_can_widen_to_the_three_new_disclosures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B4: the env kill switch reaches the three new flags too — an operator
+    can widen the hold to any of PAST_OVERSTAY/BLACKLIST_ENTRY/
+    IMMIGRATION_INVESTIGATION without a redeploy."""
+
+    monkeypatch.setenv(
+        evaluate_path._HOLDING_FLAGS_ENV_VAR,
+        "PAST_OVERSTAY,BLACKLIST_ENTRY,IMMIGRATION_INVESTIGATION",
+    )
+    resolved = evaluate_path._resolve_holding_flags()
+    assert DisclosedReviewFlag.PAST_OVERSTAY in resolved
+    assert DisclosedReviewFlag.BLACKLIST_ENTRY in resolved
+    assert DisclosedReviewFlag.IMMIGRATION_INVESTIGATION in resolved
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
 
 
 def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(

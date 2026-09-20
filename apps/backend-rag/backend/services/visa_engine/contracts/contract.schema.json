@@ -2277,7 +2277,10 @@
         "AMBIGUOUS_SPONSOR",
         "ACTIVITY_BOUNDARY",
         "MULTI_PURPOSE_TRIP",
-        "CONFLICTING_IMMIGRATION_STATUS"
+        "CONFLICTING_IMMIGRATION_STATUS",
+        "PAST_OVERSTAY",
+        "BLACKLIST_ENTRY",
+        "IMMIGRATION_INVESTIGATION"
       ],
       "title": "DisclosedReviewFlag",
       "type": "string"
@@ -4796,7 +4799,7 @@
           "items": {
             "$ref": "#/$defs/DisclosedReviewFlag"
           },
-          "maxItems": 11,
+          "maxItems": 14,
           "title": "Disclosed Review Flags",
           "type": "array"
         },
