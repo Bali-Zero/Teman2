@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType
@@ -176,6 +177,92 @@ def test_ledger_append_is_hashed_and_verify_passes(tmp_path, template, clean_obj
     ok, _ = dw.ledger_verify(kit)
     assert ok
     assert len(dw._ledger_path(kit).read_text().splitlines()) == 2
+
+
+# --------------------------------------------------------------- ledger lock (guilt + innocence)
+# append -> hash -> write .sha was three unlocked steps on two files. Measured on the unlocked
+# launcher: 8 processes released by one barrier, one row each -> ledger_verify False in 11 of 60
+# rounds (rows never lost, only the .sha stale). These pin the same interleavings
+# deterministically: writer-a is parked at the one point where it has appended and hashed but
+# not yet written the .sha (_ledger_sha_path is resolved right there, after the digest).
+
+def _park_writer_a_before_its_sha_write(monkeypatch, parked, until, waited=None):
+    real = dw._ledger_sha_path
+
+    def resolve(kit):
+        if threading.current_thread().name == "writer-a" and not parked.is_set():
+            parked.set()
+            got = until.wait(timeout=0.5 if waited is not None else 10)
+            if waited is not None:
+                waited.append(got)
+        return real(kit)
+
+    monkeypatch.setattr(dw, "_ledger_sha_path", resolve)
+
+
+def test_ledger_sha_still_describes_the_ledger_when_a_second_writer_arrives_mid_append(
+        tmp_path, monkeypatch):
+    kit = tmp_path / "k"
+    kit.mkdir()
+    a_parked, b_done, b_finished_inside_a = threading.Event(), threading.Event(), []
+    _park_writer_a_before_its_sha_write(monkeypatch, a_parked, b_done, waited=b_finished_inside_a)
+
+    def writer_b():
+        assert a_parked.wait(timeout=10)
+        dw.ledger_append(kit, "seat-b", "sent", "b" * 16)
+        b_done.set()
+
+    a = threading.Thread(target=dw.ledger_append, args=(kit, "seat-a", "sent", "a" * 16),
+                         name="writer-a")
+    b = threading.Thread(target=writer_b, name="writer-b")
+    a.start(), b.start()
+    a.join(10), b.join(10)
+    # unlocked, b appends and writes sha(a+b) inside a's pause, then a overwrites it with sha(a)
+    ok, msg = dw.ledger_verify(kit)
+    assert ok, msg
+    assert b_finished_inside_a == [False]
+    assert [r[1] for r in dw._ledger_rows(kit)] == ["seat-a", "seat-b"]
+
+
+def test_ledger_verify_waits_for_an_append_in_flight_instead_of_calling_it_a_tamper(
+        tmp_path, monkeypatch):
+    kit = tmp_path / "k"
+    kit.mkdir()
+    dw.ledger_append(kit, "seat-a", "sent", "a" * 16)
+    a_parked, release, verdict = threading.Event(), threading.Event(), []
+    _park_writer_a_before_its_sha_write(monkeypatch, a_parked, release)
+    a = threading.Thread(target=dw.ledger_append, args=(kit, "seat-a", "answered", "a" * 16),
+                         name="writer-a")
+    a.start()
+    assert a_parked.wait(timeout=10)  # two rows on disk, .sha still describes one
+    v_started = threading.Event()
+
+    def verify():
+        v_started.set()
+        verdict.append(dw.ledger_verify(kit))
+
+    v = threading.Thread(target=verify)
+    v.start()
+    assert v_started.wait(timeout=10)  # a verifier not yet scheduled would look "blocked" too
+    v.join(0.3)
+    answered_mid_append = not v.is_alive()
+    release.set()
+    a.join(10), v.join(10)
+    assert verdict[0][0], verdict[0][1]
+    assert not answered_mid_append
+
+
+def test_ledger_verify_never_creates_the_lock_and_still_catches_a_real_tamper(tmp_path):
+    kit = tmp_path / "k"
+    kit.mkdir()
+    assert dw.ledger_verify(kit) == (True, "no ledger yet")
+    assert not (kit / "ledger.md.lock").exists()  # verifying must not write
+    dw.ledger_append(kit, "seat-a", "sent", "a" * 16)
+    dw.ledger_append(kit, "seat-a", "answered", "a" * 16)
+    first_row = dw._ledger_path(kit).read_text().splitlines()[0]
+    dw._ledger_path(kit).write_text(first_row + "\n")  # a row disappears, no re-hash
+    ok, _ = dw.ledger_verify(kit)
+    assert not ok
 
 
 def test_r1_flaky_seat_succeeds_on_relaunch_and_ledger_stays_hashed(tmp_path, template, clean_objective):
