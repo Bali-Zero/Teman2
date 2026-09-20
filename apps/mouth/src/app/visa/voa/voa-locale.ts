@@ -41,6 +41,21 @@ export const VOA_LOCALE_QUERY_PARAM = "lang";
  */
 export const SITE_LOCALE_PREFERENCE_KEY = "blog-language";
 
+/**
+ * Where the preview language lives for the rest of the journey.
+ *
+ * `?lang=id` is typed ONCE, on the first screen. The wizard then navigates to
+ * the verdict with `router.push`, which does not carry a query string, so
+ * without this the funnel answered in Indonesian would return its verdict in
+ * English — the half-translated journey this lane refuses to ship.
+ *
+ * `sessionStorage`, not `localStorage`, and deliberately: the preview belongs
+ * to the tab that asked for it. Closing the tab ends it, and nothing about a
+ * customer's language survives into a later visit, where constraint 5a would
+ * again decide alone.
+ */
+export const VOA_LOCALE_SESSION_KEY = "bz.garuda_voa.preview-locale";
+
 function asVoaLocale(raw: string | null | undefined): VoaLocale | null {
   if (raw === "id" || raw === "en") return raw;
   return null;
@@ -54,15 +69,20 @@ function asVoaLocale(raw: string | null | undefined): VoaLocale | null {
  */
 export function resolveVoaLocale({
   requested,
+  session,
   preference,
   ruling = VOA_LOCALE_RULING,
 }: {
   requested?: string | null;
+  /** What `?lang=` set earlier in THIS tab's journey. */
+  session?: string | null;
   preference?: string | null;
   ruling?: VoaLocaleRuling;
 }): VoaLocale {
   const asked = asVoaLocale(requested);
   if (asked) return asked;
+  const carried = asVoaLocale(session);
+  if (carried) return carried;
   if (ruling === "follow-site-preference") {
     return asVoaLocale(preference) ?? "en";
   }
