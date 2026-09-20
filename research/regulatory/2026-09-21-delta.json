@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-09-21T07:05:15+08:00",
+  "run_at": "2026-09-21T07:22:00+08:00",
   "today": "2026-09-21",
   "yesterday_file_used": "2026-09-20-delta.json",
   "yesterday_seen_count": 26,
@@ -9,59 +9,64 @@
     {
       "url": "https://ortax.org/news",
       "reason": "http_404",
-      "note": "HTTP 404 on fetch, consistent with prior runs"
-    },
-    {
-      "url": "https://muc.co.id/article",
-      "reason": "http_403",
-      "note": "HTTP 403 on fetch + 1 retry, both blocked"
+      "note": "HTTP 404 on fetch + 1 retry"
     },
     {
       "url": "https://ikpi.or.id/berita/",
       "reason": "empty_shell",
-      "note": "301 -> /articles, HTTP 200 but Nuxt SPA shell, 0 article nodes"
+      "note": "Nuxt/Tailwind SPA shell, HTTP 200 but static HTML has 0 article nodes"
     },
     {
-      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "url": "https://jdih.kemenkumham.go.id",
       "reason": "timeout",
-      "note": "Connection failed on fetch + 1 retry"
+      "note": "Connection failed (hostname resolution/timeout) on fetch + 1 retry"
     }
   ],
   "sources_checked_no_delta": [
     {
       "url": "https://www.hukumonline.com/berita/",
       "reason": "checked_no_new",
-      "note": "Dated entries up to 19 Sep 2026; no watched-type citation new; PMK 1/2026 found is Mahkamah Konstitusi reg, out of scope"
+      "note": "No new regulations matching watched types within 48h window"
     },
     {
       "url": "https://news.ddtc.co.id/",
       "reason": "checked_no_new",
-      "note": "Dated entries up to 21 Sep 2026; PMK 55/2026 mentioned but already in yesterday's seen_citations"
+      "note": "No new PMK/PP/Perpres/UU/Permen/PER citations in 48h window; articles cover operational news and STP guidance"
     },
     {
-      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "url": "https://muc.co.id/article",
       "reason": "checked_no_new",
-      "note": "Search results table present, no new dated PMK citation extractable within 48h window"
+      "note": "No new regulatory publications in 48h window"
     },
     {
       "url": "https://peraturan.go.id",
       "reason": "outside_window",
-      "note": "Newest visible dated entry 19 September 2026, no specific new citation confidently extracted"
-    },
-    {
-      "url": "https://www.imigrasi.go.id",
-      "reason": "outside_window",
-      "note": "Newest entry 18 September 2026, press release not a regulation"
+      "note": "Newest dated entry 08 September 2026, older than 48h window"
     },
     {
       "url": "https://www.pajak.go.id/peraturan",
       "reason": "outside_window",
-      "note": "Newest entry KEP-185/PJ/2026 dated 02 September 2026, unchanged from yesterday"
+      "note": "Newest entry KEP-185/PJ/2026 dated 02 September 2026, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "No new PMK/KMK published within 48h window"
     },
     {
       "url": "https://jdih.kemnaker.go.id/peraturan",
       "reason": "outside_window",
-      "note": "Newest visible entry 30 April 2026, unchanged from yesterday"
+      "note": "Newest visible entry 30 April 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "No new immigration regulations or circulars within 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "No new PMK citations dated within 48h window"
     }
   ],
   "nb_query_errors": [],
