@@ -65,12 +65,19 @@ describe("GarudaVoaLayout — server-side gate", () => {
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
-  // R19 skin (GARUDA VOA DELIBERA fase 2 (a)): the funnel wears the
-  // [data-theme="operative-dark"][data-product="my"] tokens (anthracite
-  // ground, design-A/refutation-measured), via a wrapper this layout owns —
-  // not the shared /visa navy+red skin, and not the paper ground this
-  // surface shipped with before the flip.
-  it("wraps children in the R19 wrapper (data-product=my, data-theme=operative-dark)", () => {
+  // R19 skin: the funnel wears the
+  // [data-theme="operative-light"][data-product="my"] tokens (paper ground
+  // #f7f4ee, ink type, copper #a44b36 for "needs you"), via a wrapper this
+  // layout owns — not the shared /visa navy+red skin, and not the anthracite
+  // ground the DELIBERA fase 2 (a) flip put here between 2026-08 and
+  // 2026-09-21.
+  //
+  // This row is the whole reason the flip is one line. `voa-r19.css` names
+  // no theme in its selectors, and `voa-contrast.computed.guard.test.tsx`
+  // parses the theme back OUT of layout.tsx instead of naming one — so the
+  // wrapper below is the single declaration of the funnel's ground, and it
+  // is pinned here.
+  it("wraps children in the R19 wrapper (data-product=my, data-theme=operative-light)", () => {
     process.env.GARUDA_PUBLIC_ENABLED = "true";
     const { container } = render(
       <GarudaVoaLayout>
@@ -80,7 +87,7 @@ describe("GarudaVoaLayout — server-side gate", () => {
     const wrapper = container.querySelector('[data-garuda-voa="r19"]');
     expect(wrapper).not.toBeNull();
     expect(wrapper).toHaveAttribute("data-product", "my");
-    expect(wrapper).toHaveAttribute("data-theme", "operative-dark");
+    expect(wrapper).toHaveAttribute("data-theme", "operative-light");
     expect(wrapper?.contains(screen.getByTestId("voa-content"))).toBe(true);
   });
 });

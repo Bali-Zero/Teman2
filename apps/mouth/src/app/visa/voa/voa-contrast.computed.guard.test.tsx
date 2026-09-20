@@ -40,9 +40,12 @@ import { EXCEPTION_RULE, OrderTracker } from "./orders/OrderTracker";
  *
  *   1. Contrast math needs a real value, so `resolveColor` below resolves
  *      `var(--x[, fallback])` by hand, against a token table PARSED FROM
- *      `globals.css` itself (never hand-copied), for the
- *      `[data-theme="operative-light"][data-product="my"]` block this
- *      surface is mounted on today (`layout.tsx:54`). This is real WCAG
+ *      `globals.css` itself (never hand-copied), for the two blocks the
+ *      wrapper in `layout.tsx` actually matches — the theme block, with the
+ *      `[data-product="my"]` block cascaded over it. Neither is named here;
+ *      both are derived from that wrapper (`mountedSelector` /
+ *      `mountedTheme` below), because this surface has now changed ground
+ *      twice and a named constant lost both times. This is real WCAG
  *      relative-luminance math (`contrastRatio`), not a string comparison —
  *      pinned against design-A-claude.md's own M1 number below as a
  *      cross-check that the formula is right.
@@ -60,12 +63,34 @@ import { EXCEPTION_RULE, OrderTracker } from "./orders/OrderTracker";
 const GLOBALS_CSS_PATH = join(__dirname, "..", "..", "globals.css");
 const globalsCss = readFileSync(GLOBALS_CSS_PATH, "utf-8");
 
-/** Brace-matched extraction — the block contains a nested `body { ... }` rule. */
+/**
+ * Brace-matched extraction — the block contains a nested `body { ... }` rule.
+ *
+ * The match is anchored on `selector {`, not on the selector as a bare
+ * substring, because the short selectors this file now also asks for are
+ * PREFIXES of the long ones. `[data-theme="operative-dark"]` occurs inside
+ * `[data-theme="operative-dark"][data-product="kita"]`, so a plain indexOf
+ * would hand back the workspace's block while reporting the theme's — a
+ * wrong answer, which is worse than the "not found" the caller can see.
+ */
+function findBlock(css: string, selector: string): string | null {
+  const anchored = new RegExp(
+    `${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{`,
+  );
+  const hit = anchored.exec(css);
+  if (!hit) return null;
+  return extractFrom(css, hit.index);
+}
+
 function extractBlock(css: string, selector: string): string {
-  const selectorStart = css.indexOf(selector);
-  if (selectorStart === -1) {
+  const block = findBlock(css, selector);
+  if (block === null) {
     throw new Error(`selector not found in globals.css: ${selector}`);
   }
+  return block;
+}
+
+function extractFrom(css: string, selectorStart: number): string {
   const braceStart = css.indexOf("{", selectorStart);
   let depth = 0;
   let i = braceStart;
@@ -143,7 +168,66 @@ function mountedSelector(src: string): string {
 }
 
 const SURFACE_SELECTOR = mountedSelector(layoutSrc);
-const SURFACE_TOKENS = parseTokens(extractBlock(globalsCss, SURFACE_SELECTOR));
+
+/**
+ * The THEME half alone, because the wrapper matches two blocks, not one.
+ *
+ * `<div data-theme="X" data-product="my" ...>` is matched by BOTH
+ * `[data-theme="X"]` (0-1-0) and `[data-theme="X"][data-product="my"]`
+ * (0-2-0), and the browser cascades them: the product block wins every name
+ * it declares, and the theme block still supplies every name it does not.
+ * Resolving against the product block ALONE therefore models a page that
+ * does not exist.
+ *
+ * That modelling error was invisible for as long as the funnel wore the ink
+ * ground, because `[data-theme="operative-dark"][data-product="my"]`
+ * happens to declare all twelve type/line names itself. The daylight block
+ * does not, and says so out loud: `--tx-tertiary` and `--bz-text-3` are
+ * "deliberately NOT redeclared: they are already `var(--tx-secondary)`
+ * aliases upstream". `voa-r19.css` reads `--tx-tertiary` four times. Under
+ * the single-block model the flip to daylight did not merely mis-measure
+ * those four — it threw on the first one, which is the one mercy in it: an
+ * incomplete ground model that throws is a bug report, an incomplete ground
+ * model that resolves is family #2, a green guard measuring a corpse.
+ *
+ * Alias values are kept unresolved on purpose. `--tx-tertiary` is literally
+ * `var(--tx-secondary)`, and CSS substitutes that at USE time against the
+ * winning `--tx-secondary` on the same element — which is the product
+ * block's, not the theme block's. Merging the raw declarations and letting
+ * `resolveColor` walk the chain afterwards reproduces that order exactly;
+ * pre-resolving each block on its own would freeze the theme block's
+ * `--tx-secondary` into the alias and hand back a colour the page never
+ * paints.
+ */
+function mountedTheme(selector: string): string {
+  const m = /^\[data-theme="[a-z0-9-]+"\]/i.exec(selector);
+  if (!m) throw new Error(`no theme in mounted selector: ${selector}`);
+  return m[0];
+}
+
+const THEME_SELECTOR = mountedTheme(SURFACE_SELECTOR);
+
+/**
+ * The theme block is OPTIONAL, and that is a fact about this repository
+ * rather than leniency.
+ *
+ * `globals.css` declares a plain `[data-theme="operative-light"]` block, and
+ * declares NO plain `[data-theme="operative-dark"]` one — dark's 0-1-0 layer
+ * lives in `packages/core/tokens/themes/operative-dark.css`, which this file
+ * does not parse. Requiring the block would therefore have made the guard
+ * throw on load for a ground the funnel shipped on for a month, and a guard
+ * that cannot run is worth less than one that runs narrow.
+ *
+ * What makes narrow safe is the sweep below ("every token voa-r19.css reads
+ * resolves on the mounted ground"): a name the parsed blocks do not supply
+ * fails there, by name, instead of being quietly absent. That row is the
+ * reason this `?? {}` is not a hole.
+ */
+const THEME_BLOCK = findBlock(globalsCss, THEME_SELECTOR);
+const SURFACE_TOKENS: Record<string, string> = {
+  ...(THEME_BLOCK === null ? {} : parseTokens(THEME_BLOCK)),
+  ...parseTokens(extractBlock(globalsCss, SURFACE_SELECTOR)),
+};
 
 function resolveColor(
   raw: string,
@@ -302,10 +386,11 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
    * wrong palette in the first place.
    */
   it("resolves against the theme layout.tsx actually mounts", () => {
-    expect(layoutSrc).toContain(`data-theme="operative-dark"`);
+    expect(layoutSrc).toContain(`data-theme="operative-light"`);
     expect(SURFACE_SELECTOR).toBe(
-      '[data-theme="operative-dark"][data-product="my"]',
+      '[data-theme="operative-light"][data-product="my"]',
     );
+    expect(THEME_SELECTOR).toBe('[data-theme="operative-light"]');
   });
 
   it("GUILTY: the derivation reads the source, it does not return a constant", () => {
@@ -344,9 +429,83 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
   });
 
   it("parses real hex tokens out of globals.css, not a hand-copied guess", () => {
-    expect(SURFACE_TOKENS["--tx-pure"]).toBe("#f7f4ee");
-    expect(SURFACE_TOKENS["--bz-base"]).toBe("#121016");
-    expect(SURFACE_TOKENS["--bz-border"]).toBe("rgba(247, 244, 238, 0.12)");
+    expect(SURFACE_TOKENS["--tx-pure"]).toBe("#1d2c3b");
+    expect(SURFACE_TOKENS["--bz-base"]).toBe("#f7f4ee");
+    expect(SURFACE_TOKENS["--bz-border"]).toBe("#dad8d1");
+  });
+
+  /**
+   * The cascade, proved in both directions, because a merge of two blocks
+   * can be wrong in exactly two ways and only one of them throws.
+   *
+   * `--tx-tertiary` is the name the product block does not declare: it
+   * reaches the funnel only from the theme block, and `voa-r19.css` reads it
+   * four times. Before the blocks were merged this threw, which is how the
+   * gap was found.
+   *
+   * `--tx-secondary` is the name BOTH declare, and it is the merge-order
+   * pin: the theme block says #475372, the product block says #58626b, and
+   * the browser gives the product block the element because it is 0-2-0.
+   * Merging the other way round would still resolve every name and still be
+   * green everywhere else in this file — a silent wrong answer, which is the
+   * failure mode worth a row of its own.
+   */
+  it("treats the theme block as optional, because a mounted ground has none", () => {
+    expect(
+      findBlock(globalsCss, '[data-theme="operative-light"]'),
+    ).not.toBeNull();
+    // The ground this funnel wore before 2026-09-21. globals.css has no
+    // plain block for it — see THEME_BLOCK's note.
+    expect(findBlock(globalsCss, '[data-theme="operative-dark"]')).toBeNull();
+    // And the prefix trap that would have hidden that: the kita block starts
+    // with the same twenty-eight characters.
+    expect(
+      findBlock(
+        globalsCss,
+        '[data-theme="operative-dark"][data-product="kita"]',
+      ),
+    ).not.toBeNull();
+  });
+
+  it("cascades the theme block UNDER the product block, not over it", () => {
+    const themeOnly = parseTokens(extractBlock(globalsCss, THEME_SELECTOR));
+    const productOnly = parseTokens(extractBlock(globalsCss, SURFACE_SELECTOR));
+
+    expect(productOnly["--tx-tertiary"]).toBeUndefined();
+    expect(themeOnly["--tx-tertiary"]).toBe("var(--tx-secondary)");
+    expect(SURFACE_TOKENS["--tx-tertiary"]).toBe("var(--tx-secondary)");
+
+    expect(themeOnly["--tx-secondary"]).toBe("#475372");
+    expect(productOnly["--tx-secondary"]).toBe("#58626b");
+    expect(SURFACE_TOKENS["--tx-secondary"]).toBe("#58626b");
+
+    // And the alias is walked at USE time against the winner, which is the
+    // whole reason the raw declarations are merged rather than pre-resolved.
+    expect(resolveColor("var(--tx-tertiary)", SURFACE_TOKENS)).toBe("#58626b");
+  });
+
+  /**
+   * The row that turns "a token the ground does not declare" from a crash
+   * into a named failure. Every `var()` the skin reads must resolve against
+   * the ground the layout mounts — the sweep is over `voa-r19.css`'s own
+   * text, so a token added to the stylesheet tomorrow is covered without an
+   * edit here, and a ground flip that drops a name is red on the name.
+   */
+  it("every token voa-r19.css reads resolves on the mounted ground", () => {
+    const read = [
+      ...new Set(
+        [...VOA_R19_CSS.matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/gi)].map(
+          (m) => m[1],
+        ),
+      ),
+    ].filter((n) => !n.startsWith("--font-"));
+    expect(read.length).toBeGreaterThan(8);
+    for (const name of read) {
+      expect(
+        () => toRgb(resolveColor(`var(${name})`, SURFACE_TOKENS)),
+        `${name} does not resolve to a colour on ${SURFACE_SELECTOR}`,
+      ).not.toThrow();
+    }
   });
 
   /**
@@ -357,25 +516,43 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
    */
   it("mixes a color-mix token instead of reading one side of it", () => {
     // 40% #253e33 + 60% #f7f4ee — the unmixed first hex would be (37, 62, 51).
-    expect(toRgb(SURFACE_TOKENS["--state-info"])).toEqual([
-      0.4 * 0x23 + 0.6 * 0xf7,
-      0.4 * 0x3d + 0.6 * 0xf4,
-      0.4 * 0x52 + 0.6 * 0xee,
+    expect(toRgb("color-mix(in srgb, #253e33 40%, #f7f4ee)")).toEqual([
+      0.4 * 0x25 + 0.6 * 0xf7,
+      0.4 * 0x3e + 0.6 * 0xf4,
+      0.4 * 0x33 + 0.6 * 0xee,
     ]);
-    expect(toRgb(SURFACE_TOKENS["--state-success"])[0]).not.toBe(0x25);
   });
 
   it("composites alpha over the ground instead of dropping it", () => {
-    // --bz-border is paper at 12% on near-black. Dropping the alpha would
-    // read it as paper itself and call a hairline a 17:1 surface.
-    const asPainted = contrastRatio(
-      SURFACE_TOKENS["--bz-border"],
-      SURFACE_TOKENS["--bz-base"],
+    // Paper at 12% on near-black — the ink ground's --bz-border. Dropping
+    // the alpha would read it as paper itself and call a hairline a 17:1
+    // surface.
+    expect(contrastRatio("rgba(247, 244, 238, 0.12)", "#121016")).toBeLessThan(
+      1.6,
     );
-    expect(asPainted).toBeLessThan(1.6);
+    expect(contrastRatio("#f7f4ee", "#121016")).toBeGreaterThan(15);
+  });
+
+  /**
+   * Both rows above are LITERALS now, and that is deliberate — the same
+   * reasoning the M1 cross-check below states for itself.
+   *
+   * They read `SURFACE_TOKENS` until the funnel moved to daylight, and the
+   * daylight block happens to declare neither shape: its four state tokens
+   * are plain hexes and its `--bz-border` is the opaque #dad8d1. Pointed at
+   * the live ground, the two rows stopped proving the PARSER could do either
+   * thing and started proving the current palette does not need it — while
+   * the ink block still declares four `color-mix()` values and three alpha
+   * ones, and this file no longer names a ground at all. A capability proof
+   * that evaporates when the theme changes was never a capability proof.
+   *
+   * What the live ground still owes the file is the row below: whatever it
+   * declares, a hairline must be judged as a hairline.
+   */
+  it("judges the mounted ground's own border as a hairline, not a surface", () => {
     expect(
-      contrastRatio("#f7f4ee", SURFACE_TOKENS["--bz-base"]),
-    ).toBeGreaterThan(15);
+      contrastRatio(SURFACE_TOKENS["--bz-border"], SURFACE_TOKENS["--bz-base"]),
+    ).toBeLessThan(1.6);
   });
 
   it("INNOCENT: the cured tone (paper on ink) clears 4.5:1", () => {
@@ -400,7 +577,7 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
 
   it("GUILTY: copper (--color-error's resolved value on this surface) is a real colour but the wrong ONE — the guard demands ink specifically, not merely 'passes contrast'", () => {
     const copper = SURFACE_TOKENS["--state-danger"];
-    expect(copper).toBe("#c46a52");
+    expect(copper).toBe("#a44b36");
     // Copper-on-paper actually clears AA (it is the sanctioned "needs you"
     // tone) — proving a bare contrast check would NOT catch M2's finding
     // that role="alert" read the wrong meaning, only the identity check does.
@@ -481,13 +658,21 @@ describe("Safe Clock — four states, four identities (mandate accent 4)", () =>
     ).toBeGreaterThanOrEqual(3);
   });
 
+  /**
+   * The floor is 3:1, so 3:1 is what this row asserts. It used to assert
+   * `< 2`, which was the ink ground's own number (1.78:1) standing in for
+   * the rule — and on the daylight ground the same token is R19's opaque
+   * line-strong at 2.09:1. Still guilty, still under the floor, and the row
+   * went red anyway because it was pinned to a measurement rather than to
+   * the claim.
+   */
   it("GUILTY: the retired --bz-border-hover would fail that floor", () => {
     expect(
       contrastRatio(
         resolveColor("var(--bz-border-hover)", SURFACE_TOKENS),
         SURFACE_TOKENS["--bz-base"],
       ),
-    ).toBeLessThan(2);
+    ).toBeLessThan(3);
   });
 
   /**
@@ -514,12 +699,22 @@ describe("Safe Clock — four states, four identities (mandate accent 4)", () =>
    * are the pair that colour cannot separate, and the design leans on width
    * and on the word for them. If someone equalises the widths "for
    * consistency", this is the row that says why they cannot.
+   *
+   * WHICH pair that is, is a property of the ground, and the ground moved.
+   * On the ink block the answer was ample/soon (slate and a paper-mixed
+   * warning, 1.42:1 apart) while soon/today were 2.4:1 apart and could
+   * afford to share 7px. On the daylight block the state tokens are plain
+   * hexes and the ordering inverts: ample/soon open to 1.92:1, and
+   * soon/today close to 1.06:1 — the burnt warning brown and the mark red
+   * land on the same luminance. They shared 7px at that moment, which is
+   * two of the four Safe Clock states rendering identically to anyone who
+   * does not separate those two hues, so `today` took a width of its own.
    */
-  it("ample vs soon is the pair colour cannot separate — width carries it", () => {
-    expect(contrastRatio(rules.ample.colour, rules.soon.colour)).toBeLessThan(
+  it("soon vs today is the pair colour cannot separate — width carries it", () => {
+    expect(contrastRatio(rules.soon.colour, rules.today.colour)).toBeLessThan(
       1.5,
     );
-    expect(rules.ample.widthPx).not.toBe(rules.soon.widthPx);
+    expect(rules.soon.widthPx).not.toBe(rules.today.widthPx);
   });
 });
 
@@ -837,15 +1032,28 @@ describe("NextSteps — the limits are not small print (mandate accent 3)", () =
   });
 
   /**
-   * The value this rule shipped in its first draft. --tx-tertiary is a legal
-   * token and reads as "an eyebrow colour", which is exactly why the failure
-   * was invisible without the arithmetic: 4.23:1 at 0.72rem, and no large-text
-   * exemption at that size.
+   * A legal token that reads as "an eyebrow colour" is the shape this row
+   * exists to convict — the failure is invisible without the arithmetic,
+   * because nothing about the NAME looks wrong.
+   *
+   * The convict used to be `--tx-tertiary`, the value this rule shipped in
+   * its first draft at 4.23:1 on the ink ground. It is innocent on daylight:
+   * the my-block declares no `--tx-tertiary`, so it arrives from the theme
+   * block as an alias of `--tx-secondary` and lands on muted ink at 5.67:1.
+   * Keeping it here would have been a guilt row that acquits — the most
+   * expensive kind of green, since it reports that the check can convict
+   * while proving the opposite.
+   *
+   * `--bz-border-hover` is the daylight ground's version of the same
+   * mistake and is named rather than derived: it is R19's line-strong
+   * #a8aca9 at 2.09:1, which globals.css's own note calls "a line colour,
+   * not a text colour" — a token any author could reasonably reach for and
+   * the arithmetic refuses.
    */
-  it("GUILTY: --tx-tertiary, the first draft's heading colour, fails that floor", () => {
+  it("GUILTY: a line-grade token used as heading text fails that floor", () => {
     expect(
       contrastRatio(
-        resolveColor("var(--tx-tertiary)", SURFACE_TOKENS),
+        resolveColor("var(--bz-border-hover)", SURFACE_TOKENS),
         SURFACE_TOKENS["--bz-base"],
       ),
     ).toBeLessThan(4.5);
@@ -1106,15 +1314,67 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
 // `--accent-funnel`). Changing it is a site-wide decision and not this lane's.
 // ---------------------------------------------------------------------------
 
-/** Family detectors on a resolved paint value, deliberately narrow: they
- *  answer "is this the red family / the blue family", not "is this warm". */
+/**
+ * Family detectors on a resolved paint value, deliberately narrow: they
+ * answer "is this the red family / the blue family", not "is this warm".
+ *
+ * They judge HUE, and that is a correction the daylight ground forced out of
+ * them. The first version was `r > 150 && g < 90 && b < 90`: it reads like a
+ * hue rule and it is a LIGHTNESS rule. The ink ground's copper #c46a52 is
+ * rgb(196, 106, 82) and cleared it on g = 106; the daylight ground's copper
+ * #a44b36 is rgb(164, 75, 54) and did not — yet the two sit 1.2° apart in
+ * hue (12.6° and 11.5°). They are one colour at two lightnesses, and the
+ * owner's ruling names the colour, not the lightness. A detector that
+ * convicts the darker sibling of the very tone the ruling protects is not
+ * detecting a family; it is detecting darkness, and it would have read the
+ * flip to daylight as a violation of a ruling the flip obeys. Cicatrix
+ * family #3: judge the entity, never a proxy that correlates with it.
+ *
+ * Hue separates them honestly, with room to spare. The reds this surface
+ * must refuse sit at or above 345° and at or below 8° — `--color-red-500`
+ * #ff2d4c is 351.1°, Tailwind's text-red-600 #dc2626 is 0.0°, and the
+ * closest call of all, the site's own muted brick `--bz-red` #c2453f, is
+ * 2.7°. The copper family sits in the low teens. The nearest approach is
+ * therefore 8.8°, between #c2453f and #a44b36 — two colours that genuinely
+ * are different families, which is why the band can be drawn between them
+ * at all.
+ *
+ * Saturation is required as well, so a near-grey is never convicted for the
+ * hue noise of two channels a few units apart: the ink ground #121016 is
+ * 0.16 saturated and its hue is meaningless.
+ */
 function rgbOf(colour: string): [number, number, number] {
   return toRgb(resolveColor(colour, SURFACE_TOKENS));
 }
-const isRedFamily = ([r, g, b]: [number, number, number]) =>
-  r > 150 && g < 90 && b < 90;
-const isBlueFamily = ([r, g, b]: [number, number, number]) =>
-  b > 150 && b - r > 60 && b - g > 40;
+
+/** HSL hue in degrees and HSL saturation, from an sRGB triple. */
+function hueSat([r, g, b]: [number, number, number]): {
+  hue: number;
+  sat: number;
+} {
+  const [R, G, B] = [r / 255, g / 255, b / 255];
+  const max = Math.max(R, G, B);
+  const min = Math.min(R, G, B);
+  const delta = max - min;
+  const light = (max + min) / 2;
+  if (delta === 0) return { hue: 0, sat: 0 };
+  let hue: number;
+  if (max === R) hue = ((G - B) / delta) % 6;
+  else if (max === G) hue = (B - R) / delta + 2;
+  else hue = (R - G) / delta + 4;
+  hue = (hue * 60 + 360) % 360;
+  return { hue, sat: delta / (1 - Math.abs(2 * light - 1)) };
+}
+
+const CHROMATIC = 0.2;
+const isRedFamily = (rgb: [number, number, number]) => {
+  const { hue, sat } = hueSat(rgb);
+  return sat >= CHROMATIC && (hue >= 345 || hue <= 8);
+};
+const isBlueFamily = (rgb: [number, number, number]) => {
+  const { hue, sat } = hueSat(rgb);
+  return sat >= CHROMATIC && hue >= 200 && hue <= 260;
+};
 
 /** Named literally — a token that vanishes must fail here, not drop out. */
 const ACCENT_TOKENS = ["--bz-accent", "--state-danger"] as const;
@@ -1152,8 +1412,22 @@ describe("the accent is copper (owner ruling 2026-09-20)", () => {
     expect(isBlueFamily(rgbOf("var(--cta-bg, #3a6dff)"))).toBe(true);
   });
 
-  it("INNOCENT: copper and the surface ink are neither", () => {
-    for (const c of ["#c46a52", "#f7f4ee", "#121016", "#f4c430"]) {
+  /**
+   * The site's own muted brick red, and the row that keeps the hue band
+   * from being drawn wherever it is convenient. #c2453f at 2.7° is the
+   * closest a red gets to the copper family here; if the band ever widens
+   * to acquit the copper by acquitting this too, the detector has stopped
+   * detecting.
+   */
+  it("GUILTY: --bz-red, the nearest miss, still trips the red detector", () => {
+    expect(isRedFamily(toRgb("#c2453f"))).toBe(true);
+  });
+
+  it("INNOCENT: copper on EITHER ground, and the surface ink, are neither", () => {
+    // #a44b36 is the daylight copper and #c46a52 the ink one — the same
+    // colour at two lightnesses, and the pair that broke the lightness-based
+    // detector this row now guards.
+    for (const c of ["#a44b36", "#c46a52", "#f7f4ee", "#121016", "#f4c430"]) {
       const rgb = toRgb(c);
       expect(isRedFamily(rgb), `${c} red`).toBe(false);
       expect(isBlueFamily(rgb), `${c} blue`).toBe(false);

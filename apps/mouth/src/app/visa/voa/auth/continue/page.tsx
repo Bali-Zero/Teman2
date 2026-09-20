@@ -191,8 +191,25 @@ export default async function GarudaVoaAuthContinuePage({
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 p-6 text-center">
       <ContentLangSync locale={locale} />
       <h1 className="text-xl font-semibold">{t("auth.continue.heading")}</h1>
-      <p className="text-gray-600">{t("auth.continue.lead")}</p>
-      <p className="text-sm text-gray-500">
+      {/*
+        Both paragraphs paint from the theme, not from Tailwind's neutral
+        ramp, because an absolute grey means a different thing on every
+        ground this funnel has worn. Measured: `text-gray-600` was 2.50:1 on
+        the ink ground these two shipped on — invisible, and unguarded, since
+        this screen is not in `voa-no-colour-literal.guard.test.ts`'s SCREENS
+        ratchet and neither shade falls in the 50-400 band it scans. The move
+        to daylight lifts that one to 6.88:1 on its own, but `text-gray-500`
+        only reaches 4.41:1 there — better than the 3.91:1 it had, still an
+        AA fail for body text, and the reason this is cured in the same
+        change rather than left to inherit a pass it does not get.
+
+        Both land on --tx-secondary (#58626b, 5.67:1) rather than two steps:
+        the daylight my-block deliberately declares no third text tone
+        (--tx-tertiary is an alias of --tx-secondary there), so the size
+        carries the hierarchy the second grey used to.
+      */}
+      <p style={{ color: "var(--tx-secondary)" }}>{t("auth.continue.lead")}</p>
+      <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
         {beforeEmail}
         <strong>{maskedEmail}</strong>
         {afterEmail}
