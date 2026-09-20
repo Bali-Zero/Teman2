@@ -306,11 +306,38 @@ def detect_secrets_predicate(
             return [], None
         if verdict.returncode != 1:
             return [], f"unaudited check ERRORED (exit {verdict.returncode})"
-        lines = [
-            ln.strip() for ln in verdict.stdout.splitlines()
-            if ln.startswith("   ") and ":" in ln
-        ]
-    return [f"P3 detect-secrets\n     {ln}" for ln in lines], None
+
+        # THE VERDICT is the exit code above — one definition of "unaudited",
+        # and it lives in the repo's own gate script. THE LOCATION is rebuilt
+        # here from two values that cannot carry a credential: a path this
+        # function itself passed in, and an integer. Nothing read out of the
+        # scan — not its stdout, not a string from the baseline JSON, not even
+        # the detector's name — is ever printed. CodeQL flagged the earlier
+        # form as py/clear-text-logging-sensitive-data (2 high, PR #6943) and
+        # it was right to: a gate that reports on secrets is the last place
+        # that should echo anything it read. §4 is an OUTPUT boundary.
+        # Re-read: the triage above rewrote the file, and `data` is the
+        # PRE-triage snapshot. Locating from it would name every hit the
+        # triage had just excused — the test fixtures first of all.
+        try:
+            audited = json.loads(scratch.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            return [], f"triaged baseline unreadable ({exc.__class__.__name__})"
+        located = []
+        for rel in targets:
+            for hit in audited.get("results", {}).get(rel, []):
+                if "is_secret" in hit:
+                    continue
+                try:
+                    line = int(hit.get("line_number", 0))
+                except (TypeError, ValueError):
+                    line = 0
+                located.append(f"P3 detect-secrets\n     {rel}:{line}")
+        if not located:
+            # The gate said residue, this loop found none: report the
+            # disagreement rather than a green neither half voted for.
+            return [], "unaudited residue reported but not locatable"
+    return located, None
 
 
 def main() -> int:
@@ -320,7 +347,12 @@ def main() -> int:
 
     argv = sys.argv[1:]
     if not argv:
-        print(__doc__.strip().splitlines()[-4], file=sys.stderr)
+        # Not `__doc__`: it is None under `python -OO`, and a usage line that
+        # can itself raise is a poor way to explain a usage error.
+        print(
+            "usage: check_ban_predicates.py --staged | FILE [FILE ...]",
+            file=sys.stderr,
+        )
         return 2
 
     unattributed = 0

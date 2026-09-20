@@ -78,7 +78,13 @@ jobs:
       # regex edited here without the script fails on the next line, not in a
       # commit six weeks from now that the local gate quietly waved through.
       - name: ban-predicates — transcription parity + guilt/innocence
-        run: python3 -m pytest scripts/tests/test_ban_predicates.py -q
+        # This job is otherwise pure shell on the runner's stock python, which
+        # has no pytest — the first run of this step said so (`No module named
+        # pytest`, run 35517016619). Installed here rather than by adding
+        # setup-python: one package, no toolchain, no cache to go stale.
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest scripts/tests/test_ban_predicates.py -q
 
       # Runs BEFORE #40 so a broken budget step fails loud here rather than
       # quietly degrading the scan it exists to guard. The corpus extracts #40's
