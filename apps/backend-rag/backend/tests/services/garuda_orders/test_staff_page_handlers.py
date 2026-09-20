@@ -1797,10 +1797,12 @@ def _unclosed_markdown_entity(text: str) -> str | None:
             i += 2
             continue
         if ch == "`":
-            close = text.find("`", i + 1)
+            run = len(text[i:]) - len(text[i:].lstrip("`"))
+            fence = "`" * run
+            close = text.find(fence, i + run)
             if close == -1:
                 return f"code span opened at byte {i} never closes"
-            i = close + 1
+            i = close + run
             continue
         if ch == "[":
             close = text.find("](", i)
@@ -1853,15 +1855,25 @@ def _anomaly_facts(**over):
     return OrderAnomalyFacts(**base)
 
 
+# All SIX — the same roster `test_a_missing_order_raises_for_every_handler`
+# already carries. `StaffPageRefundOutOfOrderHandler` is the one whose page
+# names the order TWICE (once in a code span, once as the link), so it is the
+# least like the other five and the most worth parsing.
 _STAFF_PAGE_CLASSES = [
     StaffPageChargeWithoutWebhookHandler,
     StaffPageDuplicateChargeHandler,
     StaffPageLatePaidAfterRefundHandler,
     StaffPageLatePaidAfterTerminalHandler,
     StaffPagePaymentFailureHandler,
+    StaffPageRefundOutOfOrderHandler,
 ]
 
 
+# `cls(None, None)` on purpose: `_compose` is a pure function of the facts and
+# reads no instance state, so this stays a parser test that needs no DSN and no
+# seeded order. The day `_compose` starts reading `self`, this raises instead of
+# asserting — which is the signal to move it onto the `pool` fixture the rest of
+# the file uses.
 @pytest.mark.parametrize("cls", _STAFF_PAGE_CLASSES, ids=lambda c: c.job_type)
 def test_no_staff_page_composes_an_entity_markdown_cannot_close(cls):
     text = cls(None, None)._compose(_anomaly_facts())
@@ -1885,3 +1897,13 @@ def test_the_guilt_this_replaces_is_a_bare_url():
     # What the code did until 2026-09-20, kept as the thing that must stay red:
     # a bare tracker url with an order id in it opens an italic entity.
     assert _unclosed_markdown_entity("Order: https://tracker.example/ord_abc123-Xy") is not None
+
+
+def test_the_parser_reads_a_fence_as_a_run_not_as_three_spans():
+    # A fenced block closes with a run of the SAME length, and a lone backtick
+    # inside it is content. Treating every backtick as a span delimiter called
+    # this broken — a false positive that would have fired on the first page to
+    # quote a multiline payload. No page does today; the parser is fixed before
+    # one does, not after.
+    assert _unclosed_markdown_entity("```\nsome ` lone backtick inside\n```") is None
+    assert _unclosed_markdown_entity("``` never closed") is not None
