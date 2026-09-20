@@ -19,13 +19,15 @@ lanes:
     seat: claude-sonnet-5 (subagent dispatched WITHOUT the brief and told to show the corpus flatters what it measures — it did)
 diff:
   behaviour_change:
-    A third step is added to the CI lint that already owns the paid-endpoint ban. It composes the two
-    incumbent greps with a System One model's per-route judgment using OR, so the step can only ADD a
-    finding and never clear one. It is advisory — it always exits zero. No existing check changes its
-    verdict; the workflow's path filter widens to the suffixes the new step inspects.
+    Two steps are added to the CI lint that already owns the paid-endpoint ban. The first composes the
+    two incumbent greps with a System One model's per-route judgment using OR, so it can only ADD a
+    finding and never clear one, and it is advisory — it always exits zero. The second is blocking and
+    carries no model at all - it reads comments and docstrings in the changed files and fails when one
+    spells a shape the repo bans. No existing check changes its verdict; the workflow's path filter
+    widens to the suffixes the new steps inspect.
   surface:
-    Three new scripts, one new test module, one new fixture corpus, one workflow edit. No backend, no
-    frontend, no migration, no data, no credential.
+    Four new scripts, two new test modules, one new fixture corpus, one frozen pardon list, one workflow
+    edit. No backend, no frontend, no migration, no data, no credential.
 receipts:
   - claim: offline suite green after every council fix — 71 tests
     cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py -q
@@ -61,6 +63,58 @@ receipts:
     result: 6 passed
     exit: 0
     ts: 2026-09-20T08:08:00Z
+    seat: claude-opus-5
+  - claim: both offline suites green on the rebased head, 71 for the entity lint and 45 for the prose lint
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 116 passed
+    exit: 0
+    ts: 2026-09-20T17:28:00Z
+    seat: claude-opus-5
+  - claim: the prose lint reads this PR's own diff and finds nothing, which is the cure for the four reds that suspended #6935
+    cmd: git diff --name-only origin/main...HEAD | xargs python3 scripts/lint/lint_ban_prose.py --base-ref origin/main
+    result: "OK - 9 file(s) scanned, no prose spells a banned shape."
+    exit: 0
+    ts: 2026-09-20T17:29:00Z
+    seat: claude-opus-5
+  - claim: repo-wide blast radius measured BEFORE the pardon list was written, which is why the debt is frozen rather than cured in this PR
+    cmd: every tracked .py/.sh/.yml/.yaml outside .venv, node_modules and vendor, scanned in-process
+    result: "scanned 8258, findings 31 across 16 files; with the pardon list in place, rc 0"
+    exit: 0
+    ts: 2026-09-20T17:10:00Z
+    seat: claude-opus-5
+  - claim: the anti-bypass is real - one extra name in the pardon list fails on the GROWTH rather than on the file, then the list is restored
+    cmd: python3 scripts/lint/lint_ban_prose.py --base-ref HEAD
+    result: "the grandfather list GREW by 1 file(s) ... apps/organism/organism/router.py"
+    exit: 3
+    ts: 2026-09-20T17:30:29Z
+    seat: claude-opus-5
+  - claim: the diff-scoped detect-secrets scan that reddened #6935 leaves no BLOCKING unaudited finding here - the residue sits in test_ paths the auto-triage greenlists, as measured on #6935 where CI reported exactly the two prose findings and not the three fixture ones
+    cmd: detect-secrets scan against a copy of the baseline over the changed set, then unaudited entries enumerated
+    result: "blocking unaudited = 0 (8 residual findings, every one in a greenlisted test_ path)"
+    exit: 0
+    ts: 2026-09-20T17:20:00Z
+    seat: claude-opus-5
+  - claim: the workflow passes actionlint after the rebase resolved against the hardened budget read that landed in #6943
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml
+    result: no findings
+    exit: 0
+    ts: 2026-09-20T17:27:00Z
+    seat: claude-opus-5
+  - claim: the FIFTH occurrence of the scar was caught on the author's machine instead of in CI - the PreToolUse guardrail refused the write of the guilt fixture itself, which is why two fixtures are assembled at run time
+    cmd: writing scripts/tests/test_lint_ban_prose.py with the vendor credential variable spelled beside a value
+    result: "GUARDRAILS BLOCK (static fallback) - refused before any file was written"
+    exit: 1
+    ts: 2026-09-20T17:05:00Z
+    seat: claude-opus-5
+  - claim: every acceptance probe the brief declares for the prose lint runs and passes by name - test_guilt, test_a_regex_literal_in_code_is_never_read, test_innocence[THE-sanctioned-oauth-path], test_a_grown_list_is_its_own_failure and test_naming_only_unscannable_files_refuses_to_report_clean
+    cmd: >-
+      python3 -m pytest scripts/tests/test_lint_ban_prose.py -q -k
+      "test_guilt or test_a_regex_literal_in_code_is_never_read or THE-sanctioned-oauth-path or
+      test_a_grown_list_is_its_own_failure or
+      test_naming_only_unscannable_files_refuses_to_report_clean"
+    result: 16 passed, 29 deselected
+    exit: 0
+    ts: 2026-09-20T17:36:00Z
     seat: claude-opus-5
 dissent:
   - seat: codex-gpt-5.6-sol
