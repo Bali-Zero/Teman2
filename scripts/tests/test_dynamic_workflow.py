@@ -169,6 +169,129 @@ def test_brief_sha_stable_then_diverges_on_a_different_objective(tmp_path, templ
     assert "{{SEAT}}" in (kit1 / "BRIEF.md").read_text()  # never collapsed by a generic replace
 
 
+# --------------------------------------------------------------- arsenal liveness / squad block
+# R10 + R3 (ruled 2026-09-20, first real run 2026-09-19): the squad block says only what the
+# probe knows (status/healthy/latency_ms) and never its raw `evidence`, and a TIMEOUT status —
+# an artifact of the probe's own 15s budget, not a verdict on the seat — renders as `unknown`,
+# never as `dead`. These tests bypass the autouse DW_FAKE_SEATS path (which only ever reports
+# LIVE) and fake arsenal_probe.py's own subprocess call, the same seam
+# test_launch_seat_astra_resolves_a_seat_before_invoking_codex uses for `codex`.
+
+def _fake_probe_run(seats: list[dict]):
+    def _run(_cmd, **_kwargs):
+        return argparse.Namespace(stdout=json.dumps({"seats": seats}), stderr="")
+    return _run
+
+
+def test_arsenal_liveness_block_drops_raw_evidence_and_rewrites_timeout_to_unknown(monkeypatch):
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    marker = "MARKER-raw-cli-output-7f3a"
+    seats = [
+        {"seat": "kimi", "status": "TIMEOUT", "healthy": False, "latency_ms": None,
+         "evidence": marker},
+        {"seat": "claude", "status": "LIVE", "healthy": True, "latency_ms": 320,
+         "evidence": "PONG " + marker},
+    ]
+    monkeypatch.setattr(dw.subprocess, "run", _fake_probe_run(seats))
+
+    block = dw._arsenal_liveness_block()
+
+    assert marker not in block
+    header = block.splitlines()[0]
+    assert "evidence" not in header
+    kimi_row = next(l for l in block.splitlines() if l.startswith("| kimi "))
+    assert "TIMEOUT" not in kimi_row
+    assert "False" not in kimi_row  # healthy is unknown too — R10, one column over
+    assert f"unknown (probe budget {dw.PROBE_TIMEOUT_S} s)" in kimi_row
+    assert "| unknown |" in kimi_row
+    assert block.count(dw._ARSENAL_UNKNOWN_NOTE) == 1
+
+
+def test_arsenal_liveness_block_evidence_marker_never_reaches_a_rendered_brief(
+        tmp_path, template, clean_objective, monkeypatch):
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    marker = "MARKER-raw-cli-output-7f3a"
+    seats = [{"seat": "agy", "status": "TIMEOUT", "healthy": False, "latency_ms": None,
+              "evidence": marker}]
+    monkeypatch.setattr(dw.subprocess, "run", _fake_probe_run(seats))
+
+    kit = tmp_path / "k"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit))
+
+    assert marker not in (kit / "BRIEF.md").read_text()
+
+
+@pytest.mark.parametrize("status,healthy", [
+    ("LIVE", True), ("QUOTA_DEAD", False), ("AUTH_DEAD", False), ("NOT_INSTALLED", None),
+])
+def test_arsenal_liveness_block_keeps_known_statuses_and_healthy_verbatim(monkeypatch, status, healthy):
+    # Only an exact `TIMEOUT` status gets its `status` AND `healthy` cells rewritten to
+    # `unknown` — every other status keeps the probe's own `healthy` verdict untouched.
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    seats = [{"seat": "codex", "status": status, "healthy": healthy, "latency_ms": 10,
+              "evidence": "irrelevant"}]
+    monkeypatch.setattr(dw.subprocess, "run", _fake_probe_run(seats))
+
+    block = dw._arsenal_liveness_block()
+
+    row = next(l for l in block.splitlines() if l.startswith("| codex "))
+    assert f"| {status} |" in row
+    assert f"| {healthy} |" in row
+
+
+def test_arsenal_liveness_block_does_not_rewrite_a_status_that_merely_contains_timeout(monkeypatch):
+    # Scar family #3 (guard-over-match/under-match): the guard must judge the ENTITY "TIMEOUT",
+    # never a substring — "TIMEOUT_RETRYING" is a different status and stays untouched.
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    seats = [{"seat": "jules", "status": "TIMEOUT_RETRYING", "healthy": False, "latency_ms": None,
+              "evidence": "irrelevant"}]
+    monkeypatch.setattr(dw.subprocess, "run", _fake_probe_run(seats))
+
+    block = dw._arsenal_liveness_block()
+
+    row = next(l for l in block.splitlines() if l.startswith("| jules "))
+    assert "| TIMEOUT_RETRYING |" in row
+    assert "unknown (probe budget" not in row
+    assert "| False |" in row  # healthy stays verbatim too — only exact TIMEOUT rewrites it
+
+
+def test_arsenal_liveness_block_fallback_path_is_still_a_well_formed_table_with_no_evidence(
+        monkeypatch):
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+
+    def _raise(_cmd, **_kwargs):
+        raise dw.subprocess.TimeoutExpired(cmd=_cmd, timeout=600)
+    monkeypatch.setattr(dw.subprocess, "run", _raise)
+
+    block = dw._arsenal_liveness_block()
+    lines = block.splitlines()
+
+    header = lines[0]
+    assert header == "| seat | status | healthy | latency_ms |"
+    body_rows = [l for l in lines[2:] if l.startswith("|")]
+    assert len(body_rows) == len(dw.FALLBACK_SEATS)
+    for row in body_rows:
+        assert row.count("|") == header.count("|")  # same column count, no dropped/extra cell
+        assert "evidence" not in row
+    assert block.count(dw._ARSENAL_UNKNOWN_NOTE) == 1
+
+
+def test_arsenal_liveness_block_brief_sha_stable_across_identical_real_probe_runs(
+        tmp_path, template, clean_objective, monkeypatch):
+    monkeypatch.delenv("DW_FAKE_SEATS", raising=False)
+    seats = [{"seat": "kimi", "status": "TIMEOUT", "healthy": False, "latency_ms": None,
+              "evidence": "noise"},
+             {"seat": "claude", "status": "LIVE", "healthy": True, "latency_ms": 200,
+              "evidence": "PONG"}]
+    monkeypatch.setattr(dw.subprocess, "run", _fake_probe_run(seats))
+
+    kit1, kit2 = tmp_path / "k1", tmp_path / "k2"
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit1))
+    dw.cmd_brief(_brief_ns(clean_objective, template, kit2))
+
+    assert (kit1 / "brief.sha").read_text() == (kit2 / "brief.sha").read_text()
+
+
 def test_ledger_append_is_hashed_and_verify_passes(tmp_path, template, clean_objective):
     kit = tmp_path / "k"
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
