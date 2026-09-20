@@ -71,7 +71,7 @@ acceptance:
       GUILT: the four criminal-record elements are pinned per field per
       language — blanking any one field on a scratch copy reddens exactly
       that (field, language) case, never a container-level match.
-    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "pins %s in EN and ID"'
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "in EN and ID"'
   - text: >-
       GUILT: an unmapped review-reason code throws RESPONSE_INVARIANT outside
       production and falls back to the generic sentence with exactly one
