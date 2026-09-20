@@ -287,7 +287,8 @@ def test_sigkill_of_the_holder_releases_the_lock_at_once_no_flag(tmp_path: Path)
         assert rc == -signal.SIGKILL
 
         lock = ReportLock(report)  # no flag, no stale-check: this must just work
-        lock.acquire()
+        with _bounded():
+            lock.acquire()
         lock.release()
     finally:
         if holder.poll() is None:
@@ -307,7 +308,8 @@ def test_sigterm_of_the_holder_releases_the_lock_at_once_no_flag(tmp_path: Path)
         assert rc == -signal.SIGTERM
 
         lock = ReportLock(report)
-        lock.acquire()
+        with _bounded():
+            lock.acquire()
         lock.release()
     finally:
         if holder.poll() is None:
@@ -326,13 +328,15 @@ def test_leftover_lockfile_content_is_never_consulted(tmp_path: Path) -> None:
 
     lock_path.write_bytes(b"")
     lock = ReportLock(report)
-    lock.acquire()  # empty content must not be read as "stale" or refuse anything
+    with _bounded():
+        lock.acquire()  # empty content must not be read as "stale" or refuse anything
     assert json.loads(lock_path.read_text())["pid"] == os.getpid()
     lock.release()
 
     lock_path.write_bytes(b"{not valid json at all")
     lock = ReportLock(report)
-    lock.acquire()  # unparseable content must not be read as "stale" or refuse anything
+    with _bounded():
+        lock.acquire()  # unparseable content must not be read as "stale" or refuse anything
     assert json.loads(lock_path.read_text())["pid"] == os.getpid()
     lock.release()
 
@@ -340,7 +344,8 @@ def test_leftover_lockfile_content_is_never_consulted(tmp_path: Path) -> None:
     try:
         lock_path.write_text(json.dumps({"pid": live.pid, "started_at": "now"}), encoding="utf-8")
         lock = ReportLock(report)
-        lock.acquire()  # a live-but-unrelated pid in the file must not refuse this
+        with _bounded():
+            lock.acquire()  # a live-but-unrelated pid in the file must not refuse this
         assert json.loads(lock_path.read_text())["pid"] == os.getpid()
         lock.release()
     finally:
@@ -469,37 +474,63 @@ def test_a_live_holder_is_refused_promptly_not_serialized(tmp_path: Path) -> Non
 
 
 def test_sigkill_inside_atomic_write_never_corrupts_the_target(tmp_path: Path) -> None:
+    """Gate finding (GATE-B2G-REPORT-6920.md, OBS-B): the ORIGINAL shape -- `_wait_for
+    (ready_file)` THEN a fresh glob loop -- is a race nothing synchronises: the temp file
+    exists for as little as 5-16 ms while a loop started cold after the wait can take
+    50-300+ ms to arrive, so the observer can miss a target that was never corrupted and
+    blame the module for it. A bare reorder (poll before the wait) cuts the miss rate but
+    is WRONG on its own: it can catch the FIRST, small `atomic_write_json` call's own
+    fleeting temp file and SIGKILL that instead of the SECOND, large one this test means to
+    interrupt. The fix needs BOTH properties at once: a `threading.Thread` that starts
+    polling BEFORE the writer subprocess even exists (concurrent -- no cold-start latency
+    once the target window opens) but only ACCEPTS a match after `ready_file` appears
+    (gated -- so a first-write sighting can never satisfy it). `os.path.exists`/`glob` are
+    the only calls in the loop; no sleep longer than the poll interval, so a genuine absence
+    still ends the test in a bounded time rather than hanging.
+    """
     report = tmp_path / "report.json"
     ready_file = tmp_path / "ready"
     size = 20_000_000  # large enough that the temp file's write is still in flight
 
+    observed: list[Path] = []
+    stop = threading.Event()
+
+    def _observer() -> None:
+        armed = False
+        while not stop.is_set():
+            if not armed and ready_file.exists():
+                armed = True  # gated: only a match found from HERE on is accepted
+            if armed:
+                matches = list(tmp_path.glob("report.json.*.tmp"))
+                if matches:
+                    observed.append(matches[0])
+                    return
+            time.sleep(0.001)  # short enough to beat a 5 ms window; never a sleep-as-hang
+
+    observer = threading.Thread(target=_observer, daemon=True)
+    observer.start()  # concurrent: already spinning before the writer is even spawned
+
     writer = _run_script(_ATOMIC_WRITE_HOLD_SCRIPT, str(report), str(ready_file), str(size))
     try:
-        _wait_for(ready_file)
-
-        # 60s, not 10s: measured empirically on this shared multi-agent host under
-        # concurrent sibling load (`uptime` load average observed as high as 193 while
-        # other agents ran CI-equivalent work) -- even 30s intermittently missed the
-        # writer's subprocess spawn+first-write window under contention, never for a
-        # module reason (the module logic is untouched; every other timing-sensitive
-        # wait in this file already tolerates 15-30s for the same reason -- see
-        # `_wait_for`'s default and the barrier race's `proc.wait(timeout=30.0)`). The
-        # poll itself never sleeps or hangs; it only widens the window it is willing
-        # to wait inside.
-        deadline = time.monotonic() + 60.0
-        tmp_hit: Path | None = None
-        while time.monotonic() < deadline:
-            matches = list(tmp_path.glob("report.json.*.tmp"))
-            if matches:
-                tmp_hit = matches[0]
-                break
+        # 5s: with a concurrent, gated observer the armed-to-match latency is loop-iteration
+        # scale (sub-millisecond to a few ms), not the 50-300+ ms the gate measured for a
+        # cold-started loop -- this is generous headroom, not a load-driven guess. Widening
+        # THIS number was never the fix (a prior, reverted attempt on this branch tried
+        # 10s -> 60s and it could not have worked: once `os.replace` runs, the temp is gone
+        # for good, so a longer deadline only spins longer before the identical failure).
+        observer.join(timeout=5.0)
+        tmp_hit = observed[0] if observed else None
         assert tmp_hit is not None, (
-            "the writer never created a temp file -- atomic_write_json is no longer "
-            "writing through a per-process temp name"
+            "the observer never saw a temp file appear after the writer signalled ready -- "
+            "either atomic_write_json stopped writing through a per-process temp name, or "
+            "the detection window itself regressed; this does NOT by itself mean the target "
+            "was corrupted (that is the assertion below, checked separately)"
         )
         os.kill(writer.pid, signal.SIGKILL)
         writer.wait(timeout=10.0)
     finally:
+        stop.set()
+        observer.join(timeout=5.0)
         if writer.poll() is None:
             writer.kill()
             writer.wait(timeout=10.0)
