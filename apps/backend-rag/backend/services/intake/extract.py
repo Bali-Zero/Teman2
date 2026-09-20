@@ -2,7 +2,7 @@
 
 Runs a schema-driven extraction model LOCALLY via Ollama
 (``http://localhost:11434``) — PII never leaves the Pro (Law 2 / UU-PDP). The
-registry default remains SEA-LION 32B; ``INTAKE_EXTRACTION_MODEL`` can select a
+registry default is ``qwen3.8:27b-mlx``; ``INTAKE_EXTRACTION_MODEL`` can select a
 validated low-latency local tier without changing the safety contract. For each
 canonical field the model returns either the value WITH ``source_page``
 evidence, or an explicit ``null`` — the *Maybe pattern*.
@@ -46,11 +46,21 @@ from backend.utils.passport_normalize import (
 logger = logging.getLogger("zantara.intake.extract")
 
 # --- Model role (FASE 0 registry: intake_extraction). Env-overridable. ---
-_EXTRACTION_MODEL_DEFAULT = "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m"
+# Was `aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m`, which is installed on NEITHER
+# machine — and since the topology role named the same absent model, env-override
+# -> role -> default all terminated on something ollama cannot load. This role
+# resolved to nothing at all, which `ocr_vision` survives only because ITS default
+# happens to be installed. Measured 2026-09-21 on pro against the real prompt and
+# 5 synthetic Indonesian documents: 20/22 fields correct, 0 hallucinations, null
+# returned on 4/4 genuinely-absent fields (two of them not covered by the
+# hardcoded unreadable-markers, so the model read the absence semantically).
+# Known cost, stated rather than buried: on a heavily OCR-corrupted KTP NIK
+# (`32O00000000000O1`) it returns null instead of recovering the digits.
+_EXTRACTION_MODEL_DEFAULT = "qwen3.8:27b-mlx"
 
 
 def _resolve_extraction_model() -> str:
-    """Prefer env override, then FASE-0 registry, then the local SEA-LION default."""
+    """Prefer env override, then FASE-0 registry, then the local default."""
     override = os.getenv("INTAKE_EXTRACTION_MODEL")
     if override:
         return override
@@ -58,10 +68,13 @@ def _resolve_extraction_model() -> str:
 
 
 EXTRACTION_MODEL: str = _resolve_extraction_model()
-EXTRACTION_MODEL_LABEL: str = "sea-lion"
+# Derived, not hardcoded: a constant reading "sea-lion" while the resolved model
+# is something else makes every metric carrying it a lie.
+EXTRACTION_MODEL_LABEL: str = "sea-lion" if "sea-lion" in EXTRACTION_MODEL.casefold() else EXTRACTION_MODEL
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
-# SEA-LION 32B q4 is a heavy local model: ~25-45s warm, cold-load slower.
+# A 27B q4 local model: 13-26s per single-page document warm (measured on pro,
+# 2026-09-21, n=5), cold-load slower. Multi-page documents were not measured.
 _GENERATE_TIMEOUT_SECONDS: float = float(os.getenv("INTAKE_EXTRACT_TIMEOUT", "300"))
 _CONNECT_TIMEOUT_SECONDS: float = 5.0
 # The schema payload is compact. Bounding generation to 512 tokens leaves the
@@ -2068,7 +2081,7 @@ async def extract_fields(
         {
           "doc_type": "<canonical>",
           "fields": {field: {"value", "confidence", "source_page"}, ...},
-          "extraction_model": "sea-lion",
+          "extraction_model": "<resolved model label>",
           "any_low_confidence": bool,
         }
 
