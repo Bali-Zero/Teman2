@@ -158,7 +158,7 @@ describe("VoaResultPage — ACCEPT", () => {
     expect(screen.getByTestId("bz-stamp")).toHaveTextContent(/790/);
     expect(screen.getByText(/Ngurah Rai/i)).toBeInTheDocument();
     // Magic-link email capture is present on the accepted path.
-    expect(screen.getByLabelText(/continue by email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/your email/i)).toBeInTheDocument();
     expect(trackerMocks.resultViewed).toHaveBeenCalledWith("opaque-test-hash");
   });
 
@@ -199,10 +199,12 @@ describe("VoaResultPage — ACCEPT", () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByLabelText(/continue by email/i),
+      screen.getByLabelText(/your email/i),
       "customer@example.com",
     );
-    await user.click(screen.getByRole("button", { name: /email me a link/i }));
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
 
     await waitFor(() =>
       expect(trackerMocks.emailSubscribed).toHaveBeenCalledWith(
@@ -236,10 +238,12 @@ describe("VoaResultPage — ACCEPT", () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByLabelText(/continue by email/i),
+      screen.getByLabelText(/your email/i),
       "customer@example.com",
     );
-    await user.click(screen.getByRole("button", { name: /email me a link/i }));
+    await user.click(
+      screen.getByRole("button", { name: /email me the link/i }),
+    );
 
     await waitFor(() =>
       expect(trackerMocks.formSubmitFailed).toHaveBeenCalledWith(

@@ -452,3 +452,123 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/*
+ * "Start your application" — the magic-link step, which is the ONLY door into
+ * the rest of the funnel.
+ *
+ * Measured before it was styled, and both numbers are why this block exists:
+ *
+ *   1. The field had no visible edge. Its boundary read
+ *      --color-border-subtle, which line 42 of this file aliases to
+ *      --bz-border: composited over the field's own fill that is 1.40:1, and
+ *      SC 1.4.11 asks 3:1 of the boundary of an interactive control. The
+ *      boundary now takes --tx-tertiary and measures 4.18:1. That token was
+ *      rejected for TEXT one section below at 4.23:1 — the floors differ, and
+ *      this file already used it as a border for the same reason.
+ *   2. The step had no heading. The screen carried exactly one heading, its
+ *      own h1, and the entry to the application was a bare label sitting
+ *      BELOW the "delete this check" control. A customer who has just read
+ *      "1. Upload a photo of your passport page" had nothing on the page
+ *      connecting that sentence to an email field.
+ *
+ * Why an email step at all, stated here because the page cannot show it: the
+ * upload route is behind the account session cookie that only the magic-link
+ * exchange sets (upload/api-client.ts, auth/exchange/route.ts). A direct link
+ * to the upload page would land an unauthenticated visitor on a screen whose
+ * first request fails. The email IS the door, so it is named as one.
+ *
+ * 16px on the input is not a type choice: below 16px iOS Safari zooms the
+ * viewport on focus, which on a 390px screen throws the rest of the form off
+ * the page — the mandate's mobile-first accent, enforced by arithmetic.
+ */
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.75rem 0 0;
+  max-width: 420px;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__heading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tx-secondary);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__label {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__input {
+  min-height: 48px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--tx-tertiary);
+  border-radius: 6px;
+  background: var(--bz-elevated);
+  color: var(--tx-pure);
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"]
+  .voa-entry__input:focus-visible {
+  outline: 2px solid var(--bz-accent);
+  outline-offset: 2px;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"]
+  .voa-entry__submit[disabled] {
+  cursor: default;
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__status {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--tx-pure);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__error {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--bz-accent);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+[data-theme="operative-dark"][data-garuda-voa="r19"] .voa-entry__form {
+  display: grid;
+  gap: 0.6rem;
+}
