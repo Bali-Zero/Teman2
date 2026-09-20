@@ -73,6 +73,19 @@ FALLBACK_SEATS = [
     "tp1-qwen3.8-max", "tp1-deepseek-v4-pro", "tp1-qwen3.7-plus", "tp1-glm-5.2",
 ]
 
+# Mirrors arsenal_probe.DEFAULT_TIMEOUTS's per-seat budget (all 15s today). Not imported: the
+# probe's --json report carries no per-seat timeout field, and importing the probe module for
+# one int would drag in its argparse/subprocess machinery. R10 (first real run, 2026-09-19):
+# kimi/agy/codex answered the real round in 70-111s AFTER the probe's 15s budget had already
+# marked them TIMEOUT, so every coach read TIMEOUT as dead.
+PROBE_TIMEOUT_S = 15
+
+# Fixed sentence the ruling requires under the squad table (R10).
+_ARSENAL_UNKNOWN_NOTE = (
+    "`unknown` is not `dead`: a seat the short probe could not reach inside its "
+    f"{PROBE_TIMEOUT_S} s budget may still answer a full round."
+)
+
 REQUIRED_SECTIONS = [
     "Formation", "Tactics", "Termination", "Evidence between stages",
     "Never", "First move", "Cost",
@@ -142,9 +155,17 @@ def _count_changed_spans(a: str, b: str) -> int:
 
 
 def _arsenal_liveness_block(timeout: int = 600) -> str:
+    """The brief's squad block says only what the probe knows, and carries none of its raw
+    output (ruled 2026-09-20, R3): the probe's own report keeps an `evidence` field per seat —
+    CLI hook noise, API error JSON, notebook listings, GitHub org/repo names, seen verbatim in
+    the first real run's brief (2026-09-19) — but that field never leaves the probe's machine-
+    local report, so this block never reads or renders it. A `TIMEOUT` status (the probe's own
+    literal, entity-matched — never a substring match, scar #3) is rewritten to `unknown (probe
+    budget N s)`, and its `healthy` cell is rewritten to `unknown` too — the probe does not KNOW
+    the health of a seat it never reached inside its budget. Every other status, including one
+    that merely CONTAINS "TIMEOUT", keeps both cells verbatim (R10)."""
     if os.environ.get("DW_FAKE_SEATS") == "1":
-        rows = [("kimi", "LIVE", True, 400, "PONG (fake)"),
-                 ("agy", "LIVE", True, 900, "PONG (fake)")]
+        rows = [("kimi", "LIVE", True, 400), ("agy", "LIVE", True, 900)]
     else:
         rows = None
         try:
@@ -157,11 +178,17 @@ def _arsenal_liveness_block(timeout: int = 600) -> str:
             if not seats:
                 raise ValueError("0 seats in probe output")
             rows = [(s.get("seat", "?"), s.get("status", "unknown"), s.get("healthy"),
-                     s.get("latency_ms"), str(s.get("evidence", ""))[:80]) for s in seats]
+                     s.get("latency_ms")) for s in seats]
         except Exception:
-            rows = [(s, "unknown", None, None, "probe failed or timed out") for s in FALLBACK_SEATS]
-    lines = ["| seat | status | healthy | latency_ms | evidence |", "|---|---|---|---|---|"]
-    lines += [f"| {s} | {st} | {h} | {lat} | {ev} |" for s, st, h, lat, ev in rows]
+            rows = [(s, "unknown (probe failed)", None, None) for s in FALLBACK_SEATS]
+    lines = ["| seat | status | healthy | latency_ms |", "|---|---|---|---|"]
+    for seat, status, healthy, latency_ms in rows:
+        if status == "TIMEOUT":
+            status = f"unknown (probe budget {PROBE_TIMEOUT_S} s)"
+            healthy = "unknown"
+        lines.append(f"| {seat} | {status} | {healthy} | {latency_ms} |")
+    lines.append("")
+    lines.append(_ARSENAL_UNKNOWN_NOTE)
     return "\n".join(lines)
 
 
