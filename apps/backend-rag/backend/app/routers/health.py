@@ -1298,7 +1298,15 @@ async def garuda_outbox_health(request: Request) -> dict[str, Any]:
 
     exhausted = counts.get("exhausted", 0)
     older_24h = counts.get("older_than_24h", 0)
-    degraded = bool(exhausted or older_24h)
+    # An hour, not a day, and the reason is a shape the codex/gpt-5.6-terra
+    # council seat found here: an UNROUTABLE row (no handler for its
+    # `job_type`) has its attempt bump rolled back by `drain_once`, so it
+    # never exhausts — it was invisible to both other terms for a full day
+    # while every drain pass failed to dispatch it. The drain loop sleeps
+    # seconds, so a row still undispatched after an hour is stuck by
+    # definition, whatever the reason.
+    older_1h = counts.get("older_than_1h", 0)
+    degraded = bool(exhausted or older_24h or older_1h)
     return {
         "status": "ok",
         "degraded": degraded,

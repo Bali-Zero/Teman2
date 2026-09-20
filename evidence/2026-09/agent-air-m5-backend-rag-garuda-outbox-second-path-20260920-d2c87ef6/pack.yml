@@ -41,6 +41,17 @@ diff:
     session knows what exit 1 and exit 2 mean, one new CI job in the workflow that
     already owns this family ("an alarm must name a condition some organ will act
     on"), and two new test files. No migration, no data, no credential, no frontend.
+seat_override: >-
+  Quorum reached with codex-gpt-5.6-TERRA standing in for codex-gpt-5.6-sol, and the
+  substitution is the whole reason this line exists. sol was dispatched first and
+  self-checkpointed with zero findings after spending 175.6k tokens on repo context
+  (quota_exhausted: true, recorded in council.jsonl). The reserve bench could not cover
+  it either: qwen-cloud-code has no credential on this machine and agy-gemini-3.1-pro is
+  not dispatchable at all, because seat_build.sh derives --effort xhigh from the gear-3
+  floor and the Gemini CLI rejects it. terra is the same seat family as sol at a lower
+  tier, it delivered four SEVERITY(major) findings and the only VERDICT line of the
+  council, and a finding is not worth less for the tier that found it. The harness gap
+  itself is a PENDING-ARMS row opened 2026-09-21, not a footnote.
 dissent:
   - seat: claude-opus-5 (self-refutation, caught by the guilt twin it had just written)
     objection: >-
@@ -107,7 +118,45 @@ dissent:
       and a path that does not require the API's own send to work" — with the leak
       named and measured, and a ledger row owed for the gateway's own loss rate, which
       is NOT this PR's to fix.
-  - seat: council (four seats dispatched, one delivered)
+  - seat: codex-gpt-5.6-terra (council, independent, VERDICT REWORK)
+    objection: >-
+      An UNROUTABLE row — one whose job_type has no handler — has its attempt bump
+      rolled back by drain_once, so it never exhausts AND does not age into the 24h
+      term for a full day. The endpoint answered `degraded: false` for 24 hours while
+      every drain pass failed to dispatch it. The new alarm was blind to the one
+      failure shape that cannot fix itself.
+    status: CONFIRMED
+    resolution: >-
+      `degraded` now includes `older_than_1h` (the drain loop sleeps seconds; an hour
+      undispatched is stuck by definition), the receptor names the shape in its verdict,
+      and both corpora gained the case plus an INNOCENCE case for a fresh row mid-flight.
+  - seat: codex-gpt-5.6-terra (council, independent)
+    objection: >-
+      The wiring guard is a substring test, not an execution test: it stays green if the
+      receptor call is moved under `if false`, after an early `exit`, or into a function
+      nobody calls. The guard would then certify a receptor that never runs — the exact
+      disease this PR is about, one level up.
+    status: CONFIRMED
+    resolution: >-
+      the textual test is renamed and its docstring says what it proves; a reachability
+      test answers the seat's own three reproductions (column-0 invocation, no top-level
+      `if false` before it, no top-level `exit` before it) with a GUILT twin for each.
+      The real execution proof stays where it belongs: the tick observed on Mini after
+      the home-fork pair is re-synced, as an acceptance bullet.
+  - seat: codex-gpt-5.6-terra (council, independent)
+    objection: >-
+      The second-path page can still be lost with no actionable signal: tg_notify spools
+      an unsendable P0 and exits 0, and healer-run.sh's wrapper only logs its last stderr
+      line. A Telegram outage or a failed relay therefore leaves no delivered page and no
+      alarm about the missing alarm.
+    status: CONFIRMED
+    resolution: >-
+      partially cured here and partially ledgered, because the gateway is not this PR's
+      to fix: the receptor's verdict is now written to the healer's own log as well as
+      into REASONS (which the tick summary carries), so the finding survives on the
+      machine even when the page does not. The gateway's measured loss rate — 3 sent vs
+      5 p0_unsent in 48h on Mini — is a PENDING-ARMS row opened 2026-09-21.
+  - seat: council (six dispatches, two seats delivered)
     objection: >-
       Three of the four external lanes produced nothing: codex-gpt-5.6-sol spent 175.6k
       tokens on repo context and self-checkpointed with zero findings, agy/gemini
@@ -200,6 +249,12 @@ receipts:
     result: "all time 132 p0 sent vs 43 p0_unsent; in the LAST 48 HOURS 3 sent and 5 p0_unsent — more than half the recent pages from Mini never left. tg_notify spools an unsendable P0 as p0_unsent by design (fail-visible, not silent), and the organism digest is supposed to surface it; nobody acted on five of them. Separately, a getMe with the token that machine's secrets file carries answers ok:false, so the gateway is probably relaying via M5 rather than sending locally."
     exit: 0
     ts: 2026-09-20T15:57:00Z
+    seat: claude-opus-5
+  - claim: "the council's three curable findings are cured, and each cure has a corpus case"
+    cmd: "python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q; .venv/bin/python3 -m pytest backend/tests/routers/test_health_garuda_outbox.py; python3 scripts/healer_receptor_garuda_outbox.py --selftest"
+    result: "28 passed (incl. 3 new reachability GUILT twins answering the seat's own reproductions), 9 passed (incl. the unroutable case and an INNOCENCE case for a fresh row), selftest 9/9"
+    exit: 0
+    ts: 2026-09-21T16:12:00Z
     seat: claude-opus-5
   - claim: the healer script and the workflow still parse
     cmd: 'bash -n infra/healer/healer-run.sh; python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/alarm-cure-alignment.yml"))'''

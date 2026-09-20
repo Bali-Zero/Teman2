@@ -40,6 +40,7 @@ mod = _load()
         ("busy but healthy", {"status": "ok", "counts": {"undispatched": 4, "exhausted": 0, "older_than_24h": 0}}, 0),
         ("exhausted row", {"status": "ok", "counts": {"undispatched": 1, "exhausted": 1, "older_than_24h": 0}}, 1),
         ("stuck a day", {"status": "ok", "counts": {"undispatched": 2, "exhausted": 0, "older_than_24h": 2}}, 1),
+        ("unroutable: an hour old, never exhausts", {"status": "ok", "counts": {"undispatched": 1, "exhausted": 0, "older_than_1h": 1, "older_than_24h": 0}}, 1),
         ("api could not look", {"status": "unknown", "error": "no database pool"}, 1),
         ("counts missing", {"status": "ok"}, 2),
         ("counts not numbers", {"status": "ok", "counts": {"exhausted": "two"}}, 2),
@@ -119,8 +120,69 @@ def _pages_on_the_second_path(src: str) -> bool:
 
 
 def test_the_healer_tick_actually_calls_this_receptor() -> None:
-    """Existence is not arming (superscar #2): a receptor nobody runs is a file."""
+    """Existence is not arming (superscar #2): a receptor nobody runs is a file.
+
+    TEXTUAL, and named so on purpose: this asserts the call is written, not
+    that it executes. The codex/gpt-5.6-terra council seat broke exactly this
+    assertion — "it stays green if the call is moved under `if false`, after an
+    early `exit`, or into a non-executed function". The reachability test below
+    answers those three; the real execution proof is the tick itself, observed
+    on Mini after the home-fork pair is re-synced, and it is an acceptance
+    bullet rather than a unit test because it needs a machine.
+    """
     assert _calls_receptor(HEALER_SRC)
+
+
+def _call_is_reachable(src: str) -> bool:
+    """The three ways a written call stops being a run call.
+
+    Answers the council's own reproduction recipe rather than a paraphrase of
+    it: (1) the invocation must be at column 0 — a call moved inside a function
+    body or an `if` block is indented; (2) no top-level `if false` may precede
+    it; (3) no top-level `exit` may precede it. Anything subtler than this
+    (a `case` that never matches, a variable-driven guard) is out of reach of
+    static text and belongs to the live observation.
+    """
+    lines = src.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith("OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py"):
+            before = lines[:i]
+            if any(b.startswith("if false") for b in before):
+                return False
+            if any(b.split("#")[0].strip() == "exit" or b.startswith("exit ") for b in before):
+                return False
+            return True
+    return False
+
+
+def test_the_call_is_reachable_not_merely_written() -> None:
+    assert _call_is_reachable(HEALER_SRC)
+
+
+def test_GUILT_reachability_fails_when_the_call_is_indented_into_a_block() -> None:
+    sabotaged = HEALER_SRC.replace(
+        "OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+        "    OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+    )
+    assert not _call_is_reachable(sabotaged)
+
+
+def test_GUILT_reachability_fails_behind_a_top_level_if_false() -> None:
+    sabotaged = HEALER_SRC.replace(
+        "OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+        "if false\nthen :\nfi\nOUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+        1,
+    )
+    assert not _call_is_reachable(sabotaged)
+
+
+def test_GUILT_reachability_fails_after_a_top_level_exit() -> None:
+    sabotaged = HEALER_SRC.replace(
+        "OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+        "exit 0\nOUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py",
+        1,
+    )
+    assert not _call_is_reachable(sabotaged)
 
 
 def test_GUILT_the_wiring_assertion_fails_when_the_call_is_removed() -> None:

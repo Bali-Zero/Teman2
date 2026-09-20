@@ -79,6 +79,7 @@ def classify(payload: object) -> tuple[int, str]:
         exhausted = int(counts.get("exhausted", 0))
         undispatched = int(counts.get("undispatched", 0))
         older_24h = int(counts.get("older_than_24h", 0))
+        older_1h = int(counts.get("older_than_1h", 0))
     except (TypeError, ValueError):
         return EXIT_BLIND, "counts are not integers"
 
@@ -93,6 +94,16 @@ def classify(payload: object) -> tuple[int, str]:
             EXIT_ACTIONABLE,
             f"{older_24h} undrained row(s) older than 24h — not exhausted yet, "
             "so nothing else will say so",
+        )
+    if older_1h:
+        # The UNROUTABLE shape (codex/gpt-5.6-terra, council on this diff): a row
+        # whose job_type has no handler has its attempt bump rolled back, so it
+        # never exhausts and never ages into the 24h term until a full day has
+        # passed. The drain loop sleeps seconds; an hour undispatched is stuck.
+        return (
+            EXIT_ACTIONABLE,
+            f"{older_1h} undrained row(s) older than 1h with 0 exhausted — the shape "
+            "an UNROUTABLE job makes: its attempts roll back, so it never exhausts",
         )
     return EXIT_CLEAN, f"nothing owed ({undispatched} undispatched, 0 exhausted)"
 
@@ -154,6 +165,7 @@ def selftest() -> int:
         ("busy but healthy", {"status": "ok", "counts": {"undispatched": 3, "exhausted": 0, "older_than_24h": 0}}, EXIT_CLEAN),
         ("GUILT: one exhausted row", {"status": "ok", "counts": {"undispatched": 1, "exhausted": 1, "older_than_24h": 0}}, EXIT_ACTIONABLE),
         ("GUILT: stuck a day, not exhausted", {"status": "ok", "counts": {"undispatched": 2, "exhausted": 0, "older_than_24h": 2}}, EXIT_ACTIONABLE),
+        ("GUILT: the unroutable shape — an hour old, never exhausts", {"status": "ok", "counts": {"undispatched": 1, "exhausted": 0, "older_than_1h": 1, "older_than_24h": 0}}, EXIT_ACTIONABLE),
         ("GUILT: the API could not look", {"status": "unknown", "error": "no database pool on app.state"}, EXIT_ACTIONABLE),
         ("BLIND: counts missing", {"status": "ok"}, EXIT_BLIND),
         ("BLIND: counts not numbers", {"status": "ok", "counts": {"exhausted": "two"}}, EXIT_BLIND),

@@ -86,6 +86,31 @@ def test_GUILT_a_row_stuck_a_day_is_degraded_before_it_exhausts(
 
 
 @pytest.mark.unit
+def test_GUILT_an_unroutable_row_is_degraded_within_the_hour(
+    app: FastAPI, client: TestClient
+) -> None:
+    """The council's shape: a job whose `job_type` has no handler.
+
+    `drain_once` rolls its attempt bump back, so it never exhausts, and the
+    24h term only catches it a full day late. Every drain pass fails to
+    dispatch it and the endpoint used to answer `degraded: false`.
+    """
+    app.state.db_pool = _pool()
+    with _with_counts({"undispatched": 1, "exhausted": 0, "older_than_1h": 1, "older_than_24h": 0}):
+        body = client.get("/health/garuda-outbox").json()
+    assert body["degraded"] is True
+
+
+@pytest.mark.unit
+def test_a_fresh_undispatched_row_is_not_degraded(app: FastAPI, client: TestClient) -> None:
+    """INNOCENCE: the drain loop is allowed to be mid-flight."""
+    app.state.db_pool = _pool()
+    with _with_counts({"undispatched": 3, "exhausted": 0, "older_than_1h": 0, "older_than_24h": 0}):
+        body = client.get("/health/garuda-outbox").json()
+    assert body["degraded"] is False
+
+
+@pytest.mark.unit
 def test_GUILT_no_pool_reads_unknown_not_healthy(app: FastAPI, client: TestClient) -> None:
     """"I could not look" must never be spelled like "nothing is wrong"."""
     body = client.get("/health/garuda-outbox").json()

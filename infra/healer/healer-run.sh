@@ -401,6 +401,15 @@ except Exception:
 
 Il conteggio arriva da /health/garuda-outbox, non da Telegram dell'API: se questa pagina arriva mentre l'allarme dell'API tace, il canale dell'API e' il sospetto.
 Dettaglio (credenziale richiesta): ./scripts/pg.sh -Atc \"SELECT id, job_type, attempts, created_at FROM garuda_order_outbox WHERE dispatched_at IS NULL ORDER BY created_at;\""
+    # THE PAGE CAN STILL BE LOST, and the wrapper cannot tell: tg_notify spools
+    # an unsendable P0 as `p0_unsent` and exits 0 by design. Measured on Mini on
+    # 2026-09-20: 3 P0 sent against 5 spooled in 48h (its own ledger row, opened
+    # 2026-09-21 — not this receptor's to fix). Found here by the
+    # codex/gpt-5.6-terra council seat, which called the second path's delivery
+    # "no actionable failure signal". So the finding is written to the machine's
+    # own log as well, and it is already in REASONS, which the tick summary
+    # carries: three surfaces, and only one of them is Telegram.
+    log "garuda-outbox receptor exit=$OUTBOX_EXIT: ${OUTBOX_REASON:-?}"
 fi
 
 # ---- receptor 7: runs that started and never came back --------------------
