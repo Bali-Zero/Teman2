@@ -40,6 +40,19 @@ class InvalidStateTransition(GarudaOrderError):
     """-> 409 INVALID_STATE_TRANSITION."""
 
 
+class HonouredWithoutPaidPayment(GarudaOrderError):
+    """`honoured` was asked for an order that never recorded a `payment.paid`.
+
+    The release job a resolution enqueues is looked up by
+    `garuda_practices.source_paid_journal_event_id`, which only ever holds a
+    `payment.paid` event id: with no such event there is no practice to release
+    and no honest id to release it against. Accepting the resolution anyway
+    closed the case and then raised `PracticeNotMinted` on every drain until the
+    job exhausted — case shut, customer charged, service never started. What an
+    honoured case should MINT for an order that never reached `paid` is a
+    product decision; refusing is what the code can do without inventing it."""
+
+
 class NoOpenLateCase(GarudaOrderError):
     """resolveLateOrder called on an order with no open remediation case. -> 409."""
 

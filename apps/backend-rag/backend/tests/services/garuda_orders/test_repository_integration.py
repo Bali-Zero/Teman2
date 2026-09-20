@@ -28,7 +28,11 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_flow.intake import CaseType
-from backend.services.garuda_orders.errors import NoOpenLateCase, PaymentProviderUnavailable
+from backend.services.garuda_orders.errors import (
+    HonouredWithoutPaidPayment,
+    NoOpenLateCase,
+    PaymentProviderUnavailable,
+)
 from backend.services.garuda_orders.idempotency import canonical_payload_sha256, scoped_key_sha256
 from backend.services.garuda_orders.models import Applicant
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
@@ -416,7 +420,7 @@ async def test_op_f04_late_paid_after_refund_keeps_refunded_and_opens_no_practic
 
 
 @pytest.mark.asyncio
-async def test_op_f05_late_paid_after_terminal_opens_remediation_then_resolve_honoured(
+async def test_op_f05_late_paid_after_terminal_opens_remediation_and_refuses_honouring(
     pool, repository
 ):
     key_digest = scoped_key_sha256(
@@ -463,28 +467,66 @@ async def test_op_f05_late_paid_after_terminal_opens_remediation_then_resolve_ho
     assert state_after == "failed"  # kept terminal, per Q10
     assert late_open is True
 
-    # Q2: staff must resolve to exactly one of two outcomes. Try "honoured".
+    # Q2 gives staff exactly two outcomes, and `honoured` is REFUSED here —
+    # this order never recorded a `payment.paid`, so there is no practice to
+    # release and no event id to release it against. Accepting it used to close
+    # the case and then raise `PracticeNotMinted` on every drain until the job
+    # exhausted: case shut, customer charged, service never started. Refusing is
+    # the code's half of that fix; what an honoured case should MINT for an
+    # unpaid order is a product decision, and the code does not invent it.
     resolve_key = scoped_key_sha256(
         actor="staff-1", operation="resolveLateOrder", raw_key="idem-key-resolve-0001"
     )
     resolve_payload = canonical_payload_sha256(
         {"order_id": order_id, "resolution": "honoured", "staff_reference": "case-42"}
     )
+    with pytest.raises(HonouredWithoutPaidPayment):
+        await repository.resolve_late_order(
+            order_id=order_id,
+            resolution="honoured",
+            staff_reference="case-42",
+            idempotency_key_sha256=resolve_key,
+            canonical_payload_sha256=resolve_payload,
+        )
+    # The refusal leaves NOTHING behind: the case is still open (so the staff
+    # page still stands) and no impossible job was queued.
+    still_open, still_unresolved = await pool.fetchrow(
+        "SELECT late_case_open, late_case_resolution FROM garuda_orders WHERE order_id = $1",
+        order_id,
+    )
+    assert still_open is True
+    assert still_unresolved is None
+    assert (
+        await pool.fetchval(
+            "SELECT count(*) FROM garuda_order_outbox WHERE order_id = $1 "
+            "AND job_type = 'practice_release'",
+            order_id,
+        )
+        == 0
+    )
+
+    # The outcome that IS available for an unpaid late case closes it.
+    refund_key = scoped_key_sha256(
+        actor="staff-1", operation="resolveLateOrder", raw_key="idem-key-resolve-0001b"
+    )
+    refund_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "refunded_in_full", "staff_reference": "case-42"}
+    )
     resolution_body, replayed = await repository.resolve_late_order(
         order_id=order_id,
-        resolution="honoured",
+        resolution="refunded_in_full",
         staff_reference="case-42",
-        idempotency_key_sha256=resolve_key,
-        canonical_payload_sha256=resolve_payload,
+        idempotency_key_sha256=refund_key,
+        canonical_payload_sha256=refund_payload,
     )
     assert replayed is False
-    assert resolution_body["resolution"] == "honoured"
+    assert resolution_body["resolution"] == "refunded_in_full"
     late_open_after, resolution_col = await pool.fetchrow(
         "SELECT late_case_open, late_case_resolution FROM garuda_orders WHERE order_id = $1",
         order_id,
     )
     assert late_open_after is False
-    assert resolution_col == "honoured"
+    assert resolution_col == "refunded_in_full"
 
     # A second resolve attempt on an already-closed case must fail — Q2's
     # "never neither" cuts both ways: it also never resolves the SAME case twice
@@ -1175,20 +1217,36 @@ async def test_op_f08_does_not_reopen_a_case_staff_already_resolved(pool, reposi
         is True
     )
 
+    # THE API NO LONGER REACHES THIS STATE, and the test says so before
+    # entering it by hand: `resolve_late_order` refuses `honoured` for an order
+    # with no `payment.paid`, which an OP-F08 order never has (OP-F01 forbids
+    # any non-webhook writer from setting `paid`).
     resolve_key = scoped_key_sha256(
         actor="staff-2", operation="resolveLateOrder", raw_key="idem-key-f08-resolve-0001"
     )
     resolve_payload = canonical_payload_sha256(
         {"order_id": order_id, "resolution": "honoured", "staff_reference": "case-f08-1"}
     )
-    _resolution_body, replayed = await repository.resolve_late_order(
-        order_id=order_id,
-        resolution="honoured",
-        staff_reference="case-f08-1",
-        idempotency_key_sha256=resolve_key,
-        canonical_payload_sha256=resolve_payload,
+    with pytest.raises(HonouredWithoutPaidPayment):
+        await repository.resolve_late_order(
+            order_id=order_id,
+            resolution="honoured",
+            staff_reference="case-f08-1",
+            idempotency_key_sha256=resolve_key,
+            canonical_payload_sha256=resolve_payload,
+        )
+
+    # The predicate under test is a DB-level one, and it has to hold for a row
+    # in that shape however the row got there — a resolution written before the
+    # refusal existed, a hand-fix, a future outcome that legitimately closes a
+    # case on an unpaid order. So the row is put in that shape directly. (In
+    # PROD today: 3 orders, 0 resolved cases — measured before this change, so
+    # the refusal orphans nothing.)
+    await pool.execute(
+        "UPDATE garuda_orders SET late_case_open = FALSE, late_case_resolution = 'honoured', "
+        "late_case_staff_reference = 'case-f08-1' WHERE order_id = $1",
+        order_id,
     )
-    assert replayed is False
     late_open_after, resolution_col = await pool.fetchrow(
         "SELECT late_case_open, late_case_resolution FROM garuda_orders WHERE order_id = $1",
         order_id,
@@ -1735,3 +1793,103 @@ async def test_refunding_an_op_f05_case_never_moves_the_order_out_of_failed(pool
         order_id,
     )
     assert moved_events == 0
+
+
+@pytest.mark.asyncio
+async def test_honouring_a_paid_order_releases_against_the_payment_not_the_resolution(
+    pool, repository
+):
+    """The half of the cure that is not a refusal.
+
+    `practice_release` is claimed by `garuda_practices.source_paid_journal_event_id`,
+    which only ever holds a `payment.paid` event id. Enqueuing it against the
+    RESOLUTION event produced a job no practice could match — `PracticeNotMinted`
+    on every drain until exhaustion. For an order that IS paid (the OP-08 shape:
+    a duplicate charge opens a case on an order already paid) the right id
+    exists, so the job is enqueued against THAT, and `enqueue_outbox`'s
+    `ON CONFLICT DO NOTHING` means the release OP-02 already queued is not
+    duplicated: one job, pointing at the payment.
+    """
+
+    key_digest = scoped_key_sha256(
+        actor="actor-h1", operation="createOrderFromCheck", raw_key="idem-key-hon-0001"
+    )
+    payload_digest = canonical_payload_sha256(
+        {"result_id": "result-hon-0000000", "applicant": {"e": 31}}
+    )
+    body, _ = await repository.create_order_and_checkout(
+        result_id="result-hon-0000000",
+        applicant=_applicant(),
+        review_confirmed=True,
+        idempotency_key_sha256=key_digest,
+        canonical_payload_sha256=payload_digest,
+    )
+    order_id = body["order_id"]
+
+    assert (
+        await repository.handle_paid_event(
+            NormalizedPaidEvent(
+                provider_event_id="evt-paid-hon",
+                provider_charge_id="charge-hon-first",
+                provider_session_id=f"sess-{order_id}",
+                amount_idr=body["price_idr"],
+                currency="IDR",
+            ),
+            canonical_payload_sha256=b"\x31" * 32,
+        )
+        == "OP-02"
+    )
+    paid_event_id = await pool.fetchval(
+        "SELECT event_id FROM garuda_order_journal WHERE aggregate_id = $1 "
+        "AND event_name = 'payment.paid'",
+        order_id,
+    )
+
+    # A SECOND charge on the paid order: OP-08 opens the remediation case.
+    assert (
+        await repository.handle_paid_event(
+            NormalizedPaidEvent(
+                provider_event_id="evt-paid-hon-dup",
+                provider_charge_id="charge-hon-duplicate",
+                provider_session_id=f"sess-{order_id}",
+                amount_idr=body["price_idr"],
+                currency="IDR",
+            ),
+            canonical_payload_sha256=b"\x32" * 32,
+        )
+        == "OP-08"
+    )
+
+    resolve_key = scoped_key_sha256(
+        actor="staff-h1", operation="resolveLateOrder", raw_key="idem-key-hon-resolve"
+    )
+    resolve_payload = canonical_payload_sha256(
+        {"order_id": order_id, "resolution": "honoured", "staff_reference": "case-hon"}
+    )
+    resolution_body, _replayed = await repository.resolve_late_order(
+        order_id=order_id,
+        resolution="honoured",
+        staff_reference="case-hon",
+        idempotency_key_sha256=resolve_key,
+        canonical_payload_sha256=resolve_payload,
+    )
+    assert resolution_body["resolution"] == "honoured"
+
+    release_jobs = await pool.fetch(
+        "SELECT journal_event_id FROM garuda_order_outbox WHERE order_id = $1 "
+        "AND job_type = 'practice_release'",
+        order_id,
+    )
+    assert [r["journal_event_id"] for r in release_jobs] == [paid_event_id], (
+        "the release must point at the payment that authorized the practice — a job "
+        "against the resolution event matches no practice and dies on every drain"
+    )
+    # ...and the practice it names actually exists, which is the property the
+    # handler's lookup needs and the old code could never satisfy.
+    assert (
+        await pool.fetchval(
+            "SELECT count(*) FROM garuda_practices WHERE source_paid_journal_event_id = $1",
+            paid_event_id,
+        )
+        == 1
+    )

@@ -33,6 +33,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from backend.services.garuda_orders.errors import (
+    HonouredWithoutPaidPayment,
     NoOpenLateCase,
     OrderNotFound,
     OrderNotReady,
@@ -632,6 +633,15 @@ async def resolve_late_order(
             status_code=404, detail={"code": "ORDER_NOT_FOUND", "retryable": False}
         ) from exc
     except NoOpenLateCase as exc:
+        raise HTTPException(
+            status_code=409, detail={"code": "INVALID_STATE_TRANSITION", "retryable": False}
+        ) from exc
+    except HonouredWithoutPaidPayment as exc:
+        # Same 409 and the same catalogued code as any other refused
+        # transition: an order with no `payment.paid` has nothing to honour,
+        # and a new error code would have to earn its place in the contract
+        # before it could be sent. `retryable` is false — repeating the call
+        # changes nothing until a payment is recorded.
         raise HTTPException(
             status_code=409, detail={"code": "INVALID_STATE_TRANSITION", "retryable": False}
         ) from exc
