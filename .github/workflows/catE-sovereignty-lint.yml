@@ -106,6 +106,23 @@ jobs:
           python3 -m pip install --quiet pytest
           python3 -m pytest scripts/tests/test_ban_predicates.py -q
 
+      # The corpora of the three things THIS workflow runs. They existed and
+      # nothing executed them: `scripts/test_lint_paid_llm_entity.py` is named
+      # by no workflow at all, and `scripts/tests/test_lint_ban_prose.py` is
+      # reached only by scripts-tests-sweep.yml — which is `schedule:`-only,
+      # `continue-on-error: true` and required by no branch protection, i.e. a
+      # report and not a gate. A guard whose own corpus never runs is cicatrix
+      # #2 wearing the costume of #3: it proves guilt and innocence to nobody.
+      # Named here rather than swept, so a deleted file fails instead of
+      # silently collecting zero (the sweep's own docstring makes that point
+      # about `.sh` files).
+      - name: the guards' own corpora — the suites no gating workflow ran
+        run: |
+          python3 -m pytest -q \
+            scripts/test_lint_paid_llm_entity.py \
+            scripts/tests/test_lint_ban_prose.py \
+            scripts/tests/test_vendor_authorization_fence.py
+
       # Runs BEFORE #40 so a broken budget step fails loud here rather than
       # quietly degrading the scan it exists to guard. The corpus extracts #40's
       # own shell between its CATE40_BUDGET markers and exercises it against

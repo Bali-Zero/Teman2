@@ -204,7 +204,26 @@ def test_model_saying_no_cannot_clear_the_grep(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is True
 
 
-def test_model_alone_can_add_a_violation(monkeypatch):
+@pytest.fixture
+def authorized_vendor(tmp_path, monkeypatch):
+    """Authorize the endpoint ON DISK for tests that exercise the model path.
+
+    Added with the #6968 gate's condition-3 fence. Before it, setting the key
+    was enough to reach `ask`; now a key is not permission. The three tests
+    below monkeypatch `ask` to assert what the MODEL contributes, so they have
+    to clear the fence honestly rather than route around it — without this
+    fixture they would still pass, because a client that never speaks fires no
+    route and asserts nothing.
+    """
+    import typesafe_client
+
+    listing = tmp_path / "authorized_endpoints.json"
+    listing.write_text(json.dumps({"endpoints": [typesafe_client.ENDPOINT]}))
+    monkeypatch.setattr(typesafe_client, "AUTHORIZATION", listing)
+    return listing
+
+
+def test_model_alone_can_add_a_violation(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
@@ -217,7 +236,7 @@ def test_model_alone_can_add_a_violation(monkeypatch):
     assert result["fired_routes"] == ["wrapper_library"]
 
 
-def test_probability_below_threshold_does_not_fire(monkeypatch):
+def test_probability_below_threshold_does_not_fire(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
@@ -228,7 +247,7 @@ def test_probability_below_threshold_does_not_fire(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is False
 
 
-def test_redaction_runs_before_the_payload_leaves(monkeypatch):
+def test_redaction_runs_before_the_payload_leaves(monkeypatch, authorized_vendor):
     """A credential in the source must not be in what we send."""
     seen: dict = {}
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
@@ -241,10 +260,11 @@ def test_redaction_runs_before_the_payload_leaves(monkeypatch):
 
 
 def _run_bench() -> int:
-    from typesafe_client import available
+    from typesafe_client import unavailable_reason
 
-    if not available():
-        print("TYPESAFE_API_KEY absent — the bench needs it. Nothing run.")
+    reason = unavailable_reason()
+    if reason is not None:
+        print(f"the bench needs a live client, and it is silent ({reason}). Nothing run.")
         return 2
 
     guilt_hit = missed_hit = missed_total = 0

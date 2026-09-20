@@ -1,0 +1,4 @@
+{
+  "_doc": "Third-party per-token endpoints this repository is authorized to reach. Builder Contract §3: such a vendor is not banned, but it is 'not yours to install: they need the owner's explicit authorization first'. That rule was already in force and could not reach the arming, because arming had become a GUI act — one repository secret, no PR, no review. This file moves the decision to where a merge can see it: a client refuses to speak unless its endpoint is listed HERE, so a secret alone can no longer open an outbound path. An absent, unreadable or malformed file authorizes NOTHING, for the same reason the ban-prose pardon list does: failing open would make deleting one file the way to arm every vendor. Adding an entry requires a dated ruling in docs/rules/RULINGS.md naming the endpoint AND its permitted use — cite it in `ruling`.",
+  "endpoints": []
+}
