@@ -1,8 +1,14 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
+vi.mock("./telemetry", () => ({ emitVisaOracleTelemetry }));
+
 import {
+  GENERIC_NOTICE_CONDITION,
+  NOTICE_CONDITION_COPY,
   REVIEW_REASON_COPY,
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
@@ -11,7 +17,11 @@ import {
   buildEngineOutcome,
   isSecondHomeStudioOnly,
 } from "./engine-adapter";
-import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import {
+  TEST_NOW,
+  TEST_SOURCE_ID,
+  makeVisaOracleResponse,
+} from "./visa-oracle-test-fixture";
 import { translate, type I18nKey } from "./i18n";
 import { QUESTIONS, type OracleFacts } from "./tree";
 
@@ -1474,5 +1484,562 @@ describe("isSecondHomeStudioOnly (D23 B-STUDIO)", () => {
         buildEngineOutcome(makeVisaOracleResponse("SUPPORTED_CANDIDATES")),
       ),
     ).toBe(false);
+  });
+});
+
+// Slice A2 (PLAN VISA-ORACLE-DW-20260919 §1.6, N1-N3): `notices[]` was wired
+// to the wire and dark in the UI — this pins the render.
+describe("notices render as named conditions (slice A2)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    emitVisaOracleTelemetry.mockReset();
+  });
+
+  it("maps a single OBSOLETE_PRODUCT_CODE notice — the one code the engine already emits", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        rule_ids: [],
+        source_refs: [TEST_SOURCE_ID],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions).toEqual([
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        message: NOTICE_CONDITION_COPY.OBSOLETE_PRODUCT_CODE,
+        sourceIds: [TEST_SOURCE_ID],
+      },
+    ]);
+  });
+
+  it("maps many notices in order, each with its own copy", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+      {
+        code: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions.map((item) => item.code)).toEqual([
+      "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+    ]);
+    expect(outcome.conditions[0].message).toEqual(
+      NOTICE_CONDITION_COPY.DISCLOSED_HEALTH_CONCERN_CONDITION,
+    );
+    expect(outcome.conditions[1].message).toEqual(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION,
+    );
+  });
+
+  it.each([
+    "SUPPORTED_CANDIDATES",
+    "NEEDS_INPUT",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+  ] as const)(
+    "carries a condition on %s — notices has no backend state constraint",
+    (state) => {
+      const response = makeVisaOracleResponse(state);
+      response.decision.notices = [
+        {
+          code: "DISCLOSED_UNCERTAINTY_CONDITION",
+          rule_ids: [],
+          source_refs: [],
+        },
+      ];
+      const outcome = buildEngineOutcome(response);
+      expect(outcome.conditions).toHaveLength(1);
+      expect(outcome.conditions[0].code).toBe(
+        "DISCLOSED_UNCERTAINTY_CONDITION",
+      );
+    },
+  );
+
+  it("has all eleven codes N1 names, and no other code, EN and ID both non-empty", () => {
+    const EXPECTED_CODES = [
+      "OBSOLETE_PRODUCT_CODE",
+      "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      "DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION",
+      "DISCLOSED_UNCERTAINTY_CONDITION",
+      "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+      "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION",
+      "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION",
+      "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
+      "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
+      "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+    ].sort();
+    expect(Object.keys(NOTICE_CONDITION_COPY).sort()).toEqual(EXPECTED_CODES);
+    for (const message of Object.values(NOTICE_CONDITION_COPY)) {
+      expect(message.en.length).toBeGreaterThan(0);
+      expect(message.id.length).toBeGreaterThan(0);
+    }
+  });
+
+  // S2 (GATE-A2-REPORT-6849 MEDIUM-2), hardened (GATE-A2B-REPORT-6857.md
+  // OBS-A2b-1): the guard must see EVERY string the conditions block can
+  // render — every `NOTICE_CONDITION_COPY` entry, the generic fallback, AND
+  // the two `outcome.conditions.*` i18n keys — and must not be evadable by
+  // inflection or an affixed form. The FIRST attempt at this (an inflected-
+  // literal stem list) itself missed one: the list carried "does not
+  // change" but not "do not change", so the exact EN sentence #6849 shipped
+  // and S1 ordered removed — "These do not change the result above" — sailed
+  // through GREEN. V1: the guard is therefore PATTERN FAMILIES (case-
+  // insensitive regexes), not inflected literals — a family is what catches
+  // every inflection of a shape at once, which is exactly what a literal
+  // list, however long, cannot do.
+  //
+  // V4 — the declared ceiling: no finite pattern list forecloses every
+  // reassuring synonym in two languages (GATE-A2B-REPORT-6857.md OBS-A2b-7
+  // named four real ones outside these families: "no bearing", "tidak
+  // berpengaruh", "will not affect your result", "no concern" — the
+  // families below now cover exactly those). What this file pins is these
+  // families PLUS the historical fixtures in GUILT_FIXTURES below; a new
+  // reassuring phrasing found in review is added there as a fixture, never
+  // patched by narrowing a family.
+  interface BannedPattern {
+    name: string;
+    re: RegExp;
+  }
+
+  const BANNED_PATTERNS: BannedPattern[] = [
+    {
+      name: "EN negated effect (spaced 'not'): aux + not + up to two words + verb of effect",
+      re: /\b(?:do|does|did|will|would|can|could|shall|should|may|might)\s+not\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN negated effect (contracted auxn't): up to two words + verb of effect",
+      re: /\b(?:do|does|did|would|could|should|may|might)n['’]t\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN negated effect, irregular contractions won't/cannot/can't: up to two words + verb of effect",
+      re: /\b(?:won['’]t|cannot|can['’]t|shan['’]t)\b(?:\s+\S+){0,2}\s+(?:change|affect|alter|impact|influence|matter)s?\b/gi,
+    },
+    {
+      name: "EN 'no issue/problem/concern/bearing/effect/impact/risk(s)'",
+      re: /\bno\s+(?:issue|problem|concern|bearing|effect|impact|risk)s?\b/gi,
+    },
+    { name: "EN stem: clear (unclear allowlisted below)", re: /clear/gi },
+    { name: "EN stem: approv", re: /approv/gi },
+    { name: "EN stem: guarantee", re: /guarantee/gi },
+    { name: "EN 'eligible regardless'", re: /eligible\s+regardless/gi },
+    {
+      name: "ID negated effect: tidak (akan)? + mengubah/berpengaruh/memengaruhi/mempengaruhi/berdampak/menjadi masalah",
+      re: /\btidak\s+(?:akan\s+)?(?:mengubah|berpengaruh|memengaruhi|mempengaruhi|berdampak|menjadi\s+masalah)\b/gi,
+    },
+    {
+      name: "ID 'tanpa masalah/kendala/hambatan'",
+      re: /\btanpa\s+(?:masalah|kendala|hambatan)\b/gi,
+    },
+    {
+      name: "ID 'tidak ada masalah/kendala/hambatan'",
+      re: /\btidak\s+ada\s+(?:masalah|kendala|hambatan)\b/gi,
+    },
+    { name: "ID stem: aman", re: /aman/gi },
+    { name: "ID stem: lulus", re: /lulus/gi },
+    { name: "ID stem: lolos", re: /lolos/gi },
+    { name: "ID stem: diterima", re: /diterima/gi },
+    { name: "ID stem: setuju", re: /setuju/gi },
+    { name: "ID stem: jamin", re: /jamin/gi },
+    { name: "ID stem: pasti", re: /pasti/gi },
+  ];
+
+  // Exact words that legitimately contain a banned stem WITHOUT carrying its
+  // reassuring sense — the fix for a false positive is always an allowlist
+  // entry here, NEVER narrowing the family (that would also let a real
+  // evasion sharing the same shape through).
+  const BANNED_PATTERN_ALLOWLIST = [
+    // "unclear" is the OPPOSITE of "cleared":
+    // `DISCLOSED_SOURCE_OF_FUNDS_CONDITION.en` reads "an unclear source of
+    // funds", which is the defect this whole condition exists to flag.
+    /\bunclear\b/gi,
+    // "dipastikan" ("cannot yet be confirmed" / "will be confirmed") is a
+    // HEDGE, not a reassurance of certainty — the "pasti" family exists to
+    // catch reassuring certainty ("sudah pasti", "pasti aman"), not this.
+    // Shipped in `DISCLOSED_UNCERTAINTY_CONDITION.id` and
+    // `DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION.id`. "memastikan"/
+    // "memastikannya" never trip the "pasti" family in the first place:
+    // Indonesian me-+p- nasal assimilation (peluluhan) drops the "p" (the
+    // same phenomenon that turns "setuju" into "menyetujui" — di- prefixes
+    // do not assimilate, so "disetujui"/"dipastikan" keep the literal
+    // stem and "menyetujui"/"memastikan" do not), so only "dipastikan"
+    // needs an entry here.
+    /\bdipastikan\b/gi,
+  ];
+
+  function stripAllowlisted(text: string): string {
+    let stripped = text;
+    for (const allowed of BANNED_PATTERN_ALLOWLIST) {
+      stripped = stripped.replace(allowed, "");
+    }
+    return stripped;
+  }
+
+  function findBannedPattern(text: string): string | undefined {
+    const stripped = stripAllowlisted(text);
+    for (const pattern of BANNED_PATTERNS) {
+      pattern.re.lastIndex = 0;
+      if (pattern.re.test(stripped)) {
+        return pattern.name;
+      }
+    }
+    return undefined;
+  }
+
+  interface ConditionsBlockEntry {
+    key: string;
+    language: "en" | "id";
+    text: string;
+  }
+
+  // V3 (OBS-A2b-3): the iteration's source tables are PARAMETERS, defaulted
+  // to the real production tables — the guilt tests below inject a table
+  // carrying a plant instead of hardcoding a string past the matcher, so a
+  // plant that never reached the iteration (e.g. a key silently dropped
+  // from it) cannot pass by accident.
+  interface ConditionsBlockSourceTables {
+    noticeConditionCopy: Record<string, { en: string; id: string }>;
+    genericNoticeCondition: { en: string; id: string };
+    translate: (
+      language: "en" | "id",
+      key: "outcome.conditions.title" | "outcome.conditions.intro",
+    ) => string;
+  }
+
+  const DEFAULT_SOURCE_TABLES: ConditionsBlockSourceTables = {
+    noticeConditionCopy: NOTICE_CONDITION_COPY,
+    genericNoticeCondition: GENERIC_NOTICE_CONDITION,
+    translate,
+  };
+
+  function conditionsBlockEntries(
+    tables: ConditionsBlockSourceTables = DEFAULT_SOURCE_TABLES,
+  ): ConditionsBlockEntry[] {
+    const entries: ConditionsBlockEntry[] = [];
+    for (const [code, message] of Object.entries(tables.noticeConditionCopy)) {
+      entries.push({ key: code, language: "en", text: message.en });
+      entries.push({ key: code, language: "id", text: message.id });
+    }
+    entries.push({
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "en",
+      text: tables.genericNoticeCondition.en,
+    });
+    entries.push({
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "id",
+      text: tables.genericNoticeCondition.id,
+    });
+    for (const key of [
+      "outcome.conditions.title",
+      "outcome.conditions.intro",
+    ] as const) {
+      entries.push({ key, language: "en", text: tables.translate("en", key) });
+      entries.push({ key, language: "id", text: tables.translate("id", key) });
+    }
+    return entries;
+  }
+
+  function scanConditionsBlock(
+    tables?: ConditionsBlockSourceTables,
+  ): Array<ConditionsBlockEntry & { matchedFamily: string }> {
+    const hits: Array<ConditionsBlockEntry & { matchedFamily: string }> = [];
+    for (const entry of conditionsBlockEntries(tables)) {
+      const matchedFamily = findBannedPattern(entry.text);
+      if (matchedFamily !== undefined) {
+        hits.push({ ...entry, matchedFamily });
+      }
+    }
+    return hits;
+  }
+
+  const EXPECTED_CONDITIONS_BLOCK_KEYS = [
+    ...Object.keys(NOTICE_CONDITION_COPY),
+    "GENERIC_NOTICE_CONDITION",
+    "outcome.conditions.title",
+    "outcome.conditions.intro",
+  ].sort();
+
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback and eleven codes, both languages (V3)", () => {
+    const entries = conditionsBlockEntries();
+    expect(entries).toHaveLength(28);
+    expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
+      EXPECTED_CONDITIONS_BLOCK_KEYS,
+    );
+    for (const key of EXPECTED_CONDITIONS_BLOCK_KEYS) {
+      expect(
+        entries
+          .filter((e) => e.key === key)
+          .map((e) => e.language)
+          .sort(),
+        key,
+      ).toEqual(["en", "id"]);
+    }
+  });
+
+  it("innocence: all 28 shipped strings pass the scan clean", () => {
+    const hits = scanConditionsBlock();
+    expect(hits, JSON.stringify(hits)).toEqual([]);
+  });
+
+  // V2: the guard's guilt table is the real history, not invented cases.
+  // Rows 1-2 are the exact EN/ID intro #6849 shipped — copied by command
+  // (`git show 6ff563eb23:.../i18n.ts`), never retyped — the single
+  // sentence this whole slice exists to keep off the surface. Rows 3-13 are
+  // ALL ELEVEN plants from GATE-A2B-REPORT-6857.md's check-3 table
+  // (P1-P11), copied from the report, INCLUDING P3/P5/P6/P9, which slipped
+  // last time as "unlisted synonyms" — the families in BANNED_PATTERNS are
+  // what closes them. P10/P11 duplicate rows 1-2's text (the report itself
+  // notes P10 is "the EXACT string S1 ordered removed") — both are kept as
+  // distinct rows for traceability to their source.
+  interface GuiltFixture {
+    label: string;
+    key: string;
+    language: "en" | "id";
+    text: string;
+  }
+
+  const GUILT_FIXTURES: GuiltFixture[] = [
+    {
+      label:
+        "#6849 shipped EN intro (the sentence this slice exists to remove)",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These do not change the result above — they name what our team checks with you before submission.",
+    },
+    {
+      label:
+        "#6849 shipped ID intro (the sentence this slice exists to remove)",
+      key: "outcome.conditions.intro",
+      language: "id",
+      text: "Kondisi ini tidak mengubah hasil di atas — kondisi ini menyebutkan apa yang akan diperiksa tim kami bersama Anda sebelum pengajuan.",
+    },
+    {
+      label: "P1: inflection of the listed 'does not change'",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These conditions do not change the result above. Our team checks each one with you before submission.",
+    },
+    {
+      label: "P2: listed stem 'aman'",
+      key: "outcome.conditions.title",
+      language: "id",
+      text: "Kondisi pada hasil ini yang sudah aman",
+    },
+    {
+      label: "P3: 'no bearing' — unlisted synonym last time",
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "en",
+      text: "An additional condition applies to this result — it has no bearing on your eligibility, and our team will confirm it with you before submission.",
+    },
+    {
+      label: "P4: listed stem 'lolos'",
+      key: "DISCLOSED_PEP_OR_SANCTIONS_CONDITION",
+      language: "id",
+      text: "Anda telah lolos pemeriksaan awal. Tim kami akan memberi tahu dokumen yang perlu disiapkan.",
+    },
+    {
+      label: "P5: 'tidak berpengaruh' — unlisted synonym last time",
+      key: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      language: "id",
+      text: "Anda menandai adanya masalah kesehatan dalam pengungkapan Anda. Kondisi ini tidak berpengaruh terhadap hasil Anda.",
+    },
+    {
+      label:
+        "P6: 'this will not affect your result' — unlisted synonym last time",
+      key: "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      language: "en",
+      text: "You flagged an unclear source of funds in your disclosures. This will not affect your result.",
+    },
+    {
+      label: "P7: listed stem 'jamin'",
+      key: "GENERIC_NOTICE_CONDITION",
+      language: "id",
+      text: "Kondisi tambahan berlaku untuk hasil ini — Hasil Anda sudah dijamin.",
+    },
+    {
+      label: "P8: allowlist probe — 'unclear' and 'cleared' in the same string",
+      key: "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
+      language: "en",
+      text: "You flagged an unclear source of funds in your disclosures. You are cleared for submission. A source-of-funds compliance check runs at submission.",
+    },
+    {
+      label: "P9: 'no concern' — unlisted synonym last time",
+      key: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      language: "en",
+      text: "You flagged a health concern in your disclosures. There is no concern about your eligibility.",
+    },
+    {
+      label: "P10: the EXACT EN string S1 ordered removed",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These do not change the result above — they name what our team checks with you before submission.",
+    },
+    {
+      label: "P11: the EXACT ID string S1 ordered removed",
+      key: "outcome.conditions.intro",
+      language: "id",
+      text: "Kondisi ini tidak mengubah hasil di atas — kondisi ini menyebutkan apa yang akan diperiksa tim kami bersama Anda sebelum pengajuan.",
+    },
+    {
+      label:
+        "G12: OBS-A2c-1 — contracted 'don't', one apostrophe from the EXACT EN string S1 ordered removed",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These don't change the result above.",
+    },
+    {
+      label:
+        "G13: OBS-A2c-1 — contracted 'don’t' (curly apostrophe), same shape as G12",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These don’t affect the result above.",
+    },
+    {
+      label:
+        "G14: OBS-A2c-1 — 'shall' contracts irregularly to shan't, same shape as G12/G13",
+      key: "outcome.conditions.intro",
+      language: "en",
+      text: "These shan't change the result above.",
+    },
+  ];
+
+  function buildInjectedTables(
+    fixture: GuiltFixture,
+  ): ConditionsBlockSourceTables {
+    if (
+      fixture.key === "outcome.conditions.title" ||
+      fixture.key === "outcome.conditions.intro"
+    ) {
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        translate: (language, key) =>
+          language === fixture.language && key === fixture.key
+            ? fixture.text
+            : translate(language, key),
+      };
+    }
+    if (fixture.key === "GENERIC_NOTICE_CONDITION") {
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        genericNoticeCondition: {
+          ...GENERIC_NOTICE_CONDITION,
+          [fixture.language]: fixture.text,
+        },
+      };
+    }
+    return {
+      ...DEFAULT_SOURCE_TABLES,
+      noticeConditionCopy: {
+        ...NOTICE_CONDITION_COPY,
+        [fixture.key]: {
+          ...NOTICE_CONDITION_COPY[fixture.key],
+          [fixture.language]: fixture.text,
+        },
+      },
+    };
+  }
+
+  it.each(GUILT_FIXTURES)(
+    "guilt: $label — $key ($language) is reported by the scan",
+    (fixture) => {
+      const tables = buildInjectedTables(fixture);
+      const hits = scanConditionsBlock(tables);
+      const hit = hits.find(
+        (h) => h.key === fixture.key && h.language === fixture.language,
+      );
+      expect(
+        hit,
+        `expected ${fixture.key} (${fixture.language}) to be reported by the scan for: "${fixture.text}"`,
+      ).toBeDefined();
+    },
+  );
+
+  it("PEP/sanctions and source-of-funds conditions say the check runs at submission", () => {
+    // N2: these two specifically must not imply the check already happened.
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION.en,
+    ).toMatch(/at submission/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_SOURCE_OF_FUNDS_CONDITION.en,
+    ).toMatch(/at submission/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_PEP_OR_SANCTIONS_CONDITION.id,
+    ).toMatch(/pada saat pengajuan/i);
+    expect(
+      NOTICE_CONDITION_COPY.DISCLOSED_SOURCE_OF_FUNDS_CONDITION.id,
+    ).toMatch(/pada saat pengajuan/i);
+  });
+
+  it("throws on an unmapped notice code outside production (N3)", () => {
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      { code: "SOME_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+    ];
+    expect(() => buildEngineOutcome(response)).toThrow();
+  });
+
+  it("falls back to a neutral sentence and reports the gap once in production (N3)", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      { code: "ANOTHER_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions).toEqual([
+      {
+        code: "ANOTHER_FUTURE_CONDITION_CODE",
+        message: GENERIC_NOTICE_CONDITION,
+        sourceIds: [],
+      },
+    ]);
+    // S5 de-duplicates a REPEATED code within one decision before it ever
+    // reaches this fallback, so "once per code, not once per occurrence" is
+    // now proven ACROSS two separate decisions sharing the same unmapped
+    // code — the session-scoped case S5's per-decision dedupe cannot cover.
+    const second = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    second.decision.notices = [
+      { code: "ANOTHER_FUTURE_CONDITION_CODE", rule_ids: [], source_refs: [] },
+    ];
+    buildEngineOutcome(second);
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledTimes(1);
+    expect(emitVisaOracleTelemetry).toHaveBeenCalledWith({
+      event: "visa_oracle_v2_notice_unmapped_code",
+      code: "ANOTHER_FUTURE_CONDITION_CODE",
+    });
+  });
+
+  it("de-duplicates a repeated code within one decision, first occurrence wins (S5)", () => {
+    // ReasonList keys each item on `reason.code` (OutcomeSheet.tsx) — two
+    // conditions sharing a code would collide as React keys. No producer
+    // emits this today; the adapter guarantees it rather than assuming it.
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        rule_ids: [],
+        source_refs: [TEST_SOURCE_ID],
+      },
+      { code: "OBSOLETE_PRODUCT_CODE", rule_ids: [], source_refs: [] },
+    ];
+    const outcome = buildEngineOutcome(response);
+    expect(outcome.conditions).toEqual([
+      {
+        code: "OBSOLETE_PRODUCT_CODE",
+        message: NOTICE_CONDITION_COPY.OBSOLETE_PRODUCT_CODE,
+        // The FIRST occurrence's source_refs survive, not the second's.
+        sourceIds: [TEST_SOURCE_ID],
+      },
+    ]);
   });
 });

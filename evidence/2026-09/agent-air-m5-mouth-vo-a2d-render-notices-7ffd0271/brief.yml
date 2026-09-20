@@ -1,0 +1,177 @@
+base_sha: 4fba78c4c7 # pragma: allowlist secret - public Git commit ID
+task_id: vo-a2d-render-notices
+mandate_id: VISA-ORACLE-DW-20260919/A2'''
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path.
+  `scripts/contract_verify.py --head <this-head> --json` reports
+  "floor-needs-brief": deterministic floor is 2 (churn crosses the 400-line
+  Gear-2 threshold, `scripts/evidence_pack_lint.py` `SIZE_GEAR2_THRESHOLD`)
+  and stays below the 1828-line Gear-3 threshold — this brief declares
+  gear>=2, matching and not exceeding the measured floor.
+l_level: L1
+gate_class: opus
+objective: >-
+  Resume slice A2 as PR-R (MANDATE-vo.md "R-SPLIT-A2", clauses R1-R7,
+  ratified after Zero authorized option A2-1 of R-SUSPEND-A2). PR #6859
+  (CLOSED, head 4651086187) was found right in everything except ONE
+  alternation (GATE-A2C-REPORT-6859.md OBS-A2c-1): the guard's
+  contracted-negation family omitted the auxiliary `do` (and `shall`), so
+  "These don't change the result above." — one apostrophe from the exact
+  EN intro #6849 shipped and S1 ordered removed — passed the scan GREEN.
+  This is the third red on the same cause (the guard's evadability), so the
+  slice was split by concern: this PR (R) carries the render, unchanged,
+  plus the narrowest cure; a separate PR (G), opening only after this one
+  merges, replaces the hand-written alternations with a generated
+  construction so the omission axis cannot recur. R1: all 12 files of
+  4651086187 ported verbatim (the render path, the eleven-code EN/ID copy
+  table, S1 intro, S5 de-duplication, S6 accessible name + V6 resolution
+  test, N3 dev-throw/prod-fallback + telemetry, S4 e2e, the guard's
+  COVERAGE of all 28 strings, both allowlist entries, the 13
+  GUILT_FIXTURES rows, the iteration pin) — proven by an empty
+  `git diff 4651086187 HEAD` over the ten carried-over files (excluding
+  only engine-adapter.test.ts, the one file whose content changes). R2:
+  pattern 2's alternation gains `do`; pattern 3's gains `shan['']t`. R3:
+  three fixtures appended (G12, G13 curly apostrophe, G14) so the scan
+  proves the cure on its own history. R4: judged only on 16 fixtures RED,
+  28 strings GREEN, the 28-entry iteration pin — the families'
+  CONSTRUCTION is PR-G's subject, out of scope here.
+scope:
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+    — the only file whose CONTENT changes in this PR: R2's two-token fix
+    (pattern 2 gains `do`, pattern 3 gains `shan['']t`) and R3's three new
+    GUILT_FIXTURES rows (G12, G13, G14); everything else in the file is
+    4651086187's guard and render-test content, ported verbatim
+  - >-
+    apps/mouth/e2e/visa-oracle-v2.spec.ts,
+    _components/OutcomeSheet.test.tsx, _components/OutcomeSheet.tsx,
+    _lib/engine-adapter.ts, _lib/i18n.ts, _lib/outcome-fallbacks.ts,
+    _lib/outcome-view-model.ts, _lib/preview-adapter.ts,
+    _lib/telemetry.test.ts, _lib/telemetry.ts — unchanged raw material from
+    #6859's head (4651086187), ported verbatim per file (fetched via
+    `gh api repos/Bali-Zero/Teman2/contents/<path>?ref=4651086187…`, never
+    `git fetch` of that sha); GATE-A2C-REPORT-6859.md's "What holds"
+    section verified these correct and named them NOT to be re-derived
+  - this brief
+constraints:
+  - >-
+    No change to `oracle.css` state tokens, `LivingTree.tsx`,
+    `OracleShell.tsx`, `package.json`, or any lockfile (Builder Contract,
+    unchanged since #6849/#6857/#6859).
+  - >-
+    No new family, no narrowed family, no new allowlist entry (R2's
+    instruction: "Nothing else"). The families' CONSTRUCTION is PR-G's
+    subject, not this PR's.
+  - No paid per-token translation API — no copy text changes in this PR.
+  - No client PII in any file added or edited; all test fixtures synthetic.
+  - >-
+    No route-mocked e2e pointed at production (MANDATE-vo.md R7 / §6.3):
+    prove-live for this PR is the WEAKER proof and is the conductor's, not
+    this brief's.
+acceptance:
+  - text: >-
+      WHEN the EN sentence "These don't change the result above." (G12), its
+      curly-apostrophe twin (G13), or a `shan't` sentence in the same shape
+      (G14) is scanned, THEN the guard SHALL report it — the exact hole
+      OBS-A2c-1 named.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      engine-adapter.test.ts -t "is reported by the scan"
+    probe_result: "Tests  16 passed | 75 skipped (91)"
+  - text: >-
+      WHEN all sixteen guilt fixtures (the 13 carried from #6859 plus
+      G12/G13/G14) are scanned, THEN every one SHALL be reported, naming
+      its key and language.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      engine-adapter.test.ts -t "is reported by the scan"
+    probe_result: "Tests  16 passed | 75 skipped (91)"
+  - text: >-
+      WHEN all 28 shipped strings the conditions block can render are
+      scanned, THEN none SHALL be reported.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      engine-adapter.test.ts -t "innocence: all 28"
+    probe_result: "Tests  1 passed | 90 skipped (91)"
+  - text: >-
+      WHEN the scan's own source-table iteration is inspected, THEN it
+      SHALL yield exactly the title, intro, generic fallback and eleven
+      codes, both languages (28 entries) — dropping a source from the
+      iteration SHALL fail this test.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      engine-adapter.test.ts -t "pins the scan"
+    probe_result: "Tests  1 passed | 90 skipped (91)"
+  - text: >-
+      WHEN the conditions section renders, THEN its aria-labelledby SHALL
+      resolve to the id of the title actually rendered inside it (S6/V6,
+      carried unchanged from #6859).
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      OutcomeSheet.test.tsx -t "aria-labelledby"
+    probe_result: "Tests  1 passed | 55 skipped (56)"
+  - text: >-
+      WHEN the `do` token is reverted from pattern 2's alternation on a
+      scratch copy, THEN fixture G12 SHALL go RED, proving the cure is
+      load-bearing, not vacuous.
+    status: verified
+    probe: >-
+      revert `do` in a scratch copy of engine-adapter.test.ts; run
+      `../../node_modules/.bin/vitest run engine-adapter.test.ts -t "is
+      reported by the scan"`; restore original; `cmp -s` original vs
+      restored
+    probe_result: >-
+      mutant: "2 failed | 14 passed | 75 skipped (91)" (G12, G13 red; G14
+      unaffected, correctly, since it targets pattern 3); restore: `cmp -s`
+      exit 0 (files identical); re-run: "Tests  16 passed | 75 skipped
+      (91)"
+  - text: >-
+      WHEN the mouth typechecks and the full visa-oracle vitest suite runs,
+      THEN both SHALL succeed with zero regressions from this cure.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/tsc --noEmit &&
+      ../../node_modules/.bin/vitest run --root .
+      'src/app/(visa-oracle)/visa-oracle'
+    probe_result: "tsc: exit 0; Test Files 44 passed (44) / Tests 1093 passed (1093)"
+  - text: >-
+      WHEN the full visa-oracle-v2 e2e spec runs, THEN all 20 tests SHALL
+      pass, unchanged from #6859 (S4 is not re-derived here).
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/playwright test -c
+      playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium
+    probe_result: "20 passed (3.7m)"
+  - text: >-
+      WHEN the ten carried-over files (all twelve minus
+      engine-adapter.test.ts and this brief) are diffed against #6859's
+      head, THEN the diff SHALL print nothing — proving R1's "brought
+      UNCHANGED" claim.
+    status: verified
+    probe: >-
+      git diff 4651086187 HEAD -- '*visa-oracle/_lib/engine-adapter.ts'
+      '*visa-oracle/_lib/i18n.ts' '*visa-oracle/_lib/outcome-view-model.ts'
+      '*visa-oracle/_lib/outcome-fallbacks.ts'
+      '*visa-oracle/_lib/preview-adapter.ts' '*visa-oracle/_lib/telemetry.ts'
+      '*visa-oracle/_lib/telemetry.test.ts'
+      '*visa-oracle/_components/OutcomeSheet.tsx'
+      '*visa-oracle/_components/OutcomeSheet.test.tsx'
+      '*e2e/visa-oracle-v2.spec.ts'
+    probe_result: "(empty — no output)"
+pii: none
+self_report:
+  note: >-
+    This brief and its acceptance probes were each run against this PR's
+    own final head in this session, with the exact selected-test count
+    pasted next to each probe (a probe selecting zero tests is a failure,
+    not a pass). The guard's negation-family CONSTRUCTION (the auxiliary,
+    negation and effect-verb lists that build the regexes) is explicitly
+    out of scope for this brief — it is PR-G's subject, opening only after
+    this PR merges (MANDATE-vo.md R-SPLIT-A2, Slice A2-G). No observation
+    about hand enumeration is a red on this brief (R4).
