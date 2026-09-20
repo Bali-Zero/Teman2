@@ -183,12 +183,18 @@ def test_service_silence_is_not_a_pass(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is True
 
 
-def test_model_saying_no_cannot_clear_the_grep(monkeypatch):
+def test_model_saying_no_cannot_clear_the_grep(monkeypatch, authorized_vendor):
     """The core anti-AND test.
 
     Even with every route answered 0.0, a file the grep condemns stays
     condemned. If this test ever fails, the composition has been inverted and a
     model false negative can open the gate.
+
+    `authorized_vendor` is not decoration. Without it the on-disk fence makes
+    the client unavailable, the model is never asked, and this test passes on
+    the grep alone — proving nothing about the composition it exists to protect.
+    The most important test in this file was the fifth vacuous one, and it was
+    an external review seat that noticed, after four had already been found.
     """
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
@@ -204,7 +210,26 @@ def test_model_saying_no_cannot_clear_the_grep(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is True
 
 
-def test_model_alone_can_add_a_violation(monkeypatch):
+@pytest.fixture
+def authorized_vendor(tmp_path, monkeypatch):
+    """Authorize the endpoint ON DISK for tests that exercise the model path.
+
+    Added with the #6968 gate's condition-3 fence. Before it, setting the key
+    was enough to reach `ask`; now a key is not permission. The three tests
+    below monkeypatch `ask` to assert what the MODEL contributes, so they have
+    to clear the fence honestly rather than route around it — without this
+    fixture they would still pass, because a client that never speaks fires no
+    route and asserts nothing.
+    """
+    import typesafe_client
+
+    listing = tmp_path / "authorized_endpoints.json"
+    listing.write_text(json.dumps({"endpoints": [typesafe_client.ENDPOINT]}))
+    monkeypatch.setattr(typesafe_client, "AUTHORIZATION", listing)
+    return listing
+
+
+def test_model_alone_can_add_a_violation(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
@@ -217,7 +242,7 @@ def test_model_alone_can_add_a_violation(monkeypatch):
     assert result["fired_routes"] == ["wrapper_library"]
 
 
-def test_probability_below_threshold_does_not_fire(monkeypatch):
+def test_probability_below_threshold_does_not_fire(monkeypatch, authorized_vendor):
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(
         lint,
@@ -228,7 +253,7 @@ def test_probability_below_threshold_does_not_fire(monkeypatch):
     assert lint.judge_file("x.py", case["content"])["violation"] is False
 
 
-def test_redaction_runs_before_the_payload_leaves(monkeypatch):
+def test_redaction_runs_before_the_payload_leaves(monkeypatch, authorized_vendor):
     """A credential in the source must not be in what we send."""
     seen: dict = {}
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
@@ -241,10 +266,11 @@ def test_redaction_runs_before_the_payload_leaves(monkeypatch):
 
 
 def _run_bench() -> int:
-    from typesafe_client import available
+    from typesafe_client import unavailable_reason
 
-    if not available():
-        print("TYPESAFE_API_KEY absent — the bench needs it. Nothing run.")
+    reason = unavailable_reason()
+    if reason is not None:
+        print(f"the bench needs a live client, and it is silent ({reason}). Nothing run.")
         return 2
 
     guilt_hit = missed_hit = missed_total = 0
@@ -328,12 +354,17 @@ def test_redaction_catches_unquoted_shell_export():
     assert "abc123def456ghi789" not in out
 
 
-def test_ask_returns_none_on_a_non_utf8_body(monkeypatch):
+def test_ask_returns_none_on_a_non_utf8_body(monkeypatch, authorized_vendor):
     """ask() promises it never raises. A narrow except tuple could not keep it.
 
     UnicodeDecodeError is a ValueError, so it matched none of the original
     clauses and would have escaped into a CI step whose entire contract is that
     it always exits 0.
+
+    The `authorized_vendor` fixture is load-bearing and was added late: once the
+    on-disk fence existed, this test passed because `ask` returned None at the
+    fence and never reached the body it claims to be about. It asserted nothing
+    for exactly as long as nobody checked. Found by a refuting seat.
     """
     import typesafe_client
 

@@ -1,0 +1,168 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "Condition 3 of the Gear-3 gate verdict on PR #6968, recorded in the ledger row
+  'PWC-CONDITIONS for PR #6968' (.claude/skills/modus/PENDING-ARMS.md, merged as #6976).
+  The doctrine half of that condition is PR #6977; this is the mechanical half."
+lanes:
+  - lane: vendor-fence-build
+    role: build
+    seat: claude-opus-5 (conducting session — the same session that signed #6968's gate, which is why it cannot sign this one; see brief.yml grader)
+diff:
+  behaviour_change: |
+    The System One client refuses to speak unless its endpoint is listed in a new on-disk
+    authorization file, which ships empty. A configured secret is no longer sufficient to open an
+    outbound path — the authorization has to pass a merge. The refusal happens before the request
+    payload is built, so source text is never serialised for an unauthorized endpoint. The degrade
+    path is otherwise unchanged — no key or no authorization both mean "no opinion", the entity step
+    stays advisory and still exits zero. The lint's degrade message now names WHICH silence it is in.
+    Separately, three test corpora that no gating workflow executed are now run by catE.
+  surface: |
+    One new authorization file (empty), one new test module, two edited scripts, one edited test
+    module, one workflow step. No backend, no frontend, no migration, no data, no credential.
+receipts:
+  - claim: the three suites pass together, 13 of them new
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_vendor_authorization_fence.py -q
+    result: 159 passed
+    exit: 0
+    ts: 2026-09-21T03:20:00Z
+    seat: claude-opus-5
+  - claim: THE FENCE BITES ON THE REAL PATH — a configured key reaches nothing, and the lint says why
+    cmd: TYPESAFE_API_KEY=<a configured placeholder> python3 scripts/lint_paid_llm_entity.py --advisory scripts/typesafe_client.py
+    result:
+      "lint_paid_llm_entity: entity judgment skipped (https://api.typesafe.ai/v1/systemone is not listed in
+      authorized_endpoints.json) — grep predicate still applied. 1 file(s) in scope, 0 judged, 0 violation(s).
+      Before this change the same command would have reached the vendor."
+    exit: 0
+    ts: 2026-09-21T03:22:00Z
+    seat: claude-opus-5
+  - claim: the guilt half is real — the fence blocks, and the innocence half proves it is not simply broken
+    cmd: python3 -m pytest scripts/tests/test_vendor_authorization_fence.py -q
+    result: "13 passed — key-without-authorization refused, listed endpoint available, prefix/neighbour rejected, malformed list fails closed, no payload serialised when unauthorized"
+    exit: 0
+    ts: 2026-09-21T03:20:00Z
+    seat: claude-opus-5
+  - claim: the corpora gap this PR closes was measured, not assumed
+    cmd: grep -rln "test_lint_paid_llm_entity" .github/workflows/ ; grep -rln "pytest scripts/tests/ " .github/workflows/
+    result:
+      "first returns nothing — no workflow names that suite. Second returns only scripts-tests-sweep.yml,
+      whose own header declares it schedule-only, continue-on-error and deliberately not a required check."
+    exit: 0
+    ts: 2026-09-21T03:26:00Z
+    seat: claude-opus-5
+  - claim: the prose guard from #6968 judges this PR's own comments and docstrings
+    cmd: git status --porcelain | awk '{print $2}' | xargs python3 scripts/lint/lint_ban_prose.py
+    result: "OK: 5 file(s) scanned (0 out of scope, 0 not on disk), no prose spells a banned shape."
+    exit: 0
+    ts: 2026-09-21T03:24:00Z
+    seat: claude-opus-5
+  - claim: workflow schema and expressions hold after the new step
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml
+    result: no findings
+    exit: 0
+    ts: 2026-09-21T03:24:00Z
+    seat: claude-opus-5
+  - claim: the three pre-existing tests that monkeypatch `ask` now clear the fence honestly rather than around it
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py -q (before and after the fixture)
+    result:
+      "before the fixture: 1 failed (test_model_alone_can_add_a_violation) and 2 passed VACUOUSLY — a client
+      that never speaks fires no route and asserts nothing. After: all pass through an authorized scratch listing."
+    exit: 0
+    ts: 2026-09-21T03:19:00Z
+    seat: claude-opus-5
+  - claim: THE DATA FILES DID NOT START THE GUARD — measured with fnmatch against the workflow's declared globs, before and after the fix
+    cmd: "python3 - (fnmatch each candidate path against the glob list parsed out of the workflow header)"
+    result: "before — infra/vendor-authorizations/authorized_endpoints.json False, infra/ban-prose/grandfathered.json False. After — both True, in both the pull_request and the push block."
+    exit: 0
+    ts: 2026-09-21T03:52:00Z
+    seat: claude-opus-5
+  - claim: the two surviving mutants are now caught, each by the case written for it
+    cmd: mutation harness in an isolated copy of the tree — `entry == ENDPOINT` -> `ENDPOINT in str(entry)`, and the dict branch stripped of its endpoint comparison
+    result: "before the two new cases — both GREEN (13 passed). After — M4 RED via test_an_entry_containing_the_endpoint_does_not_authorize_it, M11 RED via test_a_dict_entry_naming_another_endpoint_does_not_authorize. Control mutation (authorized() returns True unconditionally) was RED throughout: 10 failed."
+    exit: 0
+    ts: 2026-09-21T03:50:00Z
+    seat: claude-opus-5
+  - claim: the vacuous test now sees the defect it is named for
+    cmd: narrow `except Exception` to `except urllib.error.URLError` in ask(), then pytest -k non_utf8
+    result: "with the authorized_vendor fixture — RED. Without it the same mutation stayed GREEN, because ask() returned at the fence and never reached the body. A fourth vacuous test, found after three were already known."
+    exit: 0
+    ts: 2026-09-21T03:55:00Z
+    seat: claude-opus-5
+  - claim: a refusal is a return and never a raise, including on deeply nested JSON
+    cmd: authorized() against a 20000-deep bracket nest, then the same with RecursionError removed from the except tuple
+    result: "with it — False (16 passed). Without it — RED, the parser's RecursionError escaping a step contracted never to fail a build."
+    exit: 0
+    ts: 2026-09-21T03:57:00Z
+    seat: claude-opus-5
+  - claim: "the \u00a74 debt under the owner's 'any file in the repo' perimeter, counted as FORMS and never as content"
+    cmd: pattern scan over `git ls-files` source suffixes, excluding tests and fixtures; counts and directories only, no match text printed
+    result: "passport-form 48 in 15 files; id-phone-form 155 in 64 files; nik-16-digit 50 in 25 files; top dirs apps/mouth (64), apps/backend-rag (33), research/operations (23). A second seat measured the same three forms with different patterns and got 75/117/9 \u2014 the DISAGREEMENT is the finding: if two honest measurements cannot agree on what a PII form is, the redactor cannot distinguish one either, and it does not touch these three at all."
+    exit: 0
+    ts: 2026-09-21T03:45:00Z
+    seat: claude-opus-5
+unresolved:
+  - "THE CROSS-FAMILY REFUTATION IS MISSING. Two refuting seats were dispatched; the Claude one
+    delivered and every one of its findings is in dissent above. The codex-gpt-5.6 seat was still
+    running when this PR was committed and was asked to report what it had rather than be waited
+    out. Recorded as an absence rather than omitted: half this artifact's refutation is a seat that
+    did not return, and the gate should weigh it as such rather than read six confirmed findings as
+    a thorough review. If it reports later, its findings belong in a follow-up, not in this pack."
+  - "The fence makes arming a vendor require a merge; it does not make it require a ruling. A PR could
+    add an entry with no ruling behind it. test_the_shipped_list_authorizes_nothing_today makes that
+    addition loud rather than impossible, and tying the entry to a RULINGS.md citation mechanically is
+    a further step this PR does not take."
+  - "One client, one list. A second vendor client added elsewhere inherits nothing unless it reads the
+    same file, and nothing yet enforces that it does."
+  - "Conditions 1 and 2 of the #6968 ledger row (the trigger narrower than the scanner, and the 16-vs-11
+    prose drift) are untouched here and stay open on that row."
+seat_fallback_reason: |
+  agy-gemini-3.1-pro is a RESERVE seat and played in place of tp1-qwen3.8-max, which
+  arsenal_probe.py --read-last reports QUOTA_DEAD (read this turn; it is the last recorded probe,
+  roughly four hours old at the time of writing, not a fresh dial — stated because a stale probe
+  read as live is its own defect). tp1-glm-5.2 and tp1-deepseek-v4-pro are QUOTA_DEAD in the same
+  record, so the TP1 bench was unavailable in full.
+
+  codex-gpt-5.6-sol, the other titolare, was dispatched TWICE and returned nothing within the
+  window: once as a subagent (still running ~45 minutes after dispatch, asked to report what it
+  had and did not) and once directly through the codex CLI (still running when this pack was
+  written). Its absence is recorded in `unresolved` rather than counted, and the reserve does not
+  stand in for it — the quorum here is kimi-code/k3 (titolare) plus one reserve, which is why this
+  field exists at all.
+dissent:
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — test_model_saying_no_cannot_clear_the_grep, the anti-AND test that exists to prove a model false negative cannot open the gate, was vacuous: without the fixture the fence made the client unavailable, the model was never asked, and the test passed on the grep alone. The most important test in the file, and the FIFTH vacuous one in this lane."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — AUTHORIZATION.read_text() used the locale default encoding while the shipped file carries non-ASCII in its _doc, so under LC_ALL=C a VALID authorization would decode-fail into a refusal. Fail-closed, but wrong for the wrong reason."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM — claimed scripts/tests/test_vendor_authorization_fence.py is outside the workflow paths:, so the gating tests could be weakened without starting the gate."
+    status: RETRACTED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — nothing TESTED the rejection of a case variant, a whitespace-padded entry or a trailing slash: `==` rejects them today by accident of the operator rather than by a pinned decision, so a normalising mutant would pass the corpus. Three cases added."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MEDIUM — Path(__file__).resolve().parents[1] anchors wherever the file lives, so a COPY of the client outside the repo reads a different authorization file, or none. Raised independently by the gemini seat in the same round."
+    status: PLAUSIBLE
+  - seat: kimi-code/k3
+    objection: "LOW — 'starts the gate' is proven only as 'the workflow runs'. Whether catE is a REQUIRED check is asserted nowhere in the diff; the branch-protection API was not readable from this session, so the blocking half stays unverified."
+    status: CONFIRMED
+  - seat: devils-advocate (claude-opus, dispatched WITHOUT the fix list and told to break the fence by executing)
+    objection: "HIGH — infra/vendor-authorizations/** is in neither paths: block of catE-sovereignty-lint.yml, so the ONE file a PR must touch to arm a vendor is the one file that does not start the gate. The fence would have shipped with the disease it cures."
+    status: CONFIRMED
+  - seat: devils-advocate (same run)
+    objection: "HIGH — the same hole exists on infra/ban-prose/grandfathered.json, which shipped in #6968: a PR touching only the pardon list never starts the workflow, so --base-ref never runs on the diff it exists to judge. Independently re-measured by the author of #6968, who reported it against their own lane."
+    status: CONFIRMED
+  - seat: devils-advocate (mutation run)
+    objection: "MEDIUM — two mutants survived all corpus cases: an entry that CONTAINS the endpoint as a substring (a prefix case does not cover it, since a prefix does not contain what it prefixes), and the dict branch with its endpoint comparison removed (the only dict in the corpus carried the right endpoint)."
+    status: CONFIRMED
+  - seat: devils-advocate (same run)
+    objection: "MEDIUM — test_ask_returns_none_on_a_non_utf8_body asserted nothing once the fence existed: ask() returned None at the fence and never reached the body the test is named for. It had been vacuous for exactly as long as nobody checked."
+    status: CONFIRMED
+  - seat: devils-advocate (same run)
+    objection: "LOW — RecursionError escapes authorized()'s except tuple, so deeply nested JSON raises out of a step whose contract is that it never fails a build. Same class as the UnicodeDecodeError that once escaped ask()."
+    status: CONFIRMED
+  - seat: nuzantara-fa (the session that wrote this PR — recorded as self-criticism, not as a refutation)
+    objection: "Every finding above was re-executed by the author before being accepted: the paths gap with fnmatch against the declared globs, the two mutants in an isolated copy of the tree, the vacuous test by breaking ask()'s except clause and confirming the test now goes red. A refuting seat's report is a claim until the receiving session runs it."
+    status: CONFIRMED

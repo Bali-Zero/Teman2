@@ -62,7 +62,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from redact_for_external import redact  # noqa: E402
-from typesafe_client import ask, available, noul  # noqa: E402
+from typesafe_client import ask, available, noul, unavailable_reason  # noqa: E402
 
 # ──────────────────────────────────────────────────────────── incumbent, verbatim
 
@@ -336,12 +336,20 @@ def main(argv: list[str] | None = None) -> int:
             print("lint_paid_llm_entity: no in-scope files in this diff.")
         return 0
 
-    if not available() and not args.json:
+    reason = unavailable_reason()
+    if reason is not None and not args.json:
         # Never on stdout in --json mode: a diagnostic line before the object
         # makes the output unparseable, and a caller doing json.loads() on it
         # gets an exception instead of a verdict. Found by codex-gpt-5.6-sol.
+        #
+        # The reason is printed rather than assumed: this used to say the key
+        # was absent, which became false the day a second silence existed. A
+        # key present and an endpoint unauthorized is the shape someone WILL
+        # hit — it is what configuring the secret without a ruling now looks
+        # like — and reading "key absent" there would send them to the wrong
+        # settings page.
         print(
-            "lint_paid_llm_entity: TYPESAFE_API_KEY absent — entity judgment skipped, "
+            f"lint_paid_llm_entity: entity judgment skipped ({reason}) — "
             "grep predicate still applied (this is the documented degrade path)."
         )
 
