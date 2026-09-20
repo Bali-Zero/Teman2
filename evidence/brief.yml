@@ -1,113 +1,103 @@
 gear: 2
-task_id: kbli-llms-vintage-20260920
-lane: mouth
+task_id: kbli-inspect-error-detail-20260920
+lane: backend-rag
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/kbli-llms-vintage-20260920
+branch: agent/air-m5/backend-rag/kbli-inspect-error-detail-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  Ledger row `llms-kbli-txt-headlines-a-march-2026-vintage-against-a-september-dataset`
-  (PENDING-ARMS, opened earlier today when closing the sibling row about the
-  1,563 code count). `apps/mouth/public/llms-kbli.txt` told a crawler it was a
-  "March 2026 Update" — twice, counting the AI-citation instruction on line 1 —
-  while the dataset it dumps is `v11.0-L2-oss-risk-20260911`. MEASURED, and the
-  measurement found the real shape of the defect: the guard that already exists
-  for this exact entity, `march-2026-citation-instruction` in
-  `llms-public-file-guard.test.ts`, CONVICTS `llms-kbli.txt` today — it was
-  simply never pointed at that file. `findForbidden(llms-kbli.txt)` returns
-  `["march-2026-citation-instruction"]` while `llms.txt` is clean. So this is
-  not a missing guard, it is a guard that reached one twin of two (cicatrix #3
-  / W132), which is the same shape as the grid twin this lane hit twice today.
-  SECOND CORRECTION, and it came from CI rather than from reading: this file is
-  NOT hand-maintained. `kbli-llms-corpus.test.ts` pins the committed artifact
-  against `buildKbliCorpus(dataset)`, so editing the text by hand reds that pin
-  — which is exactly what happened on the first push of this branch (`Frontend
-  Tests (mouth)`, run 35494923565, `FAIL … is exactly what the current dataset
-  produces`). The literal month lived in `CORPUS_HEADER` inside the GENERATOR,
-  which is the only place a fix can hold, so the cure moved there: the header is
-  now a function of the dataset version.
+  Close the second half of ledger row
+  `kbli-inspect-echoes-the-raw-driver-error-to-the-client` (PENDING-ARMS, opened
+  2026-09-19). The row's own arming step demanded two things, and only one was
+  done: `inspect_kbli`'s catch-all stopped interpolating `str(e)` into the
+  response body and grew a guilt/innocence suite, but the row explicitly warned
+  that "a cure applied to 1-of-N call sites is the W89 time bomb" and named
+  `kbli_notebook_chat.py` as the place to check before closing. Checked in this
+  turn: `chat_kbli`'s catch-all ended
+  `raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}")` —
+  the same leak, on the chat surface the WhatsApp bot and the public explorer
+  talk to, where `e` can come from Postgres (table and column names), Qdrant
+  (collection, host:port) or the model provider (an upstream error body with
+  model ids and account state). Census run in this turn: after this PR both
+  KBLI routers return 0 for the interpolated-detail shape.
 scope:
   - >-
-    `apps/mouth/src/lib/kbli-llms-corpus.ts` — `CORPUS_HEADER` (a const with a
-    typed "March 2026") becomes `corpusHeader(datasetVersion)`, built on a new
-    pure `corpusVintage(datasetVersion)` that reads the month out of the
-    version's YYYYMMDD stamp and THROWS when there is none: a generator that
-    cannot date its artifact must not publish one. `buildKbliCorpus` now takes
-    the version as a required second argument.
+    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — the catch-all
+    detail becomes the same stable `"Internal processing error"` the inspect
+    side already returns, and an `except HTTPException: raise` is added above
+    it so the opacity cure cannot absorb a deliberate status raised deeper in
+    the route. The existing `logger.error(..., exc_info=True)` one line above is
+    untouched: it is where the whole string keeps living.
   - >-
-    `apps/mouth/scripts/generate-llms-full.ts` — passes
-    `rawData.metadata.version` through.
-  - >-
-    `apps/mouth/public/llms-kbli.txt` — the regenerated artifact: both
-    advertised vintages now say September 2026 and the header names
-    `v11.0-L2-oss-risk-20260911`. Byte-identical to what the generator emits,
-    which is what the existing pin asserts.
-  - >-
-    `apps/mouth/src/lib/llms-public-file-guard.test.ts` — the existing
-    `findForbidden` innocence case now runs on the TWIN as well as on
-    llms.txt; plus a new describe that derives the expected vintage from
-    `metadata.version` of `KBLI_2025_FINAL_CLEAN.json` and asserts the file
-    advertises that month and names that version.
+    Tests — new `test_kbli_chat_error_opacity.py`, guilt and innocence, built as
+    the sibling of the inspect suite so the pair reads as one fence.
 constraints:
   - >-
-    The vintage assertions are SCOPED to the two places the file advertises a
-    vintage (`mention the <Month Year> regulatory updates`, `Master Data
-    (<Month Year> Update`), never to every month name in 1,583 lines. llms.txt
-    legitimately says "old March 2026 portal behavior" in prose; a guard that
-    convicted on any month would have to be deleted the first time someone
-    wrote a sentence about the past. Innocence test pins exactly that.
+    One concern. The same shape survives at 82 sites across 28 OTHER routers
+    (`analytics.py`, `legal_ingest.py`, `memory_vector.py`, `monitoring_rag.py`
+    lead the count) — several of them authenticated, several not. That is a
+    repo-wide lane with its own blast radius and its own guard, declared here
+    and opened as a ledger row rather than swept into a KBLI PR.
   - >-
-    Only `llms-kbli.txt` is tied to the KBLI dataset's version. llms.txt's own
-    "September 2026" refers to general regulatory news (SPP-TDLN and others),
-    not to this dataset, and coupling it to `metadata.version` would be a
-    wrong dependency dressed as a guard.
+    The client-facing string is the inspect side's exact `"Internal processing
+    error"`, not a new wording. Two dialects of the same 500 is how a consumer
+    ends up keying on one of them.
   - >-
-    The month is derived from the date INSIDE the version string, and a version
-    that stops carrying one fails a test of its own rather than comparing
-    against undefined.
+    No consumer keys on the old text: `grep -rn "AI Engine error"` over the repo
+    (py/ts/tsx/md) returned exactly the one line being deleted.
+  - >-
+    Merging this deploys it (apps/backend-rag/**). The live observation in
+    `Bites:` is taken after the deploy, never inferred from the merge.
 acceptance:
   - text: >-
-      THE TWIN IS GUARDED: `findForbidden` SHALL run on `llms-kbli.txt` and
-      return [] — the same innocence llms.txt has had since #6312.
+      GUILT, the whole reason for the change: WHEN any non-HTTP exception
+      escapes the chat route, the response body SHALL carry none of the failing
+      layer's own words — not the server message, not the schema name, not the
+      host:port, not the upstream account state.
     probe: >-
-      npx vitest run src/lib/llms-public-file-guard.test.ts -t "llms-kbli.txt
-      carries no forbidden pattern"
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_five_hundred_body_carries_none_of_the_engines_words
   - text: >-
-      THE VINTAGE IS DERIVED, NOT TYPED: every advertised vintage in the file
-      SHALL equal the month inside `metadata.version`, and the file SHALL name
-      that version verbatim.
+      OPACITY IS NOT AMNESIA: WHILE the client reads nothing, the operator SHALL
+      still read the whole exception string at ERROR with its traceback.
     probe: >-
-      npx vitest run src/lib/llms-public-file-guard.test.ts -t "advertised
-      vintage"
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_operator_still_reads_the_whole_string_in_the_log
   - text: >-
-      GUILT, three independent mutations. On the ARTIFACT: rolling the vintage
-      back to March 2026 reds the twin's forbidden-pattern case and the month
-      assertion; removing the dataset version from the header reds the version
-      assertion. On the GENERATOR, which is the one that matters: putting the
-      literal month back in `corpusHeader` reds the committed-artifact pin AND
-      the header assertion.
+      INNOCENCE: WHERE an `HTTPException` is raised deeper in the route, it
+      SHALL reach the client with its own status and its own detail instead of
+      being absorbed into the opaque 500.
     probe: >-
-      manual mutation, run 2026-09-20 — artifact: 2 failed / 24 passed, then
-      1 failed / 25 passed; generator: 2 failed / 44 passed
-      (`is exactly what the current dataset produces`, `the header names both
-      the derived month and the version verbatim`). Every file restored from a
-      `cp` backup and confirmed byte-identical with `cmp -s`; 46 passed again.
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_an_http_exception_raised_deeper_in_the_route_is_not_absorbed
   - text: >-
-      INNOCENCE AGAINST OVER-MATCH: a month named in PROSE ("old March 2026
-      portal behavior") SHALL NOT be read as an advertised vintage.
+      INNOCENCE: a malformed body is still a 422 that names the field, and a
+      healthy turn is still a 200 with its answer — the tests above must fail
+      for the ERROR, not for the route.
     probe: >-
-      npx vitest run src/lib/llms-public-file-guard.test.ts -t "named in prose"
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py -k "malformed or healthy"
   - text: >-
-      THE DERIVATION IS PINNED BOTH WAYS: `corpusVintage` maps three real version
-      strings to their months and THROWS on a version with no stamp.
+      THE PAIR IS ONE FENCE: the inspect suite SHALL still pass unchanged
+      alongside the new one.
     probe: >-
-      npx vitest run src/lib/kbli-llms-corpus.test.ts -t "dates itself"
-  - text: NO REGRESSION IN EITHER SUITE.
+      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py backend/tests/unit/routers/test_kbli_inspect_error_opacity.py
+  - text: >-
+      NO REGRESSION ACROSS THE KBLI SURFACE.
+    probe: pytest backend/tests -k kbli
+  - text: >-
+      PROOF-OF-ARMED for the ledger row, on origin/main after the merge:
+      `grep -c` for the interpolated-detail shape SHALL return 0 in BOTH KBLI
+      routers.
     probe: >-
-      npx vitest run src/lib/kbli-llms-corpus.test.ts
-      src/lib/llms-public-file-guard.test.ts
+      grep -c 'detail=f"[^"]*{\(e\|e!s\|err\|str(e)\)'
+      apps/backend-rag/backend/app/routers/kbli_notebook.py
+      apps/backend-rag/backend/app/routers/kbli_notebook_chat.py
+mutation_evidence: >-
+  Run in this turn, not asserted: reverting both halves of the cure in place
+  (detail back to `f"AI Engine error: {e!s}"`, `except HTTPException: raise`
+  removed) turned the new suite into 17 failed / 3 passed. The three survivors
+  are exactly the three innocence tests that must not depend on the cure (log,
+  422, 200). The file was restored from a `cp` backup, never from `git checkout`.
 pii: none
 local_evidence: >-
-  Repo-local reads only: two public artifacts that ship in the repo
-  (`public/llms.txt`, `public/llms-kbli.txt`) and the public KBLI dataset's
-  metadata. No client data, no credentials, no network calls.
+  No production read, no client data, no credential touched. Everything in this
+  lane is unit-level: mocked pool, mocked search service, patched LLM gateway.
+  The leak strings in the test are invented fixtures (`kbli_documents_internal_v3`,
+  `qdrant-internal-3.flycast:6333`), not real topology.
