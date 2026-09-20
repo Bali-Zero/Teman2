@@ -374,6 +374,14 @@ export default function VoaResultPage({
  * `--color-border-subtle` at 1.40:1 against its own fill, under SC 1.4.11's
  * 3:1 for the boundary of an interactive control. Both cures live in
  * `voa-r19.css`'s `.voa-entry` block, with the arithmetic in its docblock.
+ *
+ * THE SENT-STATE COPY NAMES THE CONFIRMATION, and must keep naming it.
+ * `auth/continue/page.tsx` is, in its own words, "the one page of the
+ * magic-link flow a human sees": it shows WHOSE application the link opens
+ * and offers a Continue button, and it exists because a generic Continue
+ * behind an unbound landing GET was login CSRF (closed 2026-08-29). A
+ * sentence promising the link goes "straight to the passport upload" sells a
+ * flow one step shorter than the one the security fix deliberately built.
  */
 function MagicLinkRequestForm({ resultId }: { resultId: string }) {
   const tracker = useFunnelApp("visa_voa", { trackView: false });
@@ -422,7 +430,8 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
         </h2>
         <p className="voa-entry__status" role="status">
           Check your email for a link to continue — it&apos;s valid for 15
-          minutes. Opening it takes you straight to the passport upload.
+          minutes. Opening it asks you to confirm which application it unlocks,
+          and then takes you to the passport upload.
         </p>
       </section>
     );
