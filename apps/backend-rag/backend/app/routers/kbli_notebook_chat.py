@@ -1893,6 +1893,13 @@ async def chat_kbli(
             sources=[{"title": "PP 28/2025", "relevance": "High"}],
             suggested_queries=suggested_queries,
         )
+    except HTTPException:
+        raise
     except Exception as e:
+        # The same fence as `inspect_kbli`'s catch-all, one module over. `e` here is
+        # the vector store's, the database's or the model provider's own words —
+        # table names, host:port, an upstream error body — and this route needs no
+        # authentication. The whole string stays HERE with the traceback: the client
+        # is told that we failed, not how.
         logger.error(f"❌ KBLI Chat Error: {e!s}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}") from e
+        raise HTTPException(status_code=500, detail="Internal processing error") from e
