@@ -256,3 +256,95 @@ describe("voa-i18n — rendered", () => {
     expect(document.documentElement.lang).toBe("id");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The register, as a rule instead of as taste.
+//
+// The ID column's register was documented in a docblock and enforced by
+// nobody, so the first pass shipped a calque (`meja visa` — `meja` is the
+// physical table), a literal that is not Imigrasi's term (`tanggal berakhir`
+// where the permit says `masa berlaku`), and a word for "check" that reads as
+// an official inspection (`pemeriksaan`) in a sentence about deleting one's
+// own data. Each row below is a term with a DOCUMENTED replacement, so the
+// message can say what to write instead — a ban with no alternative just
+// moves the argument to review.
+// ---------------------------------------------------------------------------
+const ID_REGISTER_BANS: Array<{ re: RegExp; write: string; why: string }> = [
+  {
+    re: /\bkamu\b/i,
+    write: "Anda",
+    why: "the register is warm-formal; `kamu` addresses a friend, not a client",
+  },
+  {
+    re: /tanggal berakhir/i,
+    write: "masa berlaku",
+    why: "Imigrasi's own term for a permit's validity",
+  },
+  {
+    re: /\bmeja visa\b/i,
+    write: "tim visa",
+    why: "`meja` is the furniture; the English `desk` meaning a team does not carry",
+  },
+  {
+    re: /menghapus pemeriksaan/i,
+    write: "menghapus data pengecekan",
+    why: "`pemeriksaan` reads as an official inspection, not the customer's own record",
+  },
+];
+
+describe("voa-i18n — the Indonesian register is enforced, not described", () => {
+  it("no banned term survives in the id column", () => {
+    const offences: string[] = [];
+    for (const key of keys) {
+      for (const ban of ID_REGISTER_BANS) {
+        if (ban.re.test(VOA_COPY.id[key])) {
+          offences.push(`${key}: write "${ban.write}" — ${ban.why}`);
+        }
+      }
+    }
+    expect(offences).toEqual([]);
+  });
+
+  it("is GUILTY of each banned term (guilt control, one row at a time)", () => {
+    const samples: Array<[string, string]> = [
+      ["Apa kewarganegaraan kamu?", "Anda"],
+      ["Tanggal berakhir paspor", "masa berlaku"],
+      ["Meja visa kami menjawab di WhatsApp.", "tim visa"],
+      ["saya dapat menghapus pemeriksaan ini", "menghapus data pengecekan"],
+    ];
+    for (const [sentence, expected] of samples) {
+      const hit = ID_REGISTER_BANS.find((ban) => ban.re.test(sentence));
+      expect(hit?.write, sentence).toBe(expected);
+    }
+  });
+
+  it("is INNOCENT on the cured strings (innocence control)", () => {
+    const cured = [
+      "Masa berlaku paspor",
+      "Tim visa kami menjawab di WhatsApp.",
+      "saya dapat menghapus data pengecekan ini kapan saja",
+      "Apa kewarganegaraan Anda?",
+    ];
+    for (const sentence of cured) {
+      expect(
+        ID_REGISTER_BANS.some((ban) => ban.re.test(sentence)),
+        sentence,
+      ).toBe(false);
+    }
+  });
+
+  /**
+   * The English column is NOT scanned: `tanggal berakhir` cannot appear there
+   * and `kamu` is not an English word, so running these over `en` would only
+   * create a second place for the list to drift. Stated because a reader will
+   * wonder, and a silent asymmetry is how a guard loses half its subject.
+   */
+  it("the bans are scoped to the id column on purpose", () => {
+    expect(ID_REGISTER_BANS.length).toBeGreaterThan(0);
+    expect(
+      ID_REGISTER_BANS.some((ban) =>
+        keys.some((key) => ban.re.test(VOA_COPY.en[key])),
+      ),
+    ).toBe(false);
+  });
+});

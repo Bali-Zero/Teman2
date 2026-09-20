@@ -115,14 +115,14 @@ export type VoaCopyKey = keyof typeof en;
 const id: Record<VoaCopyKey, string> = {
   "frame.title": "Visa on Arrival",
   "frame.subtitle":
-    "Tahu dalam 10 detik, beli dalam 5 menit, pantau seperti paket kiriman.",
+    "Tahu hasilnya dalam 10 detik, beli dalam 5 menit, pantau seperti paket kiriman.",
 
   "trust.questions.label": "pertanyaan singkat",
-  "trust.price.label": "harga sudah termasuk semuanya",
+  "trust.price.label": "harga sudah termasuk semua biaya",
   "trust.government.label": "biaya tambahan ke pemerintah setelahnya",
 
   "hero.wa.line":
-    "Ingin bertanya kepada orang dulu? Meja visa kami menjawab di WhatsApp.",
+    "Ingin bertanya kepada orang dulu? Tim visa kami menjawab di WhatsApp.",
   "hero.wa.cta": "Hubungi kami di WhatsApp",
   "hero.wa.message":
     "Halo Bali Zero, saya ingin dibantu untuk Visa on Arrival.",
@@ -165,14 +165,15 @@ const id: Record<VoaCopyKey, string> = {
   "step.dates.summary": "Terkonfirmasi",
   "dates.entry.question": "Kapan Anda tiba (atau sudah tiba)?",
   "dates.entry.aria": "Tanggal kedatangan",
-  "dates.passport.question": "Tanggal berakhir paspor",
-  "dates.passport.aria": "Tanggal berakhir paspor",
-  "dates.voaExpiry.question": "Kapan Visa on Arrival Anda saat ini berakhir?",
-  "dates.voaExpiry.aria": "Tanggal berakhir Visa on Arrival saat ini",
+  "dates.passport.question": "Masa berlaku paspor",
+  "dates.passport.aria": "Masa berlaku paspor",
+  "dates.voaExpiry.question":
+    "Kapan masa berlaku Visa on Arrival Anda saat ini habis?",
+  "dates.voaExpiry.aria": "Masa berlaku Visa on Arrival saat ini",
   "dates.extensionUsed":
     "Saya sudah pernah memperpanjang Visa on Arrival ini satu kali",
   "dates.retention":
-    "Saya memahami cara jawaban saya disimpan dan bahwa saya dapat menghapus pemeriksaan ini kapan saja.",
+    "Saya memahami cara jawaban saya disimpan dan bahwa saya dapat menghapus data pengecekan ini kapan saja.",
   "dates.retention.aria":
     "Persetujuan pemberitahuan penyimpanan dan penghapusan",
 
@@ -180,7 +181,7 @@ const id: Record<VoaCopyKey, string> = {
   "validate.pickNationality": "Pilih kewarganegaraan.",
   "validate.bothDates": "Kedua tanggal harus diisi.",
   "validate.voaExpiry":
-    "Tanggal berakhir Visa on Arrival Anda saat ini harus diisi.",
+    "Masa berlaku Visa on Arrival Anda saat ini harus diisi.",
   "validate.retention":
     "Mohon konfirmasi bahwa Anda sudah membaca pemberitahuan penyimpanan.",
 
