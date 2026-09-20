@@ -7,6 +7,7 @@ import {
   SITE_LOCALE_PREFERENCE_KEY,
   VOA_LOCALE_QUERY_PARAM,
   VOA_LOCALE_RULING,
+  VOA_LOCALE_SESSION_KEY,
   type VoaLocale,
 } from "./voa-locale";
 
@@ -24,15 +25,29 @@ export function useVoaLocale(): VoaLocale {
   const searchParams = useSearchParams();
   const requested = searchParams?.get(VOA_LOCALE_QUERY_PARAM) ?? null;
   const [preference, setPreference] = useState<string | null>(null);
+  const [session, setSession] = useState<string | null>(null);
 
   useEffect(() => {
+    try {
+      if (requested) {
+        // Typed once, on whichever screen the visitor typed it; carried from
+        // here so `router.push` to the verdict does not drop the language.
+        window.sessionStorage.setItem(VOA_LOCALE_SESSION_KEY, requested);
+        setSession(requested);
+      } else {
+        setSession(window.sessionStorage.getItem(VOA_LOCALE_SESSION_KEY));
+      }
+    } catch {
+      // A tab with storage disabled keeps the language only while the query
+      // string is in the URL. That is a smaller funnel, not a broken one.
+    }
     if (VOA_LOCALE_RULING !== "follow-site-preference") return;
     try {
       setPreference(window.localStorage.getItem(SITE_LOCALE_PREFERENCE_KEY));
     } catch {
       // A browser with storage disabled is an English visitor, not an error.
     }
-  }, []);
+  }, [requested]);
 
-  return resolveVoaLocale({ requested, preference });
+  return resolveVoaLocale({ requested, session, preference });
 }

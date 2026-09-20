@@ -4,6 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { VOA_COPY, fill, voaCopy, type VoaCopyKey } from "./voa-copy";
 import { resolveVoaLocale, VOA_LOCALE_RULING } from "./voa-locale";
+import { NextSteps } from "./NextSteps";
+import { SafeClockHero } from "./SafeClock";
 
 /**
  * GARUDA VOA — the parity guard for the funnel's two languages.
@@ -22,7 +24,29 @@ import { resolveVoaLocale, VOA_LOCALE_RULING } from "./voa-locale";
  */
 
 const VOA_DIR = join(__dirname);
-const PAGE_SRC = readFileSync(join(VOA_DIR, "page.tsx"), "utf8");
+
+/**
+ * THE CONSUMERS ARE FOUR FILES, not one, and the day the funnel's second leg
+ * started reading the dictionary this list had to say so. A guard that scans
+ * `page.tsx` alone would call every verdict-leg key an orphan (and, worse,
+ * would certify "no hardcoded sentence" over a screen that no longer holds
+ * the copy anyone reads) — cicatrix family #3 in both directions at once.
+ *
+ * Kept in step with `voa-copy.guard.test.ts`'s own SCREEN_FILES by the last
+ * test in this file, which refuses to let one list name a screen the other
+ * has never heard of.
+ */
+const CONSUMER_FILES = [
+  "page.tsx", // the wizard
+  "[hash]/page.tsx", // the verdict: ACCEPT, DECLINE, deleted, error, loading
+  "SafeClock.tsx", // the published-deadline hero
+  "NextSteps.tsx", // what happens next / what we cannot promise
+];
+
+const CONSUMER_SRC: Record<string, string> = Object.fromEntries(
+  CONSUMER_FILES.map((rel) => [rel, readFileSync(join(VOA_DIR, rel), "utf8")]),
+);
+const ALL_CONSUMER_SRC = Object.values(CONSUMER_SRC).join("\n");
 
 const keys = Object.keys(VOA_COPY.en) as VoaCopyKey[];
 
@@ -35,6 +59,11 @@ const keys = Object.keys(VOA_COPY.en) as VoaCopyKey[];
  */
 const SAME_BY_DESIGN: Partial<Record<VoaCopyKey, string>> = {
   "frame.title": "the permit's printed name, never translated",
+  "verdict.title": "the permit's printed name, never translated",
+  "verdict.share.title":
+    "the brand and the permit's printed name, nothing else",
+  "entry.emailPlaceholder": "an example address, not a sentence",
+  "verdict.wa.priceLabel": "CRM lead context, English on purpose",
   "purpose.transit": "the same word in both languages",
   "nationality.AUS": "the country's name is the same in both languages",
   "lead.context.pageLabel": "CRM lead context, English on purpose",
@@ -95,14 +124,14 @@ describe("voa-i18n — EN and ID are the same funnel, twice", () => {
 });
 
 describe("voa-i18n — every key has a consumer, every sentence has a key", () => {
-  it("no key is orphaned: the wizard renders each one", () => {
-    const orphans = keys.filter((k) => !PAGE_SRC.includes(`"${k}"`));
+  it("no key is orphaned: some screen in the leg renders each one", () => {
+    const orphans = keys.filter((k) => !ALL_CONSUMER_SRC.includes(`"${k}"`));
     expect(orphans).toEqual([]);
   });
 
   it("is GUILTY of an orphan key (guilt control)", () => {
     const orphans = [...keys, "frame.subtitle.v2"].filter(
-      (k) => !PAGE_SRC.includes(`"${k}"`),
+      (k) => !ALL_CONSUMER_SRC.includes(`"${k}"`),
     );
     expect(orphans).toEqual(["frame.subtitle.v2"]);
   });
@@ -125,8 +154,11 @@ describe("voa-i18n — every key has a consumer, every sentence has a key", () =
     return found;
   }
 
-  it("page.tsx holds no hardcoded sentence any more", () => {
-    expect(proseIn(PAGE_SRC)).toEqual([]);
+  it("no screen in the leg holds a hardcoded sentence any more", () => {
+    const offences = Object.entries(CONSUMER_SRC).flatMap(([rel, src]) =>
+      proseIn(src).map((sentence) => `${rel}: ${sentence}`),
+    );
+    expect(offences).toEqual([]);
   });
 
   it("is GUILTY of a hardcoded sentence (guilt control)", () => {
@@ -152,6 +184,14 @@ describe("voa-i18n — the ruling is a variable, and it ships at 5a", () => {
 
   it("?lang=id is the preview channel, and it works", () => {
     expect(resolveVoaLocale({ requested: "id" })).toBe("id");
+  });
+
+  it("a language carried from earlier in the journey still decides", () => {
+    expect(resolveVoaLocale({ requested: null, session: "id" })).toBe("id");
+    // An explicit ?lang= on THIS screen outranks what the tab carried.
+    expect(resolveVoaLocale({ requested: "en", session: "id" })).toBe("en");
+    // ...and the carry is not a back door for junk.
+    expect(resolveVoaLocale({ requested: null, session: "de" })).toBe("en");
   });
 
   it("an unreadable language code is an English visitor, not an error", () => {
@@ -201,6 +241,23 @@ describe("voa-i18n — the banned-claims guard followed the copy", () => {
       "utf8",
     );
     expect(guardSrc).toContain('"voa-copy.ts"');
+  });
+
+  /**
+   * Two lists, one subject. A screen that renders customer copy belongs in
+   * BOTH — here, so its keys are not called orphans and its literals are
+   * convicted; and there, so a banned claim typed into it is convicted too.
+   * Checking the inclusion mechanically is cheaper than remembering it.
+   */
+  it("every consumer this file scans is scanned by the claims guard too", () => {
+    const guardSrc = readFileSync(
+      join(VOA_DIR, "voa-copy.guard.test.ts"),
+      "utf8",
+    );
+    const missing = CONSUMER_FILES.filter(
+      (rel) => !guardSrc.includes(`"${rel}"`),
+    );
+    expect(missing).toEqual([]);
   });
 });
 
@@ -254,6 +311,104 @@ describe("voa-i18n — rendered", () => {
     expect(screen.getByRole("button", { name: "Lanjut" })).toBeTruthy();
     expect(screen.getByText("Langkah 1 dari 4")).toBeTruthy();
     expect(document.documentElement.lang).toBe("id");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The SECOND leg, rendered. The wizard was already proven bilingual above; a
+// funnel that answers in English after being asked in Indonesian is the exact
+// failure this slice exists to close, and the two pieces the verdict screen
+// leads with are the two proven here.
+//
+// The date under the count is asserted as a FORMAT, not as a string the copy
+// file could satisfy: `Intl` decides it, and only passing the locale through
+// `formatCivilDay` makes it Indonesian.
+// ---------------------------------------------------------------------------
+describe("voa-i18n — the verdict leg renders in Indonesian too", () => {
+  const DEADLINE = "2026-10-24";
+  /** Noon WITA on D-4, so the civil day is unambiguous on either side of UTC. */
+  const NOW = new Date("2026-10-20T04:00:00Z");
+
+  /**
+   * A NEW TAB per test. `?lang=id` now writes the choice into sessionStorage
+   * (that is the whole point of this slice — see the carry test below), and
+   * jsdom keeps one storage for the whole file, so without this the second
+   * test would inherit the first one's language and "English by default"
+   * would be measured on a tab that had already asked for Indonesian.
+   */
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it("the Safe Clock hero counts, dates and warns in Indonesian", () => {
+    searchParams.current = new URLSearchParams("lang=id");
+    render(<SafeClockHero deadline={DEADLINE} now={NOW} handoffHref="#wa" />);
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(screen.getByText("hari untuk mengajukan")).toBeTruthy();
+    expect(screen.getByText(/24 Oktober 2026/)).toBeTruthy();
+    expect(screen.queryByText(/24 October 2026/)).toBeNull();
+    expect(screen.getByLabelText(VOA_COPY.id["clock.aria"])).toBeTruthy();
+  });
+
+  it("the same hero is English when nobody asks", () => {
+    searchParams.current = new URLSearchParams();
+    render(<SafeClockHero deadline={DEADLINE} now={NOW} handoffHref="#wa" />);
+    expect(screen.getByText("days to file")).toBeTruthy();
+    expect(screen.getByText(/24 October 2026/)).toBeTruthy();
+  });
+
+  it("what-happens-next and what-we-cannot-promise are Indonesian", () => {
+    searchParams.current = new URLSearchParams("lang=id");
+    render(<NextSteps handoffHref="#wa" hasDeadline />);
+    expect(screen.getByText(VOA_COPY.id["next.heading"])).toBeTruthy();
+    expect(screen.getByText(VOA_COPY.id["next.limits.heading"])).toBeTruthy();
+    expect(screen.getByText(VOA_COPY.id["next.step1"])).toBeTruthy();
+    expect(screen.getByText(VOA_COPY.id["next.limit2"])).toBeTruthy();
+  });
+
+  /**
+   * The `hasDeadline={false}` verdict is a DIFFERENT sentence, not a hidden
+   * one: `[hash]/page.tsx` renders no clock at all there, so the step that
+   * points at "the date above" would point at nothing.
+   */
+  it("without a deadline the leg swaps sentences, in both languages", () => {
+    searchParams.current = new URLSearchParams("lang=id");
+    const { unmount } = render(
+      <NextSteps handoffHref="#wa" hasDeadline={false} />,
+    );
+    expect(screen.getByText(VOA_COPY.id["next.step3.noDeadline"])).toBeTruthy();
+    expect(screen.queryByText(VOA_COPY.id["next.step3"])).toBeNull();
+    unmount();
+
+    window.sessionStorage.clear();
+    searchParams.current = new URLSearchParams();
+    render(<NextSteps handoffHref="#wa" hasDeadline={false} />);
+    expect(screen.getByText(VOA_COPY.en["next.step3.noDeadline"])).toBeTruthy();
+  });
+
+  /**
+   * THE BUG THIS SLICE CLOSES, stated as a test. The wizard reaches the
+   * verdict with `router.push(\`/visa/voa/${hash}\`)` — no query string — so
+   * before the session carry, a visitor who answered four questions in
+   * Indonesian read the price, the deadline and the limits in English. The
+   * second render below is that navigation: same tab, no `?lang=`.
+   */
+  it("the language typed on the first screen survives the navigation", () => {
+    searchParams.current = new URLSearchParams("lang=id");
+    const { unmount } = render(<NextSteps handoffHref="#wa" hasDeadline />);
+    expect(screen.getByText(VOA_COPY.id["next.heading"])).toBeTruthy();
+    unmount();
+
+    searchParams.current = new URLSearchParams();
+    render(<NextSteps handoffHref="#wa" hasDeadline />);
+    expect(screen.getByText(VOA_COPY.id["next.heading"])).toBeTruthy();
+  });
+
+  /** FALSIFICATION: a genuinely fresh tab is still English. */
+  it("a tab that never asked reads English", () => {
+    searchParams.current = new URLSearchParams();
+    render(<NextSteps handoffHref="#wa" hasDeadline />);
+    expect(screen.getByText(VOA_COPY.en["next.heading"])).toBeTruthy();
   });
 });
 

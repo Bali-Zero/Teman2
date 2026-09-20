@@ -1,3 +1,8 @@
+"use client";
+
+import { useVoaLocale } from "./useVoaLocale";
+import { voaCopy, type VoaCopyKey } from "./voa-copy";
+
 /**
  * GARUDA VOA — what happens next, and what we do not promise.
  *
@@ -38,38 +43,20 @@
  * quietest way a funnel starts lying, so the two date-bearing sentences have a
  * second form and the caller passes which one is true.
  */
-function steps(hasDeadline: boolean): { n: string; text: string }[] {
+function stepKeys(hasDeadline: boolean): { n: string; key: VoaCopyKey }[] {
   return [
-    {
-      n: "1",
-      text: "Upload a photo of your passport page. We check it can actually be read before anything else happens.",
-    },
-    {
-      n: "2",
-      text: "Pay once, the price shown above. Nothing further is collected at the counter.",
-    },
-    {
-      n: "3",
-      text: hasDeadline
-        ? "We prepare and file your application at the office the date above is published by."
-        : "We prepare and file your application at the office that publishes your filing deadline.",
-    },
-    {
-      n: "4",
-      text: "You follow it like a parcel, and the result reaches the email you gave us.",
-    },
+    { n: "1", key: "next.step1" },
+    { n: "2", key: "next.step2" },
+    { n: "3", key: hasDeadline ? "next.step3" : "next.step3.noDeadline" },
+    { n: "4", key: "next.step4" },
   ];
 }
 
-function limits(hasDeadline: boolean): string[] {
+function limitKeys(hasDeadline: boolean): VoaCopyKey[] {
   return [
-    "The decision is Immigration's, not ours. We prepare your application and file it correctly — we do not approve it, and nobody who says otherwise can.",
-    hasDeadline
-      ? "We do not quote a processing time. The date above is the counter's published filing deadline, which is a different thing and the only one we can stand behind."
-      : "We do not quote a processing time. We confirm the counter's published filing deadline before you pay, and that date is a different thing from a processing time — it is the only one we can stand behind.",
-    hasDeadline
-      ? "That date is scoped to one office. If you end up filing somewhere else, tell us and we will confirm yours before you rely on it."
-      : "A published deadline is scoped to one office. Tell us where you plan to file and we will confirm yours before you rely on it.",
+    "next.limit1",
+    hasDeadline ? "next.limit2" : "next.limit2.noDeadline",
+    hasDeadline ? "next.limit3" : "next.limit3.noDeadline",
   ];
 }
 
@@ -80,21 +67,23 @@ export function NextSteps({
   handoffHref: string;
   hasDeadline: boolean;
 }) {
+  const t = voaCopy(useVoaLocale());
+
   return (
     <section
       className="voa-next"
       aria-labelledby="voa-next-heading voa-next-limits-heading"
     >
       <h2 className="voa-next__heading" id="voa-next-heading">
-        What happens next
+        {t("next.heading")}
       </h2>
       <ol aria-labelledby="voa-next-heading" className="voa-next__steps">
-        {steps(hasDeadline).map((s) => (
+        {stepKeys(hasDeadline).map((s) => (
           <li className="voa-next__step" key={s.n}>
             <span className="voa-next__n" aria-hidden="true">
               {s.n}
             </span>
-            <span>{s.text}</span>
+            <span>{t(s.key)}</span>
           </li>
         ))}
       </ol>
@@ -103,15 +92,15 @@ export function NextSteps({
         className="voa-next__heading voa-next__heading--limits"
         id="voa-next-limits-heading"
       >
-        What we cannot promise
+        {t("next.limits.heading")}
       </h2>
       <ul
         aria-labelledby="voa-next-limits-heading"
         className="voa-next__limits"
       >
-        {limits(hasDeadline).map((l) => (
-          <li className="voa-next__limit" key={l.slice(0, 24)}>
-            {l}
+        {limitKeys(hasDeadline).map((key) => (
+          <li className="voa-next__limit" key={key}>
+            {t(key)}
           </li>
         ))}
       </ul>
@@ -122,7 +111,7 @@ export function NextSteps({
         target="_blank"
         rel="noopener noreferrer"
       >
-        Ask us anything before you pay
+        {t("next.ask")}
       </a>
     </section>
   );
