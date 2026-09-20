@@ -1,0 +1,21 @@
+mandate: >-
+  Connect a live, evidenced source to the Research OS admission so that
+  research_os_objects can hold its first row. Bridge only -- no second engine,
+  no write path.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: apps/backend-rag/backend/services/research_os
+worktree: .worktrees/backend-rag-ros-intel-evidence-bridge-20260921
+authority: >-
+  Zero chose option A ("l'arco mancante") on 2026-09-21 after the Research OS
+  programme audit. DML on production is explicitly NOT covered by that choice
+  and is not attempted here.
+acceptance:
+  - bridge() is pure and produces only admit()'s input; admit() is unmodified
+  - the dry-run reads production read-only and reports a tally by reason
+  - no INSERT/--apply exists in the module, behind a flag or otherwise
+  - the admission verdict does not depend on the DB driver's Python types
+appetite:
+  wall_clock_hours: 3
