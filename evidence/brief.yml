@@ -1,123 +1,118 @@
 gear: 2
-task_id: kbli-chat-risk-one-derivation-20260920
-lane: backend-rag
+task_id: kbli-pending-cells-20260920
+lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/backend-rag/kbli-chat-risk-one-derivation-20260920
+branch: agent/air-m5/mouth/kbli-pending-cells-20260920
 gate_class: opus
 l_level: L2
 objective: >-
-  Ledger row `kbli-chat-asserts-licensing-facts-with-no-government-source`
-  (PENDING-ARMS, opened 2026-09-19 from the 3-seat KBLI audit). Five places in
-  `kbli_notebook_chat.py` produced `risk_category` for the same code and
-  disagreed even about what ignorance is called: the `kbli_documents` branch
-  hardcoded `"Verify at OSS"` and stopped looking, the `kg_nodes` branch
-  defaulted to it, the Qdrant payload builder and the ILIKE fallback defaulted
-  to `"Unknown"`, and a hand-written answer table served tiers nobody sourced.
-  Which answer a client got depended on which store held the code, not on the
-  law. MEASURED READ-ONLY INSIDE THE RUNNING IMAGE on 2026-09-20, not recalled:
-  `kbli_documents` carries no `kategori_risiko` key on ANY of its 1,563 rows,
-  while `kg_nodes` carries a value on 1,383 of its 1,562 `kbli:` nodes — so the
-  branch that wins for almost every code was the one structurally incapable of
-  answering, and it declined to ask the store that could. The same probe killed
-  the hand-written table's premise: its own comment declared 47901 "absent by
-  construction from PostgreSQL and Qdrant — this dict was its ONLY possible
-  answer", and all nine of its codes are present in BOTH stores. The typed-code
-  path never reached it; its one live route was the activity-keyword map, which
-  bypassed the stores entirely. That measurement also dissolves the product
-  question the row put to the codeowner ("may the channel answer at all when
-  the canonical has no PMA verdict?"): there is no code here the stores cannot
-  answer, so deleting the table costs zero coverage.
+  Ledger row `kbli-page-prints-unverified-licensing-values-at-full-weight`
+  (PENDING-ARMS, opened 2026-09-19 from the Gemini 3.1 Pro UX audit). The
+  key-fact grid printed risk, licence and processing in `text-sm font-semibold`
+  for a code whose licensing provenance the dataset does NOT verify, qualifying
+  it with one `text-[11px]` line BELOW the grid — while the Foreign Ownership
+  cell in the same grid REPLACED its value. MEASURED ON THE LIVE PAGES on
+  2026-09-20, not deduced from the diff: `/kbli/93114` renders "Risk Level
+  Medium-Low / License Type NIB dan Sertifikat Standar / Foreign Ownership Not
+  verified — confirm in OSS / Processing Instant" plus the 11px footnote, and
+  `/kbli/49213` renders the same shape with NO footnote at all — on a page
+  whose own Regulatory Divergence panel states the licensing "was removed
+  because its source could not be verified as applying to this activity". The
+  same census corrected the row's premise in two ways. FIRST, the grid the row
+  names (`app/kbli/[code]/page.tsx`) is NOT the surface a reader reaches: it is
+  gated on non-gold AND on `intel.whatItMeans` being absent, and all three
+  unverified-with-rows codes are gold, so they render through
+  `LicensingSection`'s `KeyFacts` — the row named the dead twin. SECOND, the
+  predicate the row proposed (`isLicensingVerificationPending`) covers only 1
+  of the 3 reachable codes: 93114 reads `pending_crosswalk`, while 49213 and
+  93191 read `detached` (rows served anyway) and were printing full-weight
+  values with no qualifier of any kind.
 scope:
   - >-
-    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — new
-    `_resolve_code_from_stores(pool, code)` carrying the ONE derivation with its
-    precedence written down (`kbli_documents` -> `kg_nodes` -> Qdrant), used by
-    both the typed-code path and the activity-keyword route; new
-    `_channel_risk(*candidates)` giving this channel one word for not knowing;
-    the hand-written `KNOWN_KBLI_CODES` table deleted; `_bury_if_phantom` moved
-    BELOW the keyword route, which until now ran past it unburied; the deleted
-    table's e-commerce fork moved into the master prompt as accuracy rule 6.
+    `apps/mouth/src/components/kbli/LicensingSection.tsx` — `KeyFacts` takes
+    the POSITIVE gate `isLicensingVerifiedForBareClaim` as a required
+    `rowsVerified` prop (no default: an absent provenance block must withhold,
+    and a `true` default is the fail-open shape this cure removes). The risk,
+    licence and processing cells carry the declared gap instead of the value
+    when it does not hold; the line below the grid now says WHERE the values
+    went, in the two shapes the dataset distinguishes.
   - >-
-    Tests — new guilt/innocence suite for the derivation; the structural
-    fallback guard re-aimed from the deleted table onto the two hand-written
-    copies that survive it (the keyword map and the prompt); the burial-order
-    test re-pinned on the two paths that now exist.
+    `apps/mouth/src/components/kbli/LicensingQuickFacts.tsx` (new) — the
+    non-gold twin of that grid, extracted verbatim from `page.tsx` (78 lines
+    out) so it can be RENDERED in a test, with the same cure applied. It was a
+    copy of `KeyFacts` down to the comment and no test rendered it.
+  - >-
+    `apps/mouth/src/lib/kbli-provenance.ts` — one exported constant,
+    `UNVERIFIED_LICENSING_FACT`, so the two surfaces and the PMA cell cannot
+    drift into three dialects of the same sentence.
+  - >-
+    Tests — guilt/innocence render suites for both surfaces on the three REAL
+    records (93114 pending, 49213 detached, 56101 oss_native), plus the rowless
+    null-render case; and a stale census comment in `kbli-faq.test.ts`
+    corrected (it said 93114 reads detached; it reads `pending_crosswalk`).
 constraints:
   - >-
-    `_result_from_payload` is NOT touched. It floors at `"Unknown"` and is
-    shared with the public `search_kbli` surface; this channel normalises its
-    output instead of changing a function two consumers read. Aligning
-    `search_kbli` is its own lane, declared rather than swept in.
+    This REVERSES a decision a prior gate round made ("one grid-level qualifier
+    instead of per-cell noise", Codex gate round 5), and says so in the code
+    comment and the PR body rather than flipping it silently. The reversal is
+    argued on the honesty rule plus the census: the gate fires on 3 of the 1,342
+    codes that serve rows, so there is no per-cell noise to avoid.
   - >-
-    The floor stays `"Verify at OSS"`, not the inspect side's `"Not
-    classified"`. The master prompt carries an accuracy rule keyed on that
-    exact string; changing the word would silently break the rule that handles
-    it.
+    No licensing value is HIDDEN from the client. The withheld values stay in
+    the PP28/2025 block on the same page, which states its own provenance; what
+    changes is that the skim-level grid no longer states them as fact.
   - >-
-    No editorial knowledge is deleted silently. The table's 47901 fork was
-    pinned by an existing test, so it moves to the prompt WITH its guard rather
-    than disappearing.
+    The risk badge inside the PP28 block keeps its existing inline "· pending
+    verification" marker. It qualifies rather than asserts, so it is not part of
+    this cure.
   - >-
-    Merging this deploys it (apps/backend-rag/**). The live observation in
-    `Bites:` is taken after the deploy, never inferred from the merge.
+    Independent of the R19 ruling — this is comprehension, not style. No token,
+    spacing or layout family changes.
+  - >-
+    Mouth is Vercel: merging does NOT make this live. The git deploy lands
+    STAGED and must be promoted, so the `Bites:` observation is taken on the
+    promoted production URL, never inferred from the merge.
 acceptance:
   - text: >-
-      GUILT, the whole reason for the change: WHEN `kbli_documents` answers for
-      a code AND `kg_nodes` carries a tier for it, the match SHALL carry that
-      tier. The replaced code hardcoded `"Verify at OSS"` and `break`ed.
+      GUILT, the reachable surface: WHEN a record's licensing provenance is
+      `pending_crosswalk` with rows served (93114), the KeyFacts grid SHALL
+      carry the declared gap in the risk, licence and processing cells.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_documents_row_no_longer_hardcodes_ignorance_over_a_known_tier
+      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
+      -t "93114"
   - text: >-
-      GUILT: WHEN the Qdrant path answers with the shared builder's
-      `"Unknown"`, this channel SHALL report `"Verify at OSS"` — one dialect of
-      ignorance, not two.
+      GUILT, the shape the ledger row did NOT cover: WHEN the rows were
+      detached by a code-number collision (49213), the same three cells SHALL
+      withhold and the line below SHALL name the collision — pre-cure this page
+      printed "Medium-High" with no qualifier at all.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_qdrant_unknown_is_folded_into_the_one_dialect
+      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
+      -t "49213"
   - text: >-
-      INNOCENCE: WHERE no store carries the code, or the pool is dead, or the
-      query raises, or the store holds the code but not the tier, the channel
-      SHALL abstain rather than invent — no match, or the floor.
+      INNOCENCE: WHERE the rows are OSS-RBA KBLI-2025 native (56101, and 1,339
+      of 1,559 records), every cell SHALL keep its real value and the grid SHALL
+      grow no qualifier. A cure that withheld for everyone passes the two guilt
+      halves and fails this one.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k "no_store_carries or dead_pool or raising_query or not_the_tier or empty_tier"
+      npx vitest run src/components/kbli/LicensingSection.unverified-cells.test.tsx
+      -t "innocence"
   - text: >-
-      ASYMMETRY PINNED: WHILE a partial PMA tuple SHALL be withheld by
-      `_PMADisclosure`, an unsourced risk string SHALL pass through it verbatim
-      — which is why the risk derivation is made single at the source.
+      THE TWIN IS COVERED TOO: the extracted non-gold grid SHALL enforce the
+      same rule on the same three records, and SHALL render nothing for a code
+      with no licensing rows.
+    probe: npx vitest run src/components/kbli/LicensingQuickFacts.test.tsx
+  - text: >-
+      THE GATE IS LOAD-BEARING: neutralising it (`rowsVerified = true`, i.e.
+      pre-cure behaviour) SHALL turn the four guilt tests RED while the three
+      innocence assertions stay GREEN.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py::test_a_partial_pma_tuple_is_withheld_while_the_risk_tier_is_not
-  - text: >-
-      THE TABLE IS GONE AND STAYS GONE: `grep -c KNOWN_KBLI_CODES` on the chat
-      router SHALL return 0, WHILE the keyword map SHALL still route and resolve
-      through the stores.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py::test_the_router_carries_no_hand_written_answer_table backend/tests/unit/routers/test_kbli_notebook_chat.py::test_the_keyword_map_routes_without_asserting_facts
-  - text: >-
-      DEGRADATION IS NOT A REGRESSION: WHEN there is no database pool, the
-      typed-code path SHALL still ask Qdrant. `get_optional_database_pool` is
-      optional by design and Qdrant was the branch NOT gated on it; an early
-      return here would cut the whole path the moment Postgres blinks.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_risk_has_one_derivation.py -k dead_pool
-  - text: >-
-      BURIAL ORDER: the tombstone call SHALL sit after BOTH paths that set
-      `direct_kbli_match`. It used to sit between them, so a keyword-injected
-      match skipped the tombstone entirely.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_buries_phantom_codes.py::test_the_endpoint_actually_calls_the_burial
-  - text: >-
-      THE SURVIVING HAND-WRITTEN COPIES STAY HONEST: no keyword target and no
-      prompt line SHALL name a code the catalogue lacks, and no prompt line
-      SHALL promise foreign openness on a code the catalogue caps below 100%.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_hardcoded_fallback_matches_catalogue.py
-  - text: >-
-      NO REGRESSION ACROSS THE KBLI SURFACE.
-    probe: pytest backend/tests -k kbli
+      manual mutation, run 2026-09-20 — 4 failed / 3 passed, both files restored
+      from a `cp` backup and confirmed byte-identical with `cmp -s`
+  - text: NO REGRESSION ACROSS THE KBLI SURFACE OR THE SHARED LIBS.
+    probe: npx vitest run src/components/kbli src/lib
 pii: none
 local_evidence: >-
-  The two production reads this session were column-scoped and carried no client
-  data: counts and `kategori_risiko`/`pma_status` values from `kbli_documents`
-  and `kg_nodes` for nine KBLI codes, plus two aggregate counts over those
-  tables. KBLI codes are a public government classification, not client data.
-  Fly access was through `scripts/lib/fly_credential.sh`; no credential value was
-  echoed, printed or committed.
+  Two anonymous GETs of public product pages (`https://balizero.com/kbli/93114`,
+  `/kbli/49213`) saved to the session scratchpad, plus reads of the public
+  KBLI canonical artifact shipped in the repo. No client data, no credentials,
+  no authenticated surface touched.
