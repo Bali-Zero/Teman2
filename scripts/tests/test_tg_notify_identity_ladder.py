@@ -46,6 +46,18 @@ def tg(tmp_path, monkeypatch):
     monkeypatch.setenv("TG_DRY_RUN", "1")
     monkeypatch.setenv("TG_SECRETS_FILE", "/dev/null")
     monkeypatch.setenv("TG_REPEAT_LADDER_H", "6,24,72")
+    # "Hermetic" was a claim this fixture did not keep: the board path defaults
+    # to the REAL shared/escalations_pro.jsonl, so once board routing existed
+    # (2026-09-21) a plain test run appended junk rows to a file other sessions
+    # append to, and the cleanup reflex — `git checkout --` — discards THEIR
+    # uncommitted rows too. Pin it. A gate that writes to shared state is not a
+    # gate.
+    monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "board.jsonl"))
+    # Routing OFF: every test in this file is about condition IDENTITY and the
+    # repeat ladder — the layer BENEATH routing, unchanged by it. Leaving it on
+    # would make these assertions report on the routing table instead, which is
+    # covered by `tg_notify.py --selftest` (run here by test_tg_gateway.py).
+    monkeypatch.setenv("TG_ACT_ROUTING_ENABLED", "false")
     import tg_notify
 
     importlib.reload(tg_notify)

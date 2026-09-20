@@ -63,6 +63,77 @@ def _secrets_file() -> Path:
     return Path(os.environ.get("TG_SECRETS_FILE", str(Path.home() / ".nuzantara-secrets.env")))
 
 
+def _owner_reserved(key: str) -> bool:
+    """Does this condition require the OWNER — not a seat — to close it?"""
+    return (key.split(":", 1)[0] if key else "") in OWNER_FAMILIES
+
+
+def _board_path() -> Path:
+    """The escalation board a seat already reads (SessionStart injects it).
+
+    This gateway is stdlib-only and runs from launchd, from HOME copies and
+    from any machine, so the repo is not guaranteed to be next to it. Resolution
+    order mirrors every other root here: env first, then the checkout this file
+    actually lives in. A HOME copy with no `shared/` falls back to the spool —
+    the row is still written and still readable, just not on the shared board.
+    """
+    override = os.environ.get("TG_BOARD_PATH", "")
+    if override:
+        return Path(override)
+    # DRY_RUN means "no effect outside this process", and the board is the most
+    # shared state this file touches. Measured 2026-09-21: two separate suites
+    # appended junk rows to the real board on their first run after routing
+    # existed, and BOTH cleanup reflexes reached for `git checkout --`, which
+    # discards whatever a peer appended in the same window. Fixing each fixture
+    # cures the two that were caught; fixing the default cures the ones nobody
+    # has written yet.
+    if DRY_RUN:
+        return _spool_dir() / "escalations_local.jsonl"
+    shared = Path(__file__).resolve().parents[1] / "shared"
+    if shared.is_dir():
+        return shared / "escalations_pro.jsonl"
+    return _spool_dir() / "escalations_local.jsonl"
+
+
+def _append_board(record: dict, origin_tier: str) -> bool:
+    """Append one pending row in the board's existing schema. Never raises.
+
+    Schema is NOT invented here — it is the one `dlq_autopilot.py` and
+    `healer_receptor_main_red.py` already write and the SessionStart receptor
+    already renders, so a routed condition shows up on the same board as every
+    other one, HIGH-first, with no reader change.
+    """
+    row = {
+        "ts": record["ts"],
+        "type": "gateway_routed",
+        "job": record.get("key", "?"),
+        # ALWAYS normal, and the asymmetry with origin_tier is the whole point.
+        # HIGH on this board means "a human looks at this now" — the SessionStart
+        # receptor renders HIGH first, every session. A condition routed here was
+        # routed BECAUSE no human action is required; marking it HIGH would move
+        # the 10.5/day from Telegram onto Zero's board and change nothing.
+        # origin_tier below keeps the p0 provenance for audit without the volume.
+        "priority": "NORMAL",
+        "status": "pending",
+        "error_summary": str(record.get("text", ""))[:400],
+        "context": record.get("source", "unknown"),
+        "machine": record.get("machine", "?"),
+        "_writer": "tg-gateway",
+        # The demotion must stay VISIBLE: a board row that hides it was once a
+        # p0 is a p0 nobody can audit (superscar #2 — green is not working).
+        "origin_tier": origin_tier,
+        "cure_lane": {"owner": "seat", "note": "routed by tg_notify: no owner action required"},
+    }
+    try:
+        path = _board_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        return True
+    except OSError:
+        return False
+
+
 def _env_num(name: str, default: float, cast=float):
     """Garbage in an env knob must never crash a caller (fail-open contract)."""
     try:
@@ -147,8 +218,42 @@ RELAY_GATEWAY = os.environ.get(
     "TG_RELAY_GATEWAY", "/Users/nuzantara/nuzantara/scripts/tg_notify.py"
 )
 
-TIERS = ("p0", "digest", "log")
+TIERS = ("p0", "digest", "log", "act")
 API_TIMEOUT = 6
+
+# ---------------------------------------------------------------- owner reserve
+# MEASURED 2026-09-21 on this gateway's own archive-p0.jsonl: 315 p0 in 30 days
+# (10.5/day) across 120 distinct keys, of which cron-fail alone is 39.7%. Almost
+# none of it is an emergency — it is work, and work belongs to a seat.
+#
+# The cut is NOT a volume heuristic, it is CLAUDE.md's BUILDER CONTRACT §5 read
+# literally: "What stays with the human: business decisions, credentials and
+# consents, and physical/GUI actions." A condition an LLM seat CAN close must
+# never reach the owner; a condition it CANNOT close must always reach him. On
+# the measured corpus that is ~28 events per 30 days — 0.9/day.
+#
+# Matched on the ENTITY (the family before the first ':'), never as a substring
+# — superscar #3 is symmetric, and `key.startswith("price-review")` would also
+# swallow a hypothetical `price-review-bot-debug`. A key with no ':' is its own
+# family, so a bare `disk-watchdog` still classifies.
+OWNER_FAMILIES = frozenset(
+    f.strip() for f in os.environ.get(
+        "TG_OWNER_FAMILIES",
+        "cost-breaker-deadman,price-review,meta-one-token-dead,wa-bridge,"
+        "wa-mirror-bridge-liveness",
+    ).split(",") if f.strip()
+)
+# wa-mirror-bridge-liveness is here for a reason worth keeping: the archive of
+# SENT p0s is a FILTERED view — the ladder mutes chronic conditions, so a family
+# can be near-invisible there and still be owner-work. This one was found by
+# reading its alert text rather than its volume: it ends in "Re-link: ... --qr",
+# which is a physical action (§5), and it is a SECOND family for the same
+# physical fault already covered as `wa-bridge`. Derive this list from what a
+# condition REQUIRES, never from how often it currently pages.
+# Kill switch. Empty families OR this set to 0/false/no restores the pre-2026-09-21
+# behaviour (every p0 pages the owner) without touching any of the 204 callers.
+ACT_ROUTING_ENABLED = os.environ.get(
+    "TG_ACT_ROUTING_ENABLED", "true").strip().lower() not in ("0", "false", "no")
 
 
 # ---------------------------------------------------------------- identity
@@ -506,6 +611,22 @@ def notify(tier: str, source: str, text: str, dedup_key: str = "") -> str:
         horizon = now - 2 * max(REPEAT_LADDER_H) * 3600
         state["dedup"] = {k: v for k, v in dedup.items() if v.get("ts", 0) >= horizon}
 
+        # ---- routing to the board, decided AFTER the ladder and BEFORE the
+        # p0 budget. After the ladder on purpose: a condition that repeats every
+        # 15 minutes must not append a board row every 15 minutes either — that
+        # is exactly the W61 storm that re-grew this same file for ~5h. Before
+        # the budget because a routed p0 must not spend a slot it never used.
+        #
+        # Fail-OPEN toward the human: if the board cannot be written, the p0
+        # falls through to Telegram unchanged. An alarm that is silently dropped
+        # because its destination was unwritable is worse than a noisy one.
+        routed = tier == "act" or (
+            tier == "p0" and ACT_ROUTING_ENABLED and OWNER_FAMILIES and not _owner_reserved(key)
+        )
+        if routed and _append_board(record, origin_tier=tier):
+            _save_state(spool, state)
+            return "acted"
+
         if tier == "log":
             _append(spool, "log-only.jsonl", record)
             _save_state(spool, state)
@@ -629,7 +750,16 @@ def selftest() -> int:
         os.environ["TG_DRY_RUN"] = "1"
         os.environ["TG_SECRETS_FILE"] = "/dev/null"  # hermetic: never read host secrets
         global DRY_RUN, P0_BUDGET, CRON_FAIL_RESERVE, DAY_RESERVE, DAY_START_H, DAY_END_H
+        global ACT_ROUTING_ENABLED
         DRY_RUN, P0_BUDGET = True, 2
+        # Board routing OFF for the budget/ladder blocks below, and the pin is
+        # the point rather than a convenience: those checks assert what the p0
+        # LANE does (budget, night cap, cron reserve, escalation ladder), and
+        # that lane is unchanged by 2026-09-21. Routing is a layer ABOVE it and
+        # gets its own block at the end, where it is switched back on. Leaving
+        # it on here would have rewritten ~14 assertions to say "acted" and
+        # quietly deleted the coverage of the budget itself.
+        ACT_ROUTING_ENABLED = False
         # Pin the day/night window, exactly as the two blocks below already do
         # ("the window is pinned by the knobs, not by the wall clock"). Without
         # it THIS block inherited the real local hour, and at night
@@ -858,6 +988,78 @@ def selftest() -> int:
         finally:
             time.time = real_time
             os.environ["TG_SPOOL_DIR"] = str(spool)
+
+        # ---- board routing (2026-09-21). GUILT and INNOCENCE both, because
+        # this gate decides what wakes a human at 3am: a routing that swallows
+        # a credential failure is as broken as one that pages for a cron.
+        global OWNER_FAMILIES
+        _saved_families = OWNER_FAMILIES
+        with tempfile.TemporaryDirectory() as bd:
+            board = Path(bd) / "board.jsonl"
+            routed_spool = Path(bd) / "spool"
+            os.environ["TG_SPOOL_DIR"] = str(routed_spool)
+            os.environ["TG_BOARD_PATH"] = str(board)
+            ACT_ROUTING_ENABLED = True
+            OWNER_FAMILIES = frozenset({"cost-breaker-deadman", "price-review", "disk-watchdog"})
+            try:
+                check("entity match, not substring",
+                      _owner_reserved("cost-breaker-deadman:governance-mute")
+                      and not _owner_reserved("price-review-bot:x"))
+                check("a key with no ':' is its own family",
+                      _owner_reserved("disk-watchdog") and not _owner_reserved("dlq-terminal"))
+
+                # The SHIPPED default, not the pinned fixture: both families that
+                # end in "scan a QR code" must be reserved. They are two names for
+                # one physical fault and only one of them is loud enough to show
+                # up in the sent-p0 archive — the quiet one is the trap.
+                check("both QR-relink families are reserved by DEFAULT",
+                      {"wa-bridge", "wa-mirror-bridge-liveness"} <= _saved_families)
+
+                # GUILT: work an LLM seat can close never reaches the owner.
+                check("p0 a seat can cure is routed",
+                      notify("p0", "cron:x", "the indexer died", "cron-fail:indexer") == "acted")
+                rows = [json.loads(ln) for ln in board.read_text().splitlines() if ln.strip()]
+                check("routed row lands on the board, pending, auditable",
+                      len(rows) == 1 and rows[0]["status"] == "pending"
+                      and rows[0]["origin_tier"] == "p0"
+                      and rows[0]["job"] == "cron-fail:indexer"
+                      and rows[0]["cure_lane"]["owner"] == "seat")
+                # The routed p0 must NOT arrive HIGH: the SessionStart receptor
+                # renders HIGH first, so HIGH here would just move the 10.5/day
+                # from Telegram onto the owner's board.
+                check("a routed p0 is NORMAL on the board, never HIGH",
+                      rows[0]["priority"] == "NORMAL")
+
+                # The ladder governs the board too: a 15-minute repeat must not
+                # append a row every 15 minutes (the W61 storm, in reverse).
+                check("a routed repeat is deduped, not appended twice",
+                      notify("p0", "cron:x", "the indexer died", "cron-fail:indexer") == "deduped"
+                      and len([ln for ln in board.read_text().splitlines() if ln.strip()]) == 1)
+
+                # INNOCENCE 1: what only the owner can close still pages him.
+                check("a credential failure is NOT routed",
+                      notify("p0", "meta", "token revoked", "cost-breaker-deadman:x") == "sent")
+
+                # An explicit act tier is board-only and NORMAL, never HIGH.
+                check("explicit act tier is NORMAL",
+                      notify("act", "seat", "tidy this", "housekeeping:x") == "acted")
+                rows = [json.loads(ln) for ln in board.read_text().splitlines() if ln.strip()]
+                check("act tier row is NORMAL", rows[-1]["priority"] == "NORMAL")
+
+                # INNOCENCE 2: an unwritable board must not EAT the alarm.
+                os.environ["TG_BOARD_PATH"] = "/dev/null/nope/board.jsonl"
+                check("unwritable board fails OPEN to the human",
+                      notify("p0", "cron:x", "another death", "cron-fail:other") == "sent")
+
+                # INNOCENCE 3: the kill switch restores the old world whole.
+                ACT_ROUTING_ENABLED = False
+                os.environ["TG_BOARD_PATH"] = str(board)
+                check("kill switch restores paging",
+                      notify("p0", "cron:x", "yet another", "cron-fail:third") == "sent")
+            finally:
+                OWNER_FAMILIES = _saved_families
+                os.environ.pop("TG_BOARD_PATH", None)
+                os.environ["TG_SPOOL_DIR"] = str(spool)
 
     print("SELFTEST", "PASS" if not failures else f"FAIL ({failures})")
     return 0 if not failures else 1
