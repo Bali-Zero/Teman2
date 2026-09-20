@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import uuid
 from urllib.parse import quote
 
@@ -1767,3 +1768,71 @@ async def test_the_duplicate_charge_page_justifies_itself_with_the_empty_column(
     # and the two stale clauses are gone
     assert "never writes that column" not in text
     assert "LIVE payment" not in text
+
+
+# --------------------------------------------------------------------------
+# Telegram parses these pages as legacy Markdown. Anything that OPENS an entity
+# and never closes it is a 400 the sender cannot retry, i.e. a page that dies.
+# Measured in production 2026-09-20 on row 36
+# (`staff_page_charge_without_webhook`): the bare tracker URL carried the
+# `ord_` underscore into the body, Telegram opened an italic there and answered
+# `400 can't parse entities: Can't find end of the entity starting at byte
+# offset 1520` five times in a row.
+_CODE_SPAN_RE = re.compile(r"`[^`]*`")
+_LINK_RE = re.compile(r"\[[^\]]*\]\([^)]*\)")
+
+
+def _markdown_leftovers(text: str) -> list[str]:
+    """Entity delimiters left in the prose after code spans and links are removed.
+
+    Inside a code span and inside a link's url Telegram parses nothing, so both
+    are neutralised first; whatever `_`, `*` or `[` survives unescaped is a
+    delimiter the parser WILL try to pair — and the data that reaches these
+    pages (order ids, case types, provider statuses) is exactly where an
+    unpaired one comes from.
+    """
+
+    prose = _LINK_RE.sub("LINK", _CODE_SPAN_RE.sub("CODE", text))
+    return re.findall(r"(?<!\\)[_*\[]", prose)
+
+
+def test_the_tracker_link_never_opens_a_markdown_entity():
+    """GUILT for the production 400: every order id carries an underscore."""
+
+    link = StaffPageChargeWithoutWebhookHandler._tracker_link("ord_a_b")
+
+    assert link.startswith("[") and "](" in link and link.endswith(")")
+    assert _markdown_leftovers(link) == [], link
+    # the id is still readable, and the url still points at the real order
+    assert "ord\\_a\\_b" in link
+    assert f"/{quote('ord_a_b', safe='')}" in link
+
+
+async def test_a_staff_page_survives_telegram_markdown_parsing(pool):
+    """The whole page, not just the link: nothing the handler interpolates may
+    leave an entity open. Reverting `_tracker_link` to the bare url fails this.
+    """
+
+    order = await _seed_order(
+        pool, state="awaiting_payment", late_case_open=True, late_case_charge_id="ch_md_probe"
+    )
+    _row, event = await _enqueue_staff_page(
+        pool,
+        order,
+        job_type="staff_page_charge_without_webhook",
+        event_name="payment.charge_detected_without_webhook",
+        transition_id="OP-F08",
+        detail={"charge_id": "ch_md_probe", "provider_status": "SETTLED"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageChargeWithoutWebhookHandler(pool, sender)(
+            _job(order, event, "staff_page_charge_without_webhook")
+        )
+    finally:
+        await client.aclose()
+
+    text = _last_text(rec)
+    assert _markdown_leftovers(text) == [], _markdown_leftovers(text)
+    assert order in text  # the id is still on the page, escaped in the label
