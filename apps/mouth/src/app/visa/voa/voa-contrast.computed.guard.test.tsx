@@ -983,7 +983,30 @@ const RETIRED_BOUNDARY_TOKENS = [
 
 /** Named literally: a file that disappears must fail here, not silently drop
  *  out of the sweep (W133 — a test parametrized over the set it tests). */
-const CONTROL_FILES = ["page.tsx", "[hash]/page.tsx", "voa-r19.css"] as const;
+const CONTROL_FILES = [
+  "page.tsx",
+  "[hash]/page.tsx",
+  "voa-r19.css",
+  "checkout/[resultId]/CheckoutFlow.tsx",
+  "upload/UploadFlow.tsx",
+] as const;
+
+/**
+ * `orders/OrderTracker.tsx` is DELIBERATELY not on that list, and adding it
+ * would be the mistake this comment exists to prevent. Its two
+ * `--color-border-subtle` declarations are on `<section>` containers —
+ * `DeliveredPanel` and `ExceptionPanel` — and 1.4.11 binds user-interface
+ * components and graphical objects, not a card's hairline outline. The token
+ * is correct there; the file carries its own note saying so.
+ *
+ * Both shapes a boundary is written in on this surface: `border:` (CSS and
+ * the inline shorthand) and `borderColor:` / `border-color:` (the inline
+ * longhand `UploadFlow` uses). The first draft of this sweep knew only the
+ * first, and `UploadFlow`'s two declarations would have walked straight past
+ * it — a guard that reads one spelling of the thing it bans.
+ */
+const boundaryRe = (token: string) =>
+  new RegExp(`border(?:-?[cC]olor)?:[^;\n]*${token}`);
 
 describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
   it.each([".voa-clock__handoff", ".voa-next__ask"])(
@@ -1028,8 +1051,10 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
     (rel) => {
       const src = readFileSync(join(__dirname, rel), "utf-8");
       for (const token of RETIRED_BOUNDARY_TOKENS) {
-        const re = new RegExp(`border:[^;\n]*${token}`, "i");
-        expect(re.test(src), `${rel} still borders on ${token}`).toBe(false);
+        expect(
+          boundaryRe(token).test(src),
+          `${rel} still borders on ${token}`,
+        ).toBe(false);
       }
     },
   );
@@ -1038,10 +1063,10 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
     for (const bad of [
       `border: "1px solid var(--color-border-subtle)",`,
       `border: 1px solid var(--bz-border-hover);`,
+      `borderColor: "var(--bz-border-hover)",`,
+      `border-color: var(--color-border-subtle);`,
     ]) {
-      const hit = RETIRED_BOUNDARY_TOKENS.some((t) =>
-        new RegExp(`border:[^;\n]*${t}`, "i").test(bad),
-      );
+      const hit = RETIRED_BOUNDARY_TOKENS.some((t) => boundaryRe(t).test(bad));
       expect(hit, bad).toBe(true);
     }
   });
@@ -1050,11 +1075,10 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
     for (const ok of [
       "border-top: 1px solid var(--bz-border);",
       "border-bottom: 1px solid var(--color-border-subtle);",
+      "border-left-color: var(--bz-border-hover);",
       "--color-border-subtle: var(--bz-border);",
     ]) {
-      const hit = RETIRED_BOUNDARY_TOKENS.some((t) =>
-        new RegExp(`border:[^;\n]*${t}`, "i").test(ok),
-      );
+      const hit = RETIRED_BOUNDARY_TOKENS.some((t) => boundaryRe(t).test(ok));
       expect(hit, ok).toBe(false);
     }
   });
