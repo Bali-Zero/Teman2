@@ -358,3 +358,66 @@ def test_each_healer_family_probes_its_OWN_lock(world, monkeypatch, tmp_path):
     assert report["resolved"] == [], \
         "the row must be judged against PRO's lock, not against Mini's absent one"
     assert pro_lock.exists()
+
+
+@pytest.mark.parametrize("bad_ts", ["not-a-number", True, None, ""])
+def test_an_unreadable_alert_ts_is_not_a_recovery(world, bad_ts):
+    """ts_epoch orders junk as 0.0 on purpose — a bad ts must hide a line's age,
+    never the line. But 0.0 is smaller than every state ts, so without this the
+    whole class of malformed rows reads as 'recovered'."""
+    row = _routed("cron-fail:alpha", NOW)
+    row["ts"] = bad_ts
+    world.append(row)
+    _run_state(world, "alpha", "ok", NOW)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert "nothing to compare against" in report["left"][0]["detail"]
+
+
+def test_a_state_file_written_by_another_host_is_a_strangers_witness(world):
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    (world / "state" / "alpha.last.json").write_text(
+        json.dumps({"job": "alpha", "ts": NOW, "status": "ok", "host": "SomeOtherHost"}),
+        encoding="utf-8",
+    )
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert "not this host" in report["left"][0]["detail"]
+
+
+def test_a_state_file_naming_another_job_is_a_strangers_witness(world):
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    (world / "state" / "alpha.last.json").write_text(
+        json.dumps({"job": "beta", "ts": NOW, "status": "ok"}), encoding="utf-8"
+    )
+
+    assert bsc.consume(max_rows=10, dry_run=False)["resolved"] == []
+
+
+def test_a_run_state_dated_in_the_future_is_a_clock_not_a_recovery(world):
+    """It beats every alert ts there will ever be — it would close this row and
+    each of its successors forever."""
+    world.append(_routed("cron-fail:alpha", NOW))
+    _run_state(world, "alpha", "ok", NOW + 86400)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert "in the future" in report["left"][0]["detail"]
+
+
+def test_innocence_a_well_formed_witness_on_this_host_still_closes_the_row(world):
+    """The four refusals above must fail for the WITNESS, not for the cure."""
+    import socket as _socket
+    world.append(_routed("cron-fail:alpha", NOW - 3600))
+    (world / "state" / "alpha.last.json").write_text(
+        json.dumps({"job": "alpha", "ts": NOW - 60, "status": "ok",
+                    "host": _socket.gethostname(), "exit_code": 0}),
+        encoding="utf-8",
+    )
+
+    assert [r["job"] for r in bsc.consume(max_rows=10, dry_run=False)["resolved"]] == ["cron-fail:alpha"]
