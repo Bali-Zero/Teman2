@@ -53,6 +53,7 @@ import argparse
 import fcntl
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -67,6 +68,8 @@ from sentinel_lib.escalations import (  # noqa: E402
     read_all_escalations,
     ts_epoch,
 )
+
+_SAFE_JOB_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 ROUTED_TYPE = "gateway_routed"
 SEAT_OWNER = "seat"
@@ -89,8 +92,24 @@ def _state_dir() -> Path:
     )
 
 
-def _healer_pidfile() -> Path:
-    return Path(os.environ.get("BOARD_CONSUMER_HEALER_PIDFILE", "/tmp/nuzantara-healer.pid"))
+# Each healer owns its OWN lock, and they are not the same file: healer-run.sh
+# (Mini, TG_SOURCE=healer-mini) holds /tmp/nuzantara-healer.pid while
+# pro-healer.sh (TG_SOURCE=healer-pro) holds /tmp/nuzantara-pro-healer.pid. One
+# shared default would read "the lock is already gone" on the machine that does
+# not own that path and close a row whose healer is still stuck — the exact
+# false cure this file exists to refuse.
+_HEALER_PIDFILES = {
+    "healer-mini": "/tmp/nuzantara-healer.pid",
+    "healer-pro": "/tmp/nuzantara-pro-healer.pid",
+}
+
+
+def _healer_pidfile(family: str) -> Path | None:
+    override = os.environ.get("BOARD_CONSUMER_HEALER_PIDFILE", "")
+    if override:
+        return Path(override)
+    path = _HEALER_PIDFILES.get(family)
+    return Path(path) if path else None
 
 
 def _this_machine() -> str:
@@ -109,6 +128,12 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
     name = job.split(":", 1)[1] if ":" in job else ""
     if not name:
         return NOT_CURABLE, "dedup-key carries no job name"
+    # The dedup-key comes from ~204 callers and becomes a PATH on the next line.
+    # `cron-fail:../../somewhere/else` would read a file outside the state dir and
+    # could close a row against a stranger's status. The runner's own job names are
+    # this shape; anything else is refused rather than normalised.
+    if not _SAFE_JOB_NAME.match(name):
+        return NOT_CURABLE, f"job name {name!r} is not a plain state-file name — refusing to build a path from it"
     path = _state_dir() / f"{name}.last.json"
     if not path.is_file():
         return NOT_CURABLE, f"no run-state file for {name} (job is invisible to this probe)"
@@ -117,7 +142,14 @@ def cure_cron_fail(row: dict) -> tuple[str, str]:
     except (OSError, ValueError) as exc:
         return NOT_CURABLE, f"run-state unreadable: {exc}"
     status = str(state.get("status", "?"))
-    state_ts = ts_epoch(state.get("ts"))
+    raw_ts = state.get("ts")
+    # ts_epoch parses ISO strings and assumes UTC for a naive one. Every runner
+    # here writes epoch seconds (checked on Pro), and the day one does not, a
+    # naive local timestamp would read 8h into the future in WITA and close a row
+    # whose run PRECEDED the alarm. The witness only counts when it is a number.
+    if isinstance(raw_ts, bool) or not isinstance(raw_ts, (int, float)):
+        return NOT_CURABLE, f"{name}.last.json ts is {type(raw_ts).__name__}, not epoch seconds — refusing to compare"
+    state_ts = ts_epoch(raw_ts)
     row_ts = ts_epoch(row.get("ts"))
     if status == "ok" and state_ts > row_ts:
         return RESOLVED, (
@@ -152,14 +184,16 @@ def _pid_is_a_live_healer(pid: int) -> bool | None:
         return None
     if out.returncode != 0:
         return None
-    return "healer" in out.stdout
+    return "healer" in out.stdout.lower()
 
 
 def cure_healer_stale_lock(row: dict, dry_run: bool) -> tuple[str, str]:
     job = str(row.get("job", ""))
     if not job.endswith(":stale-lock"):
         return NOT_CURABLE, "healer row that is not the stale-lock condition"
-    pidfile = _healer_pidfile()
+    pidfile = _healer_pidfile(job.split(":", 1)[0])
+    if pidfile is None:
+        return NOT_CURABLE, f"no lock path known for {job.split(':', 1)[0]!r}"
     if not pidfile.exists():
         return RESOLVED, f"{pidfile} is already gone — the lock condition is over"
     try:
@@ -173,6 +207,13 @@ def cure_healer_stale_lock(row: dict, dry_run: bool) -> tuple[str, str]:
         return NOT_CURABLE, f"pid {pid} IS a live healer — the lock is legitimate"
     if dry_run:
         return RESOLVED, f"would remove {pidfile} (pid {pid} is not a healer) [dry-run]"
+    # Between the liveness probe above and the unlink below, a healer may have
+    # started and rewritten this file. Removing it then would unlock a LIVE run.
+    try:
+        if int(pidfile.read_text(encoding="utf-8").strip()) != pid:
+            return NOT_CURABLE, f"{pidfile} changed under us — a run started since the probe"
+    except (OSError, ValueError):
+        return NOT_CURABLE, f"{pidfile} became unreadable between the probe and the cure"
     try:
         pidfile.unlink()
     except OSError as exc:
@@ -216,14 +257,40 @@ def open_seat_rows() -> list[dict]:
     return sorted(rows, key=lambda r: ts_epoch(r.get("ts")))
 
 
+def _still_the_row_we_probed(row: dict) -> bool:
+    """Re-read the board and confirm nothing newer landed for this job.
+
+    Between open_seat_rows() and the close, the condition can re-fire: the cron
+    fails again, the gateway appends a FRESH pending row, and a resolution
+    written now would carry a newer ts and collapse that live alarm into
+    silence. The probe proved the OLD row was over, never the new one.
+    """
+    job = row.get("job")
+    newest = None
+    for candidate in read_all_escalations(include_resolved=True):
+        if candidate.get("job") != job:
+            continue
+        if newest is None or ts_epoch(candidate.get("ts")) > ts_epoch(newest.get("ts")):
+            newest = candidate
+    return newest is not None and ts_epoch(newest.get("ts")) == ts_epoch(row.get("ts"))
+
+
 def consume(max_rows: int, dry_run: bool) -> dict:
     machine = _this_machine()
     report = {"machine": machine, "dry_run": dry_run, "seen": 0, "resolved": [], "left": []}
     rows = open_seat_rows()
     report["seen"] = len(rows)
-    for row in rows[:max_rows]:
+    attempted = 0
+    skipped_by_cap = 0
+    for row in rows:
         job = str(row.get("job", ""))
         family = job.split(":", 1)[0]
+        # A foreign row and a family with no cure are decided at zero cost, so
+        # they must NOT consume the cap. Slicing first starves the queue: these
+        # rows never leave the board, they sort oldest-first forever, and within
+        # weeks the cap is spent entirely on rows that were never curable while
+        # every curable row behind them goes untouched — an organ reporting a
+        # green run every hour and closing nothing (superscar #2).
         if row.get("machine") != machine:
             report["left"].append({"job": job, "why": FOREIGN, "detail": str(row.get("machine"))})
             continue
@@ -231,14 +298,26 @@ def consume(max_rows: int, dry_run: bool) -> dict:
         if cure is None:
             report["left"].append({"job": job, "why": NOT_CURABLE, "detail": f"no cure registered for family {family!r}"})
             continue
+        if attempted >= max_rows:
+            skipped_by_cap += 1
+            continue
+        attempted += 1
         verdict, proof = cure(row, dry_run)
         if verdict != RESOLVED:
             report["left"].append({"job": job, "why": verdict, "detail": proof})
             continue
         if not dry_run:
-            mark_resolved(job)
+            if not _still_the_row_we_probed(row):
+                report["left"].append({"job": job, "why": "re_fired_since_the_probe", "detail": proof})
+                continue
+            # 0 means a peer resolved it between this run's read and now. Saying
+            # "closed" anyway would make the organ's own note a small lie.
+            if not mark_resolved(job):
+                report["left"].append({"job": job, "why": "already_closed_by_a_peer", "detail": proof})
+                continue
         report["resolved"].append({"job": job, "proof": proof})
-    report["skipped_by_cap"] = max(0, len(rows) - max_rows)
+    report["attempted"] = attempted
+    report["skipped_by_cap"] = skipped_by_cap
     return report
 
 
@@ -276,7 +355,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(
             f"board_seat_consumer: {len(report['resolved'])} closed, "
-            f"{len(report['left'])} left open, {report['seen']} seat rows seen"
+            f"{len(report['left'])} left open, {report['seen']} seat rows seen, "
+            f"{report['attempted']} cure(s) attempted"
         )
         for item in report["resolved"]:
             print(f"  closed {item['job']}: {item['proof']}")
