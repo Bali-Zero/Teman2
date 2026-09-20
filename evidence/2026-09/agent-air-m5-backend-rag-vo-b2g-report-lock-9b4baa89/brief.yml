@@ -1,0 +1,76 @@
+task_id: vo-b2g-report-lock
+lane: backend-rag
+machine: air-m5
+base_sha: 4fba78c4c710e72352eb7c868bb946848d0e7c3d # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-20
+
+gear: 2
+gear_reason: >-
+  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> "floor 2, brief
+  present"). Net churn over the two CODE files alone -- report_lock.py + test_report_lock.py,
+  which do not change size once this brief is edited -- is 695 insertions / 0 deletions
+  (`git diff --stat <base_sha>..<final-head> -- report_lock.py test_report_lock.py`), already
+  above SIZE_GEAR2_THRESHOLD (400) on its own. This brief does not count its own size (a
+  committed file cannot count itself, gate OBS-1 of GATE-B2D-REPORT-6884.md) and stays far
+  below SIZE_GEAR3_THRESHOLD (1828) either way.
+
+objective: >-
+  Conductor ruling R-SUSPEND-B2 (MANDATE-vo.md, 2026-09-19T21:18Z) authorized ONE more round
+  of Slice B2''-a' ("B2-1") after GATE-B2F-REPORT-6890.md sent #6890 back REWORK-BUILD on one
+  open-head defect: OBS-1 (MEDIUM) -- under mutation M2 (`LOCK_NB` dropped),
+  `test_second_reportlock_in_the_same_process_refuses` HUNG the suite instead of going red by
+  a bounded wait, because its contending `acquire()` runs in the pytest process itself with
+  nothing external timing it out; the shipped test docstring's "every wait is bounded" claim
+  was false for every in-process acquire, and the headline race test could not tell a refusal
+  from a lock that merely serialised its contenders, so M2 passed it unnoticed. This PR brings
+  `report_lock.py`'s LOGIC UNCHANGED from #6890 (closed, head `64427b801f`) -- only its
+  docstring gains the two LOW declared-limit sentences the gate also asked for (OBS-2, OBS-3)
+  -- and cures OBS-1 in the test file: `_bounded()` (SIGALRM) around every in-process
+  `acquire()` call, so a regression that makes a lock call BLOCK fails ONE test within its cap
+  instead of hanging the suite, plus a new dedicated detector
+  (`test_a_live_holder_is_refused_promptly_not_serialized`) that asserts a refusal is FAST
+  (<2s) while a holder is alive -- the property the headline test structurally cannot see.
+  Per R-SUSPEND-B2's option 1, arming is taken away from this builder: the PR opens UNARMED
+  and the conductor arms only after its own clean `kit/body_check.py` run on the fetched body.
+
+scope:
+  - "apps/backend-rag/backend/scripts/visa_engine/report_lock.py -- logic unchanged from #6890's raw material; module docstring gains two declared-limit sentences (OBS-2: raw PermissionError, not ReportLockError; OBS-3: lock keyed on path text, not inode)."
+  - "apps/backend-rag/backend/tests/scripts/visa_engine/test_report_lock.py -- OBS-1 cure: `_bounded()` helper (SIGALRM) wraps every in-process `acquire()`; new `test_a_live_holder_is_refused_promptly_not_serialized`; module docstring reworded to state what is actually true; the atomicity reader proof's object enlarged 4MB -> 40MB (empirically the smaller size was not reliably red under the M4 mutation on this host/filesystem)."
+  - "This brief."
+
+constraints:
+  - >-
+    No decision in ReportLock is ever derived from the lockfile's content -- only from
+    flock's own result. The lockfile is never unlinked, by anyone: unlink + flock is the
+    classic two-holder race (a waiter on the old inode and a newcomer on a new inode both
+    "hold"). A leftover `<report>.lock` means nothing.
+  - >-
+    New files only. No runner, no httpx, no argparse, no change to any existing file.
+    Nothing in this repo imports this module yet -- Slice B2''-b (the runner) is the next
+    consumer, from a fresh `origin/main` that contains this module's merge; its
+    `except ReportLockError` will NOT catch the raw `PermissionError` OBS-2 declares.
+  - >-
+    Merging this deploys the backend (apps/backend-rag/**), but the deployed image never
+    runs this module (nothing imports it yet) -- there is no live-traffic observation to
+    make; the observation this PR ships is its own CI test job.
+  - >-
+    This builder does not arm. `gh pr merge` is never run from this seat; the PR opens with
+    auto-merge NOT armed and stays that way until the conductor's own `body_check.py` run on
+    the FETCHED body prints 0 FAIL.
+
+acceptance:
+  - "WHEN N=2 and N=4 processes are released together by a barrier file and race for the same report's lock over 20 rounds each THEN exactly one holder ever holds at a time (no two acquire windows overlap) and the winner's file is intact. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_n_processes_released_by_a_barrier_race_and_exactly_one_holds_at_a_time"
+  - "WHEN the locked section exits normally THEN the lock is released and a fresh acquire succeeds at once, BOUNDED. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lock_is_released_on_normal_exit"
+  - "WHEN an exception is raised inside the locked section THEN the lock is still released, BOUNDED. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lock_is_released_on_an_exception_inside_the_locked_section"
+  - "WHEN the holder is SIGKILLed THEN the next acquire succeeds at once, with no flag and no stale-check. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigkill_of_the_holder_releases_the_lock_at_once_no_flag"
+  - "WHEN the holder is SIGTERMed THEN the next acquire succeeds at once, with no flag and no stale-check. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigterm_of_the_holder_releases_the_lock_at_once_no_flag"
+  - "WHEN a leftover lockfile carries EMPTY content, GARBAGE content, or the pid of a LIVE unrelated process THEN acquire SUCCEEDS every time -- content is never consulted for a decision. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_leftover_lockfile_content_is_never_consulted"
+  - "WHEN a second ReportLock on the same path is acquired in the SAME process THEN it refuses, BOUNDED (OBS-1: this is the exact test M2 used to hang). probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_second_reportlock_in_the_same_process_refuses"
+  - "WHERE the lockfile persists across acquire/release cycles THEN its inode is unchanged (it is never recreated), BOUNDED. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_lockfile_persists_and_its_inode_is_unchanged_across_cycles"
+  - "WHEN release() is called after a REFUSED acquire THEN it is a no-op and the live owner's hold is untouched (gate OBS-E), BOUNDED. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_release_after_a_refused_acquire_leaves_the_live_owner_intact"
+  - "WHILE a holder is alive THEN a contender is REFUSED, not serialised behind it -- the refusal completes in under 2s (OBS-1 cure #2: the property the headline race test cannot see, since a blocking lock still shows 'exactly one holder ever writes'). probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_a_live_holder_is_refused_promptly_not_serialized"
+  - "WHEN the writer is SIGKILLed INSIDE atomic_write_json's write (polled for the temp file, never a sleep) THEN the target still parses and equals the PREVIOUS content -- os.replace never ran. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_sigkill_inside_atomic_write_never_corrupts_the_target"
+  - "WHILE a concurrent reader loops during repeated multi-MB atomic_write_json rewrites THEN every read parses. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py::test_concurrent_reader_always_parses_during_repeated_large_rewrites"
+  - "NO REGRESSION: the full file is green, 5 consecutive runs, and ruff is clean. probe: pytest backend/tests/scripts/visa_engine/test_report_lock.py && ruff check backend/scripts/visa_engine/report_lock.py backend/tests/scripts/visa_engine/test_report_lock.py"
+
+pii_scan: clean
