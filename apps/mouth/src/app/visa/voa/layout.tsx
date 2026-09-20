@@ -63,10 +63,24 @@ export const metadata: Metadata = {
  * 5.26:1 on the #f7f4ee ground and 5.64:1 on the #fffcf7 card. Both clear AA.
  * The naive flip, which is the one worth naming because it was the plan
  * before the numbers came in, was to keep the DARK block's lifted copper
- * #c46a52 and merely change the ground: that measures 3.37:1 on daylight and
- * fails AA for body text. The light my-block already carried its own,
+ * #c46a52 and merely change the ground: that measures 3.46:1 on THIS ground
+ * and fails AA for body text. The light my-block already carried its own,
  * darker copper — the flip did not need a new colour, it needed the check
  * that says which copper is in force.
+ *
+ * "THIS ground" is doing real work in that sentence, and the figure is the
+ * correction this file exists to carry. It shipped as 3.37:1, which is a
+ * real measurement of #c46a52 — on #f4f1ea, the --bz-base of the PLAIN
+ * [data-theme="operative-light"] block. This funnel does not mount that
+ * block; it mounts the my-block over it, and the my-block's ground is
+ * #f7f4ee, where the same copper measures 3.46:1. The number arrived from
+ * the session that planned the flip together with the label "on daylight",
+ * and the label quietly stopped being true when the block under it changed.
+ * That is the shape to distrust: a figure that survives review precisely
+ * because it IS a real measurement, so a reader checks the arithmetic and
+ * never checks the subject. The on-disk gate for PR #6985 caught it by
+ * recomputing against the ground the layout actually declares instead of
+ * against the comment.
  *
  * `layout.test.tsx` pins `operative-light` here, and the contrast guard
  * DERIVES its palette from this element rather than naming one, so neither
