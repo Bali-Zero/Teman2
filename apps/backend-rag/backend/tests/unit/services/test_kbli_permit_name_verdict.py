@@ -227,3 +227,80 @@ def test_the_obligation_id_rule_demotes_no_real_permit_in_live_data():
         assert permit_name_verdict("izin_" + nm.split()[0].lower(), nm) == "permit"
     # And the trade, stated: a kewajiban id beats even a permit-shaped name.
     assert permit_name_verdict("kewajiban_sertifikat_x", "Sertifikat Standar") == "obligations"
+
+
+# ─────────────────────────────────────────────────────────────────── F9 demotions
+#
+# The class spec §2.4 sized and deliberately left open: targets that pass BOTH
+# stages of the admission predicate without being a permit. Re-measured on prod
+# 2026-09-21 over 4,713 admitted edges / 2,446 distinct targets; each case below
+# was read one by one before its rule was written, and the whole set moves 13
+# targets on 48 codes with ZERO permit-shaped names among them.
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "name", "bucket"),
+    [
+        # A condition on WHERE you may operate, not a thing you apply for.
+        ("parameter_lokasi_provinsi", "Lokasi industri berada pada Provinsi bersangkutan", "parameters"),
+        ("parameter_lokasi_hamparan", "Lokasi Industri dalam Satu Hamparan", "parameters"),
+        ("parameter_lokasi", "Parameter Lokasi", "parameters"),
+        ("parameter_lokasi_hamparan_lintas_provinsi", "Lokasi Industri Hamparan Lintas Provinsi", "parameters"),
+        # A licensing_status ENUM materialised as a node: the graph saying it
+        # does not know which permit applies, rendered AS the permit.
+        ("status_perizinan_pending", "PENDING_REGULATION", "unspecified_permits"),
+        ("izin_usaha_pending", "Status Perizinan: PENDING_REGULATION", "unspecified_permits"),
+        # A negative undertaking, and "obligatory" as an adjective — the two
+        # grammatical cases no list of active verbs can reach.
+        ("produk_senjata_kimia", "Tidak menghasilkan produk senjata kimia", "obligations"),
+        ("produk_bahan_perusak_ozon", "Tidak menghasilkan produk bahan perusak ozon", "obligations"),
+        ("wajib_lapor_ketenagakerjaan", "Wajib Lapor Ketenagakerjaan Perusahaan", "obligations"),
+        # A complaint desk you must run, and a contracting form.
+        ("layanan_keluhan_pelanggan", "Layanan keluhan pelanggan", "obligations"),
+        ("kerja_sama_operasi_kso", "Kerja Sama Operasi (KSO)", "entity_forms"),
+        ("kso_bujkn", "Kerja Sama Operasi (KSO) dengan BUJKN berkualifikasi Besar", "entity_forms"),
+    ],
+)
+def test_f9_targets_are_demoted_to_the_bucket_they_belong_in(entity_id, name, bucket):
+    assert permit_name_verdict(entity_id, name) == bucket
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "name"),
+    [
+        # Real permits known by acronym — the reason §2.4 called 172 a SEARCH
+        # SPACE and not a defect count. Every one of these is live on prod and
+        # must keep its licence label.
+        ("ipp_irt", "IPP-IRT"),
+        ("izin_spp_irt", "SPP-IRT"),
+        ("pmr", "Program Manajemen Risiko (PMR)"),
+        ("izin_umku_pmr_bertahap", "PMR Bertahap"),
+        ("uji_klinik", "Uji Klinik"),
+        ("slhs", "SLHS (Dinkes)"),
+        ("stp_distributor_agen", "STP Distributor/Agen"),
+        ("nib_", "Nomor Induk Berusaha"),
+        ("pelepasan_varietas_tanaman", "Pelepasan Varietas Tanaman Perkebunan"),
+    ],
+)
+def test_f9_rules_demote_no_real_permit(entity_id, name):
+    assert permit_name_verdict(entity_id, name) == "permit"
+
+
+def test_the_parameter_id_rule_matches_a_TOKEN_not_a_substring():
+    """Same trade as the `kewajiban` rule: the entity, never the shape."""
+    assert permit_name_verdict("izin_parameterx", "Izin Parameterx") == "permit"
+    assert permit_name_verdict("parameter_lokasi", "Parameter Lokasi") == "parameters"
+
+
+def test_a_condition_head_needs_a_second_word():
+    """A bare "Tidak" is a fragment, not a clause — same rule as the verbs."""
+    assert permit_name_verdict("x", "Tidak") == "permit"
+    assert permit_name_verdict("x", "Wajib") == "permit"
+    assert permit_name_verdict("x", "Tidak menghasilkan apa pun") == "obligations"
+
+
+def test_the_adjudicated_labels_match_the_WHOLE_label_only():
+    """An exact match cannot over-reach; a longer name keeps its licence label."""
+    assert permit_name_verdict("x", "Izin Layanan keluhan pelanggan terpadu") == "permit"
+    assert permit_name_verdict("x", "Kerja Sama Operasi (KSO) tambahan") == "permit"
+    assert permit_name_verdict("x", "layanan keluhan pelanggan") == "obligations"
