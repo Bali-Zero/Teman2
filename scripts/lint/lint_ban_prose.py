@@ -46,9 +46,11 @@ A file whose suffix is NOT in that list is reported as OUT OF SCOPE and never as
 scanned. The distinction is the whole of cicatrix #2/W84: a run that covered
 none of the diff must not print a number that reads like coverage.
 
-GRANDFATHER LIST, the same shape lint_claude_headless_model_pin.py uses: 16
+GRANDFATHER LIST, the same shape lint_claude_headless_model_pin.py uses: 11
 files already carried such prose when this lint was written, across four apps
-that have nothing to do with this lane. Curing them here would be a second
+that have nothing to do with this lane. It read 16 while the predicates still
+matched a bare mention; 5 of those were the author's own over-matches and were
+released once a value became part of the match, so 11 is what the disk froze. Curing them here would be a second
 concern in one PR; leaving the lint advisory would be a guard that never fires.
 So the debt is frozen FILE-level in infra/ban-prose/grandfathered.json and stays
 visible. Two things still fail: a file outside the set gaining a violation, and
