@@ -185,7 +185,8 @@
         "onComplete": "(values: Record<string, unknown>) => void",
         "persistKey": "string | undefined",
         "onStepChange": "(step: number, total: number) => void | undefined",
-        "onAbandon": "(step: number) => void | undefined"
+        "onAbandon": "(step: number) => void | undefined",
+        "labels": "Partial<AppWizardLabels> | undefined"
       },
       "useWhen": [
         "multi-step",

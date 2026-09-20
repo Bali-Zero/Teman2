@@ -142,6 +142,7 @@
   - `persistKey`: `string | undefined`
   - `onStepChange`: `(step: number, total: number) => void | undefined`
   - `onAbandon`: `(step: number) => void | undefined`
+  - `labels`: `Partial<AppWizardLabels> | undefined`
 - **example**: `<AppWizard steps={/* WizardStep[] */} onComplete={/* (values: Record<string, unknown>) => void */} />`
 
 ## `BZLogo`

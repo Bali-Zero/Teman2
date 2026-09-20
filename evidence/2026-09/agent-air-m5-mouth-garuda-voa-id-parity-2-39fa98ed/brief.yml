@@ -1,4 +1,4 @@
-task_id: mouth-garuda-voa-id-parity
+task_id: mouth-garuda-voa-id-parity-2
 gear: 2
 l_level: L2
 objective: |
@@ -88,6 +88,12 @@ risks:
   - "Half the journey speaks one language. The entry leg is bilingual, the post-purchase leg is
     not; a customer who typed ?lang=id and then bought would cross a language boundary. Bounded
     today by the payments flag, and the second PR closes it."
+  - "This is the SUCCESSOR of PR #6947, closed unmerged: #6947 was armed before its CI spoke, and
+    two required checks then went red — `brand-api-gate` (the generated component catalogue goes
+    stale when AppWizard gains an exported interface) and `Harness floor recompute` (a gear>=2
+    diff needs an on-disk gate verdict posted on its head sha). Armed means frozen, so the cure
+    is a fresh branch off origin/main carrying the same diff plus the regenerated brand-api
+    artefacts, not a second commit on a frozen ref."
   - "`next build` could not be run locally: the broker's worktree symlinks apps/mouth/node_modules
     out of the worktree root and Turbopack refuses it (measured, both build and dev). The webpack
     dev server was used for the browser walk instead. CI builds from a normal checkout."
