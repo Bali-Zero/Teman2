@@ -1,0 +1,2 @@
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-20T07:52:00Z", "note": "adversarial pass on lint_paid_llm_entity / typesafe_client / redact_for_external; 3 findings, all reproduced and all accepted"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-20T07:58:00Z", "note": "adversarial pass on the same three files, dispatched separately; 4 findings, all reproduced and all accepted"}

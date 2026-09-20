@@ -1,0 +1,125 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "Wave 1 of the coding-lane plan in research/operations/2026-09-20-jev-coding-lanes-dossier.md
+  (merged as PR #6922). Successor to the closed PR #6926, which froze at arming with three reds."
+lanes:
+  - lane: ban-entity-build
+    role: build
+    seat: claude-opus-5 (conducting session — authored the lint, the client, the redactor, the corpus and the CI step)
+  - lane: ban-entity-refute-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: ban-entity-refute-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: ban-entity-refute-corpus
+    role: review
+    seat: claude-sonnet-5 (subagent dispatched WITHOUT the brief and told to show the corpus flatters what it measures — it did)
+diff:
+  behaviour_change:
+    A third step is added to the CI lint that already owns the paid-endpoint ban. It composes the two
+    incumbent greps with a System One model's per-route judgment using OR, so the step can only ADD a
+    finding and never clear one. It is advisory — it always exits zero. No existing check changes its
+    verdict; the workflow's path filter widens to the suffixes the new step inspects.
+  surface:
+    Three new scripts, one new test module, one new fixture corpus, one workflow edit. No backend, no
+    frontend, no migration, no data, no credential.
+receipts:
+  - claim: offline suite green after every council fix — 71 tests
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py -q
+    result: 71 passed
+    exit: 0
+    ts: 2026-09-20T08:05:00Z
+    seat: claude-opus-5
+  - claim: bench on the live model after the council fixes — recall on grep-missed guilt cases 15 of 17, false alarms 0 of 20
+    cmd: python3 scripts/test_lint_paid_llm_entity.py --bench
+    result: "guilt recall 16/19; recall on grep-misses 15/17; false alarms 0/20; threshold 0.8"
+    exit: 0
+    ts: 2026-09-20T08:02:00Z
+    seat: claude-opus-5
+  - claim: redaction now covers the bare-name, unquoted, JSON-key and AWS-id forms the seats found open
+    cmd: python3 -c "import sys;sys.path.insert(0,'scripts');from redact_for_external import redact;print('opaque-secret-val' not in redact('TOKEN = \"opaque-secret-val\"'))"
+    result: "True"
+    exit: 0
+    ts: 2026-09-20T08:00:00Z
+    seat: claude-opus-5
+  - claim: the incumbent's repo-wide constructor count is back under its baseline after the lane stopped spelling the pattern in prose
+    cmd: grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' | wc -l
+    result: 2 against a baseline of 3
+    exit: 0
+    ts: 2026-09-20T07:20:00Z
+    seat: claude-opus-5
+  - claim: every acceptance probe named in the brief runs and passes in the offline suite
+    cmd: >-
+      python3 -m pytest scripts/test_lint_paid_llm_entity.py -q -k
+      "test_model_saying_no_cannot_clear_the_grep or test_ask_returns_none_on_a_non_utf8_body or
+      test_no_key_does_not_invent_violations or test_redaction_catches_a_bare_sensitive_name or
+      test_scope_matches_cate_per_predicate_not_in_aggregate or
+      test_grep_is_suffix_scoped_exactly_like_cate"
+    result: 6 passed
+    exit: 0
+    ts: 2026-09-20T08:08:00Z
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — in_scope() collapsed catE's two different exclusion lists into one, so vendor/ and
+      examples/ were dropped before composition while the constructor grep still scans them. A file
+      there failed catE and passed here: the composed verdict was WEAKER than the regex alone, the one
+      outcome Rule 3 exists to forbid."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — every redaction rule required at least one character before KEY/TOKEN/SECRET, so a
+      variable named exactly TOKEN was not redacted and its value left the machine verbatim."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — the prefilter anchored on requests.post, missing axios, aiohttp, http.client and
+      Session().post; a file pulling url, credential and model from config was judged by nobody."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW — --json printed a diagnostic line before the object, so json.loads() on the output raised."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "The test-directory exclusion used tests?/ and so also excluded a singular test/ directory, which
+      catE does not exclude — same class as the vendor/ finding, found independently."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      'A quoted JSON or dict key puts a quote between the name and the colon, so neither assignment rule
+      fired on {"api_key": "opaque-value"} and the value left verbatim. AKIA AWS ids were also absent
+      from the literal shapes.'
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "The transcribed assignment predicate requires a non-quote after the equals sign, so a quoted
+      export escapes it."
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5
+    objection:
+      "All 17 grep-missed guilt cases name their vendor in plain text, so a case-insensitive keyword
+      search scores 17 of 17 on the same set. The lane's headline recall therefore demonstrates far less
+      than it appears to, and 9 of the 20 innocence cases share no vocabulary with the guilt set, which
+      bounds what the zero-false-alarm figure means."
+    status: CONFIRMED
+  - seat: claude-sonnet-5
+    objection:
+      "The corpus contains no case that defeats keyword search (obfuscated import, bare constructor with
+      no credential kwarg, cross-file registry indirection, a non-Python SDK, a third-party CI action),
+      and no hard innocence case such as a TYPE_CHECKING-only import or a mocked client."
+    status: CONFIRMED
+  - seat: claude-opus-5
+    objection:
+      "Stronger redaction cost recall: the same bench fell from 16 of 17 to 15 of 17 after the seats'
+      redaction fixes landed. Sending less signal is correct under the output boundary, but the trade is
+      real and is recorded here rather than absorbed silently."
+    status: CONFIRMED
+unresolved:
+  - "The corpus is not extended with the seats' hard cases in this PR. They are written out verbatim in
+    the council transcripts and are the first work of the follow-up; arming the step should wait for
+    them, which is why this ships advisory."
+  - "Cross-file indirection remains outside the lane's reach by construction."

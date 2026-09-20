@@ -1,0 +1,50 @@
+task_id: jev-ban-entity-check
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Judge the paid-Anthropic-endpoint ban as an entity rather than as a spelling, as an additive advisory step on the CI lint that already owns that ban — and enforce, blockingly, the rule the first attempt discovered by breaking it four times — prose about a banned shape must not contain the shape.
+constraints:
+  - Composition is OR and never AND — the incumbent greps keep their verdict untouched and the model may only ADD a finding, so no model failure can clear what the repo blocks today.
+  - Scope and exclusions must match the incumbent per predicate, never in aggregate — an exclusion wider than catE's makes the composed verdict weaker than the regex alone.
+  - An absent key or an unreachable service degrades to exactly today's behaviour; the step never fails for lack of a credential.
+  - Advisory only — the entity step always exits 0 in this PR; arming it is a later, separate decision.
+  - The prose step is the opposite and blocks from day one: its predicates are literal, so a red is never a judgment call. The 16 files that already carried such prose are frozen rather than cured — curing four unrelated apps would be a second concern in one PR.
+  - Everything sent externally passes redaction first; values go, structure stays.
+acceptance:
+  - text: WHEN the model answers every route 0.0 on a file the incumbent grep condemns the composed verdict SHALL still be a violation.
+    probe: test_model_saying_no_cannot_clear_the_grep
+  - text: WHEN the service returns nothing or a non-UTF-8 body the client SHALL return no-opinion and SHALL NOT raise.
+    probe: test_ask_returns_none_on_a_non_utf8_body
+  - text: WHEN no key is configured the lint SHALL apply the grep predicate and SHALL NOT invent findings.
+    probe: test_no_key_does_not_invent_violations
+  - text: WHEN source text carries a credential in a quoted, unquoted, JSON-key or bare-name form the payload leaving the machine SHALL NOT contain its value.
+    probe: test_redaction_catches_a_bare_sensitive_name
+  - text: WHERE catE scans a path this lint SHALL scan it too, per predicate rather than in aggregate.
+    probe: test_scope_matches_cate_per_predicate_not_in_aggregate
+  - text: WHEN the same banned text appears in a file suffix catE does not scan the transcribed predicate SHALL NOT fire on it.
+    probe: test_grep_is_suffix_scoped_exactly_like_cate
+  - text: WHEN a comment or docstring spells a banned shape the prose lint SHALL red, and WHEN the same text sits in a regex literal it SHALL NOT.
+    probe: test_guilt / test_a_regex_literal_in_code_is_never_read
+  - text: WHEN prose names the sanctioned OAuth keyword argument the lint SHALL NOT fire — the over-match this guard is most likely to commit.
+    probe: test_innocence[THE-sanctioned-oauth-path]
+  - text: WHEN a diff adds a new offender AND pardons it in the same diff the lint SHALL fail on the growth rather than on the file.
+    probe: test_a_grown_list_is_its_own_failure
+  - text: WHEN every named file is unscannable the lint SHALL refuse to report clean.
+    probe: test_naming_only_unscannable_files_refuses_to_report_clean
+assumptions:
+  - text: The 39-case bench corpus is representative of how this ban is actually violated in this repo.
+    status: unverified
+    probe: bench_cases.json — authored by the lane; a council seat showed all 17 grep-missed cases name their vendor in plain text
+  - text: A 0.80 firing threshold is right for production traffic.
+    status: unverified
+    probe: sensitivity table printed by --bench; not tuned, deliberately
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — step "Paid-endpoint ban judged as an entity (advisory)", shipped in this PR and running on its own diff.
+  - .github/workflows/catE-sovereignty-lint.yml — step "Prose must not spell a banned shape (blocking)", shipped in this PR and running on its own diff, whose five cured lines are in that diff.
+risks:
+  - The corpus is authored by the lane, so its recall figure is self-graded. A council seat measured that a plain keyword search scores full marks on the same set, which bounds what the model's score demonstrates.
+  - Stronger redaction lowered recall on the bench. Sending less signal is the correct trade under the output boundary, and the cost is stated rather than hidden.
+  - Cross-file indirection is outside the lane's reach: a diff calling a pre-existing wrapper need not reveal that wrapper's endpoint.
+  - The prose lint reads .py, .sh and .yml only. A .md or a .ts comment carrying the same shape is out of scope today, and the PR body that produced red #1 is not a file at all.
+  - The grandfather list is a pardon, and a pardon is debt. It can only shrink against the base ref, but nothing schedules its repayment.
+grader: Two council seats reviewed the code adversarially and independently; no verdict asserted by the author. Generator is not grader.

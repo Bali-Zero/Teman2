@@ -1,0 +1,22 @@
+{
+  "_doc": "Files carrying prose that spells a banned shape, frozen at the moment scripts/lint/lint_ban_prose.py was introduced (PR successor to #6935). FILE-level, not finding-level, so an unrelated edit that shifts a line number inside an already-listed file is never read as a new violation. The lint fails when a file OUTSIDE this set gains a violation, and when this list GROWS against the base ref \u2014 a PR cannot add an offender and grandfather it away in the same diff. Remediate a file, then delete its line here: shrinking is always allowed.",
+  "frozen_at": "2026-09-21",
+  "files": [
+    ".claude/hooks/codex-spalla-trigger.sh",
+    "apps/backend-rag/backend/app/routers/research_control.py",
+    "apps/backend-rag/backend/llm/openai_responses_client.py",
+    "apps/backend-rag/backend/services/integrations/wa_finalize.py",
+    "apps/backend-rag/backend/services/oracle/smart_oracle.py",
+    "apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/build_query_vectors.py",
+    "apps/backend-rag/backend/tests/scripts/test_visa_engine_sign_pack.py",
+    "apps/backend-rag/backend/tests/unit/core/test_qdrant_db_comprehensive.py",
+    "apps/bali-intel-scraper/backend/services/claude_oauth.py",
+    "apps/organism/organism/emit.py",
+    "apps/organism/organism/supervisor/daemon.py",
+    "scripts/ci/bot_provider_gate.py",
+    "scripts/detect_secrets_auto_triage.py",
+    "scripts/tests/test_codex_spalla_trigger_redaction.sh",
+    "scripts/warroom_step1_reader.py",
+    "scripts/warroom_step2_briefer.py"
+  ]
+}
