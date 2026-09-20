@@ -1,6 +1,6 @@
 {
   "_version": "2.0",
-  "_updated": "2026-09-21 (intake_extraction: absent SEA-LION -> qwen3.8:27b-mlx, measured on pro)",
+  "_updated": "2026-09-21 (cell_tier1 -> qwen3.8:27b-mlx measured; 7 consumerless roles removed)",
   "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
@@ -27,44 +27,57 @@
       "ollama_restart_schedule": "weekly sunday 05:00 WITA"
     }
   },
+  "_removed_roles_2026_09_21": {
+    "_why": "Removed, not repointed: no live consumer for any of them. Verified by grepping get_role/resolve_model_role, direct bracket access, and raw crontabs on both machines. A role naming an absent model that nobody calls keeps the defined<->live probe DIVERGED forever, and a probe that always shouts gets trained out of existence. Recorded here rather than deleted silently, so restoring one is a lookup and not an excavation. Note: get_role() has exactly ONE real consumer in the whole repo (scripts/model_topology.py), which is how seven roles became ghosts without anything breaking.",
+    "sentry": {
+      "was": "qwen3:4b",
+      "why": "only reachable from the cell/main.py ram_gb<=16 branch, written for Air (decommissioned 2026-05-05)"
+    },
+    "translation": {
+      "was": "gemma3:27b",
+      "why": "appears only in federation_capability_table.py as a documentation tag, never resolved as a role"
+    },
+    "kg_json": {
+      "was": "gemma4:26b",
+      "why": "zero occurrences anywhere outside this file"
+    },
+    "reasoning": {
+      "was": "deepseek-r1:32b",
+      "why": "every match in the repo is an unrelated JSON field or docstring"
+    },
+    "cron_fallback": {
+      "was": "gemma3:27b",
+      "why": "cited only in two closed planning docs from April and June 2026"
+    },
+    "code_review": {
+      "was": "qwen3:8b",
+      "why": "the only matches are independent systems that never read this file (multi_ai_adapter TaskType.CODE_REVIEW routes to Claude; federation_capability_table is a capability tag)"
+    },
+    "cron_primary_tool_calling": {
+      "was": "qwen3:8b",
+      "why": "zero occurrences in the entire repo outside this file"
+    }
+  },
   "roles": {
     "cron_primary": "qwen3.5:9b",
-    "cron_primary_tool_calling": "qwen3:8b",
-    "cron_fallback": "gemma3:27b",
     "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
     "agy_gemini_flash_high": "agy/Gemini 3.5 Flash (High)",
     "agy_gemini_pro_high": "agy/Gemini 3.1 Pro (High)",
     "swarm_fast_review": "agy_gemini_flash_high",
     "swarm_deep_review": "agy_gemini_pro_high",
-    "translation": "gemma3:27b",
-    "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
     "ocr_vision": "qwen2.5vl:7b",
     "intake_extraction": "qwen3.8:27b-mlx",
-    "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
-    "sentry": "qwen3:4b",
-    "code_review": "qwen3:8b",
     "cell_tier0": "qwen3.5:9b",
-    "cell_tier1": "gemma4:26b",
+    "cell_tier1": "qwen3.8:27b-mlx",
     "sentinel_classifier": "claude --print",
     "dlq_reasoning": "claude --print",
     "aider_fix": "openrouter/deepseek/deepseek-chat-v3-0324",
     "codex_fix": "codex --full-auto"
   },
   "failure_domains": {
-    "ollama_pro": [
-      "cron_primary",
-      "cron_primary_tool_calling",
-      "cron_fallback",
-      "translation",
-      "kg_json",
-      "vision",
-      "reasoning",
-      "cell_tier0",
-      "cell_tier1",
-      "code_review"
-    ],
+    "ollama_pro": ["cron_primary", "vision", "cell_tier0", "cell_tier1"],
     "ollama_mini": ["sentry"],
     "gemini_cloud": ["cloud_fallback"],
     "antigravity_cli": [
