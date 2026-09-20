@@ -421,3 +421,27 @@ def test_innocence_a_well_formed_witness_on_this_host_still_closes_the_row(world
     )
 
     assert [r["job"] for r in bsc.consume(max_rows=10, dry_run=False)["resolved"]] == ["cron-fail:alpha"]
+
+
+def test_a_job_still_pending_on_another_machine_is_not_closed_from_here(world):
+    """A resolution is keyed on `job` alone and every reader collapses by job,
+    so closing Pro's row would silence Mini's pending row of the same name."""
+    world.append(_routed("cron-fail:fly-pg-backup", NOW - 3000, machine="MiniBox"))
+    world.append(_routed("cron-fail:fly-pg-backup", NOW - 1800))
+    _run_state(world, "fly-pg-backup", "ok", NOW)
+
+    report = bsc.consume(max_rows=10, dry_run=False)
+
+    assert report["resolved"] == []
+    assert any(i["why"] == "pending_on_another_machine" for i in report["left"])
+
+
+def test_an_empty_but_successful_ps_is_undecidable_not_innocent(monkeypatch):
+    monkeypatch.setattr(bsc.os, "kill", lambda pid, sig: None)
+
+    class _Out:
+        returncode = 0
+        stdout = "   \n"
+
+    monkeypatch.setattr(bsc.subprocess, "run", lambda *a, **k: _Out())
+    assert bsc._pid_is_a_live_healer(4242) is None
