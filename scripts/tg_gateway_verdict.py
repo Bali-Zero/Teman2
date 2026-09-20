@@ -34,5 +34,11 @@ def extract_gateway_verdict(stderr: str | None) -> str | None:
 
 
 def gateway_delivered(verdict: str | None) -> bool:
-    """Whether the gateway reports a real-time Telegram delivery."""
+    """Whether the gateway reports a real-time Telegram delivery.
+
+    ``spooled`` is NOT a delivery: it says the gateway took custody — a digest
+    row, or since 2026-09-21 an escalation-board row for a seat to cure — and
+    no human was reached. A caller recording ``alerted=<this>`` keeps telling
+    the truth while the condition is still being worked.
+    """
     return verdict == "sent"

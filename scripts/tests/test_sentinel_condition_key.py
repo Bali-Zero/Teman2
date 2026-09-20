@@ -622,6 +622,15 @@ def real_gateway(tmp_path, monkeypatch):
     spool = tmp_path / "spool"
     monkeypatch.setenv("TG_SPOOL_DIR", str(spool))
     monkeypatch.setenv("TG_SECRETS_FILE", str(tmp_path / "no-secrets.env"))
+    # "Hermetically" has to include the escalation board, which this fixture
+    # does not set TG_DRY_RUN for and so would otherwise append to for real
+    # (measured 2026-09-21: it did, twice).
+    monkeypatch.setenv("TG_BOARD_PATH", str(tmp_path / "board.jsonl"))
+    # Routing OFF: these tests are about the KEY — that a CRITICAL is not
+    # swallowed by the WARNING before it, that an unnamed condition derives one
+    # identity. Routing decides the DESTINATION, one layer up, and turning it on
+    # here would replace assertions about keys with assertions about tiers.
+    monkeypatch.setenv("TG_ACT_ROUTING_ENABLED", "false")
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     import sentinel_lib.alerter as alerter
