@@ -304,19 +304,75 @@ describe("voa-i18n — the banned-claims guard followed the copy", () => {
     }
   });
 
+  /**
+   * THE TWO LISTS, COMPARED AS PATHS — not as text, and never as basenames.
+   *
+   * The first version of this check grepped the claims guard's source for the
+   * literal relative path. That worked until the out-of-tree DECLINE table
+   * joined the set: the claims guard reaches it through a multi-argument
+   * `join(VOA_DIR, "..", "..", "..", …)`, so there is no full-path literal to
+   * find. Falling back to the BASENAME made it pass — and silently stopped
+   * convicting `[hash]/page.tsx`, whose basename `page.tsx` the wizard's own
+   * entry already satisfies. One assertion, dropped by the fix to a different
+   * one: cicatrix family #3, caught by the gate on this very diff.
+   *
+   * So both sides are RESOLVED to absolute paths and compared as paths. The
+   * guilt control below is the mutation that exposed the basename version.
+   */
+  function claimsGuardScannedFiles(src: string): Set<string> {
+    const screen = src.split("const SCREEN_FILES = [")[1]?.split("].map(")[0];
+    const joined = src
+      .split("const DECLINE_EDUCATION_FILE = join(")[1]
+      ?.split(");")[0];
+    if (!screen || !joined) throw new Error("claims guard shape changed");
+    const rels = [...screen.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    const hops = [...joined.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    return new Set([
+      ...rels.map((rel) => join(VOA_DIR, rel)),
+      join(VOA_DIR, ...hops),
+    ]);
+  }
+
+  const CLAIMS_GUARD_SRC = readFileSync(
+    join(VOA_DIR, "voa-copy.guard.test.ts"),
+    "utf8",
+  );
+
   it("every consumer this file scans is scanned by the claims guard too", () => {
-    const guardSrc = readFileSync(
-      join(VOA_DIR, "voa-copy.guard.test.ts"),
-      "utf8",
-    );
+    const scanned = claimsGuardScannedFiles(CLAIMS_GUARD_SRC);
+    // The parse really parsed — a silent split miss would make this vacuous.
+    expect(scanned.size).toBeGreaterThan(10);
     const missing = CONSUMER_FILES.filter(
-      // BASENAME, not the whole path: the claims guard reaches the
-      // out-of-tree DECLINE table through a multi-argument `join("..", "..",
-      // …)`, so the two lists agree on the FILE while spelling the path
-      // differently. Comparing the literal string would red on formatting.
-      (rel) => !guardSrc.includes(`"${rel.split("/").pop()}"`),
+      (rel) => !scanned.has(join(VOA_DIR, rel)),
     );
     expect(missing).toEqual([]);
+  });
+
+  it("is GUILTY of the claims guard dropping the verdict screen (guilt control)", () => {
+    const sabotaged = CLAIMS_GUARD_SRC.replace(
+      /^.*"\[hash\]\/page\.tsx".*\n/m,
+      "",
+    );
+    // The mutation must have bitten, or the control proves nothing.
+    expect(sabotaged).not.toBe(CLAIMS_GUARD_SRC);
+    const scanned = claimsGuardScannedFiles(sabotaged);
+    const missing = CONSUMER_FILES.filter(
+      (rel) => !scanned.has(join(VOA_DIR, rel)),
+    );
+    expect(missing).toEqual(["[hash]/page.tsx"]);
+  });
+
+  it("is GUILTY of the claims guard dropping the DECLINE table (guilt control)", () => {
+    const sabotaged = CLAIMS_GUARD_SRC.replace(
+      '"declineEducation.ts"',
+      '"declineEducation.SOMETHING-ELSE.ts"',
+    );
+    expect(sabotaged).not.toBe(CLAIMS_GUARD_SRC);
+    const scanned = claimsGuardScannedFiles(sabotaged);
+    const missing = CONSUMER_FILES.filter(
+      (rel) => !scanned.has(join(VOA_DIR, rel)),
+    );
+    expect(missing).toEqual(["../../../components/garuda/declineEducation.ts"]);
   });
 });
 
