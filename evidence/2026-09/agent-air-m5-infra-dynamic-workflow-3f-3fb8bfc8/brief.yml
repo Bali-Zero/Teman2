@@ -1,0 +1,103 @@
+task: >-
+  PR3f — the /dynamic-workflow skill + its brief template, resumed under
+  MANDATE-builder.md §S after Zero's 2026-09-20 ruling ("sì ai default", row 1
+  of dw-run1-inputs/SPEC-PROPOSALS.md). The lineage was SUSPENDED after three
+  REWORK-BUILD verdicts on the same deliverable — #6777 (superseded), #6779
+  (dw-gate-11), #6802 (dw-gate-17), #6804 (dw-gate-18) — and every red after
+  the first was the same class of defect: a measured number written into the
+  PR body or frozen into the template that did not reproduce when the gate
+  re-ran the command it printed (gate-11 obs 5: F2 said 88/6, the commands
+  returned 86/4; gate-17 obs 2: a size comparison argued from 355 against a
+  total that measures 329; gate-18 obs 1: F2 said 107, the command returned
+  104; gate-18 obs 2: a row-(a) MD5 matching no state of the file it claimed
+  to describe). §S is the structural cure rather than a fresher number: F2
+  carries NO count at all (S1) and a new test enforces it by shape; restores
+  are proven with `cmp -s`, never with a hash value (S2); every number in the
+  PR body sits inside a paste that starts with its own `$ command` (S3).
+  Two further reasons this is not a fourth round of the same PR. First, the
+  launcher has moved: #6826, #6835, #6875, #6880, #6883, #6886, #6911, #6915
+  and #6939 all landed after the raw material was written, so the skill
+  describes a launcher the suspended text no longer matched. Second, the
+  first REAL run of the pipeline (2026-09-19, three external coaches) found
+  defects no fake-seat suite can see, and Zero ruled on them: the brief's §4
+  now STATES the literals the judge parses, so no coach is disqualified for a
+  spelling the brief never gave it (row 2a — astra and kimi-k3 both failed on
+  the round-cap column alone, writing it as prose); the skill's r2 step states
+  the objection shape the filter keeps (row 3 — 16 of 16 real objections were
+  discarded on format); and the squad block is described as four columns with
+  `unknown` distinguished from `dead` (rows 4 and 8 — a false-dead table
+  distorted all three formations).
+lane: infra/dynamic-workflow-3f
+machine: air-m5
+date: 2026-09-20
+colour: BLUE
+
+gear: 2
+gear_reason: >-
+  Floor is 2, SIZE-sourced per scripts/evidence_pack_lint.py's compute_floor /
+  compute_floor_source. The overage past CLAUDE.md's "~400 net lines where the
+  work allows" soft guidance is disclosed in the PR body with the measured
+  `git diff --stat` paste, not hidden, and it is structural: a skill whose
+  every step must name the launcher subcommand that enforces it, a brief
+  template carrying F1–F15 with an openable pointer each and the judge's own
+  literal contract, and a test file that makes both of those checkable rather
+  than promised. No sentence of this file or of the PR body compares this PR's
+  size to a predecessor's — dw-gate-17 obs 2 and dw-gate-18 obs 1/2 were both
+  numbers that did not reproduce, and one of them had been frozen into this
+  file as well as into the body. The only size statement anywhere is the
+  command's own output, pasted at arming.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    `brief` runs with NO --template: the launcher's DEFAULT_TEMPLATE resolves
+    to .claude/skills/dynamic-workflow/brief.template.md, which this PR is
+    what lands. Before it, the launcher was unusable by default (run1 finding
+    R1) — proven by a real run on a throwaway kit outside the repo with
+    DW_FAKE_SEATS=1 and the run1 objective, pasted in the body.
+    probe: DW_FAKE_SEATS=1 python3 scripts/dynamic_workflow.py brief --slug <s> --objective-file <f> --colour BLUE --kit <tmp>
+  A2: >-
+    brief.template.md §4 states the literals the judge parses — final gate row
+    seat `opus-5` and mode `window`, a BARE INTEGER round cap on every Tactics
+    row, every `## Never` bullet citing an F/C, C1 cited by number with a
+    banned vendor name read as a citation only inside a `## Never` bullet —
+    each checked against _check_c1/_check_c5/_check_c8 on the head, so the
+    template promises nothing the judge does not do (Zero ruling row 2a).
+    probe: grep -n "BARE INTEGER" .claude/skills/dynamic-workflow/brief.template.md
+  A3: >-
+    F2 carries no count: two commands, and the sentence that the convener
+    measures at brief time into the kit's own BRIEF.md. Enforced by
+    test_f2_carries_no_frozen_count by SHAPE — every digit run inside the F2
+    block must belong to a date token — not by a blocklist of the counts that
+    were wrong before (§S S1).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -q -k f2_carries_no_frozen_count
+  A4: >-
+    SKILL.md describes the launcher as it is on the head, not as the raw
+    material described it: DEFAULT_TEMPLATE, the four-column squad block with
+    `unknown` != `dead`, `r1 --register`, wrapper normalisation, the empty
+    temp cwd per launch, astra's `-o` outside the kit, the ledger lock, the
+    r2 objection shape, judge-by-entity C1/C5, `jury`'s refusal on zero
+    survivors, and no frozen `--collect-only` count. Every flag the launcher's
+    own --help screens expose is named, enforced by
+    test_every_launcher_flag_is_named_in_skill_md.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -q
+  A5: >-
+    CI consumer in the same PR (§S S5): the skill test file is added to
+    .github/workflows/dynamic-workflow-selftest.yml's pytest step, and
+    `.claude/skills/dynamic-workflow/**` is already in that workflow's paths
+    filter, so the job re-runs on this PR's own head. That run green, with its
+    URL, is the Bites observation.
+    probe: gh run list --workflow dynamic-workflow-selftest --branch <branch>
+
+out_of_scope: >-
+  Any change to scripts/dynamic_workflow.py, scripts/arsenal_probe.py or the
+  lint scripts — this PR is documentation plus its own test, and the launcher
+  cures live in their own serial PRs (#6940 judge-by-entity, PR3q squad
+  block). SPEC-PROPOSALS rows 5 (seat env denylist), 7 (r2/jury relaunch) and
+  9 (convener skipped in r2/jury), all explicitly not gating "ready". The
+  second real run on the run1 objective, which is the next step AFTER this
+  merges, not part of it. The root evidence/brief.yml, deliberately untouched:
+  this brief lives at its own per-PR path.
