@@ -2,10 +2,15 @@
 // the same defect and the same comment, and nothing rendered it in a test until
 // this file, which is why three cures to the idiom reached one copy only.
 //
-// Today no canonical record can reach it (the three unverified-with-rows codes
-// are all gold, so they render through LicensingSection), so these fixtures
-// prove the component's own honesty rather than a live page. That is the point:
-// the next lot can move a code between the two branches without a review.
+// These three records are not hypothetical, and the first version of this
+// header said they were: it claimed no canonical record reaches this component
+// because the unverified-with-rows codes are "all gold". They are in the gold
+// CORPUS and they do not reach the gold LAYOUT — `discloseKbliEditorial`
+// withholds it when the PMA verdict is unverified, which is true of all three.
+// 93114, 49213 and 93191 render through THIS component on production (read on
+// the live HTML 2026-09-20: the `gap-1 p-4` cells and the "under Licensing
+// Data below" wording are this file's, not KeyFacts'), and so do 1,214 of the
+// 1,559 records overall.
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
