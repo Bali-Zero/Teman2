@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useVoaLocale } from "./useVoaLocale";
+import { voaCopy, type VoaCopyKey } from "./voa-copy";
+import type { VoaLocale } from "./voa-locale";
 
 /**
  * GARUDA VOA — the published filing deadline, rendered as the hero of the
@@ -106,18 +109,29 @@ export function safeClockState(daysLeft: number): SafeClockState {
  * Greenwich. That helper is right for the timestamps it was written for and
  * wrong for a civil day, which is why this one is here instead.
  */
-const DEADLINE_DAY = new Intl.DateTimeFormat("en-GB", {
+const DAY_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   timeZone: "UTC",
   weekday: "long",
   day: "numeric",
   month: "long",
   year: "numeric",
-});
+};
 
-export function formatCivilDay(day: string): string {
+/**
+ * One formatter per language, built once. The date under the count is the
+ * single fact this hero exists to state, so "Saturday, 24 October 2026" inside
+ * Indonesian copy would be the half-translated screen in its most visible
+ * form. `en` stays `en-GB` byte-for-byte, so no existing caller moves.
+ */
+const DEADLINE_DAY: Record<VoaLocale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-GB", DAY_FORMAT_OPTIONS),
+  id: new Intl.DateTimeFormat("id-ID", DAY_FORMAT_OPTIONS),
+};
+
+export function formatCivilDay(day: string, locale: VoaLocale = "en"): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
   if (!m) return day;
-  return DEADLINE_DAY.format(
+  return (DEADLINE_DAY[locale] ?? DEADLINE_DAY.en).format(
     new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))),
   );
 }
@@ -201,10 +215,10 @@ export function useWitaCivilDay(frozen?: Date): string {
  * widths differ, and `voa-clock-states.guard.test.ts` measures all three on
  * the CSS and the DOM rather than on the class suffix.
  */
-const STATE_WORD: Record<Exclude<SafeClockState, "passed">, string> = {
-  ample: "days to file",
-  soon: "days left to file",
-  today: "Today",
+const STATE_WORD_KEY: Record<Exclude<SafeClockState, "passed">, VoaCopyKey> = {
+  ample: "clock.unit.ample",
+  soon: "clock.unit.soon",
+  today: "clock.today",
 };
 
 export interface SafeClockHeroProps {
@@ -221,6 +235,8 @@ export function SafeClockHero({
   now,
   handoffHref,
 }: SafeClockHeroProps) {
+  const locale = useVoaLocale();
+  const t = voaCopy(locale);
   const today = useWitaCivilDay(now);
   const daysLeft = civilDaysBetween(today, deadline);
 
@@ -229,36 +245,34 @@ export function SafeClockHero({
   if (daysLeft === null) return null;
 
   const state = safeClockState(daysLeft);
-  const day = formatCivilDay(deadline);
+  const day = formatCivilDay(deadline, locale);
 
   if (state === "passed") {
     return (
       <section
         className="voa-clock voa-clock--passed"
-        aria-label="Filing deadline"
+        aria-label={t("clock.aria")}
       >
-        <p className="voa-clock__word">
-          The published filing day at Ngurah Rai for this check has passed.
-        </p>
-        <p className="voa-clock__date">It was {day}.</p>
-        <p className="voa-clock__note">
-          A consultant can tell you what your options are from here — it depends
-          on details this form never asked for.
-        </p>
-        <ClockHandoff href={handoffHref} label="Message the visa desk" />
+        <p className="voa-clock__word">{t("clock.passed.word")}</p>
+        <p className="voa-clock__date">{t("clock.passed.date", { day })}</p>
+        <p className="voa-clock__note">{t("clock.passed.note")}</p>
+        <ClockHandoff href={handoffHref} label={t("clock.passed.cta")} />
       </section>
     );
   }
 
-  const plural = daysLeft === 1 ? "day left to file" : STATE_WORD[state];
+  const plural =
+    daysLeft === 1 ? t("clock.unit.one") : t(STATE_WORD_KEY[state]);
 
   return (
     <section
       className={`voa-clock voa-clock--${state}`}
-      aria-label="Filing deadline"
+      aria-label={t("clock.aria")}
     >
       {state === "today" ? (
-        <p className="voa-clock__word voa-clock__word--lead">Today</p>
+        <p className="voa-clock__word voa-clock__word--lead">
+          {t("clock.today")}
+        </p>
       ) : (
         <p className="voa-clock__count">
           <span className="voa-clock__num">{daysLeft}</span>
@@ -267,15 +281,11 @@ export function SafeClockHero({
       )}
       <p className="voa-clock__date">
         {state === "today"
-          ? `is the last published filing day at Ngurah Rai — ${day}.`
-          : `${day} at Ngurah Rai — the counter's published deadline.`}
+          ? t("clock.date.today", { day })
+          : t("clock.date.normal", { day })}
       </p>
-      <p className="voa-clock__note">
-        {
-          "This is the one date we publish, and it is the one Ngurah Rai publishes. Filing at another office runs on that office's own deadline."
-        }
-      </p>
-      <ClockHandoff href={handoffHref} label="Filing somewhere else?" />
+      <p className="voa-clock__note">{t("clock.note")}</p>
+      <ClockHandoff href={handoffHref} label={t("clock.handoff")} />
     </section>
   );
 }

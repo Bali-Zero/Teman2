@@ -4,11 +4,13 @@ name: catE-sovereignty-lint
 # 2026-06-11 guardian-of-guardians audit, domande-per-fable5 §E (#40 #43 #44).
 #
 # Three "exists-but-not-armed" (W64) gaps had a lint/antibody but NO CI consumer:
-#   #40  paid-Anthropic ban is re-defended by hand in ~9 scripts (unset/pop
-#        ANTHROPIC_API_KEY) but NOTHING fails the build if a new script
-#        instantiates the PAID path  Anthropic(api_key=...)  /  sets
-#        ANTHROPIC_API_KEY=<value>.  CLAUDE.md §7: "se una regola è violabile,
-#        scrivi un hook" — this is that hook, at CI level.
+#   #40  paid-Anthropic ban is re-defended by hand in ~9 scripts (each strips
+#        the vendor credential variable) but NOTHING fails the build if a new
+#        script instantiates the PAID path — the vendor constructor taking a
+#        per-token credential keyword argument — or sets that same variable to
+#        a value.  CLAUDE.md §7: "se una regola è violabile, scrivi un hook" —
+#        this is that hook, at CI level.  The two shapes are written out once,
+#        in the regex literals below, and nowhere in prose (step #40d).
 #   #43  the Law-5 autonomous-publish lint (scripts/lint/wr3_lint_autonomous_publish.py,
 #        bans ig.publish / tiktok.publish / yt.upload from any wr3_*.py) EXISTED
 #        but was wired into ZERO workflows (symbiosis-lint.yml only doc-checks).
@@ -37,15 +39,37 @@ on:
   pull_request:
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
+      # The budget itself and its corpus: editing either without re-running
+      # this workflow is how a guard's own proof goes stale unobserved.
+      - ".github/workflows/catE-paid-anthropic-baseline.txt"
+      - "scripts/tests/test_cate_paid_budget.sh"
   push:
     branches:
       - main
     paths:
       - "**.py"
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.sh"
       - "**/.env*"
+      - "scripts/lint_paid_llm_entity.py"
+      - "scripts/typesafe_client.py"
+      - "scripts/redact_for_external.py"
       - ".github/workflows/catE-sovereignty-lint.yml"
+      # The budget itself and its corpus: editing either without re-running
+      # this workflow is how a guard's own proof goes stale unobserved.
+      - ".github/workflows/catE-paid-anthropic-baseline.txt"
+      - "scripts/tests/test_cate_paid_budget.sh"
 
 permissions:
   contents: read
@@ -63,25 +87,84 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          # three-dot changed-file enumeration needs the merge base
+          fetch-depth: 0
+          filter: blob:none
+
+      # The local pre-commit gate's own corpus (scripts/check_ban_predicates.py
+      # runs from .husky/pre-commit). Its first tests shell-unquote THIS file's
+      # grep arguments and compare them to the script's transcriptions, so a
+      # regex edited here without the script fails on the next line, not in a
+      # commit six weeks from now that the local gate quietly waved through.
+      - name: ban-predicates — transcription parity + guilt/innocence
+        # This job is otherwise pure shell on the runner's stock python, which
+        # has no pytest — the first run of this step said so (`No module named
+        # pytest`, run 35517016619). Installed here rather than by adding
+        # setup-python: one package, no toolchain, no cache to go stale.
+        run: |
+          python3 -m pip install --quiet pytest
+          python3 -m pytest scripts/tests/test_ban_predicates.py -q
+
+      # Runs BEFORE #40 so a broken budget step fails loud here rather than
+      # quietly degrading the scan it exists to guard. The corpus extracts #40's
+      # own shell between its CATE40_BUDGET markers and exercises it against
+      # synthetic trees — no network, nothing outside a temp dir.
+      - name: catE #40 budget — guilt + innocence corpus
+        run: bash scripts/tests/test_cate_paid_budget.sh
 
       # ── #40 — ban the PAID Anthropic endpoint (MAX-plan duplication) ────────
       # OK paths (MUST NOT trip): Anthropic(auth_token=...) / ANTHROPIC_AUTH_TOKEN
       #   (OAuth Bearer, the sanctioned SDK path), and unset/pop ANTHROPIC_API_KEY
       #   (defense-in-depth strips). We ban ONLY the paid instantiation/assignment.
       #
-      # BASELINE-AWARE (W71 antibody pattern): the 2026-06-11 audit found 3
-      # PRE-EXISTING paid constructor sites (see catE-paid-anthropic-baseline.txt).
-      # A blocking "zero hits" check would be perpetually red on main, so we fail
-      # only when the live count EXCEEDS the baseline — i.e. a NEW paid path is
-      # introduced. The 3 known sites are surfaced (::warning::) for deliberate
-      # operator remediation, not silently tolerated.
+      # BASELINE-AWARE (W71 antibody pattern): this step fails when the live
+      # count EXCEEDS the budget declared in catE-paid-anthropic-baseline.txt.
+      # That budget is now ZERO, so any hit at all is red.
+      #
+      # It was 3 until 2026-09-20, and the drain is the point of this comment.
+      # A budget is a COUNT, not a set of identities: the grep cannot tell which
+      # hit belongs to which baseline line. Measured that day: the three sites
+      # the file named had all been remediated and matched nothing, while the
+      # live count of 2 was two DOCSTRINGS quoting the banned spelling. Two
+      # quotes holding three phantom slots left room for one genuinely new paid
+      # call site to land green (simulated: count 3, baseline 3, 3 > 3 false).
+      # Both docstrings now describe the shape instead of spelling it and the
+      # phantom lines are gone, which is what lets the budget be 0 — and at 0
+      # there is no arithmetic left to drift.
+      #
+      # The count is taken with awk, NOT `grep -c ... || echo 0`. On an empty
+      # budget grep -c PRINTS "0" and EXITS 1, so the `|| echo 0` fallback
+      # appends a second line: BASELINE becomes the two-line string "0\n0",
+      # `[ -gt ]` dies with "integer expression expected", and because this
+      # `run:` block sets -uo pipefail but not -e, the failed test reads as
+      # FALSE — the step then prints OK with any number of live hits. Measured
+      # with COUNT=9 before the fix. Draining a budget must not disarm its
+      # guard (cicatrix #2, esiste != armato), so the count is now a single
+      # integer from a command that always exits 0, and is range-checked below.
       - name: Ban NEW paid Anthropic constructor (vs committed baseline)
         run: |
+          # >>> CATE40_BUDGET_BEGIN (extracted verbatim, dedented, by
+          # scripts/tests/test_cate_paid_budget.sh — the markers are
+          # load-bearing: without them that test silently tests nothing)
           set -uo pipefail
           BASELINE_FILE=.github/workflows/catE-paid-anthropic-baseline.txt
-          # uncommented, non-blank lines in the baseline = expected count
-          BASELINE=$(grep -cvE '^\s*(#|$)' "$BASELINE_FILE" || echo 0)
-          # AsyncAnthropic/Anthropic( api_key=...  (paid constructor); exclude vendored/test code
+          if [ ! -f "$BASELINE_FILE" ]; then
+            echo "::error::$BASELINE_FILE is missing — refusing to guess the budget."
+            exit 1
+          fi
+          # uncommented, non-blank lines in the baseline = the budget. awk always
+          # exits 0 and prints exactly one integer, including zero (see the
+          # comment above this step for the `grep -c || echo 0` trap it replaces).
+          BASELINE=$(awk '!/^[[:space:]]*(#|$)/ {n++} END {print n+0}' "$BASELINE_FILE")
+          case "$BASELINE" in
+            ''|*[!0-9]*)
+              echo "::error::budget did not read as a single integer (got: $BASELINE)."
+              exit 1
+              ;;
+          esac
+          # the vendor constructor, sync or async, taking a per-token credential
+          # keyword argument (the paid path); exclude vendored/test code
           HITS=$(grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . \
             | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' || true)
           COUNT=$(printf '%s' "$HITS" | grep -c . || true)
@@ -91,16 +174,28 @@ jobs:
             echo "::error::NEW paid Anthropic constructor introduced ($COUNT > baseline $BASELINE). Use claude CLI (CLAUDE_CODE_OAUTH_TOKEN) or Anthropic(auth_token=...). If a known site moved, update catE-paid-anthropic-baseline.txt."
             exit 1
           fi
-          [ "$COUNT" -gt 0 ] && echo "::warning::$COUNT known paid-Anthropic constructor site(s) remain — remediate to OAuth, see catE-paid-anthropic-baseline.txt."
-          echo "OK: no NEW paid Anthropic constructor vs baseline."
+          # No ::warning:: branch for a surviving tolerated site: at budget 0 any
+          # hit already exited above, so that line could only ever be dead code.
+          echo "OK: no paid-constructor hit (budget $BASELINE, live $COUNT)."
+          # <<< CATE40_BUDGET_END
 
       # ── #40b — ban ASSIGNING a value into ANTHROPIC_API_KEY (export/setenv) ──
       # Allowed: unset / del / .pop / =""/=None (these STRIP, defense-in-depth).
       # Banned: a literal export/setenv that SETS the key to a real value.
+      #
+      # `\bsetenv\(` and not `setenv\(`: without the word boundary the second
+      # alternative matched `os.unsetenv("ANTHROPIC_API_KEY")` — the very STRIP
+      # the line above calls allowed — because "unsetenv" ends in "setenv".
+      # Found 2026-09-20 by the codex-gpt-5.6-sol council seat, which ran the
+      # predicate against that literal rather than reading it. Latent in CI (no
+      # such call exists on main today) but immediate for the pre-commit gate
+      # that transcribes this regex, and a gate that refuses a defensive strip
+      # is one people learn to switch off. `\b` is supported by GNU grep -E and
+      # by the BSD grep on the fleet's macs — verified on both before landing.
       - name: Ban ANTHROPIC_API_KEY=<value> assignment
         run: |
           set -uo pipefail
-          HITS=$(grep -rnE 'export[[:space:]]+ANTHROPIC_API_KEY=[^"'"'"'[:space:]]|setenv\([[:space:]]*["'"'"']ANTHROPIC_API_KEY' \
+          HITS=$(grep -rnE 'export[[:space:]]+ANTHROPIC_API_KEY=[^"'"'"'[:space:]]|\bsetenv\([[:space:]]*["'"'"']ANTHROPIC_API_KEY' \
             --include='*.py' --include='*.sh' . \
             | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_|examples/|vendor/' || true)
           if [ -n "$HITS" ]; then
@@ -109,6 +204,101 @@ jobs:
             exit 1
           fi
           echo "OK: no ANTHROPIC_API_KEY value assignment outside vendor/examples."
+
+      # ── #40c — the same ban, judged as an ENTITY (ADVISORY) ────────────────
+      # #40 and #40b above judge SPELLING: the canonical constructor and the
+      # canonical export. CLAUDE.md §3 says in as many words that this is only a
+      # first pass — "an alias, a renamed env var, a wrapper library or a
+      # Bedrock/Vertex route reaches the same endpoint without either literal,
+      # and is equally banned". This step asks a System One model (Jev) whether
+      # the CHANGED files reach that endpoint, whatever the spelling.
+      #
+      # COMPOSITION IS OR, NEVER AND (cicatrix #3, and the point of the lane):
+      # the two greps above keep their verdict untouched; this can only ADD a
+      # finding. A model that is wrong, hallucinating, steered by an authored
+      # diff, or simply unreachable therefore costs a false alarm at worst — it
+      # can never clear something the greps condemn. `lint_paid_llm_entity.py`
+      # returns "no opinion" (not "no violation") when the service is silent.
+      #
+      # ADVISORY until the bench is re-run by someone other than the lane that
+      # wrote it (see scripts/tests/fixtures/paid_llm_entity/bench_cases.json,
+      # whose _doc says so plainly). --advisory always exits 0; dropping that
+      # flag is the whole of "arming" this, and is a deliberate later PR.
+      #
+      # No key configured = the step still runs, still applies the transcribed
+      # grep predicate, and says so. It never fails for lack of a credential.
+      - name: Paid-endpoint ban judged as an entity (advisory)
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "push build — entity judgment is a PR-time signal, skipped."
+            exit 0
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint_paid_llm_entity.py --advisory
+
+      # ── #40d — prose about a banned shape must not contain it (BLOCKING) ────
+      # The scar this step closes is not a bug in #40/#40b/#40c: it is what
+      # happened while they were being DOCUMENTED. PR #6935 suspended after four
+      # reds, every one of them a comment or a docstring that wrote a forbidden
+      # shape out in order to explain it. The asymmetry is the trap — a pattern
+      # does not match itself, so the code hunting a shape is always clean while
+      # the sentence quoting that code is not, and no scanner in this repo tries
+      # to tell description from use (nor should it: cicatrix #3).
+      #
+      # BLOCKING from the first day, unlike #40c, because nothing here is a
+      # judgment call: the predicates are literal, the guilt+innocence corpus is
+      # in scripts/tests/test_lint_ban_prose.py, and the 16 files that already
+      # carried such prose are frozen in infra/ban-prose/grandfathered.json —
+      # so this can only red on prose a PR actually authored. --base-ref makes
+      # the pardon list one-way: it may shrink, never grow inside its own diff.
+      - name: Prose must not spell a banned shape (blocking)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE_SHA:-}" ]; then
+            # A direct push to main has no PR base, and that is EXACTLY the case
+            # this workflow's own header names as the threat (W41/W42, L2
+            # autonomous direct-push). An earlier draft exited 0 here, which made
+            # a blocking step a no-op on the one event it most needed to run —
+            # found by the refuting seat. So a push scans the whole tree instead.
+            # --files-from, NOT xargs: the tree is ~10.5k paths and xargs would
+            # split it across several processes, leaving the blind-scan guard
+            # able to see only one slice at a time. One list, one process, one
+            # verdict (refuting seat, round 2, objection 5).
+            echo "push build — no PR base, scanning the whole tree."
+            git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' \
+              | grep -vE '^(\.venv|node_modules|vendor)/' > /tmp/ban-prose-tree.txt
+            python3 scripts/lint/lint_ban_prose.py --files-from /tmp/ban-prose-tree.txt
+            exit $?
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          # Two invocations on purpose: an empty changed set makes `xargs -r`
+          # skip its command entirely, which would skip the pardon-growth check
+          # with it. That check must run whatever the diff contains.
+          python3 scripts/lint/lint_ban_prose.py --base-ref "$BASE_SHA"
+          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint/lint_ban_prose.py
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
       - name: Law-5 autonomous-publish lint (blocking)

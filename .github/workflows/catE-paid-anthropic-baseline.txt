@@ -1,16 +1,33 @@
 # catE-sovereignty-lint #40 baseline — KNOWN paid-Anthropic constructor sites.
 #
-# Each line below is a PRE-EXISTING  Anthropic(api_key=...) / AsyncAnthropic(api_key=...)
-# instantiation (the BANNED paid pay-as-you-go path, CLAUDE.md §5). The catE
-# lint fails only when the live count EXCEEDS the number of uncommented lines
-# here — so a NEW paid path gates at PR time, while these 3 are surfaced (not
-# perpetually red) pending deliberate operator remediation to the sanctioned
-# path: `claude` CLI with CLAUDE_CODE_OAUTH_TOKEN, or SDK Anthropic(auth_token=...).
+# Each uncommented line below would be a PRE-EXISTING site of the banned paid
+# per-token path (CLAUDE.md §3). The lint fails when the live count EXCEEDS the
+# number of uncommented lines here, so this file is a BUDGET, not a list of
+# identities: the grep cannot tell which hit belongs to which line, and a hit
+# from anywhere — including a docstring that merely QUOTES the banned spelling
+# — spends the same slot a real call site would.
+#
+# THE BUDGET IS NOW ZERO, and that is what makes the previous paragraph
+# harmless. Measured 2026-09-20: the three sites this file used to name
+# (ai_engine.py, process_batches_2_3.py, claims_extractor.py) were each
+# remediated to the OAuth/CLI path and none of them has matched the grep for
+# some time — but their lines were never deleted, though the file's own
+# TODO said to delete them. Meanwhile the live count sat at 2, both of them
+# docstrings quoting the ban. 2 quotes + 3 phantom slots meant one genuinely
+# new paid call site could land and keep the step GREEN (simulated with a
+# throwaway probe file: live count 3, baseline 3, 3 > 3 is false).
+#
+# Both docstrings were rewritten to describe the shape instead of spelling it
+# (the rule the PII gate in .husky/pre-commit already states for its own
+# pattern), the three remediated lines are gone, and the budget is 0. Any hit
+# at all is now red — no arithmetic, nothing to keep in sync.
+#
+# TO ADD A LINE HERE you are asking for a paid per-token call site to be
+# tolerated on main. It is not a formality: §3 bans the entity, not the
+# spelling, and the sanctioned path is the `claude` CLI with
+# CLAUDE_CODE_OAUTH_TOKEN, or the SDK constructed with an OAuth bearer.
 #
 # Discovered: 2026-06-11 guardian-of-guardians audit (domande-per-fable5 #40).
-# TODO(remediate): migrate each to OAuth/CLI, then DELETE its line below.
+# Drained: 2026-09-20 (identity-vs-count audit).
 #
-# --- KNOWN SITES (baseline count = 3) ---
-apps/bali-intel-scraper/backend/services/ai_engine.py   # LIVE: imported by task_queue/classifier/sentiment
-apps/backend-rag/process_batches_2_3.py                 # one-shot batch script, no importers
-apps/backend-rag/scripts/claims_extractor.py            # imported only by its unit test
+# --- KNOWN SITES (baseline count = 0) ---

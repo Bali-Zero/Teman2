@@ -1930,6 +1930,93 @@ def probe_autocompact_window(root: Path, args: dict, timeout: int) -> tuple[str,
     return (DIVERGED if n_bad else RECONCILED), n_bad, ev
 
 
+def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """MODEL_TOPOLOGY.json roles <-> the models ollama actually has on this machine.
+
+    The first probe of the `defined<->live` class, which existed in the class list
+    with no probe behind it. A role naming a model this machine cannot load is the
+    model-layer form of family #2: the topology says the capability exists, the
+    daemon says otherwise, and nothing compared the two. Callers that resolve a role
+    through `resolve_model_role(role, hardcoded_default)` survive it by falling back
+    — which is protection by accident, and hides the drift instead of reporting it.
+
+    Only ollama-shaped roles are judged. `agy/...`, `claude --print`, `codex
+    --full-auto`, `openrouter/...` and `google-gemini-cli/...` name other doors
+    entirely and are listed as out-of-scope rather than silently counted clean.
+
+    UNPROBEABLE, never RECONCILED, where ollama is absent (M5): "no daemon here"
+    and "every role resolves" are different facts, and reporting the second for the
+    first is how a probe starts lying.
+    """
+    topo = root / args.get("topology", "MODEL_TOPOLOGY.json")
+    if not topo.exists():
+        return UNPROBEABLE, 0, [f"{topo.name} absent — this checkout declares no model topology"]
+    try:
+        roles = json.loads(topo.read_text()).get("roles", {})
+    except Exception as e:
+        return UNPROBEABLE, 0, [f"{topo.name} unreadable ({type(e).__name__})"]
+    if not roles:
+        return UNPROBEABLE, 0, [f"{topo.name} declares no roles"]
+
+    # `ollama` is not on the PATH of a non-login shell, which is what launchd and
+    # `ssh host cmd` both give you. Found live on pro, 2026-09-21: the probe reported
+    # "no ollama on this machine" against a machine holding five models. Resolving it
+    # by hand is the fix; `bash -lc` would be the other, at the cost of sourcing a
+    # profile this probe has no business running.
+    exe = shutil.which("ollama") or next(
+        (c for c in ("/opt/homebrew/bin/ollama", "/usr/local/bin/ollama") if Path(c).exists()), None)
+    if exe is None:
+        return UNPROBEABLE, 0, ["no ollama on this machine — roles are declared for pro/mini"]
+    try:
+        p = subprocess.run([exe, "list"], capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return UNPROBEABLE, 0, ["no ollama on this machine — roles are declared for pro/mini"]
+    except Exception as e:
+        return UNPROBEABLE, 0, [f"ollama list failed ({type(e).__name__}) — daemon state unknown"]
+    if p.returncode != 0:
+        return UNPROBEABLE, 0, [f"ollama list exit {p.returncode}: {p.stderr.strip()[:100]}"]
+
+    # `NAME` column, minus the header. A pulled model answers to its full `name:tag`;
+    # bare `name` is accepted only because ollama itself resolves it to `name:latest`.
+    installed = set()
+    for line in p.stdout.splitlines()[1:]:
+        if name := line.split()[0] if line.split() else "":
+            installed.add(name)
+            installed.add(name.rsplit(":", 1)[0])
+
+    OTHER_DOORS = ("agy/", "claude ", "codex ", "openrouter/", "google-gemini-cli/")
+
+    def _resolve(model: str, seen: frozenset[str] = frozenset()) -> str:
+        """A role may name ANOTHER ROLE rather than a model (`swarm_fast_review ->
+        agy_gemini_flash_high -> agy/Gemini 3.5 Flash (High)`). Found live on mini,
+        2026-09-21: this probe called both swarm roles missing models, which is
+        superscar #3 OVER-match — judging a string that is not the entity the guard
+        is about. `seen` stops a cycle from becoming a hang."""
+        nxt = roles.get(model)
+        if not isinstance(nxt, str) or model in seen:
+            return model
+        return _resolve(nxt, seen | {model})
+
+    missing, other = [], 0
+    for role, declared in sorted(roles.items()):
+        if not isinstance(declared, str):
+            continue
+        model = _resolve(declared)
+        if model.startswith(OTHER_DOORS) or " " in model:
+            other += 1
+            continue
+        if model not in installed and model.rsplit(":", 1)[0] not in installed:
+            missing.append(f"{role} -> {model}" if model == declared
+                           else f"{role} -> {declared} -> {model}")
+
+    ev = [f"{len(roles) - other - len(missing)}/{len(roles) - other} ollama roles resolve "
+          f"({other} roles name other doors, not judged)"]
+    ev += [f"UNRESOLVABLE {m}" for m in missing[:8]]
+    if len(missing) > 8:
+        ev.append(f"(+{len(missing) - 8} more unresolvable roles not listed)")
+    return (DIVERGED if missing else RECONCILED), len(missing), ev
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1942,6 +2029,7 @@ BUILTINS = {
     "headless_zombies": probe_headless_zombies,
     "child_calibration": probe_child_calibration,
     "autocompact_window": probe_autocompact_window,
+    "model_topology_drift": probe_model_topology_drift,
 }
 
 
@@ -2145,6 +2233,17 @@ DEFAULT_REGISTRY: list[dict] = [
                      "netmap schema this parser does not know, a self-contradictory "
                      "prefix, or an unexpected crash. Read the reason field; it names "
                      "which. Either way it is NOT drift, and no healer should act on it."),
+    },
+    {
+        "id": "model_topology_drift", "type": "builtin", "target": "model_topology_drift",
+        "class": "defined<->live",
+        "boundary": "MODEL_TOPOLOGY.json roles <-> models ollama has on this machine",
+        "machines": ["pro", "mini"], "tags": ["fast"], "timeout_sec": 20,
+        "severity": "P1", "args": {"topology": "MODEL_TOPOLOGY.json"},
+        "fix_hint": ("a role naming an absent model is NOT fixed by pulling it: decide first "
+                     "whether the role still wants that model, then either pull it or point the "
+                     "role at what this machine runs. Pulling 18GB onto mini's 24GB to satisfy a "
+                     "stale line is how the topology's own RAM policy gets broken."),
     },
     {
         "id": "git_alignment", "type": "builtin", "target": "git_alignment",

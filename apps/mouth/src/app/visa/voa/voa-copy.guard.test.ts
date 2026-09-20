@@ -34,6 +34,13 @@ const VOA_DIR = join(__dirname); // apps/mouth/src/app/visa/voa
 /** The six purchase screens plus their copy tables, per DELIBERA (d). */
 const SCREEN_FILES = [
   "page.tsx", // wizard
+  // The wizard's copy MOVED here (EN/ID dictionary, 2026-09-20). Scanning
+  // the screen alone would now measure an empty room: a banned claim typed
+  // into either language column reaches the customer through `page.tsx`
+  // exactly as a literal used to. A guard that changes what it reads and
+  // does not follow the thing it guards is cicatrix family #3 — the
+  // assertion survives in name while its subject has left.
+  "voa-copy.ts",
   "SafeClock.tsx", // the published-deadline hero the verdict screen renders
   "NextSteps.tsx", // "what happens next" / "what we cannot promise"
   "[hash]/page.tsx", // verdict ACCEPT/DECLINE
@@ -111,7 +118,12 @@ function bodyOf(file: string): Array<{ n: number; text: string }> {
 //    mechanically checkable ("usually approved"-style, "nothing to worry"-
 //    style). No fourth outcome, no rewording that rescues a hit.
 // ---------------------------------------------------------------------------
-const BANNED_CLAIMS: Array<{ label: string; re: RegExp }> = [
+const BANNED_CLAIMS: Array<{
+  label: string;
+  re: RegExp;
+  /** A preceding negator acquits — see `convicts` below for why, and why only here. */
+  negationFlips?: boolean;
+}> = [
   {
     label: "official partner / mitra resmi",
     re: /mitra resmi|reseller pertama|official (?:immigration |imigrasi )?partner/i,
@@ -142,17 +154,39 @@ const BANNED_CLAIMS: Array<{ label: string; re: RegExp }> = [
   },
   {
     label: "second/automatic extension",
-    re: /automatic extension|second extension|extends? (?:again|a second time|twice)/i,
+    re: /automatic extension|second extension|extends? (?:again|a second time|twice)|perpanjangan (?:otomatis|kedua)|diperpanjang (?:otomatis|dua kali|lagi|untuk kedua kali(?:nya)?)|memperpanjang (?:lagi|dua kali|untuk kedua kali(?:nya)?)/i,
+    negationFlips: true,
   },
   {
     label: "trap: approval-guarantee-as-statistic",
-    re: /usually approved|practically always(?: approved)?|never had a rejection|never been rejected/i,
+    re: /usually approved|practically always(?: approved)?|never had a rejection|never been rejected|biasanya disetujui|hampir selalu disetujui|(?:tidak|belum) pernah ditolak/i,
   },
   {
     label: "trap: false all-handled promise",
-    re: /nothing to worry about|we handle everything|zero stress/i,
+    re: /nothing to worry about|we handle everything|zero stress|semua(?:nya)? kami urus|kami urus semua(?:nya)?|tidak perlu khawatir|bebas repot|tanpa stres/i,
   },
 ];
+
+/**
+ * A negator BEFORE the hit turns ONE of these rules into the truth this funnel
+ * has to be able to tell. The Visa on Arrival may be extended once, so
+ * "tidak dapat diperpanjang untuk kedua kali" is the honest sentence and
+ * convicting it would forbid the rule the screen exists to explain — the
+ * over-match half of cicatrix family #3, introduced by the very fix that
+ * closes the under-match half.
+ *
+ * Only `negationFlips` rows get this reading. In the other two the negation IS
+ * the claim ("belum pernah ditolak", "tidak perlu khawatir"), and treating a
+ * negator as innocence would gut the rule instead of scoping it.
+ */
+const NEGATOR_RE = /\b(?:tidak|tak|bukan|belum|cannot|never)\b/i;
+
+function convicts(rule: (typeof BANNED_CLAIMS)[number], text: string): boolean {
+  const hit = rule.re.exec(text);
+  if (!hit) return false;
+  if (!rule.negationFlips) return true;
+  return !NEGATOR_RE.test(text.slice(0, hit.index));
+}
 
 // ---------------------------------------------------------------------------
 // 2. Safe Clock — only D-7 (published_filing_deadline) may reach a client.
@@ -213,15 +247,15 @@ describe("voa-copy.guard — the six purchase screens carry no banned claim", ()
 
   it("is GUILTY when a banned claim is inserted (guilt control)", () => {
     const injected = 'const x = "we are the official partner for Imigrasi";';
-    const hit = BANNED_CLAIMS.find(({ re }) => re.test(injected));
+    const hit = BANNED_CLAIMS.find((rule) => convicts(rule, injected));
     expect(hit?.label).toBe("official partner / mitra resmi");
   });
 
   it("is INNOCENT on ordinary consultant/process prose (innocence control)", () => {
     const clean =
       "A consultant can fast-track the same case by hand, on WhatsApp.";
-    for (const { re } of BANNED_CLAIMS) {
-      expect(re.test(clean)).toBe(false);
+    for (const rule of BANNED_CLAIMS) {
+      expect(convicts(rule, clean)).toBe(false);
     }
   });
 
@@ -233,8 +267,9 @@ describe("voa-copy.guard — the six purchase screens carry no banned claim", ()
     it(`${rel} — zero banned claims`, () => {
       const offences: string[] = [];
       for (const { n, text } of bodyOf(file)) {
-        for (const { label, re } of BANNED_CLAIMS) {
-          if (re.test(text)) offences.push(`${n}: ${label} — ${text.trim()}`);
+        for (const rule of BANNED_CLAIMS) {
+          if (convicts(rule, text))
+            offences.push(`${n}: ${rule.label} — ${text.trim()}`);
         }
       }
       expect(offences).toEqual([]);
@@ -277,4 +312,111 @@ describe("voa-copy.guard — the six purchase screens carry no banned claim", ()
       expect(offences).toEqual([]);
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// The three rules that knew only English.
+//
+// Until #6948 this corpus had no Indonesian column, so "the guard reads both
+// languages" was true of the FILE and false of three of its ten rules: the
+// EN/ID dictionary could carry `perpanjangan otomatis`, `biasanya disetujui`
+// or `semua kami urus` and every screen test would still be green. That is
+// family #3 UNDER-match, found by the on-disk gate on #6948 and closed here.
+//
+// Each form below is convicted individually rather than as one blob: a row
+// that matches "some Bahasa somewhere" tells a future reader nothing about
+// which spelling it actually knows.
+// ---------------------------------------------------------------------------
+describe("voa-copy.guard — the Bahasa forms of the three English-only rules", () => {
+  const GUILTY_BAHASA: Array<[string, string]> = [
+    ["Perpanjangan otomatis setelah 30 hari.", "second/automatic extension"],
+    ["Anda mendapat perpanjangan kedua.", "second/automatic extension"],
+    ["Visa ini diperpanjang otomatis.", "second/automatic extension"],
+    ["Bisa diperpanjang dua kali.", "second/automatic extension"],
+    [
+      "Anda dapat memperpanjang lagi tahun depan.",
+      "second/automatic extension",
+    ],
+    [
+      "Permohonan seperti ini biasanya disetujui.",
+      "trap: approval-guarantee-as-statistic",
+    ],
+    [
+      "Hampir selalu disetujui oleh Imigrasi.",
+      "trap: approval-guarantee-as-statistic",
+    ],
+    [
+      "Klien kami belum pernah ditolak.",
+      "trap: approval-guarantee-as-statistic",
+    ],
+    ["Semua kami urus untuk Anda.", "trap: false all-handled promise"],
+    ["Kami urus semuanya.", "trap: false all-handled promise"],
+    ["Tidak perlu khawatir soal dokumen.", "trap: false all-handled promise"],
+    ["Proses bebas repot.", "trap: false all-handled promise"],
+  ];
+
+  for (const [sentence, label] of GUILTY_BAHASA) {
+    it(`convicts: ${sentence}`, () => {
+      const hit = BANNED_CLAIMS.find((rule) => convicts(rule, sentence));
+      expect(hit?.label).toBe(label);
+    });
+  }
+
+  /**
+   * INNOCENCE, and it is the half that costs something to get right. These
+   * sentences are what the funnel must be free to say — including the one
+   * that states the extension limit, which is the rule the DECLINE screen
+   * exists to explain.
+   */
+  const INNOCENT_BAHASA = [
+    "Visa on Arrival ini tidak dapat diperpanjang untuk kedua kali.",
+    "Visa on Arrival tidak bisa diperpanjang lagi setelah perpanjangan pertama.",
+    "Memperpanjang Visa on Arrival yang sudah saya miliki",
+    "Saya sudah pernah memperpanjang Visa on Arrival ini satu kali",
+    "Kami belum dapat memeriksa kelayakan saat ini. Silakan coba lagi.",
+    "Meja visa kami menjawab di WhatsApp.",
+  ];
+
+  for (const sentence of INNOCENT_BAHASA) {
+    it(`acquits: ${sentence}`, () => {
+      const hit = BANNED_CLAIMS.find((rule) => convicts(rule, sentence));
+      expect(hit?.label ?? null).toBeNull();
+    });
+  }
+
+  /**
+   * The negation reading is a real mechanism, not a decorative flag: with it
+   * off, the honest sentence about the extension limit is convicted. This is
+   * what keeps the innocence rows above from being green-by-absence.
+   */
+  it("negationFlips is what acquits the honest extension sentence", () => {
+    const honest =
+      "Visa on Arrival ini tidak dapat diperpanjang untuk kedua kali.";
+    const rule = BANNED_CLAIMS.find(
+      (r) => r.label === "second/automatic extension",
+    );
+    expect(rule).toBeTruthy();
+    expect(convicts(rule!, honest)).toBe(false);
+    expect(convicts({ ...rule!, negationFlips: false }, honest)).toBe(true);
+  });
+
+  /**
+   * And the flag is scoped: the other two rules must stay convicting even
+   * though their own claims contain a negator. Reading "belum pernah ditolak"
+   * as innocent would have deleted the rule while leaving its name in place.
+   */
+  it("the negation reading does not leak into the other two rules", () => {
+    for (const label of [
+      "trap: approval-guarantee-as-statistic",
+      "trap: false all-handled promise",
+    ]) {
+      const rule = BANNED_CLAIMS.find((r) => r.label === label);
+      expect(rule?.negationFlips ?? false).toBe(false);
+    }
+    expect(
+      BANNED_CLAIMS.some((rule) =>
+        convicts(rule, "Klien kami belum pernah ditolak."),
+      ),
+    ).toBe(true);
+  });
 });

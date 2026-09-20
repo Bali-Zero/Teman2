@@ -1,0 +1,270 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "Wave 1 of the coding-lane plan in research/operations/2026-09-20-jev-coding-lanes-dossier.md
+  (merged as PR #6922). Successor to the closed PR #6926, which froze at arming with three reds."
+lanes:
+  - lane: ban-entity-build
+    role: build
+    seat: claude-opus-5 (conducting session — authored the lint, the client, the redactor, the corpus and the CI step)
+  - lane: ban-entity-refute-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: ban-entity-refute-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: ban-entity-refute-corpus
+    role: review
+    seat: claude-sonnet-5 (subagent dispatched WITHOUT the brief and told to show the corpus flatters what it measures — it did)
+diff:
+  behaviour_change:
+    Two steps are added to the CI lint that already owns the paid-endpoint ban. The first composes the
+    two incumbent greps with a System One model's per-route judgment using OR, so it can only ADD a
+    finding and never clear one, and it is advisory — it always exits zero. The second is blocking and
+    carries no model at all - it reads comments and docstrings in the changed files and fails when one
+    spells a shape the repo bans. No existing check changes its verdict; the workflow's path filter
+    widens to the suffixes the new steps inspect.
+  surface:
+    Four new scripts, two new test modules, one new fixture corpus, one frozen pardon list, one workflow
+    edit. No backend, no frontend, no migration, no data, no credential.
+receipts:
+  - claim: offline suite green after every council fix — 71 tests
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py -q
+    result: 71 passed
+    exit: 0
+    ts: 2026-09-20T08:05:00Z
+    seat: claude-opus-5
+  - claim: bench on the live model after the council fixes — recall on grep-missed guilt cases 15 of 17, false alarms 0 of 20
+    cmd: python3 scripts/test_lint_paid_llm_entity.py --bench
+    result: "guilt recall 16/19; recall on grep-misses 15/17; false alarms 0/20; threshold 0.8"
+    exit: 0
+    ts: 2026-09-20T08:02:00Z
+    seat: claude-opus-5
+  - claim: redaction now covers the bare-name, unquoted, JSON-key and AWS-id forms the seats found open
+    cmd: python3 -c "import sys;sys.path.insert(0,'scripts');from redact_for_external import redact;print('opaque-secret-val' not in redact('TOKEN = \"opaque-secret-val\"'))"
+    result: "True"
+    exit: 0
+    ts: 2026-09-20T08:00:00Z
+    seat: claude-opus-5
+  - claim: the incumbent's repo-wide constructor count is back under its baseline after the lane stopped spelling the pattern in prose
+    cmd: grep -rnE 'Anthropic\(\s*api_key' --include='*.py' . | grep -vE '\.venv/|node_modules/|/\.git/|tests/|test_' | wc -l
+    result: 2 against a baseline of 3
+    exit: 0
+    ts: 2026-09-20T07:20:00Z
+    seat: claude-opus-5
+  - claim: every acceptance probe named in the brief runs and passes in the offline suite
+    cmd: >-
+      python3 -m pytest scripts/test_lint_paid_llm_entity.py -q -k
+      "test_model_saying_no_cannot_clear_the_grep or test_ask_returns_none_on_a_non_utf8_body or
+      test_no_key_does_not_invent_violations or test_redaction_catches_a_bare_sensitive_name or
+      test_scope_matches_cate_per_predicate_not_in_aggregate or
+      test_grep_is_suffix_scoped_exactly_like_cate"
+    result: 6 passed
+    exit: 0
+    ts: 2026-09-20T08:08:00Z
+    seat: claude-opus-5
+  - claim: both offline suites green on the rebased head, 71 for the entity lint and 45 for the prose lint
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 116 passed
+    exit: 0
+    ts: 2026-09-20T17:28:00Z
+    seat: claude-opus-5
+  - claim: the prose lint reads this PR's own diff and finds nothing, which is the cure for the four reds that suspended #6935
+    cmd: git diff --name-only origin/main...HEAD | xargs python3 scripts/lint/lint_ban_prose.py --base-ref origin/main
+    result: "OK - 9 file(s) scanned, no prose spells a banned shape."
+    exit: 0
+    ts: 2026-09-20T17:29:00Z
+    seat: claude-opus-5
+  - claim: repo-wide blast radius measured BEFORE the pardon list was written, which is why the debt is frozen rather than cured in this PR
+    cmd: every tracked .py/.sh/.yml/.yaml outside .venv, node_modules and vendor, scanned in-process
+    result: "scanned 8258, findings 31 across 16 files; with the pardon list in place, rc 0"
+    exit: 0
+    ts: 2026-09-20T17:10:00Z
+    seat: claude-opus-5
+  - claim: the anti-bypass is real - one extra name in the pardon list fails on the GROWTH rather than on the file, then the list is restored
+    cmd: python3 scripts/lint/lint_ban_prose.py --base-ref HEAD
+    result: "the grandfather list GREW by 1 file(s) ... apps/organism/organism/router.py"
+    exit: 3
+    ts: 2026-09-20T17:30:29Z
+    seat: claude-opus-5
+  - claim: the diff-scoped detect-secrets scan that reddened #6935 leaves no BLOCKING unaudited finding here - the residue sits in test_ paths the auto-triage greenlists, as measured on #6935 where CI reported exactly the two prose findings and not the three fixture ones
+    cmd: detect-secrets scan against a copy of the baseline over the changed set, then unaudited entries enumerated
+    result: "blocking unaudited = 0 (8 residual findings, every one in a greenlisted test_ path)"
+    exit: 0
+    ts: 2026-09-20T17:20:00Z
+    seat: claude-opus-5
+  - claim: the workflow passes actionlint after the rebase resolved against the hardened budget read that landed in #6943
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml
+    result: no findings
+    exit: 0
+    ts: 2026-09-20T17:27:00Z
+    seat: claude-opus-5
+  - claim: the FIFTH occurrence of the scar was caught on the author's machine instead of in CI - the PreToolUse guardrail refused the write of the guilt fixture itself, which is why two fixtures are assembled at run time
+    cmd: writing scripts/tests/test_lint_ban_prose.py with the vendor credential variable spelled beside a value
+    result: "GUARDRAILS BLOCK (static fallback) - refused before any file was written"
+    exit: 1
+    ts: 2026-09-20T17:05:00Z
+    seat: claude-opus-5
+  - claim: every acceptance probe the brief declares for the prose lint runs and passes by name - test_guilt, test_a_regex_literal_in_code_is_never_read, test_innocence[THE-sanctioned-oauth-path], test_a_grown_list_is_its_own_failure and test_naming_only_unscannable_files_refuses_to_report_clean
+    cmd: >-
+      python3 -m pytest scripts/tests/test_lint_ban_prose.py -q -k
+      "test_guilt or test_a_regex_literal_in_code_is_never_read or THE-sanctioned-oauth-path or
+      test_a_grown_list_is_its_own_failure or
+      test_naming_only_unscannable_files_refuses_to_report_clean"
+    result: 16 passed, 29 deselected
+    exit: 0
+    ts: 2026-09-20T17:36:00Z
+    seat: claude-opus-5
+  - claim: a refuting seat dispatched without the brief broke the first version of the prose lint in 8 of 11 objections, every one reproduced by executing the module; all 11 are addressed or pinned as a documented limit
+    cmd: adversarial subagent, then the objections replayed one by one against the rewrite
+    result: "11 of 11 accounted for; the homoglyph is pinned as a KNOWN LIMIT by a test that asserts it still slips"
+    exit: 0
+    ts: 2026-09-20T17:45:00Z
+    seat: claude-sonnet-5
+  - claim: requiring a VALUE removed 5 of the 16 files the first pardon list froze - they were over-matches on ordinary prose, not debt
+    cmd: repo-wide rescan after the rewrite, pardon list refrozen from the result
+    result: "11 files frozen, down from 16; 42 findings across 10576 scanned"
+    exit: 0
+    ts: 2026-09-20T17:52:00Z
+    seat: claude-opus-5
+  - claim: the step was a NO-OP on every push to main, which falsified the workflow's own W41/W42 threat model; a push now scans the whole tree
+    cmd: the push branch of the step, replayed locally over every tracked source file
+    result: "10576 file(s) scanned across 3 xargs batches, exit 0"
+    exit: 0
+    ts: 2026-09-20T17:55:00Z
+    seat: claude-opus-5
+  - claim: both suites green after the rewrite - 71 carried forward, 63 for the prose lint including the refuting seat's corpus
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 134 passed
+    exit: 0
+    ts: 2026-09-20T17:58:00Z
+    seat: claude-opus-5
+  - claim: the rewritten lint reads this PR's whole surface clean, and reports the 3 out-of-scope files as out of scope rather than as coverage
+    cmd: python3 scripts/lint/lint_ban_prose.py --base-ref origin/main $(the PR's changed set)
+    result: "OK - 9 file(s) scanned (3 out of scope, 0 not on disk), no prose spells a banned shape"
+    exit: 0
+    ts: 2026-09-20T18:00:00Z
+    seat: claude-opus-5
+  - claim: a SECOND adversarial pass broke three of the first round's fixes and found one new blocking over-match plus a corpus that stubbed out the mechanism it claimed to test
+    cmd: the same refuting seat, re-dispatched against the rewrite with the changes named
+    result: "3 partial fixes, 1 new BLOCKING over-match, 1 corpus gap, 2 attacks declared FAILED, 1 premise of the conductor's corrected from the repo"
+    exit: 0
+    ts: 2026-09-20T18:20:00Z
+    seat: claude-sonnet-5
+  - claim: the whole tree now runs in ONE process rather than several xargs batches, so the blind-scan guard sees the whole tree and not a slice
+    cmd: python3 scripts/lint/lint_ban_prose.py --files-from <every tracked in-scope path>
+    result: "OK - 10576 file(s) scanned (0 out of scope, 0 not on disk); 4 unreadable reported as a warning"
+    exit: 0
+    ts: 2026-09-20T18:25:00Z
+    seat: claude-opus-5
+  - claim: the anti-bypass is now exercised against two REAL commits - a same-size pardon list with one name swapped reads as growth, which a length comparison would have called clean
+    cmd: python3 -m pytest scripts/tests/test_lint_ban_prose.py -q -k test_round2_7_the_growth_check_is_exercised_for_REAL
+    result: passed
+    exit: 0
+    ts: 2026-09-20T18:30:00Z
+    seat: claude-opus-5
+  - claim: the lint reddened ITS OWN docstring for quoting the code line it was explaining, and the cure is in this diff
+    cmd: python3 scripts/lint/lint_ban_prose.py --files-from <the whole tree>
+    result: "2 findings on scripts/lint/lint_ban_prose.py itself, then 0 after the docstring named the shape instead of quoting it"
+    exit: 0
+    ts: 2026-09-20T18:15:00Z
+    seat: claude-opus-5
+  - claim: both suites green after the second round - 71 carried forward, 75 for the prose lint
+    cmd: python3 -m pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py -q
+    result: 146 passed
+    exit: 0
+    ts: 2026-09-20T18:32:00Z
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — in_scope() collapsed catE's two different exclusion lists into one, so vendor/ and
+      examples/ were dropped before composition while the constructor grep still scans them. A file
+      there failed catE and passed here: the composed verdict was WEAKER than the regex alone, the one
+      outcome Rule 3 exists to forbid."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "HIGH — every redaction rule required at least one character before KEY/TOKEN/SECRET, so a
+      variable named exactly TOKEN was not redacted and its value left the machine verbatim."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "MEDIUM — the prefilter anchored on requests.post, missing axios, aiohttp, http.client and
+      Session().post; a file pulling url, credential and model from config was judged by nobody."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW — --json printed a diagnostic line before the object, so json.loads() on the output raised."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "The test-directory exclusion used tests?/ and so also excluded a singular test/ directory, which
+      catE does not exclude — same class as the vendor/ finding, found independently."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      'A quoted JSON or dict key puts a quote between the name and the colon, so neither assignment rule
+      fired on {"api_key": "opaque-value"} and the value left verbatim. AKIA AWS ids were also absent
+      from the literal shapes.'
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      "The transcribed assignment predicate requires a non-quote after the equals sign, so a quoted
+      export escapes it."
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5
+    objection:
+      "All 17 grep-missed guilt cases name their vendor in plain text, so a case-insensitive keyword
+      search scores 17 of 17 on the same set. The lane's headline recall therefore demonstrates far less
+      than it appears to, and 9 of the 20 innocence cases share no vocabulary with the guilt set, which
+      bounds what the zero-false-alarm figure means."
+    status: CONFIRMED
+  - seat: claude-sonnet-5
+    objection:
+      "The corpus contains no case that defeats keyword search (obfuscated import, bare constructor with
+      no credential kwarg, cross-file registry indirection, a non-Python SDK, a third-party CI action),
+      and no hard innocence case such as a TYPE_CHECKING-only import or a mocked client."
+    status: CONFIRMED
+  - seat: claude-opus-5
+    objection:
+      "Stronger redaction cost recall: the same bench fell from 16 of 17 to 15 of 17 after the seats'
+      redaction fixes landed. Sending less signal is correct under the output boundary, but the trade is
+      real and is recorded here rather than absorbed silently."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "The blocking prose step exits 0 on every push to main before it computes anything, because
+      its base sha comes from a pull_request context that a push does not have. The workflow's own
+      header justifies the dual trigger as defence against autonomous direct-push - for this step
+      that was exactly the case where it did nothing."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "A changed set of one clean .py and one out-of-scope file printed '1 file(s) scanned, clean'
+      while never reading the file carrying the shape - the same 'scanned nothing, reported clean'
+      lie the lint's own header says it exists to prevent."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "Four ordinary engineering comments red on a BLOCKING step - a bare mention inside parentheses,
+      a null in a schema, a null in a bug report, a cross-reference to an SDK signature. A false red
+      on a blocking gate teaches people to route around it."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (refute-prose-lint)
+    objection:
+      "The vendor name written INSIDE the placeholder hole evades the check the comment claims to
+      make, because only the owner was inspected and never the value."
+    status: CONFIRMED
+
+unresolved:
+  - "The corpus is not extended with the seats' hard cases in this PR. They are written out verbatim in
+    the council transcripts and are the first work of the follow-up; arming the step should wait for
+    them, which is why this ships advisory."
+  - "Cross-file indirection remains outside the lane's reach by construction."
+  - "A homoglyph defeats every prose predicate and is pinned as a documented limit by a test that
+    asserts it still slips. The guard is built against honest description, not against an author
+    smuggling a credential past themselves."
+  - "Markdown is out of scope. Read as prose it produced 335 findings across 47 documents, and read
+    as narrative only - fences and indented blocks excluded - still 60 across 12. Documents are a
+    second concern and a second PR."

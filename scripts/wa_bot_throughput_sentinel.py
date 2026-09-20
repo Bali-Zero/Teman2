@@ -326,6 +326,20 @@ def recovered_dedup_key(now_wita: datetime) -> str:
     return f"wa-bot:throughput:recovered:{now_wita.strftime('%Y-%m-%d')}"
 
 
+# MEASURED 2026-09-21: the channel died at 2026-09-16 19:43Z. tg_notify.py's
+# REPEAT_LADDER_H = [6, 24, 72, 168] mutes a REPEATED key for longer each time
+# it keeps firing — correct against a flapping/noisy condition, wrong against
+# a fire that just keeps burning: the p0 paged once on 2026-09-19 03:56 and
+# every tick since has been silently "deduped" against that same constant key.
+# Do not touch tg_notify.py — its ladder is shared by every organ in the
+# fleet. The cure is the same pattern recovered_dedup_key already uses one
+# function above: a dedup key that changes with the WITA calendar day, so
+# each day's first tick pages again and the same day's later ticks (every 15
+# min) still collapse into that one page instead of becoming spam.
+def dead_channel_dedup_key(now_wita: datetime) -> str:
+    return f"{DEAD_CHANNEL_KEY}:{now_wita.strftime('%Y-%m-%d')}"
+
+
 def build_wrong_db_text() -> str:
     """Deliberately does NOT say the channel is down — it says the organ cannot
     see it. Naming the env var means the reader fixes config, not WhatsApp."""
@@ -343,9 +357,16 @@ def _alert_payload(
     outbound_business_age: float | None,
     raw_inbound_age_h: float | None,
     raw_outbound_age_h: float | None,
+    now_wita: datetime,
 ) -> tuple[str, str, str]:
     if condition == "dead_channel":
-        return "p0", DEAD_CHANNEL_KEY, build_dead_channel_text(raw_inbound_age_h, raw_outbound_age_h)
+        # Daily key (see dead_channel_dedup_key above), NOT the bare
+        # DEAD_CHANNEL_KEY constant — a constant key falls into tg_notify's
+        # REPEAT_LADDER_H and goes silent for up to 168h while the channel
+        # stays dead. bot_broken and inbound_stale are deliberately left on
+        # their constant keys: this repeat-daily behavior is scoped to
+        # dead_channel only.
+        return "p0", dead_channel_dedup_key(now_wita), build_dead_channel_text(raw_inbound_age_h, raw_outbound_age_h)
     if condition == "bot_broken":
         return "p0", BOT_BROKEN_KEY, build_bot_broken_text(inbound_business_age, outbound_business_age)
     if condition == "inbound_stale":
@@ -447,6 +468,7 @@ async def _tick(conn: Any, now_wita: datetime, *, dry_run: bool) -> int:
     if condition and not dry_run:
         tier, dedup_key, text = _alert_payload(
             condition, inbound_business_age, outbound_business_age, raw_inbound_age_h, raw_outbound_age_h,
+            now_wita,
         )
         alerted = _tg_notify(tier, dedup_key, text)
     elif previously_alerted and not condition and not dry_run:

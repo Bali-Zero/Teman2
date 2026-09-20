@@ -147,12 +147,53 @@ def test_dedup_key_recovered_is_date_stamped():
 
 
 def test_alert_payload_maps_each_condition_to_its_own_tier_and_key():
-    tier, key, _ = wbts._alert_payload("dead_channel", 1.0, 1.0, 1.0, 1.0)
-    assert (tier, key) == ("p0", wbts.DEAD_CHANNEL_KEY)
-    tier, key, _ = wbts._alert_payload("bot_broken", 1.0, 1.0, 1.0, 1.0)
+    now_wita = datetime(2026, 8, 17, 12, 0, tzinfo=wbts.WITA)
+    tier, key, _ = wbts._alert_payload("dead_channel", 1.0, 1.0, 1.0, 1.0, now_wita)
+    assert (tier, key) == ("p0", wbts.dead_channel_dedup_key(now_wita))
+    tier, key, _ = wbts._alert_payload("bot_broken", 1.0, 1.0, 1.0, 1.0, now_wita)
     assert (tier, key) == ("p0", wbts.BOT_BROKEN_KEY)
-    tier, key, _ = wbts._alert_payload("inbound_stale", 1.0, 1.0, 1.0, 1.0)
+    tier, key, _ = wbts._alert_payload("inbound_stale", 1.0, 1.0, 1.0, 1.0, now_wita)
     assert (tier, key) == ("digest", wbts.INBOUND_STALE_KEY)
+
+
+# ---------------------------------------------------------------- dead_channel repeats daily (measured 2026-09-21)
+# The channel died 2026-09-16 19:43Z. tg_notify.py's REPEAT_LADDER_H mutes a
+# REPEATED key longer each time it keeps firing — right against a flapping
+# condition, wrong against one that is just still burning: the p0 paged once
+# on 2026-09-19 03:56 and every tick since has read "deduped" against that
+# same constant key. dead_channel_dedup_key folds the WITA calendar day into
+# the key (same pattern recovered_dedup_key already uses one function above),
+# so the ladder never gets the chance to mute a fire that outlives it.
+
+
+def test_guilt_dead_channel_key_differs_across_two_wita_calendar_days(tmp_path, monkeypatch):
+    day1 = datetime(2026, 9, 19, 6, 0, tzinfo=wbts.WITA)
+    day2 = datetime(2026, 9, 20, 6, 0, tzinfo=wbts.WITA)
+    dead_inbound = day1 - timedelta(hours=200)  # already >48h dead well before day1
+    dead_outbound = dead_inbound
+    _, sent1 = _run_tick(dead_inbound, dead_outbound, day1, dry_run=False,
+                          monkeypatch=monkeypatch, tmp_path=tmp_path / "d1")
+    _, sent2 = _run_tick(dead_inbound, dead_outbound, day2, dry_run=False,
+                          monkeypatch=monkeypatch, tmp_path=tmp_path / "d2")
+    key1 = [k for t, k, _ in sent1 if t == "p0"][0]
+    key2 = [k for t, k, _ in sent2 if t == "p0"][0]
+    assert key1 != key2
+    assert key1 == wbts.dead_channel_dedup_key(day1)
+    assert key2 == wbts.dead_channel_dedup_key(day2)
+
+
+def test_innocence_dead_channel_key_same_across_two_ticks_same_wita_day(tmp_path, monkeypatch):
+    tick_a = datetime(2026, 9, 19, 6, 0, tzinfo=wbts.WITA)
+    tick_b = tick_a + timedelta(minutes=15)  # next sentinel run, same WITA day
+    dead_inbound = tick_a - timedelta(hours=200)
+    dead_outbound = dead_inbound
+    _, sent_a = _run_tick(dead_inbound, dead_outbound, tick_a, dry_run=False,
+                           monkeypatch=monkeypatch, tmp_path=tmp_path / "a")
+    _, sent_b = _run_tick(dead_inbound, dead_outbound, tick_b, dry_run=False,
+                           monkeypatch=monkeypatch, tmp_path=tmp_path / "b")
+    key_a = [k for t, k, _ in sent_a if t == "p0"][0]
+    key_b = [k for t, k, _ in sent_b if t == "p0"][0]
+    assert key_a == key_b == wbts.dead_channel_dedup_key(tick_a)
 
 
 def _gateway_tiers() -> tuple[str, ...]:
@@ -177,8 +218,9 @@ def test_every_tier_this_module_emits_is_accepted_by_the_real_tg_notify_gateway(
     have been a silent no-op, i.e. a watcher that cannot raise its voice. Two
     other live scripts still carry that bug. Read the gateway's real tuple."""
     accepted = _gateway_tiers()
+    now_wita = datetime(2026, 8, 17, 12, 0, tzinfo=wbts.WITA)
     emitted = {
-        wbts._alert_payload(cond, 1.0, 1.0, 1.0, 1.0)[0]
+        wbts._alert_payload(cond, 1.0, 1.0, 1.0, 1.0, now_wita)[0]
         for cond in ("dead_channel", "bot_broken", "inbound_stale")
     }
     unusable = emitted - set(accepted)
@@ -253,7 +295,7 @@ def test_guilt_both_stale_past_dead_channel_window_fires_p0_outside_business_hou
     assert rc == 0
     p0 = [s for s in sent if s[0] == "p0"]
     assert len(p0) == 1
-    assert p0[0][1] == wbts.DEAD_CHANNEL_KEY
+    assert p0[0][1] == wbts.dead_channel_dedup_key(now)
 
 
 def test_guilt_inbound_stale_5h_in_business_hours_fires_inbound_stale_digest(tmp_path, monkeypatch):
@@ -286,7 +328,7 @@ def test_guilt_regression_the_2026_07_30_24_day_wa_bot_outage_fires_p0(tmp_path,
     assert rc == 0
     p0 = [s for s in sent if s[0] == "p0"]
     assert len(p0) == 1
-    assert p0[0][1] == wbts.DEAD_CHANNEL_KEY
+    assert p0[0][1] == wbts.dead_channel_dedup_key(now_wita)
 
 
 # ---- INNOCENCE ----------------------------------------------------------------
@@ -597,7 +639,7 @@ def test_guilt_both_tables_entirely_empty_reports_wrong_database_not_a_dead_chan
     rc, sent = _run_hist_tick(_HistConn(None, None, rows=(0, 0)), now, monkeypatch, tmp_path)
     assert rc == 2
     assert [k for _, k in sent] == [wbts.WRONG_DB_KEY]
-    assert wbts.DEAD_CHANNEL_KEY not in [k for _, k in sent]
+    assert not any(k.startswith(wbts.DEAD_CHANNEL_KEY) for _, k in sent)
 
 
 def test_innocence_null_signals_but_real_history_is_a_dead_channel_not_a_wrong_database(
@@ -610,7 +652,7 @@ def test_innocence_null_signals_but_real_history_is_a_dead_channel_not_a_wrong_d
     now = datetime(2026, 8, 17, 14, 0, tzinfo=wbts.WITA)
     rc, sent = _run_hist_tick(_HistConn(None, None, rows=(325, 244)), now, monkeypatch, tmp_path)
     assert rc == 0
-    assert [k for _, k in sent] == [wbts.DEAD_CHANNEL_KEY]
+    assert [k for _, k in sent] == [wbts.dead_channel_dedup_key(now)]
 
 
 def test_innocence_one_signal_present_never_consults_history_at_all(tmp_path, monkeypatch):

@@ -42,8 +42,11 @@ this check activates automatically once that directory lands.
 
 ── ANTHROPIC_API_KEY — deliberately NOT re-implemented here ─────────────
 Verified this session: `.github/workflows/catE-sovereignty-lint.yml`
-already bans, repo-wide, `Anthropic(api_key=...)` construction and
-`ANTHROPIC_API_KEY=<value>` assignment (2026-06-11 audit, #40/#40b). Per
+already bans, repo-wide, both canonical spellings of the paid path: the
+vendor SDK constructor taking a per-token key, and the env-var value
+assignment (2026-06-11 audit, #40/#40b). Neither is written out here — see
+`.github/workflows/catE-sovereignty-lint.yml`, where the regexes are
+load-bearing. Per
 team-lead's explicit instruction, re-implementing that ban here would be a
 second, drifting copy of an existing gate — this script instead assumes
 that check stands and does not duplicate it. `CLAUDE_CODE_OAUTH_TOKEN`

@@ -1,0 +1,43 @@
+task_id: cate-baseline-identity
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Make the incumbent paid-endpoint spelling guard trustworthy — drain a budget spent by prose rather than by call sites, keep the step armed once that budget is zero, and run the same predicates before the commit instead of only in CI.
+constraints:
+  - The local gate transcribes the incumbent predicates and invents no matcher of its own; a guard that judged the ban its own way would be the over/under-match the existing ones exist to prevent.
+  - Parity is per predicate and in both directions — a local copy stricter than CI teaches people to disable it, and one looser than CI is a hole.
+  - Draining a budget must not disarm its guard; the arithmetic has to survive zero.
+  - No prose anywhere in this change may spell a banned pattern; the literals live only in guilt corpora.
+  - The scanner half must not fail closed on a machine that lacks it, and must never report green it did not earn.
+acceptance:
+  - text: WHEN the budget file has no entries the step SHALL read the budget as a single integer zero and SHALL still red on live hits.
+    probe: bash scripts/tests/test_cate_paid_budget.sh
+  - text: WHEN a genuinely new paid call site is added against a zero budget the step SHALL exit non-zero.
+    probe: bash scripts/tests/test_cate_paid_budget.sh
+  - text: WHERE catE excludes a hit this gate SHALL exclude it too, judging the whole grep output line and not the path alone.
+    probe: test_exclusion_reads_the_whole_output_line_exactly_as_ci_does
+  - text: WHEN a staged diff carries a path git had to quote the parser SHALL NOT attribute its lines to another file.
+    probe: test_a_quoted_path_header_never_blames_the_previous_file
+  - text: WHEN a staged file holds non-UTF-8 bytes the gate SHALL return a verdict and SHALL NOT raise.
+    probe: test_non_utf8_bytes_in_a_staged_file_do_not_crash_the_gate
+  - text: WHEN content is present in the working tree but not in the index the scanner half SHALL NOT judge it.
+    probe: test_the_scanner_judges_the_staged_blob_not_the_working_tree
+  - text: WHEN a line strips the banned variable rather than assigning it the predicate SHALL NOT fire.
+    probe: test_innocence_unsetenv_is_a_strip_not_an_assignment
+  - text: WHEN detect-secrets is absent the gate SHALL say so in exactly one line and SHALL NOT claim a clean scan.
+    probe: test_a_missing_scanner_is_announced_and_never_silently_green
+assumptions:
+  - text: The two rewritten docstrings were the only prose on main spending the budget.
+    status: verified
+    probe: live count is 0 against a budget of 0 after the rewrite
+  - text: A word boundary on the setenv alternative loses no real assignment shape.
+    status: unverified
+    probe: test_guilt_a_real_setenv_assignment_still_fires covers the direct call; an assignment reached through an alias is out of this predicate reach by design
+consumer_map:
+  - .husky/pre-commit — step "ban-predicates", shipped in this PR and proven on this PR own commits.
+  - .github/workflows/catE-sovereignty-lint.yml — steps "catE #40 budget — guilt + innocence corpus" and "ban-predicates — transcription parity + guilt/innocence", both shipped in this PR and running on its own diff.
+risks:
+  - The grep halves inherit catE exclusions verbatim, including that any path or line containing "test_" as a substring is dropped. Parity is the point, so the inherited under-match is carried deliberately rather than fixed here.
+  - On a machine without detect-secrets the scanner half never runs, and that is two of the three machines in this fleet today. CI remains the net for that class.
+  - A scanner error, as distinct from a missing binary, fails open with a message. Bounded by CI.
+grader: Two external seats reviewed the diff adversarially and independently, neither given the author account of it; six findings, each reproduced before acceptance. Generator is not grader.

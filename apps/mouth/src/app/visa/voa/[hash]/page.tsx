@@ -10,6 +10,7 @@ import {
 } from "@balizero/core";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { EmptyStampReveal } from "@/components/garuda/EmptyStampReveal";
 import {
   buildDeclineEducation,
@@ -20,6 +21,8 @@ import {
 import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
 import { NextSteps } from "../NextSteps";
 import { SafeClockHero } from "../SafeClock";
+import { useVoaLocale } from "../useVoaLocale";
+import { voaCopy, type VoaCopyKey } from "../voa-copy";
 
 /**
  * GARUDA VOA — public result page (owner decision 5, constraints 5a/5b).
@@ -92,10 +95,12 @@ export default function VoaResultPage({
   params: Promise<{ hash: string }>;
 }) {
   const tracker = useFunnelApp("visa_voa", { trackView: false });
+  const locale = useVoaLocale();
+  const t = voaCopy(locale);
   const stampRef = useRef<HTMLDivElement | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [data, setData] = useState<VoaResult | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<VoaCopyKey | null>(null);
   const [deleted, setDeleted] = useState(false);
 
   useEffect(() => {
@@ -110,9 +115,7 @@ export default function VoaResultPage({
           credentials: "include",
         });
         if (!res.ok) {
-          setErr(
-            "We couldn't find this check. It may have expired, or the link is wrong.",
-          );
+          setErr("verdict.notFound");
           return;
         }
         const result = (await res.json()) as VoaResult;
@@ -121,7 +124,7 @@ export default function VoaResultPage({
         // one event covers both funnel steps the mandate names.
         tracker.resultViewed(hash);
       } catch {
-        setErr("Network error. Please try again.");
+        setErr("verdict.networkError");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,11 +134,12 @@ export default function VoaResultPage({
     return (
       <AppFrame
         funnel="visa"
-        title="Visa on Arrival"
-        subtitle="This check has been deleted."
+        title={t("verdict.title")}
+        subtitle={t("verdict.deleted.subtitle")}
       >
+        <ContentLangSync locale={locale} />
         <p>
-          <a href="/visa/voa">Start again →</a>
+          <a href="/visa/voa">{t("verdict.startAgain")}</a>
         </p>
       </AppFrame>
     );
@@ -143,18 +147,16 @@ export default function VoaResultPage({
 
   if (err) {
     return (
-      <AppFrame funnel="visa" title="Visa on Arrival" subtitle={err}>
+      <AppFrame funnel="visa" title={t("verdict.title")} subtitle={t(err)}>
+        <ContentLangSync locale={locale} />
         <p>
-          <a href="/visa/voa">Start again →</a> or{" "}
+          <a href="/visa/voa">{t("verdict.startAgain")}</a> {t("verdict.or")}{" "}
           <a
-            href={buildWhatsAppLink(
-              "visa",
-              "Hi Bali Zero, I'd like help with a Visa on Arrival.",
-            )}
+            href={buildWhatsAppLink("visa", t("hero.wa.message"))}
             target="_blank"
             rel="noopener noreferrer"
           >
-            message us on WhatsApp
+            {t("verdict.error.wa")}
           </a>
           .
         </p>
@@ -166,10 +168,13 @@ export default function VoaResultPage({
     return (
       <AppFrame
         funnel="visa"
-        title="Visa on Arrival"
-        subtitle="Checking your case…"
+        title={t("verdict.title")}
+        subtitle={t("verdict.loading.subtitle")}
       >
-        <p style={{ color: "var(--color-text-muted)" }}>One moment.</p>
+        <ContentLangSync locale={locale} />
+        <p style={{ color: "var(--color-text-muted)" }}>
+          {t("verdict.loading.body")}
+        </p>
       </AppFrame>
     );
   }
@@ -182,14 +187,15 @@ export default function VoaResultPage({
   if (data.verdict === "DECLINE") {
     const answers = readSubmittedAnswers();
     const code = primaryDeclineCode(data.reason_codes);
-    const edu = code ? buildDeclineEducation(code, answers) : null;
+    const edu = code ? buildDeclineEducation(code, answers, t) : null;
 
     return (
       <AppFrame
         funnel="visa"
-        title="Visa on Arrival"
-        subtitle="This isn't a wall — here's what we found and what to do next."
+        title={t("verdict.title")}
+        subtitle={t("verdict.decline.subtitle")}
       >
+        <ContentLangSync locale={locale} />
         <div
           ref={stampRef}
           style={{
@@ -240,13 +246,13 @@ export default function VoaResultPage({
                     fontWeight: 600,
                   }}
                 >
-                  Try Visa Match →
+                  {t("verdict.decline.oracle")}
                 </a>
               ) : null}
               <a
                 href={buildWhatsAppLink(
                   "visa",
-                  "Hi Bali Zero, I checked the Visa on Arrival online and would like help with my case.",
+                  t("verdict.decline.wa.message"),
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -264,14 +270,14 @@ export default function VoaResultPage({
                   fontWeight: 600,
                 }}
               >
-                Continue on WhatsApp →
+                {t("verdict.decline.wa")}
               </a>
             </div>
           </section>
         ) : null}
         <AppShareBar
           url={publicUrl}
-          title="Bali Zero — Visa on Arrival check"
+          title={t("verdict.decline.share.title")}
           onShare={(c) => tracker.shareClicked(c)}
         />
       </AppFrame>
@@ -282,7 +288,7 @@ export default function VoaResultPage({
   return (
     <AppFrame
       funnel="visa"
-      title="Visa on Arrival — you're eligible"
+      title={t("verdict.accept.title")}
       subtitle={
         data.published_filing_deadline
           ? // Deliberately NOT "your filing window": the clock below has a
@@ -290,18 +296,16 @@ export default function VoaResultPage({
             // shareable URL over a stored check, and a header promising a live
             // window above a hero saying the day is gone is a page arguing
             // with itself. This sentence is true in every branch.
-            "What we found, what it costs, and what happens next."
-          : "We'll confirm your exact filing deadline before you pay."
+            t("verdict.accept.subtitle")
+          : t("verdict.accept.subtitleNoDeadline")
       }
-      footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."
+      footer={t("verdict.accept.priceFooter")}
     >
+      <ContentLangSync locale={locale} />
       {data.published_filing_deadline ? (
         <SafeClockHero
           deadline={data.published_filing_deadline}
-          handoffHref={buildWhatsAppLink(
-            "visa",
-            "Hi Bali Zero, I'd like to check my Visa on Arrival filing deadline.",
-          )}
+          handoffHref={buildWhatsAppLink("visa", t("verdict.wa.deadlineMsg"))}
         />
       ) : null}
       <div
@@ -316,7 +320,9 @@ export default function VoaResultPage({
       >
         <AppStampReveal
           code={formatIDR(data.price_idr)}
-          ariaLabel={`Approved — ${formatIDR(data.price_idr)}`}
+          ariaLabel={t("verdict.stamp.aria", {
+            price: formatIDR(data.price_idr),
+          })}
         />
       </div>
       {/* ORDER IS THE POINT, and it was backwards. The step that OPENS the
@@ -331,24 +337,26 @@ export default function VoaResultPage({
       />
       <AppWhatsAppCTA
         source="garuda_voa"
-        headline="Prefer a human to walk you through it?"
-        description="Same practice, same portal, same price — a consultant drives the same steps with you."
-        whatsappContext={[{ label: "Price", value: formatIDR(data.price_idr) }]}
-        defaultLabel="Continue on WhatsApp →"
-        postScrollLabel="Continue on WhatsApp →"
+        headline={t("verdict.human.headline")}
+        description={t("verdict.human.description")}
+        whatsappContext={[
+          {
+            label: t("verdict.wa.priceLabel"),
+            value: formatIDR(data.price_idr),
+          },
+        ]}
+        defaultLabel={t("verdict.human.cta")}
+        postScrollLabel={t("verdict.human.cta")}
         stampRef={stampRef}
         onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
       />
       <NextSteps
-        handoffHref={buildWhatsAppLink(
-          "visa",
-          "Hi Bali Zero, I have a question about my Visa on Arrival before I pay.",
-        )}
+        handoffHref={buildWhatsAppLink("visa", t("verdict.wa.beforePayMsg"))}
         hasDeadline={Boolean(data.published_filing_deadline)}
       />
       <AppShareBar
         url={publicUrl}
-        title="Bali Zero — Visa on Arrival"
+        title={t("verdict.share.title")}
         onShare={(c) => tracker.shareClicked(c)}
       />
     </AppFrame>
@@ -385,6 +393,7 @@ export default function VoaResultPage({
  */
 function MagicLinkRequestForm({ resultId }: { resultId: string }) {
   const tracker = useFunnelApp("visa_voa", { trackView: false });
+  const t = voaCopy(useVoaLocale());
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -426,12 +435,10 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
     return (
       <section aria-labelledby="voa-entry-heading" className="voa-entry">
         <h2 className="voa-entry__heading" id="voa-entry-heading">
-          Start your application
+          {t("entry.heading")}
         </h2>
         <p className="voa-entry__status" role="status">
-          Check your email for a link to continue — it&apos;s valid for 15
-          minutes. Opening it asks you to confirm which application it unlocks,
-          and then takes you to the passport upload.
+          {t("entry.sent")}
         </p>
       </section>
     );
@@ -440,21 +447,18 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
   return (
     <section aria-labelledby="voa-entry-heading" className="voa-entry">
       <h2 className="voa-entry__heading" id="voa-entry-heading">
-        Start your application
+        {t("entry.heading")}
       </h2>
-      <p className="voa-entry__body">
-        We email you a one-time link — no password. It opens your upload page
-        and expires in 15 minutes, so send it to an inbox only you read.
-      </p>
+      <p className="voa-entry__body">{t("entry.body")}</p>
       <form className="voa-entry__form" onSubmit={submit}>
         <label className="voa-entry__label" htmlFor="voa-email">
-          Your email
+          {t("entry.emailLabel")}
         </label>
         <input
           className="voa-entry__input"
           id="voa-email"
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder={t("entry.emailPlaceholder")}
           required
           type="email"
           value={email}
@@ -465,11 +469,11 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
           style={VOA_PRIMARY_ACTION_STYLE}
           type="submit"
         >
-          {status === "sending" ? "Sending…" : "Email me the link →"}
+          {status === "sending" ? t("entry.sending") : t("entry.submit")}
         </button>
         {status === "error" ? (
           <p className="voa-entry__error" role="alert">
-            Something went wrong. Please try again.
+            {t("entry.error")}
           </p>
         ) : null}
       </form>
@@ -505,6 +509,7 @@ function DeleteCheckControl({
   resultId: string;
   onDeleted: () => void;
 }) {
+  const t = voaCopy(useVoaLocale());
   const [state, setState] = useState<
     "idle" | "confirming" | "deleting" | "error"
   >("idle");
@@ -557,7 +562,7 @@ function DeleteCheckControl({
             cursor: "pointer",
           }}
         >
-          Delete this check
+          {t("delete.cta")}
         </button>
       </p>
     );
@@ -567,7 +572,7 @@ function DeleteCheckControl({
     return (
       <div style={{ display: "grid", gap: "var(--space-2, 0.6rem)" }}>
         <p role="alert" style={{ margin: 0, fontWeight: 600 }}>
-          Couldn&apos;t delete this check. Please try again.
+          {t("delete.error")}
         </p>
         <button
           type="button"
@@ -583,7 +588,7 @@ function DeleteCheckControl({
             cursor: "pointer",
           }}
         >
-          Try again
+          {t("delete.retry")}
         </button>
       </div>
     );
@@ -593,9 +598,7 @@ function DeleteCheckControl({
   const isDeleting = state === "deleting";
   return (
     <div style={{ display: "grid", gap: "var(--space-2, 0.6rem)" }}>
-      <p style={{ margin: 0, fontSize: "0.9rem" }}>
-        Delete this check? This can&apos;t be undone.
-      </p>
+      <p style={{ margin: 0, fontSize: "0.9rem" }}>{t("delete.confirm")}</p>
       <div style={{ display: "flex", gap: "0.75rem" }}>
         <button
           type="button"
@@ -611,7 +614,7 @@ function DeleteCheckControl({
             cursor: isDeleting ? "default" : "pointer",
           }}
         >
-          {isDeleting ? "Deleting…" : "Yes, delete"}
+          {isDeleting ? t("delete.deleting") : t("delete.yes")}
         </button>
         <button
           type="button"
@@ -626,7 +629,7 @@ function DeleteCheckControl({
             cursor: isDeleting ? "default" : "pointer",
           }}
         >
-          Cancel
+          {t("delete.cancel")}
         </button>
       </div>
     </div>
