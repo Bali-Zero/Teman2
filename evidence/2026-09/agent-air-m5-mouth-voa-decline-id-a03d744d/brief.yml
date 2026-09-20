@@ -1,0 +1,144 @@
+base_sha: 4e472a2f82 # pragma: allowlist secret - public Git commit ID
+task_id: voa-decline-id
+mandate_id: GARUDA-VOA-20260919/FRONT-B
+gear: 2
+gear_reason: >-
+  Frontend-only, no rule pack, no migration, no CODEOWNERS-TIER1 path, no
+  backend file. The pre-push floor check refused the push naming exactly this:
+  "deterministic floor is 2 but this diff carries no evidence/brief.yml"
+  (336/195 over 4 files crosses evidence_pack_lint.py's SIZE_GEAR2_THRESHOLD
+  and stays far below the Gear-3 one). This brief declares gear 2, matching
+  the measured floor and not exceeding it.
+l_level: L1
+gate_class: opus
+objective: >-
+  Finish what #6966 left: the DECLINE half of the GARUDA VOA verdict. #6966
+  made the verdict leg bilingual but stopped at declineEducation.ts, so a
+  visitor who asked the funnel in Bahasa and was refused read the whole
+  education in English — on the screen whose stated job is "this isn't a
+  wall, here is what we found and what to do next". Fifty-seven sentences
+  move into the EN/ID register the rest of the funnel already uses.
+scope:
+  - >-
+    apps/mouth/src/app/visa/voa/voa-copy.ts - 63 keys per column: three
+    sentences for each of the 19 reason codes, the four purpose labels and the
+    two case-type labels the mirror sentence interpolates.
+  - >-
+    apps/mouth/src/components/garuda/declineEducation.ts - the nineteen-case
+    switch was copy pretending to be control flow. The one judgement in it that
+    is not a sentence (WHERE each code routes) lifts into
+    Record<DeclineCode, RouteKind>; the three sentences come from the register
+    by key; the function collapses to a lookup.
+  - >-
+    apps/mouth/src/app/visa/voa/[hash]/page.tsx - one line: the DECLINE branch
+    passes its own t down into the builder.
+  - >-
+    apps/mouth/src/app/visa/voa/voa-i18n.parity.guard.test.tsx - the decline
+    table joins the scanned consumer set, the generated key family is resolved
+    rather than exempted, and two rendered proofs are added.
+constraints:
+  - >-
+    ONE PROPERTY WAS AT RISK AND IS REPLACED IN KIND. A new reason code without
+    copy used to be a missing switch case - a compile error. Keys built from a
+    template literal cannot be followed by a type on their own, so
+    DeclineSentenceKey (decline.${DeclineCode}.{mirror|forbids|alternative})
+    is asserted assignable to VoaCopyKey. A code added without its three
+    sentences still fails the BUILD, not a lookup at runtime.
+  - >-
+    THE ORPHAN RULE WAS THE SECOND THING AT RISK, and the tempting fix was the
+    wrong one. A template literal leaves no "decline.GROUP_CASE.mirror" to
+    grep, so the rule would convict all 57. Exempting the prefix would have
+    left a hole any future key could hide in; instead the family is expanded
+    the way the code expands it and checked in BOTH directions - an expansion
+    with no key fails, and a decline.* key the expansion does not produce fails
+    too, so a retired code cannot leave copy behind.
+  - >-
+    buildDeclineEducation's third argument defaults to English, so the 27
+    existing tests in declineEducation.test.ts keep asserting English and keep
+    meaning what they meant. The default is itself pinned by a test.
+  - >-
+    The ID register bans and the banned-claims list were run over the new
+    column before it was written into the file, using the guards' own regexes
+    - zero hits. "memperpanjang Visa on Arrival yang sudah Anda miliki" and
+    "hanya dapat diperpanjang satu kali" are the honest statements of the
+    once-only extension rule and are outside the second-extension ban by
+    construction, not by luck.
+  - >-
+    apps/mouth merges land STAGED on Vercel; the live observation is taken
+    after vercel promote, never inferred from the merge.
+acceptance:
+  - text: >-
+      WHEN the verdict screen renders a DECLINE under ?lang=id, THEN the
+      education SHALL be Indonesian and the English sentence SHALL be absent -
+      proving the screen passes its own t down, which no source check can.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "DECLINE education
+      reaches the screen"
+    probe_result: "Tests  1 passed | 34 skipped (35)"
+  - text: >-
+      THE GENERATED FAMILY IS RESOLVED, NOT EXEMPTED: every expansion of
+      decline.<CODE>.<part> exists as a key, every decline.* key is one the
+      expansion produces, and the template that makes them reachable is really
+      in the file.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "DECLINE family is
+      generated"
+    probe_result: "Tests  1 passed | 34 skipped (35)"
+  - text: >-
+      THE ENGLISH DEFAULT IS UNCHANGED: a two-argument call still returns the
+      English sentence with its placeholder filled, and the same call with
+      voaCopy("id") returns the Indonesian one.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      src/app/visa/voa/voa-i18n.parity.guard.test.tsx -t "answers English when
+      asked for nothing"
+    probe_result: "Tests  1 passed | 34 skipped (35)"
+  - text: >-
+      NO REGRESSION on the decline table's own suite, which is untouched by
+      this diff and still asserts English sentences.
+    status: verified
+    probe: cd apps/mouth && ../../node_modules/.bin/vitest run src/components/garuda/
+    probe_result: "Tests  27 passed (27)"
+  - text: >-
+      NO REGRESSION across the funnel, the decline table and the site i18n
+      layer together.
+    status: verified
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run src/app/visa/voa/
+      src/components/garuda/ src/i18n/
+    probe_result: "Test Files 34 passed (34) · Tests 602 passed | 2 skipped (604)"
+  - text: >-
+      A REASON CODE WITHOUT COPY IS A BUILD ERROR, not a runtime hole - the
+      property the deleted switch used to carry.
+    status: verified
+    probe: cd apps/mouth && npx tsc --noEmit
+    probe_result: "exit 0 (also re-run green by the pre-commit typecheck hook)"
+  - text: >-
+      PROOF-OF-LIVE, owed after the merge: a DECLINE verdict read at ?lang=id
+      on production SHALL show the Indonesian education. Observed after
+      vercel promote <dpl>, never before.
+    status: pending
+    probe: >-
+      vercel promote <dpl> && a synthetic DECLINE check (purpose=transit) read
+      at /visa/voa/<id>?lang=id shows "Visa on Arrival tidak mencakup tujuan
+      perjalanan tersebut."
+pii: none
+local_evidence: >-
+  No production read, no client data, no credential touched. Every probe is
+  unit-level under jsdom; the DECLINE render stubs global fetch with an
+  invented verdict payload and a synthetic hash. The reason codes are the
+  contract's own closed enum, not a customer's case.
+self_report:
+  note: >-
+    Every probe above was run against this PR's own head in this session with
+    its selected-test count pasted next to it. The one pending row is pending
+    on a real event (the Vercel promote of the deployment this merge
+    produces), not on judgement. The Indonesian wording is this session's
+    translation, checked mechanically against the two guards' regexes but not
+    reviewed by a native speaker - that review is the gate's to demand if it
+    wants it, and is named here rather than left implied.
