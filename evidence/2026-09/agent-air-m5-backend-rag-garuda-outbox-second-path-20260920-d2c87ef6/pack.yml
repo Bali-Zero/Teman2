@@ -92,6 +92,21 @@ dissent:
       the two it is: "the API is UP but the route is not deployed yet" versus "the app
       itself is the suspect". Measured live against prod right now — it prints the
       first sentence, because that is exactly the state we are in before this merges.
+  - seat: claude-opus-5 (self-refutation, measured after kimi's unfinished third question)
+    objection: >-
+      The PR claims the page leaves on a path the broken wire cannot mute. Measured on
+      Mini's spool: in the last 48 hours 3 P0s were sent and 5 were spooled as
+      p0_unsent. The second path is therefore real but LEAKY — better than a page that
+      cannot exist, and not the clean independence the first draft of the PR body
+      implied. The receptor's verdict still reaches the tick summary and the healer's
+      own log when the gateway fails, so the finding is never lost; the PAGE is what is
+      unreliable.
+    status: CONFIRMED
+    resolution: >-
+      the claim is restated in the PR body as "a different process, a different machine
+      and a path that does not require the API's own send to work" — with the leak
+      named and measured, and a ledger row owed for the gateway's own loss rate, which
+      is NOT this PR's to fix.
   - seat: council (four seats dispatched, one delivered)
     objection: >-
       Three of the four external lanes produced nothing: codex-gpt-5.6-sol spent 175.6k
@@ -179,6 +194,12 @@ receipts:
     result: 'exit 2 with reason "the API is UP but /health/garuda-outbox is not there (404) — the route is not deployed yet, or was rolled back. Not an outbox problem; coverage is missing until the deploy lands" — the receptor now probes /health/live on the same host before naming a 404'
     exit: 2
     ts: 2026-09-20T15:51:00Z
+    seat: claude-opus-5
+  - claim: "the second path's own wire is LEAKY today, and the PR must not claim otherwise"
+    cmd: "on mini: count records in ~/.organism/tg_spool by tier and outcome"
+    result: "all time 132 p0 sent vs 43 p0_unsent; in the LAST 48 HOURS 3 sent and 5 p0_unsent — more than half the recent pages from Mini never left. tg_notify spools an unsendable P0 as p0_unsent by design (fail-visible, not silent), and the organism digest is supposed to surface it; nobody acted on five of them. Separately, a getMe with the token that machine's secrets file carries answers ok:false, so the gateway is probably relaying via M5 rather than sending locally."
+    exit: 0
+    ts: 2026-09-20T15:57:00Z
     seat: claude-opus-5
   - claim: the healer script and the workflow still parse
     cmd: 'bash -n infra/healer/healer-run.sh; python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/alarm-cure-alignment.yml"))'''
