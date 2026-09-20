@@ -148,7 +148,13 @@ async function generate(): Promise<void> {
     // testable and so the committed artifact can be pinned against them. Three
     // defaults used to be inline here and each asserted something the dataset
     // does not say — see that file's header for what they published.
-    fs.writeFileSync(OUTPUT_KBLI, buildKbliCorpus(codes));
+    // The header dates itself from the dataset's own version rather than a
+    // typed month: the literal one stayed "March 2026" through the September
+    // L2 re-ingestion.
+    fs.writeFileSync(
+      OUTPUT_KBLI,
+      buildKbliCorpus(codes, rawData.metadata?.version ?? ""),
+    );
   }
 
   // --- 4: llms.txt Freshness ---

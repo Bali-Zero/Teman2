@@ -1,119 +1,113 @@
 gear: 2
-task_id: vo-a2g-guard-generated
+task_id: kbli-llms-vintage-20260920
 lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/vo-a2g-guard-generated
+branch: agent/air-m5/mouth/kbli-llms-vintage-20260920
 gate_class: opus
 l_level: L2
-# Floor recomputed WITH this brief staged (scripts/contract_verify.py --head
-# HEAD --json): 2, "brief present" PASS — the brief's own presence is what
-# moves the floor from 1 to 2 (a test-only diff with no brief floors at 1),
-# so gear is declared at the computed floor.
 objective: >-
-  MANDATE-vo.md, Slice A2-G ("the negation families are GENERATED, and an
-  omission is impossible by construction"), opened after PR-R (#6919,
-  MERGED) shipped the render. Three gates went red on ONE cause — a
-  hand-written regex alternation that omitted a token, three times, each
-  time a different one: "does not change" -> "do not change" -> "don't
-  change" (GATE-A2C-REPORT-6859.md OBS-A2c-1). The diagnosis is the
-  CONSTRUCTION, not the token: three independent hand-written families each
-  re-enumerated the same auxiliary/negation/verb tokens, so a fix to one
-  never propagated to the others. This PR replaces the three EN negation
-  families in the notices guard (engine-adapter.test.ts) with
-  buildNegationPatterns(), built from one AUXILIARIES/NEGATIONS/EFFECT_VERBS
-  list each plus an IRREGULAR_CONTRACTIONS map — a token now lives in
-  exactly one place — and mirrors the same construction for ID
-  (["tidak","tak"], closing OBS-A2c-8). TEST-ONLY: no production file
-  changes, nothing reaches a visitor, not on the release path.
+  Ledger row `llms-kbli-txt-headlines-a-march-2026-vintage-against-a-september-dataset`
+  (PENDING-ARMS, opened earlier today when closing the sibling row about the
+  1,563 code count). `apps/mouth/public/llms-kbli.txt` told a crawler it was a
+  "March 2026 Update" — twice, counting the AI-citation instruction on line 1 —
+  while the dataset it dumps is `v11.0-L2-oss-risk-20260911`. MEASURED, and the
+  measurement found the real shape of the defect: the guard that already exists
+  for this exact entity, `march-2026-citation-instruction` in
+  `llms-public-file-guard.test.ts`, CONVICTS `llms-kbli.txt` today — it was
+  simply never pointed at that file. `findForbidden(llms-kbli.txt)` returns
+  `["march-2026-citation-instruction"]` while `llms.txt` is clean. So this is
+  not a missing guard, it is a guard that reached one twin of two (cicatrix #3
+  / W132), which is the same shape as the grid twin this lane hit twice today.
+  SECOND CORRECTION, and it came from CI rather than from reading: this file is
+  NOT hand-maintained. `kbli-llms-corpus.test.ts` pins the committed artifact
+  against `buildKbliCorpus(dataset)`, so editing the text by hand reds that pin
+  — which is exactly what happened on the first push of this branch (`Frontend
+  Tests (mouth)`, run 35494923565, `FAIL … is exactly what the current dataset
+  produces`). The literal month lived in `CORPUS_HEADER` inside the GENERATOR,
+  which is the only place a fix can hold, so the cure moved there: the header is
+  now a function of the dataset version.
 scope:
   - >-
-    `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts`
-    — AUXILIARIES (11), NEGATIONS (4), EFFECT_VERBS (6),
-    IRREGULAR_CONTRACTIONS (3 keys / 4 forms), ID_NEGATORS (2), ID_VERBS (6);
-    `buildNegationPatterns()` and `buildIdNegationPattern()` replace the
-    three hand-written EN families and the one ID family; a cardinality pin
-    test (G1); two property tests enumerating the full EN 11x4x6 (276
-    synthesised forms) and ID 2x2x6 (24 forms) products against the real
-    scan; three new literal GUILT_FIXTURES rows (won't/matter/tak
-    berpengaruh) tied to the four guilt mutations in the PR body. Every
-    other family, both allowlist entries, all 16 historical fixtures, the
-    innocence test and the iteration pin are unchanged.
+    `apps/mouth/src/lib/kbli-llms-corpus.ts` — `CORPUS_HEADER` (a const with a
+    typed "March 2026") becomes `corpusHeader(datasetVersion)`, built on a new
+    pure `corpusVintage(datasetVersion)` that reads the month out of the
+    version's YYYYMMDD stamp and THROWS when there is none: a generator that
+    cannot date its artifact must not publish one. `buildKbliCorpus` now takes
+    the version as a required second argument.
   - >-
-    `evidence/brief.yml` — this file, PR-G's own (PR-R's own already merged
-    on #6919).
+    `apps/mouth/scripts/generate-llms-full.ts` — passes
+    `rawData.metadata.version` through.
+  - >-
+    `apps/mouth/public/llms-kbli.txt` — the regenerated artifact: both
+    advertised vintages now say September 2026 and the header names
+    `v11.0-L2-oss-risk-20260911`. Byte-identical to what the generator emits,
+    which is what the existing pin asserts.
+  - >-
+    `apps/mouth/src/lib/llms-public-file-guard.test.ts` — the existing
+    `findForbidden` innocence case now runs on the TWIN as well as on
+    llms.txt; plus a new describe that derives the expected vintage from
+    `metadata.version` of `KBLI_2025_FINAL_CLEAN.json` and asserts the file
+    advertises that month and names that version.
 constraints:
   - >-
-    No production consequence: only the test file and this brief move. R4
-    (#6919/PR-R) already proved the 16 fixtures RED and 28 GREEN; this PR
-    adds 3 fixtures (total 19 RED, 28 GREEN) and must not move either axis —
-    a PR that generates new families and drops one historical fixture has
-    moved the axis again (MANDATE-vo.md G7).
+    The vintage assertions are SCOPED to the two places the file advertises a
+    vintage (`mention the <Month Year> regulatory updates`, `Master Data
+    (<Month Year> Update`), never to every month name in 1,583 lines. llms.txt
+    legitimately says "old March 2026 portal behavior" in prose; a guard that
+    convicted on any month would have to be deleted the first time someone
+    wrote a sentence about the past. Innocence test pins exactly that.
   - >-
-    G1: a token (auxiliary, negation, verb) appears in exactly one list; the
-    cardinalities are pinned by LITERAL (`toHaveLength`), not derived from
-    the lists, because the generator and the property test read the SAME
-    lists and a mutation would otherwise shrink both sides symmetrically and
-    stay green — the exact shape that produced the three reds this slice
-    exists to close.
+    Only `llms-kbli.txt` is tied to the KBLI dataset's version. llms.txt's own
+    "September 2026" refers to general regulatory news (SPP-TDLN and others),
+    not to this dataset, and coupling it to `metadata.version` would be a
+    wrong dependency dressed as a guard.
   - >-
-    G4: over-generation is allowed (e.g. "does never affect" is not English;
-    generating it is harmless); the only fence on breadth is the innocence
-    test — all 28 shipped strings stay GREEN.
-  - >-
-    GATE-A2D-REPORT-6919.md "Input for PR-G": 13 out-of-history evasions,
-    disposed of row by row in the PR body — caught (widened apostrophe
-    class, `tak` negator) or declared as a limit, never widened past what
-    G1/G3/G5 specify, to keep this PR to the one test file.
+    The month is derived from the date INSIDE the version string, and a version
+    that stops carrying one fails a test of its own rather than comparing
+    against undefined.
 acceptance:
   - text: >-
-      G1 GUILT: WHEN any of AUXILIARIES/NEGATIONS/EFFECT_VERBS/
-      IRREGULAR_CONTRACTIONS/ID_NEGATORS/ID_VERBS loses an entry SHALL red
-      the pinned cardinality test naming which list, and SHALL red a
-      literal GUILT_FIXTURES row for the same deletion (four mutations
-      proven in the PR body, each on a scratch `cp`, restored and
-      `cmp -s`-verified).
+      THE TWIN IS GUARDED: `findForbidden` SHALL run on `llms-kbli.txt` and
+      return [] — the same innocence llms.txt has had since #6312.
     probe: >-
-      cd apps/mouth && ../../node_modules/.bin/vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
-      "pins the negation generator"
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "llms-kbli.txt
+      carries no forbidden pattern"
   - text: >-
-      G2/G3 PROPERTY TEST: WHEN every one of the full 11x4x6 EN
-      auxiliary/negation/verb combinations is synthesised into a sentence
-      and injected through the real source tables SHALL be reported by the
-      scan, asserted on the whole failure set at once — 276 forms pinned by
-      literal (264 base + 12 from `can`'s two-entry map).
+      THE VINTAGE IS DERIVED, NOT TYPED: every advertised vintage in the file
+      SHALL equal the month inside `metadata.version`, and the file SHALL name
+      that version verbatim.
     probe: >-
-      cd apps/mouth && ../../node_modules/.bin/vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
-      "11×4×6 EN negation product"
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "advertised
+      vintage"
   - text: >-
-      G5 ID MIRROR: WHEN every one of the full 2x2x6 ID negator/akan/verb
-      combinations is synthesised SHALL be reported by the scan — 24 forms
-      pinned by literal.
+      GUILT, three independent mutations. On the ARTIFACT: rolling the vintage
+      back to March 2026 reds the twin's forbidden-pattern case and the month
+      assertion; removing the dataset version from the header reds the version
+      assertion. On the GENERATOR, which is the one that matters: putting the
+      literal month back in `corpusHeader` reds the committed-artifact pin AND
+      the header assertion.
     probe: >-
-      cd apps/mouth && ../../node_modules/.bin/vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
-      "2×2×6 ID negation product"
+      manual mutation, run 2026-09-20 — artifact: 2 failed / 24 passed, then
+      1 failed / 25 passed; generator: 2 failed / 44 passed
+      (`is exactly what the current dataset produces`, `the header names both
+      the derived month and the version verbatim`). Every file restored from a
+      `cp` backup and confirmed byte-identical with `cmp -s`; 46 passed again.
   - text: >-
-      G7 HISTORY HOLDS: PR-R's 16 fixtures stay RED and the 28 shipped
-      strings stay GREEN; 3 new literal fixtures (won't/matter/tak
-      berpengaruh) bring the total to 19 RED, 28 GREEN.
+      INNOCENCE AGAINST OVER-MATCH: a month named in PROSE ("old March 2026
+      portal behavior") SHALL NOT be read as an advertised vintage.
     probe: >-
-      cd apps/mouth && ../../node_modules/.bin/vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t
-      "guilt: "
-  - text: NO REGRESSION ON THE VISA ORACLE SUITE OR THE TYPE CHECK.
+      npx vitest run src/lib/llms-public-file-guard.test.ts -t "named in prose"
+  - text: >-
+      THE DERIVATION IS PINNED BOTH WAYS: `corpusVintage` maps three real version
+      strings to their months and THROWS on a version with no stamp.
     probe: >-
-      cd apps/mouth && ../../node_modules/.bin/vitest run --root .
-      'src/app/(visa-oracle)/visa-oracle'
+      npx vitest run src/lib/kbli-llms-corpus.test.ts -t "dates itself"
+  - text: NO REGRESSION IN EITHER SUITE.
+    probe: >-
+      npx vitest run src/lib/kbli-llms-corpus.test.ts
+      src/lib/llms-public-file-guard.test.ts
 pii: none
 local_evidence: >-
-  All 97 tests in engine-adapter.test.ts pass locally, including the
-  cardinality pin, both property tests (276 EN / 24 ID forms) and all 19
-  GUILT_FIXTURES rows; the full visa-oracle suite (44 files, 1099 tests)
-  passes; `tsc --noEmit` is clean. Four mutations were applied to a scratch
-  `cp` of the guard file, each producing the predicted red (pinned length +
-  a literal fixture, or — for the `will` map entry — the fixture alone,
-  since the property test's own fall-through would synthesise "willn't" and
-  stay green), then restored and `cmp -s`-verified byte-identical. No
-  production file changed; no live surface to prove.
+  Repo-local reads only: two public artifacts that ship in the repo
+  (`public/llms.txt`, `public/llms-kbli.txt`) and the public KBLI dataset's
+  metadata. No client data, no credentials, no network calls.
