@@ -1254,7 +1254,12 @@ describe("review reasons cover every code the current pack can emit", () => {
   // never appear in a pack's `rules[]`, so no glob over pack JSON can
   // discover them — they have to be named here, from three sources in
   // evaluate_path.py:
-  //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
+  //   - `_DISCLOSED_REVIEW_REASON_CODES` (14 `DisclosedReviewFlag` entries as
+  //     of A3-B #6960 — PAST_OVERSTAY / BLACKLIST_ENTRY /
+  //     IMMIGRATION_INVESTIGATION appended at `evaluate_path.py:1147-1149`;
+  //     each is reachable only under the `VISA_ORACLE_HOLDING_FLAGS` kill
+  //     switch and is accounted, not copied, by `HELD_ONLY_REVIEW_CODES`
+  //     below — A5-3bis, R-A5-DRIFT-CURE)
   //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
   //   - the decisive-source authority hold (`_apply_decisive_source_authority_hold` family,
   //     ~line 1030) and the safety-critical source hold
@@ -1284,9 +1289,9 @@ describe("review reasons cover every code the current pack can emit", () => {
         .slice(start, end)
         .match(/"[A-Z][A-Z0-9_]*"/g)
         ?.map((code) => code.slice(1, -1)) ?? [];
-    if (codes.length !== 11) {
+    if (codes.length !== 14) {
       throw new Error(
-        `expected 11 disclosed review codes, found ${codes.length}`,
+        `expected 14 disclosed review codes, found ${codes.length}`,
       );
     }
     return codes;
@@ -1331,7 +1336,7 @@ describe("review reasons cover every code the current pack can emit", () => {
     return codes;
   }
 
-  const EXPECTED_18 = [
+  const EXPECTED_21 = [
     "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
     "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
     "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
@@ -1350,6 +1355,13 @@ describe("review reasons cover every code the current pack can emit", () => {
     "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
     "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
     "SAFETY_CRITICAL_SOURCE_STALE",
+    // Appended by A5-3bis (R-A5-DRIFT-CURE): A3-B (#6960) added these three
+    // to `_DISCLOSED_REVIEW_REASON_CODES`. Held-only under the
+    // `VISA_ORACLE_HOLDING_FLAGS` kill switch — accounted, not copied, by
+    // `HELD_ONLY_REVIEW_CODES` below.
+    "DISCLOSED_PAST_OVERSTAY_REVIEW",
+    "DISCLOSED_BLACKLIST_ENTRY_REVIEW",
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW",
   ];
   const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
     ...disclosedReviewReasonCodes(),
@@ -1375,9 +1387,28 @@ describe("review reasons cover every code the current pack can emit", () => {
   // orphaned in an empty array.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES: string[] = [];
 
+  // Held-only review codes (A5-3bis, R-A5-DRIFT-CURE amendment, 2026-09-20).
+  // A3-B (#6960) released PAST_OVERSTAY / BLACKLIST_ENTRY /
+  // IMMIGRATION_INVESTIGATION as named CONDITIONS on `origin/main` — each
+  // review code below is reachable ONLY when `VISA_ORACLE_HOLDING_FLAGS`
+  // names the flag (the kill switch, measured end to end in
+  // GATE-A3B-REPORT-6960.md check 4: env unset -> condition, env set ->
+  // HUMAN_REVIEW_REQUIRED with this exact code). No visitor-facing
+  // REVIEW_REASON_COPY exists for any of them yet: the day a flag is held
+  // for real in production, its copy is a slice of its own (A3-M, which
+  // opens after this slice merges). This list is not a parking lot: an
+  // entry naming a code the derivation stops producing is "stale" below; an
+  // entry whose code gains REVIEW_REASON_COPY without being removed here is
+  // "phantom" below — the same edit that adds the copy must delete the row.
+  const HELD_ONLY_REVIEW_CODES = [
+    "DISCLOSED_PAST_OVERSTAY_REVIEW", // evaluate_path.py:1147
+    "DISCLOSED_BLACKLIST_ENTRY_REVIEW", // evaluate_path.py:1148
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW", // evaluate_path.py:1149
+  ];
+
   it("derives and pins every backend-independent review reason by name", () => {
     expect(PACK_INDEPENDENT_REVIEW_REASON_CODES.slice().sort()).toEqual(
-      EXPECTED_18.slice().sort(),
+      EXPECTED_21.slice().sort(),
     );
   });
 
@@ -1439,12 +1470,20 @@ describe("review reasons cover every code the current pack can emit", () => {
     // highest signed pack is now seq-22, which emits 13 codes (the eight
     // above retired), + 18 pack-independent = 31, measured. The eight keep
     // their copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY below.
+    //
+    // 31 -> 34 measured after A5-3bis (R-A5-DRIFT-CURE, 2026-09-20): 13 pack
+    // + 21 pack-independent (the three A3-B held-only codes joined
+    // EXPECTED_21). Floor left at 31 — it is a regression tripwire, not a
+    // pin; the three new codes are accounted by HELD_ONLY_REVIEW_CODES, not
+    // REVIEW_REASON_COPY, so they do not change what "mapped or known gap"
+    // means for this assertion.
     expect(allRealCodes.length).toBeGreaterThanOrEqual(31);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
         !(code in REVIEW_REASON_COPY) &&
-        !KNOWN_UNMAPPED_REVIEW_REASON_CODES.includes(code),
+        !KNOWN_UNMAPPED_REVIEW_REASON_CODES.includes(code) &&
+        !HELD_ONLY_REVIEW_CODES.includes(code),
     );
     expect(unaccounted).toEqual([]);
   });
@@ -1514,6 +1553,40 @@ describe("review reasons cover every code the current pack can emit", () => {
       (code) => !allRealCodes.has(code),
     );
     expect(phantomEntries).toEqual([]);
+  });
+
+  it("keeps the held-only allowlist honest: every entry is a code the derivation actually produces (stale)", () => {
+    // Mirror image of the seq-20-only honesty test above, for
+    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY:
+    // if A3-B's release is ever reverted or the flag renamed, the derivation
+    // stops producing that name and this list would be naming a code that
+    // is not derived — a dead placeholder no other assertion here would
+    // catch (it never touches REVIEW_REASON_COPY, so the ordinary stale-key
+    // test can't see it).
+    const derived = new Set(PACK_INDEPENDENT_REVIEW_REASON_CODES);
+    const staleHeldOnlyEntries = HELD_ONLY_REVIEW_CODES.filter(
+      (code) => !derived.has(code),
+    );
+    expect(staleHeldOnlyEntries).toEqual([]);
+  });
+
+  it("keeps the held-only allowlist honest: no entry there already has copy (phantom)", () => {
+    // The day a held-only code ships real visitor-facing copy, the same
+    // change that adds it to REVIEW_REASON_COPY must delete the row here —
+    // otherwise the code would be double-accounted (both mapped AND
+    // held-only), and the row would be a phantom promise of a gap that
+    // copy has already closed.
+    const phantomHeldOnlyEntries = HELD_ONLY_REVIEW_CODES.filter(
+      (code) => code in REVIEW_REASON_COPY,
+    );
+    expect(phantomHeldOnlyEntries).toEqual([]);
+  });
+
+  it("pins the held-only allowlist to exactly the three A3-B codes", () => {
+    // Cardinality by literal, not derived — a test whose expectation shrinks
+    // with the table it judges proves nothing (GATE-A2G OBS-A2g-4, the same
+    // reasoning A5-1's four-field pin uses).
+    expect(HELD_ONLY_REVIEW_CODES).toHaveLength(3);
   });
 });
 
