@@ -24,11 +24,28 @@ BASELINE = Path(".secrets.baseline")
 
 
 def main() -> int:
-    if not BASELINE.exists():
-        print(f"ERROR: {BASELINE} not found", file=sys.stderr)
+    # `--baseline PATH` reads a COPY instead of the tracked file, so a caller
+    # can ask what a scan WOULD say without touching the repo's own baseline.
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == "--baseline" or (i > 0 and argv[i - 1] == "--baseline"):
+            continue
+        print(f"ERROR: unexpected argument {a!r} (known: --baseline PATH)", file=sys.stderr)
+        return 2
+    if "--baseline" in argv:
+        i = argv.index("--baseline")
+        if i + 1 >= len(argv):
+            print("ERROR: --baseline needs a path", file=sys.stderr)
+            return 2
+        path = Path(argv[i + 1])
+    else:
+        path = BASELINE
+
+    if not path.exists():
+        print(f"ERROR: {path} not found", file=sys.stderr)
         return 2
 
-    baseline = json.loads(BASELINE.read_text())
+    baseline = json.loads(path.read_text())
     results = baseline.get("results", {})
 
     unaudited: list[tuple[str, int, str]] = []

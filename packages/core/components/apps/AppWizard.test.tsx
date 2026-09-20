@@ -10,10 +10,7 @@ function makeSteps(): WizardStep[] {
       title: "A",
       summary: (v) => `A: ${v ?? "?"}`,
       render: ({ value, setValue }) => (
-        <button
-          data-testid="a-btn"
-          onClick={() => setValue("a-value")}
-        >
+        <button data-testid="a-btn" onClick={() => setValue("a-value")}>
           pick-a ({String(value ?? "empty")})
         </button>
       ),
@@ -24,10 +21,7 @@ function makeSteps(): WizardStep[] {
       title: "B",
       summary: (v) => `B: ${v ?? "?"}`,
       render: ({ value, setValue }) => (
-        <button
-          data-testid="b-btn"
-          onClick={() => setValue("b-value")}
-        >
+        <button data-testid="b-btn" onClick={() => setValue("b-value")}>
           pick-b ({String(value ?? "empty")})
         </button>
       ),
@@ -109,5 +103,53 @@ describe("AppWizard", () => {
       b: "b-value",
     });
     expect(navigator.vibrate).toHaveBeenCalledWith([20, 30, 20]);
+  });
+});
+
+/**
+ * The chrome is the only English left in a funnel that speaks another
+ * language, so it takes labels — and a caller that passes none must keep the
+ * words it renders today, which is what the first test below pins.
+ */
+describe("AppWizard — chrome labels", () => {
+  it("defaults to English when no labels are passed", () => {
+    const { getByText } = render(
+      <AppWizard steps={makeSteps()} onComplete={vi.fn()} />,
+    );
+    expect(getByText("Step 1 of 2")).toBeTruthy();
+    expect(getByText("Next")).toBeTruthy();
+  });
+
+  it("renders the labels it is given, including the last-step word", () => {
+    const { getByText, getByTestId } = render(
+      <AppWizard
+        steps={makeSteps()}
+        onComplete={vi.fn()}
+        labels={{
+          stepOf: (current, total) => `Langkah ${current} dari ${total}`,
+          back: "Kembali",
+          next: "Lanjut",
+          finish: "Lihat hasil",
+        }}
+      />,
+    );
+    expect(getByText("Langkah 1 dari 2")).toBeTruthy();
+    fireEvent.click(getByTestId("a-btn"));
+    fireEvent.click(getByText("Lanjut"));
+    expect(getByText("Langkah 2 dari 2")).toBeTruthy();
+    expect(getByText("Kembali")).toBeTruthy();
+    expect(getByText("Lihat hasil")).toBeTruthy();
+  });
+
+  it("falls back per-field: a partial override keeps the English rest", () => {
+    const { getByText } = render(
+      <AppWizard
+        steps={makeSteps()}
+        onComplete={vi.fn()}
+        labels={{ next: "Lanjut" }}
+      />,
+    );
+    expect(getByText("Step 1 of 2")).toBeTruthy();
+    expect(getByText("Lanjut")).toBeTruthy();
   });
 });

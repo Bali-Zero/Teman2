@@ -23,6 +23,33 @@ export interface WizardStep {
   summary?: (value: unknown) => string;
 }
 
+/**
+ * The wizard's own chrome, in the host funnel's language.
+ *
+ * English defaults, so every existing caller keeps the words it renders
+ * today (that is the regression contract: a funnel that passes nothing is
+ * byte-identical). A funnel that speaks more than one language passes its
+ * own — without them the customer reads translated questions between an
+ * English "Back" and an English "Next", which is the half-translated screen
+ * that reads as a bug rather than as a language.
+ */
+export interface AppWizardLabels {
+  /** e.g. `Step 2 of 4`. Receives 1-based positions. */
+  stepOf: (current: number, total: number) => string;
+  back: string;
+  /** Advances to the next step. */
+  next: string;
+  /** Replaces `next` on the last step. */
+  finish: string;
+}
+
+const DEFAULT_LABELS: AppWizardLabels = {
+  stepOf: (current, total) => `Step ${current} of ${total}`,
+  back: "Back",
+  next: "Next",
+  finish: "See result",
+};
+
 export interface AppWizardProps {
   steps: WizardStep[];
   onComplete: (values: Record<string, unknown>) => void;
@@ -30,6 +57,8 @@ export interface AppWizardProps {
   persistKey?: string;
   onStepChange?: (step: number, total: number) => void;
   onAbandon?: (step: number) => void;
+  /** Overrides for the chrome above; anything omitted stays English. */
+  labels?: Partial<AppWizardLabels>;
 }
 
 const PERSIST_TTL_MS = 60 * 60 * 1000; // 1h
@@ -47,7 +76,9 @@ export const AppWizard: FC<AppWizardProps> = ({
   persistKey,
   onStepChange,
   onAbandon,
+  labels,
 }) => {
+  const label: AppWizardLabels = { ...DEFAULT_LABELS, ...labels };
   const [idx, setIdx] = useState(0);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
@@ -191,9 +222,7 @@ export const AppWizard: FC<AppWizardProps> = ({
           color: "var(--color-text-muted)",
         }}
       >
-        <span>
-          Step {idx + 1} of {steps.length}
-        </span>
+        <span>{label.stepOf(idx + 1, steps.length)}</span>
         <span>{step.title}</span>
       </div>
 
@@ -288,7 +317,7 @@ export const AppWizard: FC<AppWizardProps> = ({
               minHeight: "44px",
             }}
           >
-            Back
+            {label.back}
           </button>
         ) : null}
         <button
@@ -306,7 +335,7 @@ export const AppWizard: FC<AppWizardProps> = ({
             minHeight: "44px",
           }}
         >
-          {idx === steps.length - 1 ? "See result" : "Next"}
+          {idx === steps.length - 1 ? label.finish : label.next}
         </button>
       </div>
     </div>

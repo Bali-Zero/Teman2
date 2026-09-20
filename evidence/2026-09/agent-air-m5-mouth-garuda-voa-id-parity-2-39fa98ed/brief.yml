@@ -1,0 +1,108 @@
+task_id: mouth-garuda-voa-id-parity-2
+gear: 2
+l_level: L2
+objective: |
+  GARUDA VOA, FRONT B (design lane). The 2026-09-19 mandate's accent (6) asks for EN/ID
+  parity on the public funnel. product.yaml decision 5's binding copy constraint 5a,
+  ratified 2026-08-25, says the opposite in one line: "The public funnel is ENGLISH. All
+  of it." Both are owner statements and neither has been withdrawn, so this PR does not
+  pick a winner — it does what PR #6932 did with red-vs-copper: makes the disputed thing
+  ONE variable, ships the value currently ruled, and leaves the other value reachable so
+  the owner can look at it before ruling.
+
+  `VOA_LOCALE_RULING` (voa-locale.ts) is that variable. Shipped `english-by-default`: a
+  visitor who does not type `?lang=id` is served English even when their stored
+  `blog-language` preference is Bahasa — which is 5a, enforced rather than assumed.
+  `?lang=id` is the preview channel, and it reuses the site's own convention for asking
+  for a language rather than adding a switcher the funnel does not offer.
+
+  Scope is the ENTRY LEG only — the eligibility wizard and the wizard chrome around it.
+  The post-purchase screens (checkout, upload, order tracker, magic link) sit behind
+  `GARUDA_PAYMENTS_LIVE` (flag.ts:43) and are a second PR, named in the PR body rather
+  than half-done here.
+assumptions:
+  - text:
+      "The ID copy is native-register, not machine-translated, and follows the Visa Oracle
+      dictionary's documented register (Anda never kamu, Imigrasi terminology, Visa on Arrival
+      verbatim). It has NOT been read by a native speaker on the team."
+    status: unverified
+    probe:
+      "A Bahasa-speaking team member (Surya or Krisna) reads voa-copy.ts's `id` column
+      before the ruling flips to follow-site-preference. Until then the column is reachable
+      only by typing ?lang=id."
+constraints:
+  - "Design lane only. No file under apps/backend-rag/** or services/garuda_portal/** is
+    touched — FRONT A is a separate live window."
+  - "Constraint 5a is OBEYED by what ships: production serves English to everyone who does not
+    ask otherwise. This PR does not decide the language question; it makes it decidable in one
+    line."
+  - "packages/core/components/apps/AppWizard.tsx gains an OPTIONAL `labels` prop. Every existing
+    caller passes nothing and keeps its English chrome byte-for-byte; a test pins that."
+  - "Synthetic data only, no PII anywhere: the funnel's copy carries no client data and the
+    browser walk used no real applicant."
+acceptance:
+  - text:
+      "When the funnel is opened without a language parameter, it renders English and
+      declares lang=en."
+    probe: "playwright walk, dev server at 390px: {lang: en, owner: content, chrome: STEP 1 OF 4}"
+    status: verified
+  - text:
+      "When the funnel is opened with ?lang=id, the copy AND the wizard chrome render
+      Indonesian and the document declares lang=id."
+    probe:
+      "same walk: {lang: id, owner: content, chrome: LANGKAH 1 DARI 4}; step 2 reads
+      'Apa tujuan perjalanan Anda?' with Kembali/Lanjut and validation 'Pilih salah satu.'"
+    status: verified
+  - text:
+      "When a stored site preference says Bahasa but the URL asks nothing, the funnel still
+      serves English (constraint 5a)."
+    probe:
+      "voa-i18n.parity.guard.test.tsx — resolveVoaLocale({requested: null, preference: 'id'})
+      === 'en', and the falsification: the same call with ruling='follow-site-preference'
+      returns 'id'."
+    status: verified
+  - text: "The English surface is unchanged by the refactor."
+    probe:
+      "npx vitest run (apps/mouth) — 538 files, 6974 passed, 2 skipped; the pre-existing
+      page.test.tsx asserts the English strings literally."
+    status: verified
+  - text:
+      "The banned-claims guard follows the copy into the dictionary instead of going green
+      over an empty room."
+    probe:
+      "voa-copy.guard.test.ts SCREEN_FILES now lists voa-copy.ts; voa-i18n.parity.guard
+      asserts that listing, and the assertion was observed RED before the guard was extended."
+    status: verified
+consumer_map:
+  - "https://balizero.com/visa/voa — the live funnel. After promote it serves the same English
+    it serves today (5a), through the dictionary rather than through literals."
+  - "https://balizero.com/visa/voa?lang=id — the preview channel the owner walks to rule on
+    accent (6)."
+  - "voa-copy.guard.test.ts — now scans voa-copy.ts, so both language columns are checked for
+    banned claims, price literals and Safe-Clock leaks."
+  - "packages/core AppWizard consumers — unchanged by construction (labels default to English)."
+risks:
+  - "The ID column is unreviewed by a native speaker. It is reachable only by an explicit URL,
+    and the funnel is behind GARUDA_PUBLIC_ENABLED with noindex, so exposure is bounded — but a
+    mistranslation on immigration copy is a real harm and the assumption block says so."
+  - "Half the journey speaks one language. The entry leg is bilingual, the post-purchase leg is
+    not; a customer who typed ?lang=id and then bought would cross a language boundary. Bounded
+    today by the payments flag, and the second PR closes it."
+  - "This is the SUCCESSOR of PR #6947, closed unmerged: #6947 was armed before its CI spoke, and
+    two required checks then went red — `brand-api-gate` (the generated component catalogue goes
+    stale when AppWizard gains an exported interface) and `Harness floor recompute` (a gear>=2
+    diff needs an on-disk gate verdict posted on its head sha). Armed means frozen, so the cure
+    is a fresh branch off origin/main carrying the same diff plus the regenerated brand-api
+    artefacts, not a second commit on a frozen ref."
+  - "`next build` could not be run locally: the broker's worktree symlinks apps/mouth/node_modules
+    out of the worktree root and Turbopack refuses it (measured, both build and dev). The webpack
+    dev server was used for the browser walk instead. CI builds from a normal checkout."
+grader: |
+  generator != grader. This session wrote the diff; the verdict it rests on is not its own
+  prose: 6974 tests on the shipped tree, a guard whose new assertion was observed red before it
+  was made green, and a real browser at 390px reading the Indonesian journey back. The final
+  on-disk gate is a fresh session per the Builder Contract.
+budget: |
+  Flat-subscription only (Claude MAX OAuth, Opus 5). No paid per-token endpoint, no third-party
+  API.
+pii: none
