@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import subprocess
 import sys
 import time
@@ -33,6 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main, web_search
 from browser_job import BrowserJob
+from pajak_parse import parse_link_items, parse_peraturan_index
 
 PAJAK_PERATURAN_URL = "https://pajak.go.id/id/index-peraturan"
 PAJAK_SIARAN_PERS_URL = "https://pajak.go.id/id/siaran-pers-page"
@@ -138,59 +138,43 @@ class PajakMonitorJob(BrowserJob):
     def _parse_pajak_html(self, html: str, source: str, base_url: str) -> list[dict]:
         """Parse pajak.go.id Drupal HTML for regulation/news links.
 
-        pajak.go.id is a Drupal 9 site (not Next.js).
-        Pattern: <a href="/id/peraturan/slug">REG-NUM</a> followed by <span>TITLE</span>
+        pajak.go.id is a Drupal 9 site (not Next.js). The peraturan index
+        page is a `views-row`-per-item listing (delegated to
+        `parse_peraturan_index`, per-block field extraction so a link never
+        pairs with a neighboring row's title); other pages (siaran-pers,
+        berita) are plain link listings (`parse_link_items`).
         """
-        items = []
-        seen: set = set()
-        base_domain = "https://pajak.go.id"
+        scraped_at = datetime.now(WITA).isoformat()
 
-        # Primary: Drupal pattern — link + span title immediately after
-        for m in re.finditer(
-            r'href="(/id/(?:peraturan|siaran-pers|berita)[^"]+)"[^>]*>[^<]*</a>'
-            r'.*?<span[^>]*>([^<]{10,})</span>',
-            html[:200000], re.DOTALL | re.IGNORECASE
-        ):
-            href = m.group(1)
-            if href.startswith("/"):
-                href = f"{base_domain}{href}"
-            title = m.group(2).strip()
-            title = re.sub(r'\s+', ' ', title)
-            if href not in seen and len(title) > 10:
-                seen.add(href)
+        if "peraturan" in base_url:
+            rows = parse_peraturan_index(html)
+            items = []
+            for row in rows:
+                if row["jenis"] and row["nomor"]:
+                    title = f"{row['jenis']} {row['nomor']} — {row['title']}"
+                else:
+                    title = row["title"]
                 items.append({
-                    "url": href,
+                    "url": row["url"],
                     "title": title[:300],
                     "source": source,
-                    "scraped_at": datetime.now(WITA).isoformat(),
-                    "type": "tax_regulation" if "/peraturan/" in href else "tax_news",
+                    "scraped_at": scraped_at,
+                    "type": "tax_regulation",
+                    "nomor": row["nomor"],
+                    "jenis": row["jenis"],
+                    "regulation_date": row["regulation_date"],
                 })
+            return items[:10]
 
-        # Fallback: any pajak.go.id content links with meaningful titles
-        if not items:
-            for m in re.finditer(
-                r'<a[^>]+href="(/id/(?:peraturan|siaran-pers-page|berita-page|siaran-pers|berita)[^"]*)"[^>]*>(.*?)</a>',
-                html[:200000], re.DOTALL | re.IGNORECASE
-            ):
-                href = m.group(1)
-                if href.startswith("/"):
-                    href = f"{base_domain}{href}"
-                title = re.sub(r'<[^>]+>', '', m.group(2)).strip()
-                title = re.sub(r'\s+', ' ', title)
-                # Derive title from slug if link text is just a regulation number
-                if len(title) < 15:
-                    slug = href.split("/")[-1]
-                    title = slug.replace("-", " ").title()
-                if href not in seen and len(title) > 10:
-                    seen.add(href)
-                    items.append({
-                        "url": href,
-                        "title": title[:300],
-                        "source": source,
-                        "scraped_at": datetime.now(WITA).isoformat(),
-                        "type": "tax_regulation" if "/peraturan/" in href else "tax_news",
-                    })
-
+        items = []
+        for url, title in parse_link_items(html):
+            items.append({
+                "url": url,
+                "title": title[:300],
+                "source": source,
+                "scraped_at": scraped_at,
+                "type": "tax_regulation" if "/peraturan/" in url else "tax_news",
+            })
         return items[:10]
 
     async def _search_djp_updates(self) -> list[dict]:

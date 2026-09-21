@@ -560,6 +560,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/cron-agent-python/pajak_parse.py",
+      "repo": "scripts/cron-agent-python/pajak_parse.py",
+      "_note": "New stdlib-only module pajak_monitor.py's _parse_pajak_html now delegates to (the DJP index-peraturan/siaran-pers HTML parsing, fixed for the /index.php href prefix DJP now serves). Same live/repo pair and machine scope as pajak_monitor.py above — it ships to the same HOME copy on the same cron host.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/cron-agent-python/intel_radar.py",
       "repo": "scripts/cron-agent-python/intel_radar.py",
       "_note": "task #17 promotion (2026-07-26). Clean on both passes; DSN via os.getenv(DATABASE_URL), no hardcoded credentials.",
