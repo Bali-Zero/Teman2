@@ -438,8 +438,11 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
     // caps under a different number.
     // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
-    expect(located).toHaveLength(460);
-    expect(gaps).toHaveLength(1099);
+    // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
+    // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
+    // relabelled declared_gap→located. 460→720 located / 1099→839 gaps.
+    expect(located).toHaveLength(720);
+    expect(gaps).toHaveLength(839);
     for (const r of located) {
       const prov = deriveProvenance(r).pma;
       expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();

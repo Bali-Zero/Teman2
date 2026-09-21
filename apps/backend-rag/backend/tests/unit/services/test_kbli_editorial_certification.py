@@ -101,12 +101,16 @@ def test_canonical_certification_partition_is_exact(
     # are identified by the basis the compiler writes, which is the property
     # that matters — a located code arriving WITHOUT that basis still has to be
     # named below, and a 330th code carrying it breaks the count.
+    # 2026-09-21 naso PR-5 (residual lot 2): 260 more codes relabelled the
+    # same way — same compiler, same `BASIS` string, ATTENZIONE_FASCIA_BALI
+    # Bali axis instead of OK_or_HIGHER_RISK — so they carry the identical
+    # basis prefix and join the same set. 329->589.
     residual_lot = {
         code
         for code, record in records.items()
         if str(record.get("pma_official_basis") or "").startswith(RESIDUAL_BASIS_PREFIX)
     }
-    assert len(residual_lot) == 329
+    assert len(residual_lot) == 589
     assert residual_lot.isdisjoint(certified)
     assert all(
         records[code].get("pma_verification_status") == "located"

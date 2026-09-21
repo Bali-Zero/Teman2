@@ -968,7 +968,10 @@ def test_the_lot_2_spec_is_260_codes_and_the_deferred_arithmetic_is_declared():
 
 
 def test_the_lot_2_spec_validates_against_the_real_canonical(records):
-    assert R.check(SPEC2, records) == ([str(c) for c in SPEC2["items"]], [])
+    # Lot 2 is already shipped on this canonical (same PR that adds this
+    # test applies it) — a clean no-op, exactly like lot 1's own
+    # `test_rerun_on_the_shipped_canonical_is_a_clean_noop`.
+    assert R.check(SPEC2, records) == ([], [])
 
 
 def test_every_lot_2_item_is_attenzione_fascia_bali_and_unblocked(by_code):
