@@ -1,0 +1,76 @@
+task_id: cate-no-paths-filter
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Make `catE-sovereignty-lint` ARMABLE as a required status check on main.
+  A path-filtered workflow cannot be required without a skip-to-success
+  sentinel: a PR matching no path never reports the context and pends
+  forever (W69 BUCO #1). Remove the `paths:` filter from both events, add
+  the `merge_group` trigger the required-workflow conformance checker
+  demands of every required context, and replace the parity test (which
+  pinned a filter to its scanners) with an ABSENCE guard that reds on every
+  shape that would make the context unreportable or falsely green.
+  Ruled by Zero 2026-09-21 (relayed by nuzantara-67, confirmed against the
+  owner's own words in this lane's transcript): this design survives;
+  #7000/#7018 are history.
+constraints:
+  - "Two files of substance only: .github/workflows/catE-sovereignty-lint.yml
+    and scripts/tests/test_cate_trigger_parity.py. The scanners themselves
+    (lint_ban_prose.py and the paid-endpoint lints) are NOT changed."
+  - "Branch protection is NOT changed by this PR. The REQUIRED flip is a
+    separate control-plane act, done by the owning session after merge and
+    live proof, in the sequence Zero decides."
+  - "No measurement of the filter's cost is frozen in the files — the
+    figures live only in this pack."
+  - "Rebased on origin/main so the diff does not duplicate #7018's squash
+    (content, not SHA ancestry — scar family #9)."
+acceptance:
+  - text: >
+      WHEN a PR's changed set matches none of the removed filter's globs
+      (e.g. a PR touching only a .md file), the workflow SHALL start and
+      report the `catE-sovereignty-lint` context.
+    status: pending-live
+    probe: >-
+      after merge: the ledger PR closing PWC #7018 C1/C2/C4 touches only
+      .claude/skills/modus/PENDING-ARMS.md (outside every removed glob) and
+      its checks list shows a catE-sovereignty-lint run.
+  - text: >
+      WHEN any of 16 regressions is applied to the workflow (paths or
+      paths-ignore on any of the three events, branch scope dropped,
+      merge_group dropped, pull_request types narrowed, branches-ignore,
+      branches without main, constant concurrency group, tree-scan glob
+      dropped, frozen pardon count drifted, Law-5 skip restored in three
+      spellings, job-level if), the parity test SHALL fail on the assertion
+      written for that regression.
+    status: verified
+    probe: "mutate_b.py battery over 16 mutations on minimal mirrors of the branch"
+  - text: >
+      WHEN catE-sovereignty-lint is added to the required-contexts snapshot,
+      the required-workflow conformance checker SHALL report 0 violations on
+      this branch and SHALL report the missing merge_group and the paths
+      filter on origin/main's version of the workflow.
+    status: verified
+    probe: "check_required_workflow_conformance.py with a snapshot copy that adds catE (innocence on branch, guilt on origin/main's workflow)"
+  - text: >
+      WHEN scripts/lint/wr3_lint_autonomous_publish.py is absent, the Law-5
+      step SHALL fail (::error:: and exit 1) instead of warning green.
+    status: verified
+    probe: "mutate_b.py battery over 16 mutations on minimal mirrors of the branch"
+risks:
+  - "Every PR now starts this workflow, including those the filter used to
+    spare (14 of the last 40 first-parent merges to main, measured
+    2026-09-21 — see pack.yml receipts). Accepted: the filter was the
+    obstacle to requiring the check."
+  - "On merge_group and push runs the blocking prose step scans the whole
+    tree and inherits lint_ban_prose.py's warn-and-pass on unreadable files;
+    the .env permission step is vacuous on hosted checkouts. Both
+    pre-existing, both tracked in PENDING-ARMS ('catE-passes-without-examining',
+    deadline 2026-10-05, landed in #7028), neither cured here."
+instruction_to_the_grader: |
+  Judge the absence guard as a guard: for each way the context could stop
+  reporting or report a false green, is there a test that reds, and does it
+  red on the right assertion? Then judge the prose: does any comment or
+  docstring still describe a filter, freeze a number, or claim a safety the
+  code does not have? Read the diff, not this brief.
+pii: none
