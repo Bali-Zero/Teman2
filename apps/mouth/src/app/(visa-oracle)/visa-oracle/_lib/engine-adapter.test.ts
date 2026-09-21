@@ -1823,7 +1823,7 @@ describe("notices render as named conditions (slice A2)", () => {
     },
   );
 
-  it("has all eleven codes N1 names, and no other code, EN and ID both non-empty", () => {
+  it("has all fourteen codes N1 names, and no other code, EN and ID both non-empty", () => {
     const EXPECTED_CODES = [
       "OBSOLETE_PRODUCT_CODE",
       "DISCLOSED_HEALTH_CONCERN_CONDITION",
@@ -1836,12 +1836,68 @@ describe("notices render as named conditions (slice A2)", () => {
       "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
       "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
       "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
+      // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys.
+      "DISCLOSED_PAST_OVERSTAY_CONDITION",
+      "DISCLOSED_BLACKLIST_ENTRY_CONDITION",
+      "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION",
     ].sort();
     expect(Object.keys(NOTICE_CONDITION_COPY).sort()).toEqual(EXPECTED_CODES);
     for (const message of Object.values(NOTICE_CONDITION_COPY)) {
       expect(message.en.length).toBeGreaterThan(0);
       expect(message.id.length).toBeGreaterThan(0);
     }
+  });
+
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4-bis, routed from A5's gate):
+  // the copy table must never carry a code the backend cannot emit, and any
+  // code the backend CAN emit but the table deliberately withholds must be
+  // named and justified — never silently absent. Ground truth verified
+  // against the backend source on this base:
+  const BACKEND_EMITTED_NOTICE_CODES = [
+    "OBSOLETE_PRODUCT_CODE", // evaluator.py:1000
+    "DISCLOSED_HEALTH_CONCERN_CONDITION", // evaluate_path.py:1163
+    "DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION", // evaluate_path.py:1164
+    "DISCLOSED_UNCERTAINTY_CONDITION", // evaluate_path.py:1165
+    "DISCLOSED_PEP_OR_SANCTIONS_CONDITION", // evaluate_path.py:1166
+    "DISCLOSED_SOURCE_OF_FUNDS_CONDITION", // evaluate_path.py:1167
+    "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION", // evaluate_path.py:1168
+    "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION", // evaluate_path.py:1169
+    "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION", // evaluate_path.py:1170
+    "CONFLICTING_IMMIGRATION_STATUS_CONDITION", // evaluate_path.py:1171-1173
+    "DISCLOSED_PAST_OVERSTAY_CONDITION", // evaluate_path.py:1174
+    "DISCLOSED_BLACKLIST_ENTRY_CONDITION", // evaluate_path.py:1175
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION", // evaluate_path.py:1176
+  ];
+
+  // `ACTIVITY_BOUNDARY` only ever holds (never conditions) while it sits in
+  // `HOLDING_DISCLOSED_FLAGS` — `_resolve_holding_flags` (evaluate_path.py)
+  // returns `recognized | HOLDING_DISCLOSED_FLAGS`, so the env kill switch
+  // can add a hold but never release one, and unreachable BY CONSTRUCTION,
+  // not by accident. The copy stays JUSTIFIED, not removed: deleting it
+  // would only mean re-adding it in slice A3', and an absent key would fall
+  // to the production fallback sentence at the exact moment the flag is
+  // released.
+  const PRE_PROVISIONED_NOTICE_CODES = [
+    "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
+  ];
+
+  it("NOTICE_CONDITION_COPY carries no code the backend cannot emit and never provisioned", () => {
+    const allowed = new Set([
+      ...BACKEND_EMITTED_NOTICE_CODES,
+      ...PRE_PROVISIONED_NOTICE_CODES,
+    ]);
+    const uncovered = Object.keys(NOTICE_CONDITION_COPY).filter(
+      (key) => !allowed.has(key),
+    );
+    expect(uncovered).toEqual([]);
+
+    // The allowlist is non-empty only for codes actually named in the copy
+    // table — no dead weight, no unaccounted release.
+    expect(PRE_PROVISIONED_NOTICE_CODES.length).toBeGreaterThan(0);
+    const missingFromTable = PRE_PROVISIONED_NOTICE_CODES.filter(
+      (code) => !(code in NOTICE_CONDITION_COPY),
+    );
+    expect(missingFromTable).toEqual([]);
   });
 
   // S2 (GATE-A2-REPORT-6849 MEDIUM-2), hardened (GATE-A2B-REPORT-6857.md
@@ -2117,7 +2173,15 @@ describe("notices render as named conditions (slice A2)", () => {
     genericNoticeCondition: { en: string; id: string };
     translate: (
       language: "en" | "id",
-      key: "outcome.conditions.title" | "outcome.conditions.intro",
+      key:
+        | "outcome.conditions.title"
+        | "outcome.conditions.intro"
+        // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M5): the scan is extended
+        // to cover the review-gate question/reason copy too, since M6
+        // rewrites both to stop promising a human review the engine no
+        // longer performs.
+        | "q.review_gate.hint"
+        | "why.review_gate",
     ) => string;
   }
 
@@ -2148,6 +2212,10 @@ describe("notices render as named conditions (slice A2)", () => {
     for (const key of [
       "outcome.conditions.title",
       "outcome.conditions.intro",
+      // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M5): the review-gate
+      // question hint and its "why" copy are now scanned too.
+      "q.review_gate.hint",
+      "why.review_gate",
     ] as const) {
       entries.push({ key, language: "en", text: tables.translate("en", key) });
       entries.push({ key, language: "id", text: tables.translate("id", key) });
@@ -2173,11 +2241,16 @@ describe("notices render as named conditions (slice A2)", () => {
     "GENERIC_NOTICE_CONDITION",
     "outcome.conditions.title",
     "outcome.conditions.intro",
+    // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M5): exactly two literal
+    // names — the three new CONDITION codes arrive on their own through
+    // the `...Object.keys(NOTICE_CONDITION_COPY)` spread above.
+    "q.review_gate.hint",
+    "why.review_gate",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback and eleven codes, both languages (V3)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback and fourteen codes, both languages (V3)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(28);
+    expect(entries).toHaveLength(38);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2192,7 +2265,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 28 shipped strings pass the scan clean", () => {
+  it("innocence: all 38 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });

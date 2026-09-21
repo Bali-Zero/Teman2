@@ -1,0 +1,138 @@
+task_id: vo-a3m
+gear: 2
+base_sha: bcb87f481d
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-a3m
+objective: >-
+  Slice A3-M (MANDATE-vo.md, DRAFT-SPEC-A3-1.v2-M §4.1): three review_gate
+  items (overstay, blacklist, immigration_investigation) were orphans —
+  `mapViolationHistory` already turned them into a fact, but
+  `REVIEW_FLAG_MAP` never turned them into a disclosed review flag, so their
+  `NOTICE_CONDITION_COPY` row and `REVIEW_GATE_CAUSE_ITEM` edit-affordance
+  never fired. Meanwhile the review-gate question's own lead
+  (`q.review_gate.hint`) still promised "a human reviews your case — never
+  an automated verdict", false since A1'/A3-B made most disclosures
+  conditions on an automated result rather than a human hold, and
+  `why.review_gate` still claimed only the immigration-history items map to
+  an engine fact. M1 adds the three REVIEW_FLAG_MAP keys; M2 rewrites the
+  two pinned tests that asserted the old "no" to prove BOTH channels (fact +
+  disclosure) fire from the same walk; M3 zeroes the backend orphan census
+  (test_review_hold_inventory.py); M4 adds the three NOTICE_CONDITION_COPY
+  entries the backend already emits (A3-B put them in
+  `_DISCLOSED_CONDITION_REASON_CODES`); M4-bis adds a guard that the copy
+  table carries no code the backend cannot emit and that the one
+  unreachable-by-construction exception (ACTIVITY_BOUNDARY, HOLDING-only)
+  is named and justified, not silently absent; M5 extends the
+  guard-over-match scan to the two review-gate strings (38 entries, was
+  28); M6 rewrites both strings and pins the retired sentence's absence;
+  M7 adds the three REVIEW_GATE_CAUSE_ITEM rows for the "edit your answer"
+  affordance; M7-bis (routed from a conductor ruling on the builder's own
+  finding, R-CONTINUE-A3M 2026-09-20T22:27Z) adds two tests deriving
+  coverage of every REVIEW_GATE_CAUSE_ITEM row from REVIEW_GATE_ITEMS and
+  evaluate_path.py rather than the 4-example it.each the file's own comment
+  overstated — zero production files touched. The gate on that head
+  (GATE-A3M-REPORT-6998.md) returned REWORK-BUILD: OBS-A3M-1 (HIGH) found
+  all ten of M4/M6's visitor-facing strings diverged from
+  DRAFT-SPEC-A3-1.v2-M §2, restored here byte-for-byte, extracted and
+  planted by script, never hand-typed; OBS-A3M-2 (MEDIUM) proved false the
+  builder's own claim that M7-bis's ADD-direction gap was architecturally
+  uncatchable without a production change — M7-ter closes it with a
+  TEST-ONLY source-text enumeration of REVIEW_GATE_CAUSE_ITEM's keys
+  (conductor ruling R-REWORK-A3M 2026-09-20T23:12Z).
+constraints:
+  - >-
+    Mouth + one coupled backend test only: fact-mapper.ts/.test.ts,
+    engine-adapter.ts/.test.ts, i18n.ts/.test.ts, OutcomeSheet.tsx, and
+    test_review_hold_inventory.py (reads the mouth files from disk, so a
+    mouth-only PR would turn it red on main). mapViolationHistory,
+    fact-mapper.ts:935, oracle.css, LivingTree.tsx, OracleShell.tsx (Track
+    C) and OutcomeSheet.tsx's disclaimer block (slice A5's) are untouched.
+  - >-
+    A5's HELD_ONLY_REVIEW_CODES phantom pin (DISCLOSED_PAST_OVERSTAY_REVIEW,
+    DISCLOSED_BLACKLIST_ENTRY_REVIEW, DISCLOSED_IMMIGRATION_INVESTIGATION_
+    REVIEW must carry no REVIEW_REASON_COPY) is not this slice's to touch —
+    only NOTICE_CONDITION_COPY (conditions) and the REVIEW_GATE_CAUSE_ITEM
+    edit-affordance rows are added.
+  - >-
+    PR ships UNARMED, never merged or promoted by the builder; production is
+    never called, not even a GET.
+appetite: { wall_clock_hours: 2 }
+acceptance:
+  - text: >-
+      The full visa-oracle vitest suite passes with all M-clauses',
+      M7-bis's and M7-ter's changes included (1131 tests, 44 files).
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: >-
+      GUILT (M1+M2): deleting the blacklist key from REVIEW_FLAG_MAP reddens
+      the rewritten both-channels test, naming BLACKLIST_ENTRY.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts" -t "routes legal violation values"'
+  - text: >-
+      GUILT (M4-bis): NOTICE_CONDITION_COPY carries no code the backend
+      cannot emit, and the one pre-provisioned exception is named.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "NOTICE_CONDITION_COPY carries"'
+  - text: >-
+      GUILT (M5): the guard-over-match scan reddens on a plant in the new
+      EN lead, naming q.review_gate.hint/en and the EN stem: clear family.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "innocence: all 38"'
+  - text: >-
+      GUILT (M6): the retired "a human reviews your case" promise cannot
+      ship in either language table.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/i18n.test.ts" -t "M6"'
+  - text: "The backend orphan census reads zero orphans, mouth side matches."
+    probe: "PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/scripts/visa_engine/test_review_hold_inventory.py -v"
+  - text: >-
+      The two owed rendered proofs run under a real production build: the
+      new EN/ID leads render, the retired sentence is absent, zero engine
+      calls before the confirmation screen.
+    probe: "cd apps/mouth && ../../node_modules/.bin/playwright test -c playwright.config.ts e2e/visa-oracle-v2.spec.ts --project=chromium"
+  - text: "tsc --noEmit exits 0 across the whole apps/mouth project."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit -p tsconfig.json"
+  - text: >-
+      GUILT (M7-bis): deleting DISCLOSED_BLACKLIST_ENTRY_REVIEW from
+      REVIEW_GATE_CAUSE_ITEM on a scratch copy reddens both new M7-bis
+      tests, naming it.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx -t "M7-bis|derives: every review_gate|pins the row-key set"'
+  - text: >-
+      OBS-A3M-1: the shipped copy re-extracted from i18n.ts/engine-adapter.ts
+      matches DRAFT-SPEC-A3-1.v2-M §2's ten strings byte-for-byte — an empty
+      diff.
+    probe: "python3 /private/tmp/claude-501/-Users-balizero-nuzantara--worktrees-backend-rag-vo-b2j-enumerate-live-apps-backend-rag/14259ff0-0e91-40a5-96c9-3f6c25dd7661/scratchpad/builder-a3m/obs1/print_shipped_copy.py | diff - /private/tmp/claude-501/-Users-balizero-nuzantara--worktrees-backend-rag-vo-b2j-enumerate-live-apps-backend-rag/14259ff0-0e91-40a5-96c9-3f6c25dd7661/scratchpad/builder-a3m/obs1/spec-strings.json"
+  - text: >-
+      GUILT (M7-ter, both directions): adding BOGUS_GATE_PROBE_REVIEW or
+      deleting DISCLOSED_BLACKLIST_ENTRY_REVIEW on a scratch copy of
+      OutcomeSheet.tsx reddens the source-text enumeration tests, naming the
+      key.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx -t "M7-ter"'
+assumptions:
+  - text: >-
+      The backend's `_DISCLOSED_CONDITION_REASON_CODES` map
+      (evaluate_path.py:1161-1177) already carries PAST_OVERSTAY,
+      BLACKLIST_ENTRY and IMMIGRATION_INVESTIGATION on this base — A3-B
+      shipped them — so M4's three new frontend keys are backend-backed
+      from the moment they land, and M4-bis's guard passes them without a
+      further backend PR.
+    status: verified
+    probe: "grep -n 'PAST_OVERSTAY\\|BLACKLIST_ENTRY\\|IMMIGRATION_INVESTIGATION' apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
+  - text: >-
+      M7-bis (R-CONTINUE-A3M) resolves the declared limit from the 4-example
+      drift `it.each`: two new tests derive the row set from
+      REVIEW_GATE_ITEMS (tree.ts) and evaluate_path.py's
+      _DISCLOSED_REVIEW_REASON_CODES read from disk, then pin it at exactly
+      twelve codes — not fourteen, which is DisclosedReviewFlag's own
+      cardinality (a different table); MULTI_PURPOSE_TRIP and
+      CONFLICTING_IMMIGRATION_STATUS are correctly excluded, by prior
+      design, from REVIEW_GATE_CAUSE_ITEM. Both tests use the exported
+      demonstratedReviewCauses() as an indirect probe, since
+      REVIEW_GATE_CAUSE_ITEM stays module-private. CORRECTED (gate
+      GATE-A3M-REPORT-6998.md, OBS-A3M-2, R-REWORK-A3M): the builder's
+      original claim here — that the ADD direction was "architecturally
+      uncatchable without exporting the module-private map" — was FALSE.
+      The gate proved it by regexing REVIEW_GATE_CAUSE_ITEM straight out of
+      OutcomeSheet.tsx's own source text, the same technique the same
+      describe block already uses on evaluate_path.py. M7-ter ships that
+      test-only enumeration: both directions (an added bogus row, a dropped
+      real row) now redden, naming the key, with zero production files
+      touched.
+    status: verified
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run OutcomeSheet.test.tsx -t "M7-bis|M7-ter"'

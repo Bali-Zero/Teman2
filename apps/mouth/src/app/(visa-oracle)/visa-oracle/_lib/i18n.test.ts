@@ -8,6 +8,23 @@ describe("i18n.ts — EN/ID key parity", () => {
     expect(idKeys).toEqual(enKeys);
   });
 
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M6): the old lead promised an
+  // always-human review that stopped being true after A1'/A3-B — see
+  // `q.review_gate.hint`'s new value. A literal, not a family: a fixture
+  // pinned against a shrinking list would silently stop testing anything
+  // the day the list it derives from shrinks.
+  it("never ships the retired 'a human reviews your case' promise (M6)", () => {
+    const retired = "Any of these means a human reviews your case";
+    for (const [lang, table] of Object.entries(dict)) {
+      for (const [key, value] of Object.entries(table)) {
+        expect(
+          value,
+          `${lang}.${key} still carries the retired promise`,
+        ).not.toContain(retired);
+      }
+    }
+  });
+
   it("has no empty-string values in either language", () => {
     for (const [lang, table] of Object.entries(dict)) {
       for (const [key, value] of Object.entries(table)) {

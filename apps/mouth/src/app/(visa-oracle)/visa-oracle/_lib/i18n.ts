@@ -612,10 +612,13 @@ const en = {
     "The decision engine checks your exact planned duration instead of guessing from a broad range.",
 
   "q.review_gate": "A few honest questions before we show you anything",
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M6): the lead no longer promises
+  // a human review that no longer happens after A1'/A3-B — see A5's
+  // `outcome.disclaimer.complex_to_human` for the same underlying fact.
   "q.review_gate.hint":
-    "Any of these means a human reviews your case — never an automated verdict. That’s a feature, not a penalty.",
+    "Tick everything that applies — an omission costs you more than a disclosure. Some of these, a criminal record among them, put your case in front of a person before any verdict; the others are attached to your result as conditions our team checks with you before submission.",
   "why.review_gate":
-    "Only the separate immigration-history items map to an engine fact. Every other selection stays a review signal.",
+    "Every item here reaches the engine: the three immigration-history ones as a fact the signed rules read, all of them as a disclosure the result must account for.",
   "q.review_gate.opt.none": "None of these apply to me",
   "q.review_gate.opt.flagged": "One or more applies",
   // Finding #5 (adversarial review 2026-07-17): "none" is now a first-class
@@ -1638,9 +1641,9 @@ const id: Record<Keys, string> = {
 
   "q.review_gate": "Beberapa pertanyaan jujur sebelum kami tunjukkan hasilnya",
   "q.review_gate.hint":
-    "Salah satu dari ini berarti kasus Anda ditinjau manusia — bukan keputusan otomatis. Ini fitur, bukan hukuman.",
+    "Centang semua yang berlaku — tidak menyebutkannya lebih merugikan Anda daripada menyebutkannya. Sebagian di antaranya, termasuk catatan kriminal, membuat kasus Anda ditinjau seseorang sebelum ada keputusan; sisanya menyertai hasil Anda sebagai kondisi tersurat yang ditelusuri tim kami bersama Anda sebelum pengajuan.",
   "why.review_gate":
-    "Hanya item riwayat keimigrasian yang terpisah yang dipetakan ke fakta mesin. Pilihan lainnya tetap menjadi sinyal tinjauan.",
+    "Setiap item di sini sampai ke mesin: tiga item riwayat keimigrasian sebagai fakta yang dibaca aturan yang telah disahkan, dan semuanya sebagai pengungkapan yang harus diperhitungkan dalam hasil.",
   "q.review_gate.opt.none": "Tidak ada yang berlaku bagi saya",
   "q.review_gate.opt.flagged": "Satu atau lebih berlaku",
   "q.review_gate.item.none": "Tidak ada yang berlaku bagi saya",

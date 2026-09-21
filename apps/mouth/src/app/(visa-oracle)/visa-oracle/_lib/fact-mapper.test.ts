@@ -1495,23 +1495,35 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
     ]);
   });
 
-  it("does not turn legal violation values into disclosed review flags", () => {
-    expect(
-      mapDisclosedReviewFlags({ review_gate: "blacklist,overstay" }),
-    ).toEqual([]);
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M1/M2): v2-B §2.1 — a legal
+  // violation value is now BOTH an eligibility fact (unchanged, via
+  // `mapViolationHistory`) AND a disclosed review flag (new), so the review
+  // gate's own copy has something to point at. ONE `mapFacts` call proves
+  // both channels populate together from the same walk.
+  it("routes legal violation values to BOTH the fact channel and the disclosure channel", () => {
+    const result = mapFacts({ review_gate: "blacklist,overstay" });
+    expect(result.disclosed_review_flags).toEqual([
+      "BLACKLIST_ENTRY",
+      "PAST_OVERSTAY",
+    ]);
+    expect(result.facts["immigration.violation_history"]).toEqual({
+      status: "KNOWN",
+      value: ["OVERSTAY", "BLACKLIST"],
+    });
   });
 
-  it("keeps the backend-derived conflicting-immigration flag outside the client mapper", () => {
-    expect(
-      mapDisclosedReviewFlags({
-        in_indonesia: "no",
-        overstay_days: "5",
-        review_gate: "immigration_investigation",
-      }),
-    ).toEqual([]);
-    expect(
-      mapViolationHistory({ review_gate: "immigration_investigation" }),
-    ).toEqual({
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M1/M2): v2-B §2.1 — same
+  // BOTH-channels routing for the third value M1 adds to `REVIEW_FLAG_MAP`.
+  it("routes the immigration-investigation value to BOTH channels too", () => {
+    const result = mapFacts({
+      in_indonesia: "no",
+      overstay_days: "5",
+      review_gate: "immigration_investigation",
+    });
+    expect(result.disclosed_review_flags).toEqual([
+      "IMMIGRATION_INVESTIGATION",
+    ]);
+    expect(result.facts["immigration.violation_history"]).toEqual({
       status: "KNOWN",
       value: ["IMMIGRATION_INVESTIGATION"],
     });

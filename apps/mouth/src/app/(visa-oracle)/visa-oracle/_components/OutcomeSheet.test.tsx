@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import type { ComponentProps } from "react";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   OutcomeSheet,
   SYSTEM_REVIEW_REASON_CODES,
@@ -12,6 +15,7 @@ import {
   SECOND_HOME_STUDIO_URL,
 } from "../_lib/engine-adapter";
 import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
+import { REVIEW_GATE_ITEMS } from "../_lib/tree";
 import { translate } from "../_lib/i18n";
 import type { Language } from "../_lib/flow";
 import type {
@@ -747,6 +751,196 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
         not_a_question: "unsure",
       }),
     ).toEqual([]);
+  });
+});
+
+// Slice A3-M, M7-bis (routed from a conductor ruling on the builder's own
+// finding): the doc comment above `REVIEW_GATE_CAUSE_ITEM`
+// (OutcomeSheet.tsx:183-190) claims the file "re-derives every row through
+// mapDisclosedReviewFlags" — the `it.each` above only exercises 4 curated
+// examples, not every row. `REVIEW_GATE_CAUSE_ITEM` itself is module-private
+// by design (mirrored, never imported, per that same comment), so this
+// suite proves coverage INDIRECTLY through the exported
+// `demonstratedReviewCauses`, never by touching production code. Shared
+// with M7-ter below (same derivation), so the two helpers live at module
+// scope rather than duplicated per describe block.
+const M7_HERE = path.dirname(fileURLToPath(import.meta.url));
+const M7_EVALUATE_PATH = path.resolve(
+  M7_HERE,
+  "../../../../../../..",
+  "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+);
+
+/**
+ * Derives the DisclosedReviewFlag -> REVIEW code map straight from the
+ * backend's own `_DISCLOSED_REVIEW_REASON_CODES`
+ * (evaluate_path.py:1132-1150) — never hand-typed, so a rename on either
+ * side turns this red instead of silently drifting. Handles both the
+ * single-line and the one parenthesised multi-line entry
+ * (CONFLICTING_IMMIGRATION_STATUS) the same way A5's own extractor does.
+ */
+function reviewCodeByFlag(): Record<string, string> {
+  const text = fs.readFileSync(M7_EVALUATE_PATH, "utf-8");
+  const marker =
+    "_DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(";
+  const start = text.indexOf(marker);
+  if (start === -1) {
+    throw new Error(
+      `_DISCLOSED_REVIEW_REASON_CODES not found in ${M7_EVALUATE_PATH} — evaluate_path.py renamed or moved the map`,
+    );
+  }
+  const end = text.indexOf("\n)\n", start);
+  const block = text.slice(start, end);
+  const pattern = /DisclosedReviewFlag\.(\w+):\s*\(?\s*"([A-Z_]+)"/g;
+  const map: Record<string, string> = {};
+  let match: RegExpExecArray | null;
+  // eslint-disable-next-line no-cond-assign
+  while ((match = pattern.exec(block)) !== null) {
+    map[match[1]] = match[2];
+  }
+  return map;
+}
+
+// Independently-sourced list of the real checklist items — never
+// hand-typed alongside REVIEW_GATE_CAUSE_ITEM's own rows.
+const REAL_REVIEW_GATE_ITEMS = REVIEW_GATE_ITEMS.filter(
+  (item) => item !== "none",
+);
+
+describe("OutcomeSheet — REVIEW_GATE_CAUSE_ITEM row coverage (M7-bis)", () => {
+  it("derives: every review_gate item's flag demonstrably attributes back through REVIEW_GATE_CAUSE_ITEM", () => {
+    const flagToReviewCode = reviewCodeByFlag();
+    const badFlagCount: string[] = [];
+    const unmappedFlag: string[] = [];
+    const missing: string[] = [];
+    for (const item of REAL_REVIEW_GATE_ITEMS) {
+      const flags = mapDisclosedReviewFlags({ review_gate: item });
+      if (flags.length !== 1) {
+        badFlagCount.push(`${item} raised ${flags.length} flags, expected 1`);
+        continue;
+      }
+      const [flag] = flags;
+      const code = flagToReviewCode[flag];
+      if (!code) {
+        unmappedFlag.push(
+          `${flag} (from ${item}) has no REVIEW code in evaluate_path.py`,
+        );
+        continue;
+      }
+      const causes = demonstratedReviewCauses(code, { review_gate: item });
+      if (causes.length === 0) missing.push(`${item} (${code})`);
+    }
+    expect(badFlagCount).toEqual([]);
+    expect(unmappedFlag).toEqual([]);
+    expect(missing).toEqual([]);
+  });
+
+  // A literal pin of the row-key SET, observed indirectly through
+  // `demonstratedReviewCauses` since `REVIEW_GATE_CAUSE_ITEM` stays
+  // module-private by design. Twelve entries verified against the source
+  // on this base (the nine pre-A3-M rows plus M1's three) — not fourteen:
+  // `CONFLICTING_IMMIGRATION_STATUS` and `MULTI_PURPOSE_TRIP` are two of
+  // the fourteen DisclosedReviewFlag members that are NOT review_gate
+  // checklist items (PLAN §1.5 / M7's own note), so they are correctly
+  // absent here.
+  const EXPECTED_REVIEW_GATE_CODES = [
+    "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+    "DISCLOSED_HEALTH_CONCERN_REVIEW",
+    "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+    "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+    "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+    "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+    "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+    "DISCLOSED_UNCERTAINTY_REVIEW",
+    "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "DISCLOSED_PAST_OVERSTAY_REVIEW",
+    "DISCLOSED_BLACKLIST_ENTRY_REVIEW",
+    "DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW",
+  ].sort();
+
+  it("pins the row-key set: exactly twelve codes attribute a review_gate cause", () => {
+    const flagToReviewCode = reviewCodeByFlag();
+    const attributing = REAL_REVIEW_GATE_ITEMS.map((item) => {
+      const [flag] = mapDisclosedReviewFlags({ review_gate: item });
+      return flagToReviewCode[flag];
+    }).sort();
+    expect(attributing).toEqual(EXPECTED_REVIEW_GATE_CODES);
+    const noItemFound: string[] = [];
+    const noCauseFound: string[] = [];
+    for (const code of EXPECTED_REVIEW_GATE_CODES) {
+      const item = REAL_REVIEW_GATE_ITEMS.find((candidate) => {
+        const [flag] = mapDisclosedReviewFlags({ review_gate: candidate });
+        return flagToReviewCode[flag] === code;
+      });
+      if (item === undefined) {
+        noItemFound.push(code);
+        continue;
+      }
+      if (demonstratedReviewCauses(code, { review_gate: item }).length === 0) {
+        noCauseFound.push(code);
+      }
+    }
+    expect(noItemFound).toEqual([]);
+    expect(noCauseFound).toEqual([]);
+  });
+});
+
+// Slice A3-M, M7-ter (conductor ruling R-REWORK-A3M, OBS-A3M-2): M7-bis's
+// row-key pin cannot go RED in the ADD direction — `demonstratedReviewCauses`
+// has no way to observe a row that no disclosed flag ever triggers, so an
+// extra `BOGUS_GATE_PROBE_REVIEW: "criminal_record"` row stays invisible to
+// it. This suite closes that gap with a TEST-ONLY change: it enumerates
+// `REVIEW_GATE_CAUSE_ITEM`'s declared KEYS straight from OutcomeSheet.tsx's
+// own source text — the same technique `reviewCodeByFlag` above already
+// applies to evaluate_path.py — so both an added and a dropped row are
+// visible without exporting the module-private map.
+describe("OutcomeSheet — REVIEW_GATE_CAUSE_ITEM keys enumerated from source text (M7-ter)", () => {
+  const OWN_PATH = path.resolve(M7_HERE, "OutcomeSheet.tsx");
+
+  function sourceDeclaredKeys(): string[] {
+    const text = fs.readFileSync(OWN_PATH, "utf-8");
+    const marker = "const REVIEW_GATE_CAUSE_ITEM";
+    const start = text.indexOf(marker);
+    if (start === -1) {
+      throw new Error(
+        `${marker} not found in ${OWN_PATH} — REVIEW_GATE_CAUSE_ITEM renamed or moved`,
+      );
+    }
+    const end = text.indexOf("\n};", start);
+    if (end === -1) {
+      throw new Error(
+        `no closing "\\n};" found for REVIEW_GATE_CAUSE_ITEM in ${OWN_PATH}`,
+      );
+    }
+    const block = text.slice(start, end);
+    const pattern = /^\s*([A-Z_]+):\s*"/gm;
+    const keys: string[] = [];
+    let match: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((match = pattern.exec(block)) !== null) {
+      keys.push(match[1]);
+    }
+    return keys;
+  }
+
+  it("declares REVIEW_GATE_CAUSE_ITEM with no duplicate key", () => {
+    const keys = sourceDeclaredKeys();
+    const duplicates = keys.filter((key, i) => keys.indexOf(key) !== i);
+    expect(duplicates).toEqual([]);
+  });
+
+  it("declares exactly the key set REVIEW_GATE_ITEMS derives — an extra or a missing row is named", () => {
+    const flagToReviewCode = reviewCodeByFlag();
+    const derived = REAL_REVIEW_GATE_ITEMS.map((item) => {
+      const [flag] = mapDisclosedReviewFlags({ review_gate: item });
+      return flagToReviewCode[flag];
+    }).sort();
+    const declared = [...sourceDeclaredKeys()].sort();
+    expect(declared).toEqual(derived);
+  });
+
+  it("declares exactly as many rows as REVIEW_GATE_ITEMS has real checklist items (derived, not typed)", () => {
+    expect(sourceDeclaredKeys().length).toEqual(REAL_REVIEW_GATE_ITEMS.length);
   });
 });
 

@@ -1258,6 +1258,23 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
     "Your answers about your current immigration status conflict with each other. Our team confirms which status is correct with you before submission and tells you what to prepare.",
     "Jawaban Anda tentang status keimigrasian Anda saat ini saling bertentangan. Tim kami akan memastikan status mana yang benar bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
+  // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys beside the
+  // eleven above, backed by `_DISCLOSED_CONDITION_REASON_CODES`
+  // (evaluate_path.py:1174-1176). N2 copy rules (A2): name what is checked,
+  // by whom, when, and what to prepare — never "cleared", "approved" or
+  // "guaranteed".
+  DISCLOSED_PAST_OVERSTAY_CONDITION: text(
+    "You flagged a past overstay in your disclosures. Our team reviews the dates and any penalty record with you before submission and tells you what to prepare.",
+    "Anda menandai riwayat overstay dalam pengungkapan Anda. Tim kami akan meninjau tanggal dan catatan sanksi terkait bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
+  ),
+  DISCLOSED_BLACKLIST_ENTRY_CONDITION: text(
+    "You flagged a blacklist entry in your disclosures. While an entry ban is active it stops any application from being filed until it is lifted; our team verifies your status with Ditjen Imigrasi before submission and tells you what that means for the paths listed above.",
+    "Anda menandai adanya pencantuman dalam daftar hitam. Selama larangan tersebut masih aktif, pengajuan apa pun tidak dapat diproses sampai larangan itu dicabut; tim kami memverifikasi status Anda ke Ditjen Imigrasi sebelum pengajuan dan menjelaskan artinya bagi jalur yang tercantum di atas.",
+  ),
+  DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION: text(
+    "You flagged an open immigration investigation. Our team reviews its status with you before submission and tells you what supporting documentation, if any, to prepare.",
+    "Anda menandai adanya pemeriksaan keimigrasian yang sedang berjalan. Tim kami akan meninjau statusnya bersama Anda sebelum pengajuan dan memberi tahu dokumen pendukung, jika ada, yang perlu disiapkan.",
+  ),
 };
 
 export const GENERIC_NOTICE_CONDITION: LocalizedText = text(
