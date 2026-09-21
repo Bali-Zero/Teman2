@@ -32,7 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main, web_search
 from browser_job import BrowserJob
-from pajak_parse import parse_link_items, parse_peraturan_index
+from pajak_parse import parse_link_items, parse_peraturan_index, source_host
 
 PAJAK_PERATURAN_URL = "https://pajak.go.id/id/index-peraturan"
 PAJAK_SIARAN_PERS_URL = "https://pajak.go.id/id/siaran-pers-page"
@@ -246,6 +246,17 @@ class PajakMonitorJob(BrowserJob):
                 # Intel Lake Wave 3 (2026-05-12): dual-write to local SQLite
                 # outbox. Best-effort — failure must not block existing flow.
                 try:
+                    _host = source_host(item["url"])
+                    if not _host:
+                        # No fallback to a hardcoded domain here — that would
+                        # re-create the defect this fix removes: a Source-3
+                        # (web_search) item whose URL we cannot parse would
+                        # silently masquerade as a pajak.go.id item again.
+                        self.logger.warning(
+                            "intel_lake_skipped_no_host", url=item.get("url", "")[:80]
+                        )
+                        continue
+
                     import sys as _sys  # noqa: PLC0415
                     # task #17 (2026-07-26): was a literal "/Users/nuzantara/scripts" —
                     # fingerprints the ops host's username/home layout, and it is this
@@ -265,7 +276,7 @@ class PajakMonitorJob(BrowserJob):
                             "content_hash": _ch,
                             "title": item["title"][:500],
                             "summary": item.get("summary", "")[:2000] if item.get("summary") else None,
-                            "source_domain": "pajak.go.id",
+                            "source_domain": _host,
                             "language": "id",
                             "jurisdiction": "ID-national",
                             "topic_tags": ["tax", "pajak", item.get("type", "tax_regulation")],

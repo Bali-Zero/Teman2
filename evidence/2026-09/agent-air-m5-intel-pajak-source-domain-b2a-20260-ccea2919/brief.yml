@@ -1,0 +1,21 @@
+mandate: >-
+  pajak_monitor writes source_domain='pajak.go.id' for every item, including
+  Brave web_search results from press and tax-consulting sites; 122 of 154
+  such production rows are not pajak.go.id pages, and all 122 were routed
+  nb-intel on the government-domain rule. source_domain must name the host
+  the item came from, with no fallback to the job's label.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py (Pro crontab 00:00 UTC)
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  New rows only; no relabelling of existing production rows in this diff.
+acceptance:
+  - source_host returns the bare lowercased host (www. and port stripped)
+  - pajak.go.id variants still map to pajak.go.id (government routing kept)
+  - an unparseable url skips the lake enqueue instead of falling back
+  - the hardcoded label is gone from the source (test on source text)
+appetite:
+  wall_clock_hours: 1
