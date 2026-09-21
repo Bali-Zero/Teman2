@@ -1,0 +1,97 @@
+{
+  "run_at": "2026-09-22T07:05:33+08:00",
+  "today": "2026-09-22",
+  "yesterday_file_used": "2026-09-21-delta.json",
+  "yesterday_seen_count": 26,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "HTTP 404 on fetch"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "HTTP 403 on fetch"
+    },
+    {
+      "url": "https://ikpi.or.id/articles",
+      "reason": "empty_shell",
+      "note": "berita/ now 301-redirects here; Nuxt SPA shell shows 'Menampilkan 0 berita & artikel, Memuat...' with 0 static article nodes"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed on fetch + 1 retry"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "Headlines within 48h are RUU (draft bills, e.g. Reforma Agraria) not yet enacted; no verbatim enacted citation"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Fresh headlines (21-22 Sep) are operational tax news (MBG budget, PBB deadline, Danantara audit); no new PMK/PP/Perpres/UU/Permen/PER citation"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest dated entries 11-19 September 2026, older than 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "Only 2 dated PP entries in static result, newest effective 12 Mei 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "Newest press release 18 September 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest entry KEP-185/PJ/2026 dated 2026-09-02, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Default listing not date-sorted; newest visible entry UU Nomor 2 Tahun 2026 dated 30 April 2026, older than 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 55 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PER-10/PJ/2026",
+    "SE-10/PJ/2026"
+  ]
+}
