@@ -127,6 +127,21 @@ class TestInnocence(StoreCase):
         self.assertEqual(rep["summary"]["hung"], 1)
         self.assertEqual(rep["summary"]["abandoned"], 0)
 
+    def test_abandoned_stale_is_counted_not_dropped_from_the_total(self):
+        # ABANDONED-STALE is a fifth state (classify()'s own docstring names all
+        # five) but the summary used to tally only four buckets, so `total` and
+        # the four printed counts silently disagreed by exactly the stale rows —
+        # reading as a miscount rather than as an omitted category.
+        self.open_run(cap=10)
+        rep = sd.scan(now=T0 + 10 + sd.DEFAULT_REPORT_WINDOW_SEC + 1, alive_fn=lambda _d: False)
+        s = rep["summary"]
+        self.assertEqual(s["abandoned_stale"], 1)
+        self.assertEqual(s["abandoned"], 0)
+        self.assertEqual(
+            s["total"], s["abandoned"] + s["hung"] + s["open"] + s["closed"] + s["abandoned_stale"]
+        )
+        self.assertIn("1 abandoned-stale", sd.render_table(rep))
+
     def test_a_run_with_no_open_timestamp_is_never_accused(self):
         # Cannot be aged, therefore cannot be proven abandoned. Never guess.
         broken = {"run_id": "x", "spawner": "y", "closed_at": None}
