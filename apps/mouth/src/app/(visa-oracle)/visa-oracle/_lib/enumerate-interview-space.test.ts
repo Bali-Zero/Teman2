@@ -800,3 +800,41 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
     expect(uuidValidate(firstWalk.assessment_id)).toBe(true);
   });
 });
+
+/**
+ * Y11 — the label-truth invariant (B5-2 amendment, `Y2 ADJUDICATED`,
+ * 2026-09-21). `buildCoveringSubset` labels each edge-targeted walk
+ * `edge/<id>=<value>` and each review-gate walk `review-gate/<item>`; the
+ * label is a CLAIM about what the walk's own `facts` carry, and nothing
+ * upstream re-checks it against the walk that was actually recorded.
+ * `Y2 ADJUDICATED` measured that on all 317 declared edges exactly ONE
+ * (`application_channel=OFFSHORE`) needs its per-EDGE witness rather than
+ * the per-QUESTION one — the two agree everywhere else, so a regression to
+ * the per-question witness stays invisible to every OTHER assertion in this
+ * file (cardinality holds, edge coverage holds) and is caught only here, by
+ * name.
+ */
+describe("Y11 — the label-truth invariant (Slice B5-2, Y2 ADJUDICATED)", () => {
+  it("innocence: every edge/<id>=<value> walk's own facts carry that value, and every review-gate/<item> walk's own facts carry review_gate=<item>", () => {
+    let edgeWalks = 0;
+    let reviewGateWalks = 0;
+    for (const walk of REAL_SUBSET.walks) {
+      if (walk.label.startsWith("edge/")) {
+        edgeWalks += 1;
+        const edge = walk.label.slice("edge/".length);
+        const splitAt = edge.indexOf("=");
+        const id = edge.slice(0, splitAt);
+        const value = edge.slice(splitAt + 1);
+        expect(walk.facts[id]).toBe(value);
+      } else if (walk.label.startsWith("review-gate/")) {
+        reviewGateWalks += 1;
+        const item = walk.label.slice("review-gate/".length);
+        expect(walk.facts.review_gate).toBe(item);
+      }
+    }
+    // Blind-scan floor: a filter that silently matched nothing would leave
+    // the loop above green on zero iterations.
+    expect(edgeWalks).toBeGreaterThan(0);
+    expect(reviewGateWalks).toBeGreaterThan(0);
+  });
+});

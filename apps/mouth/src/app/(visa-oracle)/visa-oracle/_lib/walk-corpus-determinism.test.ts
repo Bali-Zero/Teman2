@@ -25,10 +25,8 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_OUT_DIR,
-  writeWalkCorpus,
-} from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { writeWalkCorpus } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 
 /** The corpus size as committed. A PR that adds an interview branch — or, as
  * of PR-5, a new DIMENSION replayed over existing branches — moves it.

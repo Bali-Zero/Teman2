@@ -101,10 +101,6 @@
  * `ENUMERATOR_ASSESSMENT_NAMESPACE` below).
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { format } from "prettier";
 import { v5 as uuidv5 } from "uuid";
 
@@ -123,14 +119,6 @@ import {
   type DisclosedReviewFlagWire,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper";
 import { answerFor, runWalk, CORPUS_TODAY } from "./generate-walk-corpus";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-/** Where the manifest is written by default. */
-export const DEFAULT_OUT_PATH = resolve(
-  HERE,
-  "../../../../research/operations/visa-oracle-interview-space-manifest.json",
-);
 
 /** Same frozen clock as the corpus generator, reused rather than redeclared. */
 export const ENUMERATOR_TODAY = CORPUS_TODAY;
@@ -750,31 +738,7 @@ export function dryRunSummary(manifest: Manifest): {
   return { line, ok };
 }
 
-async function main(argv: string[]): Promise<void> {
-  const manifest = buildManifest();
-  if (argv.includes("--dry-run")) {
-    const { line, ok } = dryRunSummary(manifest);
-    console.log(line);
-    process.exitCode = ok ? 0 : 1;
-    return;
-  }
-  const outIndex = argv.indexOf("--out");
-  const outPath =
-    outIndex >= 0 && argv[outIndex + 1]
-      ? resolve(argv[outIndex + 1])
-      : DEFAULT_OUT_PATH;
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, await renderManifest(manifest), "utf8");
-  console.log(
-    `wrote ${manifest.coveringSubset.walks.length} covering walks to ${outPath} ` +
-      `(walksTotalExact=${manifest.walksTotalExact}, bound=${manifest.bound})`,
-  );
-  if (!dryRunSummary(manifest).ok) process.exitCode = 1;
-}
-
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  main(process.argv.slice(2)).catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
-}
+// CLI entry point (`main`, `DEFAULT_OUT_PATH`, the module-URL CLI guard)
+// lives in `enumerate-interview-space.cli.ts` — Slice B5-2 split, so this
+// module stays a plain library a Playwright spec can import directly (see
+// that file's docstring for the CJS transform this fixes).
