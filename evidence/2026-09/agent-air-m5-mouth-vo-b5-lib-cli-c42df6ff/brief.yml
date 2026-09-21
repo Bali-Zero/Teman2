@@ -1,0 +1,50 @@
+task_id: vo-b5-lib-cli
+gear: 1
+base_sha: 0ec3f7e7eb
+objective: >-
+  Slice B5-2 (MANDATE-vo.md): apps/mouth/package.json has no "type":
+  "module" (only the monorepo root does), so Playwright's CJS transform
+  throws SyntaxError: Cannot use 'import.meta' outside a module the moment
+  a spec imports either enumerator script at the top level — a top-level
+  import killed --list for the WHOLE e2e suite. Slice B3 v3 needs a plain
+  import of these scripts, so the four import.meta sites (HERE,
+  DEFAULT_OUT_PATH/DEFAULT_OUT_DIR, main(), the import.meta.url CLI guard)
+  move out of enumerate-interview-space.ts and generate-walk-corpus.ts into
+  two new files, enumerate-interview-space.cli.ts and
+  generate-walk-corpus.cli.ts. The libraries import nothing from their
+  CLIs, only the reverse. package.json's two visa-oracle:* script lines
+  re-point at the .cli.ts entry points. This is a MOVE, not a rewrite: no
+  tsconfig edit, no dependency, no lockfile change, and the re-emitted
+  manifest / regenerated corpus change no output byte. B5-2 also gains
+  clause Y11 (Y2 ADJUDICATED, GATE-B5-1-REPORT-7068.md,
+  2026-09-21T13:18:40Z): a test that for every covering walk labelled
+  edge/<id>=<value>, walk.facts[id] === value (and review_gate=<item> for
+  review-gate/<item> walks) — the one edge (application_channel=OFFSHORE)
+  on which the per-edge witness and the per-question witness disagree.
+
+constraints:
+  - "No production source file besides the two named scripts, their two new .cli.ts siblings, package.json (visa-oracle:walk-corpus / visa-oracle:enumerate script lines only, lines 33-34), the DEFAULT_OUT_DIR import specifier in walk-corpus-determinism.test.ts and no-path-doors.test.tsx, the Y11 test added to enumerate-interview-space.test.ts (required by the Y2 ADJUDICATED amendment to this slice, not in the base file list), and this brief.yml. No tsconfig edit, no dependency, no lockfile change (verified: package-lock.json / apps/mouth/package-lock.json untouched by this commit)."
+  - "No apps/backend-rag/** file touched — this is a mouth-only PR, confirmed by the commit's own file list."
+  - "channelConflictsWithOnshoreIntent import (Slice B5-1) is untouched; this PR only relocates import.meta-bearing CLI code, it does not change any enumeration/coverage/witness logic besides adding the Y11 test."
+
+appetite: { wall_clock_hours: 2 }
+
+acceptance:
+  - text: 'Y8 innocence, structural: grep -c "import.meta" prints 0 for both libraries. It prints 2 for each *.cli.ts, not the 1 this slice''s prompt text states — the four import.meta sites (HERE, DEFAULT_OUT_PATH/DEFAULT_OUT_DIR, main()''s CLI guard) split as TWO code lines per file (the HERE declaration and the argv[1]===file://... guard), matching the Context section''s own "four import.meta sites... all CLI-only" (2+2=4). Reported as measured, not force-fit to the prompt''s literal "1".'
+    probe: 'grep -c "import.meta" scripts/visa-oracle/enumerate-interview-space.ts scripts/visa-oracle/generate-walk-corpus.ts scripts/visa-oracle/enumerate-interview-space.cli.ts scripts/visa-oracle/generate-walk-corpus.cli.ts'
+  - text: 'Y9, the real job: npx playwright test --config=playwright.config.ts --list from apps/mouth with E2E_TEST_EMAIL=""/E2E_TEST_PIN="" prints Total: 1444 tests in 59 files on this head — IDENTICAL to a fresh detached worktree at the merge-base (0ec3f7e7eb), which also prints Total: 1444 tests in 59 files. Both numbers from real runs.'
+    probe: 'E2E_TEST_EMAIL="" E2E_TEST_PIN="" ../../node_modules/.bin/playwright test --config=playwright.config.ts --list 2>&1 | tail -1'
+  - text: "Y10: the manifest re-emitted from the head via the new CLI (enumerate-interview-space.cli.ts --out) is cmp -s byte-identical to B5-1's captured kit/prove-live-b5-manifest-raw-main-0ec3f7e7-20260921.json (sha256 adcc2cb434b84306a4b78fdbc7bbb0f3bc6bb417e12bbbf48f49e9b0f58a4593, 252 walks, walksTotalExact=55234481243760) — cmp exits 0. Regenerating the corpus via generate-walk-corpus.cli.ts (115 walks) leaves git status --porcelain empty for the fixtures directory: a split that changes an output byte is not a split."
+    probe: "../../node_modules/.bin/tsx scripts/visa-oracle/generate-walk-corpus.cli.ts && cd .. && git status --porcelain -- apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks"
+  - text: "The vitest tree is green: tsc --noEmit exits 0; the full visa-oracle tree is 44/44 files, 1131/1131 tests, reproduced twice byte-identical. Measured directly against a fresh detached worktree at the merge-base (0ec3f7e7eb, not the B5-1 gate report's stale 1125 figure): 44/44 files, 1130/1130 tests — this PR's own delta is exactly +1, the Y11 test it adds. walk-corpus-determinism.test.ts 117/117; no-path-doors.test.tsx 69/69; enumerate-interview-space.test.ts (Y11's home) 40/40."
+    probe: '../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/vitest run --root . ''src/app/(visa-oracle)/visa-oracle'' 2>&1 | grep -E "^ +(Test Files|Tests) "'
+  - text: "Y11 innocence (this PR's new test, enumerate-interview-space.test.ts): every edge/<id>=<value> covering walk's own facts carry that value, and every review-gate/<item> walk's own facts carry review_gate=<item>, on the real (unmutated) library — green."
+    probe: '../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts" -t "Y11"'
+
+assumptions:
+  - text: 'Y9''s literal invocation (playwright test -c playwright.config.ts --list <abs scratch path under /private/tmp/claude-501/>, unmodified) cannot succeed against apps/mouth/playwright.config.ts as written: Playwright''s own collectFilesForProject (playwright/lib/runner/index.js) scans ONLY testDir ("./e2e"), and a CLI file argument is a regex FILTER over files already collected there, never a way to add a file living outside testDir — confirmed empirically (prints "No tests found", 0 tests, for BOTH the library-import and the cli-import scratch spec, before either file''s content is even parsed) and confirmed by reading the collectFilesForProject/collectProjectsAndTestFiles source. Reproduced the SAME transform behaviour instead with a scratch playwright config (also under /private/tmp/claude-501/, not in the repo) that overrides only testDir to point at the scratch directory, keeping the same apps/mouth playwright install and testMatch, and relying on the fact that no ancestor package.json exists under /private/tmp either (so the CJS default applies there exactly as it does for apps/mouth/package.json, which also lacks "type": "module") — this reproduces the SyntaxError/0-tests-vs-1-test contrast Y9 predicts, on the SAME import.meta-vs-not distinction, without touching the repo.'
+    status: verified
+    probe: "measured via a scratch playwright config overriding testDir only; library-import scratch spec lists 1 test, cli-import scratch spec throws SyntaxError: Cannot use 'import.meta' outside a module and prints Total: 0 tests in 0 files — both transcripts captured, both scratch files gone (session scratchpad, not committed; `rm` itself is forbidden by name for this mission and was not used inside the repo)."
+  - text: "The scratch files used for Y8's guilt proof (one import.meta reinserted into a scratch copy of the library) and Y11's guilt proof (buildCoveringSubset reverted to the per-question witness on a scratch copy) both live under /private/tmp/claude-501/, never in the repo, and are proven never to have touched the worktree via git status --porcelain (unchanged before and after each proof)."
+    status: verified
+    probe: "git status --porcelain (apps/mouth/.worktrees/mouth-vo-b5-lib-cli) — identical before and after both scratch-mutation proofs"
