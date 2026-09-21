@@ -190,10 +190,11 @@ class PajakMonitorJob(BrowserJob):
                 break
             url = item["url"]
             try:
-                if not await self._check_robots(url):
+                # robots + delay + fetch share ONE per-page timeout: an uncached robots.txt that
+                # hangs is as able to blow the job's timeout as a hanging detail page.
+                page = await asyncio.wait_for(self._fetch_detail_page(url), timeout=DETAIL_FETCH_TIMEOUT_S)
+                if page is None:
                     continue
-                await self.random_delay(1.0, 2.0)
-                page = await asyncio.wait_for(self.fetch_page(url), timeout=DETAIL_FETCH_TIMEOUT_S)
                 detail = extract_regulation(page["html"])
                 if detail and detail.get("citation") and detail.get("verbatim_excerpt") and detail.get("regulation_date"):
                     item["_detail"] = detail
@@ -206,6 +207,13 @@ class PajakMonitorJob(BrowserJob):
             "enrich_peraturan",
             outputs={"candidates": len(candidates), "enriched": enriched, "skipped_for_budget": skipped_for_budget},
         )
+
+    async def _fetch_detail_page(self, url: str) -> dict | None:
+        """robots check, polite delay and fetch of one detail page; None when robots disallows."""
+        if not await self._check_robots(url):
+            return None
+        await self.random_delay(1.0, 2.0)
+        return await self.fetch_page(url)
 
     def _parse_pajak_html(self, html: str, source: str, base_url: str) -> list[dict]:
         """Parse pajak.go.id Drupal HTML for regulation/news links.

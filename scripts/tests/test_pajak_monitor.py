@@ -242,3 +242,32 @@ def test_m7_missing_regulation_date_never_touches_raw_payload_or_published_at(tm
     assert call["published_at"] == item["scraped_at"]
     assert "citation" not in call["raw_payload"]
     assert "verbatim_excerpt" not in call["raw_payload"]
+
+
+def test_r1_a_hanging_robots_check_is_bounded_by_the_same_per_page_timeout(tmp_path, monkeypatch):
+    """robots.txt is fetched before the detail page; if it hangs (uncached, slow host) it must be
+    cut off by the same per-page timeout, not left outside it where it can blow the job."""
+    monkeypatch.setattr(pajak_monitor, "DETAIL_FETCH_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(pajak_monitor, "DETAIL_ENRICH_BUDGET_MARGIN_S", 0.0)
+    monkeypatch.setattr(pajak_monitor, "INTEL_INCOMING_DIR", tmp_path)
+
+    job = _make_job(timeout_s=0.3)
+
+    async def hanging_robots(url):
+        await asyncio.sleep(1_000_000)
+
+    async def never_called_fetch_page(url):
+        raise AssertionError("fetch_page must not run while robots is unanswered")
+
+    job._check_robots = hanging_robots
+    job.fetch_page = never_called_fetch_page
+    job.random_delay = lambda a, b: asyncio.sleep(0)
+
+    items = [_peraturan_item(f"reg-{i}") for i in range(10)]
+
+    async def scenario():
+        await asyncio.wait_for(job._enrich_peraturan_details(items), timeout=5.0)
+
+    asyncio.run(scenario())
+
+    assert all("_detail" not in item for item in items)
