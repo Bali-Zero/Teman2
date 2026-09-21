@@ -36,6 +36,28 @@ function expectQuestion(state: FlowState, questionId: string): void {
   });
 }
 
+describe("Slice A6-2 — declared conservative Not sure branches", () => {
+  it("keeps the seven conservative branches separate from in_indonesia", () => {
+    const conservative = Object.entries(QUESTIONS)
+      .filter(([, question]) => question.notSure?.mode === "conservative")
+      .map(([id]) => id)
+      .sort();
+    expect(conservative).toEqual([
+      "secondhome_deposit_usd",
+      "secondhome_own_name",
+      "secondhome_passive_income_usd",
+      "secondhome_property_value_usd",
+      "secondhome_state_bank",
+      "study_admission_confirmed",
+      "study_sponsor_confirmed",
+    ]);
+    expect(QUESTIONS.in_indonesia.notSure).toEqual({
+      mode: "human-review",
+      because: "direction-unproven",
+    });
+  });
+});
+
 /** `today` is optional and defaults to undefined, so every existing caller is
  * unchanged. Pass it ONLY on a transition whose next node depends on a date
  * comparison — `shouldAskRenewalPaid` is the one that does. The reducer

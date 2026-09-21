@@ -1414,7 +1414,9 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd",
     },
     whyWeAsk: { i18nKey: "why.secondhome_deposit_usd" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // `el.e33.deposit-basis` / `el.e33e.retirement` require the deposit;
+    // `review.e33.below-threshold-studio` may add a condition below threshold.
+    notSure: { mode: "conservative", conservativeValue: "0" },
   },
   secondhome_state_bank: {
     id: "secondhome_state_bank",
@@ -1431,7 +1433,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.secondhome_state_bank" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // `el.e33.deposit-basis` / `el.e33e.retirement` require a state-bank deposit.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   secondhome_own_name: {
     id: "secondhome_own_name",
@@ -1448,7 +1451,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.secondhome_own_name" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // `el.e33.deposit-basis` / `el.e33e.retirement` require the applicant's own name.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   secondhome_property_value_usd: {
     id: "secondhome_property_value_usd",
@@ -1469,7 +1473,9 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd",
     },
     whyWeAsk: { i18nKey: "why.secondhome_property_value_usd" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // `el.e33.property-basis` / `el.e33.property-qualification` require value;
+    // `review.e33.below-threshold-studio` may add a condition below threshold.
+    notSure: { mode: "conservative", conservativeValue: "0" },
   },
   secondhome_passive_income_usd: {
     id: "secondhome_passive_income_usd",
@@ -1490,7 +1496,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd_month",
     },
     whyWeAsk: { i18nKey: "why.secondhome_passive_income_usd" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // `el.e33e.retirement` / `el.e33f.retirement` require USD 3,000 monthly income.
+    notSure: { mode: "conservative", conservativeValue: "0" },
   },
   study_level: {
     id: "study_level",
@@ -1532,7 +1539,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.study_admission_confirmed" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // The `el.e30-*` SUPPORT family requires confirmed admission.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   study_sponsor_confirmed: {
     id: "study_sponsor_confirmed",
@@ -1549,7 +1557,8 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.study_sponsor_confirmed" },
-    notSure: { mode: "human-review", because: "money-payer-clients" },
+    // The `el.e30-*` SUPPORT family requires a confirmed sponsor.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   diaspora_connection: {
     id: "diaspora_connection",
