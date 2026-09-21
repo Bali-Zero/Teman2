@@ -1,0 +1,67 @@
+gear: 2
+task_id: portal-visa-from-documents
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/portal-visa-from-documents
+gate_class: opus
+l_level: L2
+objective: >-
+  The client portal (my.balizero.com) showed "No active visa information" to a
+  client whose visa kita shows fine. The portal derived the current visa ONLY
+  from a completed `practices` row of category visa; kita reads the client's
+  uploaded visa-family documents. Measured on prod 2026-09-21: 741 clients have
+  a client-visible visa-family document, 691 of them have no completed visa
+  practice and saw an empty portal. Make the portal fall back to the same
+  document kita shows, without telling any client something the data does not
+  say.
+scope:
+  - >-
+    apps/backend-rag/backend/services/portal/_mixins/dashboard.py — dashboard
+    tile and /api/portal/visa fall back to the newest client-visible
+    visa-family document (kita's selection rule, 30-day grace) when no practice
+    exists; practices keep precedence. Fixes the `.date()` crash on a real
+    `date` column, the case-sensitive MERP whitelist, and reads a permit with no
+    expiry as active with no countdown instead of "Expired 0d ago". Permit
+    number and sponsor come from OCR or "-", never a made-up value.
+  - >-
+    apps/mouth/src/lib/api/portal/ — `getVisaStatus` keeps an explicit
+    `daysRemaining: null`; `VisaInfo.current.daysRemaining` is `number | null`.
+  - >-
+    Tests: unit (mocked conn) + real-Postgres predicate tests + one vitest.
+constraints:
+  - >-
+    Practices always win: a client the portal already served sees no change
+    (the document query is never issued when a practice is found).
+  - >-
+    Visibility policy unchanged: the fallback goes through
+    document_visibility_clause() and is registered in the deleted_at guard
+    registry.
+  - >-
+    The visa history stays practice-only; the precise permit label (index +
+    catalogue name) is a separate PR on kita and lands on the portal after it.
+acceptance:
+  - text: >-
+      WHEN a client has no completed visa practice but has a client-visible
+      visa-family document, /api/portal/visa SHALL return that document as
+      `current`, and the dashboard tile SHALL show it.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. pytest
+      backend/tests/unit/app/services/portal/test_dashboard_mixin.py
+      backend/tests/db/test_portal_visa_document_fallback_postgres.py
+  - text: >-
+      WHEN the chosen permit has no expiry_date, the visa page SHALL NOT read
+      "expired": status active, daysRemaining null end to end.
+    probe: >-
+      pytest -k "without_expiry" on test_dashboard_mixin.py; vitest run
+      apps/mouth/src/lib/api/portal/portal.api.test.ts
+  - text: >-
+      A hidden, soft-deleted or archived document SHALL never become the
+      current visa.
+    probe: >-
+      test_fallback_query_skips_hidden_deleted_and_archived_documents (real
+      Postgres)
+bites: >-
+  Consumer: the portal visa page and dashboard tile of the 691 clients without
+  a completed visa practice. Observation after deploy: inside the deployed
+  nuzantara-rag machine, PortalService.get_visa_status for a sample client_id
+  of that set returns a non-null `current` (only status/type printed, no PII).
