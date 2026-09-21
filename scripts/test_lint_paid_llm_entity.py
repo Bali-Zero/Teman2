@@ -169,18 +169,27 @@ def test_no_key_does_not_invent_violations(monkeypatch):
     )
 
 
-def test_service_silence_is_not_a_pass(monkeypatch):
+def test_service_silence_is_not_a_pass(monkeypatch, authorized_vendor):
     """An unreachable service must not clear a file the grep condemns.
 
     This is the OR rule under its worst condition and the reason `ask()` returns
     None rather than a falsy verdict.
+
+    `authorized_vendor` is load-bearing, and its absence made this the SIXTH
+    vacuous test in this lane: without it `available()` is False, `judge_file`
+    never calls `ask` at all, and this test passed on the grep alone — proving
+    nothing about the None-handling it claims to protect. `asked is True`
+    below is what makes that failure mode visible again if the fixture is
+    ever dropped.
     """
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
     monkeypatch.setattr(lint, "ask", lambda *a, **k: None)
     case = next(
         c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
     )
-    assert lint.judge_file("x.py", case["content"])["violation"] is True
+    result = lint.judge_file("x.py", case["content"])
+    assert result["asked"] is True, "the service must actually be reached, not skipped"
+    assert result["violation"] is True
 
 
 def test_model_saying_no_cannot_clear_the_grep(monkeypatch, authorized_vendor):
@@ -215,16 +224,33 @@ def authorized_vendor(tmp_path, monkeypatch):
     """Authorize the endpoint ON DISK for tests that exercise the model path.
 
     Added with the #6968 gate's condition-3 fence. Before it, setting the key
-    was enough to reach `ask`; now a key is not permission. The three tests
-    below monkeypatch `ask` to assert what the MODEL contributes, so they have
-    to clear the fence honestly rather than route around it — without this
+    was enough to reach `ask`; now a key is not permission. The tests below
+    monkeypatch `ask` to assert what the MODEL contributes, so they have to
+    clear the fence honestly rather than route around it — without this
     fixture they would still pass, because a client that never speaks fires no
     route and asserts nothing.
+
+    The entry carries a `paths` list because the successor to PR #6989's
+    Gear-3 gate made a bare string entry authorize nothing: `paths` absent is
+    the same fail-open the file itself refuses, one level down.
     """
     import typesafe_client
 
     listing = tmp_path / "authorized_endpoints.json"
-    listing.write_text(json.dumps({"endpoints": [typesafe_client.ENDPOINT]}))
+    listing.write_text(
+        json.dumps(
+            {
+                "endpoints": [
+                    {
+                        "endpoint": typesafe_client.ENDPOINT,
+                        "ruling": "test fixture",
+                        "use": "test",
+                        "paths": ["**"],
+                    }
+                ]
+            }
+        )
+    )
     monkeypatch.setattr(typesafe_client, "AUTHORIZATION", listing)
     return listing
 
@@ -378,10 +404,16 @@ def test_ask_returns_none_on_a_non_utf8_body(monkeypatch, authorized_vendor):
         def read(self):
             return b"\xff\xfe not utf-8"
 
+    class _Opener:
+        def open(self, *a, **k):
+            return _Resp()
+
     monkeypatch.setenv("TYPESAFE_API_KEY", "x")
-    monkeypatch.setattr(
-        typesafe_client.urllib.request, "urlopen", lambda *a, **k: _Resp()
-    )
+    # `ask()` no longer opens the request through `urllib.request.urlopen`
+    # directly — the successor to PR #6989's Gear-3 gate replaced it with a
+    # module-local opener that refuses redirects, so the seam to patch moved
+    # with it.
+    monkeypatch.setattr(typesafe_client, "_OPENER", _Opener())
     assert typesafe_client.ask({"x": 1}, {}, timeout=1) is None
 
 

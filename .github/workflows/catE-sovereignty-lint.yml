@@ -20,7 +20,11 @@ name: catE-sovereignty-lint
 #        weeks, fixed by hand each time). A perm check closes the loop the
 #        cicatrici re-open manually.
 #
-# Pure-stdlib / grep, full-repo scan in seconds → no paths filter, no sentinel.
+# Pure-stdlib / grep, full-repo scan in seconds → no sentinel needed. This line
+# read "no paths filter" until 2026-09-21, thirty lines above the filter it
+# denied: one was added 2026-06-12 for fan-out and is documented below. Found
+# by a council seat on the lane whose subject is sentences that lie about the
+# code beside them, which is where it would have been most embarrassing.
 # Triggers BOTH pull_request AND push-to-main (W41/W42: pull_request-only gives
 # false safety under L2 autonomous direct-push).
 #
@@ -29,21 +33,49 @@ name: catE-sovereignty-lint
 # it proves stable + zero false-positive (W69 BUCO #1 lesson: arming a check as
 # required without a skip→success sentinel can pend-forever / block innocents).
 
-# Path-scoped (2026-06-12 CI fan-out reduction): every check here inspects
-# Python source (paid-Anthropic ban, Law-5 wr3 publish lint) or .env perms, so
-# a docs/content-only PR (.mdx/.md/.json) has nothing for it to scan — scoping
-# to those paths loses zero coverage. NON-REQUIRED, so a non-matching PR just
-# skips it (no pending-forever; W69 BUCO #1 only bites REQUIRED path-filtered
-# checks lacking a skip→success sentinel).
+# Path-scoped (2026-06-12 CI fan-out reduction), and since 2026-09-21 the filter
+# is a SUPERSET of what the steps below actually read — which is not how it
+# shipped. The Gear-3 gate on PR #6968 measured the gap: the prose scanner read
+# nine suffixes while this file started on five, so a PR whose changed set was
+# entirely .jsx .mjs .yaml .yml never started the workflow and its prose landed
+# unjudged — and the push filter carried the same hole, so nothing caught it
+# afterwards either. A workflow yml is not a hypothetical case here: it is the
+# file that produced one of the four reds #40d exists to close. The DATA the
+# steps read is listed for the same reason — a PR that grew the pardon list and
+# touched nothing else was the one PR the anti-growth check could never see.
+# scripts/tests/test_cate_trigger_parity.py now reds when a scanner reads a
+# suffix this header does not start on, so the drift cannot return in silence.
+# NON-REQUIRED, so a non-matching PR just skips it (no pending-forever; W69
+# BUCO #1 only bites REQUIRED path-filtered checks lacking a skip→success
+# sentinel).
 on:
   pull_request:
     paths:
+      # Every suffix any step below scans. The parity test fails when a scanner
+      # reads a suffix this filter does not start on; the filter may always be
+      # wider than the scanners, never narrower (measured by a council seat:
+      # appending an unread suffix here leaves every assertion green).
       - "**.py"
       - "**.ts"
       - "**.tsx"
       - "**.js"
+      - "**.jsx"
+      - "**.mjs"
       - "**.sh"
+      - "**.yml"
+      - "**.yaml"
+      - "**.toml"
       - "**/.env*"
+      # Data, not source. The bench corpus is what the consumed suites read,
+      # and a diff that edits only it can turn them red without ever starting
+      # them: injecting a grep-caught guilt case into an innocence case gives
+      # `1 failed, 85 passed`, measured 2026-09-21. The refuting seat's finding
+      # 8 read `1 failed, 19 passed` before the corpus grew to 26+29 cases —
+      # the claim held, its frozen number did not, and a second seat caught
+      # that here. The pardon list is the same argument and is
+      # listed below by the vendor fence, which reached it first — once, not
+      # twice: two lanes found the same hole and only one entry states it.
+      - "scripts/tests/fixtures/paid_llm_entity/bench_cases.json"
       - "scripts/lint_paid_llm_entity.py"
       - "scripts/typesafe_client.py"
       - "scripts/redact_for_external.py"
@@ -65,12 +97,31 @@ on:
     branches:
       - main
     paths:
+      # Every suffix any step below scans. The parity test fails when a scanner
+      # reads a suffix this filter does not start on; the filter may always be
+      # wider than the scanners, never narrower (measured by a council seat:
+      # appending an unread suffix here leaves every assertion green).
       - "**.py"
       - "**.ts"
       - "**.tsx"
       - "**.js"
+      - "**.jsx"
+      - "**.mjs"
       - "**.sh"
+      - "**.yml"
+      - "**.yaml"
+      - "**.toml"
       - "**/.env*"
+      # Data, not source. The bench corpus is what the consumed suites read,
+      # and a diff that edits only it can turn them red without ever starting
+      # them: injecting a grep-caught guilt case into an innocence case gives
+      # `1 failed, 85 passed`, measured 2026-09-21. The refuting seat's finding
+      # 8 read `1 failed, 19 passed` before the corpus grew to 26+29 cases —
+      # the claim held, its frozen number did not, and a second seat caught
+      # that here. The pardon list is the same argument and is
+      # listed below by the vendor fence, which reached it first — once, not
+      # twice: two lanes found the same hole and only one entry states it.
+      - "scripts/tests/fixtures/paid_llm_entity/bench_cases.json"
       - "scripts/lint_paid_llm_entity.py"
       - "scripts/typesafe_client.py"
       - "scripts/redact_for_external.py"
@@ -119,12 +170,14 @@ jobs:
         # This job is otherwise pure shell on the runner's stock python, which
         # has no pytest — the first run of this step said so (`No module named
         # pytest`, run 35517016619). Installed here rather than by adding
-        # setup-python: one package, no toolchain, no cache to go stale.
+        # setup-python: no toolchain, no cache to go stale. pyyaml is installed
+        # for the step below, not for this one: the trigger-parity suite reads
+        # this file's own header, and this is the only step that installs.
         run: |
-          python3 -m pip install --quiet pytest
+          python3 -m pip install --quiet pytest pyyaml
           python3 -m pytest scripts/tests/test_ban_predicates.py -q
 
-      # The corpora of the three things THIS workflow runs. They existed and
+      # The corpora of the guards THIS workflow runs. They existed and
       # nothing executed them: `scripts/test_lint_paid_llm_entity.py` is named
       # by no workflow at all, and `scripts/tests/test_lint_ban_prose.py` is
       # reached only by scripts-tests-sweep.yml — which is `schedule:`-only,
@@ -134,12 +187,20 @@ jobs:
       # Named here rather than swept, so a deleted file fails instead of
       # silently collecting zero (the sweep's own docstring makes that point
       # about `.sh` files).
+      #
+      # The last two joined on 2026-09-21, one list later and by the same
+      # reading: on the commit that shipped this step, `git grep -l
+      # test_typesafe_client_pin -- .github/ scripts/` returned nothing, and
+      # the trigger-parity suite is new in the PR that adds it here — the file
+      # that proves the filter would have been the next orphan of this list.
       - name: the guards' own corpora — the suites no gating workflow ran
         run: |
           python3 -m pytest -q \
             scripts/test_lint_paid_llm_entity.py \
             scripts/tests/test_lint_ban_prose.py \
-            scripts/tests/test_vendor_authorization_fence.py
+            scripts/tests/test_vendor_authorization_fence.py \
+            scripts/tests/test_typesafe_client_pin.py \
+            scripts/tests/test_cate_trigger_parity.py
 
       # Runs BEFORE #40 so a broken budget step fails loud here rather than
       # quietly degrading the scan it exists to guard. The corpus extracts #40's
@@ -282,7 +343,10 @@ jobs:
             exit 1
           fi
           # shellcheck disable=SC2086
-          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint_paid_llm_entity.py --advisory
+          # -d '\n' for the same reason the prose step stopped using bare xargs:
+          # a path with a space would otherwise be split into two paths that do
+          # not exist. This lint has no --files-from, so the delimiter is the fix.
+          printf '%s\n' "$CHANGED" | xargs -r -d '\n' python3 scripts/lint_paid_llm_entity.py --advisory
 
       # ── #40d — prose about a banned shape must not contain it (BLOCKING) ────
       # The scar this step closes is not a bug in #40/#40b/#40c: it is what
@@ -295,10 +359,18 @@ jobs:
       #
       # BLOCKING from the first day, unlike #40c, because nothing here is a
       # judgment call: the predicates are literal, the guilt+innocence corpus is
-      # in scripts/tests/test_lint_ban_prose.py, and the 16 files that already
+      # in scripts/tests/test_lint_ban_prose.py, and the 11 files that already
       # carried such prose are frozen in infra/ban-prose/grandfathered.json —
-      # so this can only red on prose a PR actually authored. --base-ref makes
-      # the pardon list one-way: it may shrink, never grow inside its own diff.
+      # so it can only red on prose that is not already pardoned — which is not
+      # the same as prose the PR authored: the predicate reads the whole file,
+      # so touching an old offender reds on its existing lines too. The tree
+      # scans clean today, which is why that is a statement and not an incident.
+      # --base-ref makes
+      # the pardon list one-way: it may shrink, never grow inside its own diff
+      # — and it may shrink only TOGETHER with the cure of the file it releases,
+      # because the push-time scan reads the whole tree and a released file
+      # still carrying its prose reds main (a council seat measured 28 live
+      # violations behind the 11 pardons; a pardon is debt, not absolution).
       - name: Prose must not spell a banned shape (blocking)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -333,7 +405,13 @@ jobs:
           # skip its command entirely, which would skip the pardon-growth check
           # with it. That check must run whatever the diff contains.
           python3 scripts/lint/lint_ban_prose.py --base-ref "$BASE_SHA"
-          printf '%s\n' "$CHANGED" | xargs -r python3 scripts/lint/lint_ban_prose.py
+          # --files-from, not xargs: xargs splits on WHITESPACE, so a path with
+          # a space arrives as two paths that are not on disk and the step exits
+          # 0 having scanned nothing — `0 file(s) scanned (1 out of scope, 1 not
+          # on disk)` while the same file scanned directly exits 1 (refuting
+          # seat, finding 9). One path per line survives a space.
+          printf '%s\n' "$CHANGED" > "$RUNNER_TEMP/ban-prose-changed.txt"
+          python3 scripts/lint/lint_ban_prose.py --files-from "$RUNNER_TEMP/ban-prose-changed.txt"
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
       - name: Law-5 autonomous-publish lint (blocking)

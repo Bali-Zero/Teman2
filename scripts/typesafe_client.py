@@ -19,6 +19,18 @@ refuses to speak unless its endpoint is authorized ON DISK, whatever the
 environment holds. A key is not permission. `unavailable_reason()` says which
 silence a caller is in, because the two are indistinguishable from outside and a
 caller that cannot tell them apart prints something false half the time.
+
+A THIRD thing narrowed after the Gear-3 gate of PR #6989: authorizing an
+endpoint bound the FIRST HOP ONLY. `urlopen`'s default opener follows a
+redirect and Python's own `HTTPRedirectHandler` carries the `Authorization`
+header to the new host — including over plain HTTP — so an authorized
+endpoint that answers `302` could send the bearer token anywhere. This client
+builds its own `OpenerDirector` that refuses every redirect, kept local to
+this module rather than installed process-wide, because `install_opener()`
+would strip redirects from every OTHER caller of `urlopen` in the same
+interpreter. The defect predates PR #6989 — the base client already called
+`urlopen` with the same header and no custom opener — so this narrows a
+pre-existing window rather than fixing a regression.
 """
 
 from __future__ import annotations
@@ -61,11 +73,38 @@ NOT_AUTHORIZED = f"{ENDPOINT} is not listed in {AUTHORIZATION.name}"
 
 
 def authorized() -> bool:
-    """True when THIS endpoint is listed on disk.
+    """True when THIS endpoint is listed on disk WITH a file perimeter.
 
     Absent, unreadable or malformed authorizes NOTHING — the same choice the
     ban-prose pardon list makes, and for the same reason: failing open would
-    make deleting one file the way to arm every vendor.
+    make deleting one file the way to arm every vendor. The same failure mode
+    exists one level down: an entry's `_doc` describes the file, not itself,
+    so `{endpoint, ruling}` alone leaves the ENTRY with no field for what it
+    is permitted to touch — an entry with no perimeter authorizes everything,
+    which is the fail-open the file exists to prevent. `paths` closes that
+    for the ENTRY SHAPE: a matching entry without a non-empty list of
+    non-empty string `paths` authorizes NOTHING, same as the file absent. A
+    bare string entry can never carry `paths`, so it is skipped outright
+    rather than entity-matched and then refused for lacking one — a
+    comparison whose result can never change the outcome is dead code, and
+    dead code is where an unkillable mutant hides. `endpoint` and `paths` are
+    the two fields this function actually checks; `ruling` and `use` are
+    conventionally required by `authorized_endpoints.json`'s own `_doc` but
+    are NOT read here — an entry naming only `{endpoint, paths}` authorizes
+    exactly as much as one that also carries `ruling` and `use`. Overclaiming
+    otherwise is the same prose defect PR #6989's own gate found once already
+    (finding f): a docstring naming a discrimination the code does not
+    perform.
+
+    What this function does NOT do: it does not check any `paths` glob
+    against a target file, because nothing calls it with one. The registry
+    shipped EMPTY in the PR that added this field; its first entry (RULED
+    2026-09-21-bis) declares `["**"]`, so a per-request check would match
+    everything — dead code until a NARROWER entry exists, which is when
+    wiring it becomes the job. `paths` is validated as a SHAPE requirement
+    on the entry today, and `scripts/tests/test_vendor_authorization_fence.py`
+    validates every shipped entry's shape and ruling at merge time. Successor
+    to PR #6989's Gear-3 gate.
     """
     try:
         listed = json.loads(AUTHORIZATION.read_text(encoding="utf-8"))["endpoints"]
@@ -78,10 +117,19 @@ def authorized() -> bool:
         return False
     if not isinstance(listed, list):
         return False
-    return any(
-        entry == ENDPOINT or (isinstance(entry, dict) and entry.get("endpoint") == ENDPOINT)
-        for entry in listed
-    )
+    for entry in listed:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("endpoint") != ENDPOINT:
+            continue
+        paths = entry.get("paths")
+        if (
+            isinstance(paths, list)
+            and paths
+            and all(isinstance(p, str) and p for p in paths)
+        ):
+            return True
+    return False
 
 
 def unavailable_reason() -> str | None:
@@ -104,6 +152,32 @@ RETRY_STATUS = {429, 529}
 MAX_ATTEMPTS = 3
 BACKOFF_BASE_S = 0.8
 TIMEOUT_S = 25
+
+
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """Refuses every redirect instead of following it.
+
+    `redirect_request` returning `None` tells `HTTPRedirectHandler` NOT to
+    issue a second request. Verified empirically against CPython 3.11's real
+    handler rather than assumed: `OpenerDirector` then falls through to
+    `HTTPDefaultErrorHandler`, which raises `HTTPError` carrying the
+    redirect's own status code (e.g. 302) — it does NOT hand back the
+    redirect response for the caller to parse. `ask()` catches `HTTPError`,
+    finds the code outside `RETRY_STATUS`, and returns `None` on the FIRST
+    attempt with no retry. Either way, no second request is ever attempted,
+    so the bearer token never reaches whatever host the `Location` header
+    names.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102, N802
+        return None
+
+
+# Built once, held module-local. Never `urllib.request.install_opener()`: that
+# call is process-wide and would strip redirects from every OTHER caller of
+# `urlopen` in the same interpreter — most of which have nothing to do with
+# this vendor and may legitimately need them.
+_OPENER = urllib.request.build_opener(_NoRedirects())
 
 
 def available() -> bool:
@@ -146,7 +220,7 @@ def ask(
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with _OPENER.open(req, timeout=timeout) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
             answers = body.get("answers")
             return answers if isinstance(answers, dict) else None

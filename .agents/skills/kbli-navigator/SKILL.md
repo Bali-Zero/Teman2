@@ -47,7 +47,76 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-09-19 — keep current)
+## 1. LIVE STATE (last update 2026-09-21 — keep current)
+
+**🟢 2026-09-21 — F9 LOT 1 IS SHIPPED AND PROVEN LIVE: A CHEMICALS FACTORY IS NO LONGER TOLD TO GO
+AND APPLY FOR ITS UNDERTAKING NOT TO MAKE CHEMICAL WEAPONS — AND THE `172` THIS LANE WAS SIZED FROM
+IS NOT REPRODUCIBLE.** PR #6993 (`666660ab5e`, merged 21:46:06Z) → `Deploy Backend to Fly.io` run
+35539686764 `success` → Fly release **v4506 complete**. The after-state was read only once that
+release was live, never off the merge: on `apps/backend-rag` those are minutes apart and this
+corner's scar record is mostly that distance.
+
+**What shipped: three rules in `backend/services/kbli_requires_kind.py`**, in the order the file
+already uses — an id carrying the **token** `parameter` (token, never substring, the trade
+`kewajiban` already makes); a label opening with **`Tidak` or `Wajib`** plus a second word (an
+Indonesian permit name does not begin by saying what you must not produce); and **six exact labels**
+matched on the WHOLE label (two `PENDING_REGULATION` spellings, the complaint desk, two
+`Kerja Sama Operasi` forms). Cache key `kbli_inspect_v7_` → **`v8_`**.
+
+**Measured against `origin/main`'s OWN predicate over the same 13,344-edge dump:** admitted edges
+4,713 → **4,657**; admitted targets 2,446 → **2,434**; **12 demoted, 0 promoted, 0 demoted carrying a
+permit-shaped name**, 48 codes whose `licenses[]` changes. Nothing dropped — all 12 land in
+`related_requirements` (`parameters` 4, `obligations` 4, `entity_forms` 2, `unspecified_permits` 2).
+Real acronym permits pinned innocent by test (IPP-IRT, SPP-IRT, PMR, Uji Klinik, SLHS, STP
+Distributor/Agen, `Nomor Induk Berusaha`); **3 mutants killed** (the parameter token,
+`_CONDITION_HEADS`, one exact label).
+
+**PROVE-LIVE, before re-read from prod at push time and after read off v4506:**
+
+|                                | before                                                                        | after                        |
+| ------------------------------ | ----------------------------------------------------------------------------- | ---------------------------- |
+| `20121` `licenses[]`           | 12, opening `Tidak menghasilkan produk senjata kimia` + `…bahan perusak ozon` | **10** — both gone           |
+| `20121` `obligations`          | 1                                                                             | **3**                        |
+| `96220` `licenses[]`           | 1 — `Status Perizinan: PENDING_REGULATION`                                    | **0**                        |
+| `96220` `related_requirements` | `{}`                                                                          | **`unspecified_permits: 1`** |
+
+**🔴 CORRECTION TO §2.4 OF THE SPEC AND TO THE 2026-09-03 ENTRY BELOW: the `172` is not
+reproducible.** With the token list exactly as the spec spells it: **158** targets / 201 codes
+case-insensitively, **190** / 248 case-sensitively. 172 is obtainable in neither mode — the figure
+depended on a matching detail the spec did not record. The admitted total is stable (2,446 against
+its 2,447), so what did not survive is **the measure, not the world**. Anyone citing 172 is citing a
+158–190 bracket. Related, and also unrecorded: the token list is itself incomplete — `Certificate` is
+not in it, so `Standard Certificate` escapes as "naked".
+
+**Deliberately NOT done: `NPWP`.** §2.4 tables it as a defect; `test_short_real_acronyms_survive[NPWP]`
+pins it as a real permit acronym that must survive. **Two signed adjudications disagree**, and
+overturning one inside a demotion PR is exactly how a classification changes silently. It keeps its
+licence label until someone rules on it on purpose.
+
+**Two scars paid for in this lot, both about the bump rather than the rules:**
+
+- **A cache-key bump has SIX sites in this repo, and the one that matters in production is silent.**
+  `kbli_notebook.py` (the router), two tests that pin the literal on purpose, `kbli_qdrant_pma_sync.py`'s
+  eviction instruction — and **`backend/scripts/kbli_inspect_cache_bust.py::CACHE_KEY_TEMPLATE`**,
+  which left at the old generation reports `no cache entry (nothing to evict)` for every code while
+  prod serves the new one. That is verbatim the failure that script's own header exists to prevent: a
+  cure declares itself proven-live and the channel keeps the pre-cure payload for up to 30 days. The
+  same constant was missed once before (v2 → v3, 2026-08-06) and again here, by different authors —
+  the script's lockstep comment now records both. **Grep `kbli_inspect_v` repo-wide, never just the
+  router.**
+- **A `-x` shard names the FIRST red, not the worst one.** The pair-check
+  `test_key_format_matches_the_router_that_writes_it` reads the key literal out of the router's own
+  source and was red on the first push — but `gh pr checks` never showed it: the shards run pytest
+  with `-x`, shard 2 stopped at an earlier failure, and the pair-check sits further down that same
+  chunk. Diagnosis without guessing: `gh run download <run> -n backend-shard-N` gives `chunk-N.txt`
+  (the modules assigned) and `test-results-unit-N.xml` (the testcases that actually ran) — 2
+  testcases against 313 modules is a shard that stopped, not a shard that passed.
+
+**F9 IS NOT CLOSED — this is lot 1.** What shipped is the adjudicated head of the class: the two
+`PENDING_REGULATION` spellings, the `Tidak`/`Wajib` conditions, the `Kerja Sama Operasi` pair, the
+complaint desk, and the `parameter` token. The rest of the 158–190 bracket is unadjudicated and stays
+per-target work in this lane — `Lokasi industri berada pada Provinsi bersangkutan` among it. The KITAS
+class (spec §2.3) and Lot 0 (F5 classifier demotion) are untouched by this PR and still first in line.
 
 **🟡 2026-09-19 — MUSE PROPOSER LOTS: 154 CONFIRMED `whatChanged` / `pp28_sources` DEFECTS ON 85
 CODES, NONE CURED.** Three lots (124 of 124 `whatChanged`-bearing canonical entries), 161
