@@ -351,17 +351,167 @@ def test_ask_never_serialises_for_an_unauthorized_endpoint(listing, monkeypatch)
     assert tc.ask({"file": {"content": "secret source"}}, {}) is None
 
 
-def test_the_shipped_list_authorizes_nothing_today(monkeypatch):
-    """The file this PR ships, read as it ships: the list is empty, so no
-    perimeter can yet be misread. This asserts `listed == []`, nothing more —
-    it goes red the moment ANY entry is added, whether or not that entry
-    carries a ruling, which is exactly what makes it the tripwire for adding
-    the first one without going through this suite."""
-    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
-    listed = json.loads(tc.AUTHORIZATION.read_text())["endpoints"]
+RULINGS = Path(__file__).resolve().parents[2] / "docs" / "rules" / "RULINGS.md"
+ENTRY_FIELDS = ("endpoint", "ruling", "use", "paths")
 
-    assert listed == []
-    assert tc.authorized() is False
+
+def _shipped_entries() -> list:
+    """The registry as it ships, read from disk — never a fixture."""
+    return json.loads(tc.AUTHORIZATION.read_text(encoding="utf-8"))["endpoints"]
+
+
+def _ruling_blocks(text: str) -> list[str]:
+    """The `>`-quoted blocks of RULINGS.md, each joined into one string.
+
+    A ruling is one blockquote. A line that does not start with `>` ends the
+    block, which is how the file itself separates one ruling from the next —
+    so a ruling id and an endpoint that sit in DIFFERENT blocks never count
+    as one ruling naming that endpoint.
+    """
+    blocks: list[str] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if line.startswith(">"):
+            current.append(line)
+        elif current:
+            blocks.append("\n".join(current))
+            current = []
+    if current:
+        blocks.append("\n".join(current))
+    return blocks
+
+
+def _full_shape(entry) -> bool:
+    """`_doc`'s contract for an entry: an object with all four fields present
+    and non-empty, `paths` a non-empty list of non-empty strings."""
+    if not isinstance(entry, dict):
+        return False
+    for field in ("endpoint", "ruling", "use"):
+        if not (isinstance(entry.get(field), str) and entry[field].strip()):
+            return False
+    paths = entry.get("paths")
+    return (
+        isinstance(paths, list)
+        and bool(paths)
+        and all(isinstance(p, str) and p for p in paths)
+    )
+
+
+def _justified(entry: dict, rulings_text: str) -> bool:
+    """True when `entry["ruling"]` is a quoted block of the rulings file that
+    ALSO names `entry["endpoint"]` — a block that names only the vendor, or
+    the ruling that closed the door, does not justify an entry."""
+    blocks = [b for b in _ruling_blocks(rulings_text) if entry["ruling"] in b]
+    return any(entry["endpoint"] in b for b in blocks)
+
+
+def test_the_shipped_list_names_exactly_this_endpoint(monkeypatch):
+    """The file as it ships, read as it ships. The empty-list tripwire that
+    stood here was spent by the first entry, as the PENDING-ARMS row for PR
+    #6999 foresaw; what replaces it has to be as loud about the SECOND entry
+    as the tripwire was about the first. One endpoint is listed today and it
+    is this client's — a second one comes through this suite too."""
+    monkeypatch.setenv(tc.ENV_VAR, "a-configured-key")
+
+    assert [e["endpoint"] for e in _shipped_entries()] == [tc.ENDPOINT]
+    assert tc.authorized() is True
+    assert tc.available() is True
+    assert tc.unavailable_reason() is None
+
+
+def test_the_shipped_entry_still_needs_the_key(monkeypatch):
+    """Authorization on disk is one half; the fence has two. With the entry
+    shipped and no key configured the client stays silent, and says which
+    silence it is — otherwise the first entry would have turned a two-part
+    fence into a one-part one without anyone noticing."""
+    monkeypatch.delenv(tc.ENV_VAR, raising=False)
+
+    assert tc.authorized() is True
+    assert tc.available() is False
+    assert tc.unavailable_reason() == tc.NO_KEY
+
+
+def test_every_shipped_entry_carries_the_full_shape():
+    """`_doc` requires `endpoint`, `ruling`, `use` and non-empty `paths`;
+    `authorized()` reads only two of them (honestly, per its docstring), so
+    nothing at runtime enforces the other two. This is the merge-time
+    validator the PR #6999 ledger row asked for WITH the first entry."""
+    entries = _shipped_entries()
+
+    assert entries, "the registry is not empty any more; this suite owns its shape"
+    for entry in entries:
+        assert _full_shape(entry), entry
+
+
+@pytest.mark.parametrize("missing", ENTRY_FIELDS)
+def test_an_entry_missing_a_field_is_not_full_shape(missing):
+    """GUILT for the shape validator: drop any one of the four fields and it
+    must say no — a validator that passes a three-field entry is the
+    `{endpoint, ruling}` fail-open one level up."""
+    entry = _entry(tc.ENDPOINT, use="a use")
+    del entry[missing]
+
+    assert _full_shape(entry) is False
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_an_entry_with_a_blank_field_is_not_full_shape(blank):
+    assert _full_shape(_entry(tc.ENDPOINT, use=blank)) is False
+    assert _full_shape(_entry(tc.ENDPOINT, use="a use", ruling=blank)) is False
+
+
+def test_every_shipped_entry_cites_a_ruling_that_names_its_endpoint():
+    """A `ruling` field is a ledger pointer, and a pointer to nothing is the
+    fail-open this file exists to prevent, one level up: the entry would
+    authorize while the record that justifies it does not exist. Every
+    shipped ruling must be a quoted block of docs/rules/RULINGS.md that also
+    names the endpoint being authorized."""
+    text = RULINGS.read_text(encoding="utf-8")
+
+    for entry in _shipped_entries():
+        assert _justified(entry, text), (
+            f"{entry['ruling']!r} is not a ruling in {RULINGS.name} naming {entry['endpoint']}"
+        )
+
+
+def test_a_ruling_absent_from_the_file_does_not_justify():
+    """GUILT. The pointer names a ruling nobody wrote."""
+    text = "> ⚡ **RULED 2026-01-01 (Zero):** something else entirely.\n"
+
+    assert _justified(_entry(tc.ENDPOINT, ruling="RULED 2026-02-02"), text) is False
+
+
+def test_a_ruling_naming_only_the_vendor_does_not_justify():
+    """GUILT. The shape of the closed-door ruling: it names the vendor and
+    never the endpoint. `_doc` asks for a ruling naming the endpoint AND its
+    use; a block without the endpoint is not that ruling."""
+    text = "> ⚡ **RULED 2026-02-02 (Zero):** the TypeSafe / Jev endpoint is NOT authorized.\n"
+
+    assert _justified(_entry(tc.ENDPOINT, ruling="RULED 2026-02-02"), text) is False
+
+
+def test_a_ruling_id_and_endpoint_in_different_blocks_do_not_justify():
+    """GUILT. Two rulings, one carrying the id and the next carrying the
+    endpoint, must not be read as one — a blank line between them is the
+    file's own separator."""
+    text = (
+        f"> ⚡ **RULED 2026-02-02 (Zero):** the vendor is NOT authorized.\n"
+        f"\n"
+        f"> ⚡ **RULED 2026-03-03 (Zero):** `{tc.ENDPOINT}` is authorized.\n"
+    )
+
+    assert _justified(_entry(tc.ENDPOINT, ruling="RULED 2026-02-02"), text) is False
+
+
+def test_a_ruling_naming_the_endpoint_justifies():
+    """INNOCENCE. Without this the validator is unfalsifiable."""
+    text = (
+        f"> ⚡ **RULED 2026-03-03 (Zero):** `{tc.ENDPOINT}` IS an authorized vendor.\n"
+        f">\n"
+        f"> **Permitted use:** typed judgments over repository content.\n"
+    )
+
+    assert _justified(_entry(tc.ENDPOINT, ruling="RULED 2026-03-03"), text) is True
 
 
 def test_ask_returns_the_answers_for_an_authorized_endpoint(listing, monkeypatch):
