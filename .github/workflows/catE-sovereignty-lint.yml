@@ -54,7 +54,9 @@ on:
       # Every suffix any step below scans. The parity test fails when a scanner
       # reads a suffix this filter does not start on; the filter may always be
       # wider than the scanners, never narrower (measured by a council seat:
-      # appending an unread suffix here leaves every assertion green).
+      # appending an unread suffix to BOTH events leaves every assertion green
+      # -- appending it to ONE, which is what "here" reads as, reds the
+      # two-events parity test, so widen the pair or neither).
       - "**.py"
       - "**.ts"
       - "**.tsx"
@@ -100,7 +102,9 @@ on:
       # Every suffix any step below scans. The parity test fails when a scanner
       # reads a suffix this filter does not start on; the filter may always be
       # wider than the scanners, never narrower (measured by a council seat:
-      # appending an unread suffix here leaves every assertion green).
+      # appending an unread suffix to BOTH events leaves every assertion green
+      # -- appending it to ONE, which is what "here" reads as, reds the
+      # two-events parity test, so widen the pair or neither).
       - "**.py"
       - "**.ts"
       - "**.tsx"

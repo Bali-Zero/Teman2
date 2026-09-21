@@ -14,7 +14,7 @@ The gap is the kind that returns: it opens by ADDING a suffix to a scanner, in
 a diff that has no reason to mention a workflow. So the two sets are compared
 here rather than re-audited by hand, and the failure message names what to add.
 
-Three bindings, all in the same direction — the trigger may be wider than the
+Four bindings, all in the same direction — the trigger may be wider than the
 scanners, never narrower:
 
   1. every suffix the scanners read has a `**<suffix>` entry on BOTH events;
@@ -29,8 +29,10 @@ scanners, never narrower:
   4. no filter entry is a NEGATION. The three bindings above test PRESENCE, and
      presence equals coverage only while nothing takes coverage back: a `!`
      pattern after a positive one excludes what the positive one admitted, and
-     every assertion here would still pass (refuting seat, finding 2 — measured,
-     seven of seven tests green with `!**.yml` appended). So the convention is
+     every assertion here would still pass (refuting seat, finding 2 — measured
+     with `!**.yml` appended, against the three presence bindings ALONE, which
+     was all there was to measure). This binding is what that measurement
+     bought, so the same append reds it on both events today. The convention is
      declared rather than inferred: this filter carries no exclusions.
 
 `**<suffix>` is the required spelling and `**/*<suffix>` is NOT accepted as an
@@ -70,6 +72,17 @@ DATA_FILES = (
     # A cure that only defends the caller's own steps leaves the next lane to
     # rediscover the same hole, so the binding covers the guard next door too.
     "infra/vendor-authorizations/authorized_endpoints.json",
+    # Both READ by the #40 budget step — the baseline is its BASELINE_FILE and
+    # the corpus is the script it runs — and both were already in the filter
+    # when this list was written, which is how they stayed out of it: a
+    # hand-kept list is checked against what someone remembered reading, and
+    # the eye skips what is already spelled correctly next door. Measured by a
+    # council seat on the prose lane: with these two absent, deleting BOTH
+    # filter entries left all 9 tests green, so binding 2's promise -- every
+    # DATA file a step reads is covered on both events -- was true of the
+    # filter and false of the reader that guards it.
+    ".github/workflows/catE-paid-anthropic-baseline.txt",
+    "scripts/tests/test_cate_paid_budget.sh",
 )
 
 EVENTS = ("pull_request", "push")
@@ -159,7 +172,8 @@ def _executable_lines() -> str:
     # Comments only: a reader that accepts them can be satisfied by a STALE
     # comment while the live command drifts — measured by a council seat, which
     # removed a glob from the command, left the old line commented above it, and
-    # watched all seven tests pass (finding 4).
+    # watched the suite pass anyway (finding 4). This reader is the cure the
+    # finding bought, so that same mutation reds here now.
     return "\n".join(
         ln for ln in WORKFLOW.read_text().splitlines() if not ln.strip().startswith("#")
     )

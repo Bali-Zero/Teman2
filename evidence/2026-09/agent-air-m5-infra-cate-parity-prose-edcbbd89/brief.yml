@@ -1,0 +1,38 @@
+task_id: cate-parity-prose
+gear: 3
+l_level: L2
+gate_class: opus
+objective: "Four sentences in the catE trigger-parity surface describe code that has since moved, and one of them is a PROMISE the reader beside it does not keep. Make each say what the code does today; where the sentence is the specification and the code is the defect, fix the code instead. Opened by the Gear-3 gate on PR #7000, which asked for a third false sentence and recorded that it had not found one."
+constraints:
+  - "The workflow does not change at all: every line CI executes is byte-identical, and so is every comment in it. The only code that moves is DATA_FILES in the reader, which grows by the two paths the filter already carried — the reader catching up with the filter, never the reverse."
+  - "No test is added and no number is newly frozen. Where a sentence recounts a MEASUREMENT, it now reads as history and says what the same mutation does today; where it makes a PROMISE about coverage, the promise is made true rather than softened."
+  - "The load-bearing claim of the corrected filter comment — wider always, narrower never — is untouched and still true; only the sentence offered as its proof was wrong."
+  - "PR #7000 is merged and frozen. This is a fresh lane off origin/main, not a follow-up commit on that branch."
+acceptance:
+  - text: WHEN an unread suffix is appended to BOTH events every assertion SHALL stay green, which is the first half of the corrected sentence.
+    probe: '`- "**.zzz"` appended to both events, then pytest scripts/tests/test_cate_trigger_parity.py (receipts)'
+  - text: WHEN that same suffix is appended to ONE event only the two-events parity test SHALL red, which is the half the old sentence denied.
+    probe: test_the_two_events_carry_the_same_filter (receipts)
+  - text: WHERE prose recounts a past measurement it SHALL read as history AND state what that same mutation does to the file today, because a reader cannot tell a frozen fact from a live claim.
+    probe: "`!**.yml` appended -> 2 failed (test_no_filter_entry_takes_coverage_back on both events); a glob removed from the tree scan with the old line left commented -> 1 failed (receipts)"
+  - text: WHERE a step reads a DATA file, the READER SHALL name it — not merely the filter — so that removing it from the filter reds.
+    probe: "both budget paths deleted from both events: 9 passed before this diff, red after it (receipts)"
+  - text: WHERE a sentence counts the items in the list below it, the count SHALL be the list's length.
+    probe: "`Three bindings` introduced four numbered bindings; now Four"
+  - text: WHERE this diff touches a file CI executes, it SHALL change no executable line.
+    probe: "sha256 of the workflow with comment lines stripped, base vs head — identical (receipts)"
+assumptions:
+  - text: "`**.zzz` is a suffix no scanner in this workflow reads, so appending it exercises the parity assertions and nothing else."
+    status: verified
+    probe: "the suffix appears in no scanner's list; the both-events mutation leaves all 9 tests green, which is only possible if no suffix assertion consumed it"
+  - text: "The two cured counts are illustrative rather than load-bearing, so dropping them costs no coverage."
+    status: verified
+    probe: "neither number is read by any test — the only count a test binds is the pardon list's 11, via test_the_frozen_count_in_prose_equals_the_list_on_disk, and that one is untouched here"
+consumer_map:
+  - ".github/workflows/catE-sovereignty-lint.yml — the widened filter this lane shipped in #7000 starts the workflow on both changed files (.yml and .py), so the guard judges its own prose correction."
+  - "scripts/tests/test_cate_trigger_parity.py — runs inside that workflow's step `the guards' own corpora`, which is where the 9 tests whose count the prose no longer freezes actually execute."
+risks:
+  - "A comment-only diff still carries the full Gear-3 ritual because `.github/workflows/**` is a hot zone by path. That is the floor working as designed, not a cost to be routed around: the cheap way out would have been to split the workflow half off, which is the same concern in two PRs."
+  - "The corrected sentence now names a behaviour (one-event append reds) that a future change to the parity test could invalidate. It is measured in this diff's receipts rather than bound by a test — the same class of debt the diff cures, at a smaller radius, and the honest way to say it is that the sentence is true today and nothing re-measures it tomorrow."
+  - "The titolare seat codex-gpt-5.6-sol could not be dispatched: the broker resolves `codex` on its fixed system path to /opt/homebrew/bin/codex 0.147.0, which cannot parse the current ~/.codex/config.toml (`invalid type: map, expected a boolean in features`) — the working 0.155.1 lives in ~/.local/share/mise/... and the codex seat, unlike agy and kimi, declares no exec_search_path. The reserve agy-gemini-3.1-pro takes that seat, and the registry defect is its own lane."
+grader: "Council seats dispatched adversarially on the diff with no defence of it, none of them the author, each asked for a FOURTH false sentence rather than for approval. Generator is not grader; the final on-disk gate belongs to a session outside this chain."
