@@ -25,8 +25,9 @@ name: catE-sovereignty-lint
 # filter" from 2026-06-12 to 2026-09-21 while a filter sat thirty lines below
 # it; as of 2026-09-21 the sentence is true again, and the test named under
 # `on:` is what keeps it true.
-# Triggers BOTH pull_request AND push-to-main (W41/W42: pull_request-only gives
-# false safety under L2 autonomous direct-push).
+# Triggers pull_request, merge_group AND push-to-main (W41/W42: pull_request-only
+# gives false safety under L2 autonomous direct-push; merge_group is explained
+# under `on:`).
 #
 # STILL NON-REQUIRED as this file ships, and now ARMABLE — the two are
 # different states and were conflated for months. Adding this context to main's
@@ -34,28 +35,13 @@ name: catE-sovereignty-lint
 # what this file can do is stop being the reason the flip is unsafe. Until the
 # flip, a red here blocks nothing, which is the whole of the debt.
 
-# Path-scoped (2026-06-12 CI fan-out reduction), and since 2026-09-21 the filter
-# is a SUPERSET of what the steps below actually read — which is not how it
-# shipped. The Gear-3 gate on PR #6968 measured the gap: the prose scanner read
-# nine suffixes while this file started on five, so a PR whose changed set was
-# entirely .jsx .mjs .yaml .yml never started the workflow and its prose landed
-# unjudged — and the push filter carried the same hole, so nothing caught it
-# afterwards either. A workflow yml is not a hypothetical case here: it is the
-# file that produced one of the four reds #40d exists to close. The DATA the
-# steps read is listed for the same reason — a PR that grew the pardon list and
-# touched nothing else was the one PR the anti-growth check could never see.
-# scripts/tests/test_cate_trigger_parity.py now reds when a scanner reads a
-# suffix this header does not start on, so the drift cannot return in silence.
-# NON-REQUIRED, so a non-matching PR just skips it (no pending-forever; W69
-# BUCO #1 only bites REQUIRED path-filtered checks lacking a skip→success
-# sentinel).
 # NO PATHS FILTER, and that is the arming decision rather than an omission.
 # One was added 2026-06-12 to reduce fan-out and removed 2026-09-21 because it
-# had stopped buying anything: measured over the last 40 merges to main, 35
-# already started this workflow and the filter spared 5, at roughly 48s each.
-# Against that it cost two Gear-3 conditions (#6968 conditions 1 and 2, cured in
-# #7000) and one live hole — a PR whose changed set was entirely .jsx .mjs .yaml
-# .yml started nothing and its prose landed unjudged.
+# had stopped buying enough against what it cost: two Gear-3 conditions
+# (#6968 conditions 1 and 2, cured in #7000) and one live hole — a PR whose
+# changed set was entirely .jsx .mjs .yaml .yml started nothing and its prose
+# landed unjudged. The measured cost is recorded in this change's evidence
+# pack.
 #
 # The deeper reason is that a path-filtered check CANNOT BE REQUIRED without a
 # skip-to-success sentinel: a PR matching no path never reports the context at
@@ -75,8 +61,13 @@ on:
   # test_advisory_workflows_no_merge_group.py exists for). Added in the same
   # diff that makes this workflow armable, BEFORE the flip rather than after:
   # a queue run has no PR base, so both diff-scoped steps below fall through
-  # to their no-base branch — the entity judgment skips, and the blocking prose
-  # step scans the whole tree. That fails safe, never open.
+  # to their no-base branch — the entity judgment skips (a PR-time-only
+  # signal, not a verdict), and the blocking prose step scans the whole tree
+  # instead. That scan inherits lint_ban_prose.py's own handling of unreadable
+  # files: it WARNS and still exits 0 on a file it cannot read, as long as at
+  # least one in-scope file elsewhere in the tree scanned clean — which a
+  # whole-tree scan always has. Not "fails safe, never open": tracked as its
+  # own row in .claude/skills/modus/PENDING-ARMS.md, not cured by this diff.
   merge_group:
   push:
     branches:
@@ -95,7 +86,13 @@ jobs:
     runs-on: ubuntu-latest
     # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
     # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
-    timeout-minutes: 10
+    # Raised 10 -> 20 when this workflow became a REQUIRED-context candidate: a
+    # required check has no headroom, since its timeout blocks an innocent PR
+    # rather than merely re-running a flaky job. 10 left only ~1s of margin
+    # over the recorded 599s worst-case checkout, and on the no-base
+    # (merge_group/push) path the steps after the checkout scan the whole tree
+    # rather than the changed files, so the script half of the job grows too.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -311,8 +308,10 @@ jobs:
       # the pardon list one-way: it may shrink, never grow inside its own diff
       # — and it may shrink only TOGETHER with the cure of the file it releases,
       # because the push-time scan reads the whole tree and a released file
-      # still carrying its prose reds main (a council seat measured 28 live
-      # violations behind the 11 pardons; a pardon is debt, not absolution).
+      # still carrying its prose reds main (a council seat counted 28 live
+      # violations behind the 11 pardons on 2026-09-21 — a dated observation,
+      # not a maintained figure: unlike the 11, nothing re-measures it, so read
+      # it as history. A pardon is debt, not absolution).
       - name: Prose must not spell a banned shape (blocking)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -356,13 +355,18 @@ jobs:
           python3 scripts/lint/lint_ban_prose.py --files-from "$RUNNER_TEMP/ban-prose-changed.txt"
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
+      # Fail-closed on absence, not warn-and-skip: a required guard must not go
+      # green because its own tool was deleted (cicatrix #2, esiste != armato)
+      # — a PR that removed the linter would otherwise pass the step whose one
+      # job is to block exactly that class of change.
       - name: Law-5 autonomous-publish lint (blocking)
         run: |
           set -uo pipefail
           if [ -f scripts/lint/wr3_lint_autonomous_publish.py ]; then
             python3 scripts/lint/wr3_lint_autonomous_publish.py
           else
-            echo "::warning::scripts/lint/wr3_lint_autonomous_publish.py absent — skipped."
+            echo "::error::scripts/lint/wr3_lint_autonomous_publish.py is absent — a required guard must not pass when its own tool is gone."
+            exit 1
           fi
 
       # ── #44 — apps/*/.env must NOT be group/world-readable (0644 P0 class) ──
