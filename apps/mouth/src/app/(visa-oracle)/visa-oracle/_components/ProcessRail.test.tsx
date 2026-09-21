@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import { render, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   ProcessBranches,
   ProcessOutcome,
@@ -35,6 +36,41 @@ const WORK_BRANCH: OracleFacts = {
   category: "work",
   trip_scope: "single",
 };
+
+describe("ProcessBranches re-entry (C2-2)", () => {
+  it("reopens a pruned branch only after a category is on record", async () => {
+    const onSelectCategory = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+      <ProcessBranches
+        language="en"
+        model={m({ kind: "question", questionId: "work_payee" }, WORK_BRANCH)}
+        variant="desktop"
+        onSelectCategory={onSelectCategory}
+      />,
+    );
+    const invest = container.querySelector('[data-process-category="invest"]');
+    expect(invest?.tagName).toBe("BUTTON");
+    await user.click(invest as HTMLButtonElement);
+    expect(onSelectCategory).toHaveBeenCalledWith("invest");
+  });
+
+  it("leaves every chip inert at the open category question", () => {
+    const onSelectCategory = vi.fn();
+    const { container } = render(
+      <ProcessBranches
+        language="en"
+        model={m({ kind: "question", questionId: "category" }, OFFSHORE)}
+        variant="desktop"
+        onSelectCategory={onSelectCategory}
+      />,
+    );
+    for (const chip of container.querySelectorAll("[data-process-category]")) {
+      expect(chip.tagName).toBe("SPAN");
+    }
+    expect(onSelectCategory).not.toHaveBeenCalled();
+  });
+});
 
 function rail(part: "progress" | "branches" | "outcome"): HTMLElement {
   const node = document.querySelector<HTMLElement>(

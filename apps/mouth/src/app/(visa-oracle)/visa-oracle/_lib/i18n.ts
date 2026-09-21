@@ -1035,6 +1035,13 @@ const en = {
   "footer.disclaimer":
     "Visa Oracle is private decision support. It is not a government service, approval, or filing — Ditjen Imigrasi decides. Unknown or complex cases go to human review.",
   "footer.privacy": "Visa Oracle privacy policy",
+  "process.branch_preview_more":
+    "and {{count}} more {{plural:question|questions}}",
+  "process.branch_reopen_aria":
+    "Switch to {{category}} — reopens this branch and asks its questions",
+  "tree.investment_currency": "Investment currency",
+  "tree.investment_amount_usd": "Investment amount",
+  "tree.retirement_undecided_basis": "Long-stay route",
 } as const;
 
 type Keys = keyof typeof en;
@@ -2038,6 +2045,12 @@ const id: Record<Keys, string> = {
   "footer.disclaimer":
     "Visa Oracle adalah alat bantu keputusan privat. Ini bukan layanan pemerintah, persetujuan, atau pengajuan — Ditjen Imigrasi yang memutuskan. Kasus yang tidak diketahui atau kompleks ditinjau manusia.",
   "footer.privacy": "Kebijakan privasi Visa Oracle",
+  "process.branch_preview_more": "dan {{count}} pertanyaan lagi",
+  "process.branch_reopen_aria":
+    "Beralih ke {{category}} — membuka kembali cabang ini dan menanyakan pertanyaannya",
+  "tree.investment_currency": "Mata uang investasi",
+  "tree.investment_amount_usd": "Jumlah investasi",
+  "tree.retirement_undecided_basis": "Jalur tinggal panjang",
 };
 
 export const dict = { en, id };

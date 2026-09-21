@@ -32,6 +32,8 @@ export interface ProcessRailProps {
   variant: "mobile" | "desktop";
   outcome?: ProcessOutcomeSummary | null;
   reducedMotion?: boolean;
+  onSelectCategory?: (category: string) => void;
+  previews?: Record<string, { labels: string[]; remainder: number }>;
 }
 
 const S = {
@@ -236,6 +238,8 @@ export function ProcessBranches({
   model,
   variant,
   reducedMotion = false,
+  onSelectCategory,
+  previews = {},
 }: ProcessRailProps) {
   if (!model.showCategories) return null;
 
@@ -261,32 +265,25 @@ export function ProcessBranches({
         <AnimatePresence initial={false}>
           {model.categories.map((leaf) => {
             const pruned = leaf.status === "pruned";
-            return (
-              <motion.span
-                key={leaf.key}
-                className="oracle-tree__leaf"
-                data-status={leaf.status}
-                data-process-category={leaf.key}
-                layout={!reducedMotion}
-                // A closed branch is marked by a line through it and a
-                // dashed edge, never by fading it: dimming the text is what
-                // took these chips below the 4.5:1 contrast floor (axe,
-                // measured on this rail before the fix).
-                animate={
-                  reducedMotion ? undefined : { scale: pruned ? 0.96 : 1 }
-                }
-                transition={{
-                  duration: reducedMotion ? 0 : 0.3,
-                  ease: [0.4, 0, 0.2, 1],
-                }}
-                style={
-                  pruned
-                    ? S.prunedLeaf
-                    : leaf.status === "current"
-                      ? S.openLeaf
-                      : undefined
-                }
-              >
+            const preview = previews[leaf.key];
+            const chipProps = {
+              className: "oracle-tree__leaf",
+              "data-status": leaf.status,
+              "data-process-category": leaf.key,
+              layout: !reducedMotion,
+              animate: reducedMotion ? undefined : { scale: pruned ? 0.96 : 1 },
+              transition: {
+                duration: reducedMotion ? 0 : 0.3,
+                ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+              },
+              style: pruned
+                ? S.prunedLeaf
+                : leaf.status === "current"
+                  ? S.openLeaf
+                  : undefined,
+            };
+            const chipLabel = (
+              <>
                 {translate(language, `q.category.opt.${leaf.key}` as I18nKey)}
                 <span className="oracle-sr-only">
                   {" — "}
@@ -295,7 +292,46 @@ export function ProcessBranches({
                     `process.category_status.${leaf.status}` as I18nKey,
                   )}
                 </span>
-              </motion.span>
+              </>
+            );
+            return (
+              <div key={leaf.key} className="oracle-process-branch">
+                {onSelectCategory && model.chosenCategory !== null && pruned ? (
+                  <motion.button
+                    type="button"
+                    onClick={() => onSelectCategory(leaf.key)}
+                    aria-label={translate(
+                      language,
+                      "process.branch_reopen_aria",
+                      {
+                        category: translate(
+                          language,
+                          `q.category.opt.${leaf.key}` as I18nKey,
+                        ),
+                      },
+                    )}
+                    {...chipProps}
+                  >
+                    {chipLabel}
+                  </motion.button>
+                ) : (
+                  <motion.span {...chipProps}>{chipLabel}</motion.span>
+                )}
+                {pruned && preview && (
+                  <ul data-process-branch-preview={leaf.key}>
+                    {preview.labels.map((key) => (
+                      <li key={key}>{translate(language, key as I18nKey)}</li>
+                    ))}
+                    {preview.remainder > 0 && (
+                      <li>
+                        {translate(language, "process.branch_preview_more", {
+                          count: preview.remainder,
+                        })}
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
             );
           })}
         </AnimatePresence>

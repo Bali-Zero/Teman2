@@ -1640,3 +1640,19 @@ button.oracle-tree__step--editable:hover {
     border-color: #000000 !important;
   }
 }
+
+/* C2-1 branch previews stay subordinate to their route chip. */
+.oracle-process-branch {
+  min-width: 0;
+}
+.oracle-process-branch > ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-3);
+  color: var(--oracle-ink-faint);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+button.oracle-tree__leaf {
+  cursor: pointer;
+  font: inherit;
+}

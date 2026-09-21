@@ -888,6 +888,7 @@ function OracleShellRuntime({
               current={current}
               facts={state.facts}
               onEditQuestion={handleEdit}
+              onSelectCategory={handleSelectCategory}
               // Evidence, not inference: only a verdict already in this
               // attempt's history lets the rail call an off-spine question
               // the fact the engine asked for (council round 6).
