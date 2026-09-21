@@ -472,36 +472,35 @@ def _steps_with_tools() -> list[tuple[str, dict, frozenset]]:
     return found
 
 
-def test_the_prose_step_no_base_no_pr_branch_propagates_its_own_exit() -> None:
-    """`bash -e` — GitHub's real default shell for `run:`, proven empirically
-    (a bare `false` inside an `if` body is never followed by a later `exit`
-    at all) — already aborts the script the instant `lint_ban_prose.py`
-    exits non-zero here. That makes `exit $?` PROVABLY equivalent to
-    `exit 0` on every path the execution harness above can observe: whenever
-    this line is reached, everything before it already succeeded, so `$?` is
-    always 0. Execution cannot tell the two spellings apart, so this one
-    check is textual on purpose, not because grepping is preferred — a
-    defensive spelling still matters if `-e` is ever weakened elsewhere in
-    this script.
+def test_no_step_overrides_the_shell() -> None:
+    """The execution harness below runs every step under `bash -e`, which is
+    what GitHub uses for a `run:` block with no `shell:`. A step that sets
+    its own `shell:` (e.g. `bash {0}`, which drops `-e`) would run in CI
+    under rules the harness does not reproduce, so its verdict there would
+    be about a different program. Keeping `-e` in force is also what makes
+    a failing tool abort the step wherever it is called.
     """
-    pattern = re.compile(
-        r"lint_ban_prose\.py --files-from /tmp/ban-prose-tree\.txt\s*\n\s*exit \$\?"
+    offenders = sorted(
+        f"{name!r}: {step.get('name') or step.get('uses')!r}"
+        for name, job in _jobs().items()
+        if isinstance(job, dict)
+        for step in job.get("steps", [])
+        if isinstance(step, dict) and "shell" in step
     )
-    for job in _jobs().values():
-        if not isinstance(job, dict):
-            continue
-        for step in job.get("steps", []):
-            if not isinstance(step, dict):
-                continue
-            if step.get("name") != "Prose must not spell a banned shape (blocking)":
-                continue
-            run = step.get("run", "")
-            assert pattern.search(run), (
-                "the no-base branch of the prose step no longer ends its "
-                "whole-tree scan with `exit $?` right after the "
-                "--files-from call — restore it; a hardcoded `exit 0` here "
-                "is indistinguishable at runtime but not in the source."
-            )
+    offenders += sorted(
+        f"{name!r}: defaults.run.shell"
+        for name, job in _jobs().items()
+        if isinstance(job, dict) and (job.get("defaults") or {}).get("run", {}).get("shell")
+    )
+    document = yaml.safe_load(WORKFLOW.read_text())
+    if ((document.get("defaults") or {}).get("run") or {}).get("shell"):
+        offenders.append("workflow: defaults.run.shell")
+    assert not offenders, (
+        f"shell overridden at {offenders}. GitHub's default for `run:` is "
+        "`bash -e {0}`, the only shell test_step_fails_closed reproduces; an "
+        "override (e.g. `bash {0}`, which drops -e) lets a failing tool fall "
+        "through unjudged. Remove the override and keep the default shell."
+    )
 
 
 def test_every_guard_tool_is_still_run() -> None:
@@ -684,8 +683,9 @@ def _write_shims(shim_dir: Path) -> None:
 
 
 def _git_env(home: Path) -> dict:
+    # Minimal, like the step env: nothing from the parent environment but PATH.
     return {
-        **os.environ,
+        "PATH": os.environ.get("PATH", ""),
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_NOSYSTEM": "1",
         "HOME": str(home),
