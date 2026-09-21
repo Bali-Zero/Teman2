@@ -457,6 +457,7 @@ def scan(
     rows.sort(key=lambda r: (r["state"] not in (ABANDONED, HUNG), r["spawner"] or "", r["run_id"] or ""))
     abandoned = [r for r in rows if r["state"] == ABANDONED]
     hung = [r for r in rows if r["state"] == HUNG]
+    abandoned_stale = [r for r in rows if r["state"] == ABANDONED_STALE]
     return {
         "rows": rows,
         "summary": {
@@ -465,6 +466,7 @@ def scan(
             "open": sum(1 for r in rows if r["state"] == OPEN),
             "closed": sum(1 for r in rows if r["state"] == CLOSED),
             "hung": len(hung),
+            "abandoned_stale": len(abandoned_stale),
             "hung_spawners": sorted({r["spawner"] for r in hung if r["spawner"]}),
             "abandoned_spawners": sorted({r["spawner"] for r in abandoned if r["spawner"]}),
             "malformed": malformed,
@@ -490,9 +492,11 @@ def render_table(report: Dict[str, Any]) -> str:
             f"{(r['host'] or '?')[:14]:<14} {age:>8} {cap:>7} {r['outcome'] or '-'}"
         )
     lines.append("")
+    stale = s.get("abandoned_stale", 0)
+    stale_part = f", {stale} abandoned-stale" if stale else ""
     lines.append(
         f"{s['total']} declaration(s): {s['abandoned']} ABANDONED, "
-        f"{s.get('hung', 0)} HUNG, {s['open']} open, {s['closed']} closed"
+        f"{s.get('hung', 0)} HUNG, {s['open']} open, {s['closed']} closed{stale_part}"
     )
     if s["malformed"]:
         lines.append(f"WARNING — {len(s['malformed'])} unparseable file(s): {', '.join(s['malformed'])}")
