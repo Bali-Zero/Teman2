@@ -85,7 +85,9 @@ jobs:
     name: catE-sovereignty-lint
     runs-on: ubuntu-latest
     # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
-    # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
+    # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s
+    # (measured 2026-08-06 in #3649, fc697aac5a — a dated sample, not
+    # re-measured since).
     # Raised 10 -> 20 when this workflow became a REQUIRED-context candidate: a
     # required check has no headroom, since its timeout blocks an innocent PR
     # rather than merely re-running a flaky job. 10 left only ~1s of margin
@@ -313,8 +315,11 @@ jobs:
       # carried such prose are frozen in infra/ban-prose/grandfathered.json —
       # so it can only red on prose that is not already pardoned — which is not
       # the same as prose the PR authored: the predicate reads the whole file,
-      # so touching an old offender reds on its existing lines too. The tree
-      # scans clean today, which is why that is a statement and not an incident.
+      # so touching an old offender reds on its existing lines too. The whole
+      # tree scanned clean on 2026-09-21 (merge-queue run 35576998626, 10614
+      # files); unlike the 28-violations count below, every push and
+      # merge_group run RE-MEASURES this one, so it stays a re-checked
+      # invariant rather than a frozen figure.
       # --base-ref makes
       # the pardon list one-way: it may shrink, never grow inside its own diff
       # — and it may shrink only TOGETHER with the cure of the file it releases,

@@ -1,0 +1,183 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+
+rework_history:
+  - pr: 7069
+    verdict: REWORK-BUILD
+    gate_comment: pull/7069#issuecomment-5759798160
+    cause: >-
+      catE-sovereignty-lint was red on #7069's own PR run (35592205982): the
+      harness sets HOME to an isolated tmp_path per test, and on the GitHub
+      runner (unlike M5's mise-managed interpreter) `python3 -m pip install`
+      in the "ban-predicates" step puts pytest in the USER site, rooted at
+      HOME/.local — so the next step's `python3 -m pytest` found no pytest
+      ("No module named pytest"), and every guard step after it was
+      silently skipped. Two more, non-blocking defects: the Not-covered
+      list omitted the self-reference gap (this file is armed only by the
+      workflow it guards) and several runner facts (unset GITHUB_REF_NAME/
+      GITHUB_JOB, real HOME, checkout content/history, BASH_ENV); and this
+      pack's own dissent rows mislabelled two "declared out of scope, not
+      cured" objections as RETRACTED.
+    cure: >-
+      PYTHONUSERBASE pinned to this process's own `site.getuserbase()` in
+      every step's env, independent of the isolated HOME — carries no
+      secret, since it is the same filesystem path `pip install --user`
+      already wrote under in this very run. Not-covered list extended with
+      the self-reference gap and the missing runner facts. Dissent rows
+      corrected to CONFIRMED.
+plan_ref: >-
+  PENDING-ARMS row "PWC-CONDITIONS for PR #7031" (landed by #7032), conditions C1, C2 and C3; gate
+  comment pull/7031#issuecomment-5757422976. The REQUIRED flip of catE-sovereignty-lint follows this
+  change (sequence ruled 2026-09-21 in the lane's M5 window, answer typed by the remote-control
+  delegate nuzantara-67 under Zero's standing delegation).
+
+lanes:
+  - lane: cate-guard-build
+    role: build
+    seat: >-
+      claude-sonnet-5 implementer subagents (succ7031, succ7031b) on specs written by the conducting
+      claude-opus-5 session, which also rewrote one test (the textual exit-status check became the
+      shell pin) and re-verified every commit on disk with its own mutation batteries.
+  - lane: cate-guard-refute-crossfamily-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort high via scripts/seat_build.sh, worktree infra-council-c-codex.
+      Round 1 on afbd7e2dc3: BREAKS. Round 2 on b5f3128ef3: BREAKS (new surfaces only; round-1
+      findings confirmed closed).
+  - lane: cate-guard-refute-crossfamily-2
+    role: review
+    seat: >-
+      kimi-code/k3 at effort high via scripts/seat_build.sh, worktree infra-council-c-kimi. Round 1:
+      timed out at 1800s before emitting a verdict (non-judgement). Round 2 on b5f3128ef3: BREAKS
+      (new surfaces only; round-1 findings confirmed closed).
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Anthropic implementers under one conducting session), so D3 does not bind. Both
+  R9 council seats delivered judgements (codex twice, kimi once).
+
+scope_closure: >-
+  Two council rounds each found NEW surfaces after the previous ones were closed, which is the
+  contract's fix-of-a-fix signal that the surface was unspecified. The scope is therefore written
+  down in the test module docstring and closed with a final fold (eb56f26a34), with no third round.
+  The fold covers: triggers exactly pull_request/merge_group/push; a bare merge_group;
+  permissions == contents: read; uses@ref and with-keys pinned; no GITHUB_/RUNNER_ env keys;
+  case-insensitive ==; secrets rendered both empty and present; GITHUB_EVENT_PATH.
+  Declared NOT covered: the behaviour of steps that name no repo tool (#40's budget block between
+  its markers is exercised verbatim by test_cate_paid_budget.sh; text before the marker is not);
+  tool arguments and semantics; action refs beyond the pin. A change that makes the context always
+  red fails on the PR that introduces it, so the classes this file judges are false green and
+  unreported.
+
+erratum:
+  - target: "PR #7031 body, brief objective, and commit d4f54a1151's title"
+    claim: "the absence guard reds on every shape that would make the context unreportable or falsely green"
+    correction: >-
+      False as shipped: the fresh gate measured 16 of 29 regressions staying green
+      (pull/7031#issuecomment-5757422976). This change closes those, and replaces the "every shape"
+      claim with a written scope and a Not-covered list in the test module docstring.
+
+diff:
+  files: 5
+  measured_at: >-
+    git diff origin/main --numstat before the pack commit (successor head, fresh origin/main
+    6b4ab0a604): 1447+/54- in scripts/tests/test_cate_trigger_parity.py, 8+/3- in
+    .github/workflows/catE-sovereignty-lint.yml (comment lines only — non-comment lines hash
+    identically to origin/main, re-verified on this head). Over the ~400-line guideline: one test
+    harness whose parts close one condition set plus the runner-fidelity fix #7069's gate demanded;
+    splitting it would ship an intermediate guard that still fails PWC #7031 or is red in CI.
+
+residual_risks:
+  - "The harness adds ~15s to the corpora step that runs this file in CI."
+  - "The not-covered classes listed in scope_closure."
+  - >-
+    The whole-tree scan's warn-and-pass on unreadable files and the .env step's vacuity remain on
+    the PENDING-ARMS row catE-passes-without-examining (deadline 2026-10-05).
+
+pii_scan: clean
+
+receipts:
+  - claim: "Innocence on the final head"
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_cate_trigger_parity.py"
+    result: "47 passed; actionlint rc=0; lint_ban_prose OK; workflow non-comment hash identical to origin/main"
+    exit: 0
+    ts: "2026-09-21T11:0xZ"
+    seat: session (M5)
+  - claim: "guilt battery on minimal mirrors of the successor head"
+    cmd: >-
+      guilt battery on minimal mirrors of the successor head: the conducting session's own mutations
+      (mut_v2, mut_v3) re-run on eb56f26a34, plus the implementer's fold2/fold3 batteries
+    result: >-
+      Session batteries on eb56f26a34: 12/12 guilt red on the intended test. The mutations were the
+      codex round-1 BLOCKER (merge_group-only skip via step env), a push-only skip via GITHUB_REF,
+      strategy.matrix, Law-5 or-true, shell override, no-base scan skipped, or-true on one prose
+      call, budget and corpora or-true, job rename, merge_group branches, step continue-on-error.
+      2/2 innocence green: a GITHUB_STEP_SUMMARY write and the head_ref-or-run_id group.
+      Implementer fold3: pull_request_target, merge_group types, permissions {}, checkout ref and v6,
+      GITHUB_EVENT_NAME override, a case-variant == skip, and a secrets-present skip (red only in
+      that variant) are all red; GITHUB_EVENT_PATH read and the ubuntu-24.04-arm runner are green.
+    exit: 1
+    ts: "2026-09-21T11:0xZ"
+    seat: session (M5) + implementer
+  - claim: "Gate's 16 green-staying regressions on #7031 now red"
+    cmd: "implementer succ7031 battery of the gate's list on 39c6643ed5, re-confirmed by both council seats in round 2"
+    result: "18/18 red on the intended assertion; head_ref-or-run_id innocence green"
+    exit: 1
+    ts: "2026-09-21T09:0xZ"
+    seat: implementer + council
+  - claim: "Successor head (fresh origin/main 6b4ab0a604): PYTHONUSERBASE cures #7069's runner-red finding, and every #7031/round-2 regression/innocence result reproduces here"
+    cmd: >-
+      python3 -m pytest -q -p no:cacheprovider scripts/tests/test_cate_trigger_parity.py;
+      python3 scripts/lint/lint_ban_prose.py scripts/tests/test_cate_trigger_parity.py evidence/2026-09/agent-air-m5-infra-cate-guard-runner-faithful-ebbb27b4/{brief,pack}.yml;
+      git show origin/main:.github/workflows/catE-sovereignty-lint.yml | grep -vE '^\s*#' | shasum
+        vs grep -vE '^\s*#' .github/workflows/catE-sovereignty-lint.yml | shasum;
+      local simulation: /usr/bin/python3 (no pytest anywhere) with HOME isolated and PYTHONUSERBASE
+        pinned to a separate dir holding a `pip install --user pytest`;
+      fold4b/fold4c mutation batteries (32 scratch copies: the 22 of fold2 + the 10 of fold3, all
+        re-run fresh on this head)
+    result: >-
+      48 passed in 26.05s (47 from eb56f26a34 plus
+      test_default_env_carries_the_parent_interpreters_pythonuserbase). lint_ban_prose OK on all
+      three files. Workflow non-comment-line sha256 identical on both sides (4c3f9d6c...). Local
+      simulation: import fails under the isolated HOME alone (ModuleNotFoundError, reproducing
+      #7069's gate mechanism), still fails with PYTHONUSERBASE unset, succeeds once PYTHONUSERBASE
+      is pinned to the dir pip installed into (pytest 8.4.2 found) — this is the harness's own cure,
+      demonstrated with a real interpreter that lacks pytest globally; the real proof is still the CI
+      run. fold4b+fold4c: 32/32 scratch copies behave as predicted — 26 GUILT mutations each fail on
+      the exact test predicted (identical to fold2/fold3's original predictions on the prior head;
+      k-unknown-expr-env now fails on all 6 event*secrets ids since the entity step qualifies for the
+      secrets-duality variant), 6 INNOCENT mutations each pass clean, 0 no-op mutations (one
+      apparent no-op was a stale-directory cp artifact from an interrupted first attempt, redone
+      standalone in a fresh directory and confirmed a genuine passing mutation, not a bug in the
+      test file under test).
+    exit: 0
+    ts: "2026-09-21T19:5xZ"
+    seat: implementer (M5) + dispatched subagent (fold4c battery)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "R1 BLOCKER: harness ignored step env and fused push/merge_group. Cured: per-event rendering."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "R1: timeout/defaults/needs green; env unfaithful; isolation overstated. Cured: key allowlists, timeout floor, GitHub defaults, prose."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: "R2: case-sensitive ==, secrets always empty, no GITHUB_EVENT_PATH, absolute prose. Cured in eb56f26a34."
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      R2 BLOCKERs: tool-less steps unguarded; tool arguments and action refs unvalidated. Real,
+      declared out of scope, not cured. Listed in the Not-covered section; a false red self-limits
+      on the introducing PR, but this pack does not claim the shapes are caught.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: "R1 notes: strategy.matrix and container green. Cured by the job-key allowlist."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: "R2: merge_group types, checkout with, permissions, GITHUB_* override, pull_request_target, case-sensitive ==. Cured in eb56f26a34."
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      R2 innocent reds (job env, second job, step timeout, push branches): declared out of scope,
+      not cured — closed-list design, stated in the docstring, not a defect the harness fixes.
