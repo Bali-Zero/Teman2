@@ -51,31 +51,52 @@ What this file judges, end to end:
     the count on disk.
 
 The execution harness itself, plainly: it runs the workflow's own shell with
-NO network sandbox — a step that calls the network does so for real, exactly
-as it would in CI; `pip` is shimmed to a no-op so `python3 -m pip install`
-never touches a registry; and no parent environment or secrets reach the
-steps, git, or the xargs probe — every process gets an explicit, minimal env.
-The prose step's no-base path writes the shared `/tmp/ban-prose-tree.txt`, so
-concurrent local runs of this suite may collide on that one file. Each step
-is bounded to 120s. The concurrency-group regex and the key allowlists below
-are deliberately CLOSED lists: an equivalent-but-different spelling reds, and
+NO network sandbox — the network is not blocked, so a step that calls it
+does so for real; `pip` is shimmed to a no-op so `python3 -m pip install`
+never touches a registry; no parent environment reaches the steps, git, or
+the xargs probe EXCEPT PATH (prefixed with this harness's shim directory,
+otherwise passed through unchanged, so the real `bash`/`git`/coreutils are
+still found) — secrets never do, in either of the two variants a step that
+names one is run under (see test_step_fails_closed). The prose step's
+no-base path writes the shared `/tmp/ban-prose-tree.txt`, so concurrent
+local runs of this suite may collide on that one file. Each step is bounded
+to 120s. The concurrency-group regex and the key allowlists below are
+deliberately CLOSED lists: an equivalent-but-different spelling reds, and
 this test must be updated in the same diff that adds the new spelling.
+
+A mutation that makes this context always red is not invisible either: it
+fails on the very PR that introduces it, because that PR's own run uses the
+mutated workflow. The two classes this file exists to catch are a FALSE
+GREEN and an UNREPORTED context — a red that only some other, later PR would
+hit is not a gap this file needs to close; the merge queue closes that one
+for free.
 
 Not covered — stated plainly rather than claimed as "every shape":
 
   - steps whose executable lines name no repo tool are never executed here —
     today that is the two Anthropic-ban grep steps (#40, #40b) and the #44
-    apps/*/.env permission step;
+    apps/*/.env permission step; an `exit 0` or `exit 1` inserted into one of
+    them is not judged here either. The #40 budget block IS exercised, but
+    only the shell verbatim between its CATE40_BUDGET markers
+    (scripts/tests/test_cate_paid_budget.sh) — never the text before the
+    marker;
   - a tool's own semantics are not judged, only whether the step propagates
     its exit code — a linter that is simply wrong but still exits 0 stays
-    invisible to this file;
+    invisible to this file, and so does an argument added to its call (e.g.
+    `--help`, which would make most linters exit 0 having checked nothing);
   - the whole-tree scan's warn-and-pass on an unreadable file, and the #44
     step's vacuity on hosted checkouts (`.env*` is gitignored, so
     actions/checkout never materialises one to judge), are tracked as their
     own row in .claude/skills/modus/PENDING-ARMS.md
     ("catE-passes-without-examining"), not cured by this file;
   - any `runs-on` outside HOSTED_RUNNERS reds even when a self-hosted label
-    exists elsewhere in the fleet — deliberate, not an oversight.
+    exists elsewhere in the fleet — deliberate, not an oversight;
+  - an action ref outside ALLOWED_ACTIONS reds as "unknown/unpinned", not
+    resolved against the real marketplace — this file cannot tell a typo'd
+    ref from a legitimate new action any more than it can tell either from a
+    supply-chain-compromised one; all three are unreviewed alike, and all
+    three are meant to be caught by a human reading the diff, not by this
+    test knowing the difference.
 """
 
 from __future__ import annotations
@@ -97,7 +118,9 @@ WORKFLOW = REPO / ".github" / "workflows" / "catE-sovereignty-lint.yml"
 GRANDFATHERED = REPO / "infra" / "ban-prose" / "grandfathered.json"
 
 CONTEXT = "catE-sovereignty-lint"
-HOSTED_RUNNERS = frozenset({"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04"})
+HOSTED_RUNNERS = frozenset(
+    {"ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-24.04-arm"}
+)
 
 # merge_group is in this tuple too, not only pull_request/push: the narrowing
 # check below must cover it, because a `paths:`/`paths-ignore:` planted under
@@ -178,6 +201,62 @@ def test_the_workflow_triggers_on_merge_group() -> None:
         "merge-queue run can never report it, and every queue entry waits for "
         "it until the 90-minute timeout — a fleet-wide stall with nothing red "
         "to fix."
+    )
+
+
+_KNOWN_TRIGGER_EVENTS = frozenset({"pull_request", "merge_group", "push"})
+
+
+def test_the_workflow_declares_only_the_three_known_trigger_events() -> None:
+    """`on:` is a closed list of exactly the three events this file models
+    (EVENTS, and GITHUB_CONTEXTS below). `pull_request_target` in particular
+    runs with the BASE branch's workflow file and secrets against the HEAD
+    branch's code — a shape this harness has no context for and would
+    misjudge silently if it tried; any other unlisted event is equally
+    unreviewed. Add the event here only together with a GITHUB_CONTEXTS
+    entry and an EVENTS entry, in the same diff.
+    """
+    offenders = sorted(set(_triggers()) - _KNOWN_TRIGGER_EVENTS)
+    assert not offenders, (
+        f"on: carries unknown event(s) {offenders}. This file only models "
+        f"{sorted(_KNOWN_TRIGGER_EVENTS)} (EVENTS/GITHUB_CONTEXTS below) — "
+        "pull_request_target in particular runs the BASE branch's workflow "
+        "against the HEAD branch's code with base-branch secrets, a shape "
+        "this harness cannot judge. Add the event to _KNOWN_TRIGGER_EVENTS, "
+        "EVENTS and GITHUB_CONTEXTS together, deliberately, or remove it."
+    )
+
+
+def test_the_merge_group_trigger_carries_no_configuration() -> None:
+    """merge_group: stays bare. Any key on it — types, branches, or a future
+    one — is unreviewed configuration on the one event whose failure mode
+    (test_the_workflow_triggers_on_merge_group, above) is a 90-minute queue
+    timeout with nothing red to explain it, not an ordinary red.
+    """
+    block = _triggers().get("merge_group")
+    assert not block, (
+        f"merge_group: carries {block!r}, not empty. Keep it bare — any key "
+        "here is unreviewed configuration on the one event a REQUIRED "
+        "context cannot afford to get wrong: the failure mode is a "
+        "90-minute queue timeout, not a red."
+    )
+
+
+def test_the_workflow_permissions_are_exactly_contents_read() -> None:
+    """`permissions:` is the blast radius of a compromised step. This
+    workflow's whole job is to lint text and run local scripts — it never
+    needs to write, comment, or mint a token for anything else — so the
+    floor and the ceiling are the same value; a broader grant is unreviewed
+    surface added for no step that exists today.
+    """
+    document = yaml.safe_load(WORKFLOW.read_text())
+    permissions = document.get("permissions")
+    assert permissions == {"contents": "read"}, (
+        f"permissions: is {permissions!r}, not exactly {{'contents': "
+        "'read'}}. This workflow only reads the checkout and runs local "
+        "scripts — a broader grant (issues, pull-requests, id-token, ...) "
+        "is unreviewed surface; add it deliberately, in the same diff as "
+        "the step that needs it, and update this test to match."
     )
 
 
@@ -683,6 +762,99 @@ def test_job_timeout_minutes_is_at_least_the_recorded_floor() -> None:
         )
 
 
+# Closed map: action `uses:` ref -> the `with:` keys that ref is allowed to
+# carry, computed from the file today (2026-09-21:
+# `git grep -A3 'uses: actions/'` -> actions/checkout@v7 with fetch-depth
+# and filter). A different ref (upgrade, downgrade, a typo that still
+# resolves) or a new `with:` key (e.g. `ref:`, which could check out
+# something other than the merge commit this harness assumes) is
+# unreviewed surface — add both deliberately, in the same diff that
+# changes the step.
+ALLOWED_ACTIONS = {
+    "actions/checkout@v7": frozenset({"fetch-depth", "filter"}),
+}
+
+
+def test_every_uses_step_matches_a_pinned_action_and_with_keys() -> None:
+    """A `uses:` step runs code this repo does not control. ALLOWED_ACTIONS
+    is a closed map from ref to the `with:` keys that ref may carry — an
+    unpinned/unknown ref reds as unresolved (this test cannot tell a typo
+    from a legitimate new action any more than from a compromised one, so
+    it does not try — see the module docstring's "Not covered"), and a
+    `with:` key this test has not seen reds too, since a key like `ref:`
+    changes WHAT gets checked out, not just how.
+    """
+    offenders = []
+    for job_name, job in _jobs().items():
+        if not isinstance(job, dict):
+            continue
+        for step in job.get("steps", []):
+            if not isinstance(step, dict) or "uses" not in step:
+                continue
+            ref = step["uses"]
+            allowed_with = ALLOWED_ACTIONS.get(ref)
+            if allowed_with is None:
+                offenders.append(
+                    f"job {job_name!r} uses unpinned/unknown action {ref!r}"
+                )
+                continue
+            extra = sorted(set((step.get("with") or {})) - allowed_with)
+            if extra:
+                offenders.append(
+                    f"job {job_name!r} step {ref!r} with: carries unknown "
+                    f"key(s) {extra}"
+                )
+    assert not offenders, (
+        f"{offenders}. ALLOWED_ACTIONS is a closed map of action@ref -> "
+        "allowed with: keys — add the new ref/key deliberately, in the "
+        "same diff that changes the step, after checking what it now "
+        "carries."
+    )
+
+
+def _env_blocks_with_locations():
+    """Every (location, raw env mapping) this workflow declares — workflow,
+    each job, each step — RAW (unrendered), since the ban below is about
+    the KEY, not the rendered value.
+    """
+    document = yaml.safe_load(WORKFLOW.read_text())
+    blocks = [("workflow", document.get("env"))]
+    for job_name, job in _jobs().items():
+        if not isinstance(job, dict):
+            continue
+        blocks.append((f"job {job_name!r}", job.get("env")))
+        for step in job.get("steps", []):
+            if not isinstance(step, dict):
+                continue
+            step_name = step.get("name", "<unnamed>")
+            blocks.append((f"job {job_name!r} step {step_name!r}", step.get("env")))
+    return blocks
+
+
+def test_no_env_key_shadows_a_github_or_runner_default() -> None:
+    """GitHub silently DROPS a workflow/job/step `env:` entry whose key
+    starts with GITHUB_ or RUNNER_ — those prefixes are reserved, and the
+    platform's own default wins regardless of what the YAML says. This
+    harness's env layering (_rendered_step_env/_default_env) would not
+    reproduce that: it would apply the override, so a step that (by bug or
+    by an attempt to widen the harness) sets e.g. `GITHUB_EVENT_NAME:
+    never` would run here under a value CI itself never lets it see.
+    """
+    offenders = []
+    for location, mapping in _env_blocks_with_locations():
+        for key in mapping or {}:
+            if str(key).startswith(("GITHUB_", "RUNNER_")):
+                offenders.append(f"{location} env key {key!r}")
+    assert not offenders, (
+        f"{offenders}. GitHub reserves the GITHUB_*/RUNNER_* prefixes and "
+        "silently drops an env: override that uses one — the platform's "
+        "own default wins regardless. This harness would NOT reproduce "
+        "that drop, so keeping the override here would judge a value CI "
+        "itself never applies. Remove it; if the intent was to READ the "
+        "default, no env: entry is needed."
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # The fail-closed judgment, by EXECUTION, per real trigger EVENT.
 #
@@ -790,19 +962,23 @@ HELPERS = frozenset({"scripts/ci/hotzone_changed_files.sh"})
 PR_TIME_ONLY = frozenset({"scripts/lint_paid_llm_entity.py"})
 
 
-def _resolve_context_path(path: str, event: str, original: str):
+def _resolve_context_path(path: str, event: str, original: str, secrets_value: str = ""):
     """Resolve a `${{ }}` context path (e.g. `github.event.pull_request.base
     .sha`) against GITHUB_CONTEXTS[event], or fail closed.
 
-    `secrets.<anything>` always renders "" — this harness never has a real
-    secret to render. Any other root context, or any path
-    GITHUB_CONTEXTS[event] does not carry all the way down, fails the test
-    instead of silently rendering an empty string: an unrepresented shape
-    must be loud, not invisible.
+    `secrets.<anything>` renders `secrets_value` — "" in the default
+    variant, and a non-empty dummy in the second variant
+    test_step_fails_closed runs for any step whose raw env/run text
+    references `secrets.` (see _step_references_secrets), since a step
+    that behaves differently depending on whether a secret happens to be
+    configured must be judged both ways. Any other root context, or any
+    path GITHUB_CONTEXTS[event] does not carry all the way down, fails the
+    test instead of silently rendering an empty string: an unrepresented
+    shape must be loud, not invisible.
     """
     parts = path.split(".")
     if parts[0] == "secrets":
-        return ""
+        return secrets_value
     if parts[0] != "github":
         pytest.fail(
             f"expression {original!r} on event {event!r} uses context "
@@ -873,11 +1049,18 @@ class _ExprParser:
     Python's.
     """
 
-    def __init__(self, tokens: list[tuple[str, str]], event: str, original: str):
+    def __init__(
+        self,
+        tokens: list[tuple[str, str]],
+        event: str,
+        original: str,
+        secrets_value: str = "",
+    ):
         self.tokens = tokens
         self.pos = 0
         self.event = event
         self.original = original
+        self.secrets_value = secrets_value
 
     def _peek(self):
         return self.tokens[self.pos] if self.pos < len(self.tokens) else None
@@ -920,7 +1103,13 @@ class _ExprParser:
         while self._peek() in (("op", "=="), ("op", "!=")):
             op = self._advance()[1]
             right = self._unary()
-            equal = _render_value(left) == _render_value(right)
+            # GitHub's own semantics: string comparison is case-INSENSITIVE
+            # (docs.github.com/actions, "About expressions"). A skip keyed
+            # on `github.event_name == 'PUSH'` genuinely fires on a real
+            # "push" event — comparing case-sensitively here would make the
+            # harness MISS that real skip (a false negative on a step that
+            # actually short-circuits in CI), not merely mis-render text.
+            equal = _render_value(left).casefold() == _render_value(right).casefold()
             left = equal if op == "==" else not equal
         return left
 
@@ -940,7 +1129,7 @@ class _ExprParser:
             return text
         if kind == "path":
             self._advance()
-            return _resolve_context_path(text, self.event, self.original)
+            return _resolve_context_path(text, self.event, self.original, self.secrets_value)
         if tok == ("op", "("):
             self._advance()
             value = self._or_expr()
@@ -954,7 +1143,7 @@ class _ExprParser:
 _EXPR_BLOCK_RE = re.compile(r"\$\{\{(.*?)\}\}", re.DOTALL)
 
 
-def _render_expr(expr_text: str, event: str) -> str:
+def _render_expr(expr_text: str, event: str, secrets_value: str = "") -> str:
     original = expr_text.strip()
     tokens = _tokenize_expr(original, event, original)
     if not tokens:
@@ -962,32 +1151,50 @@ def _render_expr(expr_text: str, event: str) -> str:
             f"empty '${{{{ }}}}' expression on event {event!r} — extend "
             "the harness's context table."
         )
-    value = _ExprParser(tokens, event, original).parse()
+    value = _ExprParser(tokens, event, original, secrets_value).parse()
     return _render_value(value)
 
 
-def _render_text(text: str, event: str) -> str:
+def _render_text(text: str, event: str, secrets_value: str = "") -> str:
     """Substitute every `${{ expr }}` in `text` with its rendered value for
-    `event` — GitHub does this to both `env:` values and `run:` bodies
-    before the shell ever sees either.
+    `event` (and `secrets_value` for any `secrets.*` path) — GitHub does
+    this to both `env:` values and `run:` bodies before the shell ever sees
+    either, for the subset of GitHub's own expression syntax this workflow
+    uses (see _ExprParser).
     """
-    return _EXPR_BLOCK_RE.sub(lambda m: _render_expr(m.group(1), event), text)
+    return _EXPR_BLOCK_RE.sub(lambda m: _render_expr(m.group(1), event, secrets_value), text)
 
 
 def _env_block(mapping) -> dict:
     return {str(k): str(v) for k, v in (mapping or {}).items()}
 
 
-def _rendered_step_env(step: dict, job: dict, document: dict, event: str) -> dict:
+def _step_references_secrets(step: dict) -> bool:
+    """True if the step's RAW (unrendered) env values or run text mention
+    `secrets.` — such a step may behave differently depending on whether a
+    secret happens to be configured, so test_step_fails_closed runs it
+    TWICE: once with every secret rendering "" (the common case — no
+    credential configured, or the fork/queue run that never gets one) and
+    once with a non-empty dummy (a credential IS configured).
+    """
+    texts = [str(v) for v in (step.get("env") or {}).values()]
+    texts.append(step.get("run", ""))
+    return any("secrets." in t for t in texts)
+
+
+def _rendered_step_env(
+    step: dict, job: dict, document: dict, event: str, secrets_value: str = ""
+) -> dict:
     """Workflow env, then job env, then the step's own env — later
     overrides earlier, same precedence as GitHub — each value rendered
-    through `${{ }}` for `event` before it ever reaches the step's process.
+    through `${{ }}` for `event`/`secrets_value` before it ever reaches the
+    step's process.
     """
     combined: dict[str, str] = {}
     combined.update(_env_block(document.get("env")))
     combined.update(_env_block(job.get("env")))
     combined.update(_env_block(step.get("env")))
-    return {k: _render_text(v, event) for k, v in combined.items()}
+    return {k: _render_text(v, event, secrets_value) for k, v in combined.items()}
 
 
 def _probe_xargs_needs_shim() -> bool:
@@ -1149,6 +1356,30 @@ def _make_repo(base: Path, tools: frozenset, home: Path) -> Path:
     return repo
 
 
+def _event_payload(event: str) -> dict:
+    """The minimal GITHUB_EVENT_PATH JSON payload for `event`, consistent
+    with GITHUB_CONTEXTS[event] — just the fields this workflow's `${{
+    github.event.* }}` expressions read (plus `push`'s own top-level
+    `after`, since push has no `event.push.*` prefix in GitHub's context).
+    """
+    ctx = GITHUB_CONTEXTS[event]
+    if event == "pull_request":
+        pr = ctx["event"]["pull_request"]
+        return {
+            "pull_request": {
+                "base": {"sha": pr["base"]["sha"]},
+                "head": {"sha": pr["head"]["sha"]},
+                "number": pr["number"],
+            }
+        }
+    if event == "merge_group":
+        mg = ctx["event"]["merge_group"]
+        return {"merge_group": {"head_sha": mg["head_sha"], "base_sha": mg["base_sha"]}}
+    if event == "push":
+        return {"ref": ctx["ref"], "after": ctx["sha"]}
+    raise AssertionError(f"no GITHUB_EVENT_PATH payload defined for event {event!r}")
+
+
 def _default_env(
     shim_dir: Path,
     home: Path,
@@ -1159,7 +1390,9 @@ def _default_env(
     gh_files: dict,
 ) -> dict:
     """GitHub's own default variables for `event`, plus this harness's
-    minimal shim/stub plumbing. Never the parent environment — every key
+    minimal shim/stub plumbing. No parent environment reaches the step
+    EXCEPT PATH (prefixed with `shim_dir`, otherwise passed through
+    unchanged so real `bash`/`git`/coreutils resolve) — every other key
     here is explicit; BASE_SHA/HEAD_SHA/PR_NUMBER are NOT injected here —
     they come only from rendering the step's own `env:` (see
     _rendered_step_env), the same as on a real runner.
@@ -1189,6 +1422,7 @@ def _default_env(
         "GITHUB_OUTPUT": str(gh_files["output"]),
         "GITHUB_ENV": str(gh_files["env"]),
         "GITHUB_PATH": str(gh_files["path"]),
+        "GITHUB_EVENT_PATH": str(gh_files["event_path"]),
     }
 
 
@@ -1216,35 +1450,57 @@ def _call_counts(stub_log: Path) -> dict:
     return counts
 
 
+_SECRETS_VARIANTS = (("", "secrets-empty"), ("***-dummy-secret-***", "secrets-present"))
+
+
 def _fail_closed_cases():
     cases = []
     for name, job, step, tools in _steps_with_tools():
+        variants = _SECRETS_VARIANTS if _step_references_secrets(step) else (("", None),)
         for event in EVENTS:
-            cases.append(pytest.param(job, step, tools, event, id=f"{_slug(name)}/{event}"))
+            for secrets_value, tag in variants:
+                case_id = f"{_slug(name)}/{event}" + (f"/{tag}" if tag else "")
+                cases.append(
+                    pytest.param(job, step, tools, event, secrets_value, id=case_id)
+                )
     return cases
 
 
 _FAIL_CLOSED_CASES = _fail_closed_cases()
 
 
-@pytest.mark.parametrize("job,step,tools,event", _FAIL_CLOSED_CASES)
+@pytest.mark.parametrize("job,step,tools,event,secrets_value", _FAIL_CLOSED_CASES)
 def test_step_fails_closed(
-    tmp_path: Path, job: dict, step: dict, tools: frozenset, event: str
+    tmp_path: Path,
+    job: dict,
+    step: dict,
+    tools: frozenset,
+    event: str,
+    secrets_value: str,
 ) -> None:
     """Runs one step's own `run:` script, for real, against a synthetic
     repo, under the rendered context of one real trigger event.
 
     CALIBRATION proves the harness can say yes (all tools present, passing,
-    with that event's `env:`/`${{ }}` rendered exactly as GitHub would).
-    Then, coverage is judged per event: on pull_request every named tool
-    must be called, no exemption — there IS a PR base, so nothing legitimately
-    skips; on push and merge_group a tool never called reds unless it is a
-    HELPER or PR_TIME_ONLY exemption (there is no PR base to run a PR-time
-    tool against). Every CALLED tool made ABSENT must fail the step, and
-    every call that tool made, told to FAIL, must fail the step too — which
-    is what catches `|| true` on one of several invocations, or a skip keyed
-    on `github.event_name`/`$GITHUB_EVENT_NAME`/an inline `${{ }}` for only
-    one event. Failure messages say: fail closed with an `::error::` naming
+    with that event's `env:`/`${{ }}` rendered for the subset of GitHub
+    expression syntax this workflow uses). A step whose raw env/run text
+    mentions `secrets.` runs this whole case TWICE (see
+    _step_references_secrets/_SECRETS_VARIANTS): once with every secret
+    rendering "" and once with a non-empty dummy — a step that behaves
+    differently depending on whether a credential happens to be configured
+    (e.g. `if [ -n "${SOME_SECRET:-}" ]; then exit 0; fi`) must be judged
+    under both.
+
+    Coverage is then judged per event: on pull_request every named tool
+    must be called, no exemption — there IS a PR base, so nothing
+    legitimately skips; on push and merge_group a tool never called reds
+    unless it is a HELPER or PR_TIME_ONLY exemption (there is no PR base to
+    run a PR-time tool against). Every CALLED tool made ABSENT must fail the
+    step, and every call that tool made, told to FAIL, must fail the step
+    too — which is what catches `|| true` on one of several invocations, or
+    a skip keyed on `github.event_name`/`$GITHUB_EVENT_NAME`/an inline
+    `${{ }}` for only one event, whichever event or secret-presence it is
+    keyed on. Failure messages say: fail closed with an `::error::` naming
     the file and `exit 1`; never swallow the tool's exit.
     """
     step_name = step.get("name", "<unnamed>")
@@ -1252,8 +1508,8 @@ def test_step_fails_closed(
     assert run_script, f"step {step_name!r} has no run: block to execute"
 
     document = yaml.safe_load(WORKFLOW.read_text())
-    rendered_step_env = _rendered_step_env(step, job, document, event)
-    rendered_script = _render_text(run_script, event)
+    rendered_step_env = _rendered_step_env(step, job, document, event, secrets_value)
+    rendered_script = _render_text(run_script, event, secrets_value)
 
     home = tmp_path
     shim_dir = tmp_path / "shim"
@@ -1269,9 +1525,10 @@ def test_step_fails_closed(
         "output": tmp_path / "github_output.txt",
         "env": tmp_path / "github_env.txt",
         "path": tmp_path / "github_path.txt",
+        "event_path": tmp_path / "github_event.json",
     }
-    for gh_file in gh_files.values():
-        gh_file.write_text("")
+    for key, gh_file in gh_files.items():
+        gh_file.write_text(json.dumps(_event_payload(event)) if key == "event_path" else "")
 
     def env_for(repo: Path, extra: dict | None = None) -> dict:
         if stub_log.exists():
