@@ -1,0 +1,173 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  Zero's ruling 2026-09-21 (relayed by nuzantara-67, verified against the owner's own words in
+  this lane's transcript): catE keeps no paths filter, runs unconditionally plus merge_group,
+  guarded by an absence test. Also closes PWC #7018 C1, C2 and C4 (PENDING-ARMS row opened
+  2026-09-21, owner: the session holding this lane).
+  Branch: published as agent/air-m5/infra/cate-no-paths-filter-rebased because the lane's
+  original branch was pushed (2771a1c572, still carrying #7018's pre-squash head 56eec68cf1)
+  before the rebase onto origin/main, and a force-push over pushed commits is not allowed. The
+  original remote branch is not the candidate.
+
+lanes:
+  - lane: cate-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5, windows 12b13578 and its jump successor). Wrote the
+      no-filter workflow, the merge_group trigger and the absence guard (817d6406e7, 0322b7e1ce);
+      the council fold (d4f54a1151) was started by a claude-sonnet-5 implementer subagent that
+      stalled on a denied command and was stopped with its edits uncommitted — the conducting
+      session re-read every hunk on disk, rewrote the timeout comment and the Law-5 guard (the
+      substring check became a shape check), and validated the whole with the battery below.
+  - lane: cate-refute-crossfamily-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort high via scripts/seat_build.sh (env scrubbed of credential
+      names), own worktree infra-council-b-codex, 944s. VERDICT: BREAKS, 7 findings. Log
+      .worktrees/seat-build-codex-20260921T044441Z-22363.log. quota_exhausted was set at exit but
+      the verdict block was emitted in full before it (log lines 9091-9364).
+  - lane: cate-refute-crossfamily-2
+    role: review
+    seat: >-
+      kimi-code/k3 at effort high via scripts/seat_build.sh, own worktree infra-council-b-kimi,
+      1080s. VERDICT: HOLDS-WITH-CAVEATS. Log
+      .worktrees/seat-build-kimi-20260921T044446Z-22850.log.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic build-seat requirement does not bind. Both non-Anthropic
+  council seats named by R9 that were reachable delivered a judgement (tp1-qwen3.8-max was
+  QUOTA_DEAD on the arsenal board this session and was not dispatched). The final gate is a
+  fresh Claude context outside the contribution chain, recorded on the PR.
+
+diff:
+  files: 5
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` before the pack commit:
+    workflow 64+/122-, test 203+/118-; plus this pack's brief.yml and pack.yml and council-journal.jsonl.
+
+residual_risks:
+  - >-
+    codex finding 2 (BLOCKER as filed): on merge_group and push the blocking prose step scans the
+    whole tree and lint_ban_prose.py warns and exits 0 on an unreadable in-scope file when any
+    other file was readable. The sentence claiming the path "fails safe, never open" was false and
+    is rewritten; the linter behaviour predates this lane and is tracked in PENDING-ARMS
+    ('catE-passes-without-examining', #7028, deadline 2026-10-05).
+  - >-
+    codex finding 3: the apps/*/.env permission step is vacuous on hosted checkouts (.env* is
+    gitignored). Pre-existing; same PENDING-ARMS row.
+  - >-
+    kimi's step walk judged the merge_group path as failing safe; codex reproduced the opposite
+    for unreadable files. Codex's reproduction is the one this pack follows.
+
+pii_scan: clean
+
+receipts:
+  - claim: "Innocence: the absence guard passes on the branch"
+    cmd: "python3 -m pytest -q -p no:cacheprovider scripts/tests/test_cate_trigger_parity.py (worktree and a minimal mirror)"
+    result: "14 passed (both)"
+    exit: 0
+    ts: "2026-09-21T06:4xZ"
+    seat: session (M5)
+  - claim: "Guilt: 16 regressions each red the intended assertion"
+    cmd: >-
+      mutate_b.py battery over 16 mutations on minimal mirrors of the branch:
+      python3 mutate_b.py <mirror> <mutation> for readd-paths-pr, readd-paths-ignore-pr,
+      readd-paths-push, paths-under-merge-group, drop-branch-scope, drop-merge-group,
+      types-opened-only, branches-ignore-main, branches-develop-only, concurrency-constant,
+      tree-scan-loses-jsx, count-11-to-16, law5-skip-restored, law5-skip-reworded,
+      law5-silent-skip, job-level-if; then pytest -rf on each mirror
+    result: >-
+      16/16 red, each on its own test (paths mutations on test_the_workflow_declares_no_paths_filter
+      for the right event; drop-merge-group also on test_the_workflow_triggers_on_merge_group; the
+      three Law-5 spellings on test_no_step_warns_and_skips_when_its_own_tool_is_absent; the rest
+      on the test named for them). No mutation was a no-op (cmp against the branch file).
+    exit: 1
+    ts: "2026-09-21T06:4xZ"
+    seat: session (M5)
+  - claim: "Corpora and CI guards unaffected"
+    cmd: >-
+      pytest scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py
+      scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py
+      scripts/tests/test_cate_trigger_parity.py scripts/tests/test_advisory_workflows_no_merge_group.py
+      scripts/tests/test_lint_workflow_timeout_floor.py scripts/tests/test_check_required_workflow_conformance.py;
+      scripts/lint_workflow_timeout_floor.py; actionlint on the workflow; lint_ban_prose.py on both files
+    result: "281 passed; timeout floor clean (160 jobs); actionlint silent rc=0; prose OK 2 files"
+    exit: 0
+    ts: "2026-09-21T06:5xZ"
+    seat: session (M5)
+  - claim: "Flip preview: as a required context the branch conforms, origin/main's version does not"
+    cmd: >-
+      check_required_workflow_conformance.py with a snapshot copy that adds catE (innocence on
+      branch, guilt on origin/main's workflow): --contexts <snapshot copy + catE-sovereignty-lint,
+      job_id catE-sovereignty-lint>, then --repo-root on a mirror carrying origin/main's workflow
+    result: >-
+      branch: 14 contexts, 0 violations. origin/main: 2 violations (missing merge_group; paths
+      filter under on.pull_request). A first run with a malformed entry pointing at tests.yml came
+      back 0/0 on both and was discarded as a vacuous probe.
+    exit: "0 / 1"
+    ts: "2026-09-21T06:5xZ"
+    seat: session (M5)
+  - claim: "What the filter bought: it spared 14 of the last 40 first-parent merges to main (35%)"
+    cmd: >-
+      python: old paths list from a467a64173's workflow (identical on both events), GitHub glob
+      semantics (* stops at /, ** crosses it); for the 40 first-parent commits ending at
+      a467a64173 (oldest 34c912afb7) test `git diff --name-only s^ s` against the list
+    result: >-
+      14 spared, 26 started. Supersedes the 5/40 (12%) in 817d6406e7's message, which read the
+      wrong history; agrees with kimi's independent 26/40. Among the spared: 7f82e3b342, a
+      PENDING-ARMS.md-only merge.
+    exit: 0
+    ts: "2026-09-21T07:0xZ"
+    seat: session (M5)
+  - claim: "PWC #7018 C1, C2, C4 closed on content"
+    cmd: >-
+      grep -c for "same direction", "DATA_FILES", "Four bindings", "four bindings",
+      "Three bindings", "was true of the filter" in both files; grep -n "28 live" in the workflow
+    result: >-
+      0 in both files for every phrase (C1: no data-coverage sentence survives and no filter
+      exists to omit .secrets.baseline; C2: no binding-direction sentence). The 28 is dated
+      2026-09-21 and labelled history (C4).
+    exit: 0
+    ts: "2026-09-21T06:5xZ"
+    seat: session (M5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 2: the merge_group whole-tree prose path is fail-open on unreadable files, so the
+      "fails safe, never open" sentence is false. The sentence is rewritten to say what happens;
+      the linter behaviour is pre-existing and tracked (#7028 row), not cured here.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 3: the .env permission step is vacuous on every hosted checkout. Pre-existing,
+      tracked in the same PENDING-ARMS row, not cured here.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 4: deleting the Law-5 linter turned the blocking step into a green warning. Cured:
+      fail-closed, and a test that judges the shape (existence test without exit 1, or with a
+      ::warning::) rather than one message.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 5: the parity tests stayed green under four required-context regressions. Cured:
+      six new guards (types, branches-ignore, branches without main, merge_group narrowing,
+      job-level if, per-ref concurrency), each proven by its own mutation.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 6: a 10-minute timeout leaves ~1s over the recorded 599s checkout. Cured: 20.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      Finding 7: comments overclaim and freeze unrecomputed numbers. Cured: stale filter
+      paragraph deleted, figures moved to this pack, the 28 dated.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      Findings 3 and 4: guard blind spots (branches, job-level if) and prose contradicted by
+      the code beside it, including the wrong 5/40 figure. Cured in the same fold.

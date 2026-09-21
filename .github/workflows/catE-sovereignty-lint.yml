@@ -20,129 +20,58 @@ name: catE-sovereignty-lint
 #        weeks, fixed by hand each time). A perm check closes the loop the
 #        cicatrici re-open manually.
 #
-# Pure-stdlib / grep, full-repo scan in seconds → no sentinel needed. This line
-# read "no paths filter" until 2026-09-21, thirty lines above the filter it
-# denied: one was added 2026-06-12 for fan-out and is documented below. Found
-# by a council seat on the lane whose subject is sentences that lie about the
-# code beside them, which is where it would have been most embarrassing.
-# Triggers BOTH pull_request AND push-to-main (W41/W42: pull_request-only gives
-# false safety under L2 autonomous direct-push).
+# Pure-stdlib / grep, full-repo scan in seconds → no sentinel needed, which is
+# what makes running unconditionally affordable. This line read "no paths
+# filter" from 2026-06-12 to 2026-09-21 while a filter sat thirty lines below
+# it; as of 2026-09-21 the sentence is true again, and the test named under
+# `on:` is what keeps it true.
+# Triggers pull_request, merge_group AND push-to-main (W41/W42: pull_request-only
+# gives false safety under L2 autonomous direct-push; merge_group is explained
+# under `on:`).
 #
-# NON-REQUIRED by design (not added to branch protection here): a NEW signal
-# observes for a review cycle before it can block; flip to required only after
-# it proves stable + zero false-positive (W69 BUCO #1 lesson: arming a check as
-# required without a skip→success sentinel can pend-forever / block innocents).
+# STILL NON-REQUIRED as this file ships, and now ARMABLE — the two are
+# different states and were conflated for months. Adding this context to main's
+# branch protection is a control-plane act and is deliberately NOT done here:
+# what this file can do is stop being the reason the flip is unsafe. Until the
+# flip, a red here blocks nothing, which is the whole of the debt.
 
-# Path-scoped (2026-06-12 CI fan-out reduction), and since 2026-09-21 the filter
-# is a SUPERSET of what the steps below actually read — which is not how it
-# shipped. The Gear-3 gate on PR #6968 measured the gap: the prose scanner read
-# nine suffixes while this file started on five, so a PR whose changed set was
-# entirely .jsx .mjs .yaml .yml never started the workflow and its prose landed
-# unjudged — and the push filter carried the same hole, so nothing caught it
-# afterwards either. A workflow yml is not a hypothetical case here: it is the
-# file that produced one of the four reds #40d exists to close. The DATA the
-# steps read is listed for the same reason — a PR that grew the pardon list and
-# touched nothing else was the one PR the anti-growth check could never see.
-# scripts/tests/test_cate_trigger_parity.py now reds when a scanner reads a
-# suffix this header does not start on, so the drift cannot return in silence.
-# NON-REQUIRED, so a non-matching PR just skips it (no pending-forever; W69
-# BUCO #1 only bites REQUIRED path-filtered checks lacking a skip→success
-# sentinel).
+# NO PATHS FILTER, and that is the arming decision rather than an omission.
+# One was added 2026-06-12 to reduce fan-out and removed 2026-09-21 because it
+# had stopped buying enough against what it cost: two Gear-3 conditions
+# (#6968 conditions 1 and 2, cured in #7000) and one live hole — a PR whose
+# changed set was entirely .jsx .mjs .yaml .yml started nothing and its prose
+# landed unjudged. The measured cost is recorded in this change's evidence
+# pack.
+#
+# The deeper reason is that a path-filtered check CANNOT BE REQUIRED without a
+# skip-to-success sentinel: a PR matching no path never reports the context at
+# all and pends forever (W69 BUCO #1). So the filter was the thing standing
+# between this guard and branch protection. Removing it is cheaper and more
+# honest than maintaining a sentinel whose only job is to lie convincingly
+# about a run that did not happen.
+#
+# scripts/tests/test_cate_trigger_parity.py now guards the ABSENCE: it reds if
+# a paths filter comes back, because the next fan-out reduction will look just
+# as reasonable as the last one did.
 on:
   pull_request:
-    paths:
-      # Every suffix any step below scans. The parity test fails when a scanner
-      # reads a suffix this filter does not start on; the filter may always be
-      # wider than the scanners, never narrower (measured by a council seat:
-      # appending an unread suffix to BOTH events leaves every assertion green
-      # -- appending it to ONE, which is what "here" reads as, reds the
-      # two-events parity test, so widen the pair or neither).
-      - "**.py"
-      - "**.ts"
-      - "**.tsx"
-      - "**.js"
-      - "**.jsx"
-      - "**.mjs"
-      - "**.sh"
-      - "**.yml"
-      - "**.yaml"
-      - "**.toml"
-      - "**/.env*"
-      # Data, not source. The bench corpus is what the consumed suites read,
-      # and a diff that edits only it can turn them red without ever starting
-      # them: injecting a grep-caught guilt case into an innocence case gives
-      # `1 failed, 85 passed`, measured 2026-09-21. The refuting seat's finding
-      # 8 read `1 failed, 19 passed` before the corpus grew to 26+29 cases —
-      # the claim held, its frozen number did not, and a second seat caught
-      # that here. The pardon list is the same argument and is
-      # listed below by the vendor fence, which reached it first — once, not
-      # twice: two lanes found the same hole and only one entry states it.
-      - "scripts/tests/fixtures/paid_llm_entity/bench_cases.json"
-      - "scripts/lint_paid_llm_entity.py"
-      - "scripts/typesafe_client.py"
-      - "scripts/redact_for_external.py"
-      # The DATA a guard reads must start the guard. Both of these were
-      # missing, and both miss the same way: the one file a bypass has to
-      # touch is the one file that did not fire the workflow. A PR adding a
-      # vendor to the authorization list, or growing the ban-prose pardon
-      # list, changes nothing else — so --base-ref never ran on exactly the
-      # diff it exists to judge. Found by a refuting seat on the fence and
-      # re-measured independently, 2026-09-21.
-      - "infra/vendor-authorizations/**"
-      - "infra/ban-prose/grandfathered.json"
-      - ".github/workflows/catE-sovereignty-lint.yml"
-      # The budget itself and its corpus: editing either without re-running
-      # this workflow is how a guard's own proof goes stale unobserved.
-      - ".github/workflows/catE-paid-anthropic-baseline.txt"
-      - "scripts/tests/test_cate_paid_budget.sh"
+  # merge_group because a REQUIRED context must be reportable by a merge-queue
+  # run, or every queue entry waits for it until the 90-minute timeout
+  # (check_required_workflow_conformance.py rule 2, and the deadlock
+  # test_advisory_workflows_no_merge_group.py exists for). Added in the same
+  # diff that makes this workflow armable, BEFORE the flip rather than after:
+  # a queue run has no PR base, so both diff-scoped steps below fall through
+  # to their no-base branch — the entity judgment skips (it judges a PR's
+  # diff against its base, which only a pull_request run has), and the
+  # blocking prose step scans the whole tree instead. That scan inherits lint_ban_prose.py's own handling of unreadable
+  # files: it WARNS and still exits 0 on a file it cannot read, as long as at
+  # least one in-scope file elsewhere in the tree scanned clean — which a
+  # whole-tree scan always has. Not "fails safe, never open": tracked as its
+  # own row in .claude/skills/modus/PENDING-ARMS.md, not cured by this diff.
+  merge_group:
   push:
     branches:
       - main
-    paths:
-      # Every suffix any step below scans. The parity test fails when a scanner
-      # reads a suffix this filter does not start on; the filter may always be
-      # wider than the scanners, never narrower (measured by a council seat:
-      # appending an unread suffix to BOTH events leaves every assertion green
-      # -- appending it to ONE, which is what "here" reads as, reds the
-      # two-events parity test, so widen the pair or neither).
-      - "**.py"
-      - "**.ts"
-      - "**.tsx"
-      - "**.js"
-      - "**.jsx"
-      - "**.mjs"
-      - "**.sh"
-      - "**.yml"
-      - "**.yaml"
-      - "**.toml"
-      - "**/.env*"
-      # Data, not source. The bench corpus is what the consumed suites read,
-      # and a diff that edits only it can turn them red without ever starting
-      # them: injecting a grep-caught guilt case into an innocence case gives
-      # `1 failed, 85 passed`, measured 2026-09-21. The refuting seat's finding
-      # 8 read `1 failed, 19 passed` before the corpus grew to 26+29 cases —
-      # the claim held, its frozen number did not, and a second seat caught
-      # that here. The pardon list is the same argument and is
-      # listed below by the vendor fence, which reached it first — once, not
-      # twice: two lanes found the same hole and only one entry states it.
-      - "scripts/tests/fixtures/paid_llm_entity/bench_cases.json"
-      - "scripts/lint_paid_llm_entity.py"
-      - "scripts/typesafe_client.py"
-      - "scripts/redact_for_external.py"
-      # The DATA a guard reads must start the guard. Both of these were
-      # missing, and both miss the same way: the one file a bypass has to
-      # touch is the one file that did not fire the workflow. A PR adding a
-      # vendor to the authorization list, or growing the ban-prose pardon
-      # list, changes nothing else — so --base-ref never ran on exactly the
-      # diff it exists to judge. Found by a refuting seat on the fence and
-      # re-measured independently, 2026-09-21.
-      - "infra/vendor-authorizations/**"
-      - "infra/ban-prose/grandfathered.json"
-      - ".github/workflows/catE-sovereignty-lint.yml"
-      # The budget itself and its corpus: editing either without re-running
-      # this workflow is how a guard's own proof goes stale unobserved.
-      - ".github/workflows/catE-paid-anthropic-baseline.txt"
-      - "scripts/tests/test_cate_paid_budget.sh"
 
 permissions:
   contents: read
@@ -157,7 +86,13 @@ jobs:
     runs-on: ubuntu-latest
     # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
     # Was 5; 11% of 645 sampled checkouts here exceed 60s, worst observed 599s.
-    timeout-minutes: 10
+    # Raised 10 -> 20 when this workflow became a REQUIRED-context candidate: a
+    # required check has no headroom, since its timeout blocks an innocent PR
+    # rather than merely re-running a flaky job. 10 left only ~1s of margin
+    # over the recorded 599s worst-case checkout, and on the no-base
+    # (merge_group/push) path the steps after the checkout scan the whole tree
+    # rather than the changed files, so the script half of the job grows too.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -337,7 +272,7 @@ jobs:
         run: |
           set -uo pipefail
           if [ -z "${BASE_SHA:-}" ]; then
-            echo "push build — entity judgment is a PR-time signal, skipped."
+            echo "no PR base (push or merge-queue build) — entity judgment is a PR-time signal, skipped."
             exit 0
           fi
           CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
@@ -373,8 +308,10 @@ jobs:
       # the pardon list one-way: it may shrink, never grow inside its own diff
       # — and it may shrink only TOGETHER with the cure of the file it releases,
       # because the push-time scan reads the whole tree and a released file
-      # still carrying its prose reds main (a council seat measured 28 live
-      # violations behind the 11 pardons; a pardon is debt, not absolution).
+      # still carrying its prose reds main (a council seat counted 28 live
+      # violations behind the 11 pardons on 2026-09-21 — a dated observation,
+      # not a maintained figure: unlike the 11, nothing re-measures it, so read
+      # it as history. A pardon is debt, not absolution).
       - name: Prose must not spell a banned shape (blocking)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -393,7 +330,7 @@ jobs:
             # split it across several processes, leaving the blind-scan guard
             # able to see only one slice at a time. One list, one process, one
             # verdict (refuting seat, round 2, objection 5).
-            echo "push build — no PR base, scanning the whole tree."
+            echo "no PR base (push or merge-queue build) — scanning the whole tree."
             git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' \
               | grep -vE '^(\.venv|node_modules|vendor)/' > /tmp/ban-prose-tree.txt
             python3 scripts/lint/lint_ban_prose.py --files-from /tmp/ban-prose-tree.txt
@@ -418,13 +355,18 @@ jobs:
           python3 scripts/lint/lint_ban_prose.py --files-from "$RUNNER_TEMP/ban-prose-changed.txt"
 
       # ── #43 — Law-5 (Zero ultima istanza): no autonomous IG/TT/YT publish ───
+      # Fail-closed on absence, not warn-and-skip: a required guard must not go
+      # green because its own tool was deleted (cicatrix #2, esiste != armato)
+      # — a PR that removed the linter would otherwise pass the step whose one
+      # job is to block exactly that class of change.
       - name: Law-5 autonomous-publish lint (blocking)
         run: |
           set -uo pipefail
           if [ -f scripts/lint/wr3_lint_autonomous_publish.py ]; then
             python3 scripts/lint/wr3_lint_autonomous_publish.py
           else
-            echo "::warning::scripts/lint/wr3_lint_autonomous_publish.py absent — skipped."
+            echo "::error::scripts/lint/wr3_lint_autonomous_publish.py is absent — a required guard must not pass when its own tool is gone."
+            exit 1
           fi
 
       # ── #44 — apps/*/.env must NOT be group/world-readable (0644 P0 class) ──

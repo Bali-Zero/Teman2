@@ -1,50 +1,34 @@
-#!/usr/bin/env python3
-"""A guard must start on everything it scans.
+"""A guard must start on everything it scans — and this one has no filter.
 
 catE-sovereignty-lint.yml is the only consumer of the ban-family lints in this
-tree, and it shipped with a path filter narrower than their scanners: nine
-suffixes read, five started on, identically on both events. The Gear-3 gate on
-PR #6968 computed that set (`.jsx .mjs .yaml .yml`) and called it condition 1.
-A PR whose changed set fell entirely inside it never started the workflow, so
-the blocking step never ran and nothing downstream ever looked again — the push
-filter repeats the pull_request one, and a later run only ever sees its own
-diff.
+tree. It shipped with a path filter narrower than their scanners: nine suffixes
+read, five started on, identically on both events, so a PR whose changed set
+fell entirely inside the gap never started the workflow and the blocking step
+never ran. PR #7000 closed that by widening the filter and pinning the two sets
+to each other here.
 
-The gap is the kind that returns: it opens by ADDING a suffix to a scanner, in
-a diff that has no reason to mention a workflow. So the two sets are compared
-here rather than re-audited by hand, and the failure message names what to add.
+This file is what that test became once the filter was REMOVED (2026-09-21).
+The parity question disappears when there is nothing to keep in parity: with no
+`paths:` on any event the workflow starts on every change, so every suffix a
+scanner reads and every data file a step reads is covered by construction. What
+survives is the thing construction cannot guarantee — that the absence STAYS.
 
-Four bindings, all in the same direction — the trigger may be wider than the
-scanners, never narrower:
+Why the absence and not a wider filter: a path-filtered check cannot be made
+REQUIRED without a skip-to-success sentinel, because a PR matching no path
+never reports the context and pends forever (W69 BUCO #1). The filter was the
+obstacle between this guard and branch protection, and a sentinel is a second
+thing to keep honest. Removing the filter costs some fan-out on merges that
+would not otherwise have started it; the measured cost is recorded in this
+change's evidence pack, not frozen here.
 
-  1. every suffix the scanners read has a `**<suffix>` entry on BOTH events;
-  2. every DATA file a step reads is covered on both events (the pardon list
-     is read by the blocking step and judged by --base-ref, and a PR that grew
-     it while touching nothing else started nothing). Covered, not "listed
-     literally": the vendor fence declares its registry as the directory glob
-     `infra/vendor-authorizations/**`, which is coverage of the file below it,
-     so both spellings are accepted and nothing else is;
-  3. the push-time whole-tree scan enumerates the prose scanner's own suffixes,
+Two bindings that the filter's removal does NOT satisfy, kept verbatim from the
+PR #7000 version because they were never about the trigger:
+
+  1. the push-time whole-tree scan enumerates the prose scanner's own suffixes,
      since that list is a third transcription of the same set;
-  4. no filter entry is a NEGATION. The three bindings above test PRESENCE, and
-     presence equals coverage only while nothing takes coverage back: a `!`
-     pattern after a positive one excludes what the positive one admitted, and
-     every assertion here would still pass (refuting seat, finding 2 — measured
-     with `!**.yml` appended, against the three presence bindings ALONE, which
-     was all there was to measure). This binding is what that measurement
-     bought, so the same append reds it on both events today. The convention is
-     declared rather than inferred: this filter carries no exclusions.
-
-`**<suffix>` is the required spelling and `**/*<suffix>` is NOT accepted as an
-equivalent, because it is not one — GitHub's `**` matches any characters
-including `/`, so `**/*.yml` demands a slash and never matches a yml at the
-repository root, while `**.yml` matches both (official filter-pattern cheat
-sheet, re-read by a council seat rather than remembered).
-
-Plus condition 2 of the same verdict: the count the prose freezes must equal
-the count on disk. It was written 16 against a list of 11 — a sentence
-contradicted by the file beside it, inside the lane whose entire subject is
-sentences that lie about code.
+  2. the count the prose freezes must equal the count on disk. It was written
+     16 against a list of 11 — a sentence contradicted by the file beside it,
+     inside the lane whose entire subject is sentences that lie about code.
 """
 
 from __future__ import annotations
@@ -63,29 +47,12 @@ GRANDFATHERED = REPO / "infra" / "ban-prose" / "grandfathered.json"
 
 # Data a step READS, as opposed to source it scans. Listed by hand because the
 # reading happens in shell inside the workflow, where no import can find it.
-DATA_FILES = (
-    "infra/ban-prose/grandfathered.json",
-    "scripts/tests/fixtures/paid_llm_entity/bench_cases.json",
-    # Not this lane's guard and listed here on purpose (PR #6989): the vendor
-    # authorization registry is read by scripts/typesafe_client.py, which the
-    # workflow runs, and a PR that adds a vendor to it touches nothing else.
-    # A cure that only defends the caller's own steps leaves the next lane to
-    # rediscover the same hole, so the binding covers the guard next door too.
-    "infra/vendor-authorizations/authorized_endpoints.json",
-    # Both READ by the #40 budget step — the baseline is its BASELINE_FILE and
-    # the corpus is the script it runs — and both were already in the filter
-    # when this list was written, which is how they stayed out of it: a
-    # hand-kept list is checked against what someone remembered reading, and
-    # the eye skips what is already spelled correctly next door. Measured by a
-    # council seat on the prose lane: with these two absent, deleting BOTH
-    # filter entries left all 9 tests green, so binding 2's promise -- every
-    # DATA file a step reads is covered on both events -- was true of the
-    # filter and false of the reader that guards it.
-    ".github/workflows/catE-paid-anthropic-baseline.txt",
-    "scripts/tests/test_cate_paid_budget.sh",
-)
-
-EVENTS = ("pull_request", "push")
+#
+# merge_group is in this tuple too, not only pull_request/push: the narrowing
+# check below must cover it, because a `paths:`/`paths-ignore:` planted under
+# merge_group is the same pending-forever shape (W69 BUCO #1) on the one event
+# a REQUIRED context cannot afford to miss.
+EVENTS = ("pull_request", "push", "merge_group")
 
 
 def _module(name: str, relative: str):
@@ -98,9 +65,6 @@ def _module(name: str, relative: str):
 
 
 _prose = _module("lint_ban_prose", "scripts/lint/lint_ban_prose.py")
-_entity = _module("lint_paid_llm_entity", "scripts/lint_paid_llm_entity.py")
-
-SCANNED_SUFFIXES = set(_prose.ALL_PROSE_SUFFIXES) | set(_entity.SOURCE_SUFFIXES)
 
 
 def _triggers() -> dict:
@@ -112,60 +76,191 @@ def _triggers() -> dict:
     return triggers
 
 
-def _paths(event: str) -> list[str]:
-    block = _triggers()[event]
-    assert isinstance(block, dict) and "paths" in block, f"{event} has no paths filter"
-    return list(block["paths"])
+def _jobs() -> dict:
+    document = yaml.safe_load(WORKFLOW.read_text())
+    jobs = document.get("jobs")
+    assert isinstance(jobs, dict) and jobs, "the workflow declares no jobs"
+    return jobs
 
 
 @pytest.mark.parametrize("event", EVENTS)
-def test_every_scanned_suffix_starts_the_workflow(event: str) -> None:
-    declared = set(_paths(event))
-    missing = sorted(s for s in SCANNED_SUFFIXES if f"**{s}" not in declared)
-    assert not missing, (
-        f"the scanners read {missing} but {event} does not start on them — "
-        f"add {[f'**{s}' for s in missing]} to the filter, or narrow the "
-        "scanner and say why in the same diff"
-    )
+def test_the_workflow_declares_no_paths_filter(event: str) -> None:
+    """The whole cure, and the only thing that can regress.
 
-
-def _covers(entry: str, path: str) -> bool:
-    """Does one filter entry start the workflow for `path`?
-
-    Two shapes only, and an entry this reader cannot evaluate is NOT coverage:
-    the literal path, and a `dir/**` prefix (GitHub's `**` matches any
-    characters including `/`, so the glob covers every file beneath dir). A
-    filter entry in any other shape makes this test red rather than green,
-    which is the direction a fail-closed reader has to lean.
+    A `paths:` here is not wrong in itself — it was reasonable on 2026-06-12
+    and it will look just as reasonable the next time fan-out is trimmed. It is
+    wrong for THIS workflow while the goal is branch protection, and it is the
+    single edit that silently un-arms it. So the guard is on the absence, and
+    the failure message says what to do instead rather than just refusing.
     """
-    if entry == path:
-        return True
-    return entry.endswith("/**") and path.startswith(entry[: -len("**")])
-
-
-@pytest.mark.parametrize("event", EVENTS)
-def test_the_data_a_step_reads_starts_the_workflow(event: str) -> None:
-    declared = set(_paths(event))
-    missing = sorted(
-        f for f in DATA_FILES if not any(_covers(e, f) for e in declared)
+    block = _triggers()[event]
+    # Both keys, not one: `paths-ignore` makes the same PR never report the
+    # context, from the other side, and a guard that only knew `paths` would
+    # stay green under it — the gap check_required_workflow_conformance.py
+    # closed for its rule 4 on 2026-08-29, found in this test by its author
+    # before the council saw it.
+    narrowing = [k for k in ("paths", "paths-ignore") if block and k in block]
+    assert not narrowing, (
+        f"{event} carries {narrowing} again: {[block.get(k) for k in narrowing]!r}. This "
+        "workflow runs unconditionally on purpose — a path-filtered check "
+        "cannot be REQUIRED without a skip-to-success sentinel, because a PR "
+        "matching no path never reports the context and pends forever. If the "
+        "fan-out cost has genuinely become a problem, add the sentinel job in "
+        "the same diff and rewrite this test to bind the filter to the "
+        "scanners, the way PR #7000 did."
     )
+
+
+def test_the_workflow_triggers_on_merge_group() -> None:
+    """A required context must be reportable by a merge-queue run.
+
+    test_advisory_workflows_no_merge_group.py enforces this for every workflow
+    that infra/required.d/contexts.json lists — but that snapshot is
+    regenerated AFTER branch protection changes, so between the flip that makes
+    this context required and the regen that records it, nothing else would
+    notice the trigger going missing. This closes that window for the one
+    workflow whose whole purpose in this file is to become required.
+    """
+    triggers = _triggers()
+    assert "merge_group" in triggers, (
+        "catE has no merge_group trigger. Once this context is required, a "
+        "merge-queue run can never report it, and every queue entry waits for "
+        "it until the 90-minute timeout — a fleet-wide stall with nothing red "
+        "to fix."
+    )
+
+
+def test_the_push_event_is_still_scoped_to_main() -> None:
+    """Removing `paths:` must not remove the branch scope with it.
+
+    `branches: [main]` is not a path filter and is not what W69 bites on — it
+    selects which pushes matter, not which files. Deleting it would run the
+    whole-tree scan on every branch push, which is noise rather than coverage.
+    """
+    push = _triggers()["push"]
+    assert isinstance(push, dict) and push.get("branches") == ["main"], (
+        f"the push event is no longer scoped to main: {push!r}"
+    )
+
+
+def test_pull_request_types_include_the_full_default_set() -> None:
+    """A `types:` list on pull_request REPLACES GitHub's default set (opened,
+    synchronize, reopened) rather than adding to it — one of the platform's
+    own footguns. Dropping `synchronize` off a required guard would let it
+    stop re-running when new commits land on an already-open PR, silently, so
+    any `types:` added here must still carry all three defaults.
+    """
+    block = _triggers()["pull_request"]
+    if not block or "types" not in block:
+        return
+    types = set(block["types"])
+    required = {"opened", "synchronize", "reopened"}
+    missing = required - types
     assert not missing, (
-        f"{missing} is read by a step but does not start {event}: a PR that "
-        "edits only that file is exactly the PR the check cannot see"
+        f"pull_request.types is missing {sorted(missing)}: {block['types']!r}. "
+        "A `types:` list REPLACES GitHub's default set rather than adding to "
+        "it, so this must include opened, synchronize AND reopened, or the "
+        "workflow silently stops re-running on new commits or on reopen. "
+        "Either drop `types:` entirely (keeping the default set) or list all "
+        "three."
     )
 
 
-def test_the_two_events_carry_the_same_filter() -> None:
-    # Sorted, not positional: a council seat swapped two entries inside one
-    # event — identical coverage, cosmetic — and this test called it a hole in
-    # the tree. What matters is the SET; the order of a filter list means
-    # nothing to GitHub.
-    pull_request, push = (sorted(_paths(e)) for e in EVENTS)
-    assert pull_request == push, (
-        "pull_request and push filters cover different sets — a hole in one of "
-        "them is a hole in the tree, because the push run is what catches what "
-        "the PR run never started on"
+@pytest.mark.parametrize("event", ("pull_request", "merge_group"))
+def test_no_branches_ignore_on_pull_request_or_merge_group(event: str) -> None:
+    """`branches-ignore` narrows exactly the way `paths-ignore` narrows: a
+    PR/queue entry whose branch is ignored never reports this context — the
+    same pending-forever shape (W69 BUCO #1) the rest of this file exists to
+    keep out, just spelled on branches instead of paths.
+    """
+    block = _triggers().get(event)
+    assert not (block and "branches-ignore" in block), (
+        f"{event} carries branches-ignore: {block.get('branches-ignore')!r}. "
+        "That is the same pending-forever narrowing as paths-ignore (W69 BUCO "
+        "#1) — a matching branch never reports this context. Remove it; a "
+        "branch that genuinely must be excluded is a branch-protection "
+        "decision, not a trigger-level one."
     )
+
+
+def test_pull_request_branches_if_present_still_covers_main() -> None:
+    """pull_request carries no `branches:` today, meaning "any base branch".
+    Adding one that omits main would stop this guard firing on exactly the
+    PRs it exists to cover, while reading like a narrower, cheaper version of
+    the same trigger.
+    """
+    block = _triggers()["pull_request"]
+    if not block or "branches" not in block:
+        return
+    branches = block["branches"] or []
+    assert "main" in branches, (
+        f"pull_request.branches is {branches!r} and does not contain 'main'. "
+        "That stops this guard running on PRs targeting main, the branch it "
+        "exists to protect. Drop `branches:` (any base branch) or include "
+        "'main' in the list."
+    )
+
+
+def test_no_job_level_if_on_any_job() -> None:
+    """A job-level `if:` that evaluates false SKIPS the job, and GitHub
+    reports a skipped job as a successful check — a false green on a context
+    this workflow exists to make REQUIRED. Put a condition inside a step, not
+    on the job.
+    """
+    offenders = sorted(
+        name
+        for name, job in _jobs().items()
+        if isinstance(job, dict) and "if" in job
+    )
+    assert not offenders, (
+        f"job(s) {offenders} carry a job-level `if:`. A false condition SKIPS "
+        "the whole job, and GitHub reports a skipped job as success — a false "
+        "green on a context meant to be REQUIRED. Move the condition into a "
+        "step's `if:` instead, so the job itself always reports."
+    )
+
+
+def test_concurrency_group_is_scoped_per_ref() -> None:
+    """A constant concurrency group serializes every run of this workflow
+    across the whole repo: `cancel-in-progress` would then cancel one PR's
+    in-flight run because an unrelated PR started, reporting a false red on
+    the innocent one. The group string must keep varying per ref.
+    """
+    document = yaml.safe_load(WORKFLOW.read_text())
+    group = document.get("concurrency", {}).get("group", "")
+    assert "github.ref" in group, (
+        f"concurrency.group is {group!r} and no longer contains github.ref. "
+        "A constant group serializes runs across every PR/branch, and "
+        "cancel-in-progress would cancel one PR's run because an unrelated "
+        "PR started — restore the per-ref group, e.g. "
+        "'catE-sovereignty-lint-${{ github.ref }}'."
+    )
+
+
+def test_no_step_warns_and_skips_when_its_own_tool_is_absent() -> None:
+    """A step that warns and continues when the file it runs is missing turns
+    'the linter was deleted' into a green run instead of a red one — the exact
+    shape the #43 Law-5 step used to have. Read via yaml (a step's `run:`
+    body), not by grepping comments, so the shape is caught wherever it lives
+    in the script, not only where a comment happens to describe it.
+
+    Judged on the shape, not on one spelling of the skip message: any step
+    that tests for a file's existence must exit non-zero and must not emit a
+    ::warning:: — the message could be reworded, the fall-through could not.
+    """
+    existence_test = re.compile(r"\[\s+-[ef]\s|\btest\s+-[ef]\s")
+    for job_name, job in _jobs().items():
+        steps = job.get("steps", []) if isinstance(job, dict) else []
+        for step in steps:
+            run = step.get("run", "") if isinstance(step, dict) else ""
+            if not existence_test.search(run):
+                continue
+            assert "exit 1" in run and "::warning::" not in run, (
+                f"job {job_name!r} step {step.get('name')!r} tests for a file "
+                "and warns or falls through when it is absent. A required "
+                "guard must fail closed when its tool is missing: print an "
+                "::error:: naming the file and exit 1 instead."
+            )
 
 
 def _executable_lines() -> str:
@@ -176,16 +271,6 @@ def _executable_lines() -> str:
     # finding bought, so that same mutation reds here now.
     return "\n".join(
         ln for ln in WORKFLOW.read_text().splitlines() if not ln.strip().startswith("#")
-    )
-
-
-@pytest.mark.parametrize("event", EVENTS)
-def test_no_filter_entry_takes_coverage_back(event: str) -> None:
-    negations = [p for p in _paths(event) if p.startswith("!")]
-    assert not negations, (
-        f"{event} carries exclusion pattern(s) {negations}. Every other test "
-        "here proves a pattern is PRESENT, which equals coverage only while "
-        "nothing subtracts from it — so this filter carries no exclusions"
     )
 
 
