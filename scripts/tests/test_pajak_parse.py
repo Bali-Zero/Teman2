@@ -128,3 +128,44 @@ def test_an_english_twin_is_not_a_second_item():
     assert [u for u, _ in pajak_parse.parse_link_items(html)] == [
         "https://pajak.go.id/id/siaran-pers/djp-rilis-aturan-baru"
     ]
+
+
+# ─── source_host — the label a Source-3 (Brave web_search) item gets in ────
+# `intel_lake` `source_domain`, not the pajak.go.id job that fetched it.
+
+
+def test_source_host_pajak_variants():
+    assert pajak_parse.source_host("https://pajak.go.id/id/peraturan/x") == "pajak.go.id"
+    assert pajak_parse.source_host("https://www.pajak.go.id/id/peraturan/x") == "pajak.go.id"
+    assert (
+        pajak_parse.source_host("https://PAJAK.GO.ID/index.php/id/peraturan/x")
+        == "pajak.go.id"
+    )
+
+
+def test_source_host_press_and_consulting_sites():
+    assert (
+        pajak_parse.source_host("https://www.cnbcindonesia.com/news/x")
+        == "cnbcindonesia.com"
+    )
+    assert (
+        pajak_parse.source_host("https://bangka.tribunnews.com/news/1")
+        == "bangka.tribunnews.com"
+    )
+
+
+def test_source_host_drops_port():
+    assert pajak_parse.source_host("http://example.com:8080/a") == "example.com"
+
+
+def test_source_host_returns_empty_for_unparseable_value():
+    assert pajak_parse.source_host("nb: NB-INTEL-Tax") == ""
+
+
+def test_monitor_source_text_no_longer_hardcodes_pajak_domain():
+    """pajak_monitor.py cannot be imported here (agent_job/browser_job are
+    not in this repo) — read its source text instead."""
+    monitor_path = Path(__file__).parent.parent / "cron-agent-python" / "pajak_monitor.py"
+    text = monitor_path.read_text()
+    assert '"source_domain": "pajak.go.id"' not in text
+    assert "source_host(" in text

@@ -13,6 +13,7 @@ title (or the pager).
 from __future__ import annotations
 
 import re
+from urllib.parse import urlparse
 
 PAJAK_DOMAIN = "https://pajak.go.id"
 
@@ -57,6 +58,29 @@ def canonical_pajak_url(href: str) -> str:
     if path == "/index.php" or path.startswith("/index.php/"):
         path = path[len("/index.php"):] or "/"
     return PAJAK_DOMAIN + path
+
+
+def source_host(url: str) -> str:
+    """Lowercased hostname of *url*, leading `www.` stripped, port dropped.
+
+    This is the label `_write_intel_feed` puts in `source_domain` — it must
+    name the host an item actually came from, not the job that fetched it
+    (Source 3, `_search_djp_updates`, is a Brave web_search that also
+    returns press/tax-consulting sites, not just pajak.go.id). `www.` is
+    stripped because both `intel_lake_router.py`'s `_RULES` (government
+    entries like `pajak\\.go\\.id` are matched via `pattern.match`, i.e.
+    anchored at the start of the string — `www.pajak.go.id` would not
+    match) and `intel_source_whitelist.py`'s `INTEL_SOURCE_WHITELIST` key
+    on the bare domain. Returns "" for an unparseable/hostless value; the
+    caller must not fall back to a hardcoded domain on that empty result.
+    """
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        return ""
+    if host.startswith("www."):
+        host = host[len("www."):]
+    return host
 
 
 def parse_peraturan_index(html: str) -> list[dict]:
