@@ -304,6 +304,7 @@ jobs:
               scripts/test_cron_state_alert.sh|\
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
+              scripts/test_cron_wrapper_alert.sh|\
               scripts/test_cron_single_voice.sh|\
               scripts/login-healthcheck.sh|\
               scripts/test_login_healthcheck_alert.sh|\
@@ -862,6 +863,16 @@ jobs:
           # anywhere. All three exits are asserted — a fix that covers only the path
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
+
+      - name: cron-wrapper failure alert corpus (key names its own witness + innocence + fail-open)
+        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
+        run: |
+          # The third producer, and the one whose alert and witness disagreed: the key
+          # kept the job's hyphens while the state file it wrote replaced them, so all
+          # 8 of its jobs on Pro alerted under a name no consumer could prove against
+          # (docs/specs/seat-board-drain-v1.md section 4). Asserted as the RELATION
+          # key == witness stem == witness job field, never as one literal example.
+          bash scripts/test_cron_wrapper_alert.sh
 
       - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'

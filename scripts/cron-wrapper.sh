@@ -123,10 +123,18 @@ send_telegram() {
     local gateway
     gateway="$(dirname "$0")/tg_notify.py"
     [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    # The dedup key names the job by the SAME string as its state file
+    # ($SENTINEL_JOB_KEY.last.json, below), because that file is the witness a
+    # consumer opens to prove the failure is over. With the raw name here, every
+    # hyphenated job alerted as `cron-fail:fly-pg-backup` while its witness was
+    # `fly_pg_backup.last.json` — all 8 of this wrapper's jobs on Pro, measured
+    # 2026-09-21. cron-state.sh and cron-runner.sh already derive both from one
+    # key; this wrapper was the one that did not (docs/specs/seat-board-drain-v1.md
+    # §4). --source keeps the raw name: it is for a human reading the alert.
     python3 "$gateway" \
         --tier p0 \
         --source "cron:${JOB_NAME}" \
-        --dedup-key "cron-fail:${JOB_NAME}" \
+        --dedup-key "cron-fail:${SENTINEL_JOB_KEY}" \
         -- "$msg" >> "$LOG_FILE" 2>&1 || true
 }
 

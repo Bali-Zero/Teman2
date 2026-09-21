@@ -183,11 +183,21 @@ and take whichever answers. Trying both is how a stranger's witness gets accepte
 **S4.3 — The `job` field INSIDE the state file SHALL be compared under the same transform as the
 filename**, or the stranger-witness check refuses every cron-wrapper row it just learned to find.
 
-**S4.4 — The better fix is upstream and SHALL be offered as its own PR: `cron-wrapper.sh` applying
-`sanitize_key` to BOTH sides, as its two siblings already do.** That deletes the mapping table
-rather than maintaining it. It is not free — it renames live state files, and a job whose
-`.last.json` moves loses its history for one cycle — which is why it is a separate, sequenced
-change and not a line in the consumer's PR.
+**S4.4 — The fix is upstream, and it is smaller than this section first assumed.** An earlier
+revision said unifying the wrapper "renames live state files". It does not have to: the FILE side
+already follows the siblings' convention for every live job name — all eight are lowercase with
+hyphens, where `tr '-' '_'` and `sanitize_key` produce the same string — so the fix changes the
+KEY and leaves the file alone: `--dedup-key "cron-fail:${SENTINEL_JOB_KEY}"`. No `.last.json` moves,
+and the Cell `cron_sensor` that reads the state dir sees no change. The cost is one-time and on the
+gateway's side: each of those jobs alerts under a new key, so its repeat ladder restarts from the
+first rung once. `scripts/test_cron_wrapper_alert.sh` pins it by asserting the RELATION — key name
+== witness stem == the witness's own `job` field — never a literal, so a later transform on either
+side cannot pass by agreeing on one example.
+
+With that landed, S4.1-S4.3 reduce to one sentence for the three cron wrappers: **the mapping is the
+identity.** The only other producer of `cron-fail:` keys,
+`infra/openclaw/wr2/wr2-script-wrapper.sh` (`cron-fail:wr2.<script>.<stage>`), writes no state file
+at all; a consumer refuses those rows as having no witness, and S4.2 forbids it to guess one.
 
 ---
 
@@ -281,18 +291,20 @@ range, not only the type.**
 
 ## 9. Sequencing
 
-1. **This spec is adjudicated.** Not merged alongside an implementation.
-2. **Consumer PR** — one cure, `cron-fail`, restricted to the producers §2 shows routing today
-   (the 9 `cron-wrapper.sh` entries), with §4's mapping table and §5's answer chosen and tested.
-   Its headline number is measured per S6.2 and S6.3, and it will be SMALL — that is the honest
+1. **This spec is adjudicated.** Done: #7016, merged alone, with no implementation beside it.
+2. **`cron-wrapper.sh` key unification** (S4.4) — FIRST, not third. An earlier revision placed it
+   after the consumer on the belief that it renamed live state files; it does not (S4.4). It routes
+   nothing new — it renames the keys of jobs that ALREADY route — so it cannot move noise onto the
+   board, and it deletes the mapping table the consumer would otherwise have to carry and test.
+3. **Consumer PR** — one cure, `cron-fail`, with §5's answer chosen and tested and the ts guard of
+   S7.1. Its headline number is measured per S6.2 and S6.3, and it will be SMALL — that is the honest
    state of the surface, not a weakness of the PR.
-3. **`cron-wrapper.sh` key unification** (S4.4) — deletes the mapping table.
 4. **`~/scripts/tg_notify.py` realignment** (S2.3) — declared pair first, then the 27 jobs begin
    routing, then the volume is re-measured on the board.
 5. **`cron-runner.sh` resolution inverted** (S2.3 step 3) — checkout preferred, sibling as fallback.
 
-Steps 3-5 each change live fleet behaviour and each get their own PR and their own before/after
-measurement. None of them belongs in step 2.
+Steps 2, 4 and 5 each change live fleet behaviour and each get their own PR and their own
+before/after measurement. None of them belongs in step 3.
 
 ---
 
