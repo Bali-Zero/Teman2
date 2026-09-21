@@ -962,3 +962,103 @@ class TestTaxRecord:
 
         assert resp.status_code == 200
         assert resp.json()["message"] == "No tax record found for this company"
+
+
+# ============================================================================
+# TESTS: date coercion + required name (500 on save/add company)
+# ============================================================================
+
+
+def _app(mock_db_pool, mock_current_user):
+    from fastapi import FastAPI
+
+    from backend.app.dependencies import get_current_user, get_database_pool
+    from backend.app.modules.crm.company_router import router
+
+    test_app = FastAPI()
+    test_app.include_router(router)
+    test_app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+    test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    return test_app
+
+
+class TestCompanyDateCoercion:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "field", ["akta_pendirian_date", "akta_perubahan_date", "sk_menhumkam_date"]
+    )
+    async def test_iso_string_bound_as_date(self, field, mock_db_pool, mock_current_user):
+        from datetime import date
+
+        from fastapi.testclient import TestClient
+
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {"id": 1, "company_name": "PT"}[k]
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=row)
+
+        with TestClient(_app(mock_db_pool, mock_current_user)) as tc:
+            resp = tc.patch("/api/crm/companies/1", json={field: "2024-03-15"})
+
+        assert resp.status_code == 200
+        bound = mock_db_pool._mock_conn.fetchrow.call_args.args[1]
+        assert bound == date(2024, 3, 15)
+        assert type(bound) is date
+
+    @pytest.mark.asyncio
+    async def test_datetime_string_truncated_to_date(self, mock_db_pool, mock_current_user):
+        from datetime import date
+
+        from fastapi.testclient import TestClient
+
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {"id": 1, "company_name": "PT"}[k]
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=row)
+
+        with TestClient(_app(mock_db_pool, mock_current_user)) as tc:
+            resp = tc.patch(
+                "/api/crm/companies/1", json={"akta_pendirian_date": "2024-03-15T00:00:00.000Z"}
+            )
+
+        assert resp.status_code == 200
+        assert mock_db_pool._mock_conn.fetchrow.call_args.args[1] == date(2024, 3, 15)
+
+    @pytest.mark.asyncio
+    async def test_invalid_date_is_422_not_500(self, mock_db_pool, mock_current_user):
+        from fastapi.testclient import TestClient
+
+        mock_db_pool._mock_conn.fetchrow = AsyncMock()
+
+        with TestClient(_app(mock_db_pool, mock_current_user)) as tc:
+            resp = tc.patch("/api/crm/companies/1", json={"sk_menhumkam_date": "15/03/2024"})
+
+        assert resp.status_code == 422
+        mock_db_pool._mock_conn.fetchrow.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_date_field_unchanged(self, mock_db_pool, mock_current_user):
+        from fastapi.testclient import TestClient
+
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {"id": 1, "company_name": "PT"}[k]
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=row)
+
+        with TestClient(_app(mock_db_pool, mock_current_user)) as tc:
+            resp = tc.patch("/api/crm/companies/1", json={"akta_pendirian_no": "2024-03-15"})
+
+        assert resp.status_code == 200
+        assert mock_db_pool._mock_conn.fetchrow.call_args.args[1] == "2024-03-15"
+
+
+class TestCreateCompanyRequiresName:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("body", [{}, {"company_name": ""}, {"company_name": "   "}])
+    async def test_missing_name_is_422_not_500(self, body, mock_db_pool, mock_current_user):
+        from fastapi.testclient import TestClient
+
+        mock_db_pool._mock_conn.fetchrow = AsyncMock()
+
+        with TestClient(_app(mock_db_pool, mock_current_user)) as tc:
+            resp = tc.post("/api/crm/companies", json=body)
+
+        assert resp.status_code == 422
+        mock_db_pool._mock_conn.fetchrow.assert_not_called()

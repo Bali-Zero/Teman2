@@ -5,6 +5,7 @@ Uses asyncpg like other CRM routers
 
 import logging
 import os
+from datetime import date
 from typing import Any
 
 import asyncpg
@@ -27,6 +28,27 @@ def _require_crm_admin(current_user: dict) -> None:
     """Require CRM admin privileges for company-level mutations."""
     if not is_crm_admin(current_user):
         raise HTTPException(status_code=403, detail="CRM admin access required")
+
+
+# Date columns on `companies`. asyncpg binds DATE parameters only from
+# datetime.date, so an ISO string from the JSON body must be converted here;
+# passing the string through raises "'str' object has no attribute 'toordinal'"
+# inside the driver and surfaces as a 500.
+COMPANY_DATE_FIELDS = frozenset({"akta_pendirian_date", "akta_perubahan_date", "sk_menhumkam_date"})
+
+
+def _coerce_company_date(field: str, value: Any) -> date | None:
+    """Convert a JSON date value to datetime.date, or raise 422 on bad input."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value[:10])
+        except ValueError:
+            pass
+    raise HTTPException(status_code=422, detail=f"{field} must be an ISO date (YYYY-MM-DD)")
 
 
 def company_record_to_dict(record: asyncpg.Record) -> dict:
@@ -126,6 +148,10 @@ async def create_company(
     """Create a new company"""
     _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
+
+    company_name = data.get("company_name")
+    if not isinstance(company_name, str) or not company_name.strip():
+        raise HTTPException(status_code=422, detail="company_name is required")
 
     query = """
         INSERT INTO companies (
@@ -382,6 +408,8 @@ async def update_company(
     params = []
     for field, value in data.items():
         if field in allowed_fields and value is not None:
+            if field in COMPANY_DATE_FIELDS:
+                value = _coerce_company_date(field, value)
             updates.append(f"{field} = ${len(params) + 1}")
             params.append(value)
 
