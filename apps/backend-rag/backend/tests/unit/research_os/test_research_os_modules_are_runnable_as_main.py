@@ -13,8 +13,10 @@ the only vantage point from which the ordering bug is observable at all.
 
 Scoped honestly: this catches the ordering defect for modules that are RUNNABLE. Six
 sibling modules under `services/research_os/` carry the same wrong order today and are not
-covered here, because none of them has a `__main__` for this test to invoke -- see the
-PENDING-ARMS row filed with this change.
+covered here, because none of them has a `__main__` for this test to invoke. That debt is
+tracked on `.claude/skills/modus/PENDING-ARMS.md:1352` (open since 2026-08-24), whose
+arming step -- declare `packages/research-os-core` as a real dependency, then delete
+`_core_path.py` and its imports -- cures all six at once and retires this test with them.
 """
 
 from __future__ import annotations
