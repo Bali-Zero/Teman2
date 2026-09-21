@@ -35,7 +35,7 @@ _STATUS_RE = re.compile(
 _DATE_RE = re.compile(r'<time datetime="([^"]*)"')
 
 _LINK_ITEM_RE = re.compile(
-    r'<a[^>]+href="((?:/index\.php)?/(?:id|en)/(?:peraturan|siaran-pers|berita)/[^"?#]+)"'
+    r'<a[^>]+href="((?:/index\.php)?/id/(?:peraturan|siaran-pers|berita)/[^"?#]+)"'
     r'[^>]*>(.*?)</a>',
     re.DOTALL,
 )
@@ -112,10 +112,12 @@ def parse_link_items(html: str) -> list[tuple[str, str]]:
     Anchor text under 15 chars (whitespace-collapsed) is treated as pager/
     navigation chrome and skipped, unless the href's slug itself looks like
     a real article (falls back to a title derived from the slug).
-    Deduped by canonical url, page order preserved.
+    Deduped by canonical url in page order; when one url is linked several
+    times ("Detail", "Selengkapnya", the headline), the longest text wins,
+    so a short chrome link never shadows the headline that follows it.
+    Only `/id/` pages: an `/en/` twin is a second url for the same item.
     """
-    items: list[tuple[str, str]] = []
-    seen: set[str] = set()
+    best: dict[str, str] = {}
 
     for m in _LINK_ITEM_RE.finditer(html):
         href, raw_text = m.group(1), m.group(2)
@@ -130,9 +132,7 @@ def parse_link_items(html: str) -> list[tuple[str, str]]:
                 continue
 
         url = canonical_pajak_url(href)
-        if url in seen:
-            continue
-        seen.add(url)
-        items.append((url, text))
+        if len(text) > len(best.get(url, "")):
+            best[url] = text
 
-    return items
+    return list(best.items())

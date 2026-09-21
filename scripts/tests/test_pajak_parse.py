@@ -105,3 +105,26 @@ def test_siaran_index_php_href_canonicalizes():
     items = pajak_parse.parse_link_items(SIARAN_HTML)
     url, _ = items[0]
     assert url == "https://pajak.go.id/id/siaran-pers/djp-catat-penerimaan-pajak-ekonomi-digital-rp5723-triliun"
+
+
+def test_a_short_chrome_link_never_shadows_the_headline_that_follows_it():
+    html = (
+        '<a href="/index.php/id/siaran-pers/djp-rilis-aturan-baru-pph">Detail</a>'
+        '<a href="/id/siaran-pers/djp-rilis-aturan-baru-pph">DJP Rilis Aturan Baru PPh Pasal 22</a>'
+    )
+    assert pajak_parse.parse_link_items(html) == [
+        (
+            "https://pajak.go.id/id/siaran-pers/djp-rilis-aturan-baru-pph",
+            "DJP Rilis Aturan Baru PPh Pasal 22",
+        )
+    ]
+
+
+def test_an_english_twin_is_not_a_second_item():
+    html = (
+        '<a href="/index.php/en/siaran-pers/djp-releases-new-rule">DJP Releases New Income Tax Rule</a>'
+        '<a href="/id/siaran-pers/djp-rilis-aturan-baru">DJP Rilis Aturan Baru PPh Pasal 22</a>'
+    )
+    assert [u for u, _ in pajak_parse.parse_link_items(html)] == [
+        "https://pajak.go.id/id/siaran-pers/djp-rilis-aturan-baru"
+    ]
