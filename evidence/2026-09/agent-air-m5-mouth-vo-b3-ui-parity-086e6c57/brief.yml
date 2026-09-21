@@ -1,0 +1,92 @@
+task_id: vo-b3-ui-parity
+lane: mouth
+machine: air-m5
+base_sha: 37acfbf6d29fc987402bcf9de0d12fb11bb42268 # pragma: allowlist secret - public Git commit ID, not a credential
+date: 2026-09-21
+
+gear: 2
+gear_reason: >-
+  Floor 2 (`python3 scripts/contract_verify.py --head <final-head> --json` -> "deterministic
+  floor is 2 ... needs evidence/brief.yml"). Net churn over the one new file,
+  `apps/mouth/e2e/visa-oracle-live-parity.spec.ts`, is 644 insertions / 0 deletions
+  (`git diff --stat "$(git merge-base origin/main HEAD)" HEAD`), above SIZE_GEAR2_THRESHOLD
+  (400) and far under SIZE_GEAR3_THRESHOLD (1828). This brief does not count its own size (a
+  committed file cannot count itself).
+
+objective: >-
+  MANDATE-vo.md "Slice B3" (PLAN §3 row B3, criterion G2-c): a Playwright UI-parity runner
+  that drives the Visa Oracle verdict surface for a stratified, deterministic sample of the
+  B4 sweep's 253 recorded walks (32 outcome classes), intercepts the engine route, and
+  compares the RENDERED DOM against the verdict the live engine recorded -- spending no
+  engine call. Opt-in via VISA_ORACLE_LIVE_PARITY=1, gated so the default CI job's `--list`
+  (which imports every spec) registers ZERO tests from this file and its title matches
+  neither of the default job's own `--grep "page Page|@offline"` tokens.
+
+  TWO STRUCTURAL REDS WERE MET DURING THIS BUILD AND ARE REPORTED HERE, NOT CURED (both are
+  out of this PR's touch-no-source-file / no-tsconfig scope):
+
+  (a) `apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts` (the module U1 requires
+  this slice to reuse -- `countExactWalks`, `buildCoveringSubset`, `CoveringWalk`) contains a
+  CLI-entrypoint guard using `import.meta.url`. A top-level `import` of its value exports
+  crashed Playwright's OWN `--list` for the ENTIRE e2e suite ("Total: 0 tests in 0 files"),
+  because `apps/mouth/package.json`, unlike the monorepo root, does not declare `"type":
+  "module"`, so Playwright's transform emits CJS for that file and CJS cannot contain
+  `import.meta`. Moving the import to a dynamic `await import()` confined to `beforeAll`
+  fixes the DEFAULT job completely (proven: full suite collects 1444 tests cleanly with no
+  env vars, and 0 tests select from this file under the default `--grep`) -- but the
+  IDENTICAL `SyntaxError: Cannot use 'import.meta' outside a module` still fires the moment
+  `beforeAll` actually awaits that import during THIS PR's OWN gated run, before any
+  render/assertion logic executes for any of the 32 samples.
+
+  (b) Independently of (a), verified via an out-of-band `vitest` harness (not part of this
+  PR, run then deleted) that CAN import the enumerator: replaying 32/32 sampled walks'
+  recorded facts through the production `flowReducer`, exactly as U4 specifies, throws on 30
+  of them -- not only the 10 `review-gate/<item>` classes the design named as a risk. Root
+  cause: `generate-walk-corpus.ts`'s `answerFor()` (used by `runWalk`, which drives
+  `computeNextNode` directly and never dispatches a real `flowReducer` ANSWER action) assigns
+  `wants_onshore_conversion="yes"` and `application_channel="OFFSHORE"` as literal first-option
+  defaults without regard to `flow.ts`'s `channelConflictsWithOnshoreIntent` guard, which
+  `flowReducer`'s ANSWER case DOES enforce and correctly refuses as incoherent -- the same
+  refusal a real browser user would hit. This affects `baseline/all-default` itself and 19 of
+  the 21 `edge/*` classes, in addition to the 10 anticipated `review-gate/*` ones. Only
+  `edge/application_channel=unsure` and `edge/in_indonesia=unsure` replay cleanly to a
+  terminal node (verified via the same out-of-band harness).
+
+  Given both reds, THIS PR's own gated `VISA_ORACLE_LIVE_PARITY=1` run fails at `beforeAll`
+  for every one of its 32 samples (blocker (a) alone is sufficient; blocker (b) would still
+  block 30/32 even if (a) were resolved). None of the five required guilt-proof mutations
+  (U2, U3, U5, U6, U7) could be captured via the actual Playwright command, because all of
+  them execute after the point where `beforeAll` now fails. What IS proven and captured: (1)
+  the spec compiles clean (`tsc --noEmit`); (2) the file is fully import-safe for the shared
+  suite (the two `--list` proofs in the PR body); (3) the file's own U2/U3 DATA logic
+  (32-class grouping, derived-label-set equality) and the U6 fact-derivation path
+  (`buildEngineOutcome` on the `edge/work_payer=no` sample) are each independently correct,
+  verified via the out-of-band vitest harness described above.
+
+  Per the mandate's own explicit provision for exactly this class of risk ("if the TS
+  resolution fails at your first --list, REPORT it; never edit a tsconfig" / "a throw ... is
+  REPORTED, never adjusted"), this PR opens UNARMED with both reds documented in the spec's
+  own header comment and here, for the conductor and a fresh gate to adjudicate -- most
+  likely as a REWORK-BUILD once the spec design accounts for (a) and (b), since neither is
+  fixable from inside this PR's allowed scope.
+
+scope:
+  - "apps/mouth/e2e/visa-oracle-live-parity.spec.ts -- NEW. The UI-parity runner; opt-in gated (VISA_ORACLE_LIVE_PARITY=1) at module scope so the default CI job registers zero tests from this file; all report-reading/enumerator calls deferred to `beforeAll`; per-sample tests intercept `/api/visa-oracle/evaluate` and assert rendered headline/notices/review-reasons/no-path-reasons against `buildEngineOutcome`'s own text; writes a U9-shaped parity report to `output/visa-oracle-parity-report.json` on completion. Two structural reds met and reported in its own header comment and above, not cured."
+  - "This brief."
+
+constraints:
+  - >-
+    No source file, no config, no workflow, no new dependency touched. The enumerator
+    (`enumerate-interview-space.ts`) and `flow.ts` are read-only reuse, per U1 -- both reds
+    found in them are reported, never patched, since curing either is out of this PR's scope.
+  - >-
+    Nothing this spec runs sends a request to production or to the local engine: the
+    evaluate route is always intercepted and fulfilled from a record already on disk
+    (`prove-live-b4-full-sweep-report-20260921.json`, sha256-pinned in `beforeAll`).
+  - >-
+    This builder does not arm. `gh pr merge` is never run from this seat; the PR opens with
+    auto-merge NOT armed and stays that way until the conductor's own review, given the two
+    reds above are expected to require a REWORK-BUILD decision rather than a straight arm.
+  - >-
+    No client PII anywhere in this diff or this brief; every identifier is a public git SHA,
+    a rule-pack UUID from the checked-in test fixture, or a walk-class label.
