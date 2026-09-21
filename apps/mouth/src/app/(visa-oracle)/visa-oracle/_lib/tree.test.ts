@@ -74,8 +74,10 @@ describe("tree.ts — interview decision boundary", () => {
 
   it("keeps the other_purpose catch-all outside engine facts", () => {
     expect(QUESTIONS.other_purpose.decisionMapping.kind).toBe("HUMAN_CONTEXT");
+    // Slice A6-1: Group A (no `factPaths`), tag "no-fact-path".
     expect(QUESTIONS.other_purpose.notSure).toEqual({
       mode: "human-review",
+      because: "no-fact-path",
     });
   });
 
@@ -276,5 +278,68 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
 
   it("formatIsoDateForDisplay falls back to the raw string on an invalid date rather than throwing", () => {
     expect(formatIsoDateForDisplay("not-a-date", "en-GB")).toBe("not-a-date");
+  });
+
+  // Slice A6-1 (DRAFT-SPEC-A6-1.v3.md §2.4): `because` is now REQUIRED on
+  // every `mode: "human-review"` `notSure` block. GUILT-b: a block whose
+  // `because` is missing (deleted, or dodged by writing
+  // `{ mode: "conservative" }` with no real conservative value) reddens
+  // here even though `tsc` alone cannot enforce it inside `vitest`
+  // (esbuild transpiles the file, it does not typecheck it). Both
+  // cardinalities are LITERAL, never derived from the table under test
+  // (GATE-A2G OBS-A2g-4): 54 `human-review` and 0 `conservative` blocks
+  // exist in THIS PR — slice A6-2 is what gives the second number a
+  // non-zero value.
+  it("every human-review notSure block declares a because, and the cardinality is pinned (A6-1)", () => {
+    const entries = Object.entries(QUESTIONS);
+    expect(
+      entries.filter(
+        ([, q]) =>
+          q.notSure?.mode === "human-review" &&
+          (q.notSure as { because?: string }).because === undefined,
+      ),
+    ).toEqual([]);
+    expect(
+      entries.filter(([, q]) => q.notSure?.mode === "human-review"),
+    ).toHaveLength(54);
+    expect(
+      entries.filter(([, q]) => q.notSure?.mode === "conservative"),
+    ).toHaveLength(0);
+  });
+
+  // INNOCENCE (FIX-B, spec F2): exactly 13 questions declare no `notSure`
+  // at all — three literal ids plus the ten `qualificationQuestion(...)`-
+  // built ones. The ten omit it DELIBERATELY (`tree.ts:182-189`: "a 'not
+  // sure' would map to UNKNOWN and the engine would ask the same question
+  // again: a loop, not an answer"). Giving any of the ten a `notSure`
+  // would add a tenth `"unsure"` option, move the 253-walk manifest pin
+  // (`enumerate-interview-space.test.ts:519`) and destroy slice A6-2's
+  // manifest-innocence proof — that is a RED to report, never a fix.
+  it("holds exactly 13 questions with no notSure at all, named (A6-1)", () => {
+    expect(
+      Object.entries(QUESTIONS)
+        .filter(([, q]) => q.notSure === undefined)
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual(
+      [
+        "investment_currency",
+        "retirement_undecided_basis",
+        "review_gate",
+        "sponsor_government_invitation",
+        "sponsor_government_collaboration",
+        "sponsor_world_figure_invitation",
+        "sponsor_diplomatic_household",
+        "sponsor_trade_office",
+        "investment_establishes_company",
+        "investment_capital_market_only",
+        "investment_foreign_branch",
+        "investment_ikn_subsidiary",
+        "investment_meets_threshold",
+      ].sort(),
+    );
+    expect(
+      Object.entries(QUESTIONS).filter(([, q]) => q.notSure === undefined),
+    ).toHaveLength(13);
   });
 });

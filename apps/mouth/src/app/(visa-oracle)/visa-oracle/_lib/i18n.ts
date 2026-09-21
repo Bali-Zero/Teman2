@@ -647,15 +647,15 @@ const en = {
 
   "notsure.trigger": "Not sure?",
   "assumption.in_indonesia":
-    "You weren’t sure where you are — we assumed you’re in Indonesia, the safer read.",
+    "You weren’t sure where you are, so we recorded that as unresolved instead of assuming it, and a Bali Zero advisor confirms it with you.",
   "assumption.permit_expiry":
     "You weren’t sure when your current stay permission expires, so no deadline was inferred.",
   "assumption.stay_days":
     "You weren’t sure about the planned stay, so no duration was inferred.",
   "assumption.work_payer":
-    "You weren’t sure who pays you — we’re holding this for a Bali Zero advisor rather than guessing.",
+    "You weren’t sure who pays you, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
   "assumption.remote_clients":
-    "You weren’t sure where your clients sit — we’re holding this for a human rather than guessing.",
+    "You weren’t sure where your clients sit, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
   "assumption.generic":
     "You marked “Not sure” for “{{question}}”; no value was inferred.",
 
@@ -1666,15 +1666,15 @@ const id: Record<Keys, string> = {
 
   "notsure.trigger": "Tidak yakin?",
   "assumption.in_indonesia":
-    "Anda tidak yakin di mana posisi Anda — kami menganggap Anda di Indonesia, opsi yang lebih aman.",
+    "Anda tidak yakin di mana posisi Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan alih-alih menganggapnya, dan konsultan Bali Zero akan memastikannya bersama Anda.",
   "assumption.permit_expiry":
     "Anda belum yakin kapan izin tinggal saat ini berakhir, jadi tidak ada tenggat yang diperkirakan.",
   "assumption.stay_days":
     "Anda belum yakin tentang rencana masa tinggal, jadi tidak ada durasi yang diperkirakan.",
   "assumption.work_payer":
-    "Anda tidak yakin siapa yang menggaji Anda — kami menahan ini untuk konsultan Bali Zero, bukan menebak.",
+    "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
   "assumption.remote_clients":
-    "Anda tidak yakin di mana klien Anda berada — kami menahan ini untuk manusia, bukan menebak.",
+    "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
   "assumption.generic":
     "Anda memilih “Tidak yakin” untuk “{{question}}”; tidak ada nilai yang diperkirakan.",
 
