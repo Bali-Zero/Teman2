@@ -1,0 +1,60 @@
+gear: 2
+task_id: kita-permit-type-label
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/kita-permit-type-label
+gate_class: opus
+l_level: L2
+objective: >-
+  kita's client detail shows "Permit: Visa" for any document stored with the
+  generic document_type 'visa' (1,201 documents). The owner's rule (2026-09-21):
+  the permit label leads with the visa INDEX and its OFFICIAL NAME from the
+  `visa_types` catalogue (e.g. "D12 — Pre-Investment (Multiple Entry)"); the
+  permit family (ITK / KITAS / KITAP / MERP) is the secondary line and the
+  fallback when no index can be derived. Never invent a label or a name.
+scope:
+  - >-
+    apps/backend-rag/backend/services/crm/permit_label.py — pure resolver: a
+    per-token index parser (CODE, optionally fused with the stay sub-index,
+    e.g. C12B14 = C1 + 2B14, D122B15 = D12 + 2B15) disambiguated against the
+    catalogue, family keyword classification, display-only output fields.
+  - >-
+    apps/backend-rag/backend/app/routers/crm_enhanced.py get_client_profile —
+    loads the catalogue once per request (fails open to code-only labels) and
+    adds permit_* fields per document; the raw OCR blob is never forwarded.
+  - >-
+    apps/mouth client detail (ImmigrationTab, VisaCard, crm.types) — primary
+    label + family as secondary line when different; MERP rides with the
+    current permit instead of falling into "Other".
+constraints:
+  - >-
+    `documents.document_type` storage and every other reader of it are
+    untouched: the label is derived at read time.
+  - >-
+    Names come only from `visa_types`; an index not in the catalogue shows the
+    index alone; no family keyword and no index -> no label (the UI keeps the
+    raw document_type).
+acceptance:
+  - text: >-
+      WHEN the OCR visa_type carries an index (alone or fused with the stay
+      sub-index), permit_label SHALL be "<index> — <catalogue name>" and the
+      family SHALL be the secondary label.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. pytest
+      backend/tests/unit/services/crm/test_permit_label.py
+  - text: >-
+      The client profile SHALL load with code-only labels when the catalogue
+      query fails.
+    probe: >-
+      PYTHONPATH=. pytest backend/tests/unit/routers/test_crm_enhanced.py
+  - text: >-
+      kita SHALL render the family as a secondary line only when it differs
+      from the primary label, and a MERP document next to the current permit.
+    probe: >-
+      vitest run "src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx"
+bites: >-
+  Consumer: kita client detail (Immigration tab + VisaCard) served by
+  GET /api/crm/clients/{id}/profile. Observation after deploy + promote: the
+  live profile response for a client whose OCR visa_type is "D122B15" carries
+  permit_label "D12 — Pre-Investment (Multiple Entry)" (only the label and
+  client_id printed), and the Immigration tab shows it.
