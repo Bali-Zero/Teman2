@@ -34,7 +34,7 @@ seat_override: >-
   Bali-axis population, both re-derived and refused-on-drift by the compiler itself. The
   replacement for a missing council is the on-disk gate this PR requests at open.
 diff:
-  net_lines: "25 files, +4392/-1094 (git diff --numstat against the merge-base) — 5 hand-written (the compiler's per-lot pin, the lot-2 spec, its test additions, this brief and this pack), 6 generated (3 tracked canonical copies + llms-kbli.txt + kbli-dataset-version.json + pma-editorial-certifications.json re-stamp), 1 recomputed pin (batch-a-members.json canonical_sha256), 13 consumer test re-pins (2 backend + 10 mouth + 1 kbli-navigator) whose PR #6795 census pins moved by the measured delta. Floor 3, source: size (evidence_pack_lint.py --print-floor / --print-floor-source)."
+  net_lines: "26 files, +4399/-1095 (git diff --numstat against the merge-base) — 5 hand-written (the compiler's per-lot pin, the lot-2 spec, its test additions, this brief and this pack), 6 generated (3 tracked canonical copies + llms-kbli.txt + kbli-dataset-version.json + pma-editorial-certifications.json re-stamp), 1 recomputed pin (batch-a-members.json canonical_sha256), 13 consumer test re-pins (2 backend + 10 mouth + 1 kbli-navigator) whose PR #6795 census pins moved by the measured delta, 1 successor fix (the Bali-verdict test's declared-gap population derived from the dataset instead of a >1000 floor, PR successor of #7051). Floor 3, source: size (evidence_pack_lint.py --print-floor / --print-floor-source)."
   behaviour_change: >-
     No code path changes beyond the per-lot rule-pin selection (spec["lot"] -> REQUIRED_RULE_BY_LOT).
     260 canonical records move pma_verification_status declared_gap -> located and gain
