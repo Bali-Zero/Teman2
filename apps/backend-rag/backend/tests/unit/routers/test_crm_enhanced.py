@@ -218,9 +218,7 @@ class TestGetClientProfile:
             "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
             "deleted_at": None,
             "uploaded_source": "team",
-            "ocr_extracted_data": {
-                "raw_response": {"visa_type": "Visa Tinggal Terbatas (E23)"}
-            },
+            "ocr_extracted_data": {"raw_response": {"visa_type": "Visa Tinggal Terbatas (E23)"}},
             "family_member_name": None,
             "alert_color": "green",
         }

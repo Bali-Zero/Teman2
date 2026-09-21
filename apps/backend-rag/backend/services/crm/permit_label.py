@@ -75,7 +75,11 @@ _GENERIC_DOCUMENT_TYPES = {
 
 
 def _family_label(family: str) -> str:
-    return f"{_FAMILY_CODE[family]} — {_FAMILY_LABEL[family]}"
+    code = _FAMILY_CODE[family]
+    label = _FAMILY_LABEL[family]
+    # FAMILY_EVISA's code and label are the same string ("e-Visa") — don't
+    # double it into "e-Visa — e-Visa".
+    return code if code == label else f"{code} — {label}"
 
 
 def _classify(text: str) -> str | None:
@@ -183,9 +187,7 @@ def _best_candidate(
     return max(pool, key=lambda c: len(c[0]))
 
 
-def _extract_index(
-    text: str, catalogue: Mapping[str, str]
-) -> tuple[str, str | None] | None:
+def _extract_index(text: str, catalogue: Mapping[str, str]) -> tuple[str, str | None] | None:
     if not text:
         return None
     for token in _TOKEN_RE.findall(text.upper()):
@@ -220,7 +222,7 @@ class PermitLabel(TypedDict):
 
 def resolve_permit_label(
     document_type: str | None,
-    ocr_extracted_data: dict[str, Any] | None,
+    ocr_extracted_data: Any | None,
     catalogue: Mapping[str, str] | None = None,
 ) -> PermitLabel | None:
     """Resolve a precise permit label for one document.
@@ -232,26 +234,45 @@ def resolve_permit_label(
     Returns `None` when neither a family keyword nor a visa index can be
     derived from either `document_type` or the OCR `visa_type` text — the
     caller keeps showing whatever text it showed before (never invent one).
+
+    `ocr_extracted_data` is a JSONB column round-tripped through
+    `from_jsonb()` — always a dict in practice, but a malformed write
+    upstream could leave it (or its `raw_response` key) as a list/str/etc.
+    Treated as "no OCR" rather than raised: a bad JSONB value on ONE
+    document must never break the whole client profile.
     """
-    raw_response = (ocr_extracted_data or {}).get("raw_response") or {}
+    if not isinstance(ocr_extracted_data, dict):
+        ocr_extracted_data = None
+    raw_response = (ocr_extracted_data or {}).get("raw_response")
+    if not isinstance(raw_response, dict):
+        raw_response = {}
     ocr_visa_type = str(raw_response.get("visa_type") or "").strip()
     dt = str(document_type or "").strip()
     dt_probe = dt.replace("_", " ")
     dt_norm = dt.strip().lower()
     cat = catalogue or {}
 
-    # Generic buckets carry no signal of their own — OCR text is the only
-    # evidence. Specific buckets (kitas/itap/itk/e_visa/telex_visa/MERP/…)
-    # are trusted directly; OCR is only a fallback for those, not primary.
-    if dt_norm in _GENERIC_DOCUMENT_TYPES:
-        family = _classify(ocr_visa_type) or _classify(dt_probe)
-    else:
-        family = _classify(dt_probe) or _classify(ocr_visa_type)
+    # A specific (non-generic) document_type is trusted on its own; OCR text
+    # is consulted for family/index ONLY when document_type itself carries
+    # no signal (the generic buckets) OR it already classifies as a permit
+    # family. A specific, NON-permit document_type (an RPTKA/IMTA approval,
+    # an address slip, a travel itinerary, ...) must never borrow a family
+    # or an index from unrelated OCR text sitting on the same row — measured
+    # prod bug: those documents' OCR text sometimes quotes the client's own
+    # KITAS/visa index (e.g. the sponsor's permit number on an RPTKA form).
+    is_generic = dt_norm in _GENERIC_DOCUMENT_TYPES
+    dt_family = _classify(dt_probe)
+    trust_ocr = is_generic or dt_family is not None
 
-    # Index extraction always runs — independent of whether a family
-    # keyword matched — the OCR text is the primary source, the stored
-    # document_type only a secondary probe.
-    index = _extract_index(ocr_visa_type, cat) or _extract_index(dt_probe, cat)
+    if is_generic:
+        family = _classify(ocr_visa_type) or dt_family
+    else:
+        family = dt_family
+
+    if trust_ocr:
+        index = _extract_index(ocr_visa_type, cat) or _extract_index(dt_probe, cat)
+    else:
+        index = _extract_index(dt_probe, cat)
 
     if family is None and index is None:
         return None

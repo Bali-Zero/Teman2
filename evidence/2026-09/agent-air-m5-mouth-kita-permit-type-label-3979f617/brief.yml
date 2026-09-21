@@ -52,6 +52,26 @@ acceptance:
       from the primary label, and a MERP document next to the current permit.
     probe: >-
       vitest run "src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx"
+  - text: >-
+      REWORK (independent gate, 2026-09-21): a document outside
+      isVisaFamilyDocument (e.g. document_type='itk') SHALL still show the
+      resolved permit_label — not the raw document_type — in the "Other" card
+      grid; text-transform:capitalize SHALL apply only to the raw
+      document_type fallback, never to a resolved permit_label (it mangles
+      official catalogue names); a MERP-classified document SHALL never
+      render in both the visa-history row and the MERP chip.
+    probe: >-
+      vitest run "src/app/(workspace)/clients/[id]/components/ImmigrationTab.test.tsx"
+  - text: >-
+      REWORK: OCR `visa_type` text SHALL be evidence only when document_type
+      is generic or itself classifies as a permit family — a specific,
+      non-permit document_type (RPTKA/IMTA approval, address slip, travel
+      itinerary) SHALL never borrow a family or an index from unrelated OCR
+      text on the same row; a malformed (non-dict) `ocr_extracted_data` or
+      `raw_response` SHALL be treated as "no OCR", never raise.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. pytest
+      backend/tests/unit/services/crm/test_permit_label.py
 bites: >-
   Consumer: kita client detail (Immigration tab + VisaCard) served by
   GET /api/crm/clients/{id}/profile. Observation after deploy + promote: the

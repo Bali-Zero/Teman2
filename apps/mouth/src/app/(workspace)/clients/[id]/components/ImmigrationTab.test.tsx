@@ -1085,3 +1085,145 @@ describe("ImmigrationTab — permit_family_label secondary line (owner correctio
     expect(screen.getByText("ITK — Visit Stay Permit")).toBeInTheDocument();
   });
 });
+
+describe("ImmigrationTab — REWORK (independent gate, 2026-09-21)", () => {
+  it("(a) GUILT: a document outside isVisaFamilyDocument (e.g. document_type='itk') still shows the resolved permit_label in the 'Other' card grid, not the raw document_type", () => {
+    // 'itk' does not match isVisaFamilyDocument (no kitas/kitap/visa/voa
+    // substring) so it lands in `otherDocs`, rendered by `renderDocCard` —
+    // the prod bug: that card ignored permit_label entirely.
+    renderTab([
+      {
+        ...baseDoc,
+        id: 300,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label: "D12 — Pre-Investment (Multiple Entry)",
+      },
+    ]);
+
+    expect(
+      screen.getByText("D12 — Pre-Investment (Multiple Entry)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("itk")).not.toBeInTheDocument();
+  });
+
+  it("(a) shows the family secondary line in the 'Other' card grid when it differs from the primary label", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 301,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label: "D12 — Pre-Investment (Multiple Entry)",
+        permit_family_label: "ITK — Visit Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("D12 — Pre-Investment (Multiple Entry)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ITK — Visit Stay Permit")).toBeInTheDocument();
+  });
+
+  it("(a) GUILT falls back to the raw document_type in the 'Other' grid when unresolved (never invents a label)", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 302,
+        document_type: "itk",
+        document_category: "immigration",
+      },
+    ]);
+    expect(screen.getByText("itk")).toBeInTheDocument();
+  });
+
+  it("(b) does not apply text-transform:capitalize to a resolved permit_label in the current-permit badge", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 303,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label:
+          "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+      },
+    ]);
+
+    const badge = screen.getByText(
+      "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+    );
+    expect(badge.className).not.toMatch(/\bcapitalize\b/);
+  });
+
+  it("(b) GUILT: still applies capitalize to the raw document_type fallback in the current-permit badge", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 304,
+        document_type: "voa",
+        expiry_date: futureDate,
+        // no permit_label — falls back to the raw document_type
+      },
+    ]);
+
+    const badge = screen.getByText("voa");
+    expect(badge.className).toMatch(/\bcapitalize\b/);
+  });
+
+  it("(b) does not apply text-transform:capitalize to a resolved permit_label in the 'Other' card grid", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 305,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label:
+          "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+      },
+    ]);
+
+    const label = screen.getByText(
+      "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+    );
+    expect(label.className).not.toMatch(/\bcapitalize\b/);
+  });
+
+  it("(f) GUILT: a MERP document whose document_type is generic ('visa') never renders in BOTH the visa-history row and the MERP chip", () => {
+    const futureDate = new Date(Date.now() + 400 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 310,
+        document_type: "kitas",
+        expiry_date: futureDate,
+      },
+      {
+        ...baseDoc,
+        id: 311,
+        document_type: "visa",
+        // No expiry_date on purpose: the MERP chip appends " · Exp ..."
+        // whenever expiry_date is set, which would make the chip's own
+        // text node no longer an EXACT match for the bare label and hide
+        // a real double-render behind a text-matcher false negative.
+        permit_family: "merp",
+        permit_label: "MERP — Multiple Exit Re-entry Permit",
+      },
+    ]);
+
+    expect(
+      screen.getAllByText("MERP — Multiple Exit Re-entry Permit"),
+    ).toHaveLength(1);
+  });
+});

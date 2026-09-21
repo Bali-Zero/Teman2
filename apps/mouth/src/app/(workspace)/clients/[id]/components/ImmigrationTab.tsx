@@ -233,9 +233,14 @@ export function ImmigrationTab({
         new Date(d.expiry_date) > new Date(now.getTime() - 30 * 86400000)), // allow 30 days grace
   );
 
-  // Previous visas = expired (or superseded) visa-family documents
+  // Previous visas = expired (or superseded) visa-family documents.
+  // Excludes anything MERP-classified: a document whose stored document_type
+  // is generic ("visa") but whose resolved permit_family is "merp" matches
+  // BOTH isVisaFamilyDocument (via the "visa" substring) and isMerpDocument
+  // — without this exclusion it rendered once here AND once in the MERP
+  // chip row below (GUILT fixed 2026-09-21).
   const previousVisas = sortedDocs.filter(
-    (d) => d !== actualVisa && isVisaFamilyDocument(d),
+    (d) => d !== actualVisa && isVisaFamilyDocument(d) && !isMerpDocument(d),
   );
 
   // Working permits
@@ -305,10 +310,25 @@ export function ImmigrationTab({
       )}
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
-            {doc.document_type.replace(/_/g, " ")}
-          </span>
-          <div className="flex items-center gap-1">
+          <div className="min-w-0">
+            <span
+              className={cn(
+                "text-sm font-medium text-[var(--bz-text-1)]",
+                // Capitalizing an official catalogue name mangles it (e.g.
+                // "Cabang atau Anak" -> "Cabang Atau Anak") — only the raw
+                // document_type fallback wants the transform.
+                !doc.permit_label && "capitalize",
+              )}
+            >
+              {permitDisplayLabel(doc)}
+            </span>
+            {permitFamilySecondaryLabel(doc) && (
+              <p className="text-[11px] text-[var(--bz-text-2)]">
+                {permitFamilySecondaryLabel(doc)}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             {doc.google_drive_file_url && (
               <Button
                 variant="ghost"
@@ -444,7 +464,12 @@ export function ImmigrationTab({
                 Current permit
               </p>
               <span
-                className="inline-flex items-center rounded-[6px] bg-[var(--tx-pure)] px-3 py-1.5 text-[19px] font-medium capitalize text-[var(--bz-base)]"
+                className={cn(
+                  "inline-flex items-center rounded-[6px] bg-[var(--tx-pure)] px-3 py-1.5 text-[19px] font-medium text-[var(--bz-base)]",
+                  // Same rule as renderDocCard: capitalize only the raw
+                  // document_type fallback, never an official catalogue name.
+                  !actualVisa.permit_label && "capitalize",
+                )}
                 style={{ fontFamily: "var(--font-serif)" }}
               >
                 {permitDisplayLabel(actualVisa)}

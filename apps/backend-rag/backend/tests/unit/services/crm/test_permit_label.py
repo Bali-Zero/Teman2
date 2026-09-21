@@ -75,9 +75,7 @@ class TestKitap:
     def test_ocr_kitap_electronic_permanent_stay_permit(self):
         # Measured: "KITAP (ELECTRONIC PERMANENT STAY PERMIT)" (2 rows) — no
         # index token in this string either.
-        result = resolve_permit_label(
-            "visa", _ocr("KITAP (ELECTRONIC PERMANENT STAY PERMIT)")
-        )
+        result = resolve_permit_label("visa", _ocr("KITAP (ELECTRONIC PERMANENT STAY PERMIT)"))
         assert result["permit_family"] == FAMILY_KITAP
         assert result["permit_label"] == "KITAP / ITAP — Permanent Stay Permit"
 
@@ -233,9 +231,7 @@ class TestEvisa:
 
     def test_catalogue_name_without_a_code_prefix_is_kept_verbatim(self):
         # Measured catalogue row: code='E28D', name has no "E28D - " prefix.
-        catalogue = {
-            "E28D": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa"
-        }
+        catalogue = {"E28D": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa"}
         result = resolve_permit_label("visa", _ocr("E28D"), catalogue=catalogue)
         assert (
             result["permit_label"]
@@ -359,3 +355,88 @@ class TestExtractedFields:
         # unrelated and unclassifiable.
         result = resolve_permit_label("kitas", _ocr("SOME_UNRELATED_TEXT"))
         assert result["permit_family"] == FAMILY_KITAS
+
+
+class TestEvisaLabelNotRedundant:
+    """(c) `_family_label(FAMILY_EVISA)` must not read "e-Visa — e-Visa" —
+    the code and the family label are the SAME string for this one family."""
+
+    def test_bare_e_visa_document_type_label_is_not_doubled(self):
+        result = resolve_permit_label("e_visa", None)
+        assert result["permit_label"] == "e-Visa"
+        assert result["permit_family_label"] == "e-Visa"
+
+    def test_telex_visa_label_is_not_doubled(self):
+        result = resolve_permit_label("telex_visa", None)
+        assert result["permit_label"] == "e-Visa"
+
+
+class TestOcrFallbackOnlyForTrustedDocumentTypes:
+    """(d) OCR `visa_type` text is evidence only when `document_type` is
+    itself generic (carries no signal) OR already classifies as a permit
+    family. A specific, NON-permit document_type (RPTKA/IMTA approvals,
+    an address slip, a travel itinerary, ...) must never borrow a family or
+    an index from whatever OCR text happens to be attached — measured prod
+    bug: RPTKA/IMTA/address documents with OCR text mentioning "KITAS" (the
+    sponsor's own permit, quoted inside the RPTKA form) were wrongly
+    labelled as if THEY were a KITAS."""
+
+    def test_rptka_approval_with_kitas_ocr_noise_stays_unresolved(self):
+        assert resolve_permit_label("RPTKA Approval", _ocr("KITAS")) is None
+
+    def test_imta_with_kitas_ocr_noise_stays_unresolved(self):
+        assert resolve_permit_label("IMTA", _ocr("KITAS")) is None
+
+    def test_address_slip_with_kitas_ocr_noise_stays_unresolved(self):
+        assert resolve_permit_label("alamat", _ocr("KITAS")) is None
+
+    def test_travel_itinerary_with_bare_index_ocr_noise_stays_unresolved(self):
+        # "D12" is a real catalogue index, but it appears inside a travel
+        # itinerary document — not a permit document at all.
+        assert resolve_permit_label("Travel Itinerary", _ocr("D12")) is None
+
+    def test_generic_document_type_still_trusts_ocr(self):
+        # Unchanged: 'visa' carries no signal of its own, so OCR is (and
+        # must remain) the primary evidence for it.
+        result = resolve_permit_label("visa", _ocr("KITAS"))
+        assert result["permit_family"] == FAMILY_KITAS
+
+    def test_document_type_that_itself_classifies_still_trusts_ocr_for_the_index(
+        self,
+    ):
+        # Measured prod: document_type='itk' (a trusted permit family on its
+        # own) with OCR visa_type fusing an index — the index still resolves
+        # because the STORED document_type already earned trust, independent
+        # of the OCR text.
+        catalogue = {"D12": "D12 - Pre-Investment (Multiple Entry)"}
+        result = resolve_permit_label("itk", _ocr("D122B15"), catalogue=catalogue)
+        assert result["permit_family"] == FAMILY_ITK
+        assert result["permit_code"] == "D12"
+        assert result["permit_label"] == "D12 — Pre-Investment (Multiple Entry)"
+
+
+class TestMalformedOcrPayloadNeverRaises:
+    """(e) `ocr_extracted_data` (or its `raw_response`) can be a non-dict
+    JSON value (list/str) if an upstream OCR call ever wrote something
+    unexpected — must be treated as "no OCR", never raise (a 500 here would
+    kill the whole client profile, not just this one document's label)."""
+
+    def test_ocr_extracted_data_is_a_list(self):
+        result = resolve_permit_label("kitas", ["not", "a", "dict"])
+        assert result["permit_family"] == FAMILY_KITAS  # document_type alone still resolves
+
+    def test_ocr_extracted_data_is_a_string(self):
+        result = resolve_permit_label("kitas", "not a dict either")
+        assert result["permit_family"] == FAMILY_KITAS
+
+    def test_raw_response_is_a_list(self):
+        result = resolve_permit_label("kitas", {"raw_response": ["oops"]})
+        assert result["permit_family"] == FAMILY_KITAS
+
+    def test_raw_response_is_a_string(self):
+        result = resolve_permit_label("kitas", {"raw_response": "oops"})
+        assert result["permit_family"] == FAMILY_KITAS
+
+    def test_malformed_ocr_with_no_document_type_signal_returns_none(self):
+        # No crash, and — correctly — no invented family either.
+        assert resolve_permit_label("passport", ["not", "a", "dict"]) is None

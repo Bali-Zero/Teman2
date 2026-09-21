@@ -1112,7 +1112,10 @@ async def get_client_profile(
             catalogue_rows = await conn.fetch("SELECT upper(code) AS code, name FROM visa_types")
             visa_catalogue = {row["code"]: row["name"] for row in catalogue_rows}
         except Exception:
-            logger.warning("visa_types catalogue query failed; falling back to code-only permit labels", exc_info=True)
+            logger.warning(
+                "visa_types catalogue query failed; falling back to code-only permit labels",
+                exc_info=True,
+            )
             visa_catalogue = None
 
         # Derive a precise permit label per document from `document_type` +
