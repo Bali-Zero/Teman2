@@ -305,6 +305,7 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_wrapper_alert.sh|\
+              scripts/tg_notify.py|\
               scripts/test_cron_single_voice.sh|\
               scripts/login-healthcheck.sh|\
               scripts/test_login_healthcheck_alert.sh|\

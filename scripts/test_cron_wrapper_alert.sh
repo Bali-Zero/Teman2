@@ -69,8 +69,15 @@ run_case () {  # run_case <job> <cmd...> ; sets RC
     cp "$WRAPPER" "$TMP/run/cron-wrapper.sh"
     if [ "${GATEWAY_MODE:-real}" = "stub" ]; then mkstub "${STUB_RC:-0}"
     else cp "$GATEWAY" "$TMP/run/tg_notify.py"; fi
+    # The routing policy is PINNED, not inherited (PWC-7033 C2). This corpus proves
+    # the WRAPPER, and reads its key off the board row the gateway writes — so an
+    # ambient TG_ACT_ROUTING_ENABLED=0, or `cron-fail` added to the owner families,
+    # would send the alert to Telegram instead of the board and turn this corpus
+    # red for a reason that has nothing to do with the wrapper. The owner-families
+    # value must be NON-empty: an empty set disables routing altogether.
     HOME="$TMP/home" CRON_LOG_DIR="$TMP/logs" CRON_MAX_RETRIES=0 \
         TG_DRY_RUN=1 TG_SPOOL_DIR="$TMP/spool" TG_BOARD_PATH="$TMP/board.jsonl" \
+        TG_ACT_ROUTING_ENABLED=true TG_OWNER_FAMILIES=corpus-owner-only \
         bash "$TMP/run/cron-wrapper.sh" "$@" >/dev/null 2>&1
     RC=$?
 }
