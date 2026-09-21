@@ -20,6 +20,38 @@ from backend.services.portal._rbac import ClientContext, require_client_access
 
 logger = get_logger(__name__)
 
+# Mirror of kita's `isVisaFamilyDocument` — the ENTIRE rule lives in this one
+# tuple on both sides. Source of truth:
+# apps/mouth/src/app/(workspace)/clients/[id]/components/ImmigrationTab.tsx:123-135
+# ("kitas" / "kitap" / "visa" incl. e-visa/evisa / "voa" incl. e-voa/evoa).
+# Touch one side, touch the other — that drift is exactly what left 691 of
+# 741 clients with a visible visa-family document and no completed visa
+# practice staring at an empty portal (measured 2026-09-21).
+_VISA_FAMILY_TYPE_SUBSTRINGS = ("kitas", "kitap", "visa", "voa")
+
+
+def _is_visa_family_document_type(document_type: str | None) -> bool:
+    t = (document_type or "").lower()
+    return any(s in t for s in _VISA_FAMILY_TYPE_SUBSTRINGS)
+
+
+def _as_date(value):
+    """Normalize a `practices`/`documents` date-ish column to `datetime.date`.
+
+    asyncpg maps a Postgres `date` column (both `practices.expiry_date` and
+    `documents.expiry_date` ARE `date`, verified via `\\d` against prod) to
+    plain `datetime.date` — which has no `.date()` method — but a
+    `timestamp`/`timestamptz` column to `datetime.datetime`, which does. The
+    old code here called `.date()` unconditionally and raised AttributeError
+    on every real row with a non-null expiry_date (only unit tests, which
+    mocked the field with a full `datetime`, ever exercised this line
+    without tripping it — confirmed empirically 2026-09-21). Handles both
+    shapes so real rows and existing test doubles behave identically.
+    """
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
 
 class PortalDashboardMixin:
     """Read-only dashboard views and activity timeline."""
@@ -29,6 +61,43 @@ class PortalDashboardMixin:
     # _is_undefined_column_error / _is_undefined_table_error are provided by
     # PortalService in portal_service.py and resolved via MRO at runtime.
     # They are not re-declared here to avoid shadowing the real implementation.
+
+    async def _get_latest_visible_visa_document(self, conn, client_id: int):
+        """Best client-visible visa-family `documents` row for a client,
+        used as the fallback "current immigration permit" source when no
+        `practices` row exists — 691 of 741 measured clients with a
+        client-visible visa-family document (2026-09-21).
+
+        Selection mirrors kita's `actualVisa` (ImmigrationTab.tsx:187-192):
+        newest by expiry_date (null-expiry docs sort last, never preferred
+        over a dated one), picking the first whose expiry is null or still
+        within a 30-day grace window — an expired-91+-days-ago document is
+        NOT "current", but one that lapsed last week still is.
+        """
+        rows = await conn.fetch(
+            f"""
+            SELECT d.id, d.document_type, d.expiry_date, d.issue_date, d.created_at
+            FROM documents d
+            WHERE d.client_id = $1
+            AND {document_visibility_clause("d")}
+            AND (
+                LOWER(d.document_type) LIKE '%kitas%'
+                OR LOWER(d.document_type) LIKE '%kitap%'
+                OR LOWER(d.document_type) LIKE '%visa%'
+                OR LOWER(d.document_type) LIKE '%voa%'
+            )
+            ORDER BY (d.expiry_date IS NULL) ASC, d.expiry_date DESC, d.created_at DESC
+            """,
+            client_id,
+        )
+        grace_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).date()
+        for row in rows:
+            if not _is_visa_family_document_type(row["document_type"]):
+                continue
+            expiry = row["expiry_date"]
+            if expiry is None or expiry > grace_cutoff:
+                return row
+        return None
 
     # ================================================
     # DASHBOARD
@@ -81,6 +150,30 @@ class PortalDashboardMixin:
                 )
             except Exception as e:
                 logger.warning("Could not fetch visa practice: %s", e)
+
+            # Fallback: no practice-based visa, but the client may still
+            # have a client-visible visa-family document (see PR body for
+            # the 691/741 measurement). Never runs when a practice was
+            # already found — practices ALWAYS take precedence, so a client
+            # this already worked for sees no change.
+            if visa_practice is None:
+                try:
+                    visa_document = await self._get_latest_visible_visa_document(
+                        conn, client_id
+                    )
+                except Exception as e:
+                    logger.warning("Could not fetch fallback visa document: %s", e)
+                    visa_document = None
+                if visa_document is not None:
+                    visa_practice = {
+                        "status": "completed",
+                        "expiry_date": visa_document["expiry_date"],
+                        "code": None,
+                        "name": (visa_document["document_type"] or "").replace(
+                            "_", " "
+                        )
+                        or "Immigration Document",
+                    }
 
             # Get companies
             companies = []
@@ -212,7 +305,7 @@ class PortalDashboardMixin:
             }
 
         today = datetime.now(timezone.utc).date()
-        expiry = visa_practice["expiry_date"].date() if visa_practice["expiry_date"] else None
+        expiry = _as_date(visa_practice["expiry_date"]) if visa_practice["expiry_date"] else None
         days_left = (expiry - today).days if expiry else None
 
         # Determine status based on practice status and expiry
@@ -240,6 +333,49 @@ class PortalDashboardMixin:
             if visa_practice["expiry_date"]
             else None,
             "daysRemaining": days_left,
+        }
+
+    def _build_visa_current(
+        self,
+        *,
+        status_is_completed: bool,
+        completion_date,
+        expiry_date,
+        visa_type: str,
+        permit_number: str,
+        sponsor: str = "Bali Zero Indonesia",
+    ) -> dict[str, Any]:
+        """Build `VisaInfo.current` (get_visa_status's detailed shape) from
+        EITHER a practice or a document — one implementation so the two
+        sources can't drift apart the way `_build_visa_dashboard_data`
+        already guards against for the dashboard tile.
+
+        Preserves the practice branch's original quirk verbatim: a
+        permit with NO expiry_date reads `days_left = 0` -> status
+        "expired", never "active" — not touched here (out of scope, and
+        changing it would regress the clients this already worked for).
+        """
+        today = datetime.now(timezone.utc).date()
+        expiry = _as_date(expiry_date) if expiry_date else None
+        days_left = (expiry - today).days if expiry else 0
+
+        if days_left <= 0:
+            status = "expired"
+        elif status_is_completed:
+            status = "active"
+        else:
+            status = "pending"
+
+        issue = _as_date(completion_date) if completion_date else None
+
+        return {
+            "type": visa_type,
+            "status": status,
+            "issueDate": issue.strftime("%d %b %Y") if issue else "-",
+            "expiryDate": expiry.strftime("%d %b %Y") if expiry else "-",
+            "daysRemaining": max(0, days_left),
+            "permitNumber": permit_number,
+            "sponsor": sponsor,
         }
 
     def _get_tax_status(self, next_deadline) -> str:
@@ -395,7 +531,10 @@ class PortalDashboardMixin:
                 else:
                     raise
 
-            # Get immigration documents
+            # Get immigration documents — whitelist is case-INsensitive:
+            # production stores 'MERP' uppercase-only (measured 2026-09-21,
+            # zero lowercase rows) and the old exact-match `IN` silently
+            # dropped every one of them.
             documents = await conn.fetch(
                 f"""
                 SELECT d.id, d.document_type, d.file_name, d.status,
@@ -403,7 +542,7 @@ class PortalDashboardMixin:
                 FROM documents d
                 WHERE d.client_id = $1
                 AND {document_visibility_clause("d")}
-                AND d.document_type IN (
+                AND LOWER(d.document_type) IN (
                     'passport', 'photo', 'cv', 'sponsor_letter',
                     'sktt', 'stm', 'kitas_card', 'merp', 'visa'
                 )
@@ -412,40 +551,46 @@ class PortalDashboardMixin:
                 client_id,
             )
 
+            # Fallback: no completed, unexpired visa PRACTICE, but the
+            # client may still have a client-visible visa-family document
+            # (see PR body — 691/741 measured clients). Practices ALWAYS
+            # take precedence when present, so a client this already
+            # worked for sees no change.
+            visa_document = None
+            if current_visa is None:
+                try:
+                    visa_document = await self._get_latest_visible_visa_document(
+                        conn, client_id
+                    )
+                except Exception as e:
+                    logger.warning("Could not fetch fallback visa document: %s", e)
+                    visa_document = None
+
             # Build current visa response (matching frontend VisaInfo.current)
-            current = None
             if current_visa:
-                today = datetime.now(timezone.utc).date()
-                expiry = current_visa["expiry_date"].date() if current_visa["expiry_date"] else None
-                days_left = (expiry - today).days if expiry else 0
-
-                # Determine status
-                if days_left <= 0:
-                    status = "expired"
-                elif current_visa["status"] == "completed":
-                    status = "active"
-                else:
-                    status = "pending"
-
                 visa_type = (
                     f"{current_visa['code']} - {current_visa['type_name']}"
                     if current_visa["code"]
                     else current_visa["type_name"]
                 )
-
-                current = {
-                    "type": visa_type,
-                    "status": status,
-                    "issueDate": current_visa["completion_date"].strftime("%d %b %Y")
-                    if current_visa["completion_date"]
-                    else "-",
-                    "expiryDate": current_visa["expiry_date"].strftime("%d %b %Y")
-                    if current_visa["expiry_date"]
-                    else "-",
-                    "daysRemaining": max(0, days_left),
-                    "permitNumber": f"KITAS-{current_visa['id']:06d}",  # Generated permit number
-                    "sponsor": "Bali Zero Indonesia",  # Default sponsor
-                }
+                current = self._build_visa_current(
+                    status_is_completed=current_visa["status"] == "completed",
+                    completion_date=current_visa["completion_date"],
+                    expiry_date=current_visa["expiry_date"],
+                    visa_type=visa_type,
+                    permit_number=f"KITAS-{current_visa['id']:06d}",  # Generated permit number
+                )
+            elif visa_document is not None:
+                current = self._build_visa_current(
+                    status_is_completed=True,
+                    completion_date=visa_document["issue_date"],
+                    expiry_date=visa_document["expiry_date"],
+                    visa_type=(visa_document["document_type"] or "").replace("_", " ")
+                    or "Immigration Document",
+                    permit_number=f"DOC-{visa_document['id']:06d}",
+                )
+            else:
+                current = None
 
             # Build history response (matching frontend VisaHistoryItem)
             history = []
@@ -503,7 +648,13 @@ class PortalDashboardMixin:
                         "id": str(d["id"]),
                         "name": d["file_name"],
                         "type": d["document_type"],
-                        "category": category_map.get(d["document_type"], "Other"),
+                        # category_map keys are lowercase; look up
+                        # case-insensitively too, or the same 'MERP'
+                        # uppercase rows the whitelist fix now surfaces
+                        # would fall through to "Other".
+                        "category": category_map.get(
+                            (d["document_type"] or "").lower(), "Other"
+                        ),
                         "status": status_map.get(d["status"], "pending"),
                         "uploadDate": d["created_at"].strftime("%d %b %Y")
                         if d["created_at"]

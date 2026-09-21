@@ -121,8 +121,20 @@ VISIBILITY_HELPER_NAME = "document_visibility_clause"
 # structural half of the decision and it is NOT expressible in this
 # registry, which only scans PortalService mixins — recorded here so the
 # next reader of this file knows the front door moved too.
+#
+# One name was ADDED 2026-09-21: `_get_latest_visible_visa_document`, a NEW
+# private helper (`get_dashboard`/`get_visa_status`'s fallback source when a
+# client has a visa-family `documents` row but no matching `practices` row —
+# 691 of 741 measured clients, the "No active visa information" portal bug).
+# This is not a narrowing decision: the helper calls
+# `document_visibility_clause()` from its first line specifically so an
+# archived-client or soft-deleted document can never surface as someone's
+# "current visa" — the SAME policy its two callers already enforce for
+# their own reads (both already in this registry), applied to a NEW query
+# rather than removed from an existing one.
 DELETED_AT_GUARD_REGISTRY = frozenset(
     {
+        "_get_latest_visible_visa_document",
         "_get_profile_data",
         "download_document",
         "get_company_detail",
