@@ -46,7 +46,7 @@ The claim, that the non-comment lines are unchanged, stands. Only the algorithm'
 ## 3. Receipt 4's `ts: "2026-09-21T19:5xZ"` — WITA, not UTC
 
 The pack's two commits are `2d413b8352` at `2026-09-21T20:08:54+08:00` and `77e7ede3f6` at
-`2026-09-21T20:09:14+08:00`, which is 12:08Z (`git log --format='%h %ad' --date=iso-strict`).
+`2026-09-21T20:09:14+08:00`, that is 12:08:54Z and 12:09:14Z (`git log --format='%h %ad' --date=iso-strict`).
 A receipt taken before them at "19:5x" is 19:5x WITA, which is **11:5xZ**. The trailing `Z` is
 wrong. Receipts 1–3 (`11:0xZ`, `09:0xZ`) were not re-derived here.
 
