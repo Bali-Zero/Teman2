@@ -2005,6 +2005,73 @@ def test_innocence_vo_b4_edge_label_wrong_filename_not_approved() -> None:
     )
 
 
+# GATE-B4-SECRETS M1 (2026-09-21): the 12 lines detect-secrets actually
+# flags as "Base64 High Entropy String" in EACH of the two checked-in
+# manifests (`prove-live-b2c-c3-manifest-raw-20260920.json` and
+# `prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json`) — identical
+# line numbers and content in both files, re-verified 2026-09-21 with
+# `detect-secrets scan --baseline .secrets.baseline` on the two paths. The
+# longest value here, `SHAREHOLDER_COMMISSIONER` (24 chars), is the bound
+# that sized the `{1,32}` value-length cap added to rule 1 below.
+VO_B4_REAL_EDGE_LABEL_ALL_FLAGGED_LINES = [
+    '        "label": "edge/application_channel=STATUS_BRIDGING",',
+    '        "label": "edge/family_relation=STEPCHILD",',
+    '        "label": "edge/family_sponsor_permit_basis=MARITIME_CREW",',
+    '        "label": "edge/family_sponsor_permit_basis=FOREIGN_INVESTMENT",',
+    '        "label": "edge/family_sponsor_permit_basis=SCIENTIFIC_RESEARCH",',
+    '        "label": "edge/family_sponsor_permit_basis=EDUCATION",',
+    '        "label": "edge/family_sponsor_permit_basis=FAMILY_REUNIFICATION",',
+    '        "label": "edge/family_sponsor_permit_basis=REPATRIATION",',
+    '        "label": "edge/family_sponsor_permit_basis=SECOND_HOME",',
+    '        "label": "edge/family_sponsor_permit_basis=MEDICAL_TREATMENT",',
+    '        "label": "edge/family_sponsor_permit_basis=WORKING_HOLIDAY",',
+    '        "label": "edge/investment_role=SHAREHOLDER_COMMISSIONER",',
+]
+
+
+def test_guilt_vo_b4_edge_label_all_flagged_lines_approved() -> None:
+    """Every one of the 12 lines detect-secrets actually flags in the real
+    manifests — not just the 3-line sample above — is still approved after
+    the M1 value-length bound. Includes the longest real value on record
+    (`SHAREHOLDER_COMMISSIONER`, 24 chars)."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    for line in VO_B4_REAL_EDGE_LABEL_ALL_FLAGGED_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+    longest = max(
+        VO_B4_REAL_EDGE_LABEL_ALL_FLAGGED_LINES,
+        key=lambda line: len(line.split("=", 1)[1].rstrip('",')),
+    )
+    assert "SHAREHOLDER_COMMISSIONER" in longest
+
+
+def test_innocence_vo_b4_edge_label_uppercase_hex_credential_not_approved() -> None:
+    """A 64-char all-uppercase hex value dressed as an edge label (GATE-
+    B4-SECRETS M1: this exact shape was auto-approved before the value
+    class was bounded) is not approved."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    value = "A3F5C9E1B7D2048697FEDCBA0123456789ABCDEF0123456789ABCDEF01234567"
+    assert len(value) == 64
+    line = f'        "label": "edge/upper_hex={value}",'
+    assert content_pat.match(line) is None
+
+
+def test_innocence_vo_b4_edge_label_value_over_bound_not_approved() -> None:
+    """A value one character past the {1,32} bound (33 chars, still a
+    plausible SCREAMING_SNAKE shape) is not approved — the cap is on
+    LENGTH, not on shape, so it has to bite exactly at N+1."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    value = "A" * 33
+    assert len(value) == 33
+    line = f'        "label": "edge/x={value}",'
+    assert content_pat.match(line) is None
+
+
+# A mixed-case/lowercase value on `label` is already covered by
+# test_innocence_vo_b4_edge_label_lowercase_value_not_approved above — the
+# M1 fix only bounds LENGTH on the existing [A-Z0-9_] class, it does not
+# touch case handling, so no duplicate test is added here.
+
+
 def test_vo_b4_content_hash_rule_registered_and_scoped() -> None:
     """Same path scope as the edge-label rule (both content-keyed rules
     share the prove-live-*.json path pattern; the CONTENT half is what
