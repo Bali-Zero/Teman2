@@ -13,6 +13,7 @@ title (or the pager).
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 PAJAK_DOMAIN = "https://pajak.go.id"
@@ -160,3 +161,147 @@ def parse_link_items(html: str) -> list[tuple[str, str]]:
             best[url] = text
 
     return list(best.items())
+
+
+# ─── peraturan DETAIL page — citation + verbatim excerpt for admission ──────
+#
+# A pajak.go.id peraturan detail page is Drupal `node--type-peraturan`: the
+# jenis/nomor/tanggal/body live in four `field--name-field-*` containers.
+# The body field is a WYSIWYG table that nests further divs/spans — a plain
+# regex on the whole page (like the index parser above) would either grab
+# too little or bleed into a sibling field, so this walks tags with a depth
+# counter per active field container instead.
+
+_VOID_TAGS = frozenset({
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+})
+
+_DETAIL_FIELD_MARKERS = {
+    "jenis": "field--name-field-jenis-dokumen",
+    "nomor": "field--name-field-nomor-dokumen",
+    "tanggal": "field--name-field-tanggal-peraturan",
+    "body": "field--name-field-body-dalam-html",
+}
+
+_CUT_KEYWORD_RE = re.compile(r"\b(?:menimbang|mengingat)\b", re.IGNORECASE)
+_EXCERPT_MAX_CHARS = 700
+
+
+def _collapse_ws(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+
+class _DetailFieldExtractor(HTMLParser):
+    """Collects the text of each `_DETAIL_FIELD_MARKERS` container by class-substring match.
+
+    Only ONE field is "active" at a time; its own nesting depth (void tags excluded — they
+    never get a matching end tag, self-closed or not) decides when the container ends, so an
+    inner `<div>`/`<span>` inside e.g. the body field never closes it early. The `tanggal`
+    field's `<time datetime="...">` value is captured separately since that is the actual date,
+    not display text like "12-05-2026".
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.texts: dict[str, list[str]] = {name: [] for name in _DETAIL_FIELD_MARKERS}
+        self.tanggal_datetime: str | None = None
+        self._active: str | None = None
+        self._depth = 0
+
+    def _maybe_capture_time(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._active == "tanggal" and tag == "time" and self.tanggal_datetime is None:
+            dt = dict(attrs).get("datetime")
+            if dt:
+                self.tanggal_datetime = dt
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._maybe_capture_time(tag, attrs)
+        if self._active is None:
+            cls = dict(attrs).get("class") or ""
+            for name, marker in _DETAIL_FIELD_MARKERS.items():
+                if marker in cls:
+                    self._active = name
+                    self._depth = 1
+                    return
+            return
+        if tag not in _VOID_TAGS:
+            self._depth += 1
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        # Self-closed tag (`<br />`, `<img ... />`) — no separate end tag will arrive, so it
+        # never changes depth, void or not.
+        self._maybe_capture_time(tag, attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._active is None or tag in _VOID_TAGS:
+            return
+        self._depth -= 1
+        if self._depth <= 0:
+            self._active = None
+            self._depth = 0
+
+    def handle_data(self, data: str) -> None:
+        if self._active:
+            self.texts[self._active].append(data)
+
+
+def extract_regulation(html: str) -> dict | None:
+    """Citation + verbatim excerpt from a pajak.go.id peraturan DETAIL page.
+
+    Returns `None` if the body field (`field--name-field-body-dalam-html`) is absent — there is
+    nothing to quote. Otherwise returns `{"citation", "verbatim_excerpt", "regulation_date",
+    "jenis", "nomor"}`; `citation` and `verbatim_excerpt` are `None` together when the heading
+    cannot be found in the body — this never fabricates or paraphrases a citation, because the
+    downstream admission rule (`_statement_is_from_source`) requires `citation` to occur as a
+    literal, delimited token inside `verbatim_excerpt`, and a synthesized citation would either
+    fail that check or, worse, pass it on text nobody actually wrote.
+    """
+
+    parser = _DetailFieldExtractor()
+    parser.feed(html)
+
+    body_text = _collapse_ws(" ".join(parser.texts["body"]))
+    if not body_text:
+        return None
+
+    jenis = _collapse_ws(" ".join(parser.texts["jenis"])) or None
+    nomor = _collapse_ws(" ".join(parser.texts["nomor"])) or None
+    regulation_date = parser.tanggal_datetime
+
+    citation = None
+    if jenis and nomor:
+        heading_re = re.compile(
+            rf"{re.escape(jenis)}(?:\s+REPUBLIK\s+INDONESIA)?\s+NOMOR\s+{re.escape(nomor)}",
+            re.IGNORECASE,
+        )
+        m = heading_re.search(body_text)
+        if m:
+            citation = m.group(0)
+    if citation is None and nomor:
+        m = re.search(rf"NOMOR\s+{re.escape(nomor)}", body_text, re.IGNORECASE)
+        if m:
+            citation = m.group(0)
+
+    verbatim_excerpt = None
+    if citation is not None:
+        start = body_text.find(citation)
+        hard_limit = min(start + _EXCERPT_MAX_CHARS, len(body_text))
+        cut_m = _CUT_KEYWORD_RE.search(body_text, start)
+        if cut_m and cut_m.start() <= hard_limit:
+            end = cut_m.start()
+        else:
+            end = hard_limit
+            if end < len(body_text):
+                last_ws = body_text.rfind(" ", start, end)
+                if last_ws > start:
+                    end = last_ws
+        verbatim_excerpt = body_text[start:end].rstrip()
+
+    return {
+        "citation": citation,
+        "verbatim_excerpt": verbatim_excerpt,
+        "regulation_date": regulation_date,
+        "jenis": jenis,
+        "nomor": nomor,
+    }

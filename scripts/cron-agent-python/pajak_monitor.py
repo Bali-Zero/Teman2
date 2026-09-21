@@ -32,13 +32,23 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main, web_search
 from browser_job import BrowserJob
-from pajak_parse import parse_link_items, parse_peraturan_index, source_host
+from pajak_parse import (
+    PAJAK_DOMAIN,
+    extract_regulation,
+    parse_link_items,
+    parse_peraturan_index,
+    source_host,
+)
 
 PAJAK_PERATURAN_URL = "https://pajak.go.id/id/index-peraturan"
 PAJAK_SIARAN_PERS_URL = "https://pajak.go.id/id/siaran-pers-page"
+PAJAK_PERATURAN_DETAIL_PREFIX = f"{PAJAK_DOMAIN}/id/peraturan/"
 
 REDIS_KEY_SEEN = "bz:pajak:seen_urls"
 REDIS_EXPIRY = 86400 * 90  # 90 days
+
+DETAIL_FETCH_CAP = 10
+EXTRACTOR_NAME = "pajak_parse.extract_regulation/1"
 
 INTEL_INCOMING_DIR = Path.home() / ".intel_scraper" / "incoming"
 
@@ -104,6 +114,9 @@ class PajakMonitorJob(BrowserJob):
                 output="no_new_regulations",
             )
 
+        # Peraturan detail enrichment (citation + verbatim excerpt for admission)
+        await self._enrich_peraturan_details(new_items)
+
         # Mark seen + write Intel feed
         await self._mark_seen([i["url"] for i in new_items])
         intel_count = self._write_intel_feed(new_items)
@@ -134,6 +147,38 @@ class PajakMonitorJob(BrowserJob):
         except Exception as e:
             self.logger.warning("fetch_error", url=url, error=str(e))
             return []
+
+    async def _enrich_peraturan_details(self, items: list[dict]) -> None:
+        """Fetch the detail page for NEW peraturan items and attach the extracted
+        citation/excerpt/date under `item["_detail"]`.
+
+        Best-effort, same fetch discipline as `_fetch_page_items` (robots check +
+        `random_delay` + `fetch_page`), capped at `DETAIL_FETCH_CAP` fetches. A
+        fetch or extract failure just leaves the item without `_detail` — the
+        existing `published_at`/`raw_payload` fallback in `_write_intel_feed`
+        stays exactly as before for that item.
+        """
+        candidates = [
+            i for i in items
+            if i.get("url", "").startswith(PAJAK_PERATURAN_DETAIL_PREFIX)
+        ][:DETAIL_FETCH_CAP]
+        enriched = 0
+        for item in candidates:
+            url = item["url"]
+            try:
+                if not await self._check_robots(url):
+                    continue
+                await self.random_delay(1.0, 2.0)
+                page = await self.fetch_page(url)
+                detail = extract_regulation(page["html"])
+                if detail and detail.get("citation") and detail.get("verbatim_excerpt") and detail.get("regulation_date"):
+                    item["_detail"] = detail
+                    enriched += 1
+                else:
+                    self.logger.warning("pajak_detail_extract_incomplete", url=url[:120])
+            except Exception as e:
+                self.logger.warning("pajak_detail_fetch_error", url=url[:120], error=str(e))
+        self.log_step("enrich_peraturan", outputs={"candidates": len(candidates), "enriched": enriched})
 
     def _parse_pajak_html(self, html: str, source: str, base_url: str) -> list[dict]:
         """Parse pajak.go.id Drupal HTML for regulation/news links.
@@ -268,6 +313,17 @@ class PajakMonitorJob(BrowserJob):
                     _ch = hashlib.sha256(
                         (item["title"] + " " + item["url"]).encode()
                     ).hexdigest()[:32]
+                    _detail = item.get("_detail")
+                    _raw_payload = {
+                        "pipeline": "intel_stage1",
+                        "type": item.get("type", "tax_regulation"),
+                    }
+                    _published_at = item.get("scraped_at")
+                    if _detail:
+                        _raw_payload["citation"] = _detail["citation"]
+                        _raw_payload["verbatim_excerpt"] = _detail["verbatim_excerpt"]
+                        _raw_payload["extractor"] = EXTRACTOR_NAME
+                        _published_at = _detail["regulation_date"]
                     _lake_enqueue(
                         "pajak_monitor",
                         {
@@ -280,12 +336,9 @@ class PajakMonitorJob(BrowserJob):
                             "language": "id",
                             "jurisdiction": "ID-national",
                             "topic_tags": ["tax", "pajak", item.get("type", "tax_regulation")],
-                            "published_at": item.get("scraped_at"),
+                            "published_at": _published_at,
                             "score": None,
-                            "raw_payload": {
-                                "pipeline": "intel_stage1",
-                                "type": item.get("type", "tax_regulation"),
-                            },
+                            "raw_payload": _raw_payload,
                         },
                     )
                 except Exception as exc:
