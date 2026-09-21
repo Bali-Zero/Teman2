@@ -188,7 +188,7 @@ async def apply_placeholder_plan(conn: asyncpg.Connection, plan: PlaceholderPlan
         entries = [{"target": t, "at": at, "run": run_id, "reason": "placeholder"} for t in plan.remove]
         await conn.execute(
             "UPDATE kg_nodes SET properties = properties || jsonb_build_object($2::text, "
-            "COALESCE(properties->$2::text, '[]'::jsonb) || $3::jsonb), updated_at = NOW() WHERE entity_id = $1",
+            "COALESCE(properties->$2::text, '[]'::jsonb) || $3::text::jsonb), updated_at = NOW() WHERE entity_id = $1",
             entity_id,
             ARCHIVE_KEY,
             json.dumps(entries),
@@ -209,7 +209,7 @@ async def apply_missing_node(conn: asyncpg.Connection, plan: MissingNodePlan) ->
     async with conn.transaction():
         tag = await conn.execute(
             "INSERT INTO kg_nodes (entity_id, entity_type, name, name_id, description, properties, "
-            "confidence, source_collection) VALUES ($1, 'kbli', $2, $2, $3, $4::jsonb, 1.0, $5) "
+            "confidence, source_collection) VALUES ($1, 'kbli', $2, $2, $3, $4::text::jsonb, 1.0, $5) "
             "ON CONFLICT (entity_id) DO NOTHING",
             f"kbli:{plan.code}",
             plan.name,
