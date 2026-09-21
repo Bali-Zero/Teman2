@@ -133,8 +133,13 @@ describe("PMA editorial disclosure boundary", () => {
     // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
     // caps under a different number.
     // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
-    expect(located).toHaveLength(460);
-    expect(gaps).toHaveLength(1099);
+    // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
+    // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
+    // relabelled declared_gap→located. 460→720 located / 1099→839 gaps.
+    // None of the 260 is in the 36-code editorially certified set, so that
+    // count is untouched.
+    expect(located).toHaveLength(720);
+    expect(gaps).toHaveLength(839);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

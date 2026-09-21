@@ -566,7 +566,10 @@ describe("buildKbliFaq — a sourced Bali closure answers even when the national
   });
 
   it("a genuinely unlocated, non-sourced-closure code keeps today's generic unverified answer", () => {
-    const code = getCode("01192") as KBLICode;
+    // 01192 was this test's example until naso PR-5 (residual lot 2) located
+    // it. 62900 carries the same ATTENZIONE_FASCIA_BALI status and stays
+    // declared_gap (withheld by that lot's legacy_pma_prose leg).
+    const code = getCode("62900") as KBLICode;
     expect(code.provenance?.pma.status).toBe("declared_gap");
     expect(code.baliL4).toBeUndefined();
 

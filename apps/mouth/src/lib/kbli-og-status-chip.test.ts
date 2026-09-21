@@ -60,8 +60,11 @@ describe("statusChip — the Bali closure's own scope/conservative-reading cavea
     });
   });
 
-  it("innocence: a genuinely unlocated, non-sourced-closure code (01192) gets the neutral verify chip", () => {
-    const kbli = getCode("01192") as KBLICode;
+  it("innocence: a genuinely unlocated, non-sourced-closure code (62900) gets the neutral verify chip", () => {
+    // 01192 was this test's example until naso PR-5 (residual lot 2) located
+    // it. 62900 carries the same ATTENZIONE_FASCIA_BALI status and stays
+    // declared_gap (withheld by that lot's legacy_pma_prose leg).
+    const kbli = getCode("62900") as KBLICode;
     expect(kbli.provenance?.pma.status).toBe("declared_gap");
     expect(kbli.baliL4).toBeUndefined();
 

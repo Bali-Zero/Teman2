@@ -252,7 +252,11 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
     # categories, 2 whose 2025 judul IS the activity a Lampiran III row caps
     # under a different number).
     # 1428→1099 unlocated.
-    assert len(unlocated) == 1099
+    # 2026-09-21 naso PR-5 (residual lot 2): 260 codes the Perpres partition
+    # leaves RESIDUAL and whose Bali overlay reads ATTENZIONE_FASCIA_BALI —
+    # identical rule to lot 1, Bali axis only — relabelled declared_gap→located
+    # under the same Pasal 3(1)(d) + 3(2) basis. 1099→839 unlocated.
+    assert len(unlocated) == 839
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -281,9 +285,12 @@ def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) ->
     # the tri-state moves from "unknown" to an explicit NOT-reserved verdict —
     # which is exactly what the residual basis asserts: 3→332 False / 1523→1194
     # None. True stays 33: no new record is UMKM-reserved.
+    # 2026-09-21 naso PR-5 (residual lot 2): same reasoning, 260 more codes
+    # (the ATTENZIONE_FASCIA_BALI band) located + TERBUKA + named by no
+    # Lampiran II row: 332→592 False / 1194→934 None. True stays 33.
     assert verdicts.count(True) == 33
-    assert verdicts.count(False) == 332
-    assert verdicts.count(None) == 1194
+    assert verdicts.count(False) == 592
+    assert verdicts.count(None) == 934
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -321,7 +328,10 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     # under a different number).
     # The 329 are all 100%, so the rejected (cap == 0) bucket is untouched:
     # 131→460 located / 96 rejected unchanged.
-    assert len(located) == 460
+    # 2026-09-21 naso PR-5 (residual lot 2): 260 more codes located, all
+    # 100% (rule pin requires pma_max_asing == 100), so the rejected bucket
+    # is untouched again: 460→720 located / 96 rejected unchanged.
+    assert len(located) == 720
     assert len(new_rejected) == 96
     assert new_rejected <= located
 

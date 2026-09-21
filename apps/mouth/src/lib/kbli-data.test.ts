@@ -108,8 +108,11 @@ describe("kbli-data", () => {
     // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
     // caps under a different number.
     // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
-    expect(gaps).toHaveLength(1099);
-    expect(locatedCodes).toHaveLength(460);
+    // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
+    // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
+    // relabelled declared_gap→located. 1099→839 gaps / 460→720 located.
+    expect(gaps).toHaveLength(839);
+    expect(locatedCodes).toHaveLength(720);
     for (const code of gaps) {
       expect(code.pma, code.code).toMatchObject({
         status: "unknown",
@@ -387,8 +390,12 @@ describe("W-J B1 disclose — real-data population", () => {
     );
   });
 
-  it("01192 (ATTENZIONE_FASCIA_BALI, unlocated) stays undisclosed — the rule is additive, not looser", () => {
-    const kbli = getCode("01192");
+  it("62900 (ATTENZIONE_FASCIA_BALI, unlocated) stays undisclosed — the rule is additive, not looser", () => {
+    // 01192 was this test's example until naso PR-5 (residual lot 2) located
+    // it. 62900 carries the same ATTENZIONE_FASCIA_BALI status and stays
+    // declared_gap — withheld by that lot's own legacy_pma_prose leg
+    // (pma_nota/pma_prioritas), not by anything this test is about.
+    const kbli = getCode("62900");
     expect(kbli?.provenance?.pma.status).toBe("declared_gap");
     expect(kbli?.baliL4).toBeUndefined();
   });

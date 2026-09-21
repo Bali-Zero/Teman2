@@ -145,11 +145,14 @@ function pmaDisclosureContract() {
   // no body article «dapat diusahakan oleh semua Penanam Modal». Verdicts are
   // untouched (TERBUKA/100 before and after); only the provenance moves.
   // 1428→1099 / 131→460.
-  assert.equal(gaps.length, 1099, "dataset must contain 1,099 PMA gaps");
+  // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
+  // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
+  // relabelled declared_gap→located. 1099→839 / 460→720.
+  assert.equal(gaps.length, 839, "dataset must contain 839 PMA gaps");
   assert.equal(
     locatedCodes.length,
-    460,
-    "dataset must contain 460 located PMA verdicts",
+    720,
+    "dataset must contain 720 located PMA verdicts",
   );
   for (const code of gaps) {
     assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);

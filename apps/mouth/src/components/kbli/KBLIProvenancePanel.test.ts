@@ -394,8 +394,11 @@ describe("the Bali provenance row — an unlocated sourced closure discloses on 
     expect(html).toContain("baliprov.go.id");
   });
 
-  it("GUILT: a genuinely unlocated, non-sourced-closure code (01192) still withholds the row", () => {
-    const kbli = getCode("01192") as KBLICode;
+  it("GUILT: a genuinely unlocated, non-sourced-closure code (62900) still withholds the row", () => {
+    // 01192 was this test's example until naso PR-5 (residual lot 2) located
+    // it. 62900 carries the same ATTENZIONE_FASCIA_BALI status and stays
+    // declared_gap (withheld by that lot's legacy_pma_prose leg).
+    const kbli = getCode("62900") as KBLICode;
     expect(kbli.provenance?.pma.status).toBe("declared_gap");
     expect(kbli.baliL4).toBeUndefined();
     const row = buildRows(kbli, kbli.provenance as KBLIProvenance).find(

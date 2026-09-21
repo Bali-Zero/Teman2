@@ -81,7 +81,10 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     // penjaminan), and 2 whose 2025 judul IS the activity a Lampiran III row
     // caps under a different number.
     // TERBUKA/100 unchanged: 1428→1099 gaps / 131→460 located.
-    expect(gaps).toHaveLength(1099);
+    // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
+    // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
+    // relabelled declared_gap→located. 1099→839 gaps.
+    expect(gaps).toHaveLength(839);
     for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
     }

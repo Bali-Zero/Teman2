@@ -518,7 +518,10 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // own statute this lane never read, 29 with an adjudicated 4-digit
     // sibling, 19 body-stated categories, and 2 whose 2025 judul IS the
     // activity a Lampiran III row caps under a different number.
-    expect(pmaGaps).toBe(1081);
+    // 1081 - 260 = 821 on 2026-09-21 (naso PR-5, residual lot 2): the same
+    // rule's ATTENZIONE_FASCIA_BALI band leaves declared_gap for located;
+    // these are also plain neutral codes in this count.
+    expect(pmaGaps).toBe(821);
     expect(suffixes).toHaveLength(1559);
   });
 
