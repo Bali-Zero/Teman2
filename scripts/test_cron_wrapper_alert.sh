@@ -40,6 +40,11 @@ GATEWAY="$HERE/tg_notify.py"
 WRAPPER="$HERE/cron-wrapper.sh"
 [ -f "$WRAPPER" ] || { echo "cron-wrapper.sh not found at $WRAPPER"; exit 1; }
 
+# This corpus's own switches are set per case (GATEWAY_MODE=stub run_case ...),
+# never inherited: an exported GATEWAY_MODE=stub would turn every real-gateway
+# case into a stub case.
+unset GATEWAY_MODE STUB_RC
+
 # The wrapper's lock dir is a fixed /tmp path, so every job name carries this
 # run's pid — two concurrent runs of this test must not skip each other.
 SUFFIX="t$$"
@@ -69,9 +74,22 @@ run_case () {  # run_case <job> <cmd...> ; sets RC
     cp "$WRAPPER" "$TMP/run/cron-wrapper.sh"
     if [ "${GATEWAY_MODE:-real}" = "stub" ]; then mkstub "${STUB_RC:-0}"
     else cp "$GATEWAY" "$TMP/run/tg_notify.py"; fi
-    HOME="$TMP/home" CRON_LOG_DIR="$TMP/logs" CRON_MAX_RETRIES=0 \
-        TG_DRY_RUN=1 TG_SPOOL_DIR="$TMP/spool" TG_BOARD_PATH="$TMP/board.jsonl" \
-        bash "$TMP/run/cron-wrapper.sh" "$@" >/dev/null 2>&1
+    # The gateway's environment is PINNED, not inherited (PWC-7033 C2). This corpus
+    # proves the WRAPPER, and reads its key off the board row the gateway writes —
+    # so an ambient TG_ACT_ROUTING_ENABLED=0 or `cron-fail` among the owner families
+    # (the alert goes to Telegram, not the board), or a TG_REPEAT_LADDER_H /
+    # TG_DEATH_FLOOR_H the gateway cannot parse (it dies at import and writes
+    # nothing), turns this corpus red for a reason that has nothing to do with the
+    # wrapper. So every inherited TG_* is dropped, not just the ones known today,
+    # and only the pins below reach the gateway. The owner-families value must be
+    # NON-empty: an empty set disables routing altogether.
+    (
+        for v in $(compgen -e); do case "$v" in TG_*) unset "$v" ;; esac; done
+        HOME="$TMP/home" CRON_LOG_DIR="$TMP/logs" CRON_MAX_RETRIES=0 \
+            TG_DRY_RUN=1 TG_SPOOL_DIR="$TMP/spool" TG_BOARD_PATH="$TMP/board.jsonl" \
+            TG_ACT_ROUTING_ENABLED=true TG_OWNER_FAMILIES=corpus-owner-only \
+            bash "$TMP/run/cron-wrapper.sh" "$@" >/dev/null 2>&1
+    )
     RC=$?
 }
 
@@ -100,6 +118,7 @@ check "the witness records the failure" "$(
     [ -f "$STATE/$NAME.last.json" ] &&
     python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get("status") == "failed" else 1)' \
         "$STATE/$NAME.last.json" && echo 0 || echo 1)"
+check "the row keeps the wrapper's tier (p0)" "$([ "$(board_field origin_tier)" = "p0" ] && echo 0 || echo 1)"
 check "--source still carries the raw name for a human" "$([ "$(board_field context)" = "cron:$JOB" ] && echo 0 || echo 1)"
 
 echo "INNOCENCE — a name with no hyphen is not transformed"

@@ -1,0 +1,53 @@
+gear: 3
+task_id: pwc-7033-c2
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/pwc-7033-c2
+gate_class: opus
+l_level: L2
+objective: >-
+  Close condition C2 of PWC-7033 (.claude/skills/modus/PENDING-ARMS.md) alone.
+  Two prior PRs, #7039 and #7047, each bundled C1 and C2; each time the on-disk
+  gate found C2 SOUND and C1 wrong for the same class of error (a fork-reaching
+  producer the count missed — cron-state.sh in #7039, cron-agent.sh and
+  cron-agent-python/agent_job.py in #7047, 74 entries rather than 52). Per the
+  PR contract, a fix-of-a-fix stops at depth 1: two REWORK-BUILD verdicts on
+  the same count class means the census itself needs a different method — one
+  that finds producers by the gateway they RESOLVE, not by wrapper name — so
+  C1 is suspended rather than hand-counted a third time. C2, found sound by
+  both gates, ships alone from origin/main, unchanged from the commit both
+  judged. C3 waits on a real cron-wrapper failure on Pro and has no code.
+scope:
+  - >-
+    scripts/test_cron_wrapper_alert.sh and .github/workflows/immune-enforcement.yml
+    only — C2 exactly as carried through #7039 and #7047: every inherited TG_*
+    dropped in run_case, routing pinned, GATEWAY_MODE/STUB_RC unset,
+    origin_tier asserted, scripts/tg_notify.py in the antidotes path list.
+constraints:
+  - >-
+    No production change: the commit is cherry-picked verbatim (5f6488019c),
+    content identical to what both on-disk gates judged sound on #7039 and
+    #7047.
+  - >-
+    C1 is out of scope for this PR; it is suspended on the PWC-7033 ledger row,
+    not closed here.
+acceptance:
+  - text: >-
+      C2: WHEN the outer environment carries a hostile gateway knob, the corpus
+      SHALL stay green; origin/main's corpus SHALL go red under the same knobs.
+    probe: >-
+      env "$e" /bin/bash scripts/test_cron_wrapper_alert.sh
+  - text: >-
+      The corpus SHALL catch a wrapper whose alert tier drifts from p0.
+    probe: >-
+      sed -i '' 's/--tier p0/--tier act/' scripts/cron-wrapper.sh
+  - text: >-
+      WHERE a PR touches only scripts/tg_notify.py, the antidotes path filter
+      SHALL set relevant=true.
+    probe: >-
+      the `paths` step of job antidotes, from its last `RELEVANT=false` to the
+      end, extracted with yaml and run under bash with CHANGED=<probe>
+pii: none — cron job names, synthetic state files and environment variable names only.
+local_evidence: >-
+  No Pro access needed for this PR — every receipt runs on M5 against the
+  checkout's own corpus and origin/main's copy of it.
