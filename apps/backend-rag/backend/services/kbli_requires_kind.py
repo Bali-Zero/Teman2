@@ -353,3 +353,36 @@ def permit_name_verdict(entity_id: str | None, name: str | None) -> str:
 def is_named_permit(entity_id: str | None, name: str | None) -> bool:
     """True when this target may be presented to a client as a permit to obtain."""
     return permit_name_verdict(entity_id, name) == "permit"
+
+
+def client_admitted_permit(
+    entity_id: str | None, entity_type: str | None, name: str | None
+) -> bool:
+    """True iff a `REQUIRES` target reaches a client as an admitted permit.
+
+    THE ONE ADMISSION PREDICATE (spec `docs/specs/2026-09-02-kbli-kg-licensing-
+    class-cure-spec.md` §1/§7): the router, the census and the detector all
+    call this — never a second inline copy of the two-stage gate below.
+
+    Extracted verbatim from the router's own inline gate
+    (`apps/backend-rag/backend/app/routers/kbli_notebook.py`, the
+    `licenses_raw` loop building `licenses[]`/`related_requirements`):
+
+        kind = classify_requires_target(lic["target_entity_type"])
+        if kind == "license":
+            kind = permit_name_verdict(lic["entity_id"], lic["name"])
+            if kind == "permit":
+                kind = "license"
+        if kind != "license":
+            related_requirements.setdefault(kind, []).append(lic["name"])
+            continue
+        licenses.append(...)
+
+    i.e. admitted iff the TYPE says permit (`classify_requires_target`) AND
+    the NAME does not demote it (`permit_name_verdict`). Router, census and
+    detector import this one function rather than each re-deriving the
+    two-stage gate.
+    """
+    if classify_requires_target(entity_type) != "license":
+        return False
+    return permit_name_verdict(entity_id, name) == "permit"
