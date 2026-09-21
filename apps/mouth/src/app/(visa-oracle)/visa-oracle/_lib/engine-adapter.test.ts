@@ -2192,6 +2192,18 @@ describe("notices render as named conditions (slice A2)", () => {
         | "assumption.stay_days"
         | "assumption.work_payer"
         | "assumption.remote_clients"
+        // Slice A6-2 delta A6-4b (RATIFIED 2026-09-21T15:20:33Z, gate
+        // H-1): the seven declared-conservative questions get their own
+        // `assumption.*` string naming the value assumed, instead of
+        // falling through to the generic "no value was inferred" text
+        // that was now false for them.
+        | "assumption.secondhome_deposit_usd"
+        | "assumption.secondhome_property_value_usd"
+        | "assumption.secondhome_passive_income_usd"
+        | "assumption.secondhome_state_bank"
+        | "assumption.secondhome_own_name"
+        | "assumption.study_admission_confirmed"
+        | "assumption.study_sponsor_confirmed"
         | "assumption.generic",
     ) => string;
   }
@@ -2233,6 +2245,15 @@ describe("notices render as named conditions (slice A2)", () => {
       "assumption.stay_days",
       "assumption.work_payer",
       "assumption.remote_clients",
+      // Slice A6-2 delta A6-4b: the seven declared-conservative questions'
+      // own assumption strings.
+      "assumption.secondhome_deposit_usd",
+      "assumption.secondhome_property_value_usd",
+      "assumption.secondhome_passive_income_usd",
+      "assumption.secondhome_state_bank",
+      "assumption.secondhome_own_name",
+      "assumption.study_admission_confirmed",
+      "assumption.study_sponsor_confirmed",
       "assumption.generic",
     ] as const) {
       entries.push({ key, language: "en", text: tables.translate("en", key) });
@@ -2272,12 +2293,23 @@ describe("notices render as named conditions (slice A2)", () => {
     "assumption.stay_days",
     "assumption.work_payer",
     "assumption.remote_clients",
+    // Slice A6-2 delta A6-4b (RATIFIED 2026-09-21T15:20:33Z, gate H-1):
+    // the seven declared-conservative questions' own `assumption.*` keys
+    // join the scan too, moving this pin 50 → 64 (seven keys × two
+    // languages = fourteen new entries).
+    "assumption.secondhome_deposit_usd",
+    "assumption.secondhome_property_value_usd",
+    "assumption.secondhome_passive_income_usd",
+    "assumption.secondhome_state_bank",
+    "assumption.secondhome_own_name",
+    "assumption.study_admission_confirmed",
+    "assumption.study_sponsor_confirmed",
     "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes and six assumption keys, both languages (V3, A6-3)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes and thirteen assumption keys, both languages (V3, A6-3 + A6-4b)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(50);
+    expect(entries).toHaveLength(64);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2292,7 +2324,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 50 shipped strings pass the scan clean", () => {
+  it("innocence: all 64 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });

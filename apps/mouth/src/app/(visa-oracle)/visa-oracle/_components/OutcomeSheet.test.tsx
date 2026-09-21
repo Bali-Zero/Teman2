@@ -15,8 +15,9 @@ import {
   SECOND_HOME_STUDIO_URL,
 } from "../_lib/engine-adapter";
 import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
-import { REVIEW_GATE_ITEMS } from "../_lib/tree";
-import { translate } from "../_lib/i18n";
+import { QUESTIONS, REVIEW_GATE_ITEMS } from "../_lib/tree";
+import { translate, type I18nKey } from "../_lib/i18n";
+import { assumptionDisplay } from "./ConfirmationCard";
 import type { Language } from "../_lib/flow";
 import type {
   HumanReviewOutcome,
@@ -735,6 +736,70 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("assumption.trip_scope")).toBeNull();
+  });
+
+  // Slice A6-2 delta A6-4b (RATIFIED 2026-09-21T15:20:33Z, gate H-1): the
+  // seven declared-conservative questions reach the wire as "0"/"no", but
+  // before this delta the receipt still rendered the generic "no value was
+  // inferred" sentence for them — now FALSE, since a value WAS inferred.
+  // `assumptionDisplay` must resolve their own `assumption.<id>` key
+  // instead of falling through to `assumption.generic`, in both languages.
+  const SEVEN_DECLARED_CONSERVATIVE_QUESTIONS = [
+    "secondhome_deposit_usd",
+    "secondhome_property_value_usd",
+    "secondhome_passive_income_usd",
+    "secondhome_state_bank",
+    "secondhome_own_name",
+    "study_admission_confirmed",
+    "study_sponsor_confirmed",
+  ] as const;
+
+  it.each(SEVEN_DECLARED_CONSERVATIVE_QUESTIONS)(
+    "assumptionDisplay names the value assumed for %s instead of falling through to the generic sentence (A6-4b)",
+    (questionId) => {
+      for (const language of ["en", "id"] as const) {
+        const question = QUESTIONS[questionId];
+        const generic = translate(language, "assumption.generic", {
+          question: question
+            ? translate(language, question.i18nKey as I18nKey)
+            : questionId,
+        });
+        const text = assumptionDisplay(language, questionId);
+        expect(text).not.toBe(generic);
+        expect(text).toBe(
+          translate(language, `assumption.${questionId}` as I18nKey),
+        );
+      }
+    },
+  );
+
+  it("the OutcomeSheet receipt renders the specific assumption string, not the generic fallback, for a declared-conservative question", () => {
+    render(
+      <OutcomeSheet
+        language="en"
+        outcome={{
+          ...reviewOutcome(["DISCLOSED_UNCERTAINTY_REVIEW"]),
+          assumptions: [
+            {
+              id: "assumption-1",
+              questionId: "secondhome_deposit_usd",
+              editable: true,
+            },
+          ],
+        }}
+        facts={{ secondhome_deposit_usd: "0" }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        translate("en", "assumption.secondhome_deposit_usd" as I18nKey),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "You marked “Not sure” for “What bank deposit can you document?”; no value was inferred.",
+      ),
+    ).toBeNull();
   });
 
   // flow.ts's EDIT resets the whole interview when its target is absent from

@@ -656,6 +656,20 @@ const en = {
     "You weren’t sure who pays you, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
   "assumption.remote_clients":
     "You weren’t sure where your clients sit, so we recorded that as unresolved; the engine still assessed everything it could, and a Bali Zero advisor confirms this point with you.",
+  "assumption.secondhome_deposit_usd":
+    "You weren’t sure what bank deposit you can document, so we assessed this plan as if the deposit were zero; a Bali Zero advisor confirms the real figure with you.",
+  "assumption.secondhome_property_value_usd":
+    "You weren’t sure what property value you can document, so we assessed this plan as if the property value were zero; a Bali Zero advisor confirms the real figure with you.",
+  "assumption.secondhome_passive_income_usd":
+    "You weren’t sure what passive monthly income you can document, so we assessed this plan as if that income were zero; a Bali Zero advisor confirms the real figure with you.",
+  "assumption.secondhome_state_bank":
+    "You weren’t sure whether the deposit sits at an Indonesian state-owned bank, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+  "assumption.secondhome_own_name":
+    "You weren’t sure whether the full deposit is held in your own name, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+  "assumption.study_admission_confirmed":
+    "You weren’t sure whether an Indonesian institution has confirmed your admission, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
+  "assumption.study_sponsor_confirmed":
+    "You weren’t sure whether the institution or study sponsor has confirmed support, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
   "assumption.generic":
     "You marked “Not sure” for “{{question}}”; no value was inferred.",
 
@@ -1675,6 +1689,20 @@ const id: Record<Keys, string> = {
     "Anda tidak yakin siapa yang menggaji Anda, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikan poin ini bersama Anda.",
   "assumption.remote_clients":
     "Anda tidak yakin di mana klien Anda berada, jadi kami mencatatnya sebagai hal yang belum dipastikan; mesin tetap menilai semua yang bisa dinilai, dan konsultan Bali Zero akan memastikannya bersama Anda.",
+  "assumption.secondhome_deposit_usd":
+    "Anda tidak yakin berapa deposito bank yang dapat Anda buktikan, jadi rencana ini kami nilai seolah depositonya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+  "assumption.secondhome_property_value_usd":
+    "Anda tidak yakin berapa nilai properti yang dapat Anda buktikan, jadi rencana ini kami nilai seolah nilai propertinya nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+  "assumption.secondhome_passive_income_usd":
+    "Anda tidak yakin berapa penghasilan pasif bulanan yang dapat Anda buktikan, jadi rencana ini kami nilai seolah penghasilan itu nol; konsultan Bali Zero akan memastikan angka sebenarnya bersama Anda.",
+  "assumption.secondhome_state_bank":
+    "Anda tidak yakin apakah deposito itu ditempatkan di bank BUMN Indonesia, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+  "assumption.secondhome_own_name":
+    "Anda tidak yakin apakah seluruh deposito itu atas nama Anda sendiri, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+  "assumption.study_admission_confirmed":
+    "Anda tidak yakin apakah institusi di Indonesia sudah mengonfirmasi penerimaan Anda, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
+  "assumption.study_sponsor_confirmed":
+    "Anda tidak yakin apakah institusi atau sponsor studi sudah mengonfirmasi dukungannya, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
   "assumption.generic":
     "Anda memilih “Tidak yakin” untuk “{{question}}”; tidak ada nilai yang diperkirakan.",
 

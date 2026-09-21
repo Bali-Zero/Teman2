@@ -158,30 +158,36 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
   });
 });
 
-// Slice A6-2 (DRAFT-SPEC-A6-1.v3.md §2.4): the wire seam. In THIS PR every
-// `notSure` in `QUESTIONS` is `mode: "human-review"` (A6-1 tags all 54; see
-// `tree.test.ts`'s cardinality pin — 54 human-review, 0 conservative), so
-// `resolveConservativeAnswers` has nothing to substitute and is the
-// identity on the shipped tree. The seam becoming non-trivial is slice
-// A6-2's own guilt proof, run for real on that PR's tree — proving it here
-// would require mutating the shared, imported `QUESTIONS` object, which is
-// exactly the scratch-`cp`-only mutation the builder prompt marks
-// `<!-- body-check: transcript -->` and declares SYNTHETIC rather than
-// commits as a permanent test.
+// Slice A6-2 (DRAFT-SPEC-A6-1.v3.md §2.3/§2.4): the wire seam resolves only
+// the seven declared, one-directional branches. Every remaining unsure stays
+// visible as uncertainty and therefore preserves the human-review hold.
 describe("resolveConservativeAnswers — the wire seam (A6-2)", () => {
-  it("is the identity on the shipped tree: 0 conservative-tagged questions exist", () => {
+  it("resolves exactly the seven declared conservative questions and retains other unsure answers", () => {
     expect(
-      Object.values(QUESTIONS).filter(
-        (q) => q.notSure?.mode === "conservative",
-      ),
-    ).toHaveLength(0);
+      Object.entries(QUESTIONS)
+        .filter(([, q]) => q.notSure?.mode === "conservative")
+        .map(([id]) => id)
+        .sort(),
+    ).toEqual([
+      "secondhome_deposit_usd",
+      "secondhome_own_name",
+      "secondhome_passive_income_usd",
+      "secondhome_property_value_usd",
+      "secondhome_state_bank",
+      "study_admission_confirmed",
+      "study_sponsor_confirmed",
+    ]);
     const facts: OracleFacts = {
       in_indonesia: "unsure",
       work_payer: "unsure",
+      secondhome_state_bank: "unsure",
       birth_date: "1990-01-01",
     };
-    expect(resolveConservativeAnswers(facts)).toEqual(facts);
-    expect(resolveConservativeAnswers(facts)).toBe(facts);
+    expect(resolveConservativeAnswers(facts)).toEqual({
+      ...facts,
+      secondhome_state_bank: "no",
+    });
+    expect(resolveConservativeAnswers(facts)).not.toBe(facts);
   });
 
   it("passes an empty facts object through unchanged", () => {
@@ -1518,6 +1524,61 @@ describe("mapViolationHistory — review_gate -> immigration.violation_history",
 });
 
 describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
+  const CONSERVATIVE_ANSWERS = [
+    ["secondhome_deposit_usd", "secondhome.bank_deposit_usd", "0"],
+    [
+      "secondhome_property_value_usd",
+      "secondhome.qualifying_property_value_usd",
+      "0",
+    ],
+    [
+      "secondhome_passive_income_usd",
+      "secondhome.passive_monthly_income_usd",
+      "0",
+    ],
+    ["secondhome_state_bank", "secondhome.bank_deposit_at_state_bank", "no"],
+    ["secondhome_own_name", "secondhome.bank_deposit_in_own_name", "no"],
+    ["study_admission_confirmed", "study.admission_confirmed", "no"],
+    ["study_sponsor_confirmed", "study.sponsor_confirmed", "no"],
+  ] as const;
+
+  it.each(CONSERVATIVE_ANSWERS)(
+    "direction: substituting %s for UNKNOWN(UNVERIFIED) at %s can only remove candidates or add conditions — never add a candidate or remove a condition",
+    (questionId, factPath, conservativeValue) => {
+      expect(resolveConservativeAnswers({ [questionId]: "unsure" })).toEqual({
+        [questionId]: conservativeValue,
+      });
+      expect(mapDisclosedReviewFlags({ [questionId]: "unsure" })).toEqual([]);
+      expect(mapFacts({ [questionId]: "unsure" }).facts[factPath]).toEqual({
+        status: "KNOWN",
+        value: conservativeValue === "no" ? false : 0,
+      });
+    },
+  );
+
+  it("seam guilt: a conservative unsure does not re-raise NOT_CERTAIN", () => {
+    expect(
+      mapDisclosedReviewFlags({ secondhome_state_bank: "unsure" }),
+    ).not.toContain("NOT_CERTAIN");
+  });
+
+  it("synthetic direction fixture: zero cannot satisfy el.e33e.retirement or el.e33f.retirement at secondhome.passive_monthly_income_usd", () => {
+    const retirementRules = [
+      { id: "el.e33e.retirement", minimumMonthlyIncomeUsd: 3000 },
+      { id: "el.e33f.retirement", minimumMonthlyIncomeUsd: 3000 },
+    ] as const;
+    const mapped = mapFacts({ secondhome_passive_income_usd: "unsure" });
+    const income = mapped.facts["secondhome.passive_monthly_income_usd"];
+    expect(income).toEqual({ status: "KNOWN", value: 0 });
+    if (income.status !== "KNOWN")
+      throw new Error("expected known synthetic income");
+    expect(
+      retirementRules.every(
+        (rule) => income.value < rule.minimumMonthlyIncomeUsd,
+      ),
+    ).toBe(true);
+  });
+
   it("maps UI-only disclosures to the closed backend vocabulary", () => {
     expect(
       mapDisclosedReviewFlags({

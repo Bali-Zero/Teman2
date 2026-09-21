@@ -1147,10 +1147,8 @@ export function stableEvaluationInputKey(request: ApplicantFactsWire): string {
  * `QUESTIONS` declares `notSure: { mode: "conservative", conservativeValue }`,
  * an `"unsure"` answer here is replaced with that value; every other answer,
  * including every `"unsure"` on a `mode: "human-review"` question, passes
- * through unchanged. In THIS PR no question declares `mode: "conservative"`
- * (A6-1 tags all 54 `notSure` blocks `"human-review"` — see `tree.ts`), so
- * this function is the identity on the shipped tree; slice A6-2 is what gives
- * it a non-empty substitution to make. A plain `function` (hoisted), so its
+ * through unchanged. Slice A6-2 gives this function its seven non-empty
+ * substitutions. A plain `function` (hoisted), so its
  * physical position in the file does not shift either call site's line
  * numbers.
  */
