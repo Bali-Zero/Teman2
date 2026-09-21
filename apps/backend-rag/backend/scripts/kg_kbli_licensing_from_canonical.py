@@ -546,9 +546,23 @@ def plan_build(
     ordering: "CURED/DRIFTED are decided before any of the above") — a code
     that is already correctly cured must not be re-refused by a later
     allowlist/phase check that has nothing to do with its current state.
+    The one exception is the placeholder-edge ordering rule (§2/§5 item 8):
+    it is a run-level precondition, not a business-eligibility refusal, so
+    it is checked first and unconditionally — a stale placeholder edge is
+    never excused by a CURED/DRIFTED verdict.
+
+    Deriving the D set for idempotence does not require passing the
+    eligibility gate: `rows` is read straight off the canonical record
+    (`[]` when the code is missing from canonical entirely), so a code that
+    is allowlisted, non-OSS-issued under phase 1a, or absent from the
+    canonical dataset can still be classified CURED/DRIFTED from what the
+    graph already carries.
     """
-    rows = check_eligibility(code, record, allowlist, phase, node_exists, placeholder_present)
-    groups = derive_licence_groups(code, rows)
+    if placeholder_present:
+        raise Refusal(f"{code}: still carries a placeholder edge — run --placeholders-only first (spec §2 ordering)")
+
+    candidate_rows = (record.get("per_skala") or []) if record else []
+    groups = derive_licence_groups(code, candidate_rows) if candidate_rows else []
     targets: dict[str, dict] = {}
     for g in groups:
         props = build_node_properties(g)
@@ -570,7 +584,12 @@ def plan_build(
     if idem.status == "DRIFTED":
         return BuildPlan(code, "drifted", groups, targets, derived_ids, None, idem.detail)
 
+    # UNCURED: the code has no (or no matching) pp28v10 targets on the graph
+    # yet, so the §5 item 1/§2 eligibility gate applies in full.
+    check_eligibility(code, record, allowlist, phase, node_exists, placeholder_present)
+
     admitted_count = len(admitted)
+    pp28_sources = [str(s) for s in record.get("pp28_sources")] if record and record.get("pp28_sources") else None
     state = classify_state(admitted_count, current_status)
     if state == "legacy_served":
         raise Refusal(f"{code}: legacy-served (admitted>=1, REGULATED) — needs --replace-legacy (Phase 2, refused)")
@@ -579,10 +598,8 @@ def plan_build(
     if state == "S3":
         cmp = s3_comparison([name for _, name in admitted], [g.name for g in groups])
         if cmp["match"]:
-            return BuildPlan(code, "relabel", groups, {}, [], None, f"S3 exact match — relabel only: {cmp}")
+            return BuildPlan(code, "relabel", groups, {}, [], pp28_sources, f"S3 exact match — relabel only: {cmp}")
         return BuildPlan(code, "skip_s3", groups, {}, [], None, f"S3 mismatch — nothing written: {cmp}")
-
-    pp28_sources = [str(s) for s in record.get("pp28_sources")] if record and record.get("pp28_sources") else None
     return BuildPlan(code, "build", groups, targets, derived_ids, pp28_sources, f"{state}: {len(targets)} target(s)")
 
 
@@ -716,10 +733,22 @@ async def apply_build_plan(conn: asyncpg.Connection, code: str, plan: BuildPlan,
         await conn.fetchval("SELECT 1 FROM kg_nodes WHERE entity_id = $1 FOR UPDATE", entity_id)
 
         if plan.action == "relabel":
+            # §5.5 node-update fields, minus `_licensing_cure` (declared limit, PR
+            # body §"Rework 1"): an S3 exact-match relabel's target set is the
+            # LEGACY admitted ids, not `perizinan:pp28v10:` ones, so §5.7's
+            # digest-over-derived-ids cannot classify this code CURED on a
+            # rerun — a marker whose digest names ids that do not exist on
+            # this node would be a false claim.
+            skala_union = [s for s in SCALE_ORDER if any(s in g.skala_usaha for g in plan.groups)]
+            set_clauses = "'licensing_status','REGULATED','skala_usaha',$2::text::jsonb"
+            relabel_params: list[Any] = [entity_id, json.dumps(skala_union)]
+            if plan.pp28_sources:
+                set_clauses += ",'pp28_sources',$3::text::jsonb"
+                relabel_params.append(json.dumps(plan.pp28_sources))
             await conn.execute(
-                "UPDATE kg_nodes SET properties = properties || '{\"licensing_status\":\"REGULATED\"}'::jsonb, "
+                f"UPDATE kg_nodes SET properties = properties || jsonb_build_object({set_clauses}), "
                 "updated_at = NOW() WHERE entity_id = $1",
-                entity_id,
+                *relabel_params,
             )
             return
         if plan.action != "build":

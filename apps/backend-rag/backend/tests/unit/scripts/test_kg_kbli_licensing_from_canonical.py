@@ -565,5 +565,85 @@ def test_plan_build_ordering_a_placeholder_edge_refuses_even_when_otherwise_elig
         plan_build("01122", RECORD_01122, frozenset(), "1a", True, True, [], "PENDING_REGULATION", {}, None)
 
 
+# =============================================================================
+# Rework 1 (gate review) — CURED/DRIFTED decided BEFORE eligibility (spec §5.2)
+# =============================================================================
+
+
+def test_plan_build_drifted_reported_even_when_missing_from_canonical_guilt():
+    """A DRIFTED verdict is read off the graph — it does not need a canonical record."""
+    plan = plan_build(
+        "01122",
+        None,  # missing from canonical entirely
+        frozenset(),
+        "1a",
+        True,
+        False,
+        [],
+        "REGULATED",
+        {"perizinan:pp28v10:01122:stale000001": {"stale": True}},
+        {"digest": "stale"},
+    )
+    assert plan.action == "drifted"
+
+
+def test_plan_build_drifted_reported_even_when_allowlisted_guilt():
+    """A DRIFTED verdict is not excused by an allowlist refusal that never gets a chance to fire."""
+    plan = plan_build(
+        "01122",
+        RECORD_01122,
+        frozenset({"01122"}),  # would refuse under check_eligibility
+        "1a",
+        True,
+        False,
+        [],
+        "REGULATED",
+        {"perizinan:pp28v10:01122:stale000001": {"stale": True}},
+        {"digest": "stale"},
+    )
+    assert plan.action == "drifted"
+
+
+def test_plan_build_cured_bypasses_a_would_be_non_oss_refusal_guilt():
+    """A CURED code is not re-refused by a phase/issuer check that has nothing to do with its state."""
+    non_oss_record = {
+        **RECORD_01122,
+        "per_skala": [
+            {**RECORD_01122["per_skala"][0], "persyaratan": ["Lembaga OSS hanya menerbitkan NIB."]},
+            *RECORD_01122["per_skala"][1:],
+        ],
+    }
+    groups = derive_licence_groups("01122", non_oss_record["per_skala"])
+    targets = {target_entity_id("01122", build_node_properties(g)): build_node_properties(g) for g in groups}
+    ids = sorted(targets)
+    d = digest_of_set(ids)
+    marker = {"digest": d}
+    plan = plan_build("01122", non_oss_record, frozenset(), "1a", True, False, [], "REGULATED", targets, marker)
+    assert plan.action == "cured"
+    assert plan.targets == {}
+
+
+def test_plan_build_uncured_allowlisted_code_still_refused_innocence():
+    """Innocence: an UNCURED code gets no free pass — the allowlist refusal still fires."""
+    with pytest.raises(Refusal, match="allowlist"):
+        plan_build("01122", RECORD_01122, frozenset({"01122"}), "1a", True, False, [], "PENDING_REGULATION", {}, None)
+
+
+# =============================================================================
+# Rework 1 (gate review) — relabel writes §5.5 node fields, declared limit on
+# `_licensing_cure` (a relabel's targets are LEGACY ids, not pp28v10 ones, so
+# the digest-over-derived-ids idempotence check cannot classify it CURED)
+# =============================================================================
+
+
+def test_plan_build_relabelled_code_second_run_classifies_legacy_served_and_refuses():
+    """A relabelled S3 code writes `licensing_status=REGULATED`; a rerun sees
+    admitted>=1 + REGULATED (legacy-served) and refuses — 0 further writes,
+    since no pp28v10 targets exist on the graph to be classified CURED."""
+    admitted = [("legacy:1", "NIB"), ("legacy:2", "NIB dan Sertifikat Standar")]
+    with pytest.raises(Refusal, match="legacy-served"):
+        plan_build("90200", RECORD_01122, frozenset(), "1a", True, False, admitted, "REGULATED", {}, None)
+
+
 assert isinstance(BuildPlan, type)  # imported for type-checking clarity in this module
 assert SCALE_ORDER == ("Mikro", "Kecil", "Menengah", "Besar")
