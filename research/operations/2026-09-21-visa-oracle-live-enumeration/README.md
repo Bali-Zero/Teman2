@@ -240,14 +240,14 @@ measured here.
   ```
   $ grep -Ehn '[0-9]{10,}' *.json | sed -E 's/^[0-9]+://; s/^ +//; s/,$//' | sort | uniq -c | sort -rn
    144 "value": 1000000000
+     2 "walksTotalExact": 72165845568960
+     2 "walk_id": "edge/investment_amount_usd=1000000000"
+     2 "label": "edge/investment_amount_usd=1000000000"
      2 "assessment_id": "de42fff9-baff-5c6f-9bd1-590419228296"
      2 "assessment_id": "ca0c4e0e-c3ab-591b-b70e-e8526342957b"
      2 "assessment_id": "ae1d2ad7-ff5f-5d1e-b13e-c22474276960"
      2 "assessment_id": "83475e84-3ca0-5135-af47-033993391374"
      2 "assessment_id": "3c9c8b3c-e8ff-5be8-8c69-0c7118222670"
-     2 "walk_id": "edge/investment_amount_usd=1000000000"
-     2 "label": "edge/investment_amount_usd=1000000000"
-     2 "walksTotalExact": 72165845568960
   ```
 
   The only `passport`-adjacent strings are the notice enum
