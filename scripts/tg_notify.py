@@ -1104,3 +1104,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+# PWC-7054 probe (draft PR, never merged): a change to this file alone must run the cron-wrapper corpus.
