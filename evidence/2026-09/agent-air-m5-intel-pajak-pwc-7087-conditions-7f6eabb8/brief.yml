@@ -1,0 +1,21 @@
+mandate: >-
+  Discharge PWC-7087 C1-C3 and PWC-7074 C1: pin the enrichment's deadline arm
+  and the excerpt anchor with tests, replace the source-text guard on the lake
+  label with a behavioural test that kills the fallback, break and
+  split-literal mutations, and run the pajak test files on every PR that
+  touches them.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py + .github/workflows/pajak-monitor-tests.yml
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  Conditions of the #7087 and #7074 gates; no production write.
+acceptance:
+  - removing or moving the deadline check reds a call-count test
+  - the excerpt starts at the regex match, not the first literal occurrence
+  - fallback label, continue->break and split literal each red a behavioural test
+  - a path-filtered pull_request + merge_group workflow runs both test files
+appetite:
+  wall_clock_hours: 1
