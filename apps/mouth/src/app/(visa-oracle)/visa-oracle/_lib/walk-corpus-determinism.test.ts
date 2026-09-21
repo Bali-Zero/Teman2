@@ -91,8 +91,21 @@ import {
  * `offshore/work/sponsor_government/trade_office_only/employer_no` — the
  * `trade_office_only` branch's own `work_payer` answered "no" instead of the
  * corpus-wide default "yes", the honest trade-office employee whose employer
- * is not an Indonesian entity. No existing fixture changes a byte. */
-const EXPECTED_WALK_COUNT = 112;
+ * is not an Indonesian entity. No existing fixture changes a byte.
+ *
+ * 112 → 115 on A4 (slice A4, mission VISA-ORACLE-DW): three new walks close
+ * twelve of the fourteen `DisclosedReviewFlag` members that no corpus walk
+ * had ever raised — `review_gate` is a comma-joined SET
+ * (`fact-mapper.ts:406`), so `offshore/tourism/disclosed_conditions` carries
+ * nine conditioning items (every mapped, non-holding flag plus the three
+ * live since #6998) in one walk, `offshore/tourism/disclosed_criminal`
+ * carries `criminal_record` ALONE because it HOLDS and empties candidates,
+ * and `offshore/tourism/multi_purpose` answers `trip_scope: "multiple"` for
+ * `MULTI_PURPOSE_TRIP`. The fourteenth member, `CONFLICTING_IMMIGRATION_STATUS`,
+ * is impossible from the interview by construction and is covered by a
+ * census allowlist row instead. No existing fixture changes a byte. See
+ * generate-walk-corpus.ts. */
+const EXPECTED_WALK_COUNT = 115;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

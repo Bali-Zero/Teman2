@@ -952,6 +952,63 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // A4 ("every DisclosedReviewFlag member is raised by at least one walk").
+  // Twelve of the fourteen enum members were raised by no corpus walk before
+  // this block: the eleven `REVIEW_GATE_ITEMS` mapped flags plus
+  // `MULTI_PURPOSE_TRIP` had never been disclosed, because `answerFor`
+  // answers `review_gate` with `"none"` unless a scenario overrides it
+  // (`:181`). `review_gate` is a comma-joined SET (`fact-mapper.ts:406`), so
+  // one walk can carry many items at once — three new walks close all
+  // twelve, not twelve new walks. The fourteenth member,
+  // `CONFLICTING_IMMIGRATION_STATUS`, is impossible from the interview by
+  // construction (every walk's `immigration.overstay_days` is `KNOWN 0`) and
+  // is covered instead by an allowlist row in the census, citing
+  // `test_evaluate_endpoint.py:2641`/`:2727`.
+  scenarios.push({
+    // The nine conditioning gate items in one walk: `CRIMINAL_RECORD` and
+    // `ACTIVITY_BOUNDARY` are HOLDING flags (they empty candidates), so they
+    // are excluded here to keep this walk `SUPPORTED_CANDIDATES` and let it
+    // exercise every non-holding condition code at once. Item order is the
+    // items sorted alphabetically by key — that is the exact string the
+    // browser persists (`QuestionScreen.tsx` `serializeReviewGateAnswer`),
+    // never `REVIEW_GATE_ITEMS` declaration order.
+    label: "offshore/tourism/disclosed_conditions",
+    overrides: {
+      ...base,
+      category: "tourism",
+      review_gate: [
+        "ambiguous_sponsor",
+        "blacklist",
+        "diplomatic_passport",
+        "health_flag",
+        "immigration_investigation",
+        "overstay",
+        "pep_or_sanctions",
+        "prior_refusal",
+        "source_of_funds_unclear",
+      ].join(","),
+    },
+  });
+  scenarios.push({
+    // `criminal_record` ALONE: it HOLDS and empties candidates
+    // (`HOLDING_DISCLOSED_FLAGS`, `evaluate_path.py:1031-1033`), so it cannot
+    // share a walk with the nine conditioning items above without hiding
+    // their condition codes behind the hold. A `HUMAN_REVIEW_REQUIRED`
+    // fixture by design, not a regression.
+    label: "offshore/tourism/disclosed_criminal",
+    overrides: { ...base, category: "tourism", review_gate: "criminal_record" },
+  });
+  scenarios.push({
+    // `trip_scope: "multiple"` raises `MULTI_PURPOSE_TRIP`
+    // (`fact-mapper.ts:589`) and nothing else changes: the flow branch after
+    // `trip_scope` ignores its value (`flow.ts:611-613`), and
+    // `intent.entry_pattern` comes from the separate `entry_pattern`
+    // question. This walk's `asked` and every other override are
+    // byte-identical to `offshore/tourism`'s.
+    label: "offshore/tourism/multi_purpose",
+    overrides: { ...base, category: "tourism", trip_scope: "multiple" },
+  });
+
   return scenarios;
 }
 
