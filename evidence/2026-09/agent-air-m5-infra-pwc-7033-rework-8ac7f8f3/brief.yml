@@ -1,0 +1,69 @@
+gear: 3
+task_id: pwc-7033-rework
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/pwc-7033-rework
+gate_class: opus
+l_level: L2
+objective: >-
+  Close conditions C1 and C2 of PWC-7033 (.claude/skills/modus/PENDING-ARMS.md).
+  A first attempt, #7039, was signed REWORK-BUILD by the on-disk gate: its C2 was
+  sound, its C1 corrected the spec's count of fork-reaching producers to 24 when
+  cron-state.sh — which the spec said resolves the checkout gateway — also reaches
+  the stale fork, because Pro's crontab invokes it through the symlink
+  ~/scripts/cron-state.sh and `dirname "$0"` keeps the link's directory. That
+  branch was frozen by its arming; this one starts from origin/main, carries C2
+  unchanged and rewrites C1 on the measured population. C3 waits on a real
+  cron-wrapper failure on Pro and has no code.
+scope:
+  - >-
+    scripts/test_cron_wrapper_alert.sh and .github/workflows/immune-enforcement.yml
+    — C2 exactly as in #7039: every inherited TG_* dropped in run_case, routing
+    pinned, GATEWAY_MODE/STUB_RC unset, origin_tier asserted, scripts/tg_notify.py
+    in the antidotes path list.
+  - >-
+    docs/specs/seat-board-drain-v1.md — §2's cron-state bullet and row (reaches
+    the fork, routes no); every count of fork-reaching crontab entries 52 (24
+    cron-runner.sh + 28 cron-state.sh); the cited pipeline bounded by `/` and
+    backed by a per-line check; S2.3 step 3 and §9 step 5 extend the inverted
+    resolution to cron-state.sh; A1 starts from the invoked path.
+constraints:
+  - >-
+    No change to the gateway, to any wrapper, or to any crontab. Inverting the
+    resolution and realigning the fork are later steps of the spec's own
+    sequence, each its own PR.
+  - >-
+    Every number in the changed spec lines is measured on Pro on the population
+    it names — entries where it says entries, jobs where it says jobs.
+acceptance:
+  - text: >-
+      C1: the pipeline the spec cites, run on Pro, SHALL print the §2 table's
+      paths and counts, and every active line SHALL carry exactly one wrapper.
+    probe: >-
+      ssh pro: crontab -l | grep -v '^[[:space:]]*#' | grep -oE
+      '[^ ]*/(cron-runner|cron-state|cron-wrapper)\.sh' | sort | uniq -c
+  - text: >-
+      C1: WHEN cron-state.sh is invoked through a symlink whose directory holds a
+      tg_notify.py, the alert SHALL reach that sibling, not the checkout's.
+    probe: >-
+      the real scripts/cron-state.sh copied into a checkout dir, symlinked from a
+      home dir, each dir with a recording tg_notify.py stub, run with a failing job
+  - text: >-
+      C2: WHEN the outer environment carries a hostile gateway knob, the corpus
+      SHALL stay green; origin/main's corpus SHALL go red under the same knobs.
+    probe: >-
+      env "$e" /bin/bash scripts/test_cron_wrapper_alert.sh
+  - text: >-
+      The corpus SHALL catch a wrapper whose alert tier drifts from p0.
+    probe: >-
+      sed -i '' 's/--tier p0/--tier act/' scripts/cron-wrapper.sh
+  - text: >-
+      WHERE a PR touches only scripts/tg_notify.py, the antidotes path filter
+      SHALL set relevant=true.
+    probe: >-
+      the `paths` step of job antidotes, from its last `RELEVANT=false` to the
+      end, extracted with yaml and run under bash with CHANGED=<probe>
+pii: none — cron job names, synthetic state files and environment variable names only.
+local_evidence: >-
+  Pro's crontab, ~/scripts and the gateway copies were read over ssh, read-only,
+  on 2026-09-21. No credential read, no production write.

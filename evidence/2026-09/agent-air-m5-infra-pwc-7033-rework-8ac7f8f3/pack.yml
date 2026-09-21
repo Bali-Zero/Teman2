@@ -1,0 +1,166 @@
+council_run: council-journal.jsonl
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PWC-7033 in .claude/skills/modus/PENDING-ARMS.md (landed in #7034). Successor of #7039, which the on-disk
+  gate signed REWORK-BUILD on C1 alone; #7039 was frozen by its arming, so this branch starts from
+  origin/main, carries C2 unchanged and rebuilds C1 on the population the gate measured.
+lanes:
+  - lane: pwc-7033-rework
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session — verified the gate's finding before acting on it, re-measured every
+      §2 row on Pro, rewrote the spec, carried C2)
+  - lane: pwc-7033-rework-review-sol
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (read-only sandbox, told to attack; two rounds — #7039's first commit, then this
+      branch's spec rewrite; four findings accepted and fixed)
+  - lane: pwc-7033-rework-review-k3
+    role: review
+    seat: >-
+      kimi-code/k3 (told to attack; two rounds, the second with read-only ssh to Pro, where it re-derived
+      every §2 row itself; four findings accepted and fixed)
+  - lane: gate-7039
+    role: ground_truth
+    seat: >-
+      claude-opus-5 (fresh on-disk gate session on #7039, outside the contribution chain; its REWORK-BUILD
+      finding is the defect this branch corrects)
+pii_scan: clean
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two non-Anthropic review families, neither of which wrote a line. Round 2 split usefully: kimi, with
+  Pro in reach, confirmed 52 row by row; codex, without Pro, attacked the METHOD and showed the cited
+  pipeline could not by itself prove a count of entries — the per-line check now in the spec answers it.
+diff:
+  net_lines: >-
+    6 files changed, 306 insertions(+), 34 deletions(-) measured by `git diff --shortstat $(git merge-base origin/main HEAD)..HEAD`. No
+    production line changes: a spec, one workflow path entry, the corpus, and this evidence.
+  behaviour_change: >-
+    None in production. CI's antidotes job runs the cron-wrapper corpus on a PR touching
+    scripts/tg_notify.py, and the corpus reads no TG_* from the environment it is run in.
+receipts:
+  - claim: C1 — every active crontab entry, by invoked path, one wrapper per line
+    cmd: >-
+      ssh pro: crontab -l | grep -v '^[[:space:]]*#' | grep -oE
+      '[^ ]*/(cron-runner|cron-state|cron-wrapper)\.sh' | sort | uniq -c; then grep -cE, grep -o | wc -l and
+      an awk count of lines with more than one wrapper on the same active list
+    result: >-
+      "24 /Users/nuzantara/scripts/cron-runner.sh · 28 /Users/nuzantara/scripts/cron-state.sh · 7
+      /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh · 1
+      /Users/nuzantara/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh — lines 60, tokens 60, unbounded
+      tokens 60, lines with more than one wrapper 0. Distinct job names: cron-runner 21 (run_gap_scanner.sh
+      ×3, run_heartbeat_check.sh ×2), cron-state 28."
+    exit: 0
+    ts: 2026-09-21T09:40:34Z
+    seat: session (M5, read-only over ssh)
+  - claim: C1 — what each invoked path is, and which gateway sits beside it
+    cmd: >-
+      ssh pro: ls -la and readlink on ~/scripts/cron-state.sh, ~/scripts/cron-runner.sh,
+      ~/Desktop/nuzantara, ~/Desktop/nuzantara-deploy; grep -c ACT_ROUTING_ENABLED and sha256 on the three
+      tg_notify.py copies
+    result: >-
+      "~/scripts/cron-state.sh -> /Users/nuzantara/nuzantara/scripts/cron-state.sh (file symlink);
+      ~/scripts/cron-runner.sh a real file, 8335 B; ~/Desktop/nuzantara -> /Users/nuzantara/nuzantara (exists);
+      ~/Desktop/nuzantara-deploy -> /Users/nuzantara/nuzantara-deploy (does not exist).
+      ~/scripts/tg_notify.py: 43358 B, 18 Aug, ACT_ROUTING_ENABLED 0. Checkout and Desktop copies: 55192 B,
+      ACT_ROUTING_ENABLED 7, the same sha256."
+    exit: 0
+    ts: 2026-09-21T09:30:20Z
+    seat: session (M5, read-only over ssh)
+  - claim: C1 — the real cron-state.sh, invoked through a symlink, alerts through the link directory's gateway
+    cmd: >-
+      the real scripts/cron-state.sh copied into a checkout dir, symlinked from a home dir, each dir with a
+      recording tg_notify.py stub, run with a failing job — via the link, via bash on the link, via the target
+    result: "via the link: home · via bash on the link: home · via the target path: checkout — rc 3 each time."
+    exit: 0
+    ts: 2026-09-21T09:33:02Z
+    seat: session (M5)
+  - claim: C2 — the corpus stays green under every hostile gateway knob, and its own switches
+    cmd: >-
+      for e in TG_REPEAT_LADDER_H=abc,def TG_DEATH_FLOOR_H=never TG_DEATH_FLOOR_H= TG_ACT_ROUTING_ENABLED=0
+      TG_OWNER_FAMILIES=cron-fail,x GATEWAY_MODE=stub STUB_RC=9 TG_DRY_RUN=0; do env "$e" /bin/bash
+      scripts/test_cron_wrapper_alert.sh | tail -1; done
+    result: "cron-wrapper alert: 14 passed, 0 failed — eight times, under macOS /bin/bash 3.2."
+    exit: 0
+    ts: 2026-09-21T09:32:33Z
+    seat: session (M5)
+  - claim: C2 — origin/main's corpus goes red under the same knobs
+    cmd: >-
+      git show origin/main:scripts/test_cron_wrapper_alert.sh into scripts/, run under env
+      TG_REPEAT_LADDER_H=abc,def, TG_DEATH_FLOOR_H=never and TG_ACT_ROUTING_ENABLED=0; probe file removed after
+    result: "cron-wrapper alert: 6 passed, 7 failed — all three times."
+    exit: 1
+    ts: 2026-09-21T09:32:41Z
+    seat: session (M5)
+  - claim: MUTATION — a wrapper whose alert tier drifts from p0 is caught
+    cmd: >-
+      sed -i '' 's/--tier p0/--tier act/' scripts/cron-wrapper.sh; /bin/bash scripts/test_cron_wrapper_alert.sh;
+      restore from a cp backup
+    result: >-
+      "13 passed, 1 failed — FAIL the row keeps the wrapper's tier (p0). Restored; git diff and status
+      clean."
+    exit: 1
+    ts: 2026-09-21T09:32:47Z
+    seat: session (M5)
+  - claim: C2 — a PR touching only the gateway now runs the corpus
+    cmd: >-
+      the `paths` step of job antidotes, from its last `RELEVANT=false` to the end, extracted with yaml and
+      run under bash with CHANGED=<probe>, against origin/main's workflow and this branch's
+    result: >-
+      "scripts/tg_notify.py: relevant=false on origin/main, relevant=true here. apps/mouth/README.md: false
+      on both. The corpus step's if: steps.paths.outputs.relevant == 'true' && ledger_only != 'true'."
+    exit: 0
+    ts: 2026-09-21T09:33:11Z
+    seat: session (M5)
+  - claim: The workflow parses, the sibling corpora stay green, the spec is prettier-clean
+    cmd: >-
+      python3 -c "import yaml;yaml.safe_load(open('.github/workflows/immune-enforcement.yml'))";
+      bash scripts/test_cron_state_alert.sh; bash scripts/test_cron_runner_alert.sh;
+      npx --no-install prettier --check docs/specs/seat-board-drain-v1.md
+    result: "parses · pass=11 fail=0 · cron-runner alert corpus: 22 ok, 0 FAIL · All matched files use Prettier code style"
+    exit: 0
+    ts: 2026-09-21T09:32:47Z
+    seat: session (M5)
+  - claim: The deterministic gear floor for this changed-file list is 3, matching the declared gear
+    cmd: >-
+      git diff --name-only $(git merge-base origin/main HEAD) > changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt
+    result: "3 — floor source: path (.github/workflows/immune-enforcement.yml)"
+    exit: 0
+    ts: 2026-09-21T09:43:03Z
+    seat: session (M5)
+dissent:
+  - seat: gate-7039, claude-opus-5 on-disk gate (REWORK-BUILD on #7039 — accepted)
+    objection: >-
+      "cron-state's 28 entries also reach the ~/scripts fork; 24 is measured on cron-runner alone and
+      attributed to every producer that reaches the fork."
+    status: CONFIRMED
+    resolution: >-
+      "Verified by the session before acting: the crontab's invoked paths, the file symlink, the fork's zero
+      ACT_ROUTING_ENABLED, and the real cron-state.sh run through a link. §2, every count and the cure's
+      scope are rewritten here."
+  - seat: codex-gpt-5.6-sol (MEDIUM, round 2 — accepted)
+    objection: >-
+      "The cited pipeline counts tokens with no name boundary: a line with two wrappers counts twice, and
+      wr2-cron-wrapper.sh counts as cron-wrapper.sh. It cannot by itself prove a count of entries."
+    status: CONFIRMED
+    resolution: "Bounded by `/`, and the spec states the per-line check: 60 lines, 60 tokens, 0 double lines."
+  - seat: codex-gpt-5.6-sol (MEDIUM, round 2 — accepted)
+    objection: >-
+      "A1 says never resolve through the link's target — which would reject the cure S2.3 prescribes."
+    status: CONFIRMED
+    resolution: "A1 now starts from the invoked path and applies the resolution of the wrapper version deployed."
+  - seat: kimi-code/k3 (LOW ×2, round 2 — accepted)
+    objection: >-
+      "'52 jobs' where the population is entries (49 distinct jobs); and the cron-wrapper row attaches the
+      symlink to scripts/ instead of the directory ~/Desktop/nuzantara."
+    status: CONFIRMED
+    resolution: "Every such 'jobs' is 'entries', the 49 is stated with its derivation, and the row names the directory link."
+  - seat: session (declared limit)
+    objection: >-
+      "C3, and the ledger's live C2 proof (an antidotes log from a PR touching only scripts/tg_notify.py),
+      are not closed by this PR."
+    status: CONFIRMED
+    resolution: >-
+      "The C2 log proof needs this merged first: a draft probe PR from post-merge origin/main, closed unmerged,
+      quoted on the PWC-7033 row. C3 waits on a real cron-wrapper failure."
