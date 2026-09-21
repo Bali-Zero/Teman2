@@ -1,0 +1,179 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+plan_ref:
+  "Conditions 1 and 2 of the PASS-WITH-CONDITIONS verdict on PR #6968, recorded as a PENDING-ARMS
+  row by PR #6976 with owner `me (sessione M5, prossima lane infra)`. Condition 3 (the vendor
+  ruling) belongs to another lane and is not touched here."
+lanes:
+  - lane: cate-trigger-parity-build
+    role: build
+    seat: claude-opus-5 (conducting session — authored the filter widening, the parity test and the transport fixes)
+  - lane: cate-trigger-parity-refute-codex
+    role: review
+    seat: codex-gpt-5.6 (dispatched with the diff and no defence of it; reproduced every objection by mutating copies under /tmp)
+  - lane: cate-trigger-parity-refute-kimi
+    role: review
+    seat: kimi-code/k3 (second family, dispatched after the first four folds with those four declared closed)
+  - lane: cate-trigger-parity-refute-sol
+    role: review
+    seat: codex-gpt-5.6-sol (third seat, dispatched by the SHIPPING session on the reconciled diff once the first codex seat proved to be astra and outside the quorum pool; read-only, six questions, no defence of the diff)
+diff:
+  behaviour_change:
+    The workflow's path filter becomes a superset of what its own steps read — five suffixes added on
+    both events (.jsx .mjs .yml .yaml .toml) plus the bench corpus, beside the pardon list the vendor
+    fence entered first. Two changed-file transports stop splitting paths on whitespace. Two corpora
+    that no gating workflow ran — the typesafe client pin and the parity suite added here — join the
+    step PR 6989 shipped for exactly that purpose, rather than getting a second step beside it. No
+    lint
+    changes its verdict; the entity step stays advisory.
+  surface:
+    One workflow edit, one new test module, one prose correction in a lint docstring. No backend, no
+    frontend, no migration, no data, no credential, no new dependency in the tree (pyyaml is installed
+    on the runner by the first step that installs anything, for the step below it that needs it).
+receipts:
+  - claim: the five suites the workflow now runs are green, including the new parity test
+    cmd: python3 -m pytest -q scripts/tests/test_ban_predicates.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_cate_trigger_parity.py scripts/tests/test_typesafe_client_pin.py scripts/test_lint_paid_llm_entity.py
+    result: 183 passed in 6.06s
+    exit: 0
+    ts: 2026-09-20T20:49:00Z
+    seat: claude-opus-5
+  - claim: every assertion in the parity test has a guilt half — seven mutations, each red, each on a restored tree
+    cmd: mutate a copy of the workflow (drop **.yml from one event; drop the pardon list; drop a glob from the tree scan; reword 11 back to 16; append !**.yml; comment out the live scan line leaving a stale one; drop the bench corpus) then python3 -m pytest scripts/tests/test_cate_trigger_parity.py -q
+    result: "each mutation reds the assertion that owns it and no other test silently absorbs it; git status clean after each restore"
+    exit: 1
+    ts: 2026-09-20T20:45:00Z
+    seat: claude-opus-5
+  - claim: widening the trigger does not leave main red — the whole tree scans clean under the blocking predicate
+    cmd: git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' | grep -vE '^(.venv|node_modules|vendor)/' > /tmp/t.txt && python3 scripts/lint/lint_ban_prose.py --files-from /tmp/t.txt
+    result: "OK: 10584 file(s) scanned (0 out of scope, 0 not on disk), no prose spells a banned shape; 4 pre-existing unparseable files reported as a warning"
+    exit: 0
+    ts: 2026-09-20T20:20:00Z
+    seat: claude-opus-5
+  - claim: the whitespace transport defect is real and the fix carries the name — measured on the same file, both ways
+    cmd: printf '%s\n' "$DIR/a file.py" | xargs -r python3 scripts/lint/lint_ban_prose.py   vs   --files-from a one-path-per-line list
+    result: "xargs: 0 file(s) scanned (1 out of scope, 1 not on disk), exit 0 — the file was never read. --files-from: 1 file(s) scanned (0 out of scope, 0 not on disk)"
+    exit: 0
+    ts: 2026-09-20T20:47:00Z
+    seat: claude-opus-5
+  - claim: the workflow is schema-clean after the edit
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml
+    result: no diagnostics
+    exit: 0
+    ts: 2026-09-20T20:49:00Z
+    seat: claude-opus-5
+  - claim: the deterministic floor of this diff is 3, and it is the PATH term that sets it, not size
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --numstat-file <numstat> --changed-files-file <names>
+    result: "floor 3, source path (.github/workflows/* is a hot zone); net 274 lines, below the size term"
+    exit: 0
+    ts: 2026-09-20T20:25:00Z
+    seat: claude-opus-5
+  - claim: the newly-consumed corpora make no paid call even when a key IS configured — the question that mattered most, answered by the seat rather than by the author
+    cmd: an independent seat ran the three suites with a synthetic TYPESAFE_API_KEY present and network attempts audited
+    result: "149 passed in 3.02s; exit=0 network_attempts=0"
+    exit: 0
+    ts: 2026-09-20T20:40:00Z
+    seat: codex-gpt-5.6
+  - claim: a second family could not make the cure fake — ten mutations, no BLOCKER and no MAJOR
+    cmd: an independent seat ran M1-M10 (drop a suffix per event, reorder, add an unread suffix, reword both count sentences, grow the pardon list, reformat and comment out the tree scan)
+    result: "the parity assertions bite the original hole in both events; the count and tree-scan tests fail loud under reformat; three MINOR prose/order defects found and folded"
+    exit: 0
+    ts: 2026-09-20T21:05:00Z
+    seat: kimi-code/k3
+  - claim: the runner's default shell does not mask a pardon-growth exit 3 in the blocking step
+    cmd: bash --noprofile --norc -eo pipefail -c 'set -uo pipefail; python3 -c "import sys; sys.exit(3)"; echo SHOULD_NOT_PRINT'
+    result: "rc=3, the echo never printed — GitHub's default `bash -eo pipefail` applies since the workflow sets no shell:"
+    exit: 3
+    ts: 2026-09-20T21:03:00Z
+    seat: kimi-code/k3
+  - claim: "`**.yml` really is a superset — it matches a yml at the repository root AND at any depth"
+    cmd: an independent seat read GitHub's filter-pattern cheat sheet rather than trusting the author's assumption
+    result: "GitHub documents **.js as matching index.js, js/index.js and src/js/app.js; **/*.yml by contrast demands a slash and would MISS a root-level file, which is why the test refuses that spelling"
+    exit: 0
+    ts: 2026-09-20T20:38:00Z
+    seat: codex-gpt-5.6
+  - claim: the seat-to-seat division held across the merge — rebasing onto the landed fence needed no conflict resolution, and what it left was a duplicate, not a contradiction
+    cmd: gh pr view 6989 --json state,mergedAt (MERGED 2026-09-20T22:03:29Z) then git fetch origin main && git rebase origin/main
+    result: "rebase clean, 0 conflicts; the auto-merged filter carried infra/ban-prose/grandfathered.json TWICE per event (both lanes found the same hole) and two corpora steps whose suite lists overlapped on two files — reconciled subtractively, no fence line duplicated and none removed"
+    exit: 0
+    ts: 2026-09-20T22:10:00Z
+    seat: claude-opus-5
+  - claim: the new binding covers the fence's registry by EITHER spelling, and reds for three ways of taking that coverage back
+    cmd: drop "infra/vendor-authorizations/**" from pull_request only; narrow it to "infra/vendor-authorizations"; replace it with "**/*.json" — pytest scripts/tests/test_cate_trigger_parity.py after each, tree restored from a cp backup between mutations
+    result: "mutation 1 → 2 failed (the data test on pull_request + the same-filter test); mutations 2 and 3 → 2 failed (the data test on BOTH events); after restore cmp -s says the file is byte-identical to the backup and 9 passed"
+    exit: 1
+    ts: 2026-09-20T22:24:00Z
+    seat: claude-opus-5
+  - claim: every suite the workflow now runs is green on the rebased tree, the fence's three included
+    cmd: python3 -m pytest -q scripts/tests/test_ban_predicates.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_cate_trigger_parity.py scripts/tests/test_typesafe_client_pin.py scripts/test_lint_paid_llm_entity.py scripts/tests/test_vendor_authorization_fence.py
+    result: 217 passed in 17.93s
+    exit: 0
+    ts: 2026-09-20T22:21:00Z
+    seat: claude-opus-5
+  - claim: the rebased workflow is still schema-clean and the widened filter still leaves main green
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml; then git ls-files -- '*.py' '*.sh' '*.yml' '*.yaml' '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' | grep -vE '^(.venv|node_modules|vendor)/' > /tmp/t.txt && python3 scripts/lint/lint_ban_prose.py --files-from /tmp/t.txt
+    result: "actionlint: no diagnostics, exit 0. prose: OK: 10594 file(s) scanned (0 out of scope, 0 not on disk), no prose spells a banned shape — the 10 extra files are the fence's, the same 4 pre-existing unparseable files are still warned about"
+    exit: 0
+    ts: 2026-09-20T22:35:00Z
+    seat: claude-opus-5
+  - claim: "the first codex seat of this lane was not a registered quorum seat, and the rollout says so rather than the journal"
+    cmd: read the codex rollout whose cwd is this worktree and whose prompt is the nine-question dispatch, then grep its turn_context for the model
+    result: "~/.codex/sessions/2026/09/21/rollout-2026-09-21T04-38-44-01a0c08a-e948-7f01-919b-98b6d267df73.jsonl -> turn_context model=gpt-6-astra effort=high; `astra` appears nowhere in scripts/evidence_pack_lint.py or MODEL_ROSTER.md, so the seat is in neither COUNCIL_REVIEW_SEATS_TITOLARI nor the reserve bench. The kimi seat checked the same way IS legitimate: ~/.kimi-code/sessions/wd_infra-cate-trigger-parity_*/ carries model kimi-code/k3-256k"
+    exit: 0
+    ts: 2026-09-20T22:45:00Z
+    seat: claude-opus-5
+  - claim: "every acceptance probe of this brief ran by name on the shipped tree"
+    cmd: python3 -m pytest scripts/tests/test_cate_trigger_parity.py -v
+    result: "9 passed — test_every_scanned_suffix_starts_the_workflow[pull_request|push], test_the_data_a_step_reads_starts_the_workflow[pull_request|push], test_the_two_events_carry_the_same_filter, test_no_filter_entry_takes_coverage_back[pull_request|push], test_the_push_time_tree_scan_enumerates_the_prose_suffixes, test_the_frozen_count_in_prose_equals_the_list_on_disk"
+    exit: 0
+    ts: 2026-09-20T23:20:00Z
+    seat: claude-opus-5
+  - claim: "the seat's MAJOR does not survive measurement — .secrets.baseline is another workflow's data, not this one's"
+    cmd: grep -rln "secrets.baseline" .github/workflows/ ; grep -n "secrets.baseline" .github/workflows/catE-sovereignty-lint.yml
+    result: "security.yml is the only workflow that reads it; catE-sovereignty-lint.yml never names it, and the parity test binds THIS workflow's filter to what THIS workflow's steps read"
+    exit: 1
+    ts: 2026-09-20T23:02:00Z
+    seat: claude-opus-5
+  - claim: "the seat's MINOR does survive it — the claim about the bench corpus held, the number frozen beside it did not"
+    cmd: inject a grep-CAUGHT guilt case into innocence[0] of scripts/tests/fixtures/paid_llm_entity/bench_cases.json, then python3 -m pytest -q scripts/test_lint_paid_llm_entity.py ; restore from a cp backup
+    result: "1 failed, 85 passed (test_grep_does_not_fire_on_innocence_cases[sanctioned_auth_token]) — not the `1 failed, 19 passed` the comment quoted, because the corpus grew to 26 guilt + 29 innocence on 2026-09-21. Injecting a grep-MISSED guilt case instead gives 86 passed, which is why the first reproduction looked like a refutation and was not. git status clean after restore"
+    exit: 1
+    ts: 2026-09-20T23:10:00Z
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6
+    objection: "MAJOR — bare xargs splits a changed path on whitespace: a file whose name contains a space reached the blocking lint as two paths that are not on disk, and the step exited 0 having scanned nothing. A guard that can be bypassed by naming a file with a space."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6
+    objection: "MAJOR — scripts/tests/fixtures/paid_llm_entity/bench_cases.json is read by the suites this PR starts running, and was in neither filter. Mutating the corpus alone gives `1 failed, 19 passed` in a workflow that the same diff never starts."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6
+    objection: "MINOR — the parity test proves PRESENCE, and presence is not coverage: appending `!**.yml` after the positive pattern left all seven tests green while the filter excluded what it had just admitted."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6
+    objection: "MINOR — the push-time scan reader accepted a COMMENT as evidence: with a glob removed from the live command and the old line left commented above it, all seven tests passed while the executable scan had lost .jsx."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6
+    objection: "UNVERIFIED — `pip install --quiet pytest pyyaml` was never executed on a real ubuntu-latest runner in this review; the local evidence says nothing about the runner's package availability."
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6
+    objection: "The workflow comment claimed the blocking step 'can only red on prose a PR actually authored'. It cannot: the predicate reads the whole file, so touching an old offender reds on its existing lines. The sentence was stronger than the behaviour, in the lane whose subject is sentences that lie about code."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MINOR — the comment this very diff adds says the parity test fails 'in either direction'. It does not: appending a suffix no scanner reads leaves all nine assertions green. A sentence contradicted by the code beside it, in the lane whose subject is exactly that."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MINOR — the same-filter test compared lists, so swapping two entries inside one event, with coverage identical, was reported as `a hole in the tree`. Order means nothing to GitHub; the set is what matters."
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: "MINOR — `it may shrink, never grow` is half the shrink story: releasing a file from the pardon list without curing it in the same diff reds the push-time whole-tree scan on main. Measured behind the 11 pardons: 28 live violations. A pardon is debt, and the prose read like absolution."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "MAJOR — .secrets.baseline is read by a workflow step and appears in neither the paths filter nor DATA_FILES, which is the exact class this lane exists to close. RETRACTED ON MEASUREMENT by the shipping session: the step that reads it belongs to security.yml, and catE-sovereignty-lint.yml never names the file. This test binds catE's filter to what CATE's own steps read; widening it to another workflow's data would be a guard judging what it cannot see."
+    status: RETRACTED
+  - seat: codex-gpt-5.6-sol
+    objection: "MINOR — the filter's justification comment quotes `1 failed, 19 passed` from a corpus that has since grown to 26 guilt + 29 innocence, so the figure no longer reproduces."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "MINOR — the file header states `no paths filter` thirty lines above the paths filter, and has since 2026-06-12. Pre-existing, and in this lane the most expensive place for it to be."
+    status: CONFIRMED

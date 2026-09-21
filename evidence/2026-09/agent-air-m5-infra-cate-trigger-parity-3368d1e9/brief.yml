@@ -1,0 +1,45 @@
+task_id: cate-trigger-parity
+gear: 3
+l_level: L2
+gate_class: opus
+objective: "Make the sovereignty guard start on everything it scans — the suffixes its lints read and the data a step reads — on both events, and lock that parity in a test so the drift cannot return silently. Conditions 1 and 2 of the PASS-WITH-CONDITIONS verdict on PR #6968."
+constraints:
+  - No lint changes its verdict. The filter may only WIDEN; a narrowing would have to be argued in the same diff, and is not attempted here.
+  - The entity step stays advisory. Zero ruled it on 2026-09-21, direct to the fence lane's session, verbatim "accendilo, ma non bloccante" — dropping --advisory is a separate gesture and is not in this diff.
+  - "RULINGS.md and the vendor fence belong to another lane (PR #6989). This diff touches neither; writing law from a second lane would be a sibling-race on a file that IS law."
+  - "Serialized behind #6989, which shares the same workflow file and merged 2026-09-20T22:03:29Z, before this branch was ever pushed. The overlap was divided seat-to-seat: the fence keeps infra/vendor-authorizations/**, the pardon list entry and the corpora step; this lane keeps the suffixes, the bench corpus, the count and the parity test. The division held — the rebase auto-merged both hunks and the reconciliation was subtractive: the duplicated pardon-list entry dropped to one, and this lane's second corpora step dropped in favour of the fence's, which now names two more suites."
+  - "The prose count is corrected, never re-derived at runtime: a sentence and a file must agree, and the test is what makes them."
+acceptance:
+  - text: WHERE a scanner reads a suffix the workflow SHALL start on it, on BOTH events.
+    probe: test_every_scanned_suffix_starts_the_workflow[pull_request|push]
+  - text: WHERE a step reads a DATA file the workflow SHALL start on that file — the PR that grows the pardon list and touches nothing else is the one the anti-growth check exists to judge.
+    probe: test_the_data_a_step_reads_starts_the_workflow[pull_request|push]
+  - text: WHEN the two events' filters diverge the parity test SHALL red, because a hole in one is a hole in the tree.
+    probe: test_the_two_events_carry_the_same_filter
+  - text: WHERE the push-time whole-tree scan enumerates suffixes it SHALL enumerate exactly what the prose scanner reads.
+    probe: test_the_push_time_tree_scan_enumerates_the_prose_suffixes
+  - text: WHEN prose states how many files the pardon list freezes it SHALL equal the count on disk.
+    probe: test_the_frozen_count_in_prose_equals_the_list_on_disk
+  - text: WHEN a suffix is removed from the filter the parity test SHALL fail, naming it — the guilt half, since a green proves only that nothing was checked.
+    probe: four mutations executed on a copy, each red, tree restored clean (receipts)
+  - text: WHERE the DATA of a guard this workflow runs belongs to ANOTHER lane, the filter SHALL still cover it — by the literal path or by the directory glob that lane chose, and by no spelling this reader cannot evaluate.
+    probe: test_the_data_a_step_reads_starts_the_workflow, plus three mutations on the fence's own entry (receipts)
+assumptions:
+  - text: GitHub's `**.yml` path filter matches a workflow yml at any depth AND a repo-root one, so the widened filter is a true superset.
+    status: verified
+    probe: the same shape (`**.py`) has started this workflow on nested .py files since 2026-06-12; a council seat was asked to grade the semantics independently
+  - text: The fan-out cost of starting catE on nearly every PR is acceptable. Accepted by judgment, not measured — the lint declares 'accepted' an unrecognised status, and an unrecognised status is not verification.
+    status: unverified
+    probe: pure-stdlib scan, seconds; the job is NON-REQUIRED, so a slow or absent run blocks nobody
+  - text: The two corpora this lane adds to the fence's step are offline.
+    status: verified
+    probe: 217 tests in 17.9 s with no credential configured, the fence's three suites included; the network path in the entity suite is reached only by --bench, which is not a pytest entry point
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — the widened filter starts this workflow on this PR's own .yml and .py changes, and the parity test runs inside it.
+  - '.github/workflows/catE-sovereignty-lint.yml — the step "Prose must not spell a banned shape (blocking)" now also starts on .jsx .mjs .yaml .yml changed sets, which is the class that produced red #2 of PR #6935.'
+risks:
+  - "The blocking prose step now starts on diffs it never saw before. It fails on any non-pardoned file carrying a violation, not only on what the PR authored, so a PR touching an old offender would red on prose it did not write. Measured against this, and re-measured after the rebase onto the merged fence: the whole tree scans clean today (10594 files, exit 0), so no such file exists to trip on."
+  - The parity test asserts literal filter spellings for SUFFIXES. For data files it now reads two shapes — the literal path and a `dir/**` prefix — because the fence spells its registry as a directory glob; any third shape is treated as no coverage and reds, which is a false alarm by construction and the direction a fail-closed reader has to lean. The inverse (a pattern present but ineffective) is not covered by this test and is left to the council's reading of GitHub's semantics.
+  - Wider fan-out means more runs of a NON-REQUIRED job. Nothing blocks on it, so the cost is runner minutes, not merge latency.
+  - Four Python files already on main do not parse and are reported as unreadable rather than scanned. Pre-existing, documented in the lint, untouched here — adopting someone else's defect would be a second concern.
+grader: Council seats dispatched adversarially and independently, none of them the author; the lane's own claim is never the verdict. Generator is not grader.
