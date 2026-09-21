@@ -1,0 +1,132 @@
+council_run: council-journal.jsonl
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PWC-7033 in .claude/skills/modus/PENDING-ARMS.md (landed in #7034), the conditions of the on-disk gate's
+  PASS-WITH-CONDITIONS verdict on #7033. This PR closes C1 and C2 from a fresh origin/main, as the row
+  orders; C3 waits on a real cron-wrapper failure on Pro and has no code.
+lanes:
+  - lane: pwc-7033-conditions
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session — re-measured Pro's crontab, corrected the spec's count and its
+      cited command, pinned then isolated the corpus's gateway environment, registered the gateway in the
+      antidotes path list)
+  - lane: pwc-7033-conditions-review-sol
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (read-only sandbox, told to attack; seven findings, one MEDIUM and one LOW accepted
+      and fixed, five sound)
+  - lane: pwc-7033-conditions-review-k3
+    role: review
+    seat: >-
+      kimi-code/k3 (told to attack; ran the corpus under every hostile knob it could find and re-measured
+      Pro's crontab; one MEDIUM, converging with codex, and one LOW accepted and fixed)
+pii_scan: clean
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two non-Anthropic review families on the first commit, neither of which wrote a line of it. They
+  converged independently on the same MEDIUM — the pin closed the two knobs the condition named and left
+  the rest of the gateway's environment inherited — which the second commit cures by removal, not by a
+  longer pin list.
+diff:
+  net_lines: >-
+    6 files changed, 237 insertions(+), 16 deletions(-) measured by `git diff --shortstat origin/main...HEAD`. No production line
+    changes: a spec count, one workflow path entry, the corpus, and this evidence.
+  behaviour_change: >-
+    None in production. CI's antidotes job now runs the cron-wrapper corpus on a PR touching
+    scripts/tg_notify.py, and the corpus no longer reads any TG_* from the environment it is run in.
+receipts:
+  - claim: C1 — the command the spec now cites reproduces its table, run verbatim on Pro
+    cmd: >-
+      ssh pro "crontab -l | grep -v '^[[:space:]]*#' | grep -oE '(cron-runner|cron-state|cron-wrapper)\.sh'
+      | sort | uniq -c"
+    result: >-
+      "24 cron-runner.sh · 28 cron-state.sh · 8 cron-wrapper.sh — the table row for row (8 = the 7 that run
+      + kb-ingest). The only `27` left in the spec is the parenthetical that records the correction."
+    exit: 0
+    ts: 2026-09-21T09:10:42Z
+    seat: session (M5, read-only over ssh)
+  - claim: C2 — the corpus stays green under every hostile gateway knob, and its own switches
+    cmd: >-
+      for e in TG_REPEAT_LADDER_H=abc,def TG_DEATH_FLOOR_H=never TG_DEATH_FLOOR_H= TG_ACT_ROUTING_ENABLED=0
+      TG_OWNER_FAMILIES=cron-fail,x GATEWAY_MODE=stub STUB_RC=9 TG_DRY_RUN=0; do env "$e" /bin/bash
+      scripts/test_cron_wrapper_alert.sh | tail -1; done
+    result: "cron-wrapper alert: 14 passed, 0 failed — eight times, under macOS /bin/bash 3.2."
+    exit: 0
+    ts: 2026-09-21T09:0xZ
+    seat: session (M5)
+  - claim: C2 — origin/main's corpus goes red under the two knobs the council found
+    cmd: >-
+      git show origin/main:scripts/test_cron_wrapper_alert.sh into scripts/, then env TG_REPEAT_LADDER_H=abc,def
+      and env TG_DEATH_FLOOR_H=never, each running it; probe file removed after
+    result: "cron-wrapper alert: 6 passed, 7 failed — both times."
+    exit: 1
+    ts: 2026-09-21T09:0xZ
+    seat: session (M5)
+  - claim: MUTATION — a wrapper whose alert tier drifts from p0 is now caught
+    cmd: >-
+      sed -i '' 's/--tier p0/--tier act/' scripts/cron-wrapper.sh; bash scripts/test_cron_wrapper_alert.sh;
+      restore from a cp backup
+    result: >-
+      "13 passed, 1 failed — FAIL the row keeps the wrapper's tier (p0). Before this PR the same mutant
+      passed every check. Wrapper restored, git diff clean."
+    exit: 1
+    ts: 2026-09-21T09:0xZ
+    seat: session (M5)
+  - claim: C2 — a PR touching only the gateway now runs the corpus
+    cmd: >-
+      the `paths` step of job antidotes, from its last `RELEVANT=false` to the end, extracted with yaml and
+      run under bash with CHANGED=<probe>, against origin/main's workflow and this branch's
+    result: >-
+      "scripts/tg_notify.py: relevant=false on origin/main, relevant=true here. apps/mouth/README.md:
+      relevant=false on both."
+    exit: 0
+    ts: 2026-09-21T09:0xZ
+    seat: session (M5)
+  - claim: The workflow parses and the sibling corpora stay green
+    cmd: >-
+      python3 -c "import yaml;yaml.safe_load(open('.github/workflows/immune-enforcement.yml'))";
+      bash scripts/test_cron_state_alert.sh; bash scripts/test_cron_runner_alert.sh
+    result: "parses · pass=11 fail=0 · cron-runner alert corpus: 22 ok, 0 FAIL"
+    exit: 0
+    ts: 2026-09-21T09:10:42Z
+    seat: session (M5)
+  - claim: The deterministic gear floor for this changed-file list is 3, matching the declared gear
+    cmd: >-
+      git diff --name-only origin/main...HEAD > changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file changed.txt
+    result: "3 — floor source: path (.github/workflows/immune-enforcement.yml)"
+    exit: 0
+    ts: 2026-09-21T09:0xZ
+    seat: session (M5)
+dissent:
+  - seat: codex-gpt-5.6-sol and kimi-code/k3 (MEDIUM, converging — accepted)
+    objection: >-
+      "The pin covers the two knobs C2 named. TG_REPEAT_LADDER_H and TG_DEATH_FLOOR_H are parsed with a
+      bare float() at import; garbage in either kills the gateway before it writes a row and turns the
+      corpus 6/7 for a reason unrelated to the wrapper."
+    status: CONFIRMED
+    resolution: >-
+      "Fixed in the second commit by removal: run_case drops every exported TG_* in a subshell and sets only
+      its pins, so a knob added to the gateway later cannot reach the corpus either. The gateway's own
+      unguarded float() is a separate defect of the gateway — every production alert dies on a garbage
+      value there — and is not touched by this PR."
+  - seat: codex-gpt-5.6-sol (LOW, pre-existing — accepted)
+    objection: >-
+      "The corpus never reads origin_tier: a wrapper mutated to --tier act keeps every field it asserts."
+    status: CONFIRMED
+    resolution: "Fixed: the GUILT case asserts origin_tier == p0; the mutant now fails exactly that check."
+  - seat: kimi-code/k3 (LOW — accepted)
+    objection: >-
+      "The corpus pins the gateway's env but not its own switches: an exported GATEWAY_MODE=stub turns every
+      real-gateway case into a stub case."
+    status: CONFIRMED
+    resolution: "Fixed: GATEWAY_MODE and STUB_RC are unset at the top; per-case assignments still apply."
+  - seat: session (declared limit)
+    objection: >-
+      "C3 — the first real cron-fail row on Pro's board carrying an underscore key and an existing witness —
+      is not closed by this PR."
+    status: CONFIRMED
+    resolution: >-
+      "It cannot be: it waits on a real cron-wrapper failure after #7033's merge. It stays open on the
+      PWC-7033 row, with the proof the row names."

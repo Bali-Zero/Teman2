@@ -1,0 +1,65 @@
+gear: 3
+task_id: pwc-7033-conditions
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/pwc-7033-conditions
+gate_class: opus
+l_level: L2
+objective: >-
+  Close conditions C1 and C2 of PWC-7033 (.claude/skills/modus/PENDING-ARMS.md),
+  the PASS-WITH-CONDITIONS verdict on #7033. C1: docs/specs/seat-board-drain-v1.md
+  counted 27 `cron-runner.sh` jobs where Pro's crontab has 27 lines and 24 active,
+  and the command cited above its table had no comment filter, so it could not
+  reproduce the table. C2: scripts/test_cron_wrapper_alert.sh runs the REAL
+  tg_notify.py and reads the key off the board row it writes, so the gateway's
+  routing environment could turn it red for a reason unrelated to the wrapper,
+  and a change to scripts/tg_notify.py did not trigger it at all. C3 is a live
+  observation on Pro's board after a real cron-wrapper failure and has no code.
+scope:
+  - >-
+    docs/specs/seat-board-drain-v1.md — the cited measurement command gains the
+    comment filter, and every `27` that counted cron-runner.sh jobs becomes 24.
+  - >-
+    scripts/test_cron_wrapper_alert.sh — run_case drops every inherited TG_* in a
+    subshell and pins TG_ACT_ROUTING_ENABLED=true and a non-empty
+    TG_OWNER_FAMILIES without cron-fail; the corpus's own switches
+    (GATEWAY_MODE, STUB_RC) are unset at the top; the GUILT case asserts
+    origin_tier == p0.
+  - >-
+    .github/workflows/immune-enforcement.yml — scripts/tg_notify.py joins the
+    `antidotes` job's path list, so a gateway change runs the corpus.
+constraints:
+  - >-
+    No change to the gateway, the wrapper, or any crontab. The gateway's own
+    unguarded float() on TG_REPEAT_LADDER_H / TG_DEATH_FLOOR_H is recorded as a
+    separate defect, not fixed here.
+  - >-
+    Isolation is by removal, not by enumeration: a TG_* knob added to the gateway
+    later cannot reach the corpus either.
+acceptance:
+  - text: >-
+      C1: the command the spec cites, run verbatim on Pro, SHALL print the
+      table's numbers row for row.
+    probe: >-
+      ssh pro "crontab -l | grep -v '^[[:space:]]*#' | grep -oE
+      '(cron-runner|cron-state|cron-wrapper)\.sh' | sort | uniq -c"
+  - text: >-
+      C2: WHEN the outer environment carries a hostile gateway knob (routing off,
+      cron-fail as owner family, an unparseable ladder or death floor), the corpus
+      SHALL stay green; origin/main's corpus SHALL go red under the same knobs.
+    probe: >-
+      env "$e" /bin/bash scripts/test_cron_wrapper_alert.sh
+  - text: >-
+      The corpus SHALL catch a wrapper whose alert tier drifts from p0.
+    probe: >-
+      sed -i '' 's/--tier p0/--tier act/' scripts/cron-wrapper.sh
+  - text: >-
+      WHERE a PR touches only scripts/tg_notify.py, the antidotes path filter
+      SHALL set relevant=true.
+    probe: >-
+      the `paths` step of job antidotes, from its last `RELEVANT=false` to the
+      end, extracted with yaml and run under bash with CHANGED=<probe>
+pii: none — cron job names, synthetic state files and environment variable names only.
+local_evidence: >-
+  Pro's crontab was read over ssh, read-only, on 2026-09-21. No credential read,
+  no production write.
