@@ -95,13 +95,14 @@ INVOKED by: `~/scripts/cron-state.sh` is a FILE symlink into the checkout, so `d
 **S2.0 — Every count in this file of which producers reach which gateway SHALL come from
 `scripts/tg_gateway_census.py` run on the machine it names, never from a count by wrapper name.**
 The census reads `crontab -l` and follows each active entry into what it runs (its docstring lists
-how), running each producer's OWN resolution lines in isolation, never the job. Anything it cannot
+how), running each producer's OWN resolution lines in isolation — never the job, and always inside a
+macOS `sandbox-exec` jail that denies writes, network and exec. Anything it cannot
 run is UNRESOLVED and makes it exit 3. A clean exit means every gateway reference in every file it
 followed was run — not more: a resolver counts if the entry loads it, whether or not a given run
 calls it, and env set by files a job sources at run time is not modelled (on Pro, `grep -c
 TG_NOTIFY_BIN` is 0 in the crontab, `~/.zshrc.secrets` and `~/.nuzantara-secrets.env`, 2026-09-21).
 
-Measured on Pro (`Nuzantara`) at 2026-09-21T13:49Z over all 85 active entries of `crontab -l` —
+Measured on Pro (`Nuzantara`) at 2026-09-21T16:58Z over all 85 active entries of `crontab -l` —
 `ssh pro 'python3 -' < scripts/tg_gateway_census.py`, exit 0, `unresolved=0`:
 
 | resolving code, as invoked                                         | entries | gateway it resolves to                                                                                              | routes?        |

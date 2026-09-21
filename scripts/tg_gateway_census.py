@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """tg_gateway_census.py — which tg_notify.py each active crontab entry actually resolves.
 
-Read-only. PWC-7033 C1: the producers reaching the non-routing HOME fork
+Read-only, and not by promise: every evaluation below runs under sandbox-exec (no write,
+no network, no exec but its own interpreter), and without it the census refuses to run.
+PWC-7033 C1: the producers reaching the non-routing HOME fork
 `~/scripts/tg_notify.py` were counted twice by WRAPPER NAME and were wrong twice
 (#7039: 24, #7047: 52, the #7047 gate: at least 74). This census counts by the
 gateway each entry RESOLVES, running the producer's own resolution code:
@@ -80,6 +82,47 @@ PY_BANNED = (ast.While, ast.Lambda, ast.Global, ast.Nonlocal, ast.Import, ast.Im
              ast.With, ast.AsyncWith, ast.Await)
 INTERPRETER_RE = re.compile(r"^(?:bash|sh|zsh|dash|python[\d.]*|exec|nohup|env|nice|caffeinate|time|timeout)$")
 ENV_PASS_RE = re.compile(r"^(?:TG|NUZANTARA)_\w+$")  # the only env the resolvers on Pro read, besides HOME
+SH_SPECIAL_RE = re.compile(r"^(?:PATH|IFS|ENV|CDPATH|GLOBIGNORE|PS4|PROMPT_COMMAND|SHELLOPTS|FUNCNEST|BASH\w*)$")
+SANDBOX = "/usr/bin/sandbox-exec"
+# Every evaluation runs in a macOS sandbox: no write but /dev/null, no network, no signal to another
+# process, and no exec but the interpreter it was started for (and dirname for bash). The allow-lists
+# above decide what is WORTH running; this decides what CAN happen if one of them is wrong.
+SANDBOX_PROFILE = (
+    '(version 1)(allow default)(deny file-write*)(allow file-write-data (literal "/dev/null"))'
+    "(deny network*)(deny signal (target others))(deny process-exec)(allow process-exec {allow})"
+)
+PY_CHILD = r"""
+import json, os, sys
+from pathlib import Path
+req = json.load(sys.stdin)
+class _Path:  # os.path without a way back to the real os module
+    join, dirname, basename = staticmethod(os.path.join), staticmethod(os.path.dirname), staticmethod(os.path.basename)
+    abspath, realpath = staticmethod(os.path.abspath), staticmethod(os.path.realpath)
+    isfile, exists, expanduser = staticmethod(os.path.isfile), staticmethod(os.path.exists), staticmethod(os.path.expanduser)
+class _Os:
+    path = _Path
+    environ = req["env"]
+    @staticmethod
+    def getenv(k, d=None):
+        return _Os.environ.get(k, d)
+ns = {"__builtins__": {"list": list, "str": str, "len": len}, "Path": Path, "os": _Os, "__file__": req["file"]}
+for src in req["deps"]:
+    try:
+        exec(src, ns)
+    except Exception:
+        pass
+try:
+    exec(req["code"], ns)
+    out = ns[req["call"]]() if req["call"] else ns[req["var"]]
+    print(json.dumps({"out": str(out) if out else ""}))
+except Exception:
+    print(json.dumps({"out": None}))
+"""
+
+
+def _jail(argv: list[str], literals: list[str], subpaths: list[str] = ()) -> list[str]:
+    allow = " ".join([*(f'(literal "{x}")' for x in literals), *(f'(subpath "{x}")' for x in subpaths)])
+    return [SANDBOX, "-p", SANDBOX_PROFILE.format(allow=allow), *argv]
 PY_SPAWN = {"run", "Popen", "call", "check_call", "check_output", "system", "execv", "execvp"}
 
 
@@ -90,7 +133,7 @@ def _expand(word: str, home: str) -> str:
 def _safe_rhs(rhs: str) -> bool:
     """True if bash can evaluate this assignment's right side without running a command."""
     rhs = SUBST_OK_RE.sub("", rhs)
-    if any(t in rhs for t in ("`", "$(", "$[", "\\", "${!")):
+    if any(t in rhs for t in ("`", "$(", "$[", "\\", "${!", "${ ", "${|", "${\t", "${\n")):
         return False
     for inner in re.findall(r"\$\{([^}]*)\}", rhs):  # no subscript, transform or arithmetic offset
         if "[" in inner or "@" in inner or re.match(r"\w+:(?![-=?+])", inner):
@@ -113,6 +156,10 @@ def _calls_ok(nodes: list) -> bool:
         if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef)) and c not in nodes:
             return False
         if isinstance(c, ast.Name) and isinstance(c.ctx, ast.Store) and c.id in PY_NAME_CALLS | {"os"}:
+            return False
+        if isinstance(c, (ast.Attribute, ast.Subscript, ast.Starred)) and isinstance(c.ctx, (ast.Store, ast.Del)):
+            return False
+        if isinstance(c, ast.Delete):
             return False
         if isinstance(c, ast.Call) and not (
             (isinstance(c.func, ast.Name) and c.func.id in PY_NAME_CALLS)
@@ -166,7 +213,7 @@ class Census:
                             if len(refs) == 1 else f"( {step} )")
                 continue
             m = SH_ASSIGN_RE.match(ln)
-            if m and _safe_rhs(m.group(2)):
+            if m and _safe_rhs(m.group(2)) and not SH_SPECIAL_RE.match(m.group(1)):
                 name = m.group(1)
                 body += [f"{name}={m.group(2)}", f'__all_{name}+=("${name}")',
                          f"printf 'V %s=%s\\n' {name} \"${name}\""]
@@ -181,7 +228,8 @@ class Census:
                 name = f.group(1)
                 body += [f'[ -f "${name}" ] || {name}={f.group(2)}', f"printf 'G %s=%s\\n' {name} \"${name}\""]
         proc = subprocess.run(
-            ["bash", "--noprofile", "--norc", "-c", "\n".join(body), zero, *(args or [])],
+            _jail(["/bin/bash", "--noprofile", "--norc", "-c", "\n".join(body), zero, *(args or [])],
+                  ["/bin/bash", "/usr/bin/dirname"]),
             capture_output=True, text=True, timeout=15, cwd=self.home,
             env={**res.env, "HOME": self.home, "PATH": "/usr/bin:/bin"},
         )
@@ -255,22 +303,7 @@ class Census:
     def _py_exec(self, tree: ast.Module, code: list, call: str | None, var: str | None, p: str,
                  res_env: dict | None = None, scope: ast.AST | None = None) -> str | None:
         res_env = res_env or {}
-        class _Path:
-            join, dirname, basename = staticmethod(os.path.join), staticmethod(os.path.dirname), \
-                staticmethod(os.path.basename)
-            abspath, realpath = staticmethod(os.path.abspath), staticmethod(os.path.realpath)
-            isfile, exists, expanduser = staticmethod(os.path.isfile), staticmethod(os.path.exists), \
-                staticmethod(os.path.expanduser)
-
-        class _Os:
-            path = _Path
-            environ = {**res_env, "HOME": self.home}
-
-            @staticmethod
-            def getenv(k, d=None):
-                return _Os.environ.get(k, d)
-
-        ns: dict = {"__builtins__": {"list": list, "str": str, "len": len}, "Path": Path, "os": _Os, "__file__": p}
+        ns = {"Path", "os", "__file__", "list", "str", "len"}
         line = min(getattr(c, "lineno", 0) for c in code)
         parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
         defs: dict[str, list] = {}  # every simple (annotated) assignment with the scope it binds in
@@ -298,18 +331,20 @@ class Census:
                 pick[name] = next((st for st in reversed(glob) if st.lineno < line), glob[0])
             todo += [(n.id, self._scope(pick[name], parents)) for n in ast.walk(pick[name].value)
                      if isinstance(n, ast.Name)]
-        for st in sorted(pick.values(), key=lambda st: st.lineno):
-            if _calls_ok([st]):
-                try:
-                    exec(compile(ast.fix_missing_locations(ast.Module(body=[st], type_ignores=[])), p, "exec"), ns)
-                except Exception:
-                    pass
+        req = {
+            "deps": [ast.unparse(st) for st in sorted(pick.values(), key=lambda st: st.lineno) if _calls_ok([st])],
+            "code": ast.unparse(ast.fix_missing_locations(ast.Module(body=code, type_ignores=[]))),
+            "call": call, "var": var, "file": p, "env": {**res_env, "HOME": self.home},
+        }
+        exe = sys.executable
+        proc = subprocess.run(
+            _jail([exe, "-I", "-S", "-c", PY_CHILD], [exe, os.path.realpath(exe)], [sys.base_prefix]),
+            input=json.dumps(req), capture_output=True, text=True, timeout=15, cwd="/", env={"HOME": self.home},
+        )
         try:
-            exec(compile(ast.fix_missing_locations(ast.Module(body=code, type_ignores=[])), p, "exec"), ns)
-            out = ns[call]() if call else ns[var]
-        except Exception:
+            return json.loads(proc.stdout.strip().splitlines()[-1])["out"]
+        except (ValueError, IndexError, KeyError):
             return None
-        return str(out) if out else ""
 
     def _py_slice(self, tree: ast.Module, node: ast.AST, parents: dict):
         """(code, call, var) that computes the gateway this literal belongs to, or None."""
@@ -579,6 +614,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     home = str(Path.home())
+    if not os.path.exists(SANDBOX):
+        print(f"{SANDBOX} not found: this census evaluates producer code only inside it", file=sys.stderr)
+        return 2
     if a.crontab:
         text = Path(a.crontab).read_text()
     else:

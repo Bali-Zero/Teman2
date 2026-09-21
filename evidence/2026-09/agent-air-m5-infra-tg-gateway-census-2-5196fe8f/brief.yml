@@ -20,5 +20,6 @@ acceptance:
   - an inline Python resolver runs as a slice and the sending function never runs
   - any gateway reference the census cannot run is UNRESOLVED and exits 3
   - on Pro, exit 0 with unresolved=0, and the spec's numbers equal its output
+  - producer code is evaluated only under sandbox-exec; hostile fixtures leave no marker
 appetite:
   wall_clock_hours: 3

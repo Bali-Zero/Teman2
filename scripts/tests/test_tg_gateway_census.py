@@ -12,6 +12,8 @@ spec = importlib.util.spec_from_file_location("tg_gateway_census", SCRIPT)
 census_mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(census_mod)
 
+pytestmark = pytest.mark.skipif(not os.path.exists(census_mod.SANDBOX), reason="the census runs only under sandbox-exec")
+
 SH_RESOLVER = '''#!/bin/bash
 send() {
     local gateway="$(dirname "$0")/tg_notify.py"
@@ -336,3 +338,44 @@ def test_the_findings_of_the_second_red_team(home):
     assert [g["path"] for g in out["entries"][0]["gateways"]] == [str(sc / "real_dir" / "tg_notify.py")]
     assert [g["path"] for g in out["entries"][1]["gateways"]] == [str(sc / "tg_notify.py")]
     assert not out["entries"][1]["unresolved"]
+
+
+def test_the_escapes_of_the_gate_do_not_run(home, tmp_path):
+    """Gate on f464a9b4a4: a script's own PATH, and pathlib methods rebound onto writers."""
+    m, victim = tmp_path / "marker", tmp_path / "victim"
+    victim.write_text("keep")
+    evil = tmp_path / "evilbin"
+    evil.mkdir()
+    (evil / "dirname").write_text(f"#!/bin/sh\n/usr/bin/touch {m}\necho /tmp\n")
+    (evil / "dirname").chmod(0o755)
+    sc = home / "scripts"
+    (sc / "a.sh").write_text(f'#!/bin/bash\nPATH={evil}\ngateway="$(dirname "$0")/tg_notify.py"\n')
+    for name, body in {"c": f"Path.exists = Path.touch\n    Path({str(m)!r}).exists()",
+                       "d": f"Path.joinpath = Path.write_text\n    Path({str(m)!r}).joinpath('pwned')",
+                       "f": f"Path.is_file = Path.unlink\n    Path({str(victim)!r}).is_file()"}.items():
+        (sc / f"{name}.py").write_text(f"from pathlib import Path\n\ndef _tg_gateway():\n    {body}\n"
+                                       "    return str(Path(__file__).resolve().parent / 'tg_notify.py')\n")
+    out = run(home, "".join(f"0 * * * * {x}\n" for x in
+                            (f"{sc}/a.sh", f"python3 {sc}/c.py", f"python3 {sc}/d.py", f"python3 {sc}/f.py")))
+    assert not m.exists() and victim.read_text() == "keep"
+    assert [g["path"] for g in out["entries"][0]["gateways"]] == [str(sc / "tg_notify.py")]
+
+
+def test_the_jail_holds_even_where_the_allow_lists_would_not(home, tmp_path, monkeypatch):
+    """Second layer on its own: code that skipped every AST and RHS check still cannot write or exec.
+    The control run without the jail proves the same code does write."""
+    import ast
+    c = census_mod.Census(str(home))
+    empty = ast.Module(body=[], type_ignores=[])
+
+    def attempt(m):
+        code = ast.parse(f"Path({str(m)!r}).write_text('x')\nV = '/x/tg_notify.py'\n").body
+        c._py_exec(empty, code, None, "V", str(home / "x.py"))
+        census_mod.subprocess.run(census_mod._jail(["/bin/bash", "-c", f"/usr/bin/touch {m}.sh"], ["/bin/bash"]),
+                                  capture_output=True)
+
+    attempt(tmp_path / "jailed")
+    assert not (tmp_path / "jailed").exists() and not (tmp_path / "jailed.sh").exists()
+    monkeypatch.setattr(census_mod, "_jail", lambda argv, *a: argv)
+    attempt(tmp_path / "free")
+    assert (tmp_path / "free").exists() and (tmp_path / "free.sh").exists()
