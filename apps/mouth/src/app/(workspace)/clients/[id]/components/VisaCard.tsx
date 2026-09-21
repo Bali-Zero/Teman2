@@ -331,12 +331,14 @@ export function VisaCard({
 
             {/* Visa Data with Start/Finish/Exp */}
             <div className="space-y-2">
-              {/* Visa Type */}
+              {/* Visa Type — permit_label (resolved from OCR/document_type
+                  server-side, see crm.types.ts) is the precise family when
+                  known; document_type is the fallback, never invented. */}
               {latestVisa.document_type && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[var(--bz-text-2)]">Type:</span>
                   <span className="font-medium text-[var(--bz-text-1)]">
-                    {latestVisa.document_type}
+                    {latestVisa.permit_label || latestVisa.document_type}
                   </span>
                 </div>
               )}
@@ -503,7 +505,7 @@ export function VisaCard({
         {/* Caption */}
         <p className="text-xs text-[var(--bz-text-2)] text-center mt-3">
           {latestVisa?.google_drive_file_url
-            ? `${latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
+            ? `${latestVisa.permit_label || latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
             : "Upload visa (JPG, PNG, PDF - max 10MB)"}
         </p>
       </div>

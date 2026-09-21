@@ -879,3 +879,131 @@ describe("ImmigrationTab — Start Renewal navigates to the real target (R6 roun
     );
   });
 });
+
+describe("ImmigrationTab — precise permit label (kita.balizero.com owner report: 'Permit: Visa' when the document is a KITAP)", () => {
+  it("shows the backend-resolved permit_label instead of the raw generic document_type", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 200,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitap",
+        permit_label: "KITAP / ITAP — Permanent Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("KITAP / ITAP — Permanent Stay Permit"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("visa")).not.toBeInTheDocument();
+  });
+
+  it("GUILT: falls back to the raw document_type when the backend found no evidence for a family (never invents one)", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 201,
+        document_type: "visa",
+        expiry_date: futureDate,
+        // no permit_label — backend had no evidence
+      },
+    ]);
+
+    expect(screen.getByText("visa")).toBeInTheDocument();
+  });
+
+  it("shows the permit number and sponsor when the backend extracted them, and omits them when absent", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 202,
+        document_type: "kitas",
+        expiry_date: futureDate,
+        permit_number: "TEST-0000",
+        permit_sponsor: "Example Sponsor",
+      },
+    ]);
+
+    expect(screen.getByText("TEST-0000")).toBeInTheDocument();
+    expect(screen.getByText("Example Sponsor")).toBeInTheDocument();
+  });
+
+  it("GUILT: omits the permit-number and sponsor rows when the backend did not extract them", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 203, document_type: "kitas", expiry_date: futureDate },
+    ]);
+
+    expect(screen.queryByText("Permit no.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sponsor")).not.toBeInTheDocument();
+  });
+});
+
+describe("ImmigrationTab — MERP rides with the current permit, not 'Other' (owner report)", () => {
+  it("GUILT: a document_type='MERP' companion document is NOT rendered in the Other section", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 210, document_type: "kitas", expiry_date: futureDate },
+      {
+        ...baseDoc,
+        id: 211,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+      },
+    ]);
+
+    expect(screen.getByText("Current permit")).toBeInTheDocument();
+    expect(screen.queryByText("Other")).not.toBeInTheDocument();
+  });
+
+  it("shows the MERP as a re-entry permit tied to the current permit card", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 212, document_type: "kitas", expiry_date: futureDate },
+      {
+        ...baseDoc,
+        id: 213,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+        permit_label: "MERP — Multiple Exit Re-entry Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("MERP — Multiple Exit Re-entry Permit"),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: with no current permit, a MERP-only document still shows up under Other instead of disappearing", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 214,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+      },
+    ]);
+
+    expect(screen.queryByText("Current permit")).not.toBeInTheDocument();
+    expect(screen.getByText("Other")).toBeInTheDocument();
+  });
+});

@@ -108,9 +108,10 @@ class TestGetClientProfile:
         restorable for 30 days) but is NOT archived, so it stays in this list —
         and until 2026-09-11 the projection did not carry deleted_at, so the
         team's CRM rendered it exactly like a live document. The assertion is on
-        the SQL text because the handler returns the rows unchanged
-        (``[dict(d) for d in documents]``): a row-level mock would only prove the
-        mock. Drop either column from the SELECT and this test goes red.
+        the SQL text because the handler forwards every projected column
+        unchanged (``dict(d)`` per row, before the permit-label derivation
+        added 2026-09-21 only ever *adds* fields): a row-level mock would only
+        prove the mock. Drop either column from the SELECT and this test goes red.
         """
         from backend.app.routers.crm_enhanced import get_client_profile
 
@@ -127,6 +128,111 @@ class TestGetClientProfile:
         assert len(doc_queries) == 1, "expected exactly one SELECT ... FROM documents d"
         assert "d.deleted_at" in doc_queries[0]
         assert "d.uploaded_source" in doc_queries[0]
+
+    @pytest.mark.asyncio
+    async def test_profile_documents_carry_resolved_permit_label(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """The generic 'visa' document_type resolves to the precise family the
+        OCR extraction already captured — the bug this PR fixes (kita.balizero.com
+        showed "Type: visa" for a document whose OCR data already said KITAP).
+        The raw OCR blob itself must NOT leak into the response.
+        """
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        generic_visa_doc = {
+            "id": 1001,
+            "document_type": "visa",
+            "document_category": "immigration",
+            "file_name": "doc.pdf",
+            "file_id": None,
+            "file_url": None,
+            "google_drive_file_url": "https://drive.google.com/file/d/TEST/view",
+            "status": "verified",
+            "expiry_date": None,
+            "notes": None,
+            "family_member_id": None,
+            "practice_id": None,
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "deleted_at": None,
+            "uploaded_source": "team",
+            "ocr_extracted_data": {
+                "raw_response": {
+                    "visa_type": "KITAP (ELECTRONIC PERMANENT STAY PERMIT)",
+                    "visa_number": "TEST-0000",
+                    "sponsor": "Example Sponsor",
+                }
+            },
+            "family_member_name": None,
+            "alert_color": "green",
+        }
+
+        async def fetch_side_effect(query: str, *args: Any) -> list[dict[str, Any]]:
+            if "FROM documents d" in query:
+                return [generic_visa_doc]
+            return []
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(side_effect=fetch_side_effect)
+            result = await get_client_profile(
+                client_id=42, pool=mock_db_pool, current_user=admin_user
+            )
+
+        doc = result["documents"][0]
+        assert doc["document_type"] == "visa"  # stored value untouched
+        assert doc["permit_family"] == "kitap"
+        assert doc["permit_label"] == "KITAP / ITAP — Permanent Stay Permit"
+        assert doc["permit_number"] == "TEST-0000"
+        assert doc["permit_sponsor"] == "Example Sponsor"
+        assert "ocr_extracted_data" not in doc
+
+    @pytest.mark.asyncio
+    async def test_profile_documents_keep_original_text_when_unresolved(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """No OCR data and no family keyword in document_type: never invent a
+        label — no permit_* keys at all, frontend falls back to the raw text."""
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        unresolved_doc = {
+            "id": 1002,
+            "document_type": "visa",
+            "document_category": "immigration",
+            "file_name": None,
+            "file_id": None,
+            "file_url": None,
+            "google_drive_file_url": None,
+            "status": None,
+            "expiry_date": None,
+            "notes": None,
+            "family_member_id": None,
+            "practice_id": None,
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "deleted_at": None,
+            "uploaded_source": "team",
+            "ocr_extracted_data": None,
+            "family_member_name": None,
+            "alert_color": "green",
+        }
+
+        async def fetch_side_effect(query: str, *args: Any) -> list[dict[str, Any]]:
+            if "FROM documents d" in query:
+                return [unresolved_doc]
+            return []
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(side_effect=fetch_side_effect)
+            result = await get_client_profile(
+                client_id=42, pool=mock_db_pool, current_user=admin_user
+            )
+
+        doc = result["documents"][0]
+        assert "permit_family" not in doc
+        assert "permit_label" not in doc
 
     @pytest.mark.asyncio
     async def test_profile_not_found(

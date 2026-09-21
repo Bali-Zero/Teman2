@@ -410,6 +410,18 @@ export interface ClientDocument {
   deleted_at?: string | null;
   /** 'client' for a portal upload, 'team' for a CRM one. */
   uploaded_source?: "client" | "team" | string;
+  /**
+   * Derived at read time from `document_type` + whatever OCR already
+   * extracted (`ocr_extracted_data->raw_response`) — see
+   * `backend/services/crm/permit_label.py::resolve_permit_label`. Absent
+   * when there is no evidence for a precise family; the UI falls back to
+   * `document_type` verbatim in that case (never invent a label).
+   */
+  permit_family?: "kitap" | "kitas" | "itk" | "merp" | "evisa" | string;
+  permit_code?: string;
+  permit_label?: string;
+  permit_number?: string;
+  permit_sponsor?: string;
 }
 
 export interface DocumentCreate {

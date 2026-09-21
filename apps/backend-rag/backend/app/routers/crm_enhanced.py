@@ -26,8 +26,9 @@ from backend.app.utils.crm_utils import (
     extract_json_from_llm_response,
     verify_client_access,
 )
-from backend.app.utils.json_utils import to_jsonb
+from backend.app.utils.json_utils import from_jsonb, to_jsonb
 from backend.core.cache import invalidate_cache
+from backend.services.crm.permit_label import resolve_permit_label
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = logging.getLogger(__name__)
@@ -1084,7 +1085,7 @@ async def get_client_profile(
                 d.file_name, d.file_id, d.file_url, d.google_drive_file_url,
                 d.status, d.expiry_date, d.notes, d.family_member_id,
                 d.practice_id, d.created_at, d.updated_at,
-                d.deleted_at, d.uploaded_source,
+                d.deleted_at, d.uploaded_source, d.ocr_extracted_data,
                 fm.full_name as family_member_name,
                 CASE
                     WHEN d.expiry_date <= CURRENT_DATE THEN 'expired'
@@ -1100,6 +1101,27 @@ async def get_client_profile(
             """,
             client_id,
         )
+
+        # Derive a precise permit label per document from `document_type` +
+        # whatever OCR already extracted (`ocr_extracted_data->raw_response`)
+        # — never invent one when there is no evidence (see permit_label.py).
+        # The raw OCR blob itself (full_name, address, capital_amount, …) is
+        # NOT forwarded to the client — only the resolved, display-ready
+        # fields are.
+        documents_out: list[dict[str, Any]] = []
+        for d in documents:
+            doc = dict(d)
+            ocr_data = from_jsonb(doc.pop("ocr_extracted_data", None))
+            permit = resolve_permit_label(doc.get("document_type"), ocr_data)
+            if permit:
+                doc["permit_family"] = permit["permit_family"]
+                doc["permit_code"] = permit["permit_code"]
+                doc["permit_label"] = permit["permit_label"]
+                if permit["permit_number"]:
+                    doc["permit_number"] = permit["permit_number"]
+                if permit["permit_sponsor"]:
+                    doc["permit_sponsor"] = permit["permit_sponsor"]
+            documents_out.append(doc)
 
         # Get expiry alerts
         expiry_alerts = await conn.fetch(
@@ -1204,7 +1226,7 @@ async def get_client_profile(
         return {
             "client": dict(client),
             "family_members": [dict(fm) for fm in family_members],
-            "documents": [dict(d) for d in documents],
+            "documents": documents_out,
             "expiry_alerts": [dict(a) for a in expiry_alerts],
             "practices": [dict(p) for p in practices],
             "company_links": [dict(cl) for cl in company_links],
