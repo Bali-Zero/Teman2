@@ -44,6 +44,7 @@ from backend.services.kbli_pma_disclosure import (
 from backend.services.kbli_pp28_provenance import licensing_disclosure
 from backend.services.kbli_requires_kind import (
     classify_requires_target,
+    client_admitted_permit,
     permit_name_verdict,
 )
 
@@ -865,11 +866,17 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     # `izin_usaha_tidak_diketahui` — the graph admitting it does
                     # not know which permit — reached 186 codes as a permit
                     # called "Izin Usaha"; 71 whole obligation sentences reached
-                    # 39 more. Same treatment as any non-permit: bucketed, never
-                    # dropped. See kbli_requires_kind.permit_name_verdict.
-                    kind = permit_name_verdict(lic["entity_id"], lic["name"])
-                    if kind == "permit":
-                        kind = "license"
+                    # 39 more. `client_admitted_permit` is the ONE admission
+                    # predicate (spec §7 of the 2026-09-02 KG licensing-class
+                    # cure spec) — router, census and the KG detector all call
+                    # it, never a second inline copy of this two-stage gate.
+                    if not client_admitted_permit(
+                        lic["entity_id"], lic["target_entity_type"], lic["name"]
+                    ):
+                        # Demoted by name. Same treatment as any non-permit:
+                        # bucketed, never dropped. See
+                        # kbli_requires_kind.permit_name_verdict.
+                        kind = permit_name_verdict(lic["entity_id"], lic["name"])
                 if kind != "license":
                     # Kept, never silently dropped — bucketed so a reader can
                     # still see what the graph attached to this code.

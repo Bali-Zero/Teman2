@@ -70,6 +70,23 @@ misread as "the surface is clean":
       separately because truncation is not cosmetic — on 5 government codes the
       cut lands past the word `Pemerintah`, which is the word that says the
       activity is governmental.
+
+KG DIMENSION (spec §7) — a SECOND surface this organ checks, over `kg_nodes` +
+`kg_edges` rather than `kbli_documents`. Same wrapper, same read path, same
+exit codes. Five checks, each with a manifest so a check can be ENFORCED on
+what has been cured while the rest is still DECLARED — `kg_status_function`,
+`kg_licence_presence` (both: canonical `per_skala` manifest = all codes minus
+Phase-1b minus the Table-B S3 codes minus the 75 `NOT_APPLICABLE_OSS`
+allowlist, each direction), `kg_stray_admission` (admitted edge to a §2.1
+placeholder id or a `permit_type` node, catalog-wide), `kg_allowlist_contradiction`
+(an allowlisted code failing zero-rows / zero-admitted / exact
+`NOT_APPLICABLE_OSS`), `kg_node_presence` (every canonical code has a KG node,
+every KG code node is canonical or carries `NOT_IN_KBLI_2025`, catalog-wide).
+
+  ALL FIVE SHIP DECLARED — counted and rendered, NEVER folded into
+  `enforced_divergences` or the exit code. W116: the flip to ENFORCED per
+  check is its own one-line PR after that check's own log reads 0 on its
+  manifest — never in the same PR as a cure, and never all five at once.
 """
 
 from __future__ import annotations
@@ -96,16 +113,76 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CANONICAL = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 DEFAULT_PSQL_WRAPPER = REPO_ROOT / "scripts/pg.sh"
 DEFAULT_LOCATORS = REPO_ROOT / "apps" / "mouth" / "data" / "perpres-locators.json"
+DEFAULT_KG_ALLOWLIST = REPO_ROOT / "scripts/kbli_filiera/kg_oss_not_applicable_codes.json"
+DEFAULT_BACKEND_RAG = REPO_ROOT / "apps" / "backend-rag"
 
 EXIT_OK = 0
 EXIT_DIVERGENCE = 1
 EXIT_CANNOT_VERIFY = 4
 
 PRINT_SAMPLE = 20
+KG_PRINT_SAMPLE = 10
 
 # Marker written by `kbli_documents_phantom_cure.py` onto rows for KBLI-2020
 # codes that 2025 retired. Such a row legitimately has no canonical record.
 PHANTOM_MARKER = "NOT_IN_KBLI_2025"
+
+# --------------------------------------------------------------------------
+# KG dimension (spec §7) — constants
+# --------------------------------------------------------------------------
+
+REGULATED_STATUS = "REGULATED"
+PENDING_REGULATION_STATUS = "PENDING_REGULATION"
+NOT_APPLICABLE_OSS_STATUS = "NOT_APPLICABLE_OSS"
+NOT_IN_KBLI_2025_STATUS = "NOT_IN_KBLI_2025"
+
+#: The three §2.1 nodes served to clients as licences that are not one — the
+#: graph's own admission of ignorance about a code's regulatory status,
+#: materialised as a fake permit. `kg_stray_admission` checks by ID, not by
+#: name: the third id's name ("Status Perizinan PENDING_REGULATION", no
+#: colon) does not match `_NOT_A_PERMIT_LABELS`'s exact string and currently
+#: survives `permit_name_verdict` as a "permit" — the ID check is the only
+#: thing that catches it today (measured on PROD, see this PR's body).
+PLACEHOLDER_ENTITY_IDS: frozenset[str] = frozenset(
+    {
+        "status_perizinan_pending",
+        "izin_usaha_pending",
+        "izin_usaha_status_pending_regulation",
+    }
+)
+
+#: `per_skala[].persyaratan` marker for a non-OSS-issued licence (spec §5): the
+#: licence exists, but a ministry/dinas outside the OSS issuance path is the
+#: issuer. This derives the manifest exclusion straight from canonical rather
+#: than hard-coding a code list. Measured on canonical 2026-09-21: 91 codes /
+#: 472 rows carry the marker — the spec's own count for the marker ALONE
+#: (§5). This is a SUPERSET of spec §7's "61 Phase-1b codes": that narrower
+#: number further intersects with the placeholder-cure Table A/B 175-code
+#: universe (S1 26 + S2 34 + S3 1), which this detector does not compute. A
+#: wider exclusion only SHRINKS the manifest — fewer codes judged — so it
+#: cannot manufacture a new failure; it is a declared limit of this PR, not a
+#: correctness bug in the ENFORCED direction (checks below ship DECLARED
+#: only).
+PHASE1B_PERSYARATAN_MARKER = "Lembaga OSS hanya menerbitkan NIB"
+
+KG_SNAPSHOT_SQL = """
+SELECT coalesce(json_agg(t), '[]'::json) FROM (
+  SELECT
+    n.entity_id AS code_id,
+    n.properties->>'licensing_status' AS licensing_status,
+    coalesce(json_agg(json_build_object(
+        'entity_id', tgt.entity_id,
+        'entity_type', tgt.entity_type,
+        'name', tgt.name
+    )) FILTER (WHERE e.target_entity_id IS NOT NULL), '[]'::json) AS targets
+  FROM kg_nodes n
+  LEFT JOIN kg_edges e
+    ON e.source_entity_id = n.entity_id AND e.relationship_type = 'REQUIRES'
+  LEFT JOIN kg_nodes tgt ON tgt.entity_id = e.target_entity_id
+  WHERE n.entity_id ~ '^kbli:[0-9]{5}$'
+  GROUP BY n.entity_id, n.properties->>'licensing_status'
+) t;
+"""
 
 # `perpres-locators.json` bucket names that carry a SPECIFIC, code-named
 # regulatory citation (a named Perpres annex entry). Every other bucket
@@ -177,6 +254,233 @@ def fetch_table_snapshot(psql_wrapper: Path) -> list[dict[str, Any]]:
     if not body:
         raise RuntimeError("pg.sh returned an empty body")
     return json.loads(body)
+
+
+def fetch_kg_snapshot(psql_wrapper: Path) -> list[dict[str, Any]]:
+    """I/O. Same read-only `scripts/pg.sh` wrapper, second query (`KG_SNAPSHOT_SQL`).
+
+    One entry per `kbli:<5 digits>` node: `code_id`, `licensing_status`, and
+    every `REQUIRES` edge target's `(entity_id, entity_type, name)`.
+    """
+    proc = subprocess.run(
+        [str(psql_wrapper), "-A", "-t", "-c", KG_SNAPSHOT_SQL],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"pg.sh exited {proc.returncode}: {proc.stderr.strip()[:400]}")
+    body = proc.stdout.strip()
+    if not body:
+        raise RuntimeError("pg.sh returned an empty body")
+    return json.loads(body)
+
+
+def load_kg_allowlist(path: Path) -> set[str]:
+    """Loads `kg_oss_not_applicable_codes.json`'s `codes` list — the 75-code
+    `NOT_APPLICABLE_OSS` freeze (spec §7 `kg_allowlist_contradiction`)."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    codes = payload["codes"] if isinstance(payload, dict) else payload
+    if not isinstance(codes, list) or not codes:
+        raise ValueError(f"{path}: expected a non-empty 'codes' list")
+    return {str(c) for c in codes}
+
+
+def import_client_admitted_permit():
+    """I/O-adjacent: imports the ONE admission predicate (spec §1/§7) from
+    `apps/backend-rag`, added to `sys.path` the same way
+    `recert_pma_editorial_registry.py` reaches backend code — no existing
+    `scripts/kbli_filiera` module imports it at module scope, so this is a
+    fresh, minimal instance of that pattern rather than a reuse of one.
+
+    Returns the function, never raises: an ImportError here is a CANNOT
+    VERIFY condition for the caller, not a crash.
+    """
+    backend_rag = str(DEFAULT_BACKEND_RAG)
+    if backend_rag not in sys.path:
+        sys.path.insert(0, backend_rag)
+    from backend.services.kbli_requires_kind import client_admitted_permit  # noqa: PLC0415
+
+    return client_admitted_permit
+
+
+def phase1b_candidate_codes(canonical: dict[str, dict[str, Any]]) -> set[str]:
+    """Codes carrying `PHASE1B_PERSYARATAN_MARKER` on any `per_skala` row's
+    `persyaratan` — see that constant's docstring for the 91-vs-61 declared
+    limit."""
+    out: set[str] = set()
+    for code, record in canonical.items():
+        for row in record.get("per_skala") or []:
+            persyaratan = row.get("persyaratan")
+            texts: list[str] = []
+            if isinstance(persyaratan, str):
+                texts = [persyaratan]
+            elif isinstance(persyaratan, list):
+                texts = [p for p in persyaratan if isinstance(p, str)]
+            if any(PHASE1B_PERSYARATAN_MARKER in t for t in texts):
+                out.add(code)
+                break
+    return out
+
+
+def _index_kg_snapshot(
+    kg_snapshot: list[dict[str, Any]],
+) -> tuple[dict[str, str | None], dict[str, list[dict[str, Any]]]]:
+    """Splits the flat `kg_snapshot` rows into per-code status and targets,
+    keyed on the bare 5-digit code (the `kbli:` prefix stripped once here so
+    every check below compares like with like against canonical)."""
+    status_by_code: dict[str, str | None] = {}
+    targets_by_code: dict[str, list[dict[str, Any]]] = {}
+    for entry in kg_snapshot:
+        code_id = str(entry.get("code_id") or "")
+        if not code_id.startswith("kbli:"):
+            continue
+        code = code_id[len("kbli:") :]
+        status_by_code[code] = entry.get("licensing_status")
+        targets_by_code[code] = entry.get("targets") or []
+    return status_by_code, targets_by_code
+
+
+def _admitted_count(
+    targets: list[dict[str, Any]], admitted_permit_fn
+) -> int:
+    return sum(
+        1
+        for t in targets
+        if admitted_permit_fn(t.get("entity_id"), t.get("entity_type"), t.get("name"))
+    )
+
+
+def _kg_status_function(
+    manifest: set[str],
+    canonical_rows_by_code: dict[str, int],
+    status_by_code: dict[str, str | None],
+) -> dict[str, Any]:
+    forward: list[dict[str, Any]] = []
+    reverse: list[dict[str, Any]] = []
+    for code in sorted(manifest):
+        rows = canonical_rows_by_code.get(code, 0)
+        status = status_by_code.get(code)
+        if rows > 0:
+            if status != REGULATED_STATUS:
+                forward.append({"code": code, "canonical_rows": rows, "kg_status": status})
+        else:
+            if status != PENDING_REGULATION_STATUS:
+                reverse.append({"code": code, "canonical_rows": rows, "kg_status": status})
+    return {"manifest_size": len(manifest), "forward_failures": forward, "reverse_failures": reverse}
+
+
+def _kg_licence_presence(
+    manifest: set[str],
+    canonical_rows_by_code: dict[str, int],
+    admitted_count_by_code: dict[str, int],
+) -> dict[str, Any]:
+    forward: list[dict[str, Any]] = []
+    reverse: list[dict[str, Any]] = []
+    for code in sorted(manifest):
+        rows = canonical_rows_by_code.get(code, 0)
+        admitted = admitted_count_by_code.get(code, 0)
+        if rows > 0:
+            if admitted < 1:
+                forward.append({"code": code, "canonical_rows": rows, "admitted": admitted})
+        else:
+            if admitted != 0:
+                reverse.append({"code": code, "canonical_rows": rows, "admitted": admitted})
+    return {"manifest_size": len(manifest), "forward_failures": forward, "reverse_failures": reverse}
+
+
+def _kg_stray_admission(
+    targets_by_code: dict[str, list[dict[str, Any]]], admitted_permit_fn
+) -> dict[str, Any]:
+    failures: list[dict[str, Any]] = []
+    for code in sorted(targets_by_code):
+        for t in targets_by_code[code]:
+            entity_id = t.get("entity_id")
+            entity_type = t.get("entity_type")
+            name = t.get("name")
+            if not admitted_permit_fn(entity_id, entity_type, name):
+                continue
+            eid = (entity_id or "").strip().lower()
+            etype = (entity_type or "").strip().lower()
+            if eid in PLACEHOLDER_ENTITY_IDS or etype == "permit_type":
+                failures.append(
+                    {"code": code, "entity_id": entity_id, "entity_type": entity_type, "name": name}
+                )
+    return {"failures": failures}
+
+
+def _kg_allowlist_contradiction(
+    allowlist_codes: set[str],
+    canonical_rows_by_code: dict[str, int],
+    admitted_count_by_code: dict[str, int],
+    status_by_code: dict[str, str | None],
+) -> dict[str, Any]:
+    failures: list[dict[str, Any]] = []
+    for code in sorted(allowlist_codes):
+        rows = canonical_rows_by_code.get(code, 0)
+        admitted = admitted_count_by_code.get(code, 0)
+        status = status_by_code.get(code)
+        if rows != 0 or admitted != 0 or status != NOT_APPLICABLE_OSS_STATUS:
+            failures.append({"code": code, "canonical_rows": rows, "admitted": admitted, "kg_status": status})
+    return {"allowlist_size": len(allowlist_codes), "failures": failures}
+
+
+def _kg_node_presence(
+    canonical_codes: set[str],
+    kg_code_ids: set[str],
+    status_by_code: dict[str, str | None],
+) -> dict[str, Any]:
+    forward_failures = sorted(canonical_codes - kg_code_ids)
+    reverse_failures: list[dict[str, Any]] = []
+    for code in sorted(kg_code_ids - canonical_codes):
+        status = status_by_code.get(code)
+        if status != NOT_IN_KBLI_2025_STATUS:
+            reverse_failures.append({"code": code, "kg_status": status})
+    return {"forward_failures": forward_failures, "reverse_failures": reverse_failures}
+
+
+def plan_kg_conformance(
+    canonical: dict[str, dict[str, Any]],
+    kg_snapshot: list[dict[str, Any]],
+    allowlist_codes: set[str],
+    admitted_permit_fn,
+) -> dict[str, Any]:
+    """Pure. The KG dimension (spec §7) — five checks, all DECLARED (never
+    added to the caller's exit-code arithmetic). `admitted_permit_fn` is
+    `client_admitted_permit` from `kbli_requires_kind.py`, injected so this
+    function stays testable with no DB and no `apps/backend-rag` import."""
+    status_by_code, targets_by_code = _index_kg_snapshot(kg_snapshot)
+    kg_code_ids = set(status_by_code)
+    canonical_codes = set(canonical)
+    canonical_rows_by_code = {c: len(r.get("per_skala") or []) for c, r in canonical.items()}
+    admitted_count_by_code = {
+        code: _admitted_count(targets, admitted_permit_fn) for code, targets in targets_by_code.items()
+    }
+
+    phase1b_codes = phase1b_candidate_codes(canonical)
+    s3_codes = {
+        code
+        for code in canonical_codes
+        if status_by_code.get(code) == PENDING_REGULATION_STATUS
+        and admitted_count_by_code.get(code, 0) >= 1
+    }
+    manifest = canonical_codes - phase1b_codes - s3_codes - allowlist_codes
+
+    return {
+        "manifest_size": len(manifest),
+        "phase1b_excluded": len(phase1b_codes),
+        "s3_excluded": len(s3_codes),
+        "allowlist_excluded": len(allowlist_codes),
+        "kg_status_function": _kg_status_function(manifest, canonical_rows_by_code, status_by_code),
+        "kg_licence_presence": _kg_licence_presence(
+            manifest, canonical_rows_by_code, admitted_count_by_code
+        ),
+        "kg_stray_admission": _kg_stray_admission(targets_by_code, admitted_permit_fn),
+        "kg_allowlist_contradiction": _kg_allowlist_contradiction(
+            allowlist_codes, canonical_rows_by_code, admitted_count_by_code, status_by_code
+        ),
+        "kg_node_presence": _kg_node_presence(canonical_codes, kg_code_ids, status_by_code),
+    }
 
 
 def plan_conformance(
@@ -407,7 +711,65 @@ def render(report: dict[str, Any]) -> str:
         f"({declared['judul_truncated']} of them truncated). A green run above does NOT",
         "  mean the titles are conformant; see this file's docstring for why.",
     ]
+
+    kg = report.get("kg")
+    if kg is not None:
+        lines += _render_kg(kg)
     return "\n".join(lines)
+
+
+def _render_kg_direction(label: str, items: list[Any]) -> list[str]:
+    lines = [f"    {label}: {len(items)}"]
+    for item in items[:KG_PRINT_SAMPLE]:
+        if isinstance(item, dict):
+            extra = ", ".join(f"{k}={v}" for k, v in item.items() if k != "code")
+            lines.append(f"        {item.get('code')}  {extra}")
+        else:
+            lines.append(f"        {item}")
+    if len(items) > KG_PRINT_SAMPLE:
+        lines.append(f"        ... showing {KG_PRINT_SAMPLE} of {len(items)}")
+    return lines
+
+
+def _render_kg(kg: dict[str, Any]) -> list[str]:
+    lines = [
+        "",
+        "KG dimension (spec §7) — DECLARED ONLY, never folded into the exit code",
+        f"  manifest: {kg['manifest_size']} (excluded: {kg['phase1b_excluded']} Phase-1b, "
+        f"{kg['s3_excluded']} Table-B S3, {kg['allowlist_excluded']} NOT_APPLICABLE_OSS allowlist)",
+        "",
+        "  kg_status_function (per_skala rows > 0 <=> KG status REGULATED)",
+    ]
+    sf = kg["kg_status_function"]
+    lines += _render_kg_direction("forward failures (rows>0, status!=REGULATED)", sf["forward_failures"])
+    lines += _render_kg_direction(
+        "reverse failures (rows==0, status!=PENDING_REGULATION)", sf["reverse_failures"]
+    )
+
+    lines.append("")
+    lines.append("  kg_licence_presence (per_skala rows > 0 <=> >=1 admitted permit)")
+    lp = kg["kg_licence_presence"]
+    lines += _render_kg_direction("forward failures (rows>0, 0 admitted)", lp["forward_failures"])
+    lines += _render_kg_direction("reverse failures (rows==0, >=1 admitted)", lp["reverse_failures"])
+
+    lines.append("")
+    sa = kg["kg_stray_admission"]
+    lines.append("  kg_stray_admission (admitted edge to a §2.1 placeholder id or permit_type node)")
+    lines += _render_kg_direction("failures (catalog-wide)", sa["failures"])
+
+    lines.append("")
+    ac = kg["kg_allowlist_contradiction"]
+    lines.append(f"  kg_allowlist_contradiction (of {ac['allowlist_size']} NOT_APPLICABLE_OSS codes)")
+    lines += _render_kg_direction("failures", ac["failures"])
+
+    lines.append("")
+    np_ = kg["kg_node_presence"]
+    lines.append("  kg_node_presence (every canonical code has a KG node, and the reverse)")
+    lines += _render_kg_direction("forward failures (canonical code, no KG node)", np_["forward_failures"])
+    lines += _render_kg_direction(
+        "reverse failures (KG node, not canonical, no NOT_IN_KBLI_2025)", np_["reverse_failures"]
+    )
+    return lines
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -416,14 +778,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--canonical", type=Path, default=DEFAULT_CANONICAL)
     parser.add_argument("--locators", type=Path, default=DEFAULT_LOCATORS)
+    parser.add_argument("--kg-allowlist", type=Path, default=DEFAULT_KG_ALLOWLIST)
     parser.add_argument("--psql-wrapper", type=Path, default=DEFAULT_PSQL_WRAPPER)
     parser.add_argument("--table-json", type=Path, default=None, help="use a snapshot file instead of the DB")
-    parser.add_argument("--emit-sql", action="store_true", help="print the snapshot query and exit")
+    parser.add_argument(
+        "--kg-json", type=Path, default=None, help="use a KG snapshot file instead of the DB"
+    )
+    parser.add_argument("--emit-sql", action="store_true", help="print both snapshot queries and exit")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
     if args.emit_sql:
         print(SNAPSHOT_SQL.strip())
+        print()
+        print(KG_SNAPSHOT_SQL.strip())
         return EXIT_OK
 
     try:
@@ -451,12 +819,39 @@ def main(argv: list[str] | None = None) -> int:
         print("CANNOT VERIFY: table snapshot is empty — zero rows traversed is not a clean bill")
         return EXIT_CANNOT_VERIFY
 
+    try:
+        allowlist_codes = load_kg_allowlist(args.kg_allowlist)
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        print(f"CANNOT VERIFY: KG allowlist unreadable ({args.kg_allowlist}): {exc}")
+        return EXIT_CANNOT_VERIFY
+
+    try:
+        admitted_permit_fn = import_client_admitted_permit()
+    except ImportError as exc:
+        print(f"CANNOT VERIFY: client_admitted_permit unimportable: {exc}")
+        return EXIT_CANNOT_VERIFY
+
+    try:
+        if args.kg_json:
+            kg_snapshot = json.loads(args.kg_json.read_text(encoding="utf-8"))
+        else:
+            kg_snapshot = fetch_kg_snapshot(args.psql_wrapper)
+    except (OSError, RuntimeError, json.JSONDecodeError) as exc:
+        print(f"CANNOT VERIFY: KG snapshot unavailable: {exc}")
+        return EXIT_CANNOT_VERIFY
+
+    if not isinstance(kg_snapshot, list) or not kg_snapshot:
+        print("CANNOT VERIFY: KG snapshot is empty — zero rows traversed is not a clean bill")
+        return EXIT_CANNOT_VERIFY
+
     report = plan_conformance(canonical, table)
     citation_report = plan_citation_propagation(canonical, locators)
     report["citation_propagation"] = citation_report
+    report["kg"] = plan_kg_conformance(canonical, kg_snapshot, allowlist_codes, admitted_permit_fn)
 
     print(json.dumps(report, indent=2, sort_keys=True) if args.json else render(report))
 
+    # KG checks are ALL DECLARED (spec §7 / W116) — never added here.
     total_enforced = report["enforced_divergences"] + len(citation_report["citation_not_propagated"])
     return EXIT_DIVERGENCE if total_enforced else EXIT_OK
 

@@ -1,0 +1,110 @@
+gear: 2
+task_id: kbli-kg-detector-20260921
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/kbli-kg-detector-20260921
+gate_class: opus
+l_level: L2
+objective: >-
+  §7 of the KG licensing-class cure spec
+  (docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md r4, §7, lines
+  653-704): the KG dimension of `kbli_surface_conformance.py` — a second
+  snapshot query over `kg_nodes`/`kg_edges`, and five checks against it, each
+  in both directions where the spec calls for it, all shipped DECLARED (never
+  folded into `enforced_divergences` or the exit code — W116, the flip to
+  ENFORCED is a separate one-line PR per check). Extracts THE ONE admission
+  predicate (spec §1) as `client_admitted_permit` in `kbli_requires_kind.py`,
+  composed verbatim from the router's own inline two-stage gate, and makes
+  the router call it — router, census (a later lane) and this detector now
+  share one spelling.
+scope:
+  - >-
+    apps/backend-rag/backend/services/kbli_requires_kind.py — new
+    `client_admitted_permit(entity_id, entity_type, name) -> bool`, composed
+    from `classify_requires_target` + `permit_name_verdict`.
+  - >-
+    apps/backend-rag/backend/app/routers/kbli_notebook.py — the
+    `licenses_raw` loop now calls `client_admitted_permit` instead of
+    re-deriving the two-stage gate inline; behaviour is unchanged (pinned by
+    parity tests).
+  - >-
+    scripts/kbli_filiera/kbli_surface_conformance.py — `KG_SNAPSHOT_SQL`,
+    `fetch_kg_snapshot`, `load_kg_allowlist`, `import_client_admitted_permit`
+    (lazy `apps/backend-rag` sys.path import, minimal instance of the
+    existing `recert_pma_editorial_registry.py` pattern — no
+    `scripts/kbli_filiera` module imported it at module scope before this),
+    `phase1b_candidate_codes`, `plan_kg_conformance` and its five per-check
+    helpers, KG render section, `--kg-json`/`--kg-allowlist` CLI flags.
+  - >-
+    scripts/kbli_filiera/tests/test_kbli_surface_conformance.py — 29 new
+    tests (guilt+innocence per check, manifest arithmetic, CLI wiring);
+    4 existing CLI-level tests gained a `--kg-json` fixture so they stay
+    hermetic (no live `scripts/pg.sh` call) rather than silently depending
+    on PROD reachability.
+  - >-
+    apps/backend-rag/backend/tests/unit/services/test_kbli_client_admitted_permit.py
+    — NEW. Parity suite: `client_admitted_permit` vs a verbatim
+    reimplementation of the pre-extraction router predicate, on 12 fixtures.
+constraints:
+  - >-
+    All five KG checks ship DECLARED only — no check may ever change the
+    CLI's exit code in this PR. Pinned by
+    `test_kg_failures_never_fail_the_cli_declared_only` and a mutant that
+    folds a KG failure count into `total_enforced` (shown red, restored).
+  - >-
+    Read-only. `fetch_kg_snapshot`/`fetch_table_snapshot` both shell out
+    through `scripts/pg.sh` only; no other DB path.
+  - >-
+    Did not touch `apps/backend-rag/backend/scripts/kg_kbli_licensing_from_canonical.py`,
+    its test, `apply_residual_open.py`, `cure_specs/`, or the canonical
+    datasets — parallel lanes own those.
+  - >-
+    Phase-1b manifest exclusion is derived from canonical's
+    `per_skala[].persyaratan` marker alone (91 codes measured), a declared
+    superset of spec §7's narrower "61 Phase-1b" (which further intersects
+    the placeholder-cure Table A/B 175-code universe, not computed here). A
+    wider exclusion only shrinks the manifest, so it cannot manufacture a
+    false failure — documented as a declared limit on
+    `PHASE1B_PERSYARATAN_MARKER`.
+acceptance:
+  - text: >-
+      GUILT+INNOCENCE: each of the five KG checks fires on its guilt fixture
+      and stays clean on its innocence fixture, both directions where the
+      spec specifies both.
+    probe: >-
+      python3 -m pytest scripts/kbli_filiera/tests/test_kbli_surface_conformance.py
+  - text: >-
+      PARITY: `client_admitted_permit` matches the pre-extraction router
+      predicate on every fixture, including the one where they'd diverge if
+      the extraction were wrong.
+    probe: >-
+      PYTHONPATH=. .venv/bin/pytest backend/tests/unit/services/test_kbli_client_admitted_permit.py (from apps/backend-rag)
+  - text: >-
+      NO REGRESSION: router tests, kbli_requires_kind tests, permit_name_verdict
+      tests, and the full backend-rag unit/services suite stay green.
+    probe: >-
+      PYTHONPATH=. .venv/bin/pytest backend/tests/routers/test_kbli_notebook.py backend/tests/unit/services/ (from apps/backend-rag)
+  - text: >-
+      ARMING CORPUS: the organ's existing guilt/innocence wrapper suite
+      (unaffected by this PR — default-arg invocation) stays green end to
+      end, including its own re-run of the organ's pytest suite.
+    probe: bash scripts/tests/test_kbli_surface_conformance_arming.sh
+  - text: >-
+      PROD (read-only): the KG section renders with real counts and the
+      overall exit code stays 0 despite real KG failures present (DECLARED).
+    probe: python3 scripts/kbli_filiera/kbli_surface_conformance.py
+mutation_evidence: >-
+  Run in this turn on scripts/kbli_filiera/kbli_surface_conformance.py, each
+  restored from a `cp` backup, never `git checkout --`: M1 inverted
+  `kg_status_function`'s `!=` to `==` on both directions → 3 failed / 57
+  passed; M2 dropped the S3 exclusion from the manifest computation → 2
+  failed / 58 passed; M3 dropped the placeholder-id arm from
+  `kg_stray_admission` (kept only the `permit_type` arm) → 1 failed / 59
+  passed; M4 folded a KG failure count into `main()`'s exit-code arithmetic
+  → 2 failed / 58 passed. All four restored; `diff` against each backup
+  confirmed byte-identical to the pre-mutation file after restore.
+pii: none
+local_evidence: >-
+  Read-only PROD measurements via scripts/pg.sh (nuzantara_readonly role);
+  no client data, no credential echoed or printed. Canonical dataset and
+  `kg_oss_not_applicable_codes.json` read from the worktree on disk.
