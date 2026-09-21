@@ -81,8 +81,14 @@ def test_the_workflow_declares_no_paths_filter(event: str) -> None:
     the failure message says what to do instead rather than just refusing.
     """
     block = _triggers()[event]
-    assert block is None or "paths" not in block, (
-        f"{event} has a paths filter again: {block.get('paths')!r}. This "
+    # Both keys, not one: `paths-ignore` makes the same PR never report the
+    # context, from the other side, and a guard that only knew `paths` would
+    # stay green under it — the gap check_required_workflow_conformance.py
+    # closed for its rule 4 on 2026-08-29, found in this test by its author
+    # before the council saw it.
+    narrowing = [k for k in ("paths", "paths-ignore") if block and k in block]
+    assert not narrowing, (
+        f"{event} carries {narrowing} again: {[block.get(k) for k in narrowing]!r}. This "
         "workflow runs unconditionally on purpose — a path-filtered check "
         "cannot be REQUIRED without a skip-to-success sentinel, because a PR "
         "matching no path never reports the context and pends forever. If the "
