@@ -50,6 +50,17 @@ What this file judges, end to end:
     transcription of the same set; and the count the prose freezes must equal
     the count on disk.
 
+The execution harness itself, plainly: it runs the workflow's own shell with
+NO network sandbox — a step that calls the network does so for real, exactly
+as it would in CI; `pip` is shimmed to a no-op so `python3 -m pip install`
+never touches a registry; and no parent environment or secrets reach the
+steps, git, or the xargs probe — every process gets an explicit, minimal env.
+The prose step's no-base path writes the shared `/tmp/ban-prose-tree.txt`, so
+concurrent local runs of this suite may collide on that one file. Each step
+is bounded to 120s. The concurrency-group regex and the key allowlists below
+are deliberately CLOSED lists: an equivalent-but-different spelling reds, and
+this test must be updated in the same diff that adds the new spelling.
+
 Not covered — stated plainly rather than claimed as "every shape":
 
   - steps whose executable lines name no repo tool are never executed here —
@@ -452,11 +463,12 @@ def _step_executable_lines(run: str) -> str:
     return "\n".join(ln for ln in run.splitlines() if not ln.strip().startswith("#"))
 
 
-def _steps_with_tools() -> list[tuple[str, dict, frozenset]]:
+def _steps_with_tools() -> list[tuple[str, dict, dict, frozenset]]:
     """Every step across every job whose executable `run:` lines name at
-    least one repo tool, paired with the tool set named. Read fresh from the
-    live workflow file at call time (collection time, for the parametrize
-    list below), so a mutated copy of the file yields a different set.
+    least one repo tool, paired with its job and the tool set named. Read
+    fresh from the live workflow file at call time (collection time, for the
+    parametrize list below), so a mutated copy of the file yields a
+    different set.
     """
     found = []
     for job in _jobs().values():
@@ -468,8 +480,11 @@ def _steps_with_tools() -> list[tuple[str, dict, frozenset]]:
             run = step.get("run", "")
             tools = frozenset(_TOOL_RE.findall(_step_executable_lines(run)))
             if tools:
-                found.append((step.get("name", "<unnamed>"), step, tools))
+                found.append((step.get("name", "<unnamed>"), job, step, tools))
     return found
+
+
+_ALLOWED_SHELL = "bash -e {0}"
 
 
 def test_no_step_overrides_the_shell() -> None:
@@ -477,29 +492,38 @@ def test_no_step_overrides_the_shell() -> None:
     what GitHub uses for a `run:` block with no `shell:`. A step that sets
     its own `shell:` (e.g. `bash {0}`, which drops `-e`) would run in CI
     under rules the harness does not reproduce, so its verdict there would
-    be about a different program. Keeping `-e` in force is also what makes
-    a failing tool abort the step wherever it is called.
+    be about a different program. Keeping `-e` in force does NOT make a
+    failing tool abort the step wherever it is called: bash suppresses `-e`
+    inside an `if`/`while`/`until` CONDITION and for any command that is
+    part of an `&&` or `||` list — it only aborts on a failure in top-level,
+    unconditional command position. An explicit `shell: bash -e {0}` is
+    allowed below, since it spells out that same default rather than
+    overriding it.
     """
     offenders = sorted(
         f"{name!r}: {step.get('name') or step.get('uses')!r}"
         for name, job in _jobs().items()
         if isinstance(job, dict)
         for step in job.get("steps", [])
-        if isinstance(step, dict) and "shell" in step
+        if isinstance(step, dict) and step.get("shell") not in (None, _ALLOWED_SHELL)
     )
     offenders += sorted(
         f"{name!r}: defaults.run.shell"
         for name, job in _jobs().items()
-        if isinstance(job, dict) and (job.get("defaults") or {}).get("run", {}).get("shell")
+        if isinstance(job, dict)
+        and (job.get("defaults") or {}).get("run", {}).get("shell") not in (None, _ALLOWED_SHELL)
     )
     document = yaml.safe_load(WORKFLOW.read_text())
-    if ((document.get("defaults") or {}).get("run") or {}).get("shell"):
+    workflow_shell = ((document.get("defaults") or {}).get("run") or {}).get("shell")
+    if workflow_shell not in (None, _ALLOWED_SHELL):
         offenders.append("workflow: defaults.run.shell")
     assert not offenders, (
         f"shell overridden at {offenders}. GitHub's default for `run:` is "
-        "`bash -e {0}`, the only shell test_step_fails_closed reproduces; an "
-        "override (e.g. `bash {0}`, which drops -e) lets a failing tool fall "
-        "through unjudged. Remove the override and keep the default shell."
+        f"`{_ALLOWED_SHELL}`, the only shell test_step_fails_closed "
+        f"reproduces; an explicit `shell: {_ALLOWED_SHELL}` is allowed "
+        "since it spells out that same default, but any other override "
+        "(e.g. `bash {0}`, which drops -e) lets a failing tool fall through "
+        "unjudged. Remove the override and keep the default shell."
     )
 
 
@@ -510,7 +534,7 @@ def test_every_guard_tool_is_still_run() -> None:
     this shape, because there is nothing left for it to run.
     """
     named: set[str] = set()
-    for _, _, tools in _steps_with_tools():
+    for _, _, _, tools in _steps_with_tools():
         named |= tools
     missing = REQUIRED_TOOLS - named
     assert not missing, (
@@ -523,33 +547,454 @@ def test_every_guard_tool_is_still_run() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# The fail-closed judgment, by EXECUTION.
+# Structural allowlists: a key outside these is either inert or dangerous,
+# and the only way to tell which is to look — so it reds instead of passing
+# silently. Each set below is EXACTLY the keys the current file uses,
+# printed and verified against the live document before being hard-coded
+# here (`python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/
+# catE-sovereignty-lint.yml')); ..."`, run 2026-09-21), with one deliberate
+# exception noted at STEP_KEYS. A new key must be added here in the SAME
+# diff that adds it to the workflow — that is the point of a closed list.
+# ─────────────────────────────────────────────────────────────────────────
+WORKFLOW_TOP_LEVEL_KEYS = frozenset({"name", "on", "permissions", "concurrency", "jobs"})
+JOB_KEYS = frozenset({"name", "runs-on", "timeout-minutes", "steps"})
+# `shell` is NOT used by any step today, yet it is allowed here on purpose:
+# test_no_step_overrides_the_shell already vets its one legitimate value
+# (`bash -e {0}`, GitHub's own default spelled out) and reds any other, so
+# the allowlist's job — catching a key nobody has vetted — is already done
+# for this one by a dedicated test.
+STEP_KEYS = frozenset({"uses", "with", "name", "run", "env", "shell"})
+
+# Job keys that would each be a way this job's required context stops
+# reporting, fans out under a matrix suffix (so the exact string branch
+# protection expects never reports), runs on an unreviewed image, or turns
+# a red into a green.
+_BANNED_JOB_KEYS = (
+    "needs",
+    "strategy",
+    "container",
+    "services",
+    "defaults",
+    "environment",
+    "if",
+    "continue-on-error",
+    "concurrency",
+)
+# Step keys that would each let one step skip, swallow its own exit code, or
+# run somewhere other than the checkout this harness reproduces.
+_BANNED_STEP_KEYS = ("if", "continue-on-error", "working-directory", "timeout-minutes")
+
+
+def _normalized_top_level_keys(document: dict) -> set:
+    # YAML 1.1 reads a bare `on` as the boolean True — normalize it back to
+    # the string "on" so offender messages read like the file, same reason
+    # _triggers() does not simply index document["on"].
+    keys = set(document)
+    if True in keys:
+        keys.discard(True)
+        keys.add("on")
+    return keys
+
+
+def test_the_workflow_job_and_steps_use_only_known_keys() -> None:
+    """`test_no_job_level_if_on_any_job` and
+    `test_no_step_carries_an_if_and_nothing_continues_on_error` already
+    catch `if`/`continue-on-error` specifically; this is the general case —
+    `needs`, `strategy` (a matrix suffixes the required-context name, so the
+    exact string branch protection expects never reports), `container`,
+    `working-directory`, a step-level `timeout-minutes`, and any future key
+    nobody has reviewed against what this workflow is trying to guarantee.
+    """
+    document = yaml.safe_load(WORKFLOW.read_text())
+    top_offenders = sorted(_normalized_top_level_keys(document) - WORKFLOW_TOP_LEVEL_KEYS)
+    assert not top_offenders, (
+        f"workflow top level carries unknown key(s) {top_offenders}. Add "
+        "them to WORKFLOW_TOP_LEVEL_KEYS in this test, in the same diff, if "
+        "they are deliberate."
+    )
+    assert "defaults" not in document, (
+        "workflow carries a top-level `defaults:` — a workflow-level "
+        "defaults.run.shell/working-directory would apply to every job "
+        "without a single grep hit naming it at the job or step. Put the "
+        "setting explicitly where it applies, or extend this test "
+        "deliberately."
+    )
+    for job_name, job in _jobs().items():
+        if not isinstance(job, dict):
+            continue
+        job_offenders = sorted(set(job) - JOB_KEYS)
+        assert not job_offenders, (
+            f"job {job_name!r} carries unknown key(s) {job_offenders}. Add "
+            "them to JOB_KEYS in this test, in the same diff, if they are "
+            "deliberate."
+        )
+        for banned in _BANNED_JOB_KEYS:
+            assert banned not in job, (
+                f"job {job_name!r} carries {banned!r}. needs/strategy/"
+                "container/services/defaults/environment/if/"
+                "continue-on-error/concurrency are each a way this job's "
+                "required context could stop reporting, fan out under a "
+                "matrix suffix, run on an unreviewed image, or turn a red "
+                "into a green — deliberately not allowed here."
+            )
+        for step in job.get("steps", []):
+            if not isinstance(step, dict):
+                continue
+            step_name = step.get("name") or step.get("uses") or "<unnamed>"
+            step_offenders = sorted(set(step) - STEP_KEYS)
+            assert not step_offenders, (
+                f"job {job_name!r} step {step_name!r} carries unknown "
+                f"key(s) {step_offenders}. Add them to STEP_KEYS in this "
+                "test, in the same diff, if they are deliberate."
+            )
+            for banned in _BANNED_STEP_KEYS:
+                assert banned not in step, (
+                    f"job {job_name!r} step {step_name!r} carries "
+                    f"{banned!r}. if/continue-on-error/working-directory/"
+                    "timeout-minutes on a step are each a way that one "
+                    "step could skip, swallow its own exit code, or run "
+                    "somewhere other than the checkout this harness "
+                    "reproduces — deliberately not allowed here."
+                )
+
+
+def test_job_timeout_minutes_is_at_least_the_recorded_floor() -> None:
+    """One-way floor at today's value. A required check's timeout blocks an
+    INNOCENT PR rather than merely re-running a flaky job — unlike a normal
+    workflow, it has no headroom — and 20 is the value set for the recorded
+    599s worst-case checkout (see the comment above `timeout-minutes:` in
+    the workflow, #3649). Lowering it again reintroduces the ~1s margin
+    that prompted raising it from 10.
+    """
+    for job_name, job in _jobs().items():
+        if not isinstance(job, dict):
+            continue
+        timeout = job.get("timeout-minutes")
+        assert isinstance(timeout, int) and not isinstance(timeout, bool), (
+            f"job {job_name!r} timeout-minutes is {timeout!r}, not a plain "
+            "int."
+        )
+        assert timeout >= 20, (
+            f"job {job_name!r} timeout-minutes is {timeout}, below the "
+            "recorded floor of 20. A required check's timeout blocks an "
+            "innocent PR, and 20 is the value set for the recorded 599s "
+            "worst-case checkout (#3649) — do not lower it without a fresh "
+            "measurement."
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# The fail-closed judgment, by EXECUTION, per real trigger EVENT.
 #
 # Every step found above is run for real, under `bash -e` (GitHub's actual
 # default shell for `run:` — not plain `bash script`), against a synthetic
-# git repo holding stub tools. Shapes like `if [ ! -f T ]; then exit 0; fi`,
+# git repo holding stub tools, once per event in EVENTS (pull_request, push,
+# merge_group) with that event's own context rendered into the step's env
+# and `run:` text. Shapes like `if [ ! -f T ]; then exit 0; fi`,
 # `[ -s T ] || ...`, `[ -e T ] || exit 0`, an `else` that echoes and falls
-# through, and `python3 T || true` are control flow and cannot be judged by
-# grepping text — they can only be judged by running the script and reading
-# its own exit code.
+# through, `python3 T || true`, and a skip keyed on `github.event_name` or
+# `$GITHUB_EVENT_NAME` (for only one event) are all control flow and cannot
+# be judged by grepping text — they can only be judged by running the
+# script, with the right event's context in place, and reading its own exit
+# code.
 # ─────────────────────────────────────────────────────────────────────────
 
-MODES = ("pull_request", "no_base")
+# Fixed, fake, 40-hex-char SHAs — one per role, so a bug that mixes up
+# base/head/merge shows up in a failure message instead of silently
+# matching by coincidence.
+_FAKE_PR_MERGE_SHA = "a1" * 20
+_FAKE_PR_BASE_SHA = "b2" * 20
+_FAKE_PR_HEAD_SHA = "c3" * 20
+_FAKE_PUSH_SHA = "d4" * 20
+_FAKE_MERGE_GROUP_BASE_SHA = "e5" * 20
+_FAKE_MERGE_GROUP_HEAD_SHA = "f6" * 20
+
+# The per-event context the expression renderer below resolves a
+# `github.`/`secrets.` path against — one entry per event in EVENTS. GitHub
+# renders any property of an event that did not fire as an empty string,
+# which is why `event.pull_request.*` is "" on push and merge_group, and
+# `event.merge_group.*` is "" everywhere except merge_group. `secrets.*` is
+# handled separately in _resolve_context_path (any key renders ""), so it is
+# not listed per-event here.
+GITHUB_CONTEXTS: dict[str, dict] = {
+    "pull_request": {
+        "event_name": "pull_request",
+        "ref": "refs/pull/1/merge",
+        "sha": _FAKE_PR_MERGE_SHA,
+        "run_id": "100000001",
+        "workflow": "catE-sovereignty-lint",
+        "repository": "bali-zero/nuzantara",
+        "head_ref": "feature",
+        "base_ref": "main",
+        "token": "fake-github-token",
+        "event": {
+            "pull_request": {
+                "base": {"sha": _FAKE_PR_BASE_SHA},
+                "head": {"sha": _FAKE_PR_HEAD_SHA},
+                "number": "1",
+            },
+        },
+    },
+    "push": {
+        "event_name": "push",
+        "ref": "refs/heads/main",
+        "sha": _FAKE_PUSH_SHA,
+        "run_id": "100000002",
+        "workflow": "catE-sovereignty-lint",
+        "repository": "bali-zero/nuzantara",
+        "head_ref": "",
+        "base_ref": "",
+        "token": "fake-github-token",
+        "event": {
+            "pull_request": {
+                "base": {"sha": ""},
+                "head": {"sha": ""},
+                "number": "",
+            },
+        },
+    },
+    "merge_group": {
+        "event_name": "merge_group",
+        "ref": f"refs/heads/gh-readonly-queue/main/pr-1-{_FAKE_MERGE_GROUP_BASE_SHA}",
+        "sha": _FAKE_MERGE_GROUP_HEAD_SHA,
+        "run_id": "100000003",
+        "workflow": "catE-sovereignty-lint",
+        "repository": "bali-zero/nuzantara",
+        "head_ref": "",
+        "base_ref": "",
+        "token": "fake-github-token",
+        "event": {
+            "pull_request": {
+                "base": {"sha": ""},
+                "head": {"sha": ""},
+                "number": "",
+            },
+            "merge_group": {
+                "head_sha": _FAKE_MERGE_GROUP_HEAD_SHA,
+                "base_sha": _FAKE_MERGE_GROUP_BASE_SHA,
+            },
+        },
+    },
+}
 
 # Tools whose OUTPUT a step merely consumes (the changed-file list). Their
 # stub always prints "x.py" and succeeds unless told to fail — a step is
-# never required to call one of these on a run with no PR base.
+# never required to call one of these on a push or merge_group run (no PR
+# base to enumerate against).
 HELPERS = frozenset({"scripts/ci/hotzone_changed_files.sh"})
 
-# A step may legitimately never call one of these on a run with no PR base
-# (merge queue, push): the tool judges a PR's diff against its base, and
-# only a pull_request run has one.
+# A step may legitimately never call one of these on a push or merge_group
+# run: the tool judges a PR's diff against its base, and only a
+# pull_request run has one. On pull_request itself there is no exemption —
+# see the coverage check in test_step_fails_closed.
 PR_TIME_ONLY = frozenset({"scripts/lint_paid_llm_entity.py"})
 
 
+def _resolve_context_path(path: str, event: str, original: str):
+    """Resolve a `${{ }}` context path (e.g. `github.event.pull_request.base
+    .sha`) against GITHUB_CONTEXTS[event], or fail closed.
+
+    `secrets.<anything>` always renders "" — this harness never has a real
+    secret to render. Any other root context, or any path
+    GITHUB_CONTEXTS[event] does not carry all the way down, fails the test
+    instead of silently rendering an empty string: an unrepresented shape
+    must be loud, not invisible.
+    """
+    parts = path.split(".")
+    if parts[0] == "secrets":
+        return ""
+    if parts[0] != "github":
+        pytest.fail(
+            f"expression {original!r} on event {event!r} uses context "
+            f"{parts[0]!r}, which this harness does not model — extend the "
+            "harness's context table."
+        )
+    node: object = GITHUB_CONTEXTS[event]
+    seen = ["github"]
+    for key in parts[1:]:
+        seen.append(key)
+        if isinstance(node, dict) and key in node:
+            node = node[key]
+        else:
+            pytest.fail(
+                f"expression {original!r} on event {event!r}: "
+                f"{'.'.join(seen)!r} is not in the context table — extend "
+                "the harness's context table."
+            )
+    return node
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return value != ""
+
+
+def _render_value(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+_EXPR_TOKEN_RE = re.compile(r"==|!=|&&|\|\||!|\(|\)|'(?:[^']|'')*'|[A-Za-z_][A-Za-z0-9_.]*")
+
+
+def _tokenize_expr(expr: str, event: str, original: str) -> list[tuple[str, str]]:
+    tokens: list[tuple[str, str]] = []
+    pos = 0
+    n = len(expr)
+    while pos < n:
+        if expr[pos].isspace():
+            pos += 1
+            continue
+        m = _EXPR_TOKEN_RE.match(expr, pos)
+        if not m:
+            pytest.fail(
+                f"cannot parse expression {original!r} on event {event!r} "
+                f"at {expr[pos:pos + 20]!r} — extend the harness's context "
+                "table."
+            )
+        text = m.group(0)
+        if text[0] == "'":
+            tokens.append(("string", text[1:-1].replace("''", "'")))
+        elif text in ("==", "!=", "&&", "||", "!", "(", ")"):
+            tokens.append(("op", text))
+        else:
+            tokens.append(("path", text))
+        pos = m.end()
+    return tokens
+
+
+class _ExprParser:
+    """Recursive-descent parser for the subset of GitHub Actions expression
+    syntax this workflow uses: context paths, single-quoted string literals,
+    `==`/`!=`, `&&`, `||`, parentheses, and unary `!`. Precedence, high to
+    low: `!` > `==`/`!=` > `&&` > `||` — GitHub's own documented order, not
+    Python's.
+    """
+
+    def __init__(self, tokens: list[tuple[str, str]], event: str, original: str):
+        self.tokens = tokens
+        self.pos = 0
+        self.event = event
+        self.original = original
+
+    def _peek(self):
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def _advance(self):
+        tok = self.tokens[self.pos]
+        self.pos += 1
+        return tok
+
+    def _fail(self, msg: str):
+        pytest.fail(
+            f"cannot parse expression {self.original!r} on event "
+            f"{self.event!r}: {msg} — extend the harness's context table."
+        )
+
+    def parse(self):
+        value = self._or_expr()
+        if self.pos != len(self.tokens):
+            self._fail(f"unexpected trailing token {self.tokens[self.pos]!r}")
+        return value
+
+    def _or_expr(self):
+        left = self._and_expr()
+        while self._peek() == ("op", "||"):
+            self._advance()
+            right = self._and_expr()
+            left = left if _truthy(left) else right
+        return left
+
+    def _and_expr(self):
+        left = self._eq_expr()
+        while self._peek() == ("op", "&&"):
+            self._advance()
+            right = self._eq_expr()
+            left = right if _truthy(left) else left
+        return left
+
+    def _eq_expr(self):
+        left = self._unary()
+        while self._peek() in (("op", "=="), ("op", "!=")):
+            op = self._advance()[1]
+            right = self._unary()
+            equal = _render_value(left) == _render_value(right)
+            left = equal if op == "==" else not equal
+        return left
+
+    def _unary(self):
+        if self._peek() == ("op", "!"):
+            self._advance()
+            return not _truthy(self._unary())
+        return self._primary()
+
+    def _primary(self):
+        tok = self._peek()
+        if tok is None:
+            self._fail("unexpected end of expression")
+        kind, text = tok
+        if kind == "string":
+            self._advance()
+            return text
+        if kind == "path":
+            self._advance()
+            return _resolve_context_path(text, self.event, self.original)
+        if tok == ("op", "("):
+            self._advance()
+            value = self._or_expr()
+            if self._peek() != ("op", ")"):
+                self._fail("missing closing parenthesis")
+            self._advance()
+            return value
+        self._fail(f"unexpected token {tok!r}")
+
+
+_EXPR_BLOCK_RE = re.compile(r"\$\{\{(.*?)\}\}", re.DOTALL)
+
+
+def _render_expr(expr_text: str, event: str) -> str:
+    original = expr_text.strip()
+    tokens = _tokenize_expr(original, event, original)
+    if not tokens:
+        pytest.fail(
+            f"empty '${{{{ }}}}' expression on event {event!r} — extend "
+            "the harness's context table."
+        )
+    value = _ExprParser(tokens, event, original).parse()
+    return _render_value(value)
+
+
+def _render_text(text: str, event: str) -> str:
+    """Substitute every `${{ expr }}` in `text` with its rendered value for
+    `event` — GitHub does this to both `env:` values and `run:` bodies
+    before the shell ever sees either.
+    """
+    return _EXPR_BLOCK_RE.sub(lambda m: _render_expr(m.group(1), event), text)
+
+
+def _env_block(mapping) -> dict:
+    return {str(k): str(v) for k, v in (mapping or {}).items()}
+
+
+def _rendered_step_env(step: dict, job: dict, document: dict, event: str) -> dict:
+    """Workflow env, then job env, then the step's own env — later
+    overrides earlier, same precedence as GitHub — each value rendered
+    through `${{ }}` for `event` before it ever reaches the step's process.
+    """
+    combined: dict[str, str] = {}
+    combined.update(_env_block(document.get("env")))
+    combined.update(_env_block(job.get("env")))
+    combined.update(_env_block(step.get("env")))
+    return {k: _render_text(v, event) for k, v in combined.items()}
+
+
 def _probe_xargs_needs_shim() -> bool:
-    # Probed ONCE, at collection time: GNU xargs (CI, most Linux) supports
-    # -r/-d natively; BSD/macOS xargs does not. Only shim it where it fails.
+    # Probed ONCE, at collection time, with a minimal env (PATH only — never
+    # the parent environment, the same rule every step below is run under):
+    # GNU xargs (CI, most Linux) supports -r/-d natively; BSD xargs
+    # implements -r but not -d. Only shim it where it fails.
     try:
         probe = subprocess.run(
             ["xargs", "-r", "-d", "\\n", "true"],
@@ -557,6 +1002,7 @@ def _probe_xargs_needs_shim() -> bool:
             text=True,
             capture_output=True,
             timeout=10,
+            env={"PATH": os.environ.get("PATH", "")},
         )
     except (OSError, subprocess.TimeoutExpired):
         return True
@@ -576,8 +1022,8 @@ exec "__EXECUTABLE__" "$@"
 """
 
 _XARGS_SHIM = r"""#!/bin/sh
-# Minimal GNU-xargs-compatible shim for `-r` and `-d '<delim>'` (BSD/macOS
-# xargs implements neither natively). This repo's workflow only ever calls
+# Minimal GNU-xargs-compatible shim for `-r` and `-d '<delim>'` (BSD xargs
+# implements -r but not -d natively). This repo's workflow only ever calls
 # it as `xargs -r -d '\n' <cmd> ...`, so splitting on newline is the whole
 # of the decoded delimiter this shim supports.
 r_flag=0
@@ -703,26 +1149,47 @@ def _make_repo(base: Path, tools: frozenset, home: Path) -> Path:
     return repo
 
 
-def _base_env(shim_dir: Path, home: Path, runner_temp: Path, stub_log: Path, mode: str) -> dict:
-    env = {
+def _default_env(
+    shim_dir: Path,
+    home: Path,
+    runner_temp: Path,
+    stub_log: Path,
+    repo: Path,
+    event: str,
+    gh_files: dict,
+) -> dict:
+    """GitHub's own default variables for `event`, plus this harness's
+    minimal shim/stub plumbing. Never the parent environment — every key
+    here is explicit; BASE_SHA/HEAD_SHA/PR_NUMBER are NOT injected here —
+    they come only from rendering the step's own `env:` (see
+    _rendered_step_env), the same as on a real runner.
+    """
+    ctx = GITHUB_CONTEXTS[event]
+    return {
         "PATH": f"{shim_dir}:{os.environ.get('PATH', '')}",
         "HOME": str(home),
         "LANG": "C.UTF-8",
         "RUNNER_TEMP": str(runner_temp),
+        "RUNNER_OS": "Linux",
+        "CI": "true",
+        "GITHUB_ACTIONS": "true",
         "CATE_STUB_LOG": str(stub_log),
         "GIT_CONFIG_GLOBAL": "/dev/null",
         "GIT_CONFIG_NOSYSTEM": "1",
-        "TYPESAFE_API_KEY": "",
+        "GITHUB_EVENT_NAME": ctx["event_name"],
+        "GITHUB_REF": ctx["ref"],
+        "GITHUB_SHA": ctx["sha"],
+        "GITHUB_HEAD_REF": ctx["head_ref"],
+        "GITHUB_BASE_REF": ctx["base_ref"],
+        "GITHUB_REPOSITORY": ctx["repository"],
+        "GITHUB_WORKFLOW": ctx["workflow"],
+        "GITHUB_RUN_ID": ctx["run_id"],
+        "GITHUB_WORKSPACE": str(repo),
+        "GITHUB_STEP_SUMMARY": str(gh_files["summary"]),
+        "GITHUB_OUTPUT": str(gh_files["output"]),
+        "GITHUB_ENV": str(gh_files["env"]),
+        "GITHUB_PATH": str(gh_files["path"]),
     }
-    if mode == "pull_request":
-        env["BASE_SHA"] = "0" * 40
-        env["HEAD_SHA"] = "1" * 40
-        env["PR_NUMBER"] = "1"
-    else:
-        env["BASE_SHA"] = ""
-        env["HEAD_SHA"] = ""
-        env["PR_NUMBER"] = ""
-    return env
 
 
 def _run_step(step_path: Path, repo: Path, env: dict) -> subprocess.CompletedProcess:
@@ -751,30 +1218,42 @@ def _call_counts(stub_log: Path) -> dict:
 
 def _fail_closed_cases():
     cases = []
-    for name, step, tools in _steps_with_tools():
-        for mode in MODES:
-            cases.append(pytest.param(step, tools, mode, id=f"{_slug(name)}/{mode}"))
+    for name, job, step, tools in _steps_with_tools():
+        for event in EVENTS:
+            cases.append(pytest.param(job, step, tools, event, id=f"{_slug(name)}/{event}"))
     return cases
 
 
 _FAIL_CLOSED_CASES = _fail_closed_cases()
 
 
-@pytest.mark.parametrize("step,tools,mode", _FAIL_CLOSED_CASES)
-def test_step_fails_closed(tmp_path: Path, step: dict, tools: frozenset, mode: str) -> None:
-    """Runs one step's own `run:` script, for real, against a synthetic repo.
+@pytest.mark.parametrize("job,step,tools,event", _FAIL_CLOSED_CASES)
+def test_step_fails_closed(
+    tmp_path: Path, job: dict, step: dict, tools: frozenset, event: str
+) -> None:
+    """Runs one step's own `run:` script, for real, against a synthetic
+    repo, under the rendered context of one real trigger event.
 
-    CALIBRATION proves the harness can say yes (all tools present, passing).
-    Then: a tool this step never calls in "no_base" mode reds unless it is a
-    HELPER or PR_TIME_ONLY exemption; every CALLED tool made ABSENT must fail
-    the step; and every call that tool made, told to FAIL, must fail the
-    step too — which is what catches `|| true` on one of several
-    invocations. Failure messages say: fail closed with an `::error::` naming
+    CALIBRATION proves the harness can say yes (all tools present, passing,
+    with that event's `env:`/`${{ }}` rendered exactly as GitHub would).
+    Then, coverage is judged per event: on pull_request every named tool
+    must be called, no exemption — there IS a PR base, so nothing legitimately
+    skips; on push and merge_group a tool never called reds unless it is a
+    HELPER or PR_TIME_ONLY exemption (there is no PR base to run a PR-time
+    tool against). Every CALLED tool made ABSENT must fail the step, and
+    every call that tool made, told to FAIL, must fail the step too — which
+    is what catches `|| true` on one of several invocations, or a skip keyed
+    on `github.event_name`/`$GITHUB_EVENT_NAME`/an inline `${{ }}` for only
+    one event. Failure messages say: fail closed with an `::error::` naming
     the file and `exit 1`; never swallow the tool's exit.
     """
     step_name = step.get("name", "<unnamed>")
     run_script = step.get("run", "")
     assert run_script, f"step {step_name!r} has no run: block to execute"
+
+    document = yaml.safe_load(WORKFLOW.read_text())
+    rendered_step_env = _rendered_step_env(step, job, document, event)
+    rendered_script = _render_text(run_script, event)
 
     home = tmp_path
     shim_dir = tmp_path / "shim"
@@ -784,50 +1263,61 @@ def test_step_fails_closed(tmp_path: Path, step: dict, tools: frozenset, mode: s
     runner_temp.mkdir()
     stub_log = tmp_path / "stub.log"
     step_path = tmp_path / "step.sh"
-    step_path.write_text(run_script)
+    step_path.write_text(rendered_script)
+    gh_files = {
+        "summary": tmp_path / "github_step_summary.txt",
+        "output": tmp_path / "github_output.txt",
+        "env": tmp_path / "github_env.txt",
+        "path": tmp_path / "github_path.txt",
+    }
+    for gh_file in gh_files.values():
+        gh_file.write_text("")
 
-    def env_for(extra: dict | None = None) -> dict:
+    def env_for(repo: Path, extra: dict | None = None) -> dict:
         if stub_log.exists():
             stub_log.unlink()
-        env = _base_env(shim_dir, home, runner_temp, stub_log, mode)
+        env = _default_env(shim_dir, home, runner_temp, stub_log, repo, event, gh_files)
+        env.update(rendered_step_env)
         if extra:
             env.update(extra)
         return env
 
     # --- CALIBRATION / innocence: all named tools present and passing ---
     repo = _make_repo(tmp_path, tools, home)
-    result = _run_step(step_path, repo, env_for())
+    result = _run_step(step_path, repo, env_for(repo))
     assert result.returncode == 0, (
-        f"CALIBRATION: step {step_name!r} ({mode}) exited {result.returncode} "
+        f"CALIBRATION: step {step_name!r} ({event}) exited {result.returncode} "
         "with every named tool present and passing — the harness cannot say "
         f"yes.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
     called = _call_counts(stub_log)
 
-    # --- coverage: a tool this step names but never calls in this mode ---
+    # --- coverage: a tool this step names but never calls on this event ---
     for tool in sorted(tools):
         if called.get(tool, 0) > 0:
             continue
-        if mode == "no_base" and tool not in HELPERS and tool not in PR_TIME_ONLY:
-            pytest.fail(
-                f"step {step_name!r}: on a run with no PR base (merge queue, "
-                f"push) this step never runs {tool}, so the queue passes it "
-                "unexamined."
-            )
-        # else: legitimately not called in this mode (HELPER/PR_TIME_ONLY
-        # exemption) — nothing to assert.
+        if event in ("push", "merge_group") and (tool in HELPERS or tool in PR_TIME_ONLY):
+            # legitimately exempt: no PR base to run a PR-time tool
+            # against, judged separately for push and merge_group.
+            continue
+        pytest.fail(
+            f"step {step_name!r}: on a {event} run this step never runs "
+            f"{tool}, so it would pass unexamined. On pull_request there is "
+            "no exemption; on push/merge_group only a HELPERS or "
+            "PR_TIME_ONLY tool may legitimately go uncalled."
+        )
 
     called_tools = sorted(t for t, n in called.items() if n > 0)
 
     # --- ABSENT: the tool this step called is missing entirely ---
     for tool in called_tools:
         repo_absent = _make_repo(tmp_path, tools - {tool}, home)
-        result = _run_step(step_path, repo_absent, env_for())
+        result = _run_step(step_path, repo_absent, env_for(repo_absent))
         assert result.returncode != 0, (
-            f"step {step_name!r} ({mode}): with {tool} ABSENT the step still "
-            "exits 0. Fail closed with an ::error:: naming the file and "
-            f"exit 1; never swallow the tool's exit.\nstdout:\n{result.stdout}"
-            f"\nstderr:\n{result.stderr}"
+            f"step {step_name!r} ({event}): with {tool} ABSENT the step "
+            "still exits 0. Fail closed with an ::error:: naming the file "
+            f"and exit 1; never swallow the tool's exit.\nstdout:\n"
+            f"{result.stdout}\nstderr:\n{result.stderr}"
         )
 
     # --- FAIL-ON-CALL-k: each call this step made to a tool, told to fail ---
@@ -835,11 +1325,13 @@ def test_step_fails_closed(tmp_path: Path, step: dict, tools: frozenset, mode: s
         for k in range(1, called[tool] + 1):
             repo_fail = _make_repo(tmp_path, tools, home)
             result = _run_step(
-                step_path, repo_fail, env_for({"CATE_STUB_FAIL": f"{tool}:{k}"})
+                step_path,
+                repo_fail,
+                env_for(repo_fail, {"CATE_STUB_FAIL": f"{tool}:{k}"}),
             )
             assert result.returncode != 0, (
-                f"step {step_name!r} ({mode}): call {k} of {tool} failing did "
-                "not fail the step (exit 0). Fail closed with an ::error:: "
-                "naming the file and exit 1; never swallow the tool's exit."
-                f"\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+                f"step {step_name!r} ({event}): call {k} of {tool} failing "
+                "did not fail the step (exit 0). Fail closed with an "
+                "::error:: naming the file and exit 1; never swallow the "
+                f"tool's exit.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
             )
