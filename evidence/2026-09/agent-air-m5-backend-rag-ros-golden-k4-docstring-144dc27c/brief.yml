@@ -1,0 +1,19 @@
+mandate: >-
+  Cure condition K4 of PR #7066's on-disk gate: the production-shaped golden
+  test's docstring states that both golden pairs are load-bearing, because
+  production published_at carries no fractional seconds (0/66) and only the
+  string golden covers that shape.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: opus-5
+organ: apps/backend-rag/backend/tests/unit/research_os
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  Docstring-only change to a test file; no production write.
+acceptance:
+  - the docstring names both pairs as load-bearing with the measured 66/66 vs 0/66
+  - each mutation class it names reds exactly the pair it says (re-run)
+  - no assertion, expected value or module code changes
+appetite:
+  wall_clock_hours: 1

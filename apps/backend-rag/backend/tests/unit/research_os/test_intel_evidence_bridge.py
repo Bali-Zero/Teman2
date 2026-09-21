@@ -444,12 +444,18 @@ def test_the_payload_derivation_is_frozen(
 
 
 def _production_shaped_item(canonical_url: str) -> dict[str, object]:
-    """An `intel_items` row as asyncpg hands it to `--apply` on PROD (K1 of the PR #7056 gate):
-    tz-aware `datetime`s with non-zero microseconds, `jurisdiction='ID-national'` and
-    `raw_payload` as a JSON `str` (the pool registers no jsonb codec). The golden cases above pass
-    strings without fractional seconds and `jurisdiction="ID"`, so a derivation edit that only
-    bites on this shape -- `_to_rfc3339` truncating to seconds, the jurisdiction cut at `-` --
-    kept every test green while it re-hashed every object already on PROD."""
+    """The shape asyncpg hands `--apply` on PROD (K1 of the PR #7056 gate): tz-aware
+    `datetime`s, `jurisdiction='ID-national'`, `raw_payload` as a JSON `str` (no jsonb codec).
+
+    BOTH GOLDEN PAIRS ARE LOAD-BEARING; neither replaces the other (K4 of the PR #7066 gate).
+    Measured on the 66 cohort rows: `first_seen_at` carries non-zero microseconds in 66/66, but
+    `published_at` in 0/66. This fixture gives both timestamps microseconds, so its
+    `published_at` is NOT the production shape -- the string golden above (no fractional
+    seconds) is what covers it. An edit that always prints microseconds (`%f`,
+    `timespec="microseconds"`) leaves this pair green -- of the two golden pairs only the string
+    one goes red; an edit that truncates to seconds or cuts the jurisdiction at `-` leaves the
+    string pair (and every other test) green and only this one goes red. Deleting either pair
+    re-opens the wedge the other one closes."""
 
     return _writable_item(
         canonical_url=canonical_url,
