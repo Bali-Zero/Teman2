@@ -35,6 +35,8 @@ import hashlib
 import inspect
 import json
 
+import pytest
+
 from backend.services.research_os import intel_evidence_bridge as ieb
 from backend.services.research_os.intel_evidence_bridge import Mapped, Rejected, bridge
 from backend.services.research_os.naga_admission import Admitted, Excluded, admit
@@ -393,3 +395,48 @@ def test_the_claim_builder_cannot_see_the_manifest() -> None:
 
     assert "manifest" not in inspect.signature(ieb._build_claim_write).parameters
     assert "manifest" not in inspect.signature(ieb._build_evidence_write).parameters
+
+
+# --------------------------------------------------------------------------------------------
+# C3 of the PR #7007 gate: the object identity (`uuid5(canonical_url)`) is narrower than the
+# object hash (six columns + every payload constant). Rows derived from these hashes exist on
+# PROD since 2026-09-21, so the derivation is frozen -- see the module docstring's "FROZEN
+# IDENTITY" section for what enters it.
+# --------------------------------------------------------------------------------------------
+
+_FROZEN_HASH_MESSAGE = (
+    "this object_hash changed: every row already written with the old derivation now collides "
+    "(object_id_hash_collision) and --apply wedges for the whole cohort. If the change is "
+    "intended it needs a succession strategy, not a new expected value here."
+)
+
+
+@pytest.mark.parametrize(
+    ("canonical_url", "evidence_hash", "claim_hash"),
+    [
+        pytest.param(
+            _PRESS_URL,
+            "f4f3e0aafad9aa4b07981e1bc0c55dc13a46be6fbaeba831c551d1c07b7545f2",
+            "c9313aa766ca3f6bc298f7edafabe411c06436599b73ce627839156adf2abb52",
+            id="press-host",
+        ),
+        pytest.param(
+            _GOVERNMENT_URL,
+            "566e0851b19dd1c9b274fa0bd8efc282f28a091cd55fc23b31a20f36a8116ecd",
+            "18832dfc0e33591f952325d27f03caf35bce824f891294fbb08bb3b950bd4a18",
+            id="government-host",
+        ),
+    ],
+)
+def test_the_payload_derivation_is_frozen(
+    canonical_url: str, evidence_hash: str, claim_hash: str
+) -> None:
+    """Golden hashes for a fixed item, from the real builders -- one pair per host branch,
+    because `_SOURCE_TIER_*`/`_RIGHTS_*`/`_SOURCE_TYPE_*` each enter only one of them."""
+
+    _result, evidence, claim = _canonical_writes(
+        _writable_item(canonical_url=canonical_url, jurisdiction="ID")
+    )
+
+    assert evidence.payload["object_hash"] == evidence_hash, _FROZEN_HASH_MESSAGE
+    assert claim.payload["object_hash"] == claim_hash, _FROZEN_HASH_MESSAGE

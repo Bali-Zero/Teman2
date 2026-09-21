@@ -107,6 +107,21 @@ green tests missed it because all six ran on a single manifest. `Excluded`/`Reje
 `naga_backfill.py` makes for its own cohort) -- an admitted cohort of `ADMITTED_ROW_CAP` writes at
 most `2 * ADMITTED_ROW_CAP` object rows plus `ADMITTED_ROW_CAP` admission rows in one run.
 
+THE COHORT IS A FILTER, NOT A LABEL (PR #7007 gate, condition C1). The owner's authorization is
+scoped to `COHORT`, and until that gate `COHORT` was only a string inside the manifest:
+`_load_intel_items` read every `intel_items` row of every producer (1,922 on 2026-09-21, 128 of
+them `is_probe_sandbox`), and the first `--apply` stayed inside the cohort only because every row
+with an admissible shape happened to be `source_domain='regulatory-watcher'` (66/66, measured
+read-only) -- a property of the data, not of the query. Now the query states it:
+`_COHORT_SOURCE_DOMAIN[COHORT]` is the `source_domain` bound into `_load_intel_items`' `WHERE
+source_domain = $1 AND NOT is_probe_sandbox`, so the name the manifest carries and the rows it
+binds are one declaration. The filter changes the MANIFEST, never a payload: `items_read`,
+`rejected_by_bridge` and `source_snapshot_hash` now cover only the cohort's rows, so a manifest
+taken before the filter is refused as `SourceSnapshotDrifted` and the dry-run must be re-taken.
+No payload reads anything the filter touches, so the 8 claim + 8 evidence objects the first
+`--apply` wrote are recomputed byte-identical: a new `--apply` reports them `already_present`
+and adds only their admission rows under the new `run_id` (the new manifest).
+
 SOURCE TIER, SOURCE TYPE AND RIGHTS ARE DERIVED FROM THE HOST, NEVER FIXED FOR THE COHORT.
 `Evidence.source_tier` exists to record EVIDENTIARY WEIGHT, so it may not be a constant: PR #7004
 was BLOCKED for stamping `research_os.source_tier.government_gazette` on every admitted row while
@@ -131,6 +146,55 @@ four: every row here is text already published on the open web, government or pr
 That is a STATED assumption about this ONE source, not a general default `admit()` applies -- a
 future adapter for a different `intel_items` producer (a confidential client-facing source, say)
 must supply its own policy, not inherit this one.
+
+WHY `retention_class` IGNORES THE HOST WHILE `rights` FOLLOWS IT (PR #7007 gate, C2). The frozen
+contract gives the four `retention_class` values no semantics -- only the vocabulary
+(`CONTRACTS.md` §3 `retention`, `research_os.primitives.Retention`) -- so this is a READING,
+stated to be challenged. The contract's primitive table defines `retention` as "Policy, expiry,
+legal hold, and rights expiry": the lifecycle of the object WE store. `classification.rights` is
+what the PUBLISHER permits anyone to do with its text. They part here because of what the stored
+object holds: per the Evidence invariant ("Short excerpts are stored only where rights and privacy
+policy permit; otherwise retain locator and hash", `CONTRACTS.md` §5), neither payload carries
+the publisher's text -- the evidence holds `source_span.{locator,start,end,quote_hash}` and
+`document_content_hash`, the claim holds the `citation` -- so what we retain is our own record
+that a public document said something, the same kind of record whether the host is a ministry or
+a newsletter; the copyright attaches to the excerpt, which stays in `intel_items.raw_payload` and
+never enters `research_os_objects`. Where a publisher's terms could bound OUR retention, the
+contract's slot is `retention.rights_expires_at`, not `retention_class`; no `intel_items` row
+carries such a term, so it stays unset. The value is also no longer free to revisit in place:
+the rows already written carry `public_record` inside their `object_hash` (next section).
+
+THE PAYLOAD CONSTANTS ARE A FROZEN IDENTITY (PR #7007 gate, C3). `evidence_id`/`claim_id` are
+`uuid5` of `canonical_url` alone, but `object_hash` covers the whole payload: six `intel_items`
+columns (`canonical_url`, `published_at`, `raw_payload.verbatim_excerpt`, `raw_payload.citation`,
+`jurisdiction`, `first_seen_at`) plus every module constant a builder writes into either payload,
+directly or through the synthetic `IntelEvent`'s own `object_hash` (which the evidence cites in
+`source_event_ref`). Rows derived from them exist on an append-only table since the first
+`--apply` (2026-09-21), so each of them is now part of those rows' identity: edit one and the next
+`--apply` recomputes a different `object_hash` for an `object_id` already stored,
+`naga_persistence._insert_object` raises `NagaWriteRejected("object_id_hash_collision")`, and the
+ONE transaction rolls back the whole batch -- every new item is wedged with it, not just the
+changed one. What enters the hash, read from the builders:
+
+- both payloads: `_CONTRACT_VERSION`, `_TENANT`, `_EXTRACTOR`, `_RUN_NAMESPACE`,
+  `_FAMILY_NAMESPACE`, `_CLASSIFICATION`, `_RETENTION`, `_REVIEW`, `_EVIDENCE_STANCE`,
+  `_EVIDENCE_NAMESPACE` (the claim cites the evidence by id);
+- evidence: `_EXTRACTOR_VERSION`, `_LOCATOR`, `_VERSION_NAMESPACE`, `_EVENT_NAMESPACE`,
+  `_SOURCE_TIER_*`, `_RIGHTS_*`, and `_GOVERNMENT_HOST_SUFFIXES`, which picks within each pair;
+- claim: `_CLAIM_NAMESPACE`, `_PREDICATE`, `_CLAIM_DOMAIN`, `_CLAIM_STATUS`, `_CONFIDENCE_METHOD`
+  and the literal `score=1.0` -- plus the evidence's own `object_hash` (`statement.subject_ref`,
+  `evidence_refs`), so whatever moves the evidence hash moves the claim's;
+- through the IntelEvent hash: `_EVENT_CLASSIFICATION`, `_EVENT_RETENTION`, `_PIPELINE_NAMESPACE`,
+  `_SOURCE_TYPE_*`, and `_build_intel_event`'s literals (`event_type`, `producer`,
+  `payload_ref.ref_type`);
+- the derivation code itself: `_to_rfc3339`, `_is_government_host`, `_sha256`, and
+  `research_os.hashing.object_hash`'s canonicalisation.
+
+`_CLAIM_NAMESPACE` alone fails differently: it re-mints `claim_id`, so nothing collides and every
+claim is written a second time under a new id -- no better. `test_intel_evidence_bridge.py` pins
+both hashes for a fixed item per host branch; an intended change needs a succession strategy
+(`supersedes_evidence_ref`/`supersedes_claim_ref` plus an `ObjectSuccessorEdge`, `CONTRACTS.md`
+§3.1), not a new expected value.
 """
 
 from __future__ import annotations
@@ -236,6 +300,12 @@ _CLAIM_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e5")
 #: never a `--cohort` flag: there is no second cohort this bridge could be pointed at today.
 COHORT = "regulatory_watcher"
 
+#: What `COHORT` MEANS in `intel_items`: the `source_domain` `regulatory_watcher` writes there
+#: (measured live, 2026-09-21). `_load_intel_items` binds exactly this value, so the name in the
+#: manifest and the rows the manifest covers cannot drift apart -- see the module docstring's
+#: "THE COHORT IS A FILTER" section. One entry, because there is one cohort.
+_COHORT_SOURCE_DOMAIN: Mapping[str, str] = {COHORT: "regulatory-watcher"}
+
 #: Owner-authorized cap (Zero, 2026-09-21) on admitted rows a single `--apply` run may write --
 #: a REFUSAL past this line, never a truncation to the first `ADMITTED_ROW_CAP` rows. Measured
 #: live at 8 admitted out of 1,922 `intel_items` rows the day this was authorized; the cap is
@@ -260,7 +330,9 @@ _TENANT = "bali-zero"
 #: article is not public-domain just because the statute it quotes is.
 _CLASSIFICATION: Mapping[str, str] = {"risk_class": "green", "sensitivity": "public"}
 #: `legal_hold` is required on `research_os.primitives.Retention` (no default) -- always `False`
-#: for this source, same "public, already-published" reasoning as the rest of this policy.
+#: for this source, same "public, already-published" reasoning as the rest of this policy. Why
+#: `retention_class` does not split per host the way `rights` does, and why it is frozen now:
+#: the module docstring's `retention_class` and "FROZEN IDENTITY" sections.
 _RETENTION: Mapping[str, Any] = {"retention_class": "public_record", "legal_hold": False}
 _REVIEW: Mapping[str, str] = {"state": "unreviewed"}
 
@@ -787,17 +859,21 @@ def _build_claim_write(
 
 
 async def _load_intel_items(conn: asyncpg.Connection) -> list[dict[str, Any]]:
-    """Explicit column list, ordered by `id` (never `SELECT *`) -- the four columns `admit()`
-    needs, plus `id`, plus the two columns ONLY the `--apply` write path reads
-    (`jurisdiction` for `Claim.scope.jurisdiction`, `first_seen_at` for `time.recorded_at`/
-    `times.recorded_at`) -- nothing else this module has no use for. Both extra columns also
-    widen `compute_source_snapshot_hash`'s own per-row hash (it hashes every column this SELECT
-    returns), which is correct: a row whose `jurisdiction`/`first_seen_at` changed would write a
-    different `Claim`/`Evidence`, so the manifest must bind to it too."""
+    """`COHORT`'s rows only -- `source_domain = _COHORT_SOURCE_DOMAIN[COHORT]`, and never an
+    `is_probe_sandbox` row (migration 187: "queries SHOULD include `WHERE NOT
+    is_probe_sandbox`") -- so the authorization's scope is enforced by the read, not inferred
+    from the data's current shape. Explicit column list, ordered by `id` (never `SELECT *`) --
+    the four columns `admit()` needs, plus `id`, plus the two columns ONLY the `--apply` write
+    path reads (`jurisdiction` for `Claim.scope.jurisdiction`, `first_seen_at` for
+    `time.recorded_at`/`times.recorded_at`) -- nothing else this module has no use for. Both
+    extra columns also widen `compute_source_snapshot_hash`'s own per-row hash (it hashes every
+    column this SELECT returns), which is correct: a row whose `jurisdiction`/`first_seen_at`
+    changed would write a different `Claim`/`Evidence`, so the manifest must bind to it too."""
 
     records = await conn.fetch(
         "SELECT id, canonical_url, published_at, raw_payload, jurisdiction, first_seen_at "
-        "FROM intel_items ORDER BY id"
+        "FROM intel_items WHERE source_domain = $1 AND NOT is_probe_sandbox ORDER BY id",
+        _COHORT_SOURCE_DOMAIN[COHORT],
     )
     return [dict(record) for record in records]
 
