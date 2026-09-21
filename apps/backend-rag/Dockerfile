@@ -35,6 +35,11 @@ WORKDIR /app
 # Must be in place BEFORE uv pip install -r resolves that line.
 COPY packages/cell-core /app/packages/cell-core
 
+# The research_os canonical contracts, reached by sys.path (see
+# backend/services/research_os/_core_path.py), never installed -- so a COPY is the
+# whole requirement. The runtime stage already carries /app/packages over wholesale.
+COPY packages/research-os-core /app/packages/research-os-core
+
 # Copy backend-rag directory (requirements files + any build-time helpers).
 # Keeping the whole dir lets `uv pip install -r requirements-prod.lock.txt`
 # run from `/app/apps/backend-rag/` so the relative

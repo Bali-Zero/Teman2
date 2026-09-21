@@ -22,6 +22,15 @@
 # cell-core package (editable install target)
 !packages/cell-core/
 
+# research-os-core package. NOT an install target: `backend/services/research_os/
+# _core_path.py` prepends the package ROOT to sys.path (it walks up for
+# `packages/research-os-core`), so the directory only has to EXIST in the image --
+# its three deps (pydantic, jsonschema, rfc8785) are already resolved by
+# requirements-prod.lock.txt. Without this line the whole research_os write path
+# imports as `RuntimeError: cannot locate repository root` inside the container,
+# which is where the only write-capable DSN lives.
+!packages/research-os-core/
+
 # crm-cell package (runtime import target for backend HGT handlers)
 !apps/crm-cell/
 !apps/crm-cell/crm_cell/
