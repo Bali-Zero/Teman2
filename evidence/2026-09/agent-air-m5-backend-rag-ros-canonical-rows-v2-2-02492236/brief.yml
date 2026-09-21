@@ -1,0 +1,36 @@
+mandate: >-
+  Successor to PR #7004 (BLOCKED, two proven defects): write the first canonical
+  rows into research_os_objects -- every admitted intel_item becomes an evidence
+  AND a claim in one transaction -- with the two defects cured at the root.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: opus-5-xhigh
+organ: apps/backend-rag/backend/services/research_os
+worktree: .worktrees/backend-rag-ros-canonical-rows-v2-20260921
+predecessor: >-
+  PR #7004, closed unmerged. F1: claim.lineage.run_id derived from the manifest
+  while claim_id derived from canonical_url, so one new intel_items row gave the
+  same claim_id a different object_hash -- measured 0/8 hashes surviving a cohort
+  move, and at the write path a permanent object_id_hash_collision. F2: every
+  admitted row was stamped source_tier=government_gazette / rights=public-domain
+  while all 8 real candidates come from news.ddtc.co.id, a private tax
+  consultancy's newsletter -- zero government hosts.
+authority: >-
+  Zero authorized the DML on 2026-09-21 for the regulatory_watcher cohort:
+  cap 66 rows, tables research_os_objects and research_os_naga_admission only,
+  manifest mandatory. 8 admitted -> 16 objects + 8 admission rows = 24, inside
+  the cap. The --apply itself is the Dux's to run after merge, not part of
+  this diff's CI.
+acceptance:
+  - claim and evidence run_id both derive from canonical_url, never the manifest
+  - the claim builder does not receive the manifest at all
+  - a second --apply after the cohort MOVED writes zero rows for the unchanged item
+  - source_tier / source_type / rights are decided by the row's own host
+  - the host match is label-bounded, so evilgo.id is not a government host
+  - every written object validates against its own pydantic contract first
+  - claim.evidence_refs points at an evidence object actually written
+  - recorded_at derives from first_seen_at, never the wall clock
+  - the cap refuses, it never truncates
+appetite:
+  wall_clock_hours: 3
