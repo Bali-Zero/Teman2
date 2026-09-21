@@ -53,7 +53,7 @@ export interface VisaInfo {
     status: "active" | "pending" | "warning" | "expired";
     issueDate: string;
     expiryDate: string;
-    daysRemaining: number;
+    daysRemaining: number | null;
     permitNumber: string;
     sponsor: string;
   } | null;

@@ -394,7 +394,7 @@ export default function VisaPage() {
                           : "var(--state-success)",
                     }}
                   >
-                    {visaInfo.current.daysRemaining}
+                    {Math.abs(visaInfo.current.daysRemaining)}
                   </span>
                   <span
                     className="text-sm font-semibold"
@@ -405,7 +405,9 @@ export default function VisaPage() {
                           : "var(--state-success)",
                     }}
                   >
-                    days remaining
+                    {visaInfo.current.daysRemaining <= 0
+                      ? "days since expiry"
+                      : "days remaining"}
                   </span>
                 </div>
                 <p
@@ -419,9 +421,11 @@ export default function VisaPage() {
                       visaInfo.current.daysRemaining <= 60 ? 500 : 400,
                   }}
                 >
-                  {visaInfo.current.daysRemaining <= 60
-                    ? "Your visa expires in less than 2 months. Please contact us immediately to begin renewal."
-                    : "Your visa is valid. We will notify you when renewal is needed."}
+                  {visaInfo.current.daysRemaining <= 0
+                    ? "Your visa has expired. Please contact us immediately."
+                    : visaInfo.current.daysRemaining <= 60
+                      ? "Your visa expires in less than 2 months. Please contact us immediately to begin renewal."
+                      : "Your visa is valid. We will notify you when renewal is needed."}
                 </p>
               </div>
             </div>

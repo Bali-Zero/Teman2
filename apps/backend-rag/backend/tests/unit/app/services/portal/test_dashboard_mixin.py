@@ -1,6 +1,6 @@
 """Unit tests for PortalService dashboard mixin branches."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -45,6 +45,10 @@ async def test_get_dashboard_handles_optional_query_failures() -> None:
         RuntimeError("documents table unavailable"),
     ]
     conn.fetch.side_effect = [
+        # visa_practice failed above, so get_dashboard now also tries the
+        # documents-fallback query before "companies" — see
+        # test_get_dashboard_falls_back_to_visa_document_when_no_practice.
+        RuntimeError("visa document fallback unavailable"),
         RuntimeError("companies table unavailable"),
         RuntimeError("practices table unavailable"),
     ]
@@ -61,6 +65,92 @@ async def test_get_dashboard_handles_optional_query_failures() -> None:
     assert result["documents"] == {"total": 0, "pending": 0}
     assert result["messages"] == {"unread": 0}
     assert result["actions"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_falls_back_to_visa_document_when_no_practice() -> None:
+    """741 measured clients have a client-visible visa-family document and
+    no matching completed visa practice (2026-09-21) — the dashboard tile
+    must derive from the document instead of defaulting to 'none'."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [
+        {"id": 1, "full_name": "Client One", "email": "client@example.com"},
+        None,  # no visa practice
+        None,  # doc_counts (optional)
+    ]
+    conn.fetch.side_effect = [
+        [
+            {
+                "id": 55,
+                "document_type": "e_visa",
+                "expiry_date": (now + timedelta(days=120)).date(),
+                "created_at": now,
+            },
+        ],
+        [],  # companies
+        [],  # action_items
+    ]
+    conn.fetchval.side_effect = [False, 0]  # tax footprint, unread count
+
+    result = await service.get_dashboard(1, current_user=_ctx())
+
+    assert result["visa"]["status"] == "active"
+    assert result["visa"]["type"] == "e visa"
+    assert result["visa"]["expiryDate"] is not None
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_practice_present_does_not_query_document_fallback() -> None:
+    """A client this already worked for must see NO change — the
+    documents-fallback query never even runs when a practice was found."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [
+        {"id": 1, "full_name": "Client One", "email": "client@example.com"},
+        {
+            "id": 7,
+            "status": "completed",
+            "expiry_date": (now + timedelta(days=200)).date(),
+            "code": "E33",
+            "name": "KITAS",
+        },
+        None,  # doc_counts
+    ]
+    conn.fetch.side_effect = [
+        [],  # companies (fallback-doc query must NOT consume this slot)
+        [],  # action_items
+    ]
+    conn.fetchval.side_effect = [False, 0]
+
+    result = await service.get_dashboard(1, current_user=_ctx())
+
+    assert result["visa"]["status"] == "active"
+    assert result["visa"]["type"] == "E33 - KITAS"
+    assert conn.fetch.await_count == 2  # only companies + action_items
+
+
+def test_build_visa_dashboard_data_accepts_a_real_date_not_only_datetime() -> None:
+    """Regression: asyncpg maps `practices.expiry_date`/`documents.expiry_date`
+    (both Postgres `date` columns) to plain `datetime.date`, which has no
+    `.date()` method. The old code called `.date()` unconditionally and
+    crashed with AttributeError on every real row with a non-null
+    expiry_date — confirmed empirically against a real asyncpg connection
+    2026-09-21. Only mocks using a full `datetime` (see the test below this
+    one) ever exercised this line without tripping it."""
+    service, _conn = _service_with_conn()
+
+    result = service._build_visa_dashboard_data(
+        {
+            "status": "completed",
+            "expiry_date": date(2026, 12, 1),
+            "code": None,
+            "name": "KITAS",
+        }
+    )
+
+    assert result["status"] in {"active", "warning", "expired"}
+    assert result["expiryDate"] == "2026-12-01"
 
 
 def test_build_visa_dashboard_data_completed_without_expiry_is_active() -> None:
@@ -174,6 +264,179 @@ async def test_get_visa_status_shapes_current_history_and_documents() -> None:
     assert result["documents"][1]["category"] == "Other"
     assert result["documents"][1]["status"] == "pending"
     assert result["documents"][1]["downloadUrl"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_falls_back_to_visa_document_when_no_practice() -> None:
+    """Same 741-vs-95 gap as the dashboard tile, but for the detailed
+    /api/portal/visa 'current' shape — this is the exact endpoint whose
+    empty state renders "No active visa information" in the client
+    portal (apps/mouth/src/app/portal/(authenticated)/visa/page.tsx)."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [
+        {"id": 1},
+        None,  # no completed, unexpired visa practice
+    ]
+    conn.fetch.side_effect = [
+        [],  # visa_history
+        [],  # documents (whitelist list)
+        [
+            {
+                "id": 77,
+                "document_type": "kitas",
+                "expiry_date": (now + timedelta(days=90)).date(),
+                "issue_date": None,
+                "created_at": now,
+            },
+        ],
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"] is not None
+    assert result["current"]["type"] == "kitas"
+    assert result["current"]["status"] == "active"
+    # No OCR on the document: nothing to show, never a made-up identifier.
+    assert result["current"]["permitNumber"] == "-"
+    assert result["current"]["sponsor"] == "-"
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_document_fallback_reads_permit_and_sponsor_from_ocr() -> None:
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [{"id": 1}, None]
+    conn.fetch.side_effect = [
+        [],
+        [],
+        [
+            {
+                "id": 78,
+                "document_type": "visa",
+                "expiry_date": (now + timedelta(days=90)).date(),
+                "issue_date": None,
+                "created_at": now,
+                "ocr_visa_number": "TEST-PERMIT-0001",
+                "ocr_sponsor": "PT Example Sponsor",
+            },
+        ],
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["permitNumber"] == "TEST-PERMIT-0001"
+    assert result["current"]["sponsor"] == "PT Example Sponsor"
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_document_in_grace_window_reports_real_days_since_expiry() -> None:
+    """A document that lapsed 12 days ago is still picked (30-day grace, as
+    kita). The page must say "Expired 12d ago" like the tile, not a clamped
+    "Expired 0d ago" — 30 live clients in this state (measured 2026-09-21)."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [{"id": 1}, None]
+    conn.fetch.side_effect = [
+        [],
+        [],
+        [
+            {
+                "id": 80,
+                "document_type": "kitas",
+                "expiry_date": (now - timedelta(days=12)).date(),
+                "issue_date": None,
+                "created_at": now,
+            },
+        ],
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["status"] == "expired"
+    assert result["current"]["daysRemaining"] == -12
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_document_without_expiry_is_active_not_expired() -> None:
+    """407 of the 691 fallback clients (measured 2026-09-21) have a visa
+    document with no expiry_date and no OCR. The dashboard tile already
+    reads that as "active" with no countdown (and kita as "Valid"); the visa
+    page must not tell the same client "Expired 0d ago"."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [{"id": 1}, None]
+    conn.fetch.side_effect = [
+        [],
+        [],
+        [
+            {
+                "id": 79,
+                "document_type": "visa",
+                "expiry_date": None,
+                "issue_date": None,
+                "created_at": now,
+            },
+        ],
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["status"] == "active"
+    assert result["current"]["daysRemaining"] is None
+    assert result["current"]["expiryDate"] == "-"
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_completed_practice_without_expiry_is_active() -> None:
+    """34 of 97 completed visa practices have no expiry_date (measured
+    2026-09-21): same rule as the document fallback and the dashboard tile."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [
+        {"id": 1},
+        {
+            "id": 8,
+            "status": "completed",
+            "start_date": now,
+            "completion_date": now,
+            "expiry_date": None,
+            "notes": None,
+            "code": "E33",
+            "type_name": "Investor KITAS",
+        },
+    ]
+    conn.fetch.side_effect = [[], []]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["status"] == "active"
+    assert result["current"]["daysRemaining"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_practice_present_does_not_query_document_fallback() -> None:
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [
+        {"id": 1},
+        {
+            "id": 7,
+            "status": "completed",
+            "start_date": now,
+            "completion_date": now,
+            "expiry_date": (now + timedelta(days=200)).date(),
+            "notes": None,
+            "code": "E33",
+            "type_name": "Investor KITAS",
+        },
+    ]
+    conn.fetch.side_effect = [[], []]  # visa_history, documents — no 3rd call
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["type"] == "E33 - Investor KITAS"
+    assert conn.fetch.await_count == 2
 
 
 @pytest.mark.asyncio
