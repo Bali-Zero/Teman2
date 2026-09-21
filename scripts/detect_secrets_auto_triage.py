@@ -1036,12 +1036,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
     # CONTENT key does the actual work — a real secret assigned to any OTHER
     # key in the same files, or a lower/mixed-case value on `label`, stays
     # unaudited for human review.
+    #
+    # Value class bounded to {1,32} (GATE-B4-SECRETS M1, 2026-09-21): the
+    # longest real enum member across both checked-in manifests is 24 chars
+    # (`SHAREHOLDER_COMMISSIONER`, `edge/investment_role=...`), measured by
+    # `grep -ohE` over every `"label": "edge/..."` line in both files, not
+    # only the ones the scanner flags. 32 gives every real member 8 chars of
+    # headroom; a 64-char uppercase hex or base32 credential dressed in the
+    # same all-upper-case shape no longer fits. The honest limit: a short
+    # SCREAMING_SNAKE token up to 32 chars still passes — that is what an
+    # enum member IS, and this bound does not distinguish one from a
+    # same-length uppercase secret. It only excludes the LONGER shapes that
+    # were the observed gap.
     (
         re.compile(
             r"(^|/)research/operations/\d{4}-\d{2}-\d{2}-visa-oracle-live-"
             r"enumeration/prove-live-[a-z0-9-]+\.json$"
         ),
-        re.compile(r'^\s*"label"\s*:\s*"edge/[a-z0-9_]+=[A-Z0-9_]+"\s*,?\s*$'),
+        re.compile(r'^\s*"label"\s*:\s*"edge/[a-z0-9_]+=[A-Z0-9_]{1,32}"\s*,?\s*$'),
         "visa-oracle live-enumeration manifest edge label: the decision-tree "
         "edge identifier (question_key=ENUM_VALUE) emitted by "
         "enumerate-interview-space.ts, never a credential",
