@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 40, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 40. "
+    assert len(CONTENT_KEYED_RULES) == 42, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 42. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -365,6 +365,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: evidence/<month>/<slug>/reviews/prompt-r*.txt VERDICT sha256 of the prompt round's own text (2026-09-13, B2 ledger close PR, #6440)
     # +1: infra/claude-plugins/local-marketplace/vendor.lock.json per-file sha256 + upstream_commit pins (2026-09-15, PR #6554 follow-up)
     # +1: infra/claude-hooks/secret-expansion-registry.json `_secret_env_var_patterns_doc`/`_secret_files_doc` prose fields — variable NAMES and store paths, never a value (2026-09-19, PR #6787)
+    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json edge label (2026-09-21, PR #7015)
+    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json content hash (2026-09-21, PR #7015)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1883,4 +1885,221 @@ def test_innocence_vendor_lock_same_shape_different_path_not_approved() -> None:
     assert content_pat.match(real_line)  # line shape alone would match
     assert not path_pat.search(
         "infra/claude-plugins/local-marketplace/plugins/superpowers/LICENSE"
+    )
+
+
+VO_B4_EDGE_LABEL_REASON = "visa-oracle live-enumeration manifest edge label"
+VO_B4_CONTENT_HASH_REASON = "visa-oracle live-enumeration report content hash"
+
+VO_B4_MANIFEST_A = (
+    "research/operations/2026-09-21-visa-oracle-live-enumeration/"
+    "prove-live-b2c-c3-manifest-raw-20260920.json"
+)
+VO_B4_MANIFEST_B = (
+    "research/operations/2026-09-21-visa-oracle-live-enumeration/"
+    "prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json"
+)
+VO_B4_FULL_SWEEP_REPORT = (
+    "research/operations/2026-09-21-visa-oracle-live-enumeration/"
+    "prove-live-b4-full-sweep-report-20260921.json"
+)
+VO_B4_DELTA_REPORT = (
+    "research/operations/2026-09-21-visa-oracle-live-enumeration/"
+    "prove-live-b4b-delta-report-20260921.json"
+)
+
+# Real edge-label lines, verbatim, from the checked-in PR #7009 manifests
+# (lines 458, 13808, 26623 of both raw manifests — re-verified against the
+# fetched files 2026-09-21).
+VO_B4_REAL_EDGE_LABEL_LINES = [
+    '        "label": "edge/application_channel=STATUS_BRIDGING",',
+    '        "label": "edge/family_sponsor_permit_basis=SCIENTIFIC_RESEARCH",',
+    '        "label": "edge/investment_role=SHAREHOLDER_COMMISSIONER",',
+]
+
+# Real hash lines, verbatim, from the checked-in PR #7009 reports (public
+# hashes of public evidence artifacts — re-verified against the fetched
+# files 2026-09-21).
+VO_B4_REAL_HASH_LINES = [
+    '      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4",',
+    '  "manifest_sha256": "571b1bd19aa00f99b93204831a1814c910ea70828069eea05837af5ddaa51bd0",',
+    '            "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",',
+]
+
+
+def test_vo_b4_edge_label_rule_registered_and_scoped() -> None:
+    """Path-scoped to the prove-live-*.json artifacts of the dated
+    visa-oracle-live-enumeration directory only — not a sibling directory
+    with a different slug, and not a different file in the same
+    directory."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    assert path_pat.search(VO_B4_MANIFEST_A)
+    assert path_pat.search(VO_B4_MANIFEST_B)
+    assert not path_pat.search(
+        "research/operations/2026-09-21-something-else/prove-live-x.json"
+    )
+    assert not path_pat.search(
+        "research/operations/2026-09-21-visa-oracle-live-enumeration/notes.json"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_vo_b4_edge_label_real_lines_approved() -> None:
+    """The 3 real `edge/<question_key>=<ENUM_VALUE>` label lines above,
+    copied verbatim from the checked-in manifests, must be approved."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    for line in VO_B4_REAL_EDGE_LABEL_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+
+
+def test_guilt_vo_b4_edge_label_no_trailing_comma_variant_approved() -> None:
+    """The last key in an object has no trailing comma — both variants must
+    match."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    assert content_pat.match('        "label": "edge/application_channel=STATUS_BRIDGING"')
+
+
+def test_innocence_vo_b4_edge_label_different_key_not_approved() -> None:
+    """A secret on a DIFFERENT key in the same file, even with a plausible
+    enum-like value, is not approved — the rule is keyed on `label`."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    assert content_pat.match('        "api_key": "edge/x=SECRET",') is None
+
+
+def test_innocence_vo_b4_edge_label_lowercase_value_not_approved() -> None:
+    """A lower-case or mixed-case value on `label` — the shape a real
+    token (e.g. a GitHub PAT) would take — is not approved. Only an
+    all-upper-case enum member matches."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    assert content_pat.match('        "label": "edge/x=ghp_realtoken1234",') is None
+
+
+def test_innocence_vo_b4_edge_label_ride_along_statement_not_approved() -> None:
+    """A second statement riding along on the same line after the label
+    assignment must not be waved through — the pattern is end-anchored."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    line = '        "label": "edge/x=Y", "token": "ghp_realtoken1234567890",'
+    assert content_pat.match(line) is None
+
+
+def test_innocence_vo_b4_edge_label_wrong_directory_slug_not_approved() -> None:
+    """The exact same line shape in a sibling directory that is NOT the
+    visa-oracle-live-enumeration slug stays unaudited — the path half of
+    the rule is what scopes it."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    real_line = '        "label": "edge/application_channel=STATUS_BRIDGING",'
+    assert content_pat.match(real_line)  # line shape alone would match
+    assert not path_pat.search(
+        "research/operations/2026-09-21-something-else/prove-live-x.json"
+    )
+
+
+def test_innocence_vo_b4_edge_label_wrong_filename_not_approved() -> None:
+    """The exact same line shape in the right directory but a file that is
+    NOT a `prove-live-*.json` artifact stays unaudited."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_EDGE_LABEL_REASON)
+    real_line = '        "label": "edge/application_channel=STATUS_BRIDGING",'
+    assert content_pat.match(real_line)  # line shape alone would match
+    assert not path_pat.search(
+        "research/operations/2026-09-21-visa-oracle-live-enumeration/notes.json"
+    )
+
+
+def test_vo_b4_content_hash_rule_registered_and_scoped() -> None:
+    """Same path scope as the edge-label rule (both content-keyed rules
+    share the prove-live-*.json path pattern; the CONTENT half is what
+    separates them)."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    assert path_pat.search(VO_B4_FULL_SWEEP_REPORT)
+    assert path_pat.search(VO_B4_DELTA_REPORT)
+    assert not path_pat.search(
+        "research/operations/2026-09-21-something-else/prove-live-x.json"
+    )
+    assert not path_pat.search(
+        "research/operations/2026-09-21-visa-oracle-live-enumeration/notes.json"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_vo_b4_content_hash_real_lines_approved() -> None:
+    """The 3 real hash lines above (build_sha 40-hex, manifest_sha256 and
+    payload_sha256 64-hex), copied verbatim from the checked-in reports,
+    must be approved."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    for line in VO_B4_REAL_HASH_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+
+
+def test_guilt_vo_b4_content_hash_no_trailing_comma_variant_approved() -> None:
+    """The last key in an object has no trailing comma — both variants must
+    match."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    assert content_pat.match(
+        '      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4"'
+    )
+
+
+def test_innocence_vo_b4_content_hash_different_key_not_approved() -> None:
+    """A 64-hex secret on a DIFFERENT key in the same file is not
+    approved — the rule is keyed on the three named hash fields."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    bad_value = "a" * 64
+    assert content_pat.match(f'        "token": "{bad_value}",') is None
+
+
+def test_innocence_vo_b4_content_hash_wrong_hex_length_not_approved() -> None:
+    """39/41-hex (build_sha) and 63/65-hex (manifest_sha256/payload_sha256)
+    all stay unaudited; the rule requires exactly 40 or exactly 64."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    assert content_pat.match(f'      "build_sha": "{"a" * 39}",') is None
+    assert content_pat.match(f'      "build_sha": "{"a" * 41}",') is None
+    assert content_pat.match(f'  "manifest_sha256": "{"a" * 63}",') is None
+    assert content_pat.match(f'  "manifest_sha256": "{"a" * 65}",') is None
+
+
+def test_innocence_vo_b4_content_hash_uppercase_not_approved() -> None:
+    """Upper-case hex on any of the three keys stays unaudited — only
+    lowercase hex matches."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    assert content_pat.match(f'      "build_sha": "{"A" * 40}",') is None
+    assert content_pat.match(f'  "payload_sha256": "{"A" * 64}",') is None
+
+
+def test_innocence_vo_b4_content_hash_ghp_shaped_value_not_approved() -> None:
+    """A `ghp_`-shaped GitHub token pasted onto `build_sha` is neither 40
+    nor 64 lowercase hex, so it cannot ride through on key name alone."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    line = '      "build_sha": "ghp_1234567890abcdefghijklmnopqrstuvwxyz01",'
+    assert content_pat.match(line) is None
+
+
+def test_innocence_vo_b4_content_hash_ride_along_statement_not_approved() -> None:
+    """A second statement riding along on the same line must not be waved
+    through — the pattern is end-anchored."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    line = (
+        f'      "build_sha": "{"a" * 40}", "token": "ghp_realtoken1234567890",'
+    )
+    assert content_pat.match(line) is None
+
+
+def test_innocence_vo_b4_content_hash_wrong_directory_slug_not_approved() -> None:
+    """The exact same line shape in a sibling directory that is NOT the
+    visa-oracle-live-enumeration slug stays unaudited."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    real_line = '      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4",'
+    assert content_pat.match(real_line)  # line shape alone would match
+    assert not path_pat.search(
+        "research/operations/2026-09-21-something-else/prove-live-x.json"
+    )
+
+
+def test_innocence_vo_b4_content_hash_wrong_filename_not_approved() -> None:
+    """The exact same line shape in the right directory but a file that is
+    NOT a `prove-live-*.json` artifact stays unaudited."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(VO_B4_CONTENT_HASH_REASON)
+    real_line = '      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4",'
+    assert content_pat.match(real_line)  # line shape alone would match
+    assert not path_pat.search(
+        "research/operations/2026-09-21-visa-oracle-live-enumeration/notes.json"
     )
