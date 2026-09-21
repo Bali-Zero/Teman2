@@ -158,7 +158,7 @@ class PajakMonitorJob(BrowserJob):
             self.logger.warning("fetch_error", url=url, error=str(e))
             return []
 
-    async def _enrich_peraturan_details(self, items: list[dict]) -> None:
+    async def _enrich_peraturan_details(self, items: list[dict]) -> int:
         """Fetch the detail page for NEW peraturan items and attach the extracted
         citation/excerpt/date under `item["_detail"]`.
 
@@ -175,6 +175,11 @@ class PajakMonitorJob(BrowserJob):
         MARGIN_S`; once that margin is gone, enrichment stops taking new candidates — the
         remaining ones are simply left without `_detail`, same as any other best-effort miss,
         so `_mark_seen`/`_write_intel_feed`/Telegram always still get their turn.
+
+        Returns `skipped_for_budget` (#7087 C1) — how many candidates were never even attempted
+        because the deadline was already gone when their turn came. A caller ignoring it (as
+        `run()` does today) loses nothing; a test asserting on it can pin the deadline arm
+        itself, independent of wall-clock timing.
         """
         candidates = [
             i for i in items
@@ -207,6 +212,7 @@ class PajakMonitorJob(BrowserJob):
             "enrich_peraturan",
             outputs={"candidates": len(candidates), "enriched": enriched, "skipped_for_budget": skipped_for_budget},
         )
+        return skipped_for_budget
 
     async def _fetch_detail_page(self, url: str) -> dict | None:
         """robots check, polite delay and fetch of one detail page; None when robots disallows."""

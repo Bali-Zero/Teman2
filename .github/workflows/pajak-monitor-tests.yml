@@ -1,0 +1,68 @@
+name: Pajak monitor tests
+
+# Executor for scripts/tests/test_pajak_parse.py and scripts/tests/test_pajak_monitor.py — the
+# extractor (citation/excerpt/date, admission-critical) and the monitor wiring
+# (deadline arm, host-labeling guard) for the pajak.go.id regulation monitor.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Both suites existed on `main` (#7084/#7087/#7074) with NO workflow naming either —
+# `scripts-tests-sweep.yml`'s sweep does collect `test_pajak_*.py`, but that step is
+# `continue-on-error: true` and sits in no required context, so the corpus could regress
+# forever without turning a single PR red (superscar #2, exists != armed). This is #7087's
+# condition C3 / #7074's condition C1 (both due 2026-09-24): pin both files in a
+# PR-triggered, path-filtered workflow. Same shape as `preflight-pack-tests.yml` and
+# `voa-probe-tests.yml`: one small workflow named by the suites it proves, `paths:`-filtered
+# so it starts on exactly the diffs that can break it.
+#
+# Deliberately NOT added to branch-protection required contexts — that is a repo-settings
+# action, operator gated (CLAUDE.md §13), and `scripts/ci/check_required_workflow_conformance.py`
+# only inspects workflows already named in `infra/required.d/contexts.json`; this file is not
+# one of them. A path-filtered check is therefore safe here without a skip-to-success sentinel.
+#
+# THE PATH FILTER IS THE ARMING SURFACE: both test files, both source modules they import
+# (`pajak_parse.py`, `pajak_monitor.py`), the fixture directory the parser suite reads, and
+# this workflow itself.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/cron-agent-python/pajak_parse.py"
+      - "scripts/cron-agent-python/pajak_monitor.py"
+      - "scripts/tests/test_pajak_parse.py"
+      - "scripts/tests/test_pajak_monitor.py"
+      - "scripts/tests/fixtures/pajak/**"
+      - ".github/workflows/pajak-monitor-tests.yml"
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pajak-monitor-tests-${{ github.ref }}
+  # `== 'pull_request'`, not `!= 'merge_group'`: false on `merge_group` so a queued run is never
+  # cancellable (a cancelled required check would eject the entry — this one isn't required
+  # today, but the expression costs nothing to get right regardless), true on `pull_request` so
+  # a superseded push on the same PR branch cancels its predecessor.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  pajak-monitor-tests:
+    name: Pajak monitor tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+
+      # Both suites are stdlib-only + pytest — no requirements.txt install needed, same as
+      # pajak_parse.py's own "stdlib only, no agent_job/browser_job imports" design note.
+      - name: Install pytest
+        run: python3 -m pip install --quiet pytest
+
+      - name: Run pajak monitor test suites
+        run: |
+          python3 -m pytest scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py -v --tb=short
