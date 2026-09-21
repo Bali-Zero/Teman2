@@ -19,12 +19,46 @@ export interface OracleOption {
   hintI18nKey?: string;
 }
 
+/** Why a "Not sure?" answer is held for human review instead of taking a
+ * conservative default (slice A6, spec `kit/DRAFT-SPEC-A6-1.v3.md` §2.2/§2.4).
+ * The 54 `notSure`-bearing questions in `QUESTIONS` partition into three
+ * groups, computed from each question's `decisionMapping.factPaths` against
+ * `rulepack-prod-022.signed.json`'s `required_facts`/`on_unknown`, never
+ * hand-copied:
+ *  - Group A, 11 questions, `kind: "HUMAN_CONTEXT"` — no factPaths exist for
+ *    `resolveConservativeAnswers` to reach. Tag `"no-fact-path"`.
+ *  - Group B, 6 questions — every consuming rule declares
+ *    `on_unknown: "NO_EFFECT"` (or no rule consumes the path at all): the
+ *    fact is pack-inert. Tag `"unknown-is-inert"`.
+ *  - Group C, 37 questions — the pack reads the fact with
+ *    `on_unknown != "NO_EFFECT"`, so no value is safe to assume by default.
+ *    `"direction-unproven"` (`in_indonesia`: the only fact where the pack
+ *    proof in §2.3 shows a concrete value could as easily ADD a candidate as
+ *    REMOVE a condition — the safe direction cannot be determined);
+ *    `"history-not-assumable"` (`birth_date`, `overstay_days`,
+ *    `nationalities` — OD-10: immutable historical facts, never safely
+ *    assumed in either direction); `"activity-boundary-a3prime"`
+ *    (`current_status_code`/`stay_permit_code`/`wants_onshore_conversion` —
+ *    consumed by the pack's `hf.bridging.*`/`hf.d12-*` status-boundary
+ *    rules); `"money-payer-clients"` (the remaining 30 — compensation,
+ *    sponsor/employer identity, financial capital and the other
+ *    qualification facts the pack cannot assume either, the original,
+ *    load-bearing reason this mode existed before A6 gave it siblings). */
+export type NotSureHoldReason =
+  | "money-payer-clients"
+  | "history-not-assumable"
+  | "activity-boundary-a3prime"
+  | "unknown-is-inert"
+  | "direction-unproven"
+  | "no-fact-path";
+
 /** How a question's "Not sure?" affordance resolves (design doc §3/§4):
- * either it forces HUMAN_REVIEW_REQUIRED (money/payer/clients — the
- * load-bearing rule), or it takes a named conservative branch and the
- * assumption is visibly logged. Absent = no NotSure affordance rendered. */
+ * either it forces HUMAN_REVIEW_REQUIRED — and `because` NAMES why no
+ * conservative default exists for this fact (`NotSureHoldReason`) — or it
+ * takes a named conservative branch and the assumption is visibly logged.
+ * Absent = no NotSure affordance rendered. */
 export type NotSureBehavior =
-  | { mode: "human-review" }
+  | { mode: "human-review"; because: NotSureHoldReason }
   | { mode: "conservative"; conservativeValue: string };
 
 export type QuestionDecisionMapping =
@@ -219,7 +253,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.in_indonesia.opt.no" },
     ],
     whyWeAsk: { i18nKey: "why.in_indonesia" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "direction-unproven" },
   },
   permit_expiry: {
     id: "permit_expiry",
@@ -234,7 +268,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     options: [],
     dateInput: { labelI18nKey: "q.permit_expiry.label" },
     whyWeAsk: { i18nKey: "why.permit_expiry" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   current_status_code: {
     id: "current_status_code",
@@ -270,7 +304,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "other", labelI18nKey: "q.current_status_code.opt.other" },
     ],
     whyWeAsk: { i18nKey: "why.current_status_code" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "activity-boundary-a3prime" },
   },
   // Two-step gate (2026-08-23 owner ruling, D12/derived.has_active_stay_permit
   // reachability): `derived.has_active_stay_permit`'s `KNOWN(True)` branch
@@ -298,7 +332,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.holds_stay_permit" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   // Options derived from `STAY_PERMIT_CODES` above — see that constant's
   // doc comment for provenance and the sibling consumers.
@@ -317,7 +351,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       labelI18nKey: `q.stay_permit_code.opt.${key}`,
     })),
     whyWeAsk: { i18nKey: "why.stay_permit_code" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "activity-boundary-a3prime" },
   },
   // Gated in flow.ts (`computeNextNode`'s `stay_permit_code` case): asked
   // only when the applicant holds a stay permit (`holds_stay_permit ===
@@ -345,7 +379,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.renewal_paid" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   overstay_days: {
     id: "overstay_days",
@@ -366,7 +400,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.stay_days.unit",
     },
     whyWeAsk: { i18nKey: "why.overstay_days" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "history-not-assumable" },
   },
   wants_onshore_conversion: {
     id: "wants_onshore_conversion",
@@ -383,7 +417,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.wants_onshore_conversion" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "activity-boundary-a3prime" },
   },
   application_channel: {
     id: "application_channel",
@@ -407,7 +441,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.application_channel" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   nationalities: {
     id: "nationalities",
@@ -426,7 +460,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       maxSelections: 4,
     },
     whyWeAsk: { i18nKey: "why.nationalities" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "history-not-assumable" },
   },
   birth_date: {
     id: "birth_date",
@@ -438,7 +472,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     options: [],
     dateInput: { labelI18nKey: "q.birth_date.label", maxToday: true },
     whyWeAsk: { i18nKey: "why.birth_date" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "history-not-assumable" },
   },
   category: {
     id: "category",
@@ -460,7 +494,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       key,
       labelI18nKey: `q.category.opt.${key}`,
     })),
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   trip_scope: {
     id: "trip_scope",
@@ -474,7 +508,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "multiple", labelI18nKey: "q.trip_scope.opt.multiple" },
     ],
     whyWeAsk: { i18nKey: "why.trip_scope" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   entry_pattern: {
     id: "entry_pattern",
@@ -488,7 +522,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "MULTIPLE", labelI18nKey: "q.entry_pattern.opt.MULTIPLE" },
     ],
     whyWeAsk: { i18nKey: "why.entry_pattern" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   /** WHO sponsors the stay, as a category. This is distinct from the
    * family/work/study "is the sponsor confirmed?" booleans elsewhere in
@@ -533,7 +567,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.sponsor_category" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // W-VO-Q (mission SAETTA-VO3): the five seq-21 SPONSOR qualification
   // facts, one fact per question, each the ONE conjunct that makes its
@@ -602,7 +636,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "other", labelI18nKey: "q.business_activity.opt.other" },
     ],
     whyWeAsk: { i18nKey: "why.business_activity" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   work_payer: {
     id: "work_payer",
@@ -619,7 +653,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "yes", labelI18nKey: "q.work_payer.opt.yes" },
       { key: "no", labelI18nKey: "q.work_payer.opt.no" },
     ],
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   work_indonesia_compensation: {
     id: "work_indonesia_compensation",
@@ -636,7 +670,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.work_indonesia_compensation" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   work_sponsor_confirmed: {
     id: "work_sponsor_confirmed",
@@ -653,7 +687,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.work_sponsor_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // `work_role` deleted 2026-09-06 (owner ruling 6, overruling
   // `research/visa/doctrine-factory/e4/question-registry-audit.md` §3's
@@ -686,7 +720,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "indonesian", labelI18nKey: "q.remote_clients.opt.indonesian" },
       { key: "mixed", labelI18nKey: "q.remote_clients.opt.mixed" },
     ],
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   remote_compensation: {
     id: "remote_compensation",
@@ -703,7 +737,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.remote_compensation" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   remote_employer_country: {
     id: "remote_employer_country",
@@ -721,7 +755,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       multiple: false,
     },
     whyWeAsk: { i18nKey: "why.remote_employer_country" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   remote_pt_pma: {
     id: "remote_pt_pma",
@@ -738,7 +772,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.remote_pt_pma" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   investment_vehicle: {
     id: "investment_vehicle",
@@ -770,7 +804,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.investment_vehicle" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   investment_pt_pma: {
     id: "investment_pt_pma",
@@ -787,7 +821,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.investment_pt_pma" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   investment_capital_idr: {
     id: "investment_capital_idr",
@@ -808,7 +842,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.idr",
     },
     whyWeAsk: { i18nKey: "why.investment_capital_idr" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // PR-D4c-2 (owner ruling SHWEB-20260911): router for the `merit`/`family`/
   // `undecided` investment-vehicle branches ONLY — deliberately never added
@@ -879,7 +913,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd",
     },
     whyWeAsk: { i18nKey: "why.investment_amount_usd" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   investment_paid_up_capital_idr: {
     id: "investment_paid_up_capital_idr",
@@ -900,7 +934,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.idr",
     },
     whyWeAsk: { i18nKey: "why.investment_paid_up_capital_idr" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   investment_role: {
     id: "investment_role",
@@ -929,7 +963,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "OTHER", labelI18nKey: "q.investment_role.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.investment_role" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // W-VO-Q: the five seq-21 INVESTMENT route facts (`el.e28b/c/d/f.*`). Every
   // one of the four rules reads `intent.purposes ∩ INVESTMENT`, its own
@@ -999,7 +1033,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "OTHER", labelI18nKey: "q.family_relation.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.family_relation" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   marital_status: {
     id: "marital_status",
@@ -1016,7 +1050,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "OTHER", labelI18nKey: "q.marital_status.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.marital_status" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   family_sponsor_nationalities: {
     id: "family_sponsor_nationalities",
@@ -1035,7 +1069,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       maxSelections: 4,
     },
     whyWeAsk: { i18nKey: "why.family_sponsor_nationalities" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // D4a (owner ruling SHWEB-20260911, 2026-09-13): closed SELECT over the
   // same signed catalogue as `stay_permit_code` above (`STAY_PERMIT_CODES`),
@@ -1068,7 +1102,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       labelI18nKey: `q.stay_permit_code.opt.${key}`,
     })),
     whyWeAsk: { i18nKey: "why.family_sponsor_status_code" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "unknown-is-inert" },
   },
   family_marriage_registered: {
     id: "family_marriage_registered",
@@ -1090,7 +1124,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.family_marriage_registered" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   family_sponsor_confirmed: {
     id: "family_sponsor_confirmed",
@@ -1107,7 +1141,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.family_sponsor_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // D12-only sibling of `family_sponsor_confirmed` (Zero decision
   // 2026-09-16, mandate SAETTA R2). `businessExplorerQuestionIds`
@@ -1136,7 +1170,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.business_sponsor_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // Stepchild route (2026-08-23 owner ruling — the E31D stepchild-of-a-
   // mixed-marriage product exists in the catalog, but every one of its
@@ -1163,7 +1197,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: {
       i18nKey: "why.family_stepchild_marriage_certificate_confirmed",
     },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   family_stepchild_birth_certificate_confirmed: {
     id: "family_stepchild_birth_certificate_confirmed",
@@ -1180,7 +1214,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.family_stepchild_birth_certificate_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   // D3-4 (PR-D3, owner ruling SHWEB-20260911) had added
   // `family_stepchild_sponsor_permit_confirmed` here — "does your sponsor
@@ -1272,7 +1306,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "OTHER", labelI18nKey: "q.family_sponsor_permit_basis.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.family_sponsor_permit_basis" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   retirement_basis: {
     id: "retirement_basis",
@@ -1301,7 +1335,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.retirement_basis" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   // D3-3 (PR-D3, owner ruling SHWEB-20260911): `undecided` stopped being a
   // dead end. Instead of holding on the bare label, this presents the two
@@ -1359,7 +1393,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "property", labelI18nKey: "q.secondhome_basis.opt.property" },
     ],
     whyWeAsk: { i18nKey: "why.secondhome_basis" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   secondhome_deposit_usd: {
     id: "secondhome_deposit_usd",
@@ -1380,7 +1414,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd",
     },
     whyWeAsk: { i18nKey: "why.secondhome_deposit_usd" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   secondhome_state_bank: {
     id: "secondhome_state_bank",
@@ -1397,7 +1431,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.secondhome_state_bank" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   secondhome_own_name: {
     id: "secondhome_own_name",
@@ -1414,7 +1448,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.secondhome_own_name" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   secondhome_property_value_usd: {
     id: "secondhome_property_value_usd",
@@ -1435,7 +1469,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd",
     },
     whyWeAsk: { i18nKey: "why.secondhome_property_value_usd" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   secondhome_passive_income_usd: {
     id: "secondhome_passive_income_usd",
@@ -1456,7 +1490,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.unit.usd_month",
     },
     whyWeAsk: { i18nKey: "why.secondhome_passive_income_usd" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   study_level: {
     id: "study_level",
@@ -1481,7 +1515,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "OTHER", labelI18nKey: "q.study_level.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.study_level" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   study_admission_confirmed: {
     id: "study_admission_confirmed",
@@ -1498,7 +1532,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.study_admission_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   study_sponsor_confirmed: {
     id: "study_sponsor_confirmed",
@@ -1515,7 +1549,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.study_sponsor_confirmed" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   diaspora_connection: {
     id: "diaspora_connection",
@@ -1538,7 +1572,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "other", labelI18nKey: "q.diaspora_connection.opt.other" },
     ],
     whyWeAsk: { i18nKey: "why.diaspora_connection" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   diaspora_documents: {
     id: "diaspora_documents",
@@ -1552,7 +1586,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.diaspora_documents" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   other_purpose: {
     id: "other_purpose",
@@ -1572,7 +1606,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "other", labelI18nKey: "q.other_purpose.opt.other" },
     ],
     whyWeAsk: { i18nKey: "why.other_purpose" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   other_paid_activity: {
     id: "other_paid_activity",
@@ -1586,7 +1620,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.other_paid_activity" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "no-fact-path" },
   },
   stay_days: {
     id: "stay_days",
@@ -1604,7 +1638,7 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       unitI18nKey: "q.stay_days.unit",
     },
     whyWeAsk: { i18nKey: "why.stay_days" },
-    notSure: { mode: "human-review" },
+    notSure: { mode: "human-review", because: "money-payer-clients" },
   },
   review_gate: {
     id: "review_gate",

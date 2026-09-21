@@ -18,6 +18,7 @@ import {
   mapStayDays,
   mapViolationHistory,
   requestCategoryForFacts,
+  resolveConservativeAnswers,
   stableEvaluationInputKey,
   type FactValue,
   type UnknownReasonWire,
@@ -154,6 +155,43 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
     });
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
+  });
+});
+
+// Slice A6-2 (DRAFT-SPEC-A6-1.v3.md §2.4): the wire seam. In THIS PR every
+// `notSure` in `QUESTIONS` is `mode: "human-review"` (A6-1 tags all 54; see
+// `tree.test.ts`'s cardinality pin — 54 human-review, 0 conservative), so
+// `resolveConservativeAnswers` has nothing to substitute and is the
+// identity on the shipped tree. The seam becoming non-trivial is slice
+// A6-2's own guilt proof, run for real on that PR's tree — proving it here
+// would require mutating the shared, imported `QUESTIONS` object, which is
+// exactly the scratch-`cp`-only mutation the builder prompt marks
+// `<!-- body-check: transcript -->` and declares SYNTHETIC rather than
+// commits as a permanent test.
+describe("resolveConservativeAnswers — the wire seam (A6-2)", () => {
+  it("is the identity on the shipped tree: 0 conservative-tagged questions exist", () => {
+    expect(
+      Object.values(QUESTIONS).filter(
+        (q) => q.notSure?.mode === "conservative",
+      ),
+    ).toHaveLength(0);
+    const facts: OracleFacts = {
+      in_indonesia: "unsure",
+      work_payer: "unsure",
+      birth_date: "1990-01-01",
+    };
+    expect(resolveConservativeAnswers(facts)).toEqual(facts);
+    expect(resolveConservativeAnswers(facts)).toBe(facts);
+  });
+
+  it("passes an empty facts object through unchanged", () => {
+    const facts: OracleFacts = {};
+    expect(resolveConservativeAnswers(facts)).toBe(facts);
+  });
+
+  it("leaves an 'unsure' answer to an unknown question id untouched", () => {
+    const facts: OracleFacts = { not_a_real_question_id: "unsure" };
+    expect(resolveConservativeAnswers(facts)).toBe(facts);
   });
 });
 

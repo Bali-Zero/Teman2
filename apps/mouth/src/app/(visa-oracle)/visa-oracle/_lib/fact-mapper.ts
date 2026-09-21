@@ -6,6 +6,7 @@
 import { canonicalCountryCodes } from "./countries";
 import {
   parseIsoDateUtc,
+  QUESTIONS,
   STAY_PERMIT_CODES,
   type CategoryKey,
   type OracleFacts,
@@ -578,8 +579,9 @@ function hasUndecidableActivityAnswer(facts: OracleFacts): boolean {
 }
 
 export function mapDisclosedReviewFlags(
-  facts: OracleFacts,
+  rawFacts: OracleFacts,
 ): DisclosedReviewFlagWire[] {
+  const facts = resolveConservativeAnswers(rawFacts);
   const flags = new Set<DisclosedReviewFlagWire>();
   for (const item of facts.review_gate?.split(",") ?? []) {
     const mapped = REVIEW_FLAG_MAP[item];
@@ -911,9 +913,10 @@ export interface MapFactsOptions {
 }
 
 export function mapOracleFactsToApplicantFacts(
-  facts: OracleFacts,
+  rawFacts: OracleFacts,
   options: MapFactsOptions,
 ): ApplicantFactsWire {
+  const facts = resolveConservativeAnswers(rawFacts);
   const remoteClients = mapRemoteClientsDerived(facts);
   const data: ApplicantFactsDataWire = {
     "person.birth_date": dateFact(facts.birth_date),
@@ -1134,4 +1137,31 @@ export function stableEvaluationInputKey(request: ApplicantFactsWire): string {
     facts: stableFactsKey(request.facts),
     disclosedReviewFlags: [...request.disclosed_review_flags].sort(),
   });
+}
+
+/**
+ * The wire seam (slice A6-2, spec `kit/DRAFT-SPEC-A6-1.v3.md` §2.4): the ONE
+ * place a `"unsure"` answer can stop being `"unsure"` before either fact
+ * mapper reads it — called as the first line of both `mapDisclosedReviewFlags`
+ * and `mapOracleFactsToApplicantFacts`. For every fact whose question in
+ * `QUESTIONS` declares `notSure: { mode: "conservative", conservativeValue }`,
+ * an `"unsure"` answer here is replaced with that value; every other answer,
+ * including every `"unsure"` on a `mode: "human-review"` question, passes
+ * through unchanged. In THIS PR no question declares `mode: "conservative"`
+ * (A6-1 tags all 54 `notSure` blocks `"human-review"` — see `tree.ts`), so
+ * this function is the identity on the shipped tree; slice A6-2 is what gives
+ * it a non-empty substitution to make. A plain `function` (hoisted), so its
+ * physical position in the file does not shift either call site's line
+ * numbers.
+ */
+export function resolveConservativeAnswers(facts: OracleFacts): OracleFacts {
+  let resolved: OracleFacts | undefined;
+  for (const [questionId, value] of Object.entries(facts)) {
+    if (value !== "unsure") continue;
+    const notSure = QUESTIONS[questionId]?.notSure;
+    if (notSure?.mode !== "conservative") continue;
+    if (resolved === undefined) resolved = { ...facts };
+    resolved[questionId] = notSure.conservativeValue;
+  }
+  return resolved ?? facts;
 }

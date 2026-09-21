@@ -2181,7 +2181,18 @@ describe("notices render as named conditions (slice A2)", () => {
         // rewrites both to stop promising a human review the engine no
         // longer performs.
         | "q.review_gate.hint"
-        | "why.review_gate",
+        | "why.review_gate"
+        // Slice A6-3 (DRAFT-SPEC-A6-1.v3.md §3, clause A6-3): all six
+        // `assumption.*` keys join the scan — three are rewritten
+        // (`in_indonesia`, `work_payer`, `remote_clients`); the other
+        // three (`permit_expiry`, `stay_days`, `generic`) are added to the
+        // scan unchanged and must still read clean in both languages.
+        | "assumption.in_indonesia"
+        | "assumption.permit_expiry"
+        | "assumption.stay_days"
+        | "assumption.work_payer"
+        | "assumption.remote_clients"
+        | "assumption.generic",
     ) => string;
   }
 
@@ -2216,6 +2227,13 @@ describe("notices render as named conditions (slice A2)", () => {
       // question hint and its "why" copy are now scanned too.
       "q.review_gate.hint",
       "why.review_gate",
+      // Slice A6-3: all six `assumption.*` keys.
+      "assumption.in_indonesia",
+      "assumption.permit_expiry",
+      "assumption.stay_days",
+      "assumption.work_payer",
+      "assumption.remote_clients",
+      "assumption.generic",
     ] as const) {
       entries.push({ key, language: "en", text: tables.translate("en", key) });
       entries.push({ key, language: "id", text: tables.translate("id", key) });
@@ -2246,11 +2264,20 @@ describe("notices render as named conditions (slice A2)", () => {
     // the `...Object.keys(NOTICE_CONDITION_COPY)` spread above.
     "q.review_gate.hint",
     "why.review_gate",
+    // Slice A6-3 (DRAFT-SPEC-A6-1.v3.md §3, F12): all six `assumption.*`
+    // keys join the scan, moving this pin 38 → 50 (six keys × two
+    // languages = twelve new entries).
+    "assumption.in_indonesia",
+    "assumption.permit_expiry",
+    "assumption.stay_days",
+    "assumption.work_payer",
+    "assumption.remote_clients",
+    "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback and fourteen codes, both languages (V3)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes and six assumption keys, both languages (V3, A6-3)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(38);
+    expect(entries).toHaveLength(50);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2265,7 +2292,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 38 shipped strings pass the scan clean", () => {
+  it("innocence: all 50 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });
