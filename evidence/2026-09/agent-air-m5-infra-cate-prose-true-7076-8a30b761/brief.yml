@@ -26,19 +26,19 @@ acceptance:
       non-comment lines are compared to origin/main, both SHALL be
       identical.
     status: verified
-    probe: "ast.dump compare of the module minus docstring; diff of grep -vE '^\\s*#' on the workflow"
+    probe: "Prose only: the test module AST minus its docstring and the workflow's non-comment lines are identical to origin/main"
   - text: >
       WHEN a step treats its tool's timeout exit as success
       (`timeout 1 <tool> || [ $? -eq 124 ]`), or skips when PYTHONUSERBASE
       is unset, the suite SHALL stay green, which is what the two new
       Not-covered bullets declare.
     status: verified
-    probe: "mirror battery on origin/main e17c3319ab, with a timeout shim on PATH because macOS has none"
+    probe: "The two new Not-covered bullets are true: both shapes stay green"
   - text: >
       WHEN each ERRATUM command is re-run, it SHALL print what the
       correction says.
     status: verified
-    probe: "gh run view --log on runs 35596863917 and 35598050723; shasum and shasum -a 256 on both refs; git log --date=iso-strict; pytest count on c5c8ca13c1"
+    probe: "Every ERRATUM correction reproduces from its own command"
 risks:
   - "Prose only. The one behavioural risk is a false declaration, and the
     battery above exists to rule it out."
