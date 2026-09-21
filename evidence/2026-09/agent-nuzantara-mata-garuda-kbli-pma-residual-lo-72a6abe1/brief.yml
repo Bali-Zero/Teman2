@@ -1,0 +1,152 @@
+summary: |
+  Lot 2 of the residual Pasal 3(1)(d) lane of the 2026-09-18 PMA dossier
+  (`research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md` §8.5).
+  Follows PR #6795 (lot 1, merged `ce660dde01`), per Zero's 2026-09-18 go "in
+  lots with a gate" and the 2026-09-21 mandate "tutto" — ship every remaining
+  lot of the residual-open lane.
+
+  ## What this asserts
+
+  Same instrument, same basis, same decisive test as lot 1: Perpres 10/2021
+  Pasal 3(1)(d) + 3(2) — a bidang usaha the instrument places in no annex,
+  names in no body article and hands to no sector law is open to 100% foreign
+  ownership by default. Lot 2 relabels the VERIFICATION STATE
+  (`declared_gap -> located`) of the residual codes whose Bali overlay status is
+  `ATTENZIONE_FASCIA_BALI` with `blocked: false`. 260 of the 271 codes the rule
+  reaches move; no `pma_status`/`pma_max_asing` value moves anywhere; no
+  `pma_kondisi`/`pma_nota`/`pma_source` moves; the compiler's `patch_for` is
+  unchanged from lot 1 (same `BASIS` string, same four written fields).
+
+  The ONE new client-facing thing this lot unveils is the Bali row: today, on
+  an unlocated national tuple, `discloseBaliL4` withholds the whole Bali object
+  (`apps/mouth/src/lib/kbli-pma-disclosure.ts`, gated on `pmaVerdictLocated`) —
+  the page shows "PMA status not yet verified for this KBLI 2025 code" and no
+  Bali-specific badge at all. Once located, the same status renders "Not on
+  Bali's PMA closure list — verify on OSS" (`kbli-status-labels.ts`, tone
+  `warn`) — a STATIC "check it yourself" flag computed by
+  `cure_l4bali_applied_closure.py` from `(bps_2020_ancestors + the excluded-19
+  set)`, same family as `NON_CLASSIFICABILE`. It is not a closure and not a
+  risk-derived verdict (`_l4bali_basis.py`'s `NON_RISK_DERIVED_STATUSES`), and
+  this lot does not touch, confirm or explain that flag's own basis — it only
+  makes the national tuple locatable enough for the disclosure gate to show it.
+
+  The other 11 (of 271 reached) are withheld, each leg naming its own claim:
+
+  | leg | codes | the claim |
+  |---|---|---|
+  | `adjudicated_sibling` | 6 | a 4-digit sibling is instrument-reached and adjudicated |
+  | `unswept_sector_statute` | 4 | WE say we never read the sector's own statute (divisions 35/49/52) |
+  | `instrument_referral` (Pasal 11(2)) | 1 | the Perpres says IN ITS OWN TEXT it does not govern finance/banking (division 64) |
+  | `body_stated_category` (hand-excluded) | 0 | none of lot 1's 19 hand exclusions reach this lot's Bali axis — measured per code |
+  | `annex_title_collision` | 0 | none of the 9 catalogue-wide collisions carry ATTENZIONE_FASCIA_BALI — measured per code |
+
+  None of those means "closed". Each means the honest answer stays
+  `NOT_VERIFIED` until a lane that can answer it does.
+
+  ## The 272-vs-271 gap, measured not assumed
+
+  The 2026-09-19 scoreboard named 272 codes in the `bali_attenzione_fascia`
+  band. The compiler's own reach is 271: code 62900 carries `pma_nota` /
+  `pma_prioritas` (legacy PMA prose, generator-era, the same class lot 1
+  deferred 36 codes on) and fails the `no_legacy_pma_prose` predicate the rule
+  pin requires. The prior is the raw Bali-axis match; the rule's answer is the
+  number a reader can act on. Both are reported, and where they differ is
+  named — the compiler refuses on any OTHER drift in either direction.
+
+  ## Per-lot rule pin, not a JSON edit
+
+  `REQUIRED_RULE` (a single dict) becomes `REQUIRED_RULE_BY_LOT` (keyed by
+  `spec["lot"]`). Lot 1's pin is copied byte-for-byte; lot 2's pin is
+  identical except `l4_bali_status: ATTENZIONE_FASCIA_BALI`. An unknown lot
+  refuses; a spec whose `rule` disagrees with its own lot's pin refuses
+  (guilt); lot 1's spec on `origin/main` still validates without a single
+  refusal against pin 1 (innocence) — pinned by
+  `test_the_lot_1_spec_still_validates_byte_for_byte_against_pin_1`. Every
+  other predicate (bucket, TERBUKA/100, `declared_gap`, `blocked is False`,
+  `no_legacy_pma_prose`, `adjudicated_sibling_prefix` 4) is NOT parameterised
+  — widening any of THOSE is still a code change under review, exactly as lot 1
+  documented, now enforced per lot by
+  `test_a_lot_1_spec_whose_rule_drifts_to_the_lot_2_bali_status_refuses` and
+  its lot-2 mirror.
+
+  ## What is NOT in this lane
+
+  Declared and deferred, same shape as lot 1's own deferred block: lot 3 (31
+  `BLOCCATO_DIPENDE_SCOPE` + 22 `CHIUSO_BALI` + 6 odd), the 36 legacy-prose
+  records (62900 among them, now with a concrete reason attached), the
+  158/12 no-Besar-row classes Zero ruled out of this lane, the 135-code
+  `instrument_reached_sibling` negative result (unchanged, inherited), the 61
+  Pasal 11(2) finance codes and 67 unswept-statute codes lot 1 already named
+  (unaffected — those are OK_or_HIGHER_RISK, a disjoint Bali axis).
+  Client-facing VERDICT flips are Zero's call and are not here; this lot moves
+  zero `pma_status`/`pma_max_asing` values.
+
+  ## Bites
+
+  `scripts/kbli_filiera/apply_residual_open.py`, re-run on the written
+  canonical: `lot 2 · spec items 260 · applicable 0 · already applied 260 ·
+  refused 0`, `withheld from the reach: 11 code(s)`, `annex title collision: 0
+  of the reach — NONE, and the probe is therefore proving nothing`. Canonical
+  reads **located 720 / declared_gap 839** over 1,559 records (720 = 460 lot 1
+  + 260 lot 2; 839 = 1099 - 260).
+
+  Consumer: `apps/mouth/public/llms-kbli.txt`, served verbatim at
+  `balizero.com/llms-kbli.txt`. Against `origin/main`: **260 insertions / 260
+  deletions**, one per lot member:
+
+  ```diff
+  -01192 | Pembenihan Tanaman Pakan Ternak dan Pembenihan Bit (Bukan Bit Gula) | NOT_VERIFIED | Not verified | Menengah Rendah
+  +01192 | Pembenihan Tanaman Pakan Ternak dan Pembenihan Bit (Bukan Bit Gula) | TERBUKA | 100% | Menengah Rendah
+  ```
+
+  The 11 withheld codes are visible as an ABSENCE:
+  `grep -cE '^[+-](16222|21023|32202|59132|91112|91122|35133|35159|49297|52213|64210) '`
+  over the same diff returns **0**.
+
+  `Bites:` consumers `inspect_kbli` (MCP `nuzantara-knowledge`, WhatsApp/webchat)
+  and `balizero.com/kbli/<code>`. BEFORE, measured NOW on 3 lot-2 codes
+  (01192, 27401, 96900):
+
+  - canonical on `origin/main`: all three `TERBUKA/100/declared_gap`,
+    `l4_bali.status ATTENZIONE_FASCIA_BALI`.
+  - live PROD `kbli_documents` (`scripts/pg.sh`, read-only,
+    `nuzantara_readonly`): all three `metadata->>'pma_status' = TERBUKA`,
+    `metadata->>'pma_verification_status'` NULL/empty on all three.
+  - live PROD `kg_nodes`: all three `properties->>'pma_status' = TERBUKA`; the
+    schema carries no `pma_verification_status` key at all (measured via
+    `jsonb_object_keys`, 13 keys, none named it) — the runtime KG models
+    openness, not the verification-state axis this lot moves.
+
+  AFTER: read off the live channel after merge + code-scoped sync by the
+  shipping session (fail-closed count guard against exactly 260, same
+  discipline as lot 1's 329-guard and its 58120 near-miss).
+
+  ## Size
+
+  29 files touched by this PR: 3 hand-written (the compiler's per-lot pin,
+  the lot-2 spec, its test additions — 11 new tests, 74/74 green with lot 1's
+  63), 6 generated (3 tracked canonical copies + llms-kbli.txt +
+  kbli-dataset-version.json + pma-editorial-certifications.json's re-stamp),
+  1 recomputed pin (batch-a-members.json's canonical_sha256, required by
+  `kbli-canonical-pins.test.ts`), 13 consumer test re-pins (2 backend census
+  files, 10 mouth test files, 1 kbli-navigator test file) whose census pins
+  PR #6795 planted and this lot moved.
+
+  `data/kbli-filiera/batch-reports/batchA-calibration*` and
+  `data/kbli-filiera/membership/batch-a-members.json`'s MEMBERSHIP (not its
+  pin) were deliberately NOT regenerated: no test in the required suites reads
+  their content against the live canonical (only the sha256 pin is gated, and
+  that IS re-stamped), and their own axis (`per_skala`/`pp28_sources`/
+  `_l2_status`) does not read `pma_verification_status` or `l4_bali` at all.
+
+  ## What is NOT proven
+
+  Same scope caveats as lot 1, unchanged: the annex parsers and BPS
+  2020->2025 crosswalk completeness, the sector-statute sweep (divisions 09
+  35 49-53 61) is not exhaustive, OSS licensing (risk tier, scale, zoning) is
+  a separate question. Additionally: the ATTENZIONE_FASCIA_BALI flag's OWN
+  basis (the 18-field closure list vs the excluded-19 set) is neither
+  verified nor explained by this lot — it is disclosed for the first time,
+  not adjudicated.
+
+  🤖 Generated with [Claude Code](https://claude.com/claude-code)

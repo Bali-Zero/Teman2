@@ -1,0 +1,236 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5 — the residual
+  Pasal 3(1)(d) lane, authorized by Zero to ship "in lotti con un gate", plus the 2026-09-21
+  mandate "tutto" (ship every remaining lot). Lot 2 of that lane, following PR #6795 (lot 1,
+  merged ce660dde01).
+lanes:
+  - lane: residual-open-lot2
+    role: build
+    seat: >-
+      claude-sonnet-5 (headless implementer, `claude -p`, Pro/Nuzantara machine — authored the
+      per-lot rule pin, the lot-2 spec, its tests, and this pack; ran the compiler, the five
+      relation checkers, the filiera/mouth/backend suites, and the consumer-suite re-pins)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane, same reasoning as lot 1: every load-bearing question here is settled by a
+  probe against the Perpres artifacts and the canonical in-tree, or by a linter's exit code, not
+  by an opinion. The one genuinely new judgement call this lot makes — which 6 mouth tests could
+  keep using 01192 as their "unlocated, non-sourced-closure ATTENZIONE_FASCIA_BALI" fixture now
+  that lot 2 locates it, and what to swap it for — is answered structurally (62900 carries the
+  identical Bali status and is independently withheld by this lot's own legacy_pma_prose leg,
+  not a hand pick), not by paraphrase.
+seat_override: >-
+  Same two rules as lot 1's pack, same answers. (1) R8's ground-truth lane: none to declare — the
+  ground truth is the Perpres annex artifacts and the BPS crosswalk in-tree, read by
+  `perpres_body_default_relation.py`, whose `--check-artifact` probe is a receipt below.
+  (2) council_run's >=2 non-Anthropic seat journal: every seat on that list is unreachable from
+  this machine this session (injected arsenal probe: kimi TIMEOUT, codex/codex-spark UNKNOWN_ERR,
+  qwen-cloud-code UNKNOWN_ERR, jules CRED_UNAVAILABLE, all seven tp1-* QUOTA_DEAD) — declaring the
+  absence rather than writing a journal for reviews that never happened. What stands in its place:
+  lot 1's own council round already adjudicated every load-bearing predicate this lot reuses
+  unchanged (the sector-referral shapes, the category-closure probe, the annex-title-collision
+  probe, the sector-law-closures guard); this lot's only NEW surface is the per-lot pin and the
+  Bali-axis population, both re-derived and refused-on-drift by the compiler itself. The
+  replacement for a missing council is the on-disk gate this PR requests at open.
+diff:
+  net_lines: "24 files (excluding this evidence dir), +4040/-1096 — 3 hand-written (the compiler's per-lot pin, the lot-2 spec, its test additions), 6 generated (3 tracked canonical copies + llms-kbli.txt + kbli-dataset-version.json + pma-editorial-certifications.json re-stamp), 1 recomputed pin (batch-a-members.json canonical_sha256), 13 consumer test re-pins (2 backend + 10 mouth + 1 kbli-navigator) whose PR #6795 census pins moved by the measured delta. Floor 3, source: size (evidence_pack_lint.py --print-floor / --print-floor-source)."
+  behaviour_change: >-
+    No code path changes beyond the per-lot rule-pin selection (spec["lot"] -> REQUIRED_RULE_BY_LOT).
+    260 canonical records move pma_verification_status declared_gap -> located and gain
+    pma_official_basis / pma_source_vintage / pma_cap_verified — the SAME BASIS string lot 1
+    wrote; no pma_status and no pma_max_asing value changes anywhere. The observable effect is
+    the 15/8 fail-closed disclosure gate publishing a located tuple, AND — new to this lot —
+    discloseBaliL4 unveiling the Bali row for the first time on these 260 records: "Not on Bali's
+    PMA closure list — verify on OSS". 11 reached codes are deliberately NOT published; their
+    lines in llms-kbli.txt do not move.
+receipts:
+  - claim: >-
+      The deterministic gear floor for THIS diff is 3, from the SIZE term — declared gear 3
+      matches the floor rather than over-declaring, same as lot 1
+    cmd: >-
+      git diff --name-only origin/main HEAD > changed.txt && git diff --numstat origin/main HEAD
+      > numstat.txt && python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file numstat.txt --changed-files-file changed.txt
+    result: "3 · floor source: size"
+    exit: 0
+    ts: 2026-09-21T18:10Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      THE CENTRAL RECEIPT — the compiler re-run on the canonical it already wrote is a clean
+      no-op, so the basis is a function of the instrument, not of run order
+    cmd: python3 scripts/kbli_filiera/apply_residual_open.py --spec scripts/kbli_filiera/cure_specs/residual_open_naso_2026_09_21_lot2.json
+    result: >-
+      "lot 2 · spec items 260 · applicable 0 · already applied 260 · refused 0" with "withheld
+      from the reach: 11 code(s)" and "annex title collision: 0 of the reach — NONE, and the
+      probe is therefore proving nothing". git status --porcelain empty on the data files after
+      the run.
+    exit: 0
+    ts: 2026-09-21T17:52Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      The canonical partition moved by exactly the lot and nothing else — re-derived from the
+      file on disk
+    cmd: >-
+      python3 -c: json.load the canonical, Counter() every record's pma_verification_status
+    result: "records 1559 · {'declared_gap': 839, 'located': 720}. 460 + 260 = 720; 1099 - 260 = 839."
+    exit: 0
+    ts: 2026-09-21T17:55Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      The client-facing delta against origin/main is 260 rows, every one the same shape, and the
+      11 withheld codes are absent as a checkable fact, not merely asserted
+    cmd: >-
+      git diff --stat origin/main -- apps/mouth/public/llms-kbli.txt ; git diff origin/main --
+      apps/mouth/public/llms-kbli.txt | grep -cE '^[+-](16222|21023|32202|59132|91112|91122|35133|35159|49297|52213|64210) '
+    result: >-
+      "1 file changed, 260 insertions(+), 260 deletions(-)"; grep count 0 (grep's own exit is 1,
+      which IS the pass — zero matches means neither withheld line moved).
+    exit: 0
+    ts: 2026-09-21T18:05Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      The 272-vs-271 gap between the 2026-09-19 scoreboard's prior and the compiler's measured
+      reach is exactly one code, and it is legacy PMA prose — the same class lot 1 deferred 36
+      codes on, not a new defect
+    cmd: >-
+      python3 -c: compare the raw Bali-axis match (no no_legacy_pma_prose filter) against
+      R.eligible() with the full lot-2 rule
+    result: "raw match 272; eligible 271; the excluded code is 62900, carrying pma_nota + pma_prioritas"
+    exit: 0
+    ts: 2026-09-21T17:40Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      None of lot 1's 19 hand-adjudicated excluded_codes, and none of the 9 catalogue-wide
+      annex-title-collision codes, reach lot 2 — measured per code, not assumed from the lot
+      arithmetic
+    cmd: >-
+      python3 -c: intersect lot 1's excluded_codes / the 9 collided_codes against lot 2's
+      reached() set; print each code's l4_bali.status
+    result: >-
+      both intersections empty; all 19 excluded_codes and all 9 collided_codes carry
+      OK_or_HIGHER_RISK, none ATTENZIONE_FASCIA_BALI
+    exit: 0
+    ts: 2026-09-21T17:38Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      All required suites are green on the final tree, including the two backend census files and
+      the mouth suite this lot's own relabel broke and this PR re-pins
+    cmd: >-
+      python3 -m pytest scripts/kbli_filiera/tests ; (cd apps/mouth && npx vitest run && npx tsc
+      --noEmit) ; (cd apps/backend-rag && ./.venv/bin/python -m pytest
+      backend/tests/unit/services/test_kbli_eye.py backend/tests/unit/services/test_kbli_editorial_certification.py)
+    result: >-
+      filiera "74 passed" (+ 4 pre-existing unrelated fixture-scope errors in
+      test_cure_pr2b_source_rows_93114_43110.py, untouched by this diff, confirmed via
+      `git diff --name-only` empty on that file) · mouth "Test Files 538 passed (538)" with tsc
+      exit 0 · backend "32 passed". Run as three separate commands with their own $?, not the
+      one-line sequence above (lot 1's own documented discipline: `;` reports only the last
+      stage).
+    exit: 0
+    ts: 2026-09-21T18:20Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      The five filiera relation checkers are green on THIS tree
+    cmd: >-
+      kbli_coverage_scoreboard.py --check ; perpres_body_default_relation.py --check-artifact ;
+      perpres_slice_disclosure_relation.py --check-artifact ; perpres_foreign_cap_relation.py
+      --strict ; editorial_record_conformance.py
+    result: >-
+      "pma honest 1559/1559 (100.0%) locator-bearing: 720 · declared_unverified 839 · located 720"
+      + "ratchet OK" rc=0 · "perpres-locators.json matches the instrument (1559 codes)" rc=0 ·
+      "artifact fresh: 12 codes disclosed" rc=0 · "STRICT: every DISAGREE/AMBIGUOUS row is
+      adjudicated, NO_DESCENDANT is empty — PASS" rc=0 (same 14 DISAGREE / 2 AMBIGUOUS rows lot 1
+      measured — unaffected, unrelated axis) · "stale copies of a field we own: 0 codes · bodies
+      that need an author: 0 codes" rc=0
+    exit: 0
+    ts: 2026-09-21T17:58Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      pma-editorial-certifications.json's re-stamp is structural, not a content move — 0 of 38
+      certified codes overlap this lot, 0 pmaFingerprint mismatches
+    cmd: >-
+      PYTHONPATH=apps/backend-rag ./apps/backend-rag/.venv/bin/python3
+      scripts/kbli_filiera/recert_pma_editorial_registry.py --base origin/main --apply
+    result: >-
+      "38 certified code(s), 0 pmaFingerprint mismatch, overlap []" then
+      "sourceDatasetSha256: 16d6f02… -> b60cb1bd…" "reviewedAt: 2026-09-19 -> 2026-09-21"
+    exit: 0
+    ts: 2026-09-21T18:00Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      batch-a-members.json's canonical pin is stale after any canonical write and must be
+      re-emitted — caught by kbli-canonical-pins.test.ts on the first full vitest run, not
+      assumed unnecessary
+    cmd: python3 scripts/kbli_filiera/emit_batch_membership.py --apply
+    result: >-
+      "A-serving/pp28: 2 · A-serving/orphan: 0 · A-empty/gap: 216 · in-scope: 2 · total: 218" —
+      membership unchanged (this axis does not read pma_verification_status/l4_bali); only the
+      canonical_sha256/canonical_revision pin moved
+    exit: 0
+    ts: 2026-09-21T18:15Z
+    seat: session (Pro/Nuzantara)
+  - claim: >-
+      Bites — the BEFORE state on 3 lot-2 codes, read on the canonical and on both live runtime
+      stores, PROD read-only role
+    cmd: >-
+      scripts/pg.sh -A -t -c "SELECT kode_kbli, metadata->>'pma_verification_status',
+      metadata->>'pma_status' FROM kbli_documents WHERE kode_kbli IN ('01192','27401','96900')";
+      same pattern against kg_nodes (properties->>'kode', properties->>'pma_status')
+    result: >-
+      canonical origin/main: all three TERBUKA/100/declared_gap, l4_bali ATTENZIONE_FASCIA_BALI.
+      kbli_documents: all three pma_status TERBUKA, pma_verification_status NULL/empty. kg_nodes:
+      all three pma_status TERBUKA; the schema carries no pma_verification_status key at all
+      (13 keys enumerated via jsonb_object_keys, none named it).
+    exit: 0
+    ts: 2026-09-21T18:25Z
+    seat: session (Pro/Nuzantara)
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff, brief or pack transcribes client data. The canonical is the public KBLI
+  classification catalogue; the PROD queries in the Bites receipt select only public
+  classification fields (kode_kbli, pma_status, pma_verification_status) via the read-only role
+  and print no credential. No client_id, no OSINT, no PGPASSWORD value appears anywhere in this
+  pack or in any command this session ran.
+dissent:
+  - seat: session (self-correction mid-build)
+    objection: >-
+      A test I wrote before applying the canonical
+      (test_the_lot_2_spec_validates_against_the_real_canonical) asserted the PRE-apply shape
+      (todo == all 260 items). Once the canonical was applied and committed in a later commit on
+      the SAME branch, that assertion went red against the now-already-shipped canonical — caught
+      by a dispatched verification pass, not by a fresh eye.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in the same PR, before push: the assertion now reads ([], []), matching lot 1's own
+      `test_rerun_on_the_shipped_canonical_is_a_clean_noop` — the correct post-ship shape, since
+      this PR's own second commit already writes the canonical the test suite's third commit
+      reads. Re-verified green (74/74) after the fix.
+  - seat: session (declared limit, unresolved)
+    objection: >-
+      batchA-calibration* reports (batchA-calibration.json/.md, -v2, -v3) were not regenerated,
+      on the reasoning that no required suite gates their content against the live canonical
+      (only batch-a-members.json's sha256 PIN is gated, and that pin IS re-stamped). This
+      reasoning was NOT cross-checked against whether some OTHER, non-required consumer reads
+      those reports' content directly.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled rather than silently regenerated. The explicit fallback in this
+      lane's own brief ("Regenerate ... ONLY if Lot 1's pack shows they moved BECAUSE of the
+      relabel; otherwise leave them and say so") licenses exactly this choice, and lot 1's own
+      pack.yml/brief.yml (read in full before this decision) name no such requirement for these
+      reports specifically.
+  - seat: session (declared limit)
+    objection: >-
+      The kbli-navigator lib test (apps/kbli-navigator/lib/__tests__/kbli-data.test.ts) had its
+      count pins hand-updated by inspection (mirroring the identical, verified pin update in the
+      sibling mouth test), but could not be RUN in this environment — no npm test script is
+      registered for that app, and an ad-hoc `node --import tsx --test` invocation failed on
+      unrelated module-path resolution, not on the assertion itself.
+    status: PLAUSIBLE
+    resolution: >-
+      Left standing and labelled. Not in this lane's explicit required-checks list (filiera
+      pytest + mouth vitest/tsc are); the pin values (839/720) are the same measured numbers
+      verified live via the mouth/backend suites and the canonical Counter(), so the edit is
+      almost certainly correct, but "almost certainly" is not "verified running" and is recorded
+      as such.
