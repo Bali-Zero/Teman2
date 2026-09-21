@@ -1,0 +1,78 @@
+gear: 3
+task_id: cron-wrapper-key
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/cron-wrapper-key
+gate_class: opus
+l_level: L2
+objective: >-
+  Step 2 of docs/specs/seat-board-drain-v1.md §9. scripts/cron-wrapper.sh wrote
+  its run-state file as `$(echo "$JOB_NAME" | tr '-' '_').last.json`, with that
+  underscored name in the file's own `job` field, and alerted as
+  `--dedup-key "cron-fail:${JOB_NAME}"` with the hyphens kept. Measured on Pro
+  2026-09-21: all 8 cron-wrapper entries in the crontab carry a hyphen
+  (crm-automation, db-nlm-sync, drive-watchdog, fly-pg-backup, kb-ingest,
+  qdrant-snapshot, rag-canary, t4-monitor) — 7 of them run; kb-ingest has not
+  started since 2026-09-10 because its path is a broken symlink, which is a
+  separate defect and out of this scope — so every alert from this wrapper named
+  a witness that does not exist — `fly-pg-backup.last.json` is absent while
+  `fly_pg_backup.last.json` is present with status=ok. Make the key name the
+  witness, as cron-state.sh and cron-runner.sh already do.
+scope:
+  - >-
+    scripts/cron-wrapper.sh — the dedup key becomes
+    `cron-fail:${SENTINEL_JOB_KEY}`. The state file is untouched: for every live
+    job name `tr '-' '_'` and the siblings' `sanitize_key` produce the same
+    string, so no `.last.json` is renamed and the Cell cron_sensor reading the
+    state dir sees no change. `--source` keeps the raw name for a human reader.
+  - >-
+    scripts/test_cron_wrapper_alert.sh — new. This wrapper had no alert corpus
+    while both siblings did. It asserts the RELATION key name == witness stem
+    == witness `job` field, plus innocence (a hyphen-free name is not
+    transformed; a success does not alert) and fail-open (a crashing gateway
+    does not rewrite the job's exit code).
+  - >-
+    .github/workflows/immune-enforcement.yml — the corpus registered in both
+    places the `antidotes` job needs: the sentinel path list that flips
+    `relevant`, and a named step that runs it.
+  - >-
+    docs/specs/seat-board-drain-v1.md — amended as its own header requires when
+    an implementation disagrees with it: S4.4 said unification renames live
+    state files (false), and §9 therefore ordered it after the consumer. It now
+    goes first.
+constraints:
+  - >-
+    The file side does not move. Renaming live `.last.json` files would reset
+    each job's history and change what cron_sensor reads; changing the key
+    costs one ladder restart per job and nothing else.
+  - >-
+    No change to the gateway, to OWNER_FAMILIES (family-level, `cron-fail` is
+    unaffected), or to any other wrapper.
+  - >-
+    The test asserts a relation, never a literal, so a future transform on
+    either side cannot pass by agreeing on one example.
+acceptance:
+  - text: >-
+      GUILT: WHEN a job with a hyphenated name fails, the wrapper SHALL alert
+      under `cron-fail:<name>` where `<name>.last.json` exists in the state dir
+      and its `job` field equals `<name>`.
+    probe: bash scripts/test_cron_wrapper_alert.sh
+  - text: >-
+      The corpus SHALL fail on origin/main's wrapper on exactly the relation
+      checks, with every innocence check green.
+    probe: >-
+      git show origin/main:scripts/cron-wrapper.sh > scripts/cron-wrapper.sh &&
+      bash scripts/test_cron_wrapper_alert.sh; restore from a cp backup
+  - text: >-
+      WHERE the corpus is registered, a PR touching cron-wrapper.sh SHALL run it:
+      the workflow SHALL parse and name the file in both the path list and a step.
+    probe: >-
+      python3 -c "import yaml;yaml.safe_load(open('.github/workflows/immune-enforcement.yml'))" &&
+      grep -c test_cron_wrapper_alert .github/workflows/immune-enforcement.yml
+  - text: >-
+      NO SIBLING REGRESSION: the two existing corpora SHALL stay green.
+    probe: bash scripts/test_cron_state_alert.sh && bash scripts/test_cron_runner_alert.sh
+pii: none — job names and synthetic state files only.
+local_evidence: >-
+  The 8 job names and the fly_pg_backup witness were read over ssh on Pro,
+  read-only, on 2026-09-21. No credential read, no production write.

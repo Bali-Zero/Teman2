@@ -1,0 +1,155 @@
+council_run: council-journal.jsonl
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/specs/seat-board-drain-v1.md §9 step 2 (merged as #7016). The spec placed this step third; it is
+  amended here to run first, because it moves the KEY and no state file (S4.4), so it routes nothing
+  new and deletes the mapping table the consumer would otherwise carry.
+lanes:
+  - lane: cron-wrapper-key
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session — measured the 8 crontab entries and the fly_pg_backup witness on
+      Pro, wrote the fix, the corpus, the workflow registration and the spec amendment)
+  - lane: cron-wrapper-key-review-sol
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (read-only sandbox, told to attack; seven findings, three accepted and fixed,
+      two pre-existing recorded, two sound)
+  - lane: cron-wrapper-key-review-k3
+    role: review
+    seat: >-
+      kimi-code/k3 (told to attack; built four broken wrappers of its own and ran the corpus against
+      each; its defects were all in the spec amendment and are fixed)
+pii_scan: clean
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two non-Anthropic review families on the finished diff, neither of which wrote a line of it. Both
+  found real defects: codex a test cleanup that could `rm -rf /run` on an mktemp failure and a stub that
+  accepted a flag the real gateway rejects; both found the spec amendment contradicting itself.
+diff:
+  net_lines: >-
+    7 files changed, 446 insertions(+), 46 deletions(-) measured by
+    `git diff --shortstat $(git merge-base origin/main HEAD)..HEAD`. The production change is one line
+    of scripts/cron-wrapper.sh plus its comment; the rest is the corpus, its workflow registration, the
+    spec amendment and this evidence.
+  behaviour_change: >-
+    cron-wrapper.sh alerts under `cron-fail:<name with hyphens replaced by underscores>` instead of the
+    raw name. No state file moves. Each of the 7 running jobs restarts its gateway repeat ladder once.
+receipts:
+  - claim: The 8 cron-wrapper entries in Pro's crontab, and which of them run
+    cmd: >-
+      ssh pro: crontab -l | grep -v '^[[:space:]]*#' | grep -oE '[^ ]*cron-wrapper\.sh [^ ]+' | sort | uniq -c
+    result: >-
+      "7 via /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh (crm-automation, db-nlm-sync,
+      drive-watchdog, fly-pg-backup, qdrant-snapshot, rag-canary, t4-monitor) and 1 via
+      /Users/nuzantara/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh (kb-ingest); 1 further entry is
+      commented out. Every name carries a hyphen. The nuzantara-deploy path is a symlink to a directory
+      renamed nuzantara-deploy.retired-20260910; kb_ingest.last.json and kb-ingest.log were last written
+      2026-09-10 21:00."
+    exit: 0
+    ts: 2026-09-21T04:3xZ
+    seat: session (M5, read-only over ssh)
+  - claim: The witness the old key named does not exist, and the one the wrapper wrote does
+    cmd: >-
+      ssh pro: ls ~/.agent/decisions/state/fly-pg-backup.last.json ~/.agent/decisions/state/fly_pg_backup.last.json,
+      then read the second file's job/status/ts/host fields
+    result: >-
+      "fly-pg-backup.last.json: No such file or directory. fly_pg_backup.last.json: 118 bytes,
+      {job: fly_pg_backup, status: ok, ts: 1789932300, host: Nuzantara}."
+    exit: 0
+    ts: 2026-09-21T03:5xZ
+    seat: session (M5, read-only over ssh)
+  - claim: No duplicate-row cost on the live board from the key change
+    cmd: >-
+      ssh pro, grep -c 'cron-fail:' /Users/nuzantara/nuzantara/shared/escalations_pro.jsonl
+    result: "0 — the board holds no cron-fail row of any spelling, so no job has a pending row under the old key."
+    exit: 1
+    ts: 2026-09-21T04:4xZ
+    seat: session (M5, read-only over ssh)
+  - claim: The corpus passes on the fix, through the REAL gateway
+    cmd: bash scripts/test_cron_wrapper_alert.sh
+    result: "cron-wrapper alert: 13 passed, 0 failed"
+    exit: 0
+    ts: 2026-09-21T04:5xZ
+    seat: session (M5)
+  - claim: MUTATION — origin/main's wrapper fails on exactly the relation checks
+    cmd: >-
+      git show origin/main:scripts/cron-wrapper.sh > scripts/cron-wrapper.sh; bash
+      scripts/test_cron_wrapper_alert.sh; restore from a cp backup
+    result: >-
+      "9 passed, 4 failed — the key's name part carries no hyphen; a state file exists at <key
+      name>.last.json; that file's own job field is the key's name; the witness records the failure.
+      Every innocence and fail-open check green. 13 of 13 again after restore."
+    exit: 1
+    ts: 2026-09-21T04:5xZ
+    seat: session (M5)
+  - claim: MUTATION — the flag typo codex constructed, which the stub-based corpus accepted, now fails
+    cmd: >-
+      sed the wrapper's `--dedup-key` to `--dedup-keey`, bash scripts/test_cron_wrapper_alert.sh, restore
+      from a cp backup
+    result: >-
+      "6 passed, 7 failed — the real gateway's parser rejects the flag, writes no board row, and every
+      check that reads the row goes red. Under the previous stub the same mutant passed 13 of 13."
+    exit: 1
+    ts: 2026-09-21T04:5xZ
+    seat: session (M5)
+  - claim: The sibling corpora stay green
+    cmd: >-
+      bash scripts/test_cron_state_alert.sh; bash scripts/test_cron_runner_alert.sh
+    result: "pass=11 fail=0 · cron-runner alert corpus: 22 ok, 0 FAIL"
+    exit: 0
+    ts: 2026-09-21T04:3xZ
+    seat: session (M5)
+  - claim: The corpus is registered where CI will run it
+    cmd: >-
+      python3 -c "import yaml;yaml.safe_load(open('.github/workflows/immune-enforcement.yml'))" &&
+      grep -c test_cron_wrapper_alert .github/workflows/immune-enforcement.yml
+    result: >-
+      "parses · 2 — once in the sentinel path list that sets `relevant`, once in its own named step in
+      the `antidotes` job, gated like its two siblings."
+    exit: 0
+    ts: 2026-09-21T04:3xZ
+    seat: session (M5)
+  - claim: The spec no longer contradicts the change
+    cmd: grep -nE "9 .cron-wrapper|8 routing|§4's table|cron-fail:a-b" docs/specs/seat-board-drain-v1.md
+    result: "no match — S4.1-S4.3 state the identity rule, A2/A3/A4 test it, A4b covers witness-less producers."
+    exit: 1
+    ts: 2026-09-21T04:5xZ
+    seat: session (M5)
+  - claim: The deterministic gear floor for this changed-file list is 3, matching the declared gear
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/changed.txt
+    result: 3
+    exit: 0
+    ts: 2026-09-21T04:3xZ
+    seat: session (M5)
+dissent:
+  - seat: codex-gpt-5.6-sol (LOW, pre-existing, recorded not fixed)
+    objection: >-
+      "`tr '-' '_'` and sanitize_key are not equivalent: uppercase, dots, spaces, doubled or leading
+      hyphens, and `-n` (swallowed by echo) all diverge."
+    status: CONFIRMED
+    resolution: >-
+      "True and pre-existing. Harmless for this defect because key and witness now come from ONE string,
+      whatever it is; no live caller produces a divergent name (all 8 are lowercase-hyphen). Switching
+      the file side to sanitize_key would rename state files for exactly those inputs — a change with no
+      current beneficiary, so not made here."
+  - seat: codex-gpt-5.6-sol (LOW, pre-existing, recorded not fixed)
+    objection: >-
+      "The wrapper's fixed /tmp/cron-locks and pid-liveness check make the corpus's isolation
+      probabilistic under SIGKILL plus pid reuse."
+    status: CONFIRMED
+    resolution: >-
+      "Inherited from the wrapper. The corpus suffixes every job name with its own pid, so ordinary
+      concurrent runs cannot collide; a stale lock would produce a SKIP, which fails the corpus loudly
+      rather than passing it."
+  - seat: session (declared limit)
+    objection: >-
+      "kb-ingest, one of the 8 entries, has not started since 2026-09-10: its path is a symlink to a
+      renamed directory. This PR does not touch it."
+    status: CONFIRMED
+    resolution: >-
+      "Out of this scope and surfaced to the owner separately — repointing a live crontab entry is a
+      production change with its own proof. This PR's fix reaches kb-ingest automatically the day its
+      entry points at the checkout."

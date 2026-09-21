@@ -89,12 +89,12 @@ caller silently wins over a current canon one directory away.
 Measured — `crontab -l | grep -oE '(cron-runner|cron-state|cron-wrapper)\.sh' | sort | uniq -c`,
 plus `ls -la` on each caller path:
 
-| caller            | crontab entries | physical location                                   | gateway it resolves to                    | routes? |
-| ----------------- | --------------- | --------------------------------------------------- | ----------------------------------------- | ------- |
-| `cron-state.sh`   | 28              | `~/scripts/cron-state.sh` → symlink → checkout      | checkout copy                             | **yes** |
-| `cron-wrapper.sh` | 8               | `~/Desktop/nuzantara/scripts/` (symlink → checkout) | checkout copy                             | **yes** |
-| `cron-wrapper.sh` | 1               | `~/Desktop/nuzantara-deploy/scripts/`               | no sibling → **fallback** → checkout copy | **yes** |
-| `cron-runner.sh`  | 27              | `~/scripts/cron-runner.sh`, a REAL file             | `~/scripts/tg_notify.py`, the 18-Aug fork | **no**  |
+| caller            | crontab entries | physical location                                                                                            | gateway it resolves to                                        | routes?        |
+| ----------------- | --------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | -------------- |
+| `cron-state.sh`   | 28              | `~/scripts/cron-state.sh` → symlink → checkout                                                               | checkout copy                                                 | **yes**        |
+| `cron-wrapper.sh` | 7               | `~/Desktop/nuzantara/scripts/` (symlink → checkout)                                                          | checkout copy                                                 | **yes**        |
+| `cron-wrapper.sh` | 1 (`kb-ingest`) | `~/Desktop/nuzantara-deploy/scripts/` — a symlink to a directory renamed `nuzantara-deploy.retired-20260910` | none: the wrapper itself does not resolve, so it never starts | **never runs** |
+| `cron-runner.sh`  | 27              | `~/scripts/cron-runner.sh`, a REAL file                                                                      | `~/scripts/tg_notify.py`, the 18-Aug fork                     | **no**         |
 
 **S2.1 — The drain design SHALL state, for each producer family it claims to cure, which gateway
 copy that family reaches.** A cure whose producers all reach a non-routing gateway is a cure with
@@ -107,7 +107,7 @@ not appear on the board and never will until S2.3 is done.
 own PR.** It changes the behaviour of 27 cron jobs at once: their p0 stop paging and start landing
 on a board nobody drains yet. Sequencing therefore matters and is fixed here:
 
-1. the consumer lands first, draining what already routes (the 9 `cron-wrapper.sh` entries);
+1. the consumer lands first, draining what already routes (the 7 running `cron-wrapper.sh` entries);
 2. `~/scripts/tg_notify.py` is realigned second, under its declared HOME pair, with the
    before/after routed-volume measured on the board rather than on an archive;
 3. `cron-runner.sh`'s resolution is changed third, to prefer the checkout and treat a sibling as
@@ -148,7 +148,8 @@ This is the contract nobody wrote down, and the one that made #7014's central me
 BOTH directions — it counted jobs as un-provable that had a witness, and it would have refused that
 witness as a stranger's even if it had found it.
 
-Measured — `grep -n` on each wrapper:
+Measured — `grep -n` on each wrapper, on `origin/main` BEFORE the fix (the `cron-wrapper.sh` row is
+historical; see S4.4 for what changed and what did not):
 
 | wrapper           | dedup-key it emits                                                         | state file it writes                                                                                    | agree?  |
 | ----------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------- |
@@ -161,33 +162,49 @@ single `_`. `cron-state.sh` and `cron-runner.sh` apply it ONCE and use the resul
 their key and their filename are the same string by construction. `cron-wrapper.sh` transforms only
 the filename.
 
-The live consequence, measured: `fly-pg-backup` (the W106 PG backup, 3 alerts/30d) alerts as
-`cron-fail:fly-pg-backup`. `~/.agent/decisions/state/fly-pg-backup.last.json` does not exist.
+The live consequence, measured before the fix: `fly-pg-backup` (the W106 PG backup, 3 alerts/30d)
+alerted as `cron-fail:fly-pg-backup`. `~/.agent/decisions/state/fly-pg-backup.last.json` does not exist.
 `~/.agent/decisions/state/fly_pg_backup.last.json` does, and says
 `{"job": "fly_pg_backup", "status": "ok", "ts": 1789932300, "host": "Nuzantara"}`. A consumer that
 builds the path from the key verbatim reports "no run-state file" against a witness sitting in the
 same directory — and the `job` field inside is underscored too, so a `state_job != name` check
 would call it a stranger's witness even after finding it.
 
-And the sting: the 8 routing `cron-wrapper.sh` jobs are exactly the ones whose witness cannot be
-found, while the 27 `cron-runner.sh` jobs whose naming is consistent never reach the board.
+And the sting: the 7 running `cron-wrapper.sh` jobs were exactly the ones whose witness could not
+be found, while the 27 `cron-runner.sh` jobs whose naming is consistent never reach the board.
 
-**S4.1 — The key→witness mapping SHALL be an explicit, per-wrapper table in the implementation, not
-a string interpolation.** A consumer may not assume `key.split(":", 1)[1] + ".last.json"`.
+**S4.1 — For a `cron-fail:` row from any of the three cron wrappers, the witness SHALL be
+`<state dir>/<name>.last.json` where `<name>` is the key after the first `:`, verbatim.** This is
+true by construction once S4.4 is in: all three derive key and filename from one string. It is an
+identity, not an inference, and the consumer SHALL NOT normalise `<name>` further — any transform
+it applied would be a second copy of the producer's rule, free to drift from it.
 
-**S4.2 — The mapping SHALL be a FUNCTION of the producer, discovered from the row, not guessed.**
-The board row carries `context` (`cron:${JOB_NAME}` for cron-wrapper, per L128) — enough to
-identify the wrapper. Where it is not enough, the consumer refuses; it does not try both spellings
-and take whichever answers. Trying both is how a stranger's witness gets accepted.
+**S4.2 — A row whose producer writes no witness SHALL be refused, never guessed.** Two producers
+emit `cron-fail:` keys and write no state file at all: `scripts/wr2-cron-wrapper.sh:84`
+(`cron-fail:wr2.${MODULE##*.}.${WR2_STAGE}`) and `infra/openclaw/wr2/wr2-script-wrapper.sh:94`
+(`cron-fail:wr2.${SCRIPT_ID}.${WR2_STAGE}`). Their rows have no `<name>.last.json` and the consumer
+reports them as such. It does not try a second spelling and take whichever answers: trying both is
+how a stranger's witness gets accepted.
 
-**S4.3 — The `job` field INSIDE the state file SHALL be compared under the same transform as the
-filename**, or the stranger-witness check refuses every cron-wrapper row it just learned to find.
+**S4.3 — The witness's own `job` field SHALL equal `<name>`**, or the file is a stranger's witness
+and the row is refused. Under S4.1 this is an equality check, not a comparison under a transform.
 
-**S4.4 — The better fix is upstream and SHALL be offered as its own PR: `cron-wrapper.sh` applying
-`sanitize_key` to BOTH sides, as its two siblings already do.** That deletes the mapping table
-rather than maintaining it. It is not free — it renames live state files, and a job whose
-`.last.json` moves loses its history for one cycle — which is why it is a separate, sequenced
-change and not a line in the consumer's PR.
+**S4.4 — The fix is upstream, and it is smaller than this section first assumed.** An earlier
+revision said unifying the wrapper "renames live state files". It does not have to: the FILE side
+already follows the siblings' convention for every job name in Pro's crontab — all eight are
+lowercase with hyphens, where `tr '-' '_'` and `sanitize_key` produce the same string — so the fix changes the
+KEY and leaves the file alone: `--dedup-key "cron-fail:${SENTINEL_JOB_KEY}"`. No `.last.json` moves,
+and the Cell `cron_sensor` that reads the state dir sees no change. The cost is one-time and on the
+gateway's side: each of those jobs alerts under a new key, so its repeat ladder restarts from the
+first rung once. `scripts/test_cron_wrapper_alert.sh` pins it by asserting the RELATION — key name
+== witness stem == the witness's own `job` field — never a literal, so a later transform on either
+side cannot pass by agreeing on one example.
+
+S4.1-S4.3 above are written against the state AFTER this fix. The general divergence between
+`tr '-' '_'` and `sanitize_key` (uppercase, dots, spaces, doubled or leading hyphens) is real and
+pre-existing, and harmless here only because the key and the file now come from the SAME string —
+whatever that string is. No live caller exercises the divergent inputs; if one ever does, the
+relation still holds and only the cosmetic agreement with the siblings is lost.
 
 ---
 
@@ -267,32 +284,35 @@ range, not only the type.**
 
 ## 8. Acceptance — falsifiable, each with its probe
 
-| #   | the claim                                                                                        | how it is falsified                                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | Every producer family the design counts reaches a ROUTING gateway                                | for each family, resolve the wrapper's gateway path as the wrapper does and `grep -c gateway_routed` it; any 0 falsifies          |
-| A2  | Every row the consumer closes had a witness found by the DECLARED mapping, not by a second guess | the consumer logs the witness path it opened; a path not derivable from §4's table for that row's `context` falsifies             |
-| A3  | A cron-wrapper job with a hyphen in its name is curable                                          | seed `cron-fail:a-b` with `a_b.last.json` ok-and-newer; not closing falsifies                                                     |
-| A4  | A stranger's witness is still refused after A3                                                   | seed `cron-fail:a-b` with `a_b.last.json` whose `job` is `c_d`; closing falsifies                                                 |
-| A5  | A job that re-breaks inside the mute window is visible to a session reading the board            | close a row, break the job again without the gateway writing a new row, read the board; a board showing only `resolved` falsifies |
-| A6  | The routed-volume figure is measured on the board                                                | any headline count sourced from `archive-p0.jsonl` and not labelled a projection falsifies                                        |
-| A7  | The consumer's own code produced the closable count                                              | the count's receipt names the consumer's entrypoint, not a re-implementation; anything else falsifies                             |
+| #   | the claim                                                                                     | how it is falsified                                                                                                               |
+| --- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | Every producer family the design counts reaches a ROUTING gateway                             | for each family, resolve the wrapper's gateway path as the wrapper does and `grep -c gateway_routed` it; any 0 falsifies          |
+| A2  | Every row the consumer closes had its witness found by S4.1's identity, not by a second guess | the consumer logs the witness path it opened; any path other than `<state dir>/<key after ':'>.last.json` falsifies               |
+| A3  | A job whose raw name had a hyphen is curable                                                  | run the REAL `cron-wrapper.sh` with a failing job `a-b`, then a succeeding one; the board row it produced not closing falsifies   |
+| A4  | A stranger's witness is still refused                                                         | seed `cron-fail:a_b` with `a_b.last.json` whose `job` is `c_d`; closing falsifies                                                 |
+| A4b | A witness-less producer is refused, not guessed                                               | seed `cron-fail:wr2.x.guard` with no state file and an ok-and-newer `wr2_x_guard.last.json` beside it; closing falsifies          |
+| A5  | A job that re-breaks inside the mute window is visible to a session reading the board         | close a row, break the job again without the gateway writing a new row, read the board; a board showing only `resolved` falsifies |
+| A6  | The routed-volume figure is measured on the board                                             | any headline count sourced from `archive-p0.jsonl` and not labelled a projection falsifies                                        |
+| A7  | The consumer's own code produced the closable count                                           | the count's receipt names the consumer's entrypoint, not a re-implementation; anything else falsifies                             |
 
 ---
 
 ## 9. Sequencing
 
-1. **This spec is adjudicated.** Not merged alongside an implementation.
-2. **Consumer PR** — one cure, `cron-fail`, restricted to the producers §2 shows routing today
-   (the 9 `cron-wrapper.sh` entries), with §4's mapping table and §5's answer chosen and tested.
-   Its headline number is measured per S6.2 and S6.3, and it will be SMALL — that is the honest
+1. **This spec is adjudicated.** Done: #7016, merged alone, with no implementation beside it.
+2. **`cron-wrapper.sh` key unification** (S4.4) — FIRST, not third. An earlier revision placed it
+   after the consumer on the belief that it renamed live state files; it does not (S4.4). It routes
+   nothing new — it renames the keys of jobs that ALREADY route — so it cannot move noise onto the
+   board, and it deletes the mapping table the consumer would otherwise have to carry and test.
+3. **Consumer PR** — one cure, `cron-fail`, with §5's answer chosen and tested and the ts guard of
+   S7.1. Its headline number is measured per S6.2 and S6.3, and it will be SMALL — that is the honest
    state of the surface, not a weakness of the PR.
-3. **`cron-wrapper.sh` key unification** (S4.4) — deletes the mapping table.
 4. **`~/scripts/tg_notify.py` realignment** (S2.3) — declared pair first, then the 27 jobs begin
    routing, then the volume is re-measured on the board.
 5. **`cron-runner.sh` resolution inverted** (S2.3 step 3) — checkout preferred, sibling as fallback.
 
-Steps 3-5 each change live fleet behaviour and each get their own PR and their own before/after
-measurement. None of them belongs in step 2.
+Steps 2, 4 and 5 each change live fleet behaviour and each get their own PR and their own
+before/after measurement. None of them belongs in step 3.
 
 ---
 
