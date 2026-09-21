@@ -1,0 +1,22 @@
+mandate: >-
+  New pajak.go.id peraturan items reach intel_items with raw_payload carrying
+  only {pipeline, type} and published_at = the scrape time, so no pajak row can
+  pass the research_os admission (citation inside a verbatim excerpt, a real
+  instant). Fetch each new peraturan detail page and carry the regulation's own
+  literal citation, a verbatim excerpt containing it, and the regulation date.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py (Pro crontab 00:00 UTC)
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare";
+  "concordo, go"). New rows only; the backfill of existing rows is production
+  DML and ships separately under the operator two-key.
+acceptance:
+  - the citation is a literal substring of the body, never synthesized
+  - the excerpt contains the citation as a delimited token and stops before Menimbang
+  - the real bridge() + admit() admits the fixture's extracted pair
+  - a failed fetch or extraction leaves the item exactly as today
+appetite:
+  wall_clock_hours: 2
