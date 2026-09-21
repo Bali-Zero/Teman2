@@ -1,0 +1,267 @@
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+pii_scan: clean
+seat_fallback_reason:
+  "agy-gemini-3.1-pro (reserve) replaced the titolare codex-gpt-5.6-sol, which could
+  not be dispatched AT ALL on this machine: the sanctioned broker resolves `codex` only on its fixed system
+  search path, where /opt/homebrew/bin/codex is 0.147.0 and dies on startup with `Error loading config.toml:
+  invalid type: map, expected a boolean in features` — the config on disk is written by 0.155.1, which
+  lives in ~/.local/share/mise/installs/node/22/bin and is unreachable because the codex seat, unlike
+  agy and kimi, declares no exec_search_path in infra/llm-credentials/seat-env.json. Observed by running
+  the dispatch, not inferred from a liveness table. The titolare kimi-code/k3 was dispatched and answered,
+  so the quorum is one titolare plus one reserve. The registry defect is NOT fixed here — that file is
+  its own hot zone and its own lane."
+plan_ref:
+  "The Gear-3 gate on PR #7000 (PASS, 2026-09-21T01:52Z) asked for a third sentence that lies
+  about the code beside it and recorded that it had not been found. The post-merge review seat answered
+  with two, both reproducible. This lane is that answer, shipped rather than filed."
+lanes:
+  - lane: cate-parity-prose-build
+    role: build
+    seat: claude-opus-5 (conducting session — authored the three corrections; did NOT find them)
+  - lane: cate-parity-prose-refute-kimi
+    role: review
+    seat:
+      kimi-code/k3 (titolare; dispatched on the diff with no defence of it, asked for a FOURTH false
+      sentence rather than for approval)
+  - lane: cate-parity-prose-refute-agy
+    role: review
+    seat:
+      agy-gemini-3.1-pro (reserve, substituting the titolare codex-gpt-5.6-sol — see seat_fallback_reason
+      in council.jsonl; same five questions, same disposable checkout)
+diff:
+  behaviour_change:
+    "None. Three comment sentences change and nothing else: the workflow with comment
+    lines stripped hashes identically before and after, so every step CI runs is the step it ran yesterday.
+    What changes is whether a reader is told the truth — the filter comment now names both directions
+    of the parity binding, and two frozen test counts the file has already outgrown become a phrase that
+    cannot go stale."
+  surface:
+    One workflow, comments only, under both events. One test module, one docstring line and one
+    comment line. No new test, no dependency, no data, no credential, no backend, no frontend.
+receipts:
+  - claim:
+      the corrected sentence's FIRST half is true — an unread suffix on BOTH events leaves every assertion
+      green
+    cmd: append `- "**.zzz"` after `**.toml` in both events, then python3 -m pytest -q scripts/tests/test_cate_trigger_parity.py
+    result: 9 passed in 0.35s
+    exit: 0
+    ts: 2026-09-21 02:31:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the corrected sentence's SECOND half is true — the same suffix on ONE event reds the parity test,
+      which is exactly what the sentence it replaces denied
+    cmd: restore, append `- "**.zzz"` after the pull_request `**.toml` only, then python3 -m pytest -q scripts/tests/test_cate_trigger_parity.py
+    result: 1 failed, 8 passed in 0.38s — FAILED test_the_two_events_carry_the_same_filter
+    exit: 1
+    ts: 2026-09-21 02:31:00+00:00
+    seat: claude-opus-5
+  - claim: both mutations were reverted and the tree is the candidate again
+    cmd: cp the backup back, git diff --stat, pytest
+    result:
+      the diff is the three prose hunks and nothing else (8 insertions, 4 deletions across 2 files);
+      9 passed
+    exit: 0
+    ts: 2026-09-21 02:31:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the frozen count the prose dropped was WRONG, not merely unbound — the file says seven, the runner
+      collects nine
+    cmd: python3 -m pytest scripts/tests/test_cate_trigger_parity.py --collect-only -q
+    result:
+      9 tests collected in 0.34s (three parametrized over two events, three plain) against `seven
+      of seven` and `all seven tests` in the prose
+    exit: 0
+    ts: 2026-09-21 02:10:00+00:00
+    seat: claude-opus-5
+  - claim: no executable line moves — the constraint this whole lane rests on, measured rather than asserted
+    cmd: sha256 of the workflow with every comment line stripped, git show origin/main vs HEAD
+    result: b143df844052a672 both sides — IDENTICAL
+    exit: 0
+    ts: 2026-09-21 02:50:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the other frozen number in the same comment block is NOT stale, so the diff correctly leaves
+      it alone
+    cmd:
+      grep -n "1 failed, 85 passed" the workflow, then python3 -m pytest scripts/test_lint_paid_llm_entity.py
+      --collect-only -q
+    result:
+      "86 tests collected — 1 failed + 85 passed is exactly today's corpus; the sentence #7000 corrected
+      is still true"
+    exit: 0
+    ts: 2026-09-21 03:05:00+00:00
+    seat: claude-opus-5
+  - claim: the workflow is schema-clean after the edit
+    cmd: actionlint .github/workflows/catE-sovereignty-lint.yml
+    result: no diagnostics
+    exit: 0
+    ts: 2026-09-21 02:35:00+00:00
+    seat: claude-opus-5
+  - claim: the blocking prose step does not red on the two files this diff touches
+    cmd: python3 scripts/lint/lint_ban_prose.py --files-from <the two changed paths>
+    result: "OK: 2 file(s) scanned (0 out of scope, 0 not on disk), no prose spells a banned shape"
+    exit: 0
+    ts: 2026-09-21 02:35:00+00:00
+    seat: claude-opus-5
+  - claim: every suite the workflow's own step runs is green on this tree, the parity suite included
+    cmd:
+      python3 -m pytest -q scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py
+      scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_cate_trigger_parity.py
+    result: 207 passed in 5.91s — the same count the post-merge run of catE on main printed for that step
+    exit: 0
+    ts: 2026-09-21 02:40:00+00:00
+    seat: claude-opus-5
+  - claim: the deterministic floor of this comment-only diff is 3 and the PATH term alone sets it
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <names> --numstat-file
+      <numstat>
+    result: 3 — .github/workflows/** is a hot zone; the size term never fires on a 12-line diff
+    exit: 0
+    ts: 2026-09-21 02:45:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the titolare codex seat is unreachable through the sanctioned broker on this machine, which is
+      why a reserve is seated
+    cmd: bash scripts/with_seat.sh codex codex exec --sandbox workspace-write -m gpt-5.6-sol <prompt>
+    result:
+      "Error loading config.toml: invalid type: map, expected a boolean in `features` — with_seat
+      resolves codex on its fixed system path to /opt/homebrew/bin/codex 0.147.0, while the config on disk
+      is written by 0.155.1 (~/.local/share/mise/installs/node/22/bin/codex). agy and kimi declare an exec_search_path
+      in the registry; the codex seat does not."
+    exit: 1
+    ts: 2026-09-21 02:55:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the FIRST draft of this diff was itself false, and the council is what caught it — `every test
+      in this file green with !**.yml appended` is falsified by the file it sits in
+    cmd: append `- "!**.yml"` after `**.toml` on both events, then python3 -m pytest -q scripts/tests/test_cate_trigger_parity.py
+    result:
+      2 failed, 7 passed — test_no_filter_entry_takes_coverage_back[pull_request] and [push]. The
+      historical measurement was taken against the three PRESENCE bindings alone, before binding 4 existed;
+      the sentence now says so and says what the same append does today.
+    exit: 1
+    ts: 2026-09-21 03:10:00+00:00
+    seat: claude-opus-5
+  - claim:
+      the second rewritten sentence's live half is true — the stale-comment mutation the finding describes
+      reds today
+    cmd:
+      comment out the `git ls-files` line of the push-time tree scan, leave the old line visible as a
+      comment, drop '*.mjs' from the live one, then pytest
+    result:
+      1 failed, 8 passed — test_the_push_time_tree_scan_enumerates_the_prose_suffixes; the reader
+      that strips comments is the cure that finding bought
+    exit: 1
+    ts: 2026-09-21 03:15:00+00:00
+    seat: claude-opus-5
+  - claim:
+      binding 2's promise was false of the reader — two DATA files a step reads were in the filter
+      but not in DATA_FILES, and nothing red when they left
+    cmd:
+      delete `.github/workflows/catE-paid-anthropic-baseline.txt` and `scripts/tests/test_cate_paid_budget.sh`
+      from the paths list of BOTH events (4 lines), then pytest — run against the tree BEFORE this diff
+      extended DATA_FILES
+    result:
+      "9 passed in 0.40s — every test green with both entries gone. The #40 budget step reads that
+      baseline as BASELINE_FILE and runs that script; a PR editing only the budget started nothing."
+    exit: 0
+    ts: 2026-09-21 03:22:00+00:00
+    seat: claude-opus-5
+  - claim:
+      extending DATA_FILES leaves the candidate green — the two paths were already in the filter, so
+      the reader is catching up, not demanding a widening
+    cmd: python3 -m pytest -q scripts/tests/test_cate_trigger_parity.py
+    result: 9 passed in 0.55s
+    exit: 0
+    ts: 2026-09-21 03:24:00+00:00
+    seat: claude-opus-5
+  - claim:
+      a titolare seat could not make the corrected prose fake, and re-measured every OTHER frozen number
+      in both files rather than only the ones it was pointed at
+    cmd:
+      an independent seat ran the five questions on a disposable checkout of the candidate, with the
+      diff and no defence of it
+    result:
+      86 collected behind `1 failed, 85 passed`; guilt 26 + innocence 29; 11 grandfathered; 28 live
+      violations behind the pardons with the suppression bypassed; 10607 paths behind `~10.5k` — all true
+      today. Two DEFECTS returned, both folded.
+    exit: 0
+    ts: 2026-09-21 03:20:00+00:00
+    seat: kimi-code/k3
+  - claim:
+      a second family reached the SAME defect independently, by its own route, which is what turns
+      one seat's objection into a measurement
+    cmd:
+      an independent reserve seat ran the same five questions on its own disposable checkout, with no
+      sight of the other seat's answers
+    result:
+      appended !**.yml itself and read `2 failed, 7 passed`; also flagged the header `Three bindings`
+      above a four-item list. Its xargs objection was checked and refuted — the comments on disk speak of
+      whitespace splitting, not of a dropped exit code.
+    exit: 0
+    ts: 2026-09-21 03:05:00+00:00
+    seat: agy-gemini-3.1-pro
+  - claim:
+      the same mutation that was silently green before this diff now reds, and reds on the binding
+      that owns it — the guilt half of the extended DATA_FILES
+    cmd:
+      delete both budget paths from the paths list of BOTH events (4 lines) against the tree WITH the
+      extended DATA_FILES, then pytest; restore and re-run
+    result:
+      2 failed, 7 passed — test_the_data_a_step_reads_starts_the_workflow[pull_request] and [push],
+      no other test silently absorbing it; after restore cmp -s says byte-identical and 9 passed
+    exit: 1
+    ts: 2026-09-21 03:26:00+00:00
+    seat: claude-sonnet-5 (dispatched probe, isolated checkout)
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      "DEFECT — `.github/workflows/catE-paid-anthropic-baseline.txt` is DATA the #40 budget step
+      reads (BASELINE_FILE, fed to awk) and `scripts/tests/test_cate_paid_budget.sh` IS that step; both
+      sat in the filter and neither in DATA_FILES, so deleting both filter entries from both events left
+      all 9 tests green. Binding 2 promises `every DATA file a step reads is covered on both events` — the
+      promise was true of the filter and false of the reader that guards it."
+    status: CONFIRMED
+    resolution:
+      "folded: both paths are named in DATA_FILES and the same deletion now reds test_the_data_a_step_reads_starts_the_workflow
+      on both events."
+  - seat: kimi-code/k3
+    objection:
+      "DEFECT — the diff's own replacement sentence, `measured, every test in this file green
+      with !**.yml appended`, is falsified by the file it sits in: the negation binding has been there since
+      #7000, so appending `!**.yml` gives 2 failed, 7 passed. The rewrite de-froze the count and re-asserted
+      the false half."
+    status: CONFIRMED
+    resolution:
+      "folded: the sentence now reads as history against the three presence bindings alone, and
+      states what the same append does today."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "DEFECT — same finding, reached independently and by its own route (it appended `!**.yml`
+      under Q5 rather than Q3): `every test in this file green` is false today, 2 failed / 7 passed on test_no_filter_entry_takes_coverage_back."
+    status: CONFIRMED
+    resolution:
+      two families, no shared context, same measurement — that is what makes it a defect rather
+      than one seat's reading.
+  - seat: agy-gemini-3.1-pro
+    objection:
+      MINOR — the docstring header `Three bindings, all in the same direction` introduces a numbered
+      list of FOUR bindings.
+    status: CONFIRMED
+    resolution: "folded: Four."
+  - seat: agy-gemini-3.1-pro
+    objection:
+      "The workflow comment about `xargs` contradicts how xargs accumulates failures: it exits
+      non-zero if any slice fails, so claiming it silently drops the first slice failure is wrong."
+    status: RETRACTED
+    resolution:
+      "the sentence the seat argues against is not in the file: the two xargs comments on disk
+      say xargs splits on WHITESPACE (finding 9 of the original lane), neither mentions exit codes. Retracted
+      by the conducting session against the file, and recorded rather than dropped."
+  - seat: kimi-code/k3
+    objection:
+      "NOTE — the dead `seven` was never right for the shipped file: #7000 shipped six test functions,
+      nine collected tests, from birth. The count was stale at merge, not merely outgrown by later growth."
+    status: CONFIRMED
+    resolution: it strengthens the cure — a number that was wrong on day one is not a number worth re-freezing.
