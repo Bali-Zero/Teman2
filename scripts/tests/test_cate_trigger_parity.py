@@ -119,10 +119,12 @@ Not covered — stated plainly rather than claimed as "every shape":
     that treats its tool's timeout exit as success
     (`timeout 1 <tool> || [ $? -eq 124 ]`) passes here, while on a runner a
     linter that outlives the bound passes the step having checked nothing;
-  - the harness environment carries PYTHONUSERBASE (above), which this
-    workflow never sets and a hosted runner does not set by default: a skip
-    keyed on PYTHONUSERBASE being unset is never taken here and is taken on
-    a runner — a false green this file cannot see;
+  - variables this harness sets and a hosted runner does not set by
+    default: PYTHONUSERBASE (above), CATE_STUB_LOG, GIT_CONFIG_GLOBAL and
+    GIT_CONFIG_NOSYSTEM (see _default_env; the workflow sets none of them).
+    A skip that fires when any of them is unset, or differs from the
+    value set here, is never taken here and is taken on a runner — a false
+    green this file cannot see;
   - state one step writes for a LATER step to read, through `GITHUB_ENV` or
     `GITHUB_PATH` — those files exist here (see `gh_files`) and a step CAN
     write to them, but no OTHER step then re-reads that write, because each
