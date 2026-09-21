@@ -731,6 +731,9 @@ async def test_complete_registration_retires_the_live_siblings_of_the_redeemed_i
     retire_query, retire_args = retire[0]
     assert "SET expires_at = NOW()" in retire_query
     assert "used_at IS NULL" in retire_query
+    # A sibling mid-redemption in another transaction must be skipped, not
+    # waited on: waiting deadlocks against that transaction's `clients` lock.
+    assert "FOR UPDATE SKIP LOCKED" in retire_query
     assert retire_args == (7, 9)
     mark_used = next(i for i, (q, _) in enumerate(conn.execute_calls) if "SET used_at = NOW()" in q)
     assert conn.execute_calls.index(retire[0]) > mark_used

@@ -389,12 +389,24 @@ class InviteService:
                 # Same-address re-invites stay live side by side (see
                 # `create_invitation`); once one is redeemed, the others
                 # stop being credentials.
+                #
+                # SKIP LOCKED because a sibling can be mid-redemption in
+                # another transaction: that one holds the sibling row and
+                # waits on the `clients` row this transaction locked above,
+                # so a plain UPDATE deadlocks (reproduced on Postgres 17,
+                # the loser surfacing as an HTTP 500). Skipped, the sibling
+                # proceeds after this commit and is refused by the
+                # active-account guard above.
                 await conn.execute(
                     """
                     UPDATE client_invitations
                     SET expires_at = NOW()
-                    WHERE client_id = $1 AND id <> $2
-                      AND used_at IS NULL AND expires_at > NOW()
+                    WHERE id IN (
+                        SELECT id FROM client_invitations
+                        WHERE client_id = $1 AND id <> $2
+                          AND used_at IS NULL AND expires_at > NOW()
+                        FOR UPDATE SKIP LOCKED
+                    )
                     """,
                     invitation["client_id"],
                     invitation["id"],
