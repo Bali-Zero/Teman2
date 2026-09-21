@@ -478,3 +478,28 @@ def test_json_mode_emits_only_json(monkeypatch, capsys):
     parsed = json.loads(capsys.readouterr().out)
     assert rc == 0
     assert parsed == {"results": []}
+
+
+def test_a_violation_exits_one_unless_advisory(monkeypatch, tmp_path, capsys):
+    """The arming line. RULED 2026-09-21-ter dropped --advisory from catE step
+    #40c, and until this test nothing in the suite reached main()'s exit path
+    with a violation present — the flag's effect was proven only by hand.
+    GUILT and INNOCENCE on the same stubbed verdict: exit 1 armed, exit 0
+    advisory. `in_scope` is stubbed because pytest's tmp_path carries the
+    test's own name, which the `test_` exclusion would otherwise filter out
+    before main() ever judged the file."""
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    verdict = {
+        "violation": True,
+        "grep": True,
+        "fired_routes": [],
+        "probabilities": {},
+        "asked": False,
+    }
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(lint, "judge_file", lambda path, text: {"path": path, **verdict})
+
+    assert lint.main([str(target)]) == 1
+    assert lint.main(["--advisory", str(target)]) == 0
+    assert "1 violation(s)" in capsys.readouterr().out

@@ -321,8 +321,11 @@ jobs:
       # other than the lane that wrote it (scripts/tests/fixtures/paid_llm_entity/
       # bench_cases.json, whose _doc says so plainly); that re-run happened on
       # 2026-09-21 (jev-1.13.0, isolated copy: guilt 16/19, grep-miss recall
-      # 15/17, false alarms 0/20 at every threshold 0.5-0.8). The corpus is still
-      # self-authored — recorded in the ruling as the known limit, not hidden.
+      # 15/17, false alarms 0/20 at every threshold 0.5-0.8), and the arming
+      # session re-ran the full 55-case corpus (16 cases by an outside refuter)
+      # live before pushing: false alarms 0/29 at every threshold 0.5-0.9. No
+      # pardon list exists yet for a probabilistic false red — recorded in the
+      # ruling as the known limit, not hidden.
       # Dropping --advisory was the whole of "arming": a finding now exits 1.
       # The OR composition above is what makes that safe — the worst case is a
       # false red on a real PR, never a washed violation.

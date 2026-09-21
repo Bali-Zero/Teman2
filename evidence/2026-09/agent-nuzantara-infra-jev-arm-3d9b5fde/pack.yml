@@ -1,0 +1,116 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+pii_scan: clean
+plan_ref:
+  "RULED 2026-09-21-bis, point (3): 'the catE step stays advisory, arming it is a separate gesture'
+  — the gesture the owner took the same morning (Zero, verbatim 'togliu tu e rendi Jev operativo'),
+  recorded as RULED 2026-09-21-ter in docs/rules/RULINGS.md by this PR."
+lanes:
+  - lane: jev-arm
+    role: build
+    seat: claude-fable-5-1 (conducting session on Pro, fresh broker worktree off origin/main; the same session authored PR #7013 = -bis, so it is excluded from grading — see brief.yml grader)
+diff:
+  behaviour_change: |
+    One behaviour changes: catE step #40c "Paid-endpoint ban judged as an entity" no longer
+    passes --advisory to scripts/lint_paid_llm_entity.py, so a violation makes main() return 1
+    and the workflow goes red. Nothing else moves: the lint, the client, the fence logic and the
+    OR composition are untouched; silence (no key, unauthorized, network, 429 after retries,
+    malformed body) is still "no opinion" and degrades to the transcribed grep with exit 0.
+    docs/rules/RULINGS.md gains RULED 2026-09-21-ter (supersedes the two "stays advisory"
+    sentences of -bis; records the live 55-case bench run and the known limits). The -bis fence
+    entry's `use` text stops saying the step stays advisory. One test is added: the CLI-level
+    exit-code flip (exit 1 armed, exit 0 advisory) that nothing in the suite asserted before.
+  surface: |
+    One workflow file (the run line and its comment block), one rules document, one JSON ledger
+    field read by no code, one test module (+1 test). No backend, no frontend, no migration, no
+    credential; the client and the lint are not edited.
+receipts:
+  - claim: "the flag's removal is the whole of the arming — with a violation present, main() exits 1 without --advisory and 0 with it"
+    cmd: 'python3 -c ''import lint_paid_llm_entity as L; L.judge_file = <violation stub>; print(L.main([f]), L.main(["--advisory", f]))'' on an in-scope scratch .py file'
+    result: "in_scope True; argv [f] -> exit 1; argv ['--advisory', f] -> exit 0"
+    exit: 0
+    ts: 2026-09-21T04:24:22Z
+    seat: claude-fable-5-1
+  - claim: "the same flip is now pinned by a test that reaches main()'s exit path with a violation present"
+    cmd: python3 -m pytest -q scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_cate_trigger_parity.py
+    result: "221 passed (220 before test_a_violation_exits_one_unless_advisory was added)"
+    exit: 0
+    ts: 2026-09-21T04:33:22Z
+    seat: claude-fable-5-1
+  - claim: the step's run line carries no --advisory
+    cmd: grep -c -- 'lint_paid_llm_entity.py --advisory' .github/workflows/catE-sovereignty-lint.yml
+    result: "0 (the two remaining 'advisory' mentions in the step are historical comment lines)"
+    exit: 0
+    ts: 2026-09-21T04:29:02Z
+    seat: claude-fable-5-1
+  - claim: the workflow stays schema-valid and both edited data files parse
+    cmd: "actionlint .github/workflows/catE-sovereignty-lint.yml; python3 -c 'yaml.safe_load(workflow); json.load(authorized_endpoints.json)'"
+    result: "actionlint rc=0 (no output); parse rc=0"
+    exit: 0
+    ts: 2026-09-21T04:29:07Z
+    seat: claude-fable-5-1
+  - claim: "the armed step does not red itself: run live, with the real key and the -bis authorization, on the two densest files in its own scope"
+    cmd: "TYPESAFE_API_KEY sourced from ~/.nuzantara-secrets.env (never printed); python3 scripts/lint_paid_llm_entity.py --json .github/workflows/catE-sovereignty-lint.yml scripts/lint_paid_llm_entity.py; then the armed form on the workflow file alone"
+    result: "both files asked=True grep=False violation=False; max route probability 0.10 (workflow) and 0.13 (lint); armed form exit 0"
+    exit: 0
+    ts: 2026-09-21T04:31:49Z
+    seat: claude-fable-5-1
+  - claim: "the full 55-case bench (39 lane-authored + 16 by an outside refuter, 7 guilt / 9 innocence) measured live against jev-1.13.0 — closing the council's HIGH finding that the refuter cases were unmeasured"
+    cmd: python3 scripts/test_lint_paid_llm_entity.py --bench
+    result: "guilt recall 21/26; recall on grep-misses 19/23; false alarms 0/29; sensitivity t=0.5 21/23 0/29, t=0.6 21/23 0/29, t=0.7 20/23 0/29, t=0.8 19/23 0/29, t=0.9 16/23 0/29. Misses: httpx_async_raw 0.60, shell_curl 0.44, shell_wget_process 0.39, workflow_step_curl 0.78, canonical_export_grep_catches_this 0.30 (caught by the grep by design)"
+    exit: 0
+    ts: 2026-09-21T04:33:39Z
+    seat: claude-fable-5-1
+  - claim: "catE-sovereignty-lint is NOT a required status check on main, and the workflow is path-filtered"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq .contexts (13 contexts, none named catE-sovereignty-lint); gh api repos/Bali-Zero/Teman2/rules/branches/main (no required_status_checks rule)"
+    result: "required: NO — recorded in `unresolved`; a required check that does not report on every PR would block every PR, so making it required needs an always-reporting job first"
+    exit: 0
+    ts: 2026-09-21T04:15:34Z
+    seat: claude-sonnet-5 (backend-verifier probe, read-only)
+  - claim: "titolare seats available to this session for the council"
+    cmd: python3 scripts/arsenal_probe.py --read-last --json
+    result: "codex UNKNOWN_ERR (21h-old probe; a live `codex exec` was dispatched anyway), agy TIMEOUT (21h-old; live `agy -p` returned rc 0), tp1-qwen3.8-max / tp1-glm-5.2 / tp1-deepseek-v4-pro QUOTA_DEAD; the kimi-code/k3 dispatch was denied by the conducting session's auto-mode classifier (Data Exfiltration)"
+    exit: 0
+    ts: 2026-09-21T04:26:00Z
+    seat: claude-fable-5-1
+unresolved:
+  - "catE-sovereignty-lint is not a REQUIRED status check on main: a red step reddens the PR's rollup but does not by itself hold the merge queue. Making it required is a branch-protection change AND needs the workflow to report on every PR (today it triggers on hot-zone paths only) — a separate lane, the owner's call."
+  - "No pardon mechanism for a probabilistic false red (unlike #40d's grandfathered.json): the human reading the red is the only valve. Recorded in RULED 2026-09-21-ter; the first false red that lands is the lane that writes it."
+  - "Route-by-process guilt (shell/raw HTTP with no SDK) scores below FIRE_THRESHOLD 0.80: httpx_async_raw 0.60, shell_curl 0.44, shell_wget_process 0.39, workflow_step_curl 0.78. The greps miss this class too, so arming loses nothing there, but it is the corpus's declared blind spot and stays open."
+seat_fallback_reason: |
+  agy-gemini-3.1-pro is a RESERVE and is counted toward quorum standing in for two titolari
+  that were unavailable to this session: kimi-code/k3, whose dispatch the conducting session's
+  auto-mode classifier denied (Data Exfiltration) — unavailable by policy of the harness, not by
+  quota — and tp1-qwen3.8-max, QUOTA_DEAD per arsenal_probe.py --read-last together with both
+  its TP1 reserves (tp1-glm-5.2, tp1-deepseek-v4-pro). codex-gpt-5.6-sol, titolare, was
+  dispatched live (`codex exec --sandbox read-only`) and its line is in council-journal.jsonl.
+dissent:
+  - seat: agy-gemini-3.1-pro
+    objection: "HIGH — the 16 refuter cases in bench_cases.json (9 innocence) were never run against jev-1.13.0, while the ruling and the workflow comment cited only the 39-case numbers: an unmeasured false-alarm surface under a blocking gate. CLOSED BY MEASUREMENT in this pack: the full 55-case bench was run live before pushing (false alarms 0/29 at every threshold 0.5-0.9) and -ter plus the workflow comment now carry the measured numbers."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "MEDIUM — no in-repo pardon/baseline/noqa mechanism for a probabilistic false red, unlike #40d and #40; a false positive hard-blocks a PR with no remedy short of editing CI. ACCEPTED as risk, not fixed here: recorded in RULED 2026-09-21-ter and in `unresolved` — the first false red is the lane that writes the pardon mechanism."
+    status: CONFIRMED
+  - seat: agy-gemini-3.1-pro
+    objection: "LOW — -ter called a refuter 'the honest next lane' while refuter cases already existed in-tree (added 2026-09-21, unmeasured). FIXED in wording: -ter now states the 39+16 provenance and the live measurement."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (spalla-review subagent — a Claude-family seat, not counted toward R9 quorum)
+    objection: "Arming a step on an external model citing bench numbers from few-line fixtures, without ever having run that step, from the real CLI entrypoint, on ITS OWN diff — the workflow file being the most adversarial file in the repo by 'Anthropic/api_key' vocabulary density — and without a single test proving that dropping --advisory changes the exit code. CLOSED: the armed lint was run live on the workflow file and on the lint itself (asked=True, violation=False, max probability 0.13, exit 0), and test_a_violation_exits_one_unless_advisory now pins the flip."
+    status: CONFIRMED
+  - seat: claude-sonnet-5 (spalla-review subagent)
+    objection: "-bis still says 'the step keeps --advisory' / 'The step stays advisory' two lines above -ter, and the file quotes the step's former '(advisory)' name; -ter did not use the word SUPERSEDES. FIXED: -ter now names the superseded sentences explicitly; the older lines stay as history by the file's append-only convention."
+    status: CONFIRMED
+bites:
+  consumer: catE step #40c "Paid-endpoint ban judged as an entity" (.github/workflows/catE-sovereignty-lint.yml) — runs scripts/lint_paid_llm_entity.py WITHOUT --advisory on every hot-zone PR, this one included
+  where: ci
+  observation: |
+    Legacy form on purpose: the executable `observe:` needs the observed script to declare
+    itself `bites-observable`, and this PR's constraint is to leave scripts/lint_paid_llm_entity.py
+    untouched. The observation, made before this pack was written and to be re-read on this PR's
+    own catE run: with the key configured and the -bis authorization on disk, the armed lint run
+    on .github/workflows/catE-sovereignty-lint.yml and on scripts/lint_paid_llm_entity.py reports
+    asked=True, violation=False (max route probability 0.13) and exits 0; with a violation stubbed
+    in, main() exits 1 without --advisory and 0 with it (test_a_violation_exits_one_unless_advisory).
+    On this PR's head the step "Paid-endpoint ban judged as an entity" must show files judged > 0
+    and exit 0 — a red here on a diff that reaches no paid endpoint would be the first false red
+    the ruling describes, and would be read, not rerun.
