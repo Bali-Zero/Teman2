@@ -365,8 +365,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: evidence/<month>/<slug>/reviews/prompt-r*.txt VERDICT sha256 of the prompt round's own text (2026-09-13, B2 ledger close PR, #6440)
     # +1: infra/claude-plugins/local-marketplace/vendor.lock.json per-file sha256 + upstream_commit pins (2026-09-15, PR #6554 follow-up)
     # +1: infra/claude-hooks/secret-expansion-registry.json `_secret_env_var_patterns_doc`/`_secret_files_doc` prose fields — variable NAMES and store paths, never a value (2026-09-19, PR #6787)
-    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json edge label (2026-09-21, PR #TBD)
-    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json content hash (2026-09-21, PR #TBD)
+    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json edge label (2026-09-21, PR #7015)
+    # +1: research/operations/<date>-visa-oracle-live-enumeration/prove-live-*.json content hash (2026-09-21, PR #7015)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
