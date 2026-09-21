@@ -246,10 +246,11 @@ async def test_a_paid_order_gets_a_profile_then_an_invitation_then_the_email(poo
 
 
 async def test_the_send_is_the_last_statement_in_the_handler():
-    """`create_invitation` expires the previous unused invitation and mints a
-    fresh token on every call, so a retry after a DELIVERED email would kill a
-    link the customer already holds. Keeping the send last bounds that window
-    to a failure of the send itself. RED if anything is appended after it."""
+    """`create_invitation` mints a fresh token on every call, so a retry after a
+    DELIVERED email mails the customer a second link (a same-address resend no
+    longer kills the first, since 2026-09-21). Keeping the send last bounds
+    those duplicates to a failure of the send itself. RED if anything is
+    appended after it."""
 
     # Parsed, not grepped: the first version of this guard used a regex and
     # flagged the send call's OWN closing parenthesis as a following statement.
