@@ -240,7 +240,7 @@ jobs:
           fi
           echo "OK: no ANTHROPIC_API_KEY value assignment outside vendor/examples."
 
-      # ── #40c — the same ban, judged as an ENTITY (ADVISORY) ────────────────
+      # ── #40c — the same ban, judged as an ENTITY (BLOCKING) ────────────────
       # #40 and #40b above judge SPELLING: the canonical constructor and the
       # canonical export. CLAUDE.md §3 says in as many words that this is only a
       # first pass — "an alias, a renamed env var, a wrapper library or a
@@ -255,14 +255,25 @@ jobs:
       # can never clear something the greps condemn. `lint_paid_llm_entity.py`
       # returns "no opinion" (not "no violation") when the service is silent.
       #
-      # ADVISORY until the bench is re-run by someone other than the lane that
-      # wrote it (see scripts/tests/fixtures/paid_llm_entity/bench_cases.json,
-      # whose _doc says so plainly). --advisory always exits 0; dropping that
-      # flag is the whole of "arming" this, and is a deliberate later PR.
+      # ARMED by RULED 2026-09-21-ter (docs/rules/RULINGS.md, Zero: "rendi Jev
+      # operativo"). It shipped ADVISORY until the bench was re-run by someone
+      # other than the lane that wrote it (scripts/tests/fixtures/paid_llm_entity/
+      # bench_cases.json, whose _doc says so plainly); that re-run happened on
+      # 2026-09-21 (jev-1.13.0, isolated copy: guilt 16/19, grep-miss recall
+      # 15/17, false alarms 0/20 at every threshold 0.5-0.8), and the arming
+      # session re-ran the full 55-case corpus (16 cases by an outside refuter)
+      # live before pushing: false alarms 0/29 at every threshold 0.5-0.9. No
+      # pardon list exists yet for a probabilistic false red — recorded in the
+      # ruling as the known limit, not hidden.
+      # Dropping --advisory was the whole of "arming": a finding now exits 1.
+      # The OR composition above is what makes that safe — the worst case is a
+      # false red on a real PR, never a washed violation.
       #
       # No key configured = the step still runs, still applies the transcribed
       # grep predicate, and says so. It never fails for lack of a credential.
-      - name: Paid-endpoint ban judged as an entity (advisory)
+      # The authorization it speaks under is the fence entry citing RULED
+      # 2026-09-21-bis in infra/vendor-authorizations/authorized_endpoints.json.
+      - name: Paid-endpoint ban judged as an entity
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -285,7 +296,7 @@ jobs:
           # -d '\n' for the same reason the prose step stopped using bare xargs:
           # a path with a space would otherwise be split into two paths that do
           # not exist. This lint has no --files-from, so the delimiter is the fix.
-          printf '%s\n' "$CHANGED" | xargs -r -d '\n' python3 scripts/lint_paid_llm_entity.py --advisory
+          printf '%s\n' "$CHANGED" | xargs -r -d '\n' python3 scripts/lint_paid_llm_entity.py
 
       # ── #40d — prose about a banned shape must not contain it (BLOCKING) ────
       # The scar this step closes is not a bug in #40/#40b/#40c: it is what

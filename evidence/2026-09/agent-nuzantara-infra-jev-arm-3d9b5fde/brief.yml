@@ -1,0 +1,48 @@
+task_id: jev-arm
+gear: 3
+l_level: L2
+gate_class: opus
+objective: Arm catE step #40c — drop `--advisory` from the step "Paid-endpoint ban judged as an entity" in .github/workflows/catE-sovereignty-lint.yml so a finding from scripts/lint_paid_llm_entity.py exits 1 and reddens the workflow — on the owner's order (Zero, 2026-09-21, verbatim "togliu tu e rendi Jev operativo"), and record that order as RULED 2026-09-21-ter in docs/rules/RULINGS.md, the dated line RULED 2026-09-21-bis said this gesture would need.
+constraints:
+  - "One behaviour change in CI: the exit code of the lint in that step. scripts/lint_paid_llm_entity.py and the fence logic are untouched; scripts/typesafe_client.py changes in ONE function, noul(), to make the 'malformed = no opinion' claim true (council finding); tests ADDED (exit-code flip, noul guilt/innocence), none altered."
+  - "OR composition stays the safety argument: the model can only ADD a finding; it never clears a grep hit; silence (no key, unauthorized, network, 429 after retries, malformed body) is 'no opinion' and the lint degrades to the transcribed grep — it never reds a build for a missing credential."
+  - 'The authorization the step speaks under is the -bis entry in infra/vendor-authorizations/authorized_endpoints.json (endpoint https://api.typesafe.ai/v1/systemone, paths ["**"]); this PR adds no entry and widens nothing.'
+  - "Never print, log or commit the key; probes as ${VAR:+SET} only. The GitHub repository secret was placed by the owner, not by this session."
+  - "Prose must not drift from disk: every remaining 'advisory' mention in the step must be historical (what it WAS), never a present-tense claim."
+acceptance:
+  - text: WHEN the lint reports at least one violation and is invoked WITHOUT --advisory, main() SHALL return 1; WITH --advisory it SHALL return 0 — the flag's removal is the whole of the arming.
+    probe: 'python3 -c ''import lint_paid_llm_entity as L; L.judge_file = <violation stub>; L.main([f]) -> 1; L.main(["--advisory", f]) -> 0'' on an in-scope scratch file (receipt in pack.yml, 2026-09-21T04:24:22Z)'
+  - text: The step's run line SHALL NOT carry --advisory.
+    probe: "grep -c -- 'lint_paid_llm_entity.py --advisory' .github/workflows/catE-sovereignty-lint.yml == 0"
+  - text: The workflow SHALL remain schema-valid and the five guard suites SHALL stay green.
+    probe: "actionlint .github/workflows/catE-sovereignty-lint.yml (rc 0); pytest -q on scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_cate_trigger_parity.py -> 220 passed"
+  - text: The -bis fence entry SHALL still be justified by a ruling naming its endpoint after the `use` text edit.
+    probe: test_every_shipped_entry_cites_a_ruling_that_names_its_endpoint (in the 220 above)
+  - text: WHEN this PR's own catE run executes step #40c, the log SHALL show files judged (the key is configured) and the step SHALL exit 0 on this diff, which reaches no paid endpoint.
+    probe: "the catE-sovereignty-lint run on this PR's head — read after push, before merge (Bites in pack.yml)"
+assumptions:
+  - text: The workflow's own arming precondition — the bench re-run by someone other than the lane that wrote it — was met on 2026-09-21 (jev-1.13.0, isolated copy, guilt 16/19, grep-miss recall 15/17, false alarms 0/20 at thresholds 0.5–0.8).
+    status: unverified
+    probe: inherited from the recorded re-run (MOS memory 17863, session nuzantara-05), not re-executed in this session; superseded in practice by the full 55-case live run in pack.yml receipts (2026-09-21T04:33:39Z)
+  - text: The corpus is 39 lane-authored cases plus 16 (7 guilt, 9 innocence) added on 2026-09-21 by a session outside the lane; the 16 had never been run against the model until this session ran the whole bench live (guilt 21/26, grep-miss recall 19/23, false alarms 0/29 at t=0.5–0.9).
+    status: verified
+    probe: python3 scripts/test_lint_paid_llm_entity.py --bench (receipt in pack.yml, 2026-09-21T04:33:39Z); the fixture's own _doc for provenance
+  - text: With the key configured and the endpoint authorized, a network or vendor failure in CI cannot red the step on a grep-clean diff, because ask() returns None and judge_file treats None as no opinion.
+    status: verified
+    probe: scripts/lint_paid_llm_entity.py judge_file / main read this session; council seats asked to falsify it (council.jsonl)
+consumer_map:
+  - .github/workflows/catE-sovereignty-lint.yml — step "Paid-endpoint ban judged as an entity", the only consumer of the removed flag; runs on every PR that touches the hot zone.
+  - scripts/lint_paid_llm_entity.py — unchanged; its non-advisory exit path (return 1 on violations) becomes live.
+  - infra/vendor-authorizations/authorized_endpoints.json — `use` text only; read by no code (authorized() reads endpoint and paths).
+risks:
+  - "A false red on a real PR when the model scores a clean file >= FIRE_THRESHOLD (0.80): by design the failure mode of arming. Handled like any red — read WHY before rerunning; three for the same cause and the arming, not the PR, is what gets re-examined (stated in RULED 2026-09-21-ter)."
+  - "No pardon mechanism exists for a probabilistic false red (unlike #40d's grandfathered.json); the human reading the red is the only valve. The first false red that lands is the lane that writes it (council finding, accepted as risk)."
+  - "Whether catE-sovereignty-lint is a REQUIRED status check on main is not changed here; if it is not required, a red step reddens the PR's rollup without blocking the merge queue by itself."
+grader: |
+  GENERATOR IS NOT GRADER. This session (Claude Fable 5.1, Pro) authored this
+  diff and also authored PR #7013 (RULED 2026-09-21-bis and the first fence
+  entry), so it cannot sign this PR's Gear-3 gate. Excluded for the same
+  reason: the infra-jev-ban-entity-v2-* lane (PR #6968), the vendor-fence-ondisk
+  lane (PR #6989) and the vendor-fence-redirect lane (PR #6999), all
+  contributors to the step or its client. A fresh Opus 5 session outside all
+  these chains posts the harness/fable-gate status on the exact head sha.

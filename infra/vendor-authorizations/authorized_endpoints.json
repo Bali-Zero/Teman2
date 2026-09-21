@@ -4,7 +4,7 @@
     {
       "endpoint": "https://api.typesafe.ai/v1/systemone",
       "ruling": "RULED 2026-09-21-bis",
-      "use": "Typed judgments (Noul/Choice/Score — calibrated probabilities, never text) over REPOSITORY content only: today the catE step 'Paid-endpoint ban judged as an entity (advisory)' via scripts/lint_paid_llm_entity.py, which stays --advisory. Non-repository material (CRM rows, intake documents, chats, OSINT) is NOT covered and needs its own dated ruling.",
+      "use": "Typed judgments (Noul/Choice/Score — calibrated probabilities, never text) over REPOSITORY content only: today the catE step 'Paid-endpoint ban judged as an entity' via scripts/lint_paid_llm_entity.py — BLOCKING since RULED 2026-09-21-ter (it shipped advisory under -bis). Non-repository material (CRM rows, intake documents, chats, OSINT) is NOT covered and needs its own dated ruling.",
       "paths": ["**"]
     }
   ]

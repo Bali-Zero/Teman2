@@ -478,3 +478,48 @@ def test_json_mode_emits_only_json(monkeypatch, capsys):
     parsed = json.loads(capsys.readouterr().out)
     assert rc == 0
     assert parsed == {"results": []}
+
+
+def test_a_violation_exits_one_unless_advisory(monkeypatch, tmp_path, capsys):
+    """The arming line. RULED 2026-09-21-ter dropped --advisory from catE step
+    #40c, and until this test nothing in the suite reached main()'s exit path
+    with a violation present — the flag's effect was proven only by hand.
+    GUILT and INNOCENCE on the same stubbed verdict: exit 1 armed, exit 0
+    advisory. `in_scope` is stubbed because pytest's tmp_path carries the
+    test's own name, which the `test_` exclusion would otherwise filter out
+    before main() ever judged the file."""
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    verdict = {
+        "violation": True,
+        "grep": True,
+        "fired_routes": [],
+        "probabilities": {},
+        "asked": False,
+    }
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(lint, "judge_file", lambda path, text: {"path": path, **verdict})
+
+    assert lint.main([str(target)]) == 1
+    assert lint.main(["--advisory", str(target)]) == 0
+    assert "1 violation(s)" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [True, False, 1.5, -0.1, float("inf"), float("nan"), "0.9", None, [0.9], {"p": 0.9}],
+    ids=["true", "false", "above-one", "below-zero", "inf", "nan", "string", "none", "list", "dict"],
+)
+def test_a_malformed_noul_value_is_no_opinion(bad):
+    """GUILT for 'malformed = no opinion' (codex council finding on the arming
+    PR): `noul()` returned float(value) for any int or float, and bool is an
+    int — a vendor answer of `{"noul": true}` became probability 1.0 and, once
+    the step was armed, a red build. A bool, a number outside [0, 1], inf,
+    nan or a non-number must never become a probability."""
+    assert lint.noul({"route": {"noul": bad}}, "route") is None
+
+
+@pytest.mark.parametrize("good", [0, 1, 0.83], ids=["zero", "one", "fraction"])
+def test_a_well_formed_noul_value_is_its_probability(good):
+    """INNOCENCE. Without this the guard above could be `return None`."""
+    assert lint.noul({"route": {"noul": good}}, "route") == float(good)
