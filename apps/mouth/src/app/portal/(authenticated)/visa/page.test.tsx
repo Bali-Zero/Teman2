@@ -172,6 +172,20 @@ describe("VisaPage (WS3 day pass)", () => {
     ).toBeInTheDocument();
   });
 
+  it("counts days since expiry for a permit already expired, never negative days remaining", async () => {
+    await renderLoaded(-12);
+
+    expect(screen.getByText("Expired 12d ago")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("days since expiry")).toBeInTheDocument();
+    expect(screen.queryByText("days remaining")).not.toBeInTheDocument();
+    expect(screen.queryByText("-12")).not.toBeInTheDocument();
+    expect(screen.getByText(/Your visa has expired/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/expires in less than 2 months/),
+    ).not.toBeInTheDocument();
+  });
+
   it("drain guard: no hardcoded hex colors anywhere in the page output", async () => {
     const { container } = await renderLoaded();
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

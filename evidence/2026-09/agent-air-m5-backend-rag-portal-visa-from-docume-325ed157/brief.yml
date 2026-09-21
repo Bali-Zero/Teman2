@@ -55,6 +55,14 @@ acceptance:
       pytest -k "without_expiry" on test_dashboard_mixin.py; vitest run
       apps/mouth/src/lib/api/portal/portal.api.test.ts
   - text: >-
+      WHEN the chosen document expired inside the 30-day grace window, the visa
+      page SHALL count the real days since expiry ("Expired 12d ago", banner
+      "12 days since expiry"), as the tile does — never a clamped 0 or a
+      negative "days remaining".
+    probe: >-
+      pytest -k grace_window on test_dashboard_mixin.py; vitest run
+      "apps/mouth/src/app/portal/(authenticated)/visa/page.test.tsx"
+  - text: >-
       A hidden, soft-deleted or archived document SHALL never become the
       current visa.
     probe: >-

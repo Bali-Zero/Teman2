@@ -330,6 +330,34 @@ async def test_get_visa_status_document_fallback_reads_permit_and_sponsor_from_o
 
 
 @pytest.mark.asyncio
+async def test_get_visa_status_document_in_grace_window_reports_real_days_since_expiry() -> None:
+    """A document that lapsed 12 days ago is still picked (30-day grace, as
+    kita). The page must say "Expired 12d ago" like the tile, not a clamped
+    "Expired 0d ago" — 30 live clients in this state (measured 2026-09-21)."""
+    service, conn = _service_with_conn()
+    now = datetime.now(timezone.utc)
+    conn.fetchrow.side_effect = [{"id": 1}, None]
+    conn.fetch.side_effect = [
+        [],
+        [],
+        [
+            {
+                "id": 80,
+                "document_type": "kitas",
+                "expiry_date": (now - timedelta(days=12)).date(),
+                "issue_date": None,
+                "created_at": now,
+            },
+        ],
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["current"]["status"] == "expired"
+    assert result["current"]["daysRemaining"] == -12
+
+
+@pytest.mark.asyncio
 async def test_get_visa_status_document_without_expiry_is_active_not_expired() -> None:
     """407 of the 691 fallback clients (measured 2026-09-21) have a visa
     document with no expiry_date and no OCR. The dashboard tile already

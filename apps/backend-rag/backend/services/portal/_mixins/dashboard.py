@@ -355,6 +355,10 @@ class PortalDashboardMixin:
         to a client the dashboard called active (34 of 97 completed visa
         practices and 407 of the 691 document-fallback clients have no
         expiry_date, measured 2026-09-21).
+
+        `daysRemaining` is not clamped at 0: a document picked inside the
+        30-day grace window reads "Expired 12d ago" on the page, as on the
+        tile, not "Expired 0d ago".
         """
         today = datetime.now(timezone.utc).date()
         expiry = _as_date(expiry_date) if expiry_date else None
@@ -374,7 +378,7 @@ class PortalDashboardMixin:
             "status": status,
             "issueDate": issue.strftime("%d %b %Y") if issue else "-",
             "expiryDate": expiry.strftime("%d %b %Y") if expiry else "-",
-            "daysRemaining": max(0, days_left) if days_left is not None else None,
+            "daysRemaining": days_left,
             "permitNumber": permit_number,
             "sponsor": sponsor,
         }
