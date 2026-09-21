@@ -1,0 +1,62 @@
+task_id: cate-guard-control-flow
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close PWC #7031 conditions C1, C2 and C3 (PENDING-ARMS row "PWC-CONDITIONS
+  for PR #7031", gate comment pull/7031#issuecomment-5757422976) before
+  `catE-sovereignty-lint` is added to main's required contexts. The fresh
+  gate on #7031 found that the absence guard let 16 of 29 regressions stay
+  green. Among them were step-level `if:`, `continue-on-error`, a job
+  rename, `merge_group.branches` without main, and a constant concurrency
+  group. It also let through fail-open existence shapes that a regex on
+  text cannot see. This change judges those shapes structurally where they
+  are structure, and by EXECUTING each step's `run:` script where they are
+  control flow. It also makes the prose true.
+  Sequence ruled 2026-09-21 in the lane's M5 window (answer typed by the
+  remote-control delegate nuzantara-67 under Zero's standing delegation):
+  the REQUIRED flip follows this change's merge, gate and live proof.
+constraints:
+  - "Two files of substance: scripts/tests/test_cate_trigger_parity.py, and
+    .github/workflows/catE-sovereignty-lint.yml in COMMENT lines only (its
+    executable lines hash identically before and after)."
+  - "Branch protection is not changed by this PR; the flip is the next,
+    separate act."
+  - "The execution harness passes no secrets to a step or to git, and shims
+    `pip` to a no-op; the network itself is not blocked (a step that calls
+    it does so for real, as it would in CI)."
+acceptance:
+  - text: >
+      WHEN any of the gate's green-staying regressions of #7031 (step-level
+      if, continue-on-error on step or job, job rename, merge_group branches
+      without main, a negated main, job-level or per-event-constant
+      concurrency, a negated existence test, a plain-echo fall-through, an
+      or-true on a lint call, an -s warning skip, an -e short-circuit, the
+      Law-5 step deleted, an unknown runner label) is applied, the guard
+      test SHALL fail on the assertion written for it.
+    status: verified
+    probe: "guilt battery on minimal mirrors of the successor head"
+  - text: >
+      WHEN a step overrides `shell:` (dropping -e), or its no-base branch
+      stops running its tool, or any single call of a tool it runs fails
+      while the step still exits 0, the guard test SHALL fail.
+    status: verified
+    probe: "guilt battery on minimal mirrors of the successor head"
+  - text: >
+      WHEN the concurrency group is the per-PR idiom built from
+      github.head_ref or-else github.run_id, the guard test SHALL pass
+      (innocence the gate found red on #7031).
+    status: verified
+    probe: "guilt battery on minimal mirrors of the successor head"
+risks:
+  - "The harness adds about 18s to the corpora step that runs this test in
+    CI."
+  - "Steps that name no repo tool (#40b, #44) are not executed; the
+    whole-tree scan's warn-and-pass and the .env step's vacuity stay on the
+    PENDING-ARMS row catE-passes-without-examining (deadline 2026-10-05)."
+instruction_to_the_grader: |
+  Try to write a workflow mutation that would hurt a REQUIRED context while
+  this test stays green, and an innocent edit that this test reds. Judge
+  whether the harness runs the step the way GitHub does. Read the diff, not
+  this brief.
+pii: none
