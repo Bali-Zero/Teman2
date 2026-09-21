@@ -25,6 +25,11 @@ import apply_residual_open as R  # noqa: E402
 
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 SPEC = json.loads(R.SPEC.read_text(encoding="utf-8"))
+SPEC2 = json.loads(
+    (FILIERA / "cure_specs" / "residual_open_naso_2026_09_21_lot2.json").read_text(
+        encoding="utf-8"
+    )
+)
 
 # The lot's deferred groups, as the spec declares them. Pinned here because the
 # arithmetic is the honest half of the claim, and it has two axes: the rule
@@ -871,3 +876,162 @@ def test_the_sibling_class_is_declared_and_measured_empty(by_code):
     assert by_code["10762"]["bps_2020_ancestors"]["codes"] == ["10763"]
     assert by_code["30112"]["bps_2020_ancestors"]["codes"] == ["30112"]
     assert by_code["30303"]["bps_2020_ancestors"]["codes"] == ["30300"]
+
+
+# ---------------------------------------------------------------- lot 2 (ATTENZIONE_FASCIA_BALI)
+
+# The lot cuts on the Bali axis (module docstring, "WHY A LOT"): lot 1 unveils
+# OK_or_HIGHER_RISK, lot 2 unveils ATTENZIONE_FASCIA_BALI. Every other rule
+# predicate is identical — REQUIRED_RULE_BY_LOT pins that, and these tests pin
+# that a spec cannot smuggle a widened predicate past the per-lot pin.
+
+LOT2_DEFERRED = {
+    "adjudicated_sibling": 6,
+    "annex_title_collision": 0,
+    "body_stated_category": 0,
+    "instrument_referral_pasal_11_2": 1,
+    "legacy_pma_prose": 1,
+    "unswept_sector_statute": 4,
+}
+
+LOT2_SIBLING_WITHHELD = {"16222", "21023", "32202", "59132", "91112", "91122"}
+LOT2_UNSWEPT_WITHHELD = {"35133", "35159", "49297", "52213"}
+LOT2_REFERRAL_WITHHELD = {"64210"}
+
+
+def mini_spec2(items):
+    """`mini_spec`'s lot-2 twin, built off the real lot-2 spec instead of lot 1."""
+    spec = json.loads(json.dumps(SPEC2))
+    spec["items"] = items
+    spec["excluded_codes"] = {}
+    for block in spec.get("category_closure_probe", []):
+        block["marked_codes"] = []
+    for block in spec.get("annex_title_collision_probe", []):
+        block["collided_codes"] = []
+    return spec
+
+
+def test_an_unknown_lot_refuses():
+    spec = mini_spec2([RESIDUAL])
+    spec["lot"] = 99
+    _, refusals = R.check(spec, [rec(RESIDUAL, bali="ATTENZIONE_FASCIA_BALI")])
+    assert refusals == [
+        "spec lot 99 is not a known lot — REQUIRED_RULE_BY_LOT has [1, 2], and an "
+        "unknown lot cannot be trusted to pin the right predicates"
+    ]
+
+
+def test_a_lot_1_spec_whose_rule_drifts_to_the_lot_2_bali_status_refuses():
+    # Guilt: a lot cannot widen ANY predicate just because it is allowed to
+    # name a different Bali status — the whole rule is pinned per lot, not one
+    # field of it.
+    spec = mini_spec([RESIDUAL])
+    spec["rule"]["l4_bali_status"] = "ATTENZIONE_FASCIA_BALI"
+    _, refusals = R.check(spec, [rec(RESIDUAL, bali="ATTENZIONE_FASCIA_BALI")])
+    assert refusals == [
+        "rule.l4_bali_status is 'ATTENZIONE_FASCIA_BALI', not 'OK_or_HIGHER_RISK' "
+        "— this compiler only writes the residual class, and a spec cannot widen it"
+    ]
+
+
+def test_a_lot_2_spec_whose_rule_drifts_to_the_lot_1_bali_status_refuses():
+    spec = mini_spec2([RESIDUAL])
+    spec["rule"]["l4_bali_status"] = "OK_or_HIGHER_RISK"
+    _, refusals = R.check(spec, [rec(RESIDUAL, bali="OK_or_HIGHER_RISK")])
+    assert refusals == [
+        "rule.l4_bali_status is 'OK_or_HIGHER_RISK', not 'ATTENZIONE_FASCIA_BALI' "
+        "— this compiler only writes the residual class, and a spec cannot widen it"
+    ]
+
+
+def test_the_lot_1_spec_still_validates_byte_for_byte_against_pin_1(records):
+    # Innocence: the per-lot pin did not move lot 1's own behaviour at all.
+    assert R.check(SPEC, records) == ([], [])
+    assert SPEC["rule"] == R.REQUIRED_RULE_BY_LOT[1]
+
+
+def test_the_lot_2_spec_is_260_codes_and_the_deferred_arithmetic_is_declared():
+    codes = [str(c) for c in SPEC2["items"]]
+    assert len(codes) == 260 and len(set(codes)) == 260
+    assert SPEC2["lot"] == 2 and SPEC2["vintage"] == "2021-05-25"
+    assert {k: v["codes"] for k, v in SPEC2["deferred"].items()} == LOT2_DEFERRED
+    # 260 shipped + 6 sibling + 4 unswept statute + 1 finance referral = the
+    # 271 the rule reaches; the 272-vs-271 gap (62900, legacy prose) is its
+    # own deferred entry, not a term of the reach arithmetic.
+    withheld_count = (
+        LOT2_DEFERRED["adjudicated_sibling"]
+        + LOT2_DEFERRED["unswept_sector_statute"]
+        + LOT2_DEFERRED["instrument_referral_pasal_11_2"]
+    )
+    assert len(codes) + withheld_count == 271
+    assert SPEC2["excluded_codes"] == {}
+
+
+def test_the_lot_2_spec_validates_against_the_real_canonical(records):
+    # Lot 2 is already shipped on this canonical (same PR that adds this
+    # test applies it) — a clean no-op, exactly like lot 1's own
+    # `test_rerun_on_the_shipped_canonical_is_a_clean_noop`.
+    assert R.check(SPEC2, records) == ([], [])
+
+
+def test_every_lot_2_item_is_attenzione_fascia_bali_and_unblocked(by_code):
+    for code in SPEC2["items"]:
+        record = by_code[str(code)]
+        bali = record.get("l4_bali") or {}
+        assert bali.get("status") == "ATTENZIONE_FASCIA_BALI", code
+        assert bali.get("blocked") is False, code
+        assert R.legacy_prose(record) == [], code
+        assert record.get("pma_status") == "TERBUKA", code
+        assert record.get("pma_max_asing") == 100, code
+
+
+def test_lot_1_and_lot_2_partition_on_the_bali_axis(by_code):
+    lot1 = {str(c) for c in SPEC["items"]}
+    lot2 = {str(c) for c in SPEC2["items"]}
+    assert not (lot1 & lot2)
+    # And every lot-2 member's Bali status genuinely differs from lot 1's own
+    # rule, re-derived from the canonical rather than assumed from disjointness.
+    for code in lot2:
+        assert by_code[code]["l4_bali"]["status"] != "OK_or_HIGHER_RISK"
+    for code in lot1:
+        assert by_code[code]["l4_bali"]["status"] != "ATTENZIONE_FASCIA_BALI"
+
+
+def test_a_lot_2_withheld_code_per_leg_is_absent_from_items():
+    items = {str(c) for c in SPEC2["items"]}
+    for code in (*LOT2_SIBLING_WITHHELD, *LOT2_UNSWEPT_WITHHELD, *LOT2_REFERRAL_WITHHELD):
+        assert code not in items, code
+
+
+def test_a_lot_2_adjudicated_sibling_withholds_the_code_and_says_why():
+    spec = mini_spec2([RESIDUAL])
+    sibling = rec(SIBLING, status="TERTUTUP", maxa=0, state="located")
+    records = [rec(RESIDUAL, bali="ATTENZIONE_FASCIA_BALI"), sibling]
+    _, refusals = R.check(spec, records)
+    assert refusals == [
+        f"{RESIDUAL}: listed in the lot but withheld — adjudicated 4-digit "
+        f"sibling(s) {SIBLING} — an instrument reaches this subgolongan, so "
+        "absence is not evidence of openness"
+    ]
+
+
+def test_lot_2_apply_writes_the_patch_and_rerun_is_a_clean_noop(tmp_path):
+    dataset = tmp_path / "canonical.json"
+    spec_path = tmp_path / "spec.json"
+    original = rec(RESIDUAL, bali="ATTENZIONE_FASCIA_BALI")
+    dataset.write_text(
+        json.dumps({"metadata": {}, "data": [original]}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    spec_path.write_text(json.dumps(mini_spec2([RESIDUAL])), encoding="utf-8")
+
+    assert R.main(["--apply", "--dataset", str(dataset), "--spec", str(spec_path)]) == 0
+    after = json.loads(dataset.read_text(encoding="utf-8"))["data"][0]
+    assert after["pma_verification_status"] == "located"
+    assert after["pma_official_basis"] == R.BASIS
+    assert after["l4_bali"]["status"] == "ATTENZIONE_FASCIA_BALI"
+
+    # Byte-for-byte idempotent on a second apply — the whole point of A1.
+    before_bytes = dataset.read_bytes()
+    assert R.main(["--apply", "--dataset", str(dataset), "--spec", str(spec_path)]) == 0
+    assert dataset.read_bytes() == before_bytes

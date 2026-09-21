@@ -44,9 +44,12 @@ describe("LicensingSection — unlocated sourced Bali closure frame", () => {
     ).toBeNull();
   });
 
-  it("innocence: a genuinely unlocated, non-sourced-closure code (01192) renders neither Bali frame", () => {
-    const kbli = getCode("01192");
-    if (!kbli) throw new Error("01192 missing from kbli-data.ts");
+  it("innocence: a genuinely unlocated, non-sourced-closure code (62900) renders neither Bali frame", () => {
+    // 01192 was this test's example until naso PR-5 (residual lot 2) located
+    // it. 62900 carries the same ATTENZIONE_FASCIA_BALI status and stays
+    // declared_gap (withheld by that lot's legacy_pma_prose leg).
+    const kbli = getCode("62900");
+    if (!kbli) throw new Error("62900 missing from kbli-data.ts");
     expect(kbli.provenance?.pma.status).toBe("declared_gap");
     expect(kbli.baliL4).toBeUndefined();
 

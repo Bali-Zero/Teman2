@@ -1,0 +1,116 @@
+task_id: kbli-pma-naso-residual-open-lot2
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor for this diff is 3, reached via the SIZE term alone — measured:
+# `evidence_pack_lint.py --print-floor-source` says `size`, `--print-floor`
+# says 3. No hot-zone path, no migration, no new dependency. Same shape as
+# lot 1: one canonical dataset, its two tracked consumer copies and
+# llms-kbli.txt all move together when 260 records change one field; the
+# hand-written surface is the compiler's per-lot pin, the lot-2 spec and
+# its tests.
+objective: >-
+  Perpres 10/2021 Pasal 3(1)(d) + 3(2): a bidang usaha the instrument places in no annex and
+  names in no body article is open to 100% foreign ownership by default — lot 1 (PR #6795)
+  compiled this for the 329 residual codes whose Bali overlay was OK_or_HIGHER_RISK and
+  deferred the rest, one lot per Bali-axis value, "in lotti con un gate". Lot 2 compiles the
+  same fact for the ATTENZIONE_FASCIA_BALI band: 260 of the 271 codes the rule reaches move
+  `pma_verification_status` declared_gap -> located under the identical basis lot 1 wrote, and
+  the disclosure gate can finally show them the Bali row for the first time ("Not on Bali's PMA
+  closure list — verify on OSS", a static flag, not a closure or a risk-derived verdict). No
+  `pma_status`/`pma_max_asing` value moves anywhere; 11 reached codes are withheld, each behind
+  a named leg carried forward unchanged from lot 1's own compiler.
+constraints:
+  - >-
+    Legge 5 — a client-facing VERDICT change is Zero's call, not this lane's. Every code here
+    already reads TERBUKA/100 in the canonical and keeps reading it; the lot moves
+    `pma_verification_status` only, exactly as lot 1 did.
+  - >-
+    Widening the class is a code change under review, not a JSON edit (lot 1's own rule,
+    re-enforced per lot): `REQUIRED_RULE_BY_LOT[2]` is identical to `[1]` except
+    `l4_bali_status`, and every other predicate — bucket, TERBUKA/100, `declared_gap`,
+    `blocked is False`, `no_legacy_pma_prose`, `adjudicated_sibling_prefix` 4 — stays pinned in
+    code, not parameterised by the spec.
+  - >-
+    The population is RE-DERIVED from the instrument on every run, never trusted from the spec
+    (superscar #3 guilt+innocence): a code the rule reaches and the spec omits refuses; a code
+    the spec lists and the rule does not reach refuses. `excluded_codes` carried forward from
+    lot 1 only where verified, per code, still in this lot's reach — measured empty here (all
+    19 of lot 1's hand exclusions carry Bali status OK_or_HIGHER_RISK, none ATTENZIONE_FASCIA_BALI).
+  - >-
+    No Anthropic per-token door, no new dependency, no migration, no PII. The canonical carries
+    no client data; the one PROD read (`scripts/pg.sh`, `nuzantara_readonly` role) selects only
+    public classification fields (kode_kbli, pma_status, pma_verification_status) and prints no
+    credential.
+  - >-
+    The compiler has NO revocation path by design, same as lot 1 — it refuses a code "already
+    located under this basis but now WITHHELD; revoke it, do not re-affirm it". Narrowing this
+    lot means restoring the tracked data files and re-applying, never patching forward.
+acceptance:
+  - text: >-
+      A1 THE LOT IS EXACTLY THE SPEC AND THE RUN IS IDEMPOTENT: WHEN the compiler is re-run on
+      the canonical it already wrote SHALL report `lot 2 · spec items 260 · applicable 0 ·
+      already applied 260 · refused 0` and write nothing.
+    probe: "python3 scripts/kbli_filiera/apply_residual_open.py --spec scripts/kbli_filiera/cure_specs/residual_open_naso_2026_09_21_lot2.json"
+  - text: >-
+      A2 THE PARTITION MOVES BY EXACTLY THE LOT: WHEN the canonical is counted by
+      `pma_verification_status` SHALL be 720 located / 839 declared_gap over 1,559 records —
+      460+260 and 1099-260, re-derived from the file rather than pinned by hand.
+    probe: "python3 -c 'Counter pma_verification_status over data/source_documents/KBLI_2025_FINAL_CLEAN.json'"
+  - text: >-
+      A3 THE WITHHELD ARE WITHHELD WHERE THE CLIENT LOOKS: WHILE the run report names 11
+      withheld codes, the published `llms-kbli.txt` SHALL NOT move any of their lines —
+      `grep -cE` over the diff for the 11 codes returns 0.
+    probe: "git diff origin/main -- apps/mouth/public/llms-kbli.txt | grep -cE '^[+-](16222|21023|32202|59132|91112|91122|35133|35159|49297|52213|64210) '"
+  - text: >-
+      A4 THE LOT-1/LOT-2 PARTITION IS DISJOINT ON THE BALI AXIS AND ENFORCED IN CODE: WHEN a
+      spec's `rule.l4_bali_status` disagrees with its own `lot`'s pin SHALL refuse (guilt); WHEN
+      lot 1's original spec is re-checked against `REQUIRED_RULE_BY_LOT[1]` SHALL still pass
+      with zero refusals (innocence).
+    probe: "python3 -m pytest scripts/kbli_filiera/tests/test_apply_residual_open.py -k 'lot_1_spec_still_validates or lot_2_spec_whose_rule_drifts or lot_1_spec_whose_rule_drifts or lot_1_and_lot_2_partition'"
+  - text: >-
+      A5 NONE OF LOT 1'S HAND EXCLUSIONS OR THE CATALOGUE-WIDE ANNEX-TITLE COLLISIONS ARE
+      SILENTLY CARRIED FORWARD: WHEN lot 1's 19 `excluded_codes` and the 9 catalogue-wide
+      `annex_title_collision_probe` hits are intersected against lot 2's `reached()` set SHALL be
+      empty, per code — not assumed from the lot's own arithmetic.
+    probe: "python3 -c 'intersect lot1 excluded_codes / collided_codes against R.reached() for lot 2'"
+  - text: >-
+      A6 NOTHING ELSE MOVED: WHEN the filiera suite, the mouth suite and the two backend KBLI
+      census suites run on this tree SHALL all be green, with every count pin PR #6795 planted
+      moved to the MEASURED value only.
+    probe: "python3 -m pytest scripts/kbli_filiera/tests ; (cd apps/mouth && npx vitest run && npx tsc --noEmit) ; (cd apps/backend-rag && ./.venv/bin/python -m pytest backend/tests/unit/services/test_kbli_eye.py backend/tests/unit/services/test_kbli_editorial_certification.py)"
+assumptions:
+  - text: >-
+      The five filiera relation probes are green on THIS tree: the coverage ratchet, the
+      body-default artifact, the slice-disclosure artifact, the foreign-cap strict pass and the
+      editorial-record conformance.
+    status: verified
+    probe: "kbli_coverage_scoreboard.py --check; perpres_body_default_relation.py --check-artifact; perpres_slice_disclosure_relation.py --check-artifact; perpres_foreign_cap_relation.py --strict; editorial_record_conformance.py — all exit 0"
+  - text: >-
+      The 2026-09-19 scoreboard's prior of 272 `bali_attenzione_fascia` codes and the compiler's
+      own measured reach of 271 differ by exactly one code (62900, legacy PMA prose), not by an
+      unaccounted drift.
+    status: verified
+    probe: "python3 -c: compare the raw Bali-axis match (no no_legacy_pma_prose filter) against R.eligible() with the full lot-2 rule"
+  - text: >-
+      `data/kbli-filiera/batch-reports/batchA-calibration*` and the MEMBERSHIP (not the pin) of
+      `data/kbli-filiera/membership/batch-a-members.json` do not need regenerating: no required
+      suite gates their content against the live canonical, and their own axis
+      (`per_skala`/`pp28_sources`/`_l2_status`) does not read `pma_verification_status` or
+      `l4_bali` at all. Only the membership pin's `canonical_sha256` is gated
+      (`kbli-canonical-pins.test.ts`) and it IS re-stamped.
+    status: verified
+    probe: "grep for a batchA-calibration/batch-a-members content assertion in the required suite list; none found beyond the sha256 pin check"
+  - text: >-
+      `apps/kbli-navigator/lib/__tests__/kbli-data.test.ts`'s count pins (839/720) were
+      hand-updated by inspection, mirroring the identical verified pin update in the sibling
+      mouth test, but the file itself could not be RUN in this environment (no npm test script
+      registered for this app; an ad-hoc node --test invocation failed on unrelated module-path
+      resolution).
+    status: unverified
+    probe: "node --import tsx --test apps/kbli-navigator/lib/__tests__/kbli-data.test.ts — fails on MODULE_NOT_FOUND for an unrelated import, not on the assertion"
+  - text: >-
+      #6795 (lot 1) is MERGED and live — this branch does not supersede or race it; it is a
+      strict follow-up lot on the same compiler and spec family.
+    status: verified
+    probe: "git log --oneline -- scripts/kbli_filiera/apply_residual_open.py on origin/main shows ce660dde01"
