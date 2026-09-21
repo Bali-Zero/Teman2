@@ -61,9 +61,9 @@ on:
   # test_advisory_workflows_no_merge_group.py exists for). Added in the same
   # diff that makes this workflow armable, BEFORE the flip rather than after:
   # a queue run has no PR base, so both diff-scoped steps below fall through
-  # to their no-base branch — the entity judgment skips (a PR-time-only
-  # signal, not a verdict), and the blocking prose step scans the whole tree
-  # instead. That scan inherits lint_ban_prose.py's own handling of unreadable
+  # to their no-base branch — the entity judgment skips (it judges a PR's
+  # diff against its base, which only a pull_request run has), and the
+  # blocking prose step scans the whole tree instead. That scan inherits lint_ban_prose.py's own handling of unreadable
   # files: it WARNS and still exits 0 on a file it cannot read, as long as at
   # least one in-scope file elsewhere in the tree scanned clean — which a
   # whole-tree scan always has. Not "fails safe, never open": tracked as its
