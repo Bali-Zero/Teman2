@@ -184,9 +184,113 @@ class TestGetClientProfile:
         assert doc["document_type"] == "visa"  # stored value untouched
         assert doc["permit_family"] == "kitap"
         assert doc["permit_label"] == "KITAP / ITAP — Permanent Stay Permit"
+        # No index parses out of this OCR string — family label doubles as
+        # the secondary field, and there is no stay sub-index either.
+        assert doc["permit_family_label"] == "KITAP / ITAP — Permanent Stay Permit"
+        assert doc["permit_stay_index"] is None
         assert doc["permit_number"] == "TEST-0000"
         assert doc["permit_sponsor"] == "Example Sponsor"
         assert "ocr_extracted_data" not in doc
+
+    @pytest.mark.asyncio
+    async def test_profile_documents_use_catalogue_for_index_primary_label(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """The visa index leads the primary label, using the official name
+        from a single `visa_types` catalogue query — the family label moves
+        to `permit_family_label` (secondary in the UI)."""
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        indexed_visa_doc = {
+            "id": 1003,
+            "document_type": "visa",
+            "document_category": "immigration",
+            "file_name": None,
+            "file_id": None,
+            "file_url": None,
+            "google_drive_file_url": None,
+            "status": None,
+            "expiry_date": None,
+            "notes": None,
+            "family_member_id": None,
+            "practice_id": None,
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "deleted_at": None,
+            "uploaded_source": "team",
+            "ocr_extracted_data": {
+                "raw_response": {"visa_type": "Visa Tinggal Terbatas (E23)"}
+            },
+            "family_member_name": None,
+            "alert_color": "green",
+        }
+
+        async def fetch_side_effect(query: str, *args: Any) -> list[dict[str, Any]]:
+            if "FROM documents d" in query:
+                return [indexed_visa_doc]
+            if "FROM visa_types" in query:
+                return [{"code": "E23", "name": "E23 - Working KITAS"}]
+            return []
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(side_effect=fetch_side_effect)
+            result = await get_client_profile(
+                client_id=42, pool=mock_db_pool, current_user=admin_user
+            )
+
+        doc = result["documents"][0]
+        assert doc["permit_code"] == "E23"
+        assert doc["permit_label"] == "E23 — Working KITAS"
+        assert doc["permit_family_label"] == "KITAS / ITAS — Limited Stay Permit"
+
+    @pytest.mark.asyncio
+    async def test_profile_catalogue_query_failure_falls_back_to_code_only_label(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """A broken `visa_types` query must not break the profile — the
+        resolver still parses the index, just without the official name."""
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        indexed_visa_doc = {
+            "id": 1004,
+            "document_type": "visa",
+            "document_category": "immigration",
+            "file_name": None,
+            "file_id": None,
+            "file_url": None,
+            "google_drive_file_url": None,
+            "status": None,
+            "expiry_date": None,
+            "notes": None,
+            "family_member_id": None,
+            "practice_id": None,
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "deleted_at": None,
+            "uploaded_source": "team",
+            "ocr_extracted_data": {"raw_response": {"visa_type": "D12"}},
+            "family_member_name": None,
+            "alert_color": "green",
+        }
+
+        async def fetch_side_effect(query: str, *args: Any) -> list[dict[str, Any]]:
+            if "FROM documents d" in query:
+                return [indexed_visa_doc]
+            if "FROM visa_types" in query:
+                raise RuntimeError("connection reset")
+            return []
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(side_effect=fetch_side_effect)
+            result = await get_client_profile(
+                client_id=42, pool=mock_db_pool, current_user=admin_user
+            )
+
+        doc = result["documents"][0]
+        assert doc["permit_code"] == "D12"
+        assert doc["permit_label"] == "D12"  # no catalogue name available
 
     @pytest.mark.asyncio
     async def test_profile_documents_keep_original_text_when_unresolved(
@@ -300,7 +404,9 @@ class TestGetClientProfile:
                 "days_until_expiry": 270,
             },
         ]
-        fetch_calls = [[], [], alerts, [], [], []]
+        # Fetch order: family_members, documents, visa_types catalogue,
+        # expiry_alerts, practices, company_links, company_documents.
+        fetch_calls = [[], [], [], alerts, [], [], []]
         idx = [0]
 
         async def mock_fetch(*a, **k):

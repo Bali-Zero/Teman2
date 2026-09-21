@@ -420,6 +420,16 @@ export interface ClientDocument {
   permit_family?: "kitap" | "kitas" | "itk" | "merp" | "evisa" | string;
   permit_code?: string;
   permit_label?: string;
+  /**
+   * The family label (e.g. "KITAS / ITAS — Limited Stay Permit") — always
+   * present when a family is known, even when `permit_label` itself leads
+   * with a precise visa index. Secondary line only: show it in the UI when
+   * it differs from `permit_label`, never when they're the same string.
+   */
+  permit_family_label?: string;
+  /** The `2B14`-style stay-permit sub-index, when the OCR text fused one
+   * onto the visa index (e.g. "E33G2C12"). Display-only, safe to ignore. */
+  permit_stay_index?: string;
   permit_number?: string;
   permit_sponsor?: string;
 }

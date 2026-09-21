@@ -1102,6 +1102,19 @@ async def get_client_profile(
             client_id,
         )
 
+        # Load the visa index catalogue once per request (single query, same
+        # connection) so the resolver can lead with the official index name
+        # (e.g. "E23 — Working KITAS") instead of just the family. A failed
+        # catalogue query must never break the profile — fall back to
+        # code-only labels (resolve_permit_label(..., catalogue=None) still
+        # parses the index, see permit_label.py).
+        try:
+            catalogue_rows = await conn.fetch("SELECT upper(code) AS code, name FROM visa_types")
+            visa_catalogue = {row["code"]: row["name"] for row in catalogue_rows}
+        except Exception:
+            logger.warning("visa_types catalogue query failed; falling back to code-only permit labels", exc_info=True)
+            visa_catalogue = None
+
         # Derive a precise permit label per document from `document_type` +
         # whatever OCR already extracted (`ocr_extracted_data->raw_response`)
         # — never invent one when there is no evidence (see permit_label.py).
@@ -1112,11 +1125,15 @@ async def get_client_profile(
         for d in documents:
             doc = dict(d)
             ocr_data = from_jsonb(doc.pop("ocr_extracted_data", None))
-            permit = resolve_permit_label(doc.get("document_type"), ocr_data)
+            permit = resolve_permit_label(
+                doc.get("document_type"), ocr_data, catalogue=visa_catalogue
+            )
             if permit:
                 doc["permit_family"] = permit["permit_family"]
                 doc["permit_code"] = permit["permit_code"]
                 doc["permit_label"] = permit["permit_label"]
+                doc["permit_family_label"] = permit["permit_family_label"]
+                doc["permit_stay_index"] = permit["permit_stay_index"]
                 if permit["permit_number"]:
                     doc["permit_number"] = permit["permit_number"]
                 if permit["permit_sponsor"]:

@@ -108,6 +108,17 @@ function permitDisplayLabel(doc: ClientDocument): string {
   return doc.permit_label || formatDocType(doc.document_type);
 }
 
+/** `permit_family_label` (e.g. "KITAS / ITAS — Limited Stay Permit") is a
+ * secondary line — shown ONLY when it differs from the primary label (a
+ * precise visa index like "E23 — Working KITAS" pushed the family down to
+ * secondary; when no index was found the two strings are identical, and
+ * showing the same text twice would just be noise). */
+function permitFamilySecondaryLabel(doc: ClientDocument): string | undefined {
+  const family = doc.permit_family_label;
+  if (!family || family === permitDisplayLabel(doc)) return undefined;
+  return family;
+}
+
 // A MERP (Multiple Exit Re-entry Permit) document. `document_type` is often
 // the literal string "MERP" and never matches `isVisaFamilyDocument` above
 // (it is not itself a stay permit) — before this resolver existed it fell
@@ -438,6 +449,11 @@ export function ImmigrationTab({
               >
                 {permitDisplayLabel(actualVisa)}
               </span>
+              {permitFamilySecondaryLabel(actualVisa) && (
+                <p className="mt-1 text-[12px] text-[var(--tx-secondary)]">
+                  {permitFamilySecondaryLabel(actualVisa)}
+                </p>
+              )}
               {actualVisa.file_name && (
                 <p
                   className="mt-1.5 max-w-[240px] truncate text-[12px] text-[var(--tx-secondary)]"
@@ -648,7 +664,11 @@ export function ImmigrationTab({
             <HairlineBody>
               {previousVisas.map((doc) => {
                 const urgent = isUrgent(doc);
-                const secondary = [doc.file_name, doc.family_member_name]
+                const secondary = [
+                  permitFamilySecondaryLabel(doc),
+                  doc.file_name,
+                  doc.family_member_name,
+                ]
                   .filter(Boolean)
                   .join(" · ");
                 const statusNode = doc.status ? (

@@ -1007,3 +1007,81 @@ describe("ImmigrationTab — MERP rides with the current permit, not 'Other' (ow
     expect(screen.getByText("Other")).toBeInTheDocument();
   });
 });
+
+describe("ImmigrationTab — permit_family_label secondary line (owner correction: index leads, family is secondary)", () => {
+  it("GUILT: shows the family label as a secondary line under the current-permit badge when it differs from the primary label", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 220,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label: "E23 — Working KITAS",
+        permit_family_label: "KITAS / ITAS — Limited Stay Permit",
+      },
+    ]);
+
+    expect(screen.getByText("E23 — Working KITAS")).toBeInTheDocument();
+    expect(
+      screen.getByText("KITAS / ITAS — Limited Stay Permit"),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: does not repeat the label when permit_family_label equals permit_label (no index was found)", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 221,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitap",
+        permit_label: "KITAP / ITAP — Permanent Stay Permit",
+        permit_family_label: "KITAP / ITAP — Permanent Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getAllByText("KITAP / ITAP — Permanent Stay Permit"),
+    ).toHaveLength(1);
+  });
+
+  it("shows the family label in the visa-history row's secondary line when it differs from the primary label", () => {
+    const futureDate = new Date(Date.now() + 400 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const pastDate = new Date(Date.now() - 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 222,
+        document_type: "kitas",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label: "KITAS / ITAS — Limited Stay Permit",
+        permit_family_label: "KITAS / ITAS — Limited Stay Permit",
+      },
+      {
+        ...baseDoc,
+        id: 223,
+        document_type: "visa",
+        expiry_date: pastDate,
+        permit_family: "itk",
+        permit_label: "C31",
+        permit_family_label: "ITK — Visit Stay Permit",
+      },
+    ]);
+
+    expect(screen.getByText("Visa history")).toBeInTheDocument();
+    expect(screen.getByText("C31")).toBeInTheDocument();
+    expect(screen.getByText("ITK — Visit Stay Permit")).toBeInTheDocument();
+  });
+});
