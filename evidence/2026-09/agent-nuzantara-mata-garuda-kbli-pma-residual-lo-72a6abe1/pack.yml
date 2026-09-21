@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-nuzantara-mata-garuda-kbli-pma-residual-lo-72a6abe1/brief.yml
+brief_ref: evidence/brief.yml # the literal staging contract — CI lints a staged copy
 plan_ref: >-
   research/kbli/2026-09-18-kbli-codes-closed-to-pma-tier1-tier2-dossier.md §8.5 — the residual
   Pasal 3(1)(d) lane, authorized by Zero to ship "in lotti con un gate", plus the 2026-09-21
