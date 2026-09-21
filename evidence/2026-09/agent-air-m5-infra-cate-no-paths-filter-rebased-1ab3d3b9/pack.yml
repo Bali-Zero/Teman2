@@ -1,10 +1,14 @@
-brief_ref: evidence/2026-09/agent-air-m5-infra-cate-no-paths-filter-a8620d0b/brief.yml
+brief_ref: evidence/2026-09/agent-air-m5-infra-cate-no-paths-filter-rebased-1ab3d3b9/brief.yml
 council_run: council-journal.jsonl
 plan_ref: >-
   Zero's ruling 2026-09-21 (relayed by nuzantara-67, verified against the owner's own words in
   this lane's transcript): catE keeps no paths filter, runs unconditionally plus merge_group,
   guarded by an absence test. Also closes PWC #7018 C1, C2 and C4 (PENDING-ARMS row opened
   2026-09-21, owner: the session holding this lane).
+  Branch: published as agent/air-m5/infra/cate-no-paths-filter-rebased because the lane's
+  original branch was pushed (2771a1c572, still carrying #7018's pre-squash head 56eec68cf1)
+  before the rebase onto origin/main, and a force-push over pushed commits is not allowed. The
+  original remote branch is not the candidate.
 
 lanes:
   - lane: cate-build
