@@ -1,0 +1,197 @@
+{
+  "finished_at": "2026-09-21T00:56:58.493287+00:00",
+  "health": {
+    "end": {
+      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4",
+      "http_status": 200
+    },
+    "probes_outside_budget": 2,
+    "start": {
+      "build_sha": "000eaf0732fa162015ca858b39207f769d16d1d4",
+      "http_status": 200
+    }
+  },
+  "manifest_path": "/private/tmp/claude-501/-Users-balizero-nuzantara--worktrees-backend-rag-vo-b2j-enumerate-live-apps-backend-rag/14259ff0-0e91-40a5-96c9-3f6c25dd7661/scratchpad/b4b/delta-manifest.json",
+  "manifest_sha256": "59a6142eb9ead2f15086c0ceef84a5306d2fa8c3ae692ffedd2b559490cf8ce6",
+  "manifest_walk_count": 3,
+  "max_consecutive_harness_reds": 3,
+  "max_requests": 3,
+  "rate_per_minute": 25.0,
+  "report_version": 2,
+  "requests_used_this_run": 3,
+  "requests_used_total": 3,
+  "started_at": "2026-09-21T00:56:53.016609+00:00",
+  "stopped_reason": "completed",
+  "summary": {
+    "engine_verdicts": {
+      "HUMAN_REVIEW_REQUIRED": 3
+    },
+    "harness_reds": {},
+    "pending": 0,
+    "recorded": 3,
+    "total_walks": 3
+  },
+  "traffic_source": "synthetic_driver",
+  "url": "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate",
+  "walks": [
+    {
+      "attempts": 1,
+      "attempts_history": [
+        {
+          "classification": "engine_verdict",
+          "engine_state": "HUMAN_REVIEW_REQUIRED",
+          "harness_detail": null,
+          "http_status": 200,
+          "latency_ms": 244.72,
+          "reason_codes": {
+            "no_path_reasons": [],
+            "notices": [
+              "DISCLOSED_PAST_OVERSTAY_CONDITION"
+            ],
+            "review_reasons": [
+              "BRIDGING_ADVERSE_HISTORY"
+            ]
+          },
+          "retries": 0,
+          "rule_pack": {
+            "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+            "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+            "sequence": 22,
+            "version": "2026.9.16"
+          },
+          "timestamp": "2026-09-21T00:56:53.601119+00:00",
+          "walk_id": "review-gate/overstay"
+        }
+      ],
+      "classification": "engine_verdict",
+      "engine_state": "HUMAN_REVIEW_REQUIRED",
+      "harness_detail": null,
+      "http_status": 200,
+      "latency_ms": 244.72,
+      "reason_codes": {
+        "no_path_reasons": [],
+        "notices": [
+          "DISCLOSED_PAST_OVERSTAY_CONDITION"
+        ],
+        "review_reasons": [
+          "BRIDGING_ADVERSE_HISTORY"
+        ]
+      },
+      "retries": 0,
+      "rule_pack": {
+        "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+        "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+        "sequence": 22,
+        "version": "2026.9.16"
+      },
+      "timestamp": "2026-09-21T00:56:53.601119+00:00",
+      "walk_id": "review-gate/overstay"
+    },
+    {
+      "attempts": 1,
+      "attempts_history": [
+        {
+          "classification": "engine_verdict",
+          "engine_state": "HUMAN_REVIEW_REQUIRED",
+          "harness_detail": null,
+          "http_status": 200,
+          "latency_ms": 270.47,
+          "reason_codes": {
+            "no_path_reasons": [],
+            "notices": [
+              "DISCLOSED_BLACKLIST_ENTRY_CONDITION"
+            ],
+            "review_reasons": [
+              "BRIDGING_ADVERSE_HISTORY"
+            ]
+          },
+          "retries": 0,
+          "rule_pack": {
+            "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+            "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+            "sequence": 22,
+            "version": "2026.9.16"
+          },
+          "timestamp": "2026-09-21T00:56:56.028572+00:00",
+          "walk_id": "review-gate/blacklist"
+        }
+      ],
+      "classification": "engine_verdict",
+      "engine_state": "HUMAN_REVIEW_REQUIRED",
+      "harness_detail": null,
+      "http_status": 200,
+      "latency_ms": 270.47,
+      "reason_codes": {
+        "no_path_reasons": [],
+        "notices": [
+          "DISCLOSED_BLACKLIST_ENTRY_CONDITION"
+        ],
+        "review_reasons": [
+          "BRIDGING_ADVERSE_HISTORY"
+        ]
+      },
+      "retries": 0,
+      "rule_pack": {
+        "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+        "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+        "sequence": 22,
+        "version": "2026.9.16"
+      },
+      "timestamp": "2026-09-21T00:56:56.028572+00:00",
+      "walk_id": "review-gate/blacklist"
+    },
+    {
+      "attempts": 1,
+      "attempts_history": [
+        {
+          "classification": "engine_verdict",
+          "engine_state": "HUMAN_REVIEW_REQUIRED",
+          "harness_detail": null,
+          "http_status": 200,
+          "latency_ms": 272.85,
+          "reason_codes": {
+            "no_path_reasons": [],
+            "notices": [
+              "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION"
+            ],
+            "review_reasons": [
+              "BRIDGING_ADVERSE_HISTORY"
+            ]
+          },
+          "retries": 0,
+          "rule_pack": {
+            "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+            "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+            "sequence": 22,
+            "version": "2026.9.16"
+          },
+          "timestamp": "2026-09-21T00:56:58.433157+00:00",
+          "walk_id": "review-gate/immigration_investigation"
+        }
+      ],
+      "classification": "engine_verdict",
+      "engine_state": "HUMAN_REVIEW_REQUIRED",
+      "harness_detail": null,
+      "http_status": 200,
+      "latency_ms": 272.85,
+      "reason_codes": {
+        "no_path_reasons": [],
+        "notices": [
+          "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION"
+        ],
+        "review_reasons": [
+          "BRIDGING_ADVERSE_HISTORY"
+        ]
+      },
+      "retries": 0,
+      "rule_pack": {
+        "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+        "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+        "sequence": 22,
+        "version": "2026.9.16"
+      },
+      "timestamp": "2026-09-21T00:56:58.433157+00:00",
+      "walk_id": "review-gate/immigration_investigation"
+    }
+  ]
+}
