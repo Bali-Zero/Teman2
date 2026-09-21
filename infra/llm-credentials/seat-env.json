@@ -53,7 +53,15 @@
         "CLAUDE_CONFIG_DIR"
       ],
       "exec_allowlist": ["claude"],
-      "note": "Measured seat kind for headless Claude lanes: it needs the ordinary process minimum plus CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR. This lets scripts/fleet_burst.sh use the broker through FLEET_BURST_SEAT_BROKER without widening the child environment."
+      "note": "Measured seat kind for headless Claude lanes: it needs the ordinary process minimum plus CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR. This lets scripts/fleet_burst.sh use the broker through FLEET_BURST_SEAT_BROKER without widening the child environment. Its binary lives in a different place on each machine, measured 2026-09-21: Pro in ~/.local/bin, Mini in /opt/homebrew/bin, M5 only under the node install managed by mise, reached through the mise shim dir, which does not pin a node version. With no search path declared the broker looked only in the fixed system dirs, so on M5 and Pro this seat could not resolve claude at all (the env-minimization test, every installed real seat resolves its own executable). A declared search path REPLACES the fixed dirs instead of extending them, so they are listed after the two user dirs; a declared dir that does not exist on a machine is skipped.",
+      "exec_search_path": [
+        "~/.local/bin",
+        "~/.local/share/mise/shims",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin"
+      ]
     }
   }
 }
