@@ -73,14 +73,14 @@ assumptions:
     status: verified
     probe: "git show origin/main:apps/mouth/src/app/\\(visa-oracle\\)/visa-oracle/_lib/fact-mapper.ts | sed -n '441,456p'"
   - text: >-
-      Real non-fixture churn is 477, close to but not exactly the
+      Real non-fixture churn is 478, close to but not exactly the
       DRAFT-SPEC's ~447 estimate: census +262/-48, seq21_pack +6/-2,
       generator +57/-0, determinism test +15/-2 (392) plus this
-      brief.yml itself +85/-0 (evidence/ is not in
-      SIZE_TERM_EXCLUDE_DIR_NAMES) = 477, over SIZE_GEAR2_THRESHOLD=400
+      brief.yml itself +86/-0 (evidence/ is not in
+      SIZE_TERM_EXCLUDE_DIR_NAMES) = 478, over SIZE_GEAR2_THRESHOLD=400
       — contract_verify.py measures floor 2, "floor 2, brief present",
       on the real head with this brief committed. Without the brief the
       non-fixture churn is 392, under the line — the brief's own weight
       is what crosses it.
     status: verified
-    probe: "python3 scripts/contract_verify.py --head 84be55340b --json"
+    probe: "python3 scripts/contract_verify.py --head HEAD --json"
