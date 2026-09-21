@@ -5,8 +5,9 @@
  * Every "you would qualify for X" sentence in this product is a claim about
  * the SIGNED rule pack, so prose is not evidence for it. `fixtures/
  * no-path-doors.replay.json` is: it replays each non-supported interview walk
- * against `rulepack-prod-020.signed.json` with exactly one declared field
- * changed, and records which products the pack then supports.
+ * against the currently signed rule pack (`rulepack-prod-022.signed.json` as
+ * of Slice B5-1) with exactly one declared field changed, and records which
+ * products the pack then supports.
  *
  * This test drives the REAL interview (`runWalk` from the corpus generator,
  * the same machine that produced the backend census) into the REAL adapter
@@ -155,12 +156,30 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // only_employer_no.json`, last touched by #6663 (2026-09-16, seq-22
     // candidate pack), unrelated to the D12 rename; its `overrides` did not
     // change either. 16 -> 17.
+    //
+    // Slice B5-1 (mission VISA-ORACLE-DW, 2026-09-21): this fixture had not
+    // been regenerated since the pack was at sequence 20 (2026-09-06); the
+    // walk-corpus regeneration this PR's Y5 required (process.application_channel
+    // moving on 14 onshore fixtures — unrelated to any rule below) forced the
+    // fingerprint check and, with it, a decade of accumulated pack drift the
+    // previous evidence had never caught up to. Re-measured against the
+    // signed pack now at sequence 22 (2026-09-16): `offshore/invest/
+    // bank_deposit/below_threshold` and `offshore/invest/property/
+    // below_threshold` now resolve HUMAN_REVIEW_REQUIRED, not
+    // NO_SUPPORTED_PATH; `offshore/other/paid/sponsor_unsure` (was
+    // NEEDS_INPUT) and `offshore/work/sponsor_government/trade_office_only/
+    // employer_no` (was NO_SUPPORTED_PATH) no longer appear in the replay at
+    // all — the corpus itself moved under both labels between sequence 20
+    // and 22. None of the four is application_channel-sensitive: no rule in
+    // rulepack-prod-020/021/022.source.json reads process.application_channel
+    // (grep -c = 0 in all three, verified this PR), and the onshore section
+    // of this replay is byte-identical to before. 17 -> 14, 2 -> 1.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(17);
-    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(2);
-    expect(replay.pack.file).toBe("rulepack-prod-020.signed.json");
+    ).toHaveLength(14);
+    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
+    expect(replay.pack.file).toBe("rulepack-prod-022.signed.json");
   });
 
   for (const walk of replay.walks.filter(
