@@ -1,0 +1,83 @@
+task_id: vo-a4-flag-coverage
+gear: 1
+base_sha: 3664457fa7
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-a4-flag-coverage
+objective: >-
+  Slice A4 (MANDATE-vo.md, DRAFT-SPEC-A4-1.v2.md): twelve of fourteen
+  DisclosedReviewFlag members were raised by no corpus walk, and no test
+  could say so — every flag test iterates EXPECTED_DISCLOSED_REVIEW_FLAGS,
+  the corpus's own pinned table, never the enum, so A3 added three
+  REVIEW_FLAG_MAP entries and broke nothing. A4 extends the CORPUS
+  GENERATOR (generate-walk-corpus.ts), not the B2''-c enumerator, with
+  three scenarios on the offshore/tourism branch: disclosed_conditions
+  (the nine conditioning review_gate items in one walk, alphabetically
+  sorted because that is what the browser persists), disclosed_criminal
+  (criminal_record ALONE — a HUMAN_REVIEW_REQUIRED fixture by design since
+  it HOLDS and would otherwise hide the nine conditioning codes),
+  multi_purpose (trip_scope: "multiple", byte-identical to offshore/tourism
+  except its own flag). Corpus 112 -> 115 fixtures, raised flags 2 -> 13 of
+  14. The new keystone test_every_disclosure_flag_is_raised_by_at_least_one_walk
+  iterates DisclosedReviewFlag itself rather than the corpus, with an
+  allowlist (NOT_RAISED_BY_ANY_INTERVIEW_WALK) holding exactly
+  CONFLICTING_IMMIGRATION_STATUS (impossible from the interview by
+  construction: every walk's immigration.overstay_days is KNOWN 0) plus a
+  companion pin on the allowlist's own contents (the missing-flag
+  assertion alone cannot catch a bogus allowlist entry). test_seq21_pack.py's
+  unasked-corpus census globs the same fixture directory and is re-pinned
+  mechanically (89 -> 92 SUPPORTED_CANDIDATES, no other row moves) since it
+  reads the whole corpus, not just A4's three files.
+constraints:
+  - >-
+    generate-walk-corpus.ts (mouth generator, three new scenarios) +
+    walk-corpus-determinism.test.ts (the count pin at line 108, was 112
+    now 115) + three NEW backend fixtures under
+    gold_coverage/fixtures/walks/ + test_interview_walk_census.py (backend
+    census: EXPECTED_OUTCOME, EXPECTED_DISCLOSED_REVIEW_FLAGS, the derived
+    EXPECTED_CONDITION_REASON_FOR_FLAG, the new allowlist + keystone test)
+    + test_seq21_pack.py's one pinned assertion (mechanical, corpus-count
+    coupled — NOT in the original four-file list, declared as a deviation
+    below). enumerate-interview-space.ts, tree.ts, fact-mapper.ts, i18n.ts,
+    OutcomeSheet.tsx, engine-adapter.ts and every evaluate_path.py map are
+    UNTOUCHED — measured, git diff --stat names none of them.
+  - >-
+    No production walk, no POST to /api/visa-oracle/evaluate, no browser
+    walk. The fixtures replay offline against the signed pack; this slice
+    changes no visitor-facing surface.
+  - >-
+    PR ships UNARMED, never merged/armed/deployed by the builder.
+appetite: { wall_clock_hours: 1.5 }
+acceptance:
+  - text: >-
+      The backend census + seq21 suites pass with A4's changes included
+      (91 passed, 14 skipped over both files).
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py"
+  - text: "The keystone: every DisclosedReviewFlag member is raised by a walk or allowlisted."
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k test_every_disclosure_flag_is_raised_by_at_least_one_walk"
+  - text: "GUILT (A4-4, second): a bogus allowlist name is caught by the companion pin, not the missing-flag assertion."
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -k test_guilt_a_bogus_allowlist_name_is_caught_by_the_allowlist_pin"
+  - text: "The mouth determinism test commits 115 walks and regenerates byte-identical."
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts"'
+  - text: "engine-adapter.test.ts stays at its A3-M counts (112 passed) — A4 moves none of its pins."
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"'
+  - text: "tsc --noEmit exits 0 across apps/mouth."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit"
+assumptions:
+  - text: >-
+      Base carries #6998 (A3-M): REVIEW_FLAG_MAP is 12 entries
+      (fact-mapper.ts:441-456, overstay :453 / blacklist :454 /
+      immigration_investigation :455) and len(DisclosedReviewFlag) == 14
+      with an explicit PYTHONPATH (the venv has no backend package
+      installed; the main checkout's own tree answers 11).
+    status: verified
+    probe: "git show origin/main:apps/mouth/src/app/\\(visa-oracle\\)/visa-oracle/_lib/fact-mapper.ts | sed -n '441,456p'"
+  - text: >-
+      The measured Gear-2 size-term estimate in DRAFT-SPEC-A4-1.v2.md
+      (~447 against SIZE_GEAR2_THRESHOLD=400) does not hold for the
+      shipped implementation: the real non-fixture churn is 392
+      (census +262/-48, seq21_pack +6/-2, generator +57/-0, determinism
+      test +15/-2), under the Gear-2 line — contract_verify.py measures
+      floor 1, source "none", on the real head.
+    status: verified
+    probe: "python3 scripts/contract_verify.py --head 45d58c770efa12e0feafff7a2bfc9c96ef956dac --json"
