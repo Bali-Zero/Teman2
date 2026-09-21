@@ -1,0 +1,109 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+
+plan_ref: >-
+  PENDING-ARMS row "PWC-CONDITIONS for PR #7076", conditions C1 and C2; gate comment
+  pull/7076#issuecomment-5760649866. The same row said neither condition gates the REQUIRED flip of
+  catE-sovereignty-lint. The flip happened 2026-09-21 ~13:00Z and was recorded by #7083
+  (dd11201cc8), so the workflow header that said "a red here blocks nothing" became false. Its
+  correction is folded in here because it is the same concern: catE's own prose made true.
+
+lanes:
+  - lane: cate-prose-build
+    role: build
+    seat: >-
+      the conducting claude-opus-5 session (M5), which authored #7076 and performed the flip. It
+      wrote every sentence and re-ran every ERRATUM command itself after #7076 merged.
+  - lane: cate-prose-refute-crossfamily-1
+    role: review
+    seat: >-
+      kimi-code/k3 at effort high via scripts/seat_build.sh, worktree infra-council-c-kimi, on
+      4ca8ac7ef3 (513s). VERDICT: HOLDS, with one MINOR.
+  - lane: cate-prose-refute-crossfamily-2
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort high via scripts/seat_build.sh, worktree infra-council-c-codex,
+      on 4ca8ac7ef3. Attempt 1 hit "model at capacity". Attempts 2 and 3 ended in Codex's Stop-hook
+      context rollover with no verdict. The resumed session printed VERDICT: BREAKS, with two MINOR
+      findings. tp1-qwen3.8-max was dispatched too and failed on a missing API key, so it gave no
+      verdict.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3 does not bind. Quorum: kimi-code/k3 and codex-gpt-5.6-sol, both titolari, so
+  no reserve was seated. The council reviewed 4ca8ac7ef3. The rebase onto
+  dd11201cc8 changed only context lines: the +/- lines of 4ca8ac7ef3 and b4187a1658 diff empty.
+
+diff:
+  files: 7
+  measured_at: >-
+    git diff origin/main --stat at the pack commit. Two files carry prose only:
+    scripts/tests/test_cate_trigger_parity.py (module AST minus docstring identical to origin/main)
+    and .github/workflows/catE-sovereignty-lint.yml (non-comment lines identical). Four files are
+    new: ERRATUM.md, and this brief, pack and council journal. One ledger row is rewritten as CLOSED.
+
+residual_risks:
+  - >-
+    The header sentence "REQUIRED on main since 2026-09-21" lives in a file, while the fact lives
+    in branch protection. It can go stale without a diff, so it names its re-measurer
+    (the gh api call, and infra/required.d/contexts.json as the snapshot).
+  - "The Not-covered classes, now eleven bullets in the module docstring, stay uncovered."
+
+pii_scan: clean
+
+receipts:
+  - claim: "Prose only: the test module AST minus its docstring and the workflow's non-comment lines are identical to origin/main"
+    cmd: >-
+      python3 ast.dump compare of scripts/tests/test_cate_trigger_parity.py minus its module docstring
+      (HEAD vs git show HEAD:… before the edit); diff of grep -vE '^\s*#' on the workflow
+    result: "module AST minus docstring identical: True; non-comment lines identical"
+    exit: 0
+    ts: "2026-09-21T13:25Z..13:44Z (after #7083 was armed, before the rebased commit b4187a1658)"
+    seat: session (M5)
+  - claim: "The two new Not-covered bullets are true: both shapes stay green"
+    cmd: >-
+      mirror battery (git archive of .github scripts infra at e17c3319ab, one mutation per mirror,
+      pytest scripts/tests/test_cate_trigger_parity.py), with a `timeout` shim on PATH (shift; exec)
+      because macOS has no coreutils timeout and would otherwise red for the wrong reason
+    result: >-
+      base 48 passed; u1 `timeout 1 python3 <law-5 linter> || [ $? -eq 124 ]` 48 passed; u2
+      `if [ -z "${PYTHONUSERBASE:-}" ]; then echo skip; exit 0; fi` 48 passed
+    exit: 0
+    ts: "2026-09-21T13:35:00Z (mtime of the u1/u2/base outputs)"
+    seat: session (M5)
+  - claim: "Every ERRATUM correction reproduces from its own command"
+    cmd: >-
+      gh run view 35596863917 / 35598050723 / 35602538841 --log | grep corpora; shasum and
+      shasum -a 256 of the non-comment workflow lines at 6b4ab0a604 and 77e7ede3f6; git log
+      --date=iso-strict 6b4ab0a604..77e7ede3f6; test-function count at eb56f26a34 (24) and
+      77e7ede3f6 (25); pytest on c5c8ca13c1 → 48 passed
+    result: "all reproduce; re-run independently by kimi-code/k3 with the same numbers"
+    exit: 0
+    ts: "2026-09-21T13:25Z..13:35Z (session); kimi 13:36Z..13:45Z"
+    seat: session (M5) + kimi-code/k3
+  - claim: "PWC #7031's C1 re-verified by the session before the flip (context for the header sentence)"
+    cmd: "8-mirror battery on c5c8ca13c1, recorded in the closed PWC #7031 row on main (#7083)"
+    result: "6 guilt shapes red on their intended assertion; base and head_ref-or-run_id innocence 48/48"
+    exit: 1
+    ts: "2026-09-21T13:13:41Z (mtime of the battery outputs)"
+    seat: session (M5)
+
+dissent:
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      MINOR: the workflow header names infra/required.d/contexts.json as the snapshot of
+      required-ness, but at the reviewed base (e17c3319ab) that file did not list catE. The
+      objection was true on that base. It was cured by #7083 (dd11201cc8), which regenerated the
+      snapshot; this branch is rebased onto it, and grep -c catE on the file gives 3.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MINOR: ERRATUM section 3 said both commits convert to 12:08Z; 77e7ede3f6 is 12:09:14Z. Fixed
+      to "12:08:54Z and 12:09:14Z".
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      MINOR: the closed PWC-7076 row's proof, a grep -n of x.py, also matches code and comments
+      outside the docstring (lines 1015, 1348, 1367, 1414), so it proved nothing. Replaced with a
+      check on the parsed module docstring's Not-covered section (True True).
