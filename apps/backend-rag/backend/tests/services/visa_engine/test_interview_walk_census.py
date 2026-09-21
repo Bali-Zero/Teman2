@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **112 real interview walks** — every distinct
+the user lives in: replay the **115 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -271,21 +271,37 @@ deleted_verdict`` — and it now fails CLOSED (all eleven) on every malformed
 shape, including a value that recognizes zero tokens or mixes a recognized
 token with an unrecognized one (gate vo-gate-a1, OBS-2, HIGH).
 
-The other nine flags in ``DisclosedReviewFlag`` rewrite ZERO walks: no
-corpus walk answers ``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``),
-none discloses a ``review_gate`` item (the seven compliance disclosures —
-the generator answers that question with its first option, ``none``), and
-none answers ``unsure`` to either of the two questions ``AMBIGUOUS_SPONSOR``
-actually reads, ``family_sponsor_status_code`` / ``family_sponsor_confirmed``.
-Two walks DO answer ``unsure`` to a sponsor question —
+**Before A4 (mission VISA-ORACLE-DW-20260919), the other nine flags in
+``DisclosedReviewFlag`` rewrote ZERO walks:** no corpus walk answered
+``trip_scope = "multiple"`` (``MULTI_PURPOSE_TRIP``), none disclosed a
+``review_gate`` item (the seven compliance disclosures — the generator
+answered that question with its first option, ``none``), and none answered
+``unsure`` to either of the two questions ``AMBIGUOUS_SPONSOR`` actually
+reads, ``family_sponsor_status_code`` / ``family_sponsor_confirmed``. Two
+walks DO answer ``unsure`` to a sponsor question —
 ``offshore/other/paid/sponsor_unsure`` on ``work_sponsor_confirmed`` and
 ``offshore/work/sponsor_unsure`` on ``sponsor_category`` — but neither is a
 FAMILY sponsor fact, so what they raise is the generic ``NOT_CERTAIN``, the
 two rows already counted above (council round 1, council/journal.jsonl: this
 sentence used to say "a sponsor question" flatly and contradicted the
 table 470 lines below it).
-That zero is a property of THIS enumeration, never of production: every
-real visitor with two purposes is held, and no walk here measures it.
+That zero was a property of THIS enumeration, never of production: every
+real visitor with two purposes was held, and no walk measured it.
+
+**A4 closes that gap.** ``review_gate`` is a comma-joined SET
+(``fact-mapper.ts:406``), so three new walks —
+``offshore/tourism/disclosed_conditions`` (the nine conditioning items at
+once), ``offshore/tourism/disclosed_criminal`` (``criminal_record`` ALONE,
+a holding flag), and ``offshore/tourism/multi_purpose``
+(``trip_scope: "multiple"``) — raise all nine remaining reachable flags.
+Only ``CONFLICTING_IMMIGRATION_STATUS`` still rewrites zero walks, and it
+is impossible from the interview by construction (every walk's
+``immigration.overstay_days`` is ``KNOWN 0``): covered by an allowlist row
+instead, citing ``test_evaluate_endpoint.py:2641``/``:2727``. See
+``test_every_disclosure_flag_is_raised_by_at_least_one_walk``, which
+iterates ``DisclosedReviewFlag`` itself rather than this corpus, so a
+fifteenth enum member with no walk fails loudly instead of silently costing
+nothing.
 
 The six ``ACTIVITY_BOUNDARY`` rewrites are the ones a derivation misses,
 and one did: reasoning from "the generator answers every question with its
@@ -353,7 +369,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
 )
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine import compiler, evaluate_path, evaluator
-from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
+from backend.services.visa_engine.api_models import DisclosedReviewFlag, VisaOracleEvaluateRequest
 from backend.services.visa_engine.ast import KnownFact, UnknownFact
 from backend.services.visa_engine.enums import (
     DecisionState,
@@ -916,6 +932,18 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     # W-VO-E: `el.b1.tourism` alone — Visa on Arrival's own 60-day bound,
     # with the corpus's default nationality.
     "offshore/tourism/voa_60d": ("SUPPORTED_CANDIDATES", ("B1", "C1")),
+    # A4: the nine conditioning `review_gate` items keep the ENGINE state
+    # unchanged (this is the pack's own verdict before any disclosure-flag
+    # adapter runs; the FUNNEL side, checked by
+    # `test_the_flagged_census_is_the_funnel_the_applicant_meets`, differs).
+    "offshore/tourism/disclosed_conditions": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # A4: `criminal_record` alone. ENGINE state is unchanged too — the hold
+    # is a FUNNEL-side adapter effect (`HOLDING_DISCLOSED_FLAGS`), never an
+    # engine-level one.
+    "offshore/tourism/disclosed_criminal": ("SUPPORTED_CANDIDATES", ("C1",)),
+    # A4: `trip_scope: "multiple"` — byte-identical to `offshore/tourism`
+    # except its own flag.
+    "offshore/tourism/multi_purpose": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
     # PR-D4d (seq-21 corpus prep, unsigned — activation caveat in the PR
     # body). `el.e33a/b.government-*`/`el.e23v.trade-office` share an
@@ -1161,6 +1189,20 @@ EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY
 #:     currency_still_unsure` is held anyway, by ACTIVITY_BOUNDARY on its
 #:     `investment_vehicle = undecided` answer. Both halves are now MEASURED by
 #:     this table rather than asserted in a PR body.
+#:   - A4 (mission VISA-ORACLE-DW-20260919) adds three rows that raise every
+#:     other `DisclosedReviewFlag` member the interview can reach at all:
+#:     `disclosed_conditions` answers `review_gate` with the nine
+#:     conditioning items (every mapped, non-holding flag — `REVIEW_FLAG_MAP`,
+#:     `fact-mapper.ts:441-456` — plus the three live since #6998), sorted
+#:     alphabetically by item key because that is the exact string the
+#:     browser persists (`QuestionScreen.tsx::serializeReviewGateAnswer`);
+#:     `disclosed_criminal` answers it with `criminal_record` ALONE, since
+#:     that flag HOLDS (`HOLDING_DISCLOSED_FLAGS`) and would otherwise hide
+#:     the other nine behind an emptied candidate list; `multi_purpose`
+#:     answers `trip_scope: "multiple"` for `MULTI_PURPOSE_TRIP`
+#:     (`fact-mapper.ts:589`). Measured directly against
+#:     `mapDisclosedReviewFlags`'s own output on the regenerated fixtures,
+#:     never hand-copied.
 EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/invest/family": ("ACTIVITY_BOUNDARY",),
     "offshore/invest/merit": ("ACTIVITY_BOUNDARY",),
@@ -1170,6 +1212,19 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/other/no_paid_activity/medical": ("ACTIVITY_BOUNDARY",),
     "offshore/other/paid/sponsor_unsure": ("NOT_CERTAIN",),
     "offshore/work/sponsor_unsure": ("NOT_CERTAIN",),
+    "offshore/tourism/disclosed_conditions": (
+        "AMBIGUOUS_SPONSOR",
+        "BLACKLIST_ENTRY",
+        "DIPLOMATIC_PASSPORT",
+        "HEALTH_CONCERN",
+        "IMMIGRATION_INVESTIGATION",
+        "PAST_OVERSTAY",
+        "PEP_OR_SANCTIONS",
+        "PRIOR_VISA_REFUSAL",
+        "SOURCE_OF_FUNDS_UNCLEAR",
+    ),
+    "offshore/tourism/disclosed_criminal": ("CRIMINAL_RECORD",),
+    "offshore/tourism/multi_purpose": ("MULTI_PURPOSE_TRIP",),
 }
 
 #: The walks held by a PUBLIC adapter that is not the disclosure layer — one,
@@ -1229,7 +1284,19 @@ STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 #: WALKS only; the pre-A1 count also folded in the corpus's 8
 #: ACTIVITY_BOUNDARY/NOT_CERTAIN holds, which A1 releases). Before A1: 85 /
 #: 16 / 1 / 9 ENGINE, 77 / 16 / 1 / 17 FUNNEL (W-VO-Q's 111-walk corpus,
-#: measured 2026-09-14).
+#: measured 2026-09-14). [A1' (gate vo-gate-a1, OBS-1 HIGH) then put
+#: `ACTIVITY_BOUNDARY` back into `HOLDING_DISCLOSED_FLAGS` — the "neither
+#: holding" claim two paragraphs up describes pre-A1' behaviour and is
+#: superseded by the FUNNEL/ENGINE split `test_the_flagged_census_is_the_
+#: funnel_the_applicant_meets` documents directly.]
+#:
+#: A4 (mission VISA-ORACLE-DW-20260919) adds `offshore/tourism/
+#: disclosed_criminal` (`CRIMINAL_RECORD`, holding) plus two non-holding
+#: flag walks. Re-measured on the 115-walk corpus, signed seq-22: ENGINE
+#: 97 SUPPORTED_CANDIDATES / 14 NO_SUPPORTED_PATH / 1 NEEDS_INPUT / 3
+#: HUMAN_REVIEW_REQUIRED (unchanged shape, +3 SUPPORTED_CANDIDATES only —
+#: no A4 walk moves the ENGINE state); FUNNEL 90 / 14 / 1 / 10 —
+#: HUMAN_REVIEW_REQUIRED moves 9 -> 10, the one new `CRIMINAL_RECORD` hold.
 _HOLDING_DISCLOSED_FLAG_NAMES: frozenset[str] = frozenset(
     flag.value for flag in evaluate_path.HOLDING_DISCLOSED_FLAGS
 )
@@ -1242,31 +1309,42 @@ EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
     )
 )
 
-#: The condition reason code `_apply_disclosed_review_flags` emits per
-#: NON-holding flag (`_DISCLOSED_CONDITION_REASON_CODES`, evaluate_path.py,
-#: PLAN slice A1') — restated here so the census names the CAUSE and not just
-#: the count. Checked against `notice_codes`, not `review_reason_codes`:
-#: these flags no longer force a review, they name a kept candidate's
-#: condition. Only the flags this corpus actually raises are listed; a flag
-#: that starts firing without a row here fails
-#: `test_every_disclosure_flag_reports_the_walks_it_rewrites` loudly rather
-#: than being silently summed into the total. `ACTIVITY_BOUNDARY` is
-#: deliberately ABSENT (gate vo-gate-a1, OBS-1 HIGH): it moved back to
-#: `HOLDING_DISCLOSED_FLAGS` in A1', so it holds, it never conditions — see
-#: `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG` below for its review code.
-EXPECTED_CONDITION_REASON_FOR_FLAG: dict[str, str] = {
-    "NOT_CERTAIN": "DISCLOSED_UNCERTAINTY_CONDITION",
-}
-
 #: Every flag NAME this corpus actually raises, across every walk — the
 #: set `EXPECTED_DISCLOSED_REVIEW_FLAGS`'s values union to. Used below to
-#: scope `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG` to flags this corpus
-#: exercises: `CRIMINAL_RECORD` is in `HOLDING_DISCLOSED_FLAGS` too, but no
-#: walk here raises it, so it must not appear in a per-corpus expectation
-#: table.
+#: scope both per-corpus expectation tables (`EXPECTED_CONDITION_REASON_
+#: FOR_FLAG` and `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG`) to flags this
+#: corpus exercises: e.g. `CONFLICTING_IMMIGRATION_STATUS` is in
+#: `_DISCLOSED_CONDITION_REASON_CODES` too, but no walk can raise it (§2.3
+#: of DRAFT-SPEC-A4-1.v2.md — the allowlist row exists for exactly this),
+#: so it must not appear in a per-corpus expectation table.
 _CORPUS_DISCLOSED_FLAG_NAMES: frozenset[str] = frozenset(
     flag for flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.values() for flag in flags
 )
+
+#: The condition reason code `_apply_disclosed_review_flags` emits per
+#: NON-holding flag this corpus raises (`_DISCLOSED_CONDITION_REASON_CODES`,
+#: evaluate_path.py, PLAN slice A1') — restated here so the census names the
+#: CAUSE and not just the count. Checked against `notice_codes`, not
+#: `review_reason_codes`: these flags no longer force a review, they name a
+#: kept candidate's condition. DERIVED from
+#: `evaluate_path._DISCLOSED_CONDITION_REASON_CODES`, never hand-copied
+#: (A4, mission VISA-ORACLE-DW-20260919) — two of the eleven codes do not
+#: echo their flag name: `NOT_CERTAIN` -> `DISCLOSED_UNCERTAINTY_CONDITION`
+#: and `SOURCE_OF_FUNDS_UNCLEAR` -> `DISCLOSED_SOURCE_OF_FUNDS_CONDITION`.
+#: `ACTIVITY_BOUNDARY` is absent from the source map itself (gate
+#: vo-gate-a1, OBS-1 HIGH: it moved back to `HOLDING_DISCLOSED_FLAGS` in
+#: A1', so it holds, it never conditions — see
+#: `EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG` below for its review code), and
+#: `CONFLICTING_IMMIGRATION_STATUS` is excluded here by
+#: `_CORPUS_DISCLOSED_FLAG_NAMES` because no walk raises it. A flag that
+#: starts firing without a row here fails
+#: `test_every_disclosure_flag_reports_the_walks_it_rewrites` loudly rather
+#: than being silently summed into the total.
+EXPECTED_CONDITION_REASON_FOR_FLAG: dict[str, str] = {
+    flag.value: code
+    for flag, code in evaluate_path._DISCLOSED_CONDITION_REASON_CODES.items()
+    if flag.value in _CORPUS_DISCLOSED_FLAG_NAMES
+}
 
 #: The review reason code `_apply_disclosed_review_flags` emits per HOLDING
 #: flag this corpus raises (`_DISCLOSED_REVIEW_REASON_CODES`,
@@ -1280,6 +1358,30 @@ EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG: dict[str, str] = {
     for flag, code in evaluate_path._DISCLOSED_REVIEW_REASON_CODES.items()
     if flag.value in _HOLDING_DISCLOSED_FLAG_NAMES and flag.value in _CORPUS_DISCLOSED_FLAG_NAMES
 }
+
+#: A4 (mission VISA-ORACLE-DW-20260919, §2.3 of DRAFT-SPEC-A4-1.v2.md). The
+#: allowlist for `test_every_disclosure_flag_is_raised_by_at_least_one_walk`
+#: below: every `DisclosedReviewFlag` member this table names is permitted
+#: to be raised by NO corpus walk, PROVIDED it is covered elsewhere. Exactly
+#: one row today.
+#:
+#: `CONFLICTING_IMMIGRATION_STATUS` is DERIVED, never sent on the wire
+#: (`effective_review_flags()`, `api_models.py:130-143`), predicate
+#: `currently_in_indonesia == KNOWN false AND overstay_days == KNOWN > 0`.
+#: It is impossible from the interview by construction, not merely unasked:
+#: every offshore route goes from `trip_scope` straight to `nationalities`,
+#: never to `overstay_days` (`flow.ts:555-581`), and even a stale answer
+#: cannot leak because `mapViolationHistory` hard-codes
+#: `immigration.overstay_days = KNOWN 0` whenever `in_indonesia == "no"`
+#: (`fact-mapper.ts:934-937`) — every corpus walk's `overstay_days` is
+#: `KNOWN 0` (measured, 115/115). `mapDisclosedReviewFlags` has no branch
+#: that can emit this name at all. Its coverage already exists outside the
+#: corpus: `test_evaluate_endpoint.py:2641` (parametrised, asserts
+#: `effective_review_flags()`) and `:2727` (end-to-end) — this allowlist row
+#: is a POINTER to that existing coverage, not a gap.
+NOT_RAISED_BY_ANY_INTERVIEW_WALK: frozenset[str] = frozenset(
+    {"CONFLICTING_IMMIGRATION_STATUS"}
+)
 
 
 def _load_walks() -> dict[str, dict[str, Any]]:
@@ -1813,7 +1915,7 @@ def candidate_funnel_named(
     return _funnel_named_products(walks, candidate_pack)
 
 
-def test_corpus_is_the_112_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
@@ -1902,9 +2004,24 @@ def test_corpus_is_the_112_real_interview_walks(walks: dict[str, dict[str, Any]]
     candidate it dead-ends on `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR`
     instead (`hf.employment-without-indonesian-sponsor` sweeps E23V in) —
     same (state, candidates) pin both sides, see the comment on this walk's
-    `EXPECTED_OUTCOME` row for what moved and what did not."""
+    `EXPECTED_OUTCOME` row for what moved and what did not.
 
-    assert len(walks) == 112, f"expected 112 interview walks, found {len(walks)}"
+    A4 (mission VISA-ORACLE-DW-20260919) adds 3, corpus 112 -> 115:
+    `offshore/tourism/disclosed_conditions` (the nine conditioning
+    `review_gate` items in one walk — `review_gate` is a comma-joined SET,
+    `fact-mapper.ts:406`), `offshore/tourism/disclosed_criminal`
+    (`criminal_record` ALONE, a `HUMAN_REVIEW_REQUIRED` fixture by design
+    since it HOLDS and empties candidates), and
+    `offshore/tourism/multi_purpose` (`trip_scope: "multiple"`, otherwise
+    byte-identical to `offshore/tourism`). These close twelve of the
+    fourteen `DisclosedReviewFlag` members that no corpus walk had ever
+    raised — see `test_every_disclosure_flag_is_raised_by_at_least_one_walk`
+    below. The fourteenth, `CONFLICTING_IMMIGRATION_STATUS`, is impossible
+    from the interview by construction (every walk's
+    `immigration.overstay_days` is `KNOWN 0`) and is covered by an
+    allowlist row instead. No existing fixture changes a byte."""
+
+    assert len(walks) == 115, f"expected 115 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2098,24 +2215,32 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     unaffected because neither walk ever named a candidate."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
+    # A4 (mission VISA-ORACLE-DW-20260919) adds three ENGINE-side
+    # SUPPORTED_CANDIDATES walks (all three A4 fixtures answer C1 with an
+    # unheld engine verdict — the hold on `disclosed_criminal` is a
+    # FUNNEL-only adapter effect, never an engine one), +3 to every
+    # sequence's SUPPORTED_CANDIDATES row alike, since none of the three
+    # new `_EXPECTED_OUTCOME_ON_SEQ20` rows is overridden by
+    # `_SEQ21_OUTCOME_CHANGES` / `_SEQ22_OUTCOME_CHANGES`. No other row
+    # moves on any sequence.
     by_sequence = {
         20: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 92,
+            "SUPPORTED_CANDIDATES": 95,
         },
         21: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 1,
             "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 93,
+            "SUPPORTED_CANDIDATES": 96,
         },
         22: {
             "HUMAN_REVIEW_REQUIRED": 3,
             "NEEDS_INPUT": 1,
             "NO_SUPPORTED_PATH": 14,
-            "SUPPORTED_CANDIDATES": 94,
+            "SUPPORTED_CANDIDATES": 97,
         },
     }
     assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
@@ -2744,13 +2869,15 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The two censuses, side by side — and the headline gate vo-gate-a1's
-    OBS-1 HIGH restored: **6 of the funnel's holds come from the disclosure
-    layer on this corpus again**, the `ACTIVITY_BOUNDARY` walks — PLAN
+    OBS-1 HIGH restored: **7 of the funnel's holds come from the disclosure
+    layer on this corpus**, the 6 `ACTIVITY_BOUNDARY` walks — PLAN
     slice A1 had briefly released them, but the gate named that release a
     legal-exposure regression contra PLAN OD-2's own default, and A1' put
-    `ACTIVITY_BOUNDARY` back in `HOLDING_DISCLOSED_FLAGS`. `NOT_CERTAIN`'s
-    two walks still condition, not hold. The funnel's 9 holds are the
-    engine's 3 (1 minor-privacy + 2 Studio) plus those 6.
+    `ACTIVITY_BOUNDARY` back in `HOLDING_DISCLOSED_FLAGS` — plus, since A4
+    (mission VISA-ORACLE-DW-20260919), the one `CRIMINAL_RECORD` walk,
+    `offshore/tourism/disclosed_criminal`. `NOT_CERTAIN`'s two walks and
+    the nine A4 conditioning flags still condition, not hold. The funnel's
+    10 holds are the engine's 3 (1 minor-privacy + 2 Studio) plus those 7.
 
     `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
     the split property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED only
@@ -2796,10 +2923,12 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     assert not (STUDIO_HELD_WALKS & set(EXPECTED_DISCLOSED_REVIEW_FLAGS))
     # The walks whose OWN flags intersect HOLDING_DISCLOSED_FLAGS — the
     # disclosure layer's live contribution to the funnel's holds, walk by
-    # walk rather than assumed. Today that is the 6 ACTIVITY_BOUNDARY walks;
-    # zero of this corpus's walks raise CRIMINAL_RECORD. A future PR
-    # widening or narrowing HOLDING_DISCLOSED_FLAGS moves this set, and the
-    # sum below, in the same PR that re-pins EXPECTED_FLAGGED_STATE_CENSUS.
+    # walk rather than assumed. Today that is the 6 ACTIVITY_BOUNDARY walks
+    # plus, since A4 (mission VISA-ORACLE-DW-20260919), the one
+    # `offshore/tourism/disclosed_criminal` walk (CRIMINAL_RECORD). A future
+    # PR widening or narrowing HOLDING_DISCLOSED_FLAGS moves this set, and
+    # the sum below, in the same PR that re-pins EXPECTED_FLAGGED_STATE_
+    # CENSUS.
     disclosure_held = {
         label
         for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items()
@@ -2812,6 +2941,7 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
         "offshore/invest/undecided",
         "offshore/invest/undecided/currency_still_unsure",
         "offshore/other/no_paid_activity/medical",
+        "offshore/tourism/disclosed_criminal",
     }
     assert funnel_census["HUMAN_REVIEW_REQUIRED"] == (
         len(PRIVACY_HELD_WALKS) + len(STUDIO_HELD_WALKS) + len(disclosure_held)
@@ -2910,6 +3040,20 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
     assert {flag: len(rows) for flag, rows in per_flag.items()} == {
         "ACTIVITY_BOUNDARY": 6,
         "NOT_CERTAIN": 2,
+        # A4 (mission VISA-ORACLE-DW-20260919): one walk each, the nine
+        # conditioning items on `offshore/tourism/disclosed_conditions` plus
+        # the two single-item walks.
+        "AMBIGUOUS_SPONSOR": 1,
+        "BLACKLIST_ENTRY": 1,
+        "DIPLOMATIC_PASSPORT": 1,
+        "HEALTH_CONCERN": 1,
+        "IMMIGRATION_INVESTIGATION": 1,
+        "PAST_OVERSTAY": 1,
+        "PEP_OR_SANCTIONS": 1,
+        "PRIOR_VISA_REFUSAL": 1,
+        "SOURCE_OF_FUNDS_UNCLEAR": 1,
+        "CRIMINAL_RECORD": 1,
+        "MULTI_PURPOSE_TRIP": 1,
     }
     assert sorted(set(EXPECTED_CONDITION_REASON_FOR_FLAG) | set(EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG)) == sorted(
         set(per_flag)
@@ -2918,6 +3062,76 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
         "row in EXPECTED_CONDITION_REASON_FOR_FLAG or "
         "EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG in the same PR"
     )
+
+
+def test_every_disclosure_flag_is_raised_by_at_least_one_walk(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """The keystone (A4, mission VISA-ORACLE-DW-20260919): the census
+    iterates the ENUM, not the corpus.
+
+    Every other flag test in this file iterates
+    ``EXPECTED_DISCLOSED_REVIEW_FLAGS`` — the corpus's own pinned table — so
+    a fifteenth ``DisclosedReviewFlag`` member with no walk would cost this
+    file nothing: every existing assertion is scoped to flags the corpus
+    already raises, by construction. This test is the one exception: it
+    starts from ``DisclosedReviewFlag`` itself and asks which members NO
+    fixture raises at all, so a debt like the one A4 closes cannot reopen
+    silently.
+
+    ``raised`` unions the fixtures' OWN ``disclosed_review_flags`` (never
+    ``EXPECTED_DISCLOSED_REVIEW_FLAGS``, which is a pinned expectation, not
+    a measurement) — the same ground truth
+    ``test_the_corpus_carries_the_disclosure_flag_layer`` reads.
+
+    Measured RED on main before A4 (§1.1 of DRAFT-SPEC-A4-1.v2.md):
+
+        len(DisclosedReviewFlag): 14
+        corpus files: 112
+        raised today: ['ACTIVITY_BOUNDARY', 'NOT_CERTAIN']
+        AssertionError: 12 of 14 DisclosedReviewFlag members are raised by no
+        corpus walk: ['AMBIGUOUS_SPONSOR', 'BLACKLIST_ENTRY',
+        'CONFLICTING_IMMIGRATION_STATUS', 'CRIMINAL_RECORD',
+        'DIPLOMATIC_PASSPORT', 'HEALTH_CONCERN', 'IMMIGRATION_INVESTIGATION',
+        'MULTI_PURPOSE_TRIP', 'PAST_OVERSTAY', 'PEP_OR_SANCTIONS',
+        'PRIOR_VISA_REFUSAL', 'SOURCE_OF_FUNDS_UNCLEAR']
+
+    The message names the full ``missing`` set, including the allowlisted
+    flag (12) — but the ACTIONABLE set, ``missing - NOT_RAISED_BY_ANY_
+    INTERVIEW_WALK`` (11), is printed alongside, or a reader of the red
+    thinks A4 owes a fourteenth walk it does not.
+    """
+
+    all_flags = {flag.value for flag in DisclosedReviewFlag}
+    raised = {flag for spec in walks.values() for flag in _walk_flags(spec)}
+    missing = all_flags - raised
+    actionable = missing - NOT_RAISED_BY_ANY_INTERVIEW_WALK
+
+    assert actionable == set(), (
+        f"{len(missing)} of {len(all_flags)} DisclosedReviewFlag members are "
+        f"raised by no corpus walk: {sorted(missing)}\n"
+        f"actionable (missing minus the allowlist): {sorted(actionable)}"
+    )
+    assert missing <= NOT_RAISED_BY_ANY_INTERVIEW_WALK, (
+        f"missing set {sorted(missing)} is not a subset of the allowlist "
+        f"{sorted(NOT_RAISED_BY_ANY_INTERVIEW_WALK)}"
+    )
+
+
+def test_guilt_a_bogus_allowlist_name_is_caught_by_the_allowlist_pin(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """Second guilt of A4-4: the allowlist's own CONTENTS need their own pin.
+
+    Adding a bogus name to ``NOT_RAISED_BY_ANY_INTERVIEW_WALK`` widens the
+    allowed set, so the missing-flag assertion in
+    ``test_every_disclosure_flag_is_raised_by_at_least_one_walk`` stays
+    GREEN under that mutation — that assertion alone cannot catch a
+    fabricated allowlist entry. Only a companion pin on the allowlist's
+    exact contents closes that hole.
+    """
+
+    assert NOT_RAISED_BY_ANY_INTERVIEW_WALK == frozenset({"CONFLICTING_IMMIGRATION_STATUS"})
 
 
 def test_innocence_a_fabricated_flag_keeps_a_proven_verdict(

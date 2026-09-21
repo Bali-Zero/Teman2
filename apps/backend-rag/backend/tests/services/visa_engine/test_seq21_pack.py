@@ -1157,10 +1157,14 @@ class TestCensusReplay:
         minor walk, held by the privacy adapter, not by this pack). E23V-DEFECT
         (mission seq-22) adds one walk over a 107 -> 108 unasked corpus, and
         it is the one exception in ``_UNASKED_DRIFT_ALLOWLIST`` above:
-        89 / 15 / 3 / 1."""
+        89 / 15 / 3 / 1. A4 (mission VISA-ORACLE-DW-20260919) adds three
+        walks over a 108 -> 111 unasked corpus, none reading any of the ten
+        qualification facts and none named in ``_UNASKED_DRIFT_ALLOWLIST``,
+        so they answer identically stripped or not: 92 / 15 / 3 / 1 —
+        SUPPORTED_CANDIDATES only, +3, no other row moves."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 89
+        assert census["SUPPORTED_CANDIDATES"] == 92
         assert census["NO_SUPPORTED_PATH"] == 15
         assert census["NEEDS_INPUT"] == 3
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
