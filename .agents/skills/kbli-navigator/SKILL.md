@@ -49,6 +49,50 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-09-21 — keep current)
 
+**🟢 2026-09-21 (later) — LOT 0 IS CLOSED: THE 17 PLACEHOLDER "LICENCES" ARE GONE FROM THE GRAPH,
+`01122` ANSWERS 200 INSTEAD OF 404 — AND LOT 0(a) HAD ALREADY SHIPPED TWO DAYS EARLIER WITHOUT THIS
+CORNER SAYING SO.** PR #7017 (`e21b4a5e75`, merged 03:55:44Z; deploy run 35559173440 `success` → Fly
+release **v4510 complete** 04:03:12Z; the apply ran AFTER that, never off the merge). New
+`backend/scripts/kg_kbli_licensing_from_canonical.py` — the spec's script name, carrying ONLY §5.4
+`--placeholders-only` and §5.9 `--create-missing-node`; the Phase 1a/1b build modes are not in it.
+Gear 2 brief on a floor-1 diff because the r4 refuter round is PARTIAL; a fresh Opus gate signed
+`PASS` on the real head (5 own mutations, PROD re-measured: 17 edges / kitas 9 / 01122 absent).
+
+**Correction to the F9 entry below:** Lot 0(a) — the F5 `permit_type` demotion — was NOT "still first
+in line" on 2026-09-21. **PR #6807 shipped it on 2026-09-19** (bucket `immigration`, not the spec's
+`immigration_permits`; its comment counts THREE live nodes — KITAS, ITAS, ITAP — against the spec's
+four) and it was live before this lot started: `inspect_kbli 55300` already showed `KITAS` under
+`related_requirements.immigration`. A sentence written by one PR's author about what THAT PR left
+untouched is not a statement about main. Lot 0 = (a) #6807 + (b)(c) #7017.
+
+**Measured before, applied inside the image after the release, verified through the read-only role
+(never the script's own report):**
+
+|                                                       | before (PROD, pre-merge)                          | after                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REQUIRES` edges `kbli:%` → the 3 placeholder ids     | 10 + 6 + 1 = **17** on 17 codes                   | **0**; 17 nodes carry `_replaced_requires_pp28v10` (`target/at/run/reason`)                                                                                                                                                                                                   |
+| the 3 placeholder NODES                               | 3                                                 | 3 — edges deleted, nodes untouched                                                                                                                                                                                                                                            |
+| `permit:kitas` edges                                  | 9                                                 | **9** (spec §2.3: re-bucketed, never deleted)                                                                                                                                                                                                                                 |
+| `kbli:01122`                                          | absent; `inspect_kbli` **404**                    | present: `REGULATED`, `skala_usaha` [Mikro, Kecil, Menengah, Besar], `_created_by.run kbli_lot0:2026-09-21`, dataset sha256 `16d6f02ec195fc7c` (= canonical blob at the merge SHA), 0 edges; then `kg_kbli_resync.py --only 01122 --apply` → `pma_status None → NOT_VERIFIED` |
+| `inspect_kbli 65121` / `96220` `related_requirements` | `{"unspecified_permits": ["PENDING_REGULATION"]}` | **`{}`**                                                                                                                                                                                                                                                                      |
+| `inspect_kbli 01122`                                  | 404                                               | **200**, `licenses: []`, `licensing_status REGULATED`, `risk_profile Menengah Tinggi` (Qdrant), PMA `NOT_VERIFIED / declared_gap`                                                                                                                                             |
+| `inspect_kbli 55300` (innocence)                      | 2 licences + KITAS under `immigration`, 6 edges   | unchanged                                                                                                                                                                                                                                                                     |
+
+Idempotence proven on PROD: second `--placeholders-only` run `0 acted | 17 nothing-to-do`; second
+`--create-missing-node` run `REFUSED: already exists`. Cache: `kbli_inspect_cache_bust.py --only <19>
+--apply` → `3/19 had an entry | 3 evicted | 0 survived`; every fresh read above was taken after it.
+
+**Declared, not hidden:** (1) the new node's `source_collection` is `kbli_2025_canonical`, not the
+import's `kbli_2025_import` — a deliberate provenance label read by nothing in the router (grep 0),
+flagged by the gate as undeclared in the PR body and declared in its Bites comment; (2) no
+`kategori_risiko` on the node — its rows carry three tiers and the router reads risk from Qdrant /
+licence rows, never from the KBLI node; (3) `sektor_id` absent on the canonical → `sector: "N/A"`,
+`related_codes: []` — no `BELONGS_TO` edge was invented; (4) **W89 scar paid once**: the first push
+wrote `$N::jsonb` and shard 1's `test_jsonb_double_encoding_class_guard` demanded `::text::jsonb` on
+every `kg_nodes(properties)` write — the shard ran 9,199 tests and named exactly 1 red (it did NOT
+stop early), fixed in the same PR. Next in this lane: Phase 1a (114 OSS-issued codes, `01122` now
+inside it), the §9 owner decision on the 61 non-OSS codes, the F9 158–190 residue.
+
 **🟢 2026-09-21 — F9 LOT 1 IS SHIPPED AND PROVEN LIVE: A CHEMICALS FACTORY IS NO LONGER TOLD TO GO
 AND APPLY FOR ITS UNDERTAKING NOT TO MAKE CHEMICAL WEAPONS — AND THE `172` THIS LANE WAS SIZED FROM
 IS NOT REPRODUCIBLE.** PR #6993 (`666660ab5e`, merged 21:46:06Z) → `Deploy Backend to Fly.io` run
@@ -116,7 +160,8 @@ licence label until someone rules on it on purpose.
 `PENDING_REGULATION` spellings, the `Tidak`/`Wajib` conditions, the `Kerja Sama Operasi` pair, the
 complaint desk, and the `parameter` token. The rest of the 158–190 bracket is unadjudicated and stays
 per-target work in this lane — `Lokasi industri berada pada Provinsi bersangkutan` among it. The KITAS
-class (spec §2.3) and Lot 0 (F5 classifier demotion) are untouched by this PR and still first in line.
+class (spec §2.3) and Lot 0 (F5 classifier demotion) are untouched by this PR and still first in line. **[CORRECTED 2026-09-21, entry above: F5 had shipped in #6807 two days
+earlier; (b)/(c) shipped in #7017 — Lot 0 is closed.]**
 
 **🟡 2026-09-19 — MUSE PROPOSER LOTS: 154 CONFIRMED `whatChanged` / `pp28_sources` DEFECTS ON 85
 CODES, NONE CURED.** Three lots (124 of 124 `whatChanged`-bearing canonical entries), 161
