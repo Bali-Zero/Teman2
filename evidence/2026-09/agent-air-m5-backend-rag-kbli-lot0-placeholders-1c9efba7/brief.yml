@@ -1,0 +1,105 @@
+gear: 2
+task_id: kbli-lot0-placeholders-01122
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/kbli-lot0-placeholders-01122
+gate_class: opus
+l_level: L2
+objective: >-
+  Lot 0 of the KG licensing-class cure (spec
+  docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md r4, §5.4 + §5.9),
+  the two phase-independent gestures that write no licence. The deterministic
+  floor for this diff is 1; Gear 2 is declared on purpose because the spec's
+  own r4 refuter round is PARTIAL (it ran out of turn budget before its findings
+  table), so a build PR on that spec carries its own gate. Re-measured on PROD
+  read-only this turn, not read off the spec: 17 KBLI nodes carry a REQUIRES
+  edge to one of the three placeholder nodes (10 `status_perizinan_pending`,
+  6 `izin_usaha_pending`, 1 `izin_usaha_status_pending_regulation`), exactly
+  the spec's 17 codes; `kbli:01122` has no node and `inspect_kbli 01122` is an
+  HTTP 404; `permit:kitas` has 9 edges. Lot 0(a) — the F5 classifier demotion —
+  is ALREADY shipped and live (PR #6807, 2026-09-19; `inspect_kbli 55300` shows
+  `KITAS` under `related_requirements.immigration`), so this PR is (b) + (c).
+scope:
+  - >-
+    apps/backend-rag/backend/scripts/kg_kbli_licensing_from_canonical.py — NEW,
+    the spec's script name, carrying ONLY `--placeholders-only` and
+    `--create-missing-node`. `--only` mandatory, dry-run default, one
+    transaction per code on the locked node row, archive-before-delete into
+    `properties._replaced_requires_pp28v10` (append), `--apply` refused against
+    the unpinned default dataset URL, dataset sha256 recorded in `_created_by`.
+  - >-
+    apps/backend-rag/backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py
+    — 11 pure-logic cases, no DB.
+constraints:
+  - >-
+    The 9 `permit:kitas` edges are never deleted: a true relational fact in the
+    wrong bucket, re-bucketed by kbli_requires_kind.py (#6807) — spec §2.3. The
+    innocence test pins it; the PROD dry-run on 55300 reads "nothing to do".
+  - >-
+    The new node carries only canonical-proven keys. No `kategori_risiko` (the
+    rows carry three tiers; the router reads risk from Qdrant / licence rows, not
+    the KBLI node), no `sektor_id` / `pp28_sources` (absent on the canonical
+    record), no PMA atom (kg_kbli_resync.py --only 01122 is the standard path
+    for that and is a declared follow-up, not this PR).
+  - >-
+    No licence build. The §5 Phase 1a/1b modes are not in this file; a `[]` code
+    under `--create-missing-node` is refused, not labelled.
+  - >-
+    Merging deploys (apps/backend-rag/**). The apply runs inside the Fly image
+    after the release is `complete`, with a commit-pinned dataset URL, then
+    kbli_inspect_cache_bust.py on the 18 codes, then FRESH inspect reads. The
+    `Bites:` observation is taken off the live channel, never off the merge.
+acceptance:
+  - text: >-
+      GUILT: WHEN a code's REQUIRES targets include a placeholder id, the plan
+      SHALL name that id and nothing else; the three ids SHALL be exactly the
+      spec §2.1 set.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "placeholder"
+  - text: >-
+      INNOCENCE: `permit:kitas` and real permit targets SHALL never be planned
+      for deletion; a code without placeholder edges SHALL yield an empty plan.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py::test_placeholder_plan_removes_only_the_placeholder_and_keeps_kitas_and_real_permits
+  - text: >-
+      MISSING NODE: the 01122-shaped record SHALL produce REGULATED,
+      skala_usaha in canonical order, `_created_by` with the sha, and NO
+      kategori_risiko / sektor_id / pp28_sources / pma_status.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "missing_node"
+  - text: >-
+      FENCES: exactly one mode, `--only` mandatory, `--apply` on
+      `--create-missing-node` refused against the unpinned default URL.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "cli"
+  - text: >-
+      NO REGRESSION across the KBLI surface and the --only convention.
+    probe: pytest backend/tests -k kbli
+  - text: >-
+      PROD, after apply (read-only role): 0 REQUIRES edges from `kbli:%` to the
+      three placeholder ids; 17 nodes carry `_replaced_requires_pp28v10`;
+      `kbli:01122` exists with `licensing_status = REGULATED`; `permit:kitas`
+      still has 9 edges.
+    probe: >-
+      scripts/pg.sh -c "SELECT count(*) FROM kg_edges WHERE relationship_type='REQUIRES' AND source_entity_id LIKE 'kbli:%' AND target_entity_id IN ('status_perizinan_pending','izin_usaha_pending','izin_usaha_status_pending_regulation')"
+  - text: >-
+      PROVE-LIVE after cache bust: `inspect_kbli 65121` and `96220` →
+      `related_requirements: {}` (was `unspecified_permits: [PENDING_REGULATION]`);
+      `inspect_kbli 01122` → HTTP 200, `licenses: []`, `licensing_status:
+      REGULATED` (was 404); `inspect_kbli 55300` unchanged, `KITAS` still under
+      `related_requirements.immigration`.
+    probe: inspect_kbli 65121 · 96220 · 01122 · 55300 (MCP nuzantara-knowledge)
+mutation_evidence: >-
+  Run in this turn, restored from a `cp` backup each time, never `git checkout`:
+  M1 add `permit:kitas` to PLACEHOLDER_TARGETS → 4 failed / 7 passed; M2 drop
+  the `[]` refusal → 1 failed; M3 write PENDING_REGULATION instead of REGULATED
+  → 1 failed; M4 allow `--apply` on the unpinned URL → 1 failed. Restored: 11
+  passed. PROD dry-runs through pg.sh's credential path (secret never printed):
+  placeholders 17 acted / 1 nothing-to-do (55300) / 0 refused of 18;
+  create-missing-node 01122 would insert, 01121 refused (exists), 99999 refused
+  (not canonical).
+pii: none
+local_evidence: >-
+  Read-only PROD measurements via scripts/pg.sh (nuzantara_readonly) and the
+  PII-free knowledge MCP; no client data, no credential echoed. Canonical
+  dataset read from the worktree file (sha256 16d6f02ec195fc7c…).
