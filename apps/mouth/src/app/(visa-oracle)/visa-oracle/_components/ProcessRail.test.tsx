@@ -70,6 +70,33 @@ describe("ProcessBranches re-entry (C2-2)", () => {
     }
     expect(onSelectCategory).not.toHaveBeenCalled();
   });
+
+  // GUILT met on PR #7081 (E2E `visa-oracle-v2.spec.ts:567`): stepping BACK
+  // four times lands the interview on the "category" question again, but
+  // `flowReducer`'s BACK case (`flow.ts:1386`) calls `pruneFacts`
+  // (`flow.ts:1269`), which keeps a fact whenever its questionId is still
+  // anywhere in history — INCLUDING the current node. `facts.category`
+  // stays "work" until re-answered, so `model.chosenCategory` reads
+  // "work" even though the category question is the one on screen. The
+  // two tests above never exercised this: the first case is never AT the
+  // category question, and the second uses `OFFSHORE`, which has no
+  // category answered yet (`chosenCategory === null`) — a first ARRIVAL,
+  // not a RE-arrival with a stale answer.
+  it("leaves every chip inert at the open category question even with a stale prior category (RE-arrival via Back)", () => {
+    const onSelectCategory = vi.fn();
+    const { container } = render(
+      <ProcessBranches
+        language="en"
+        model={m({ kind: "question", questionId: "category" }, WORK_BRANCH)}
+        variant="desktop"
+        onSelectCategory={onSelectCategory}
+      />,
+    );
+    for (const chip of container.querySelectorAll("[data-process-category]")) {
+      expect(chip.tagName).toBe("SPAN");
+    }
+    expect(onSelectCategory).not.toHaveBeenCalled();
+  });
 });
 
 function rail(part: "progress" | "branches" | "outcome"): HTMLElement {

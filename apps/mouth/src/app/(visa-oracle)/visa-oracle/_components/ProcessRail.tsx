@@ -243,6 +243,25 @@ export function ProcessBranches({
 }: ProcessRailProps) {
   if (!model.showCategories) return null;
 
+  // C2-2 re-entry is for viewing a pruned branch from a LATER question —
+  // never while the category picker itself is the open question. `BACK`
+  // (flow.ts:1386) truncates history but `pruneFacts` (flow.ts:1269) keeps
+  // a fact whenever its questionId is still anywhere in history, INCLUDING
+  // the current node: landing back on "category" after a prior answer
+  // leaves `facts.category` (and so `model.chosenCategory`) stale until
+  // it is re-answered. Without this check every OTHER category still
+  // reads "pruned" and its rail chip would promote to a `<button>` right
+  // next to the category question's own identically-named answer button —
+  // two elements sharing one accessible name (measured: PR #7081,
+  // `visa-oracle-v2.spec.ts:567`'s `getByRole("button", { name:
+  // /tourism & short visit/i })` resolving to 2 elements, strict-mode
+  // violation). `model.trunk` already carries this: `getTreeSteps`
+  // (flow.ts:1720-1758) sets the "category" step's own status to
+  // "current" exactly when it is the open question — no new prop needed.
+  const categoryQuestionOpen = model.trunk.some(
+    (step) => step.id === "category" && step.status === "current",
+  );
+
   const chosenLabel =
     model.chosenCategory === null
       ? ""
@@ -296,7 +315,10 @@ export function ProcessBranches({
             );
             return (
               <div key={leaf.key} className="oracle-process-branch">
-                {onSelectCategory && model.chosenCategory !== null && pruned ? (
+                {onSelectCategory &&
+                model.chosenCategory !== null &&
+                pruned &&
+                !categoryQuestionOpen ? (
                   <motion.button
                     type="button"
                     onClick={() => onSelectCategory(leaf.key)}
