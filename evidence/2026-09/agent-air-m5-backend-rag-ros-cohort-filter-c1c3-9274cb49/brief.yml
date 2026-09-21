@@ -1,0 +1,21 @@
+mandate: >-
+  Cure the three PASS-WITH-CONDITIONS conditions of PR #7007's on-disk gate:
+  the regulatory_watcher cohort becomes a real read filter, retention_class is
+  justified in the docstring without changing any payload value, and the payload
+  derivation is pinned by a golden-hash test.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: opus-5
+organ: apps/backend-rag/backend/services/research_os
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare")
+  reassigned C1-C3 to #7007's Dux. No production write in this diff.
+acceptance:
+  - _load_intel_items filters source_domain AND NOT is_probe_sandbox
+  - a row outside the cohort is neither counted nor written, either half removed reds
+  - no payload object_hash changes (16/16 identical against production)
+  - retention_class asymmetry with rights is stated, value unchanged
+  - a payload-constant change reds the golden test with the wedge explained
+appetite:
+  wall_clock_hours: 2
