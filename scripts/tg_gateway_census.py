@@ -13,13 +13,23 @@ gateway each entry RESOLVES, running the producer's own resolution code:
   python  a function holding a 'tg_notify.py' literal is called if every call in
           it is a path/env lookup; otherwise only the assignment and the `if`
           fallbacks right after it run. Module-level names they need, likewise.
-          os.environ is empty but for HOME: TG_NOTIFY_BIN is set nowhere on Pro.
+          os.environ holds HOME and the crontab's TG_*/NUZANTARA_* variables only.
 
-Children are followed the way the producer reaches them: script paths on code
-lines, variables holding a script path, `source` (which keeps the caller's $0),
-sibling-module imports, script paths passed to subprocess. Anything else that
-names the gateway is UNRESOLVED, never guessed: the counts are then a floor, and
-the exit code says so. `routes` = the resolved file contains `gateway_routed`,
+What a command runs is followed, not every word on it: the word in command position,
+the script an interpreter is given, the arguments of a script it runs (wrappers run
+them), `bash -c STR ARG0` with ARG0 as $0. Inside a script: script paths on code
+lines, variables holding one, relative ones placed by the script's own `cd`, and
+`source` (which keeps the caller's $0 and arguments); in Python, sibling modules and
+packages from the script's dir and from any `sys.path` entry the file adds, and
+script paths passed to subprocess. A file is followed if it ends .sh/.py or starts
+with `#!`. Crontab `TG_*`/`NUZANTARA_*` variables reach the resolvers' env.
+
+A resolver counts if the entry LOADS it, called on this run's path or not: `reach` is
+what the entry's code can resolve. Anything named that this census cannot run —
+a gateway in an unmodelled shape, an unplaceable relative script, `python -m`, a
+chain deeper than MAX_DEPTH — is UNRESOLVED, never guessed, and the exit says so.
+Not modelled, and therefore stated where a number is quoted: env set by files the
+job sources at run time. `routes` = the resolved file contains `gateway_routed`,
 the measure of docs/specs/seat-board-drain-v1.md §1.
 
 Exit: 0 = every entry resolved · 3 = at least one UNRESOLVED · 2 = usage error.
@@ -46,21 +56,30 @@ OPERATOR_RE = re.compile(r"^[|;&<>()]+$")
 HOME_PREFIX_RE = re.compile(r"^(~|\$HOME|\$\{HOME\})(?=/)")
 SCRIPT_WORD_RE = re.compile(r"\.(sh|py)$")
 MESSAGE_LINE_RE = re.compile(r"^\s*(echo|log\w*|printf|warn|die|err)\b")
-SH_PATH_RE = re.compile(r"""(?<![\w}$./-])(?:~|\$HOME|\$\{HOME\}|\$\(dirname "\$0"\))?/[\w./-]+\.(?:sh|py)\b""")
+SH_PATH_RE = re.compile(r"""(?<![\w}$./-])(?:~|\$HOME|\$\{HOME\}|\$\(dirname "\$0"\))?/[\w./-]*\w""")
 SH_VARPATH_RE = re.compile(r"\$\{?([A-Za-z_]\w*)\}?(/[\w./-]+\.(?:sh|py))\b")
 SH_ASSIGN_RE = re.compile(r"^\s*(?:export\s+|local\s+|readonly\s+|declare(?:\s+-\w+)*\s+)?([A-Za-z_]\w*)=(.*?)\s*$")
 SH_FALLBACK_RE = re.compile(r'^\s*\[\[? -f "\$\{?([A-Za-z_]\w*)\}?" \]\]? \|\| \1=(.*?)\s*$')
 SH_SOURCE_RE = re.compile(r"^\s*(?:source|\.)\s+(\S+)")
-SUBST_OK = (
-    '$(cd "$(dirname "$0")" && pwd)',
-    '$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)',
-    '$(dirname "$0")',
-    '$(dirname "${BASH_SOURCE[0]}")',
+SH_CD_RE = re.compile(r"^\s*cd\s+(.+?)\s*(?:\|\||&&|;|$)")
+SH_REL_RE = re.compile(
+    r"""(?:^\s*|[;&|(]\s*|\b(?:exec|bash|sh|zsh|python3?|source|nohup)\s+|"\$\{?\w+\}?"\s+|\$\{?\w+\}?\s+)"""
+    r"""((?:\./)?[\w-][\w.-]*(?:/[\w.-]+)*\.(?:sh|py))(?![\w/])"""
 )
-PY_CALLS_OK = {
-    "Path", "str", "get", "getenv", "expanduser", "resolve", "absolute", "is_file", "isfile",
+SUBST_OK_RE = re.compile(  # the only command substitutions run: dirname, and cd+pwd into a plain path
+    r'\$\(cd "(?:[\w./~-]|\$\{?\w+\}?|\$\(dirname "\$(?:0|\{?\w+\}?)"\))*" && pwd(?: -P)?\)'
+    r'|\$\(dirname "\$(?:0|\{?\w+\}?)"\)'
+)
+CASE_ARM_RE = re.compile(r"^\s*[\w*|.@-]+\)\s+(.*?)\s*;;\s*$")
+PY_NAME_CALLS = {"Path", "str"}
+PY_ATTR_CALLS = {
+    "get", "getenv", "expanduser", "resolve", "absolute", "is_file", "isfile",
     "exists", "home", "joinpath", "dirname", "abspath", "realpath", "join",
 }
+PY_BANNED = (ast.While, ast.Lambda, ast.Global, ast.Nonlocal, ast.Import, ast.ImportFrom, ast.ClassDef,
+             ast.With, ast.AsyncWith, ast.Await)
+INTERPRETER_RE = re.compile(r"^(?:bash|sh|zsh|dash|python[\d.]*|exec|nohup|env|nice|caffeinate|time|timeout)$")
+ENV_PASS_RE = re.compile(r"^(?:TG|NUZANTARA)_\w+$")  # the only env the resolvers on Pro read, besides HOME
 PY_SPAWN = {"run", "Popen", "call", "check_call", "check_output", "system", "execv", "execvp"}
 
 
@@ -70,10 +89,12 @@ def _expand(word: str, home: str) -> str:
 
 def _safe_rhs(rhs: str) -> bool:
     """True if bash can evaluate this assignment's right side without running a command."""
-    for s in SUBST_OK:
-        rhs = rhs.replace(s, "")
-    if "`" in rhs or "$(" in rhs:
+    rhs = SUBST_OK_RE.sub("", rhs)
+    if any(t in rhs for t in ("`", "$(", "$[", "\\", "${!")):
         return False
+    for inner in re.findall(r"\$\{([^}]*)\}", rhs):  # no subscript, transform or arithmetic offset
+        if "[" in inner or "@" in inner or re.match(r"\w+:(?![-=?+])", inner):
+            return False
     if len(rhs) >= 2 and rhs[0] == rhs[-1] == '"':
         return '"' not in rhs[1:-1]
     return re.fullmatch(r"[\w./~${}:+=@%-]*", rhs) is not None
@@ -85,7 +106,20 @@ def _call_name(node: ast.Call) -> str | None:
 
 
 def _calls_ok(nodes: list) -> bool:
-    return all(_call_name(c) in PY_CALLS_OK for n in nodes for c in ast.walk(n) if isinstance(c, ast.Call))
+    """True if running these nodes can only look paths and env up: no other call, no rebinding."""
+    for c in (c for n in nodes for c in ast.walk(n)):
+        if isinstance(c, PY_BANNED) or (isinstance(c, ast.Attribute) and c.attr.startswith("_")):
+            return False
+        if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef)) and c not in nodes:
+            return False
+        if isinstance(c, ast.Name) and isinstance(c.ctx, ast.Store) and c.id in PY_NAME_CALLS | {"os"}:
+            return False
+        if isinstance(c, ast.Call) and not (
+            (isinstance(c.func, ast.Name) and c.func.id in PY_NAME_CALLS)
+            or (isinstance(c.func, ast.Attribute) and c.func.attr in PY_ATTR_CALLS)
+        ):
+            return False
+    return True
 
 
 class Result:
@@ -96,6 +130,8 @@ class Result:
         self.reasons: list[str] = []
         self.not_runnable = False
         self.seen: set[tuple[str, str]] = set()
+        self.pyroots: set[str] = set()
+        self.env: dict[str, str] = {}
 
     def gateway(self, path: str, via: str) -> None:
         key = os.path.realpath(path) if path and os.path.isfile(path) else f"MISSING:{path or '-'}"
@@ -109,20 +145,34 @@ class Result:
 class Census:
     def __init__(self, home: str):
         self.home = home
+        self._env: dict[str, str] = {}
 
     # ---- shell -------------------------------------------------------------
-    def _sh_eval(self, lines: list[str], zero: str, src: str, args: list[str]):
+    def _sh_eval(self, lines: list[str], zero: str, src: str, args: list[str] | None, res: Result):
         body = ["__src=" + shlex.quote(src)]
         gw_vars: set[str] = set()
-        for ln in lines:
+        for n, ln in enumerate(lines, 1):
             if ln.lstrip().startswith("#"):
                 continue
             ln = ln.replace("${BASH_SOURCE[0]}", "${__src}")
+            arm = CASE_ARM_RE.match(ln)
+            ln = arm.group(1) if arm else ln
+            cd = SH_CD_RE.match(ln)
+            if cd and _safe_rhs(cd.group(1)):
+                # a `cd "$V"` is run once per value V takes anywhere in the file: branches are not guessed
+                step = f"cd {cd.group(1)} 2>/dev/null && printf 'C {n}=%s\\n' \"$PWD\""
+                refs = sorted(set(re.findall(r"\$\{?([A-Za-z_]\w*)\}?", cd.group(1))) - {"HOME", "__src"})
+                body.append(f'for __v in "${{__all_{refs[0]}[@]}}"; do ( {refs[0]}="$__v"; {step} ); done'
+                            if len(refs) == 1 else f"( {step} )")
+                continue
             m = SH_ASSIGN_RE.match(ln)
             if m and _safe_rhs(m.group(2)):
                 name = m.group(1)
-                body += [f"{name}={m.group(2)}", f"printf 'V %s=%s\\n' {name} \"${name}\""]
+                body += [f"{name}={m.group(2)}", f'__all_{name}+=("${name}")',
+                         f"printf 'V %s=%s\\n' {name} \"${name}\""]
                 if GATEWAY in m.group(2):
+                    if args is None and re.search(r"\$\{?[1-9@*]", m.group(2)):
+                        res.unresolved(f"{src}:{n} builds the gateway from arguments this census cannot see")
                     gw_vars.add(name)
                     body.append(f"printf 'G %s=%s\\n' {name} \"${name}\"")
                 continue
@@ -131,12 +181,13 @@ class Census:
                 name = f.group(1)
                 body += [f'[ -f "${name}" ] || {name}={f.group(2)}', f"printf 'G %s=%s\\n' {name} \"${name}\""]
         proc = subprocess.run(
-            ["bash", "--noprofile", "--norc", "-c", "\n".join(body), zero, *args],
-            capture_output=True, text=True, timeout=15, cwd="/",
-            env={"HOME": self.home, "PATH": "/usr/bin:/bin"},
+            ["bash", "--noprofile", "--norc", "-c", "\n".join(body), zero, *(args or [])],
+            capture_output=True, text=True, timeout=15, cwd=self.home,
+            env={**res.env, "HOME": self.home, "PATH": "/usr/bin:/bin"},
         )
         values: dict[str, list[str]] = {}
         final: dict[str, str] = {}
+        cds: list[tuple[int, str]] = []
         for out in proc.stdout.splitlines():
             kind, _, kv = out.partition(" ")
             name, _, val = kv.partition("=")
@@ -144,11 +195,13 @@ class Census:
                 values.setdefault(name, []).append(val)
             elif kind == "G":
                 final[name] = val
-        return values, final
+            elif kind == "C":
+                cds.append((int(name), val))
+        return values, final, cds
 
     def _walk_sh(self, text: str, p: str, zero: str, args: list[str], depth: int, res: Result) -> None:
         lines = text.splitlines()
-        values, final = self._sh_eval(lines, zero, p, args)
+        values, final, cds = self._sh_eval(lines, zero, p, args, res)
         for g in final.values():
             res.gateway(g, p)
         for i, ln in enumerate(lines):
@@ -168,41 +221,87 @@ class Census:
                 if os.path.basename(path) == GATEWAY:
                     res.gateway(path, p)
                 else:
-                    self._walk(path, [], zero if src else path, depth + 1, res)
-            if GATEWAY in ln and not (resolver or message or paths):
+                    self._walk(path, args if src else None, zero if src else path, depth + 1, res)
+            placed = False
+            for rel in ([] if message else SH_REL_RE.findall(ln.split(" #")[0])):
+                found = {os.path.realpath(c): c for c in (os.path.normpath(os.path.join(d, rel))
+                                                          for n, d in cds if n < i + 1) if os.path.isfile(c)}
+                if len(found) == 1:
+                    placed = True
+                    path = next(iter(found.values()))
+                    self._walk(path, args if src else None, zero if src else path, depth + 1, res)
+                elif os.path.basename(rel) != os.path.basename(zero):
+                    where = f"is ambiguous: {sorted(found)}" if found else "has no directory this census can place"
+                    res.unresolved(f"{p}:{i + 1} runs {rel}, which {where}")
+            if GATEWAY in ln and not (resolver or message or paths or placed):
                 res.unresolved(f"{p}:{i + 1} names {GATEWAY} in a shape this census does not run")
             if m or message:
                 continue
             for name, vals in values.items():
                 if re.search(rf"\$(?:\{{{name}\}}|{name}(?!\w))", ln):
                     for v in vals:
-                        if v.startswith("/") and SCRIPT_WORD_RE.search(v):
-                            self._walk(v, [], zero if src else v, depth + 1, res)
+                        if v.startswith("/"):
+                            self._walk(v, args if src else None, zero if src else v, depth + 1, res)
 
     # ---- python ------------------------------------------------------------
-    def _py_exec(self, tree: ast.Module, code: list, call: str | None, var: str | None, p: str) -> str | None:
+    @staticmethod
+    def _scope(node: ast.AST, parents: dict) -> ast.AST | None:
+        while node in parents:
+            node = parents[node]
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                return node
+        return None
+
+    def _py_exec(self, tree: ast.Module, code: list, call: str | None, var: str | None, p: str,
+                 res_env: dict | None = None, scope: ast.AST | None = None) -> str | None:
+        res_env = res_env or {}
+        class _Path:
+            join, dirname, basename = staticmethod(os.path.join), staticmethod(os.path.dirname), \
+                staticmethod(os.path.basename)
+            abspath, realpath = staticmethod(os.path.abspath), staticmethod(os.path.realpath)
+            isfile, exists, expanduser = staticmethod(os.path.isfile), staticmethod(os.path.exists), \
+                staticmethod(os.path.expanduser)
+
         class _Os:
-            path = os.path
-            environ = {"HOME": self.home}
+            path = _Path
+            environ = {**res_env, "HOME": self.home}
 
             @staticmethod
             def getenv(k, d=None):
                 return _Os.environ.get(k, d)
 
         ns: dict = {"__builtins__": {"list": list, "str": str, "len": len}, "Path": Path, "os": _Os, "__file__": p}
-        top = {t.id: st for st in tree.body if isinstance(st, ast.Assign)
-               for t in st.targets if isinstance(t, ast.Name)}
-        need = {n.id for c in code for n in ast.walk(c) if isinstance(n, ast.Name)}
-        grew = True
-        while grew:
-            extra = {n.id for k in need if k in top for n in ast.walk(top[k].value) if isinstance(n, ast.Name)}
-            grew = not extra <= need
-            need |= extra
-        for st in tree.body:
-            if st in top.values() and any(isinstance(t, ast.Name) and t.id in need for t in st.targets) \
-                    and _calls_ok([st.value]):
+        line = min(getattr(c, "lineno", 0) for c in code)
+        parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+        defs: dict[str, list] = {}  # every simple (annotated) assignment with the scope it binds in
+        for st in ast.walk(tree):
+            tgt = st.targets[0] if isinstance(st, ast.Assign) and len(st.targets) == 1 else \
+                st.target if isinstance(st, ast.AnnAssign) and st.value is not None else None
+            if isinstance(tgt, ast.Name):
+                defs.setdefault(tgt.id, []).append((self._scope(st, parents), st))
+        pick: dict[str, ast.stmt] = {}
+        todo = [(n.id, scope) for c in code for n in ast.walk(c) if isinstance(n, ast.Name)]
+        while todo:  # Python scoping: the name's own function first, then the module; never a sibling's local
+            name, sc = todo.pop()
+            if name in pick or name in ns:
+                continue
+            local = sorted((st for w, st in defs.get(name, []) if sc is not None and w is sc and st.lineno < line),
+                           key=lambda st: st.lineno)
+            glob = sorted((st for w, st in defs.get(name, []) if w is None), key=lambda st: st.lineno)
+            if not glob and not local:
+                continue
+            if local:
+                pick[name] = local[-1]
+            elif sc is not None:
+                pick[name] = glob[-1]  # a function runs after the module has loaded: its last binding
+            else:
+                pick[name] = next((st for st in reversed(glob) if st.lineno < line), glob[0])
+            todo += [(n.id, self._scope(pick[name], parents)) for n in ast.walk(pick[name].value)
+                     if isinstance(n, ast.Name)]
+        for st in sorted(pick.values(), key=lambda st: st.lineno):
+            if _calls_ok([st]):
                 try:
-                    exec(compile(ast.Module(body=[st], type_ignores=[]), p, "exec"), ns)
+                    exec(compile(ast.fix_missing_locations(ast.Module(body=[st], type_ignores=[])), p, "exec"), ns)
                 except Exception:
                     pass
         try:
@@ -222,25 +321,28 @@ class Census:
             if isinstance(cur, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 fn = cur
                 break
-        if fn is not None and _calls_ok([fn]) and not fn.args.args and not stmt is fn:
-            pure = copy.copy(fn)
+        pure = copy.copy(fn)
+        if pure is not None:
             pure.decorator_list, pure.returns = [], None
-            return [pure], fn.name, None
-        body = fn.body if fn is not None else tree.body
-        while stmt is not None and stmt not in body:
-            stmt = parents.get(stmt)
+        if pure is not None and _calls_ok([pure]) and not fn.args.args and stmt is not fn:
+            return [pure], fn.name, None, None
         if not (isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name)):
             return None
+        block = next((v for _, v in ast.iter_fields(parents[stmt]) if isinstance(v, list) and stmt in v), [stmt])
         var = stmt.targets[0].id
         code: list = [stmt]
-        for s in body[body.index(stmt) + 1:]:
+        for s in block[block.index(stmt) + 1:]:
             names = {n.id for n in ast.walk(s.test) if isinstance(n, ast.Name)} if isinstance(s, ast.If) else set()
             if var not in names or not all(isinstance(b, ast.Assign) for b in s.body):
                 break
             code.append(s)
-        return (code, None, var) if _calls_ok(code) else None
+        return (code, None, var, fn) if _calls_ok(code) else None
 
-    def _walk_py(self, text: str, p: str, depth: int, res: Result) -> None:
+    def _py_value(self, tree: ast.Module, expr: ast.expr, p: str, scope: ast.AST | None) -> str | None:
+        assign = ast.copy_location(ast.Assign(targets=[ast.Name(id="_v", ctx=ast.Store())], value=expr), expr)
+        return self._py_exec(tree, [assign], None, "_v", p, self._env, scope) if _calls_ok([assign]) else None
+
+    def _walk_py(self, text: str, p: str, depth: int, res: Result, imported: bool) -> None:
         try:
             tree = ast.parse(text)
         except SyntaxError as e:
@@ -248,27 +350,51 @@ class Census:
             return
         parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
         here = os.path.dirname(os.path.realpath(p))
+        if not imported:
+            res.pyroots.add(here)  # sys.path[0] of a script run by path
+        nodes = sorted(ast.walk(tree), key=lambda n: (getattr(n, "lineno", 0), getattr(n, "col_offset", 0)))
+        for node in nodes:  # sys.path extensions first, evaluated by the file's own expression
+            if isinstance(node, ast.Call) and _call_name(node) in ("insert", "append") and node.args \
+                    and isinstance(node.func, ast.Attribute) and ast.unparse(node.func.value) == "sys.path":
+                root = self._py_value(tree, node.args[-1], p, self._scope(node, parents))
+                if root:
+                    res.pyroots.add(root)
+                else:
+                    res.unresolved(f"{p}:{node.lineno} extends sys.path by an expression this census cannot run")
         hits = []
-        for node in ast.walk(tree):
+        for node in nodes:
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                mods = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
-                for mod in (m.split(".")[0] for m in mods):
-                    if mod == "tg_notify":
+                if isinstance(node, ast.Import):
+                    mods, roots = [a.name for a in node.names], [here, *sorted(res.pyroots)]
+                else:
+                    base = node.module or ""
+                    mods = [base, *(f"{base}.{a.name}".lstrip(".") for a in node.names)]
+                    up = here
+                    for _ in range(node.level - 1):
+                        up = os.path.dirname(up)
+                    roots = [up] if node.level else [here, *sorted(res.pyroots)]
+                for mod in filter(None, mods):
+                    if mod.split(".")[0] == "tg_notify":
                         res.unresolved(f"{p}:{node.lineno} imports tg_notify (resolution by sys.path)")
-                    elif mod and os.path.isfile(os.path.join(here, mod + ".py")):
-                        sib = os.path.join(here, mod + ".py")
-                        self._walk(sib, [], sib, depth + 1, res)
+                        continue
+                    rel = mod.replace(".", "/")
+                    for cand in (os.path.join(r, rel + ext) for r in roots for ext in (".py", "/__init__.py")):
+                        if os.path.isfile(cand):
+                            self._walk(cand, [], cand, depth + 1, res, imported=True)
+                            break
             elif isinstance(node, ast.Call) and _call_name(node) in PY_SPAWN:
-                for c in ast.walk(node):
-                    if isinstance(c, ast.Constant) and isinstance(c.value, str) and SCRIPT_WORD_RE.search(c.value) \
-                            and c.value.startswith(("/", "~/")) and os.path.basename(c.value) != GATEWAY:
-                        child = os.path.expanduser(c.value)
+                for arg in (e for a in node.args for e in (a.elts if isinstance(a, (ast.List, ast.Tuple)) else [a])):
+                    val = arg.value if isinstance(arg, ast.Constant) else \
+                        self._py_value(tree, arg, p, self._scope(node, parents))
+                    child = os.path.expanduser(val) if isinstance(val, str) else ""
+                    if SCRIPT_WORD_RE.search(child) and os.path.isabs(child) and os.path.basename(child) != GATEWAY:
                         self._walk(child, [], child, depth + 1, res)
             elif isinstance(node, ast.Constant) and isinstance(node.value, str) and GATEWAY in node.value \
-                    and not isinstance(parents.get(node), ast.Expr) and not re.search(r"\s", node.value):
+                    and not isinstance(parents.get(node), ast.Expr) and not re.search(r"\s", node.value) \
+                    and not self._in_test(node, parents):
                 hits.append(node)
         covered: set = set()
-        for node in sorted(hits, key=lambda n: (n.lineno, n.col_offset)):
+        for node in hits:
             if node in covered:
                 continue
             sl = self._py_slice(tree, node, parents)
@@ -279,33 +405,53 @@ class Census:
                     res.unresolved(f"{p}:{node.lineno} names {GATEWAY} in a shape this census does not run")
                 continue
             covered |= {n for c in sl[0] for n in ast.walk(c)}
-            gw = self._py_exec(tree, *sl, p)
+            gw = self._py_exec(tree, sl[0], sl[1], sl[2], p, res.env, sl[3])
             if gw is None:
                 res.unresolved(f"{p}:{node.lineno} gateway resolver raised when run in isolation")
             else:
                 res.gateway(gw, p)
 
+    @staticmethod
+    def _in_test(node: ast.AST, parents: dict) -> bool:
+        """A literal inside an `if`/`assert` test only probes that the gateway exists; it sends nothing."""
+        cur = node
+        while cur in parents and not isinstance(cur, ast.stmt):
+            par = parents[cur]
+            if isinstance(par, (ast.If, ast.While, ast.Assert, ast.IfExp)) and par.test is cur:
+                return True
+            cur = par
+        return False
+
     # ---- walk --------------------------------------------------------------
-    def _walk(self, p: str, args: list[str], zero: str, depth: int, res: Result) -> None:
+    def _walk(self, p: str, args: list[str] | None, zero: str, depth: int, res: Result,
+              imported: bool = False) -> None:
         real = os.path.realpath(p)
-        if depth > MAX_DEPTH or (real, zero) in res.seen or not os.path.isfile(real):
+        if (real, zero) in res.seen or not os.path.isfile(real):
             return
-        res.seen.add((real, zero))
-        if os.path.basename(real) == GATEWAY:
+        if GATEWAY in (os.path.basename(p), os.path.basename(real)):
             res.gateway(p, p)
             return
         try:
+            with open(real, "rb") as fh:
+                if not (SCRIPT_WORD_RE.search(real) or fh.read(2) == b"#!"):
+                    return  # data, a log, a binary: nothing this census can follow runs from it
+            if depth > MAX_DEPTH:
+                res.unresolved(f"{p}: a chain deeper than {MAX_DEPTH} is not followed")
+                return
+            res.seen.add((real, zero))
             text = Path(real).read_text(errors="replace")
         except OSError as e:
             res.unresolved(f"{p}: unreadable ({e.strerror})")
             return
+        self._env = res.env
         if real.endswith(".py") or text.startswith("#!") and "python" in text.split("\n", 1)[0]:
-            self._walk_py(text, p, depth, res)
+            self._walk_py(text, p, depth, res, imported)
         else:
             self._walk_sh(text, p, zero, args, depth, res)
 
-    def _command(self, cmd: str, res: Result, top: bool) -> None:
-        cwd = None  # the entry's own `cd <abs>` anchors the relative script words after it
+    def _command(self, cmd: str, res: Result, top: bool, zero: str | None = None) -> None:
+        """Follow what a command line RUNS: the word in command position, the script an interpreter
+        is given, and the arguments of a script it runs (wrappers run their arguments)."""
         try:
             lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
             lex.whitespace_split = True
@@ -313,37 +459,63 @@ class Census:
         except ValueError as e:
             res.unresolved(f"command not tokenizable ({e})")
             return
-        first = top
+        cwd, cmdpos, wrapped, first = None, True, False, top
         for i, tok in enumerate(toks):
             prev = toks[i - 1] if i else ""
-            if " " in tok:
-                self._command(tok, res, False)
+            if OPERATOR_RE.match(tok):
+                if not any(c in tok for c in "<>"):
+                    cmdpos, wrapped = True, False
                 continue
-            if tok == "-m" and "python" in os.path.basename(prev) and i + 1 < len(toks):
-                res.unresolved(f"python -m {toks[i + 1]} is not followed")
-            if prev == "cd" and _expand(tok, self.home).startswith("/"):
-                cwd = _expand(tok, self.home)
-            if not SCRIPT_WORD_RE.search(tok) or (OPERATOR_RE.match(prev) and ">" in prev):
+            if OPERATOR_RE.match(prev) and any(c in prev for c in "<>"):
+                continue  # a redirect target
+            if " " in tok:
+                flag_c = prev.startswith("-") and "c" in prev
+                nxt = toks[i + 1] if flag_c and i + 1 < len(toks) and not OPERATOR_RE.match(toks[i + 1]) else None
+                self._command(tok, res, False, _expand(nxt, self.home) if nxt else None)
+                continue
+            if not (cmdpos or wrapped):
+                continue
+            if cmdpos and ENV_LINE_RE.match(tok):
+                name, _, val = tok.partition("=")
+                if ENV_PASS_RE.match(name):
+                    res.env[name] = val
+                continue
+            if tok.startswith("-"):
+                if tok == "-m" and i + 1 < len(toks):
+                    res.unresolved(f"python -m {toks[i + 1]} is not followed")
+                continue
+            base = os.path.basename(tok)
+            if tok == "cd" and i + 1 < len(toks):
+                cwd = _expand(toks[i + 1], self.home) if _expand(toks[i + 1], self.home).startswith("/") else cwd
+                cmdpos = False
+                continue
+            if INTERPRETER_RE.match(base) or base in ("source", "."):
                 continue
             path = _expand(tok, self.home)
-            if not path.startswith("/") and cwd:
-                path = os.path.normpath(os.path.join(cwd, path))
-            if not path.startswith("/"):
-                res.unresolved(f"relative invocation {tok} with no `cd` before it is not followed")
+            if not path.startswith(("/", "./")) and not SCRIPT_WORD_RE.search(path):
+                cmdpos = False  # a command found on PATH (echo, curl, git): its arguments are not run
                 continue
+            if not path.startswith("/"):
+                if not cwd:
+                    res.unresolved(f"relative invocation {tok} with no `cd` before it is not followed")
+                    continue
+                path = os.path.normpath(os.path.join(cwd, path))
             res.invoked.append(path)
             if first and not os.path.isfile(os.path.realpath(path)):
                 res.not_runnable = True
             first = False
+            sourced = prev in ("source", ".")
             args = []
             for t in toks[i + 1:]:
                 if OPERATOR_RE.match(t):
                     break
                 args.append(t)
-            self._walk(path, args, path, 0, res)
+            self._walk(path, args, (zero or "sh") if sourced else path, 0, res)
+            cmdpos, wrapped = False, True
 
-    def entry(self, lineno: int, line: str) -> Result:
+    def entry(self, lineno: int, line: str, env: dict[str, str]) -> Result:
         res = Result(lineno)
+        res.env = dict(env)
         fields = line.split()
         self._command(" ".join(fields[1:] if fields[0].startswith("@") else fields[5:]), res, True)
         return res
@@ -358,12 +530,17 @@ def routes(gateway: str) -> bool:
 
 def census(crontab: str, home: str) -> dict:
     c = Census(home)
-    rows = []
+    rows, env = [], {}
     for n, line in enumerate(crontab.splitlines(), 1):
         s = line.strip()
-        if not s or s.startswith("#") or ENV_LINE_RE.match(s) or not SCHEDULE_RE.match(s):
+        if ENV_LINE_RE.match(s):  # crontab env applies to every entry below it
+            name, _, val = s.partition("=")
+            if ENV_PASS_RE.match(name.strip()):
+                env[name.strip()] = val.strip().strip("\"'")
             continue
-        r = c.entry(n, s)
+        if not s or s.startswith("#") or not SCHEDULE_RE.match(s):
+            continue
+        r = c.entry(n, s, env)
         rows.append({
             "line": n,
             "invoked": r.invoked,
