@@ -96,7 +96,7 @@
     "@anthropic-ai/sdk": "^0.125.0",
     "@google/generative-ai": "^0.24.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^7.10.0",
     "@prisma/extension-accelerate": "^3.0.1",
     "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2.8.19",
