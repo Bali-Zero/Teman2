@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { vi } from "vitest";
 import { render, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -1031,5 +1033,180 @@ describe("a path that crossed a date boundary (council round 13)", () => {
     );
     expect(model.trunk.some((step) => step.id === "renewal_paid")).toBe(false);
     expect(model.totalQuestions).toBe(model.answeredQuestions + 1);
+  });
+});
+
+// ─── PR #7081 E2E red 2 — a promoted re-entry chip keeps AA contrast
+// regardless of what is behind it ──────────────────────────────────────
+//
+// `expectNoWcagViolations` (`e2e/visa-oracle-v2.spec.ts:133`) failed on the
+// keyboard-only journey's verdict screen: axe's `color-contrast` rule
+// measured 1.68:1 on `button[data-process-category="business"]`
+// (foreground `--oracle-ink-faint` #5b6a60, background `--oracle-canopy`/
+// `--oracle-leaf-active` #1f4d3d — the "done" tourism chip's opaque colour,
+// bleeding through this button's inherited `.oracle-tree__leaf { background:
+// transparent }` while a Framer-Motion `layout` reflow was still settling as
+// the verdict view replaced the question view; the EN twin passed on retry,
+// confirming the timing dependency — reproduced locally with
+// `../../node_modules/.bin/playwright test e2e/visa-oracle-v2.spec.ts -g
+// "keyboard-only"`). The cure (`oracle.css`, appended below the C1-fence
+// EOF): `button.oracle-tree__leaf` declares its own opaque
+// `background: var(--oracle-bg-elevated)`, so the rendered pair's contrast
+// never depends on an animation frame — `--oracle-ink-faint` on
+// `--oracle-bg-elevated` is the AA pairing this file already documents at
+// `oracle.css:51`/`:85` (~5.7:1 light, ~5.68:1 dark). No new
+// `--oracle-state-*` token is declared.
+//
+// jsdom "applies no stylesheet (no layout engine)" — the same limit
+// `voa-contrast.computed.guard.test.tsx` documents — so `getComputedStyle`
+// never resolves this rule or a `var(--x)` reference. This guard therefore
+// reads `oracle.css` from disk (never hand-copies a hex) and computes real
+// WCAG relative-luminance contrast, the same technique that file uses.
+const ORACLE_CSS_PATH = join(__dirname, "..", "oracle.css");
+const ORACLE_CSS = readFileSync(ORACLE_CSS_PATH, "utf8");
+
+function ruleBody(css: string, selectorPattern: string): string {
+  const anchored = new RegExp(`${selectorPattern}\\s*\\{([^}]*)\\}`);
+  const match = anchored.exec(css);
+  if (!match) {
+    throw new Error(`selector not found: ${selectorPattern}`);
+  }
+  return match[1];
+}
+
+function extractOracleToken(block: string, name: string): string {
+  const re = new RegExp(`--oracle-${name}:\\s*([^;]+);`);
+  const match = block.match(re);
+  if (!match) {
+    throw new Error(`--oracle-${name} not found in block:\n${block}`);
+  }
+  return match[1].trim();
+}
+
+/** Same anchor-split technique as `oracle-state-tokens.test.ts`'s
+ * `parseStateBlocks`, anchored on `--oracle-bg-elevated:` — every one of
+ * the file's four theme blocks (`oracle-state-tokens.test.ts`'s pinned
+ * anchors `65 101 130 160`) declares it exactly once, and FIRST (before
+ * `--oracle-ink-faint:` in source order): anchoring on the later token
+ * would put each block's own `bg-elevated` — declared just above the
+ * anchor — one slice EARLIER than the `ink-faint` it pairs with. */
+function themeBlocks(css: string): string[] {
+  const anchorRe = /--oracle-bg-elevated:/g;
+  const starts: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = anchorRe.exec(css)) !== null) {
+    starts.push(m.index);
+  }
+  return starts.map((start, i) => {
+    const end = i + 1 < starts.length ? starts[i + 1] : css.length;
+    return css.slice(start, end);
+  });
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace("#", "");
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ];
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function contrastRatio(hexA: string, hexB: string): number {
+  const lumA = relativeLuminance(hexToRgb(hexA));
+  const lumB = relativeLuminance(hexToRgb(hexB));
+  const lighter = Math.max(lumA, lumB);
+  const darker = Math.min(lumA, lumB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+describe("button.oracle-tree__leaf keeps AA contrast regardless of what is behind it (PR #7081 E2E red 2)", () => {
+  const BUTTON_RULE_SELECTOR = "button\\.oracle-tree__leaf";
+
+  it("GUILT: declares its own opaque background naming the measured-AA token — strip it on a scratch copy of the rule and the declaration vanishes", () => {
+    const rule = ruleBody(ORACLE_CSS, BUTTON_RULE_SELECTOR);
+    const bgMatch = /background:\s*var\((--oracle-[a-z-]+)\)/.exec(rule);
+    expect(bgMatch).not.toBeNull();
+    expect(bgMatch?.[1]).toBe("--oracle-bg-elevated");
+
+    // Scratch mutation, in memory (this codebase's convention for a
+    // permanent regression pin — see the `dict` GUILT-b tests): strip the
+    // exact declaration this cure added. The rule reverts to
+    // `.oracle-tree__leaf`'s inherited `background: transparent`, and no
+    // opaque token is named any more.
+    const mutatedRule = rule.replace(
+      /\n\s*background:\s*var\(--oracle-bg-elevated\);/,
+      "",
+    );
+    expect(
+      /background:\s*var\(--oracle-[a-z-]+\)/.exec(mutatedRule),
+    ).toBeNull();
+  });
+
+  it("GUILT: the declared pair clears 4.5:1 in every theme block this file ships", () => {
+    const rule = ruleBody(ORACLE_CSS, BUTTON_RULE_SELECTOR);
+    const bgToken = /background:\s*var\((--oracle-[a-z-]+)\)/.exec(rule)?.[1];
+    expect(bgToken).toBe("--oracle-bg-elevated");
+
+    const blocks = themeBlocks(ORACLE_CSS);
+    // The C1 fence's own anchor count (`oracle-state-tokens.test.ts:154`).
+    expect(blocks.length).toBe(4);
+    for (const block of blocks) {
+      const fg = extractOracleToken(block, "ink-faint");
+      const bg = extractOracleToken(block, "bg-elevated");
+      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("GUILT: the red's own pair — ink-faint on canopy/leaf-active — really is the 1.68:1 CI measured, so this guard's math is trusted", () => {
+    // Not a re-assertion of the shipped rule: a cross-check that this
+    // file's `contrastRatio` reproduces axe's own number
+    // (`failureSummary`: "insufficient color contrast of 1.68 ... foreground
+    // color: #5b6a60, background color: #1f4d3d") before trusting it above.
+    expect(contrastRatio("#5b6a60", "#1f4d3d")).toBeCloseTo(1.68, 1);
+  });
+
+  it("DOM shape: the exact vulnerable scenario — a `done` category beside a promoted `pruned` one — renders the button this CSS selector targets", () => {
+    const onSelectCategory = vi.fn();
+    const tourismDone: OracleFacts = {
+      in_indonesia: "no",
+      holds_stay_permit: "no",
+      overstay_days: "0",
+      nationalities: "IT",
+      birth_date: "1990-02-03",
+      category: "tourism",
+      trip_scope: "single",
+      stay_days: "30",
+      entry_pattern: "SINGLE",
+    };
+    const model = getProcessModel({ kind: "verdict" }, tourismDone, true);
+    expect(model.categories.find((c) => c.key === "tourism")?.status).toBe(
+      "done",
+    );
+    expect(model.categories.find((c) => c.key === "business")?.status).toBe(
+      "pruned",
+    );
+
+    const { container } = render(
+      <ProcessBranches
+        language="en"
+        model={model}
+        variant="desktop"
+        onSelectCategory={onSelectCategory}
+      />,
+    );
+    const business = container.querySelector(
+      '[data-process-category="business"]',
+    );
+    expect(business?.tagName).toBe("BUTTON");
+    expect(business?.classList.contains("oracle-tree__leaf")).toBe(true);
   });
 });
