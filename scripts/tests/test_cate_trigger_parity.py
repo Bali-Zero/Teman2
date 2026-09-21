@@ -56,9 +56,10 @@ does so for real; `pip` is shimmed to a no-op so `python3 -m pip install`
 never touches a registry; no parent environment reaches the steps, git, or
 the xargs probe EXCEPT PATH (prefixed with this harness's shim directory,
 otherwise passed through unchanged, so the real `bash`/`git`/coreutils are
-still found) and PYTHONUSERBASE (pinned to THIS process's own
-`site.getuserbase()`, not read from the parent environment — see
-_PARENT_USERBASE) — secrets never do, in either of the two variants a step
+still found) and PYTHONUSERBASE (THIS process's own `site.getuserbase()` —
+see _PARENT_USERBASE — which returns a PYTHONUSERBASE the parent environment
+already sets, and otherwise the interpreter's default under the parent's
+HOME) — secrets never do, in either of the two variants a step
 that names one is run under (see test_step_fails_closed). PYTHONUSERBASE
 exists because HOME below is an isolated tmp_path, and on a real runner
 `pip install --user` puts a package under HOME/.local; without pinning the
@@ -110,9 +111,18 @@ Not covered — stated plainly rather than claimed as "every shape":
     today (e.g. `GITHUB_REF_NAME`, `GITHUB_JOB` — a step keyed on either is
     an undeclared skip, not a caught one), the real `HOME` (deliberately
     isolated per test, not `/home/runner`), real checkout content and git
-    history (the synthetic repo carries only stub tools, no other files,
-    one empty commit), and a `BASH_ENV`-style hook file, since none of
-    those exist outside a real checkout;
+    history (the synthetic repo is the stub tools plus one `x.py`, staged
+    with `git add -A` and never committed, so HEAD is unborn), and a
+    `BASH_ENV`-style hook file, since none of those exist outside a real
+    checkout;
+  - a tool's RUNTIME is not modelled: every stub returns at once, so a step
+    that treats its tool's timeout exit as success
+    (`timeout 1 <tool> || [ $? -eq 124 ]`) passes here, while on a runner a
+    linter that outlives the bound passes the step having checked nothing;
+  - the harness environment carries PYTHONUSERBASE (above), which this
+    workflow never sets and a hosted runner does not set by default: a skip
+    keyed on PYTHONUSERBASE being unset is never taken here and is taken on
+    a runner — a false green this file cannot see;
   - state one step writes for a LATER step to read, through `GITHUB_ENV` or
     `GITHUB_PATH` — those files exist here (see `gh_files`) and a step CAN
     write to them, but no OTHER step then re-reads that write, because each

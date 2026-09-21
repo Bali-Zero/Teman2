@@ -29,11 +29,12 @@ name: catE-sovereignty-lint
 # gives false safety under L2 autonomous direct-push; merge_group is explained
 # under `on:`).
 #
-# STILL NON-REQUIRED as this file ships, and now ARMABLE — the two are
-# different states and were conflated for months. Adding this context to main's
-# branch protection is a control-plane act and is deliberately NOT done here:
-# what this file can do is stop being the reason the flip is unsafe. Until the
-# flip, a red here blocks nothing, which is the whole of the debt.
+# REQUIRED on main since 2026-09-21 ~13:00Z: a red here holds the merge queue.
+# Armable (#7031) and required were different states, conflated for months;
+# the flip waited on #7076 closing PWC #7031 C1-C3. Required-ness lives in
+# branch protection, not in this file, so this sentence can go stale without a
+# diff — re-measure with `gh api repos/Bali-Zero/Teman2/branches/main/protection/
+# required_status_checks`; infra/required.d/contexts.json is its snapshot.
 
 # NO PATHS FILTER, and that is the arming decision rather than an omission.
 # One was added 2026-06-12 to reduce fan-out and removed 2026-09-21 because it
