@@ -1,0 +1,23 @@
+mandate: >-
+  Re-cut of closed PR #7084 after its REWORK-BUILD gate: new pajak.go.id
+  peraturan items carry the regulation's literal citation, a verbatim excerpt
+  containing it and the regulation date, so they can pass the research_os
+  admission; the detail enrichment is bounded in time (robots, delay and fetch
+  under one per-page timeout plus a run deadline) and nomor matches with a
+  trailing boundary.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py (Pro crontab 00:00 UTC)
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare";
+  "concordo, go"). New rows only; existing-row backfill ships separately as
+  production DML under the operator two-key.
+acceptance:
+  - a hanging detail page or robots check cannot drop the run; all items still written
+  - nomor 12 never matches 123, PMK-81 never matches PMK-81/2024
+  - published_at becomes the regulation date only when extraction fully succeeds
+  - the citation is a literal body substring; real bridge() + admit() admits live pages
+appetite:
+  wall_clock_hours: 2

@@ -21,6 +21,7 @@ Output:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import subprocess
@@ -32,13 +33,32 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from agent_job import AgentJob, RunResult, WITA, main, web_search
 from browser_job import BrowserJob
-from pajak_parse import parse_link_items, parse_peraturan_index, source_host
+from pajak_parse import (
+    PAJAK_DOMAIN,
+    extract_regulation,
+    parse_link_items,
+    parse_peraturan_index,
+    source_host,
+)
 
 PAJAK_PERATURAN_URL = "https://pajak.go.id/id/index-peraturan"
 PAJAK_SIARAN_PERS_URL = "https://pajak.go.id/id/siaran-pers-page"
+PAJAK_PERATURAN_DETAIL_PREFIX = f"{PAJAK_DOMAIN}/id/peraturan/"
 
 REDIS_KEY_SEEN = "bz:pajak:seen_urls"
 REDIS_EXPIRY = 86400 * 90  # 90 days
+
+DETAIL_FETCH_CAP = 10
+EXTRACTOR_NAME = "pajak_parse.extract_regulation/1"
+# R1 (gate REWORK-BUILD, 2026-09-21): a hung/slow detail fetch used to be able to blow past the
+# job's own `timeout_s`, and the OUTER `asyncio.wait_for(run(), timeout_s)` (browser_job.py, not
+# in this repo) then cancels the whole `run()` coroutine mid-flight — before `_mark_seen`,
+# `_write_intel_feed` or the Telegram send ever execute. Two independent bounds fix this: a
+# per-fetch timeout so one slow page can't eat the whole budget, and a deadline that stops
+# enriching MORE candidates once the remaining budget is tight, leaving margin for everything
+# that still has to run after enrichment.
+DETAIL_FETCH_TIMEOUT_S = 20.0
+DETAIL_ENRICH_BUDGET_MARGIN_S = 60.0
 
 INTEL_INCOMING_DIR = Path.home() / ".intel_scraper" / "incoming"
 
@@ -104,6 +124,9 @@ class PajakMonitorJob(BrowserJob):
                 output="no_new_regulations",
             )
 
+        # Peraturan detail enrichment (citation + verbatim excerpt for admission)
+        await self._enrich_peraturan_details(new_items)
+
         # Mark seen + write Intel feed
         await self._mark_seen([i["url"] for i in new_items])
         intel_count = self._write_intel_feed(new_items)
@@ -134,6 +157,63 @@ class PajakMonitorJob(BrowserJob):
         except Exception as e:
             self.logger.warning("fetch_error", url=url, error=str(e))
             return []
+
+    async def _enrich_peraturan_details(self, items: list[dict]) -> None:
+        """Fetch the detail page for NEW peraturan items and attach the extracted
+        citation/excerpt/date under `item["_detail"]`.
+
+        Best-effort, same fetch discipline as `_fetch_page_items` (robots check +
+        `random_delay` + `fetch_page`), capped at `DETAIL_FETCH_CAP` fetches. A
+        fetch or extract failure just leaves the item without `_detail` — the
+        existing `published_at`/`raw_payload` fallback in `_write_intel_feed`
+        stays exactly as before for that item.
+
+        R1: bounded on TWO axes so this can never be the reason the whole job times out.
+        Each `fetch_page` is wrapped in `asyncio.wait_for(..., DETAIL_FETCH_TIMEOUT_S)` — a slow
+        or hanging page can only cost that much, not the rest of the run. Before EACH candidate
+        the loop also checks `self._elapsed()` against `self.timeout_s - DETAIL_ENRICH_BUDGET_
+        MARGIN_S`; once that margin is gone, enrichment stops taking new candidates — the
+        remaining ones are simply left without `_detail`, same as any other best-effort miss,
+        so `_mark_seen`/`_write_intel_feed`/Telegram always still get their turn.
+        """
+        candidates = [
+            i for i in items
+            if i.get("url", "").startswith(PAJAK_PERATURAN_DETAIL_PREFIX)
+        ][:DETAIL_FETCH_CAP]
+        deadline = self.timeout_s - DETAIL_ENRICH_BUDGET_MARGIN_S
+        enriched = 0
+        skipped_for_budget = 0
+        for index, item in enumerate(candidates):
+            if self._elapsed() > deadline:
+                skipped_for_budget = len(candidates) - index
+                self.logger.warning("pajak_detail_budget_exhausted", remaining=skipped_for_budget)
+                break
+            url = item["url"]
+            try:
+                # robots + delay + fetch share ONE per-page timeout: an uncached robots.txt that
+                # hangs is as able to blow the job's timeout as a hanging detail page.
+                page = await asyncio.wait_for(self._fetch_detail_page(url), timeout=DETAIL_FETCH_TIMEOUT_S)
+                if page is None:
+                    continue
+                detail = extract_regulation(page["html"])
+                if detail and detail.get("citation") and detail.get("verbatim_excerpt") and detail.get("regulation_date"):
+                    item["_detail"] = detail
+                    enriched += 1
+                else:
+                    self.logger.warning("pajak_detail_extract_incomplete", url=url[:120])
+            except Exception as e:
+                self.logger.warning("pajak_detail_fetch_error", url=url[:120], error=str(e))
+        self.log_step(
+            "enrich_peraturan",
+            outputs={"candidates": len(candidates), "enriched": enriched, "skipped_for_budget": skipped_for_budget},
+        )
+
+    async def _fetch_detail_page(self, url: str) -> dict | None:
+        """robots check, polite delay and fetch of one detail page; None when robots disallows."""
+        if not await self._check_robots(url):
+            return None
+        await self.random_delay(1.0, 2.0)
+        return await self.fetch_page(url)
 
     def _parse_pajak_html(self, html: str, source: str, base_url: str) -> list[dict]:
         """Parse pajak.go.id Drupal HTML for regulation/news links.
@@ -268,6 +348,17 @@ class PajakMonitorJob(BrowserJob):
                     _ch = hashlib.sha256(
                         (item["title"] + " " + item["url"]).encode()
                     ).hexdigest()[:32]
+                    _detail = item.get("_detail")
+                    _raw_payload = {
+                        "pipeline": "intel_stage1",
+                        "type": item.get("type", "tax_regulation"),
+                    }
+                    _published_at = item.get("scraped_at")
+                    if _detail:
+                        _raw_payload["citation"] = _detail["citation"]
+                        _raw_payload["verbatim_excerpt"] = _detail["verbatim_excerpt"]
+                        _raw_payload["extractor"] = EXTRACTOR_NAME
+                        _published_at = _detail["regulation_date"]
                     _lake_enqueue(
                         "pajak_monitor",
                         {
@@ -280,12 +371,9 @@ class PajakMonitorJob(BrowserJob):
                             "language": "id",
                             "jurisdiction": "ID-national",
                             "topic_tags": ["tax", "pajak", item.get("type", "tax_regulation")],
-                            "published_at": item.get("scraped_at"),
+                            "published_at": _published_at,
                             "score": None,
-                            "raw_payload": {
-                                "pipeline": "intel_stage1",
-                                "type": item.get("type", "tax_regulation"),
-                            },
+                            "raw_payload": _raw_payload,
                         },
                     )
                 except Exception as exc:
