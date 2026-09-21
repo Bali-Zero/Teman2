@@ -104,7 +104,22 @@ import {
  * `MULTI_PURPOSE_TRIP`. The fourteenth member, `CONFLICTING_IMMIGRATION_STATUS`,
  * is impossible from the interview by construction and is covered by a
  * census allowlist row instead. No existing fixture changes a byte. See
- * generate-walk-corpus.ts. */
+ * generate-walk-corpus.ts.
+ *
+ * 115 → 115, BYTES ONLY, on Slice B5-1 (mission VISA-ORACLE-DW,
+ * R-REACH): `answerFor` in `generate-walk-corpus.ts` now asks
+ * `channelConflictsWithOnshoreIntent` (imported from `flow.ts`) before
+ * answering `application_channel`, exactly mirroring the live reducer's own
+ * guard — an unoverridden `application_channel` on a walk whose
+ * `wants_onshore_conversion` already resolved to its own default ("yes")
+ * used to answer with the driver's generic first-option default
+ * ("OFFSHORE"), a combination `flowReducer` refuses in the real interview
+ * (`flow.ts:1317`). It now falls back to the first option the live
+ * interview WOULD accept instead ("ONSHORE_CONVERSION"). The 14 onshore
+ * walks that never deliberately override `application_channel` move exactly
+ * that one field, one line each; no walk is added or removed, no other
+ * field moves. See `enumerate-interview-space.ts`'s module docstring and
+ * `PROMPT-builder-b5-1.md` for the enumerator half of the same fix. */
 const EXPECTED_WALK_COUNT = 115;
 
 function jsonFilesIn(dir: string): string[] {

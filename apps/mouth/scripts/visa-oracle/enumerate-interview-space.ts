@@ -114,6 +114,7 @@ import {
   type OracleFacts,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/tree";
 import {
+  channelConflictsWithOnshoreIntent,
   computeNextNode,
   type OracleNode,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/flow";
@@ -261,17 +262,29 @@ export const BRANCH_RELEVANT_FACT_KEYS: readonly string[] = [
 ];
 
 /**
- * Every answer this enumerator explores for `questionId`: every declared
- * option, `REPRESENTATIVE_VALUES`'s set for every typed AND branch-relevant
- * question (see `typedBranchRelevantQuestionIds` and its completeness
- * guard — never a fixed count here, which is the exact stale claim
- * GATE-B1-REPORT-6842.md and GATE-B1C-REPORT-6848.md both caught, one
- * docstring apart), `answerFor`'s single default for every other typed
- * question, `"unsure"` wherever `notSure` is offered, and `REVIEW_GATE_ITEMS`
- * (its real wire domain, not its own two-option UI gate) for `review_gate`
- * alone.
+ * Every answer this enumerator explores for `questionId`, given the facts
+ * already answered on THIS walk so far: every declared option,
+ * `REPRESENTATIVE_VALUES`'s set for every typed AND branch-relevant question
+ * (see `typedBranchRelevantQuestionIds` and its completeness guard — never a
+ * fixed count here, which is the exact stale claim GATE-B1-REPORT-6842.md and
+ * GATE-B1C-REPORT-6848.md both caught, one docstring apart), `answerFor`'s
+ * single default for every other typed question, `"unsure"` wherever
+ * `notSure` is offered, and `REVIEW_GATE_ITEMS` (its real wire domain, not
+ * its own two-option UI gate) for `review_gate` alone.
+ *
+ * `facts` is a REQUIRED second parameter (Slice B5-1): for `application_channel`
+ * ONLY, the returned set is filtered through `channelConflictsWithOnshoreIntent`
+ * — imported from `flow.ts`, never copied or re-implemented — so this
+ * enumerator never explores an `(application_channel, wants_onshore_conversion)`
+ * pair the live reducer would refuse (`flow.ts:1317`). The predicate is
+ * bi-directional, but BOTH reducer call sites (`flow.ts:1317`, `:327`) gate
+ * on `questionId === "application_channel"`: filtering `wants_onshore_conversion`
+ * too would invent a behaviour the live interview does not have, so every
+ * other question id ignores `facts` entirely — `answersFor(id, {})` is
+ * byte-identical to the pre-B5-1 single-argument form for every id but this
+ * one.
  */
-export function answersFor(questionId: string): string[] {
+export function answersFor(questionId: string, facts: OracleFacts): string[] {
   const question = QUESTIONS[questionId];
   if (!question)
     throw new Error(
@@ -290,6 +303,15 @@ export function answersFor(questionId: string): string[] {
   }
   if (question.notSure && !values.includes("unsure"))
     values = [...values, "unsure"];
+  if (questionId === "application_channel") {
+    values = values.filter(
+      (value) =>
+        !channelConflictsWithOnshoreIntent(
+          facts.wants_onshore_conversion,
+          value,
+        ),
+    );
+  }
   return values;
 }
 
@@ -300,6 +322,27 @@ export interface WalkSpaceCount {
   nodesReached: ReadonlySet<string>;
   /** First-DFS-visit override path that reaches each reached question id. */
   witnesses: ReadonlyMap<string, Readonly<Record<string, string>>>;
+  /**
+   * Every `(questionId, value)` pair — as `"${questionId}=${value}"` — the
+   * DFS actually took, `review_gate`'s 13 seeded at its early-return
+   * included (Slice B5-1, Y2). Filled where `answersFor` returns the value,
+   * so a value `answersFor` excludes for a given facts context (today, only
+   * `application_channel` values `channelConflictsWithOnshoreIntent`
+   * refuses) never appears here EXCEPT via a DIFFERENT context that
+   * legitimately reaches it — `application_channel=OFFSHORE`'s edge is
+   * still taken, just only from the `wants_onshore_conversion=no` branch.
+   */
+  edgesReachable: ReadonlySet<string>;
+  /**
+   * First-DFS-visit witness PER EDGE, not per question (Y2): the overrides
+   * that reach AND answer that exact `(questionId, value)` pair — mirrors
+   * `review_gate`'s own `{...overridesSoFar, review_gate: item}` shape for
+   * every edge, not just that one. `buildCoveringSubset` uses this witness,
+   * never the per-question `witnesses` above, so a covering walk targeting
+   * `application_channel=OFFSHORE` is seeded with the ONE context
+   * (`wants_onshore_conversion=no`) that can actually answer it.
+   */
+  edgeWitnesses: ReadonlyMap<string, Readonly<Record<string, string>>>;
 }
 
 /**
@@ -352,6 +395,8 @@ export function countExactWalks(
   const memo = new Map<string, { count: number; maxDepth: number }>();
   const nodesReached = new Set<string>();
   const witnesses = new Map<string, Record<string, string>>();
+  const edgesReachable = new Set<string>();
+  const edgeWitnesses = new Map<string, Record<string, string>>();
   const memoStats = options?.memoStats;
   const projection = options?.memoProjection ?? BRANCH_RELEVANT_FACT_KEYS;
 
@@ -392,7 +437,17 @@ export function countExactWalks(
 
     if (next.questionId === "review_gate") {
       // Orthogonal: every value is a leaf multiplier, never a new subtree —
-      // see the module docstring's grep evidence.
+      // see the module docstring's grep evidence. Never descended into, so
+      // its 13 edges are seeded here, at the early-return, rather than in
+      // the general loop below (Y2): each is REACHABLE the instant this
+      // leaf is reached, one edge per REVIEW_GATE_ITEMS member.
+      for (const item of REVIEW_GATE_ITEMS) {
+        const edgeKey = `review_gate=${item}`;
+        if (!edgesReachable.has(edgeKey)) {
+          edgesReachable.add(edgeKey);
+          edgeWitnesses.set(edgeKey, { ...overridesSoFar, review_gate: item });
+        }
+      }
       return { count: REVIEW_GATE_ITEMS.length, maxDepth: depth + 1 };
     }
 
@@ -408,7 +463,15 @@ export function countExactWalks(
 
     let total = 0;
     let deepest = depth;
-    for (const value of answersFor(next.questionId)) {
+    for (const value of answersFor(next.questionId, facts)) {
+      const edgeKey = `${next.questionId}=${value}`;
+      if (!edgesReachable.has(edgeKey)) {
+        edgesReachable.add(edgeKey);
+        edgeWitnesses.set(edgeKey, {
+          ...overridesSoFar,
+          [next.questionId]: value,
+        });
+      }
       const sub = countFrom(
         next,
         { ...facts, [next.questionId]: value },
@@ -441,7 +504,14 @@ export function countExactWalks(
     {},
     initialPath,
   );
-  return { walksTotalExact: count, maxDepth, nodesReached, witnesses };
+  return {
+    walksTotalExact: count,
+    maxDepth,
+    nodesReached,
+    witnesses,
+    edgesReachable,
+    edgeWitnesses,
+  };
 }
 
 export interface CoveringWalk {
@@ -464,30 +534,33 @@ export interface CoveringSubset {
 
 /**
  * The independent SET comparison R2 requires (GATE-B1-REPORT-6842.md Check 4,
- * MEDIUM-2): `required` is every `(id, value)` pair for every id the graph
- * actually reaches, over the SAME domain `answersFor` declares for it —
- * `review_gate` included, since it IS a reached node with its own 13-value
- * wire domain (module docstring). `actual` is read back from the WALKS this
- * function is given, never from `buildCoveringSubset`'s own internal
- * `covered` bookkeeping (which only tracks what still needs a dedicated
- * walk, mid-loop, and — before this fix — silently never saw the
- * `review_gate` clone walks at all, since they bypass that bookkeeping by
- * construction). `edgesCovered` is `|required ∩ actual|`: two sizes over the
- * SAME id set, never `edgesCovered >= edgesTotal` over two DIFFERENT sets —
- * the previous test could not go red on a real miss because that comparison
- * is arithmetically guaranteed regardless of what was actually walked.
- * Exported standalone (not only reachable via `buildCoveringSubset`) so a
- * guilt test can drop one walk from a real, already-built subset and assert
- * the edge it alone carried reappears in `edgesMissing`, named.
+ * MEDIUM-2): `required` is every `(id, value)` pair the graph actually
+ * REACHES — `edgesReachable`, straight from the DFS (Y2, Slice B5-1), never
+ * recomputed as a product over `nodesReached × answersFor(id)`: a product
+ * would either ignore `application_channel`'s facts-dependent domain (over-
+ * counting a pair no context can reach) or need one arbitrary facts context
+ * to query it (under-counting the union across contexts) — the DFS already
+ * visited every context and is the one source that gets this right.
+ * `review_gate` is included, since its 13 edges are seeded into
+ * `edgesReachable` at its own early-return (module docstring, Y2). `actual`
+ * is read back from the WALKS this function is given, never from
+ * `buildCoveringSubset`'s own internal `covered` bookkeeping (which only
+ * tracks what still needs a dedicated walk, mid-loop, and — before this fix
+ * — silently never saw the `review_gate` clone walks at all, since they
+ * bypass that bookkeeping by construction). `edgesCovered` is
+ * `|required ∩ actual|`: two sizes over the SAME edge set, never
+ * `edgesCovered >= edgesTotal` over two DIFFERENT sets — the previous test
+ * could not go red on a real miss because that comparison is arithmetically
+ * guaranteed regardless of what was actually walked. Exported standalone
+ * (not only reachable via `buildCoveringSubset`) so a guilt test can drop
+ * one walk from a real, already-built subset and assert the edge it alone
+ * carried reappears in `edgesMissing`, named.
  */
 export function edgeCoverageReport(
-  nodesReached: ReadonlySet<string>,
+  edgesReachable: ReadonlySet<string>,
   walks: readonly CoveringWalk[],
 ): CoveringSubset {
-  const required = new Set<string>();
-  for (const id of nodesReached) {
-    for (const value of answersFor(id)) required.add(`${id}=${value}`);
-  }
+  const required = new Set(edgesReachable);
   const actual = new Set<string>();
   for (const walk of walks) {
     for (const id of walk.asked) {
@@ -511,13 +584,22 @@ export function edgeCoverageReport(
  * A deterministic, provably total-edge-covering subset — see the module
  * docstring. One baseline walk (every question at `withRepresentativeDefaults`'s
  * seeded default), then one targeted walk per still-uncovered `(questionId,
- * answer)` edge: `runWalk({...witness, [questionId]: answer})` replays the
- * FIRST DFS path that reached `questionId` (proven reachable by
- * `countExactWalks`) and then forces the one answer under test, so every
- * OTHER question on that walk still gets its ordinary default. Finally, 12
- * cheap clones of the baseline cover `review_gate`'s 13-item domain (`"none"`
- * is already the baseline's own default). The final coverage numbers are
- * computed by `edgeCoverageReport` over ALL of these walks, clones included.
+ * answer)` edge: `runWalk(edgeWitness)` replays the FIRST DFS path that took
+ * THAT EXACT edge (`space.edgeWitnesses`, Y2 — never the per-question
+ * `space.witnesses`, so `application_channel=OFFSHORE` is seeded from the
+ * `wants_onshore_conversion=no` context that actually reaches it, not
+ * whichever context reached `application_channel` first). The edge's own
+ * answer is already inside its witness (mirroring `review_gate`'s witness
+ * shape), so no manual `{...witness, [id]: value}` append is needed here.
+ * The full declared domain per id (`answersFor(id, {})`, unfiltered — the
+ * facts-dependent filter only narrows what a SINGLE context may answer, not
+ * what is required overall) is walked in order and skipped when either
+ * already covered or not actually in `space.edgesReachable` (the latter
+ * never fires for a `bound: "PROVEN"` graph, kept as a defensive no-op).
+ * Finally, 12 cheap clones of the baseline cover `review_gate`'s 13-item
+ * domain (`"none"` is already the baseline's own default). The final
+ * coverage numbers are computed by `edgeCoverageReport` over ALL of these
+ * walks, clones included.
  */
 export function buildCoveringSubset(space: WalkSpaceCount): CoveringSubset {
   const covered = new Set<string>();
@@ -541,10 +623,12 @@ export function buildCoveringSubset(space: WalkSpaceCount): CoveringSubset {
     .filter((id) => id !== "review_gate")
     .sort();
   for (const id of reachedIds) {
-    for (const value of answersFor(id)) {
-      if (covered.has(`${id}=${value}`)) continue;
-      const witness = space.witnesses.get(id) ?? {};
-      record(`edge/${id}=${value}`, { ...witness, [id]: value });
+    for (const value of answersFor(id, {})) {
+      const edge = `${id}=${value}`;
+      if (!space.edgesReachable.has(edge)) continue;
+      if (covered.has(edge)) continue;
+      const witness = space.edgeWitnesses.get(edge) ?? {};
+      record(`edge/${edge}`, witness);
     }
   }
 
@@ -558,7 +642,7 @@ export function buildCoveringSubset(space: WalkSpaceCount): CoveringSubset {
     });
   }
 
-  return edgeCoverageReport(space.nodesReached, walks);
+  return edgeCoverageReport(space.edgesReachable, walks);
 }
 
 export interface RenderedWalk {

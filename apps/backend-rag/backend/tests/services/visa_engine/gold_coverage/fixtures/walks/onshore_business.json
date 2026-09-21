@@ -164,7 +164,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "process.application_channel": { "status": "KNOWN", "value": "OFFSHORE" },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "ONSHORE_CONVERSION"
+    },
     "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",

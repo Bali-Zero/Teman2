@@ -66,6 +66,7 @@ import {
   type OracleFacts,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/tree";
 import {
+  channelConflictsWithOnshoreIntent,
   computeNextNode,
   type OracleNode,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/flow";
@@ -157,11 +158,14 @@ interface Scenario {
 }
 
 /**
- * The answer this driver gives to `id`. Scenario overrides win; otherwise a
- * typed question gets its fixed synthetic value and every other question gets
- * its FIRST option.
+ * The single-shot version of `answerFor` below: overrides win, otherwise a
+ * typed question gets its fixed synthetic value and every other question
+ * gets its FIRST option. Never consults `facts` — that check lives in
+ * `answerFor` itself, so this stays the plain "what would this driver
+ * normally say" computation for every question kind, `application_channel`
+ * included.
  */
-export function answerFor(
+function ordinaryAnswerFor(
   id: string,
   overrides: Record<string, string>,
 ): string {
@@ -182,6 +186,55 @@ export function answerFor(
   return question.options[0].key;
 }
 
+/**
+ * The answer this driver gives to `id`. Scenario overrides win; otherwise a
+ * typed question gets its fixed synthetic value and every other question gets
+ * its FIRST option — see `ordinaryAnswerFor`. `facts` is OPTIONAL (defaults
+ * to `{}`) so `flow.test.ts:1934`'s existing two-argument call stays
+ * byte-identical: with no facts, `channelConflictsWithOnshoreIntent` always
+ * returns `false` (its own guard clause — `wantsOnshoreConversion ===
+ * undefined`), so the branch below never fires.
+ *
+ * For `application_channel` ONLY (Slice B5-1, mirrors `answersFor` in
+ * `enumerate-interview-space.ts` and both `flow.ts` reducer call sites,
+ * `:1317`/`:327`): if the ordinary answer conflicts with `facts.
+ * wants_onshore_conversion` — the SAME guard `flowReducer` applies before
+ * recording an `ANSWER` — this returns the first declared option the live
+ * interview WOULD accept instead, exactly as an applicant steered off a
+ * blocked choice would end up picking something else. `runWalk` passes its
+ * own accumulating `facts`, so by the time `application_channel` is asked,
+ * `facts.wants_onshore_conversion` already holds whatever THIS walk
+ * actually answered for it, never a stale default.
+ */
+export function answerFor(
+  id: string,
+  overrides: Record<string, string>,
+  facts: Record<string, string> = {},
+): string {
+  const ordinary = ordinaryAnswerFor(id, overrides);
+  if (
+    id !== "application_channel" ||
+    !channelConflictsWithOnshoreIntent(facts.wants_onshore_conversion, ordinary)
+  ) {
+    return ordinary;
+  }
+  const question = QUESTIONS[id];
+  const accepted = question.options.find(
+    (option) =>
+      !channelConflictsWithOnshoreIntent(
+        facts.wants_onshore_conversion,
+        option.key,
+      ),
+  );
+  if (!accepted) {
+    throw new Error(
+      `answerFor: no accepted application_channel option for ` +
+        `wants_onshore_conversion=${facts.wants_onshore_conversion}`,
+    );
+  }
+  return accepted.key;
+}
+
 /** Drive one walk from the framing node to whatever terminal node it reaches. */
 export function runWalk(overrides: Record<string, string>): {
   asked: string[];
@@ -194,7 +247,7 @@ export function runWalk(overrides: Record<string, string>): {
     node = computeNextNode(node, facts, CORPUS_TODAY);
     if (node.kind !== "question") break;
     asked.push(node.questionId);
-    facts[node.questionId] = answerFor(node.questionId, overrides);
+    facts[node.questionId] = answerFor(node.questionId, overrides, facts);
   }
   return { asked, facts };
 }
