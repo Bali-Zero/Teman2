@@ -36,6 +36,7 @@ pre-existing window rather than fixing a regression.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 import urllib.error
@@ -244,11 +245,24 @@ def ask(
 
 
 def noul(answers: dict | None, key: str) -> float | None:
-    """Probability for a Noul answer, or None when it is absent/malformed."""
+    """Probability for a Noul answer, or None when it is absent/malformed.
+
+    Malformed means MORE than "not a number", and the day the step was armed
+    that distinction started to matter (codex council finding on RULED
+    2026-09-21-ter): `bool` is an `int`, so `{"noul": true}` used to become
+    1.0 — a finding, and a red build — and `1.5`, `inf` and `nan` passed the
+    same isinstance check. A probability is a non-bool finite number in
+    [0, 1]; anything else is no opinion, never a verdict.
+    """
     if not answers:
         return None
     entry = answers.get(key)
     if not isinstance(entry, dict):
         return None
     value = entry.get("noul")
-    return float(value) if isinstance(value, (int, float)) else None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    prob = float(value)
+    if not math.isfinite(prob) or not 0.0 <= prob <= 1.0:
+        return None
+    return prob

@@ -33,7 +33,7 @@ receipts:
     seat: claude-fable-5-1
   - claim: "the same flip is now pinned by a test that reaches main()'s exit path with a violation present"
     cmd: python3 -m pytest -q scripts/test_lint_paid_llm_entity.py scripts/tests/test_lint_ban_prose.py scripts/tests/test_vendor_authorization_fence.py scripts/tests/test_typesafe_client_pin.py scripts/tests/test_cate_trigger_parity.py
-    result: "221 passed (220 before test_a_violation_exits_one_unless_advisory was added)"
+    result: "221 passed (220 before test_a_violation_exits_one_unless_advisory was added; 234 after the noul() fix and its 13 tests — see below)"
     exit: 0
     ts: 2026-09-21T04:33:22Z
     seat: claude-fable-5-1
@@ -67,6 +67,18 @@ receipts:
     exit: 0
     ts: 2026-09-21T04:15:34Z
     seat: claude-sonnet-5 (backend-verifier probe, read-only)
+  - claim: "the repository secret the step reads exists (names only, value never read) — evidence for the ruling's 'key on every machine and in the repository secret' (codex finding 5)"
+    cmd: gh secret list --repo Bali-Zero/Teman2 | awk '$1=="TYPESAFE_API_KEY"{print "present, updated", $2}'
+    result: "TYPESAFE_API_KEY present, updated 2026-09-21T03:41:00Z; Pro and Mini probes ${TYPESAFE_API_KEY:+SET} printed SET and typesafe_client.available() printed True on both against origin/main 492d5e6b0d (earlier this session)"
+    exit: 0
+    ts: 2026-09-21T04:47:32Z
+    seat: claude-fable-5-1
+  - claim: "a malformed Noul value can no longer become a finding (codex finding 1): bool, out-of-range, inf, nan and non-numeric values are 'no opinion'"
+    cmd: python3 -m pytest -q scripts/test_lint_paid_llm_entity.py -k noul
+    result: "13 passed (10 guilt shapes: true, false, above-one, below-zero, inf, nan, string, none, list, dict -> None; 3 innocence: 0, 1, 0.83 -> the same float); the five suites then 234 passed"
+    exit: 0
+    ts: 2026-09-21T04:50:20Z
+    seat: claude-fable-5-1
   - claim: "titolare seats available to this session for the council"
     cmd: python3 scripts/arsenal_probe.py --read-last --json
     result: "codex UNKNOWN_ERR (21h-old probe; a live `codex exec` was dispatched anyway), agy TIMEOUT (21h-old; live `agy -p` returned rc 0), tp1-qwen3.8-max / tp1-glm-5.2 / tp1-deepseek-v4-pro QUOTA_DEAD; the kimi-code/k3 dispatch was denied by the conducting session's auto-mode classifier (Data Exfiltration)"
@@ -85,6 +97,15 @@ seat_fallback_reason: |
   its TP1 reserves (tp1-glm-5.2, tp1-deepseek-v4-pro). codex-gpt-5.6-sol, titolare, was
   dispatched live (`codex exec --sandbox read-only`) and its line is in council-journal.jsonl.
 dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "DISSENT (verbatim): Do not arm a probabilistic external judge until malformed responses are fail-closed and the outbound repository-content PII boundary is enforceable. — First half ACCEPTED and FIXED here: noul() returned float(True) == 1.0 for a malformed {noul: true} and would have red a PR on garbage; it now returns None unless the value is a non-bool finite number in [0, 1], with guilt and innocence tests. Second half REJECTED as new: RULED 2026-09-21-bis settled the boundary — the repository is itself bound by §4, a PII-carrying file is a violation before any vendor sees it, and non-repository material is not covered; this PR sends nothing -bis did not already authorize."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH — no pardon list: a finding reaches `return 1` directly and the ruling defers the mechanism to a future lane. ACCEPTED as risk, same as agy's finding below; the owner's decision to arm stands and the first false red is the lane that writes it."
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM — -ter asserted the key was on every machine and in the repository secret with no tracked evidence, while -bis records the secret was NOT configured. ADDRESSED: a names-only receipt (gh secret list, updated 2026-09-21T03:41:00Z) and the Pro/Mini presence probes are in this pack."
+    status: CONFIRMED
   - seat: agy-gemini-3.1-pro
     objection: "HIGH — the 16 refuter cases in bench_cases.json (9 innocence) were never run against jev-1.13.0, while the ruling and the workflow comment cited only the 39-case numbers: an unmeasured false-alarm surface under a blocking gate. CLOSED BY MEASUREMENT in this pack: the full 55-case bench was run live before pushing (false alarms 0/29 at every threshold 0.5-0.9) and -ter plus the workflow comment now carry the measured numbers."
     status: CONFIRMED
@@ -101,16 +122,15 @@ dissent:
     objection: "-bis still says 'the step keeps --advisory' / 'The step stays advisory' two lines above -ter, and the file quotes the step's former '(advisory)' name; -ter did not use the word SUPERSEDES. FIXED: -ter now names the superseded sentences explicitly; the older lines stay as history by the file's append-only convention."
     status: CONFIRMED
 bites:
-  consumer: catE step #40c "Paid-endpoint ban judged as an entity" (.github/workflows/catE-sovereignty-lint.yml) — runs scripts/lint_paid_llm_entity.py WITHOUT --advisory on every hot-zone PR, this one included
-  where: ci
-  observation: |
-    Legacy form on purpose: the executable `observe:` needs the observed script to declare
-    itself `bites-observable`, and this PR's constraint is to leave scripts/lint_paid_llm_entity.py
-    untouched. The observation, made before this pack was written and to be re-read on this PR's
-    own catE run: with the key configured and the -bis authorization on disk, the armed lint run
-    on .github/workflows/catE-sovereignty-lint.yml and on scripts/lint_paid_llm_entity.py reports
+  consumer: |
+    catE step #40c "Paid-endpoint ban judged as an entity" (.github/workflows/catE-sovereignty-lint.yml),
+    which runs scripts/lint_paid_llm_entity.py WITHOUT --advisory on every hot-zone PR, this one
+    included. Legacy form on purpose: the executable `observe:` needs the observed script to declare
+    itself `bites-observable`, and this PR leaves scripts/lint_paid_llm_entity.py untouched. The
+    observation, made before this pack was written (receipts above) and to be re-read on this PR's
+    own catE run: with the key configured and the -bis authorization on disk, the armed lint run on
+    .github/workflows/catE-sovereignty-lint.yml and on scripts/lint_paid_llm_entity.py reports
     asked=True, violation=False (max route probability 0.13) and exits 0; with a violation stubbed
     in, main() exits 1 without --advisory and 0 with it (test_a_violation_exits_one_unless_advisory).
-    On this PR's head the step "Paid-endpoint ban judged as an entity" must show files judged > 0
-    and exit 0 — a red here on a diff that reaches no paid endpoint would be the first false red
-    the ruling describes, and would be read, not rerun.
+    On this PR's head the step must show files judged > 0 and exit 0 — a red here on a diff that
+    reaches no paid endpoint would be the first false red the ruling describes, read and not rerun.

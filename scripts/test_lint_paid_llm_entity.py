@@ -503,3 +503,23 @@ def test_a_violation_exits_one_unless_advisory(monkeypatch, tmp_path, capsys):
     assert lint.main([str(target)]) == 1
     assert lint.main(["--advisory", str(target)]) == 0
     assert "1 violation(s)" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [True, False, 1.5, -0.1, float("inf"), float("nan"), "0.9", None, [0.9], {"p": 0.9}],
+    ids=["true", "false", "above-one", "below-zero", "inf", "nan", "string", "none", "list", "dict"],
+)
+def test_a_malformed_noul_value_is_no_opinion(bad):
+    """GUILT for 'malformed = no opinion' (codex council finding on the arming
+    PR): `noul()` returned float(value) for any int or float, and bool is an
+    int — a vendor answer of `{"noul": true}` became probability 1.0 and, once
+    the step was armed, a red build. A bool, a number outside [0, 1], inf,
+    nan or a non-number must never become a probability."""
+    assert lint.noul({"route": {"noul": bad}}, "route") is None
+
+
+@pytest.mark.parametrize("good", [0, 1, 0.83], ids=["zero", "one", "fraction"])
+def test_a_well_formed_noul_value_is_its_probability(good):
+    """INNOCENCE. Without this the guard above could be `return None`."""
+    assert lint.noul({"route": {"noul": good}}, "route") == float(good)
