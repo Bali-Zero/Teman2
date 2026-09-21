@@ -21,12 +21,27 @@ constraints:
     acceptance)."
   - "No client PII, no applicant-shaped data: every persona in the four JSONs is synthetic
     (`traffic_source=synthetic_driver`, `probe_evaluate.py`'s driver-token idiom). Confirmed by
-    grep, not assumed — see acceptance."
+    grep — and the grep's own imprecision (a first draft said 'zero matches' for a pattern that
+    had matches, correctly judged non-PII but not disclosed as such) is one of the 8 findings
+    below, fixed."
   - "The PR-number list this task was assigned (#6861/#6920/#6952/#6972/#6970) was independently
     re-derived from `git log`/`gh pr view`: #6861 is CLOSED, never merged; #6920 merged but
     touches a dependency file (`report_lock.py`), not either enumerator. The README states the
-    correction; it is not smoothed into agreement with the assigned list."
+    correction; it is not smoothed into agreement with the assigned list. Confirmed again by the
+    adversarial reviewer via the GitHub connector after `gh` was blocked by its sandbox network."
   - "PR stays UNARMED. The builder does not merge, does not run `gh pr merge`."
+objective_note: |
+  A real codex (`gpt-6-astra`, xhigh) adversarial review ran against the first-committed draft
+  and raised 8 findings, ALL 8 CONFIRMED: a wrong p95 (non-standard nearest-rank index, 1341 ->
+  correct 1494ms), a vacuous-G2-d overclaim (PLAN's own G2-c counts 40 non-criminal
+  HUMAN_REVIEW_REQUIRED walks as red; harness_reds={} only covers transport failures), an
+  overstated "every path combination" claim (edge coverage != the manifest's own
+  72,165,845,568,960-combination space), an overclaimed build-stability reading (health.start is
+  overwritten on every resume), an imprecise PII-grep report ("zero matches" when the actual
+  pattern had matches, correctly judged non-PII but not disclosed), a non-runnable reproduction
+  command (PYTHONPATH=. from repo root ModuleNotFoundErrors), a misdescribed 429 circuit-breaker
+  rule, and the R1 registration itself. All 8 are fixed in the committed README; the
+  `## Adversarial review` section names each one with its correction.
 acceptance:
   - text: >-
       WHEN the four evidence JSON files in this PR are compared byte-for-byte against their kit
@@ -37,53 +52,68 @@ acceptance:
       prove-live-b4-full-sweep-report-20260921.json prove-live-b2c-c3-manifest-raw-20260920.json
       prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json
       prove-live-b4b-delta-report-20260921.json; do cmp -s "$f"
-      "$KIT/$f" && echo "OK: $f"; done -> 4/4 OK (KIT=~/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/kit)
+      "$KIT/$f" && echo "OK: $f"; done -> 4/4 OK (KIT=~/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/kit);
+      re-confirmed independently by the adversarial reviewer via a separate byte-compare +
+      json.loads
   - text: >-
       WHEN every number/table in README.md (verdict distribution, review_reasons,
       no_path_reasons, notices, latency p50/p95/max) is recomputed directly from the walks[]
-      array of the four JSONs, it SHALL match what the README states.
+      array of the four JSONs using the STANDARD nearest-rank definition
+      (`sorted[ceil(n*p)-1]`), it SHALL match what the README states.
     status: verified
-    probe:
-      "python3 derive_numbers.py (scratch script, pasted in the PR body) -> every table's
-      numbers match; nearest-rank p50/p95/max = 273/1341/5128ms, matching the conductor's own
-      independently-recorded reading in MANDATE-vo.md"
+    probe: >-
+      python3 (self-contained heredoc, pasted in the PR body) -> verdicts 173/41/27/12 match;
+      review_reasons/no_path_reasons/notices tag sums 47/39/64 match; p50/p95/max/min =
+      273/1494/5128/195ms. The p95 figure changed from an earlier draft's 1341ms (a
+      NON-standard index, round((n-1)*p)=239) after the adversarial review confirmed the
+      standard nearest-rank index is 240 -> 1494ms; both indices and the correction are
+      disclosed in the README rather than silently overwritten.
   - text: >-
-      WHEN the four JSON files are swept for an email pattern, a 10+-digit phone-like run, or a
-      key named email/phone/passport/npwp/ktp/nik, the count SHALL be zero.
+      WHEN the four JSON files are swept for an email pattern, a key named
+      email/phone/passport/npwp/ktp/nik, and a bare 10+-digit run, the first two SHALL be zero
+      and the third SHALL be individually accounted for (no applicant-shaped number).
     status: verified
     probe: >-
       grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' *.json (0 hits); grep -ioE
-      '"[a-z_]*(email|phone|passport|npwp|ktp|nik)[a-z_]*"\s*:' *.json (0 hits); the only
-      passport-adjacent string is the enum value DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION
+      '"[a-z_]*(email|phone|passport|npwp|ktp|nik)[a-z_]*"\s*:' *.json (0 hits); grep -cE
+      '[0-9]{10,}' *.json -> 160 lines total, every one a walksTotalExact count, a
+      sha256/uuid5 hex value, or a concatenated timestamp (inspected, not assumed) — the only
+      passport-adjacent strings are the notice enum DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION and
+      the walk label review-gate/diplomatic_passport, neither a passport number
   - text: >-
       WHEN `scripts/check_adversarial_review.py --files README.md` runs, it SHALL PASS: a
-      generator != grader review by a seat != the authoring session.
+      generator != grader review by a seat != the authoring session, with every raised finding
+      disposed of in the text rather than only in this brief.
     status: verified
-    probe:
-      "codex spalla review (gpt-5.5 family, read-only sandbox) against this diff; findings
-      folded into README.md's `## Adversarial review` section; frontmatter
-      `adversarial_review: codex`"
+    probe: >-
+      python3 scripts/check_adversarial_review.py --files
+      research/operations/2026-09-21-visa-oracle-live-enumeration/README.md -> "PASS — 1
+      research file(s) carry a valid adversarial review" (re-run after the fixes landed, not
+      before — the first run on the unfixed draft correctly FAILed)
 risks:
   - "The two ~1.86 MB manifest JSONs dominate the churn and are the reason this floors at Gear 3
     despite being a pure data capture — nothing in this diff is logic, so the Gear-3 label
     reflects diff size, not review complexity. Named here so the grader does not spend budget
     looking for code-review-shaped risk that isn't present."
   - "The PR-number correction (#6861 closed unmerged, #6920 touches a dependency not either
-    enumerator) diverges from the number list the assigning prompt itself carried. If that
-    divergence is wrong — if `git log`/`gh pr view` were misread — the README's Instrument
-    section is wrong and needs a follow-up correction, named as depth-1 per the Builder
-    Contract."
-  - "The report proves G2-b (engine-side sweep) only. G2-c (UI-parity, B3) is explicitly out of
-    scope and named as such in the README's Declared limits — a reader must not treat this
-    report as proving the promoted mouth renders the same verdicts."
+    enumerator) diverges from the number list the assigning prompt itself carried, and was
+    independently re-confirmed by the adversarial reviewer via the GitHub connector."
+  - "The report proves G2-b's transport contract only (not the full PLAN G2-b row: Fly
+    release id / Vercel deployment id are named as absent, not silently omitted). G2-d is
+    explicitly NOT met (40 non-criminal HUMAN_REVIEW_REQUIRED holds remain open, owed to
+    A3'/A8-A9). G2-c (B3, UI-parity) is out of scope. All three retractions came from the
+    adversarial review, not from the first draft."
+  - "README.md is ~20KB, over the ~12KB guidance in the assigning prompt — driven entirely by
+    the `## Adversarial review` section this repo's own R1 gate requires (not anticipated by
+    the assigning prompt, which predates knowledge of that gate's exact shape). Named as a
+    declared, reasoned departure rather than a silent overrun."
 grader: |
-  Independent seat, generator != grader. The authoring session cannot gate its own docs capture.
+  Independent seat, generator != grader. The authoring session cannot gate its own docs capture,
+  and a first codex pass already did the substantive adversarial work (8/8 confirmed, all fixed).
 
-  Attack surface, in priority order: (1) re-run the derivation script yourself against the
-  committed JSONs and confirm every README number, rather than trusting the pasted output;
-  (2) verify the #6861/#6920 correction independently (`gh pr view 6861`, `gh pr view 6920
-  --json files`) — this is the one claim in the README that contradicts what the task was
-  assigned, so it is the most likely place for an error to hide; (3) re-run the PII grep
-  yourself over the four files, not just read the reported zero; (4) check whether "What this
-  proves for PLAN G2" overclaims — specifically, does it anywhere imply the mouth (not just the
-  engine) was exercised.
+  Attack surface for a SECOND pass: (1) confirm the 8 fixes actually landed as described — read
+  the current README, not the brief's summary of it; (2) check whether any NEW claim introduced
+  by the fixes itself overclaims (e.g. does the retracted-G2-d language now correctly scope
+  G2-b, or does it overcorrect); (3) re-run the derivation script yourself against the committed
+  JSONs; (4) confirm `check_adversarial_review.py` genuinely passes on the current committed
+  file, not a stale copy.

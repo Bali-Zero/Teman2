@@ -8,6 +8,7 @@ sources:
   - prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json (re-emitted manifest, main `8a7e521974`)
   - prove-live-b4b-delta-report-20260921.json (3-walk delta sweep after the re-emission)
 discovered_by: session (M5), vo-builder-b4-report
+adversarial_review: codex
 ---
 
 # Visa Oracle: B4 full live-enumeration sweep (2026-09-21)
@@ -20,9 +21,11 @@ reproduction aid, not product code); none is copied from the conductor's mandate
 
 ## Purpose
 
-Prove **PLAN G2** — "every path combination proven against the live engine" — by walking the
-full interview-space manifest against the deployed evaluate endpoint and recording every
-verdict, with zero unexplained transport failures.
+Advance **PLAN G2-b** — the engine-side live sweep — by walking the manifest's 253-walk edge
+covering set against the deployed evaluate endpoint and recording every verdict, with zero
+unexplained transport failures. **Not** every path combination: the manifest's own
+`walksTotalExact` is 72,165,845,568,960 (edge coverage, proven, is a different and much smaller
+claim than combinatorial coverage — see Declared limits).
 
 ## Instrument
 
@@ -32,8 +35,11 @@ Two committed pieces, chained:
   the real `computeNextNode` graph, emits a manifest with the walk count and bound proof.
 - **B2 live runner** — `apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py`. Reads
   the manifest, posts each walk to `POST /api/visa-oracle/evaluate` as
-  `traffic_source=synthetic_driver`, fail-closed (`--max-requests` has no default, HTTP
-  401/403 stops immediately, 429/5xx/timeout stop after 3 consecutive harness reds), resumable.
+  `traffic_source=synthetic_driver`, fail-closed (`--max-requests` has no default). Three
+  independent circuit breakers (`enumerate_live.py:940-960`): HTTP 401/403 stops immediately;
+  HTTP 429 stops immediately after its own bounded retries and never counts toward the other
+  tally; every other harness red (5xx, timeout, connection error, invalid 200 body) stops after
+  3 CONSECUTIVE reds (an engine verdict resets that counter to zero). Resumable.
 
 PRs against these two files, read from `git log --oneline origin/main -- <path>` (path
 history only — squash-merged feature-branch commits are excluded by construction):
@@ -59,11 +65,16 @@ history only — squash-merged feature-branch commits are excluded by constructi
 
 Full sweep: bench worktree at build `000eaf0732`, resumed from a 60-walk C3 partial
 (`manifest_sha256` in the report JSON), `--dry-run` plan `pending=193 already_recorded=60`,
-live run 2026-09-20T20:51:10Z → 2026-09-21T00:41:36Z UTC, `stopped_reason=completed`,
-`requests_used_this_run=193`, `requests_used_total=253`. `health.start.build_sha ==
-health.end.build_sha == 000eaf0732…`, both HTTP 200 — no mid-run redeploy. Rule pack: sequence
-22, `rule_pack_id 916915d8-1c58-508d-aff7-742a3c012df7`, on all 253 walks (no drift).
-`summary.harness_reds == {}`.
+live run (the 193-walk resumed leg) 2026-09-20T20:51:10Z → 2026-09-21T00:41:36Z UTC,
+`stopped_reason=completed`, `requests_used_this_run=193`, `requests_used_total=253`.
+`health.start.build_sha == health.end.build_sha == 000eaf0732…`, both HTTP 200. **Scope of that
+claim, precisely**: `report["health"]["start"]` is overwritten on every resume
+(`enumerate_live.py:914`), so the two probes bound only the 193-walk resumed leg's own window
+(20:51–00:41Z), not the full 253-walk history back to the original 60-walk partial, and two
+discrete probes cannot rule out a redeploy-and-revert between them — what is actually proven is
+that the **rule pack was constant across all 253 responses** (sequence 22,
+`rule_pack_id 916915d8-1c58-508d-aff7-742a3c012df7`, no drift), which is the load-bearing fact
+for verdict comparability. `summary.harness_reds == {}`.
 
 Delta sweep: after PR #6998 merged `main` → `8a7e521974` (A3-M, mapping
 `overstay`/`blacklist`/`immigration_investigation` through `REVIEW_FLAG_MAP`), the manifest was
@@ -84,8 +95,14 @@ each now carrying a `disclosed_review_flags` entry. Those 3 were re-swept live
 | NEEDS_INPUT | 12 |
 | **total** | **253** |
 
-HTTP status: 253/253 = 200. Retries: 0. Latency over the 253 walks (nearest-rank, no
-interpolation): **p50 273 ms · p95 1341 ms · max 5128 ms · min 195 ms**.
+HTTP status: 253/253 = 200. Retries: 0. Latency over the 253 walks, standard nearest-rank
+(`sorted_lat[ceil(n·p) − 1]`, 0-indexed, n=253): **p50 273 ms · p95 1494 ms · max 5128 ms · min
+195 ms**. **Correction (adversarial review):** a first draft reported p95 as 1341 ms, from a
+different index (`round((n−1)·0.95) = 239`, val 1340.72) that happens to match the conductor's
+own informal reading in `MANDATE-vo.md` — that is not the standard nearest-rank definition
+(rank `⌈p·n⌉`, 1-indexed = 241, 0-indexed 240, val 1493.69). Both indices are adjacent
+(239 vs 240) and both are "a nearest-rank convention", but they are not the same number and the
+draft did not disclose the choice; corrected here to the standard one.
 
 ## The 41 HUMAN_REVIEW_REQUIRED, by `review_reasons` (a walk may carry >1 tag, 47 tags / 41 walks)
 
@@ -143,8 +160,9 @@ On the full-sweep manifest (pre A3-M, emitted by mouth `4a149d0ff4`) the three A
 A3-M (PR #6998, merged to `main` as `8a7e521974`) maps `overstay`/`blacklist`/
 `immigration_investigation` through `REVIEW_FLAG_MAP` into `disclosed_review_flags`. Re-emitting
 the manifest from that head changes exactly 3 of 253 walk payloads — same 253 walk labels, same
-317/317 edge coverage, only those 3 gain a flag. Re-swept live, all 3 now render their named
-notice end-to-end and stay `HUMAN_REVIEW_REQUIRED`, held by the pack rule
+317/317 edge coverage, only those 3 gain a flag. Re-swept live, the API now returns each walk's
+named notice (engine-side only — no DOM was rendered, see Declared limits) and all 3 stay
+`HUMAN_REVIEW_REQUIRED`, held by the pack rule
 `BRIDGING_ADVERSE_HISTORY` (which reads `immigration.violation_history`, independent of the new
 flag) — the A3-B change is visible in the notice, not in the verdict:
 
@@ -160,34 +178,60 @@ sign/activate, OD-6, owner signs once), not the mouth's or the runner's.
 
 ## What this proves for PLAN G2, and what it does not
 
-**Proven** (G2-b, in full): a committed, rate-limited, resumable live runner posted all 253
-covering walks of the real interview graph to the deployed evaluate endpoint labelled
-`traffic_source=synthetic_driver`, at a single stable build (`000eaf0732`) and rule-pack
-sequence (22), zero harness reds, zero retries, 253/253 HTTP 200. G2-d (every red closed inside
-the mission) holds vacuously — there were no reds to close. G2-e holds by construction: every
-persona is synthetic (`probe_evaluate.py`'s driver-token idiom), confirmed here by grep (see
-`## Declared limits`).
+**Proven** (G2-b, the runner's own transport contract): a committed, rate-limited, resumable
+live runner posted all 253 edge-covering walks of the real interview graph to the deployed
+evaluate endpoint labelled `traffic_source=synthetic_driver`, a constant rule-pack sequence
+(22) across all 253 responses, zero *harness* reds (the runner's own transport-failure
+classification: 401/403, 429, 5xx, timeout, connection error, invalid 200 body — none
+occurred), zero retries, 253/253 HTTP 200. **Not present in this report**: the Fly release id
+and the Vercel deployment id that PLAN's G2-b row asks the report to name — `enumerate_live.py`
+records `build_sha` (a git commit) in `health`, not a Fly release id, and no Vercel id at all;
+named here as owed rather than silently omitted.
 
-**Not proven** (G2-c, B3): this sweep only exercises the engine endpoint. It says nothing about
-whether the **promoted mouth** renders the same verdict, candidate set, or review-reason text in
-its DOM — that is B3's UI-parity runner (Playwright, stratified sample, against the promoted
-Vercel deployment), which needs a Zero decision on walk authorization before it can run (per
-the conductor's mandate, OD pending). Until B3 runs, "the live engine returns X" and "the live
-UI shows X" are two separate claims; only the first is measured here.
+**Retracted** (adversarial review, first draft): a first draft claimed "G2-d holds vacuously —
+there were no reds to close." That conflated two different definitions of "red". PLAN's own
+**G2-c** defines red to include "(iii) `HUMAN_REVIEW_REQUIRED` for a non-criminal cause" — and
+this sweep's own data shows **40** such walks (the table above). `summary.harness_reds == {}`
+certifies only the runner's transport-level classification; it says nothing about G2-c's
+verdict-content classification, and G2-d ("every red closed inside the mission") is not met by
+this PR — those 40 holds are open, owed to A3'/A8-A9 as stated in the review_reasons table.
+G2-e holds by construction: every persona is synthetic (`probe_evaluate.py`'s driver-token
+idiom), confirmed here by grep (see `## Declared limits`).
+
+**Not proven** (G2-c, B3): this sweep only exercises the engine endpoint over its **edge
+covering set**, not the full `72,165,845,568,960`-combination space the manifest itself
+reports, and it excludes `review_gate` multi-item combinations by the manifest's own declared
+gap. It says nothing about whether the **promoted mouth** renders the same verdict, candidate
+set, or review-reason text in its DOM — that is B3's UI-parity runner (Playwright, stratified
+sample, against the promoted Vercel deployment), which needs a Zero decision on walk
+authorization before it can run (per the conductor's mandate, OD pending). Until B3 runs, "the
+live engine returns X" and "the live UI shows X" are two separate claims; only the first is
+measured here.
 
 ## Declared limits
 
-- This is the **engine half** of G2, not the UI half (B3, see above).
+- This is the **engine half** of G2-b only, over the manifest's edge-covering set (317/317
+  edges, 253 walks) — not full combinatorial coverage (`72,165,845,568,960` per the manifest's
+  own `walksTotalExact`), and not the UI half (B3, see above). `review_gate` multi-item
+  combinations are excluded by the manifest's own declared gap (a duplicate item, or "none"
+  combined with another item — `GATE-B1-REPORT-6842.md` Check 4, LOW-7).
+- Two health probes with equal `build_sha` bound only the resumed leg's own window
+  (2026-09-20T20:51–00:41Z), not the full run history, and cannot rule out a redeploy-and-revert
+  between them — see Method for what is actually proven (rule-pack constancy).
 - `AGE_BELOW_55`/employer/compensation dead ends are the pack's stated policy, not this
   report's judgment — this report counts them, it does not evaluate them.
 - The 41 `HUMAN_REVIEW_REQUIRED` walks are held, not resolved; 40 of 41 wait on A3'/A8-A9 work
-  already on PLAN, 1 is criminal-by-design and stays held permanently.
+  already on PLAN, 1 is criminal-by-design and stays held permanently. Per PLAN's own G2-c red
+  definition these 40 are unresolved reds — G2-d is NOT met by this PR (see G2 section above).
 - No client data anywhere: the four JSON files below carry synthetic personas only
-  (`traffic_source=synthetic_driver`). Confirmed by grep for an email pattern, a 10+-digit
-  phone-like run, and any key named `email`/`phone`/`passport`/`npwp`/`ktp`/`nik` across all
-  four files — zero matches. The only `passport`-adjacent string found is the enum value
-  `DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION` (a notice name, not a passport number), and the
-  apparent "phone-like" digit runs are `assessment_id` UUID5 values.
+  (`traffic_source=synthetic_driver`). Confirmed by grep — precisely, not just "zero matches":
+  an email-address pattern and a search for a key named
+  `email`/`phone`/`passport`/`npwp`/`ktp`/`nik` both return zero hits across all four files; a
+  bare `[0-9]{10,}` digit run returns **160 lines**, every one inspected and found to be a
+  `walksTotalExact` count, a sha256/uuid5 hex value, or a concatenated timestamp — never an
+  applicant-shaped number. The only `passport`-adjacent strings are the notice enum
+  `DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION` and the walk label
+  `review-gate/diplomatic_passport` (a scenario name, not a passport number).
 
 ## Files
 
@@ -202,28 +246,86 @@ UI shows X" are two separate claims; only the first is measured here.
 ## Reproduction
 
 ```bash
-# PR history for the two enumerator files (path history, origin/main only)
+# PR history for the two enumerator files (path history, origin/main only) — from repo root
 git log --oneline origin/main -- \
   apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py \
   apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts
 
-# re-derive every number in this README from the four JSONs beside it (run from this directory)
+# re-derive verdicts/review_reasons/no_path_reasons/notices/latency from the four JSONs beside
+# this README (run from THIS directory, research/operations/2026-09-21-visa-oracle-live-enumeration/)
 python3 - <<'PY'
 import json
 from collections import Counter
 d = json.load(open("prove-live-b4-full-sweep-report-20260921.json"))
 walks = d["walks"]
 print("verdicts:", dict(Counter(w["engine_state"] for w in walks)))
+review_reasons, no_path_reasons, notices = Counter(), Counter(), Counter()
+for w in walks:
+    rc = w["reason_codes"]
+    review_reasons.update(rc.get("review_reasons", []))
+    no_path_reasons.update(rc.get("no_path_reasons", []))
+    notices.update(rc.get("notices", []))
+print("review_reasons:", dict(review_reasons))
+print("no_path_reasons:", dict(no_path_reasons))
+print("notices:", dict(notices))
 lat = sorted(w["latency_ms"] for w in walks)
-p = lambda pct: lat[round((len(lat) - 1) * pct)]
+p = lambda pct: lat[__import__("math").ceil(len(lat) * pct) - 1]  # standard nearest-rank
 print("p50/p95/max:", round(p(0.5)), round(p(0.95)), round(max(lat)))
 PY
 
-# re-run the full sweep against the live engine (needs the driver token file; fresh report path,
-# same manifest — --manifest and --report are both required, --max-requests is required and has
-# no default by design, fail-closed)
-PYTHONPATH=. .venv/bin/python apps/backend-rag/backend/scripts/visa_engine/enumerate_live.py \
-  --manifest research/operations/2026-09-21-visa-oracle-live-enumeration/prove-live-b2c-c3-manifest-raw-20260920.json \
+# re-run the sweep against the live engine — needs the driver token file, and MUST run as a
+# module from apps/backend-rag with PYTHONPATH set to that directory (running the .py file
+# directly from repo root with PYTHONPATH=. fails: ModuleNotFoundError: backend).
+# --manifest/--report are both required; --max-requests is required with no default (fail-closed).
+cd apps/backend-rag
+PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.enumerate_live \
+  --manifest ../../research/operations/2026-09-21-visa-oracle-live-enumeration/prove-live-b2c-c3-manifest-raw-20260920.json \
   --report /tmp/reproduce-b4-report.json \
   --max-requests 253 --rate-per-minute 25
 ```
+
+## Adversarial review
+
+Seat: **codex** (`gpt-6-astra`, read-only sandbox, xhigh effort), reviewing this diff against
+the four JSONs and the repo directly (`git log`, `gh pr view`/GitHub connector, direct file
+reads). Generator ≠ grader: the session that wrote this report cannot be the one to certify it.
+
+Raised 8 findings against the first-committed draft, **all 8 CONFIRMED and fixed in this PR**:
+
+1. **p95 wrong** — the draft's nearest-rank index (`round((n−1)·0.95)`) is not the standard
+   nearest-rank definition (`⌈p·n⌉`, 1-indexed); corrected 1341 ms → **1494 ms**, with both
+   indices and the divergence from `MANDATE-vo.md`'s own informal reading disclosed rather than
+   silently overwritten. p50 273, max 5128, min 195 were already correct.
+2. **G2-d does not hold vacuously** — PLAN's own G2-c defines red to include
+   `HUMAN_REVIEW_REQUIRED` for a non-criminal cause; this sweep has 40 of those.
+   `summary.harness_reds == {}` is the runner's transport classification only. Retracted the
+   vacuous-G2-d claim; G2-b rescoped to what the runner's own contract actually shows, plus the
+   missing Fly-release-id/Vercel-deployment-id named as owed.
+3. **Coverage overstated** — "every path combination" corrected against the manifest's own
+   `walksTotalExact` (72,165,845,568,960) and its declared `review_gate` multi-item gap; edge
+   coverage (317/317) is proven, combinatorial coverage is not.
+4. **Build stability overclaimed** — `health.start` is overwritten on every resume
+   (`enumerate_live.py:914`), so the two probes bound only the final 193-walk leg's window, not
+   the full 253-walk history, and cannot rule out a redeploy-and-revert between them. Rescoped
+   to what is actually proven: rule-pack constancy across all 253 responses.
+5. **PII grep report imprecise** — the draft said "zero matches" for the phone-like pattern
+   when the actual grep run (allowing separators) had matches, correctly assessed as UUID5
+   values but not disclosed as such. Corrected to report the real grep output (a bare
+   `[0-9]{10,}` returns 160 lines; each inspected and named by shape) instead of a blanket
+   "zero".
+6. **Reproduction command not runnable as written** — `PYTHONPATH=.` from the repo root raises
+   `ModuleNotFoundError: backend`; the working invocation runs as a module from
+   `apps/backend-rag` with `PYTHONPATH=.` set there. Corrected, and verified with `--help`
+   (not a live run — a live run would spend production request budget).
+7. **429 behavior misdescribed** — the draft lumped HTTP 429 into "stops after 3 consecutive
+   harness reds"; the code (`enumerate_live.py:959`) gives 429 its own rule: bounded retries,
+   then an immediate stop that never counts toward the 3-consecutive tally. Corrected.
+8. **R1 registration** — this section and the `adversarial_review: codex` frontmatter key are
+   that registration.
+
+Not raised by the reviewer and independently confirmed: the verdict distribution (173/41/27/12),
+every `review_reasons`/`no_path_reasons`/notices count (47/39/64 tags), the #6856+#6970 /
+#6952+#6972 PR provenance, the #6861-closed-unmerged and #6920-touches-report_lock-only
+correction (checked via the GitHub connector after `gh` was blocked by the sandbox network), the
+delta finding's 3-walk diff and its `+0` effect on the G1 ledger, and the manifest/report
+`manifest_sha256` digests.
