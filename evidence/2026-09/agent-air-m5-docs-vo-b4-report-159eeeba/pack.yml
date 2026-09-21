@@ -30,7 +30,7 @@ lanes:
       independently against the four JSON files and the repo, not graded from the text alone"
 diff:
   files: 7
-  net_lines: "7 files, +125542/-0 (evidence/brief.yml, evidence/pack.yml,
+  net_lines: "7 files, +125576/-0 (evidence/brief.yml, evidence/pack.yml,
     research/operations/2026-09-21-visa-oracle-live-enumeration/{README.md,
     prove-live-b4-full-sweep-report-20260921.json, prove-live-b2c-c3-manifest-raw-20260920.json,
     prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json,
@@ -79,9 +79,14 @@ tests:
     nothing to unit-test. The assertions that matter are the receipts above."
 static:
   - "PII sweep over the four JSON files: no email address, no key named
-    email/phone/passport/npwp/ktp/nik; a bare 10+-digit run returns 160 lines, every one
-    individually inspected and found to be a walksTotalExact count, a sha256/uuid5 hex value, or
-    a concatenated timestamp — never an applicant-shaped number."
+    email/phone/passport/npwp/ktp/nik; a bare 10+-digit run returns 160 lines: 148 are the round
+    threshold constant 1000000000 (144 as a value under investment.investment_capital_idr /
+    investment.paid_up_capital_idr / investment.investment_amount_usd /
+    secondhome.bank_deposit_usd / secondhome.passive_monthly_income_usd /
+    secondhome.qualifying_property_value_usd, 4 as the enumeration edge label
+    edge/investment_amount_usd=1000000000 under both walk_id and label), 10 are a uuid5
+    assessment_id (5 distinct values, each appearing twice), and 2 are the manifest's own
+    walksTotalExact — never an applicant-shaped number."
 runtime_proof: >-
   None applicable and none claimed — no code ships. The nearest thing to a prove-live is the
   live sweep the JSON files themselves already record (against nuzantara-rag.fly.dev, build

@@ -227,9 +227,30 @@ measured here.
   (`traffic_source=synthetic_driver`). Confirmed by grep — precisely, not just "zero matches":
   an email-address pattern and a search for a key named
   `email`/`phone`/`passport`/`npwp`/`ktp`/`nik` both return zero hits across all four files; a
-  bare `[0-9]{10,}` digit run returns **160 lines**, every one inspected and found to be a
-  `walksTotalExact` count, a sha256/uuid5 hex value, or a concatenated timestamp — never an
-  applicant-shaped number. The only `passport`-adjacent strings are the notice enum
+  bare `[0-9]{10,}` digit run returns **160 lines**: 148 are the round threshold constant
+  `1000000000` (144 as a `value` under `investment.investment_capital_idr` /
+  `investment.paid_up_capital_idr` / `investment.investment_amount_usd` /
+  `secondhome.bank_deposit_usd` / `secondhome.passive_monthly_income_usd` /
+  `secondhome.qualifying_property_value_usd`, 4 as the enumeration edge label
+  `edge/investment_amount_usd=1000000000` under both `walk_id` and `label`), 10 are a `uuid5`
+  `assessment_id` (5 distinct values, each appearing twice), and 2 are the manifest's own
+  `walksTotalExact`. None is applicant-shaped: the amount is one constant repeated identically
+  across walks, not a real capital figure. Classified by:
+
+  ```
+  $ grep -Ehn '[0-9]{10,}' *.json | sed -E 's/^[0-9]+://; s/^ +//; s/,$//' | sort | uniq -c | sort -rn
+   144 "value": 1000000000
+     2 "assessment_id": "de42fff9-baff-5c6f-9bd1-590419228296"
+     2 "assessment_id": "ca0c4e0e-c3ab-591b-b70e-e8526342957b"
+     2 "assessment_id": "ae1d2ad7-ff5f-5d1e-b13e-c22474276960"
+     2 "assessment_id": "83475e84-3ca0-5135-af47-033993391374"
+     2 "assessment_id": "3c9c8b3c-e8ff-5be8-8c69-0c7118222670"
+     2 "walk_id": "edge/investment_amount_usd=1000000000"
+     2 "label": "edge/investment_amount_usd=1000000000"
+     2 "walksTotalExact": 72165845568960
+  ```
+
+  The only `passport`-adjacent strings are the notice enum
   `DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION` and the walk label
   `review-gate/diplomatic_passport` (a scenario name, not a passport number).
 

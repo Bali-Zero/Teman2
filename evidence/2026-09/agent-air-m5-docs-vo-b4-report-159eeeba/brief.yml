@@ -11,8 +11,10 @@ objective: |
   Every number in the README is re-derived from the JSONs by a script (pasted in this PR's body,
   not committed — a one-shot reproduction aid), never copied from the conductor's mandate log.
 
-  Gear 3 by SIZE, deterministically: 125,167-line churn (mostly the two ~1.86 MB manifest JSONs,
-  each carrying the 253-walk covering set) against the 1,828 threshold —
+  Gear 3 by SIZE, deterministically: 125,576-line churn (mostly the two ~1.86 MB manifest JSONs,
+  each carrying the 253-walk covering set), measured on this head via `git diff --numstat
+  "$(git merge-base origin/main HEAD)" HEAD | awk '{a+=$1; d+=$2} END {print a+d}'`, which sums
+  every changed file including this brief and its sibling pack — against the 1,828 threshold —
   `evidence_pack_lint.py --print-floor-source` returns `(3, "size")`; the path term does not
   fire (`research/operations/**` is not a hot-zone pattern).
 constraints:
@@ -75,11 +77,17 @@ acceptance:
     status: verified
     probe: >-
       grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' *.json (0 hits); grep -ioE
-      '"[a-z_]*(email|phone|passport|npwp|ktp|nik)[a-z_]*"\s*:' *.json (0 hits); grep -cE
-      '[0-9]{10,}' *.json -> 160 lines total, every one a walksTotalExact count, a
-      sha256/uuid5 hex value, or a concatenated timestamp (inspected, not assumed) — the only
-      passport-adjacent strings are the notice enum DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION and
-      the walk label review-gate/diplomatic_passport, neither a passport number
+      '"[a-z_]*(email|phone|passport|npwp|ktp|nik)[a-z_]*"\s*:' *.json (0 hits); grep -Ehn
+      '[0-9]{10,}' *.json | sed -E 's/^[0-9]+://; s/^ +//; s/,$//' | sort | uniq -c | sort -rn ->
+      160 lines total: 148 are the round threshold constant 1000000000 (144 as a value under
+      investment.investment_capital_idr / investment.paid_up_capital_idr /
+      investment.investment_amount_usd / secondhome.bank_deposit_usd /
+      secondhome.passive_monthly_income_usd / secondhome.qualifying_property_value_usd, 4 as the
+      enumeration edge label edge/investment_amount_usd=1000000000 under both walk_id and
+      label), 10 are a uuid5 assessment_id (5 distinct values, each appearing twice), and 2 are
+      the manifest's own walksTotalExact (inspected, not assumed) — the only passport-adjacent
+      strings are the notice enum DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION and the walk label
+      review-gate/diplomatic_passport, neither a passport number
   - text: >-
       WHEN `scripts/check_adversarial_review.py --files README.md` runs, it SHALL PASS: a
       generator != grader review by a seat != the authoring session, with every raised finding
