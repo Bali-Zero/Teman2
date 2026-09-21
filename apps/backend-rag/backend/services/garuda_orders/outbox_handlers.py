@@ -1035,11 +1035,11 @@ class PortalInviteHandler:
     because a staff mailbox must not be converted into a client login.
 
     THE SEND IS LAST, AND NOTHING MAY BE ADDED AFTER IT. `create_invitation` is
-    NOT idempotent: it expires any live unused invitation and mints a fresh
-    token every call. That is correct while the previous token was never
-    delivered, and harmful once it was — a retry would invalidate a link the
-    customer already holds. Keeping the send as the final statement bounds that
-    window to a failure of the send itself.
+    NOT idempotent: it mints a fresh token every call. It no longer expires a
+    live invitation addressed to the same mailbox (2026-09-21), and this handler
+    always invites `clients.email`, so a retry no longer invalidates a link the
+    customer already holds — it mails a second valid one. Keeping the send as
+    the final statement bounds those duplicates to a failure of the send itself.
 
     WHAT IS NEVER LOGGED HERE. The invitation token and any URL embedding it are
     the credential that completes registration through a PUBLIC, unauthenticated
