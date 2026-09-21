@@ -29,8 +29,8 @@ lanes:
       "codex (gpt-6-astra, xhigh, read-only sandbox) — every claim in the README re-derived
       independently against the four JSON files and the repo, not graded from the text alone"
 diff:
-  files: 6
-  net_lines: "6 files, +125388/-0 (evidence/brief.yml, evidence/pack.yml,
+  files: 7
+  net_lines: "7 files, +125542/-0 (evidence/brief.yml, evidence/pack.yml,
     research/operations/2026-09-21-visa-oracle-live-enumeration/{README.md,
     prove-live-b4-full-sweep-report-20260921.json, prove-live-b2c-c3-manifest-raw-20260920.json,
     prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json,
