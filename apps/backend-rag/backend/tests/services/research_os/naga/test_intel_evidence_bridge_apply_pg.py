@@ -11,7 +11,7 @@ LOCAL RUN:
     TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:5432/intel_evidence_bridge_apply_test \\
         PYTHONPATH=.:../.. pytest backend/tests/services/research_os/naga/test_intel_evidence_bridge_apply_pg.py -q
 
-Six tests, each with its own guilt control (per the mandate: a test that goes green without
+Eight concerns, each with its own guilt control (per the mandate: a test that goes green without
 ever going red first proves nothing):
 
 1. idempotency -- a second `--apply` of the same manifest writes 0 new rows in either table.
@@ -29,6 +29,9 @@ ever going red first proves nothing):
    `run_apply` never writes an object whose `object_kind` lies about what it is.
 7. idempotency ACROSS A MOVED COHORT (+ its RED twin) -- the case test 1 structurally cannot
    see, because it runs both applies on ONE manifest. PR #7004 was BLOCKED here.
+8. the cohort is a filter -- a fully admissible row from another producer and one flagged
+   `is_probe_sandbox` are neither counted by `--dry-run` nor written by `--apply` (PR #7007
+   gate, C1). Every other test seeds INTO the cohort by default (`_seed_intel_item`).
 """
 
 from __future__ import annotations
@@ -64,7 +67,9 @@ MIGRATIONS_DIR = Path(__file__).resolve().parents[4] / "db" / "migrations_v2"
 #: reads plus the NOT NULL columns migration 168's real table requires, WITHOUT its
 #: `events_outbox`-dependent notify trigger (migration 146, irrelevant to this write path and
 #: not worth pulling in as a dependency -- same simplification `test_naga_backfill_pg.py`'s own
-#: hand-written `naga_claims` table makes for its legacy shape).
+#: hand-written `naga_claims` table makes for its legacy shape). `is_probe_sandbox` and its
+#: `chk_probe_sandbox_url` CHECK are migration 187's, verbatim: the cohort filter reads that
+#: column, so a table without it would fail every test here for the wrong reason.
 _INTEL_ITEMS_TABLE_SQL = """
 CREATE TABLE intel_items (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,9 +88,18 @@ CREATE TABLE intel_items (
     last_seen_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     published_at      TIMESTAMPTZ,
     expires_at        TIMESTAMPTZ,
-    raw_payload       JSONB NOT NULL DEFAULT '{}'
+    raw_payload       JSONB NOT NULL DEFAULT '{}',
+    is_probe_sandbox  BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT chk_probe_sandbox_url CHECK (
+        is_probe_sandbox = false
+        OR canonical_url LIKE 'https://probe-sandbox.example.test/%'
+    )
 );
 """
+
+#: The `source_domain` `regulatory_watcher` writes in production (measured, 2026-09-21) --
+#: typed here, not read from the module, so a drift in `_COHORT_SOURCE_DOMAIN` fails this suite.
+_COHORT_SOURCE_DOMAIN = "regulatory-watcher"
 
 #: This suite's own advisory-lock name -- distinct from `r2-naga-backfill-pg-test` /
 #: `r2-lane-c-naga-persistence-pg` / `r2-lane-c-naga-reader-pg`, since this suite touches its own
@@ -155,23 +169,29 @@ async def _seed_intel_item(
     citation: str,
     verbatim_excerpt: str,
     published_at: datetime,
+    source_domain: str = _COHORT_SOURCE_DOMAIN,
+    is_probe_sandbox: bool = False,
 ) -> str:
     """A row shaped exactly like a fully-sourced `regulatory_watcher` item -- all four fields
     `bridge()` needs, citation a delimited literal token of its own excerpt, so `admit()` has no
-    reason to exclude it (mirrors the real 8-admitted cohort's own shape, synthetically)."""
+    reason to exclude it (mirrors the real 8-admitted cohort's own shape, synthetically). In the
+    cohort by default; `source_domain`/`is_probe_sandbox` seed the same shape outside it."""
 
     row_id = await conn.fetchval(
         """
         INSERT INTO intel_items
-            (canonical_url, content_hash, title, source_domain, published_at, raw_payload)
-        VALUES ($1, $2, $3, 'example.invalid', $4, $5::text::jsonb)
+            (canonical_url, content_hash, title, source_domain, published_at, raw_payload,
+             is_probe_sandbox)
+        VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, $7)
         RETURNING id
         """,
         canonical_url,
         hashlib.sha256(canonical_url.encode("utf-8")).hexdigest(),
         f"synthetic regulatory item for {canonical_url}",
+        source_domain,
         published_at,
         json.dumps({"verbatim_excerpt": verbatim_excerpt, "citation": citation}),
+        is_probe_sandbox,
     )
     return str(row_id)
 
@@ -522,3 +542,74 @@ async def test_a_claim_run_id_bound_to_the_manifest_collides_once_the_cohort_mov
     assert excinfo.value.reason == "object_id_hash_collision"
     # The whole batch rolled back: the second item's own pair was never written either.
     assert await _counts(db) == before
+
+
+# --------------------------------------------------------------------------------------------
+# 8. The cohort is a filter, not a label (PR #7007 gate, C1). Each out-of-cohort row misses the
+#    predicate on exactly ONE half, so each half has its own witness.
+# --------------------------------------------------------------------------------------------
+
+
+async def test_rows_outside_the_cohort_are_neither_counted_nor_written(
+    db: asyncpg.Connection,
+) -> None:
+    in_cohort_id = await _seed_intel_item(
+        db,
+        canonical_url="https://example.invalid/reg-in-cohort",
+        citation="PMK 5/2026",
+        verbatim_excerpt="Sesuai dengan PMK 5/2026, ketentuan berlaku efektif mulai Mei.",
+        published_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    # Another producer: not sandboxed, wrong `source_domain`.
+    await _seed_intel_item(
+        db,
+        canonical_url="https://example.invalid/reg-other-producer",
+        citation="PMK 6/2026",
+        verbatim_excerpt="Sesuai dengan PMK 6/2026, ketentuan berlaku efektif mulai Juni.",
+        published_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        source_domain="probe-sandbox.example.test",
+    )
+    # A probe row: the cohort's own `source_domain`, but `is_probe_sandbox`.
+    await _seed_intel_item(
+        db,
+        canonical_url="https://probe-sandbox.example.test/reg-sandboxed",
+        citation="PMK 7/2026",
+        verbatim_excerpt="Sesuai dengan PMK 7/2026, ketentuan berlaku efektif mulai Juli.",
+        published_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+        is_probe_sandbox=True,
+    )
+
+    # Without this the test would prove nothing: all three rows ARE admissible, so only the
+    # read's own predicate can keep two of them out.
+    every_row = [
+        dict(row)
+        for row in await db.fetch(
+            "SELECT id, canonical_url, published_at, raw_payload, jurisdiction, first_seen_at "
+            "FROM intel_items ORDER BY id"
+        )
+    ]
+    assert ieb.run_dry_run_sync(every_row).admitted == 3
+
+    dry = await ieb.run_dry_run(db)
+    assert dry.items_read == 1
+    assert dry.admitted == 1, dry.excluded_by_reason
+
+    report = await ieb.run_apply(db, manifest=dry.manifest_hash)
+    assert report.items_read == 1
+    assert report.objects_inserted == 2
+    assert report.admissions_inserted == 1
+
+    # The claim carries no `document_id` of its own; it cites the evidence, which does.
+    evidence_documents = [
+        row["document_id"]
+        for row in await db.fetch(
+            "SELECT payload->>'document_id' AS document_id FROM research_os_objects "
+            "WHERE object_kind = 'evidence'"
+        )
+    ]
+    assert evidence_documents == ["https://example.invalid/reg-in-cohort"]
+    admitted_items = [
+        row["legacy_claim_id"]
+        for row in await db.fetch("SELECT legacy_claim_id FROM research_os_naga_admission")
+    ]
+    assert admitted_items == [in_cohort_id]
