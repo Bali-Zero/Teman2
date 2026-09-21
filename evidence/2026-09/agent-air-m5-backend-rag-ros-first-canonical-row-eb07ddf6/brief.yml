@@ -1,0 +1,23 @@
+mandate: >-
+  Write the first canonical rows into research_os_objects: every admitted
+  intel_item becomes an evidence AND a claim, in one transaction.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: apps/backend-rag/backend/services/research_os
+worktree: .worktrees/backend-rag-ros-first-canonical-rows-20260921
+authority: >-
+  Zero authorized the DML on 2026-09-21 for the regulatory_watcher cohort:
+  cap 66 rows, tables research_os_objects and research_os_naga_admission only,
+  manifest mandatory. 8 admitted -> 16 objects + 8 admission rows = 24, inside
+  the cap. The --apply itself is the Dux's to run after merge, not part of
+  this diff's CI.
+acceptance:
+  - every written object validates against its own pydantic contract first
+  - claim.evidence_refs points at an evidence object actually written
+  - recorded_at derives from first_seen_at, never the wall clock
+  - the cap refuses, it never truncates
+  - a second --apply of the same manifest writes zero rows
+appetite:
+  wall_clock_hours: 4
