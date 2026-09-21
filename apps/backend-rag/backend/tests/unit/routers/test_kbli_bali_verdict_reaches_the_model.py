@@ -867,7 +867,13 @@ def test_declared_gap_notes_withhold_mixed_free_form_reasons_across_the_catalogu
         assert result.bali_reason == "", record["kode_kbli_2025"]
         assert note == "", record["kode_kbli_2025"]
         checked += 1
-    assert checked > 1000, "declared-gap property gate would be vacuous"
+    non_located = sum(
+        1 for record in catalogue if record.get("pma_verification_status") != "located"
+    )
+    assert checked + sourced_closures == non_located, (
+        "declared-gap loop partition dropped or duplicated a catalogue record"
+    )
+    assert checked > 0, "declared-gap property gate would be vacuous"
     assert sourced_closures > 0, "sourced-closure carve-out gate would be vacuous"
 
 
