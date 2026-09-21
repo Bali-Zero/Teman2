@@ -66,12 +66,11 @@ class FakeConnection:
 
 
 @pytest.mark.asyncio
-async def test_create_invitation_invalidates_existing_token_and_returns_invite() -> None:
+async def test_create_invitation_supersedes_only_other_addresses_and_returns_invite() -> None:
     expires_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     conn = FakeConnection(
         fetchrow_results=[
             {"id": 7, "full_name": "Client Name", "email": "old@example.com"},
-            {"id": 12},
             {"id": 44, "token": "token-abc", "expires_at": expires_at, "created_at": expires_at},
         ],
     )
@@ -102,7 +101,10 @@ async def test_create_invitation_invalidates_existing_token_and_returns_invite()
         "expires_at": expires_at.isoformat(),
         "invite_url": "/portal/register?token=token-abc",
     }
-    assert conn.execute_calls[0][1] == (12,)
+    supersede_query, supersede_args = conn.execute_calls[0]
+    assert "SET expires_at = NOW()" in supersede_query
+    assert "LOWER(email) <> LOWER($2)" in supersede_query
+    assert supersede_args == (7, "client@example.com")
     assert invalidate_cache.await_count == 2
 
 
@@ -384,9 +386,9 @@ async def test_complete_registration_reactivates_inactive_existing_account() -> 
         "email": "client@example.com",
         "name": "Client Name",
     }
-    # 3 mutations: reactivate the team_member row, mark the invitation used,
-    # seed default client_preferences.
-    assert len(conn.execute_calls) == 3
+    # 4 mutations: reactivate the team_member row, mark the invitation used,
+    # retire its live siblings, seed default client_preferences.
+    assert len(conn.execute_calls) == 4
     update_query, update_args = conn.execute_calls[0]
     assert "SET pin_hash = $1," in update_query
     assert "active = true" in update_query
@@ -602,7 +604,6 @@ async def test_create_invitation_stores_the_digest_and_mails_the_raw_token() -> 
     conn = FakeConnection(
         fetchrow_results=[
             {"id": 7, "full_name": "Client Name", "email": "old@example.com"},
-            None,
             {"id": 44, "expires_at": expires_at, "created_at": expires_at},
         ],
     )
@@ -691,3 +692,48 @@ def test_a_stored_digest_cannot_be_replayed_as_a_token() -> None:
     assert _HASHED_TOKEN_RE == "^[0-9a-f]{64}$"
     assert f"i.token !~ '{_HASHED_TOKEN_RE}'" in _LEGACY_PLAINTEXT_PREDICATE
     assert "i.token = $2" in _LEGACY_PLAINTEXT_PREDICATE
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_retires_the_live_siblings_of_the_redeemed_invitation() -> None:
+    """Same-address re-invites stay live side by side (a resend no longer
+    kills the link already in the inbox), so redeeming one must retire the
+    rest — otherwise every older mail would stay a registration credential
+    after the client is in."""
+    now = datetime.now(timezone.utc)
+    conn = FakeConnectionWithTransaction(
+        fetchrow_results=[
+            {
+                "id": 9,
+                "client_id": 7,
+                "email": "client@example.com",
+                "expires_at": now + timedelta(hours=1),
+                "used_at": None,
+                "client_name": "Client Name",
+            },
+            {"id": 55, "active": True, "pin_hash": PLACEHOLDER_PIN_HASH},
+        ]
+    )
+    service = InviteService(FakePool(conn))
+
+    with patch(
+        "backend.services.common.cache._invalidate_cache",
+        new=AsyncMock(return_value=1),
+    ):
+        await service.complete_registration(token="tok", pin="1234")
+
+    retire = [
+        (query, args)
+        for query, args in conn.execute_calls
+        if "UPDATE client_invitations" in query and "id <> $2" in query
+    ]
+    assert len(retire) == 1
+    retire_query, retire_args = retire[0]
+    assert "SET expires_at = NOW()" in retire_query
+    assert "used_at IS NULL" in retire_query
+    # A sibling mid-redemption in another transaction must be skipped, not
+    # waited on: waiting deadlocks against that transaction's `clients` lock.
+    assert "FOR UPDATE SKIP LOCKED" in retire_query
+    assert retire_args == (7, 9)
+    mark_used = next(i for i, (q, _) in enumerate(conn.execute_calls) if "SET used_at = NOW()" in q)
+    assert conn.execute_calls.index(retire[0]) > mark_used

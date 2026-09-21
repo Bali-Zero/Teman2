@@ -118,20 +118,29 @@ class InviteService:
             if not client:
                 raise ValueError(f"Client with ID {client_id} not found")
 
-            # Check for existing unused invitation
-            existing = await conn.fetchrow(
+            # A re-invite to the SAME address must not kill the link already
+            # sitting in that inbox. It used to: every send expired the
+            # previous live invitation, so a client who opened the first mail
+            # of a thread — the oldest, top of the Gmail conversation — met
+            # "This invitation has expired" on a link minutes old. Measured
+            # on production 2026-09-21: 16 invitations superseded unused in
+            # 30 days across 14 clients, one of them three times in 30
+            # minutes. Both mails reach the same mailbox, so a second live
+            # token grants nothing the first did not; `complete_registration`
+            # retires the siblings once one of them is used.
+            #
+            # A live invitation to a DIFFERENT address is still retired: the
+            # consultant changed where the client is reached, and the old
+            # mailbox must not keep a registration credential.
+            await conn.execute(
                 """
-                SELECT id FROM client_invitations
+                UPDATE client_invitations SET expires_at = NOW()
                 WHERE client_id = $1 AND used_at IS NULL AND expires_at > NOW()
+                  AND LOWER(email) <> LOWER($2)
                 """,
                 client_id,
+                email,
             )
-            if existing:
-                # Invalidate existing invitation
-                await conn.execute(
-                    "UPDATE client_invitations SET expires_at = NOW() WHERE id = $1",
-                    existing["id"],
-                )
 
             # Create new invitation
             invitation = await conn.fetchrow(
@@ -374,6 +383,32 @@ class InviteService:
                     SET used_at = NOW()
                     WHERE id = $1
                     """,
+                    invitation["id"],
+                )
+
+                # Same-address re-invites stay live side by side (see
+                # `create_invitation`); once one is redeemed, the others
+                # stop being credentials.
+                #
+                # SKIP LOCKED because a sibling can be mid-redemption in
+                # another transaction: that one holds the sibling row and
+                # waits on the `clients` row this transaction locked above,
+                # so a plain UPDATE deadlocks (reproduced on Postgres 17,
+                # the loser surfacing as an HTTP 500). Skipped, the sibling
+                # proceeds after this commit and is refused by the
+                # active-account guard above.
+                await conn.execute(
+                    """
+                    UPDATE client_invitations
+                    SET expires_at = NOW()
+                    WHERE id IN (
+                        SELECT id FROM client_invitations
+                        WHERE client_id = $1 AND id <> $2
+                          AND used_at IS NULL AND expires_at > NOW()
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    """,
+                    invitation["client_id"],
                     invitation["id"],
                 )
 
