@@ -210,8 +210,10 @@ class TestBuildShadowFacts:
         # joined the same way (46 total now), so 3/42 becomes 3/43. Widened
         # again 2026-09-13 (W-VO-S21): the TEN seq-21 qualification booleans
         # (five `sponsor.*`, five `investment.*`) joined the same way — 56
-        # total now — all rolling out UNKNOWN/NOT_ASKED, so 3/43 becomes
-        # 3/53. `build_shadow_facts` still only ever sets nationality,
+        # total then — all rolling out UNKNOWN/NOT_ASKED, so 3/43 becomes
+        # 3/53. Widened again 2026-09-21 (Slice A7-B): `person.guardian_
+        # consent` joined the same way (57 total now), so 3/53 becomes
+        # 3/54. `build_shadow_facts` still only ever sets nationality,
         # purpose and duration KNOWN; that 3 is the invariant this test is
         # actually about, and a vocabulary extension must never move it.
         facts = shadow.build_shadow_facts(
@@ -219,9 +221,9 @@ class TestBuildShadowFacts:
         )
         assert facts is not None
         statuses = [getattr(facts.facts, name).status for name in type(facts.facts).model_fields]
-        assert len(statuses) == 56
+        assert len(statuses) == 57
         assert statuses.count("KNOWN") == 3
-        assert statuses.count("UNKNOWN") == 53
+        assert statuses.count("UNKNOWN") == 54
 
 
 # ---------------------------------------------------------------------------

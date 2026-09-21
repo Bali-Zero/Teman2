@@ -947,6 +947,14 @@ export function mapOracleFactsToApplicantFacts(
     // resolve to an explicit UNKNOWN (NOT_ASKED / UNVERIFIED respectively),
     // never a guessed `false`.
     "immigration.renewal_paid": booleanFact(facts.renewal_paid),
+    // Slice A7-B, 2026-09-21: the wire key ships in this PR as CONTRACT-ONLY
+    // (backend #FACT-A7B) — no question in tree.ts sets `facts.guardian_
+    // consent` yet, so every walk yields UNKNOWN(NOT_ASKED) until A7-M ships
+    // the question. Same `booleanFact` treatment as every other yes/no
+    // question: "never asked" and "answered unsure" both resolve to an
+    // explicit UNKNOWN, never a guessed `false` — a guessed `false` here
+    // would wrongly manufacture the minor-privacy hold's earned reason.
+    "person.guardian_consent": booleanFact(facts.guardian_consent),
     "intent.purposes": mapPurposes(facts),
     "intent.stay_days": mapStayDays(facts),
     "intent.desired_entry_date": unknownFact(NOT_ASKED),

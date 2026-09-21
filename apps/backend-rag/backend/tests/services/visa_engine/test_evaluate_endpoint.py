@@ -645,6 +645,21 @@ async def test_missing_top_level_keys_is_422() -> None:
     assert response.status_code == 422
 
 
+async def test_payload_omitting_guardian_consent_key_is_200_not_422() -> None:
+    """B2's rollout-default tripwire, at the HTTP boundary: an
+    already-deployed 56-key caller that has never heard of
+    ``person.guardian_consent`` must keep working the moment this PR
+    deploys. Without ``_GUARDIAN_CONSENT_ROLLOUT_DEFAULT`` on the model
+    field, this same payload 422s with a ``missing`` error instead."""
+
+    payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
+    del payload["facts"]["person.guardian_consent"]
+    assert "person.guardian_consent" not in payload["facts"]
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
+    assert response.status_code == 200
+
+
 async def test_extra_top_level_key_is_422() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["bogus"] = 1
@@ -2519,7 +2534,9 @@ def test_released_path_nulls_decision_integrity() -> None:
 
 
 def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
-    """A minor cannot inherit an automated supported outcome from any path."""
+    """A minor who declares no guardian cannot inherit an automated
+    supported outcome from any path (Slice A7-B, OD-4b: the hold is EARNED
+    by a declared-false guardian consent, not by minority alone)."""
 
     compiled = gold_loader.load_and_compile_rule_pack()
     adult_facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
@@ -2533,6 +2550,13 @@ def test_minor_privacy_hold_is_global_monotone_and_uncited() -> None:
     wire["facts"]["family.sponsor_confirmed"] = {
         "status": "KNOWN",
         "value": True,
+    }
+    # Slice A7-B: the hold is earned by a DECLARED no-guardian, not by
+    # minority alone — see TestMinorGuardianConsentPersonas below for the
+    # UNKNOWN (asks) / True (not held) arms.
+    wire["facts"]["person.guardian_consent"] = {
+        "status": "KNOWN",
+        "value": False,
     }
     minor_facts = ApplicantFacts.model_validate(wire)
     baseline = evaluate(
@@ -2573,6 +2597,159 @@ def test_unknown_minor_status_cannot_preserve_supported_candidates() -> None:
     assert FactPath.PERSON_BIRTH_DATE in held.missing_facts
 
 
+def _known_minor_wire(*, guardian_consent: dict[str, object] | None) -> dict:
+    """A known-minor wire payload built off the shared adult persona, with
+    the sponsor-confirmed override that keeps ``family.sponsor_confirmed``
+    from narrowing the scenario (mirrors
+    ``test_minor_privacy_hold_is_global_monotone_and_uncited``). Passing
+    ``guardian_consent=None`` leaves the persona's own UNKNOWN(NOT_ASKED)
+    value in place."""
+
+    facts = gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
+    wire = facts.model_dump(mode="json", by_alias=True)
+    wire["facts"]["person.birth_date"] = {"status": "KNOWN", "value": "2012-01-01"}
+    wire["facts"]["family.sponsor_confirmed"] = {"status": "KNOWN", "value": True}
+    if guardian_consent is not None:
+        wire["facts"]["person.guardian_consent"] = guardian_consent
+    return wire
+
+
+class TestGuardianConsentArms:
+    """B3/B4 (Slice A7-B): the third arm of ``_apply_minor_privacy_hold``,
+    read only once the applicant is a KNOWN minor. UNKNOWN asks the
+    question; KNOWN True is not held; KNOWN False earns today's
+    ``HUMAN_REVIEW_REQUIRED`` hold — the ONLY producer of
+    ``MINOR_GUARDIAN_PRIVACY_REVIEW`` after this PR (OD-4b re-ruled
+    2026-09-21)."""
+
+    def _compiled(self):
+        return gold_loader.load_and_compile_rule_pack()
+
+    def test_unknown_guardian_consent_asks_the_question(self) -> None:
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent=None)
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
+        assert held.state is DecisionState.NEEDS_INPUT
+        assert held.candidates == ()
+        assert FactPath.PERSON_GUARDIAN_CONSENT in held.missing_facts
+        assert held.review_reasons == ()
+
+    def test_declared_false_guardian_consent_is_held_with_exactly_one_reason(self) -> None:
+        """B4's first persona: the hold is EARNED by a declared no-guardian."""
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent={"status": "KNOWN", "value": False})
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
+        assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert held.candidates == ()
+        assert [reason.code for reason in held.review_reasons] == [
+            "MINOR_GUARDIAN_PRIVACY_REVIEW"
+        ]
+
+    def test_declared_true_guardian_consent_is_not_held(self) -> None:
+        """B4's second persona: the SAME minor, only ``true`` this time,
+        must NOT be held by this adapter."""
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent={"status": "KNOWN", "value": True})
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        held = evaluate_path._apply_minor_privacy_hold(baseline, minor_facts)
+        assert held is baseline
+        assert held.state is DecisionState.SUPPORTED_CANDIDATES
+        assert held.candidates
+
+    def test_minor_no_guardian_plus_criminal_record_keeps_both_review_reasons(self) -> None:
+        """GUILT-c (B3, FIX-2): both new arms replicate the ``:1213``
+        pass-through — dropping it lets a later disclosed-review hold
+        REPLACE the minor-privacy hold instead of accumulating onto it. A
+        minor who declares no guardian AND discloses a criminal record must
+        keep BOTH review reasons in adapter-chain order, never just the
+        last adapter's."""
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent={"status": "KNOWN", "value": False})
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        held = evaluate_path.apply_public_policy_adapters(
+            baseline,
+            minor_facts,
+            compiled,
+            disclosed_review_flags=(DisclosedReviewFlag.CRIMINAL_RECORD,),
+        )
+        assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert held.candidates == ()
+        assert [reason.code for reason in held.review_reasons] == [
+            "MINOR_GUARDIAN_PRIVACY_REVIEW",
+            "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+        ]
+
+    def test_minor_privacy_hold_passes_through_an_already_held_decision(self) -> None:
+        """GUILT-c (B3, FIX-2), isolated: since ``_apply_minor_privacy_hold``
+        is FIRST in ``_PUBLIC_POLICY_ADAPTERS``, its own pass-through never
+        fires on the real chain (see the test above, which exercises the
+        real order). This calls the two adapters OUT of that order —
+        disclosed-review first — precisely to isolate the guardian-consent
+        arms' own ``:1213``-replicated pass-through: an already
+        ``HUMAN_REVIEW_REQUIRED`` decision must come back byte-identical,
+        never overwritten with a new decision_id/candidates/review_reasons
+        shape. Drop either new arm's pass-through and this goes red: the
+        adapter rebuilds the decision instead of returning it untouched."""
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent={"status": "KNOWN", "value": False})
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        disclosed = evaluate_path._apply_disclosed_review_flags(
+            baseline, (DisclosedReviewFlag.CRIMINAL_RECORD,)
+        )
+        assert disclosed.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in disclosed.review_reasons] == [
+            "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+        ]
+
+        held = evaluate_path._apply_minor_privacy_hold(disclosed, minor_facts)
+        assert held is disclosed
+        assert [reason.code for reason in held.review_reasons] == [
+            "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+        ]
+
+
 async def test_public_evaluation_applies_minor_privacy_hold_before_persistence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2598,6 +2775,11 @@ async def test_public_evaluation_applies_minor_privacy_hold_before_persistence(
     wire["facts"]["family.sponsor_confirmed"] = {
         "status": "KNOWN",
         "value": True,
+    }
+    # Slice A7-B: the hold is earned by a DECLARED no-guardian.
+    wire["facts"]["person.guardian_consent"] = {
+        "status": "KNOWN",
+        "value": False,
     }
 
     body = await evaluate_path.run_evaluation(

@@ -103,11 +103,21 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # is still 84, and `test_gold_replay_artifact.py` is green. The literal
     # moves because `facts_hmac` is over the WHOLE snapshot.
     #
+    # Moved a sixth time 2026-09-21 (`4bda56cb…` -> `8ae9f577…`) when Slice
+    # A7-B registered `person.guardian_consent` — consumed only by
+    # `evaluate_path._apply_minor_privacy_hold`, a PUBLIC POLICY ADAPTER
+    # that runs AFTER `evaluate_with_trace`, never by a compiled RULE this
+    # trace could name. Same verification as every move above: node count
+    # is still 84 (no new trace node), and `test_gold_replay_artifact.py`
+    # is green. The literal moves because `facts_hmac` is over the WHOLE
+    # snapshot, so 02_business_c2 gaining one more UNKNOWN key moves it
+    # independent of whether any compiled rule reads that key.
+    #
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "4bda56cb58817fca78cbcdef2bd89694f52e75709b876d3bbf007ddbf774a55b"
+        first.trace.sha256() == "8ae9f577300e79f93b8d59878e6a04026a9e23e9f5b6c24b5bebf8605edbe240"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

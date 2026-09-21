@@ -36,6 +36,7 @@ const applicantFactPaths = {
   "investment.meets_published_threshold": true,
   "investment.pt_pma_committed": true,
   "person.birth_date": true,
+  "person.guardian_consent": true,
   "person.marital_status": true,
   "person.nationalities": true,
   "process.application_channel": true,

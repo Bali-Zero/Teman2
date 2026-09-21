@@ -507,12 +507,12 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 60-path fact vocabulary (56 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 61-path fact vocabulary (57 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 56 applicant-collected
+    """Every fact path the engine may ever reference — 57 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -522,12 +522,14 @@ class FactPath(str, Enum):
     comment for the grounding), by ``investment.investment_amount_usd``
     (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
     investment applicant for a USD amount; this PR only declares the wire
-    key so that question can exist, and no rule reads it yet), and by the
+    key so that question can exist, and no rule reads it yet), by the
     TEN seq-21 qualification facts (2026-09-13, W-VO-S21 — five
     ``sponsor.*`` and five ``investment.*`` booleans, each the ONE
     qualification a zero-SUPPORT product's new eligibility rule tests; see
     their own inline comments and
-    ``backend/scripts/visa_engine/fold_pack_seq21.py``).
+    ``backend/scripts/visa_engine/fold_pack_seq21.py``), and by
+    ``person.guardian_consent`` (2026-09-21, Slice A7-B — see its own inline
+    comment for the grounding).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -541,6 +543,18 @@ class FactPath(str, Enum):
     PERSON_BIRTH_DATE = "person.birth_date"
     PERSON_NATIONALITIES = "person.nationalities"
     PERSON_MARITAL_STATUS = "person.marital_status"
+    # person.guardian_consent — added 2026-09-21 (Slice A7-B, the minor-hold
+    # guardian fact). This is a consent ASSERTION ("does a guardian exist and
+    # is one available to consent for this minor"), never an identity fact —
+    # it does not name, verify or store WHO the guardian is, only whether one
+    # is disclosed. Tri-state boolean: KNOWN False is what earns the
+    # HUMAN_REVIEW_REQUIRED hold in ``evaluate_path._apply_minor_privacy_
+    # hold`` (a minor who declares no guardian); KNOWN True lets a minor's
+    # decision proceed unheld by this adapter; UNKNOWN asks the question
+    # (``NEEDS_INPUT``, naming this fact). No interview asks this yet — see
+    # ``models.py``'s ``_GUARDIAN_CONSENT_ROLLOUT_DEFAULT`` for the rollout
+    # mechanism, and A7-M for the mouth question that fills it.
+    PERSON_GUARDIAN_CONSENT = "person.guardian_consent"
     # immigration.*
     IMMIGRATION_CURRENTLY_IN_INDONESIA = "immigration.currently_in_indonesia"
     IMMIGRATION_CURRENT_STATUS_CODE = "immigration.current_status_code"
@@ -757,7 +771,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 56 applicant-collected paths (everything except ``derived.*``).
+#: The 57 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

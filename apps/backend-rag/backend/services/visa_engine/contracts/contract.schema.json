@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23),\n``immigration_renewal_paid`` (2026-08-24) and the ten seq-21\nqualification facts (2026-09-13) below \u2014 all the same rollout\nmechanism. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the transitional fields documented on\n``sponsor_type``, the three ``family.stepchild_*``/\n``family.sponsor_permit_basis`` fields (2026-08-23),\n``immigration_renewal_paid`` (2026-08-24), the ten seq-21\nqualification facts (2026-09-13) and ``person_guardian_consent``\n(2026-09-21, Slice A7-B) below \u2014 all the same rollout mechanism.\nField order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -840,6 +840,28 @@
             }
           ],
           "title": "Person.Birth Date"
+        },
+        "person.guardian_consent": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Person.Guardian Consent"
         },
         "person.marital_status": {
           "discriminator": {
@@ -2506,11 +2528,12 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 56 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nby ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding), by ``investment.investment_amount_usd``\n(2026-09-13, PR-D4c-1 \u2014 contract-only: a later PR, D4c-2, asks an\ninvestment applicant for a USD amount; this PR only declares the wire\nkey so that question can exist, and no rule reads it yet), and by the\nTEN seq-21 qualification facts (2026-09-13, W-VO-S21 \u2014 five\n``sponsor.*`` and five ``investment.*`` booleans, each the ONE\nqualification a zero-SUPPORT product's new eligibility rule tests; see\ntheir own inline comments and\n``backend/scripts/visa_engine/fold_pack_seq21.py``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 57 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nby ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding), by ``investment.investment_amount_usd``\n(2026-09-13, PR-D4c-1 \u2014 contract-only: a later PR, D4c-2, asks an\ninvestment applicant for a USD amount; this PR only declares the wire\nkey so that question can exist, and no rule reads it yet), by the\nTEN seq-21 qualification facts (2026-09-13, W-VO-S21 \u2014 five\n``sponsor.*`` and five ``investment.*`` booleans, each the ONE\nqualification a zero-SUPPORT product's new eligibility rule tests; see\ntheir own inline comments and\n``backend/scripts/visa_engine/fold_pack_seq21.py``), and by\n``person.guardian_consent`` (2026-09-21, Slice A7-B \u2014 see its own inline\ncomment for the grounding).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
         "person.marital_status",
+        "person.guardian_consent",
         "immigration.currently_in_indonesia",
         "immigration.current_status_code",
         "immigration.current_status_expiry",
