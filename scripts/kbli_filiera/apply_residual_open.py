@@ -191,15 +191,35 @@ BASIS = (
 # be re-deriving it with predicates the spec itself wrote (council round 1,
 # codex-gpt-5.6-sol HIGH (4)). Widening the class is a code change under review,
 # not a JSON edit.
-REQUIRED_RULE: dict[str, Any] = {
-    "bucket": "residual-besar-observed",
-    "pma_status": "TERBUKA",
-    "pma_max_asing": 100,
-    "pma_verification_status": "declared_gap",
-    "l4_bali_status": "OK_or_HIGHER_RISK",
-    "l4_bali_blocked": False,
-    "no_legacy_pma_prose": True,
-    "adjudicated_sibling_prefix": 4,
+#
+# Keyed by `spec["lot"]` because the lots are cut on the BALI axis (module
+# docstring, "WHY A LOT"): each lot unveils one `l4_bali.status` value and
+# nothing else about the rule may move. Lot 1 is unchanged from the pin this
+# replaces. Lot 2 is IDENTICAL to lot 1 except `l4_bali_status`, on purpose —
+# a lot spec cannot widen ANY other predicate just because it is allowed to
+# name a different Bali status. An unknown lot, or a spec whose `rule` drifts
+# from its own lot's pin, refuses in `check()` below.
+REQUIRED_RULE_BY_LOT: dict[int, dict[str, Any]] = {
+    1: {
+        "bucket": "residual-besar-observed",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "declared_gap",
+        "l4_bali_status": "OK_or_HIGHER_RISK",
+        "l4_bali_blocked": False,
+        "no_legacy_pma_prose": True,
+        "adjudicated_sibling_prefix": 4,
+    },
+    2: {
+        "bucket": "residual-besar-observed",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "declared_gap",
+        "l4_bali_status": "ATTENZIONE_FASCIA_BALI",
+        "l4_bali_blocked": False,
+        "no_legacy_pma_prose": True,
+        "adjudicated_sibling_prefix": 4,
+    },
 }
 
 
@@ -547,12 +567,22 @@ def check(
             "evidence; add it there or stop writing it"
         )
     rule = spec["rule"]
-    for key, value in sorted(REQUIRED_RULE.items()):
-        if rule.get(key) != value:
-            refusals.append(
-                f"rule.{key} is {rule.get(key)!r}, not {value!r} — this compiler "
-                "only writes the residual class, and a spec cannot widen it"
-            )
+    lot = spec.get("lot")
+    required_rule = REQUIRED_RULE_BY_LOT.get(lot)
+    if required_rule is None:
+        refusals.append(
+            f"spec lot {lot!r} is not a known lot — REQUIRED_RULE_BY_LOT has "
+            f"{sorted(REQUIRED_RULE_BY_LOT)}, and an unknown lot cannot be "
+            "trusted to pin the right predicates"
+        )
+    else:
+        for key, value in sorted(required_rule.items()):
+            if rule.get(key) != value:
+                refusals.append(
+                    f"rule.{key} is {rule.get(key)!r}, not {value!r} — this "
+                    "compiler only writes the residual class, and a spec cannot "
+                    "widen it"
+                )
     if not spec.get("sector_referral"):
         refusals.append(
             "rule: no sector_referral block — Pasal 11(2) routes whole sectors "
