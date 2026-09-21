@@ -34,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+from datetime import datetime, timezone
 
 import pytest
 
@@ -437,6 +438,51 @@ def test_the_payload_derivation_is_frozen(
     _result, evidence, claim = _canonical_writes(
         _writable_item(canonical_url=canonical_url, jurisdiction="ID")
     )
+
+    assert evidence.payload["object_hash"] == evidence_hash, _FROZEN_HASH_MESSAGE
+    assert claim.payload["object_hash"] == claim_hash, _FROZEN_HASH_MESSAGE
+
+
+def _production_shaped_item(canonical_url: str) -> dict[str, object]:
+    """An `intel_items` row as asyncpg hands it to `--apply` on PROD (K1 of the PR #7056 gate):
+    tz-aware `datetime`s with non-zero microseconds, `jurisdiction='ID-national'` and
+    `raw_payload` as a JSON `str` (the pool registers no jsonb codec). The golden cases above pass
+    strings without fractional seconds and `jurisdiction="ID"`, so a derivation edit that only
+    bites on this shape -- `_to_rfc3339` truncating to seconds, the jurisdiction cut at `-` --
+    kept every test green while it re-hashed every object already on PROD."""
+
+    return _writable_item(
+        canonical_url=canonical_url,
+        published_at=datetime(2026, 3, 1, 0, 0, 0, 271604, tzinfo=timezone.utc),
+        first_seen_at=datetime(2026, 3, 2, 9, 15, 7, 483920, tzinfo=timezone.utc),
+        jurisdiction="ID-national",
+        raw_payload=json.dumps({"verbatim_excerpt": _EXCERPT, "citation": _CITATION}),
+    )
+
+
+@pytest.mark.parametrize(
+    ("canonical_url", "evidence_hash", "claim_hash"),
+    [
+        pytest.param(
+            _PRESS_URL,
+            "ed994eb31d3593d18fd5d15c1d18f9f149aba75644e880ef44af3fe668b1f04d",
+            "27a1c25e2bf36e6ff2281a7bfc5eaa7305f90df7e11c590de90375227df76342",
+            id="press-host",
+        ),
+        pytest.param(
+            _GOVERNMENT_URL,
+            "49cd2acc8b3e85c47215c5d0902c0a67c99ccec39a9f300ed2dafa1db864f175",
+            "7bf567e8c12badca3213c00253f2fdd2ed3c02d0e0503794e38d8ec73ebab9d0",
+            id="government-host",
+        ),
+    ],
+)
+def test_the_payload_derivation_is_frozen_on_the_shape_production_feeds_it(
+    canonical_url: str, evidence_hash: str, claim_hash: str
+) -> None:
+    """The derivation, not only the constants: the same builders fed a production-shaped row."""
+
+    _result, evidence, claim = _canonical_writes(_production_shaped_item(canonical_url))
 
     assert evidence.payload["object_hash"] == evidence_hash, _FROZEN_HASH_MESSAGE
     assert claim.payload["object_hash"] == claim_hash, _FROZEN_HASH_MESSAGE
