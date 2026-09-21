@@ -55,13 +55,51 @@ text) and roughly 40 of today's 66 fully-sourced rows do NOT contain their own c
 make that number look better; a citation that legitimately is not a literal substring is
 correctly `statement_not_from_source`.
 
-WHAT THIS MODULE DOES NOT DO. It never opens a database connection, never fetches a URL, never
-writes anywhere; `bridge()` is a pure function over one already-fetched `intel_items` row.
+WHAT `--dry-run` DOES. `bridge()` itself never opens a database connection, never fetches a URL,
+never writes anywhere -- it is a pure function over one already-fetched `intel_items` row.
 `main()`/`--dry-run` is read-only (`SET default_transaction_read_only = on`, mirroring
-`naga_backfill.py`'s own connection pattern) and prints ONLY the `summarize()` tally -- counts and
-named reasons, never a `verbatim_excerpt`, `citation` or `canonical_url` value. There is no
-`--apply` in this module, on purpose: writing admitted objects into `research_os_objects` needs
-the owner's explicit authorization for the DML, which this PR does not have.
+`naga_backfill.py`'s own connection pattern) and prints the `summarize()` tally plus a
+`manifest_hash`/`source_snapshot_hash` pair -- counts, named reasons and hashes, never a
+`verbatim_excerpt`, `citation` or `canonical_url` value.
+
+WHAT `--apply` DOES, AND WHY IT EXISTS NOW. The owner authorized the DML on 2026-09-21, scoped to
+the `regulatory_watcher` cohort (`COHORT`), capped at `ADMITTED_ROW_CAP` (66) admitted rows,
+touching only `research_os_objects` and `research_os_naga_admission` -- nothing else. `--apply
+--manifest <64-hex>` recomputes the ENTIRE pipeline fresh in this process (`_compute`) and
+refuses (`SourceSnapshotDrifted`, imported from `naga_backfill` rather than re-derived -- same
+drift contract, same manifest shape) if the recomputed `manifest_hash` disagrees with the one the
+caller names. It refuses again, by name, if the recomputed admitted count exceeds
+`ADMITTED_ROW_CAP` (`AdmittedCohortExceedsCap`) -- a refusal, never a truncation to the first 66;
+exceeding the cap means this is no longer the cohort the owner authorized. Both refusals write
+zero rows. When neither refusal fires, every `Admitted` decision becomes exactly TWO
+`research_os_objects` rows -- one `evidence`-kind (`_build_evidence_write`) and one `claim`-kind
+(`_build_claim_write`) that cites it by real `(evidence_id, object_hash)` in its own
+`evidence_refs`, never an empty tuple -- plus one `research_os_naga_admission` row, written
+through `naga_persistence.write_objects`/`record_admissions` exactly as `naga_backfill.py` does;
+this module issues no INSERT of its own. NEITHER payload is a re-shuffle of `bridge()`'s own
+admission-input `record` (that shape exists ONLY to satisfy `admit()`'s rules, whose
+`statement.subject_ref` is a bare `canonical_url` string -- sufficient for `admit()`'s
+truthiness-only check, not for `ExactObjectRef`'s shape): both are independently built to satisfy
+`research_os.models.claim.Claim`/`research_os.models.evidence.Evidence`, the frozen,
+`extra="forbid"` pydantic contracts those object kinds promise, and BOTH are checked against
+those exact models (`_validate_canonical_schema`, `CanonicalSchemaInvalid` on failure, BEFORE
+either write reaches `naga_persistence` -- see that exception's own docstring for why a
+`claim` row that is not a `Claim` is a worse defect than a missing write authorization).
+`naga_persistence.validate_object` does not perform this check (D5 treats the jsonb payload as
+opaque); this module adds it because nothing else in the write path will. All three rows -- both
+objects and the admission row -- are written inside ONE transaction (mirroring
+`naga_backfill._execute_apply`'s own comment: each nested call opens its own asyncpg SAVEPOINT,
+so a failure recording admission rolls back whatever objects were already inserted). Idempotent
+by construction: `claim_id`/`evidence_id` are `uuid5` of the item's own `canonical_url`, every
+instant embedded in either payload is a real column value (`intel_items.first_seen_at`, the
+synthetic `IntelEvent`'s own `times.observed_at`) rather than the wall clock, and `lineage.run_id`
+/`provenance.run_id` derive from the caller's OWN `manifest` argument -- so a second `--apply` of
+the SAME manifest recomputes byte-identical payloads, `write_objects`' `ON CONFLICT (object_id)
+DO NOTHING` inserts zero new object rows, and `record_admissions`' `ON CONFLICT (run_id,
+legacy_claim_id) DO NOTHING` inserts zero new admission rows -- the report says so by name, not
+by silence. `Excluded`/`Rejected` outcomes are never written to either table (same choice
+`naga_backfill.py` makes for its own cohort) -- an admitted cohort of `ADMITTED_ROW_CAP` writes at
+most `2 * ADMITTED_ROW_CAP` object rows plus `ADMITTED_ROW_CAP` admission rows in one run.
 
 CLASSIFICATION/RETENTION/REVIEW ARE FIXED POLICY DEFAULTS, NOT DEFAULTED SILENTLY.
 `intel_items` carries no `risk_class`, `sensitivity`, `rights`, `retention_class` or review
@@ -83,13 +121,15 @@ import hashlib
 import json
 import logging
 import os
+import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, NoReturn
 
 import asyncpg
+from pydantic import ValidationError as _PydanticValidationError
 
 # This import puts `packages/research-os-core` on `sys.path`, so it MUST precede every
 # `research_os.*` import below. `# isort: split` is what holds the order against the
@@ -102,17 +142,43 @@ from backend.services.research_os import _core_path as _core_path
 # isort: split
 
 from research_os.hashing import object_hash as _object_hash
+from research_os.models.claim import Claim
+from research_os.models.evidence import Evidence
 
-from backend.services.research_os.naga_admission import admit, summarize
+from backend.services.research_os.naga_admission import (
+    AdmissionDecision,
+    Admitted,
+    admit,
+    summarize,
+)
+from backend.services.research_os.naga_backfill import (
+    SourceSnapshotDrifted,
+    compute_manifest,
+    compute_source_snapshot_hash,
+)
+from backend.services.research_os.naga_persistence import (
+    AdmissionRow,
+    ObjectWrite,
+    record_admissions,
+    validate_object,
+    write_objects,
+)
 
 __all__ = [
+    "ADMITTED_ROW_CAP",
+    "COHORT",
     "DEFAULT_DSN_ENV",
     "REJECTION_REASONS",
+    "AdmittedCohortExceedsCap",
+    "ApplyReport",
     "BridgeResult",
+    "CanonicalSchemaInvalid",
     "Mapped",
     "Rejected",
+    "SourceSnapshotDrifted",
     "bridge",
     "main",
+    "run_apply",
 ]
 
 logger = logging.getLogger(__name__)
@@ -140,6 +206,22 @@ _EVENT_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e1")
 _VERSION_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e2")
 _PIPELINE_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e3")
 _FAMILY_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e4")
+#: The `research_os_objects` identity minted for the `claim`-kind object `--apply` writes -- a
+#: FIFTH namespace, never reused for an event/version/pipeline/family id above.
+_CLAIM_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e5")
+
+#: The one production cohort this module's `--apply` is authorized against (Zero, 2026-09-21) --
+#: `intel_items` has exactly one producer (`regulatory_watcher`), so this is a fixed constant,
+#: never a `--cohort` flag: there is no second cohort this bridge could be pointed at today.
+COHORT = "regulatory_watcher"
+
+#: Owner-authorized cap (Zero, 2026-09-21) on admitted rows a single `--apply` run may write --
+#: a REFUSAL past this line, never a truncation to the first `ADMITTED_ROW_CAP` rows. Measured
+#: live at 8 admitted out of 1,922 `intel_items` rows the day this was authorized; the cap is
+#: the owner's authorization boundary, not a capacity estimate.
+ADMITTED_ROW_CAP = 66
+
+_MANIFEST_RE = re.compile(r"^[0-9a-f]{64}$")
 
 #: The one span this module ever registers per record -- a name, not data, so it stays constant.
 _LOCATOR = "verbatim_excerpt"
@@ -158,7 +240,9 @@ _CLASSIFICATION: Mapping[str, str] = {
     "sensitivity": "public",
     "rights": "public-domain",
 }
-_RETENTION: Mapping[str, str] = {"retention_class": "public_record"}
+#: `legal_hold` is required on `research_os.primitives.Retention` (no default) -- always `False`
+#: for this source, same "public, already-published" reasoning as the rest of this policy.
+_RETENTION: Mapping[str, Any] = {"retention_class": "public_record", "legal_hold": False}
 _REVIEW: Mapping[str, str] = {"state": "unreviewed"}
 
 #: The IntelEvent's OWN classification/retention -- schema-constrained enums
@@ -166,6 +250,37 @@ _REVIEW: Mapping[str, str] = {"state": "unreviewed"}
 #: above even though the values happen to agree for this source.
 _EVENT_CLASSIFICATION: Mapping[str, str] = {"risk_class": "green", "sensitivity": "public"}
 _EVENT_RETENTION: Mapping[str, Any] = {"retention_class": "public_record", "legal_hold": False}
+
+#: `research_os.models.claim.Claim`/`research_os.models.evidence.Evidence` -- both frozen,
+#: `extra="forbid"` -- are the two canonical shapes `--apply` writes. Fixed, named policy for
+#: fields those two models require but neither `intel_items` nor `admit()`'s own record shape
+#: supplies (see `_build_evidence_write`/`_build_claim_write`, and the module docstring's
+#: "WHAT --apply DOES" section for why each one is honest rather than invented):
+_CLAIM_DOMAIN = "regulatory"  #: `ClaimScope.domain` -- this source is Indonesian regulatory text.
+_CLAIM_STATUS = "supported"  #: `ClaimStatus` -- `admit()` already proved the statement is
+#: evidence-backed (`_statement_is_from_source`); "supported" names exactly that, nothing more.
+_EVIDENCE_STANCE = "supports"  #: `EvidenceStance` -- same proof, the evidence SUPPORTS the claim.
+_EVIDENCE_SOURCE_TIER = "research_os.source_tier.government_gazette"  #: `RegisteredName`.
+_EXTRACTOR = "research_os.intel_evidence_bridge"  #: `Identifier` -- this module, naming itself.
+_EXTRACTOR_VERSION = "1.0.0"
+#: `ClaimConfidence.method` -- NOT a truth/veracity estimate. `score=1.0` below measures
+#: EXTRACTION FIDELITY: `admit()`'s `_value_is_anchored_in_span` already proved the claimed
+#: value is a literal, delimited token of the cited span, mechanically, before this row could
+#: ever be `Admitted` -- so the score is not a guess about whether the underlying regulatory
+#: fact is true, only a statement that the extraction is exactly what the source says, verified
+#: deterministically rather than estimated. The name says this so a future reader never mistakes
+#: it for a veracity judgment.
+_CONFIDENCE_METHOD = "research_os.intel_evidence_bridge.span_anchored_admission"
+
+#: Sixth/seventh uuid5 namespaces (see the five above) -- `_EVIDENCE_NAMESPACE` mints the
+#: `evidence_id` `--apply` writes per admitted item; `_RUN_NAMESPACE` mints `lineage.run_id` /
+#: `provenance.run_id` from the manifest hash itself (a 64-hex sha256, not a UUID -- this is the
+#: deterministic bridge between the two shapes), so every row ONE `--apply` call writes shares
+#: the SAME run identity, and it is NEVER the wall clock (which would break idempotency: a
+#: second `--apply` of the same manifest must recompute the identical `object_hash`, and a
+#: wall-clock `run_id` would not).
+_EVIDENCE_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e6")
+_RUN_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e7")
 
 
 def _sha256(text: str) -> str:
@@ -195,6 +310,66 @@ class Rejected:
 
 
 BridgeResult = Mapped | Rejected
+
+
+class AdmittedCohortExceedsCap(Exception):
+    """`--apply`'s recomputed admitted count exceeds `ADMITTED_ROW_CAP`. Zero writes.
+
+    Named the same way `SourceSnapshotDrifted` (imported from `naga_backfill`) is: the exact
+    numbers involved, never a bare message -- a caller catching this can log `admitted`/`cap`
+    without re-parsing a string.
+    """
+
+    def __init__(self, *, admitted: int, cap: int) -> None:
+        self.admitted = admitted
+        self.cap = cap
+        super().__init__(f"admitted cohort exceeds cap: admitted={admitted} cap={cap}")
+
+
+class CanonicalSchemaInvalid(Exception):
+    """A payload `--apply` built for `object_kind` does not validate against the canonical model
+    that name promises (`Claim`/`Evidence`, `research_os.models.*`). Zero writes.
+
+    `naga_persistence.validate_object` never runs this check -- it recomputes `object_hash` and
+    checks the write-path instant grammar, nothing about the payload's OWN declared shape (D5
+    treats `research_os_objects.payload` as opaque jsonb by design). Writing an object whose
+    `object_kind` names a contract it does not satisfy is a worse defect than a missing DML
+    authorization: a `claim` row that is not a `Claim` lies about what it is to every future
+    reader, forever, on an append-only table. So THIS module gates on it before either the
+    `claim` or the `evidence` write ever reaches `naga_persistence` -- named by field path, from
+    pydantic's own error locations, never a bare traceback.
+    """
+
+    def __init__(self, *, object_kind: str, object_id: str, errors: tuple[str, ...]) -> None:
+        self.object_kind = object_kind
+        self.object_id = object_id
+        self.errors = errors
+        super().__init__(
+            f"canonical schema invalid: object_kind={object_kind} object_id={object_id} "
+            f"errors={errors}"
+        )
+
+
+_CANONICAL_MODELS: Mapping[str, type] = {"claim": Claim, "evidence": Evidence}
+
+
+def _validate_canonical_schema(write: ObjectWrite) -> None:
+    """`Claim.model_validate`/`Evidence.model_validate` on `write.payload`, keyed by
+    `write.object_kind` -- see `CanonicalSchemaInvalid`'s docstring for why this exists
+    alongside, not instead of, `naga_persistence.validate_object`."""
+
+    model = _CANONICAL_MODELS.get(write.object_kind)
+    if model is None:
+        return
+    try:
+        model.model_validate(write.payload)
+    except _PydanticValidationError as exc:
+        field_paths = tuple(
+            ".".join(str(part) for part in error["loc"]) or "<root>" for error in exc.errors()
+        )
+        raise CanonicalSchemaInvalid(
+            object_kind=write.object_kind, object_id=write.object_id, errors=field_paths
+        ) from exc
 
 
 def _raw_payload(intel_item: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -374,6 +549,163 @@ def bridge(intel_item: Mapping[str, Any]) -> BridgeResult:
     return Mapped(intel_item_id=item_id, record=record, source_snapshot=source_snapshot)
 
 
+def _require_instant(value: Any, *, column: str, item_id: str) -> str:
+    """Like `_to_rfc3339`, but for a column the schema declares `NOT NULL` -- a `None` result
+    here is not a named `Rejected` reason (there is no admission-mapping vocabulary entry for
+    it, because a `NOT NULL` column cannot legitimately be absent); it is a schema-contract
+    violation this module refuses to paper over with a fabricated instant.
+    """
+
+    parsed = _to_rfc3339(value)
+    if parsed is None:
+        raise ValueError(f"intel_items.{column} is not a parseable instant for item {item_id}")
+    return parsed
+
+
+def _build_evidence_write(mapped: Mapped, *, item: Mapping[str, Any]) -> ObjectWrite:
+    """The addressable source unit the Claim below cites as its own `evidence_refs` entry --
+    `research_os.models.evidence.Evidence`, section 5 of frozen CONTRACTS.md: "an addressable
+    source unit supporting or contradicting a claim." Every field not covered by a module-level
+    fixed policy (see the constants above) comes from `mapped.record`/`item`, never invented:
+    `document_id`/`document_version_id`/`document_content_hash`/`source_span.{locator,
+    quote_hash}` are `bridge()`'s own admission-judged values, byte-identical to what `admit()`
+    evaluated; `source_event_ref` adds the intel_event's OWN `object_hash` (`bridge()`'s record
+    only carries `event_id`, sufficient for `admit()`'s rules but not for `EventRef`'s exact-
+    reference contract); `times.recorded_at` is `intel_items.first_seen_at` -- when
+    `regulatory_watcher` itself first recorded this item, the honest answer to "when was this
+    evidence recorded", never the wall clock (this must stay deterministic for
+    `--apply`-run-twice idempotency: a wall-clock value would give the same `evidence_id` a
+    different `object_hash` on replay, which `write_objects` correctly reports as a hash
+    collision rather than accepting)."""
+
+    canonical_url = str(mapped.record["document_id"])
+    item_id = str(item.get("id") or mapped.intel_item_id)
+    evidence_id = str(uuid.uuid5(_EVIDENCE_NAMESPACE, canonical_url))
+    source_span = mapped.record["source_span"]
+    quoted_text = source_span["quoted_text"]
+    event_id = mapped.record["source_event_ref"]["event_id"]
+    intel_event = mapped.source_snapshot["intel_events"][event_id]
+    recorded_at = _require_instant(item.get("first_seen_at"), column="first_seen_at", item_id=item_id)
+
+    payload: dict[str, Any] = {
+        "evidence_id": evidence_id,
+        "evidence_family_id": f"{_EXTRACTOR}.evidence_family.{mapped.record['manifest_family_id']}",
+        "contract_version": _CONTRACT_VERSION,
+        "tenant": _TENANT,
+        "source_event_ref": {"event_id": event_id, "object_hash": intel_event["object_hash"]},
+        "document_id": canonical_url,
+        "document_version_id": mapped.record["document_version_id"],
+        "document_content_hash": mapped.record["document_content_hash"],
+        "source_span": {
+            "locator": source_span["locator"],
+            "start": 0,
+            "end": len(quoted_text),
+            "quote_hash": source_span["quote_hash"],
+        },
+        "source_tier": _EVIDENCE_SOURCE_TIER,
+        "stance": _EVIDENCE_STANCE,
+        "times": {
+            "observed_at": intel_event["times"]["observed_at"],
+            "valid_from": intel_event["times"]["observed_at"],
+            "recorded_at": recorded_at,
+        },
+        "provenance": {
+            "extractor": _EXTRACTOR,
+            "extractor_version": _EXTRACTOR_VERSION,
+            "run_id": str(uuid.uuid5(_RUN_NAMESPACE, canonical_url)),
+            "extraction_input_hash": mapped.record["document_content_hash"],
+        },
+        "classification": dict(_CLASSIFICATION),
+        "review_state": mapped.record["review"]["state"],
+        "retention": dict(_RETENTION),
+        "object_hash": "0" * 64,
+    }
+    payload["object_hash"] = _object_hash(payload)
+
+    return ObjectWrite(object_kind="evidence", object_id=evidence_id, payload=payload)
+
+
+def _build_claim_write(
+    mapped: Mapped, *, item: Mapping[str, Any], evidence_write: ObjectWrite, manifest: str
+) -> ObjectWrite:
+    """`research_os.models.claim.Claim` -- section 6 of frozen CONTRACTS.md. Built from
+    `mapped.record` plus the evidence object above, never from a bare re-shuffle of the
+    admission-input record `admit()` judged (that record's `statement.subject_ref` is a plain
+    `canonical_url` string, sufficient for `admit()`'s truthiness-only check on `subject_ref`
+    but not `ExactObjectRef`'s shape): here `subject_ref` names the `evidence` object THIS
+    `--apply` run is also writing, by its own real, freshly-computed `object_hash` -- "the
+    evidence this claim's statement is drawn from", not a dangling reference to something never
+    persisted. `claim_family_id` reuses `admit()`'s OWN `manifest_family_id` (the same seed,
+    `canonical_url`, under a namespace distinct from `claim_id`'s) rather than minting a second,
+    competing family concept. `scope.jurisdiction` is `intel_items.jurisdiction` WHEN the column
+    is actually populated -- never a constant standing in for missing data; `scope.domain` is
+    the one honest constant this source-wide policy can state (see `_CLAIM_DOMAIN`).
+    `time.valid_from`/`confidence`/`status` -- see the module-level constants' own docstrings for
+    why each value is the one `admit()`'s own verification already proved, not a fabrication.
+    `lineage.run_id` derives from `manifest` (the `--apply` caller's own manifest hash) via
+    `_RUN_NAMESPACE`, so every row ONE `--apply` call writes carries the SAME run identity, and a
+    replay of the SAME manifest reproduces the SAME `run_id` -- required for the idempotent
+    `object_hash` a second `--apply` must reproduce exactly.
+    """
+
+    canonical_url = str(mapped.record["document_id"])
+    item_id = str(item.get("id") or mapped.intel_item_id)
+    claim_id = str(uuid.uuid5(_CLAIM_NAMESPACE, canonical_url))
+    claim_family_id = str(mapped.record["manifest_family_id"])
+    recorded_at = _require_instant(item.get("first_seen_at"), column="first_seen_at", item_id=item_id)
+
+    event_id = mapped.record["source_event_ref"]["event_id"]
+    intel_event = mapped.source_snapshot["intel_events"][event_id]
+    valid_from = intel_event["times"]["observed_at"]
+
+    scope: dict[str, Any] = {"domain": _CLAIM_DOMAIN}
+    jurisdiction = item.get("jurisdiction")
+    if jurisdiction:
+        scope["jurisdiction"] = jurisdiction
+
+    payload: dict[str, Any] = {
+        "claim_id": claim_id,
+        "claim_family_id": claim_family_id,
+        "contract_version": _CONTRACT_VERSION,
+        "tenant": _TENANT,
+        "statement": {
+            "subject_ref": {
+                "object_kind": evidence_write.object_kind,
+                "object_id": evidence_write.object_id,
+                "object_hash": evidence_write.payload["object_hash"],
+            },
+            "predicate": mapped.record["statement"]["predicate"],
+            "object_ref_or_value": mapped.record["statement"]["object_ref_or_value"],
+        },
+        "scope": scope,
+        "time": {"recorded_at": recorded_at, "valid_from": valid_from},
+        "status": _CLAIM_STATUS,
+        "evidence_refs": [
+            {
+                "evidence_id": evidence_write.object_id,
+                "object_hash": evidence_write.payload["object_hash"],
+                "stance": _EVIDENCE_STANCE,
+            }
+        ],
+        "confidence": {"score": 1.0, "method": _CONFIDENCE_METHOD},
+        "classification": {
+            "risk_class": _CLASSIFICATION["risk_class"],
+            "sensitivity": _CLASSIFICATION["sensitivity"],
+        },
+        "review": dict(mapped.record["review"]),
+        "lineage": {
+            "run_id": str(uuid.uuid5(_RUN_NAMESPACE, manifest)),
+            "extractor": _EXTRACTOR,
+            "input_claim_refs": [],
+        },
+        "retention": dict(_RETENTION),
+        "object_hash": "0" * 64,
+    }
+    payload["object_hash"] = _object_hash(payload)
+
+    return ObjectWrite(object_kind="claim", object_id=claim_id, payload=payload)
+
+
 # ------------------------------------------------------------------------------------------
 # Dry-run CLI -- read-only, reports only counts and named reasons.
 # ------------------------------------------------------------------------------------------
@@ -381,37 +713,85 @@ def bridge(intel_item: Mapping[str, Any]) -> BridgeResult:
 
 async def _load_intel_items(conn: asyncpg.Connection) -> list[dict[str, Any]]:
     """Explicit column list, ordered by `id` (never `SELECT *`) -- the four columns `admit()`
-    needs plus `id`, and nothing else this module has no use for."""
+    needs, plus `id`, plus the two columns ONLY the `--apply` write path reads
+    (`jurisdiction` for `Claim.scope.jurisdiction`, `first_seen_at` for `time.recorded_at`/
+    `times.recorded_at`) -- nothing else this module has no use for. Both extra columns also
+    widen `compute_source_snapshot_hash`'s own per-row hash (it hashes every column this SELECT
+    returns), which is correct: a row whose `jurisdiction`/`first_seen_at` changed would write a
+    different `Claim`/`Evidence`, so the manifest must bind to it too."""
 
     records = await conn.fetch(
-        "SELECT id, canonical_url, published_at, raw_payload FROM intel_items ORDER BY id"
+        "SELECT id, canonical_url, published_at, raw_payload, jurisdiction, first_seen_at "
+        "FROM intel_items ORDER BY id"
     )
     return [dict(record) for record in records]
 
 
 @dataclass(frozen=True)
 class DryRunReport:
-    """Counts and named reasons only -- never a field value from any `intel_items` row."""
+    """Counts, named reasons and the manifest -- never a field value from any `intel_items` row."""
 
     items_read: int
     rejected_by_bridge: Mapping[str, int]
     admitted: int
     excluded_by_reason: Mapping[str, int]
+    manifest_hash: str
+    source_snapshot_hash: str
 
     def as_dict(self) -> dict[str, Any]:
         return {
+            "mode": "dry-run",
             "items_read": self.items_read,
             "rejected_by_bridge": dict(self.rejected_by_bridge),
             "admitted": self.admitted,
             "excluded_by_reason": dict(self.excluded_by_reason),
+            "manifest_hash": self.manifest_hash,
+            "source_snapshot_hash": self.source_snapshot_hash,
         }
 
 
-def render_report(report: DryRunReport, *, as_json: bool = False) -> str:
+@dataclass(frozen=True)
+class ApplyReport:
+    """What `--apply` actually did -- counts per table, never a field value from any row."""
+
+    items_read: int
+    rejected_by_bridge: Mapping[str, int]
+    admitted: int
+    excluded_by_reason: Mapping[str, int]
+    manifest_hash: str
+    source_snapshot_hash: str
+    objects_inserted: int
+    objects_already_present: int
+    admissions_inserted: int
+    written: tuple[tuple[str, str, str], ...]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "mode": "apply",
+            "items_read": self.items_read,
+            "rejected_by_bridge": dict(self.rejected_by_bridge),
+            "admitted": self.admitted,
+            "excluded_by_reason": dict(self.excluded_by_reason),
+            "manifest_hash": self.manifest_hash,
+            "source_snapshot_hash": self.source_snapshot_hash,
+            "objects_inserted": self.objects_inserted,
+            "objects_already_present": self.objects_already_present,
+            "admissions_inserted": self.admissions_inserted,
+            "written": [
+                {"object_kind": object_kind, "object_id": object_id, "object_hash": object_hash}
+                for object_kind, object_id, object_hash in self.written
+            ],
+        }
+
+
+def render_report(report: DryRunReport | ApplyReport, *, as_json: bool = False) -> str:
     data = report.as_dict()
     if as_json:
         return json.dumps(data, sort_keys=True, indent=2)
     lines = [
+        f"mode: {data['mode']}",
+        f"manifest_hash: {data['manifest_hash']}",
+        f"source_snapshot_hash: {data['source_snapshot_hash']}",
         f"items_read: {data['items_read']}",
         "rejected_by_bridge:",
     ]
@@ -421,34 +801,218 @@ def render_report(report: DryRunReport, *, as_json: bool = False) -> str:
     lines.append("excluded_by_reason:")
     for reason in sorted(data["excluded_by_reason"]):
         lines.append(f"  {reason}: {data['excluded_by_reason'][reason]}")
+    if "written" in data:
+        lines.append(f"objects_inserted: {data['objects_inserted']}")
+        lines.append(f"objects_already_present: {data['objects_already_present']}")
+        lines.append(f"admissions_inserted: {data['admissions_inserted']}")
+        lines.append("written:")
+        for entry in data["written"]:
+            lines.append(f"  {entry['object_kind']} {entry['object_id']}: {entry['object_hash']}")
     return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class _Computed:
+    """The one pipeline's full output -- `run_dry_run`/`run_apply` both project from this, and
+    `run_apply` recomputes it fresh (never reuses a caller-supplied one) so a manifest agreement
+    always reflects THIS call's own read, never a cached prior one."""
+
+    intel_items: list[Mapping[str, Any]]
+    rejected_by_bridge: Mapping[str, int]
+    #: `(bridge result, admission decision, RAW intel_items row)` -- the raw row travels
+    #: alongside because `--apply`'s writers need `jurisdiction`/`first_seen_at`, columns
+    #: `bridge()`'s own `Mapped.record` never carries (they play no role in `admit()`'s rules).
+    mapped_admitted: tuple[tuple[Mapped, Admitted, Mapping[str, Any]], ...]
+    excluded_by_reason: Mapping[str, int]
+    admitted: int
+    source_snapshot_hash: str
+    manifest_hash: str
+
+
+def _compute_sync(intel_items: Sequence[Mapping[str, Any]]) -> _Computed:
+    """Bridge every row, `admit()` every `Mapped` result, tally with `summarize()` (reused, not
+    reimplemented), and bind EVERY row's fate -- `rejected_by_bridge`, `excluded`, `admitted`
+    alike -- into one manifest via `naga_backfill.compute_manifest`/`compute_source_snapshot_hash`
+    (also reused): a row that changes anywhere in this cohort, admitted or not, changes the
+    manifest, which is what makes `--apply`'s drift check meaningful over the WHOLE cohort read,
+    not just the admitted slice.
+    """
+
+    rejected_by_bridge: dict[str, int] = {}
+    decisions: list[AdmissionDecision] = []
+    mapped_by_item_id: dict[str, tuple[Mapped, Mapping[str, Any]]] = {}
+    manifest_decisions: list[tuple[str, str, str | None]] = []
+
+    for item in intel_items:
+        item_id = str(item.get("id") or "")
+        result = bridge(item)
+        if isinstance(result, Rejected):
+            rejected_by_bridge[result.reason] = rejected_by_bridge.get(result.reason, 0) + 1
+            manifest_decisions.append((item_id, "rejected_by_bridge", result.reason))
+            continue
+        decision = admit(result.record, source_snapshot=result.source_snapshot)
+        decisions.append(decision)
+        if isinstance(decision, Admitted):
+            mapped_by_item_id[decision.legacy_claim_id] = (result, item)
+            manifest_decisions.append((item_id, "admitted", decision.family_id))
+        else:
+            manifest_decisions.append((item_id, "excluded", decision.reason))
+
+    summary = summarize(decisions)
+    mapped_admitted_list: list[tuple[Mapped, Admitted, Mapping[str, Any]]] = []
+    for decision in decisions:
+        if isinstance(decision, Admitted):
+            mapped_result, raw_item = mapped_by_item_id[decision.legacy_claim_id]
+            mapped_admitted_list.append((mapped_result, decision, raw_item))
+    mapped_admitted = tuple(mapped_admitted_list)
+
+    source_snapshot_hash = compute_source_snapshot_hash(intel_items)
+    _, manifest_hash = compute_manifest(
+        cohort=COHORT, source_snapshot_hash=source_snapshot_hash, decisions=manifest_decisions
+    )
+
+    return _Computed(
+        intel_items=list(intel_items),
+        rejected_by_bridge=rejected_by_bridge,
+        mapped_admitted=mapped_admitted,
+        excluded_by_reason=dict(summary.excluded_by_reason),
+        admitted=summary.admitted,
+        source_snapshot_hash=source_snapshot_hash,
+        manifest_hash=manifest_hash,
+    )
 
 
 def run_dry_run_sync(intel_items: list[Mapping[str, Any]]) -> DryRunReport:
     """The pure tally step, split out from the DB read so tests can drive it without a
-    connection: bridge every row, then `admit()` every `Mapped` result, then `summarize()`."""
+    connection."""
 
-    rejected_by_bridge: dict[str, int] = {}
-    decisions = []
-    for item in intel_items:
-        result = bridge(item)
-        if isinstance(result, Rejected):
-            rejected_by_bridge[result.reason] = rejected_by_bridge.get(result.reason, 0) + 1
-            continue
-        decisions.append(admit(result.record, source_snapshot=result.source_snapshot))
-
-    summary = summarize(decisions)
+    computed = _compute_sync(intel_items)
     return DryRunReport(
-        items_read=len(intel_items),
-        rejected_by_bridge=rejected_by_bridge,
-        admitted=summary.admitted,
-        excluded_by_reason=dict(summary.excluded_by_reason),
+        items_read=len(computed.intel_items),
+        rejected_by_bridge=computed.rejected_by_bridge,
+        admitted=computed.admitted,
+        excluded_by_reason=computed.excluded_by_reason,
+        manifest_hash=computed.manifest_hash,
+        source_snapshot_hash=computed.source_snapshot_hash,
     )
 
 
 async def run_dry_run(conn: asyncpg.Connection) -> DryRunReport:
     intel_items = await _load_intel_items(conn)
     return run_dry_run_sync(intel_items)
+
+
+async def _compute(conn: asyncpg.Connection) -> _Computed:
+    """`run_apply`'s own fresh read -- never the caller's `--dry-run` result -- so a manifest
+    agreement proves THIS instant's data, not a stale one."""
+
+    intel_items = await _load_intel_items(conn)
+    return _compute_sync(intel_items)
+
+
+# ------------------------------------------------------------------------------------------
+# Apply -- writes through `naga_persistence` only, one transaction, capped and manifest-gated.
+# ------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _ApplyOutcome:
+    objects_inserted: int
+    objects_already_present: int
+    admissions_inserted: int
+    written: tuple[tuple[str, str, str], ...]
+
+
+async def _execute_apply(
+    conn: asyncpg.Connection,
+    *,
+    writes: Sequence[ObjectWrite],
+    admission_rows: Sequence[AdmissionRow],
+) -> _ApplyOutcome:
+    """ONE transaction for the whole batch -- `write_objects`/`record_admissions` each nest
+    their own via an asyncpg SAVEPOINT (the same pattern `naga_backfill._execute_apply` uses and
+    describes), so a failure recording the second table rolls back whatever the first already
+    inserted. Zero writes, zero I/O, when `writes` is empty -- a cohort with nothing admitted is
+    a valid, silent no-op.
+    """
+
+    inserted_ids: tuple[str, ...] = ()
+    already_present_ids: tuple[str, ...] = ()
+    admissions_inserted = 0
+    if writes:
+        async with conn.transaction():
+            write_result = await write_objects(conn, writes)
+            inserted_ids = write_result.inserted_ids
+            already_present_ids = write_result.already_present_ids
+            admissions_inserted = await record_admissions(conn, admission_rows)
+
+    written = tuple(
+        (write.object_kind, write.object_id, str(write.payload["object_hash"]))
+        for write in writes
+        if write.object_id in inserted_ids
+    )
+    return _ApplyOutcome(
+        objects_inserted=len(inserted_ids),
+        objects_already_present=len(already_present_ids),
+        admissions_inserted=admissions_inserted,
+        written=written,
+    )
+
+
+async def run_apply(conn: asyncpg.Connection, *, manifest: str) -> ApplyReport:
+    """Recomputes the dry-run pipeline fresh; refuses (zero writes) on manifest disagreement
+    (`SourceSnapshotDrifted`) or on an admitted count past `ADMITTED_ROW_CAP`
+    (`AdmittedCohortExceedsCap`) -- checked, and raised, BEFORE any `ObjectWrite` is built."""
+
+    computed = await _compute(conn)
+    if computed.manifest_hash != manifest:
+        raise SourceSnapshotDrifted(given=manifest, computed=computed.manifest_hash)
+    if computed.admitted > ADMITTED_ROW_CAP:
+        raise AdmittedCohortExceedsCap(admitted=computed.admitted, cap=ADMITTED_ROW_CAP)
+
+    writes: list[ObjectWrite] = []
+    admission_rows: list[AdmissionRow] = []
+    for mapped, decision, item in computed.mapped_admitted:
+        evidence_write = _build_evidence_write(mapped, item=item)
+        validate_object(evidence_write)
+        _validate_canonical_schema(evidence_write)
+
+        claim_write = _build_claim_write(
+            mapped, item=item, evidence_write=evidence_write, manifest=manifest
+        )
+        validate_object(claim_write)
+        _validate_canonical_schema(claim_write)
+
+        writes.append(evidence_write)
+        writes.append(claim_write)
+        admission_rows.append(
+            AdmissionRow(
+                run_id=manifest,
+                legacy_claim_id=decision.legacy_claim_id,
+                family_id=decision.family_id,
+                claim_object_id=claim_write.object_id,
+                claim_object_hash=str(claim_write.payload["object_hash"]),
+                evidence_object_ids=(evidence_write.object_id,),
+                evidence_object_hashes=(str(evidence_write.payload["object_hash"]),),
+                source_snapshot_hash=computed.source_snapshot_hash,
+                decision="admitted",
+                reason=None,
+            )
+        )
+
+    outcome = await _execute_apply(conn, writes=writes, admission_rows=admission_rows)
+    return ApplyReport(
+        items_read=len(computed.intel_items),
+        rejected_by_bridge=computed.rejected_by_bridge,
+        admitted=computed.admitted,
+        excluded_by_reason=computed.excluded_by_reason,
+        manifest_hash=manifest,
+        source_snapshot_hash=computed.source_snapshot_hash,
+        objects_inserted=outcome.objects_inserted,
+        objects_already_present=outcome.objects_already_present,
+        admissions_inserted=outcome.admissions_inserted,
+        written=outcome.written,
+    )
 
 
 def _require_dsn(env_name: str) -> str:
@@ -458,9 +1022,9 @@ def _require_dsn(env_name: str) -> str:
     return value
 
 
-def _refuse(message: str) -> NoReturn:
+def _refuse(message: str, *, code: int = 2) -> NoReturn:
     print(message)  # noqa: T201 -- the refusal message IS this CLI's diagnostic output
-    raise SystemExit(2)
+    raise SystemExit(code)
 
 
 async def _dry_run_main(dsn: str) -> DryRunReport:
@@ -472,15 +1036,30 @@ async def _dry_run_main(dsn: str) -> DryRunReport:
         await conn.close()
 
 
+async def _apply_main(dsn: str, *, manifest: str) -> ApplyReport:
+    """No `SET default_transaction_read_only` here -- unlike `_dry_run_main`, this path writes,
+    exactly as `naga_backfill._apply_main` does for its own cohort."""
+
+    conn = await asyncpg.connect(dsn)
+    try:
+        return await run_apply(conn, manifest=manifest)
+    finally:
+        await conn.close()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m backend.services.research_os.intel_evidence_bridge",
         description=(
-            "Read-only dry-run: bridge every fully-sourced intel_items row into admit()'s "
-            "input and report the tally. No --apply -- this module never writes."
+            "Bridge intel_items into admit()'s input. Dry-run by default (read-only). "
+            "--apply --manifest <64-hex> writes the admitted cohort (regulatory_watcher only, "
+            f"capped at {ADMITTED_ROW_CAP} admitted rows) through naga_persistence, and only "
+            "if the recomputed manifest still agrees."
         ),
     )
-    parser.add_argument("--dry-run", action="store_true", help="read-only (the only mode)")
+    parser.add_argument("--dry-run", action="store_true", help="read-only (default mode)")
+    parser.add_argument("--apply", action="store_true", help="write; requires --manifest")
+    parser.add_argument("--manifest", help="64-hex manifest hash from a prior --dry-run")
     parser.add_argument(
         "--dsn-env",
         default=DEFAULT_DSN_ENV,
@@ -490,10 +1069,54 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_args(args: argparse.Namespace) -> None:
+    if args.dry_run and args.apply:
+        _refuse("refused: --dry-run and --apply are mutually exclusive")
+    if args.apply:
+        if not args.manifest:
+            _refuse("refused: --apply requires --manifest <64-hex>")
+        if _MANIFEST_RE.fullmatch(args.manifest) is None:
+            _refuse("refused: --manifest must be 64 lowercase hex characters")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    _validate_args(args)
     dsn = _require_dsn(args.dsn_env)
-    report = asyncio.run(_dry_run_main(dsn))
+
+    if args.apply:
+        try:
+            report: DryRunReport | ApplyReport = asyncio.run(
+                _apply_main(dsn, manifest=args.manifest)
+            )
+        except SourceSnapshotDrifted as exc:
+            logger.warning("apply refused: source snapshot drifted (given=%s)", exc.given)
+            _refuse("refused: source_snapshot_drifted", code=3)
+        except AdmittedCohortExceedsCap as exc:
+            logger.warning(
+                "apply refused: admitted cohort exceeds cap (admitted=%d cap=%d)",
+                exc.admitted,
+                exc.cap,
+            )
+            _refuse(
+                f"refused: admitted_cohort_exceeds_cap admitted={exc.admitted} cap={exc.cap}",
+                code=4,
+            )
+        except CanonicalSchemaInvalid as exc:
+            logger.warning(
+                "apply refused: canonical schema invalid (object_kind=%s object_id=%s errors=%s)",
+                exc.object_kind,
+                exc.object_id,
+                exc.errors,
+            )
+            _refuse(
+                f"refused: canonical_schema_invalid object_kind={exc.object_kind} "
+                f"object_id={exc.object_id} errors={exc.errors}",
+                code=5,
+            )
+    else:
+        report = asyncio.run(_dry_run_main(dsn))
+
     print(render_report(report, as_json=args.json))  # noqa: T201 -- the report IS this CLI's output
     return 0
 
