@@ -1,0 +1,63 @@
+task_id: vo-b5-reachable-space
+gear: 2
+base_sha: d954c1c6cc
+objective: >-
+  Slice B5-1 (MANDATE-vo.md, R-REACH): the enumerator
+  (enumerate-interview-space.ts) and the corpus generator
+  (generate-walk-corpus.ts) both used to answer `application_channel` with
+  its first declared option regardless of `wants_onshore_conversion`, and
+  the live interview's `flowReducer` REFUSES that pair (flow.ts:1317,
+  channelConflictsWithOnshoreIntent). Measured on origin/main: of the 253
+  covering walks, 7 reached a verdict and 246 were refused, every refusal
+  `application_channel=OFFSHORE vs wants_onshore_conversion=yes` — 97% of
+  the corpus the live sweep used was a fact set a real browser can never
+  send. Both scripts now IMPORT channelConflictsWithOnshoreIntent from
+  flow.ts (never copy it): `answersFor(questionId, facts)` filters the
+  domain it offers for `application_channel` ONLY, and `answerFor(id,
+  overrides, facts = {})` falls back to the first accepted option when its
+  ordinary choice would be refused. `countExactWalks` now returns
+  `edgesReachable`/`edgeWitnesses` (per-EDGE, not per-question) so
+  `buildCoveringSubset` seeds each targeted walk from the ONE context that
+  can actually answer it. Re-measured after the fix: covering 252 (was
+  253), edgesRequired == edgesCovered == 317 with both difference lists
+  empty, corpus count unchanged at 115 with exactly 14 fixtures changed one
+  line each (`process.application_channel`, OFFSHORE -> ONSHORE_CONVERSION
+  on the 14 onshore walks that never deliberately override it).
+
+constraints:
+  - 'No production source file besides the two named scripts: no flow.ts, no package.json, no config, no workflow, no dependency, no lockfile. Touched: apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts, apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts, their two tests (enumerate-interview-space.test.ts, walk-corpus-determinism.test.ts), the 14 onshore_*.json fixtures the generator rewrote, this brief.yml, and — RULED IN as a second commit (MANDATE-vo.md amendment to Slice B5-1''s Files list, "derived fixture ruled in"): apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fixtures/no-path-doors.replay.json (a DERIVED fixture of the 14 walk fixtures above, regenerated via replay-no-path-doors.py, which runs the backend evaluator LOCALLY — no production call, no owner walk) and its consuming test apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/no-path-doors.test.tsx (hardcoded pins updated to match the regenerated fixture). Nothing else.'
+  - 'The filter/fallback applies to application_channel ONLY — both flow.ts reducer call sites (:1317, :327) gate on questionId === "application_channel", so filtering wants_onshore_conversion too would invent a behaviour the live interview does not have. No literal "OFFSHORE"/"ONSHORE_CONVERSION" anywhere under scripts/visa-oracle/ — both scripts import the predicate, never re-implement it.'
+  - "This PR touches apps/backend-rag/** fixtures and a backend-rag merge DEPLOYS — test fixtures only (14 JSON files, one field each), so nothing behavioural ships. No other backend file touched."
+
+appetite: { wall_clock_hours: 3 }
+
+acceptance:
+  - text: "Y0 base (untouched origin/main, reproduced via a scratch worktree + a scratch driver replaying buildCoveringSubset's walks through the REAL flowReducer): covering 253, reached 7, refused 246, all named application_channel vs wants_onshore_conversion. vitest on the untouched base: 44/44 files, 1134/1134 tests green."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: "Y1/Y3 innocence: the head's covering subset is 252 walks, and Y3's tripwire drives all 252 through flowReducer (ANSWER/SKIP/ADVANCE, today=CORPUS_TODAY) AND through createInterviewSnapshot -> JSON -> restoreInterviewSnapshot, asserting reached === walks.length (252 === 252) on both paths."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'reached === covering'"
+  - text: "Y2 innocence: edgesRequired == edgesCovered == 317, edgesMissing and edgesExtra both empty, printed by the run, over the DFS's own edgesReachable set (never a nodesReached x answersFor product)."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'total edge coverage'"
+  - text: 'Y3b innocence: probing every declared value (unfiltered, {}) of every asked question over all 252 covering walks through a TRIAL flowReducer.ANSWER, the derived refusable-question-id set is exactly ["application_channel"], cardinality literal 1.'
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'only application_channel ever blocks'"
+  - text: "Y4: the one fact key channelConflictsWithOnshoreIntent's call site reads (wants_onshore_conversion) is a declared member of BRANCH_RELEVANT_FACT_KEYS."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'stays inside BRANCH_RELEVANT_FACT_KEYS'"
+  - text: "Y5: the regenerated corpus commits exactly 14 modified fixtures (onshore_business/diaspora/family/holdsPermit_current_tourism/holdsPermit_expired_tourism/invest/other/remote/retirement/retirement_age64/second_home/study/tourism/work.json), 0 added, 0 deleted, one field each (process.application_channel: OFFSHORE -> ONSHORE_CONVERSION); EXPECTED_WALK_COUNT stays 115."
+    probe: 'git diff --stat "$(git merge-base origin/main HEAD)" HEAD -- apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/'
+  - text: "walk-corpus-determinism.test.ts is green after regeneration: 117/117 tests (115 byte-identity checks + the 2 count/set checks)."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts'"
+  - text: "Y6: the backend census + seq21 pack are IDENTICAL on base and head — 91 passed, 14 skipped on both (a fresh origin/main worktree vs. HEAD, same .venv) — no rule in rulepack-prod-020/021/022.source.json reads process.application_channel."
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py"
+  - text: 'Y7: flow.test.ts is green (147/147). The whole visa-oracle vitest tree is 44/44 files, 1125/1125 tests, ALL GREEN — the no-path-doors.test.tsx corpus-fingerprint red from the first commit is RESOLVED by the second (RULED IN) commit: replay-no-path-doors.py regenerated fixtures/no-path-doors.replay.json, run from apps/backend-rag (its .env is symlinked there and Settings loads env_file relative to cwd) with PYTHONPATH at this worktree''s apps/backend-rag and the main checkout''s venv by absolute path — the cwd-relative invocation succeeded on its own, no throwaway env values needed. no-path-doors.test.tsx is now 69/69; its pin updates (17->14 NO_SUPPORTED_PATH, 2->1 NEEDS_INPUT, pack file 020->022) are pre-existing pack drift (sequence 20, 2026-09-06 -> sequence 22, 2026-09-16) surfaced by this PR''s first regeneration of the fixture in that window, not caused by the application_channel fix (grep -c "process.application_channel" is 0 across all three rulepack-prod-020/021/022.source.json files). tsc --noEmit exits 0.'
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: "GUILT Y1/Y3: on a scratch cp of both production files, deleting the enumerator's application_channel filter AND the corpus generator's fallback reproduces the historical bug exactly — Y3's tripwire goes RED naming '246 of 253 covering walks were blocked by flowReducer: application_channel vs wants_onshore_conversion'. Restored and cmp -s verified byte-identical."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'reached === covering'"
+  - text: "GUILT Y3b: on a scratch cp of flow.ts, adding an arbitrary second refusal branch (trip_scope === 'single') to flowReducer's ANSWER case moves the derived refusable-id set's cardinality from 1 to 2 — RED naming the new count. Restored and cmp -s verified byte-identical."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'only application_channel ever blocks'"
+  - text: "GUILT Y4: on a scratch cp, removing wants_onshore_conversion from BRANCH_RELEVANT_FACT_KEYS goes RED naming exactly that key as missing. Restored and cmp -s verified byte-identical."
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle/_lib/enumerate-interview-space.test.ts' -t 'stays inside BRANCH_RELEVANT_FACT_KEYS'"
+
+assumptions:
+  - text: 'GUILT Y2 (restore the per-question witness instead of the per-edge one) does NOT show up as edgesMissing going red in this repo''s specific graph shape: application_channel=OFFSHORE happens to be covered incidentally by the UNRELATED edge/wants_onshore_conversion=no walk (whose own witness legitimately carries wants_onshore_conversion="no", so application_channel''s un-overridden default OFFSHORE survives the conflict check there). The mutation IS caught, just by a different, real observable: the covering-subset cardinality moves from 252 to 253 (one spurious, mislabeled walk — ''edge/application_channel=OFFSHORE'' whose ACTUAL facts.application_channel ends up ''ONSHORE_CONVERSION'' after the silent redirect). Reported as measured, not force-fit to the mandate''s literal wording.'
+    status: verified
+    probe: "measured via a scratch cp+mutate+restore cycle on enumerate-interview-space.ts (buildCoveringSubset reverted to space.witnesses.get(id) instead of space.edgeWitnesses.get(edge)); vitest -t 'exactly 252 walks' goes red (253 received) under the mutation, green after restore, restore verified with cmp -s."

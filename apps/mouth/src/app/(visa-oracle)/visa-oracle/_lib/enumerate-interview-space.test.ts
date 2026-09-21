@@ -34,7 +34,16 @@ import {
   renderManifest,
   typedBranchRelevantQuestionIds,
 } from "../../../../../scripts/visa-oracle/enumerate-interview-space";
-import { computeNextNode, type OracleNode } from "./flow";
+import { CORPUS_TODAY } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import {
+  type BlockedAnswer,
+  computeNextNode,
+  createInterviewSnapshot,
+  flowReducer,
+  initialFlowState,
+  type OracleNode,
+  restoreInterviewSnapshot,
+} from "./flow";
 import { QUESTIONS } from "./tree";
 
 /**
@@ -163,15 +172,63 @@ describe("REPRESENTATIVE_VALUES is complete (GATE-B1-REPORT-6842.md Check 2, MED
 
 describe("answersFor — every declared option and unsure", () => {
   it("a question with declared options and notSure returns every option plus unsure", () => {
-    const values = answersFor("in_indonesia");
+    const values = answersFor("in_indonesia", {});
     expect(values).toEqual(["yes", "no", "unsure"]);
   });
 
   it("review_gate returns its real wire domain (REVIEW_GATE_ITEMS), not its own two-option UI gate", () => {
-    const values = answersFor("review_gate");
+    const values = answersFor("review_gate", {});
     expect(values).toContain("none");
     expect(values).toContain("criminal_record");
     expect(values.length).toBe(13);
+  });
+});
+
+describe("answersFor — application_channel is filtered by wants_onshore_conversion (Slice B5-1, Y1)", () => {
+  it("excludes OFFSHORE when wants_onshore_conversion is yes", () => {
+    const values = answersFor("application_channel", {
+      wants_onshore_conversion: "yes",
+    });
+    expect(values).not.toContain("OFFSHORE");
+    expect(values).toEqual(
+      expect.arrayContaining([
+        "ONSHORE_CONVERSION",
+        "STATUS_BRIDGING",
+        "unsure",
+      ]),
+    );
+  });
+
+  it("excludes the two ONSHORE channels when wants_onshore_conversion is no", () => {
+    const values = answersFor("application_channel", {
+      wants_onshore_conversion: "no",
+    });
+    expect(values).not.toContain("ONSHORE_CONVERSION");
+    expect(values).not.toContain("STATUS_BRIDGING");
+    expect(values).toEqual(expect.arrayContaining(["OFFSHORE", "unsure"]));
+  });
+
+  it("is unfiltered when wants_onshore_conversion is absent or unsure (the guard's own tri-state exemption)", () => {
+    const withNoFact = answersFor("application_channel", {});
+    const withUnsure = answersFor("application_channel", {
+      wants_onshore_conversion: "unsure",
+    });
+    const full = [
+      "OFFSHORE",
+      "ONSHORE_CONVERSION",
+      "STATUS_BRIDGING",
+      "unsure",
+    ];
+    expect(withNoFact.sort()).toEqual([...full].sort());
+    expect(withUnsure.sort()).toEqual([...full].sort());
+  });
+
+  it("never filters any OTHER question id, even one that happens to share the fact key (byte-identical domain)", () => {
+    const withoutFacts = answersFor("wants_onshore_conversion", {});
+    const withUnrelatedFacts = answersFor("wants_onshore_conversion", {
+      wants_onshore_conversion: "yes",
+    });
+    expect(withUnrelatedFacts).toEqual(withoutFacts);
   });
 });
 
@@ -195,7 +252,7 @@ describe("buildCoveringSubset — total edge coverage", () => {
       const value = walk.facts.holds_stay_permit;
       if (value !== undefined) seen.add(value);
     }
-    for (const option of answersFor("holds_stay_permit")) {
+    for (const option of answersFor("holds_stay_permit", {})) {
       expect(seen.has(option)).toBe(true);
     }
   });
@@ -216,12 +273,191 @@ describe("buildCoveringSubset — total edge coverage", () => {
     const withoutIt = REAL_SUBSET.walks.filter(
       (walk) => walk.label !== targetLabel,
     );
-    const report = edgeCoverageReport(REAL_SPACE.nodesReached, withoutIt);
+    const report = edgeCoverageReport(REAL_SPACE.edgesReachable, withoutIt);
     expect(report.edgesMissing).toEqual(["family_sponsor_nationalities=ID"]);
   });
 
   it("is not empty (blind-scan floor: zero walks is a defect, not a valid output)", () => {
     expect(REAL_SUBSET.walks.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Generous but bounded: `REAL_SPACE.maxDepth` (26, measured) is the deepest
+ * the real graph goes from `framing`; this leaves headroom for the ADVANCE
+ * steps between questions without masking a genuine infinite loop as a slow
+ * test.
+ */
+const MAX_DRIVE_STEPS = 60;
+
+/**
+ * Replays ONE covering walk's `facts` through the REAL `flowReducer`, from a
+ * fresh `initialFlowState`, `SKIP` for `"unsure"` and `ANSWER` otherwise —
+ * the two actions a real applicant's browser ever sends. Stops early (with
+ * `blocked` set) the moment the reducer refuses an answer, exactly like the
+ * live UI would; otherwise drives to `verdict` and then round-trips a
+ * snapshot through `createInterviewSnapshot` -> JSON -> `restoreInterviewSnapshot`,
+ * reporting whether THAT path also lands on `verdict`. Deliberately does not
+ * exercise `SELECT_CATEGORY`, `ASK_FOLLOW_UP`, `BACK` or `EDIT` — this
+ * walk-replay only ever moves forward, one question at a time, which is all
+ * a covering walk's linear `asked`/`facts` pair can drive.
+ */
+function driveWalkThroughReducer(walk: {
+  label: string;
+  facts: Record<string, string>;
+}): { label: string; blocked: BlockedAnswer | null; restoredVerdict: boolean } {
+  let state = initialFlowState("en");
+  state = flowReducer(state, { type: "ADVANCE" });
+  for (let step = 0; step < MAX_DRIVE_STEPS; step += 1) {
+    const head = state.history[state.history.length - 1];
+    if (head.kind === "verdict") break;
+    if (head.kind !== "question") {
+      state = flowReducer(state, { type: "ADVANCE" });
+      continue;
+    }
+    const value = walk.facts[head.questionId];
+    if (value === undefined) {
+      throw new Error(
+        `walk "${walk.label}" asks "${head.questionId}" but its facts carry no answer for it`,
+      );
+    }
+    state =
+      value === "unsure"
+        ? flowReducer(state, {
+            type: "SKIP",
+            questionId: head.questionId,
+            today: CORPUS_TODAY,
+          })
+        : flowReducer(state, {
+            type: "ANSWER",
+            questionId: head.questionId,
+            value,
+            today: CORPUS_TODAY,
+          });
+    if (state.blockedAnswer) {
+      return {
+        label: walk.label,
+        blocked: state.blockedAnswer,
+        restoredVerdict: false,
+      };
+    }
+  }
+  const head = state.history[state.history.length - 1];
+  if (head.kind !== "verdict") {
+    throw new Error(
+      `walk "${walk.label}" never reached a verdict within ${MAX_DRIVE_STEPS} steps ` +
+        `(stopped on "${head.kind === "question" ? head.questionId : head.kind}")`,
+    );
+  }
+  const snapshot = createInterviewSnapshot(state, CORPUS_TODAY);
+  const roundTripped = JSON.parse(JSON.stringify(snapshot));
+  const restored = restoreInterviewSnapshot(roundTripped, "en", CORPUS_TODAY);
+  const restoredHead = restored?.history[restored.history.length - 1];
+  return {
+    label: walk.label,
+    blocked: null,
+    restoredVerdict: restoredHead?.kind === "verdict",
+  };
+}
+
+describe("Y3 — every covering walk reaches a verdict through flowReducer AND through the resume snapshot (Slice B5-1)", () => {
+  it("reached === covering, both the reducer path and the snapshot-restore path (innocence)", () => {
+    const walks = REAL_SUBSET.walks;
+    const results = walks.map(driveWalkThroughReducer);
+    const blocked = results.filter((result) => result.blocked !== null);
+    if (blocked.length > 0) {
+      const pairs = new Set(
+        blocked.map(
+          (result) =>
+            `${result.blocked!.questionId} vs ${result.blocked!.conflictsWithQuestionId}`,
+        ),
+      );
+      throw new Error(
+        `${blocked.length} of ${walks.length} covering walks were blocked by flowReducer: ${[
+          ...pairs,
+        ].join(", ")}`,
+      );
+    }
+    const reached = results.filter((result) => result.restoredVerdict).length;
+    expect(reached).toBe(walks.length);
+  });
+});
+
+describe("Y3b — the derived refusable-question-id set is exactly {application_channel}, cardinality 1 (Slice B5-1)", () => {
+  it("probing every value of every asked question, over every covering walk, only application_channel ever blocks", () => {
+    const refusableIds = new Set<string>();
+    for (const walk of REAL_SUBSET.walks) {
+      let state = initialFlowState("en");
+      state = flowReducer(state, { type: "ADVANCE" });
+      for (let step = 0; step < MAX_DRIVE_STEPS; step += 1) {
+        const head = state.history[state.history.length - 1];
+        if (head.kind === "verdict") break;
+        if (head.kind !== "question") {
+          state = flowReducer(state, { type: "ADVANCE" });
+          continue;
+        }
+        const questionId = head.questionId;
+        // The FULL declared domain, unfiltered (`{}`, never `state.facts`):
+        // Y1's own filter already removes a conflicting value from what
+        // `answersFor(id, state.facts)` would offer, so probing THAT
+        // output could never surface application_channel's own refusal —
+        // it would prove only that the enumerator never asks for what it
+        // already knows is blocked, not what the REDUCER itself refuses.
+        // `answersFor(id, {})` is byte-identical to `answersFor(id,
+        // anyFacts)` for every id but application_channel (module
+        // docstring), so this stays a faithful probe for every OTHER id.
+        for (const value of answersFor(questionId, {})) {
+          const trial = flowReducer(state, {
+            type: "ANSWER",
+            questionId,
+            value,
+            today: CORPUS_TODAY,
+          });
+          if (trial.blockedAnswer)
+            refusableIds.add(trial.blockedAnswer.questionId);
+        }
+        const actualValue = walk.facts[questionId];
+        if (actualValue === undefined) {
+          throw new Error(
+            `walk "${walk.label}" asks "${questionId}" but its facts carry no answer for it`,
+          );
+        }
+        state =
+          actualValue === "unsure"
+            ? flowReducer(state, {
+                type: "SKIP",
+                questionId,
+                today: CORPUS_TODAY,
+              })
+            : flowReducer(state, {
+                type: "ANSWER",
+                questionId,
+                value: actualValue,
+                today: CORPUS_TODAY,
+              });
+      }
+    }
+    const refusable = [...refusableIds].sort();
+    // The cardinality below is a LITERAL, never derived from
+    // BRANCH_RELEVANT_FACT_KEYS or any other table under test (GATE-A2G
+    // OBS-A2g-4): a second refusal guard added anywhere in flowReducer must
+    // move this literal, by hand, for the test to keep passing — it cannot
+    // silently absorb a new guard the way a `.length`-derived bound could.
+    expect(refusable.length).toBe(1);
+    expect(refusable).toEqual(["application_channel"]);
+  });
+});
+
+describe("Y4 — the guard's own fact-key input stays inside BRANCH_RELEVANT_FACT_KEYS (memo soundness, Slice B5-1)", () => {
+  it("wants_onshore_conversion — the only fact channelConflictsWithOnshoreIntent reads — is a declared member", () => {
+    // A literal, not derived from channelConflictsWithOnshoreIntent's own
+    // source: the function takes wantsOnshoreConversion as a parameter, so
+    // the fact key it depends on is named here, at the one call site
+    // (`answersFor`) that reads it out of `facts`.
+    const guardFactKeys = ["wants_onshore_conversion"];
+    const declared = new Set(BRANCH_RELEVANT_FACT_KEYS);
+    const missing = guardFactKeys.filter((key) => !declared.has(key));
+    expect(missing).toEqual([]);
   });
 });
 
@@ -314,8 +550,8 @@ describe("manifest numbers match an independent recount", () => {
       return { kind: "verdict" };
     };
     const expected =
-      answersFor("in_indonesia").length *
-      answersFor("holds_stay_permit").length;
+      answersFor("in_indonesia", {}).length *
+      answersFor("holds_stay_permit", {}).length;
     expect(expected).toBe(9);
     const space = countExactWalks(twoLevelSynthetic, 5);
     expect(space.walksTotalExact).toBe(expected);
@@ -358,8 +594,8 @@ describe("manifest numbers match an independent recount", () => {
         start: START,
         memoStats,
       });
-      expect(answersFor("marital_status").length).toBe(6);
-      expect(answersFor("family_sponsor_nationalities").length).toBe(4);
+      expect(answersFor("marital_status", {}).length).toBe(6);
+      expect(answersFor("family_sponsor_nationalities", {}).length).toBe(4);
       expect(space.walksTotalExact).toBe(24);
       // The reuse is not incidental: all 6 marital_status branches reach
       // the SAME memoized family_sponsor_nationalities state, so exactly
@@ -379,7 +615,7 @@ describe("manifest numbers match an independent recount", () => {
         const next = boundedReal(node, facts, TODAY);
         if (next.kind !== "question") return 1;
         let total = 0;
-        for (const value of answersFor(next.questionId)) {
+        for (const value of answersFor(next.questionId, facts)) {
           total += bruteForceReal(
             next,
             { ...facts, [next.questionId]: value },
@@ -458,7 +694,7 @@ describe("the memo-key projection is injectable, and a guilt/innocence PAIR prov
     const next = boundedReal(node, facts, TODAY);
     if (next.kind !== "question") return 1;
     let total = 0;
-    for (const value of answersFor(next.questionId)) {
+    for (const value of answersFor(next.questionId, facts)) {
       total += bruteForceReal(
         next,
         { ...facts, [next.questionId]: value },
@@ -515,8 +751,8 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // byte-stable across runs — the B1'' memo-key projection is unaffected).
   const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
 
-  it("cardinality: the covering subset renders exactly 253 walks (pinned literal, per the measured merge-base manifest)", () => {
-    expect(RENDERED.length).toBe(253);
+  it("cardinality: the covering subset renders exactly 252 walks (pinned literal, re-measured after Slice B5-1's per-edge witnesses)", () => {
+    expect(RENDERED.length).toBe(252);
   });
 
   it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {

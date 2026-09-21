@@ -165,7 +165,10 @@
       "status": "KNOWN",
       "value": 1000000000
     },
-    "process.application_channel": { "status": "KNOWN", "value": "OFFSHORE" },
+    "process.application_channel": {
+      "status": "KNOWN",
+      "value": "ONSHORE_CONVERSION"
+    },
     "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",
