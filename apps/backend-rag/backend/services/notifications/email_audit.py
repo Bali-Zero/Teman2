@@ -161,6 +161,20 @@ async def record_email_result(
         except Exception as exc:
             logger.warning("email_audit: could not resolve attempt_n for %d: %s", row_id, exc)
 
+    # `status` travels twice, as $2 and $6. One shared parameter used to
+    # feed both the `status` assignment (character varying) and the
+    # `CASE WHEN ... = 'sent'` comparison (text): Postgres refuses to
+    # PREPARE a parameter whose uses deduce two types ("inconsistent types
+    # deduced for parameter $2 -- text versus character varying"), so this
+    # UPDATE never ran and the except below swallowed it. Every audited
+    # email therefore stayed 'sending' although it had been delivered;
+    # check_stale_sendings then flipped it to failed, and the retry worker
+    # mailed the recipient a "[RETRY] <subject>" notice for every
+    # retry-safe type — measured on production 2026-09-21, over 30 days:
+    # 91 hr_bonus, 97 invoice_client and 182 waiting_docs_team rows at
+    # attempt 2, one per attempt-1 row, while every client-facing type
+    # was escalated to the owner as undeliverable. Same defect, same cure
+    # as `notifications/service.py` (notification_alerts, 2026-09-01).
     try:
         async with pool.acquire() as conn:
             await conn.execute(
@@ -169,7 +183,7 @@ async def record_email_result(
                    SET status = $2,
                        provider = COALESCE($3, provider),
                        error_message = $4,
-                       sent_at = CASE WHEN $2 = 'sent' THEN NOW() ELSE sent_at END,
+                       sent_at = CASE WHEN $6 = 'sent' THEN NOW() ELSE sent_at END,
                        retry_after = $5
                  WHERE id = $1
                 """,
@@ -178,6 +192,7 @@ async def record_email_result(
                 provider,
                 (error_message or "")[:4000] if error_message else None,
                 retry_after,
+                status,
             )
     except Exception as exc:
         logger.warning("email_audit: record_email_result failed for %d: %s", row_id, exc)
