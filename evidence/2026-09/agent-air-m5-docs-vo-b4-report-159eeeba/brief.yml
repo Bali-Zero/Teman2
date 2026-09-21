@@ -1,0 +1,127 @@
+task_id: vo-b4-report
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Land PLAN.md's B4 artefact: `research/operations/2026-09-21-visa-oracle-live-enumeration/`
+  — a README plus the four evidence JSONs it reports on, verbatim. This is the docs capture of
+  the B4 full live-enumeration sweep (253/253 walks against the deployed
+  `/api/visa-oracle/evaluate`, build `000eaf0732`, rule pack seq 22, zero harness reds) plus the
+  3-walk delta run after A3-M's `REVIEW_FLAG_MAP` landed on `main` (`8a7e521974`, PR #6998).
+  Every number in the README is re-derived from the JSONs by a script (pasted in this PR's body,
+  not committed — a one-shot reproduction aid), never copied from the conductor's mandate log.
+
+  Gear 3 by SIZE, deterministically: 125,576-line churn (mostly the two ~1.86 MB manifest JSONs,
+  each carrying the 253-walk covering set), measured on this head via `git diff --numstat
+  "$(git merge-base origin/main HEAD)" HEAD | awk '{a+=$1; d+=$2} END {print a+d}'`, which sums
+  every changed file including this brief and its sibling pack — against the 1,828 threshold —
+  `evidence_pack_lint.py --print-floor-source` returns `(3, "size")`; the path term does not
+  fire (`research/operations/**` is not a hot-zone pattern).
+constraints:
+  - "No code changes anywhere. Docs-only PR: one README plus four JSON files copied verbatim
+    from the kit evidence directory, byte-identical (`cmp -s` against each kit source, see
+    acceptance)."
+  - "No client PII, no applicant-shaped data: every persona in the four JSONs is synthetic
+    (`traffic_source=synthetic_driver`, `probe_evaluate.py`'s driver-token idiom). Confirmed by
+    grep — and the grep's own imprecision (a first draft said 'zero matches' for a pattern that
+    had matches, correctly judged non-PII but not disclosed as such) is one of the 8 findings
+    below, fixed."
+  - "The PR-number list this task was assigned (#6861/#6920/#6952/#6972/#6970) was independently
+    re-derived from `git log`/`gh pr view`: #6861 is CLOSED, never merged; #6920 merged but
+    touches a dependency file (`report_lock.py`), not either enumerator. The README states the
+    correction; it is not smoothed into agreement with the assigned list. Confirmed again by the
+    adversarial reviewer via the GitHub connector after `gh` was blocked by its sandbox network."
+  - "PR stays UNARMED. The builder does not merge, does not run `gh pr merge`."
+objective_note: |
+  A real codex (`gpt-6-astra`, xhigh) adversarial review ran against the first-committed draft
+  and raised 8 findings, ALL 8 CONFIRMED: a wrong p95 (non-standard nearest-rank index, 1341 ->
+  correct 1494ms), a vacuous-G2-d overclaim (PLAN's own G2-c counts 40 non-criminal
+  HUMAN_REVIEW_REQUIRED walks as red; harness_reds={} only covers transport failures), an
+  overstated "every path combination" claim (edge coverage != the manifest's own
+  72,165,845,568,960-combination space), an overclaimed build-stability reading (health.start is
+  overwritten on every resume), an imprecise PII-grep report ("zero matches" when the actual
+  pattern had matches, correctly judged non-PII but not disclosed), a non-runnable reproduction
+  command (PYTHONPATH=. from repo root ModuleNotFoundErrors), a misdescribed 429 circuit-breaker
+  rule, and the R1 registration itself. All 8 are fixed in the committed README; the
+  `## Adversarial review` section names each one with its correction.
+acceptance:
+  - text: >-
+      WHEN the four evidence JSON files in this PR are compared byte-for-byte against their kit
+      source copies, they SHALL be identical.
+    status: verified
+    probe: >-
+      cd research/operations/2026-09-21-visa-oracle-live-enumeration && for f in
+      prove-live-b4-full-sweep-report-20260921.json prove-live-b2c-c3-manifest-raw-20260920.json
+      prove-live-b4b-manifest-raw-main-8a7e5219-20260921.json
+      prove-live-b4b-delta-report-20260921.json; do cmp -s "$f"
+      "$KIT/$f" && echo "OK: $f"; done -> 4/4 OK (KIT=~/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/kit);
+      re-confirmed independently by the adversarial reviewer via a separate byte-compare +
+      json.loads
+  - text: >-
+      WHEN every number/table in README.md (verdict distribution, review_reasons,
+      no_path_reasons, notices, latency p50/p95/max) is recomputed directly from the walks[]
+      array of the four JSONs using the STANDARD nearest-rank definition
+      (`sorted[ceil(n*p)-1]`), it SHALL match what the README states.
+    status: verified
+    probe: >-
+      python3 (self-contained heredoc, pasted in the PR body) -> verdicts 173/41/27/12 match;
+      review_reasons/no_path_reasons/notices tag sums 47/39/64 match; p50/p95/max/min =
+      273/1494/5128/195ms. The p95 figure changed from an earlier draft's 1341ms (a
+      NON-standard index, round((n-1)*p)=239) after the adversarial review confirmed the
+      standard nearest-rank index is 240 -> 1494ms; both indices and the correction are
+      disclosed in the README rather than silently overwritten.
+  - text: >-
+      WHEN the four JSON files are swept for an email pattern, a key named
+      email/phone/passport/npwp/ktp/nik, and a bare 10+-digit run, the first two SHALL be zero
+      and the third SHALL be individually accounted for (no applicant-shaped number).
+    status: verified
+    probe: >-
+      grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' *.json (0 hits); grep -ioE
+      '"[a-z_]*(email|phone|passport|npwp|ktp|nik)[a-z_]*"\s*:' *.json (0 hits); grep -Ehn
+      '[0-9]{10,}' *.json | sed -E 's/^[0-9]+://; s/^ +//; s/,$//' | sort | uniq -c | sort -rn ->
+      160 lines total: 148 are the round threshold constant 1000000000 (144 as a value under
+      investment.investment_capital_idr / investment.paid_up_capital_idr /
+      investment.investment_amount_usd / secondhome.bank_deposit_usd /
+      secondhome.passive_monthly_income_usd / secondhome.qualifying_property_value_usd, 4 as the
+      enumeration edge label edge/investment_amount_usd=1000000000 under both walk_id and
+      label), 10 are a uuid5 assessment_id (5 distinct values, each appearing twice), and 2 are
+      the manifest's own walksTotalExact (inspected, not assumed) — the only passport-adjacent
+      strings are the notice enum DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION and the walk label
+      review-gate/diplomatic_passport, neither a passport number
+  - text: >-
+      WHEN `scripts/check_adversarial_review.py --files README.md` runs, it SHALL PASS: a
+      generator != grader review by a seat != the authoring session, with every raised finding
+      disposed of in the text rather than only in this brief.
+    status: verified
+    probe: >-
+      python3 scripts/check_adversarial_review.py --files
+      research/operations/2026-09-21-visa-oracle-live-enumeration/README.md -> "PASS — 1
+      research file(s) carry a valid adversarial review" (re-run after the fixes landed, not
+      before — the first run on the unfixed draft correctly FAILed)
+risks:
+  - "The two ~1.86 MB manifest JSONs dominate the churn and are the reason this floors at Gear 3
+    despite being a pure data capture — nothing in this diff is logic, so the Gear-3 label
+    reflects diff size, not review complexity. Named here so the grader does not spend budget
+    looking for code-review-shaped risk that isn't present."
+  - "The PR-number correction (#6861 closed unmerged, #6920 touches a dependency not either
+    enumerator) diverges from the number list the assigning prompt itself carried, and was
+    independently re-confirmed by the adversarial reviewer via the GitHub connector."
+  - "The report proves G2-b's transport contract only (not the full PLAN G2-b row: Fly
+    release id / Vercel deployment id are named as absent, not silently omitted). G2-d is
+    explicitly NOT met (40 non-criminal HUMAN_REVIEW_REQUIRED holds remain open, owed to
+    A3'/A8-A9). G2-c (B3, UI-parity) is out of scope. All three retractions came from the
+    adversarial review, not from the first draft."
+  - "README.md is ~20KB, over the ~12KB guidance in the assigning prompt — driven entirely by
+    the `## Adversarial review` section this repo's own R1 gate requires (not anticipated by
+    the assigning prompt, which predates knowledge of that gate's exact shape). Named as a
+    declared, reasoned departure rather than a silent overrun."
+grader: |
+  Independent seat, generator != grader. The authoring session cannot gate its own docs capture,
+  and a first codex pass already did the substantive adversarial work (8/8 confirmed, all fixed).
+
+  Attack surface for a SECOND pass: (1) confirm the 8 fixes actually landed as described — read
+  the current README, not the brief's summary of it; (2) check whether any NEW claim introduced
+  by the fixes itself overclaims (e.g. does the retracted-G2-d language now correctly scope
+  G2-b, or does it overcorrect); (3) re-run the derivation script yourself against the committed
+  JSONs; (4) confirm `check_adversarial_review.py` genuinely passes on the current committed
+  file, not a stale copy.
