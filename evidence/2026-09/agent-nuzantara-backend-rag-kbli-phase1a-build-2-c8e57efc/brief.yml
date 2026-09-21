@@ -1,0 +1,165 @@
+gear: 2
+task_id: kbli-phase1a-build
+lane: backend-rag
+host: nuzantara (Pro)
+branch: agent/nuzantara/backend-rag/kbli-phase1a-build-20260921
+gate_class: opus
+l_level: L2
+objective: >-
+  Phase 1a of the KG licensing-class cure (spec
+  docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md r4, §4 the
+  derivation rule, §5 the script design, §6 phases). Adds the licence BUILD
+  mode (default when neither Lot-0 flag is given) and `--census` to the
+  script PR #7017 shipped as Lot 0 only (`--placeholders-only` /
+  `--create-missing-node`, live on PROD). Derives licences from the
+  canonical v10 `per_skala` rows per PP 28/2025 (§4), writes target
+  `perizinan:` nodes + `REQUIRES` edges for S1/S2 codes, leaves S3 alone
+  unless the rendered and derived licence-name sets match exactly, refuses
+  legacy-served codes outright (Phase 2, not this PR), and keeps Phase 1b
+  hard-refused behind the `PHASE_1B_ENABLED = False` module constant. No
+  `--apply` was run against PROD this turn — `--census` and the build mode's
+  dry-run were exercised read-only against PROD via `scripts/pg.sh`
+  (`nuzantara_readonly`); every number below is measured this turn, not
+  copied from the spec, and the spec's own prior figures (union 176 / Phase
+  1a 115 with 110 built / 158 target nodes) are declared a prior, not the
+  answer.
+scope:
+  - >-
+    apps/backend-rag/backend/scripts/kg_kbli_licensing_from_canonical.py —
+    EXTENDED (not rewritten): the two Lot-0 pure functions and their I/O
+    are untouched; added the §4 derivation (normaliser, `TIER`/
+    `LEGAL_BASIS`, `licence_name`, `derive_licence_groups`,
+    `build_node_properties`, `target_entity_id`), §5.2 state classification
+    (`classify_state`, `s3_comparison`, `admitted_targets` reusing the
+    router's own `classify_requires_target`/`permit_name_verdict`), §5.7
+    idempotence (`classify_idempotence`, `digest_of_set`), the
+    `check_eligibility`/`plan_build` orchestration, the DB write path
+    (`apply_build_plan`, one transaction per code, row-locked), and
+    `run_census` (read-only, Table A/B + phase split + histogram + §2.3
+    one-store diagnostic).
+  - >-
+    apps/backend-rag/backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py
+    — extended from 11 to 46 cases: the 11 Lot-0 cases kept green (one CLI
+    assertion updated for the new build-mode-by-default contract, noted
+    inline), 35 new guilt+innocence cases for the derivation rule, state
+    classification, idempotence and the CLI fences added this revision.
+constraints:
+  - >-
+    No production write. `--apply` was never invoked against PROD; the
+    census and dry-run evidence below is 100% read-only
+    (`nuzantara_readonly` role via `scripts/pg.sh`).
+  - >-
+    Phase 1b stays refused: `PHASE_1B_ENABLED = False` is a module constant,
+    `--phase 1b` is refused at the CLI (`SystemExit(2)`) regardless of any
+    other flag — only the spec's own §8 F2 PR may flip it.
+  - >-
+    `--replace-legacy` is always refused (`SystemExit(2)`) — Phase 2 is not
+    measured by this spec revision.
+  - >-
+    S3 is the guarded case: nothing is written unless the rendered and
+    derived licence-name sets match EXACTLY (innocence route), and the
+    default is "nothing written, logged" (guilt route) — pinned by two
+    dedicated tests plus verified live on 25920 this turn (mismatch,
+    nothing written).
+  - >-
+    Every `kg_nodes`/`kg_edges` jsonb write uses `$N::text::jsonb` with a
+    pre-serialised `json.dumps()` string (W89 class-guard discipline);
+    `backend/tests/db/test_jsonb_double_encoding_class_guard.py` passes
+    unmodified against this file.
+acceptance:
+  - text: >-
+      GUILT: a malformed per_skala row (unknown risk tier, `skala_usaha`
+      not a non-empty subset of the four scales, or any other shape defect)
+      SHALL make the WHOLE code refuse.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "derive_licence_groups_refuses"
+  - text: >-
+      INNOCENCE: the 93111-shaped fixture (string `perizinan`, no scope
+      fields) SHALL derive a licence with a `null` row index and NOT
+      refuse.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "93111_fixture"
+  - text: >-
+      GUILT: an S3 code whose rendered and derived licence names differ
+      SHALL write nothing (0 targets planned).
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py::test_plan_build_s3_writes_nothing_by_default_guilt
+  - text: >-
+      INNOCENCE: an S3 code whose rendered and derived licence names match
+      EXACTLY SHALL relabel to REGULATED and plan zero new targets.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py::test_plan_build_s3_relabels_only_on_exact_match_innocence
+  - text: >-
+      GUILT: a legacy-served code (admitted >= 1, REGULATED) SHALL refuse
+      outright — Phase 2 is not this PR.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py::test_plan_build_refuses_legacy_served
+  - text: >-
+      INNOCENCE: a CURED code (targets/payloads/status/digest all match)
+      SHALL plan zero writes on a second run.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py::test_plan_build_cured_second_run_writes_nothing
+  - text: >-
+      GUILT: a code still carrying a placeholder edge SHALL refuse
+      (`SystemExit(2)` at the CLI level) even when otherwise eligible — the
+      §2 ordering rule enforced in code, not the runbook.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "ordering"
+  - text: >-
+      FENCES: `--phase 1b` and `--replace-legacy` SHALL always
+      `SystemExit(2)`; `--census` SHALL take no `--only` and SHALL be
+      mutually exclusive with the other modes; build mode SHALL be the
+      default when neither Lot-0 flag is given.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py -k "cli"
+  - text: >-
+      NO REGRESSION: the 11 Lot-0 cases and the repo-wide W89 jsonb
+      class-guard both stay green.
+    probe: >-
+      pytest backend/tests/unit/scripts/test_kg_kbli_licensing_from_canonical.py backend/tests/db/test_jsonb_double_encoding_class_guard.py
+  - text: >-
+      PROD, read-only, this turn: `--census` reports Table A == Table B
+      (1,342 both-store codes; S1 70 / S2 100 / S3 6 / legacy_served 1,166),
+      Phase-1a-eligible (OSS-issued, Table B S1+S2, off-allowlist) = 110
+      codes / 141 target nodes (histogram 1:87 2:17 3:4 4:2), 10 KG-only
+      codes matching the spec's exact §2.3 list, 0 canonical codes with no
+      KG node (01122 confirmed present).
+    probe: >-
+      scripts/pg.sh wrapping kg_kbli_licensing_from_canonical.py --census (nuzantara_readonly)
+  - text: >-
+      PROD, read-only, this turn: build-mode dry-run on 8 codes matches the
+      spec's own hand-derived examples — 07229/07294/08105/08107/08991
+      (S2) each derive exactly 1 target; 25920 (S3) derives {NIB dan Izin,
+      NIB dan Sertifikat Standar} against the rendered {Nomor Induk
+      Berusaha} and writes nothing; 03231 (legacy-served) refuses; 01122
+      derives exactly 3 targets, matching spec §4.2 item 4's own count.
+    probe: >-
+      kg_kbli_licensing_from_canonical.py --only 07229,07294,08105,08107,08991,25920,03231,01122 (dry-run, nuzantara_readonly)
+mutation_evidence: >-
+  4 mutants, each restored via `cp` backup, never `git checkout`, suite
+  green after every restore: M1 changed TIER["Menengah Tinggi"] from "NIB
+  dan Sertifikat Standar" to "NIB" -> 2 failed (test_tier_matches_legal_basis,
+  test_licence_name tier rule); M2 disabled the legacy-served refusal branch
+  -> 1 failed (test_plan_build_refuses_legacy_served); M3 disabled the
+  placeholder-edge ordering check in check_eligibility -> 2 failed
+  (test_check_eligibility_orders_refusals, test_plan_build_ordering); M4
+  dropped the digest comparison from classify_idempotence's CURED branch ->
+  1 failed (test_classify_idempotence_drifted). Restored: 46 passed each
+  time. A fifth defect was found and fixed live (not a synthetic mutant):
+  `run_census`'s status query filtered on `entity_type = 'kbli'`, which
+  undercounts — 10 PROD nodes for real 5-digit KBLI codes (e.g. 70201,
+  56101) carry `entity_type = 'kbli_code'` instead, and the router's own
+  node fetch is entity_type-agnostic (`SELECT * FROM kg_nodes WHERE
+  entity_id = $1`); fixed to filter on the `kbli:<5 digits>` id shape only,
+  re-verified against PROD (§2.3 one-store then matched the spec's exact
+  10-code list).
+pii: none
+local_evidence: >-
+  Read-only PROD measurements via scripts/pg.sh (nuzantara_readonly role,
+  PGPASSWORD never echoed/printed) — --census and 8-code dry-run, both
+  captured this turn. Canonical dataset read from the worktree file
+  (sha256 16d6f02ec195fc7c…, matches the brief). ruff clean on both changed
+  files. Full `-k kbli` suite: 1197 passed, 11 pre-existing failures
+  unrelated to this change (index_kbli_gold_content.py needs a `node`
+  binary not present in this environment — confirmed via `which node`
+  before attributing the failures away from this PR).
