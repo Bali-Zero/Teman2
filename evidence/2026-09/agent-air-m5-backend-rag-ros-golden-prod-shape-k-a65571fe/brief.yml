@@ -1,0 +1,21 @@
+mandate: >-
+  Cure conditions K1 and K2 of PR #7056's on-disk gate: a golden case shaped
+  like a production row (tz-aware datetimes with microseconds, jurisdiction
+  'ID-national', raw_payload as a JSON str) that reds under the two derivation
+  edits the gate measured, and the stale "exactly one producer" comment.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: opus-5
+organ: apps/backend-rag/backend/services/research_os
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  The gate named the #7056 Dux as a permitted author; a seat that did not
+  write it grades it. No production write in this diff.
+acceptance:
+  - the production-shaped golden case is green on the current derivation
+  - _to_rfc3339 truncated to seconds reds it with every other test green
+  - jurisdiction cut at '-' reds it with every other test green
+  - no payload value, constant or query changes (comment-only on the module)
+appetite:
+  wall_clock_hours: 1

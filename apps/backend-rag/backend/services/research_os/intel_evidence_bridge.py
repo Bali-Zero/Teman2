@@ -295,9 +295,10 @@ _FAMILY_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e4")
 #: FIFTH namespace, never reused for an event/version/pipeline/family id above.
 _CLAIM_NAMESPACE = uuid.UUID("8f2c1a00-0000-4000-8000-0000000000e5")
 
-#: The one production cohort this module's `--apply` is authorized against (Zero, 2026-09-21) --
-#: `intel_items` has exactly one producer (`regulatory_watcher`), so this is a fixed constant,
-#: never a `--cohort` flag: there is no second cohort this bridge could be pointed at today.
+#: The one production cohort this module's `--apply` is authorized against (Zero, 2026-09-21).
+#: `intel_items` has many producers (1,922 rows over 624 distinct `source_domain` values on
+#: 2026-09-21) -- `regulatory_watcher` is the only one authorized, so this is a fixed constant,
+#: never a `--cohort` flag, and `_load_intel_items` filters on it (see "THE COHORT IS A FILTER").
 COHORT = "regulatory_watcher"
 
 #: What `COHORT` MEANS in `intel_items`: the `source_domain` `regulatory_watcher` writes there
