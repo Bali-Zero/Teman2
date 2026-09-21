@@ -1,0 +1,23 @@
+mandate: >-
+  pajak_monitor's two pajak.go.id sources ingest nothing: the peraturan index
+  now serves hrefs under /index.php/ (both regexes anchor on href="/id/...),
+  and the siaran-pers source has never landed a row in intel_items. Parse the
+  rows DJP actually serves, per views-row block, with the canonical url kept
+  identical to the form already stored in production.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py (Pro crontab 00:00 UTC)
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  No production DB write in this diff; deploy is a verified copy to Pro's
+  HOME-executed twin, declared in infra/home-fork/declared-pairs.json.
+acceptance:
+  - index-peraturan fixture yields 5 rows, each field read from its own row
+  - no canonical url carries /index.php; an /id/ href canonicalizes unchanged
+  - the legacy primary regex yields 0 on the same fixture (regression documented)
+  - a short chrome link never shadows the headline; /en/ twins are not items
+  - source_domain, raw_payload, published_at, dedup and the lake write unchanged
+appetite:
+  wall_clock_hours: 2
