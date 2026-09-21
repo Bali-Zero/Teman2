@@ -97,12 +97,14 @@ def authorized() -> bool:
     perform.
 
     What this function does NOT do: it does not check any `paths` glob
-    against a target file, because nothing calls it with one — the registry
-    ships EMPTY in the PR that adds this field, so there is no live entry to
-    check a path against yet. `paths` is validated as a SHAPE requirement on
-    the entry today; wiring a per-request path check is the next PR's job,
-    for whenever the first entry is added. Successor to PR #6989's Gear-3
-    gate.
+    against a target file, because nothing calls it with one. The registry
+    shipped EMPTY in the PR that added this field; its first entry (RULED
+    2026-09-21-bis) declares `["**"]`, so a per-request check would match
+    everything — dead code until a NARROWER entry exists, which is when
+    wiring it becomes the job. `paths` is validated as a SHAPE requirement
+    on the entry today, and `scripts/tests/test_vendor_authorization_fence.py`
+    validates every shipped entry's shape and ruling at merge time. Successor
+    to PR #6989's Gear-3 gate.
     """
     try:
         listed = json.loads(AUTHORIZATION.read_text(encoding="utf-8"))["endpoints"]
