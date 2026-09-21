@@ -279,6 +279,7 @@ def extract_regulation(html: str) -> dict | None:
     regulation_date = parser.tanggal_datetime
 
     citation = None
+    match_obj: re.Match[str] | None = None
     if jenis and nomor:
         heading_re = re.compile(
             rf"{re.escape(jenis)}(?:\s+REPUBLIK\s+INDONESIA)?\s+NOMOR\s+{re.escape(nomor)}{_NOMOR_BOUNDARY}",
@@ -287,14 +288,21 @@ def extract_regulation(html: str) -> dict | None:
         m = heading_re.search(body_text)
         if m:
             citation = m.group(0)
+            match_obj = m
     if citation is None and nomor:
         m = re.search(rf"NOMOR\s+{re.escape(nomor)}{_NOMOR_BOUNDARY}", body_text, re.IGNORECASE)
         if m:
             citation = m.group(0)
+            match_obj = m
 
     verbatim_excerpt = None
-    if citation is not None:
-        start = body_text.find(citation)
+    if citation is not None and match_obj is not None:
+        # #7087 C2: anchor at the MATCH's own position, never `body_text.find(citation)` — the
+        # citation string can legitimately recur earlier in the body as the boundary-rejected
+        # PREFIX of a longer, unrelated number (e.g. citation "NOMOR PMK-81" also occurs inside
+        # an earlier "NOMOR PMK-81/2024"); `find()` would silently anchor the excerpt on that
+        # unrelated earlier occurrence instead of the one the regex actually matched.
+        start = match_obj.start()
         hard_limit = min(start + _EXCERPT_MAX_CHARS, len(body_text))
         cut_m = _CUT_KEYWORD_RE.search(body_text, start)
         if cut_m and cut_m.start() <= hard_limit:

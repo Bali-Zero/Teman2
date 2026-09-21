@@ -387,3 +387,30 @@ def test_m4_innocence_nomor_with_slashes_still_matches_literally():
     result = pajak_parse.extract_regulation(html)
     assert result["citation"] == "KEPUTUSAN DIREKTUR JENDERAL PAJAK NOMOR KEP-185/PJ/2026"
     assert result["citation"] in result["verbatim_excerpt"]
+
+
+# ─── #7087 C2 — excerpt must anchor at the regex match, not body_text.find() ──
+
+
+def test_c2_guilt_excerpt_anchors_to_the_match_not_the_first_literal_occurrence():
+    """Guilt (#7087 C2): the same literal citation string `NOMOR PMK-81` occurs TWICE in the
+    body — once as the boundary-REJECTED prefix of a longer, unrelated number (`NOMOR
+    PMK-81/2024`), and once as the real, boundary-matching citation later in the text. The
+    regex correctly skips the first (rejected by `_NOMOR_BOUNDARY`) and matches the second —
+    but `body_text.find(citation)` would find the FIRST literal occurrence of the substring
+    `"NOMOR PMK-81"` regardless (it IS a literal prefix of `"NOMOR PMK-81/2024"`), anchoring the
+    excerpt on the wrong, unrelated regulation. The excerpt must start at the match's own
+    `m.start()`."""
+    html = _synthetic_detail_html(
+        jenis="Peraturan Menteri Keuangan",  # deliberately absent from body_inner: forces fallback
+        nomor="PMK-81",
+        body_inner=(
+            "SURAT SESUATU NOMOR PMK-81/2024. "
+            "KEPUTUSAN LAIN NOMOR PMK-81 TENTANG LAINNYA. Menimbang: a. bahwa."
+        ),
+    )
+    result = pajak_parse.extract_regulation(html)
+    assert result["citation"] == "NOMOR PMK-81"
+    assert result["verbatim_excerpt"] == "NOMOR PMK-81 TENTANG LAINNYA."
+    assert "/2024" not in result["verbatim_excerpt"]
+    assert "SESUATU" not in result["verbatim_excerpt"]

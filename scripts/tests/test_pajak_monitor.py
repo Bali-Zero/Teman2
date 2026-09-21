@@ -271,3 +271,84 @@ def test_r1_a_hanging_robots_check_is_bounded_by_the_same_per_page_timeout(tmp_p
     asyncio.run(scenario())
 
     assert all("_detail" not in item for item in items)
+
+
+# ─── #7087 C1 — pin the deadline arm itself, independent of timing ────────
+
+
+def test_c1_deadline_is_checked_before_every_fetch_not_after(monkeypatch):
+    """Gate PWC-7087 C1: kills G1 (deadline check removed entirely) and G2 (deadline check
+    moved to AFTER the fetch instead of before it) by asserting on `fetch_page` CALL COUNT and
+    the returned `skipped_for_budget`, not on wall-clock timing (the prior R1 tests' 5 s safety
+    net was looser than 10x the per-page timeout, so G1/G2 silently survived them).
+
+    `timeout_s=-1.0` with margin 0 makes the deadline `-1.0` — `self._elapsed()` is always >= 0,
+    so the VERY FIRST check (before candidate 0) is already over budget. A correctly-ordered
+    check must therefore skip ALL candidates without ever calling `fetch_page`:
+    - G1 (check removed): would call `fetch_page` for every candidate → `fetch_calls` non-empty.
+    - G2 (check moved after the fetch): would call `fetch_page` exactly ONCE (candidate 0) before
+      the first post-fetch check catches it and breaks → `fetch_calls` has exactly 1 entry.
+    - Correct: `fetch_calls` stays empty, `skipped_for_budget == len(candidates)`.
+    """
+    monkeypatch.setattr(pajak_monitor, "DETAIL_FETCH_TIMEOUT_S", 5.0)
+    monkeypatch.setattr(pajak_monitor, "DETAIL_ENRICH_BUDGET_MARGIN_S", 0.0)
+
+    job = _make_job(timeout_s=-1.0)
+
+    fetch_calls: list[str] = []
+
+    async def fetch_page(url):
+        fetch_calls.append(url)
+        return {"html": ""}
+
+    job.fetch_page = fetch_page
+    job.random_delay = lambda a, b: asyncio.sleep(0)
+
+    items = [_peraturan_item(f"reg-{i}") for i in range(5)]
+
+    skipped = asyncio.run(job._enrich_peraturan_details(items))
+
+    assert fetch_calls == []
+    assert skipped == len(items)
+
+
+# ─── #7074 C1 — _write_intel_feed's per-item host guard, behaviorally ─────
+
+
+def test_c1_write_intel_feed_labels_by_real_host_skips_hostless_and_continues(tmp_path, monkeypatch):
+    """Gate PWC-7074 C1: kills three survived mutations at once with one behavioral run over
+    FOUR items, a hostless one placed in the MIDDLE:
+    - M2 (`source_host(url) or "pajak.go.id"` fallback): would give the hostless item the
+      `pajak.go.id` label and enqueue it anyway — checked by asserting no call carries the
+      hostless item's URL.
+    - M3 (`continue` → `break` on no-host): would abort the WHOLE loop at the hostless item,
+      losing both `count` and the enqueue calls for every item AFTER it — checked by asserting
+      the items placed after the hostless one still get written and enqueued.
+    - M5 (label re-hardcoded as `"pajak.go." + "id"`): would label EVERY item `pajak.go.id`
+      regardless of its real host — checked by asserting the non-pajak item's own real host.
+    """
+    monkeypatch.setattr(pajak_monitor, "INTEL_INCOMING_DIR", tmp_path)
+    job = _make_job()
+    outbox_calls = _install_capturing_outbox()
+
+    item_pajak = _peraturan_item("reg-1")
+    item_hostless = {**_peraturan_item("reg-2"), "url": "nb: NB-INTEL-Tax"}
+    item_other_host = {**_peraturan_item("reg-3"), "url": "https://cnbcindonesia.com/news/x"}
+    item_after = {**_peraturan_item("reg-4"), "url": "https://ortax.org/some-article"}
+    items = [item_pajak, item_hostless, item_other_host, item_after]
+
+    written = job._write_intel_feed(items)
+
+    # M3 guard: the local JSON write happens for every item regardless of the host guard.
+    assert written == len(items)
+
+    # M2/M3 guard: exactly the 3 items WITH a real host got enqueued — the hostless one never
+    # reached _lake_enqueue, and the two items AFTER it were not skipped.
+    enqueued_urls = [call["canonical_url"] for call in outbox_calls]
+    assert enqueued_urls == [item_pajak["url"], item_other_host["url"], item_after["url"]]
+
+    by_url = {call["canonical_url"]: call for call in outbox_calls}
+    # M5 guard: each item's label is ITS OWN real host, never a hardcoded "pajak.go.id".
+    assert by_url[item_pajak["url"]]["source_domain"] == "pajak.go.id"
+    assert by_url[item_other_host["url"]]["source_domain"] == "cnbcindonesia.com"
+    assert by_url[item_after["url"]]["source_domain"] == "ortax.org"

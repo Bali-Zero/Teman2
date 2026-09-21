@@ -1,0 +1,18 @@
+mandate: >-
+  Discharge PWC-7087 C1/C2 and PWC-7074 C1 with tests and the two small code
+  changes they need (skipped_for_budget return, excerpt anchored at the regex
+  match); split from closed #7093, whose workflow file ships separately.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: scripts/cron-agent-python/pajak_monitor.py (Pro crontab 00:00 UTC)
+authority: >-
+  Zero 2026-09-21 ("hai tutte le autorizzazioni per procedere e armare").
+  Gate conditions; no production write.
+acceptance:
+  - removing or moving the deadline check reds a call-count test
+  - the excerpt starts at the regex match, not the first literal occurrence
+  - fallback label, continue->break and split literal each red a behavioural test
+appetite:
+  wall_clock_hours: 1
