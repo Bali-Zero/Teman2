@@ -1,0 +1,19 @@
+task_id: damar-newsroom-preflight
+gear: 2
+colour: BLUE
+objective: Show the editor missing publication fields and cover state before a failed publish attempt.
+constraints:
+  - Prepare-only external builder; no merge, arm, deploy or shared-runtime changes.
+  - Preserve existing publishing gates and the editorial protocol.
+  - Expose no private cover reference, raw backend body or credentials.
+acceptance:
+  - text: WHEN an article is read, detail SHALL report missing or attached cover without its storage reference.
+    probe: backend/tests/unit/routers/test_workspace_marketing_bridge.py
+  - text: WHEN cover is missing, publication SHALL report the remedy before claiming the request key.
+    probe: cd apps/nuzantara-mcp && source .venv/bin/activate && PYTHONPATH=. python -m pytest tests/test_workspace_marketing_bridge.py --tb=short
+  - text: AFTER rollout and app republish, Damar's actual app SHALL show the new detail fields.
+    probe: Pending release-owner observation in Damar's actual Marketing Bridge; not claimed live.
+assumptions:
+  - text: List projection can omit Drive-only cover references; detail remains authoritative.
+    status: verified
+    probe: backend/services/intel/intel_staging_service.py list_pending_items projection and article route.

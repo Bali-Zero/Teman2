@@ -458,6 +458,20 @@ def _first_text(*values: Any) -> str:
     return next((value for value in values if isinstance(value, str)), "")
 
 
+def _public_news_preflight(item: dict[str, Any]) -> dict[str, Any]:
+    """Project canonical completeness checks; absence is never readiness."""
+
+    preflight = item.get("publication_preflight")
+    raw_missing = preflight.get("missing") if isinstance(preflight, dict) else None
+    allowed = {"title", "content", "category", "source_url", "cover_image"}
+    if not isinstance(raw_missing, list) or any(
+        not isinstance(field, str) or field not in allowed for field in raw_missing
+    ):
+        return {"status": "unavailable", "missing": []}
+    missing = list(dict.fromkeys(raw_missing))
+    return {"status": "incomplete" if missing else "complete", "missing": missing}
+
+
 def _public_news_summary(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "item_id": _clean_text(item.get("id") or item.get("item_id"), limit=160),
@@ -471,6 +485,8 @@ def _public_news_summary(item: dict[str, Any]) -> dict[str, Any]:
         ),
         "liveness_tier": _clean_text(item.get("liveness_tier"), limit=80),
         "preview": _clean_text(item.get("content"), limit=1_200),
+        # The list source omits Drive-only references: unknown needs detail.
+        "cover_status": "attached" if item.get("cover_status") == "attached" else "unknown",
     }
 
 
@@ -507,6 +523,12 @@ def _public_news_article(item: dict[str, Any]) -> dict[str, Any]:
         "seo_description": _clean_text(item.get("seo_description"), limit=155),
         "slug": _clean_text(item.get("slug"), limit=80),
         "cover_image_alt": _clean_text(item.get("cover_image_alt"), limit=160),
+        "cover_status": (
+            item["cover_status"]
+            if item.get("cover_status") in ("attached", "missing")
+            else "unknown"
+        ),
+        "publication_preflight": _public_news_preflight(item),
         "editorial": allowed_enrichment,
         "boundary": "Public-intended News Room copy; raw enrichment is withheld.",
     }
@@ -1819,7 +1841,13 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         }
     )
     async def newsroom_get_article(item_id: str) -> dict[str, Any]:
-        """Read one sanitized News Room article; raw enrichment stays on Pro."""
+        """Read the article, cover status, missing publish fields and last fact check.
+
+        Read before generating a cover or changing copy. Fix only the listed
+        missing fields; reuse an attached cover. Completeness is not editorial
+        approval: inspect fact_gate and obtain the explicit site position.
+        An unavailable preflight means the backend needs an update, not ready.
+        """
 
         safe_id = _validated_item_id(item_id)
         payload = await backend_call(
@@ -1827,7 +1855,9 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         if not isinstance(payload, dict):
             raise RuntimeError("News Room returned an unsupported article shape")
-        return _public_news_article(payload)
+        article = _public_news_article(payload)
+        article["fact_gate"] = _fact_gate_summary(safe_id, article)
+        return article
 
     @mcp.tool(
         annotations={
@@ -2011,6 +2041,10 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
     ) -> dict[str, Any]:
         """Publish the News Room article Damar named. His order is the decision.
 
+        Read newsroom_get_article first and fix its publication_preflight
+        missing fields. Obtain an explicit site position from the editor.
+        A queued response requires newsroom_verify_live before saying LIVE.
+
         Flow: find the article in newsroom_list_pending by the title Damar
         cited, attach a cover with newsroom_attach_cover if none is attached,
         then call this with confirmation CONFIRM/CONFERMO/SETUJU. No SEO edit
@@ -2069,6 +2103,19 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         if not isinstance(article_payload, dict):
             raise RuntimeError("News Room returned an unsupported article shape")
         article = _public_news_article(article_payload)
+        preflight = article["publication_preflight"]
+        if preflight["status"] == "incomplete":
+            missing = ", ".join(preflight["missing"])
+            action = (
+                "Attach the cover with newsroom_attach_cover. "
+                if "cover_image" in preflight["missing"]
+                else ""
+            )
+            raise ValueError(
+                f"Publication blocked; missing: {missing}. {action}"
+                "Fix the listed fields, read newsroom_get_article again, then retry. "
+                "Nothing was published."
+            )
         # RULED Zero 2026-09-04 (Legge 5): Damar's publish order IS the decision.
         # The fact gate no longer stands between the order and the site — it is
         # advisory, reported here when it was run on this exact copy. Until this
