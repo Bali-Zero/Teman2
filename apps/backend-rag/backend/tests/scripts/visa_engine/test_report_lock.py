@@ -617,7 +617,13 @@ def test_sigkill_inside_atomic_write_never_corrupts_the_target(
                 "before parking"
             )
         os.kill(writer.pid, signal.SIGKILL)
-        writer.wait(timeout=10.0)
+        try:
+            writer.wait(timeout=10.0)
+        except subprocess.TimeoutExpired:
+            pytest.fail(
+                "the writer is still alive 10 s after SIGKILL -- the pid the test killed was "
+                "not reaped, so neither post-kill assertion below can be trusted"
+            )
         assert writer.returncode == -signal.SIGKILL
         data = json.loads(report.read_text())
         if marker == in_window:
