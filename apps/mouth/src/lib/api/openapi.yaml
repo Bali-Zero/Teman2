@@ -864,6 +864,7 @@ components:
               format: date
             daysRemaining:
               type: integer
+              nullable: true
             permitNumber:
               type: string
             sponsor:

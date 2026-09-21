@@ -74,12 +74,16 @@ function normalizePortalMessage(message: RawPortalMessage): PortalMessage {
     readAt:
       message.readAt ??
       message.read_at ??
-      (message.is_read === true ? message.createdAt ?? message.created_at : undefined) ??
+      (message.is_read === true
+        ? (message.createdAt ?? message.created_at)
+        : undefined) ??
       undefined,
   };
 }
 
-function normalizeMessagesResponse(response: RawMessagesResponse): MessagesResponse {
+function normalizeMessagesResponse(
+  response: RawMessagesResponse,
+): MessagesResponse {
   return {
     messages: (response.messages ?? []).map(normalizePortalMessage),
     total: response.total ?? 0,
@@ -219,11 +223,15 @@ export class PortalApi {
             status: visa.status ?? "expired",
             issueDate: visa.issue_date ?? visa.issueDate ?? "",
             expiryDate: visa.expiry_date ?? visa.expiryDate ?? "",
+            // null = no expiry on record: the page shows no countdown
+            // instead of "Expired 0d ago".
             daysRemaining:
-              raw.summary?.days_until_expiry ??
-              visa.days_remaining ??
-              visa.daysRemaining ??
-              0,
+              visa.daysRemaining === null
+                ? null
+                : (raw.summary?.days_until_expiry ??
+                  visa.days_remaining ??
+                  visa.daysRemaining ??
+                  0),
             permitNumber:
               visa.visa_number ?? visa.permit_number ?? visa.permitNumber ?? "",
             sponsor: visa.sponsor_name ?? visa.sponsor ?? "",
@@ -305,8 +313,7 @@ export class PortalApi {
     return {
       summary: {
         status:
-          pick<TaxOverview["summary"]["status"]>(summary, ["status"]) ??
-          "none",
+          pick<TaxOverview["summary"]["status"]>(summary, ["status"]) ?? "none",
         totalDue: pick<number>(summary, ["totalDue", "total_due"]) ?? null,
         nextDeadline:
           pick<string>(summary, ["nextDeadline", "next_deadline"]) ?? null,
@@ -542,9 +549,7 @@ export class PortalApi {
     return response.data!;
   }
 
-  async getInvoicePdfUrl(
-    invoiceId: number,
-  ): Promise<{ download_url: string }> {
+  async getInvoicePdfUrl(invoiceId: number): Promise<{ download_url: string }> {
     const response = await this.client.request<
       PortalApiResponse<{ download_url: string }>
     >(`/api/portal/billing/${invoiceId}/pdf-url`, { method: "GET" });

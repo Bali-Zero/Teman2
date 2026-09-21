@@ -76,7 +76,9 @@ class PortalDashboardMixin:
         """
         rows = await conn.fetch(
             f"""
-            SELECT d.id, d.document_type, d.expiry_date, d.issue_date, d.created_at
+            SELECT d.id, d.document_type, d.expiry_date, d.issue_date, d.created_at,
+                   d.ocr_extracted_data->'raw_response'->>'visa_number' AS ocr_visa_number,
+                   d.ocr_extracted_data->'raw_response'->>'sponsor' AS ocr_sponsor
             FROM documents d
             WHERE d.client_id = $1
             AND {document_visibility_clause("d")}
@@ -158,9 +160,7 @@ class PortalDashboardMixin:
             # this already worked for sees no change.
             if visa_practice is None:
                 try:
-                    visa_document = await self._get_latest_visible_visa_document(
-                        conn, client_id
-                    )
+                    visa_document = await self._get_latest_visible_visa_document(conn, client_id)
                 except Exception as e:
                     logger.warning("Could not fetch fallback visa document: %s", e)
                     visa_document = None
@@ -169,9 +169,7 @@ class PortalDashboardMixin:
                         "status": "completed",
                         "expiry_date": visa_document["expiry_date"],
                         "code": None,
-                        "name": (visa_document["document_type"] or "").replace(
-                            "_", " "
-                        )
+                        "name": (visa_document["document_type"] or "").replace("_", " ")
                         or "Immigration Document",
                     }
 
@@ -350,16 +348,19 @@ class PortalDashboardMixin:
         sources can't drift apart the way `_build_visa_dashboard_data`
         already guards against for the dashboard tile.
 
-        Preserves the practice branch's original quirk verbatim: a
-        permit with NO expiry_date reads `days_left = 0` -> status
-        "expired", never "active" — not touched here (out of scope, and
-        changing it would regress the clients this already worked for).
+        A permit with NO expiry_date is "active" (completed) with no
+        countdown — the same reading `_build_visa_dashboard_data` gives the
+        tile and kita gives the operator ("Valid"). It used to read
+        `days_left = 0` -> "expired", so the visa page said "Expired 0d ago"
+        to a client the dashboard called active (34 of 97 completed visa
+        practices and 407 of the 691 document-fallback clients have no
+        expiry_date, measured 2026-09-21).
         """
         today = datetime.now(timezone.utc).date()
         expiry = _as_date(expiry_date) if expiry_date else None
-        days_left = (expiry - today).days if expiry else 0
+        days_left = (expiry - today).days if expiry else None
 
-        if days_left <= 0:
+        if days_left is not None and days_left <= 0:
             status = "expired"
         elif status_is_completed:
             status = "active"
@@ -373,7 +374,7 @@ class PortalDashboardMixin:
             "status": status,
             "issueDate": issue.strftime("%d %b %Y") if issue else "-",
             "expiryDate": expiry.strftime("%d %b %Y") if expiry else "-",
-            "daysRemaining": max(0, days_left),
+            "daysRemaining": max(0, days_left) if days_left is not None else None,
             "permitNumber": permit_number,
             "sponsor": sponsor,
         }
@@ -559,9 +560,7 @@ class PortalDashboardMixin:
             visa_document = None
             if current_visa is None:
                 try:
-                    visa_document = await self._get_latest_visible_visa_document(
-                        conn, client_id
-                    )
+                    visa_document = await self._get_latest_visible_visa_document(conn, client_id)
                 except Exception as e:
                     logger.warning("Could not fetch fallback visa document: %s", e)
                     visa_document = None
@@ -587,7 +586,10 @@ class PortalDashboardMixin:
                     expiry_date=visa_document["expiry_date"],
                     visa_type=(visa_document["document_type"] or "").replace("_", " ")
                     or "Immigration Document",
-                    permit_number=f"DOC-{visa_document['id']:06d}",
+                    # Only what OCR read off the permit itself; "-" otherwise,
+                    # never a made-up identifier or a default sponsor.
+                    permit_number=visa_document.get("ocr_visa_number") or "-",
+                    sponsor=visa_document.get("ocr_sponsor") or "-",
                 )
             else:
                 current = None
@@ -652,9 +654,7 @@ class PortalDashboardMixin:
                         # case-insensitively too, or the same 'MERP'
                         # uppercase rows the whitelist fix now surfaces
                         # would fall through to "Other".
-                        "category": category_map.get(
-                            (d["document_type"] or "").lower(), "Other"
-                        ),
+                        "category": category_map.get((d["document_type"] or "").lower(), "Other"),
                         "status": status_map.get(d["status"], "pending"),
                         "uploadDate": d["created_at"].strftime("%d %b %Y")
                         if d["created_at"]

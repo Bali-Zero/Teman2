@@ -302,6 +302,32 @@ describe("PortalApi", () => {
       });
       expect(result).toEqual(createMockVisaInfo());
     });
+
+    it("keeps daysRemaining null when the permit has no expiry date", async () => {
+      // A null countdown is how the page knows not to render "Expired 0d ago"
+      // for a permit whose expiry was never recorded.
+      mockRequest.mockResolvedValue({
+        success: true,
+        data: {
+          current: {
+            type: "visa",
+            status: "active",
+            issueDate: "-",
+            expiryDate: "-",
+            daysRemaining: null,
+            permitNumber: "-",
+            sponsor: "-",
+          },
+          history: [],
+          documents: [],
+        },
+      });
+
+      const result = await portalApi.getVisaStatus();
+
+      expect(result.current?.status).toBe("active");
+      expect(result.current?.daysRemaining).toBeNull();
+    });
   });
 
   // ============================================================================

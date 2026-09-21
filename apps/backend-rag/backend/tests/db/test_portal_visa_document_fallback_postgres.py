@@ -52,12 +52,16 @@ class _SingleConnectionPool:
 
 
 async def _ensure_schema_current(conn: asyncpg.Connection) -> None:
-    """The local `nuzantara_test` template predates two prod columns this
-    fallback needs (`documents.issue_date`, `practices.client_visible`).
+    """The local `nuzantara_test` template predates three prod columns this
+    fallback needs (`documents.issue_date`, `documents.ocr_extracted_data`,
+    `practices.client_visible`).
     Patch them in — transaction-scoped DDL, invisible to every other
     session and gone the instant `db_tx` rolls back — instead of widening
     scope into a full migration-runner rebuild of the local template."""
     await conn.execute("ALTER TABLE documents ADD COLUMN IF NOT EXISTS issue_date date")
+    await conn.execute(
+        "ALTER TABLE documents ADD COLUMN IF NOT EXISTS ocr_extracted_data jsonb",
+    )
     await conn.execute(
         "ALTER TABLE practices ADD COLUMN IF NOT EXISTS client_visible boolean",
     )
@@ -80,15 +84,16 @@ async def _make_document(
     client_visible: bool = True,
     deleted_at_now: bool = False,
     is_archived: bool = False,
+    ocr_extracted_data: str | None = None,
 ) -> int:
     row = await conn.fetchrow(
         """
         INSERT INTO documents (
             client_id, document_type, file_name, client_visible,
-            is_archived, expiry_date, deleted_at
+            is_archived, expiry_date, deleted_at, ocr_extracted_data
         ) VALUES (
             $1, $2, 'test.pdf', $3,
-            $4, $5, CASE WHEN $6 THEN NOW() ELSE NULL END
+            $4, $5, CASE WHEN $6 THEN NOW() ELSE NULL END, $7::jsonb
         )
         RETURNING id
         """,
@@ -98,6 +103,7 @@ async def _make_document(
         is_archived,
         expiry_date,
         deleted_at_now,
+        ocr_extracted_data,
     )
     return row["id"]
 
@@ -169,6 +175,42 @@ async def test_fallback_query_ignores_non_visa_family_document_types(
     result = await service._get_latest_visible_visa_document(db_tx, client_id)
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_fallback_query_reads_permit_number_and_sponsor_from_ocr(
+    db_tx: asyncpg.Connection,
+) -> None:
+    service = PortalService(_SingleConnectionPool(db_tx))  # type: ignore[arg-type]
+    await _ensure_schema_current(db_tx)
+    with_ocr = await _make_client(db_tx)
+    scalar_ocr = await _make_client(db_tx)
+
+    await _make_document(
+        db_tx,
+        client_id=with_ocr,
+        document_type="visa",
+        expiry_date=date.today() + timedelta(days=90),
+        ocr_extracted_data=(
+            '{"raw_response": {"visa_number": "TEST-PERMIT-0001", "sponsor": "PT Example Sponsor"}}'
+        ),
+    )
+    # A non-object OCR payload must read as "no OCR", not break the query.
+    await _make_document(
+        db_tx,
+        client_id=scalar_ocr,
+        document_type="visa",
+        expiry_date=date.today() + timedelta(days=90),
+        ocr_extracted_data='"unparsed"',
+    )
+
+    row = await service._get_latest_visible_visa_document(db_tx, with_ocr)
+    assert row["ocr_visa_number"] == "TEST-PERMIT-0001"
+    assert row["ocr_sponsor"] == "PT Example Sponsor"
+
+    row = await service._get_latest_visible_visa_document(db_tx, scalar_ocr)
+    assert row["ocr_visa_number"] is None
+    assert row["ocr_sponsor"] is None
 
 
 @pytest.mark.asyncio
@@ -251,9 +293,7 @@ async def test_get_visa_status_documents_list_matches_merp_case_insensitively(
 
     await _make_document(db_tx, client_id=client_id, document_type="MERP")
 
-    result = await service.get_visa_status(
-        client_id, current_user={"client_id": client_id}
-    )
+    result = await service.get_visa_status(client_id, current_user={"client_id": client_id})
 
     doc_types = [d["type"] for d in result["documents"]]
     assert "MERP" in doc_types
