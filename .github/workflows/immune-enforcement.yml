@@ -868,8 +868,8 @@ jobs:
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
           # The third producer, and the one whose alert and witness disagreed: the key
-          # kept the job's hyphens while the state file it wrote replaced them, so all
-          # 8 of its jobs on Pro alerted under a name no consumer could prove against
+          # kept the job's hyphens while the state file it wrote replaced them, so every
+          # one of its 7 running jobs on Pro alerted under a name no consumer could prove against
           # (docs/specs/seat-board-drain-v1.md section 4). Asserted as the RELATION
           # key == witness stem == witness job field, never as one literal example.
           bash scripts/test_cron_wrapper_alert.sh
