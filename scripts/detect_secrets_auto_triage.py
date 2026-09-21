@@ -1021,6 +1021,58 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "variable names and store paths the guard judges, never a credential "
         "value (PR #6787)",
     ),
+    # Visa Oracle B4 live-enumeration evidence, prove-live-*.json manifests:
+    # `"label": "edge/<question_key>=<ENUM_VALUE>"` is the decision-tree edge
+    # identifier emitted by apps/mouth/scripts/visa-oracle/enumerate-interview-
+    # space.ts for every walked branch — an upper-case enum member the scanner
+    # reads as Base64 High Entropy String because it is long, mixed-case-free,
+    # and made only of [A-Z0-9_]. It names a public question/answer pair in
+    # the Visa Oracle decision tree, never a credential.
+    #
+    # Content-keyed to the exact `label` assignment shape, end-anchored
+    # (optional trailing comma): the directory is an open writer set (every
+    # re-run of the enumerator lands another dated `prove-live-*.json`), so
+    # the path pattern narrows to that artifact-naming convention and the
+    # CONTENT key does the actual work — a real secret assigned to any OTHER
+    # key in the same files, or a lower/mixed-case value on `label`, stays
+    # unaudited for human review.
+    (
+        re.compile(
+            r"(^|/)research/operations/\d{4}-\d{2}-\d{2}-visa-oracle-live-"
+            r"enumeration/prove-live-[a-z0-9-]+\.json$"
+        ),
+        re.compile(r'^\s*"label"\s*:\s*"edge/[a-z0-9_]+=[A-Z0-9_]+"\s*,?\s*$'),
+        "visa-oracle live-enumeration manifest edge label: the decision-tree "
+        "edge identifier (question_key=ENUM_VALUE) emitted by "
+        "enumerate-interview-space.ts, never a credential",
+    ),
+    # Visa Oracle B4 live-enumeration evidence, the sibling prove-live-*.json
+    # sweep/delta REPORTS emitted by apps/backend-rag/backend/scripts/
+    # visa_engine/enumerate_live.py: `build_sha` (40-hex git commit SHA),
+    # `manifest_sha256` (64-hex content hash of the public raw manifest this
+    # report was generated from) and `payload_sha256` (64-hex content hash of
+    # the public signed RulePack payload it exercised) are content-derived
+    # integrity anchors — the same value class as the existing
+    # research/visa/*.json `payload_sha256` rule above — never bearer
+    # material.
+    #
+    # Content-keyed and scoped to the same prove-live path convention as the
+    # edge-label rule above: exactly these three named hex fields, exact
+    # 40/64-hex shape, end-anchored. A real credential on any other key, or a
+    # wrong hex width on these keys, stays unaudited for human review.
+    (
+        re.compile(
+            r"(^|/)research/operations/\d{4}-\d{2}-\d{2}-visa-oracle-live-"
+            r"enumeration/prove-live-[a-z0-9-]+\.json$"
+        ),
+        re.compile(
+            r'^\s*"(?:build_sha|manifest_sha256|payload_sha256)"\s*:\s*'
+            r'"(?:[0-9a-f]{40}|[0-9a-f]{64})"\s*,?\s*$'
+        ),
+        "visa-oracle live-enumeration report content hash: build_sha/"
+        "manifest_sha256/payload_sha256 are content-derived integrity "
+        "anchors of public evidence artifacts, never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
