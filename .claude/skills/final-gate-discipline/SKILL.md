@@ -35,6 +35,11 @@ rubber-stamped from a summary.
   reality — fix the drift in the same change, don't leave it as debt.
 - Only arm/merge after YOUR OWN read is complete. "A subagent reviewed it" is
   never a substitute for the gate.
+- When publishing the verdict via `scripts/harness_fable_gate.py`, the
+  publisher refuses to overwrite an existing `harness/fable-gate` status on
+  the sha (exit 2) — read the existing verdict first; use
+  `--supersede "<reason>"` only when overwriting is the decision, since the
+  reason is shown on the PR.
 
 ## Part 2 — Before you say "done," answer these five
 

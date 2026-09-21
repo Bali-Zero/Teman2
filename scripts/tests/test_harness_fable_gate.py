@@ -17,7 +17,12 @@ REPO = Path(__file__).resolve().parents[2]
 SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
-from harness_fable_gate import VERDICT_STATE, build_description  # noqa: E402
+from harness_fable_gate import (  # noqa: E402
+    VERDICT_STATE,
+    build_description,
+    check_overwrite,
+    main,
+)
 
 
 def test_pass_maps_to_success():
@@ -145,3 +150,191 @@ def test_cli_conditions_ref_not_required_for_other_verdicts():
         capture_output=True, text=True, timeout=30,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+# --- overwrite guard: check_overwrite (pure, no I/O) ------------------------
+
+def test_check_overwrite_no_existing_no_supersede_is_ok():
+    ok, msg = check_overwrite([], None)
+    assert ok is True
+    assert msg == ""
+
+
+def test_check_overwrite_no_existing_with_supersede_is_refused():
+    """GUILT: a --supersede claiming to overwrite a verdict that does not
+    exist is a false sentence — refuse it."""
+    ok, msg = check_overwrite([], "some reason")
+    assert ok is False
+    assert "nothing to supersede" in msg
+
+
+def test_check_overwrite_one_existing_no_supersede_is_refused():
+    existing = [{"state": "failure", "description": "REWORK-BUILD | x",
+                 "created_at": "2026-09-21T01:00:00Z"}]
+    ok, msg = check_overwrite(existing, None)
+    assert ok is False
+    assert "failure" in msg
+    assert "2026-09-21T01:00:00Z" in msg
+    assert "REWORK-BUILD | x" in msg
+    assert "--supersede" in msg
+
+
+def test_check_overwrite_two_existing_no_supersede_names_count_and_most_recent():
+    """The most recent entry is deliberately NOT first. GitHub returns
+    statuses newest-first, so a fixture in that order cannot tell "picks the
+    most recent by created_at" from "picks position 0" — an earlier draft of
+    this test put the newest first while its docstring said out of order, and
+    a mutation to `existing[0]` left it green."""
+    existing = [
+        {"state": "failure", "description": "REWORK-BUILD | oldest",
+         "created_at": "2026-09-21T01:00:00Z"},
+        {"state": "success", "description": "PASS | newest",
+         "created_at": "2026-09-21T02:00:00Z"},
+    ]
+    ok, msg = check_overwrite(existing, None)
+    assert ok is False
+    assert "2" in msg
+    assert "PASS | newest" in msg
+    assert "2026-09-21T02:00:00Z" in msg
+    assert "REWORK-BUILD | oldest" not in msg
+
+
+def test_check_overwrite_blank_supersede_is_refused_regardless_of_existing():
+    ok, msg = check_overwrite(
+        [{"state": "success", "description": "PASS", "created_at": "2026-09-21T01:00:00Z"}],
+        "   ",
+    )
+    assert ok is False
+    assert "reason" in msg
+
+
+def test_check_overwrite_existing_with_reason_is_ok():
+    """INNOCENCE: existing status + a real reason is allowed to overwrite."""
+    ok, msg = check_overwrite(
+        [{"state": "success", "description": "PASS", "created_at": "2026-09-21T01:00:00Z"}],
+        "gate re-run after rebase",
+    )
+    assert ok is True
+    assert msg == ""
+
+
+# --- overwrite guard: build_description carries supersedes -----------------
+
+def test_description_carries_supersedes_before_extra():
+    desc = build_description(
+        "PASS", degraded=False, extra="tail text", conditions_ref=None,
+        supersedes="failure@2026-09-21T01:00:00Z: gate re-run after rebase",
+    )
+    assert "supersedes=failure@2026-09-21T01:00:00Z: gate re-run after rebase" in desc
+    assert desc.index("supersedes=") < desc.index("tail text")
+
+
+def test_description_supersedes_truncates_at_140_and_eats_extra_first():
+    desc = build_description(
+        "PASS", degraded=False, extra="x" * 300, conditions_ref=None,
+        supersedes="failure@2026-09-21T01:00:00Z: gate re-run after rebase",
+    )
+    assert len(desc) <= 140
+    assert "supersedes=failure@2026-09-21T01:00:00Z" in desc
+
+
+# --- overwrite guard: main() wiring ------------------------------------------
+
+_EXISTING_REWORK = [{
+    "state": "failure",
+    "description": "REWORK-BUILD | plan sound, implementation defective",
+    "created_at": "2026-09-21T01:00:00Z",
+}]
+
+
+def test_main_refuses_pass_over_existing_rework_without_supersede(monkeypatch):
+    """GUILT: the exact PASS-over-REWORK collision this guard exists for —
+    must refuse (exit 2) and must NEVER call publish."""
+    calls = []
+    monkeypatch.setattr("harness_fable_gate.publish", lambda *a, **k: calls.append((a, k)) or 0)
+    rc = main(
+        ["--verdict", "PASS", "--sha", "abc", "--repo", "acme/example"],
+        read_statuses=lambda repo, sha: _EXISTING_REWORK,
+    )
+    assert rc == 2
+    assert calls == []
+
+
+def test_main_allows_supersede_over_existing_rework(monkeypatch):
+    """INNOCENCE: same collision, but --supersede with a reason publishes,
+    and the description records what was superseded."""
+    calls = []
+    monkeypatch.setattr(
+        "harness_fable_gate.publish",
+        lambda repo, sha, state, description, dry_run: calls.append(description) or 0,
+    )
+    rc = main(
+        ["--verdict", "PASS", "--sha", "abc", "--repo", "acme/example",
+         "--supersede", "gate re-run after rebase"],
+        read_statuses=lambda repo, sha: _EXISTING_REWORK,
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    assert calls[0].startswith("PASS | supersedes=failure@2026-09-21T01:00:00Z: gate re-run after rebase")
+
+
+def test_main_reader_failure_fails_closed(monkeypatch):
+    calls = []
+    monkeypatch.setattr("harness_fable_gate.publish", lambda *a, **k: calls.append((a, k)) or 0)
+    rc = main(
+        ["--verdict", "PASS", "--sha", "abc", "--repo", "acme/example"],
+        read_statuses=lambda repo, sha: None,
+    )
+    assert rc == 1
+    assert calls == []
+
+
+def test_cli_dry_run_skips_overwrite_read_and_prints_notice():
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "harness_fable_gate.py"),
+         "--verdict", "PASS", "--sha", "deadbeef", "--repo", "acme/example",
+         "--dry-run"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "overwrite check skipped" in proc.stdout
+
+
+def test_cli_dry_run_with_supersede_shows_placeholder_shape():
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "harness_fable_gate.py"),
+         "--verdict", "PASS", "--sha", "deadbeef", "--repo", "acme/example",
+         "--supersede", "gate re-run after rebase", "--dry-run"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "supersedes=<unread>: gate re-run after rebase" in proc.stdout
+
+
+def test_main_supersede_names_the_most_recent_status_not_the_first(monkeypatch):
+    """The second `max` — the one that writes `supersedes=` on the PR — gets
+    the same out-of-order fixture: naming the wrong predecessor on the page
+    is the invisible-collision defect again, one level up."""
+    calls = []
+
+    def fake_reader(repo, sha):
+        return [
+            {"state": "failure", "description": "REWORK-BUILD | older",
+             "created_at": "2026-09-21T01:00:00Z"},
+            {"state": "success", "description": "PASS | newer",
+             "created_at": "2026-09-21T03:00:00Z"},
+        ]
+
+    def fake_publish(repo, sha, state, description, dry_run):
+        calls.append(description)
+        return 0
+
+    monkeypatch.setattr("harness_fable_gate.publish", fake_publish)
+    rc = main(
+        ["--verdict", "BLOCK", "--sha", "abc", "--repo", "acme/example",
+         "--supersede", "third reading"],
+        read_statuses=fake_reader,
+    )
+    assert rc == 0
+    assert len(calls) == 1
+    assert "supersedes=success@2026-09-21T03:00:00Z: third reading" in calls[0]
