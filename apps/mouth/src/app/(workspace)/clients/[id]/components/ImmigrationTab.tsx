@@ -101,6 +101,35 @@ function formatDocType(type: string): string {
   return type.replace(/_/g, " ");
 }
 
+/** `permit_label` (resolved server-side from OCR/document_type, see
+ * crm.types.ts) is the precise label when known; `document_type` stays the
+ * fallback — never invent a label the backend found no evidence for. */
+function permitDisplayLabel(doc: ClientDocument): string {
+  return doc.permit_label || formatDocType(doc.document_type);
+}
+
+/** `permit_family_label` (e.g. "KITAS / ITAS — Limited Stay Permit") is a
+ * secondary line — shown ONLY when it differs from the primary label (a
+ * precise visa index like "E23 — Working KITAS" pushed the family down to
+ * secondary; when no index was found the two strings are identical, and
+ * showing the same text twice would just be noise). */
+function permitFamilySecondaryLabel(doc: ClientDocument): string | undefined {
+  const family = doc.permit_family_label;
+  if (!family || family === permitDisplayLabel(doc)) return undefined;
+  return family;
+}
+
+// A MERP (Multiple Exit Re-entry Permit) document. `document_type` is often
+// the literal string "MERP" and never matches `isVisaFamilyDocument` above
+// (it is not itself a stay permit) — before this resolver existed it fell
+// into the generic "Other" bucket instead of riding along with the current
+// permit it re-enters on.
+const isMerpDocument = (
+  d: Pick<ClientDocument, "document_type" | "permit_family">,
+) =>
+  d.permit_family === "merp" ||
+  (d.document_type?.toLowerCase().includes("merp") ?? false);
+
 /** Shared download handler — same proxy-download logic renderDocCard used. */
 function downloadDocument(doc: ClientDocument) {
   const fileId = doc.google_drive_file_url
@@ -204,9 +233,14 @@ export function ImmigrationTab({
         new Date(d.expiry_date) > new Date(now.getTime() - 30 * 86400000)), // allow 30 days grace
   );
 
-  // Previous visas = expired (or superseded) visa-family documents
+  // Previous visas = expired (or superseded) visa-family documents.
+  // Excludes anything MERP-classified: a document whose stored document_type
+  // is generic ("visa") but whose resolved permit_family is "merp" matches
+  // BOTH isVisaFamilyDocument (via the "visa" substring) and isMerpDocument
+  // — without this exclusion it rendered once here AND once in the MERP
+  // chip row below (GUILT fixed 2026-09-21).
   const previousVisas = sortedDocs.filter(
-    (d) => d !== actualVisa && isVisaFamilyDocument(d),
+    (d) => d !== actualVisa && isVisaFamilyDocument(d) && !isMerpDocument(d),
   );
 
   // Working permits
@@ -217,12 +251,20 @@ export function ImmigrationTab({
       d.document_type?.toLowerCase().includes("rptka"),
   );
 
+  // MERP (re-entry permit) — tied to the current permit, never "Other".
+  // Only pulled out of "Other" when there IS a current permit to tie it to;
+  // with no actualVisa it stays in otherDocs rather than disappearing.
+  const merpDocs = actualVisa
+    ? sortedDocs.filter((d) => d !== actualVisa && isMerpDocument(d))
+    : [];
+
   // Other immigration docs (not in above categories)
   const otherDocs = sortedDocs.filter(
     (d) =>
       d !== actualVisa &&
       !previousVisas.includes(d) &&
-      !workingPermits.includes(d),
+      !workingPermits.includes(d) &&
+      !merpDocs.includes(d),
   );
 
   const renderDocCard = (doc: ClientDocument) => (
@@ -268,10 +310,25 @@ export function ImmigrationTab({
       )}
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
-            {doc.document_type.replace(/_/g, " ")}
-          </span>
-          <div className="flex items-center gap-1">
+          <div className="min-w-0">
+            <span
+              className={cn(
+                "text-sm font-medium text-[var(--bz-text-1)]",
+                // Capitalizing an official catalogue name mangles it (e.g.
+                // "Cabang atau Anak" -> "Cabang Atau Anak") — only the raw
+                // document_type fallback wants the transform.
+                !doc.permit_label && "capitalize",
+              )}
+            >
+              {permitDisplayLabel(doc)}
+            </span>
+            {permitFamilySecondaryLabel(doc) && (
+              <p className="text-[11px] text-[var(--bz-text-2)]">
+                {permitFamilySecondaryLabel(doc)}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             {doc.google_drive_file_url && (
               <Button
                 variant="ghost"
@@ -407,11 +464,21 @@ export function ImmigrationTab({
                 Current permit
               </p>
               <span
-                className="inline-flex items-center rounded-[6px] bg-[var(--tx-pure)] px-3 py-1.5 text-[19px] font-medium capitalize text-[var(--bz-base)]"
+                className={cn(
+                  "inline-flex items-center rounded-[6px] bg-[var(--tx-pure)] px-3 py-1.5 text-[19px] font-medium text-[var(--bz-base)]",
+                  // Same rule as renderDocCard: capitalize only the raw
+                  // document_type fallback, never an official catalogue name.
+                  !actualVisa.permit_label && "capitalize",
+                )}
                 style={{ fontFamily: "var(--font-serif)" }}
               >
-                {formatDocType(actualVisa.document_type)}
+                {permitDisplayLabel(actualVisa)}
               </span>
+              {permitFamilySecondaryLabel(actualVisa) && (
+                <p className="mt-1 text-[12px] text-[var(--tx-secondary)]">
+                  {permitFamilySecondaryLabel(actualVisa)}
+                </p>
+              )}
               {actualVisa.file_name && (
                 <p
                   className="mt-1.5 max-w-[240px] truncate text-[12px] text-[var(--tx-secondary)]"
@@ -519,6 +586,22 @@ export function ImmigrationTab({
                 </b>
               </span>
             )}
+            {actualVisa.permit_number && (
+              <span>
+                Permit no.{" "}
+                <b className="font-semibold text-[var(--tx-pure)]">
+                  {actualVisa.permit_number}
+                </b>
+              </span>
+            )}
+            {actualVisa.permit_sponsor && (
+              <span>
+                Sponsor{" "}
+                <b className="font-semibold text-[var(--tx-pure)]">
+                  {actualVisa.permit_sponsor}
+                </b>
+              </span>
+            )}
             {actualVisa.family_member_name && (
               <span>
                 For{" "}
@@ -528,6 +611,21 @@ export function ImmigrationTab({
               </span>
             )}
           </div>
+
+          {merpDocs.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {merpDocs.map((doc) => (
+                <span
+                  key={doc.id}
+                  className="inline-flex items-center gap-1.5 rounded-[6px] border border-[var(--bz-border)] bg-[var(--bz-base)] px-2.5 py-1 text-[12px] text-[var(--tx-secondary)]"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  {permitDisplayLabel(doc)}
+                  {doc.expiry_date && ` · Exp ${formatDate(doc.expiry_date)}`}
+                </span>
+              ))}
+            </div>
+          )}
 
           {isRenewable(actualVisa) && (
             <Button
@@ -591,7 +689,11 @@ export function ImmigrationTab({
             <HairlineBody>
               {previousVisas.map((doc) => {
                 const urgent = isUrgent(doc);
-                const secondary = [doc.file_name, doc.family_member_name]
+                const secondary = [
+                  permitFamilySecondaryLabel(doc),
+                  doc.file_name,
+                  doc.family_member_name,
+                ]
                   .filter(Boolean)
                   .join(" · ");
                 const statusNode = doc.status ? (
@@ -611,7 +713,7 @@ export function ImmigrationTab({
                   <HairlineRow key={doc.id}>
                     <div className="min-w-0 px-2.5">
                       <CellStack
-                        primary={formatDocType(doc.document_type)}
+                        primary={permitDisplayLabel(doc)}
                         secondary={secondary || undefined}
                         collapsed={
                           doc.issue_date

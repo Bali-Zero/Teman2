@@ -410,6 +410,28 @@ export interface ClientDocument {
   deleted_at?: string | null;
   /** 'client' for a portal upload, 'team' for a CRM one. */
   uploaded_source?: "client" | "team" | string;
+  /**
+   * Derived at read time from `document_type` + whatever OCR already
+   * extracted (`ocr_extracted_data->raw_response`) — see
+   * `backend/services/crm/permit_label.py::resolve_permit_label`. Absent
+   * when there is no evidence for a precise family; the UI falls back to
+   * `document_type` verbatim in that case (never invent a label).
+   */
+  permit_family?: "kitap" | "kitas" | "itk" | "merp" | "evisa" | string;
+  permit_code?: string;
+  permit_label?: string;
+  /**
+   * The family label (e.g. "KITAS / ITAS — Limited Stay Permit") — always
+   * present when a family is known, even when `permit_label` itself leads
+   * with a precise visa index. Secondary line only: show it in the UI when
+   * it differs from `permit_label`, never when they're the same string.
+   */
+  permit_family_label?: string;
+  /** The `2B14`-style stay-permit sub-index, when the OCR text fused one
+   * onto the visa index (e.g. "E33G2C12"). Display-only, safe to ignore. */
+  permit_stay_index?: string;
+  permit_number?: string;
+  permit_sponsor?: string;
 }
 
 export interface DocumentCreate {

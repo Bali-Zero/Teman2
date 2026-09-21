@@ -879,3 +879,351 @@ describe("ImmigrationTab — Start Renewal navigates to the real target (R6 roun
     );
   });
 });
+
+describe("ImmigrationTab — precise permit label (kita.balizero.com owner report: 'Permit: Visa' when the document is a KITAP)", () => {
+  it("shows the backend-resolved permit_label instead of the raw generic document_type", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 200,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitap",
+        permit_label: "KITAP / ITAP — Permanent Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("KITAP / ITAP — Permanent Stay Permit"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("visa")).not.toBeInTheDocument();
+  });
+
+  it("GUILT: falls back to the raw document_type when the backend found no evidence for a family (never invents one)", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 201,
+        document_type: "visa",
+        expiry_date: futureDate,
+        // no permit_label — backend had no evidence
+      },
+    ]);
+
+    expect(screen.getByText("visa")).toBeInTheDocument();
+  });
+
+  it("shows the permit number and sponsor when the backend extracted them, and omits them when absent", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 202,
+        document_type: "kitas",
+        expiry_date: futureDate,
+        permit_number: "TEST-0000",
+        permit_sponsor: "Example Sponsor",
+      },
+    ]);
+
+    expect(screen.getByText("TEST-0000")).toBeInTheDocument();
+    expect(screen.getByText("Example Sponsor")).toBeInTheDocument();
+  });
+
+  it("GUILT: omits the permit-number and sponsor rows when the backend did not extract them", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 203, document_type: "kitas", expiry_date: futureDate },
+    ]);
+
+    expect(screen.queryByText("Permit no.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sponsor")).not.toBeInTheDocument();
+  });
+});
+
+describe("ImmigrationTab — MERP rides with the current permit, not 'Other' (owner report)", () => {
+  it("GUILT: a document_type='MERP' companion document is NOT rendered in the Other section", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 210, document_type: "kitas", expiry_date: futureDate },
+      {
+        ...baseDoc,
+        id: 211,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+      },
+    ]);
+
+    expect(screen.getByText("Current permit")).toBeInTheDocument();
+    expect(screen.queryByText("Other")).not.toBeInTheDocument();
+  });
+
+  it("shows the MERP as a re-entry permit tied to the current permit card", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      { ...baseDoc, id: 212, document_type: "kitas", expiry_date: futureDate },
+      {
+        ...baseDoc,
+        id: 213,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+        permit_label: "MERP — Multiple Exit Re-entry Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("MERP — Multiple Exit Re-entry Permit"),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: with no current permit, a MERP-only document still shows up under Other instead of disappearing", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 214,
+        document_type: "MERP",
+        document_category: "immigration",
+        permit_family: "merp",
+      },
+    ]);
+
+    expect(screen.queryByText("Current permit")).not.toBeInTheDocument();
+    expect(screen.getByText("Other")).toBeInTheDocument();
+  });
+});
+
+describe("ImmigrationTab — permit_family_label secondary line (owner correction: index leads, family is secondary)", () => {
+  it("GUILT: shows the family label as a secondary line under the current-permit badge when it differs from the primary label", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 220,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label: "E23 — Working KITAS",
+        permit_family_label: "KITAS / ITAS — Limited Stay Permit",
+      },
+    ]);
+
+    expect(screen.getByText("E23 — Working KITAS")).toBeInTheDocument();
+    expect(
+      screen.getByText("KITAS / ITAS — Limited Stay Permit"),
+    ).toBeInTheDocument();
+  });
+
+  it("INNOCENCE: does not repeat the label when permit_family_label equals permit_label (no index was found)", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 221,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitap",
+        permit_label: "KITAP / ITAP — Permanent Stay Permit",
+        permit_family_label: "KITAP / ITAP — Permanent Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getAllByText("KITAP / ITAP — Permanent Stay Permit"),
+    ).toHaveLength(1);
+  });
+
+  it("shows the family label in the visa-history row's secondary line when it differs from the primary label", () => {
+    const futureDate = new Date(Date.now() + 400 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const pastDate = new Date(Date.now() - 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 222,
+        document_type: "kitas",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label: "KITAS / ITAS — Limited Stay Permit",
+        permit_family_label: "KITAS / ITAS — Limited Stay Permit",
+      },
+      {
+        ...baseDoc,
+        id: 223,
+        document_type: "visa",
+        expiry_date: pastDate,
+        permit_family: "itk",
+        permit_label: "C31",
+        permit_family_label: "ITK — Visit Stay Permit",
+      },
+    ]);
+
+    expect(screen.getByText("Visa history")).toBeInTheDocument();
+    expect(screen.getByText("C31")).toBeInTheDocument();
+    expect(screen.getByText("ITK — Visit Stay Permit")).toBeInTheDocument();
+  });
+});
+
+describe("ImmigrationTab — REWORK (independent gate, 2026-09-21)", () => {
+  it("(a) GUILT: a document outside isVisaFamilyDocument (e.g. document_type='itk') still shows the resolved permit_label in the 'Other' card grid, not the raw document_type", () => {
+    // 'itk' does not match isVisaFamilyDocument (no kitas/kitap/visa/voa
+    // substring) so it lands in `otherDocs`, rendered by `renderDocCard` —
+    // the prod bug: that card ignored permit_label entirely.
+    renderTab([
+      {
+        ...baseDoc,
+        id: 300,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label: "D12 — Pre-Investment (Multiple Entry)",
+      },
+    ]);
+
+    expect(
+      screen.getByText("D12 — Pre-Investment (Multiple Entry)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("itk")).not.toBeInTheDocument();
+  });
+
+  it("(a) shows the family secondary line in the 'Other' card grid when it differs from the primary label", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 301,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label: "D12 — Pre-Investment (Multiple Entry)",
+        permit_family_label: "ITK — Visit Stay Permit",
+      },
+    ]);
+
+    expect(
+      screen.getByText("D12 — Pre-Investment (Multiple Entry)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ITK — Visit Stay Permit")).toBeInTheDocument();
+  });
+
+  it("(a) GUILT falls back to the raw document_type in the 'Other' grid when unresolved (never invents a label)", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 302,
+        document_type: "itk",
+        document_category: "immigration",
+      },
+    ]);
+    expect(screen.getByText("itk")).toBeInTheDocument();
+  });
+
+  it("(b) does not apply text-transform:capitalize to a resolved permit_label in the current-permit badge", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 303,
+        document_type: "visa",
+        expiry_date: futureDate,
+        permit_family: "kitas",
+        permit_label:
+          "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+      },
+    ]);
+
+    const badge = screen.getByText(
+      "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+    );
+    expect(badge.className).not.toMatch(/\bcapitalize\b/);
+  });
+
+  it("(b) GUILT: still applies capitalize to the raw document_type fallback in the current-permit badge", () => {
+    const futureDate = new Date(Date.now() + 60 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 304,
+        document_type: "voa",
+        expiry_date: futureDate,
+        // no permit_label — falls back to the raw document_type
+      },
+    ]);
+
+    const badge = screen.getByText("voa");
+    expect(badge.className).toMatch(/\bcapitalize\b/);
+  });
+
+  it("(b) does not apply text-transform:capitalize to a resolved permit_label in the 'Other' card grid", () => {
+    renderTab([
+      {
+        ...baseDoc,
+        id: 305,
+        document_type: "itk",
+        document_category: "immigration",
+        permit_family: "itk",
+        permit_label:
+          "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+      },
+    ]);
+
+    const label = screen.getByText(
+      "E28D — Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
+    );
+    expect(label.className).not.toMatch(/\bcapitalize\b/);
+  });
+
+  it("(f) GUILT: a MERP document whose document_type is generic ('visa') never renders in BOTH the visa-history row and the MERP chip", () => {
+    const futureDate = new Date(Date.now() + 400 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    renderTab([
+      {
+        ...baseDoc,
+        id: 310,
+        document_type: "kitas",
+        expiry_date: futureDate,
+      },
+      {
+        ...baseDoc,
+        id: 311,
+        document_type: "visa",
+        // No expiry_date on purpose: the MERP chip appends " · Exp ..."
+        // whenever expiry_date is set, which would make the chip's own
+        // text node no longer an EXACT match for the bare label and hide
+        // a real double-render behind a text-matcher false negative.
+        permit_family: "merp",
+        permit_label: "MERP — Multiple Exit Re-entry Permit",
+      },
+    ]);
+
+    expect(
+      screen.getAllByText("MERP — Multiple Exit Re-entry Permit"),
+    ).toHaveLength(1);
+  });
+});

@@ -331,13 +331,27 @@ export function VisaCard({
 
             {/* Visa Data with Start/Finish/Exp */}
             <div className="space-y-2">
-              {/* Visa Type */}
+              {/* Visa Type — permit_label (resolved server-side, leads with
+                  the precise visa index + catalogue name when found, see
+                  crm.types.ts) is primary; document_type is the fallback,
+                  never invented. permit_family_label is the family (e.g.
+                  "KITAS / ITAS — Limited Stay Permit"), shown as a caption
+                  only when it differs from the primary label. */}
               {latestVisa.document_type && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--bz-text-2)]">Type:</span>
-                  <span className="font-medium text-[var(--bz-text-1)]">
-                    {latestVisa.document_type}
-                  </span>
+                <div className="text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--bz-text-2)]">Type:</span>
+                    <span className="font-medium text-[var(--bz-text-1)]">
+                      {latestVisa.permit_label || latestVisa.document_type}
+                    </span>
+                  </div>
+                  {latestVisa.permit_family_label &&
+                    latestVisa.permit_family_label !==
+                      (latestVisa.permit_label || latestVisa.document_type) && (
+                      <div className="mt-0.5 text-right text-[10px] text-[var(--bz-text-2)]">
+                        {latestVisa.permit_family_label}
+                      </div>
+                    )}
                 </div>
               )}
 
@@ -503,7 +517,7 @@ export function VisaCard({
         {/* Caption */}
         <p className="text-xs text-[var(--bz-text-2)] text-center mt-3">
           {latestVisa?.google_drive_file_url
-            ? `${latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
+            ? `${latestVisa.permit_label || latestVisa.document_type || "Visa"} • ${visaAlert.alertLevel !== "ok" ? "⚠️ Action needed" : "Valid"}`
             : "Upload visa (JPG, PNG, PDF - max 10MB)"}
         </p>
       </div>
