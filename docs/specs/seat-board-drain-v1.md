@@ -94,28 +94,35 @@ INVOKED by: `~/scripts/cron-state.sh` is a FILE symlink into the checkout, so `d
 
 **S2.0 — Every count in this file of which producers reach which gateway SHALL come from
 `scripts/tg_gateway_census.py` run on the machine it names, never from a count by wrapper name.**
-The census reads `crontab -l` and follows each active entry into every script it runs, running each
-producer's OWN resolution lines in isolation (never the job). Anything it cannot run is UNRESOLVED
-and makes it exit 3, so a clean exit means the numbers below are a count, not a floor.
+The census reads `crontab -l` and follows each active entry into what it runs (its docstring lists
+how), running each producer's OWN resolution lines in isolation, never the job. Anything it cannot
+run is UNRESOLVED and makes it exit 3. A clean exit means every gateway reference in every file it
+followed was run — not more: a resolver counts if the entry loads it, whether or not a given run
+calls it, and env set by files a job sources at run time is not modelled (on Pro, `grep -c
+TG_NOTIFY_BIN` is 0 in the crontab, `~/.zshrc.secrets` and `~/.nuzantara-secrets.env`, 2026-09-21).
 
-Measured on Pro (`Nuzantara`) at 2026-09-21T13:30Z over all 85 active entries of `crontab -l` —
+Measured on Pro (`Nuzantara`) at 2026-09-21T13:49Z over all 85 active entries of `crontab -l` —
 `ssh pro 'python3 -' < scripts/tg_gateway_census.py`, exit 0, `unresolved=0`:
 
-| resolving code, as invoked                                  | entries | gateway it resolves to                                                                                              | routes?        |
-| ----------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
-| `~/scripts/cron-state.sh` (FILE symlink → checkout)         | 28      | `~/scripts/tg_notify.py`, the 18-Aug fork                                                                           | **no**         |
-| `~/scripts/cron-runner.sh` (real file)                      | 24      | the fork                                                                                                            | **no**         |
-| `~/scripts/cron-agent-python/agent_job.py` (via `run.sh`)   | 16      | the fork                                                                                                            | **no**         |
-| `~/scripts/cron-agent.sh` (real file)                       | 6       | the fork                                                                                                            | **no**         |
-| `~/scripts/fly-qdrant-backup.sh` (child of `fly-backup.sh`) | 1       | the fork — inside one of the 28 `cron-state.sh` entries                                                             | **no**         |
-| `~/Desktop/nuzantara/scripts/cron-wrapper.sh` (DIR symlink) | 7       | `~/nuzantara/scripts/tg_notify.py`, the checkout                                                                    | **yes**        |
-| `~/Desktop/nuzantara/scripts/job_health.py`                 | 1       | the checkout — its entry's `cron-state.sh` wrapper reaches the fork too                                             | **yes**        |
-| `~/Desktop/nuzantara/scripts/drive_token_watchdog.py`       | 1       | the checkout — inside one of the 7 `cron-wrapper.sh` entries                                                        | **yes**        |
-| `~/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh`        | 1       | none: a symlink to a directory renamed `nuzantara-deploy.retired-20260910`, so the entry never starts (`kb-ingest`) | **never runs** |
+| resolving code, as invoked                                         | entries | gateway it resolves to                                                                                              | routes?        |
+| ------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `~/scripts/cron-state.sh` (FILE symlink → checkout)                | 28      | `~/scripts/tg_notify.py`, the 18-Aug fork                                                                           | **no**         |
+| `~/scripts/cron-runner.sh` (real file)                             | 24      | the fork                                                                                                            | **no**         |
+| `~/scripts/cron-agent-python/agent_job.py` (via `run.sh`)          | 16      | the fork                                                                                                            | **no**         |
+| `~/scripts/cron-agent.sh` (real file)                              | 6       | the fork                                                                                                            | **no**         |
+| `~/scripts/fly-qdrant-backup.sh` (child of `fly-backup.sh`)        | 1       | the fork — inside one of the 28 `cron-state.sh` entries                                                             | **no**         |
+| `~/Desktop/nuzantara/scripts/cron-wrapper.sh` (DIR symlink)        | 7       | `~/nuzantara/scripts/tg_notify.py`, the checkout                                                                    | **yes**        |
+| `~/Desktop/nuzantara/scripts/job_health.py`                        | 1       | the checkout — its entry's `cron-state.sh` wrapper reaches the fork too                                             | **yes**        |
+| `~/Desktop/nuzantara/scripts/drive_token_watchdog.py`              | 1       | the checkout — inside one of the 7 `cron-wrapper.sh` entries                                                        | **yes**        |
+| `~/nuzantara/scripts/sentinel_lib/alerter.py` (package)            | 2       | the checkout — imported by the two WA sentinels, both inside `cron-runner.sh` entries, which reach the fork too     | **yes**        |
+| `~/nuzantara/scripts/wa_{session_liveness,codex_seat_sentinel}.py` | 1 + 1   | the checkout — each one's `except` fallback when `alerter` fails to import, same two entries                        | **yes**        |
+| `~/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh`               | 1       | none: a symlink to a directory renamed `nuzantara-deploy.retired-20260910`, so the entry never starts (`kb-ingest`) | **never runs** |
 
 Per entry, the 85 split without overlap: **74 reach the fork**, 7 reach only the checkout, 3 reach no
 `tg_notify.py` at all (`fly-cost-alert.sh`, `ollama-warm-pin.sh`, `run_peraturan_ingestion.sh`;
 two of them name Telegram in their own text, which this census does not measure), and 1 never runs.
+Ten entries reach the checkout; three of them (`job_health.py`'s and the two WA sentinels') reach the
+fork as well, through the wrapper around them.
 
 **S2.1 — The drain design SHALL state, for each producer family it claims to cure, which gateway
 copy that family reaches.** A cure whose producers all reach a non-routing gateway is a cure with
