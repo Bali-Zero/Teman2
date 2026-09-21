@@ -164,11 +164,20 @@ original_path_replace = pathlib.Path.replace
 original_path_rename = pathlib.Path.rename
 
 def _write_sentinel(name, content):
+    # Written to a temp name in the same directory and moved into place with the UNPATCHED
+    # os.replace (never the hooked one -- this can fire before `fired` is set, e.g. the
+    # "no_replace" sentinel on the M4 mutation path where the hook never triggers at all, and
+    # going through the patched os.replace there would mis-arm _hook a second time). A reader
+    # polling on the target path's existence can now only ever observe it fully written --
+    # os.replace is a single rename syscall on POSIX, so there is no window where the path
+    # exists with partial or empty content (OBS-e, GATE-B2I-REPORT-6920.md).
     path = sentinel_dir / name
-    with path.open("w", encoding="utf-8") as handle:
+    tmp_path = sentinel_dir / f".{name}.tmp-{os.getpid()}"
+    with tmp_path.open("w", encoding="utf-8") as handle:
         handle.write(content)
         handle.flush()
         os.fsync(handle.fileno())
+    original_os_replace(tmp_path, path)
 
 def _hook(source, target, real_replace):
     global fired
@@ -222,8 +231,19 @@ def _wait_for_any(
     deadline = time.monotonic() + timeout
     while time.monotonic() <= deadline:
         for path in paths:
-            if path.exists():
-                return path
+            try:
+                # st_size > 0, not bare existence: a sentinel created with open("w") before
+                # its content is written would otherwise be observable at size 0 in the gap,
+                # and an empty path read back as "" resolves to Path('.') -- which exists and
+                # (as a directory) reports a nonzero size of its own, so every later assertion
+                # keyed on "the marker exists" would pass VACUOUSLY (OBS-e,
+                # GATE-B2I-REPORT-6920.md). Defense in depth: the writer (`_write_sentinel`)
+                # is now atomic too, so this branch should never observe a zero-byte marker in
+                # practice -- but the reader must not TRUST that on the writer's word alone.
+                if path.stat().st_size > 0:
+                    return path
+            except FileNotFoundError:
+                pass
         if process.poll() is not None:
             return None
         time.sleep(0.02)
@@ -572,12 +592,30 @@ def test_sigkill_inside_atomic_write_never_corrupts_the_target(
                 "is written IN PLACE, so a SIGKILL mid-write tears it"
             )
         if marker == in_window:
-            data = json.loads(report.read_text())
-            assert data["stage"] == "first"
+            try:
+                data = json.loads(report.read_text())
+            except json.JSONDecodeError as exc:
+                pytest.fail(
+                    f"the target did not parse while the writer was parked BEFORE its "
+                    f"replace: {exc}"
+                )
+            assert data["stage"] == "first", (
+                "target already reflects the second write although the writer is still "
+                "parked BEFORE replacing it into place"
+            )
             source = Path(in_window.read_text())
-            assert source != report
-            assert source.exists()
-            assert source.stat().st_size > 0
+            assert source != report, (
+                "the source path IS the target -- atomic_write_json is not writing through "
+                "a separate temp file"
+            )
+            assert source.exists(), (
+                "the temp source no longer exists although the writer is parked BEFORE "
+                "replacing it into place"
+            )
+            assert source.stat().st_size > 0, (
+                "the temp source is empty although the writer already wrote its content "
+                "before parking"
+            )
         os.kill(writer.pid, signal.SIGKILL)
         writer.wait(timeout=10.0)
         assert writer.returncode == -signal.SIGKILL
