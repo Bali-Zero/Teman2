@@ -1,5 +1,5 @@
 task_id: vo-a4-flag-coverage
-gear: 1
+gear: 2
 base_sha: 3664457fa7
 lane: mouth
 host: air-m5 (M5)
@@ -73,11 +73,13 @@ assumptions:
     status: verified
     probe: "git show origin/main:apps/mouth/src/app/\\(visa-oracle\\)/visa-oracle/_lib/fact-mapper.ts | sed -n '441,456p'"
   - text: >-
-      The measured Gear-2 size-term estimate in DRAFT-SPEC-A4-1.v2.md
-      (~447 against SIZE_GEAR2_THRESHOLD=400) does not hold for the
-      shipped implementation: the real non-fixture churn is 392
-      (census +262/-48, seq21_pack +6/-2, generator +57/-0, determinism
-      test +15/-2), under the Gear-2 line — contract_verify.py measures
-      floor 1, source "none", on the real head.
+      Real non-fixture churn is 475, not the DRAFT-SPEC's ~447 estimate:
+      census +262/-48, seq21_pack +6/-2, generator +57/-0, determinism
+      test +15/-2 (392) plus this brief.yml itself +83/-0 (evidence/ is
+      not in SIZE_TERM_EXCLUDE_DIR_NAMES) = 475, over
+      SIZE_GEAR2_THRESHOLD=400 — contract_verify.py measures floor 2,
+      "floor 2, brief present", on the real head with this brief
+      committed. Without the brief the non-fixture churn is 392, under
+      the line — the brief's own weight is what crosses it.
     status: verified
-    probe: "python3 scripts/contract_verify.py --head 45d58c770efa12e0feafff7a2bfc9c96ef956dac --json"
+    probe: "python3 scripts/contract_verify.py --head 806029e944 --json"
