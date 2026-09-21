@@ -8,7 +8,14 @@
     "codex": {
       "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
       "exec_allowlist": ["codex"],
-      "note": "Measured on this machine: Codex authenticates through the config directory under $HOME (~/.codex), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared."
+      "note": "Measured on this machine: Codex authenticates through the config directory under $HOME (~/.codex), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared. Without exec_search_path this seat resolved to the fixed system list's stale codex-cli 0.147.0, whose config.toml shape does not match the 0.155.1 format ~/.codex/config.toml is written in — measured: it dies at startup with 'invalid type: map, expected a boolean in features'. The working 0.155.1 lives under a mise-managed node install; ~/.local/bin/codex is a wrapper that execs it when given arguments (this seat only ever calls it with arguments) and itself falls back to the stale homebrew binary if the mise one is absent, so the seat declares its own search path the same way agy/kimi do rather than pinning the mise node-major dir directly, which would silently vanish if mise moves to another node major.",
+      "exec_search_path": [
+        "~/.local/bin",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin"
+      ]
     },
     "agy": {
       "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
