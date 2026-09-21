@@ -1,7 +1,7 @@
 task_id: damar-newsroom-preflight
 gear: 2
 colour: BLUE
-brief_ref: evidence/2026-09/agent-mini-pro2-infra-damar-newsroom-preflight-b725070e/brief.yml
+brief_ref: evidence/brief.yml
 lanes:
   - lane: newsroom-preflight
     role: build
