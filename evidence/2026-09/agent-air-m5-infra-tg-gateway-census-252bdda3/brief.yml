@@ -1,0 +1,24 @@
+mandate: >-
+  PWC-7033 C1 (suspended after two REWORK-BUILD gates): count Pro's active
+  crontab entries by the tg_notify.py each one actually RESOLVES, following
+  each producer's own resolution code, with a read-only command, then rewrite
+  docs/specs/seat-board-drain-v1.md §2 and every fork-reaching count from its
+  output. Two hand counts by wrapper name (24, 52) were both wrong.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: opus-5-xhigh
+organ: scripts/tg_gateway_census.py (read-only; consumer = the spec's §2 table and §8 A1 probe)
+authority: >-
+  PENDING-ARMS row "PWC-7033 C1 — SUSPENDED" names this session's lane as
+  owner and this census as its missing arming step.
+acceptance:
+  - a FILE symlink under ~/scripts resolves the fork (dirname "$0" is the link's dir)
+  - a DIR symlink ~/Desktop/nuzantara resolves the checkout
+  - the producer's own fallback line decides; mutating that line changes the output
+  - run.sh <job> dispatch plus sibling import of agent_job resolves the fork
+  - an inline Python resolver runs as a slice and the sending function never runs
+  - any gateway reference the census cannot run is UNRESOLVED and exits 3
+  - on Pro, exit 0 with unresolved=0, and the spec's numbers equal its output
+appetite:
+  wall_clock_hours: 3
