@@ -302,3 +302,88 @@ def test_guilt_excerpt_slice_after_citation_no_longer_contains_it():
     broken_excerpt = result["verbatim_excerpt"][len(citation):]
     assert citation not in broken_excerpt
     assert citation in result["verbatim_excerpt"]
+
+
+# ─── R2 — nomor needs a trailing boundary, not just re.escape ─────────────
+
+
+def test_r2_guilt_short_nomor_does_not_swallow_a_longer_number():
+    """Guilt: without a trailing boundary, nomor `12` matches the PREFIX of body `NOMOR 123
+    TAHUN 2026`, producing the wrong citation `...NOMOR 12`. With the boundary, neither the
+    heading nor the NOMOR-only fallback may match a nomor that is itself a prefix of a longer
+    digit run — citation must stay None, never the truncated wrong string."""
+    html = _synthetic_detail_html(
+        jenis="Peraturan Pemerintah",
+        nomor="12",
+        body_inner="PERATURAN PEMERINTAH NOMOR 123 TAHUN 2026 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    result = pajak_parse.extract_regulation(html)
+    assert result["citation"] is None
+    assert result["verbatim_excerpt"] is None
+
+
+def test_r2_guilt_truncated_nomor_is_not_a_delimited_prefix_match():
+    """Guilt: without a trailing boundary, nomor `PMK-81` matches the prefix of body `NOMOR
+    PMK-81/2024` — delimited by `/`, so admission would ADMIT this truncated, wrong citation.
+    The boundary must reject a nomor immediately followed by a separator that itself continues
+    into another alnum char."""
+    html = _synthetic_detail_html(
+        jenis="Peraturan Menteri Keuangan",
+        nomor="PMK-81",
+        body_inner="PERATURAN MENTERI KEUANGAN NOMOR PMK-81/2024 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    result = pajak_parse.extract_regulation(html)
+    assert result["citation"] is None
+    assert result["verbatim_excerpt"] is None
+
+
+def test_r2_innocence_exact_nomor_still_matches_at_end_of_sentence():
+    """The boundary must not reject a real, exact nomor match followed by ordinary punctuation
+    or whitespace — only a same-token continuation."""
+    html = _synthetic_detail_html(
+        jenis="Peraturan Pemerintah",
+        nomor="12",
+        body_inner="PERATURAN PEMERINTAH NOMOR 12 TAHUN 2026 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    result = pajak_parse.extract_regulation(html)
+    assert result["citation"] == "PERATURAN PEMERINTAH NOMOR 12"
+    assert result["citation"] in result["verbatim_excerpt"]
+
+
+# ─── M4 — re.escape(nomor) must treat metacharacters as literal ───────────
+
+
+def test_m4_guilt_nomor_metacharacter_is_literal_not_a_regex_wildcard():
+    """Guilt: if `re.escape(nomor)` were dropped, the `.` in nomor `PMK-81.2024` becomes a regex
+    wildcard matching ANY character — so it would wrongly also match body text where that
+    position holds a different character (`PMK-81X2024`, no literal dot at all). With escaping,
+    only the literal string matches."""
+    exact_match_html = _synthetic_detail_html(
+        jenis="Peraturan Menteri Keuangan",
+        nomor="PMK-81.2024",
+        body_inner="PERATURAN MENTERI KEUANGAN NOMOR PMK-81.2024 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    exact_result = pajak_parse.extract_regulation(exact_match_html)
+    assert exact_result["citation"] == "PERATURAN MENTERI KEUANGAN NOMOR PMK-81.2024"
+
+    wildcard_bait_html = _synthetic_detail_html(
+        jenis="Peraturan Menteri Keuangan",
+        nomor="PMK-81.2024",
+        body_inner="PERATURAN MENTERI KEUANGAN NOMOR PMK-81X2024 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    wildcard_result = pajak_parse.extract_regulation(wildcard_bait_html)
+    assert wildcard_result["citation"] is None
+
+
+def test_m4_innocence_nomor_with_slashes_still_matches_literally():
+    """A real DJP nomor like `KEP-185/PJ/2026` (`/` has no regex meaning, but is exactly the
+    kind of value a dropped `re.escape` bug report would target) still matches its own literal
+    body occurrence."""
+    html = _synthetic_detail_html(
+        jenis="Keputusan Direktur Jenderal Pajak",
+        nomor="KEP-185/PJ/2026",
+        body_inner="KEPUTUSAN DIREKTUR JENDERAL PAJAK NOMOR KEP-185/PJ/2026 TENTANG SESUATU. Menimbang: a. bahwa.",
+    )
+    result = pajak_parse.extract_regulation(html)
+    assert result["citation"] == "KEPUTUSAN DIREKTUR JENDERAL PAJAK NOMOR KEP-185/PJ/2026"
+    assert result["citation"] in result["verbatim_excerpt"]

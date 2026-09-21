@@ -187,6 +187,15 @@ _DETAIL_FIELD_MARKERS = {
 _CUT_KEYWORD_RE = re.compile(r"\b(?:menimbang|mengingat)\b", re.IGNORECASE)
 _EXCERPT_MAX_CHARS = 700
 
+#: A trailing boundary for `nomor` inside a heading match — without it, nomor `12` matches the
+#: PREFIX of body `NOMOR 123 TAHUN 2026` (wrong citation, later correctly Excluded by admission
+#: but still the wrong string stored in raw_payload), and nomor `PMK-81` matches the prefix of
+#: body `NOMOR PMK-81/2024` (a citation that IS a delimited, ADMISSIBLE token — but truncated,
+#: wrong regulation number). Rejects: (a) nomor immediately followed by another alnum char
+#: (continues a longer token), or (b) nomor followed by a `/`, `.` or `-` separator that is
+#: itself immediately followed by an alnum char (nomor is a truncated prefix of a longer one).
+_NOMOR_BOUNDARY = r"(?![0-9A-Za-z]|[/.\-][0-9A-Za-z])"
+
 
 def _collapse_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
@@ -272,14 +281,14 @@ def extract_regulation(html: str) -> dict | None:
     citation = None
     if jenis and nomor:
         heading_re = re.compile(
-            rf"{re.escape(jenis)}(?:\s+REPUBLIK\s+INDONESIA)?\s+NOMOR\s+{re.escape(nomor)}",
+            rf"{re.escape(jenis)}(?:\s+REPUBLIK\s+INDONESIA)?\s+NOMOR\s+{re.escape(nomor)}{_NOMOR_BOUNDARY}",
             re.IGNORECASE,
         )
         m = heading_re.search(body_text)
         if m:
             citation = m.group(0)
     if citation is None and nomor:
-        m = re.search(rf"NOMOR\s+{re.escape(nomor)}", body_text, re.IGNORECASE)
+        m = re.search(rf"NOMOR\s+{re.escape(nomor)}{_NOMOR_BOUNDARY}", body_text, re.IGNORECASE)
         if m:
             citation = m.group(0)
 
