@@ -138,8 +138,11 @@ describe("PMA editorial disclosure boundary", () => {
     // relabelled declared_gap→located. 460→720 located / 1099→839 gaps.
     // None of the 260 is in the 36-code editorially certified set, so that
     // count is untouched.
-    expect(located).toHaveLength(720);
-    expect(gaps).toHaveLength(839);
+    // 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
+    // lot 1/lot 2 by the compiler itself, same relabel, neither certified.
+    // 720→722 located / 839→837 gaps / 36 certified unchanged.
+    expect(located).toHaveLength(722);
+    expect(gaps).toHaveLength(837);
     expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
 
     for (const record of gaps) {

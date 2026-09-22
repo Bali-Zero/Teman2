@@ -1520,7 +1520,7 @@
 92000 | Aktivitas Perjudian dan Pertaruhan | TERTUTUP | 0% | Not classified
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
-93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Menengah Tinggi
+93113 | Fasilitas Gelanggang/Arena | TERBUKA | 100% | Menengah Tinggi
 93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
 93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Menengah Rendah
 93116 | Fasilitas Pusat Kebugaran/Fitness Center | NOT_VERIFIED | Not verified | Menengah Rendah
@@ -1536,7 +1536,7 @@
 93129 | Klub Olahraga Lainnya | NOT_VERIFIED | Not verified | Not classified
 93191 | Penyelenggaraan Kegiatan Olahraga | NOT_VERIFIED | Not verified | Menengah Rendah
 93192 | Aktivitas Juri dan Wasit Profesional | NOT_VERIFIED | Not verified | Not classified
-93193 | Aktivitas Perburuan di Kawasan Buru | NOT_VERIFIED | Not verified | Menengah Rendah
+93193 | Aktivitas Perburuan di Kawasan Buru | TERBUKA | 100% | Menengah Rendah
 93194 | Badan Regulasi dan Liga Olahraga | NOT_VERIFIED | Not verified | Not classified
 93195 | Aktivitas Olahraga Tradisional | NOT_VERIFIED | Not verified | Rendah
 93196 | Pengelolaan Fasilitas Pemancingan | TERBUKA | 100% | Rendah / Menengah Tinggi
