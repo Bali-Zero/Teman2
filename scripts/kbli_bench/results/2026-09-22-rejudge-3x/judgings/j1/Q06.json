@@ -1,0 +1,20 @@
+{
+  "qid": "Q06",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data LKPM tidak tersedia dan menunjuk kode dalam paket tanpa mengarang fakta."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Abstain secara eksplisit atas seluruh fakta LKPM yang hilang dan menyebut cakupan paket."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Abstain atas fakta LKPM; pembedaan dari kewajiban pelaporan pertambangan didukung record 08915."
+    }
+  ]
+}

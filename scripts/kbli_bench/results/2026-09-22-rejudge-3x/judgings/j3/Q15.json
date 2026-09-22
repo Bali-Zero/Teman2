@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the virtual-office fact unavailable and abstains from answering, exactly matching the expected known-gap behavior."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains, explains the records cover KBLI manufacturing rather than domicile rules, and makes no unsupported regulatory claim."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly states the relevant fact is absent and declines to determine the answer; listed package codes are accurate."
+    }
+  ]
+}

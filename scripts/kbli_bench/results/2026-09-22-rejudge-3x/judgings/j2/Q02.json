@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data modal tidak tersedia, menolak menjawab faktanya, dan hanya menunjuk informasi OJK/BI yang didukung paket."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menyatakan data modal tidak tersedia dan tidak mengarang contoh, angka, atau waktu berlakunya."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menyatakan fakta modal tidak tersedia, menunjuk cakupan data, dan tidak membuat klaim modal substantif."
+    }
+  ]
+}

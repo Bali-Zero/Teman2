@@ -1,0 +1,20 @@
+{
+  "qid": "Q11",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Tidak menyebut 56101 sebagai alternatif restoran yang tidak diblokir, sehingga pembedaan wajib antarkode tidak terpenuhi."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Mengabaikan 56101 dan statusnya yang tidak diblokir; seluruh klaim tentang 56303 didukung record."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Tidak menyajikan kandidat 56101 serta perbedaannya sebagai kode yang tidak diblokir di Bali."
+    }
+  ]
+}

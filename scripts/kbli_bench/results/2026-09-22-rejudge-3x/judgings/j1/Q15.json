@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention: states virtual-office and physical-office rules are absent from available data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention with pointer to the available KBLI manufacturing records, which contain no virtual-office rule."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention with pointer to the available KBLI codes; no unsupported substantive answer is asserted."
+    }
+  ]
+}

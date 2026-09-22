@@ -1,0 +1,20 @@
+{
+  "qid": "Q09",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan daftar dokumen pendirian tidak tersedia dan menunjuk batas data pada persyaratan/kewajiban KBLI."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit abstain karena records tidak memuat persyaratan dokumen pendirian PT PMA."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan gap dan menunjuk records KBLI sebagai persyaratan kegiatan usaha, bukan dokumen pembentukan perusahaan."
+    }
+  ]
+}

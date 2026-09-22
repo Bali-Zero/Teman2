@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declared abstention; accurately notes no capital facts and points only to supported OJK/BI timing data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declared abstention with an accurate pointer to the available KBLI records; no capital requirements invented."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declared abstention and accurately characterizes the available record categories; no unsupported capital facts asserted."
+    }
+  ]
+}

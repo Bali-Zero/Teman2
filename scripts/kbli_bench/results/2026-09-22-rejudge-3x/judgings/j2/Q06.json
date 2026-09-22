@@ -1,0 +1,20 @@
+{
+  "qid": "Q06",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data LKPM tidak tersedia dan menunjuk kode yang tersedia tanpa mengarang fakta."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan frekuensi, tenggat, dan sanksi LKPM tidak termuat serta memberi pointer ke kode tersedia."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Mengabstain dari fakta LKPM dan secara tepat membedakan kewajiban pelaporan pertambangan 08915 dari LKPM."
+    }
+  ]
+}

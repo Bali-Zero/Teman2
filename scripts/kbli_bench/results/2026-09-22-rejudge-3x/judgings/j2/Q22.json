@@ -1,0 +1,20 @@
+{
+  "qid": "Q22",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan batas 49%, pengecualian persetujuan Menteri Pertahanan, dan menjelaskan OPEN_IN_BALI secara tepat."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Batas 49%, pengecualian Menteri Pertahanan, status Bali, dan risiko Tinggi semuanya didukung paket run."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Jawaban ditolak oleh gate dan tidak menyatakan fakta regulasi yang diminta."
+    }
+  ]
+}

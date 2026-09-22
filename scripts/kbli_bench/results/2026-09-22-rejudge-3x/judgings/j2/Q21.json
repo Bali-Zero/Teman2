@@ -1,0 +1,20 @@
+{
+  "qid": "Q21",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "79122 supports 0% foreign ownership, domestic capital and Islamic faith requirements; Bali moratorium openness is correctly distinguished from ownership."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Accurately states the derived NATIONALLY_CLOSED verdict, 0% foreign cap, and both recorded conditions for KBLI 79122."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Correctly states 0% national closure and conditions, while clarifying that Bali moratorium status does not override the foreign-ownership prohibition."
+    }
+  ]
+}

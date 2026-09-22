@@ -1,0 +1,20 @@
+{
+  "qid": "Q17",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan sumber modal disetor tidak tersedia dan menunjuk cakupan data/KBLI yang ada; tidak mengarang kutipan."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit abstain karena fakta dan sumber resmi modal disetor tidak tersedia; tidak mengarang kutipan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan gap sumber modal disetor serta menunjuk cakupan data yang tersedia; tidak mengarang kutipan."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q19",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English, explains the corpus gap, and points to the relevant records without inventing a checklist."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and accurately points to supported activity-specific examples without presenting them as incorporation documents."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and explains that the supplied records do not contain the requested general checklist."
+    }
+  ]
+}

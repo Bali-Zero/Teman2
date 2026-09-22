@@ -1,0 +1,20 @@
+{
+  "qid": "Q09",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data tidak memuat checklist pendirian dan menunjuk cakupan yang tersedia; sesuai abstention dengan pointer."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menyatakan daftar dokumen tidak tersedia dan menunjuk keterbatasan records; memenuhi expected behavior."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menolak memberi daftar dan menunjuk records KBLI sebagai data kegiatan usaha, bukan pembentukan perusahaan."
+    }
+  ]
+}

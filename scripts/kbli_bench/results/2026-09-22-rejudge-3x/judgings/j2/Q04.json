@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and identifies that supplied records cover KBLI details, not NIB amendment steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the supplied data contains no procedure for adding KBLI after NIB issuance."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and correctly distinguishes available KBLI fields from missing NIB amendment steps."
+    }
+  ]
+}

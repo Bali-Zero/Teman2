@@ -1,0 +1,20 @@
+{
+  "qid": "Q08",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the doctrine gap and limits examples to supported PMA caps and Bali verdicts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the missing comparison; all illustrative KBLI and Bali claims are supported."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains; ownership, Bali, national-status, and LSPr examples all follow from the served records."
+    }
+  ]
+}

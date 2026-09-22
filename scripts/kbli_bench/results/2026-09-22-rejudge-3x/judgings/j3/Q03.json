@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menolak checklist universal, membatasi kesimpulan pada KBLI tersaji, dan seluruh klaim tentang perizinan serta ketergantungan konteks didukung paket run."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Jawaban bersifat kondisional per KBLI; seluruh contoh kewajiban, ketiadaan entri perizinan, dan status 91111 didukung paket run."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak jawaban umum tanpa KBLI dan hanya menyampaikan fakta kondisional yang didukung seluruh rekaman paket run."
+    }
+  ]
+}
