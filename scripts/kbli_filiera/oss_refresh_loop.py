@@ -475,15 +475,20 @@ def write_contained(out_root: Path, path: Path, text: str) -> None:
     an exclusive temp file + os.replace — so neither a symlinked directory nor
     a pre-planted temp name can redirect the write onto the canonical (Codex
     red-team finding 1). `out_root` itself may be a symlink: the operator
-    chose it."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    cursor = path.parent
-    while cursor != out_root and cursor != cursor.parent:
-        if cursor.is_symlink():
-            raise OutputRefused(f"{cursor} is a symlink")
-        cursor = cursor.parent
+    chose it. Every directory BELOW `out_root` is refused one level at a time
+    BEFORE it is created: `path.parent.mkdir(parents=True)` alone would let
+    pathlib's own parent-recursion materialise real directories at a
+    symlinked intermediate's (even a dangling one's) destination first, and
+    only then would the walk-up below refuse it (D1)."""
     if path.is_symlink():
         raise OutputRefused(f"{path} is a symlink")
+    out_root.mkdir(parents=True, exist_ok=True)
+    cursor = out_root
+    for part in path.parent.relative_to(out_root).parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise OutputRefused(f"{cursor} is a symlink")
+        cursor.mkdir(exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -570,7 +575,14 @@ def build_report(
 ) -> dict:
     """Pure."""
     counts = Counter(entry["class"] for entry in target_results)
-    fetched = sum(1 for entry in target_results if entry["class"] != DEFERRED and entry["attempts"])
+    # `fetched` counts codes that got an HTTP answer — not `fetch_error` (no
+    # answer, or one not worth trusting) and not `deferred` (no attempt at
+    # all). A run can retry a code 3 times and still never get an answer;
+    # counting those attempts as "fetched" let a report say "fetched 219/219"
+    # over 218 fetch_errors (D6). `attempted` keeps the old attempts-made
+    # count, for whoever still wants it.
+    fetched = sum(1 for entry in target_results if entry["class"] not in (DEFERRED, FETCH_ERROR))
+    attempted = sum(1 for entry in target_results if entry["class"] != DEFERRED and entry["attempts"])
     return {
         "schema": "kbli-oss-refresh/v1",
         "date": date,
@@ -586,6 +598,7 @@ def build_report(
         "coverage": {
             "asked": len(target_results),
             "fetched": fetched,
+            "attempted": attempted,
             "trusted_answers": sum(counts[k] for k in TRUSTED_CLASSES),
             "errors": counts[FETCH_ERROR] + counts[AUTH_FAILED] + counts[MALFORMED],
             "deferred": counts[DEFERRED],
@@ -599,7 +612,7 @@ def build_report(
     }
 
 
-def render_summary(report: dict) -> str:
+def render_summary(report: dict, *, dry_run: bool = False) -> str:
     cov = report["coverage"]
     pop = report["population"]
     states = " · ".join(f"{state} {n}" for state, n in pop["by_state"].items())
@@ -617,7 +630,10 @@ def render_summary(report: dict) -> str:
         lines.append(f"  PROPOSED {entry['code']} {entry['class']}: {entry['reason']} → {route}")
     lines.append(f"verdict: {report['verdict']} (exit {report['exit_code']})")
     if report["cure_spec"]:
-        lines.append(f"cure spec: {report['cure_spec']}")
+        # A dry-run never writes it — say so, the same honesty as "DRY-RUN —
+        # nothing written" below it (D7).
+        prefix = "cure spec (dry-run, not written)" if dry_run else "cure spec"
+        lines.append(f"{prefix}: {report['cure_spec']}")
     return "\n".join(lines)
 
 
@@ -685,6 +701,10 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
             session.close()
 
     counts = Counter(entry["class"] for entry in target_results)
+    # `bool(control_results)` matters on its own: `all(...)` over an EMPTY
+    # control list is vacuously True, so a catalogue with no sourced code to
+    # draw a control from would otherwise "pass" its controls and let 219
+    # honest 404s read as nothing new (D3 — superscar #2 again, one layer up).
     controls_ok = bool(control_results) and all(c["class"] in CONTROL_PASS for c in control_results)
     exit_code, verdict = decide_exit(counts, controls_ok)
 
@@ -698,27 +718,41 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
         "sha256": hashlib.sha256(canonical_bytes).hexdigest(),
         "version": (json.loads(canonical_bytes).get("metadata") or {}).get("version"),
     }
+
+    out_root = args.out_root.expanduser()
+    report_path = out_root / REPORT_REL / f"{date}.json"
+
+    # The spec is written BEFORE the report that names it (D2): a report
+    # saying `exit_code: 1` and `cure_spec: <path>` while that path was
+    # refused would be a lie on disk the moment it lands. If the spec write
+    # is refused, this run IS exit 4 — the report built afterwards (if any)
+    # carries that exit code, no cure_spec, and says why.
+    if args.apply and spec is not None:
+        spec_path = out_root / spec_rel
+        try:
+            write_contained(out_root, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
+        except OutputRefused as exc:
+            exit_code = EXIT_CANNOT_VERIFY
+            verdict = f"cure spec write refused: {exc}"
+            spec_rel = None
+        else:
+            print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
+
     report = build_report(
         date=date, generated_at=generated_at, canonical=canonical_meta, population=population,
         control_results=control_results, target_results=target_results, exit_code=exit_code,
         verdict=verdict, cure_spec_rel=spec_rel, user_key_present=bool(user_key),
     )
-    summary = render_summary(report)
+    summary = render_summary(report, dry_run=not args.apply)
     print(summary)
 
     if not args.apply:
         print("DRY-RUN — nothing written (pass --apply to write the report)")
         return exit_code
 
-    out_root = args.out_root.expanduser()
-    report_path = out_root / REPORT_REL / f"{date}.json"
     try:
         write_contained(out_root, report_path, json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
         write_contained(out_root, report_path.with_suffix(".md"), summary + "\n")
-        if spec is not None:
-            spec_path = out_root / spec_rel
-            write_contained(out_root, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
-            print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
     except OutputRefused as exc:
         print(f"CANNOT VERIFY: output refused: {exc}")
         return EXIT_CANNOT_VERIFY
