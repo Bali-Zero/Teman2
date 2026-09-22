@@ -180,3 +180,35 @@ def test_healthy_notebook_in_the_same_run_does_not_alert(pusher):
 
     assert fired is False
     assert sent == []
+
+
+def test_recovery_then_a_new_streak_alerts_again(pusher):
+    """Guilt: drop the `state.pop(nb_uuid, None)` recovery-clear in `_maybe_alert_notebook_streak`
+    (keep only the `if not streak: return False` half) and this reds — the SECOND streak
+    would stay silent forever, since the notebook's dedup entry from the first alert is never
+    removed. Asserted on the observable (a second alert actually sent, naming the notebook),
+    not on the internal state dict alone, so the test survives a refactor of where dedup state
+    lives."""
+    sent: list[str] = []
+    state: dict = {}
+    broken_streak = ["failed_permanent"] * pusher.NOTEBOOK_FAILURE_STREAK_N
+    recovered = ["pushed", "pushed", "pushed"]
+
+    # First streak: alerts once.
+    assert pusher._maybe_alert_notebook_streak(
+        PRESS_NB_UUID, "notebook_full", broken_streak, state, send=sent.append
+    ) is True
+    assert len(sent) == 1
+
+    # Recovery run: streak broken, no alert — this is the run that must clear dedup state.
+    assert pusher._maybe_alert_notebook_streak(
+        PRESS_NB_UUID, "notebook_full", recovered, state, send=sent.append
+    ) is False
+    assert len(sent) == 1
+
+    # A NEW streak after recovery must alert again — the observable proof of the clear.
+    assert pusher._maybe_alert_notebook_streak(
+        PRESS_NB_UUID, "notebook_full", broken_streak, state, send=sent.append
+    ) is True
+    assert len(sent) == 2
+    assert PRESS_NB_UUID in sent[1]
