@@ -1,4 +1,4 @@
-gear: 2
+gear: 3
 task_id: chat-p2b-cures-20260922
 lane: backend-rag
 host: nuzantara (Pro)
@@ -22,6 +22,11 @@ objective: >-
   the brief's 4/8+4/8 but the k2-gamma run's 4/8 accuracy and 1/8 wrongful
   abstention. What was left undone is named in `docs/` and in the report, not
   silently dropped.
+  Gear 3 is asserted here, on this branch's second pass, by the deterministic SIZE
+  term (compute_floor churn >= 1,828 clamp, evidence_pack_lint.py) -- measured at
+  3,861 insertions / 13 deletions across 98 files against origin/main, most of it the
+  87 committed judging records under scripts/kbli_bench/results/2026-09-22-rejudge-3x/
+  -- never by a hot-zone path hit; this diff touches none.
 scope:
   - >-
     scripts/kbli_bench/score_p2b.py — the census is counted from the dataset
