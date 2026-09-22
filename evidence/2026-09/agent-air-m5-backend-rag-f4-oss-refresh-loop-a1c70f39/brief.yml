@@ -1,0 +1,100 @@
+task_id: f4-oss-refresh-loop
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  F4 of the KBLI navigator plan (kbli-navigator corner §5.5): the licensing
+  axis of scripts/kbli_filiera/kbli_coverage_scoreboard.py is honest but not
+  complete -- 1,340/1,559 codes carry OSS-2025 risk rows, 217 are declared
+  gaps and 2 are PP28 vintage-pending, because OSS answered 404 for them when
+  the snapshot was taken. They close only when OSS publishes the scope, and
+  nobody looks. This PR adds the loop that looks, once a week, and the organ
+  that runs it.
+
+  scripts/kbli_filiera/oss_refresh_loop.py derives the gap population from
+  build_scoreboard (codes not holding the strong licensing state -- never a
+  hand list), re-fetches gw.oss.go.id/v2/portal/kbli/ruang-lingkup/<uuid> for
+  each over one persistent keep-alive connection (superscar #8), classifies
+  the answer (still_404 / published / changed / unchanged / malformed /
+  fetch_error / auth_failed / deferred), fetches two positive controls first,
+  and with --apply writes a dated report + summary; a published scope becomes
+  a cure spec with the rows build_kbli_l2_oss_risk.py itself would write and
+  _hardened_cure_io premises. It never writes the canonical.
+
+  The organ: infra/launchagents/wrappers/kbli-oss-refresh-run.sh on Mini,
+  weekly, heartbeat on OUTCOME, registered as mini.kbli_oss_refresh.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: infra/launchagents/* and
+  .github/workflows/* are HOTZONE_PATTERNS entries in
+  scripts/evidence_pack_lint.py. The mandate arrived declared "gear 2"; the
+  diff floor re-geared it at GROUND/VERIFY and that is stated here, not
+  silently absorbed. Splitting the organ into its own PR would leave the loop
+  without a consumer in its PR (Builder Contract §2), so it stays one PR.
+
+acceptance:
+  - text: >-
+      WHEN the loop runs, the population it asks about SHALL equal the
+      licensing codes build_scoreboard does not count as strong, and on the
+      live canonical that SHALL be 219 (217 declared_gap + 2
+      sourced_pp28_vintage_pending), 117 of them quarantined.
+    probe: python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k population
+  - text: >-
+      WHEN an OSS answer is 404 / published on an empty gap / different rows /
+      the same rows in another order / non-JSON or success!=true or no risk
+      rows / 401-403 / 5xx-network, the classifier SHALL return still_404 /
+      published / changed / unchanged / malformed / auth_failed / fetch_error.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "classif or 404 or published or changed or reordered or malformed or non_answers"
+  - text: >-
+      WHEN no code gets a trustworthy answer, OR a positive control cannot be
+      read, OR OSS refuses auth, OR the population is empty, the loop SHALL
+      exit 4 and never 0.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "exits_4 or blind or auth or empty"
+  - text: >-
+      WHILE --dry-run (the default) runs, nothing SHALL be written anywhere;
+      with --apply only the report, its summary and (when something was
+      proposed) the cure spec SHALL be written, all under --out-root, and the
+      canonical SHALL be byte-identical afterwards.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "dry_run or apply or cure_spec"
+  - text: >-
+      WHEN the wrapper finishes, it SHALL write the mini.kbli_oss_refresh
+      heartbeat from the OUTCOME -- ok only when the report the loop names
+      exists, parses and carries the loop's exit code; error when the report
+      is missing or disagrees; warning on partial / cannot-verify; disabled on
+      the kill switch -- and SHALL never print the OSS_RBA_USER_KEY value.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q
+  - text: >-
+      AFTER merge, on Mini the installer SHALL bootstrap
+      com.nuzantara.kbli-oss-refresh.weekly, a kickstarted run SHALL write
+      ~/nuzantara-vault-evidence/oss-refresh/data/kbli-filiera/oss-refresh/<UTC date>.json
+      with fetched == asked == 219 and two controls ok, and the heartbeat
+      sidecar SHALL read a status matching that report.
+    probe: bash infra/launchagents/install_kbli_oss_refresh.sh --kickstart; bash infra/launchagents/install_kbli_oss_refresh.sh --verify
+
+assumptions:
+  - text: >-
+      OSS serves ruang-lingkup with or without the user_key header, so the key
+      is optional and an auth failure is observable only as 401/403.
+    status: verified
+    probe: "live probe 2026-09-22 from Mini and M5: 200 with no header and with an invalid key on 55203"
+  - text: >-
+      A 404 means "no scope published" and carries the body
+      {"success":false,"data":null,"message":"Data Not Found!","code":404}.
+    status: verified
+    probe: "live probe 2026-09-22 on 64995 (a declared gap)"
+  - text: >-
+      Sizing: first request ~4 s (TLS), then 0.05-0.95 s per answer on a
+      reused connection; at 3 req/s the 221 fetches take 2-4 min, well inside
+      the 600 s loop deadline and the 900 s wrapper timeout.
+    status: verified
+    probe: "live probe 2026-09-22 from Mini (4 requests) and M5 (dry-run --only 2 codes: 1.7 s wall); full real dry-run from M5 2026-09-22T14:14Z: 219 targets + 2 controls in 107 s wall"
+  - text: >-
+      The Sentinel job_registry exists only on Pro and lists only host
+      Nuzantara jobs, so a Mini organ gets no row there; its liveness rides
+      on the organism heartbeat + connectome edge like the other mini_launchd
+      organs.
+    status: verified
+    probe: "ssh mini 'ls ~/.agent/decisions/job_registry.json' -> absent; Pro registry: 95 jobs, all host Nuzantara"
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 0c522fbd51de19405a03841470c7334d586f01a05f1bf9f4bafa1121712c804c # pragma: allowlist secret
+checksum: 2d6adc1da4a56d99387f66569894f39ab5a4f2980370fc6bd973a4d2b88ab516 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2431,6 +2431,32 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.kbli_surface_conformance.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.kbli_oss_refresh
+  runtime: mini_launchd
+  type: cron
+  # 691200 = 8 days against a weekly StartCalendarInterval: one day of slack for launchd
+  # coalescing a tick missed while the host slept (it fires once on wake).
+  expected_hb_seconds: 691200
+  owner_module: infra/launchagents/wrappers/kbli-oss-refresh-run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.kbli-oss-refresh.weekly
+  severity_on_silence: warning
+  notes: 'F4 (kbli-navigator corner 5.5). Weekly Monday 09:40 WITA: scripts/kbli_filiera/oss_refresh_loop.py
+    re-fetches the OSS ruang-lingkup scope of every licensing-gap code (scoreboard-derived,
+    ~219) plus two positive controls, writes a dated report under ~/nuzantara-vault-evidence/oss-refresh
+    and, when OSS published a scope, a cure spec. Never writes the canonical. The
+    wrapper writes this heartbeat on OUTCOME: ok (nothing new / new scopes), warning
+    (partial, cannot verify), error (loop crashed or its report is missing or disagrees
+    with its exit code), disabled. Kill switch: KBLI_OSS_REFRESH_ENABLED=false.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.kbli_oss_refresh.json
     timestamp_field: ts
     status_field: status
 - id: pro.log_rotate
