@@ -170,6 +170,92 @@ class TestClassifyTax:
         assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
 
 
+class TestClassifyTaxSubdomains:
+    """2026-09-22: pajak_monitor (PR #7074) writes source_domain as the
+    item's real host — a Ministry of Finance/DDTC/MUC subdomain the old
+    start-anchored alternatives never matched. See PENDING-ARMS ledger row
+    pajak-source-domain-fix-is-guarded-by-text-not-behaviour."""
+
+    # ─── guilt: real hosts observed in PROD intel_items must route ─────────
+
+    def test_fiskal_kemenkeu_subdomain(self) -> None:
+        d = _make_router()._classify("fiskal.kemenkeu.go.id")
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
+        assert d["rule"] == "tax_govid"
+
+    def test_djppr_kemenkeu_subdomain(self) -> None:
+        d = _make_router()._classify("djppr.kemenkeu.go.id")
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
+        assert d["rule"] == "tax_govid"
+
+    def test_ddtc_news_subdomain(self) -> None:
+        d = _make_router()._classify("news.ddtc.co.id")
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
+        assert d["rule"] == "tax_govid"
+
+    def test_muc_bare_root(self) -> None:
+        d = _make_router()._classify("muc.co.id")
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
+        assert d["rule"] == "tax_govid"
+
+    def test_ddtc_bare_root(self) -> None:
+        d = _make_router()._classify("ddtc.co.id")
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_TAX in d["targets"]["nb_uuids"]
+        assert d["rule"] == "tax_govid"
+
+    # ─── innocence: lookalike hosts must NOT route through the new alts ────
+
+    def test_kemenkeu_prefix_attack_is_preexisting_and_out_of_scope(self) -> None:
+        """``kemenkeu.go.id.evil.com`` still matches today, but via the
+        PRE-EXISTING unanchored ``kemenkeu\\.go\\.id`` alternative (``.match``
+        only anchors the START, so a literal alternative with no trailing
+        ``$`` matches a string that merely STARTS WITH it). The new
+        subdomain-tolerant alternatives added in this PR are themselves
+        end-anchored and do not extend this prefix-attack surface — closing
+        it is a separate, out-of-scope change."""
+        d = _make_router()._classify("kemenkeu.go.id.evil.com")
+        assert d["rule"] == "tax_govid"
+
+    def test_notddtc_does_not_route_via_new_alt(self) -> None:
+        d = _make_router()._classify("notddtc.co.id")
+        assert d["rule"] != "tax_govid"
+
+    def test_ddtc_suffix_attack_does_not_route(self) -> None:
+        d = _make_router()._classify("ddtc.co.id.example.com")
+        assert d["rule"] != "tax_govid"
+
+    def test_muc_suffix_attack_does_not_route(self) -> None:
+        d = _make_router()._classify("muc.co.id.evil.com")
+        assert d["rule"] != "tax_govid"
+
+    def test_xmuc_does_not_route_via_new_alt(self) -> None:
+        d = _make_router()._classify("xmuc.co.id")
+        assert d["rule"] != "tax_govid"
+
+    # ─── already-routed hosts keep their route ──────────────────────────────
+
+    def test_pajak_govid_unaffected(self) -> None:
+        d = _make_router()._classify("pajak.go.id")
+        assert d["rule"] == "tax_govid"
+
+    def test_ortax_unaffected(self) -> None:
+        d = _make_router()._classify("ortax.org")
+        assert d["rule"] == "tax_govid"
+
+    def test_jdih_kemenkeu_unaffected(self) -> None:
+        d = _make_router()._classify("jdih.kemenkeu.go.id")
+        assert d["rule"] == "tax_govid"
+
+    def test_press_host_unaffected(self) -> None:
+        d = _make_router()._classify("detik.com")
+        assert d["rule"] != "tax_govid"
+
+
 class TestClassifyRegulation:
     def test_bkpm(self) -> None:
         d = _make_router()._classify("bkpm.go.id")

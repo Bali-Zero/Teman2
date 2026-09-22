@@ -185,10 +185,19 @@ _RULES: list[tuple[re.Pattern[str], str, dict[str, Any], str]] = [
         "immigration_govid",
     ),
     # Tax (PMK, PPh, SPT, Coretax) → NB-INTEL-Tax
+    # 2026-09-22: pajak_monitor (PR #7074) writes source_domain as the item's
+    # real host (e.g. `fiskal.kemenkeu.go.id`, `news.ddtc.co.id`, `muc.co.id`).
+    # The original alternatives are anchored only at the start (`.match`), so
+    # a subdomain BEFORE the token (kemenkeu/ddtc/muc) never matched. The 3
+    # trailing alternatives below tolerate an arbitrary subdomain prefix and
+    # anchor the END with `$`, without touching any existing byte above.
     (
         re.compile(
             r"pajak\.go\.id|ortax\.org|ddtcnews|mucconsulting|"
-            r"ikpi\.or\.id|kemenkeu\.go\.id|jdih\.kemenkeu"
+            r"ikpi\.or\.id|kemenkeu\.go\.id|jdih\.kemenkeu|"
+            rf"{_SUBDOMAIN_PREFIX}kemenkeu\.go\.id$|"
+            rf"{_SUBDOMAIN_PREFIX}ddtc\.co\.id$|"
+            rf"{_SUBDOMAIN_PREFIX}muc\.co\.id$"
         ),
         "nb-intel",
         {"nb_uuids": [NB_INTEL_TAX]},
