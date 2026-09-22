@@ -191,7 +191,8 @@ def main() -> int:
         return 2
 
     qpath = Path(args.queue)
-    queue = json.loads(qpath.read_text())
+    pre_image = qpath.read_text()  # the backup must be the queue BEFORE this run
+    queue = json.loads(pre_image)
 
     # smart selection: published items whose metrics are missing/stale + have a media id.
     # Selection on instagram_post_url + state=="published" already applies to ANY queue
@@ -227,7 +228,11 @@ def main() -> int:
         if args.dry_run:
             print(f"  [dry] {_display_id(item)}: {m}")
         else:
-            item["engagement_metrics"] = m
+            # the refresh owns only its own keys: dashboard_* come from
+            # wr2_ig_dashboard_import.py, the Graph API cannot re-supply them
+            carried = {k: v for k, v in (item.get("engagement_metrics") or {}).items()
+                       if k.startswith("dashboard_")}
+            item["engagement_metrics"] = {**carried, **m}
             updated += 1
             print(f"  ok   {_display_id(item)}: "
                   f"likes={m.get('likes')} reach={m.get('reach')} "
@@ -237,7 +242,7 @@ def main() -> int:
     if updated and not args.dry_run:
         # atomic write + backup
         bak = qpath.with_suffix(qpath.suffix + f".bak-scraper-{int(time.time())}")
-        bak.write_text(json.dumps(queue, ensure_ascii=False, indent=2))
+        bak.write_text(pre_image)
         fd, tmp = tempfile.mkstemp(dir=str(qpath.parent), prefix=".queue-", suffix=".json")
         with os.fdopen(fd, "w") as f:
             json.dump(queue, f, ensure_ascii=False, indent=2)

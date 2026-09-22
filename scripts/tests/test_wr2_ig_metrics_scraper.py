@@ -248,3 +248,32 @@ def test_main_skip_path_also_completes_for_old_schema_entry(tmp_path, monkeypatc
 
     assert rc == 0
     assert "skip bali-pma-rental-crackdown" in capsys.readouterr().out
+
+
+def test_main_backup_is_the_pre_run_queue(tmp_path, monkeypatch):
+    # a backup written after the loop mutated the queue is the NEW state, so a
+    # rollback from it restores nothing.
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+        "engagement_metrics": None,
+    }
+    queue_path.write_text(json.dumps([entry]))
+    before = queue_path.read_text()
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path)])
+    monkeypatch.setattr(
+        scraper, "fetch_metrics",
+        lambda media_id, token: {"likes": 5, "source": "ig_metrics_scraper",
+                                  "scraped_at": "2026-07-17T09:00:00+00:00"},
+    )
+
+    assert scraper.main() == 0
+    baks = list(tmp_path.glob("queue.json.bak-scraper-*"))
+    assert len(baks) == 1
+    assert baks[0].read_text() == before
+    assert json.loads(queue_path.read_text())[0]["engagement_metrics"]["likes"] == 5
