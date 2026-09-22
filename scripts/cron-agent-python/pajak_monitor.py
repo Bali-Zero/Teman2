@@ -192,7 +192,9 @@ class PajakMonitorJob(BrowserJob):
 
         Instead, two channels the job already has: a structured per-source warning log
         (greppable, and what `_publish_redis_event`/`_reflect` read the ledger through), and
-        a `log`-tier Telegram heartbeat (never `p0`), deduped so a source stuck at 0 for many
+        a `digest`-tier Telegram heartbeat (never `p0`; never `log` either — `log` spools to
+        disk only and is never sent, see the tier comment below), deduped so a source stuck
+        at 0 for many
         consecutive runs costs one message plus a counter, not a flood — the ledger's "N
         consecutive runs" framing without a new state store to track N in.
         """
@@ -203,7 +205,10 @@ class PajakMonitorJob(BrowserJob):
             + ", ".join(sources)
             + "\nDJP markup may have moved again — check pajak_parse.py."
         )
-        ok = await self.send_telegram(msg, tier="log", dedup_key="pajak-zero-yield")
+        # tier="digest": "log" spools to disk only (tg_notify.py) and is never sent — a
+        # footer count at best, the exact silence this row cures. "p0" is out because
+        # run_job() already pages p0 on any non-"ok" status, and this must not page.
+        ok = await self.send_telegram(msg, tier="digest", dedup_key="pajak-zero-yield")
         self.log_step(
             "zero_yield_signal",
             outputs={"sources": sources},

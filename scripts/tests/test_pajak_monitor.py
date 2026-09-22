@@ -407,7 +407,8 @@ _ZERO_ROWS_HTML = "<html><body><div class=\"view-content\"></div></body></html>"
 def test_zero_yield_signal_fires_when_both_direct_sources_parse_zero_rows():
     """Guilt: a fixture page with zero rows (Drupal `view-content` with no `views-row`
     children — same shape a DJP markup change produces) drives the signal for BOTH direct
-    sources, via the structured warning log and a `log`-tier (never `p0`) Telegram heartbeat."""
+    sources, via the structured warning log and a `digest`-tier (never `p0`, never `log` —
+    `log` spools to disk only and is never sent) Telegram heartbeat."""
     job = _make_job()
     logger = _install_capturing_logger(job)
     tg_calls = _install_capturing_telegram(job)
@@ -435,7 +436,7 @@ def test_zero_yield_signal_fires_when_both_direct_sources_parse_zero_rows():
     assert warned_sources == ["index-peraturan", "siaran-pers-page"]
 
     assert len(tg_calls) == 1
-    assert tg_calls[0]["tier"] == "log"
+    assert tg_calls[0]["tier"] == "digest"
     assert "index-peraturan" in tg_calls[0]["msg"]
     assert "siaran-pers-page" in tg_calls[0]["msg"]
 
@@ -495,9 +496,11 @@ def test_zero_yield_signal_fires_for_only_the_dead_source_when_one_is_healthy():
 
 
 def test_zero_yield_signal_never_pages_p0():
-    """The signal must use the job's `log` tier, never `p0` — `run_job()` (agent_job.py)
+    """The signal must use the job's `digest` tier, never `p0` — `run_job()` (agent_job.py)
     pages tier="p0" on any RunResult.status != "ok", and this row explicitly does not want
-    zero-yield turned into a P0 page."""
+    zero-yield turned into a P0 page. Also never `log`: tg_notify.py spools a `log`-tier
+    message to disk only (`log-only.jsonl`) and never sends it — that would recreate the
+    exact green≠working silence this row exists to cure."""
     job = _make_job()
     _install_capturing_logger(job)
     tg_calls = _install_capturing_telegram(job)
@@ -506,4 +509,5 @@ def test_zero_yield_signal_never_pages_p0():
 
     assert len(tg_calls) == 1
     assert tg_calls[0]["tier"] != "p0"
-    assert tg_calls[0]["tier"] == "log"
+    assert tg_calls[0]["tier"] != "log"
+    assert tg_calls[0]["tier"] == "digest"
