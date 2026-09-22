@@ -499,6 +499,25 @@ def write_contained(out_root: Path, path: Path, text: str) -> None:
         raise
 
 
+def _write_or_refuse(out_root: Path, written: list[Path], path: Path, text: str) -> Exception | None:
+    """`write_contained`, but never let a write escape as an uncaught
+    traceback: `OutputRefused` is the loop's own guard, but a plain
+    `OSError` (permission denied, ENOSPC, a vanished directory) is exactly
+    as fatal to the output and must be caught the same way (Codex M2) — an
+    uncaught exception exits the interpreter with 1, the SAME code as
+    "new scopes proposed". On success `path` is recorded in `written` so a
+    LATER failure in this run can undo it (M3); on failure nothing is
+    recorded (`write_contained` never leaves a partial file of its own) and
+    the exception is returned, never raised, for the caller to report
+    without ever repeating a secret."""
+    try:
+        write_contained(out_root, path, text)
+    except (OutputRefused, OSError) as exc:
+        return exc
+    written.append(path)
+    return None
+
+
 def _public(entry: dict) -> dict:
     return {k: v for k, v in entry.items() if not k.startswith("_")}
 
@@ -721,6 +740,10 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
 
     out_root = args.out_root.expanduser()
     report_path = out_root / REPORT_REL / f"{date}.json"
+    # Every output this run actually wrote, in write order — so a LATER
+    # failure can undo the earlier ones instead of leaving a report that
+    # disagrees with the exit code the process returns (M3).
+    written: list[Path] = []
 
     # The spec is written BEFORE the report that names it (D2): a report
     # saying `exit_code: 1` and `cure_spec: <path>` while that path was
@@ -729,9 +752,8 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
     # carries that exit code, no cure_spec, and says why.
     if args.apply and spec is not None:
         spec_path = out_root / spec_rel
-        try:
-            write_contained(out_root, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
-        except OutputRefused as exc:
+        exc = _write_or_refuse(out_root, written, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
+        if exc is not None:
             exit_code = EXIT_CANNOT_VERIFY
             verdict = f"cure spec write refused: {exc}"
             spec_rel = None
@@ -750,11 +772,19 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
         print("DRY-RUN — nothing written (pass --apply to write the report)")
         return exit_code
 
-    try:
-        write_contained(out_root, report_path, json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-        write_contained(out_root, report_path.with_suffix(".md"), summary + "\n")
-    except OutputRefused as exc:
-        print(f"CANNOT VERIFY: output refused: {exc}")
+    exc = _write_or_refuse(out_root, written, report_path, json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+    if exc is None:
+        exc = _write_or_refuse(out_root, written, report_path.with_suffix(".md"), summary + "\n")
+    if exc is not None:
+        # M3: never leave a partial run's output behind for the wrapper (or
+        # a human) to read as something it isn't — a report.json saying
+        # `exit_code: 1` while the process itself returns 4 is exactly the
+        # "Esiste≠Armato" shape (superscar #2) one layer up. Undo every
+        # output this run wrote and say so on ONE parseable line the wrapper
+        # greps for, never a raw traceback and never a secret.
+        for p in written:
+            p.unlink(missing_ok=True)
+        print(f"OSS_REFRESH_OUTPUT_REFUSED={exc}")
         return EXIT_CANNOT_VERIFY
     print(f"OSS_REFRESH_REPORT={report_path}")
     return exit_code
