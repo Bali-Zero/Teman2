@@ -26,7 +26,7 @@ You correlate Instagram engagement (likes, comments, save_count when available, 
 
 You require, at minimum:
 
-- 10 published carousels in last 90 days WITH engagement metrics (likes ≥ 1, or `dashboard_views` ≥ 1 for a dashboard-only post).
+- 10 published carousels in last 90 days WITH engagement metrics (likes ≥ 1 — the wrapper's pre-flight counts scraper `likes` only; dashboard-only posts join the analysis once this gate passes).
 - ≥ 3 distinct domains represented.
 - ≥ 3 distinct tone registers represented.
 - ≥ 2 distinct layout families represented.

@@ -14,7 +14,7 @@ Matching: dashboard `Link` holds the post shortcode (/p/<code>/); a queue item
 matches when its `instagram_post_url` contains the same shortcode.
 
 Usage:
-  python3 wr2_ig_dashboard_import.py --xlsx report.xlsx --queue /path/to/queue.json [--dry-run] [--limit N] [--save-summary summary.json]
+  python3 wr2_ig_dashboard_import.py --xlsx report.xlsx --queue <Pro SSOT human-review-queue.json> [--dry-run] [--limit N] [--save-summary summary.json]
 """
 import argparse
 import json
@@ -35,7 +35,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import wr2_queue_writer as _qw  # noqa: E402 — same scripts/ dir: the queue's lock + atomic writer
 
 SHORTCODE_RE = re.compile(
-    r"(?:instagram\.com|instagr\.am)/(?:[A-Za-z0-9_.]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)")
+    r"(?:instagram\.com|instagr\.am)/(?:[A-Za-z0-9_.]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)",
+    re.IGNORECASE)
+
+# wr2-queue-pull.sh keeps a PULL-ONLY mirror of Pro's queue at this same path
+# under every other $HOME and re-merges it remote-wins each tick: an import
+# written there is erased within minutes. The SSOT lives under /Users/nuzantara.
+SSOT_HOME = Path("/Users/nuzantara")
+QUEUE_REL = Path("nuzantara/apps/war-room/output/queue/human-review-queue.json")
+
+
+def is_pull_mirror(qpath: Path) -> bool:
+    home = Path.home()
+    return home != SSOT_HOME and qpath.resolve() == (home / QUEUE_REL).resolve()
 
 POST_COLUMNS = {  # dashboard header -> engagement_metrics key
     "Views": "dashboard_views",
@@ -156,12 +168,12 @@ def merge_into_queue(queue: list, by_code: dict, limit: int, dry_run: bool,
     """Merge dashboard rows into matching queue items in place (unless dry_run).
     Returns (matched, unmatched_codes). Each import is a full dashboard snapshot:
     the item's previous dashboard_* keys are replaced, scraper keys are kept."""
-    index: dict[str, dict] = {}
+    index: dict[str, list] = {}
     for item in queue:
         code = shortcode_of(item.get("instagram_post_url") or "")
-        if code and code not in index:
-            index[code] = item
-    matched = [(by_code[c], index[c]) for c in by_code if c in index]
+        if code:
+            index.setdefault(code, []).append(item)  # duplicates all get the snapshot
+    matched = [(by_code[c], item) for c in by_code for item in index.get(c, [])]
     if limit > 0:
         matched = matched[:limit]
     unmatched = [c for c in by_code if c not in index]
@@ -199,11 +211,15 @@ def main() -> int:
         print(f"ERROR: xlsx not found: {xlsx}", file=sys.stderr)
         return 2
     qpath = Path(args.queue)
+    if not args.dry_run and is_pull_mirror(qpath):
+        print(f"ERROR: {qpath} is the pull-only mirror of Pro's queue; its next pull "
+              "erases this import. Run it on Pro against the SSOT queue.", file=sys.stderr)
+        return 2
 
     try:
         posts, summary = parse_dashboard(xlsx)
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except Exception as e:  # header-less, corrupt or non-xlsx workbook
+        print(f"ERROR: cannot read {xlsx.name}: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
     by_code: dict[str, dict] = {}
     dup_codes = 0

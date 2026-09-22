@@ -322,3 +322,56 @@ def test_import_during_a_scraper_fetch_survives_its_write(tmp_path, monkeypatch)
     m = json.loads(q.read_text())[0]["engagement_metrics"]
     assert m["likes"] == 41
     assert m["dashboard_views"] == 6573
+
+
+def _mirror_queue(tmp_path, monkeypatch) -> Path:
+    home = tmp_path / "home"
+    q = home / imp.QUEUE_REL
+    q.parent.mkdir(parents=True)
+    _make_queue(q)
+    monkeypatch.setattr(imp.Path, "home", classmethod(lambda cls: home))
+    return q
+
+
+def test_refuses_to_write_the_pull_mirror(tmp_path, monkeypatch):
+    # off Pro, this path is wr2-queue-pull.sh's remote-wins mirror: a write
+    # there is erased by the next pull, so the import must not pretend it landed.
+    xlsx = tmp_path / "rep.xlsx"
+    _make_xlsx(xlsx)
+    q = _mirror_queue(tmp_path, monkeypatch)
+    before = q.read_text()
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 2
+    assert q.read_text() == before
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q), "--dry-run") == 0
+
+
+def test_writes_the_same_path_when_it_is_the_ssot(tmp_path, monkeypatch):
+    xlsx = tmp_path / "rep.xlsx"
+    _make_xlsx(xlsx)
+    q = _mirror_queue(tmp_path, monkeypatch)
+    monkeypatch.setattr(imp, "SSOT_HOME", tmp_path / "home")
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 0
+    assert "dashboard_views" in json.loads(q.read_text())[0]["engagement_metrics"]
+
+
+def test_duplicate_queue_items_all_get_the_snapshot(tmp_path, monkeypatch):
+    xlsx = tmp_path / "rep.xlsx"
+    q = tmp_path / "queue.json"
+    _make_xlsx(xlsx)
+    _make_queue(q)
+    queue = json.loads(q.read_text())
+    queue.append({"id": "a1-dup", "state": "published",
+                  "instagram_post_url": "https://www.instagram.com/p/DdEAXq/"})
+    q.write_text(json.dumps(queue))
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 0
+    queue = json.loads(q.read_text())
+    assert queue[0]["engagement_metrics"]["dashboard_views"] == 6573
+    assert queue[2]["engagement_metrics"]["dashboard_views"] == 6573
+
+
+def test_corrupt_xlsx_returns_2(tmp_path, monkeypatch):
+    xlsx = tmp_path / "corrupt.xlsx"
+    xlsx.write_bytes(b"not a zip archive")
+    q = tmp_path / "queue.json"
+    _make_queue(q)
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 2
