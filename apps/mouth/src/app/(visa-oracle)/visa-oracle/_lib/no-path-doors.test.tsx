@@ -142,7 +142,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 17 dead ends and 2 held walks the census reports", () => {
+  it("covers the 14 dead ends and 2 held walks the census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -174,11 +174,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // rulepack-prod-020/021/022.source.json reads process.application_channel
     // (grep -c = 0 in all three, verified this PR), and the onshore section
     // of this replay is byte-identical to before. 17 -> 14, 2 -> 1.
+    //
+    // Slice A7-B rework (2026-09-22): rebased onto origin/main after
+    // #7068/#7094/#7091/#7112, then re-measured by re-running
+    // apps/mouth/scripts/visa-oracle/replay-no-path-doors.py. B5's ratified
+    // move — `offshore/family/PARENT/spNat=IT/minor` sends
+    // `person.guardian_consent` as UNKNOWN, so it leaves
+    // HUMAN_REVIEW_REQUIRED for NEEDS_INPUT — is this PR's own change, not
+    // pack drift: NO_SUPPORTED_PATH is untouched (14, B5-1's number holds),
+    // NEEDS_INPUT gains exactly that one walk. 1 -> 2.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
     ).toHaveLength(14);
-    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
+    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(2);
     expect(replay.pack.file).toBe("rulepack-prod-022.signed.json");
   });
 
@@ -307,6 +316,25 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
+  // Slice A7-B, 2026-09-21 (restored in the 2026-09-22 rework after the
+  // rebase onto B5-1 overwrote it wholesale): `person.guardian_consent` has
+  // no reachable question in tree.ts yet (B3-bis — the mouth sends the key
+  // contract-only, the question ships in A7-M) — the backend's own
+  // `WALK_DEAD_END_ALLOWLIST` names this exact fact `NO_QUESTION_IN_TREE`
+  // for the same walk. Gate `vo-gate-a7-b`'s H1 finding named this exact
+  // gap (`GATE-A7-B-REPORT-7080.md`); the conductor's 2026-09-22T07:17:47Z
+  // ruling accepts it as an ORDERING window (A7-M merges in the same queue
+  // window, stacked on this head) rather than a code cure — an env switch
+  // is banned by B8 and a second code path would double the arms this
+  // slice tests. A missing input with no mapped question legitimately
+  // renders without a `questionId` (`engine-adapter.ts`'s `match ? {
+  // questionId } : {}`), so this one fact is exempted from the "must be
+  // reopenable" assertion below rather than the assertion being weakened
+  // for every fact.
+  const FACTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set([
+    "person.guardian_consent",
+  ]);
+
   for (const walk of replay.walks.filter(
     (candidate) => candidate.state === "NEEDS_INPUT",
   )) {
@@ -317,10 +345,12 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       }
       expect(outcome.missingInputs.length).toBeGreaterThan(0);
       for (const input of outcome.missingInputs) {
-        expect(
-          input.questionId,
-          `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,
-        ).toBeTruthy();
+        if (!FACTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(input.code)) {
+          expect(
+            input.questionId,
+            `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,
+          ).toBeTruthy();
+        }
         expect(input.message.en.length).toBeGreaterThan(0);
         expect(input.message.id.length).toBeGreaterThan(0);
       }
