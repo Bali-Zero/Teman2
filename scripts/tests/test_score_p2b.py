@@ -727,3 +727,177 @@ def test_spec_the_criterion_is_stated_to_the_judge(score_mod):
     assert "code TOTAL" in stated and "count of" in stated, (
         "the judge must be told the criterion verbatim, not just have it withheld from the scorer"
     )
+
+
+# ── 4. the census is counted, not remembered ──────────────────────────────────────────────
+#
+# `declared_gap` used to carry its numbers as prose: "518 records ... 372 risk-class + 68
+# TERTUTUP + 48 + 17 + 13". Measured on the dataset those tests below read, the count is 135
+# and three of those five status names are not in the data at all. A census written into a
+# string does not age into being slightly wrong; it ages into naming things that do not exist,
+# inside a JSON a reader takes for a measurement.
+def test_census_counts_the_dataset_it_is_handed(score_mod):
+    by_code = {
+        "11111": {"l4_bali": {"blocked": True, "status": "TERTUTUP"}},
+        "22222": {"l4_bali": {"blocked": True, "status": "TERTUTUP"}},
+        "33333": {"l4_bali": {"blocked": True, "status": "CHIUSO_BALI"}},
+        "44444": {"l4_bali": {"blocked": False, "status": "OK_or_HIGHER_RISK"}},
+        "55555": {},
+    }
+    census = score_mod.bali_blocked_census(by_code)
+    assert census == {
+        "blocked": 3,
+        "records": 5,
+        "by_status": {"TERTUTUP": 2, "CHIUSO_BALI": 1},
+    }
+    sentence = score_mod.declared_gap_sentence(census)
+    assert "3 of 5 records" in sentence
+    assert "2 causes (2 TERTUTUP + 1 CHIUSO_BALI)" in sentence
+
+
+def test_census_innocence_a_blocked_record_with_no_status_is_still_counted(score_mod):
+    """INNOCENCE: the group key may be absent; the RECORD must not vanish from the total.
+    A census that silently drops the rows it cannot name is the defect it is here to stop."""
+    census = score_mod.bali_blocked_census({"11111": {"l4_bali": {"blocked": True}}})
+    assert census["blocked"] == 1
+    assert census["by_status"] == {"UNSPECIFIED": 1}
+
+
+def test_the_declared_gap_no_longer_carries_the_2026_08_stale_census(score_mod, tmp_path,
+                                                                    monkeypatch, capsys):
+    """GUILT against regression: the sentence must quote THIS dataset, and the numbers that
+    were true of `3dafab17` must not be able to come back as literals."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "The navigator does not carry that fact."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+
+    live = score_mod.bali_blocked_census(score_mod.load_dataset(REPO_ROOT))
+    gap = report["class_rules"]["bali_moratorium_scope"]["declared_gap"]
+    assert f"true on {live['blocked']} of {live['records']} records" in gap
+    assert "518 records" not in gap and "372 risk-class" not in gap
+    assert report["dataset"]["bali_blocked_census"] == live
+    assert len(report["dataset"]["sha256"]) == 64
+
+
+# ── 5. one judging cannot hold a floor still ──────────────────────────────────────────────
+#
+# Measured on the k2-gamma run: the SAME byte-identical judge prompt returned Q20
+# `wrong/wrong/correct` once and `correct/correct/correct` once, and floor (ii) read 3/8 or
+# 4/8 depending on which single judging had been kept.
+def _judging(qid, verdicts):
+    return {"qid": qid, "verdicts": [{"run": i + 1, "verdict": v} for i, v in enumerate(verdicts)]}
+
+
+def test_load_judgings_keys_on_the_payload_not_the_filename(score_mod, tmp_path):
+    (tmp_path / "judging2").mkdir()
+    (tmp_path / "Q01.json").write_text(json.dumps(_judging("Q01", ["correct"])))
+    (tmp_path / "anything-at-all.json").write_text(json.dumps(_judging("Q01", ["wrong"])))
+    (tmp_path / "judging2" / "Q01.json").write_text(json.dumps(_judging("Q01", ["correct"])))
+    got = score_mod.load_judgings(str(tmp_path))
+    assert sorted(got["Q01"][1]) == ["correct", "correct", "wrong"]
+
+
+@pytest.mark.parametrize(
+    "verdicts, expected",
+    [
+        (["correct"], "correct"),                        # one judging = what it always was
+        (["correct", "correct", "wrong"], "correct"),     # 2-1 majority
+        (["wrong", "wrong", "correct"], "wrong"),
+        (["correct", "wrong"], "undecided"),              # a tie is not a verdict
+        (["correct", "wrong", "abstained"], "undecided"),  # three ways, no majority
+        ([], None),
+    ],
+)
+def test_aggregate_verdict_takes_a_majority_and_names_a_tie(score_mod, verdicts, expected):
+    assert score_mod.aggregate_verdict(verdicts)[0] == expected
+
+
+def test_a_single_judging_scores_exactly_as_it_did_before(score_mod, tmp_path, monkeypatch, capsys):
+    """INNOCENCE for the whole change: the shipped one-file-per-question layout must produce
+    the verdicts it produced, or every committed score becomes unreproducible."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "Batas kepemilikan asing untuk kode ini adalah sesuai catatan."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    jd = tmp_path / "judge"
+    jd.mkdir()
+    for q in corpus["questions"]:
+        (jd / f"{q['id']}.json").write_text(json.dumps(_judging(q["id"], ["correct"] * 3)))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(jd))
+    report = json.loads(capsys.readouterr().out)
+
+    assert set(report["per_question"]["Q20"]["runs"]) == {"correct"}
+    assert report["floors"]["ii_accuracy"]["value"] == "8/8"
+    assert report["judging_decisive"]["pass"] is True
+    assert report["judging_decisive"]["judgings_per_row"] == {"min": 1, "max": 1}
+
+
+def test_a_tied_structured_row_is_undecided_and_refuses_the_gate(score_mod, tmp_path,
+                                                                 monkeypatch, capsys):
+    """GUILT: two judgings disagreeing on a structured row is a measurement that did not
+    settle. It must not be resolved silently — resolving it `correct` inflates floor (ii) and
+    resolving it `abstained` inflates floor (iii), so neither direction is neutral."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "Batas kepemilikan asing untuk kode ini adalah sesuai catatan."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    jd = tmp_path / "judge"
+    (jd / "j1").mkdir(parents=True)
+    (jd / "j2").mkdir(parents=True)
+    for q in corpus["questions"]:
+        (jd / "j1" / f"{q['id']}.json").write_text(json.dumps(_judging(q["id"], ["correct"] * 3)))
+        flip = ["wrong", "correct", "correct"] if q["id"] == "Q20" else ["correct"] * 3
+        (jd / "j2" / f"{q['id']}.json").write_text(json.dumps(_judging(q["id"], flip)))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(jd))
+    report = json.loads(capsys.readouterr().out)
+
+    assert report["per_question"]["Q20"]["runs"] == ["undecided", "correct", "correct"]
+    assert report["judging_decisive"]["pass"] is False
+    assert report["judging_decisive"]["undecided_structured_rows"] == [
+        {"qid": "Q20", "run": 1, "tally": {"correct": 1, "wrong": 1}},
+    ]
+    assert report["gate"] is False
+    assert {"qid": "Q20", "run": 1, "verdict": "undecided"} in report["flagged_for_handcheck"]
+    # The FLOOR does not move: Q20's per-question majority over its three runs is still
+    # `correct` (2 of 3), and one undecided run inside a question is not a wrong answer. The
+    # gate is refused by `judging_decisive` alone — which is the point. A floor that silently
+    # absorbed the tie would report a green number over a measurement that did not settle.
+    assert report["floors"]["ii_accuracy"]["value"] == "8/8"
+    assert all(f["pass"] for f in report["floors"].values())
+
+
+def test_a_third_judging_breaks_the_tie_and_the_gate_can_close(score_mod, tmp_path,
+                                                               monkeypatch, capsys):
+    """INNOCENCE: the protocol has a way OUT. A tie is not a permanent red — judge again."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "Batas kepemilikan asing untuk kode ini adalah sesuai catatan."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    jd = tmp_path / "judge"
+    for j, flip in (("j1", None), ("j2", ["wrong", "correct", "correct"]), ("j3", None)):
+        (jd / j).mkdir(parents=True)
+        for q in corpus["questions"]:
+            v = flip if (flip and q["id"] == "Q20") else ["correct"] * 3
+            (jd / j / f"{q['id']}.json").write_text(json.dumps(_judging(q["id"], v)))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(jd))
+    report = json.loads(capsys.readouterr().out)
+
+    assert report["per_question"]["Q20"]["runs"] == ["correct", "correct", "correct"]
+    assert report["judging_decisive"]["pass"] is True
+    assert report["judging_decisive"]["judgings_per_row"] == {"min": 3, "max": 3}
+    assert report["judging_decisive"]["stability"]["Q20"]["1"] == {"correct": 2, "wrong": 1}
