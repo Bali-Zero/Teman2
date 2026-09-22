@@ -1,0 +1,121 @@
+gear: 2
+task_id: chat-p2b-cures-20260922
+lane: backend-rag
+host: nuzantara (Pro)
+branch: agent/nuzantara/backend-rag/chat-p2b-cures-20260922
+gate_class: opus
+l_level: L2
+objective: >-
+  The P2b lane's monorepo half: cure the benchmark INSTRUMENT and specify the two
+  answer-gate over-matches the shipped cure does not cover. Gear 2 is declared
+  because the lane brief's premises did not survive being checked, and a build PR
+  on a corrected premise carries its own gate. Measured this turn, on origin/main
+  and on the committed runs: (1) `git grep -n "class KBLIAnswerGate" origin/main --
+  apps/backend-rag` returns ZERO — the gate is Swift, in the KBLI Navigator app repo
+  on M5 (`/Users/balizero/Desktop/logo/kbli-navigator-app`, no remote), so cure A
+  cannot be built or reviewed from this repo; (2) cure B is already cured — Q11's
+  package in `results/2026-09-14-k2-gamma/p2b_answers.jsonl` is
+  `['10761','56101','56290','56303','66301']` on all three runs, so "kafe di Ubud"
+  DOES package 56303 and 56101 and the residual on Q11 is answer framing, not
+  retrieval; (3) the harness cure the 2026-08-20 corner calls (C) — feed the judge
+  the served package — shipped in `cmd_prompts` and is live; (4) the floors are not
+  the brief's 4/8+4/8 but the k2-gamma run's 4/8 accuracy and 1/8 wrongful
+  abstention. What was left undone is named in `docs/` and in the report, not
+  silently dropped.
+scope:
+  - >-
+    scripts/kbli_bench/score_p2b.py — the census is counted from the dataset
+    instead of carried in prose; `load_judgings` + `aggregate_verdict` take a
+    majority over N judgings with a named `undecided` on a tie; `dataset_anchor`
+    compares the answers' declared `dataset_sha256` against the file loaded;
+    `P2B_DATASET_ROOT` anchors a re-score.
+  - >-
+    scripts/kbli_bench/run_p2b.py — NEW. The judge+score half as one command,
+    with a manifest identifying corpus/answers/dataset by sha256, and a private
+    sanitized CODEX_HOME. It does NOT serve the corpus, by construction.
+  - >-
+    scripts/tests/test_score_p2b.py — 93 cases (18 new), guilt and innocence per
+    cure.
+  - >-
+    docs/specs/p2b-answer-gate-figure-relations-v1.md — NEW. The rule and the
+    12-case guilt/innocence corpus for the two residual gate classes (δ′, ε).
+  - >-
+    research/operations/2026-09-22-kbli-navigator-p2b-harness-and-gate-spec.md —
+    the report: the corrected premises, the re-judge measurement, the floors.
+constraints:
+  - >-
+    The gate's code half is NOT in this PR and cannot be. The app repo has no
+    remote and lives on another host; a cross-machine Swift commit that no PR can
+    review is not shippable from a headless Pro lane. The spec is written to be
+    executed by the lane that owns the app.
+  - >-
+    The corpus is untouched (sha256 487bc9509d01… unchanged) — the brief forbids
+    it and a scorer lane must never move the thing it scores.
+  - >-
+    No serving re-run. The answers come from the app repo's `Tests/benchrunner`,
+    which runs the production path; re-implementing a serve step here would
+    measure the harness instead of the product.
+  - >-
+    The judge rides the ChatGPT seat through the `codex` CLI (OAuth). No paid
+    per-token endpoint of any vendor; no `ANTHROPIC_API_KEY`; the sanitized
+    CODEX_HOME copies the credential file without reading, printing or logging
+    it, and never writes to the user's `~/.codex`.
+  - >-
+    Nothing in this PR writes to a runtime store, and nothing here is armed,
+    merged or deployed by this session.
+acceptance:
+  - text: >-
+      INNOCENCE, the one that matters most: a SINGLE judging must score exactly
+      as it did before, or every committed score becomes unreproducible.
+      Re-scoring the committed k2-gamma run reproduces its floors (0/87, 4/8,
+      1/8, 21/21) and its per-question verdicts byte-for-byte.
+    probe: >-
+      python3 scripts/kbli_bench/score_p2b.py score scripts/kbli_bench/p2b_corpus.json
+      scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl
+      scripts/kbli_bench/results/2026-09-14-k2-gamma/main_scorer/judge_verdicts
+  - text: >-
+      GUILT: two judgings disagreeing on a structured row are `undecided`, are
+      flagged for hand-check, and refuse the gate — while the FLOOR does not move,
+      because a floor that absorbed the tie would report a green number over a
+      measurement that did not settle.
+    probe: >-
+      pytest scripts/tests/test_score_p2b.py -k "tied_structured_row"
+  - text: >-
+      GUILT: a foreign dataset refuses the gate and prints how to recover;
+      INNOCENCE: the matching dataset passes, and rows that declare no
+      `dataset_sha256` at all are not convicted.
+    probe: pytest scripts/tests/test_score_p2b.py -k anchor
+  - text: >-
+      GUILT against regression: the `declared_gap` sentence quotes THIS dataset's
+      census and the literals true of `3dafab17` cannot come back.
+    probe: >-
+      pytest scripts/tests/test_score_p2b.py -k "stale_census or census"
+  - text: NO REGRESSION across the scorer suite.
+    probe: pytest scripts/tests/test_score_p2b.py
+  - text: >-
+      The driver runs end to end against a live seat and writes a manifest: 29
+      questions x 3 judgings, anchored to the dataset the answers declare.
+    probe: >-
+      P2B_DATASET_ROOT=<c69a260d tree> python3 scripts/kbli_bench/run_p2b.py
+      --answers scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl
+      --out <dir> --judgings 3
+mutation_evidence: >-
+  Measured this turn, each from a command in this session. The dataset anchor was
+  not designed and then justified — it was FOUND by the instrument: the first live
+  judging of Q13 against the current dataset returned `wrong` with the reason
+  "falsely labels KBLI 77400 BALI_BLOCKED; its record shows blocked false", and the
+  answer was right (on `c69a260d`, the dataset that run was served from, 77400 IS
+  blocked). The census defect is the same shape one layer up: the hardcoded 518 is
+  135 of 1,559 on the tree's dataset `b60cb1bd`, and three of its five named causes
+  (`BLOCCATO_CLASSE_RISCHIO` among them) are statuses the data no longer carries —
+  replaced by `ATTENZIONE_FASCIA_BALI`, 383 records, NOT blocked. The gate spec's
+  premise was measured the same way: `KBLIAnswerGate.swift` is byte-identical on all
+  seven branches of the app repo (sha256 `dddadb5bb3ae…`) including the benchmarked
+  `k2/gamma` at `69933ab`, so the four carve-outs WERE in the build whose run still
+  shows the class — shipped is not fixed.
+pii: none
+local_evidence: >-
+  The corpus is 29 synthetic benchmark questions; no client data is read, written or
+  judged. The judge prompts carry only KBLI records and the served answers. The
+  seat probe reports presence only. Read-only on the app repo over ssh (git show /
+  sed); nothing was written on M5.
