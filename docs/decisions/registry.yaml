@@ -191,3 +191,11 @@ decisions:
     status: accepted
     door: one-way
     evidence: research/design/2026-08-28-case-code-design.md
+
+  - id: D-019
+    title: "Opus 5.5 replaces Opus 5 in every seat Opus 5 held — same doctrine, new model"
+    date: 2026-09-23
+    status: accepted
+    door: two-way
+    evidence: docs/rules/RULINGS.md
+    contradicts: []

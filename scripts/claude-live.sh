@@ -18,7 +18,7 @@
 #   something cheaper to run".
 #
 # USAGE
-#   claude-live.sh [--relaunch] [claude args...]     # e.g. claude-live.sh --model claude-opus-5
+#   claude-live.sh [--relaunch] [claude args...]     # e.g. claude-live.sh --model claude-opus-5-5
 #   CLAUDE_SEAT_TRY_DEFAULT=0 claude-live.sh          # skip Team seat, go to MAX rotation
 set -uo pipefail
 

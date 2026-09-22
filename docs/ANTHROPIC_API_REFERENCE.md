@@ -109,7 +109,7 @@ Parallel tool use is on by default: return **all** `tool_result` blocks in a **s
 | -------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
 | RAG, reasoning, standard workflow      | `claude-sonnet-5`           | Near-Opus quality on agentic/coding at Sonnet cost; re-baseline tokens (+~30% vs 4.6) |
 | Routing / classification               | `claude-haiku-4-5-20251001` | $1/$5 MTok, fast                                                                      |
-| Critical tasks, architecture, red-team | `claude-opus-5`             | 1M ctx, effort `xhigh`/`max`, 128K output                                             |
+| Critical tasks, architecture, red-team | `claude-opus-5-5`           | 1M ctx, effort `xhigh`/`max`, 128K output                                             |
 | KBLI explanations                      | `claude-haiku-4-5-20251001` | Configured in `kbli_notebook.py`                                                      |
 
 > ⚠️ `scripts/cost_baseline.py` still carries the 4.x price table and scenario mapping. Re-baselining it against the 5-family is deliberately **not** bundled with this doc refresh: the numbers move both from prices and from Sonnet 5's tokenizer, so it needs a measured pass, not a find-and-replace.
