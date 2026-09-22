@@ -1,5 +1,5 @@
 {
-  "label": "offshore/family/PARENT/spNat=IT/minor",
+  "label": "offshore/family/PARENT/spNat=IT/minor/guardian=no",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -39,7 +39,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "person.guardian_consent": { "status": "KNOWN", "value": true },
+    "person.guardian_consent": { "status": "KNOWN", "value": false },
     "intent.purposes": { "status": "KNOWN", "value": ["FAMILY"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },

@@ -156,9 +156,17 @@ describe("REPRESENTATIVE_VALUES is complete (GATE-B1-REPORT-6842.md Check 2, MED
     expect(missing).toEqual([]);
   });
 
-  it("typedBranchRelevantQuestionIds finds the three known thresholds (not a stale hardcoded pair)", () => {
+  it("typedBranchRelevantQuestionIds finds the four known thresholds (not a stale hardcoded pair)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` (kind "date") joins
+    // `BRANCH_RELEVANT_FACT_KEYS` — `flow.ts` now branches on it (minor vs
+    // adult) — so it joins this typed set too.
     expect(typedBranchRelevantQuestionIds()).toEqual(
-      ["family_sponsor_nationalities", "permit_expiry", "stay_days"].sort(),
+      [
+        "birth_date",
+        "family_sponsor_nationalities",
+        "permit_expiry",
+        "stay_days",
+      ].sort(),
     );
   });
 
@@ -751,8 +759,10 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // byte-stable across runs — the B1'' memo-key projection is unaffected).
   const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
 
-  it("cardinality: the covering subset renders exactly 252 walks (pinned literal, re-measured after Slice B5-1's per-edge witnesses)", () => {
-    expect(RENDERED.length).toBe(252);
+  it("cardinality: the covering subset renders exactly 254 walks (pinned literal, re-measured after Slice A7-M's birth_date branch)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` joins `BRANCH_RELEVANT_FACT_KEYS`
+    // with two representative values (adult, minor) — 252 → 254.
+    expect(RENDERED.length).toBe(254);
   });
 
   it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {

@@ -142,7 +142,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 14 dead ends and 2 held walks the census reports", () => {
+  it("covers the 14 dead ends and 1 held walk the census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -183,11 +183,21 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // HUMAN_REVIEW_REQUIRED for NEEDS_INPUT — is this PR's own change, not
     // pack drift: NO_SUPPORTED_PATH is untouched (14, B5-1's number holds),
     // NEEDS_INPUT gains exactly that one walk. 1 -> 2.
+    //
+    // Slice A7-M (2026-09-22): `tree.ts` now asks `guardian_consent` of
+    // every minor. `offshore/family/PARENT/spNat=IT/minor` does not
+    // override the answer, takes the question's FIRST option (`"yes"`),
+    // and the adapter's `true` arm passes the decision through UNTOUCHED —
+    // it leaves NEEDS_INPUT for SUPPORTED_CANDIDATES (not held, re-measured
+    // — see `test_interview_walk_census.py`, never assumed). The new
+    // sibling walk that declares `guardian_consent: "no"` earns the hold
+    // instead (HUMAN_REVIEW_REQUIRED, not counted here). NEEDS_INPUT loses
+    // that one walk: 2 -> 1.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
     ).toHaveLength(14);
-    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(2);
+    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
     expect(replay.pack.file).toBe("rulepack-prod-022.signed.json");
   });
 

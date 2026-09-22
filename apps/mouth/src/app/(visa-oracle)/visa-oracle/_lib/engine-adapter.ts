@@ -1103,8 +1103,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // reviewing guardian identity/consent directly) since this adapter "may
   // only abstain" by its own docstring.
   MINOR_GUARDIAN_PRIVACY_REVIEW: text(
-    "This case involves a minor, and this tool cannot confirm guardian consent on its own — a person needs to review the guardian's identity and consent directly before this case can be resolved.",
-    "Kasus ini melibatkan anak di bawah umur, dan alat ini tidak dapat mengonfirmasi persetujuan wali dengan sendirinya — diperlukan peninjauan langsung oleh seseorang atas identitas dan persetujuan wali sebelum kasus ini dapat diselesaikan.",
+    "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
+    "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
   ),
   // `_apply_safety_critical_source_hold` (evaluate_path.py:1201-1301): same
   // source-integrity pattern as the DECISIVE_* trio above, but global to
@@ -1135,6 +1135,24 @@ export interface ReviewReasonElements {
 export const REVIEW_REASON_ELEMENTS: Partial<
   Record<string, ReviewReasonElements>
 > = {
+  MINOR_GUARDIAN_PRIVACY_REVIEW: {
+    rule: text(
+      "Indonesian personal-data law (UU PDP) does not let someone under 18 consent to this assessment on their own.",
+      "Undang-undang pelindungan data pribadi Indonesia (UU PDP) tidak mengizinkan orang berusia di bawah 18 tahun memberikan persetujuan atas penilaian ini sendiri.",
+    ),
+    checked: text(
+      "That an adult with parental responsibility or legal guardianship is acting for the applicant.",
+      "Bahwa orang dewasa dengan tanggung jawab orang tua atau perwalian sah bertindak untuk pemohon.",
+    ),
+    prepare: text(
+      "A parent or legal guardian who can complete the request together with the applicant.",
+      "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
+    ),
+    handling: text(
+      "A Bali Zero consultant, who confirms the guardian before any application step.",
+      "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+    ),
+  },
   DISCLOSED_CRIMINAL_RECORD_REVIEW: {
     rule: text(
       "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",

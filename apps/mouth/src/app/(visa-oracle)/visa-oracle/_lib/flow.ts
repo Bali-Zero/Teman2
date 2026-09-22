@@ -73,6 +73,19 @@ export interface FlowState {
   pendingFollowUp: string | null;
 }
 
+function isMinor(birthDate: string | undefined, today: Date): boolean {
+  if (!birthDate) return false;
+  const birthMs = parseIsoDateUtc(birthDate);
+  if (birthMs === null) return false;
+  const birth = new Date(birthMs);
+  let age = today.getUTCFullYear() - birth.getUTCFullYear();
+  const monthDay =
+    today.getUTCMonth() - birth.getUTCMonth() ||
+    today.getUTCDate() - birth.getUTCDate();
+  if (monthDay < 0) age -= 1;
+  return age < 18;
+}
+
 /** See `FlowState.blockedAnswer`. */
 export interface BlockedAnswer {
   questionId: string;
@@ -605,6 +618,10 @@ export function computeNextNode(
     case "nationalities":
       return { kind: "question", questionId: "birth_date" };
     case "birth_date":
+      return isMinor(facts.birth_date, today)
+        ? { kind: "question", questionId: "guardian_consent" }
+        : { kind: "question", questionId: "category" };
+    case "guardian_consent":
       return { kind: "question", questionId: "category" };
     case "category":
       return { kind: "question", questionId: "trip_scope" };
