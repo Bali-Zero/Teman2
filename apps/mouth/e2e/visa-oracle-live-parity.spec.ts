@@ -179,14 +179,16 @@ interface ObservedWalkResult {
 const RESUME_KEY = "visa-oracle:v2:resume:v1";
 
 /**
- * COPIED from `visa-oracle-state-colours.spec.ts:308-349` (never imported —
+ * COPIED from `visa-oracle-state-colours.spec.ts`'s `RESUME_KEY` +
+ * `walkToVerdict` block (never imported —
  * Playwright re-registers an imported spec file's tests), adapted to
  * replay a SAMPLED walk's own recorded facts instead of one fixed default
  * per question. U4: if the tree asks a question this walk's facts do not
  * answer, this throws NAMING the question id — never a 30s timeout. The
  * 12 `review-gate/<item>` classes (one class per walk in the pinned
- * report) replay facts synthesized post hoc
- * (`enumerate-interview-space.ts:540-546`); a throw there is a REPORTED
+ * report) replay facts synthesized post hoc (the `REVIEW_GATE_ITEMS`
+ * loop at the end of `buildCoveringSubset` in
+ * `enumerate-interview-space.ts`); a throw there is a REPORTED
  * risk, never adjusted.
  *
  * An earlier build session measured this throw firing far more broadly —
@@ -264,8 +266,9 @@ async function seedVerdictResume(
  * codes, never overwritten wholesale — `makeVisaOracleResponse` emits at
  * most one review entry, at most one no-path entry and never a notice,
  * while in the pinned report 11 of the 34 classes carry two codes in one
- * list and 20 carry a notice. No-path entries need a DECISIVE ref (`engine-adapter.ts:1630`
- * `requireDecisiveRefs`) or the adapter throws `RESPONSE_INVARIANT` —
+ * list and 20 carry a notice. No-path entries need a DECISIVE ref
+ * (`requireDecisiveRefs` in `engine-adapter.ts`) or the adapter throws
+ * `RESPONSE_INVARIANT` —
  * `TEST_SOURCE_ID` is the fixture's one decisive source. Review reasons
  * and notices may ship `source_refs: []` (`requireReviewHoldRefs` accepts
  * an empty list).
@@ -467,8 +470,9 @@ if (LIVE_PARITY) {
         const sample = samples[i];
 
         // U7: the guard needs the evaluate prefix, or the honest run is
-        // RED on its own mock (`no-write-context.ts:106` records a
-        // request even when a spec's own route fulfils it).
+        // RED on its own mock (`installNoWriteGuard`'s `page.on("request")`
+        // listener in `no-write-context.ts` records a request even when a
+        // spec's own route fulfils it).
         const guard = await installNoWriteGuard(page, {
           allowedWritePathPrefixes: ["/api/visa-oracle/evaluate"],
         });
