@@ -8,7 +8,7 @@ lanes:
     role: build
     seat: claude-sonnet-5 (this build lane, Pro worktree, agent/nuzantara/backend-rag/chat-p2b-cures-20260922)
     note: >-
-      Single build lane across three commits on this branch: (1) audited the five sha256
+      Single build lane across the gate-side commits on this branch: (1) audited the five sha256
       hashes CI's Detect Secrets flagged in the 2026-09-22 re-judge results into
       .secrets.baseline via a byte-level splice (no other entry touched); (2) added
       repo_relative() to run_p2b.py so the manifest records a repo-relative corpus/answers
