@@ -47,7 +47,48 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-09-21 — keep current)
+## 1. LIVE STATE (last update 2026-09-22 — keep current)
+
+**🟢 2026-09-22 — PHASE 1a, THE §7 KG DETECTOR AND PMA RESIDUAL-OPEN LOT 2 ARE ALL SHIPPED AND
+PROVEN LIVE ON ALL FOUR RUNTIME STORES, INCLUDING A PRE-EXISTING 43-CODE DOCUMENTS-LAG RESIDUAL
+FOUND AND CURED SAME-DAY.** **#7045** (Phase 1a,
+merged 10:09:30Z, Fly **v4514**) built 110 OSS-issued S1/S2 codes into 141 `perizinan:pp28v10:*`
+nodes / 141 REQUIRES edges, idempotent (re-dry-run: `0 acted | 22 nothing-to-do`); `01122` now
+serves 3 licences, `85510`/`03231` untouched. Rework 1: CURED/DRIFTED must be decided before the
+eligibility gate, not after. **#7046** (merged 10:07:17Z) shipped the §7 KG dimension, five
+bidirectional checks, all DECLARED not ENFORCED — manifest **1388**, `kg_status_function` fwd
+**44**/rev 1, `kg_licence_presence` fwd **110**/rev 1, `kg_stray_admission` **0**,
+`kg_allowlist_contradiction` **0**, `kg_node_presence` fwd **0**/rev **6**; PASS-WITH-CONDITIONS,
+three conditions ledgered at `PWC-7046` in **#7049**. **PMA Lot 2**: #7051 armed then went RED on
+a hardcoded `checked > 1000` floor the cure's own progress broke — a test defect, not the cure's;
+the PR contract froze the branch, so successor **#7061** (`e64ab82ded`, merged 11:06:43Z) fixed
+the floor structurally and shipped 260 codes `declared_gap → located` under Perpres 10/2021 Pasal
+3(1)(d): canonical **720/839** (460 Lot 1 + 260 Lot 2), reach 271 (6+4+1 withheld, `62900` a
+legacy-prose gap), Bali row on `01192` now reads _"verify on OSS"_.
+
+**Runtime sync (this session, CODE-SCOPED, dataset pinned + sha256-verified to `e64ab82ded`):**
+fail-closed guard passed (260 items, lot 2, `58120`/`50143`/`62900` absent) before any write. Fly
+**v4518** complete; mouth auto-promoted, no manual step. Qdrant `pma`: `260/260 found | 0 agreed |
+260 written`. KG: `--only <code>` takes ONE code, looped 260× in one SSH session — the log
+truncated to its last ~2 iterations (untrustworthy for a victim count), so `46733` (Lot 1's
+`85579` twin) was a silent skip caught only by an independent SQL read, recovered with a solo
+re-run; **260/260** verified `located`. `kbli_documents --pma-only`, 6 chunks ≤50: **260/260**
+applied, integrity 9/9 byte-identical md5. Cache: `1/260 evicted`. Prove-live both directions
+clean: `01192` located+basis, `62900` unchanged declared_gap.
+
+**Residual found, cured the same day:** canonical said **720** located; live `kbli_documents` read
+only **677** — a **43-code gap**, zero overlap with Lot 2, predating it (2026-08's Perpres-cap/UMKM
+lanes: `25200 30400 47111 47221 47222 50111-50135 50211-50223 51101 51102 53200 73100 79122 95220
+95291 95299` among them) — `pma_verification_status` was located on canonical + `kg_nodes` but
+never synced into `kbli_documents` at the time. Cured code-scoped: `kbli_documents_cure.py
+--pma-only --only <43>` → **43/43** applied, integrity 9/9 byte-identical judul/content md5, cache
+bust `0/43 had entry | 0 evicted` (none recently inspected). Qdrant checked, not re-written — dry-
+run `43/43 already agreed | 0 written`, correct since before this lot. `kbli_documents` located now
+**720/720**, matching canonical/`kg_nodes`/Qdrant across all four stores. Prove-live: `inspect_kbli
+41020` → `TERBATAS / 0% / located / cap_verified true`, Lampiran II basis. **Near-misses:** the
+headless Pro lane hit the context guard before it could push #7061 itself (confirmed in the PR
+body); a `python3`/Xcode-stub shell quirk and a `brief_ref` staging-contract detail were flagged by
+the coordinating session this round, not independently re-verified here.
 
 **🟢 2026-09-21 (later) — LOT 0 IS CLOSED: THE 17 PLACEHOLDER "LICENCES" ARE GONE FROM THE GRAPH,
 `01122` ANSWERS 200 INSTEAD OF 404 — AND LOT 0(a) HAD ALREADY SHIPPED TWO DAYS EARLIER WITHOUT THIS
