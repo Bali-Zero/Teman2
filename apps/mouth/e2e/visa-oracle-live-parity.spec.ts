@@ -45,26 +45,16 @@
  * B5-1 makes every sampled replay reach a verdict. A replay throw is still
  * reported rather than adjusted, including for review-gate post-hoc clones.
  *
- * A THIRD RED MET AND REPORTED (v3, never cured — the checked-in report
- * (`prove-live-b4-2-full-sweep-report-20260922.json`, sha 20d429cc…) is
- * this PR's read-only input, not this PR's file, per U1): the report's
- * `review-gate/blacklist` row carries `engine_state:
- * "TEMPORARILY_UNAVAILABLE"` and `rule_pack: null` — a sweep-time engine
- * outage recorded in place of a real verdict for that walk's facts, not a
- * business decision. `beforeAll` fails by NAME on it (see the
- * `missingRulePack` check below) rather than an opaque
- * `Cannot read properties of null` — but the failure still blocks every
- * one of the 34 samples before any render logic runs, so none of the five
- * required guilt-proof mutations (U2, U3, U5, U6, U7) could be captured
- * via the actual Playwright command; U2 and U3 were independently
- * re-verified out-of-band (a scratch `tsx` script reading the same report
- * through the same top-level-imported library, run then deleted — see the
- * PR body) and hold: 34 classes measured (19 if `notices` is dropped from
- * the grouping key), and the derived label set equals the report's
- * `walk_id` set at 252 = 252. Curing the outage row (excluding it, or a
- * re-sweep that replaces it with a real verdict) is a report-data
- * question, out of this spec's touch-no-other-file scope — left for the
- * conductor, most likely as a B4-2 follow-up re-sweep of that one walk.
+ * A THIRD RED WAS MET, then CURED upstream by B4-2b (out of this spec's
+ * touch-no-other-file scope, per U1): the report's `review-gate/blacklist`
+ * row briefly carried `engine_state: "TEMPORARILY_UNAVAILABLE"` and
+ * `rule_pack: null` — a sweep-time engine outage recorded in place of a
+ * real verdict, not a business decision — which failed `beforeAll` by name
+ * and blocked all 34 samples before any render logic ran. B4-2b re-swept
+ * that ONE walk (now `HUMAN_REVIEW_REQUIRED`, real `rule_pack`) and this
+ * PR's U9 sha was re-pinned to the patched report in a separate commit.
+ * The `missingRulePack` check below stays as a permanent, named-failure
+ * guard against a future outage row, even though none is expected today.
  */
 
 import { createHash } from "node:crypto";
@@ -116,7 +106,7 @@ const PER_CLASS = (() => {
 // in addition to logging it.
 const SAMPLE_CLASS_COUNT = 34;
 const EXPECTED_REPORT_SHA256 =
-  "20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e";
+  "49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9";
 const REPORT_RELATIVE_PATH =
   "../../research/operations/2026-09-22-visa-oracle-live-enumeration/" +
   "prove-live-b4-2-full-sweep-report-20260922.json";
