@@ -21,7 +21,10 @@ MODE="${1:-install}"
 
 require_mini() {
     local current
+    # Lower-cased before the compare, same idiom as the wrapper and the
+    # sibling Mini wrappers (D4).
     current="$(hostname -s 2>/dev/null || hostname)"
+    current="$(printf '%s' "$current" | tr '[:upper:]' '[:lower:]')"
     if [ "$current" != "mini-pro2" ]; then
         echo "FATAL: $LABEL is Mini-only; current host=$current" >&2
         exit 69

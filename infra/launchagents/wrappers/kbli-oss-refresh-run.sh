@@ -24,7 +24,9 @@ TIMEOUT_S="${KBLI_OSS_REFRESH_TIMEOUT_S:-900}"
 OUT_ROOT="${KBLI_OSS_REFRESH_OUT_ROOT:-$HOME/nuzantara-vault-evidence/oss-refresh}"
 LOG_DIR="${KBLI_OSS_REFRESH_LOG_DIR:-$HOME/logs/kbli-oss-refresh}"
 LOCK_DIR="${KBLI_OSS_REFRESH_LOCK_DIR:-$HOME/.agent/locks/kbli-oss-refresh.lock}"
-EXPECTED_HOST="${KBLI_OSS_REFRESH_EXPECTED_HOST:-mini-pro2}"
+# Lower-cased the same way `host_now` is below (K5): an override left in
+# mixed case must still compare equal, not refuse a real Mini.
+EXPECTED_HOST="$(printf '%s' "${KBLI_OSS_REFRESH_EXPECTED_HOST:-mini-pro2}" | tr '[:upper:]' '[:lower:]')"
 ORGAN_ID="${KBLI_OSS_REFRESH_ORGAN_ID:-mini.kbli_oss_refresh}"
 
 mkdir -p "$LOG_DIR" "$(dirname "$LOCK_DIR")"
@@ -144,7 +146,10 @@ print(report["exit_code"], cov["errors"], cov["deferred"], counts["published"] +
 PY
 }
 
-host_now="${KBLI_OSS_REFRESH_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown)}"
+# Lower-cased before the compare, same idiom as the sibling Mini wrappers
+# (mini-fleet-watch.sh et al.): `mini-pro2` is an exact match, `Mini-Pro2` is
+# the same node (D4).
+host_now="$(printf '%s' "${KBLI_OSS_REFRESH_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown)}" | tr '[:upper:]' '[:lower:]')"
 log "start host=$host_now expected_host=$EXPECTED_HOST user_key=${OSS_RBA_USER_KEY:+present}"
 
 if [ "${KBLI_OSS_REFRESH_ENABLED:-true}" = "false" ]; then
@@ -178,40 +183,51 @@ else
             loop_rc=$?
             set -e
             report_path="$(/usr/bin/sed -n 's/^OSS_REFRESH_REPORT=//p' "$RUN_OUT" | /usr/bin/tail -n 1)"
+            output_refused="$(/usr/bin/sed -n 's/^OSS_REFRESH_OUTPUT_REFUSED=//p' "$RUN_OUT" | /usr/bin/tail -n 1)"
 
-            case "$loop_rc" in
-                0|1|4)
-                    if [ -n "$report_path" ] && facts="$(read_report "$report_path" 2>/dev/null)"; then
-                        read -r report_rc errors deferred proposed <<< "$facts"
-                        if [ "$report_rc" != "$loop_rc" ]; then
-                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                        elif [ "$loop_rc" = "4" ]; then
+            if [ -n "$output_refused" ]; then
+                # M3: the loop itself already unwound every output it wrote this
+                # run rather than leave one behind that disagrees with its exit
+                # code — this marker IS the report, whatever loop_rc says.
+                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+            else
+                case "$loop_rc" in
+                    0|1|4)
+                        if [ -n "$report_path" ] && facts="$(read_report "$report_path" 2>/dev/null)"; then
+                            read -r report_rc errors deferred proposed <<< "$facts"
+                            if [ "$report_rc" != "$loop_rc" ]; then
+                                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+                            elif [ "$loop_rc" = "4" ]; then
+                                hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
+                            elif [ "$loop_rc" = "1" ]; then
+                                hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
+                                # a proposal from a partial run is real news over an unverified rest
+                                if [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then hb_status="warning"; fi
+                            elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
+                                # rc 0 is only legal when every code answered: a report saying
+                                # otherwise contradicts its own verdict.
+                                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+                            else
+                                hb_status="ok"; result="nothing_new"; tier="none"; key=""
+                            fi
+                        elif [ "$loop_rc" = "4" ] && [ -z "$report_path" ]; then
+                            # rc 4 before any fetch (canonical unreadable / empty population): no report by design.
                             hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                        elif [ "$loop_rc" = "1" ]; then
-                            hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
-                            # a proposal from a partial run is real news over an unverified rest
-                            if [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then hb_status="warning"; fi
-                        elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
-                            # rc 0 is only legal when every code answered: a report saying
-                            # otherwise contradicts its own verdict.
-                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                         else
-                            hb_status="ok"; result="nothing_new"; tier="none"; key=""
+                            # A report path WAS named but is missing or won't parse — same bucket as
+                            # "report disagrees with its exit code" above, never the "no report by
+                            # design" warning (D5).
+                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                         fi
-                    elif [ "$loop_rc" = "4" ]; then
-                        # rc 4 before any fetch (canonical unreadable / empty population): no report by design.
+                        ;;
+                    124)
                         hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                    else
+                        ;;
+                    *)
                         hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                    fi
-                    ;;
-                124)
-                    hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                    ;;
-                *)
-                    hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                    ;;
-            esac
+                        ;;
+                esac
+            fi
         fi
     fi
 fi

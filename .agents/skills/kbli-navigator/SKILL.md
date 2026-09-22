@@ -1777,7 +1777,8 @@ because the page claims provenance only) · **PMA 15/1,559 = 1.0%** (13 records 
 **1,544 assert a foreign-ownership verdict with nothing on the record saying where it came from**).
 The plan that follows from this is §5, REWRITTEN today on Zero's mandate — it retires the A/B/C/D
 sweep framing. **The "99 no-scope codes still to adjudicate" carried by this section are DECLARED
-GAPS, not lies in production**; they are product improvement, and F4's refresh loop closes them free.
+GAPS, not lies in production**; they are product improvement, and F4's refresh loop PROPOSES a cure
+spec for them weekly when OSS publishes a scope — applying one is a separate compiler, not this loop.
 
 **🔴 CORRECTION TO L2.11e BELOW — the 17 divergences it reports were ALREADY CURED when it was
 written.** Re-measured on prod this turn through the read-only role: all 17 read `TERTUTUP` with the
@@ -3301,7 +3302,9 @@ Three consequences, and they reorganise the whole programme:
 1. **The licensing axis is closed for honesty IN THE DATA — the SURFACE is a separate claim, and the
    adversarial gate refused to let the two be merged.** The "99 codes still to adjudicate" this corner
    has been carrying are DECLARED GAPS in canonical, not lies in it; moving them from gap to verified
-   value is product improvement, and F4's refresh loop does it for free when OSS publishes the scope.
+   value is product improvement; F4's refresh loop only PROPOSES that move weekly when OSS publishes
+   the scope — it never writes the canonical, and applying the proposal is a separate compiler, not
+   yet built (PENDING-ARMS `kbli-oss-refresh-proposals-have-no-applier`).
    But data-honest ≠ page-honest: the conformance detector compares row COUNTS and `licensing_status`,
    never the `content` markdown the bot injects verbatim, so a stale licensing claim can survive inside
    a document whose row count is legitimately zero. And the gate found a live over-claim on the web
@@ -3738,9 +3741,12 @@ VILA)`), only the empty skeletons are named `KBLI <code>` — the probe was meas
   so no code exceeds the limit. Recorded as refuted rather than dropped, so nobody re-derives the
   same suspicion — but any future `LIMIT` on that query is one duplicate-family away from becoming
   real, and the free fix is to order by `entity_id LIKE 'kbli:%' DESC`.
-- **Refresh loop** OSS/JDIH: the 221 no-scope watchlist self-resolves when OSS publishes a scope, and
-  the 217 declared gaps become verified values **with no human work**. This is the only path by which
-  the "99 missing" close themselves.
+- **Refresh loop** OSS/JDIH (`scripts/kbli_filiera/oss_refresh_loop.py`, #7136): live on Mini weekly,
+  it re-asks OSS about the 221 no-scope watchlist and PROPOSES a cure spec when a scope publishes —
+  it never writes the canonical itself. Its first run (2026-09-22) proposed 10 scopes. Applying a
+  proposal is a separate compiler that does not exist yet, tracked in PENDING-ARMS row
+  `kbli-oss-refresh-proposals-have-no-applier`; the 217 declared gaps close only once that compiler
+  ships and runs, not by the loop alone.
 
 ### 5.6 What this plan RETIRES (say it out loud, it contradicts signed work)
 
@@ -3752,7 +3758,9 @@ VILA)`), only the empty skeletons are named `KBLI <code>` — the probe was meas
 - **Batches C/D as sweeps** (~1,438) — never had a measured risk thesis. If the scoreboard grows one,
   they come back.
 - **The Tier-4 AQL ratification waiting on Zero** — it sampled a sweep we no longer run.
-- **"99 codes to adjudicate"** → 217 declared gaps that F4 closes for free.
+- **"99 codes to adjudicate"** → 217 declared gaps F4 proposes cure specs for weekly; closing them
+  still needs the not-yet-built applier compiler to run (PENDING-ARMS
+  `kbli-oss-refresh-proposals-have-no-applier`).
 
 ### 5.6bis This plan was gated before it shipped, and the gate changed it
 

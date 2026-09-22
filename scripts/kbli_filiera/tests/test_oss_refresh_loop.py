@@ -360,6 +360,17 @@ def test_dry_run_writes_nothing_even_when_scopes_are_proposed(tmp_path):
     assert not out.exists()
 
 
+def test_dry_run_never_claims_the_cure_spec_was_written(tmp_path, capsys):
+    """Guilt (D7): a dry-run computes the same spec path an --apply run would
+    use, but never writes it — the printed summary must not say `cure spec:
+    <path>` as if it had."""
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")))
+    assert rc == L.EXIT_PROPOSED and not out.exists()
+    printed = capsys.readouterr().out
+    assert "cure spec (dry-run, not written): scripts/kbli_filiera/cure_specs/oss_refresh_2026_09_22.json" in printed
+    assert "cure spec: scripts/kbli_filiera/cure_specs" not in printed
+
+
 def test_apply_with_nothing_new_writes_report_and_summary_but_no_spec(tmp_path, capsys):
     session = FakeSession(published_world())
     rc, out = run(tmp_path, default_world(), session, "--apply")
@@ -385,12 +396,29 @@ def test_report_shape(tmp_path):
     assert report["population"] == {
         "derivation": report["population"]["derivation"], "count": 4, "quarantined": 1,
         "by_state": {"declared_gap": 3, "sourced_pp28_vintage_pending": 1}}
-    assert report["coverage"] == {"asked": 4, "fetched": 4, "trusted_answers": 3, "errors": 1, "deferred": 0}
+    assert report["coverage"] == {"asked": 4, "fetched": 3, "attempted": 4, "trusted_answers": 3, "errors": 1,
+                                  "deferred": 0}
     assert set(report["counts"]) == set(L.CLASSES) and report["counts"]["still_404"] == 3
     assert [c["class"] for c in report["controls"]] == [L.UNCHANGED, L.UNCHANGED]
     entry = next(c for c in report["codes"] if c["code"] == "10003")
     assert entry["quarantined_by"] == ["per_skala_disputed_pp28_collision"]
     assert not any(k.startswith("_") for c in report["codes"] for k in c)
+
+
+def test_fetched_excludes_fetch_errors_not_just_deferred(tmp_path):
+    """Guilt (D6): `fetched` used to count ATTEMPTS (attempts > 0), so 1
+    published plus N fetch_errors read as fetched = N+1 — an OSS that never
+    actually answered N of the asked codes could be reported as fully
+    fetched. `fetched` must count only codes that got an HTTP answer: not
+    fetch_error (a timeout has attempts too), not deferred."""
+    answers = published_world("10001")
+    answers[uuid_of("10002")] = L.Answer(0, error="timeout", attempts=3)
+    answers[uuid_of("10004")] = L.Answer(500, error="HTTP 500", attempts=3)
+    rc, out = run(tmp_path, default_world(), FakeSession(answers), "--apply", "--only", "10001,10002,10004")
+    assert rc == L.EXIT_PROPOSED
+    report = json.loads(report_path(out).read_text())
+    assert report["coverage"] == {"asked": 3, "fetched": 1, "attempted": 3, "trusted_answers": 1,
+                                  "errors": 2, "deferred": 0}
 
 
 def test_one_unanswered_code_is_not_nothing_new(tmp_path):
@@ -434,6 +462,121 @@ def test_cure_spec_shape_and_routes(tmp_path):
     assert json.loads((tmp_path / "canonical.json").read_text())["data"] == records
 
 
+def test_a_refused_cure_spec_write_takes_the_same_path_as_a_refused_report(tmp_path, capsys):
+    """Guilt (K1, cross-family Kimi K3 refutation): the spec must be written
+    BEFORE the report that names it (D2) — but a refused spec write used to
+    still let a perfectly self-consistent exit-4 report land afterward, so
+    the wrapper read it as a mere "warning" while a refused REPORT write
+    went through the M3 path (no report, a marker) and read as "error". Two
+    write failures, two severities — now ONE: a refused spec write takes the
+    exact M3 path too: no report/.md at all, the marker, exit 4."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / "out" / "scripts" / "kbli_filiera").mkdir(parents=True)
+    (tmp_path / "out" / "scripts" / "kbli_filiera" / "cure_specs").symlink_to(outside, target_is_directory=True)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    assert list(outside.iterdir()) == []
+    assert not report_path(out).exists()
+    assert not report_path(out).with_suffix(".md").exists()
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed and "is a symlink" in printed
+    assert "OSS_REFRESH_REPORT=" not in printed
+
+
+def test_an_os_error_during_output_writes_exits_4_not_1(tmp_path, monkeypatch):
+    """Guilt (M2, cross-family Codex red-team): only `OutputRefused` was
+    caught around every output write — a plain `OSError` (permission denied,
+    ENOSPC, a directory that vanished mid-run) used to escape UNCAUGHT, and
+    an uncaught Python exception exits the interpreter with 1: the SAME code
+    as "new scopes proposed". Both the spec write and the report write must
+    turn an OSError into exit 4, never let it propagate."""
+    real_write = L.write_contained
+
+    def spec_boom(out_root, path, text):
+        if path.parent.name == "cure_specs":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", spec_boom)
+    spec_dir = tmp_path / "spec_case"
+    spec_dir.mkdir()
+    rc, _ = run(spec_dir, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+
+    def report_boom(out_root, path, text):
+        if path.parent.name == "oss-refresh":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", report_boom)
+    report_dir = tmp_path / "report_case"
+    report_dir.mkdir()
+    rc2, _ = run(report_dir, default_world(), FakeSession(published_world()), "--apply")
+    assert rc2 == L.EXIT_CANNOT_VERIFY
+
+
+def test_a_later_output_failure_unwinds_the_report_already_written(tmp_path, monkeypatch, capsys):
+    """Guilt (M3, cross-family Codex red-team): the report JSON used to be
+    written, THEN the .md summary — if the .md write failed, the JSON stayed
+    on disk saying `exit_code: 1` (or whatever the real verdict was) while
+    the PROCESS returned 4, and no `OSS_REFRESH_REPORT=` line was printed
+    (the wrapper would then read rc 4 + no report path as "no report by
+    design", a warning — not the loop_failure this actually is). The loop
+    must undo the JSON it already wrote and print one parseable marker."""
+    real_write = L.write_contained
+
+    def md_boom(out_root, path, text):
+        if path.suffix == ".md":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", md_boom)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    assert not report_path(out).exists()
+    assert not report_path(out).with_suffix(".md").exists()
+    assert not spec_path(out).exists()  # the earlier, successful spec write is unwound too
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed and "Permission denied" in printed
+    assert "OSS_REFRESH_REPORT=" not in printed
+
+
+def test_an_unwind_failure_never_blocks_the_marker_or_the_exit_code(tmp_path, monkeypatch, capsys):
+    """Guilt (K2, cross-family Kimi K3 refutation): the unwind loop was
+    `for p in written: p.unlink(missing_ok=True)` — unguarded. An `OSError`
+    from `unlink` ITSELF (not the write, the cleanup: a permission change, a
+    vanished parent) used to escape as an uncaught traceback and exit 1 —
+    the same failure mode M2 fixed for the write, now needed for the
+    cleanup too. The unwind must be best-effort PER FILE: one unlink
+    failing must not stop the rest, must not swallow the marker, and must
+    not change the exit code."""
+    real_write = L.write_contained
+    real_unlink = Path.unlink
+
+    def md_boom(out_root, path, text):
+        if path.suffix == ".md":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    def unlink_boom(self, *args, **kwargs):
+        if self.parent.name == "cure_specs":
+            raise PermissionError(13, "Permission denied removing")
+        return real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(L, "write_contained", md_boom)
+    monkeypatch.setattr(Path, "unlink", unlink_boom)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed
+    # report.json (unlink NOT blocked) is gone; the cure spec (unlink
+    # blocked) survives — proof the loop kept going past the failed unlink
+    # instead of stopping, or crashing, at the first one.
+    assert not report_path(out).exists()
+    assert spec_path(out).exists()
+
+
 def test_no_applyable_spec_beside_a_failed_control(tmp_path):
     """Guilt (Codex finding 6): a target that looks published while the
     controls fail is not vouched for — exit 4 and no cure spec."""
@@ -452,6 +595,46 @@ def test_a_symlinked_output_dir_is_refused(tmp_path):
     (tmp_path / "out" / "data" / "kbli-filiera" / "oss-refresh").symlink_to(outside, target_is_directory=True)
     rc, _ = run(tmp_path, default_world(), FakeSession(published_world()), "--apply")
     assert rc == L.EXIT_CANNOT_VERIFY and list(outside.iterdir()) == []
+
+
+def test_a_symlinked_intermediate_dir_is_refused_before_anything_is_created(tmp_path):
+    """Guilt (D1): the old `write_contained` ran `path.parent.mkdir(parents=True)`
+    BEFORE the symlink walk — pathlib's own parent-recursion happily creates
+    real directories at a symlinked intermediate's destination (even a
+    dangling one, i.e. one whose target does not exist yet) first, and only
+    THEN would the later walk-up refuse it. Refusing must happen before any
+    directory is created past the symlink."""
+    out_root = tmp_path / "out"
+    outside = tmp_path / "outside"
+    target = outside / "kbli-filiera-target"  # does not exist yet
+    (out_root / "data").mkdir(parents=True)
+    (out_root / "data" / "kbli-filiera").symlink_to(target, target_is_directory=True)
+    path = out_root / "data" / "kbli-filiera" / "oss-refresh" / "2026-09-22.json"
+    with pytest.raises(L.OutputRefused):
+        L.write_contained(out_root, path, "x")
+    assert not target.exists()
+
+
+def test_a_symlinked_intermediate_to_an_existing_dir_creates_nothing_inside_it(tmp_path):
+    """Guilt (L1, cross-family Codex red-team): the DANGLING-target case above
+    makes the old code fail with an unrelated FileExistsError — it fails, but
+    not for the reason D1 claims. Here the symlink target already EXISTS (an
+    operator-owned outside directory) and only a DESCENDANT below it is
+    missing. The old code does NOT crash here: `mkdir(parents=True,
+    exist_ok=True)` quietly materialises that missing descendant INSIDE the
+    outside directory (following the symlink transparently), and only its
+    later walk-up eventually hits the symlink and raises — after the
+    directory already exists outside `out_root`. `OutputRefused` alone
+    cannot tell the two codepaths apart; nothing-created-outside can."""
+    out_root = tmp_path / "out"
+    outside = tmp_path / "outside"
+    outside.mkdir()  # the symlink target EXISTS this time — only descends below it are missing
+    (out_root / "data").mkdir(parents=True)
+    (out_root / "data" / "kbli-filiera").symlink_to(outside, target_is_directory=True)
+    path = out_root / "data" / "kbli-filiera" / "oss-refresh" / "2026-09-22.json"
+    with pytest.raises(L.OutputRefused):
+        L.write_contained(out_root, path, "x")
+    assert list(outside.iterdir()) == []
 
 
 def test_a_malformed_key_is_refused_without_printing_it(tmp_path, monkeypatch, capsys):
@@ -476,6 +659,17 @@ def test_a_blind_endpoint_cannot_report_nothing_new(tmp_path):
     """Guilt: every code 404, controls included. Without the positive control
     this run would read as 219 honest gaps and exit 0."""
     rc, _ = run(tmp_path, default_world(), FakeSession({}))
+    assert rc == L.EXIT_CANNOT_VERIFY
+
+
+def test_empty_controls_never_pass_as_ok(tmp_path):
+    """Guilt (D3): `bool(control_results) and all(...)` — drop the `bool()` and
+    an EMPTY control list "passes" vacuously (`all()` over nothing is True).
+    No strong (sourced) code exists to draw a control from here, so every
+    asked code being an honest 404 must still exit 4, never read as nothing
+    new."""
+    records = [gap("10001"), gap("10002")]
+    rc, _ = run(tmp_path, records, FakeSession({}))
     assert rc == L.EXIT_CANNOT_VERIFY
 
 

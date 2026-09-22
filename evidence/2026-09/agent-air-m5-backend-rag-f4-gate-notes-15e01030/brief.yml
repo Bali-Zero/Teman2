@@ -1,0 +1,70 @@
+task_id: f4-gate-notes
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Follow-up to #7136 (F4 weekly KBLI OSS refresh loop + Mini organ). The
+  fresh final gate on 555fa547 passed it with 8 LOW non-blocking notes and
+  asked for a follow-up PR from a fresh origin/main; they are tracked in the
+  PENDING-ARMS row kbli-oss-refresh-proposals-have-no-applier. This PR closes
+  all eight, each with a guilt test that fails on the unfixed code:
+  D1 write_contained refuses a symlinked component BEFORE creating it (no
+  empty directories outside --out-root); D2 the cure spec is written before
+  the report, and a refused spec makes the run exit 4 with a report that says
+  so; D3 an empty control list is pinned as never-ok; D4 the wrapper and
+  installer lower-case the hostname like the sibling Mini wrappers; D5 a
+  named-but-unparseable report is an error, not a warning; D6
+  coverage.fetched counts only codes that got an HTTP answer (attempted keeps
+  the old count); D7 a dry-run no longer claims to have written the cure
+  spec; D8 the kbli-navigator corner no longer says the gaps close "with no
+  human work".
+
+  Gear is 3 deterministically, sourced from PATH: infra/launchagents/* is a
+  HOTZONE_PATTERNS entry in scripts/evidence_pack_lint.py.
+
+acceptance:
+  - text: >-
+      WHEN a directory below --out-root is a symlink, write_contained SHALL
+      refuse before creating any directory, so nothing appears at the
+      symlink's destination.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k symlinked_intermediate
+  - text: >-
+      IF the cure spec write is refused under --apply, the run SHALL exit 4,
+      SHALL write no report (none can then disagree with the exit), and
+      SHALL print the OSS_REFRESH_OUTPUT_REFUSED line.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k refused_cure_spec
+  - text: >-
+      WHEN the control list is empty, the controls SHALL NOT count as ok and
+      the run SHALL NOT exit 0 or 1.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k empty_controls
+  - text: >-
+      WHEN a report is built, coverage.fetched SHALL exclude fetch_error and
+      deferred codes, and a dry-run SHALL NOT claim the cure spec was written.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "fetched_excludes or dry_run_never_claims"
+  - text: >-
+      WHEN the host (or the expected-host override) is Mini-Pro2 in any
+      letter case the wrapper SHALL run, and WHEN a report path is named but
+      does not parse the heartbeat SHALL be error.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -k "host_case or never_parses or override"
+  - text: >-
+      IF any output write fails under --apply (OutputRefused or any OSError),
+      the run SHALL exit 4, SHALL leave none of the outputs it wrote in that
+      run, SHALL print one OSS_REFRESH_OUTPUT_REFUSED line even if the unwind itself
+      fails, and the wrapper SHALL record that run as error.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -k "OSError or oserror or permission or output_refused or unwind or marker or unlink or spec_refus"
+  - text: >-
+      AFTER merge, the Mini checkout SHALL carry this wrapper (the plist is
+      unchanged, so no reinstall), and a kickstarted run SHALL still end with
+      the heartbeat matching its report.
+    probe: bash infra/launchagents/install_kbli_oss_refresh.sh --kickstart; bash infra/launchagents/install_kbli_oss_refresh.sh --verify
+
+assumptions:
+  - text: >-
+      organs_registry.yaml pins a checksum of the organ list itself, not of
+      the wrapper file, so changing the wrapper does not move it.
+    status: verified
+    probe: "registry validator passes with the wrapper changed and organs_registry.yaml untouched"
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
