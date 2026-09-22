@@ -1,13 +1,34 @@
-# intel_items pajak provenance — DML DRAFTS (2026-09-21)
+# intel_items pajak provenance — DML (drafted 2026-09-21, EXECUTED 2026-09-22)
 
-> **These are DRAFTS. Nothing here has been executed.** Both statements below were built from
-> read-only queries against PROD (`./scripts/pg.sh`, `SELECT` only) and live GET requests to
-> pajak.go.id (public government content). No `INSERT`/`UPDATE`/`DELETE` has run.
+> **EXECUTED on PROD on 2026-09-22, authorized by the owner.** Both statements ran exactly as
+> written below. Each ran first as a rehearsal with its final `COMMIT` replaced by `ROLLBACK`,
+> and all in-transaction assertions passed. The channel was `fly ssh console -a nuzantara-rag`,
+> running `python3 -` from stdin, with the SQL executed through asyncpg on the app's
+> `DATABASE_URL`.
 >
-> Companion code change:
+> | step         | committed | result                                                                            | archive (rollback source)                               |
+> | ------------ | --------- | --------------------------------------------------------------------------------- | ------------------------------------------------------- |
+> | (a) relabel  | 15:00:42Z | 122 rows now carry their real host (67 distinct); `pajak.go.id` mislabels left: 0 | `intel_items_pajak_relabel_archive_20260921` (122 rows) |
+> | (b) backfill | 15:01:03Z | 18/20 peraturan rows carry `citation`; the 2 known failures untouched             | `intel_items_pajak_backfill_archive_20260921` (20 rows) |
+>
+> Before the run, the 122-row cohort, the 20-row cohort and the 0 archive tables were re-measured
+> read-only. The SQL host expression was checked against `pajak_parse.source_host` on all 122
+> URLs (0 mismatches). The 18 backfill values were re-extracted from the live pages with
+> `extract_regulation` from `origin/main` (0 differences from the values below).
+>
+> **Re-route after (a).** The Pro fallback router routed the 122 `unrouted` rows with an older
+> copy of the rules. `backfill_needs_review(dry_run=False)` on Fly then reclassified the 24 that
+> the backend `_classify` routes differently. The same call also moved the 18 ddtc/muc
+> `needs_review` rows (PWC-7074 C2). Final state of the 122: `nb-intel` 26, `blog` 15,
+> `needs_review` 81. The rules drift is ledger row `intel-lake-pro-fallback-router-rules-drift`.
+>
+> The **Rollback** blocks below are the way back. The archive tables stay in PROD until the owner
+> decides their retention.
+>
+> Companion code change (merged earlier as #7087):
 > `feat(pajak-monitor): peraturan items carry the regulation's own citation, excerpt and date`
-> (this branch) adds `pajak_parse.extract_regulation()` and wires it into `pajak_monitor.py` for
-> NEW rows going forward. This doc is the one-time cleanup for rows already in production.
+> adds `pajak_parse.extract_regulation()` and wires it into `pajak_monitor.py` for NEW rows
+> going forward. This doc is the one-time cleanup for rows already in production.
 >
 > `intel_items` schema (read-only, confirmed live via `information_schema.columns`):
 >
@@ -36,7 +57,7 @@
 
 ## (a) RELABEL — 122 rows mislabeled `source_domain = 'pajak.go.id'`
 
-**Why.** `source_host()` (added `pajak_parse.py`, this branch) derives `source_domain` from the
+**Why.** `source_host()` (added to `pajak_parse.py` by #7074) derives `source_domain` from the
 actual item URL. Before that fix existed, every Source-3 (`_search_djp_updates`, a Brave
 `web_search`) hit was hardcoded to `source_domain = "pajak.go.id"` regardless of which site it
 actually came from — DDTC, CNBC Indonesia, ortax.org, muc.co.id, etc. `intel_lake_router.py`'s
@@ -79,7 +100,7 @@ each other into a double-write.
 ```sql
 -- ═══════════════════════════════════════════════════════════════════════
 -- DRAFT (a) — RELABEL 122 pajak.go.id-mislabeled intel_items rows
--- NOT EXECUTED. Requires owner authorization before running against PROD.
+-- EXECUTED on PROD 2026-09-22 15:00:42Z (owner-authorized); see header.
 -- ═══════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -193,7 +214,7 @@ WHERE canonical_url LIKE 'https://pajak.go.id/id/peraturan/%';
 
 None of the 20 currently carry `citation`/`verbatim_excerpt` in `raw_payload` (all 20 are
 `{"type": "tax_regulation", "pipeline": "intel_stage1"}` only) — this backfill is what
-`pajak_monitor.py`'s new enrichment (this branch's Part 1) would have produced had it existed
+`pajak_monitor.py`'s new enrichment (#7087) would have produced had it existed
 when these rows were first ingested.
 
 **Fetched live** (browser-like User-Agent, 2-4 s delay between requests, `pajak_parse.
@@ -224,7 +245,7 @@ best-known state).
 ```sql
 -- ═══════════════════════════════════════════════════════════════════════
 -- DRAFT (b) — BACKFILL citation/verbatim_excerpt/extractor for 18 of 20
--- pajak peraturan rows already in intel_items. NOT EXECUTED.
+-- pajak peraturan rows already in intel_items. EXECUTED on PROD 2026-09-22 15:01:03Z.
 -- ═══════════════════════════════════════════════════════════════════════
 
 BEGIN;
