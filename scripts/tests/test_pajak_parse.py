@@ -59,6 +59,47 @@ def test_no_title_is_pager_text():
         assert "Halaman sekarang" not in row["title"]
 
 
+# ─── D1 — HTML entities in titles must be unescaped ────────────────────────
+
+
+def test_index_title_unescapes_html_entities():
+    """Guilt: `&amp;` (and friends) in a `views-field-title` span must decode to `&`, not
+    survive as a literal entity — an entity is a markup artifact, not part of the title."""
+    html_row = (
+        '<div class="peraturan-content views-row row-1">'
+        '<div class="views-field views-field-field-nomor-dokumen">'
+        '<h3 class="field-content title-custom text-link">'
+        '<a href="/index.php/id/peraturan/ppn-dan-pph-terbaru" hreflang="id">99/PMK.02/2026</a>'
+        "</h3></div>"
+        '<div class="views-field views-field-title">'
+        '<span class="field-content content-custom">PPN &amp; PPh Terbaru</span>'
+        "</div>"
+        '<span class="views-field views-field-field-jenis-dokumen">'
+        '<strong class="field-content">Peraturan Menteri Keuangan</strong></span>'
+        ' | <span class="views-field views-field-field-tanggal-peraturan">'
+        '<strong class="field-content">'
+        '<time datetime="2026-09-10T12:00:00Z" class="datetime">2026-09-10</time>'
+        "</strong></span>"
+        ' | <span class="views-field views-field-field-status-peraturan">'
+        '<strong class="field-content">Aktif</strong></span>'
+        "</div>"
+    )
+    rows = pajak_parse.parse_peraturan_index(html_row)
+    assert len(rows) == 1
+    assert rows[0]["title"] == "PPN & PPh Terbaru"
+
+
+def test_index_title_without_entities_is_unchanged():
+    """Innocence: a real fixture title with no entities passes through byte-for-byte."""
+    rows = pajak_parse.parse_peraturan_index(INDEX_HTML)
+    row = next(r for r in rows if r["url"].endswith("-1488"))
+    assert row["title"] == (
+        "NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN "
+        "JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG "
+        "BERLAKU UNTUK TANGGAL 2 SEPTEMBER 2026 SAMPAI DENGAN 8 SEPTEMBER 2026"
+    )
+
+
 def test_legacy_primary_regex_finds_nothing_on_current_html():
     """Guilt: the pre-fix regex is blind to the /index.php prefix DJP now serves."""
     matches = _LEGACY_PRIMARY.findall(INDEX_HTML)
@@ -91,6 +132,46 @@ def test_canonical_url_accepts_absolute_and_www():
     )
 
 
+# ─── D2 — trailing slash and query string normalise to the same identity ──
+
+
+def test_canonical_url_normalizes_trailing_slash():
+    """Guilt: a trailing slash must not survive as a distinct identity."""
+    assert (
+        pajak_parse.canonical_pajak_url("https://pajak.go.id/id/peraturan/x/")
+        == "https://pajak.go.id/id/peraturan/x"
+    )
+
+
+def test_canonical_url_normalizes_query_string():
+    """Guilt: a tracking query string must not survive as a distinct identity."""
+    assert (
+        pajak_parse.canonical_pajak_url("https://pajak.go.id/id/peraturan/x?utm=1")
+        == "https://pajak.go.id/id/peraturan/x"
+    )
+
+
+def test_canonical_url_normalizes_trailing_slash_and_query_together():
+    assert (
+        pajak_parse.canonical_pajak_url("https://pajak.go.id/index.php/id/peraturan/x/?utm=1")
+        == "https://pajak.go.id/id/peraturan/x"
+    )
+
+
+def test_canonical_url_different_slug_still_differs():
+    """Innocence: normalisation must not collapse two genuinely different URLs."""
+    a = pajak_parse.canonical_pajak_url("https://pajak.go.id/id/peraturan/x/")
+    b = pajak_parse.canonical_pajak_url("https://pajak.go.id/id/peraturan/y?utm=1")
+    assert a != b
+    assert a == "https://pajak.go.id/id/peraturan/x"
+    assert b == "https://pajak.go.id/id/peraturan/y"
+
+
+def test_canonical_url_root_path_trailing_slash_not_stripped_to_empty():
+    """Innocence: the trailing-slash strip must not eat the root path's own `/`."""
+    assert pajak_parse.canonical_pajak_url("https://pajak.go.id/") == "https://pajak.go.id/"
+
+
 def test_siaran_link_items_dedup_and_skip_pager():
     items = pajak_parse.parse_link_items(SIARAN_HTML)
     assert len(items) == 5
@@ -118,6 +199,29 @@ def test_a_short_chrome_link_never_shadows_the_headline_that_follows_it():
             "DJP Rilis Aturan Baru PPh Pasal 22",
         )
     ]
+
+
+def test_link_items_unescape_html_entities():
+    """Guilt: an entity in a siaran-pers headline anchor text must decode to `&`."""
+    html = (
+        '<a href="/index.php/id/siaran-pers/djp-catat-penerimaan-pajak-ekonomi-digital">'
+        "DJP Catat Penerimaan Pajak Tumbuh 5,7% &amp; Ekonomi Digital"
+        "</a>"
+    )
+    items = pajak_parse.parse_link_items(html)
+    assert items == [
+        (
+            "https://pajak.go.id/id/siaran-pers/djp-catat-penerimaan-pajak-ekonomi-digital",
+            "DJP Catat Penerimaan Pajak Tumbuh 5,7% & Ekonomi Digital",
+        )
+    ]
+
+
+def test_link_items_without_entities_are_unchanged():
+    """Innocence: the real fixture's entity-free headline passes through byte-for-byte."""
+    items = pajak_parse.parse_link_items(SIARAN_HTML)
+    url, title = items[0]
+    assert title == "DJP Catat Penerimaan Pajak Ekonomi Digital Rp57,23 Triliun"
 
 
 def test_an_english_twin_is_not_a_second_item():
