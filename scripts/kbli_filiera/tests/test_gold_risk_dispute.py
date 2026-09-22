@@ -29,7 +29,6 @@ from gold_risk_dispute_relation import (  # noqa: E402
     gold_claims,
     load_canonical,
     load_gold,
-    record_tiers,
     sentence_claims,
     universal_claim_sets,
     _serialize,
