@@ -104,17 +104,35 @@
 #      recognises it. Neither file executes or depends on the path — same
 #      reasoning as class 2/3, applied to a different guard.
 #
+#   5. CENSUS INPUT-SHAPE CORPUS (added 2026-09-22, PWC-7033 C1 / PR #7106) —
+#      scripts/tests/test_tg_gateway_census.py. scripts/tg_gateway_census.py
+#      reads Pro's LIVE crontab, which still reaches the checkout through the
+#      compat symlink ~/Desktop/nuzantara -> ~/nuzantara: measured 2026-09-22
+#      on Pro, 42 active crontab lines cite `Desktop/nuzantara` and 0 cite
+#      `~/nuzantara/`. The test's fixture HOME rebuilds that exact layout
+#      (Desktop/nuzantara symlinked to nuzantara) and its crontab lines
+#      (`$HOME/Desktop/nuzantara/scripts/...`, `~/Desktop/nuzantara/...`,
+#      `cd ~/Desktop/nuzantara && ...`) are those input shapes verbatim, so the
+#      census is proven to follow the symlink to the routing checkout — the
+#      path it will actually read. Rewriting them would drop that coverage.
+#      The census source itself carries no such literal, and neither file
+#      depends on the path existing on the host that runs it (tmp HOME).
+#      Re-measure with
+#      `ssh pro 'crontab -l | grep -v "^#" | grep -c Desktop/nuzantara'`; when
+#      that reaches 0 the fixtures should move and this entry should go.
+#
 # SIZE NOTE (added 2026-07-16, final-gate review; counts updated 2026-08-07
-# when class 4 landed): this file has ~300 declared entries, which reads as
+# when class 4 landed, and 2026-09-22 when class 5 landed): this file has ~300 declared entries, which reads as
 # a large exception surface for a guard meant to be strict. It is NOT — the
 # standing lint's own extension filter (LINT_EXTENSIONS = {.sh, .py,
 # .plist}) discards a line before ever checking whether it's allowlisted, so
 # only entries with those THREE extensions are load-bearing for
 # scripts/lint_tcc_desktop_paths.py's ongoing CI gate. As of this writing
-# that's 12 lines: the 2 guard-test-corpus files (class 2), the 1 historical
+# that's 13 lines: the 2 guard-test-corpus files (class 2), the 1 historical
 # audit script + 2 dated research renderers + 1 frozen research note (class
-# 1), the 4 self-referential tool source/test files (class 3), and the 2
-# docs-audit regression-pin files (class 4). The remaining ~288 entries
+# 1), the 4 self-referential tool source/test files (class 3), the 2
+# docs-audit regression-pin files (class 4), and the 1 census input-shape
+# test (class 5). The remaining ~288 entries
 # (.md/.json/.txt/.yml/.tsv) exist ONLY as provenance for
 # scripts/tcc_migrate_desktop_paths.py's one-time --git-scope --extensions
 # .md sweep (commit 2 of the migration PR) — they document why each
@@ -123,7 +141,7 @@
 # directory-glob'd to research/**, docs/audits/**, etc.) deliberately: scar
 # #3 discipline ("no guard ships without its exceptions being explicit")
 # argues for explicit enumeration over implicit directory exemption, and the
-# guard's REAL exception surface is already narrow (12 lines) once you
+# guard's REAL exception surface is already narrow (13 lines) once you
 # account for the extension filter — collapsing 288 lines that don't affect
 # the guard's behavior into a directory glob would trade a currently-tiny,
 # fully-auditable surface for a coarser one, to solve a bloat problem that
@@ -430,4 +448,5 @@ scripts/tcc_migrate_desktop_paths.py
 scripts/tests/test_docs_audit.py
 scripts/tests/test_lint_tcc_desktop_paths.py
 scripts/tests/test_tcc_migrate_desktop_paths.py
+scripts/tests/test_tg_gateway_census.py
 skills/bali-zero-brand/_external-bench-2026-05.md
