@@ -1,0 +1,96 @@
+You are reviewing Slice A8-1 of the Visa Oracle mission: a candidate rule-pack fold
+(seq-23, UNSIGNED, UNACTIVATED) for Bali Zero's immigration decision engine. This is
+ROUND 2 (round 1's codex transcript died mid-run on a reconnect storm before reaching a
+verdict; re-run against the FINAL, post-rebase content below).
+
+CONTEXT: The engine anchors on a signed production RulePack (seq-22, digest
+3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37). This candidate fold
+retires 8 REQUIRE_REVIEW ("human must look at this") rules and replaces them with 11
+HARD_FILTER/EXCLUDE ("named dead end, ask the fact if unknown") rules, modifies 4
+existing HARD_FILTER rules' on_unknown from HUMAN_REVIEW to NEEDS_INPUT, and brings one
+REQUIRE_REVIEW rule (the Second Home Studio redesign) forward byte-identical.
+
+DISPOSITION TABLE (id -> id, scope, code):
+  review.calling-visa -> hf.calling-visa-nationality (GLOBAL) CALLING_VISA_NATIONALITY_NOT_ASSESSED
+  review.citizenship-conflict -> hf.b1.voa-dual-nationality (B1 PRODUCTS, branch-1-of-2 only;
+    branch 2 is subsumed by the GLOBAL calling-visa rule above) VOA_DUAL_NATIONALITY_NOT_ASSESSED
+  review.active-overstay -> hf.active-overstay (GLOBAL) ACTIVE_OVERSTAY_SETTLE_FIRST
+  review.minor-without-guardian -> hf.minor-without-confirmed-sponsor (GLOBAL) MINOR_SPONSOR_NOT_CONFIRMED
+  review.bridging.adverse-history -> hf.bridging.adverse-history (BRIDGING) BRIDGING_ADVERSE_HISTORY_NOT_ASSESSED
+  review.e33.work-rangkap-kegiatan -> hf.e33.employment-not-covered (E33) E33_EMPLOYMENT_NOT_COVERED
+  review.e33g.local-market -> hf.e33g.local-market (E33G) E33G_LOCAL_MARKET_NOT_ALLOWED
+  review.e33g.local-company-ownership -> hf.e33g.local-company-ownership (E33G) E33G_LOCAL_COMPANY_NOT_ALLOWED
+  (new, no predecessor) hf.study.admission-or-sponsor-unconfirmed (STUDY) -- negates
+    el.e30-student-support's two "eq true" conjuncts with an "any(eq false, eq false)";
+    on_unknown NO_EFFECT
+  (new) hf.e33e.retirement-income-below-minimum / hf.e33f.retirement-income-below-minimum
+    (E33E/E33F) -- secondhome.passive_monthly_income_usd < 3000 (bound read from, and
+    asserted equal against, el.e33e.retirement / el.e33f.retirement's own gte bound);
+    on_unknown NO_EFFECT
+  MODIFIED IN PLACE (on_unknown HUMAN_REVIEW -> NEEDS_INPUT, nothing else changes):
+    hf.bridging.offshore, hf.bridging.from-visit-itk, hf.bridging.to-bridging,
+    hf.b1.not-voa-nationality
+  UNCHANGED, byte-identical: review.e33.below-threshold-studio (Second Home Studio, D23)
+
+ANTIBODY CARRIED FORWARD: no HARD_FILTER/EXCLUDE rule (at any stage) may read one of the
+four Second-Home "twin-basis" facts fact-mapper.ts synthesises for the unchosen basis
+(secondhome.bank_deposit_usd, secondhome.bank_deposit_at_state_bank,
+secondhome.bank_deposit_in_own_name, secondhome.qualifying_property_value_usd) — this
+guard is re-run on this fold's own output.
+
+MEASURED RESULTS (already run this round, not proposed):
+  - Payload digest (H23, JCS, on the Prettier-formatted committed file):
+    e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204. Re-running the fold
+    from seq-22 source reproduces the SAME digest (cmp -s against the committed file: raw
+    bytes differ by Prettier whitespace only, parsed JSON is ==).
+  - 62/62 new tests green (test_seq23_pack.py): one test per disposition-table row,
+    guilt+innocence per row, the twin-basis antibody guilt/innocence, the two RETIREMENT
+    bounds-equal guilt/innocence, and the derived inventory (pack_review_rules == 1 [the
+    Studio rule alone], pack_unknown_escalations == 0).
+  - 345/345 green total across test_seq23_pack.py, test_interview_walk_census.py,
+    test_cure_forward_guard.py, test_seq20/21/22_pack.py, and
+    test_review_hold_inventory.py — re-run AFTER rebasing onto origin/main (the census
+    corpus's own 82-walk replay against EXPECTED_OUTCOME_BY_SEQUENCE[23]: ZERO outcome or
+    dead-end violations, measured not assumed — the corpus never exercises the specific
+    facts this fold's 8 replaced rules gate on).
+  - Also fixed in this PR (pre-existing test debt, NOT part of the disposition table):
+    test_every_product_the_candidate_pack_adds_is_named_to_the_applicant and its guilt
+    counterpart (#6489) compared the candidate pack against "the signed pack" as a delta,
+    written when signed==seq-20/21; seq-22's own activation since then put the same nine
+    products in the signed pack's OWN engine-named set too, so the delta assertion became
+    structurally impossible the moment any candidate pack existed above seq-22 — which
+    this PR is the first to create. Rewritten as a direct reachability assertion. Please
+    sanity-check this reasoning too (question 5 below).
+  - Offline replay of the 19 held walks from the live 252-walk B4-2b sweep
+    (2026-09-22) whose review_reasons carry a pack code: on the candidate, NONE are
+    HUMAN_REVIEW_REQUIRED except the 2 Second-Home-Studio walks and the 2 DISCLOSED_*
+    adapter holds (review-gate/criminal_record, review-gate/activity_boundary — both
+    disclosure-layer, untouched by this pack change); edge/nationalities=unsure ->
+    NEEDS_INPUT [person.nationalities] exactly as required. The harness was cross-checked
+    against the SIGNED pack first and reproduces the live report's 19/19 rows exactly
+    before being pointed at the candidate.
+
+QUESTIONS FOR YOUR REVIEW:
+1. Is copying a review rule's `when` verbatim into its HARD_FILTER/EXCLUDE successor,
+   with on_unknown forced to NEEDS_INPUT, a sound transformation given the effect
+   changes from "hold for a human" to "excluded, ask if unknown"? Any asymmetry a
+   HUMAN_REVIEW rule's `when` might rely on that a HARD_FILTER should not carry?
+2. Is taking only "branch 1" of review.citizenship-conflict's two-branch `any` (dropping
+   branch 2 as subsumed by the new calling-visa rule) actually sound, or could branch 2
+   fire in a case branch 1 (via the new calling-visa GLOBAL rule) would not catch?
+3. Any concern with the three no-predecessor rules' `on_unknown: NO_EFFECT` design (an
+   unknown fact for STUDY/RETIREMENT stays entirely with the donor SUPPORT rule's own
+   NEEDS_INPUT, never independently blocking)?
+4. The offline replay shows 8 of the 10 `review-gate/*` walks (previously held on a
+   GLOBAL-reading REQUIRE_REVIEW) now resolve to SUPPORTED_CANDIDATES once
+   `hf.bridging.adverse-history` is scoped to BRIDGING PRODUCTS only, because those
+   walks have non-BRIDGING candidates available. Is narrowing a formerly-blocking hold
+   to a product-scoped one, with the practical effect that a walk can now surface OTHER
+   candidates while BRIDGING alone is excluded, the intended and safe reading of this
+   slice, or does it need an explicit call-out/guard?
+5. Sanity-check the test_interview_walk_census.py fix described above: is treating
+   "seq-21's nine products stay reachable and visible" as a standing invariant (checked
+   directly, not as a delta against whichever pack happens to be signed) the correct fix,
+   or does it lose coverage the original delta-form guard.
+
+Reply with a clear verdict: OK, or CHANGES (list exactly what and why).
