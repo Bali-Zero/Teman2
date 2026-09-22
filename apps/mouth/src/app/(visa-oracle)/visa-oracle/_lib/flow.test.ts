@@ -58,6 +58,32 @@ describe("Slice A6-2 — declared conservative Not sure branches", () => {
   });
 });
 
+describe("Slice A7-M — guardian consent follows a minor birth date", () => {
+  const today = new Date("2026-09-22T12:00:00Z");
+
+  function reachesBirthDate(): FlowState {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no", today);
+    state = answer(state, "holds_stay_permit", "no", today);
+    state = answer(state, "nationalities", "IT", today);
+    return state;
+  }
+
+  it("asks guardian consent for a minor, then continues to category", () => {
+    let state = reachesBirthDate();
+    state = answer(state, "birth_date", "2015-01-01", today);
+    expectQuestion(state, "guardian_consent");
+    state = answer(state, "guardian_consent", "no", today);
+    expectQuestion(state, "category");
+  });
+
+  it("treats the exact eighteenth birthday as an adult", () => {
+    const state = answer(reachesBirthDate(), "birth_date", "2008-09-22", today);
+    expectQuestion(state, "category");
+  });
+});
+
 /** `today` is optional and defaults to undefined, so every existing caller is
  * unchanged. Pass it ONLY on a transition whose next node depends on a date
  * comparison — `shouldAskRenewalPaid` is the one that does. The reducer

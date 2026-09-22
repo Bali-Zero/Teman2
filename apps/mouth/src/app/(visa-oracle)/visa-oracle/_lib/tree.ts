@@ -474,6 +474,23 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.birth_date" },
     notSure: { mode: "human-review", because: "history-not-assumable" },
   },
+  guardian_consent: {
+    id: "guardian_consent",
+    i18nKey: "q.guardian_consent",
+    kind: "branch",
+    group: "identity",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["person.guardian_consent"],
+    },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.guardian_consent" },
+    // A missing guardian is an explicit "no": UNKNOWN would only re-ask it.
+  },
   category: {
     id: "category",
     i18nKey: "q.category",

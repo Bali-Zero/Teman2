@@ -1,103 +1,151 @@
 gear: 2
-task_id: kbli-inspect-error-detail-20260920
-lane: backend-rag
+task_id: vo-a7m-guardian-question
+lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/backend-rag/kbli-inspect-error-detail-20260920
-gate_class: opus
+branch: agent/air-m5/mouth/vo-a7m-guardian-question
+gate_class: none
 l_level: L2
 objective: >-
-  Close the second half of ledger row
-  `kbli-inspect-echoes-the-raw-driver-error-to-the-client` (PENDING-ARMS, opened
-  2026-09-19). The row's own arming step demanded two things, and only one was
-  done: `inspect_kbli`'s catch-all stopped interpolating `str(e)` into the
-  response body and grew a guilt/innocence suite, but the row explicitly warned
-  that "a cure applied to 1-of-N call sites is the W89 time bomb" and named
-  `kbli_notebook_chat.py` as the place to check before closing. Checked in this
-  turn: `chat_kbli`'s catch-all ended
-  `raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}")` —
-  the same leak, on the chat surface the WhatsApp bot and the public explorer
-  talk to, where `e` can come from Postgres (table and column names), Qdrant
-  (collection, host:port) or the model provider (an upstream error body with
-  model ids and account state). Census run in this turn: after this PR both
-  KBLI routers return 0 for the interpolated-detail shape.
+  Slice A7-M (PR 2, mouth + one coupled backend test), MANDATE-vo.md-ratified:
+  the interview now asks the `guardian_consent` question of every minor,
+  closing the residual window Slice A7-B (#7080, merged) opened between the
+  backend fact and a reachable question for it. Built by the codex seat
+  (routing floor D2, gpt-5.6-terra medium, second launch after a stale
+  STEP ZERO check — the first launch correctly refused a B5-2-stale
+  precondition without bypassing its sandbox); the seat's run timed out
+  before writing `CODEX-REPORT-a7-m.md` or updating the backend census pins
+  M5/M7 require, so this finisher re-measured M0-M8 from scratch: ran the
+  coupled backend test (7 reds, all from un-updated pins, none from the
+  shipped logic), regenerated the corpus and the no-path-doors fixture,
+  re-derived and updated every moved census/allowlist/manifest pin by
+  command, ran every M1-M7 guilt on a scratch mutation (restored by `cp`,
+  never `git checkout`), found and cured one spec deviation (the new corpus
+  walk carried three overrides beyond `guardian_consent` that M3 requires as
+  the ONLY difference from its sibling walk — verified empirically that they
+  were not load-bearing for the required verdict, then removed them), found
+  and closed two coverage gaps M3 named but the codex diff left untested
+  (the rewritten review copy and its four-element block had no test at all,
+  so a revert of either was invisible), and rebased onto `origin/main`
+  (the ONE sanctioned rebase, since the branch was stacked on A7-B's
+  pre-squash head — `git rebase --onto origin/main a7c4a05579 HEAD`) to pick
+  up unrelated slices (C2-1 among them) that landed on `main` while the
+  codex seat ran.
 scope:
   - >-
-    apps/backend-rag/backend/app/routers/kbli_notebook_chat.py — the catch-all
-    detail becomes the same stable `"Internal processing error"` the inspect
-    side already returns, and an `except HTTPException: raise` is added above
-    it so the opacity cure cannot absorb a deliberate status raised deeper in
-    the route. The existing `logger.error(..., exc_info=True)` one line above is
-    untouched: it is where the whole string keeps living.
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts,tree.test.ts —
+    one new `guardian_consent` question (FACT boolean, `group: "identity"`,
+    no `notSure`), moving A6-1's no-notSure cardinality 13 -> 14.
   - >-
-    Tests — new `test_kbli_chat_error_opacity.py`, guilt and innocence, built as
-    the sibling of the inspect suite so the pair reads as one fence.
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts,flow.test.ts —
+    the spine asks it only of a minor (`birth_date` < 18 on `today`, exact
+    18th birthday counts as adult, `tree.ts`'s own `parseIsoDateUtc`).
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts — three EN/ID
+    key pairs (`q.guardian_consent`, `.help`, `why.guardian_consent`).
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts,
+    engine-adapter.test.ts — `REVIEW_REASON_COPY.MINOR_GUARDIAN_PRIVACY_
+    REVIEW` rewritten (no longer describes "being a minor", which after
+    A7-B no longer raises the code) and gains its A5-shape four-element
+    entry; the negation scan's closed source list extended with the two new
+    i18n keys (moving the scan's own pin 64 -> 68); the "persetujuan" false
+    positive this surfaces (the per-...-an nominalization of "setuju",
+    keeping the literal stem unlike "menyetujui") allowlisted the same way
+    "dipastikan" already is — the domain term for consent, not the family's
+    reassuring-approval sense; two new tests close a coverage gap the codex
+    diff left open (reverting the copy or deleting the elements block was
+    invisible to the shipped suite).
+  - >-
+    apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts — `birth_date`
+    joins `BRANCH_RELEVANT_FACT_KEYS` and `REPRESENTATIVE_VALUES` (adult,
+    minor), moving the covering-subset cardinality 252 -> 254 and the typed
+    threshold set 3 -> 4.
+  - >-
+    apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts — one new
+    scenario beside the minor walk, SAME facts with `guardian_consent: "no"`
+    only (corpus 115 -> 116); the stale comment on the sibling walk (which
+    claimed to be "the ONE walk whose PUBLIC outcome is a hold" — no longer
+    true once the tree asks the question) rewritten to name the new walk
+    instead.
+  - >-
+    apps/backend-rag/backend/tests/services/visa_engine/
+    test_interview_walk_census.py, test_seq21_pack.py — every moved pin
+    re-derived from a real run: `EXPECTED_OUTCOME` (the minor walk
+    NEEDS_INPUT -> SUPPORTED_CANDIDATES `(C1, E31E)`, measured, never
+    assumed; the new walk HUMAN_REVIEW_REQUIRED on
+    `MINOR_GUARDIAN_PRIVACY_REVIEW`), `PRIVACY_HELD_WALKS` (empty -> the one
+    new label), `WALK_DEAD_END_ALLOWLIST` (the `person.guardian_consent`
+    row cured, table returns to PR-D3's original two rows),
+    `EXPECTED_DEAD_END_FACT_CENSUS` (that fact drops out), the
+    products-never-shown pin (E31E drops out — the observable close of
+    `FACTS_WITHOUT_A_REACHABLE_QUESTION_YET`), the two regenerated fixtures.
 constraints:
   - >-
-    One concern. The same shape survives at 82 sites across 28 OTHER routers
-    (`analytics.py`, `legal_ingest.py`, `memory_vector.py`, `monitoring_rag.py`
-    lead the count) — several of them authenticated, several not. That is a
-    repo-wide lane with its own blast radius and its own guard, declared here
-    and opened as a ledger row rather than swept into a KBLI PR.
+    `_apply_minor_privacy_hold` (backend, PR 1's), `fact-mapper.ts`
+    (mouth, PR 1's — merge-base diff EMPTY, re-verified), `ASK_FOLLOW_UP`,
+    `questionForFact`, `followUpPrerequisitesMet`, `REVIEW_GATE_ITEMS`/
+    `REVIEW_FLAG_MAP`, A6-1's 54/0 pins: all brought UNCHANGED (M8).
   - >-
-    The client-facing string is the inspect side's exact `"Internal processing
-    error"`, not a new wording. Two dialects of the same 500 is how a consumer
-    ends up keying on one of them.
+    Every guilt named in the builder prompt (M1 notSure->55, M2 <=18
+    flip, M3 copy-revert + elements-delete, M4 omit REPRESENTATIVE_VALUES
+    row, M6 closed-list plant, M7 regenerate-without-M2) run on a scratch
+    mutation this turn, restored with `cp` (never `git checkout --`),
+    verified byte-identical after restore.
   - >-
-    No consumer keys on the old text: `grep -rn "AI Engine error"` over the repo
-    (py/ts/tsx/md) returned exactly the one line being deleted.
+    The seat's declared gap (`tsx` CLI `EPERM` in its sandbox, worked
+    around with the `node --import tsx/dist/loader.mjs` fallback) is
+    environmental, not code — reproduced here too, same fallback used
+    throughout this finishing pass.
   - >-
-    Merging this deploys it (apps/backend-rag/**). The live observation in
-    `Bites:` is taken after the deploy, never inferred from the merge.
+    Never `gh pr merge`, never `npm install`/`ci`, never a production
+    request. Rebase declared, not silent — the base moved from A7-B's
+    pre-squash head to `origin/main` with no A7-B content re-applied
+    (`git log --oneline origin/main..HEAD` is exactly this one commit).
 acceptance:
   - text: >-
-      GUILT, the whole reason for the change: WHEN any non-HTTP exception
-      escapes the chat route, the response body SHALL carry none of the failing
-      layer's own words — not the server message, not the schema name, not the
-      host:port, not the upstream account state.
+      The coupled backend test named by M7 is green on the rebased head.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_five_hundred_body_carries_none_of_the_engines_words
+      source .venv/bin/activate && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.
+      ./.venv/bin/pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+      backend/tests/services/visa_engine/test_seq21_pack.py -p no:cacheprovider
   - text: >-
-      OPACITY IS NOT AMNESIA: WHILE the client reads nothing, the operator SHALL
-      still read the whole exception string at ERROR with its traceback.
+      The whole mouth visa-oracle tree and `tsc` are green on the rebased
+      head.
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_the_operator_still_reads_the_whole_string_in_the_log
+      ../../node_modules/.bin/tsc --noEmit -p . && ../../node_modules/.bin/vitest
+      run "src/app/(visa-oracle)" scripts/visa-oracle
   - text: >-
-      INNOCENCE: WHERE an `HTTPException` is raised deeper in the route, it
-      SHALL reach the client with its own status and its own detail instead of
-      being absorbed into the opaque 500.
+      M0: before/after counts re-measured, before on a scratch
+      `git archive origin/main` checkout (node_modules symlinked), after on
+      the rebased head — 1161 -> 1165 tests across the same 44 files (+4:
+      two new flow.test.ts cases, two new engine-adapter.test.ts cases
+      closing the M3 coverage gap).
     probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py::test_an_http_exception_raised_deeper_in_the_route_is_not_absorbed
-  - text: >-
-      INNOCENCE: a malformed body is still a 422 that names the field, and a
-      healthy turn is still a 200 with its answer — the tests above must fail
-      for the ERROR, not for the route.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py -k "malformed or healthy"
-  - text: >-
-      THE PAIR IS ONE FENCE: the inspect suite SHALL still pass unchanged
-      alongside the new one.
-    probe: >-
-      pytest backend/tests/unit/routers/test_kbli_chat_error_opacity.py backend/tests/unit/routers/test_kbli_inspect_error_opacity.py
-  - text: >-
-      NO REGRESSION ACROSS THE KBLI SURFACE.
-    probe: pytest backend/tests -k kbli
-  - text: >-
-      PROOF-OF-ARMED for the ledger row, on origin/main after the merge:
-      `grep -c` for the interpolated-detail shape SHALL return 0 in BOTH KBLI
-      routers.
-    probe: >-
-      grep -c 'detail=f"[^"]*{\(e\|e!s\|err\|str(e)\)'
-      apps/backend-rag/backend/app/routers/kbli_notebook.py
-      apps/backend-rag/backend/app/routers/kbli_notebook_chat.py
+      cd /private/tmp/.../m0-base/apps/mouth && vitest run "src/app/(visa-oracle)" scripts/visa-oracle
 mutation_evidence: >-
-  Run in this turn, not asserted: reverting both halves of the cure in place
-  (detail back to `f"AI Engine error: {e!s}"`, `except HTTPException: raise`
-  removed) turned the new suite into 17 failed / 3 passed. The three survivors
-  are exactly the three innocence tests that must not depend on the cure (log,
-  422, 200). The file was restored from a `cp` backup, never from `git checkout`.
+  M1: added `notSure` to `guardian_consent` -> A6-1's cardinality assertion
+  RED, naming `guardian_consent` missing from the 14-id list. M2: flipped
+  `isMinor`'s `age < 18` to `age <= 18` -> the exact-18th-birthday test RED
+  (expected `category`, got `guardian_consent`). M3a: reverted
+  `REVIEW_REASON_COPY.MINOR_GUARDIAN_PRIVACY_REVIEW` to the shipped "involves
+  a minor" sentence -> the new lead-sentence pin RED (this finisher's own
+  added test — the shipped suite did not catch this before the fix). M3b:
+  deleted `REVIEW_REASON_ELEMENTS.MINOR_GUARDIAN_PRIVACY_REVIEW` -> the new
+  four-element-block test RED, throwing "has no elements" (same gap). M4:
+  removed the `birth_date` row from `REPRESENTATIVE_VALUES` -> the
+  completeness test RED, naming `birth_date` missing. M6: extended the scan's
+  key union (already shipped) then planted "does not change the result" in
+  `q.guardian_consent.help`'s EN string -> the innocence test RED, naming
+  key `q.guardian_consent.help` and family "EN negated effect". M7:
+  temporarily reverted `flow.ts`'s spine branch (birth_date always ->
+  category, skipping M2) and regenerated the corpus on a scratch copy of
+  `flow.ts` -> the minor walk's `person.guardian_consent` byte reverted to
+  `UNKNOWN/NOT_ASKED`, differing from the M2-included corpus this PR ships
+  (determinism-on-bytes proof). All six restored via `cp` from a pre-mutation
+  backup, `cmp -s` confirmed byte-identical before re-running the green
+  suite.
 pii: none
 local_evidence: >-
-  No production read, no client data, no credential touched. Everything in this
-  lane is unit-level: mocked pool, mocked search service, patched LLM gateway.
-  The leak strings in the test are invented fixtures (`kbli_documents_internal_v3`,
-  `qdrant-internal-3.flycast:6333`), not real topology.
+  No production read, no client data, no credential touched. All facts in
+  the new corpus scenario and backend fixture are synthetic (birth date
+  2012-11-11, IT/IT family walk already used by the sibling fixture).

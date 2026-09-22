@@ -1650,6 +1650,54 @@ describe("criminal review elements and unmapped review reasons (slice A5)", () =
     );
   });
 
+  // Slice A7-M (2026-09-22, M3): the shipped sentence described "being a
+  // minor", which after A7-B no longer raises the code — GUILT: revert
+  // `REVIEW_REASON_COPY.MINOR_GUARDIAN_PRIVACY_REVIEW` to that sentence and
+  // this RED names the mismatch.
+  it("pins the rewritten MINOR_GUARDIAN_PRIVACY_REVIEW lead sentence, EN and ID", () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons[0].code = "MINOR_GUARDIAN_PRIVACY_REVIEW";
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
+      throw new Error("unexpected state");
+    expect(outcome.reviewReasons).toHaveLength(1);
+    expect(outcome.reviewReasons[0].message).toEqual({
+      en: "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
+      id: "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
+    });
+    // The rewritten sentence must not still describe "being a minor" as
+    // what raises the code — A7-B narrowed the hold to a declared/unknown
+    // guardian, so `true` no longer holds at all.
+    expect(outcome.reviewReasons[0].message.en).not.toContain(
+      "involves a minor",
+    );
+  });
+
+  // GUILT: delete `REVIEW_REASON_ELEMENTS.MINOR_GUARDIAN_PRIVACY_REVIEW` and
+  // this RED names the code (A5's shape, `engine-adapter.ts`).
+  it("gives MINOR_GUARDIAN_PRIVACY_REVIEW its own four-element block (A5 shape, slice A7-M)", () => {
+    const elements = REVIEW_REASON_ELEMENTS.MINOR_GUARDIAN_PRIVACY_REVIEW;
+    if (!elements)
+      throw new Error("MINOR_GUARDIAN_PRIVACY_REVIEW has no elements");
+    expect(Object.keys(elements)).toHaveLength(4);
+    expect(elements.rule).toEqual({
+      en: "Indonesian personal-data law (UU PDP) does not let someone under 18 consent to this assessment on their own.",
+      id: "Undang-undang pelindungan data pribadi Indonesia (UU PDP) tidak mengizinkan orang berusia di bawah 18 tahun memberikan persetujuan atas penilaian ini sendiri.",
+    });
+    expect(elements.checked).toEqual({
+      en: "That an adult with parental responsibility or legal guardianship is acting for the applicant.",
+      id: "Bahwa orang dewasa dengan tanggung jawab orang tua atau perwalian sah bertindak untuk pemohon.",
+    });
+    expect(elements.prepare).toEqual({
+      en: "A parent or legal guardian who can complete the request together with the applicant.",
+      id: "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
+    });
+    expect(elements.handling).toEqual({
+      en: "A Bali Zero consultant, who confirms the guardian before any application step.",
+      id: "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+    });
+  });
+
   it("keeps the activity-boundary hold as a single sentence without elements", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
     response.decision.review_reasons[0].code =
@@ -2136,6 +2184,17 @@ describe("notices render as named conditions (slice A2)", () => {
     // stem and "menyetujui"/"memastikan" do not), so only "dipastikan"
     // needs an entry here.
     /\bdipastikan\b/gi,
+    // "persetujuan" ("consent") is the per-...-an NOMINALIZATION of
+    // "setuju" — that prefix is not nasal, so it keeps the literal stem
+    // (unlike "menyetujui", which already evades the family per the
+    // comment above) and needs its own entry. Slice A7-M (2026-09-22):
+    // `why.guardian_consent.id` names WHAT is being asked for — legal
+    // consent under UU PDP — not a reassurance that the applicant's case
+    // will be approved. The "setuju" family exists to catch the latter
+    // ("kami sudah setuju", "pasti disetujui"); this is the domain noun
+    // for the exact fact `person.guardian_consent` records, with no
+    // synonym that both avoids the stem and keeps the legal term precise.
+    /\bpersetujuan\b/gi,
   ];
 
   function stripAllowlisted(text: string): string {
@@ -2182,6 +2241,8 @@ describe("notices render as named conditions (slice A2)", () => {
         // longer performs.
         | "q.review_gate.hint"
         | "why.review_gate"
+        | "q.guardian_consent.help"
+        | "why.guardian_consent"
         // Slice A6-3 (DRAFT-SPEC-A6-1.v3.md §3, clause A6-3): all six
         // `assumption.*` keys join the scan — three are rewritten
         // (`in_indonesia`, `work_payer`, `remote_clients`); the other
@@ -2239,6 +2300,8 @@ describe("notices render as named conditions (slice A2)", () => {
       // question hint and its "why" copy are now scanned too.
       "q.review_gate.hint",
       "why.review_gate",
+      "q.guardian_consent.help",
+      "why.guardian_consent",
       // Slice A6-3: all six `assumption.*` keys.
       "assumption.in_indonesia",
       "assumption.permit_expiry",
@@ -2285,6 +2348,11 @@ describe("notices render as named conditions (slice A2)", () => {
     // the `...Object.keys(NOTICE_CONDITION_COPY)` spread above.
     "q.review_gate.hint",
     "why.review_gate",
+    // Slice A7-M (2026-09-22, M6): two more literal names — the new
+    // question's help/why copy joins the scan, moving this pin 64 → 68
+    // (two keys × two languages = four new entries).
+    "q.guardian_consent.help",
+    "why.guardian_consent",
     // Slice A6-3 (DRAFT-SPEC-A6-1.v3.md §3, F12): all six `assumption.*`
     // keys join the scan, moving this pin 38 → 50 (six keys × two
     // languages = twelve new entries).
@@ -2307,9 +2375,9 @@ describe("notices render as named conditions (slice A2)", () => {
     "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes and thirteen assumption keys, both languages (V3, A6-3 + A6-4b)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes, guardian consent and thirteen assumption keys, both languages (V3, A6-3 + A6-4b + A7-M)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(64);
+    expect(entries).toHaveLength(68);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2324,7 +2392,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 64 shipped strings pass the scan clean", () => {
+  it("innocence: all 68 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });

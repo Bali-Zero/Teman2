@@ -64,7 +64,14 @@ describe("countExactWalks — determinism", () => {
     const first = await renderManifest(buildManifest());
     const second = await renderManifest(buildManifest());
     expect(second).toBe(first);
-  }, 30_000);
+    // A7-M (2026-09-22, gate `vo-gate-a7-m` L4): `birth_date` joining
+    // BRANCH_RELEVANT_FACT_KEYS enlarged the enumerated space enough that
+    // this double full-manifest render measured over the prior 30s budget
+    // under CI/local load (never a wall-clock cliff of its own — a rerun of
+    // the same job went green with no code change). 120s gives the render
+    // headroom without hiding a real regression: a genuine correctness
+    // break here still fails on the assertion, not the clock.
+  }, 120_000);
 });
 
 describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
@@ -156,9 +163,17 @@ describe("REPRESENTATIVE_VALUES is complete (GATE-B1-REPORT-6842.md Check 2, MED
     expect(missing).toEqual([]);
   });
 
-  it("typedBranchRelevantQuestionIds finds the three known thresholds (not a stale hardcoded pair)", () => {
+  it("typedBranchRelevantQuestionIds finds the four known thresholds (not a stale hardcoded pair)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` (kind "date") joins
+    // `BRANCH_RELEVANT_FACT_KEYS` — `flow.ts` now branches on it (minor vs
+    // adult) — so it joins this typed set too.
     expect(typedBranchRelevantQuestionIds()).toEqual(
-      ["family_sponsor_nationalities", "permit_expiry", "stay_days"].sort(),
+      [
+        "birth_date",
+        "family_sponsor_nationalities",
+        "permit_expiry",
+        "stay_days",
+      ].sort(),
     );
   });
 
@@ -738,7 +753,9 @@ describe("the memo-key projection is injectable, and a guilt/innocence PAIR prov
     expect(withExplicitDefault.walksTotalExact).toBe(
       withDefault.walksTotalExact,
     );
-  }, 30_000);
+    // Same A7-M/L4 budget bump as the determinism test above — two full
+    // countExactWalks() runs over the now-larger space, same cause.
+  }, 120_000);
 });
 
 describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID (B2''-c C2)", () => {
@@ -751,8 +768,10 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // byte-stable across runs — the B1'' memo-key projection is unaffected).
   const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
 
-  it("cardinality: the covering subset renders exactly 252 walks (pinned literal, re-measured after Slice B5-1's per-edge witnesses)", () => {
-    expect(RENDERED.length).toBe(252);
+  it("cardinality: the covering subset renders exactly 254 walks (pinned literal, re-measured after Slice A7-M's birth_date branch)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` joins `BRANCH_RELEVANT_FACT_KEYS`
+    // with two representative values (adult, minor) — 252 → 254.
+    expect(RENDERED.length).toBe(254);
   });
 
   it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {

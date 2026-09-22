@@ -156,6 +156,8 @@ function assessmentIdFor(label: string): string {
 export const REPRESENTATIVE_VALUES: Readonly<
   Record<string, readonly string[]>
 > = {
+  // Gates `birth_date` — `flow.ts` asks guardian consent below 18.
+  birth_date: ["1990-01-01", "2015-01-01"],
   // Gates `renewal_paid` — `flow.ts`'s `shouldAskRenewalPaid`:
   // `daysRemaining(permit_expiry, today) < 0` (past) vs `>= 0` (current/future).
   // An unparseable/empty value folds into the SAME "unknown" branch as the
@@ -226,6 +228,7 @@ function withRepresentativeDefaults(
  * re-derives this list from the live source and fails loud on drift.
  */
 export const BRANCH_RELEVANT_FACT_KEYS: readonly string[] = [
+  "birth_date",
   "business_activity",
   "category",
   "family_relation",
