@@ -144,7 +144,10 @@ print(report["exit_code"], cov["errors"], cov["deferred"], counts["published"] +
 PY
 }
 
-host_now="${KBLI_OSS_REFRESH_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown)}"
+# Lower-cased before the compare, same idiom as the sibling Mini wrappers
+# (mini-fleet-watch.sh et al.): `mini-pro2` is an exact match, `Mini-Pro2` is
+# the same node (D4).
+host_now="$(printf '%s' "${KBLI_OSS_REFRESH_HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown)}" | tr '[:upper:]' '[:lower:]')"
 log "start host=$host_now expected_host=$EXPECTED_HOST user_key=${OSS_RBA_USER_KEY:+present}"
 
 if [ "${KBLI_OSS_REFRESH_ENABLED:-true}" = "false" ]; then
@@ -198,10 +201,13 @@ else
                         else
                             hb_status="ok"; result="nothing_new"; tier="none"; key=""
                         fi
-                    elif [ "$loop_rc" = "4" ]; then
+                    elif [ "$loop_rc" = "4" ] && [ -z "$report_path" ]; then
                         # rc 4 before any fetch (canonical unreadable / empty population): no report by design.
                         hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
                     else
+                        # A report path WAS named but is missing or won't parse — same bucket as
+                        # "report disagrees with its exit code" above, never the "no report by
+                        # design" warning (D5).
                         hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                     fi
                     ;;
