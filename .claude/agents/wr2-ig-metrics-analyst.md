@@ -43,9 +43,10 @@ Read these sources (parallel):
 2. `~/.claude/projects/-Users-nuzantara/memory/wr2-episodic.db` — SQLite with `carousel_runs` table (richer attributes: hero count, body word count, retry count, critic verdicts).
 3. `~/.claude/skills/bali-zero-brand/past/*/metadata.json` — 64 historical carousels for baseline (no engagement data, but layout family distribution).
 4. **`~/.claude/skills/bali-zero-brand/_empirical-metrics-2026-05-12.md`** (and any newer `_empirical-metrics-YYYY-MM-DD.md`) — manual Antonello-curated top-performer dataset with derived Save/Like and Share/Like ratios. Use as **internal baseline anchors** (the 7 top performers are the gold-standard reference points).
-5. **`~/.claude/skills/bali-zero-brand/_external-bench-YYYY-MM.md`** (most recent) — monthly SOTA external benchmark from `wr2-external-bench` agent. Use as **external baseline** to detect when Bali Zero is "best version of itself" but still below global editorial standard.
+5. **Dashboard import (manual, via `scripts/wr2_ig_dashboard_import.py`)** — `dashboard_`-prefixed keys inside `engagement_metrics` (`dashboard_views`, `dashboard_follower_share`, `dashboard_follows`, `dashboard_profile_visits`, `dashboard_engagement_rate`, `dashboard_share_rate`) plus the `--save-summary` snapshot (account totals, `best_hours`). The Graph API never exposes the per-post follower/non-follower split — this source is the ONLY carrier. When present, prefer `dashboard_views` over `reach` for rankings (validated 2026-09-23: dashboard is the fuller count).
+6. **`~/.claude/skills/bali-zero-brand/_external-bench-YYYY-MM.md`** (most recent) — monthly SOTA external benchmark from `wr2-external-bench` agent. Use as **external baseline** to detect when Bali Zero is "best version of itself" but still below global editorial standard.
 
-Filter: `state IN ('published', 'published_with_edits')` AND `engagement_metrics.likes IS NOT NULL` AND `instagram_published_at >= now - 90 days`.
+Filter: `state IN ('published', 'published_with_edits')` AND (`engagement_metrics.likes IS NOT NULL` OR `engagement_metrics.dashboard_views IS NOT NULL`) AND `instagram_published_at >= now - 90 days`.
 
 **Dual-baseline interpretation (added 2026-05-12)**: every finding must be evaluated against BOTH baselines:
 
@@ -53,6 +54,13 @@ Filter: `state IN ('published', 'published_with_edits')` AND `engagement_metrics
 - External baseline (`_external-bench-*.md`): does this new carousel use a pattern that SOTA editorial brands ALSO use, or are we in a local maximum that SOTA has moved past?
 
 Findings that exceed BOTH baselines = strongest amendment proposals. Findings that exceed only internal = noted but lower-priority. Findings that lag both = identify which baseline gap is biggest and propose closing it.
+
+### Step 1b — Bubble flag + hook ranking (operational, 2026-09-23)
+
+Before Gemini, compute these two deterministic checks with Bash/jq (no LLM needed):
+
+1. **Bubble flag.** Sort published carousels by publish date. If the last ≥3 consecutive posts all have `dashboard_follower_share > 0.80` (a post WITHOUT that key ends the streak — no data is not a bubble), emit a `## Bolla distributiva` section: reach is trapped inside followers — a DISTRIBUTION failure, not a content failure. Remedy pointers: threat/audit hook framing (the only framing that broke the bubble in the Sept 2026 corpus), reels cut-down for reach, comment-bait CTA, 18:00 WITA slot. This flag is operational, NEVER a constitutional amendment, whatever the streak length: it describes distribution, not a carousel attribute, so it never enters the Step 3 amendment funnel.
+2. **Hook ranking.** Rank the window's carousels by `dashboard_follows` and `dashboard_share_rate`; list top 3 hooks verbatim with their numbers. Feed the ranking into the Gemini prompt as known-winners context.
 
 ### Step 2 — Long-context analysis via Gemini
 
