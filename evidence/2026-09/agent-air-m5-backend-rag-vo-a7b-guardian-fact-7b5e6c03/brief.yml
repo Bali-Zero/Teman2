@@ -63,15 +63,26 @@ consumer_map:
     consumers, but pinned literals moved by this PR and re-measured, never
     hand-typed)."
 risks:
-  - "Net lines measured at 522 (fixtures/personas excluded per B9), above the
-    380-440 forecast and the SIZE_GEAR2_THRESHOLD of 400 — the bulk is
-    test_evaluate_endpoint.py's new TestGuardianConsentArms class (183
-    lines) and the cascading census-table updates in
-    test_interview_walk_census.py (127/58) plus the three collateral files
+  - "Rework re-measurement (2026-09-22, after rebasing onto origin/main
+    0027412856): `git diff --numstat $(git merge-base origin/main
+    HEAD)..HEAD | grep -vE 'gold_coverage/(fixtures/walks|personas)/' | awk
+    '{add+=$1; del+=$2} END {print add-del}'` -> net **788** lines
+    (fixtures/personas excluded per B9), **903** all-in without the
+    exclusion. Both numbers moved up from the pre-rework 522/n.a. because
+    the merge-base itself moved forward (0027412856, after #7068/#7094/
+    #7091/#7112) and this rework added its own commits: the L1 dead-branch
+    removal, the L2 isolated UNKNOWN-arm pass-through test (+39), the
+    regenerated OpenAPI pair, and the no-path-doors evidence + exemption
+    restoration (+39/-9 net after the H2 fix). The bulk remains
+    test_evaluate_endpoint.py's TestGuardianConsentArms class plus L2 (222
+    lines total) and the cascading census-table updates in
+    test_interview_walk_census.py (127/58), plus the collateral files
     outside the mandate's named list (test_seq19_pack.py, test_seq21_pack.py,
-    test_evaluation_trace.py) whose pinned literals the same behavioral
-    change legitimately moves. Declared Gear-2 per R-SIZE rather than split
-    — one concern, one wire change, per B9."
+    test_evaluation_trace.py, test_sponsor_type_rollout.py) whose pinned
+    literals the same behavioral change legitimately moves. Already above
+    the 380-440 forecast and SIZE_GEAR2_THRESHOLD=400 at the pre-rework
+    number; still Gear-2 at either re-measured number. Declared Gear-2 per
+    R-SIZE rather than split — one concern, one wire change, per B9."
   - "A rollback here may revert ONLY the adapter's function arms, B4's
     exemptions and the census pins — NEVER the FactPath member, the model
     field, the mapper row or the generated contract: with the mouth already
