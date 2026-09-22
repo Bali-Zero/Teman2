@@ -13,7 +13,9 @@ actually-applied canonical after this PR's own --apply, including the real
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import pathlib
 import sys
 from pathlib import Path
 
@@ -42,6 +44,10 @@ L2_NEW_PER_SKALA = [
 ]
 
 
+_UNSET = object()
+DISPUTED_BLOCK = [{"kategori_risiko": "Tinggi", "skala_usaha": ["Besar"], "parameter": "legacy"}]
+
+
 # --------------------------------------------------------------------- fixtures
 
 
@@ -50,7 +56,7 @@ def _base_record(**overrides) -> dict:
         "kode_kbli_2025": CODE,
         "judul": "Test Quarantine Code",
         "per_skala": [],
-        DISPUTED_KEY: [{"kategori_risiko": "Tinggi", "skala_usaha": ["Besar"], "parameter": "legacy"}],
+        DISPUTED_KEY: copy.deepcopy(DISPUTED_BLOCK),
         "_l2_status": "no_oss_risk",
         "l4_bali": {
             "status": "NON_CLASSIFICABILE", "blocked": False, "confidence": "LOW",
@@ -76,13 +82,15 @@ def _spec_entry(record: dict, *, oss_rows: list | None = None) -> dict:
 
 
 def _adjudication_entry(entry: dict, *, decision="adopt_oss_2025", disputed_key=DISPUTED_KEY,
-                         record_sha256=None, oss_rows_sha256=None, data_note_append="Test note.") -> dict:
+                         record_sha256=None, oss_rows_sha256=None, disputed_sha256=_UNSET,
+                         data_note_append="Test note.") -> dict:
     return {
         "decision": decision,
         "record_sha256": record_sha256 if record_sha256 is not None else entry["record_sha256"],
         "body_sha256": entry["body_sha256"],
         "oss_rows_sha256": oss_rows_sha256 if oss_rows_sha256 is not None else H.sha256_of(entry["oss_rows"]),
         "disputed_key": disputed_key,
+        "disputed_sha256": H.sha256_of(DISPUTED_BLOCK) if disputed_sha256 is _UNSET else disputed_sha256,
         "reason": "test reason",
         "data_note_append": data_note_append,
     }
@@ -127,16 +135,20 @@ def _l2_spec_entry(record: dict, *, new_per_skala: list | None = None) -> dict:
     }
 
 
-def _spec_doc(*entries: tuple[str, dict]) -> dict:
-    return {
+def _spec_doc(*entries: tuple[str, dict], canonical_sha256: str | None = None) -> dict:
+    doc = {
         "_generated_by": "test",
         "_doc": "test",
         "version": "test",
         "fetched": "2026-09-22",
         "source": {},
-        "canonical_sha256": "x",
         "codes": {code: entry for code, entry in entries},
     }
+    # Omitted by default: the whole-file pin is only meaningful on an all-patch
+    # run and would otherwise gate every fixture on the tmp canonical's bytes.
+    if canonical_sha256 is not None:
+        doc["canonical_sha256"] = canonical_sha256
+    return doc
 
 
 def _adjudication_doc(*entries: tuple[str, dict]) -> dict:
@@ -241,17 +253,214 @@ class TestInnocenceQuarantineOwner:
         assert cure.classify_quarantine_owner(cured, CODE, entry, {CODE: adj}) == "noop"
 
     def test_disputed_key_never_read_for_shape_list_or_dict(self):
-        """classify_quarantine_owner only checks the disputed key's PRESENCE,
-        never its shape — a list (most codes) or a dict (20111's real
-        {per_skala, per_skala_legacy}) must both pass identically."""
+        """classify_quarantine_owner pins the disputed key's presence and its
+        CONTENT HASH, but never interprets its shape — a list (most codes) or a
+        dict (20111's real {per_skala, per_skala_legacy}) must both pass
+        identically once their own hash is the adjudicated one."""
         for disputed_value in (
             [{"kategori_risiko": "Tinggi"}],
             {"per_skala": [{"a": 1}], "per_skala_legacy": [{"b": 2}]},
         ):
             rec = _base_record(**{DISPUTED_KEY: disputed_value})
             entry = _spec_entry(rec)
-            adj = _adjudication_entry(entry)
+            adj = _adjudication_entry(entry, disputed_sha256=H.sha256_of(disputed_value))
             assert cure.classify_quarantine_owner(rec, CODE, entry, {CODE: adj}) == "patch"
+
+
+# ----------------------------------------------- council round 2026-09-23 (guilt)
+
+
+class TestCouncilRound:
+    """One guilt test per finding of the 2026-09-23 council (Codex F1-F4,
+    Kimi F1/F2/F3/F6). Each fails on the code as it stood before its fix."""
+
+    def _build(self, tmp_path, *, spec=None, adj=None, records=None):
+        rec, l2rec = _base_record(), _l2_record()
+        q_entry, l2_entry = _spec_entry(rec), _l2_spec_entry(l2rec)
+        spec_doc = spec(q_entry, l2_entry) if spec else _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
+        adj_doc = adj(q_entry) if adj else _adjudication_doc((CODE, _adjudication_entry(q_entry)))
+        dataset_path = _write_dataset(tmp_path, records if records is not None else [rec, l2rec])
+        return (rec, l2rec, dataset_path,
+                _write_json(tmp_path, "spec.json", spec_doc),
+                _write_json(tmp_path, "adj.json", adj_doc))
+
+    def _run(self, paths, *extra):
+        _, _, dataset_path, spec_path, adj_path = paths
+        return cure.main(["--spec", str(spec_path), "--adjudication", str(adj_path),
+                          "--canonical", str(dataset_path), *extra])
+
+    # --- Codex F1: refuse means write nothing, including after the write ---
+
+    def test_set_carrying_per_skala_refuses_before_any_write(self, tmp_path, monkeypatch, capsys):
+        """A `set` that collides with per_skala used to overwrite the pinned
+        rows AFTER they were applied: the canonical was committed and only then
+        did the read-back notice, leaving nine adoptions on disk and exit 2."""
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+
+        def spec(q_entry, l2_entry):
+            l2_entry["set"] = {"_l2_source": coverage.OSS_2025_SOURCE, "per_skala": []}
+            return _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
+
+        paths = self._build(tmp_path, spec=spec)
+        before = paths[2].read_text(encoding="utf-8")
+        assert self._run(paths, "--apply") == 2
+        assert "per_skala" in capsys.readouterr().out
+        assert paths[2].read_text(encoding="utf-8") == before, "a refusal must leave the canonical untouched"
+
+    def test_read_back_mismatch_restores_the_pre_cure_canonical(self, tmp_path, monkeypatch, capsys):
+        """If the bytes on disk disagree with the plan after the write, the
+        canonical is put back — the compiler never leaves a half-cured file."""
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+        paths = self._build(tmp_path)
+        dataset_path = paths[2]
+        before = dataset_path.read_text(encoding="utf-8")
+
+        real_write = cure.H.atomic_write_text
+        state = {"first": True}
+
+        def corrupting_write(path, text):
+            if state["first"] and pathlib.Path(path) == dataset_path:
+                state["first"] = False
+                payload = json.loads(text)
+                for r in payload["data"]:
+                    if r["kode_kbli_2025"] == CODE:
+                        r["per_skala"] = [{"corrupted": True}]
+                return real_write(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+            return real_write(path, text)
+
+        monkeypatch.setattr(cure.H, "atomic_write_text", corrupting_write)
+        assert self._run(paths, "--apply") == 2
+        assert "restored" in capsys.readouterr().out
+        assert dataset_path.read_text(encoding="utf-8") == before
+
+    # --- Codex F2: the record decides whether the declared route is admissible ---
+
+    def test_quarantined_record_relabelled_as_l2_transform_refuses(self, tmp_path, capsys):
+        """Relabelling a quarantined code as l2_transform used to walk past the
+        adjudication gate entirely and, through drop_keys, delete the disputed
+        block — with no adjudication entry for the code at all."""
+        def spec(q_entry, l2_entry):
+            q_entry.update(
+                route="l2_transform",
+                premises={"_l2_source": {"old_sha256": H.sha256_of(None),
+                                          "new_sha256": H.sha256_of(coverage.OSS_2025_SOURCE)}},
+                per_skala=q_entry["oss_rows"],
+                set={"_l2_source": coverage.OSS_2025_SOURCE},
+                drop_keys=["_l2_status", DISPUTED_KEY],
+            )
+            return _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
+
+        paths = self._build(tmp_path, spec=spec, adj=lambda q: _adjudication_doc())
+        assert self._run(paths, "--apply") == 2
+        assert "quarantine_owner" in capsys.readouterr().out
+
+    def test_drop_keys_naming_the_disputed_block_refuses(self, tmp_path, capsys):
+        """The disputed block is the audit trail; no route may drop it."""
+        def spec(q_entry, l2_entry):
+            l2_entry["drop_keys"] = ["_l2_status", "absent_probes", DISPUTED_KEY]
+            return _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
+
+        paths = self._build(tmp_path, spec=spec)
+        assert self._run(paths, "--apply") == 2
+        assert "disputed" in capsys.readouterr().out
+
+    # --- Codex F3: the rows the spec hands over must be pinned too ---
+
+    def test_l2_rows_not_matching_their_premise_hash_refuses(self, tmp_path, capsys):
+        """Another code's rows pasted into an l2 entry, with every pin left
+        intact, used to be applied to the wrong code — the cross-contamination
+        class that quarantined 93191/93193 in the first place."""
+        def spec(q_entry, l2_entry):
+            l2_entry["per_skala"] = copy.deepcopy(q_entry["oss_rows"])  # pins untouched
+            return _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
+
+        paths = self._build(tmp_path, spec=spec)
+        assert self._run(paths, "--apply") == 2
+        assert "premises.per_skala.new_sha256" in capsys.readouterr().out
+
+    # --- Codex F4 / Kimi F1: a failed propagation must be repairable ---
+
+    def test_propagate_failure_says_the_copies_are_stale(self, tmp_path, monkeypatch, capsys):
+        def boom():
+            raise cure.CureError("injected copy failure")
+
+        monkeypatch.setattr(cure, "propagate", boom)
+        paths = self._build(tmp_path)
+        assert self._run(paths, "--apply") == 2
+        out = capsys.readouterr().out
+        assert "canonical is WRITTEN but its consumer copies are NOT" in out
+        assert "re-run with --apply" in out
+
+    def test_apply_on_an_already_cured_canonical_reconciles_the_copies(self, tmp_path, monkeypatch):
+        """The no-op path used to return 0 without ever looking at the copies,
+        so the one run that could heal a failed propagation was the run that
+        skipped it."""
+        calls = []
+        monkeypatch.setattr(cure, "propagate", lambda: calls.append(1))
+        paths = self._build(tmp_path)
+        assert self._run(paths, "--apply") == 0          # first: patch
+        assert self._run(paths, "--apply") == 0          # second: already cured
+        assert len(calls) == 2, "the no-op run must still reconcile"
+        assert self._run(paths) == 0                      # dry-run must NOT
+        assert len(calls) == 2
+
+    # --- Kimi F2: the disputed block's CONTENT, not just its presence ---
+
+    def test_disputed_block_rewritten_post_cure_refuses(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+        paths = self._build(tmp_path)
+        dataset_path = paths[2]
+        assert self._run(paths, "--apply") == 0
+
+        payload = json.loads(dataset_path.read_text(encoding="utf-8"))
+        for r in payload["data"]:
+            if r["kode_kbli_2025"] == CODE:
+                r[DISPUTED_KEY] = [{"kategori_risiko": "REWRITTEN"}]
+        dataset_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        assert self._run(paths, "--apply") == 2
+        assert "audit trail moved" in capsys.readouterr().out
+
+    def test_adjudication_without_a_disputed_pin_refuses(self, tmp_path, capsys):
+        paths = self._build(tmp_path, adj=lambda q: _adjudication_doc(
+            (CODE, _adjudication_entry(q, disputed_sha256=None))))
+        assert self._run(paths, "--apply") == 2
+        assert "disputed_sha256" in capsys.readouterr().out
+
+    # --- Kimi F3: the spec's whole-canonical pin is enforced where it speaks ---
+
+    def test_all_patch_run_refuses_a_wrong_whole_canonical_pin(self, tmp_path, capsys):
+        paths = self._build(tmp_path, spec=lambda q, l2: _spec_doc(
+            (CODE, q), (L2_CODE, l2), canonical_sha256="0" * 64))
+        assert self._run(paths, "--apply") == 2
+        assert "re-derive" in capsys.readouterr().out
+
+    def test_all_patch_run_accepts_the_right_whole_canonical_pin(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+        rec, l2rec = _base_record(), _l2_record()
+        q_entry, l2_entry = _spec_entry(rec), _l2_spec_entry(l2rec)
+        dataset_path = _write_dataset(tmp_path, [rec, l2rec])
+        digest = hashlib.sha256(dataset_path.read_bytes()).hexdigest()
+        spec_path = _write_json(tmp_path, "spec.json",
+                                 _spec_doc((CODE, q_entry), (L2_CODE, l2_entry), canonical_sha256=digest))
+        adj_path = _write_json(tmp_path, "adj.json", _adjudication_doc((CODE, _adjudication_entry(q_entry))))
+        assert cure.main(["--spec", str(spec_path), "--adjudication", str(adj_path),
+                          "--canonical", str(dataset_path), "--apply"]) == 0
+
+    # --- Kimi F6: a refusal must read as a refusal, never as a traceback ---
+
+    def test_a_bad_record_shape_reads_as_a_refusal_not_a_traceback(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+
+        def exploding_derive(record):
+            raise ValueError("l4_bali.blocked is not boolean")
+
+        monkeypatch.setattr(cure.basis, "derive_verdict_state", exploding_derive)
+        paths = self._build(tmp_path)
+        before = paths[2].read_text(encoding="utf-8")
+        assert self._run(paths, "--apply") == 2
+        assert "REFUSED (apply): ValueError" in capsys.readouterr().out
+        assert paths[2].read_text(encoding="utf-8") == before
 
 
 # ------------------------------------------------------------- classify_l2_transform
@@ -414,18 +623,20 @@ class TestRealCatalogue:
     canonical, after THIS PR's own --apply has landed (matches the
     TestRealCatalogue convention in test_cure_pr2b_source_rows_93114_43110.py)."""
 
-    @classmethod
+    @staticmethod
     @pytest.fixture(scope="class")
-    def records(cls):
+    def records():
         payload = json.loads(cure.CANONICAL.read_text(encoding="utf-8"))
         return {r["kode_kbli_2025"]: r for r in payload["data"]}
 
+    @staticmethod
     @pytest.fixture(scope="class")
-    def real_spec(self):
+    def real_spec():
         return json.loads(cure.SPEC_PATH.read_text(encoding="utf-8"))
 
+    @staticmethod
     @pytest.fixture(scope="class")
-    def real_adjudication(self):
+    def real_adjudication():
         return json.loads(cure.ADJUDICATION_PATH.read_text(encoding="utf-8"))["codes"]
 
     def test_all_10_codes_present(self, records):

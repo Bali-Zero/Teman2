@@ -81,6 +81,13 @@ CureError = H.CureError
 L2_TRANSFORM = "l2_transform"
 QUARANTINE_OWNER = "quarantine_owner"
 QUARANTINE_DROP_KEYS = ["_l2_status", "absent_probes"]
+DISPUTED_PREFIX = "per_skala_disputed"
+#: Fields this compiler owns. Anything a spec entry tries to `set` or
+#: `drop` outside this set is refused: the spec is in-repo and reviewed,
+#: but "reviewed" is not an enforcement, and a `set` that collides with
+#: `per_skala` or a `drop_keys` that names the disputed block would let a
+#: spec edit do what neither route is allowed to do.
+WRITABLE_FIELDS = frozenset({"_l2_source", "_l2_status", "absent_probes", "per_skala"})
 
 
 class _ArgParser(argparse.ArgumentParser):
@@ -136,6 +143,17 @@ def classify_quarantine_owner(record: dict, code: str, spec_entry: dict, adjudic
 
     if disputed_key not in record:
         raise CureError(f"{code}: disputed key {disputed_key!r} missing from the live record — refusing an ungated adoption")
+    # Presence alone leaves the post-cure re-run blind to the block's CONTENT:
+    # the audit trail could be silently rewritten and every later run would
+    # still answer "noop". The adjudication pins it.
+    pinned_disputed = adj.get("disputed_sha256")
+    if not pinned_disputed:
+        raise CureError(f"{code}: adjudication carries no disputed_sha256 to pin the audit trail against — refusing")
+    live_disputed = H.sha256_of(record[disputed_key])
+    if live_disputed != pinned_disputed:
+        raise CureError(
+            f"{code}: the disputed block {disputed_key!r} hashes to {live_disputed!r}, not the adjudicated "
+            f"{pinned_disputed!r} — the audit trail moved, refusing")
 
     live_record_sha256 = H.sha256_of(record)
     if live_record_sha256 == spec_record_sha256:
@@ -158,6 +176,20 @@ def classify_quarantine_owner(record: dict, code: str, spec_entry: dict, adjudic
     )
 
 
+def _fence_fields(code: str, item_set: dict, drop_keys: list) -> None:
+    """No spec entry may write `per_skala` through `set` (it collides with the
+    dedicated field and would survive the pin), and no entry may drop a
+    `per_skala_disputed_*` key: the disputed block is the audit trail and this
+    compiler never writes it (the 49213 precedent)."""
+    for key in list(item_set) + list(drop_keys):
+        if str(key).startswith(DISPUTED_PREFIX):
+            raise CureError(f"{code}: spec touches the disputed key {key!r} — the disputed block is never written by this compiler, refusing")
+        if key not in WRITABLE_FIELDS:
+            raise CureError(f"{code}: spec touches {key!r}, outside this compiler's writable fields {sorted(WRITABLE_FIELDS)} — refusing")
+    if "per_skala" in item_set:
+        raise CureError(f"{code}: spec's `set` carries per_skala, which would overwrite the pinned rows after they are applied — refusing")
+
+
 def plan(records: list[dict], spec: dict, adjudication_codes: dict[str, dict], verdicts: dict[str, str]) -> dict[str, Any]:
     by_code = {str(r.get(CODE_FIELD)): r for r in records}
     items: dict[str, Any] = {}
@@ -172,17 +204,33 @@ def plan(records: list[dict], spec: dict, adjudication_codes: dict[str, dict], v
             per_skala = entry.get("per_skala")
             if not isinstance(per_skala, list) or not per_skala:
                 raise CureError(f"{code}: spec's per_skala must be a non-empty list")
+            # The premises gate the RECORD's state; without this the rows the
+            # spec hands over are ungated, so another code's oss_rows can be
+            # pasted into this entry with every pin still matching — the exact
+            # cross-contamination class that quarantined 93191/93193.
+            pinned = (entry.get("premises") or {}).get("per_skala") or {}
+            expected = pinned.get("new_sha256")
+            if not expected:
+                raise CureError(f"{code}: l2_transform carries no premises.per_skala to pin its rows against — refusing")
+            if H.sha256_of(per_skala) != expected:
+                raise CureError(f"{code}: spec's per_skala does not hash to its own premises.per_skala.new_sha256 — refusing (rows swapped or tampered)")
+            item_set = dict(entry.get("set") or {})
+            item_drop = list(entry.get("drop_keys") or [])
+            _fence_fields(code, item_set, item_drop)
             items[code] = {
                 "per_skala": copy.deepcopy(per_skala),
-                "set": dict(entry.get("set") or {}),
-                "drop_keys": list(entry.get("drop_keys") or []),
+                "set": item_set,
+                "drop_keys": item_drop,
             }
         elif route == QUARANTINE_OWNER:
             adj = adjudication_codes[code]
+            item_set = {"_l2_source": coverage.OSS_2025_SOURCE}
+            item_drop = list(QUARANTINE_DROP_KEYS)
+            _fence_fields(code, item_set, item_drop)
             items[code] = {
                 "per_skala": copy.deepcopy(entry["oss_rows"]),
-                "set": {"_l2_source": coverage.OSS_2025_SOURCE},
-                "drop_keys": list(QUARANTINE_DROP_KEYS),
+                "set": item_set,
+                "drop_keys": item_drop,
                 "data_note_append": adj["data_note_append"],
             }
         else:
@@ -223,7 +271,11 @@ def propagate() -> None:
     if check.returncode != 0:
         raise CureError(f"sync_kbli_dataset.sh failed: {check.stderr[-800:]}")
     sidecar = json.loads(SIDECAR.read_text(encoding="utf-8"))
-    sidecar["datasetSha256"] = "sha256:" + hashlib.sha256(CANONICAL.read_bytes()).hexdigest()
+    digest = "sha256:" + hashlib.sha256(CANONICAL.read_bytes()).hexdigest()
+    if sidecar.get("datasetSha256") == digest:
+        print("synced; sidecar already current")
+        return
+    sidecar["datasetSha256"] = digest
     sidecar["lastModified"] = date.today().isoformat()
     SIDECAR.write_text(json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("synced + sidecar updated")
@@ -241,7 +293,11 @@ def main(argv: list[str] | None = None) -> int:
     adjudication_doc = json.loads(args.adjudication.read_text(encoding="utf-8"))
     adjudication_codes = adjudication_doc.get("codes") or {}
 
-    payload, records, original = H.load_dataset(args.canonical)
+    try:
+        payload, records, original = H.load_dataset(args.canonical)
+    except CureError as exc:
+        print(f"REFUSED: {exc}")
+        return 2
     by_code = {str(r.get(CODE_FIELD)): r for r in records}
 
     try:
@@ -251,12 +307,38 @@ def main(argv: list[str] | None = None) -> int:
             if record is None:
                 raise CureError(f"{code}: not in canonical")
             route = entry.get("route")
+            # The spec DECLARES the route; the RECORD decides whether that
+            # declaration is admissible. Without this a spec entry can relabel
+            # a quarantined code as l2_transform and walk past the adjudication
+            # gate entirely (and, through drop_keys, take the disputed block
+            # with it).
+            disputed = sorted(k for k in record if k.startswith(DISPUTED_PREFIX))
+            if disputed and route != QUARANTINE_OWNER:
+                raise CureError(
+                    f"{code}: the live record carries {disputed} but the spec routes it as {route!r} — "
+                    "a quarantined record is adoptable only through the adjudicated quarantine_owner "
+                    "route, refusing")
             if route == L2_TRANSFORM:
+                if "premises" not in entry:
+                    raise CureError(f"{code}: l2_transform entry carries no premises — refusing")
                 verdicts[code] = classify_l2_transform(record, code, entry["premises"])
             elif route == QUARANTINE_OWNER:
                 verdicts[code] = classify_quarantine_owner(record, code, entry, adjudication_codes)
             else:
                 raise CureError(f"{code}: unknown route {route!r}")
+        # The spec advertises canonical_sha256 as pinning "the exact pre-cure
+        # canonical". Enforce it exactly where it is meaningful: a run in which
+        # EVERY code is still pre-cure is a run against the canonical the spec
+        # was derived from, so drift anywhere else in the catalogue means the
+        # spec must be re-derived. Once any code is cured the whole-file hash
+        # has legitimately moved and only the per-record pins can speak.
+        pinned_canonical = spec.get("canonical_sha256")
+        if pinned_canonical and verdicts and set(verdicts.values()) == {"patch"}:
+            live_canonical = hashlib.sha256(args.canonical.read_bytes()).hexdigest()
+            if live_canonical != pinned_canonical:
+                raise CureError(
+                    f"canonical hashes to {live_canonical!r}, not the spec's pinned pre-cure "
+                    f"{pinned_canonical!r} — the catalogue moved under this spec, re-derive it")
         items = plan(records, spec, adjudication_codes, verdicts)
     except CureError as exc:
         print(f"REFUSED: {exc}")
@@ -264,6 +346,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if not items:
         print(f"already cured ({verdicts}) — no-op")
+        if args.apply:
+            # Always reconcile on --apply — propagate() is an idempotent no-op
+            # when everything already agrees. Without this the ONE run that
+            # could heal a killed or failed propagation is the run that skips
+            # the check: the canonical is cured, so every later run classifies
+            # as noop and returns before propagate(), and the copies stay stale
+            # forever (family #2, and populate_bps_ancestors.py's own rule).
+            try:
+                propagate()
+            except CureError as exc:
+                print(f"REFUSED (propagate): {exc}")
+                return 2
         return 0
 
     if not args.apply:
@@ -273,14 +367,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     before = copy.deepcopy(records)
-    for code, item in items.items():
-        apply_item(by_code[code], item)
-
     try:
+        for code, item in items.items():
+            apply_item(by_code[code], item)
         paths = {code: touched_paths(item) for code, item in items.items()}
         H.verify_untouched(before, records, CODE_FIELD, touched_codes=set(items), touched_field_paths=paths)
+        # The in-memory result must already be what the re-read will find.
+        # Checking only AFTER the write is what let a spec whose `set`
+        # collided with per_skala commit nine adoptions and then refuse.
+        for code, item in items.items():
+            if by_code[code]["per_skala"] != item["per_skala"]:
+                raise CureError(
+                    f"{code}: the applied record's per_skala is not the planned one — a spec field "
+                    "overwrote it after the plan, refusing before any write")
     except CureError as exc:
         print(f"REFUSED (untouched_fields): {exc}")
+        return 2
+    except (ValueError, KeyError, TypeError) as exc:
+        print(f"REFUSED (apply): {type(exc).__name__}: {exc}")
         return 2
 
     body = json.dumps(payload, ensure_ascii=False, indent=2)
@@ -290,11 +394,18 @@ def main(argv: list[str] | None = None) -> int:
     fresh = {str(r.get(CODE_FIELD)): r for r in fresh_records}
     for code, item in items.items():
         if fresh[code]["per_skala"] != item["per_skala"]:
-            print(f"WROTE BUT READ BACK WRONG on {code}")
+            # Refuse means write nothing — including after the write.
+            H.atomic_write_text(args.canonical, original)
+            print(f"REFUSED (read-back): wrote but read back wrong on {code} — canonical restored to its pre-cure bytes")
             return 2
 
     print(f"applied and verified on re-read: {sorted(items)}")
-    propagate()
+    try:
+        propagate()
+    except CureError as exc:
+        print(f"REFUSED (propagate): the canonical is WRITTEN but its consumer copies are NOT — {exc}; "
+              "re-run with --apply to repair the copies")
+        return 2
     return 0
 
 
