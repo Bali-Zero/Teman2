@@ -854,9 +854,20 @@ def test_shipped_pardon_registry_validates():
 # ─────────────────────────────────────────────────────────────── pardon growth
 
 
-def test_growth_blocks_before_any_model_call(monkeypatch, tmp_path):
+def test_growth_blocks_before_any_model_call(monkeypatch, tmp_path, authorized_vendor):
+    """The gate-7143 notice: the old corpus (`"x = 1\\n"`) made this assertion
+    vacuous. `worth_asking` was False for that text, so `ask` was already
+    unreachable regardless of where the growth block sits in `main` — moving
+    it AFTER the model call, a real regression of the safety ordering, still
+    left this test green. The corpus here is a `missed_by_grep` guilt case, so
+    `worth_asking` is True and the model path is genuinely reachable (the key
+    is set and the endpoint is authorized via `authorized_vendor`); only the
+    growth block standing above the call keeps `ask` unfired."""
+    case = next(c for c in CASES["guilt"] if c["name"] == "raw_http_post")
+    text = case["content"]
+    assert lint.worth_asking(text), "the probe must be able to reach ask()"
     target = tmp_path / "changed.py"
-    target.write_text("x = 1\n")
+    target.write_text(text)
     monkeypatch.setattr(lint, "in_scope", lambda path: True)
     monkeypatch.setattr(lint, "pardon_grew", lambda ref: ["new/path.py"])
     called: list[int] = []
