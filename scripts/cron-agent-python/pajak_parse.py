@@ -80,7 +80,7 @@ def source_host(url: str) -> str:
     name the host an item actually came from, not the job that fetched it
     (Source 3, `_search_djp_updates`, is a Brave web_search that also
     returns press/tax-consulting sites, not just pajak.go.id). `www.` is
-    stripped because both `intel_lake_router.py`'s `_RULES` (government
+    stripped because both `intel_lake_rules.py`'s `_RULES` (government
     entries like `pajak\\.go\\.id` are matched via `pattern.match`, i.e.
     anchored at the start of the string — `www.pajak.go.id` would not
     match) and `intel_source_whitelist.py`'s `INTEL_SOURCE_WHITELIST` key

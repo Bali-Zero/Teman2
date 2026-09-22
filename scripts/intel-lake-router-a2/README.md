@@ -98,11 +98,15 @@ addressed in the implementation:
 
 Parity between this script's classification and the backend `_classify` is
 enforced by pytest, not an ad-hoc script (2026-09-23 — both now import the
-same `intel_lake_rules.classify`, so parity failing would mean the sibling
-loader picked up a stale file):
+same `intel_lake_rules.classify`). The parity test loads THIS script from
+its repo path, where the sibling candidate in `_RULES_MODULE_CANDIDATES`
+never exists — it cannot catch a stale sibling on Pro; that class of drift
+is covered separately by `TestSiblingLoaderPrecedence`, which builds a
+tmp_path layout with both a sibling and a stale repo-path copy and asserts
+the sibling wins:
 
 ```bash
-cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/intel/test_intel_lake_rules_standalone_parity.py -q
+cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/intel/test_intel_lake_rules_standalone_parity.py
 ```
 
 ## Retire path
@@ -134,7 +138,9 @@ Fly is healthy.
 
 ## Cross-reference
 
-- Backend router code (source of truth for `_RULES`):
+- Rules single source of truth (`_RULES`, NB-INTEL UUIDs, `classify()`):
+  `apps/backend-rag/backend/services/intel/intel_lake_rules.py`
+- Backend router (imports the rules above, subscribes to the EventBus):
   `apps/backend-rag/backend/services/intel/intel_lake_router.py`
 - Schema: `apps/backend-rag/backend/db/migrations_v2/168_intel_lake_schema.sql`
 - Service layer: `apps/backend-rag/backend/services/intel/intel_lake_service.py`
