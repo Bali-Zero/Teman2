@@ -1,0 +1,81 @@
+task_id: oss-refresh-apply
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  The F4 weekly OSS refresh loop (#7136) is live on Mini and its first real
+  runs proposed 10 KBLI codes whose licensing scope OSS now publishes: 8
+  `published` on empty gaps (19206, 20111, 75002, 75009, 93113, 93115, 93193,
+  93195) and 2 `changed` (93114, 93191). The loop never writes the canonical,
+  so nothing applied them. Zero's mandate of 2026-09-23 ("decidete e valutate
+  voi") put the adjudication on the sessions.
+
+  ADJUDICATION (session M5, Opus architect): ADOPT all 10. Basis, measured
+  before deciding: each answer is identity-bound (the scope's Kbli.id equals
+  the uuid asked and every risk row's kode is prefixed by the code); each
+  scope text describes the code's own activity; no scope text is shared with
+  any other code in the batch (sha-compared), which is exactly the
+  cross-contamination class that quarantined 93191/93193 in the first place;
+  and OSS RBA 2025 is the same source the other 1,340 strong licensing codes
+  rest on. 9 of the 10 carry a `per_skala_disputed_pp28_collision` block whose
+  dispute is about PP28-vintage rows — the block stays on the record,
+  untouched, as the audit trail, exactly as the 49213 precedent
+  (cure_restore_per_ancestor.py) left it.
+
+  This PR ships: the loop's own proposal spec, the signed adjudication spec,
+  the compiler that applies them, its tests, the applied canonical (all 6
+  copies via sync + the mouth sidecar), and every census/artifact pin the
+  cure moves. Two codes (93113, 93193) are also carried into the
+  residual-open PMA lots their lot rule now reaches, because
+  apply_residual_open.py refuses reached-but-unlisted by design.
+
+  Gear is 3: L2 blast radius (the canonical dataset every surface reads).
+
+acceptance:
+  - text: >-
+      WHEN the compiler runs on a canonical that still matches the spec's
+      pins, it SHALL write per_skala from the OSS rows, set
+      _l2_source=OSS_RBA_resiko_2025, drop _l2_status/absent_probes and leave
+      the disputed block byte-identical, for all 10 codes.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_apply_oss_refresh.py -q
+  - text: >-
+      IF a record drifted, IF the oss_rows were tampered with, IF a
+      quarantined code has no adjudication entry, or IF the state is partial,
+      the compiler SHALL refuse and write nothing.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/test_apply_oss_refresh.py -q -k "refus or drift or tamper or partial or adjudication"
+  - text: >-
+      WHILE the canonical carries the cure, a re-run SHALL be a no-op and the
+      6 dataset copies SHALL stay in sync.
+    probe: python3 scripts/kbli_filiera/apply_oss_refresh.py; bash scripts/sync_kbli_dataset.sh --check
+  - text: >-
+      AFTER the cure, all 10 codes SHALL classify as sourced_oss_2025, so the
+      licensing axis SHALL read 1350 sourced_oss_2025 / 209 declared_gap / 0
+      sourced_pp28_vintage_pending (from 1340 / 217 / 2).
+    probe: python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py
+  - text: >-
+      WHEN the canonical moves, every pinned census, artifact and test across
+      scripts, backend, mouth and kbli-navigator SHALL be re-emitted or moved
+      by its own generator, never hand-edited, and all SHALL be green.
+    probe: python3 -m pytest scripts/kbli_filiera/tests/ -q -p no:cacheprovider
+  - text: >-
+      AFTER merge, the next weekly Mini run SHALL no longer list those 10
+      codes as published/changed, and its population SHALL be 209.
+    probe: bash infra/launchagents/install_kbli_oss_refresh.sh --kickstart; bash infra/launchagents/install_kbli_oss_refresh.sh --verify
+
+assumptions:
+  - text: >-
+      A record may carry both a real per_skala and a per_skala_disputed_*
+      block: mouth renders the block through KBLIDivergence and the licensing
+      classifier reads per_skala first.
+    status: verified
+    probe: "49213 on origin/main: sourced_oss_2025 with per_skala_disputed_pp28_collision still on the record"
+  - text: >-
+      The frozen REV-4b sample is no longer re-derived, so three of the
+      adopted codes entering tier-1's predicate is a recorded amendment, not
+      a gate failure.
+    status: verified
+    probe: "PR #7156 merged as c4d55a3784; post_registration_candidates in aql-parameters.json"
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

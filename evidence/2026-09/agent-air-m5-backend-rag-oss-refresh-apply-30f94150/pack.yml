@@ -1,0 +1,204 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-23 ("decidete e valutate voi"): the sessions adjudicate the 10
+  codes the F4 refresh loop (#7136) proposed on Mini, and ship the applier the
+  loop deliberately does not have. PENDING-ARMS row
+  kbli-oss-refresh-proposals-have-no-applier.
+
+# One build lane, the repo's own convention (cf. the #7153 pack): the
+# implementer seat is the build lane; the Opus 5 architect that adjudicated
+# the 10 codes is orchestration, and is named on the record it signed
+# (`adjudicated_by` in oss_refresh_adjudication_2026_09_22.json). The two
+# review seats could not also have built — generator is never grader.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: refute-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+  - lane: oss-identity-ground-truth
+    role: ground_truth
+    seat: kimi-code/k3
+    nb: >-
+      KBLI_2025_OSS_GROUND_TRUTH.json — the independent OSS RBA 2025 dump, not
+      an NLM notebook: this diff's ground truth is the government endpoint the
+      canonical is sourced from, and the refuter re-read it per kode instead of
+      trusting the spec.
+    query_hash: >-
+      per-code uuid + ruang-lingkup comparison for all 10 codes; result: 10/10
+      uuids match their kode, 0 scope texts shared between any two codes
+
+what_changed: |
+  The adjudication and the compiler that applies it. `apply_oss_refresh.py`
+  routes each of the 10 codes through one of two gates — `l2_transform`
+  (93114, judged against the spec's four premises) and `quarantine_owner` (the
+  other 9, refused unless the signed adjudication names the code
+  `adopt_oss_2025` and its record/oss_rows/disputed pins all hold). The run is
+  all-or-nothing. Applied canonical + the 5 consumer copies + the mouth
+  sidecar; 93113/93193 carried into the residual-open lots their lot rule now
+  reaches; every census/artifact pin re-emitted by its own generator.
+
+  After the 2026-09-23 council both seats' findings were cured in one round:
+  a `set`/`drop_keys` fence plus a pre-write check so a refusal can never
+  leave a half-cured canonical, and a restore of the pre-cure bytes if the
+  read-back still disagrees (Codex F1); the RECORD, not the spec, decides
+  whether a declared route is admissible, and no route may touch a
+  `per_skala_disputed_*` key (Codex F2); the l2 rows must hash to their own
+  `premises.per_skala.new_sha256`, closing the wrong-code application that
+  every pin otherwise allowed (Codex F3); `--apply` always reconciles, so a
+  killed or failed propagation is repairable instead of permanent, with an
+  idempotent sidecar restamp (Codex F4 = Kimi F1, following
+  populate_bps_ancestors.py's own rule); the adjudication pins the disputed
+  block's CONTENT, so a post-cure re-run cannot answer "noop" over a rewritten
+  audit trail (Kimi F2); the spec's `canonical_sha256` is enforced on the
+  all-patch run, the only run where it speaks (Kimi F3); `load_dataset` and
+  the apply loop can no longer escape as a traceback (Kimi F6); the deprecated
+  class-scoped fixtures are `@staticmethod` (Kimi F7).
+  Tests: 39 in the compiler suite (was 27).
+
+proof: |
+  See receipts. Full kbli_filiera battery green. 11 of 11 mutants killed, each
+  reverting exactly one council fix, source restored byte-identical. The 10
+  codes' `per_skala` are distinct from each other AND unique across the whole
+  canonical, and all 9 disputed blocks are byte-identical to origin/main's —
+  measured, not asserted. Licensing axis 1340/217/2 -> 1350/209/0.
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      F5(i) the v2/v3 emitters declare the v1 calibration artifact SIGNED and
+      NEVER rewritten (scar W88/#9), yet this branch re-emits all three in
+      place to move their pins.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed and deliberately not changed here. Measured: the v1 artifact
+      has been re-emitted in place by at least 8 prior cure PRs already on
+      main (ce660dde01, 6189cd821d, 71f01e508c, 66500c7c3f, 49e6773ff6,
+      eaa5a69cf8, 1c8725d263, 7c977eaf73), so this is the repo's established
+      practice, not something this PR introduces. And the substance is
+      untouched: the key-level diff of batchA-calibration.json is three fields
+      — eligible_population 1340->1350 and two pins. The gold-set digests, the
+      drawn sample, do not move. Whether a signed artifact may carry a moving
+      denominator at all is the owner's doctrine call, not a session's, and it
+      belongs to every one of those 8 PRs equally.
+  - seat: kimi-code/k3
+    objection: >-
+      F5(ii) the `canonical_revision` pin these artifacts carry (12dc6d5359)
+      is not an ancestor of HEAD — a pre-rebase orphan. The audit pin dangles.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed, and structural rather than local: origin/main's own copy pins
+      4f7bf2580f, which `git cat-file -t` reports is not even a valid object.
+      Under squash-merge no branch commit survives, so this field can never
+      resolve post-merge for any emit. Nothing outside the emitters' own tests
+      reads it; the content pin `canonical_sha256` is what consumers validate
+      and it matches. Fixing the field's semantics is its own PR.
+  - seat: kimi-code/k3
+    objection: >-
+      F4 the committed l4bali spec carries an inline-short-array formatting
+      layer the emitter never emits, so a byte-level --check against raw
+      emitter output will always diff.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed and left as is: re-emitted content is exact (verified here —
+      json-load equality against a fresh `--emit`, only array wrapping
+      differs), the formatting has been constant since the file's birth
+      commit, and no --check exists to break. Noted so the next reader does
+      not mistake the wrapping for drift.
+  - seat: claude-opus-5
+    objection: >-
+      apps/kbli-navigator/lib/__tests__/kbli-data.test.ts, whose gap/located
+      pins this PR moves, is executed by nothing.
+    status: CONFIRMED
+    resolution: >-
+      Measured: the package's scripts are dev/build/start only, it has no
+      vitest/jest config, it is not in the root workspaces (root `test` is
+      `npm run test:ci -w apps/mouth`), and no workflow runs it. The pins
+      edited there are inert documentation. Scar family #2 (Esiste != Armato).
+      Arming a runner for that package is its own PR; the same arithmetic is
+      live-enforced by mouth's six equivalent suites, which are green here.
+
+receipts:
+  - claim: "full kbli_filiera battery green after the council cure"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/ -q -p no:cacheprovider"
+    result: "1809 passed, 1 skipped"
+    exit: 0
+    ts: "2026-09-23T03:16:00Z"
+    seat: claude-opus-5
+  - claim: "the compiler suite is 39 tests, 12 of them the council round's own guilt tests"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/test_apply_oss_refresh.py -p no:cacheprovider"
+    result: "39 passed (was 27), 0 warnings"
+    exit: 0
+    ts: "2026-09-23T03:08:00Z"
+    seat: claude-opus-5
+  - claim: "11 of 11 mutants killed, each reverting exactly one council fix; source restored byte-identical"
+    cmd: "per-mutant targeted string revert of apply_oss_refresh.py + pytest of that fix's own test, restored and compared"
+    result: "M-F1-no-preflight-and-no-fence, M-F1-no-restore, M-F2-route-not-gated-by-record, M-F2-disputed-droppable, M-F3-l2-rows-unpinned, M-F4-propagate-uncaught, M-F4-noop-never-reconciles, M-K2-disputed-content-blind, M-K2-no-pin-required, M-K3-whole-canonical-unpinned, M-K6-exceptions-escape — all KILLED; restore verified byte-identical"
+    exit: 0
+    ts: "2026-09-23T03:10:00Z"
+    seat: claude-opus-5
+  - claim: "the licensing axis moves 1340/217/2 -> 1350/209/0"
+    cmd: "python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py"
+    result: "licensing honest 1559/1559 (100.0%) locator-bearing 1350; sourced_oss_2025 1350; declared_gap 209; sourced_pp28_vintage_pending absent"
+    exit: 0
+    ts: "2026-09-23T02:48:00Z"
+    seat: claude-opus-5
+  - claim: "a re-run is a no-op and --apply on an already-cured canonical reconciles without churning any file"
+    cmd: "python3 scripts/kbli_filiera/apply_oss_refresh.py; python3 scripts/kbli_filiera/apply_oss_refresh.py --apply; git status --short -- data/ apps/"
+    result: "already cured (all 10 noop) — no-op / synced; sidecar already current / working tree clean"
+    exit: 0
+    ts: "2026-09-23T03:05:00Z"
+    seat: claude-opus-5
+  - claim: "all 5 consumer copies equal the canonical"
+    cmd: "bash scripts/sync_kbli_dataset.sh --check"
+    result: "All KBLI dataset consumers are in sync with canonical (5 ok)"
+    exit: 0
+    ts: "2026-09-23T02:47:00Z"
+    seat: claude-opus-5
+  - claim: "the 9 disputed blocks are byte-identical to origin/main's, and the 10 per_skala are distinct in the batch AND unique across the whole canonical"
+    cmd: "python3: sha256_of(record[disputed_key]) for origin/main vs HEAD on all 9; sha256_of(per_skala) grouped across all 1559 records"
+    result: "9/9 identical; 0 shared per_skala in the batch; 0 of the 10 shares its per_skala with any other code in the catalogue"
+    exit: 0
+    ts: "2026-09-23T02:46:00Z"
+    seat: claude-opus-5
+  - claim: "every pinned artifact is its generator's own output, not a hand-edit"
+    cmd: "python3 scripts/kbli_filiera/perpres_body_default_relation.py --check-artifact; emit_l4bali_verdict_state_spec.py --emit <tmp> and json-load compare; emit_batch_membership.py --apply --out <tmp> and compare"
+    result: "perpres-locators matches the instrument (1559 codes); l4bali spec semantically identical (array wrapping only); batch-a-members identical except canonical_revision, canonical_sha256 matches"
+    exit: 0
+    ts: "2026-09-23T03:00:00Z"
+    seat: claude-opus-5
+  - claim: "mouth and backend suites that pin the moved counts are green"
+    cmd: "npx vitest run <8 mouth KBLI suites>; python3 -m pytest apps/backend-rag/backend/tests/unit/services/test_kbli_eye.py apps/backend-rag/backend/tests/unit/services/test_kbli_editorial_certification.py -p no:cacheprovider"
+    result: "8 files / 170 tests passed; 32 passed"
+    exit: 0
+    ts: "2026-09-23T02:50:00Z"
+    seat: claude-opus-5
+  - claim: "ruff is clean on everything this diff touches"
+    cmd: "git diff --name-only origin/main...HEAD | grep '\\.py$' | xargs ruff check"
+    result: "only 2 PRE-EXISTING E741 at test_phase0_gate.py:416-417, byte-identical on origin/main; nothing from this diff"
+    exit: 1
+    ts: "2026-09-23T02:49:00Z"
+    seat: claude-opus-5
+  - claim: "the brief's acceptance probes, run literally"
+    cmd: 'python3 -m pytest scripts/kbli_filiera/tests/test_apply_oss_refresh.py -q; python3 -m pytest scripts/kbli_filiera/tests/test_apply_oss_refresh.py -q -k "refus or drift or tamper or partial or adjudication"; python3 scripts/kbli_filiera/apply_oss_refresh.py; bash scripts/sync_kbli_dataset.sh --check; python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py; python3 -m pytest scripts/kbli_filiera/tests/ -q -p no:cacheprovider'
+    result: "39 passed / 20 passed, 19 deselected / already cured (10 noop) / 5 consumers in sync / 1350-209-0 / 1809 passed, 1 skipped. The sixth probe (the Mini weekly re-run) is a POST-MERGE probe and is discharged by the prove-live comment on the PR, not here."
+    exit: 0
+    ts: "2026-09-23T03:17:00Z"
+    seat: claude-opus-5
+
+pii_scan: clean
+pii_scan_note: >-
+  Public KBLI classification and the public OSS RBA endpoint only. No client
+  data, OSINT or credential is read, written or quoted; the spec carries OSS
+  response hashes and scope rows, never a key. Gold-set digests in the
+  calibration artifacts stay opaque sha256 (no plaintext).
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"
