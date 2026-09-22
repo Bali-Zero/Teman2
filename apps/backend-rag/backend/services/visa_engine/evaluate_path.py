@@ -1198,9 +1198,11 @@ MINOR_GUARDIAN_PRIVACY_REVIEW_CODE = "MINOR_GUARDIAN_PRIVACY_REVIEW"
 def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Decision:
     """Apply Privacy Policy V1's non-eligibility guardian safety boundary.
 
-    The public evaluation contract has no guardian-identity/consent fact, so a
-    known minor can never prove that an automated supported outcome is safe.
-    This deterministic adapter may only abstain: it cannot create, retain or
+    The public evaluation contract now carries one guardian-consent
+    assertion (``person.guardian_consent``, Slice A7-B) but still no
+    guardian-identity fact, so a known minor who declares no guardian can
+    never prove that an automated supported outcome is safe. This
+    deterministic adapter may only abstain: it cannot create, retain or
     reorder a candidate. Empty citations are intentional because this is a
     product/privacy workflow control, not a claim of legal visa ineligibility.
     """
@@ -1235,13 +1237,39 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
     if minor_fact.value is not True:
         return decision
 
+    guardian_fact = snapshot.values[FactPath.PERSON_GUARDIAN_CONSENT]
+    if isinstance(guardian_fact, UnknownFact):
+        if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+            return decision
+        missing = tuple(
+            sorted(
+                {*decision.missing_facts, FactPath.PERSON_GUARDIAN_CONSENT},
+                key=lambda path: path.value,
+            )
+        )
+        payload = decision.model_dump(mode="python")
+        payload.update(
+            {
+                "state": "NEEDS_INPUT",
+                "candidates": (),
+                "missing_facts": missing,
+                "review_reasons": (),
+                "no_path_reasons": (),
+                "outage": None,
+                "quotes": (),
+                "decision_integrity": None,
+            }
+        )
+        return Decision.model_validate(payload)
+    if guardian_fact.value is True:
+        return decision
+    if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+        return decision
+
     reason = Reason(
         code=MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
         rule_ids=("system.privacy.minor-guardian-review",),
         source_refs=(),
-    )
-    existing_reasons = (
-        decision.review_reasons if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED else ()
     )
     payload = decision.model_dump(mode="python")
     payload.update(
@@ -1249,7 +1277,7 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
             "state": "HUMAN_REVIEW_REQUIRED",
             "candidates": (),
             "missing_facts": (),
-            "review_reasons": (*existing_reasons, reason),
+            "review_reasons": (reason,),
             "no_path_reasons": (),
             "outage": None,
             "quotes": (),

@@ -1161,19 +1161,37 @@ class TestCensusReplay:
         walks over a 108 -> 111 unasked corpus, none reading any of the ten
         qualification facts and none named in ``_UNASKED_DRIFT_ALLOWLIST``,
         so they answer identically stripped or not: 92 / 15 / 3 / 1 —
-        SUPPORTED_CANDIDATES only, +3, no other row moves."""
+        SUPPORTED_CANDIDATES only, +3, no other row moves.
+
+        Slice A7-B (2026-09-21) moves the fourth column without touching the
+        walk corpus at all: the ONE previously-held row,
+        ``offshore/family/PARENT/spNat=IT/minor``, carries
+        ``person.guardian_consent`` UNKNOWN like every other walk (the fact
+        is brand new — no fixture in this corpus answers it yet), and the
+        adapter's new UnknownFact arm now routes an unheld minor decision to
+        ``NEEDS_INPUT`` naming that fact instead of the adapter's own
+        unconditional ``HUMAN_REVIEW_REQUIRED`` hold. 92 / 15 / 4 / 0 — one
+        row moves from HUMAN_REVIEW_REQUIRED to NEEDS_INPUT, ``held`` is now
+        empty, no candidate anywhere changes."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
         assert census["SUPPORTED_CANDIDATES"] == 92
         assert census["NO_SUPPORTED_PATH"] == 15
-        assert census["NEEDS_INPUT"] == 3
-        assert census["HUMAN_REVIEW_REQUIRED"] == 1
+        assert census["NEEDS_INPUT"] == 4
+        assert census["HUMAN_REVIEW_REQUIRED"] == 0
         held = [
             label
             for label, actual in replayed.items()
             if actual["state"] == "HUMAN_REVIEW_REQUIRED"
         ]
-        assert held == ["offshore/family/PARENT/spNat=IT/minor"]
+        assert held == []
+        needs_input = [
+            label for label, actual in replayed.items() if actual["state"] == "NEEDS_INPUT"
+        ]
+        assert "offshore/family/PARENT/spNat=IT/minor" in needs_input
+        assert replayed["offshore/family/PARENT/spNat=IT/minor"]["missing_facts"] == [
+            "person.guardian_consent"
+        ]
 
     def test_with_the_answers_walks_only_gain_the_nine_products(
         self,

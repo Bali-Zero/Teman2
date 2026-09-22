@@ -1,7 +1,7 @@
 """Tests for ``backend.services.visa_engine.fact_registry``.
 
-Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (60
-entries, 56 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
+Covers: the default catalog is seeded 1:1 with ``enums.FactPath`` (61
+entries, 57 applicant + 4 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
@@ -44,7 +44,7 @@ class TestDefaultCatalogCompleteness:
             assert spec.path is path
 
     def test_catalog_has_exactly_60_entries(self) -> None:
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 60
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
 
     def test_all_paths_matches_fact_path_enum(self) -> None:
         assert DEFAULT_FACT_REGISTRY.all_paths() == frozenset(FactPath)
@@ -122,6 +122,10 @@ class TestValueKind:
         spec = DEFAULT_FACT_REGISTRY.spec(FactPath.WORK_EMPLOYER_IS_INDONESIAN_ENTITY)
         assert spec.kind is FactValueKind.BOOLEAN
 
+    def test_guardian_consent_has_boolean_kind(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_GUARDIAN_CONSENT)
+        assert spec.kind is FactValueKind.BOOLEAN
+
     def test_set_valued_facts_have_string_set_kind(self) -> None:
         spec = DEFAULT_FACT_REGISTRY.spec(FactPath.INTENT_PURPOSES)
         assert spec.kind is FactValueKind.STRING_SET
@@ -137,7 +141,7 @@ class TestRegistryImmutability:
         # must be impossible, not merely type-annotated as read-only.
         with pytest.raises(AttributeError):
             DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 60
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
 
     def test_specs_mapping_cannot_be_item_assigned(self) -> None:
         with pytest.raises(TypeError):
@@ -262,7 +266,7 @@ class TestValueFormatKindConsistency:
         # hotfix's __post_init__ addition must not retroactively break
         # _DEFAULT_SPECS (module import already proves this at collection
         # time; this is the explicit, readable assertion of it).
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 60
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
 
 
 class TestRegistryConstruction:
@@ -294,7 +298,7 @@ class TestRegistryConstruction:
             ]
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
-        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 60
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 61
 
 
 _UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
@@ -519,9 +523,9 @@ class TestCanonicalFactPayload:
         payload = canonical_fact_payload(_applicant_facts({}))
         assert list(payload.keys()) == sorted(payload.keys())
 
-    def test_covers_all_56_applicant_paths(self) -> None:
+    def test_covers_all_57_applicant_paths(self) -> None:
         payload = canonical_fact_payload(_applicant_facts({}))
-        assert len(payload) == 56
+        assert len(payload) == 57
 
     def test_is_json_serializable(self) -> None:
         import json

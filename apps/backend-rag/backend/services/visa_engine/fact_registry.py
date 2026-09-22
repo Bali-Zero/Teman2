@@ -228,8 +228,11 @@ def _spec(
 #: ``investment.investment_amount_usd`` (2026-09-13, PR-D4c-1, contract-only),
 #: plus the TEN seq-21 qualification booleans (2026-09-13, W-VO-S21 — five
 #: ``sponsor.*``, five ``investment.*``; see ``enums.FactPath`` for which
-#: product each one unblocks and why one fact per qualification)
-#: — 60 entries total.
+#: product each one unblocks and why one fact per qualification),
+#: plus ``person.guardian_consent`` (2026-09-21, Slice A7-B — the minor-hold
+#: guardian consent assertion; see ``enums.FactPath`` for why it is not an
+#: identity fact)
+#: — 61 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -250,6 +253,7 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         "marital_status_enum",
         allowed_values=frozenset({"SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"}),
     ),
+    _spec(FactPath.PERSON_GUARDIAN_CONSENT, FactValueKind.BOOLEAN, "boolean"),
     _spec(
         FactPath.IMMIGRATION_CURRENTLY_IN_INDONESIA,
         FactValueKind.BOOLEAN,

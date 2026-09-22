@@ -136,7 +136,11 @@ class TestSponsorTypeRolloutDefault:
         its default is removed, this test goes red for that field and is
         the thing that tells whoever removed it the follow-up is complete:
         drop that field from the expected set (and, once the set is empty,
-        delete this test along with the 40-key test above).
+        delete this test along with the 40-key test above). It widened to
+        sixteen on 2026-09-21 (Slice A7-B): ``person_guardian_consent``, the
+        minor-hold guardian consent assertion whose question ships in a
+        following lane (mouth ``tree.ts``) — see
+        ``TestFactVocabularyExtensionRolloutDefault0921``.
         """
         optional = {
             name
@@ -160,6 +164,8 @@ class TestSponsorTypeRolloutDefault:
             "investment_foreign_branch_or_subsidiary",
             "investment_ikn_subsidiary",
             "investment_meets_published_threshold",
+            # Slice A7-B, 2026-09-21.
+            "person_guardian_consent",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "
@@ -324,6 +330,69 @@ class TestFactVocabularyExtensionRolloutDefault0824:
     def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
         body = _all_unknown_facts()
         body["immigration.renewal_paidx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+
+class TestFactVocabularyExtensionRolloutDefault0921:
+    """Same mechanism again, for the one fact Slice A7-B (2026-09-21) added:
+    ``person.guardian_consent`` (boolean — the minor-hold guardian consent
+    assertion ``evaluate_path._apply_minor_privacy_hold``'s third arm reads;
+    see ``enums.FactPath`` for why this is a consent assertion and never an
+    identity fact). Wire-compatibility requirement is identical to the prior
+    sets: "a request that omits the new fact must still work, yielding
+    UNKNOWN".
+    """
+
+    _WIRE_KEY = "person.guardian_consent"
+
+    def test_a_body_omitting_guardian_consent_still_validates(self) -> None:
+        body = _all_unknown_facts()
+        del body[self._WIRE_KEY]
+        assert self._WIRE_KEY not in body
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert isinstance(facts.person_guardian_consent, M.UnknownFact)
+        assert facts.person_guardian_consent.status == "UNKNOWN"
+        assert facts.person_guardian_consent.reason == enums.UnknownReason.NOT_ASKED
+
+    def test_the_default_asserts_unknown_and_never_a_value(self) -> None:
+        assert isinstance(M._GUARDIAN_CONSENT_ROLLOUT_DEFAULT, M.UnknownFact)
+        assert M._GUARDIAN_CONSENT_ROLLOUT_DEFAULT.status == "UNKNOWN"
+        assert not hasattr(M._GUARDIAN_CONSENT_ROLLOUT_DEFAULT, "value")
+
+    def test_a_supplied_true_value_is_honoured_and_not_clobbered(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": True}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.person_guardian_consent.status == "KNOWN"
+        assert facts.person_guardian_consent.value is True
+
+    def test_a_supplied_false_value_is_honoured_and_not_clobbered(self) -> None:
+        """False is a real, meaningful answer here (no guardian declared) —
+        not a state that collapses into UNKNOWN."""
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": False}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.person_guardian_consent.status == "KNOWN"
+        assert facts.person_guardian_consent.value is False
+
+    def test_boolean_type_is_still_enforced_on_a_supplied_value(self) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": "yes"}  # a string, not a bool
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_extra_forbidden_still_bites_for_this_field_too(self) -> None:
+        body = _all_unknown_facts()
+        body["person.guardian_consentx"] = dict(_UNKNOWN)
 
         with pytest.raises(ValidationError):
             M.ApplicantFactsData.model_validate(body)

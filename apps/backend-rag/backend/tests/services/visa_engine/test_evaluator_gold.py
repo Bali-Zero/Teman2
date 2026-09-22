@@ -349,20 +349,38 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         rationale="A disclosed active overstay must be reviewed before recommending a route.",
     ),
     5: ProductionReplayExpectation(
+        # Re-derived 2026-09-21 (Slice A7-B, OD-4b re-ruled): the
+        # ``person.guardian_consent`` adapter now PASSES THROUGH an
+        # already-``HUMAN_REVIEW_REQUIRED`` decision untouched, replicating
+        # ``:1213``'s existing pass-through, instead of appending its own
+        # ``MINOR_GUARDIAN_PRIVACY_REVIEW`` reason onto the rule pack's own
+        # ``MINOR_WITHOUT_CONFIRMED_GUARDIAN`` hold. This persona's facts
+        # never answer the new fact (rollout-default UNKNOWN), so the
+        # RULE-level hold survives alone. Same legal outcome (public
+        # recommendation withheld), narrower reason set.
         state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("MINOR_WITHOUT_CONFIRMED_GUARDIAN", "MINOR_GUARDIAN_PRIVACY_REVIEW"),
+        review_codes=("MINOR_WITHOUT_CONFIRMED_GUARDIAN",),
         legal_citations=(
             "Kepmen M.IP-08.GR.01.01/2025 - family visa classifications",
         ),
         rationale="A minor without a confirmed guardian cannot receive a public recommendation.",
     ),
     6: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("MINOR_GUARDIAN_PRIVACY_REVIEW",),
+        # Re-derived 2026-09-21 (Slice A7-B, OD-4b re-ruled): "the public
+        # boundary holds every minor for review" was the pre-A7-B reading —
+        # OD-4b narrows it to "holds a minor who DECLARES no guardian
+        # consent"; a minor whose consent is merely unasked/UNKNOWN (this
+        # persona's case — the fact postdates this fixture) now gets
+        # NEEDS_INPUT naming the fact, not an unconditional hold.
+        state=DecisionState.NEEDS_INPUT,
+        missing=("person.guardian_consent",),
         legal_citations=(
             "Kepmen M.IP-08.GR.01.01/2025 - family visa classifications",
         ),
-        rationale="The family route is plausible, but the public boundary holds every minor for review.",
+        rationale=(
+            "The family route is plausible; the public boundary now asks for "
+            "guardian consent instead of holding every minor outright."
+        ),
     ),
     7: ProductionReplayExpectation(
         state=DecisionState.SUPPORTED_CANDIDATES,
