@@ -8,11 +8,14 @@ PENDING-ARMS `intel-lake-pro-fallback-router-rules-drift`). These tests load
 the standalone script by path (as the real cron does) and assert:
 
 1. its loaded rules module classifies a real-world corpus identically to
-   the backend `_classify`/`classify`.
+   the backend `_classify`/`classify`, including a mixed-case/whitespace
+   host and (via `IntelLakeRouter._classify`) the Fly router's own path.
 2. `route_batch` actually threads `title`/`canonical_url` through to
    `classify` — a regression to domain-only matching changes the outcome
-   for a press subdomain with a regulatory-keyword title.
-3. the script no longer references the retired JSON rules file.
+   for a press subdomain with a regulatory-keyword title — and its SELECT
+   literally projects those two columns.
+3. the loader picks a sibling `intel_lake_rules.py` over the repo-relative
+   fallback when both exist (the Pro-deploy layout).
 """
 
 from __future__ import annotations
@@ -37,21 +40,25 @@ _STANDALONE_PATH = (
 )
 
 
-def _load_standalone() -> Any:
+def _load_standalone(
+    path: Path = _STANDALONE_PATH,
+    module_name: str = "intel_lake_router_cron_standalone",
+) -> Any:
     """Import the standalone script by path, exactly as launchd's cron does.
 
     asyncpg is imported at module top level; stub it if unavailable so this
     test does not require the Postgres driver to check pure classification
-    logic (route_batch tests below supply a fake pool instead).
+    logic (route_batch tests below supply a fake pool instead). `path` and
+    `module_name` are overridable so TestSiblingLoaderPrecedence (below) can
+    load a COPY of this script from a tmp_path layout without colliding with
+    the real one in sys.modules.
     """
     if "asyncpg" not in sys.modules:
         try:
             import asyncpg  # noqa: F401
         except ImportError:
             sys.modules["asyncpg"] = types.ModuleType("asyncpg")
-    spec = importlib.util.spec_from_file_location(
-        "intel_lake_router_cron_standalone", _STANDALONE_PATH
-    )
+    spec = importlib.util.spec_from_file_location(module_name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -77,6 +84,10 @@ _CORPUS: list[tuple[str, str | None, str | None, str]] = [
     ("probe-sandbox.example.test", None, None, "nb-intel"),
     ("ddtc.co.id.example.com", None, None, "needs_review"),  # must NOT be tax
     ("totally-unknown-host.example", None, None, "needs_review"),
+    # M4: mixed case + surrounding whitespace — classify() must
+    # `.strip().lower()` before matching, or this falls through to
+    # needs_review (no `_RULES` pattern is anchored on whitespace/uppercase).
+    ("  PAJAK.go.ID  ", None, None, "nb-intel"),
 ]
 
 
@@ -122,6 +133,14 @@ class _FakeConn:
         self.updates: list[tuple[Any, ...]] = []
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        # M1 pin: a regression to `SELECT id, source_domain` (dropping the
+        # content-gate columns) crashes every real tick with a KeyError on
+        # row["title"] — but only once `route_batch` actually reads the row,
+        # after this fetch() already returned. Assert on the query text
+        # itself so that regression is caught here, at the SQL, not by
+        # accident downstream.
+        assert "title" in query, "route_batch's SELECT must project title"
+        assert "canonical_url" in query, "route_batch's SELECT must project canonical_url"
         return self._rows
 
     def transaction(self) -> Any:
@@ -184,3 +203,44 @@ class TestRouteBatchThreadsContentGate:
         statuses = {u[0]: u[1] for u in pool.conn.updates}
         assert statuses["11111111-1111-1111-1111-111111111111"] == "nb-intel"
         assert statuses["22222222-2222-2222-2222-222222222222"] == "blog"
+
+
+class TestSiblingLoaderPrecedence:
+    """M6 pin: the sibling candidate in `_RULES_MODULE_CANDIDATES` must win
+    over the repo-relative fallback when BOTH exist.
+
+    In the real repo checkout only the fallback candidate is ever populated
+    (no sibling `intel_lake_rules.py` lives next to the script), so no
+    existing test distinguishes "loader tries the sibling first" from
+    "loader only knows the fallback path" — removing the sibling candidate
+    entirely changes nothing THERE. This test builds a standalone
+    Pro-deploy-like layout under `tmp_path`: a sibling copy AND a stale
+    repo-path copy with different `classify()` stubs, and asserts the
+    sibling one is the one actually loaded.
+    """
+
+    def test_sibling_wins_over_stale_repo_copy(self, tmp_path: Path) -> None:
+        script_dir = tmp_path / "scripts" / "intel-lake-router-a2"
+        script_dir.mkdir(parents=True)
+        script_copy = script_dir / "intel-lake-router-cron-standalone.py"
+        script_copy.write_text(_STANDALONE_PATH.read_text())
+
+        (script_dir / "intel_lake_rules.py").write_text(
+            "def classify(source_domain=None, title=None, canonical_url=None):\n"
+            "    return {'status': 'SIBLING', 'targets': {}, 'rule': 'sibling_stub'}\n"
+        )
+
+        repo_rules_dir = (
+            tmp_path / "apps" / "backend-rag" / "backend" / "services" / "intel"
+        )
+        repo_rules_dir.mkdir(parents=True)
+        (repo_rules_dir / "intel_lake_rules.py").write_text(
+            "def classify(source_domain=None, title=None, canonical_url=None):\n"
+            "    return {'status': 'STALE_REPO', 'targets': {}, 'rule': 'stale_repo_stub'}\n"
+        )
+
+        standalone_copy = _load_standalone(
+            script_copy, module_name="intel_lake_router_cron_standalone_tmp"
+        )
+        rules = standalone_copy._load_rules_module()
+        assert rules.classify("anything")["status"] == "SIBLING"
