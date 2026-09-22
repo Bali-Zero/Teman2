@@ -1,13 +1,14 @@
-gear: 3
-base_sha: b8826f4494d0f5af4e031eaf5fb230ef1d532e63 # pragma: allowlist secret
+gear: 2
+base_sha: c379b226b65e6a688ad792c223dc8acb0639218b # pragma: allowlist secret
 objective: >-
   Carry the manual Instagram Professional-dashboard export (.xlsx) into the
   WR2 queue's engagement_metrics under dashboard_*-prefixed keys, so the
   wr2-ig-metrics-analyst can read the per-post follower/non-follower split,
   follows, profile visits and per-viewer rates that the Graph API never
   exposes, and make that data durable against the scraper, the other queue
-  writers and the M5 pull mirror. Gear 3 because the floor is 3 (the path
-  term: .github/workflows/wr2-queue-tests.yml gains the two test files).
+  writers and the M5 pull mirror. Gear 2: the size term floors this diff at
+  2 and no hot-zone path is touched (wiring the tests into the
+  wr2-queue-tests workflow is a separate Gear-3 follow-up).
 constraints:
   - >-
     The importer writes only dashboard_* keys and never touches scraper keys
@@ -64,9 +65,9 @@ mutation_evidence: >-
 pii: none
 local_evidence: >-
   python3 -m pytest scripts/tests/test_wr2_ig_dashboard_import.py
-  scripts/tests/test_wr2_ig_metrics_scraper.py -q -> 44 passed; the full
-  wr2-queue-tests battery as CI runs it (PYTHONPATH=apps/backend-rag) -> 780
-  passed; ruff check on the four .py files -> All checks passed. On a copy
+  scripts/tests/test_wr2_ig_metrics_scraper.py -q -> 44 passed; the
+  wr2-queue-tests battery with these two files added, run locally
+  (PYTHONPATH=apps/backend-rag) -> 780 passed; ruff check on the four .py files -> All checks passed. On a copy
   of the M5 queue mirror, the real 90-day export imported with
   matched=4, rates present on 4/4 items, no missing columns. Three fresh
   adversarial gates (Opus 5.5, fresh context each): BLOCK, then BLOCK, then
