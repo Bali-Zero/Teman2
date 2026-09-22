@@ -43,7 +43,7 @@ today produces exactly these 252 requests, which is what G2 asks.
 | fact | value |
 |---|---|
 | `stopped_reason` | `completed` |
-| `requests_used_this_run` / `requests_used_total` | 252 / 252 |
+| `requests_used_this_run` / `requests_used_total` | 252 / 253 (B4-2b's own single-walk re-sweep adds 1: `requests_used_total 252 → 253`) |
 | `max_requests` / `rate_per_minute` | 252 / 25.0 |
 | window | `2026-09-22T07:27:31.969445+00:00` → `2026-09-22T07:37:38.783180+00:00` (10m06.8s) |
 | `health.start.build_sha` | `514151cb7f4a5f26c20b0fbb767ce4bcc96a4bab`, HTTP 200 |
@@ -69,11 +69,15 @@ B4's own Declared limits on what edge coverage does/does not prove still apply.
 | verdict | count |
 |---|---|
 | SUPPORTED_CANDIDATES | 172 |
-| HUMAN_REVIEW_REQUIRED | 42 |
+| HUMAN_REVIEW_REQUIRED | 43 |
 | NO_SUPPORTED_PATH | 31 |
 | NEEDS_INPUT | 6 |
-| TEMPORARILY_UNAVAILABLE | 1 |
+| TEMPORARILY_UNAVAILABLE | 0 |
 | **total** | **252** |
+
+**B4-2b re-sweep 2026-09-22T12:01Z, one request:** `review-gate/blacklist` re-POSTed alone
+(TEMPORARILY_UNAVAILABLE 1 → 0, HUMAN_REVIEW_REQUIRED 42 → 43) — see Unexplained observation
+below.
 
 ## `review_reasons` / `no_path_reasons` / notices (252 walks)
 
@@ -216,8 +220,10 @@ could name it, because the manifest's own schema does not carry that fact path a
 **Two gone labels** (in B4, absent from B4-2): `edge/application_channel=ONSHORE_CONVERSION`,
 `edge/wants_onshore_conversion=no`.
 
-**7 of the 251 shared labels moved state.** 6 are the A6-2 conservative-default effect; 1 is
-unrelated and unexplained (named separately below).
+**6 of the 251 shared labels moved state, all the A6-2 conservative-default effect.**
+`review-gate/blacklist` is no longer a moved row after the B4-2b re-sweep (see Unexplained
+observation below): it is `HUMAN_REVIEW_REQUIRED` via `BRIDGING_ADVERSE_HISTORY` in both B4 and
+B4-2.
 
 | label | B4 state | B4-2 state | cause |
 |---|---|---|---|
@@ -227,7 +233,6 @@ unrelated and unexplained (named separately below).
 | `edge/secondhome_state_bank=unsure` | NEEDS_INPUT | NO_SUPPORTED_PATH (`AGE_BELOW_55`) | **A6-2** default |
 | `edge/study_admission_confirmed=unsure` | NEEDS_INPUT | NO_SUPPORTED_PATH (`LEVEL_BAND_DIKTI`) | **A6-2** default |
 | `edge/study_sponsor_confirmed=unsure` | NEEDS_INPUT | NO_SUPPORTED_PATH (`LEVEL_BAND_DIKTI`) | **A6-2** default |
-| `review-gate/blacklist` | HUMAN_REVIEW_REQUIRED (`BRIDGING_ADVERSE_HISTORY`) | TEMPORARILY_UNAVAILABLE | **unexplained** — see below |
 
 `edge/secondhome_passive_income_usd=unsure` is the 7th A6-2 payload delta named in the
 conductor's record; it did **not** move state (`NO_SUPPORTED_PATH` in both B4 and B4-2) —
@@ -336,6 +341,20 @@ during the sweep's own window or something that would reproduce on a second live
 named here as an open, unresolved observation, not smoothed into "expected" and not folded into
 the A6-2 explanation above.
 
+**B4-2b re-sweep (2026-09-22T12:01:10Z, single walk, runner at `0b636b5867` — B4-3, the
+outage-recording slice):** `review-gate/blacklist` re-POSTed alone, one request
+(`requests_used_this_run=1`, `requests_used_total 252 → 253`). The row now reads
+`engine_state=HUMAN_REVIEW_REQUIRED`, HTTP 200, latency 2715.29 ms, `rule_pack` sequence 22
+(`916915d8-1c58-508d-aff7-742a3c012df7`, version `2026.9.16`), `reason_codes.review_reasons
+["BRIDGING_ADVERSE_HISTORY"]`, `reason_codes.notices ["DISCLOSED_BLACKLIST_ENTRY_CONDITION"]`,
+and — the first row in this report to carry the key at all (1/252 rows) — **`outage: null`**.
+The resumed report keeps `report_version 2` with mixed rows (251 written before B4-3 landed,
+without the key; 1 written after, with it) exactly as the B4-3 CHANGELOG comment declares for a
+version bump read against an older-shaped report. The 07:37Z `TEMPORARILY_UNAVAILABLE`
+occurrence recorded above **stays transient and unexplained** — this re-sweep did not reproduce
+it and cannot say what caused it — but the runner that would observe a second occurrence now
+records `outage` verbatim, so a repeat would name a cause where this one could not.
+
 ## Context: no rule pack in production (020/021/022) reads `process.application_channel`
 
 ```
@@ -401,11 +420,14 @@ observation above is a new, unresolved item this sweep introduces that B4 did no
 ## Files
 
 - `prove-live-b4-2-full-sweep-report-20260922.json` — the 252-walk report (this README's
-  primary source), sha256 `20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e`,
-  printed by the `sha256sum` command below. The "B3 v3 U9 source-report anchor" designation is
-  the ratified `### Slice B3 v3` text in `MANDATE-vo.md` naming THIS report as that anchor — a
-  provenance label from the mandate record, not a value derivable from the JSON itself; the
-  hash next to it is independently computed here, not copied from that record.
+  primary source), sha256 `49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9`
+  (post-B4-2b: the `review-gate/blacklist` row re-swept, `outage` key added, `requests_used_total
+  252 → 253`; the prior sha `20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e`
+  was the pre-B4-2b file), printed by the `sha256sum` command below. The "B3 v3 U9 source-report
+  anchor" designation is the ratified `### Slice B3 v3` text in `MANDATE-vo.md` naming THIS
+  report as that anchor — a provenance label from the mandate record, not a value derivable from
+  the JSON itself; the hash next to it is independently computed here, not copied from that
+  record. B3 v3's U9 re-pins to this B4-2b sha (conductor record 2026-09-22T12:02:13Z).
 - `prove-live-b52-manifest-raw-main-1c6d2240-20260922.json` — the manifest the sweep ran
   against (post-A6-2, post-B5-2, emitted from merge commit `1c6d2240`, 252 walks,
   `sha256 9de8c1bf…708d` per the conductor's record).
@@ -571,4 +593,17 @@ grep and the 56-distinct-fact-path count; the B4-vs-B4-2 blacklist comparison (B
 `BRIDGING_ADVERSE_HISTORY`, independent of the `disclosed_review_flags` state in either
 manifest); and the fail-closed `TEMPORARILY_UNAVAILABLE` state's own definition in
 `enums.py`/`evaluate_path.py`.
+
+### B4-2b addendum (2026-09-22, no fresh codex pass)
+
+The conductor's ruling (`MANDATE-vo.md`, "B4-2b single-walk re-sweep DONE", 2026-09-22T12:02:13Z)
+re-swept the single `review-gate/blacklist` row with the B4-3-capable runner and directed a
+Sonnet builder to re-derive the README delta from the patched JSON. **This addendum is not a
+second codex `exec` pass** — none ran against this delta — the check here is the conductor's own
+re-derivation plus this builder's independent re-derivation of the same five numbers (verdict
+distribution, moved-rows count, `outage` row, report sha256, `requests_used_total`), both against
+the committed JSON, both printed in the PR body's proof fences: distribution
+172/43/31/6/0, moved rows 6 (not 7), `outage: null` on 1/252 rows, sha256
+`49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9`, `requests_used_total 253`.
+No new claim in this addendum's scope is uncorroborated by a command in the PR body.
 

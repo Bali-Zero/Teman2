@@ -1,34 +1,33 @@
 {
-  "finished_at": "2026-09-22T07:37:38.783180+00:00",
+  "finished_at": "2026-09-22T12:01:10.480307+00:00",
   "health": {
     "end": {
-      "build_sha": "514151cb7f4a5f26c20b0fbb767ce4bcc96a4bab",
+      "build_sha": "0b636b5867f7325f6158e8c75ee0076c15f15060",
       "http_status": 200
     },
     "probes_outside_budget": 2,
     "start": {
-      "build_sha": "514151cb7f4a5f26c20b0fbb767ce4bcc96a4bab",
+      "build_sha": "0b636b5867f7325f6158e8c75ee0076c15f15060",
       "http_status": 200
     }
   },
   "manifest_path": "../../research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b52-manifest-raw-main-1c6d2240-20260922.json",
   "manifest_sha256": "cac14db834bee20184126b5cb9267c1255db8482e3510672ab25e36296125de7",
   "manifest_walk_count": 252,
-  "max_consecutive_harness_reds": 3,
-  "max_requests": 252,
+  "max_consecutive_harness_reds": 1,
+  "max_requests": 1,
   "rate_per_minute": 25.0,
   "report_version": 2,
-  "requests_used_this_run": 252,
-  "requests_used_total": 252,
+  "requests_used_this_run": 1,
+  "requests_used_total": 253,
   "started_at": "2026-09-22T07:27:31.969445+00:00",
   "stopped_reason": "completed",
   "summary": {
     "engine_verdicts": {
-      "HUMAN_REVIEW_REQUIRED": 42,
+      "HUMAN_REVIEW_REQUIRED": 43,
       "NEEDS_INPUT": 6,
       "NO_SUPPORTED_PATH": 31,
-      "SUPPORTED_CANDIDATES": 172,
-      "TEMPORARILY_UNAVAILABLE": 1
+      "SUPPORTED_CANDIDATES": 172
     },
     "harness_reds": {},
     "pending": 0,
@@ -11529,34 +11528,54 @@
       "attempts_history": [
         {
           "classification": "engine_verdict",
-          "engine_state": "TEMPORARILY_UNAVAILABLE",
+          "engine_state": "HUMAN_REVIEW_REQUIRED",
           "harness_detail": null,
           "http_status": 200,
-          "latency_ms": 2079.53,
+          "latency_ms": 2715.29,
+          "outage": null,
           "reason_codes": {
             "no_path_reasons": [],
-            "notices": [],
-            "review_reasons": []
+            "notices": [
+              "DISCLOSED_BLACKLIST_ENTRY_CONDITION"
+            ],
+            "review_reasons": [
+              "BRIDGING_ADVERSE_HISTORY"
+            ]
           },
           "retries": 0,
-          "rule_pack": null,
-          "timestamp": "2026-09-22T07:37:23.268086+00:00",
+          "rule_pack": {
+            "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+            "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+            "sequence": 22,
+            "version": "2026.9.16"
+          },
+          "timestamp": "2026-09-22T12:01:10.411627+00:00",
           "walk_id": "review-gate/blacklist"
         }
       ],
       "classification": "engine_verdict",
-      "engine_state": "TEMPORARILY_UNAVAILABLE",
+      "engine_state": "HUMAN_REVIEW_REQUIRED",
       "harness_detail": null,
       "http_status": 200,
-      "latency_ms": 2079.53,
+      "latency_ms": 2715.29,
+      "outage": null,
       "reason_codes": {
         "no_path_reasons": [],
-        "notices": [],
-        "review_reasons": []
+        "notices": [
+          "DISCLOSED_BLACKLIST_ENTRY_CONDITION"
+        ],
+        "review_reasons": [
+          "BRIDGING_ADVERSE_HISTORY"
+        ]
       },
       "retries": 0,
-      "rule_pack": null,
-      "timestamp": "2026-09-22T07:37:23.268086+00:00",
+      "rule_pack": {
+        "payload_sha256": "3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37",
+        "rule_pack_id": "916915d8-1c58-508d-aff7-742a3c012df7",
+        "sequence": 22,
+        "version": "2026.9.16"
+      },
+      "timestamp": "2026-09-22T12:01:10.411627+00:00",
       "walk_id": "review-gate/blacklist"
     },
     {
