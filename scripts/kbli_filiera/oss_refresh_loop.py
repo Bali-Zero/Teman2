@@ -518,6 +518,23 @@ def _write_or_refuse(out_root: Path, written: list[Path], path: Path, text: str)
     return None
 
 
+def _refuse(written: list[Path], exc: Exception) -> int:
+    """Unwind every output this run wrote and say why on ONE parseable,
+    secret-free line the wrapper greps for — never a raw traceback. The
+    unwind is best-effort PER FILE (Codex K2): an `OSError` from `unlink`
+    itself (permission denied, a vanished parent directory) must not skip
+    the marker or the return code, which are what makes this failure legible
+    downstream at all — only the write that got us here already decided this
+    run failed, a failed cleanup does not un-decide it."""
+    for p in written:
+        try:
+            p.unlink(missing_ok=True)
+        except OSError:
+            pass
+    print(f"OSS_REFRESH_OUTPUT_REFUSED={exc}")
+    return EXIT_CANNOT_VERIFY
+
+
 def _public(entry: dict) -> dict:
     return {k: v for k, v in entry.items() if not k.startswith("_")}
 
@@ -747,18 +764,19 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
 
     # The spec is written BEFORE the report that names it (D2): a report
     # saying `exit_code: 1` and `cure_spec: <path>` while that path was
-    # refused would be a lie on disk the moment it lands. If the spec write
-    # is refused, this run IS exit 4 — the report built afterwards (if any)
-    # carries that exit code, no cure_spec, and says why.
+    # refused would be a lie on disk the moment it lands. A refused spec
+    # write is exactly as fatal as a refused report write (Codex K1: the two
+    # used to diverge — this one still landed an internally-consistent
+    # exit-4 report and the wrapper read that as a mere "warning", while a
+    # refused report write went through the M3 path below and read as
+    # "error") — so it takes the SAME path: unwind, print the marker, write
+    # NO report at all.
     if args.apply and spec is not None:
         spec_path = out_root / spec_rel
         exc = _write_or_refuse(out_root, written, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
         if exc is not None:
-            exit_code = EXIT_CANNOT_VERIFY
-            verdict = f"cure spec write refused: {exc}"
-            spec_rel = None
-        else:
-            print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
+            return _refuse(written, exc)
+        print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
 
     report = build_report(
         date=date, generated_at=generated_at, canonical=canonical_meta, population=population,
@@ -779,13 +797,8 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
         # M3: never leave a partial run's output behind for the wrapper (or
         # a human) to read as something it isn't — a report.json saying
         # `exit_code: 1` while the process itself returns 4 is exactly the
-        # "Esiste≠Armato" shape (superscar #2) one layer up. Undo every
-        # output this run wrote and say so on ONE parseable line the wrapper
-        # greps for, never a raw traceback and never a secret.
-        for p in written:
-            p.unlink(missing_ok=True)
-        print(f"OSS_REFRESH_OUTPUT_REFUSED={exc}")
-        return EXIT_CANNOT_VERIFY
+        # "Esiste≠Armato" shape (superscar #2) one layer up.
+        return _refuse(written, exc)
     print(f"OSS_REFRESH_REPORT={report_path}")
     return exit_code
 
