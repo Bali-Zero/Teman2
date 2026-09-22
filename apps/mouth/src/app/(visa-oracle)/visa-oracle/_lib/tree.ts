@@ -54,8 +54,10 @@ export type NotSureHoldReason =
 
 /** How a question's "Not sure?" affordance resolves (design doc §3/§4):
  * either it forces HUMAN_REVIEW_REQUIRED — and `because` NAMES why no
- * conservative default exists for this fact (`NotSureHoldReason`) — or it
- * takes a named conservative branch and the assumption is visibly logged.
+ * conservative default exists for this fact (`NotSureHoldReason`; A3'
+ * (slice A3'-B) turns the `"activity-boundary-a3prime"` reason into a dead
+ * end instead, `NO_SUPPORTED_PATH`, not a hold) — or it takes a named
+ * conservative branch and the assumption is visibly logged.
  * Absent = no NotSure affordance rendered. */
 export type NotSureBehavior =
   | { mode: "human-review"; because: NotSureHoldReason }

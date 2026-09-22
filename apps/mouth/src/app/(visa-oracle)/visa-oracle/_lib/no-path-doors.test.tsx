@@ -406,3 +406,40 @@ describe("no-path doors — what the visitor actually reads", () => {
     }
   }
 });
+
+// Slice A3'-M (M3): a sourceless dead end names no door — the pack never
+// decided the answer at all, so there is no replay-proven alternative to
+// name either. Unlike the replay-driven suite above, this exercises
+// `buildNoPathDoors` directly against a fact shape the guard must catch
+// EVEN when every other condition for a C1 door is met.
+describe("buildNoPathDoors — the sourceless dead end names no door (A3'-M M3)", () => {
+  it("returns no door when DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH is present, even on facts that would otherwise open C1", () => {
+    const doors = buildNoPathDoors(["DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"], {
+      category: "other",
+      stay_days: "30",
+    });
+    expect(doors).toEqual([]);
+  });
+
+  it("innocence: the SAME facts, without the sourceless code, DO open the C1 door", () => {
+    const doors = buildNoPathDoors(
+      ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"],
+      {
+        category: "other",
+        stay_days: "30",
+      },
+    );
+    expect(doors.some((door) => door.productCode === "C1")).toBe(true);
+  });
+
+  it("innocence: a sourceless code alongside an ordinary one still names no door", () => {
+    const doors = buildNoPathDoors(
+      [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+        "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+      ],
+      { category: "other", stay_days: "30" },
+    );
+    expect(doors).toEqual([]);
+  });
+});

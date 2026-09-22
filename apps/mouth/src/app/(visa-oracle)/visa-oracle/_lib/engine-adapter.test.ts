@@ -14,6 +14,7 @@ import {
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
   isSecondHomeStudioOnly,
@@ -555,6 +556,101 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       );
     },
   );
+});
+
+// Slice A3'-M: the mouth reads a sourceless named dead end before any
+// backend sends one. `SOURCELESS_NO_PATH_CODES` narrows the usual
+// decisive-ref invariant to exactly the one code no rule in the signed
+// pack could ever cite a source for.
+describe("Slice A3'-M: a sourceless named dead end (M1, M2)", () => {
+  function noPathOutcomeFor(code: string, sourceRefs: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code,
+        rule_ids: ["system.disclosed-no-path.activity-boundary"],
+        source_refs: [...sourceRefs],
+      },
+    ];
+    return buildEngineOutcome(response);
+  }
+
+  it("names a sourceless dead end instead of throwing RESPONSE_INVARIANT (M1)", () => {
+    const outcome = noPathOutcomeFor("DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH", []);
+    expect(outcome.state).toBe("NO_SUPPORTED_PATH");
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    expect(outcome.noPathReasons[0].message).toEqual(
+      SUPPORT_REASON_COPY.DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH,
+    );
+    expect(outcome.noPathReasons[0].sourceIds).toEqual([]);
+    expect(outcome.alternatives).toEqual([]);
+  });
+
+  it("innocence: an unlisted code with empty source_refs still throws RESPONSE_INVARIANT (M1)", () => {
+    expect(() => noPathOutcomeFor("NOT_A_SYSTEM_CODE", [])).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
+    );
+  });
+
+  it("innocence: the listed code with a non-decisive ref still throws RESPONSE_INVARIANT (M1)", () => {
+    expect(() =>
+      noPathOutcomeFor("DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH", [
+        "not-a-known-source-id",
+      ]),
+    ).toThrow(new VisaOracleResponseError("RESPONSE_INVARIANT"));
+  });
+
+  it("guards the guard: every SOURCELESS_NO_PATH_CODES entry has SUPPORT_REASON_COPY (M2)", () => {
+    const missing = [...SOURCELESS_NO_PATH_CODES].filter(
+      (code) => !(code in SUPPORT_REASON_COPY),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  // The CTA the dead end's copy quotes is OracleShell.tsx's OWN consultant
+  // toggle label — read from its source text, never retyped, so a rename
+  // there cannot silently orphan the quote.
+  const ORACLE_SHELL_PATH = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../_components/OracleShell.tsx",
+  );
+
+  function oracleShellConsultantLabels(): { en: string; id: string } {
+    const src = fs.readFileSync(ORACLE_SHELL_PATH, "utf-8");
+    const marker = "const SESSION_COPY = {";
+    const start = src.indexOf(marker);
+    if (start === -1) {
+      throw new Error(
+        `${marker} not found in ${ORACLE_SHELL_PATH} — SESSION_COPY renamed or moved`,
+      );
+    }
+    const enStart = src.indexOf("en: {", start);
+    const idStart = src.indexOf("id: {", enStart);
+    const idBlockEnd = src.indexOf("\n  },", idStart);
+    if (enStart === -1 || idStart === -1 || idBlockEnd === -1) {
+      throw new Error(
+        `en/id blocks not found in SESSION_COPY (${ORACLE_SHELL_PATH})`,
+      );
+    }
+    const enMatch = /consultant:\s*"([^"]+)"/.exec(src.slice(enStart, idStart));
+    const idMatch = /consultant:\s*"([^"]+)"/.exec(
+      src.slice(idStart, idBlockEnd),
+    );
+    if (!enMatch || !idMatch) {
+      throw new Error(
+        `consultant label not found in SESSION_COPY (${ORACLE_SHELL_PATH})`,
+      );
+    }
+    return { en: enMatch[1], id: idMatch[1] };
+  }
+
+  it("quotes OracleShell's own consultant CTA label verbatim, read from its source text (M2)", () => {
+    const labels = oracleShellConsultantLabels();
+    const copy = SUPPORT_REASON_COPY.DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH;
+    expect(copy.en).toContain(labels.en);
+    expect(copy.id).toContain(labels.id);
+  });
 });
 
 describe("support reasons are sentences, not machine codes", () => {
@@ -1871,7 +1967,7 @@ describe("notices render as named conditions (slice A2)", () => {
     },
   );
 
-  it("has all fourteen codes N1 names, and no other code, EN and ID both non-empty", () => {
+  it("has all thirteen codes N1 names, and no other code, EN and ID both non-empty (A3'-M M6: fourteen -> thirteen, ACTIVITY_BOUNDARY retired)", () => {
     const EXPECTED_CODES = [
       "OBSOLETE_PRODUCT_CODE",
       "DISCLOSED_HEALTH_CONCERN_CONDITION",
@@ -1881,7 +1977,10 @@ describe("notices render as named conditions (slice A2)", () => {
       "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
       "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION",
       "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION",
-      "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
+      // DISCLOSED_ACTIVITY_BOUNDARY_CONDITION retired here (A3'-M, M6): the
+      // kill switch can never release it into a live condition again (see
+      // PRE_PROVISIONED_NOTICE_CODES below), so the pre-provisioned row is
+      // gone rather than dead weight.
       "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
       "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
       // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys.
@@ -1917,17 +2016,15 @@ describe("notices render as named conditions (slice A2)", () => {
     "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION", // evaluate_path.py:1176
   ];
 
-  // `ACTIVITY_BOUNDARY` only ever holds (never conditions) while it sits in
-  // `HOLDING_DISCLOSED_FLAGS` — `_resolve_holding_flags` (evaluate_path.py)
-  // returns `recognized | HOLDING_DISCLOSED_FLAGS`, so the env kill switch
-  // can add a hold but never release one, and unreachable BY CONSTRUCTION,
-  // not by accident. The copy stays JUSTIFIED, not removed: deleting it
-  // would only mean re-adding it in slice A3', and an absent key would fall
-  // to the production fallback sentence at the exact moment the flag is
-  // released.
-  const PRE_PROVISIONED_NOTICE_CODES = [
-    "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
-  ];
+  // A3' (slice A3'-M, M6) retires the row this list used to carry:
+  // `DISCLOSED_ACTIVITY_BOUNDARY_CONDITION` is gone from
+  // `NOTICE_CONDITION_COPY` above, and `DEAD_END_DISCLOSED_FLAGS` (slice
+  // A3'-B, evaluate_path.py) moves ACTIVITY_BOUNDARY out of
+  // `HOLDING_DISCLOSED_FLAGS` for good — the kill switch that used to make
+  // this pre-provisioning unreachable BY CONSTRUCTION now has nothing left
+  // to release into a condition. Nothing is provisioned and nothing is
+  // sent; an empty list here is the honest state, not dead weight.
+  const PRE_PROVISIONED_NOTICE_CODES: string[] = [];
 
   it("NOTICE_CONDITION_COPY carries no code the backend cannot emit and never provisioned", () => {
     const allowed = new Set([
@@ -1939,9 +2036,9 @@ describe("notices render as named conditions (slice A2)", () => {
     );
     expect(uncovered).toEqual([]);
 
-    // The allowlist is non-empty only for codes actually named in the copy
-    // table — no dead weight, no unaccounted release.
-    expect(PRE_PROVISIONED_NOTICE_CODES.length).toBeGreaterThan(0);
+    // A3' (M6): nothing is provisioned any more — ACTIVITY_BOUNDARY's row
+    // is retired, not replaced, so the list is empty rather than non-empty.
+    expect(PRE_PROVISIONED_NOTICE_CODES).toEqual([]);
     const missingFromTable = PRE_PROVISIONED_NOTICE_CODES.filter(
       (code) => !(code in NOTICE_CONDITION_COPY),
     );
@@ -2230,6 +2327,11 @@ describe("notices render as named conditions (slice A2)", () => {
   interface ConditionsBlockSourceTables {
     noticeConditionCopy: Record<string, { en: string; id: string }>;
     genericNoticeCondition: { en: string; id: string };
+    // A3'-M (FIX-5): the SOURCELESS_NO_PATH_CODES slice of SUPPORT_REASON_
+    // COPY joins the scan too — the sourceless dead end's copy lives there,
+    // never in noticeConditionCopy, so it needs its own source table rather
+    // than smuggling it into the notice one.
+    sourcelessNoPathCopy: Record<string, { en: string; id: string }>;
     translate: (
       language: "en" | "id",
       key:
@@ -2269,9 +2371,21 @@ describe("notices render as named conditions (slice A2)", () => {
     ) => string;
   }
 
+  // A3'-M (FIX-5): built from SUPPORT_REASON_COPY by filtering on
+  // SOURCELESS_NO_PATH_CODES, never hand-typed — a code added to the set
+  // without copy would otherwise slip the scan silently.
+  const SOURCELESS_NO_PATH_COPY: Record<string, { en: string; id: string }> =
+    Object.fromEntries(
+      [...SOURCELESS_NO_PATH_CODES].map((code) => [
+        code,
+        SUPPORT_REASON_COPY[code],
+      ]),
+    );
+
   const DEFAULT_SOURCE_TABLES: ConditionsBlockSourceTables = {
     noticeConditionCopy: NOTICE_CONDITION_COPY,
     genericNoticeCondition: GENERIC_NOTICE_CONDITION,
+    sourcelessNoPathCopy: SOURCELESS_NO_PATH_COPY,
     translate,
   };
 
@@ -2280,6 +2394,11 @@ describe("notices render as named conditions (slice A2)", () => {
   ): ConditionsBlockEntry[] {
     const entries: ConditionsBlockEntry[] = [];
     for (const [code, message] of Object.entries(tables.noticeConditionCopy)) {
+      entries.push({ key: code, language: "en", text: message.en });
+      entries.push({ key: code, language: "id", text: message.id });
+    }
+    // A3'-M (FIX-5): the sourceless dead end's own copy joins the scan.
+    for (const [code, message] of Object.entries(tables.sourcelessNoPathCopy)) {
       entries.push({ key: code, language: "en", text: message.en });
       entries.push({ key: code, language: "id", text: message.id });
     }
@@ -2340,6 +2459,12 @@ describe("notices render as named conditions (slice A2)", () => {
 
   const EXPECTED_CONDITIONS_BLOCK_KEYS = [
     ...Object.keys(NOTICE_CONDITION_COPY),
+    // Slice A3'-M (FIX-5): the ONE sourceless dead-end code — a LITERAL
+    // name, not a spread, since it lives in SUPPORT_REASON_COPY (via
+    // SOURCELESS_NO_PATH_CODES), never in NOTICE_CONDITION_COPY. Moves
+    // this pin 68 - 2 (M6 retires DISCLOSED_ACTIVITY_BOUNDARY_CONDITION,
+    // fourteen codes -> thirteen) + 2 (this one code, EN+ID) = 68, net zero.
+    "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
     "GENERIC_NOTICE_CONDITION",
     "outcome.conditions.title",
     "outcome.conditions.intro",
@@ -2375,7 +2500,7 @@ describe("notices render as named conditions (slice A2)", () => {
     "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes, guardian consent and thirteen assumption keys, both languages (V3, A6-3 + A6-4b + A7-M)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, thirteen codes, guardian consent, one sourceless dead-end code and thirteen assumption keys, both languages (V3, A6-3 + A6-4b + A7-M + A3'-M FIX-5)", () => {
     const entries = conditionsBlockEntries();
     expect(entries).toHaveLength(68);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
@@ -2708,6 +2833,13 @@ describe("notices render as named conditions (slice A2)", () => {
       language: "id",
       text: "Kondisi ini tak berpengaruh terhadap hasil Anda.",
     },
+    {
+      label:
+        "A3'-M FIX-5: 'cleared' plant on the new sourceless dead-end copy — proves the scan reaches SUPPORT_REASON_COPY's SOURCELESS_NO_PATH_CODES entry, not just NOTICE_CONDITION_COPY",
+      key: "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+      language: "en",
+      text: "One of your answers is one our verified rules cannot assess; you are cleared for a consultation.",
+    },
   ];
 
   function buildInjectedTables(
@@ -2731,6 +2863,21 @@ describe("notices render as named conditions (slice A2)", () => {
         genericNoticeCondition: {
           ...GENERIC_NOTICE_CONDITION,
           [fixture.language]: fixture.text,
+        },
+      };
+    }
+    if (fixture.key === "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH") {
+      // A3'-M (FIX-5): routed to the NEW table, never noticeConditionCopy —
+      // this is the proof the scan really reaches SUPPORT_REASON_COPY's
+      // sourceless entry, not a lucky hit through the wrong bucket.
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        sourcelessNoPathCopy: {
+          ...DEFAULT_SOURCE_TABLES.sourcelessNoPathCopy,
+          [fixture.key]: {
+            ...DEFAULT_SOURCE_TABLES.sourcelessNoPathCopy[fixture.key],
+            [fixture.language]: fixture.text,
+          },
         },
       };
     }
