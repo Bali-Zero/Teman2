@@ -177,6 +177,25 @@ def test_an_output_refused_marker_is_an_error_regardless_of_rc(tmp_path, loop_rc
     assert argv[argv.index("--tier") + 1] == "p0"
 
 
+def test_a_spec_refused_run_reports_error_not_warning(tmp_path):
+    """Guilt (K1, cross-family Kimi K3 refutation): a refused CURE SPEC write
+    used to still land an internally-consistent exit-4 report (report_rc ==
+    loop_rc == 4), which the wrapper read as the routine "warning" bucket —
+    while a refused REPORT write went through the M3 path (no report, the
+    marker) and read as "error". Now the loop takes the same M3 path for a
+    refused spec write too (rc 4, `OSS_REFRESH_OUTPUT_REFUSED=`, no report
+    at all): the wrapper's output is exactly the shape this suite already
+    verifies for M3, so a run whose ONLY problem was the cure-spec write
+    escalates to error/loop_failure/p0, never the milder warning it used to
+    get."""
+    home, env = _sandbox(tmp_path)
+    proc = _run(env, STUB_RC="4", STUB_OUTPUT_REFUSED="1")
+    assert proc.returncode == 0, proc.stderr
+    hb = _heartbeat(home)
+    assert hb["status"] == "error" and "result=loop_failure" in hb["note"]
+    assert hb["status"] != "warning"
+
+
 @pytest.mark.parametrize("stub", [
     {"STUB_RC": "0", "STUB_NO_REPORT": "1"},    # green exit, no report: the Esiste≠Armato shape
     {"STUB_RC": "0", "STUB_REPORT_RC": "1"},    # report disagrees with the exit code
@@ -208,6 +227,21 @@ def test_host_case_is_normalised_before_the_guard(tmp_path):
     run, the same idiom the sibling Mini wrappers already use."""
     home, env = _sandbox(tmp_path)
     env["KBLI_OSS_REFRESH_HOSTNAME"] = "Mini-Pro2"
+    proc = _run(env, STUB_RC="0")
+    assert proc.returncode == 0, proc.stderr
+    assert (tmp_path / "loop.argv").exists()
+    hb = _heartbeat(home)
+    assert hb["status"] == "ok" and "result=nothing_new" in hb["note"]
+
+
+def test_expected_host_override_is_also_case_normalised(tmp_path):
+    """Guilt (K5, cross-family Kimi K3 refutation): `host_now` is lower-cased
+    before the compare (D4), but `KBLI_OSS_REFRESH_EXPECTED_HOST` was
+    compared RAW — an override left in mixed case (`Mini-Pro2`) would refuse
+    the very host it names. Lower-case it the same way."""
+    home, env = _sandbox(tmp_path)
+    env["KBLI_OSS_REFRESH_HOSTNAME"] = "mini-pro2"
+    env["KBLI_OSS_REFRESH_EXPECTED_HOST"] = "Mini-Pro2"
     proc = _run(env, STUB_RC="0")
     assert proc.returncode == 0, proc.stderr
     assert (tmp_path / "loop.argv").exists()

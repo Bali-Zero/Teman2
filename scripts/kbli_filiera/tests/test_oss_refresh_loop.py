@@ -462,12 +462,14 @@ def test_cure_spec_shape_and_routes(tmp_path):
     assert json.loads((tmp_path / "canonical.json").read_text())["data"] == records
 
 
-def test_a_refused_cure_spec_write_reports_exit_4_not_the_proposal(tmp_path):
-    """Guilt (D2): the spec must be written BEFORE the report that names it —
-    the old order wrote the report first (exit_code: 1, cure_spec: <path>),
-    THEN the spec, so a refused spec write left that lie on disk under a
-    process that had already returned 4. The report written afterwards must
-    itself say exit 4, no cure_spec, and why."""
+def test_a_refused_cure_spec_write_takes_the_same_path_as_a_refused_report(tmp_path, capsys):
+    """Guilt (K1, cross-family Kimi K3 refutation): the spec must be written
+    BEFORE the report that names it (D2) — but a refused spec write used to
+    still let a perfectly self-consistent exit-4 report land afterward, so
+    the wrapper read it as a mere "warning" while a refused REPORT write
+    went through the M3 path (no report, a marker) and read as "error". Two
+    write failures, two severities — now ONE: a refused spec write takes the
+    exact M3 path too: no report/.md at all, the marker, exit 4."""
     outside = tmp_path / "outside"
     outside.mkdir()
     (tmp_path / "out" / "scripts" / "kbli_filiera").mkdir(parents=True)
@@ -475,9 +477,11 @@ def test_a_refused_cure_spec_write_reports_exit_4_not_the_proposal(tmp_path):
     rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
     assert rc == L.EXIT_CANNOT_VERIFY
     assert list(outside.iterdir()) == []
-    report = json.loads(report_path(out).read_text())
-    assert report["exit_code"] == L.EXIT_CANNOT_VERIFY and report["cure_spec"] is None
-    assert "cure spec" in report["verdict"] and "refused" in report["verdict"]
+    assert not report_path(out).exists()
+    assert not report_path(out).with_suffix(".md").exists()
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed and "is a symlink" in printed
+    assert "OSS_REFRESH_REPORT=" not in printed
 
 
 def test_an_os_error_during_output_writes_exits_4_not_1(tmp_path, monkeypatch):
@@ -536,6 +540,41 @@ def test_a_later_output_failure_unwinds_the_report_already_written(tmp_path, mon
     printed = capsys.readouterr().out
     assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed and "Permission denied" in printed
     assert "OSS_REFRESH_REPORT=" not in printed
+
+
+def test_an_unwind_failure_never_blocks_the_marker_or_the_exit_code(tmp_path, monkeypatch, capsys):
+    """Guilt (K2, cross-family Kimi K3 refutation): the unwind loop was
+    `for p in written: p.unlink(missing_ok=True)` — unguarded. An `OSError`
+    from `unlink` ITSELF (not the write, the cleanup: a permission change, a
+    vanished parent) used to escape as an uncaught traceback and exit 1 —
+    the same failure mode M2 fixed for the write, now needed for the
+    cleanup too. The unwind must be best-effort PER FILE: one unlink
+    failing must not stop the rest, must not swallow the marker, and must
+    not change the exit code."""
+    real_write = L.write_contained
+    real_unlink = Path.unlink
+
+    def md_boom(out_root, path, text):
+        if path.suffix == ".md":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    def unlink_boom(self, *args, **kwargs):
+        if self.parent.name == "cure_specs":
+            raise PermissionError(13, "Permission denied removing")
+        return real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(L, "write_contained", md_boom)
+    monkeypatch.setattr(Path, "unlink", unlink_boom)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed
+    # report.json (unlink NOT blocked) is gone; the cure spec (unlink
+    # blocked) survives — proof the loop kept going past the failed unlink
+    # instead of stopping, or crashing, at the first one.
+    assert not report_path(out).exists()
+    assert spec_path(out).exists()
 
 
 def test_no_applyable_spec_beside_a_failed_control(tmp_path):
