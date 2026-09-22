@@ -189,6 +189,16 @@ def test_canonical_url_accepts_absolute_and_www():
     )
 
 
+def test_canonical_url_matches_scheme_and_host_case_insensitively():
+    """Gate-7125 survivor G5 (host regex without `re.IGNORECASE`): scheme and host are
+    case-insensitive, so an upper-cased absolute href must canonicalise to the same identity
+    instead of being kept whole as a path under the pajak domain."""
+    assert (
+        pajak_parse.canonical_pajak_url("HTTPS://WWW.PAJAK.GO.ID/index.php/id/peraturan/x")
+        == "https://pajak.go.id/id/peraturan/x"
+    )
+
+
 # ─── D2 — trailing slash and query string normalise to the same identity ──
 
 
