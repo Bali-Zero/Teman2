@@ -52,12 +52,26 @@ const VERDICT_HISTORY = [
   { kind: "confirmation" },
   { kind: "verdict" },
 ];
+// A minor's resume replay (`restoreInterviewSnapshot` in `_lib/flow.ts`)
+// walks this saved history step by step and truncates the moment
+// `computeNextNode` disagrees with the next saved entry — so a minor's
+// saved history must carry the `guardian_consent` question step itself,
+// not just its answer in facts. `VERDICT_HISTORY` above is shared by every
+// adult `seedVerdictResume` call site and must stay untouched (inserting
+// the step there would make an adult's birth_date→category transition
+// mismatch the same way, in reverse).
+const VERDICT_HISTORY_MINOR = [
+  ...VERDICT_HISTORY.slice(0, 5),
+  { kind: "question", questionId: "guardian_consent" },
+  ...VERDICT_HISTORY.slice(5),
+];
 
 type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
 async function seedVerdictResume(
   page: Page,
   facts: Record<string, string> = VERDICT_FACTS,
+  history: typeof VERDICT_HISTORY = VERDICT_HISTORY,
 ): Promise<void> {
   const savedAtIso = new Date().toISOString();
   const expiresAtIso = new Date(Date.now() + 2 * 60 * 60 * 1_000).toISOString();
@@ -83,7 +97,7 @@ async function seedVerdictResume(
       key: RESUME_KEY,
       savedAt: savedAtIso,
       expiresAt: expiresAtIso,
-      history: VERDICT_HISTORY,
+      history,
       facts,
     },
   );
@@ -859,10 +873,15 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
   test("minor handoff requires guardian confirmation before separate WhatsApp consent", async ({
     page,
   }) => {
-    await seedVerdictResume(page, {
-      ...VERDICT_FACTS,
-      birth_date: "2012-01-01",
-    });
+    await seedVerdictResume(
+      page,
+      {
+        ...VERDICT_FACTS,
+        birth_date: "2012-01-01",
+        guardian_consent: "yes",
+      },
+      VERDICT_HISTORY_MINOR,
+    );
     await page.route("**/api/visa-oracle/evaluate**", (route) =>
       fulfillJson(route, makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED")),
     );
