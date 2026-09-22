@@ -5,13 +5,18 @@ Uses asyncpg like other CRM routers
 
 import logging
 import os
-from datetime import date
 from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.modules.crm.company_schemas import (
+    ClientCompanyLinkCreate,
+    CompanyCreate,
+    CompanyDocumentCreate,
+    CompanyUpdate,
+)
 from backend.app.routers.documents_proxy import assert_drive_file_belongs_to_company
 from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
 from backend.services.common.background import spawn
@@ -28,27 +33,6 @@ def _require_crm_admin(current_user: dict) -> None:
     """Require CRM admin privileges for company-level mutations."""
     if not is_crm_admin(current_user):
         raise HTTPException(status_code=403, detail="CRM admin access required")
-
-
-# Date columns on `companies`. asyncpg binds DATE parameters only from
-# datetime.date, so an ISO string from the JSON body must be converted here;
-# passing the string through raises "'str' object has no attribute 'toordinal'"
-# inside the driver and surfaces as a 500.
-COMPANY_DATE_FIELDS = frozenset({"akta_pendirian_date", "akta_perubahan_date", "sk_menhumkam_date"})
-
-
-def _coerce_company_date(field: str, value: Any) -> date | None:
-    """Convert a JSON date value to datetime.date, or raise 422 on bad input."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, date):
-        return value
-    if isinstance(value, str):
-        try:
-            return date.fromisoformat(value[:10])
-        except ValueError:
-            pass
-    raise HTTPException(status_code=422, detail=f"{field} must be an ISO date (YYYY-MM-DD)")
 
 
 def company_record_to_dict(record: asyncpg.Record) -> dict:
@@ -141,17 +125,13 @@ async def list_companies(
 @router.post("", response_model=dict[str, Any])
 async def create_company(
     request: Request,
-    data: dict,
+    data: CompanyCreate,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Create a new company"""
     _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
-
-    company_name = data.get("company_name")
-    if not isinstance(company_name, str) or not company_name.strip():
-        raise HTTPException(status_code=422, detail="company_name is required")
 
     query = """
         INSERT INTO companies (
@@ -165,16 +145,16 @@ async def create_company(
     async with db.acquire() as conn:
         row = await conn.fetchrow(
             query,
-            data.get("company_name"),
-            data.get("company_type", "PT PMA"),
-            data.get("kbli_code"),
-            data.get("nib"),
-            data.get("npwp_company"),
-            data.get("registered_address"),
-            data.get("city"),
-            data.get("province"),
-            data.get("company_email"),
-            data.get("company_phone"),
+            data.company_name,
+            data.company_type,
+            data.kbli_code,
+            data.nib,
+            data.npwp_company,
+            data.registered_address,
+            data.city,
+            data.province,
+            data.company_email,
+            data.company_phone,
             user_email,
         )
 
@@ -373,7 +353,7 @@ async def get_company(
 async def update_company(
     request: Request,
     company_id: int,
-    data: dict,
+    data: CompanyUpdate,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -381,37 +361,16 @@ async def update_company(
     _require_crm_admin(current_user)
     user_email = current_user.get("email", "system")
 
-    # Build dynamic update query
-    allowed_fields = [
-        "company_name",
-        "company_type",
-        "kbli_code",
-        "nib",
-        "npwp_company",
-        "akta_pendirian_no",
-        "akta_pendirian_date",
-        "akta_perubahan_no",
-        "akta_perubahan_date",
-        "sk_menhumkam_no",
-        "sk_menhumkam_date",
-        "registered_address",
-        "office_address",
-        "city",
-        "province",
-        "postal_code",
-        "company_phone",
-        "company_email",
-        "status",
-    ]
+    # Only fields the client actually sent are written. CompanyUpdate has
+    # already validated and converted them: a date string arrives as
+    # datetime.date, and an explicit null clears a nullable column.
+    payload = data.model_dump(exclude_unset=True)
 
     updates = []
     params = []
-    for field, value in data.items():
-        if field in allowed_fields and value is not None:
-            if field in COMPANY_DATE_FIELDS:
-                value = _coerce_company_date(field, value)
-            updates.append(f"{field} = ${len(params) + 1}")
-            params.append(value)
+    for field, value in payload.items():
+        updates.append(f"{field} = ${len(params) + 1}")
+        params.append(value)
 
     if not updates:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -500,7 +459,7 @@ async def link_client_to_company(
     request: Request,
     company_id: int,
     client_id: int,
-    data: dict,
+    data: ClientCompanyLinkCreate,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -538,11 +497,11 @@ async def link_client_to_company(
             """,
             client_id,
             company_id,
-            data.get("role", "shareholder"),
-            data.get("is_primary", False),
-            data.get("ownership_percentage"),
-            data.get("shares_count"),
-            data.get("start_date"),
+            data.role,
+            data.is_primary,
+            data.ownership_percentage,
+            data.shares_count,
+            data.start_date,
         )
 
         return {
@@ -642,7 +601,7 @@ async def get_company_documents(
 async def create_company_document(
     request: Request,
     company_id: int,
-    data: dict,
+    data: CompanyDocumentCreate,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -656,7 +615,7 @@ async def create_company_document(
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
 
-        google_drive_file_id = data.get("google_drive_file_id")
+        google_drive_file_id = data.google_drive_file_id
         if google_drive_file_id:
             await assert_drive_file_belongs_to_company(google_drive_file_id, company_id, conn)
 
@@ -671,18 +630,18 @@ async def create_company_document(
             RETURNING id, uuid
             """,
             company_id,
-            data.get("document_type"),
-            data.get("document_subtype"),
-            data.get("document_number"),
-            data.get("document_title"),
-            data.get("description"),
-            data.get("issue_date"),
-            data.get("expiry_date"),
-            data.get("google_drive_file_id"),
-            data.get("google_drive_file_url"),
-            data.get("file_name"),
-            data.get("file_size_kb"),
-            data.get("mime_type"),
+            data.document_type,
+            data.document_subtype,
+            data.document_number,
+            data.document_title,
+            data.description,
+            data.issue_date,
+            data.expiry_date,
+            data.google_drive_file_id,
+            data.google_drive_file_url,
+            data.file_name,
+            data.file_size_kb,
+            data.mime_type,
             user_email,
         )
 
