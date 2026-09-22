@@ -4,7 +4,8 @@ Covers: get_client_documents, create_document, create_documents_bulk,
 update_document, archive_document, get_document_categories,
 get_client_ocr_status, extract_visa_data, upload_document_base64,
 delete_document, _parse_date_or_none.
-Direct function calls with mocked dependencies (no TestClient).
+Direct function calls with mocked dependencies; the only TestClient is
+extract_visa_data's, because its body contract is FastAPI request validation.
 """
 
 from datetime import date
@@ -793,7 +794,10 @@ async def test_get_client_ocr_status_empty(mock_db_pool, mock_current_user):
 
 @pytest.mark.asyncio
 async def test_extract_visa_data_success(mock_db_pool, mock_current_user):
-    from backend.app.routers.crm_enhanced_documents import extract_visa_data
+    from backend.app.routers.crm_enhanced_documents import (
+        ExtractVisaRequest,
+        extract_visa_data,
+    )
 
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
@@ -804,7 +808,7 @@ async def test_extract_visa_data_success(mock_db_pool, mock_current_user):
     ):
         result = await extract_visa_data(
             client_id=1,
-            body={"file_id": "drive-file-123", "doc_id": 42},
+            body=ExtractVisaRequest(file_id="drive-file-123", doc_id=42),
             pool=mock_db_pool,
             current_user=mock_current_user,
         )
@@ -812,21 +816,83 @@ async def test_extract_visa_data_success(mock_db_pool, mock_current_user):
     assert result["success"] is True
 
 
-@pytest.mark.asyncio
-async def test_extract_visa_data_no_file_id(mock_db_pool, mock_current_user):
-    from backend.app.routers.crm_enhanced_documents import extract_visa_data
+# The body contract is enforced by FastAPI request validation, which only runs
+# on the HTTP path — these go through a TestClient, not a direct call.
 
+
+@pytest.fixture
+def extract_visa_client(mock_db_pool, mock_current_user):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.dependencies import get_current_user, get_database_pool
+    from backend.app.routers.crm_enhanced_documents import router
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+    return TestClient(app)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{"doc_id": 42}, {"file_id": None, "doc_id": 42}, {"file_id": "", "doc_id": 42}],
+    ids=["missing", "null", "empty"],
+)
+def test_extract_visa_data_rejects_absent_file_id_with_422(extract_visa_client, payload):
+    """Guilt: missing / null / "" file_id were a hand-rolled 400; the typed body
+    rejects them as 422 before the handler runs — no access check, no OCR."""
+    verify = AsyncMock()
+    ocr = AsyncMock()
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=verify),
+        patch("backend.app.routers.crm_enhanced_documents._auto_ocr_visa", new=ocr),
+    ):
+        response = extract_visa_client.post("/api/crm/clients/1/extract-visa", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "file_id"]
+    verify.assert_not_awaited()
+    ocr.assert_not_awaited()
+
+
+def test_extract_visa_data_rejects_boolean_doc_id_with_422(extract_visa_client):
+    """Guilt: a lax int would coerce `true` to 1 and OCR-write document id 1."""
+    ocr = AsyncMock()
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
-        pytest.raises(HTTPException) as exc_info,
+        patch("backend.app.routers.crm_enhanced_documents._auto_ocr_visa", new=ocr),
     ):
-        await extract_visa_data(
-            client_id=1,
-            body={"doc_id": 42},
-            pool=mock_db_pool,
-            current_user=mock_current_user,
+        response = extract_visa_client.post(
+            "/api/crm/clients/1/extract-visa", json={"file_id": "x", "doc_id": True}
         )
-    assert exc_info.value.status_code == 400
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "doc_id"]
+    ocr.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_doc_id"),
+    [({"file_id": "drive-file-123", "doc_id": 42}, 42), ({"file_id": "drive-file-123"}, None)],
+    ids=["with_doc_id", "without_doc_id"],
+)
+def test_extract_visa_data_accepts_valid_body(
+    extract_visa_client, mock_db_pool, payload, expected_doc_id
+):
+    """Innocence: a valid file_id, with or without doc_id, reaches
+    _auto_ocr_visa with the same arguments the dict body produced."""
+    ocr = AsyncMock(return_value={"success": True, "extracted": {"visa_type": "KITAS"}})
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents._auto_ocr_visa", new=ocr),
+    ):
+        response = extract_visa_client.post("/api/crm/clients/1/extract-visa", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    ocr.assert_awaited_once_with(mock_db_pool, 1, "drive-file-123", expected_doc_id)
 
 
 # ============================================================
