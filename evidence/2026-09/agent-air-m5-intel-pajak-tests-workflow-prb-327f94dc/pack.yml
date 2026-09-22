@@ -1,0 +1,179 @@
+task: "Run the pajak parser and monitor tests on every PR that touches them. PWC-7087 C3 / PWC-7074 C1 (CI half)."
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-22
+machine: M5
+bites:
+  consumer:
+    the new `pajak-monitor tests` check (.github/workflows/pajak-monitor-tests.yml), which runs
+    scripts/tests/test_pajak_parse.py and scripts/tests/test_pajak_monitor.py on every PR touching
+    the pajak sources, their tests or fixtures, and on the matching push to main
+  where: ci
+  observe: python3 scripts/ci/observe_pajak_monitor_tests.py
+  expect: contains:passed
+bites_note:
+  "The observer runs exactly what the workflow runs, and the check on this PR's head is the same
+  command in CI. Green is the weak half. The strong half was observed before this pack was written:
+  on draft PR #7116 (this workflow plus the deadline branch replaced by `if False:`), the same
+  check went red on exactly test_c1_deadline_is_checked_before_every_fetch_not_after
+  (run 35696446818, `1 failed, 37 passed`). #7116 is closed and its branch deleted after that
+  observation; it was never armed."
+diff:
+  files: 4
+  shape:
+    "One new workflow (path-filtered pull_request plus push to main on the same paths, no
+    merge_group, per-event concurrency), one entry in main-push-failure-watch.yml's workflows
+    list, a two-line docstring correction in scripts/tests/test_pajak_monitor.py, and the
+    no-argument bites observer scripts/ci/observe_pajak_monitor_tests.py. The
+    `.github/workflows/*` touch is what floors it at 3; the whole-diff total is the linter's to
+    compute."
+receipts:
+  - claim: both test files pass in a clean venv holding nothing but pytest
+    cmd:
+      python3 -m venv <scratch>/venv-ci && <scratch>/venv-ci/bin/python -m pip install pytest &&
+      <scratch>/venv-ci/bin/python -m pytest scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py -q -p no:cacheprovider
+    result: 38 passed, on the final head a29a501f70
+    ts: "2026-09-22T06:54:02+00:00"
+    seat: claude-opus-5 (conducting session, M5)
+    exit: 0
+  - claim: the deterministic floor is 3 and its source is `path`, measured before the pack was written
+    cmd:
+      git diff --name-only $(git merge-base HEAD origin/main) HEAD > cf.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file cf.txt && python3 scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file cf.txt
+    result: 3 / path
+    ts: "2026-09-22T06:37:19+00:00"
+    seat: claude-opus-5 (conducting session, M5)
+    exit: 0
+  - claim: each of the five mutations named by the #7074 and #7087 gates turns exactly one test red
+    cmd:
+      'python3 mutate.py <venv-ci python>: copy scripts/ to a temp dir, apply one mutation, run both
+      files, restore; mutations = deadline branch -> `if False:`; `start = body_text.find(citation)`;
+      `source_host(...) or "pajak.go.id"`; `continue` -> `break` after intel_lake_skipped_no_host;
+      `"source_domain": "pajak.go." + "id"`'
+    result:
+      baseline 38 passed; all five KILLED, 1 failed / 37 passed each — C1 by
+      test_c1_deadline_is_checked_before_every_fetch_not_after, C2 by
+      test_c2_guilt_excerpt_anchors_to_the_match_not_the_first_literal_occurrence, the three 7074
+      mutations by test_c1_write_intel_feed_labels_by_real_host_skips_hostless_and_continues. First
+      measured on 18cedcf56a, re-run on the final head a29a501f70 with the same five verdicts
+    ts: "2026-09-22T06:54:03+00:00"
+    seat: claude-opus-5 (conducting session, M5)
+    exit: 0
+  - claim: the check goes red on a real PR that reverts a fix, not only on a local machine
+    cmd: gh pr checks 7116 ; gh run view 35696446818 --log-failed
+    result:
+      "`pajak-monitor tests` fail — FAILED scripts/tests/test_pajak_monitor.py::test_c1_deadline_is_checked_before_every_fetch_not_after,
+      1 failed, 37 passed in 1.67s (ubuntu runner, Python 3.12)"
+    note:
+      "This also settles the one point both seats left unverified: the suite collects and runs on the
+      runner's Python 3.12 with system tzdata for Asia/Makassar."
+    ts: "2026-09-22T06:48:09+00:00"
+    seat: claude-opus-5 (conducting session, M5)
+    exit: 0
+  - claim: no repo workflow invariant breaks
+    cmd:
+      actionlint .github/workflows/pajak-monitor-tests.yml ; python3 scripts/ci/lint_trigger_symmetry.py ;
+      python3 scripts/check_watcher_coverage.py ; python3 scripts/ci/lint_unreachable_workflow_conditions.py ;
+      python3 scripts/ci/check_required_workflow_conformance.py
+    result:
+      actionlint rc 0; trigger-symmetry 122 workflows 0 violations; watcher-coverage all 122 covered;
+      unreachable-conditions rc 0; required-workflow-conformance 14 contexts 0 violations (final head a29a501f70)
+    ts: "2026-09-22T06:54:10+00:00"
+    seat: claude-opus-5 (conducting session, M5)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      A head commit carrying `[skip ci]` suppresses this pull_request workflow, and the check is
+      non-required, so a PR reverting a fix can show no red check.
+    status: CONFIRMED
+    resolution:
+      "True as stated, and not changed in code: the harm it implies does not follow. The 14 required
+      contexts are defined by workflows that all trigger on pull_request and merge_group with no PR
+      path filter (check_required_workflow_conformance.py, 0 violations), so the same annotation leaves
+      them Pending and the PR cannot merge or enter the queue. The same seat checked this in round 2 and
+      called the resolution correct. The claim is narrowed accordingly: a reverting PR cannot reach main
+      with this check green by absence. Making the check itself required is operator-only branch
+      protection and out of scope."
+  - seat: codex-gpt-5.6-sol
+    objection: The paths filter evaluates only the first 3000 changed files of a PR.
+    status: CONFIRMED
+    resolution:
+      Accepted as a residual, not changed. A 3000-file PR is far outside the ~400-net-line PR contract
+      and floors at gear 3 by size on its own.
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "Round 2: on push the concurrency group resolves to the ref of main with cancel-in-progress
+      true, so the next push cancels an in-flight main run, and main-push-failure-watch ignores
+      `cancelled`: a red on main could go unheard."
+    status: CONFIRMED
+    resolution:
+      "Cured in a29a501f70 with the shape workflows-tests.yml already uses: PR runs share a per-ref
+      cancelling group, each push gets its own group via github.run_id and cancel-in-progress is true
+      only for pull_request. This defect was introduced by the round-1 cure below; it is the fix of a
+      fix, so the rounds stop here."
+  - seat: kimi-code/k3
+    objection:
+      No push trigger, so the new entry in main-push-failure-watch.yml is name-only and can never
+      alert — that watcher fires on push/schedule runs.
+    status: CONFIRMED
+    resolution:
+      "Cured in c3e1c7999f with `push: branches: [main]` on the same paths through one YAML anchor, the
+      shape .github/workflows/with-seat-broker-tests.yml has used since 2026-08-31."
+  - seat: kimi-code/k3
+    objection:
+      A PR that reverts a fix AND weakens the pinning test in the same diff merges green; the check
+      runs, on the weakened test.
+    status: CONFIRMED
+    resolution:
+      Inherent to any test-pinning gate and not closable in CI. The test files are in `paths:`, so the
+      check still runs and the weakening is in the reviewed diff, in front of the on-disk gate.
+  - seat: kimi-code/k3
+    objection: The test docstring says agent_job is not in the repo; scripts/cron-agent-python/agent_job.py is.
+    status: CONFIRMED
+    resolution: Corrected in c3e1c7999f (browser_job is the Pro-only one; agent_job imports httpx and structlog).
+  - seat: kimi-code/k3
+    objection: pytest is installed unpinned.
+    status: PLAUSIBLE
+    resolution:
+      Not adopted. The nightly scripts-tests-sweep.yml and check-cicatrix-scar-pointers.yml install it
+      the same way, and a zero-test or collection-error run already exits non-zero (5 or 2) under set -e.
+appetite_exceeded:
+  "The brief declared one adversarial round and two ran. Round 1 found the push-trigger gap
+  (kimi-code/k3); its cure introduced the main-push cancellation that codex-gpt-5.6-sol caught in
+  round 2 on the delta only. That second round is the fix-of-a-fix bound, and the rounds stop there."
+spend:
+  wall_clock_hours: 0.6
+  adversarial_rounds: 2
+  seats:
+    "codex-gpt-5.6-sol (codex exec -m gpt-5.6-sol, effort high, --sandbox read-only) for two rounds
+    and kimi-code/k3 (kimi -m kimi-code/k3 -p) for one, both through scripts/with_seat.sh. Titolari
+    only, no reserve counted."
+  seat_limits:
+    "At session start ~/.organism/arsenal/last.json (M5, probe 05:29Z) listed codex and kimi as
+    TIMEOUT. A trivial prompt through with_seat.sh answered in 38s and 19s: the probe's TIMEOUT was a
+    false negative, not a dead seat. Codex could not run pytest in its read-only sandbox (no writable
+    tmp) and collected the 38 tests instead; kimi ran the suite and two of the five mutations itself."
+pii_scan: clean
+pii_scan_note:
+  "CI wiring and a docstring only. No client data, no OSINT, no credential; the workflow reads no
+  secret and interpolates no event field into a run step."
+lanes:
+  - lane: workflow + watcher entry
+    role: build
+    seat: claude-opus-5 (conducting session, M5)
+    note: .github/workflows/pajak-monitor-tests.yml, main-push-failure-watch.yml, the docstring fix
+  - lane: adversarial review of the finished diff, two rounds
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: round 1 NOT CLEAN (skip-ci, 3000-file limit); round 2 NOT CLEAN (main-push cancellation), cured
+  - lane: adversarial review of the finished diff
+    role: review
+    seat: kimi-code/k3
+    note: CLEAN with 2 MINOR and 2 NIT; the push-trigger finding was adopted
+  - lane: guilt probe in CI
+    role: read
+    seat: claude-opus-5 (conducting session, M5)
+    note: throwaway draft PR #7116, one mutation, the check red on the named test, then closed
