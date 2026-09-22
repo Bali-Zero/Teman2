@@ -64,7 +64,14 @@ describe("countExactWalks — determinism", () => {
     const first = await renderManifest(buildManifest());
     const second = await renderManifest(buildManifest());
     expect(second).toBe(first);
-  }, 30_000);
+    // A7-M (2026-09-22, gate `vo-gate-a7-m` L4): `birth_date` joining
+    // BRANCH_RELEVANT_FACT_KEYS enlarged the enumerated space enough that
+    // this double full-manifest render measured over the prior 30s budget
+    // under CI/local load (never a wall-clock cliff of its own — a rerun of
+    // the same job went green with no code change). 120s gives the render
+    // headroom without hiding a real regression: a genuine correctness
+    // break here still fails on the assertion, not the clock.
+  }, 120_000);
 });
 
 describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
@@ -746,7 +753,9 @@ describe("the memo-key projection is injectable, and a guilt/innocence PAIR prov
     expect(withExplicitDefault.walksTotalExact).toBe(
       withDefault.walksTotalExact,
     );
-  }, 30_000);
+    // Same A7-M/L4 budget bump as the determinism test above — two full
+    // countExactWalks() runs over the now-larger space, same cause.
+  }, 120_000);
 });
 
 describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID (B2''-c C2)", () => {
