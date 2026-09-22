@@ -901,3 +901,94 @@ def test_a_third_judging_breaks_the_tie_and_the_gate_can_close(score_mod, tmp_pa
     assert report["judging_decisive"]["pass"] is True
     assert report["judging_decisive"]["judgings_per_row"] == {"min": 3, "max": 3}
     assert report["judging_decisive"]["stability"]["Q20"]["1"] == {"correct": 2, "wrong": 1}
+
+
+# ── 6. the dataset judged against must be the dataset served from ─────────────────────────
+#
+# Measured 2026-09-22, re-judging the committed k2-gamma answers against the then-current
+# dataset: the judge returned `wrong` for Q13 run 2 — "falsely labels KBLI 77400 BALI_BLOCKED;
+# its record shows blocked false" — and the answer was RIGHT. On c69a260d, the dataset that run
+# was served from, 77400 IS blocked. An unanchored re-score does not produce a noisier number.
+# It produces a confident wrong one, with a citation. The file moved twelve times in the ten
+# days after that run.
+def _rows_with_sha(corpus, sha):
+    return [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "dataset_sha256": sha, "raw_answer": "No such fact is carried."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+
+
+def test_anchor_guilt_a_foreign_dataset_refuses_the_gate(score_mod, tmp_path, monkeypatch, capsys):
+    corpus = json.loads(CORPUS_PATH.read_text())
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in _rows_with_sha(corpus, "0" * 64)))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+
+    anchor = report["dataset"]["anchor"]
+    assert anchor["pass"] is False
+    assert anchor["declared_by_answer_rows"] == ["0" * 64]
+    assert anchor["loaded_sha256"] != "0" * 64
+    assert "P2B_DATASET_ROOT" in anchor["recover"]
+    assert report["gate"] is False
+
+
+def test_anchor_innocence_the_matching_dataset_passes(score_mod, tmp_path, monkeypatch, capsys):
+    """INNOCENCE: the check must not fire on the case it exists to allow — answers served from
+    exactly the file being scored."""
+    import hashlib
+    corpus = json.loads(CORPUS_PATH.read_text())
+    live = hashlib.sha256((REPO_ROOT / score_mod.DATASET).read_bytes()).hexdigest()
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in _rows_with_sha(corpus, live)))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+    assert report["dataset"]["anchor"]["pass"] is True
+
+
+def test_anchor_innocence_rows_that_declare_nothing_are_not_convicted(score_mod, tmp_path,
+                                                                     monkeypatch, capsys):
+    """INNOCENCE: a runner that never wrote `dataset_sha256` leaves the anchor UNKNOWN, and an
+    unknown is not a mismatch. Convicting it would make every pre-declaration run unscorable."""
+    corpus = json.loads(CORPUS_PATH.read_text())
+    rows = [{"qid": q["id"], "run": run, "gate_ok": True, "package_codes": [],
+             "raw_answer": "No such fact is carried."}
+            for q in corpus["questions"] for run in (1, 2, 3)]
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+    anchor = report["dataset"]["anchor"]
+    assert anchor["pass"] is True
+    assert anchor["declared_by_answer_rows"] == []
+    assert anchor["rows_without_declaration"] == 87
+
+
+def test_anchor_guilt_two_datasets_in_one_answers_file_is_never_anchored(score_mod, tmp_path,
+                                                                        monkeypatch, capsys):
+    """GUILT: rows served from two different datasets cannot all be judged against one file,
+    even if one of the two happens to be the file loaded."""
+    import hashlib
+    corpus = json.loads(CORPUS_PATH.read_text())
+    live = hashlib.sha256((REPO_ROOT / score_mod.DATASET).read_bytes()).hexdigest()
+    rows = _rows_with_sha(corpus, live)
+    rows[0]["dataset_sha256"] = "1" * 64
+    ap = tmp_path / "answers.jsonl"
+    ap.write_text("\n".join(json.dumps(r) for r in rows))
+    monkeypatch.setattr(score_mod, "find_root", lambda: REPO_ROOT)
+    score_mod.cmd_score(str(CORPUS_PATH), str(ap), str(tmp_path / "nojudge"))
+    report = json.loads(capsys.readouterr().out)
+    assert report["dataset"]["anchor"]["pass"] is False
+    assert len(report["dataset"]["anchor"]["declared_by_answer_rows"]) == 2
+
+
+def test_find_root_honours_the_anchor_override(score_mod, tmp_path, monkeypatch):
+    (tmp_path / "data" / "source_documents").mkdir(parents=True)
+    (tmp_path / score_mod.DATASET).write_text(json.dumps({"data": []}))
+    monkeypatch.setenv("P2B_DATASET_ROOT", str(tmp_path))
+    assert score_mod.find_root() == tmp_path
+    monkeypatch.setenv("P2B_DATASET_ROOT", str(tmp_path / "nowhere"))
+    with pytest.raises(SystemExit):
+        score_mod.find_root()

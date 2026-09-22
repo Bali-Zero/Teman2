@@ -24,6 +24,7 @@ The served text is the GATED answer (what the product shows). Raw-model fabricat
 gate blocked are reported separately as gate saves — they do not reach a user.
 """
 import json
+import os
 import re
 import sys
 import hashlib
@@ -46,6 +47,19 @@ def load_dataset(root: Path) -> dict:
 
 
 def find_root() -> Path:
+    """Where the canonical dataset lives.
+
+    `P2B_DATASET_ROOT` overrides the upward search. Re-judging a past run is the reason it
+    exists: the answers are anchored to the dataset that was canonical when they were served,
+    and that file moved twelve times in the ten days after the k2-gamma run. Point this at a
+    tree holding the right blob and `dataset_anchor` below goes green instead of refusing.
+    """
+    env = os.environ.get("P2B_DATASET_ROOT")
+    if env:
+        cand = Path(env)
+        if not (cand / DATASET).exists():
+            sys.exit(f"P2B_DATASET_ROOT={env} does not hold {DATASET}")
+        return cand
     p = Path.cwd()
     for cand in [p, *p.parents]:
         if (cand / DATASET).exists():
@@ -316,6 +330,42 @@ REFUSAL_MARKERS = [
     "i'm sorry, but i can", "i am sorry, but i can", "i won't", "i will not provide",
     "tidak dapat membantu", "saya tidak bisa membantu", "maaf, saya tidak dapat",
 ]
+
+
+def dataset_anchor(rows: list, root: Path) -> dict:
+    """Does the dataset being judged AGAINST match the one the answers were served FROM?
+
+    Every answer row records the `dataset_sha256` the app read when it produced that answer.
+    Until now nothing compared it to the file the scorer loads, and the two are not the same
+    thing: this file changed twelve times in the ten days after the k2-gamma run was served.
+
+    Measured on 2026-09-22, re-judging that run against the then-current `b60cb1bd`: the judge
+    returned `wrong` for Q13 run 2 with the reason "falsely labels KBLI 77400 BALI_BLOCKED;
+    its record shows blocked false" -- and the answer was RIGHT. On `c69a260d`, the dataset
+    that run was served from, 77400 IS blocked. An unanchored re-score does not produce a
+    noisier number; it produces a confident wrong one, with a citation.
+
+    So a mismatch is not a warning. It refuses the gate, the same way an incomplete run does,
+    and it names the sha to recover and how.
+    """
+    declared = sorted({r.get("dataset_sha256") for r in rows if r.get("dataset_sha256")})
+    loaded = hashlib.sha256((root / DATASET).read_bytes()).hexdigest()
+    ok = len(declared) == 1 and declared[0] == loaded
+    out = {
+        "pass": ok or not declared,
+        "loaded_sha256": loaded,
+        "declared_by_answer_rows": declared,
+        "rows_without_declaration": sum(1 for r in rows if not r.get("dataset_sha256")),
+    }
+    if not out["pass"]:
+        out["recover"] = (
+            "re-score against the dataset the answers were served from: "
+            "git log --format=%H -- " + DATASET + " | while read c; do "
+            "git cat-file blob $c:" + DATASET + " | shasum -a 256; done  # find the commit, then "
+            "git worktree add <dir> <commit> && P2B_DATASET_ROOT=<dir> python3 "
+            "scripts/kbli_bench/score_p2b.py score ..."
+        )
+    return out
 
 
 def bali_blocked_census(by_code: dict) -> dict:
@@ -808,6 +858,7 @@ def cmd_score(corpus_p, answers_p, judgedir):
         "stability": judging_stability,
     }
     census = bali_blocked_census(by_code)
+    anchor = dataset_anchor(rows, root)
     report = {
         "floors": floors,
         # A run that is not intact cannot produce a green gate, whatever the floors say: a
@@ -818,12 +869,14 @@ def cmd_score(corpus_p, answers_p, judgedir):
             all(f["pass"] for f in floors.values())
             and integrity["complete"]
             and decisive["pass"]
+            and anchor["pass"]
         ),
         "run_integrity": integrity,
         "judging_decisive": decisive,
         "dataset": {
             "path": DATASET,
-            "sha256": hashlib.sha256((root / DATASET).read_bytes()).hexdigest(),
+            "sha256": anchor["loaded_sha256"],
+            "anchor": anchor,
             "bali_blocked_census": census,
         },
         "denominators": {
