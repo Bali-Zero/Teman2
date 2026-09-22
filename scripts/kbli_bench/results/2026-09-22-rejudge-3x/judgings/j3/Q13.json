@@ -1,0 +1,20 @@
+{
+  "qid": "Q13",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "abstained",
+      "reason": "Jawaban ditolak oleh gate dan tidak menyatakan fakta regulasi."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menolak generalisasi; seluruh batas 100% dan verdict Bali per KBLI sesuai rekaman yang disajikan."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Jawaban ditolak oleh gate dan tidak menyatakan fakta regulasi."
+    }
+  ]
+}

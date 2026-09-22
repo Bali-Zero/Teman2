@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and points to the available KBLI data instead of inventing OSS steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the supplied data contains no post-NIB KBLI addition procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and identifies the available field types without asserting unsupported OSS steps."
+    }
+  ]
+}

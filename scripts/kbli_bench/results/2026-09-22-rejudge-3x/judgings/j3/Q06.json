@@ -1,0 +1,20 @@
+{
+  "qid": "Q06",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan ketiga fakta LKPM tidak tersedia dan menunjuk kode yang tersedia; tidak menambahkan fakta regulasi."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Abstain secara eksplisit atas frekuensi, tenggat, dan sanksi LKPM, serta menunjuk dua kode paket."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Abstain atas fakta LKPM dan tepat membedakan kewajiban pelaporan pertambangan 08915; menunjuk kode paket."
+    }
+  ]
+}

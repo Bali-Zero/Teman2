@@ -1,0 +1,20 @@
+{
+  "qid": "Q11",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Hanya membahas 56303; tidak menyajikan dan membedakan alternatif 56101 yang tidak terblokir moratorium Bali."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Fakta 56303 didukung, tetapi jawaban mengabaikan kandidat 56101 dan perbedaan status moratoriumnya."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Fakta 56303 didukung, tetapi perilaku wajib tidak terpenuhi karena 56101 yang tidak terblokir tidak dibahas."
+    }
+  ]
+}

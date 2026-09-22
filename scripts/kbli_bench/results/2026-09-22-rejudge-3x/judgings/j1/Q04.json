@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and points to available KBLI records without inventing OSS steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because supplied KBLI data contains no NIB amendment procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares missing procedural data and identifies available field categories without asserting invented steps."
+    }
+  ]
+}

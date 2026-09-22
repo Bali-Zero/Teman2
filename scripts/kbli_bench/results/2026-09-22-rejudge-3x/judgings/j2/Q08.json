@@ -1,0 +1,20 @@
+{
+  "qid": "Q08",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the doctrine gap, points to Navigator limits, and confines examples to supported ownership caps and Bali verdicts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the missing comparison and gives only supported per-KBLI PMA and Bali-status examples."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from company-form doctrine; all supplementary KBLI caps, conditions, and Bali verdict claims follow from its served records."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q14",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the terminology gap and points to the available KBLI records without asserting unsupported doctrine."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly states the definitions are unavailable and limits the records to code-specific licensing and risk data."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains, explains the corpus limitation, and avoids inventing general OSS terminology."
+    }
+  ]
+}

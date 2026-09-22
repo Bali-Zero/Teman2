@@ -1,0 +1,20 @@
+{
+  "qid": "Q13",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "abstained",
+      "reason": "Gate rejected the answer; no regulatory facts were asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Denies universality; all five code-specific 100% caps and Bali verdicts match the served records."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Gate rejected the answer; no regulatory facts were asserted."
+    }
+  ]
+}

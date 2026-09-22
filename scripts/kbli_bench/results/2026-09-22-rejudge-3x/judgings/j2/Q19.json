@@ -1,0 +1,20 @@
+{
+  "qid": "Q19",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English, explains the corpus gap, and points to the relevant KBLI records without inventing a checklist."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and accurately points to activity-specific examples in the served records without claiming incorporation documents."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and correctly explains that the supplied activity records do not provide a general company-setup document checklist."
+    }
+  ]
+}

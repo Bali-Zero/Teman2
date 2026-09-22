@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data tidak memuat mekanisme koreksi OSS dan hanya menunjuk cakupan KBLI yang tersedia."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan abstensi atas mekanisme koreksi/pengulangan OSS serta menunjuk keterbatasan data yang tersedia."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan informasi prosedur koreksi OSS tidak tersedia dan menjelaskan cakupan data secara umum."
+    }
+  ]
+}
