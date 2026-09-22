@@ -86,6 +86,12 @@ on:
       - "scripts/tests/test_wr2_daily_reconciler.py"
       - "scripts/tests/test_wr2_wr3_handoff_emit.py"
       - "scripts/wr2_ig_publish.py"
+      # The two metric writers ride on wr2_queue_writer.queue_lock/write_queue_atomic,
+      # so a change to that contract must re-run them (the importer needs openpyxl).
+      - "scripts/wr2_ig_metrics_scraper.py"
+      - "scripts/wr2_ig_dashboard_import.py"
+      - "scripts/tests/test_wr2_ig_metrics_scraper.py"
+      - "scripts/tests/test_wr2_ig_dashboard_import.py"
       # The claim contract the WR2 brief never had. It gates what WR3 inherits
       # without re-verifying, so it belongs to the same battery as the emitter.
       - "scripts/wr2_claims.py"
@@ -137,7 +143,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install battery dependencies
-        run: python -m pip install --quiet pytest pytest-asyncio asyncpg numpy pydantic httpx Pillow pyyaml
+        run: python -m pip install --quiet pytest pytest-asyncio asyncpg numpy pydantic httpx Pillow pyyaml openpyxl
 
       - name: Run WR2 queue test battery
         env:
@@ -152,6 +158,8 @@ jobs:
             scripts/tests/test_wr2_daily_reconciler.py \
             scripts/tests/test_wr2_wr3_handoff_emit.py \
             scripts/tests/test_wr2_claims.py \
+            scripts/tests/test_wr2_ig_metrics_scraper.py \
+            scripts/tests/test_wr2_ig_dashboard_import.py \
             scripts/tests/test_wr3_companion_envelope.py \
             scripts/tests/test_wr2_carousel_ir.py \
             scripts/tests/test_wr2_editorial_pregate.py \
