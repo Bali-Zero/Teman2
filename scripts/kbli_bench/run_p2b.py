@@ -18,8 +18,10 @@ step re-implemented here would measure this script instead of the product, which
 thing the benchmark must never do. `--answers` therefore takes the JSONL that harness wrote.
 Runbook for the serving half: `scripts/kbli_bench/README.md`.
 
-The judge rides the ChatGPT seat through the `codex` CLI (OAuth). No per-token API key of any
-vendor is read, written or required by this script.
+The judge rides a live ChatGPT seat picked by `scripts/lib/codex_seat.py`
+(`codex_seat_pick()`), then sanitised into a private CODEX_HOME before `codex exec`
+runs (see `sanitized_codex_home`). No per-token API key of any vendor is read, written
+or required by this script.
 """
 from __future__ import annotations
 
@@ -36,6 +38,13 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+# CODEX_HOME must name a ChatGPT Pro seat that is actually logged in,
+# alternating between the two subscriptions where more than one exists
+# (scripts/lib/codex_seat.sh is the one list; see its own docstring for why a
+# second Python copy is the exact defect it exists to prevent).
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.lib.codex_seat import codex_seat_pick
 
 HERE = Path(__file__).resolve().parent
 SCORER = HERE / "score_p2b.py"
@@ -78,10 +87,17 @@ def sanitized_codex_home(dest: Path) -> tuple[Path, str]:
 
     So the benchmark stops depending on the shape of somebody's interactive config: it copies
     the credential file and a config with the nested `[features.*]` tables dropped into a
-    0700 temp dir of its own. The user's real `~/.codex` is never written to. Nothing here
-    prints, logs or returns the credential; only the number of dropped tables is reported.
+    0700 temp dir of its own. The user's real `~/.codex` (or whichever seat directory is
+    picked below) is never written to. Nothing here prints, logs or returns the credential;
+    only the number of dropped tables is reported.
+
+    The SOURCE is not hardcoded to `~/.codex` -- on Pro that default seat answers 401 while a
+    logged-in seat sits one environment variable away (scripts/lib/codex_seat.sh's own
+    measurement, 2026-08-12). `codex_seat_pick()` resolves the live seat the same way every
+    other codex caller in this tree does; `None` (no seat found) falls back to `~/.codex`,
+    codex's own default, exactly as before this file resolved a seat at all.
     """
-    src = Path.home() / ".codex"
+    src = Path(codex_seat_pick() or (Path.home() / ".codex"))
     dest.mkdir(parents=True, exist_ok=True)
     os.chmod(dest, 0o700)
     lines = (src / "config.toml").read_text().splitlines()

@@ -1,0 +1,52 @@
+gear: 1
+task_id: run-p2b-codex-seat-20260922
+lane: backend-rag
+host: nuzantara (Pro)
+branch: agent/nuzantara/backend-rag/run-p2b-codex-seat-20260922
+gate_class: none
+l_level: L2
+objective: >-
+  #7132 merged (9276fc050b) carrying scripts/kbli_bench/run_p2b.py. Its own merge-group run
+  (35748406022) failed the required Immune-enforcement census check
+  scripts/tests/test_codex_seat_lib.py::test_no_call_site_invokes_codex_without_choosing_a_seat:
+  run_p2b.py invokes `codex exec` via subprocess without ever importing scripts/lib/codex_seat,
+  so a dead default seat on Pro (~/.codex answers 401 there, measured 2026-08-12) would kill
+  every judging silently. Reproduced fresh on this branch's own origin/main base (95bc70c55e,
+  before any edit): the same test fails with the same single offender. Cured at the cause,
+  matching the house pattern every other codex_exec call site under scripts/ already uses
+  (e.g. scripts/kbli_triangle/cascade_judge.py) — no serving logic, no scoring logic, no
+  manifest shape changed.
+scope:
+  - "scripts/kbli_bench/run_p2b.py — sanitized_codex_home() sources its private CODEX_HOME
+    copy from scripts.lib.codex_seat.codex_seat_pick() (falling back to ~/.codex when no seat
+    resolves) instead of hardcoding ~/.codex; docstrings updated to say so."
+  - "scripts/tests/test_run_p2b.py — two new cases (guilt: a picked seat directory is used over
+    a differing decoy ~/.codex; innocence: None falls back to ~/.codex), no real credential
+    touched."
+constraints:
+  - "No change to score_p2b.py, the manifest shape, or any committed judging/result artifact —
+    this is a seat-selection fix only."
+  - "The judge still rides the ChatGPT seat through the `codex` CLI (OAuth). No per-token API
+    key of any vendor is read, written or required."
+  - "Nothing here is armed, merged or deployed by this session."
+acceptance:
+  - text: >-
+      GUILT, reproduced on this branch's own pre-edit origin/main base: the seat-census test
+      fails, naming scripts/kbli_bench/run_p2b.py as the sole offender.
+    probe: "pytest scripts/tests/test_codex_seat_lib.py -k no_call_site -v (on 95bc70c55e, before the fix commit)"
+  - text: "INNOCENCE: after the fix, the same test passes."
+    probe: "pytest scripts/tests/test_codex_seat_lib.py -k no_call_site -v"
+  - text: "NO REGRESSION: the run_p2b + scorer suites stay green, 98 cases."
+    probe: "pytest scripts/tests/test_run_p2b.py scripts/tests/test_score_p2b.py -q"
+  - text: "Touched files are ruff-clean, no new findings."
+    probe: "ruff check scripts/kbli_bench/run_p2b.py scripts/tests/test_run_p2b.py"
+mutation_evidence: >-
+  The guilt case IS the mutation: origin/main's own shipped run_p2b.py (95bc70c55e, no code
+  edit at all) is the guilty state, reproduced fresh in this turn before any fix was written.
+  Restoring the fix and rerunning the same probe flips it to green — no separate revert/replay
+  needed since the pre-fix state is simply this branch's own unedited base commit.
+pii: none
+local_evidence: >-
+  pytest run on this worktree, this turn, both before (guilt) and after (innocence) the fix
+  commit; ruff check on both touched files; no live seat probe run (codex exec itself is not
+  invoked by this task — only the path CODEX_HOME is built from is changed).
