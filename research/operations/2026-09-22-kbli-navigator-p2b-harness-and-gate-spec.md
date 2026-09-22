@@ -8,7 +8,7 @@ sources:
   - scripts/kbli_bench/results/2026-09-22-rejudge-3x/ (this run: 3 judgings x 29 questions, anchored)
   - research/operations/2026-09-14-kbli-navigator-p2b-candidate-k2-gamma.md (the run being re-judged)
   - KBLI Navigator app repo, M5, no remote — read-only over ssh
-adversarial_review: none — declared, see section 6
+adversarial_review: agy
 ---
 
 # P2b — the instrument was wrong about three things, and one of them was the score
@@ -82,18 +82,23 @@ the committed ones at all.
 The scorer's `class_rules.bali_moratorium_scope.declared_gap` stated that `l4_bali.blocked` is
 true on **518** records, "372 risk-class + 68 TERTUTUP + 48 named-moratorium + 17
 non-classifiable + 13 other". That was measured on `3dafab17…`. The k2-gamma report declared it
-stale at 519 and left it. Measured on the tree's `b60cb1bd…` today:
+stale at 519 and left it, because there was nothing to fix it in.
 
-| | value |
-| --- | --- |
-| blocked | **135** of 1,559 |
-| by status | 72 TERTUTUP · 40 CHIUSO_BALI · 12 CHIUSO_MORATORIA_BALI · 7 CHIUSO_PMA_NO_BESAR · 2 CHIUSO_REGOLATORE_SETTORIALE · 1 BLOCCATO_DIPENDE_SCOPE · 1 CHIUSO_BALI_PROPOSTO |
+The cure is that the sentence is now rendered from a count, so it is right about whichever
+dataset is loaded. Both of these come out of the same code, this turn:
 
-`BLOCCATO_CLASSE_RISCHIO`, the largest group in the sentence, is not a status this dataset
-carries at all — the 383 records it described are now `ATTENZIONE_FASCIA_BALI`, and they are
-**not blocked**. A hardcoded census does not age into being slightly wrong; it ages into naming
-things that do not exist, inside a JSON a reader takes for a measurement. It is now counted, and
-the report carries the dataset's sha256 so it can never again be silently anchored elsewhere.
+| dataset | blocked | largest group |
+| --- | --- | --- |
+| `c69a260d…` — the anchored run, committed in `2026-09-22-rejudge-3x/p2b_score.json` | **519** of 1,559 | `BLOCCATO_CLASSE_RISCHIO` 373 |
+| `b60cb1bd…` — the tree's current file | **135** of 1,559 | `TERTUTUP` 72 |
+
+The first line is k2-gamma's own declared-but-unfixable 519, now printed by the instrument
+instead of denied by it in prose. The second is what the hardcoded sentence would say today:
+wrong by a factor of four, and naming `BLOCCATO_CLASSE_RISCHIO` as the largest cause when the
+tree's dataset has none — those 383 records are now `ATTENZIONE_FASCIA_BALI`, and they are **not
+blocked**. A hardcoded census does not age into being slightly wrong; it ages into naming things
+that do not exist, inside a JSON a reader takes for a measurement. The report also carries the
+dataset's sha256 so a census can never again be silently anchored elsewhere.
 
 ## 2. What the lane was asked to build, and what was actually there
 
@@ -163,9 +168,13 @@ would measure the harness instead of the product.
   on `nuzantara-rag.fly.dev` answer `{"detail":"Authentication required"}`; the credential is
   operator territory and was not hunted for. Cure B is reported cured on the surface the
   benchmark actually measures — the macOS app — and unmeasured on the HTTP one.
-- **No adversarial seat round.** The one seat reachable from Pro is the same `codex` seat that
-  judged this run, and generator is never grader. The Claude session that ships this PR is the
-  gate.
+- **The adversarial round found nothing, and the session did.** `agy` (Gemini) reviewed this
+  report against a mechanical digest of the two score files and returned `VERDICT: OK`
+  (`evidence/.../council/agy-round1.txt`). Section 1.3 was then rewritten anyway: the seat
+  checked the 135 census against the digest and passed it, while the committed artifact for the
+  ANCHORED run prints 519 — both are correct, for different datasets, and the section said only
+  one of them. One seat returning OK is weak evidence; it is recorded as what it is. The judge
+  seat itself was not asked to review its own run — generator is never grader.
 - **P2c stays closed.** Two floors are red; nothing here opens it.
 - **Q23, Q05, Q11, Q26 are unchanged and unaddressed** — all four are answer-framing defects in
   the app's prompt, named in the k2-gamma report §4, and none is a gate or a scorer defect.
