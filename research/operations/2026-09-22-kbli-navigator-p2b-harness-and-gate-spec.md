@@ -178,3 +178,24 @@ would measure the harness instead of the product.
 - **P2c stays closed.** Two floors are red; nothing here opens it.
 - **Q23, Q05, Q11, Q26 are unchanged and unaddressed** — all four are answer-framing defects in
   the app's prompt, named in the k2-gamma report §4, and none is a gate or a scorer defect.
+
+## Adversarial review
+
+**agy (Gemini), round 1 — `VERDICT: OK`, 0 objections raised.** Fed this report plus a
+mechanical digest generated from the two score files: both floor sets, both `per_question`
+blocks, the anchor, the census and the non-unanimous stability rows. It checked the floor table
+against the digest, verified that the 4/8 -> 3/8 move is Q20 alone, matched the four
+non-unanimous rows, and confirmed `anchor.pass`. Transcript:
+`evidence/2026-09/agent-nuzantara-backend-rag-chat-p2b-cures-20260-5b67c62a/council/agy-round1.txt`.
+
+**One objection the seat did not raise, found by the session after it passed.** §1.3 quoted only
+the 135 census of the tree's dataset while the committed artifact for the ANCHORED run prints
+519 with `BLOCCATO_CLASSE_RISCHIO` at 373. Both numbers are right, for different datasets, and
+a reader comparing the section against the file it cites would have read one of them as an
+error. Survived by rewriting, not by rewording: §1.3 is now a two-row table naming both, which
+is also the clearest proof the census is counted rather than remembered.
+
+**Not asked:** `gpt-5.6-sol`, which judged this run. Generator is never grader. Every other
+seat on the fleet probe was dead or quota-exhausted at the time of the run (`kimi` timeout,
+`codex-spark`, `qwen-cloud-code` unknown-err, `jules` cred-unavailable, all seven `tp1-*`
+quota-dead), so this is one seat, not a panel, and the report says so in §6.
