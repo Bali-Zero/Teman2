@@ -1640,3 +1640,30 @@ button.oracle-tree__step--editable:hover {
     border-color: #000000 !important;
   }
 }
+
+/* C2-1 branch previews stay subordinate to their route chip. */
+.oracle-process-branch {
+  min-width: 0;
+}
+.oracle-process-branch > ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-3);
+  color: var(--oracle-ink-faint);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+}
+button.oracle-tree__leaf {
+  cursor: pointer;
+  font: inherit;
+  /* PR #7081 E2E red 2: `.oracle-tree__leaf`'s base `background: transparent`
+     let axe's color-contrast check read `--oracle-ink-faint` (#5b6a60)
+     against `--oracle-canopy`/`--oracle-leaf-active` (#1f4d3d, 1.68:1) —
+     the adjacent "done" chip's opaque background, visible through this
+     button's own transparency while a Framer-Motion `layout` reflow was
+     still settling as the verdict view replaced the question view. An
+     opaque own background makes the pair's contrast independent of
+     whatever paints behind it in any animation frame: `--oracle-ink-faint`
+     on `--oracle-bg-elevated` is the AA pairing already measured at
+     :51/:85 (~5.7:1 light, ~5.68:1 dark) — no new token declared. */
+  background: var(--oracle-bg-elevated);
+}
