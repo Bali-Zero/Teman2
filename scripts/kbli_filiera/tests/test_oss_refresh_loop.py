@@ -33,9 +33,11 @@ def _loc(text: str) -> dict:
     return {"localization": {"id": {"uraian": text, "deskripsi": None}, "en": {"uraian": text, "deskripsi": None}}}
 
 
-def scope_payload(risk: str = "Menengah Tinggi", kewenangan: tuple[str, ...] = ("Bupati/Walikota", "Gubernur")) -> dict:
+def scope_payload(code: str = "10001", risk: str = "Menengah Tinggi",
+                  kewenangan: tuple[str, ...] = ("Bupati/Walikota", "Gubernur")) -> dict:
     resikos = [
         {
+            "kode": f"{code}-01-0{i}",
             "SkalaUsaha": _loc(skala),
             "Resiko": _loc(risk),
             "jangka_waktu": "",
@@ -44,13 +46,25 @@ def scope_payload(risk: str = "Menengah Tinggi", kewenangan: tuple[str, ...] = (
             "KbliKewajibans": [_loc("Memiliki Dokumen")],
             "KbliResikoKewenangans": [{"Kewenangan": _loc(k)} for k in kewenangan],
         }
-        for skala in ("Usaha Mikro", "Usaha Besar")
+        for i, skala in enumerate(("Usaha Mikro", "Usaha Besar"), start=1)
     ]
-    return {"success": True, "data": [{**_loc("Seluruh"), "KbliResikos": resikos}], "meta": {"count": 1, "totalPage": 1}}
+    scope = {**_loc("Seluruh"), "Kbli": {"id": uuid_of(code)}, "KbliResikos": resikos}
+    return {"success": True, "data": [scope], "meta": {"count": 1, "totalPage": 1}}
 
 
 def ok(payload: dict) -> L.Answer:
     return L.Answer(200, json.dumps(payload).encode())
+
+
+def classify(answer: L.Answer, rows: list, code: str = "10001") -> tuple:
+    return L.classify_answer(answer, rows, code, uuid_of(code))
+
+
+def published_world(*codes: str, **payload_kw) -> dict[str, L.Answer]:
+    """Controls answer with their own scope; each named gap publishes one."""
+    answers = {uuid_of(c): ok(scope_payload(c)) for c in ("01111", "99999")}
+    answers.update({uuid_of(c): ok(scope_payload(c, **payload_kw)) for c in codes})
+    return answers
 
 
 def rows_for(payload: dict) -> list:
@@ -62,7 +76,7 @@ def uuid_of(code: str) -> str:
 
 
 def strong(code: str) -> dict:
-    return {"kode_kbli_2025": code, "per_skala": rows_for(scope_payload()), "_l2_source": "OSS_RBA_resiko_2025"}
+    return {"kode_kbli_2025": code, "per_skala": rows_for(scope_payload(code)), "_l2_source": "OSS_RBA_resiko_2025"}
 
 
 def gap(code: str, **extra) -> dict:
@@ -128,11 +142,11 @@ def spec_path(out: Path) -> Path:
 
 
 def test_404_is_still_an_honest_gap():
-    assert L.classify_answer(L.Answer(404, NOT_FOUND), []) == (L.STILL_404, "HTTP 404", None)
+    assert classify(L.Answer(404, NOT_FOUND), []) == (L.STILL_404, "HTTP 404", None)
 
 
 def test_published_scope_on_an_empty_gap_proposes_the_l2_rows():
-    klass, _, proposed = L.classify_answer(ok(scope_payload(risk="Rendah")), [])
+    klass, _, proposed = classify(ok(scope_payload(risk="Rendah")), [])
     assert klass == L.PUBLISHED
     assert [r["skala_usaha"] for r in proposed] == [["Mikro"], ["Besar"]]
     # The L2 merge policy's fresh-row rule, not a re-derivation: Rendah -> Otomatis.
@@ -140,14 +154,31 @@ def test_published_scope_on_an_empty_gap_proposes_the_l2_rows():
 
 
 def test_rows_that_differ_from_canonical_are_changed():
-    klass, _, proposed = L.classify_answer(ok(scope_payload(risk="Tinggi")), rows_for(scope_payload()))
+    klass, _, proposed = classify(ok(scope_payload(risk="Tinggi")), rows_for(scope_payload()))
     assert klass == L.CHANGED and proposed and proposed[0]["kategori_risiko"] == "Tinggi"
 
 
 def test_a_reordered_kewenangan_is_not_a_change():
     canonical = rows_for(scope_payload(kewenangan=("Bupati/Walikota", "Gubernur", "Menteri/Kepala Badan")))
     answer = ok(scope_payload(kewenangan=("Menteri/Kepala Badan", "Bupati/Walikota", "Gubernur")))
-    assert L.classify_answer(answer, canonical)[0] == L.UNCHANGED
+    assert classify(answer, canonical)[0] == L.UNCHANGED
+
+
+def test_a_scope_served_for_another_uuid_is_never_a_proposal():
+    klass, why, proposed = classify(ok(scope_payload("55203")), [], code="10001")
+    assert klass == L.MALFORMED and "not this code's" in why and proposed is None
+
+
+def test_a_risk_row_of_another_code_is_never_a_proposal():
+    payload = scope_payload("10001")
+    payload["data"][0]["KbliResikos"][1]["kode"] = "55203-01-02"
+    assert classify(ok(payload), [])[0] == L.MALFORMED
+
+
+def test_a_scope_without_identity_is_malformed():
+    payload = scope_payload("10001")
+    del payload["data"][0]["Kbli"]
+    assert classify(ok(payload), [])[0] == L.MALFORMED
 
 
 @pytest.mark.parametrize("body, reason", [
@@ -156,17 +187,17 @@ def test_a_reordered_kewenangan_is_not_a_change():
     (json.dumps({"success": False, "data": []}).encode(), "success:true"),
     (json.dumps({"success": True, "data": None}).encode(), "not a list"),
     (json.dumps({"success": True, "data": []}).encode(), "no risk rows"),
-    (json.dumps({"success": True, "data": ["scope"]}).encode(), "unparseable"),
+    (json.dumps({"success": True, "data": ["scope"]}).encode(), "not this code's"),
 ])
 def test_malformed_200_answers(body, reason):
-    klass, why, proposed = L.classify_answer(L.Answer(200, body), [])
+    klass, why, proposed = classify(L.Answer(200, body), [])
     assert klass == L.MALFORMED and reason in why and proposed is None
 
 
 @pytest.mark.parametrize("status, expected", [(401, L.AUTH_FAILED), (403, L.AUTH_FAILED),
                                               (500, L.FETCH_ERROR), (429, L.FETCH_ERROR), (0, L.FETCH_ERROR)])
 def test_non_answers(status, expected):
-    assert L.classify_answer(L.Answer(status, error="x"), [])[0] == expected
+    assert classify(L.Answer(status, error="x"), [])[0] == expected
 
 
 # ---------------------------------------------------------------- persistent session
@@ -270,15 +301,13 @@ def test_controls_are_the_lowest_and_highest_sourced_codes():
 
 
 def test_dry_run_writes_nothing_even_when_scopes_are_proposed(tmp_path):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload()),
-                           uuid_of("10001"): ok(scope_payload())})
-    rc, out = run(tmp_path, default_world(), session)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")))
     assert rc == L.EXIT_PROPOSED
     assert not out.exists()
 
 
 def test_apply_with_nothing_new_writes_report_and_summary_but_no_spec(tmp_path, capsys):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload())})
+    session = FakeSession(published_world())
     rc, out = run(tmp_path, default_world(), session, "--apply")
     report = json.loads(report_path(out).read_text())
     assert rc == L.EXIT_NOTHING_NEW == report["exit_code"]
@@ -290,9 +319,9 @@ def test_apply_with_nothing_new_writes_report_and_summary_but_no_spec(tmp_path, 
 
 
 def test_report_shape(tmp_path):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload()),
-                           uuid_of("10002"): L.Answer(0, error="timeout", attempts=3)})
-    _, out = run(tmp_path, default_world(), session, "--apply")
+    answers = published_world()
+    answers[uuid_of("10002")] = L.Answer(0, error="timeout", attempts=3)
+    _, out = run(tmp_path, default_world(), FakeSession(answers), "--apply")
     report = json.loads(report_path(out).read_text())
     assert set(report) == {"schema", "date", "generated_at", "source", "canonical", "population", "coverage",
                            "controls", "counts", "exit_code", "verdict", "cure_spec", "codes"}
@@ -308,27 +337,45 @@ def test_report_shape(tmp_path):
     entry = next(c for c in report["codes"] if c["code"] == "10003")
     assert entry["quarantined_by"] == ["per_skala_disputed_pp28_collision"]
     assert not any(k.startswith("_") for c in report["codes"] for k in c)
-    assert report["exit_code"] == L.EXIT_NOTHING_NEW  # partial errors are reported, not a verdict
+
+
+def test_one_unanswered_code_is_not_nothing_new(tmp_path):
+    """Guilt (Kimi K3 refutation): 3 honest 404s and 1 timeout used to read
+    "nothing new" — the timed-out code may be the one OSS just published."""
+    answers = published_world()
+    answers[uuid_of("10002")] = L.Answer(0, error="timeout", attempts=3)
+    rc, out = run(tmp_path, default_world(), FakeSession(answers), "--apply")
+    report = json.loads(report_path(out).read_text())
+    assert rc == L.EXIT_CANNOT_VERIFY == report["exit_code"]
+    assert report["verdict"] == "partial: 1 of 4 code(s) got no trustworthy answer"
+
+
+def test_a_proposal_still_surfaces_on_a_partial_run(tmp_path):
+    answers = published_world("10001")
+    answers[uuid_of("10002")] = L.Answer(0, error="timeout", attempts=3)
+    assert run(tmp_path, default_world(), FakeSession(answers))[0] == L.EXIT_PROPOSED
 
 
 def test_cure_spec_shape_and_routes(tmp_path):
-    published = scope_payload(risk="Rendah")
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload()),
-                           uuid_of("10001"): ok(published), uuid_of("10003"): ok(published)})
     records = default_world()
-    rc, out = run(tmp_path, records, session, "--apply")
+    rc, out = run(tmp_path, records, FakeSession(published_world("10001", "10003", risk="Rendah")), "--apply")
     spec = json.loads(spec_path(out).read_text())
     report = json.loads(report_path(out).read_text())
     assert rc == L.EXIT_PROPOSED and report["cure_spec"] == "scripts/kbli_filiera/cure_specs/oss_refresh_2026_09_22.json"
     assert spec["_generated_by"] == "scripts/kbli_filiera/oss_refresh_loop.py"
     assert spec["fetched"] == "2026-09-22" and set(spec["codes"]) == {"10001", "10003"}
+    expected_rows = rows_for(scope_payload("10001", risk="Rendah"))
     item = spec["codes"]["10001"]
-    assert item["route"] == "l2_transform" and spec["codes"]["10003"]["route"] == "quarantine_owner"
-    assert item["per_skala"] == rows_for(published)
-    assert item["premises"]["per_skala"] == {"old_sha256": H.sha256_of([]), "new_sha256": H.sha256_of(rows_for(published))}
+    assert item["route"] == "l2_transform" and item["per_skala"] == expected_rows
+    assert item["premises"]["per_skala"] == {"old_sha256": H.sha256_of([]), "new_sha256": H.sha256_of(expected_rows)}
     assert item["premises"]["_l2_status"] == {"old_sha256": H.sha256_of("no_oss_risk"), "new_sha256": H.sha256_of(None)}
     assert item["set"] == {"_l2_source": "OSS_RBA_resiko_2025"} and item["drop_keys"] == ["_l2_status", "absent_probes"]
     assert item["besar_verdict"] == "BLOCKED"
+    # a quarantined code is evidence for its owner, with nothing a compiler could apply
+    quarantined = spec["codes"]["10003"]
+    assert quarantined["route"] == "quarantine_owner" and quarantined["oss_rows"]
+    assert not {"per_skala", "set", "drop_keys", "premises"} & set(quarantined)
+    assert quarantined["record_sha256"] == H.sha256_of(records[5])
     # the loop proposes; the canonical it read is byte-identical afterwards
     assert json.loads((tmp_path / "canonical.json").read_text())["data"] == records
 
@@ -339,8 +386,7 @@ def test_empty_fetch_exits_4(tmp_path):
 
 
 def test_every_answer_malformed_exits_4(tmp_path):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload())},
-                          default=L.Answer(200, b"<html>maintenance</html>"))
+    session = FakeSession(published_world(), default=L.Answer(200, b"<html>maintenance</html>"))
     assert run(tmp_path, default_world(), session)[0] == L.EXIT_CANNOT_VERIFY
 
 
@@ -352,9 +398,9 @@ def test_a_blind_endpoint_cannot_report_nothing_new(tmp_path):
 
 
 def test_auth_refusal_exits_4_whatever_else_answered(tmp_path):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload()),
-                           uuid_of("10001"): ok(scope_payload()), uuid_of("10002"): L.Answer(401, error="HTTP 401")})
-    assert run(tmp_path, default_world(), session)[0] == L.EXIT_CANNOT_VERIFY
+    answers = published_world("10001")
+    answers[uuid_of("10002")] = L.Answer(401, error="HTTP 401")
+    assert run(tmp_path, default_world(), FakeSession(answers))[0] == L.EXIT_CANNOT_VERIFY
 
 
 def test_deadline_defers_and_logs_fetched_vs_asked(tmp_path):
@@ -363,20 +409,20 @@ def test_deadline_defers_and_logs_fetched_vs_asked(tmp_path):
     gaps, strong_codes = L.gap_population(records)
     by_code = {r["kode_kbli_2025"]: r for r in records}
     ticks = iter([0.0, 0.0, 0.0, 0.0, 999.0, 999.0, 999.0])  # start, 2 controls, 1st gap, then past deadline
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload())})
     controls, targets = L.run_loop(gaps, [by_code[c] for c in L.pick_controls(strong_codes)],
-                                   {c: uuid_of(c) for c in by_code}, session, deadline_s=10,
-                                   clock=lambda: next(ticks), sleep=lambda s: None)
-    classes = Counter(t["class"] for t in targets)
-    assert classes == Counter({L.STILL_404: 1, L.DEFERRED: 3})
+                                   {c: uuid_of(c) for c in by_code}, FakeSession(published_world()),
+                                   deadline_s=10, clock=lambda: next(ticks), sleep=lambda s: None)
+    counts = Counter(t["class"] for t in targets)
+    assert counts == Counter({L.STILL_404: 1, L.DEFERRED: 3})
+    assert L.decide_exit(counts, controls_ok=True)[0] == L.EXIT_CANNOT_VERIFY
     report = L.build_report(date="2026-09-22", generated_at="x", canonical={}, population=gaps,
-                            control_results=controls, target_results=targets, exit_code=0, verdict="v",
+                            control_results=controls, target_results=targets, exit_code=4, verdict="v",
                             cure_spec_rel=None, user_key_present=False)
     assert (report["coverage"]["asked"], report["coverage"]["fetched"], report["coverage"]["deferred"]) == (4, 1, 3)
 
 
 def test_only_restricts_to_a_gap_subset(tmp_path):
-    session = FakeSession({uuid_of("01111"): ok(scope_payload()), uuid_of("99999"): ok(scope_payload())})
+    session = FakeSession(published_world())
     rc, _ = run(tmp_path, default_world(), session, "--only", "10002")
     assert rc == L.EXIT_NOTHING_NEW and session.calls[-1] == uuid_of("10002") and len(session.calls) == 3
 

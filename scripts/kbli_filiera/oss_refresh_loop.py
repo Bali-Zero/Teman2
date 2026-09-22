@@ -234,7 +234,28 @@ def _retry_delay(retry_after: str | None, default: float) -> float:
 # ------------------------------------------------------------------ classification
 
 
-def classify_answer(answer: Answer, current_rows: list) -> tuple[str, str, list | None]:
+def payload_identity_mismatch(payload: dict, code: str, uuid: str) -> str | None:
+    """Pure. None when every scope names the code that was asked for.
+
+    `success:true` is the payload vouching for itself; it says nothing about
+    WHICH code it describes. Measured 2026-09-22: every scope carries
+    `Kbli.id` == the requested uuid and every risk row a `kode` of the form
+    `<code>-NN-NN`, so a scope served for the wrong code (a remapped uuid, a
+    cache in front of the gateway) is detectable, and must never become a
+    proposal for the code we asked about."""
+    for scope in payload["data"]:
+        kbli = scope.get("Kbli") if isinstance(scope, dict) else None
+        scope_uuid = kbli.get("id") if isinstance(kbli, dict) else None
+        if scope_uuid != uuid:
+            return f"scope names uuid {scope_uuid!r}, asked {uuid}"
+        for row in scope.get("KbliResikos") or []:
+            kode = row.get("kode") if isinstance(row, dict) else None
+            if kode is not None and not str(kode).startswith(f"{code}-"):
+                return f"risk row kode {kode!r} is not code {code}"
+    return None
+
+
+def classify_answer(answer: Answer, current_rows: list, code: str, uuid: str) -> tuple[str, str, list | None]:
     """Pure. (class, reason, proposed per_skala or None).
 
     The proposal is the per_skala the L2 transform would write for this code
@@ -256,6 +277,9 @@ def classify_answer(answer: Answer, current_rows: list) -> tuple[str, str, list 
         return MALFORMED, "HTTP 200 without success:true", None
     if not isinstance(payload.get("data"), list):
         return MALFORMED, "HTTP 200 data is not a list", None
+    mismatch = payload_identity_mismatch(payload, code, uuid)
+    if mismatch:
+        return MALFORMED, f"payload is not this code's: {mismatch}", None
     try:
         parsed = L2.parse_per_skala(payload)
     except (AttributeError, TypeError, KeyError) as exc:
@@ -284,7 +308,9 @@ def _row_multiset(rows: list) -> list[str]:
 
 def decide_exit(counts: Counter, controls_ok: bool) -> tuple[int, str]:
     """Pure. The verdict order matters: an auth refusal or a blind endpoint
-    outranks anything the remaining answers seem to say."""
+    outranks anything the remaining answers seem to say, and "nothing new" is
+    only said when EVERY asked code got a trustworthy answer — a code left
+    deferred or in error may be exactly the one OSS just published."""
     asked = sum(counts.values())
     if asked == 0:
         return EXIT_CANNOT_VERIFY, "empty population: nothing was asked"
@@ -297,6 +323,9 @@ def decide_exit(counts: Counter, controls_ok: bool) -> tuple[int, str]:
     proposed = sum(counts[k] for k in PROPOSAL_CLASSES)
     if proposed:
         return EXIT_PROPOSED, f"{proposed} new OSS scope(s) proposed"
+    untrusted = asked - sum(counts[k] for k in TRUSTED_CLASSES)
+    if untrusted:
+        return EXIT_CANNOT_VERIFY, f"partial: {untrusted} of {asked} code(s) got no trustworthy answer"
     return EXIT_NOTHING_NEW, "nothing new"
 
 
@@ -369,7 +398,7 @@ def run_loop(
             sleep(rate_s)
         first = False
         answer = session.get(uuid)
-        klass, reason, proposed = classify_answer(answer, list(record.get("per_skala") or []))
+        klass, reason, proposed = classify_answer(answer, list(record.get("per_skala") or []), code, uuid)
         log(f"{code} {klass} {reason}")
         return {
             **entry,
@@ -404,7 +433,7 @@ def build_cure_spec(date: str, results: list[dict], records_by_code: dict[str, d
         record = records_by_code[entry["code"]]
         proposed = entry["_proposed"]
         quarantined = entry["quarantined_by"]
-        codes[entry["code"]] = {
+        item = {
             "class": entry["class"],
             "uuid": entry["uuid"],
             "licensing_state": entry["licensing_state"],
@@ -412,6 +441,14 @@ def build_cure_spec(date: str, results: list[dict], records_by_code: dict[str, d
             "quarantined_by": quarantined,
             "body_sha256": entry["body_sha256"],
             "besar_verdict": L2.besar_block_verdict(proposed),
+        }
+        if quarantined:
+            # Evidence for the quarantine owner, deliberately NOT applyable: no
+            # per_skala / set / drop_keys a compiler could write by mistake.
+            codes[entry["code"]] = {**item, "record_sha256": H.sha256_of(record), "oss_rows": proposed}
+            continue
+        codes[entry["code"]] = {
+            **item,
             "premises": {
                 "per_skala": {"old_sha256": H.sha256_of(record.get("per_skala")), "new_sha256": H.sha256_of(proposed)},
                 "_l2_source": {"old_sha256": H.sha256_of(record.get("_l2_source")), "new_sha256": H.sha256_of(L2.L2_SOURCE)},
@@ -431,8 +468,9 @@ def build_cure_spec(date: str, results: list[dict], records_by_code: dict[str, d
             "codes; `per_skala` is what scripts/build_kbli_l2_oss_risk.py would write for each "
             "(parse_per_skala + merge_per_skala). Apply only through a hardened compiler that judges "
             "`premises` with _hardened_cure_io.judge_patch. route=quarantine_owner: the code's per_skala "
-            "is cure-owned (per_skala_disputed_*), so the OSS rows are evidence for that owner, never "
-            "input for the L2 transform. l4_bali is not proposed: `besar_verdict` is informational."
+            "is cure-owned (per_skala_disputed_*), so its entry carries only `oss_rows` + `record_sha256` "
+            "as evidence for that owner and nothing applyable. l4_bali is not proposed: `besar_verdict` "
+            "is informational."
         ),
         "version": f"oss-refresh-{date}",
         "fetched": date,

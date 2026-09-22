@@ -111,12 +111,12 @@ def test_new_scopes_heartbeat_ok_and_digest(tmp_path):
     assert any("NEW SCOPES PUBLISHED" in line for line in argv) and any("for 2 licensing-gap" in line for line in argv)
 
 
-def test_partial_run_is_a_warning(tmp_path):
+def test_partial_run_is_a_warning_naming_the_unanswered(tmp_path):
     home, env = _sandbox(tmp_path)
-    _run(env, STUB_RC="0", STUB_ERRORS="3")
+    _run(env, STUB_RC="4", STUB_ERRORS="3")
     hb = _heartbeat(home)
-    assert hb["status"] == "warning" and "result=partial" in hb["note"]
-    assert any("PARTIAL RUN" in line for line in _gateway(tmp_path))
+    assert hb["status"] == "warning" and "result=cannot_verify" in hb["note"]
+    assert "unanswered: errors=3 deferred=0" in _gateway(tmp_path)
 
 
 @pytest.mark.parametrize("no_report", ["0", "1"])
@@ -130,6 +130,7 @@ def test_cannot_verify_is_a_warning_with_or_without_report(tmp_path, no_report):
 @pytest.mark.parametrize("stub", [
     {"STUB_RC": "0", "STUB_NO_REPORT": "1"},    # green exit, no report: the Esiste≠Armato shape
     {"STUB_RC": "0", "STUB_REPORT_RC": "1"},    # report disagrees with the exit code
+    {"STUB_RC": "0", "STUB_ERRORS": "2"},       # "nothing new" over unanswered codes contradicts itself
     {"STUB_RC": "3"},                           # crash
 ])
 def test_loop_failure_is_an_error_and_p0(tmp_path, stub):

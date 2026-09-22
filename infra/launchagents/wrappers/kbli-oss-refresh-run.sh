@@ -190,7 +190,9 @@ else
                         elif [ "$loop_rc" = "1" ]; then
                             hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
                         elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
-                            hb_status="warning"; result="partial"; tier="digest"; key="kbli-oss-refresh:partial"
+                            # rc 0 is only legal when every code answered: a report saying
+                            # otherwise contradicts its own verdict.
+                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                         else
                             hb_status="ok"; result="nothing_new"; tier="none"; key=""
                         fi
@@ -231,19 +233,15 @@ case "$result" in
     new_scopes)
         message="KBLI OSS REFRESH — NEW SCOPES PUBLISHED
 OSS now publishes a ruang-lingkup scope for $proposed licensing-gap code(s). A cure SPEC was emitted; nothing was written to the canonical.
-report=$report_path
-log=$LOG"
-        ;;
-    partial)
-        message="KBLI OSS REFRESH — PARTIAL RUN
-Nothing new among the codes that answered, but errors=$errors deferred=$deferred codes got no trustworthy answer.
+unanswered: errors=$errors deferred=$deferred
 report=$report_path
 log=$LOG"
         ;;
     cannot_verify)
         message="KBLI OSS REFRESH CANNOT VERIFY — NO VERDICT ON THE GAPS
-The loop could not vouch for its answers (auth refused, endpoint blind, empty fetch, timeout, or a guard refused the run).
-loop_rc=$loop_rc
+The loop could not vouch for its answers (partial run, auth refused, endpoint blind, empty fetch, timeout, or a guard refused the run).
+unanswered: errors=${errors:-?} deferred=${deferred:-?}
+loop_rc=$loop_rc report=${report_path:-none}
 log=$LOG"
         ;;
     loop_failure)
