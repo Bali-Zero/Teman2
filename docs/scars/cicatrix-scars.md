@@ -1623,3 +1623,52 @@ pinna sul valore che il browser risolve, mai sulla forma che il sorgente scrive.
 il regex e' corretto. Si diagnostica solo chiedendo *dove vive oggi la cosa che questa guardia
 dice di sorvegliare*, e la risposta cambia con ogni refactor che la review approva perche' «non
 tocca il comportamento».
+
+## W135 — a tree-wide test skipped by a diff-scoped shortcut lets the merge queue land a failing entry under a later entry's green — 2026-09-22
+
+**TRAUMA, measured not inferred.** PR #7132 (P2b harness) added `scripts/kbli_bench/run_p2b.py`,
+which invokes `codex exec` without resolving a seat through `scripts/lib/codex_seat`. The
+tree-wide corpus `scripts/tests/test_codex_seat_lib.py::test_no_call_site_invokes_codex_without_choosing_a_seat`
+exists exactly for that, and it fired where it should: merge-group run `35748406022`
+(`gh-readonly-queue/main/pr-7132-…`) → job `antidotes`, step "Codex seat corpus" **failure**,
+offender `['scripts/kbli_bench/run_p2b.py']`. The next entry, #7141 (one runbook file), was
+grouped on top of #7132's merge commit and failed the same step (`35748927274`). The entry
+after that, #7142, was a one-line `.claude/skills/modus/PENDING-ARMS.md` ledger tick: its group
+(`35749200044`, base = #7141's head) computed `ledger_only=true` from ITS OWN group diff, the
+step "Codex seat corpus" was **skipped** (`if: steps.paths.outputs.relevant == 'true' &&
+steps.paths.outputs.ledger_only != 'true'`, `immune-enforcement.yml`), the job went green — and
+at `2026-09-22T15:46:48Z` the queue merged **all three** entries: #7132 landed as `9276fc050b`
+carrying the offender, six minutes after its own group had been red on it. The PR-event run of
+the same job had been green too, because on `pull_request` the step's relevance is computed from
+the PR's changed files, and the defect is in a file the filter does not name. Nothing on `main`
+was red afterwards: the corpus only runs when a diff looks relevant, and a defect already on
+`main` is in nobody's diff. Cure: #7145 (`bae6e072ed`), whose own group run `35750734516` ran the
+step to **success** — that run is the proof, not the merge.
+
+**MECHANISM.** Two under-matches stacked. (1) A **tree-wide** test (it scans every tracked
+`.py`/`.sh` for a codex argv) was placed behind a **diff-scoped** shortcut: whether the diff
+"looks relevant" says nothing about whether the tree is clean, so the shortcut can skip the one
+step that would have caught a defect the diff introduced elsewhere or that the tree already
+carries. (2) The merge queue evaluates a required job **per group**, and a group's green was
+taken as covering every entry below it — including entries whose own group had already failed.
+`mergeQueueEntry.state` read `UNMERGEABLE` for #7132 at 15:44Z, `mergeStateStatus` stayed
+`CLEAN` and `mergeable` stayed `MERGEABLE`; two minutes later the PR was merged. The PR-level
+fields never showed the failure; only the entry's own group run did.
+
+**ANTIBODY.** (a) A tree-wide corpus runs **unconditionally on `merge_group`** — the
+`ledger_only` / `relevant` shortcuts may skip diff-scoped batteries (unit tests over the changed
+package, mutation gates on the changed tests), never a test whose subject is the whole tree; the
+saving of a ledger tick is not worth a green that certifies nothing. Workflow cure pending as its
+own hot-zone PR (`immune-enforcement.yml`, step "Codex seat corpus" and its two seat siblings).
+(b) The shipping session proves an entry by **its own group run**, never by "the PR merged":
+`gh run list --event merge_group` filtered on `pr-<n>-` and the step conclusion via the jobs
+API — a `Bites:` observation for a queued PR names that run id. (c) A queue entry that turned
+`UNMERGEABLE` is treated as red even if the PR merges afterwards: read the failing step, and if
+the defect is now on `main`, open the cure PR immediately — the corpus will not fire again on
+its own, because the defect is in no future diff. (d) New codex call sites: `codex_seat_pick()`
+/ `codex_seat_env()` from `scripts/lib/codex_seat.py`, or an exemption with a reason in the
+corpus — the corpus is the door's own guard and it is tree-wide by design.
+
+**Family: #3 (Guard-over-match / UNDER-match)** — a guard whose scope (the tree) is wider than
+the trigger that decides whether it runs (the diff); with a **#2 (Esiste≠Armato)** flavour on
+the queue side: the check existed and even fired, and the merge happened anyway.
