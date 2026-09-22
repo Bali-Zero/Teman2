@@ -192,6 +192,7 @@ on:
       - P7 LEARN Shadow Harvester Gate
       - P8 Brand-API Gate
       - P9 Cost Breaker (GOVERN)
+      - pajak-monitor tests
       - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
       - Restore drill wiring tests
