@@ -236,6 +236,7 @@ def main() -> int:
         time.sleep(0.3)  # be gentle on the API
 
     updated = 0
+    bak = None  # set only when this run actually writes
     if fresh and not args.dry_run:
         # the fetch loop can take minutes: re-read under the queue's own lock so a
         # write made meanwhile (dashboard import, publisher, reconciler) survives
@@ -256,7 +257,7 @@ def main() -> int:
                 bak = qpath.with_suffix(qpath.suffix + f".bak-scraper-{int(time.time())}")
                 bak.write_text(pre_image)
                 _qw.write_queue_atomic(qpath, queue)
-    if updated:
+    if bak is not None:
         print(f"WROTE {updated} updates → {qpath} (backup {bak.name})")
     else:
         print("no writes")

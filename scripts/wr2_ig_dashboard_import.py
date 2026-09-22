@@ -228,6 +228,7 @@ def main() -> int:
             dup_codes += 1  # last row wins, but never silently
         by_code[p["shortcode"]] = p
 
+    bak = None  # set only when this run actually writes
     # read-merge-write under the queue's own lock, or a concurrent writer's
     # replace (scraper, publisher, reconciler) erases this import or vice versa
     with (nullcontext() if args.dry_run else _qw.queue_lock(qpath)):
@@ -252,7 +253,7 @@ def main() -> int:
     if args.save_summary:
         Path(args.save_summary).write_text(json.dumps(summary, ensure_ascii=False, indent=2))
         print(f"  summary → {args.save_summary}")
-    if matched and not args.dry_run:
+    if bak is not None:
         print(f"WROTE {len(matched)} updates → {qpath} (backup {bak.name})")
     else:
         print("no writes")
