@@ -56,11 +56,14 @@ if [[ ! -f "$SCRIPT" ]]; then
     exit 2
 fi
 
-# Verify rules file exists before launching Python — fail fast with a clear
-# message rather than letting the script SystemExit() inside asyncio.run().
-RULES_FILE="${HOME}/scripts/intel-lake-routing-rules.json"
+# Verify rules module exists before launching Python — fail fast with a
+# clear message rather than letting the script SystemExit() inside
+# asyncio.run(). Single source of truth (2026-09-23): the rules live in
+# apps/backend-rag/backend/services/intel/intel_lake_rules.py and are
+# deployed here as a sibling copy — see README.md deploy step.
+RULES_FILE="${HOME}/scripts/intel_lake_rules.py"
 if [[ ! -f "$RULES_FILE" ]]; then
-    log "ERROR rules file missing: $RULES_FILE"
+    log "ERROR rules module missing: $RULES_FILE"
     exit 2
 fi
 
