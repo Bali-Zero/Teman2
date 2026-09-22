@@ -3738,9 +3738,12 @@ VILA)`), only the empty skeletons are named `KBLI <code>` — the probe was meas
   so no code exceeds the limit. Recorded as refuted rather than dropped, so nobody re-derives the
   same suspicion — but any future `LIMIT` on that query is one duplicate-family away from becoming
   real, and the free fix is to order by `entity_id LIKE 'kbli:%' DESC`.
-- **Refresh loop** OSS/JDIH: the 221 no-scope watchlist self-resolves when OSS publishes a scope, and
-  the 217 declared gaps become verified values **with no human work**. This is the only path by which
-  the "99 missing" close themselves.
+- **Refresh loop** OSS/JDIH (`scripts/kbli_filiera/oss_refresh_loop.py`, #7136): live on Mini weekly,
+  it re-asks OSS about the 221 no-scope watchlist and PROPOSES a cure spec when a scope publishes —
+  it never writes the canonical itself. Its first run (2026-09-22) proposed 10 scopes. Applying a
+  proposal is a separate compiler that does not exist yet, tracked in PENDING-ARMS row
+  `kbli-oss-refresh-proposals-have-no-applier`; the 217 declared gaps close only once that compiler
+  ships and runs, not by the loop alone.
 
 ### 5.6 What this plan RETIRES (say it out loud, it contradicts signed work)
 
