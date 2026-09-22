@@ -81,12 +81,13 @@ below.
 
 ## `review_reasons` / `no_path_reasons` / notices (252 walks)
 
-`review_reasons` (48 tags / 42 walks, a walk may carry >1):
+`review_reasons` (49 tags / 43 walks, a walk may carry >1 — updated by B4-2b: `review-gate/blacklist`
+re-swept back into `HUMAN_REVIEW_REQUIRED` adds one `BRIDGING_ADVERSE_HISTORY`, 11 → 12):
 
 | tag | count |
 |---|---|
 | `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` | 25 |
-| `BRIDGING_ADVERSE_HISTORY` | 11 |
+| `BRIDGING_ADVERSE_HISTORY` | 12 |
 | `BRIDGING_FROM_VISIT_ITK_PROHIBITED` | 3 |
 | `BRIDGING_TO_BRIDGING_PROHIBITED` | 3 |
 | `SECOND_HOME_BELOW_THRESHOLD_STUDIO` | 2 |
@@ -108,7 +109,10 @@ below.
 | `PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR` | 1 |
 | `E33A_SPONSOR_NOT_GOVERNMENT` | 1 |
 
-`notices` (59 tags / 252 walks):
+`notices` (60 tags / 252 walks — the 252 denominator is the report's own walk count, accepted as
+L3 in `GATE-B4-2-REPORT-7120.md`'s re-check against the smaller notice-carrying-walk count;
+updated by B4-2b: `review-gate/blacklist`'s re-swept row adds one
+`DISCLOSED_BLACKLIST_ENTRY_CONDITION`, previously absent):
 
 | tag | count |
 |---|---|
@@ -118,6 +122,7 @@ below.
 | `DISCLOSED_HEALTH_CONCERN_CONDITION` | 1 |
 | `DISCLOSED_PRIOR_VISA_REFUSAL_CONDITION` | 1 |
 | `DISCLOSED_PAST_OVERSTAY_CONDITION` | 1 |
+| `DISCLOSED_BLACKLIST_ENTRY_CONDITION` | 1 |
 | `DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION` | 1 |
 | `DISCLOSED_PEP_OR_SANCTIONS_CONDITION` | 1 |
 | `DISCLOSED_SOURCE_OF_FUNDS_CONDITION` | 1 |
@@ -384,8 +389,8 @@ retries, 252/252 HTTP 200. This is G2-b for the 252 requests the manifest repres
 proved the manifest is produced by a top-level library import of the same enumerator a browser
 runs, which is why these are the requests a browser would produce today, not a claim that this
 sweep itself drove a browser. B4's engine-side findings (G1) are not superseded by this report;
-this sweep's own `HUMAN_REVIEW_REQUIRED` count is 42 (41 non-criminal + 1 criminal-by-design),
-not B4's 41 (40 non-criminal + 1) — see Declared limits for the arithmetic.
+this sweep's own `HUMAN_REVIEW_REQUIRED` count is 43 (42 non-criminal + 1 criminal-by-design,
+updated by B4-2b), not B4's 41 (40 non-criminal + 1) — see Declared limits for the arithmetic.
 
 **Not proven**: same declared scope as B4 — the manifest's edge-covering set (317/317 edges),
 not the full `55,234,481,243,760`-combination space; the UI half (B3, a separate runner against
@@ -398,16 +403,20 @@ observation above is a new, unresolved item this sweep introduces that B4 did no
   coverage, not the UI half (B3).
 - Two health probes with equal `build_sha` bound only that they matched at start and end of
   this window (07:27–07:37Z); they cannot rule out a change-and-revert inside the window.
-- The 42 `HUMAN_REVIEW_REQUIRED` walks are held, not resolved — same G1 status as B4's 41. The
-  arithmetic, corrected against a first draft that wrongly attributed the delta to all 6 moved
-  A6-2 rows: only **2** of the 6 A6-2 rows move INTO `HUMAN_REVIEW_REQUIRED`
-  (`secondhome_deposit_usd`, `secondhome_property_value_usd`, via
-  `SECOND_HOME_BELOW_THRESHOLD_STUDIO`); the other 4 move into `NO_SUPPORTED_PATH`. One row
-  (`review-gate/blacklist`) moves OUT to `TEMPORARILY_UNAVAILABLE`. `41 + 2 − 1 = 42`. Of the 42,
-  1 is `DISCLOSED_CRIMINAL_RECORD_REVIEW` (criminal-by-design, same as B4) and **41** are
-  non-criminal holds owed to A3'/A8-A9 — not B4's 40; B4's 40 describes B4's own sweep only.
-- `review-gate/blacklist`'s `TEMPORARILY_UNAVAILABLE` result is reported, not explained — see
-  Unexplained observation above.
+- The 43 `HUMAN_REVIEW_REQUIRED` walks are held, not resolved — same G1 status as B4's 41.
+  **Arithmetic updated by B4-2b** (the pre-B4-2b sweep's `41 + 2 − 1 = 42` no longer holds, since
+  `review-gate/blacklist` was that "− 1" and it no longer moves out): only **2** of the 6 A6-2
+  rows move INTO `HUMAN_REVIEW_REQUIRED` (`secondhome_deposit_usd`,
+  `secondhome_property_value_usd`, via `SECOND_HOME_BELOW_THRESHOLD_STUDIO`); the other 4 move
+  into `NO_SUPPORTED_PATH`. `review-gate/blacklist` is `HUMAN_REVIEW_REQUIRED` in both B4 and
+  B4-2b (see the MEASURED comparison table above), so it contributes to B4's 41 already and adds
+  no separate delta term. `41 + 2 = 43`. Of the 43, 1 is `DISCLOSED_CRIMINAL_RECORD_REVIEW`
+  (criminal-by-design, same as B4) and **42** are non-criminal holds owed to A3'/A8-A9 — not
+  B4's 40; B4's 40 describes B4's own sweep only.
+- `review-gate/blacklist`'s `TEMPORARILY_UNAVAILABLE` result from the original sweep is reported,
+  not explained, and stays unexplained after the B4-2b re-sweep — see Unexplained observation
+  above for the closing paragraph (the re-swept row itself is now `HUMAN_REVIEW_REQUIRED`, no
+  longer a `HUMAN_REVIEW_REQUIRED` vs. G1-held ambiguity).
 - No client data: both JSON files carry synthetic personas only (`traffic_source
   synthetic_driver`). Confirmed by grep: zero matches for an email pattern and for the key
   names `email`/`phone`/`passport`/`npwp`/`ktp`/`nik`; a bare `[0-9]{10,}` digit run returns 81
