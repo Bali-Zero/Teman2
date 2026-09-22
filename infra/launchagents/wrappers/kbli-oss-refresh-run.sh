@@ -189,6 +189,8 @@ else
                             hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
                         elif [ "$loop_rc" = "1" ]; then
                             hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
+                            # a proposal from a partial run is real news over an unverified rest
+                            if [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then hb_status="warning"; fi
                         elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
                             # rc 0 is only legal when every code answered: a report saying
                             # otherwise contradicts its own verdict.

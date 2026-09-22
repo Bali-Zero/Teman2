@@ -58,10 +58,12 @@ import os
 import re
 import ssl
 import sys
+import tempfile
 import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
@@ -88,6 +90,9 @@ ENDPOINT = f"https://{OSS_HOST}{SCOPE_PATH}<uuid>"
 USER_KEY_ENV = "OSS_RBA_USER_KEY"
 QUARANTINE_PREFIX = "per_skala_disputed"
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+# A header value http.client will send without raising — its ValueError would
+# quote the value, i.e. print the key (Codex red-team finding 2).
+USER_KEY_RE = re.compile(r"[\x21-\x7e]{1,256}")
 
 # Sizing, measured from Mini and M5 on 2026-09-22: first request ~4 s (TLS),
 # then 0.05-0.95 s per answer on the reused connection. 3 req/s is the pace
@@ -215,6 +220,11 @@ class OssSession:
             except (http.client.HTTPException, OSError) as exc:
                 self._reset()
                 last = Answer(0, error=f"{type(exc).__name__}: {exc}", attempts=attempt)
+            except ValueError as exc:
+                # an unsendable header: the message would quote its value, so it is not echoed
+                self._reset()
+                return Answer(0, error=f"{type(exc).__name__}: request header refused (value not printed)",
+                              attempts=attempt)
             else:
                 if status == 200 or status in self.TERMINAL:
                     return Answer(status, body, attempts=attempt)
@@ -224,11 +234,21 @@ class OssSession:
         return last
 
 
-def _retry_delay(retry_after: str | None, default: float) -> float:
-    try:
-        return min(max(float(retry_after), 0.0), MAX_RETRY_AFTER_S) if retry_after else default
-    except ValueError:
+def _retry_delay(retry_after: str | None, default: float, now: Callable[[], datetime] | None = None) -> float:
+    """Retry-After as delta-seconds or HTTP-date (RFC 9110 §10.2.3), capped."""
+    if not retry_after:
         return default
+    try:
+        seconds = float(retry_after)
+    except ValueError:
+        try:
+            when = parsedate_to_datetime(retry_after)
+        except (TypeError, ValueError):
+            return default
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        seconds = (when - (now or (lambda: datetime.now(timezone.utc)))()).total_seconds()
+    return min(max(seconds, 0.0), MAX_RETRY_AFTER_S)
 
 
 # ------------------------------------------------------------------ classification
@@ -255,7 +275,26 @@ def payload_identity_mismatch(payload: dict, code: str, uuid: str) -> str | None
     return None
 
 
-def classify_answer(answer: Answer, current_rows: list, code: str, uuid: str) -> tuple[str, str, list | None]:
+def incomplete_risk_row(payload: dict) -> str | None:
+    """Pure. parse_per_skala silently drops a row with no scale and keeps one
+    with no risk as null; either would turn into a proposal that is not what
+    OSS published (Codex red-team finding 4). Every row must name both."""
+    for si, scope in enumerate(payload["data"]):
+        rows = scope.get("KbliResikos")
+        if not isinstance(rows, list):
+            return f"scope {si} has no KbliResikos list"
+        for ri, row in enumerate(rows):
+            if not isinstance(row, dict):
+                return f"scope {si} risk row {ri} is not an object"
+            for field in ("SkalaUsaha", "Resiko"):
+                value = L2.loc(row.get(field))
+                if not (isinstance(value, str) and value.strip()):
+                    return f"scope {si} risk row {ri} has no {field}"
+    return None
+
+
+def classify_answer(answer: Answer, current_rows: list, code: str, uuid: str,
+                    gap: bool = True) -> tuple[str, str, list | None]:
     """Pure. (class, reason, proposed per_skala or None).
 
     The proposal is the per_skala the L2 transform would write for this code
@@ -280,6 +319,9 @@ def classify_answer(answer: Answer, current_rows: list, code: str, uuid: str) ->
     mismatch = payload_identity_mismatch(payload, code, uuid)
     if mismatch:
         return MALFORMED, f"payload is not this code's: {mismatch}", None
+    incomplete = incomplete_risk_row(payload)
+    if incomplete:
+        return MALFORMED, incomplete, None
     try:
         parsed = L2.parse_per_skala(payload)
     except (AttributeError, TypeError, KeyError) as exc:
@@ -290,6 +332,11 @@ def classify_answer(answer: Answer, current_rows: list, code: str, uuid: str) ->
     if not current_rows:
         return PUBLISHED, f"{len(proposed)} risk row(s) published", proposed
     if _row_multiset(proposed) == _row_multiset(current_rows):
+        if gap:
+            # Same rows, but the gap code does not carry them AS OSS rows: the
+            # news is the provenance, and without a proposal the code would sit
+            # in the gap population forever (Codex red-team finding 5).
+            return PUBLISHED, "OSS now publishes the canonical rows: provenance moves to OSS", proposed
         return UNCHANGED, "OSS rows equal the canonical rows", None
     return CHANGED, f"{len(proposed)} OSS risk row(s) vs {len(current_rows)} canonical", proposed
 
@@ -378,7 +425,7 @@ def run_loop(
     start = clock()
     first = True
 
-    def probe(record: dict) -> dict:
+    def probe(record: dict, gap: bool) -> dict:
         nonlocal first
         code = str(record.get(CODE_FIELD))
         entry = {
@@ -398,7 +445,7 @@ def run_loop(
             sleep(rate_s)
         first = False
         answer = session.get(uuid)
-        klass, reason, proposed = classify_answer(answer, list(record.get("per_skala") or []), code, uuid)
+        klass, reason, proposed = classify_answer(answer, list(record.get("per_skala") or []), code, uuid, gap)
         log(f"{code} {klass} {reason}")
         return {
             **entry,
@@ -411,12 +458,40 @@ def run_loop(
             "_proposed": proposed,
         }
 
-    control_results = [probe(record) for record in controls]
-    target_results = [probe(record) for record in targets]
+    control_results = [probe(record, gap=False) for record in controls]
+    target_results = [probe(record, gap=True) for record in targets]
     return control_results, target_results
 
 
 # ---------------------------------------------------------------------- outputs
+
+
+class OutputRefused(RuntimeError):
+    pass
+
+
+def write_contained(out_root: Path, path: Path, text: str) -> None:
+    """Write `text` to `path` (built under `out_root`) through no symlink, via
+    an exclusive temp file + os.replace — so neither a symlinked directory nor
+    a pre-planted temp name can redirect the write onto the canonical (Codex
+    red-team finding 1). `out_root` itself may be a symlink: the operator
+    chose it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cursor = path.parent
+    while cursor != out_root and cursor != cursor.parent:
+        if cursor.is_symlink():
+            raise OutputRefused(f"{cursor} is a symlink")
+        cursor = cursor.parent
+    if path.is_symlink():
+        raise OutputRefused(f"{path} is a symlink")
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _public(entry: dict) -> dict:
@@ -595,6 +670,9 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
     controls = [by_code[c] for c in pick_controls(strong_codes)]
 
     user_key = os.environ.get(USER_KEY_ENV, "")
+    if user_key and not USER_KEY_RE.fullmatch(user_key):
+        print(f"CANNOT VERIFY: {USER_KEY_ENV} is set but is not a sendable header value (value not printed)")
+        return EXIT_CANNOT_VERIFY
     owned_session = session is None
     session = session or OssSession(user_key)
     try:
@@ -610,7 +688,10 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
     controls_ok = bool(control_results) and all(c["class"] in CONTROL_PASS for c in control_results)
     exit_code, verdict = decide_exit(counts, controls_ok)
 
-    spec = build_cure_spec(date, target_results, by_code, hashlib.sha256(canonical_bytes).hexdigest())
+    # Only a run whose verdict is "proposed" may emit something applyable: a
+    # proposal beside a failed control or an auth refusal is not vouched for.
+    spec = (build_cure_spec(date, target_results, by_code, hashlib.sha256(canonical_bytes).hexdigest())
+            if exit_code == EXIT_PROPOSED else None)
     spec_rel = (SPEC_REL / f"oss_refresh_{date.replace('-', '_')}.json").as_posix() if spec else None
     canonical_meta = {
         "path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
@@ -631,14 +712,16 @@ def main(argv: list[str] | None = None, *, session: ScopeFetcher | None = None,
 
     out_root = args.out_root.expanduser()
     report_path = out_root / REPORT_REL / f"{date}.json"
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    H.atomic_write_text(report_path, json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-    H.atomic_write_text(report_path.with_suffix(".md"), summary + "\n")
-    if spec is not None:
-        spec_path = out_root / spec_rel
-        spec_path.parent.mkdir(parents=True, exist_ok=True)
-        H.atomic_write_text(spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
-        print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
+    try:
+        write_contained(out_root, report_path, json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        write_contained(out_root, report_path.with_suffix(".md"), summary + "\n")
+        if spec is not None:
+            spec_path = out_root / spec_rel
+            write_contained(out_root, spec_path, json.dumps(spec, indent=2, ensure_ascii=False) + "\n")
+            print(f"OSS_REFRESH_CURE_SPEC={spec_path}")
+    except OutputRefused as exc:
+        print(f"CANNOT VERIFY: output refused: {exc}")
+        return EXIT_CANNOT_VERIFY
     print(f"OSS_REFRESH_REPORT={report_path}")
     return exit_code
 

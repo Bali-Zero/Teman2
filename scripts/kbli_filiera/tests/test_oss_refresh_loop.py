@@ -9,6 +9,7 @@ tiny synthetic files, never the 37 MB dataset.
 
 from __future__ import annotations
 
+import http.client
 import json
 import sys
 from collections import Counter
@@ -56,8 +57,8 @@ def ok(payload: dict) -> L.Answer:
     return L.Answer(200, json.dumps(payload).encode())
 
 
-def classify(answer: L.Answer, rows: list, code: str = "10001") -> tuple:
-    return L.classify_answer(answer, rows, code, uuid_of(code))
+def classify(answer: L.Answer, rows: list, code: str = "10001", gap: bool = True) -> tuple:
+    return L.classify_answer(answer, rows, code, uuid_of(code), gap)
 
 
 def published_world(*codes: str, **payload_kw) -> dict[str, L.Answer]:
@@ -161,7 +162,25 @@ def test_rows_that_differ_from_canonical_are_changed():
 def test_a_reordered_kewenangan_is_not_a_change():
     canonical = rows_for(scope_payload(kewenangan=("Bupati/Walikota", "Gubernur", "Menteri/Kepala Badan")))
     answer = ok(scope_payload(kewenangan=("Menteri/Kepala Badan", "Bupati/Walikota", "Gubernur")))
-    assert classify(answer, canonical)[0] == L.UNCHANGED
+    assert classify(answer, canonical, gap=False)[0] == L.UNCHANGED
+
+
+def test_a_gap_whose_rows_oss_now_publishes_is_a_provenance_proposal():
+    """Guilt (Codex finding 5): a PP28-vintage gap whose rows equal what OSS
+    now publishes used to read `unchanged` and stay a gap forever."""
+    rows = rows_for(scope_payload())
+    klass, why, proposed = classify(ok(scope_payload()), rows, gap=True)
+    assert klass == L.PUBLISHED and "provenance" in why and proposed == rows
+
+
+@pytest.mark.parametrize("field", ["SkalaUsaha", "Resiko"])
+def test_a_risk_row_missing_its_scale_or_risk_is_malformed(field):
+    """Guilt (Codex finding 4): parse_per_skala drops a scale-less row and keeps
+    a risk-less one as null — neither may become a proposal."""
+    payload = scope_payload()
+    del payload["data"][0]["KbliResikos"][1][field]
+    klass, why, _ = classify(ok(payload), [])
+    assert klass == L.MALFORMED and field in why
 
 
 def test_a_scope_served_for_another_uuid_is_never_a_proposal():
@@ -204,10 +223,14 @@ def test_non_answers(status, expected):
 
 
 class FakeResponse:
-    def __init__(self, status: int, body: bytes = b"{}", headers: dict | None = None):
-        self.status, self._body, self._headers = status, body, headers or {}
+    def __init__(self, status: int, body: bytes = b"{}", headers: dict | None = None, read_error: Exception | None = None):
+        self.status, self._body, self._headers, self._read_error = status, body, headers or {}, read_error
+        self.consumed = False
 
     def read(self) -> bytes:
+        if self._read_error:
+            raise self._read_error
+        self.consumed = True
         return self._body
 
     def getheader(self, name: str, default=None):
@@ -215,18 +238,28 @@ class FakeResponse:
 
 
 class FakeConnection:
+    """Behaves like http.client on reuse: a new request before the previous
+    response body was consumed is refused (Codex finding 8)."""
+
     def __init__(self, script: list):
         self.script = script
         self.requests: list[tuple[str, dict]] = []
         self.closed = False
+        self.pending = None
 
     def request(self, method, path, headers):
+        if self.pending is not None and not self.pending.consumed:
+            raise http.client.CannotSendRequest("previous response not read")
+        for value in headers.values():
+            if "\n" in value:
+                raise ValueError(f"Invalid header value {value!r}")
         self.requests.append((path, headers))
 
     def getresponse(self):
         step = self.script.pop(0)
         if isinstance(step, Exception):
             raise step
+        self.pending = step
         return step
 
     def close(self):
@@ -268,6 +301,27 @@ def test_5xx_retries_honour_a_bounded_retry_after_then_give_up():
     answer = session.get(uuid_of("1"))
     assert (answer.status, answer.attempts, answer.error) == (503, 3, "HTTP 503")
     assert sleeps == [L.MAX_RETRY_AFTER_S, L.BACKOFF_S * 2]
+
+
+def test_a_timeout_while_reading_the_body_reconnects():
+    session, made, _ = session_over([FakeResponse(200, read_error=TimeoutError("read timed out")),
+                                     FakeResponse(200, b'{"success": true}')])
+    answer = session.get(uuid_of("1"))
+    assert (answer.status, answer.attempts, len(made)) == (200, 2, 2) and made[0].closed
+
+
+def test_an_unsendable_key_never_reaches_the_error_text():
+    session, _, _ = session_over([FakeResponse(200)], user_key="abc\ninjected-secret")
+    answer = session.get(uuid_of("1"))
+    assert answer.status == 0 and "injected-secret" not in (answer.error or "")
+
+
+def test_retry_after_as_an_http_date_is_honoured_and_capped():
+    now = lambda: datetime(2026, 9, 22, 0, 0, 0, tzinfo=timezone.utc)  # noqa: E731
+    assert L._retry_delay("Tue, 22 Sep 2026 00:00:12 GMT", 1.5, now) == 12.0
+    assert L._retry_delay("Tue, 22 Sep 2026 01:00:00 GMT", 1.5, now) == L.MAX_RETRY_AFTER_S
+    assert L._retry_delay("Mon, 21 Sep 2026 23:00:00 GMT", 1.5, now) == 0.0
+    assert L._retry_delay("not a date", 1.5, now) == 1.5
 
 
 def test_user_key_is_sent_only_when_set():
@@ -378,6 +432,34 @@ def test_cure_spec_shape_and_routes(tmp_path):
     assert quarantined["record_sha256"] == H.sha256_of(records[5])
     # the loop proposes; the canonical it read is byte-identical afterwards
     assert json.loads((tmp_path / "canonical.json").read_text())["data"] == records
+
+
+def test_no_applyable_spec_beside_a_failed_control(tmp_path):
+    """Guilt (Codex finding 6): a target that looks published while the
+    controls fail is not vouched for — exit 4 and no cure spec."""
+    answers = {uuid_of("10001"): ok(scope_payload("10001"))}  # controls answer 404
+    rc, out = run(tmp_path, default_world(), FakeSession(answers), "--apply")
+    report = json.loads(report_path(out).read_text())
+    assert rc == L.EXIT_CANNOT_VERIFY and report["cure_spec"] is None and not spec_path(out).exists()
+
+
+def test_a_symlinked_output_dir_is_refused(tmp_path):
+    """Guilt (Codex finding 1): a symlink under --out-root must not carry the
+    write outside it."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / "out" / "data" / "kbli-filiera").mkdir(parents=True)
+    (tmp_path / "out" / "data" / "kbli-filiera" / "oss-refresh").symlink_to(outside, target_is_directory=True)
+    rc, _ = run(tmp_path, default_world(), FakeSession(published_world()), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY and list(outside.iterdir()) == []
+
+
+def test_a_malformed_key_is_refused_without_printing_it(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("OSS_RBA_USER_KEY", "abc\ninjected-secret")
+    session = FakeSession({})
+    rc, _ = run(tmp_path, default_world(), session)
+    assert rc == L.EXIT_CANNOT_VERIFY and session.calls == []
+    assert "injected-secret" not in capsys.readouterr().out
 
 
 def test_empty_fetch_exits_4(tmp_path):

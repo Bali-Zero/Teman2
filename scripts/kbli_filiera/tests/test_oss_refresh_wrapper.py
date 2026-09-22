@@ -111,6 +111,14 @@ def test_new_scopes_heartbeat_ok_and_digest(tmp_path):
     assert any("NEW SCOPES PUBLISHED" in line for line in argv) and any("for 2 licensing-gap" in line for line in argv)
 
 
+def test_new_scopes_from_a_partial_run_is_a_warning(tmp_path):
+    home, env = _sandbox(tmp_path)
+    _run(env, STUB_RC="1", STUB_PROPOSED="1", STUB_ERRORS="2")
+    hb = _heartbeat(home)
+    assert hb["status"] == "warning" and "result=new_scopes" in hb["note"]
+    assert "unanswered: errors=2 deferred=0" in _gateway(tmp_path)
+
+
 def test_partial_run_is_a_warning_naming_the_unanswered(tmp_path):
     home, env = _sandbox(tmp_path)
     _run(env, STUB_RC="4", STUB_ERRORS="3")
