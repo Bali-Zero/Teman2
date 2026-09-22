@@ -13,19 +13,22 @@ bites:
   observe: python3 scripts/ci/observe_pajak_monitor_tests.py
   expect: contains:passed
 bites_note:
-  "The observer runs exactly what the workflow runs, and the check on this PR's head is the same
+  "Successor of #7117 (closed): same commits cherry-picked onto an origin/main that contains the
+  observer, because a reopen does not refresh pull_request.base.sha and #7117's head was frozen.
+  Commit shas cited below are this branch's. The observer runs exactly what the workflow runs, and the check on this PR's head is the same
   command in CI. Green is the weak half. The strong half was observed before this pack was written:
   on draft PR #7116 (this workflow plus the deadline branch replaced by `if False:`), the same
   check went red on exactly test_c1_deadline_is_checked_before_every_fetch_not_after
   (run 35696446818, `1 failed, 37 passed`). #7116 is closed and its branch deleted after that
   observation; it was never armed."
 diff:
-  files: 4
+  files: 6
   shape:
     "One new workflow (path-filtered pull_request plus push to main on the same paths, no
     merge_group, per-event concurrency), one entry in main-push-failure-watch.yml's workflows
-    list, a two-line docstring correction in scripts/tests/test_pajak_monitor.py, and the
-    no-argument bites observer scripts/ci/observe_pajak_monitor_tests.py. The
+    list, and a two-line docstring correction in scripts/tests/test_pajak_monitor.py. The
+    no-argument bites observer scripts/ci/observe_pajak_monitor_tests.py landed first on its own
+    (#7122) because harness-floor.yml runs bites_parse.py from the BASE checkout. The
     `.github/workflows/*` touch is what floors it at 3; the whole-diff total is the linter's to
     compute."
 receipts:
@@ -33,8 +36,8 @@ receipts:
     cmd:
       python3 -m venv <scratch>/venv-ci && <scratch>/venv-ci/bin/python -m pip install pytest &&
       <scratch>/venv-ci/bin/python -m pytest scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py -q -p no:cacheprovider
-    result: 38 passed, on the final head a29a501f70
-    ts: "2026-09-22T06:54:02+00:00"
+    result: 38 passed, on the final head 59b3f4bdb4
+    ts: "2026-09-22T10:36:39+00:00"
     seat: claude-opus-5 (conducting session, M5)
     exit: 0
   - claim: the deterministic floor is 3 and its source is `path`, measured before the pack was written
@@ -57,8 +60,8 @@ receipts:
       test_c1_deadline_is_checked_before_every_fetch_not_after, C2 by
       test_c2_guilt_excerpt_anchors_to_the_match_not_the_first_literal_occurrence, the three 7074
       mutations by test_c1_write_intel_feed_labels_by_real_host_skips_hostless_and_continues. First
-      measured on 18cedcf56a, re-run on the final head a29a501f70 with the same five verdicts
-    ts: "2026-09-22T06:54:03+00:00"
+      measured on a9a5af7ad0, re-run on the final head 59b3f4bdb4 with the same five verdicts
+    ts: "2026-09-22T10:36:40+00:00"
     seat: claude-opus-5 (conducting session, M5)
     exit: 0
   - claim: the check goes red on a real PR that reverts a fix, not only on a local machine
@@ -79,8 +82,8 @@ receipts:
       python3 scripts/ci/check_required_workflow_conformance.py
     result:
       actionlint rc 0; trigger-symmetry 122 workflows 0 violations; watcher-coverage all 122 covered;
-      unreachable-conditions rc 0; required-workflow-conformance 14 contexts 0 violations (final head a29a501f70)
-    ts: "2026-09-22T06:54:10+00:00"
+      unreachable-conditions rc 0; required-workflow-conformance 14 contexts 0 violations (final head 59b3f4bdb4)
+    ts: "2026-09-22T10:36:49+00:00"
     seat: claude-opus-5 (conducting session, M5)
     exit: 0
 dissent:
@@ -110,7 +113,7 @@ dissent:
       `cancelled`: a red on main could go unheard."
     status: CONFIRMED
     resolution:
-      "Cured in a29a501f70 with the shape workflows-tests.yml already uses: PR runs share a per-ref
+      "Cured in 59b3f4bdb4 with the shape workflows-tests.yml already uses: PR runs share a per-ref
       cancelling group, each push gets its own group via github.run_id and cancel-in-progress is true
       only for pull_request. This defect was introduced by the round-1 cure below; it is the fix of a
       fix, so the rounds stop here."
@@ -120,7 +123,7 @@ dissent:
       alert — that watcher fires on push/schedule runs.
     status: CONFIRMED
     resolution:
-      "Cured in c3e1c7999f with `push: branches: [main]` on the same paths through one YAML anchor, the
+      "Cured in 1b8a473e7a with `push: branches: [main]` on the same paths through one YAML anchor, the
       shape .github/workflows/with-seat-broker-tests.yml has used since 2026-08-31."
   - seat: kimi-code/k3
     objection:
@@ -133,7 +136,7 @@ dissent:
   - seat: kimi-code/k3
     objection: The test docstring says agent_job is not in the repo; scripts/cron-agent-python/agent_job.py is.
     status: CONFIRMED
-    resolution: Corrected in c3e1c7999f (browser_job is the Pro-only one; agent_job imports httpx and structlog).
+    resolution: Corrected in 1b8a473e7a (browser_job is the Pro-only one; agent_job imports httpx and structlog).
   - seat: kimi-code/k3
     objection: pytest is installed unpinned.
     status: PLAUSIBLE
