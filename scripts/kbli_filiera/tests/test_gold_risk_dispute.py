@@ -29,7 +29,6 @@ from gold_risk_dispute_relation import (  # noqa: E402
     gold_claims,
     load_canonical,
     load_gold,
-    record_tiers,
     sentence_claims,
     universal_claim_sets,
     _serialize,
@@ -517,7 +516,10 @@ class TestRealCatalogue:
         # Pinned so a future change to the guards is forced to explain a
         # membership shift here, not just in the artifact diff.
         # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 33, now 35 — the re-ingested canonical surfaces two more record/gold contradictions.
-        assert len(real_disputes) == 35
+        # 2026-09-23 (#7136 OSS refresh ADOPT): 35 -> 36 — 93113's new OSS RBA
+        # 2025 record tier (Menengah Tinggi) disagrees with its own
+        # zantaraOpener editorial text (Tinggi), an honest new disclosure.
+        assert len(real_disputes) == 36
 
 
 # ---------------------------------------------------------------------------

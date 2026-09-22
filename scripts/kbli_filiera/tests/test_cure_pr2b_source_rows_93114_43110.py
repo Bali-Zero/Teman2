@@ -206,8 +206,17 @@ class TestRealCatalogue:
         return {r["kode_kbli_2025"]: r for r in payload["data"]}
 
     def test_93114_two_rows_no_disputed_key_no_data_note(self, records):
+        # 2026-09-23 (#7136 OSS refresh ADOPT, l2_transform route): a LATER,
+        # independently-adjudicated cure replaces 93114's per_skala wholesale
+        # with OSS RBA 2025's own 8-row scope, superseding this PR's 2-row
+        # golf-course restoration outright (see
+        # test_classify_both_codes_noop_on_the_live_canonical below for why
+        # pr2b's own classify() now correctly refuses this code rather than
+        # calling it "noop" — the record moved, on purpose, under a different
+        # signed adjudication). The disputed key and _data_note stay gone —
+        # #7136 never restores either.
         rec = records["93114"]
-        assert len(rec["per_skala"]) == 2
+        assert len(rec["per_skala"]) == 8
         assert "per_skala_disputed_pp28_collision" not in rec
         assert "_data_note" not in rec
 
@@ -220,12 +229,26 @@ class TestRealCatalogue:
         assert records["43110"]["l4_bali"]["blocked"] is False
 
     def test_classify_both_codes_noop_on_the_live_canonical(self, records):
-        for code in ("93114", "43110"):
-            assert cure.classify(records[code], code, SPEC[code]["premises"]) == "noop"
+        # 43110 is untouched by #7136 and still classifies exactly as pr2b
+        # left it.
+        assert cure.classify(records["43110"], "43110", SPEC["43110"]["premises"]) == "noop"
+        # 93114 is NOT: #7136's l2_transform route replaced its per_skala
+        # wholesale under a separate, later adjudication, so pr2b's own
+        # old_sha256/new_sha256 pins for 93114.per_skala match neither state
+        # any more. This is judge_patch working as documented — "a record
+        # that still carries every patched value but has moved elsewhere...
+        # is a refusal, named, never a silent success" — not a regression.
+        with pytest.raises(H.CureError, match="drifted under this adjudication"):
+            cure.classify(records["93114"], "93114", SPEC["93114"]["premises"])
 
-    def test_second_apply_is_a_byte_identical_noop(self):
+    def test_second_apply_refuses_because_93114_was_superseded_by_7136(self):
+        # Was test_second_apply_is_a_byte_identical_noop (exit 0) before
+        # #7136. All-or-nothing means one drifted code (93114, see above)
+        # aborts the WHOLE run before any write — the stronger, still-correct
+        # invariant to protect going forward is that a superseded compiler
+        # refuses loudly instead of silently overwriting, and writes nothing.
         before = cure.CANONICAL.read_bytes()
         exit_code = cure.main(["--apply"])
         after = cure.CANONICAL.read_bytes()
-        assert exit_code == 0
+        assert exit_code == 2
         assert before == after

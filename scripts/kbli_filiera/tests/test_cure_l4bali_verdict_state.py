@@ -85,11 +85,15 @@ def test_emitter_population_pins_measured_live_canonical_counts() -> None:
     # bucket -- its golf-course Besar/Tinggi row (PP 28/2025 Lampiran I.L.61)
     # is restored, its status moves off APERTO_BALI_RISCHIO_ALTO, and it no
     # longer has a supporting-tier-absent open verdict.
-    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 10
+    # 10 -> 7 on 2026-09-23 (#7136 OSS refresh ADOPT): 19206, 75002, 75009
+    # each gain a real OSS RBA 2025 Besar row, leaving this bucket.
+    assert stats["open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO"] == 7
     # W-J B1 also moved 3 codes out of OK_or_HIGHER_RISK (into chiuso_bali/
     # attenzione), so its disowned-tier population drops 90 -> 87 (97 total).
-    assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 87
-    assert stats["open_supporting_tier_absent"] == 97
+    # 87 -> 86 on 2026-09-23 (#7136): 93113 gains a real OSS RBA 2025 Besar
+    # row too, leaving this bucket (93 total).
+    assert stats["open_supporting_tier_absent:OK_or_HIGHER_RISK"] == 86
+    assert stats["open_supporting_tier_absent"] == 93
     # SAETTA-20260915/W-H PR-5 moved 38110 55202 55300 56102 56304 56306
     # 70201 73300 74199 79901 79902 86995 to confidence=MEDIUM/needs_review=
     # true (dossier: no Perpres annex reservation, no national 0% finding —
@@ -145,10 +149,14 @@ def test_93114_was_cured_and_is_now_innocent() -> None:
     # SAETTA-20260915 W-H PR-2b: the golf-course Besar/Tinggi row (PP
     # 28/2025 Lampiran I.L.61) is restored into per_skala, so this code now
     # carries a real supporting Besar tier -- it left the guilty population.
+    # 2026-09-23 (#7136 OSS refresh ADOPT, l2_transform route): per_skala is
+    # replaced wholesale by OSS RBA 2025's own 8-row scope, which publishes
+    # TWO Besar rows (Menengah Rendah AND Tinggi -- besar_verdict AMBIGUOUS
+    # in the spec), superseding pr2b's single-row restoration.
     records = emitter.load_records(emitter.DEFAULT_CANONICAL)
     record = next(r for r in records if r[basis.CODE_FIELD] == "93114")
 
-    assert basis.besar_risks(record) == ("Tinggi",)
+    assert basis.besar_risks(record) == ("Menengah Rendah", "Tinggi")
     assert basis.open_supporting_tier_absent(record) is False
     assert (record.get("l4_bali") or {}).get("status") == "BLOCCATO_DIPENDE_SCOPE"
     assert basis.derive_verdict_state(record) == "provisional"

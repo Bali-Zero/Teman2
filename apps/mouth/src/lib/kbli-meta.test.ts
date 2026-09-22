@@ -521,7 +521,10 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
     // 1081 - 260 = 821 on 2026-09-21 (naso PR-5, residual lot 2): the same
     // rule's ATTENZIONE_FASCIA_BALI band leaves declared_gap for located;
     // these are also plain neutral codes in this count.
-    expect(pmaGaps).toBe(821);
+    // 821 - 2 = 819 on 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/
+    // 93193 carried into lot 1/lot 2 by the compiler itself, same relabel —
+    // both were plain neutral codes in this count too.
+    expect(pmaGaps).toBe(819);
     expect(suffixes).toHaveLength(1559);
   });
 

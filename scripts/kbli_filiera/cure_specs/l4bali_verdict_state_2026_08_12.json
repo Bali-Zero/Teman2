@@ -1,9 +1,9 @@
 {
   "_meta": {
     "purpose": "Add l4_bali.verdict_state without changing the meaning or type of l4_bali.blocked. Selection and targets are derived from live record state.",
-    "created": "2026-09-15",
+    "created": "2026-09-23",
     "emitted_by": "scripts/kbli_filiera/emit_l4bali_verdict_state_spec.py",
-    "canonical_source": "/Users/balizero/nuzantara/.worktrees/mouth-kbli-wj-b1-overlay-data-v2/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "canonical_source": "/Users/balizero/nuzantara/.worktrees/backend-rag-oss-refresh-apply/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "selection": "every live canonical record carrying a valid l4_bali Boolean verdict",
     "derivation_order": [
       "NON_CLASSIFICABILE -> unknown",
@@ -16,9 +16,9 @@
     "hard_rule": "The only permitted patch key is verdict_state. blocked is never written; blocked=true on unknown records is deliberately preserved.",
     "open_tier_statuses": ["APERTO_BALI_RISCHIO_ALTO", "OK_or_HIGHER_RISK"],
     "measured_counts": {
-      "open_supporting_tier_absent": 97,
-      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 10,
-      "open_supporting_tier_absent:OK_or_HIGHER_RISK": 87,
+      "open_supporting_tier_absent": 93,
+      "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 7,
+      "open_supporting_tier_absent:OK_or_HIGHER_RISK": 86,
       "status:APERTO_BALI_RISCHIO_ALTO": 10,
       "status:ATTENZIONE_FASCIA_BALI": 383,
       "status:BLOCCATO_DIPENDE_SCOPE": 61,
@@ -5191,8 +5191,8 @@
         "blocked": false,
         "confidence": "LOW",
         "needs_review": true,
-        "supporting_tier_absent": true,
-        "supporting_besar_tiers": []
+        "supporting_tier_absent": false,
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5218,7 +5218,11 @@
         "confidence": "LOW",
         "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "unknown"
@@ -17476,8 +17480,14 @@
         "blocked": false,
         "confidence": "LOW",
         "needs_review": true,
-        "supporting_tier_absent": true,
-        "supporting_besar_tiers": []
+        "supporting_tier_absent": false,
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -17489,8 +17499,8 @@
         "blocked": false,
         "confidence": "LOW",
         "needs_review": true,
-        "supporting_tier_absent": true,
-        "supporting_besar_tiers": []
+        "supporting_tier_absent": false,
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -20363,8 +20373,8 @@
         "blocked": false,
         "confidence": "LOW",
         "needs_review": true,
-        "supporting_tier_absent": true,
-        "supporting_besar_tiers": []
+        "supporting_tier_absent": false,
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -20377,7 +20387,7 @@
         "confidence": "MEDIUM",
         "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -20390,7 +20400,7 @@
         "confidence": "MEDIUM",
         "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "unknown"
@@ -20572,7 +20582,7 @@
         "confidence": "LOW",
         "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -20598,7 +20608,7 @@
         "confidence": "MEDIUM",
         "needs_review": true,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": ["Rendah"]
       },
       "patch": {
         "verdict_state": "unknown"
