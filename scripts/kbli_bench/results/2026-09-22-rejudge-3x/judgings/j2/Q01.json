@@ -1,0 +1,20 @@
+{
+  "qid": "Q01",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the paid-up-capital gap; KBLI title, Bali openness, and 100% foreign ownership are supported."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the capital gap; OPEN_IN_BALI, 100% ownership, and Menengah Tinggi risk for large-scale restaurant are supported."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the figure and legal-basis gap; activity description, Bali openness, and 100% foreign ownership are supported."
+    }
+  ]
+}

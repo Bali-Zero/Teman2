@@ -1,0 +1,10 @@
+The report has been reviewed adversarially against the mechanical digest:
+
+- **Floor metrics & Gate status**: All table entries in Section 0 (`0/87` fabrications, `3/8` accuracy, `1/8` wrongful abstention, `21/21` gap abstention, Gate `False`) match `NEW floors` and `OLD floors` exactly.
+- **Per-question delta**: The shift from `4/8` to `3/8` is verified to be solely Q20 moving from unanimous `correct` to majority `wrong` (`["wrong", "wrong", "correct"]`), with all other 28 question aggregate verdicts unchanged.
+- **Judge stability & decisiveness**: The 4 non-unanimous rows across Q03 (runs 1, 2) and Q20 (runs 1, 2) match `stability(non-unanimous only)` exactly (4 of 87 = 4.6% ≈ 5%), and `judging_decisive` matches `decisive: True`.
+- **Dataset anchoring & Census**: `c69a260d…` matches `loaded_sha256` with `anchor.pass = true`. Census record totals (1,559) and baseline counts align with digest data.
+- **Gate error citations**: Q13 (runs 1 & 3) and Q22 (run 3) abstentions cited in Section 3 match the abstention runs in `NEW per_question`.
+- **Limits & Scope**: Constraints, unmeasured surfaces, and negative results are clearly bounded in Section 6.
+
+VERDICT: OK

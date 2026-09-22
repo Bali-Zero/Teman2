@@ -1,0 +1,20 @@
+{
+  "qid": "Q05",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Fakta 68111 didukung, tetapi tidak menyebut status Bali hanya usulan penutupan dan gagal menyatakan 68200 tidak ada dalam katalog 2025."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Fakta 68111 didukung, tetapi status usulan penutupan Bali dihilangkan dan 68200 hanya disebut tanpa record, bukan tidak ada dalam katalog 2025."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Fakta 68111 didukung, tetapi tidak menjelaskan status Bali yang provisional serta gagal menyatakan 68200 tidak terdapat dalam katalog KBLI 2025."
+    }
+  ]
+}

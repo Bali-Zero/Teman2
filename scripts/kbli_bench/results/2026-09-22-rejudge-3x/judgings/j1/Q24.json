@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the paid-up capital and investment facts absent; does not choose either figure. Minor duplicate/omitted code does not affect abstention."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the required facts absent and asserts neither figure. Minor duplicate/omitted code does not undermine the grounded abstention."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly cannot determine either figure from supplied data and points out no relevant KBLI record supports the question."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "P27",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan tarif tidak tersedia di Navigator dan tidak memberikan angka tarif."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit abstain karena tidak ada catatan relevan; tidak memberikan angka tarif."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan tarif tidak dimuat dan hanya menyebut kode paket yang benar, tanpa angka tarif."
+    }
+  ]
+}

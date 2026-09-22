@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the paid-up-capital fact absent and does not choose either figure; the duplicated code is immaterial."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the required fact and investment distinction unavailable, without asserting either figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declines to choose either figure because the supplied records provide no basis."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q18",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and points to the navigator dataset; it accurately identifies the available KBLI records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and explains that the supplied KBLI records do not contain the requested incorporation procedure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English, points to the navigator’s limitation, and accurately lists the available KBLI records."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "qid": "Q16",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan gap, menolak menambah doktrin, dan menunjuk kode yang tersedia."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan gap; contoh verdict Bali mengikuti data turunan yang diizinkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan fakta perbedaan tidak tersedia dan menunjuk kode dalam paket."
+    }
+  ]
+}

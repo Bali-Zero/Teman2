@@ -1,0 +1,229 @@
+task_id: chat-p2b-cures-20260922
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+
+lanes:
+  - lane: p2b harness cure + gate spec + Detect Secrets audit
+    role: build
+    seat: claude-sonnet-5 (this build lane, Pro worktree, agent/nuzantara/backend-rag/chat-p2b-cures-20260922)
+    note: >-
+      Single build lane across the gate-side commits on this branch: (1) audited the five sha256
+      hashes CI's Detect Secrets flagged in the 2026-09-22 re-judge results into
+      .secrets.baseline via a byte-level splice (no other entry touched); (2) added
+      repo_relative() to run_p2b.py so the manifest records a repo-relative corpus/answers
+      path instead of an absolute worktree path carrying the host account name, with
+      scripts/tests/test_run_p2b.py covering guilt/innocence/fallback, and normalized the
+      already-committed manifest.json to match; (3) this pack, raising gear 2 -> 3 per the
+      brief's own SIZE-term floor once this branch's total diff against origin/main grew
+      past 1,828 churn lines.
+
+seat_diversity: single_seat
+seat_diversity_note: >-
+  One build lane (D3's >=2-build-lane requirement does not attach). No dedicated review
+  lane inside this pack; the coordinating session (team-lead) reviewed both prior commits
+  before this pack was authored and the fresh M5 gate session signs the final on-disk
+  verdict, per the generator-is-never-grader boundary this repo's ship sequence requires.
+  A separate seat (agy/Gemini) ran a council-round pass on this lane earlier in the day —
+  recorded below as a lane/council entry, not as build-lane diversity.
+
+seat_override: >-
+  R9 council_run: this pack declares no council_run journal with >=2 distinct seats
+  from the COUNCIL_REVIEW_SEATS roster. The diff is a narrowly-scoped harness/gate-spec
+  cure (a secrets-baseline audit of content-derived sha256 hashes, a manifest-path fix,
+  and this evidence pack) rather than a new regulatory or pricing claim needing a
+  multi-seat council. One independent review pass already ran on this lane earlier the
+  same day -- agy (Gemini), council round 1, VERDICT: OK, 0 objections (recorded under
+  dissent below as a lane/council entry, not as build-lane diversity) -- but that is one
+  seat, not the two COUNCIL_REVIEW_SEATS quorum requires, and its journal was not staged
+  under this evidence directory. A second independent seat (codex/kimi/tp1-qwen/
+  tp1-deepseek/tp1-glm) was not dispatched for this narrow, mostly-mechanical cure; this
+  is a stated human call, not silence on the requirement, mirroring the disposition the
+  migration-317 lock-retry Gear-3 pack (evidence/2026-09/agent-air-m5-backend-rag-
+  mig317-lock-retry-37134ce4/pack.yml) recorded for the same reason.
+
+diff:
+  shape: >-
+    Dominated by the 87 committed judging records under
+    scripts/kbli_bench/results/2026-09-22-rejudge-3x/ (the P2b re-judge run itself), plus
+    three code/doc commits this pack covers directly: the .secrets.baseline splice (44
+    insertions, additions-only), run_p2b.py + scripts/tests/test_run_p2b.py + the
+    manifest.json path normalization, and this brief.yml/pack.yml pair. Deliberately not
+    narrated as an exact count here (the lint's own countable-claims rule recomputes it
+    from --numstat-file; stating it in prose here would drift the moment this pack itself
+    is committed -- same reasoning as the migration-317 lock-retry pack).
+  measured_at: >-
+    `git diff --numstat` against origin/main in the worktree, this session, after each
+    cure commit landed -- see the floor receipt above for the exact invocation.
+  behaviour_change: >-
+    run_p2b.py's manifest now records repo-relative corpus/answers paths instead of
+    whatever str(Path) produced (absolute under this worktree). No other running system
+    changed: .secrets.baseline is an audit-only edit (no code path reads it at runtime
+    besides detect-secrets itself), and the evidence files are documentation.
+
+bites: >-
+  CONSUMER: the next scripts/kbli_bench/run_p2b.py invocation (any future P2b judge run)
+  and the app lane that transcribes docs/specs/p2b-answer-gate-figure-relations-v1.md into
+  KBLIAnswerGate.swift. OBSERVATION: a fresh run_p2b.py run writes a manifest.json whose
+  corpus/answers paths are repo-relative (proven this session by
+  test_run_p2b.py::test_repo_relative_strips_an_absolute_worktree_path); the committed
+  2026-09-22-rejudge-3x run already reproduces from score_p2b.py score against the judgings
+  it carries (receipt below), so the harness this pack hardens is not a claim about a run
+  that never happened.
+
+receipts:
+  - claim: >-
+      a single judging reproduces exactly: re-scoring the committed k2-gamma run against
+      its own judge_verdicts returns the same floors as the original run
+    cmd: >-
+      score_p2b.py score scripts/kbli_bench/p2b_corpus.json
+      scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl
+      scripts/kbli_bench/results/2026-09-14-k2-gamma/main_scorer/judge_verdicts
+    result: >-
+      floors 0/87, 4/8, 1/8, 21/21; gate=False anchor=False decisive=True (anchor false
+      because the worktree dataset is b60cb1bd, the answers declare c69a260d — the
+      refusal working as designed)
+    ts: "2026-09-22T14:18:16Z"
+    seat: claude-fable-5-1 (M5 gate session, via ssh pro)
+    exit: 0
+  - claim: >-
+      the committed 3-judging re-judge run (results/2026-09-22-rejudge-3x) scores cleanly
+      against its own judgings, judgings_per_row pinned at exactly 3
+    cmd: >-
+      score_p2b.py score scripts/kbli_bench/p2b_corpus.json
+      scripts/kbli_bench/results/2026-09-22-rejudge-3x/p2b_answers.jsonl
+      scripts/kbli_bench/results/2026-09-22-rejudge-3x/judgings
+    result: >-
+      floors 0/87, 3/8, 1/8, 21/21; judgings_per_row min=3 max=3; decisive=True
+    ts: "2026-09-22T14:18:17Z"
+    seat: claude-fable-5-1 (M5 gate session, via ssh pro)
+    exit: 0
+  - claim: >-
+      the full scorer suite plus the new run_p2b.py suite pass together, 96 cases (93
+      pre-existing + 3 new for repo_relative), no regression
+    cmd: >-
+      .venv/bin/python -m pytest scripts/tests/test_run_p2b.py scripts/tests/test_score_p2b.py -q
+    result: "96 passed in 3.90s"
+    ts: "2026-09-22T15:16:35Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+  - claim: >-
+      ruff is clean on the two files this lane actually edited (run_p2b.py,
+      test_run_p2b.py); the 9 findings on the scorer files are pre-existing, not
+      introduced by this branch
+    cmd: >-
+      .venv/bin/python -m ruff check scripts/kbli_bench/run_p2b.py
+      scripts/kbli_bench/score_p2b.py scripts/tests/test_score_p2b.py
+      scripts/tests/test_run_p2b.py
+    result: >-
+      "Found 9 errors" — all 9 attributed to score_p2b.py/test_score_p2b.py (EXE001,
+      I001, FURB167, 3x ISC004, 2x B023, UP031); zero on run_p2b.py or test_run_p2b.py
+    ts: "2026-09-22T15:16:40Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 1
+  - claim: >-
+      those 9 findings are pre-existing on origin/main — reproduced independently against
+      origin/main's own copies of the two files, outside this branch entirely
+    cmd: >-
+      git show origin/main:scripts/kbli_bench/score_p2b.py > /tmp/origin_main_check/score_p2b.py;
+      git show origin/main:scripts/tests/test_score_p2b.py > /tmp/origin_main_check/test_score_p2b.py;
+      .venv/bin/python -m ruff check /tmp/origin_main_check/score_p2b.py /tmp/origin_main_check/test_score_p2b.py
+    result: "Found 9 errors — same 9 findings, same file/line/rule set as the branch copy"
+    ts: "2026-09-22T15:16:49Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 1
+  - claim: >-
+      detect-secrets 1.5.0 flags exactly the 5 findings this pack's earlier commit
+      audited (manifest.json lines 7/11/15, p2b_score.json lines 383/763), never scanning
+      the committed audit itself, on a scratch copy of the pre-audit baseline
+    cmd: >-
+      cp .secrets.baseline /tmp/b_probe.json; detect-secrets scan --baseline /tmp/b_probe.json
+      scripts/kbli_bench/results/2026-09-22-rejudge-3x/manifest.json
+      scripts/kbli_bench/results/2026-09-22-rejudge-3x/p2b_score.json
+    result: >-
+      exit 0; 5 Hex High Entropy String findings recorded, hashes and line numbers
+      matching the 5 entries audited in the committed .secrets.baseline
+    ts: "2026-09-22T14:14:00Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+  - claim: >-
+      the committed .secrets.baseline reproduces byte-for-byte on a fresh rescan of just
+      those two files against a copy of the ALREADY-audited baseline — the
+      non-secret audit marker on each entry is stable, not silently dropped by a
+      later scan
+    cmd: >-
+      cp .secrets.baseline /tmp/b_final_probe.json; detect-secrets scan --baseline
+      /tmp/b_final_probe.json scripts/kbli_bench/results/2026-09-22-rejudge-3x/manifest.json
+      scripts/kbli_bench/results/2026-09-22-rejudge-3x/p2b_score.json; python3 -c "compare
+      the two files' entries in the probe copy against .secrets.baseline"
+    result: >-
+      both file keys byte-identical between the fresh probe and the committed baseline
+      (the non-secret audit marker preserved on all 5 entries); the probe copy itself shrank to 2
+      keys because detect-secrets scan --baseline PRUNES entries for files outside the
+      scanned set — exactly the caution this task was briefed under, reproduced here on a
+      scratch copy only, never applied to the committed file
+    ts: "2026-09-22T15:16:50Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+  - claim: >-
+      scripts/detect_secrets_check_unaudited.py reports every finding audited on the
+      committed baseline after the splice, exit 0
+    cmd: .venv/bin/python scripts/detect_secrets_check_unaudited.py
+    result: "All findings audited (8321 total)"
+    ts: "2026-09-22T15:16:40Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+  - claim: >-
+      the .secrets.baseline commit is additions-only against origin/main — no existing
+      entry touched
+    cmd: git diff --stat origin/main...HEAD -- .secrets.baseline
+    result: ".secrets.baseline | 44 ++++++++++++++++++++++++++++++++++++++++++++ / 1 file changed, 44 insertions(+)"
+    ts: "2026-09-22T15:16:40Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+  - claim: >-
+      the deterministic gear floor for this branch's full diff against origin/main is 3,
+      sourced from the SIZE term (churn >= 1,828), not from any hot-zone path — this diff
+      touches none
+    cmd: >-
+      evidence_pack_lint.py --print-floor --print-floor-source --numstat-file
+      /tmp/numstat_p2b.txt --changed-files-file /tmp/changed_files_p2b.txt
+      evidence/2026-09/agent-nuzantara-backend-rag-chat-p2b-cures-20260-5b67c62a/brief.yml
+    result: "3"
+    ts: "2026-09-22T15:12:00Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree)
+    exit: 0
+
+dissent:
+  - seat: claude-opus-5 (build lane, self-caught)
+    objection: >-
+      §1.3 of the report quoted only one of the two correct censuses.
+    status: CONFIRMED
+    resolution: "Fixed in commit 9604a17791 (docs(research): the census section states BOTH datasets, and the seat round is recorded)."
+  - seat: claude-sonnet-5 (code-reviewer, M5 gate session)
+    objection: >-
+      manifest.json records an absolute worktree path carrying the host account name.
+    status: CONFIRMED
+    resolution: >-
+      Cured by this pack's own second commit (2002e66618): repo_relative() in
+      run_p2b.py plus test_run_p2b.py's three cases, and the already-committed
+      manifest.json's corpus.path normalized to scripts/kbli_bench/p2b_corpus.json.
+  - seat: claude-opus-5 (build lane)
+    objection: >-
+      the lane brief's Bites: line named chat_kbli as consumer; the benchmark's real
+      consumer is the macOS KBLI Navigator app.
+    status: CONFIRMED
+    resolution: "This PR's body states the correct consumer (the app repo's Tests/benchrunner harness + KBLIAnswerGate.swift), not chat_kbli."
+  - seat: agy (Gemini), council round 1
+    objection: "VERDICT: OK, 0 objections."
+    status: CONFIRMED
+    resolution: "Recorded as a council/lane pass, not a dissent requiring a cure — no finding to act on."
+
+pii_scan: clean
+pii_scan_note: >-
+  This diff touches a benchmark corpus (29 synthetic KBLI questions), its judge
+  prompts/verdicts, a secrets-baseline audit of content-derived sha256 hashes, a Python
+  harness script, its test file, and this evidence pack. No client record, contact, or
+  credential appears anywhere in the diff; the five audited "secrets" are sha256 digests
+  of a dataset file and a corpus file, read individually and confirmed non-secret before
+  being audited.

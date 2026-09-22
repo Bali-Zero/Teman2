@@ -1,0 +1,20 @@
+{
+  "qid": "Q19",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English, explains the corpus gap, and points to the relevant KBLI records without inventing a checklist."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and accurately points to activity-specific records and supported examples rather than inventing incorporation requirements."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and identifies the corpus limitation without asserting any unsupported company-setup documents."
+    }
+  ]
+}

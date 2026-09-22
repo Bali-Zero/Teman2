@@ -1,0 +1,20 @@
+{
+  "qid": "Q25",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the Permenkes/SLHS facts absent and refuses to confirm validity or covered KBLI."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because Permenkes 11/2025, SLHS validity, and covered KBLI are unavailable."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Correctly states the supplied data lacks Permenkes/SLHS information and declines both requested conclusions."
+    }
+  ]
+}

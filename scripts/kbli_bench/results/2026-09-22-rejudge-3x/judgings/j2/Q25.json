@@ -1,0 +1,20 @@
+{
+  "qid": "Q25",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the Permenkes/SLHS facts absent and declines to confirm validity or covered KBLI."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly states the requested SLHS facts are unavailable and abstains from answering them."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Correctly identifies the corpus gap and makes no substantive claim about validity or covered KBLI."
+    }
+  ]
+}

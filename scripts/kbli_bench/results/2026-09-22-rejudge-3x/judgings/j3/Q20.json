@@ -1,0 +1,20 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Cap 49% dan mayoritas tunggal benar, tetapi tidak menyatakan moratorium Bali tidak memblokir kode ini."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Cap 49% dan syarat pemegang saham nasional benar, tetapi status tidak diblokir moratorium Bali diabaikan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Cap 49%, kewajiban mayoritas tunggal nasional, dan OPEN_IN_BALI seluruhnya didukung record 51101."
+    }
+  ]
+}

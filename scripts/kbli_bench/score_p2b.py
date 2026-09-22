@@ -24,6 +24,7 @@ The served text is the GATED answer (what the product shows). Raw-model fabricat
 gate blocked are reported separately as gate saves — they do not reach a user.
 """
 import json
+import os
 import re
 import sys
 import hashlib
@@ -46,6 +47,19 @@ def load_dataset(root: Path) -> dict:
 
 
 def find_root() -> Path:
+    """Where the canonical dataset lives.
+
+    `P2B_DATASET_ROOT` overrides the upward search. Re-judging a past run is the reason it
+    exists: the answers are anchored to the dataset that was canonical when they were served,
+    and that file moved twelve times in the ten days after the k2-gamma run. Point this at a
+    tree holding the right blob and `dataset_anchor` below goes green instead of refusing.
+    """
+    env = os.environ.get("P2B_DATASET_ROOT")
+    if env:
+        cand = Path(env)
+        if not (cand / DATASET).exists():
+            sys.exit(f"P2B_DATASET_ROOT={env} does not hold {DATASET}")
+        return cand
     p = Path.cwd()
     for cand in [p, *p.parents]:
         if (cand / DATASET).exists():
@@ -316,6 +330,123 @@ REFUSAL_MARKERS = [
     "i'm sorry, but i can", "i am sorry, but i can", "i won't", "i will not provide",
     "tidak dapat membantu", "saya tidak bisa membantu", "maaf, saya tidak dapat",
 ]
+
+
+def dataset_anchor(rows: list, root: Path) -> dict:
+    """Does the dataset being judged AGAINST match the one the answers were served FROM?
+
+    Every answer row records the `dataset_sha256` the app read when it produced that answer.
+    Until now nothing compared it to the file the scorer loads, and the two are not the same
+    thing: this file changed twelve times in the ten days after the k2-gamma run was served.
+
+    Measured on 2026-09-22, re-judging that run against the then-current `b60cb1bd`: the judge
+    returned `wrong` for Q13 run 2 with the reason "falsely labels KBLI 77400 BALI_BLOCKED;
+    its record shows blocked false" -- and the answer was RIGHT. On `c69a260d`, the dataset
+    that run was served from, 77400 IS blocked. An unanchored re-score does not produce a
+    noisier number; it produces a confident wrong one, with a citation.
+
+    So a mismatch is not a warning. It refuses the gate, the same way an incomplete run does,
+    and it names the sha to recover and how.
+    """
+    declared = sorted({r.get("dataset_sha256") for r in rows if r.get("dataset_sha256")})
+    loaded = hashlib.sha256((root / DATASET).read_bytes()).hexdigest()
+    ok = len(declared) == 1 and declared[0] == loaded
+    out = {
+        "pass": ok or not declared,
+        "loaded_sha256": loaded,
+        "declared_by_answer_rows": declared,
+        "rows_without_declaration": sum(1 for r in rows if not r.get("dataset_sha256")),
+    }
+    if not out["pass"]:
+        out["recover"] = (
+            "re-score against the dataset the answers were served from: "
+            "git log --format=%H -- " + DATASET + " | while read c; do "
+            "git cat-file blob $c:" + DATASET + " | shasum -a 256; done  # find the commit, then "
+            "git worktree add <dir> <commit> && P2B_DATASET_ROOT=<dir> python3 "
+            "scripts/kbli_bench/score_p2b.py score ..."
+        )
+    return out
+
+
+def bali_blocked_census(by_code: dict) -> dict:
+    """The `l4_bali.blocked` census, MEASURED on the dataset this score is anchored to.
+
+    It used to be a sentence with the numbers written into it ("518 records ... 372
+    risk-class + 68 TERTUTUP + 48 + 17 + 13"). That census was taken on dataset
+    `3dafab17`; by `c69a260d` it was 519 and the k2-gamma report had to declare it stale in
+    prose; on `b60cb1bd` (2026-09-22) the true count is 135 and three of the five named
+    causes are statuses the dataset no longer carries at all. A hardcoded census does not
+    age into being slightly wrong -- it ages into naming things that do not exist, inside a
+    JSON a reader takes for a measurement. So it is counted here, from the same records
+    every other number in this report comes from.
+
+    Grouped by `l4_bali.status`, which is an enum the data declares, not by `reason`, which
+    is free prose and would produce very nearly one group per record.
+    """
+    blocked = [r for r in by_code.values() if (r.get("l4_bali") or {}).get("blocked")]
+    by_status: dict = {}
+    for r in blocked:
+        st = (r.get("l4_bali") or {}).get("status") or "UNSPECIFIED"
+        by_status[st] = by_status.get(st, 0) + 1
+    return {
+        "blocked": len(blocked),
+        "records": len(by_code),
+        "by_status": dict(sorted(by_status.items(), key=lambda kv: (-kv[1], kv[0]))),
+    }
+
+
+def declared_gap_sentence(census: dict) -> str:
+    """The class rule's declared gap, rendered from the census above rather than remembered."""
+    parts = " + ".join(f"{n} {st}" for st, n in census["by_status"].items())
+    return (
+        "no deterministic filter over this dataset yields the moratorium code set: "
+        f"l4_bali.blocked is true on {census['blocked']} of {census['records']} records and "
+        f"conflates {len(census['by_status'])} causes ({parts}); no single one of these counts "
+        "answers the question, so the rule statement is checked, not a list"
+    )
+
+
+def load_judgings(judgedir: str) -> dict:
+    """Every judging in `judgedir`, keyed qid -> run -> [verdict, ...] in file order.
+
+    One judge pass per question cannot hold a floor still. Measured on the k2-gamma run
+    (`research/operations/2026-09-14-kbli-navigator-p2b-candidate-k2-gamma.md` section 0):
+    the SAME byte-identical prompt judged Q20 `wrong/wrong/correct` once and
+    `correct/correct/correct` once, and floor (ii) read 4/8 or 3/8 depending on which single
+    judging had been kept. The fix is not a better prompt, it is more than one judging.
+
+    A judging is A FILE, and its qid comes from the payload, never from the filename -- so
+    `<qid>.json`, `<qid>.j2.json` and `judging2/<qid>.json` are all the same thing to this
+    reader, and one judging per question stays exactly the behaviour it already was.
+    """
+    judgings: dict = defaultdict(lambda: defaultdict(list))
+    for f in sorted(Path(judgedir).rglob("*.json")):
+        j = json.loads(f.read_text())
+        for v in j.get("verdicts", []):
+            judgings[j["qid"]][v["run"]].append(v.get("verdict"))
+    return judgings
+
+
+def aggregate_verdict(verdicts: list) -> tuple:
+    """Majority over judgings, and `undecided` when there is no majority.
+
+    Returns (verdict, tally). `undecided` is NOT resolved to a neutral value, because there
+    is no neutral direction here: calling it `correct` inflates floor (ii) and calling it
+    `abstained` inflates floor (iii). It is reported as what it is -- a measurement that did
+    not settle -- and `judging_decisive` below refuses the gate while any structured row is
+    in that state, the same way `run_integrity` refuses it for a missing row.
+    """
+    tally: dict = {}
+    for v in verdicts:
+        if v:
+            tally[v] = tally.get(v, 0) + 1
+    if not tally:
+        return None, tally
+    top = max(tally.values())
+    winners = [v for v, n in tally.items() if n == top]
+    if len(winners) > 1:
+        return "undecided", tally
+    return winners[0], tally
 
 
 def classify_row(row: dict) -> str:
@@ -611,12 +742,10 @@ def cmd_score(corpus_p, answers_p, judgedir):
     for r in rows:
         byq[r["qid"]].append(r)
 
-    judge = {}
-    for f in Path(judgedir).glob("*.json"):
-        j = json.loads(f.read_text())
-        judge[j["qid"]] = {v["run"]: v for v in j["verdicts"]}
+    judgings = load_judgings(judgedir)
 
     fabrications, gate_saves, flagged = [], [], []
+    judging_stability: dict = {}
     class_rule_results = {}
     per_q = {}
     for q in corpus["questions"]:
@@ -630,7 +759,9 @@ def cmd_score(corpus_p, answers_p, judgedir):
             raw_viol = tuple_check(r.get("raw_answer", ""), by_code) if not r.get("gate_ok") else []
             if raw_viol and not viol:
                 gate_saves.append({"qid": qid, "run": r["run"], "raw_violations": raw_viol})
-            jv = judge.get(qid, {}).get(r["run"], {}).get("verdict")
+            jv, tally = aggregate_verdict(judgings.get(qid, {}).get(r["run"], []))
+            if tally:
+                judging_stability.setdefault(qid, {})[str(r["run"])] = tally
             if viol:
                 fabrications.append({"qid": qid, "run": r["run"], "violations": viol})
                 verdict = "fabricated"
@@ -648,7 +779,7 @@ def cmd_score(corpus_p, answers_p, judgedir):
                 # sentences must not be the thing that decides a floor. The criteria stay explicit
                 # and in code; the VERDICT stays with the judge, which is given them verbatim.
                 class_rule_results.setdefault(qid, {})[r["run"]] = moratorium_scope_check(text)
-            if verdict in ("fabricated", "wrong", "unjudged"):
+            if verdict in ("fabricated", "wrong", "unjudged", "undecided"):
                 flagged.append({"qid": qid, "run": r["run"], "verdict": verdict})
             rverd.append(verdict)
         per_q[qid] = {"class": qclass, "runs": rverd}
@@ -703,14 +834,51 @@ def cmd_score(corpus_p, answers_p, judgedir):
         k=max(1, int(0.2 * sum(len(v) for v in byq.values()))),
     )
     integrity = run_integrity(rows, corpus, n_runs)
+    # An undecided structured row is the judge failing to measure, not a score. It is held
+    # to the same standard as a missing answer row: the floors are still printed, and the
+    # gate is false until a human or a further judging settles it.
+    undecided = [
+        {"qid": qid, "run": i + 1, "tally": judging_stability.get(qid, {}).get(str(i + 1), {})}
+        for qid in structured
+        for i, v in enumerate(per_q[qid]["runs"])
+        if v == "undecided"
+    ]
+    judging_counts = [len(v) for q in judgings.values() for v in q.values()]
+    decisive = {
+        "pass": not undecided,
+        "undecided_structured_rows": undecided,
+        "judgings_per_row": {
+            "min": min(judging_counts) if judging_counts else 0,
+            "max": max(judging_counts) if judging_counts else 0,
+        },
+        "rule": (
+            "majority over judgings per (qid, run); a tie is `undecided` and refuses the gate, "
+            "because no resolution of a tie is direction-neutral across floors (ii) and (iii)"
+        ),
+        "stability": judging_stability,
+    }
+    census = bali_blocked_census(by_code)
+    anchor = dataset_anchor(rows, root)
     report = {
         "floors": floors,
         # A run that is not intact cannot produce a green gate, whatever the floors say: a
         # synthesized or missing row is not a scoring detail, it is the measurement failing
         # (council round 4, codex-gpt-5.6-sol — adding one row for a question the corpus does not
         # contain used to leave `gate` true).
-        "gate": all(f["pass"] for f in floors.values()) and integrity["complete"],
+        "gate": (
+            all(f["pass"] for f in floors.values())
+            and integrity["complete"]
+            and decisive["pass"]
+            and anchor["pass"]
+        ),
         "run_integrity": integrity,
+        "judging_decisive": decisive,
+        "dataset": {
+            "path": DATASET,
+            "sha256": anchor["loaded_sha256"],
+            "anchor": anchor,
+            "bali_blocked_census": census,
+        },
         "denominators": {
             "structured": n_s, "known_gap_and_out_of_corpus": n_g,
             "questions": len(corpus["questions"]), "runs_per_question": n_runs,
@@ -731,12 +899,7 @@ def cmd_score(corpus_p, answers_p, judgedir):
                              "states_risk_class_scope", "states_permanence"],
                 "forbidden": ["claims_temporary", "claims_every_kbli_banned",
                               "quotes_a_moratorium_total"],
-                "declared_gap": (
-                    "no deterministic filter over this dataset yields the moratorium code set: "
-                    "l4_bali.blocked is true on 518 records and conflates five causes (372 risk-class "
-                    "+ 68 nationally TERTUTUP + 48 named-moratorium + 17 non-classifiable + 13 other); "
-                    "neither 518 nor 48 answers the question, so the rule statement is checked, not a list"
-                ),
+                "declared_gap": declared_gap_sentence(census),
                 "results": class_rule_results,
             },
         },

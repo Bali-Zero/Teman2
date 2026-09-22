@@ -1,0 +1,20 @@
+{
+  "qid": "Q15",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the virtual-office fact absent from available data and appropriately abstains."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and accurately points out that served records cover KBLI matters, not virtual-office rules."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly states the relevant fact is unavailable and declines to determine the answer."
+    }
+  ]
+}

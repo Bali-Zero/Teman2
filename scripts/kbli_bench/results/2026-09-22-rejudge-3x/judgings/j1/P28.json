@@ -1,0 +1,20 @@
+{
+  "qid": "P28",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains, correctly stating that E28A cost and validity facts are outside the navigator."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and provides no forbidden cost or validity figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and accurately notes the supplied KBLI records do not cover the visa category."
+    }
+  ]
+}

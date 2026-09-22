@@ -1,0 +1,20 @@
+{
+  "qid": "Q07",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap, avoids inventing setup steps, and accurately summarizes supported KBLI-specific PMA data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Clearly abstains from the missing PT PMA procedure and points to the available KBLI-specific records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declines to invent the absent procedure and offers only a supported KBLI-specific follow-up."
+    }
+  ]
+}

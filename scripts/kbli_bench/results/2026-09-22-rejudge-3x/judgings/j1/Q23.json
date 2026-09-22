@@ -1,0 +1,20 @@
+{
+  "qid": "Q23",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Hanya menyebut 64330; tidak menjelaskan bahwa semua KBLI risiko Rendah dan Menengah-Rendah terdampak."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Hanya menyebut 64330; tidak menjelaskan cakupan semua KBLI risiko Rendah dan Menengah-Rendah."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "Keliru membatasi jawaban pada 64330 meski record menyatakan moratorium mencakup semua KBLI risiko Rendah dan Menengah-Rendah."
+    }
+  ]
+}

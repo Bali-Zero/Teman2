@@ -1,0 +1,20 @@
+{
+  "qid": "P29",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the requested wage data absent from the navigator and gives no wage figure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the requested wage data absent from the navigator and gives no wage figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the requested wage fact absent from the navigator and gives no wage figure."
+    }
+  ]
+}

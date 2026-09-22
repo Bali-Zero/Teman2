@@ -1,0 +1,20 @@
+{
+  "qid": "Q18",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English, explains the dataset gap, and points to the available KBLI records without inventing setup steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English and accurately identifies that the supplied activity records do not provide company-formation procedures."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains in English, identifies the missing incorporation procedure, and points to the available KBLI records."
+    }
+  ]
+}

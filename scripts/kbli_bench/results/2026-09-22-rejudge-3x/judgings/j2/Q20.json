@@ -1,0 +1,20 @@
+{
+  "qid": "Q20",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan batas asing 49% dan pemegang saham nasional harus mempertahankan mayoritas tunggal; keduanya didukung record 51101."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Batas 49% dan kewajiban pemodal nasional menjadi pemegang saham mayoritas tunggal sesuai record 51101."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Batas 49%, mayoritas tunggal nasional, dan OPEN_IN_BALI didukung record 51101; moratorium tidak memblokir kode ini."
+    }
+  ]
+}

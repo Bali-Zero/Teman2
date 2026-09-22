@@ -1,0 +1,20 @@
+{
+  "qid": "Q26",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Correctly states the 0% cap, but incorrectly says the Bali verdict is OPEN; the derived verdict is NATIONALLY_CLOSED."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Accurately states no foreign ownership, the 0% cap, domestic-capital condition, and Islamic-faith requirement."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Accurately states the 0% cap and conditions; national closure correctly dominates the Bali derivation."
+    }
+  ]
+}
