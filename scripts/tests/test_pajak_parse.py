@@ -89,6 +89,63 @@ def test_index_title_unescapes_html_entities():
     assert rows[0]["title"] == "PPN & PPh Terbaru"
 
 
+def _index_row(href: str, nomor: str, title: str) -> str:
+    """One `peraturan-content views-row` block, same shape as the real fixture rows."""
+    return (
+        '<div class="peraturan-content views-row">'
+        '<div class="views-field views-field-field-nomor-dokumen">'
+        f'<h3 class="field-content title-custom text-link">'
+        f'<a href="{href}" hreflang="id">{nomor}</a></h3></div>'
+        '<div class="views-field views-field-title">'
+        f'<span class="field-content content-custom">{title}</span></div>'
+        '<span class="views-field views-field-field-jenis-dokumen">'
+        '<strong class="field-content">Peraturan Menteri Keuangan</strong></span>'
+        ' | <span class="views-field views-field-field-tanggal-peraturan">'
+        '<strong class="field-content">'
+        '<time datetime="2026-09-10T12:00:00Z" class="datetime">2026-09-10</time>'
+        "</strong></span>"
+        ' | <span class="views-field views-field-field-status-peraturan">'
+        '<strong class="field-content">Aktif</strong></span>'
+        "</div>"
+    )
+
+
+# ─── dedup — pinned to the canonical URL, not raw href or nomor (#7125 G8) ─
+
+
+def test_index_dedups_by_canonical_url_even_when_raw_hrefs_differ():
+    """Guilt (#7125 G8: dedup removed from `parse_peraturan_index` survived every prior test).
+    Two blocks whose hrefs canonicalise to the SAME url (one `/index.php`-prefixed, one not) —
+    but with DIFFERENT nomor values, so a nomor-keyed dedup would NOT collapse them — must
+    still yield exactly one item: the FIRST block's fields, page order preserved."""
+    html_dup = _index_row(
+        "/index.php/id/peraturan/ppn-dan-pph-terbaru", "99/PMK.02/2026", "PPN Dan PPh Terbaru"
+    ) + _index_row(
+        "/id/peraturan/ppn-dan-pph-terbaru", "00/DUPLICATE/9999", "Should Be Ignored"
+    )
+    rows = pajak_parse.parse_peraturan_index(html_dup)
+    assert len(rows) == 1
+    assert rows[0]["url"] == "https://pajak.go.id/id/peraturan/ppn-dan-pph-terbaru"
+    assert rows[0]["nomor"] == "99/PMK.02/2026"
+    assert rows[0]["title"] == "PPN Dan PPh Terbaru"
+
+
+def test_index_does_not_dedup_rows_with_the_same_nomor_but_different_url():
+    """Innocence: two DISTINCT regulations that happen to share a nomor value must NOT be
+    collapsed — proves the dedup key is the url, not the nomor."""
+    html_two = _index_row(
+        "/id/peraturan/ppn-dan-pph-terbaru", "99/PMK.02/2026", "PPN Dan PPh Terbaru"
+    ) + _index_row(
+        "/id/peraturan/pbjt-baru", "99/PMK.02/2026", "PBJT Baru"
+    )
+    rows = pajak_parse.parse_peraturan_index(html_two)
+    assert len(rows) == 2
+    assert {r["url"] for r in rows} == {
+        "https://pajak.go.id/id/peraturan/ppn-dan-pph-terbaru",
+        "https://pajak.go.id/id/peraturan/pbjt-baru",
+    }
+
+
 def test_index_title_without_entities_is_unchanged():
     """Innocence: a real fixture title with no entities passes through byte-for-byte."""
     rows = pajak_parse.parse_peraturan_index(INDEX_HTML)
