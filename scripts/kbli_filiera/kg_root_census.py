@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """How many KBLI nodes does the graph actually hold, and how many hold data?
 
 WHY THIS EXISTS. The KG has no generator. Nodes named `kbli` are written by

@@ -23,7 +23,7 @@ FILIERA_DIR = Path(__file__).resolve().parents[1]
 if str(FILIERA_DIR) not in sys.path:
     sys.path.insert(0, str(FILIERA_DIR))
 
-from kg_root_census import (  # noqa: E402
+from kg_root_census import (
     EXIT_CANNOT_VERIFY,
     EXIT_OK,
     FAMILY_BARE,
