@@ -45,8 +45,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: pajak-monitor-tests-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Same shape as workflows-tests.yml: PR runs share a group per ref so a superseded one is
+  # cancelled; every push gets its own group via run_id and is never cancelled, because the
+  # watcher ignores `cancelled` and a main run aborted by the next push would never be heard
+  # from (codex-gpt-5.6-sol, round 2 on this PR).
+  group: pajak-monitor-tests-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pajak-monitor-tests:
