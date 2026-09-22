@@ -20,13 +20,15 @@ import json
 import os
 import ssl
 import sys
-import tempfile
 import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wr2_queue_writer as _qw  # noqa: E402 — same scripts/ dir: the queue's lock + atomic writer
 
 DEFAULT_QUEUE = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 GRAPH = "https://graph.instagram.com"
@@ -191,8 +193,7 @@ def main() -> int:
         return 2
 
     qpath = Path(args.queue)
-    pre_image = qpath.read_text()  # the backup must be the queue BEFORE this run
-    queue = json.loads(pre_image)
+    queue = json.loads(qpath.read_text())
 
     # smart selection: published items whose metrics are missing/stale + have a media id.
     # Selection on instagram_post_url + state=="published" already applies to ANY queue
@@ -218,7 +219,7 @@ def main() -> int:
     print(f"published={sum(1 for i in queue if i.get('state')=='published')} "
           f"to_refresh={len(todo)} (max_age={args.max_age_days}d){skip_note}")
 
-    updated = 0
+    fresh: dict[str, dict] = {}  # media id -> metrics, fetched OUTSIDE the lock
     for item in todo:
         mid = media_id_of(item)
         m = fetch_metrics(mid, token)
@@ -228,25 +229,34 @@ def main() -> int:
         if args.dry_run:
             print(f"  [dry] {_display_id(item)}: {m}")
         else:
-            # the refresh owns only its own keys: dashboard_* come from
-            # wr2_ig_dashboard_import.py, the Graph API cannot re-supply them
-            carried = {k: v for k, v in (item.get("engagement_metrics") or {}).items()
-                       if k.startswith("dashboard_")}
-            item["engagement_metrics"] = {**carried, **m}
-            updated += 1
+            fresh[mid] = m
             print(f"  ok   {_display_id(item)}: "
                   f"likes={m.get('likes')} reach={m.get('reach')} "
                   f"saved={m.get('saved')} shares={m.get('shares')}")
         time.sleep(0.3)  # be gentle on the API
 
-    if updated and not args.dry_run:
-        # atomic write + backup
-        bak = qpath.with_suffix(qpath.suffix + f".bak-scraper-{int(time.time())}")
-        bak.write_text(pre_image)
-        fd, tmp = tempfile.mkstemp(dir=str(qpath.parent), prefix=".queue-", suffix=".json")
-        with os.fdopen(fd, "w") as f:
-            json.dump(queue, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, qpath)
+    updated = 0
+    if fresh and not args.dry_run:
+        # the fetch loop can take minutes: re-read under the queue's own lock so a
+        # write made meanwhile (dashboard import, publisher, reconciler) survives
+        with _qw.queue_lock(qpath):
+            pre_image = qpath.read_text()  # the backup must be the queue BEFORE this write
+            queue = json.loads(pre_image)
+            for item in queue:
+                m = fresh.get(media_id_of(item) or "")
+                if m is None:
+                    continue
+                # the refresh owns only its own keys: dashboard_* come from
+                # wr2_ig_dashboard_import.py, the Graph API cannot re-supply them
+                carried = {k: v for k, v in (item.get("engagement_metrics") or {}).items()
+                           if k.startswith("dashboard_")}
+                item["engagement_metrics"] = {**carried, **m}
+                updated += 1
+            if updated:
+                bak = qpath.with_suffix(qpath.suffix + f".bak-scraper-{int(time.time())}")
+                bak.write_text(pre_image)
+                _qw.write_queue_atomic(qpath, queue)
+    if updated:
         print(f"WROTE {updated} updates → {qpath} (backup {bak.name})")
     else:
         print("no writes")

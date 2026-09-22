@@ -8,8 +8,10 @@ backup, dry-run purity, unmatched-shortcode accounting.
 from __future__ import annotations
 
 import importlib.util
+import fcntl
 import json
 import sys
+import threading
 from pathlib import Path
 from types import ModuleType
 
@@ -38,7 +40,7 @@ HEADERS = ["Data", "Carosello", "Link", "Views", "Viewers", "Interactions",
            "Accounts engaged", "Shares", "Likes", "Comments", "Saves",
            "% Views da follower", "Views da Home", "Views da Profilo",
            "Views da Altro", "Profile activity", "Profile visits", "Follows",
-           "Engagement rate (Interactions/Views)", "Share rate (Shares/Views)", "Note"]
+           "Engagement rate (Interactions/Viewers)", "Share rate (Shares/Viewers)", "Note"]
 
 
 def _make_xlsx(path: Path) -> None:
@@ -99,6 +101,9 @@ def test_merge_matches_shortcode_and_preserves_scraper_keys(tmp_path, monkeypatc
     assert m["dashboard_views"] == 6573
     assert m["dashboard_follower_share"] == 0.617
     assert m["dashboard_follows"] == 2
+    assert m["dashboard_engagement_rate"] == 0.017
+    assert m["dashboard_share_rate"] == 0.0058
+    assert m["dashboard_export"] == "rep.xlsx"
     assert m["dashboard_source"] == "dashboard_xlsx"
     assert m["dashboard_post_date"] == "2026-09-09"
     # scraper keys untouched
@@ -161,13 +166,15 @@ def test_row_without_link_column_never_matches_note_text(tmp_path, monkeypatch, 
     q = tmp_path / "queue.json"
     _make_queue(q)
     assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 0
-    assert "dropped_no_shortcode=1" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "dropped_no_shortcode=1" in out
+    assert "WARNING missing_columns: Views," in out
     queue = json.loads(q.read_text())
     assert "engagement_metrics" not in queue[0] or \
         queue[0]["engagement_metrics"].get("dashboard_source") != "dashboard_xlsx"
 
 
-@pytest.mark.parametrize("kind", ["p", "reel", "reels", "tv"])
+@pytest.mark.parametrize("kind", ["p", "reel", "reels", "tv", "balizero.id/p"])
 def test_every_url_variant_matches(tmp_path, monkeypatch, kind):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -237,3 +244,81 @@ def test_scraper_refresh_keeps_dashboard_keys(tmp_path, monkeypatch):
     assert m["likes"] == 41  # the scraper's own keys are refreshed
     assert m["dashboard_views"] == 6573  # the dashboard's survive
     assert m["dashboard_follower_share"] == 0.617
+
+
+def test_reimport_replaces_the_previous_dashboard_snapshot(tmp_path, monkeypatch):
+    # a column absent from the new export must not leave the old value behind
+    # under a fresh timestamp; scraper keys stay.
+    xlsx = tmp_path / "rep.xlsx"
+    q = tmp_path / "queue.json"
+    _make_xlsx(xlsx)
+    _make_queue(q)
+    assert _run(monkeypatch, "--xlsx", str(xlsx), "--queue", str(q)) == 0
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Caroselli"
+    ws.append(["Data", "Carosello", "Link", "Views"])
+    ws.append(["2026-09-09", "Same post", "https://www.instagram.com/p/DdEAXq/", 7000])
+    second = tmp_path / "rep30.xlsx"
+    wb.save(second)
+    assert _run(monkeypatch, "--xlsx", str(second), "--queue", str(q)) == 0
+    m = json.loads(q.read_text())[0]["engagement_metrics"]
+    assert m["dashboard_views"] == 7000
+    assert "dashboard_follows" not in m
+    assert m["dashboard_export"] == "rep30.xlsx"
+    assert m["likes"] == 30
+
+
+def test_import_reads_and_writes_under_the_queue_lock(tmp_path, monkeypatch):
+    # another writer holds the queue lock and appends an item; the import must
+    # wait for it and build on that write, not erase it with a stale baseline.
+    xlsx = tmp_path / "rep.xlsx"
+    q = tmp_path / "queue.json"
+    _make_xlsx(xlsx)
+    _make_queue(q)
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_dashboard_import.py", "--xlsx", str(xlsx),
+                                      "--queue", str(q)])
+    rc: list[int] = []
+    with open(q.with_suffix(".lock"), "w") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: rc.append(imp.main()))
+        t.start()
+        t.join(0.5)
+        assert t.is_alive()  # blocked on the lock
+        queue = json.loads(q.read_text())
+        queue.append({"id": "a3", "state": "drafted"})
+        q.write_text(json.dumps(queue))
+        fcntl.flock(lock_fh, fcntl.LOCK_UN)
+    t.join(10)
+    assert rc == [0]
+    queue = json.loads(q.read_text())
+    assert [i["id"] for i in queue] == ["a1", "a2", "a3"]
+    assert queue[0]["engagement_metrics"]["dashboard_views"] == 6573
+
+
+def test_import_during_a_scraper_fetch_survives_its_write(tmp_path, monkeypatch):
+    # the scraper fetches for minutes before writing; an import landing in that
+    # window must survive the scraper's write.
+    xlsx = tmp_path / "rep.xlsx"
+    q = tmp_path / "queue.json"
+    _make_xlsx(xlsx)
+    _make_queue(q)
+    scraper = _load("wr2_ig_metrics_scraper")
+    imp_argv = ["wr2_ig_dashboard_import.py", "--xlsx", str(xlsx), "--queue", str(q)]
+    scr_argv = ["wr2_ig_metrics_scraper.py", "--queue", str(q), "--max-age-days", "0"]
+
+    def fetch_while_importing(media_id, token):
+        sys.argv = imp_argv
+        assert imp.main() == 0
+        sys.argv = scr_argv
+        return {"likes": 41, "source": "ig_metrics_scraper",
+                "scraped_at": "2026-09-23T00:00:00+00:00"}
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(scraper, "fetch_metrics", fetch_while_importing)
+    monkeypatch.setattr(scraper.time, "sleep", lambda s: None)
+    monkeypatch.setattr(sys, "argv", scr_argv)
+    assert scraper.main() == 0
+    m = json.loads(q.read_text())[0]["engagement_metrics"]
+    assert m["likes"] == 41
+    assert m["dashboard_views"] == 6573

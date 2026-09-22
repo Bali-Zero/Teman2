@@ -20,8 +20,8 @@ import argparse
 import json
 import re
 import sys
-import tempfile
 import time
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,7 +31,11 @@ except ImportError:
     print("ERROR: openpyxl is required (pip install openpyxl>=3.1.5)", file=sys.stderr)
     sys.exit(2)
 
-SHORTCODE_RE = re.compile(r"instagram\.com/(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wr2_queue_writer as _qw  # noqa: E402 — same scripts/ dir: the queue's lock + atomic writer
+
+SHORTCODE_RE = re.compile(
+    r"(?:instagram\.com|instagr\.am)/(?:[A-Za-z0-9_.]+/)?(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)")
 
 POST_COLUMNS = {  # dashboard header -> engagement_metrics key
     "Views": "dashboard_views",
@@ -49,8 +53,8 @@ POST_COLUMNS = {  # dashboard header -> engagement_metrics key
     "Profile activity": "dashboard_profile_activity",
     "Profile visits": "dashboard_profile_visits",
     "Follows": "dashboard_follows",
-    "Engagement rate (Interactions/Views)": "dashboard_engagement_rate",
-    "Share rate (Shares/Views)": "dashboard_share_rate",
+    "Engagement rate (Interactions/Viewers)": "dashboard_engagement_rate",
+    "Share rate (Shares/Viewers)": "dashboard_share_rate",
 }
 
 
@@ -143,7 +147,42 @@ def parse_dashboard(xlsx_path: Path) -> tuple[list[dict], dict]:
         if peak:
             summary["best_hours"] = peak
     summary["dropped_no_shortcode"] = dropped_no_shortcode
+    summary["missing_columns"] = [c for c in POST_COLUMNS if c not in idx]
     return posts, summary
+
+
+def merge_into_queue(queue: list, by_code: dict, limit: int, dry_run: bool,
+                     export_name: str) -> tuple[list, list]:
+    """Merge dashboard rows into matching queue items in place (unless dry_run).
+    Returns (matched, unmatched_codes). Each import is a full dashboard snapshot:
+    the item's previous dashboard_* keys are replaced, scraper keys are kept."""
+    index: dict[str, dict] = {}
+    for item in queue:
+        code = shortcode_of(item.get("instagram_post_url") or "")
+        if code and code not in index:
+            index[code] = item
+    matched = [(by_code[c], index[c]) for c in by_code if c in index]
+    if limit > 0:
+        matched = matched[:limit]
+    unmatched = [c for c in by_code if c not in index]
+    now = datetime.now(timezone.utc).isoformat()
+    for post, item in matched:
+        m = {k: v for k, v in (item.get("engagement_metrics") or {}).items()
+             if not k.startswith("dashboard_")}
+        for k, v in post.items():
+            if k not in ("shortcode", "date", "title"):
+                m[k] = v
+        m["dashboard_post_date"] = post["date"]
+        m["dashboard_post_title"] = post["title"]
+        m["dashboard_source"] = "dashboard_xlsx"
+        m["dashboard_export"] = export_name
+        m["dashboard_scraped_at"] = now
+        if dry_run:
+            print(f"  [dry] {post['shortcode']} {post['date']} {post['title'][:40]}")
+        else:
+            item["engagement_metrics"] = m
+            print(f"  ok    {post['shortcode']} {post['date']} {post['title'][:40]}")
+    return matched, unmatched
 
 
 def main() -> int:
@@ -160,8 +199,6 @@ def main() -> int:
         print(f"ERROR: xlsx not found: {xlsx}", file=sys.stderr)
         return 2
     qpath = Path(args.queue)
-    pre_image = qpath.read_text()  # the backup must be the queue BEFORE this run
-    queue = json.loads(pre_image)
 
     try:
         posts, summary = parse_dashboard(xlsx)
@@ -175,38 +212,23 @@ def main() -> int:
             dup_codes += 1  # last row wins, but never silently
         by_code[p["shortcode"]] = p
 
-    # index queue items by shortcode found in instagram_post_url
-    index: dict[str, dict] = {}
-    for item in queue:
-        code = shortcode_of(item.get("instagram_post_url") or "")
-        if code and code not in index:
-            index[code] = item
-
-    matched = [(by_code[c], index[c]) for c in by_code if c in index]
-    if args.limit > 0:
-        matched = matched[: args.limit]
-    unmatched = [c for c in by_code if c not in index]
-    now = datetime.now(timezone.utc).isoformat()
-
-    for post, item in matched:
-        m = dict(item.get("engagement_metrics") or {})
-        for k, v in post.items():
-            if k in ("shortcode", "date", "title"):
-                continue
-            m[k] = v
-        m["dashboard_post_date"] = post["date"]
-        m["dashboard_post_title"] = post["title"]
-        m["dashboard_source"] = "dashboard_xlsx"
-        m["dashboard_scraped_at"] = now
-        if args.dry_run:
-            print(f"  [dry] {post['shortcode']} {post['date']} {post['title'][:40]}")
-        else:
-            item["engagement_metrics"] = m
-            print(f"  ok    {post['shortcode']} {post['date']} {post['title'][:40]}")
+    # read-merge-write under the queue's own lock, or a concurrent writer's
+    # replace (scraper, publisher, reconciler) erases this import or vice versa
+    with (nullcontext() if args.dry_run else _qw.queue_lock(qpath)):
+        pre_image = qpath.read_text()  # the backup must be the queue BEFORE this run
+        queue = json.loads(pre_image)
+        matched, unmatched = merge_into_queue(queue, by_code, args.limit,
+                                              args.dry_run, xlsx.name)
+        if matched and not args.dry_run:
+            bak = qpath.with_suffix(qpath.suffix + f".bak-dashimport-{int(time.time())}")
+            bak.write_text(pre_image)
+            _qw.write_queue_atomic(qpath, queue)
 
     print(f"posts={len(posts)} matched={len(matched)} unmatched_dashboard={len(unmatched)} "
           f"dropped_no_shortcode={summary.get('dropped_no_shortcode', 0)} "
           f"dup_dashboard_shortcodes={dup_codes}")
+    if summary.get("missing_columns"):
+        print("  WARNING missing_columns: " + ", ".join(summary["missing_columns"]))
     if unmatched:
         print("  unmatched shortcodes: " + ", ".join(sorted(unmatched)[:10]))
     if summary.get("best_hours"):
@@ -214,14 +236,7 @@ def main() -> int:
     if args.save_summary:
         Path(args.save_summary).write_text(json.dumps(summary, ensure_ascii=False, indent=2))
         print(f"  summary → {args.save_summary}")
-
     if matched and not args.dry_run:
-        bak = qpath.with_suffix(qpath.suffix + f".bak-dashimport-{int(time.time())}")
-        bak.write_text(pre_image)
-        fd, tmp = tempfile.mkstemp(dir=str(qpath.parent), prefix=".queue-", suffix=".json")
-        with open(fd, "w") as f:
-            json.dump(queue, f, ensure_ascii=False, indent=2)
-        Path(tmp).replace(qpath)
         print(f"WROTE {len(matched)} updates → {qpath} (backup {bak.name})")
     else:
         print("no writes")
