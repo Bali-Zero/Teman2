@@ -20178,6 +20178,25 @@ export interface components {
       /** Status */
       status: string;
     };
+    /** ClientCompanyLinkCreate */
+    ClientCompanyLinkCreate: {
+      /**
+       * Is Primary
+       * @default false
+       */
+      is_primary: boolean | null;
+      /** Ownership Percentage */
+      ownership_percentage?: number | null;
+      /**
+       * Role
+       * @default shareholder
+       */
+      role: string | null;
+      /** Shares Count */
+      shares_count?: number | null;
+      /** Start Date */
+      start_date?: string | null;
+    };
     /** ClientCreate */
     ClientCreate: {
       /** Address */
@@ -20593,6 +20612,100 @@ export interface components {
       receipt_file_url?: string | null;
       /** Receipt Type */
       receipt_type?: ("kwitansi" | "invoice" | "none") | null;
+    };
+    /** CompanyCreate */
+    CompanyCreate: {
+      /** City */
+      city?: string | null;
+      /** Company Email */
+      company_email?: string | null;
+      /** Company Name */
+      company_name: string;
+      /** Company Phone */
+      company_phone?: string | null;
+      /**
+       * Company Type
+       * @default PT PMA
+       */
+      company_type: string;
+      /** Kbli Code */
+      kbli_code?: string | null;
+      /** Nib */
+      nib?: string | null;
+      /** Npwp Company */
+      npwp_company?: string | null;
+      /** Province */
+      province?: string | null;
+      /** Registered Address */
+      registered_address?: string | null;
+    };
+    /** CompanyDocumentCreate */
+    CompanyDocumentCreate: {
+      /** Description */
+      description?: string | null;
+      /** Document Number */
+      document_number?: string | null;
+      /** Document Subtype */
+      document_subtype?: string | null;
+      /** Document Title */
+      document_title?: string | null;
+      /** Document Type */
+      document_type?: string | null;
+      /** Expiry Date */
+      expiry_date?: string | null;
+      /** File Name */
+      file_name?: string | null;
+      /** File Size Kb */
+      file_size_kb?: number | null;
+      /** Google Drive File Id */
+      google_drive_file_id?: string | null;
+      /** Google Drive File Url */
+      google_drive_file_url?: string | null;
+      /** Issue Date */
+      issue_date?: string | null;
+      /** Mime Type */
+      mime_type?: string | null;
+    };
+    /** CompanyUpdate */
+    CompanyUpdate: {
+      /** Akta Pendirian Date */
+      akta_pendirian_date?: string | null;
+      /** Akta Pendirian No */
+      akta_pendirian_no?: string | null;
+      /** Akta Perubahan Date */
+      akta_perubahan_date?: string | null;
+      /** Akta Perubahan No */
+      akta_perubahan_no?: string | null;
+      /** City */
+      city?: string | null;
+      /** Company Email */
+      company_email?: string | null;
+      /** Company Name */
+      company_name?: string | null;
+      /** Company Phone */
+      company_phone?: string | null;
+      /** Company Type */
+      company_type?: string | null;
+      /** Kbli Code */
+      kbli_code?: string | null;
+      /** Nib */
+      nib?: string | null;
+      /** Npwp Company */
+      npwp_company?: string | null;
+      /** Office Address */
+      office_address?: string | null;
+      /** Postal Code */
+      postal_code?: string | null;
+      /** Province */
+      province?: string | null;
+      /** Registered Address */
+      registered_address?: string | null;
+      /** Sk Menhumkam Date */
+      sk_menhumkam_date?: string | null;
+      /** Sk Menhumkam No */
+      sk_menhumkam_no?: string | null;
+      /** Status */
+      status?: string | null;
     };
     /**
      * CompleteRegistrationRequest
@@ -36235,9 +36348,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["CompanyCreate"];
       };
     };
     responses: {
@@ -36407,9 +36518,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["CompanyUpdate"];
       };
     };
     responses: {
@@ -36480,9 +36589,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["ClientCompanyLinkCreate"];
       };
     };
     responses: {
@@ -36588,9 +36695,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["CompanyDocumentCreate"];
       };
     };
     responses: {
