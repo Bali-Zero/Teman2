@@ -181,43 +181,51 @@ else
             loop_rc=$?
             set -e
             report_path="$(/usr/bin/sed -n 's/^OSS_REFRESH_REPORT=//p' "$RUN_OUT" | /usr/bin/tail -n 1)"
+            output_refused="$(/usr/bin/sed -n 's/^OSS_REFRESH_OUTPUT_REFUSED=//p' "$RUN_OUT" | /usr/bin/tail -n 1)"
 
-            case "$loop_rc" in
-                0|1|4)
-                    if [ -n "$report_path" ] && facts="$(read_report "$report_path" 2>/dev/null)"; then
-                        read -r report_rc errors deferred proposed <<< "$facts"
-                        if [ "$report_rc" != "$loop_rc" ]; then
-                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                        elif [ "$loop_rc" = "4" ]; then
+            if [ -n "$output_refused" ]; then
+                # M3: the loop itself already unwound every output it wrote this
+                # run rather than leave one behind that disagrees with its exit
+                # code — this marker IS the report, whatever loop_rc says.
+                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+            else
+                case "$loop_rc" in
+                    0|1|4)
+                        if [ -n "$report_path" ] && facts="$(read_report "$report_path" 2>/dev/null)"; then
+                            read -r report_rc errors deferred proposed <<< "$facts"
+                            if [ "$report_rc" != "$loop_rc" ]; then
+                                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+                            elif [ "$loop_rc" = "4" ]; then
+                                hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
+                            elif [ "$loop_rc" = "1" ]; then
+                                hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
+                                # a proposal from a partial run is real news over an unverified rest
+                                if [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then hb_status="warning"; fi
+                            elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
+                                # rc 0 is only legal when every code answered: a report saying
+                                # otherwise contradicts its own verdict.
+                                hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
+                            else
+                                hb_status="ok"; result="nothing_new"; tier="none"; key=""
+                            fi
+                        elif [ "$loop_rc" = "4" ] && [ -z "$report_path" ]; then
+                            # rc 4 before any fetch (canonical unreadable / empty population): no report by design.
                             hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                        elif [ "$loop_rc" = "1" ]; then
-                            hb_status="ok"; result="new_scopes"; tier="digest"; key="kbli-oss-refresh:new-scopes"
-                            # a proposal from a partial run is real news over an unverified rest
-                            if [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then hb_status="warning"; fi
-                        elif [ "$errors" != "0" ] || [ "$deferred" != "0" ]; then
-                            # rc 0 is only legal when every code answered: a report saying
-                            # otherwise contradicts its own verdict.
-                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                         else
-                            hb_status="ok"; result="nothing_new"; tier="none"; key=""
+                            # A report path WAS named but is missing or won't parse — same bucket as
+                            # "report disagrees with its exit code" above, never the "no report by
+                            # design" warning (D5).
+                            hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
                         fi
-                    elif [ "$loop_rc" = "4" ] && [ -z "$report_path" ]; then
-                        # rc 4 before any fetch (canonical unreadable / empty population): no report by design.
+                        ;;
+                    124)
                         hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                    else
-                        # A report path WAS named but is missing or won't parse — same bucket as
-                        # "report disagrees with its exit code" above, never the "no report by
-                        # design" warning (D5).
+                        ;;
+                    *)
                         hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                    fi
-                    ;;
-                124)
-                    hb_status="warning"; result="cannot_verify"; tier="digest"; key="kbli-oss-refresh:cannot-verify"
-                    ;;
-                *)
-                    hb_status="error"; result="loop_failure"; tier="p0"; key="kbli-oss-refresh:loop-failure"
-                    ;;
-            esac
+                        ;;
+                esac
+            fi
         fi
     fi
 fi
