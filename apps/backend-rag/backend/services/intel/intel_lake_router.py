@@ -40,30 +40,16 @@ from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
-from backend.services.intel.intel_lake_rules import (
+from backend.services.intel.intel_lake_rules import (  # noqa: F401 — re-exported for callers and tests
     _PRESS_GENERAL_RE,
+    NB_INTEL_AI_RESEARCH,
+    NB_INTEL_IMMIGRATION,
+    NB_INTEL_PRESS,
+    NB_INTEL_REGULATION,
+    NB_INTEL_TAX,
+    NB_PROBE_SANDBOX,
+    _press_content_gate,
     classify,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_INTEL_AI_RESEARCH as NB_INTEL_AI_RESEARCH,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_INTEL_IMMIGRATION as NB_INTEL_IMMIGRATION,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_INTEL_PRESS as NB_INTEL_PRESS,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_INTEL_REGULATION as NB_INTEL_REGULATION,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_INTEL_TAX as NB_INTEL_TAX,
-)
-from backend.services.intel.intel_lake_rules import (
-    NB_PROBE_SANDBOX as NB_PROBE_SANDBOX,
-)
-from backend.services.intel.intel_lake_rules import (
-    _press_content_gate as _press_content_gate,
 )
 
 if TYPE_CHECKING:
