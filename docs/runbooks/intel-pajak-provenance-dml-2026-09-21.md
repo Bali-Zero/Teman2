@@ -23,8 +23,10 @@
 > `needs_review` rows (PWC-7074 C2). Final state of the 122: `nb-intel` 26, `blog` 15,
 > `needs_review` 81. The rules drift is ledger row `intel-lake-pro-fallback-router-rules-drift`.
 >
-> The **Rollback** blocks below are the way back. The archive tables stay in PROD until the owner
-> decides their retention.
+> The **Rollback** blocks below are the way back. Retention, decided by the owner on 2026-09-22:
+> the archive tables stay in PROD for 30 days and are dropped on or after 2026-10-22. That is
+> ledger row `pajak-dml-archive-tables-retention`. After the drop, the Rollback blocks no longer
+> apply.
 >
 > Companion code change (merged earlier as #7087):
 > `feat(pajak-monitor): peraturan items carry the regulation's own citation, excerpt and date`
