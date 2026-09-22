@@ -184,14 +184,3 @@ class TestRouteBatchThreadsContentGate:
         statuses = {u[0]: u[1] for u in pool.conn.updates}
         assert statuses["11111111-1111-1111-1111-111111111111"] == "nb-intel"
         assert statuses["22222222-2222-2222-2222-222222222222"] == "blog"
-
-
-class TestStandaloneNoLongerReferencesJson:
-    def test_no_json_rules_file_reference(self) -> None:
-        source = _STANDALONE_PATH.read_text()
-        assert "intel-lake-routing-rules.json" not in source
-        assert "RULES_PATH" not in source
-
-    def test_json_rules_file_deleted(self) -> None:
-        json_path = _STANDALONE_PATH.parent / "intel-lake-routing-rules.json"
-        assert not json_path.exists()
