@@ -63,6 +63,11 @@ Resume (B2', after OBS-3/OBS-7):
 * The report carries no request facts beyond the walk's own ``label`` (the
   manifest's id for it) -- personas are synthetic, but this stays
   PII-shaped-safe by construction, never by promise.
+* B4-3b -- ``runs[]`` is the run history; the top-level block above stays
+  "the latest run" (except ``started_at``, which stays the report's birth);
+  both exist because a RESUME once silently overwrote an earlier run's own
+  facts (the B4-2b overwrite) -- ``runs[]`` is what a resume can no longer
+  erase.
 
 This module never imports the FastAPI app -- pure HTTP client CLI, same
 offline-ops posture as its ``visa_engine`` script siblings.
@@ -155,8 +160,10 @@ HEALTH_PROBES_OUTSIDE_BUDGET = 2
 #: ``report_version`` except this readability gate, so the mix is harmless
 #: to every current consumer; a future reader keying behaviour off that
 #: field would need per-row ``"outage" in row``, not the report-level tag.
-REPORT_VERSION = 3
-_READABLE_REPORT_VERSIONS = frozenset((2, REPORT_VERSION))
+#: B4-3b -- v4 adds ``"runs"``: the same rule applies to it, a reader must
+#: key off ``"runs" in report``, never off the persisted ``report_version``.
+REPORT_VERSION = 4
+_READABLE_REPORT_VERSIONS = frozenset((2, 3, REPORT_VERSION))
 
 #: Group/other permission bits -- same posture as probe_evaluate.py's token
 #: check (cicatrix family #4 "secret in the clear").
@@ -729,6 +736,33 @@ def _new_report(
         "requests_used_total": 0,
         "walks": [],
         "summary": None,
+        "runs": [],
+    }
+
+
+def _seed_legacy_run(report: Mapping[str, Any]) -> dict[str, Any]:
+    """R3 -- a report born before ``"runs"`` existed (v2/v3) gets ONE legacy
+    entry seeded from whatever its top-level block holds AT THIS MOMENT,
+    before the current run overwrites it. That block is not necessarily one
+    clean run's facts: a report already resumed before the history existed
+    (the committed B4-2b report is exactly this case) mixes the LAST run's
+    counters/health with the FIRST run's ``started_at`` -- ``legacy_top_level``
+    marks the entry so it is never presented as a single coherent run.
+    """
+
+    health = report.get("health") or {}
+    return {
+        "run_index": 0,
+        "legacy_top_level": True,
+        "started_at": report.get("started_at"),
+        "finished_at": report.get("finished_at"),
+        "stopped_reason": report.get("stopped_reason"),
+        "url": report.get("url"),
+        "max_requests": report.get("max_requests"),
+        "rate_per_minute": report.get("rate_per_minute"),
+        "max_consecutive_harness_reds": report.get("max_consecutive_harness_reds"),
+        "health": {"start": health.get("start"), "end": health.get("end")},
+        "requests_used": report.get("requests_used_this_run"),
     }
 
 
@@ -897,15 +931,40 @@ async def run_live_enumeration(
             rate_per_minute=rate_per_minute,
             max_consecutive_harness_reds=max_consecutive_harness_reds,
         )
+
+        # R3 -- seed the legacy entry from the pre-resume top-level block
+        # BEFORE that block is overwritten below for the current run, and
+        # only once: a report that already has "runs" is never re-seeded.
+        if "runs" not in report:
+            report["runs"] = [_seed_legacy_run(report)]
+
         report["url"] = url
         report["max_requests"] = max_requests
         report["rate_per_minute"] = rate_per_minute
         report["max_consecutive_harness_reds"] = max_consecutive_harness_reds
 
+        # R1 -- one run record per LIVE run, appended as soon as the lock is
+        # held and the report is loaded, before the first /health probe. An
+        # earlier run's record is never touched again after this point.
+        current_run: dict[str, Any] = {
+            "run_index": len(report["runs"]),
+            "started_at": _utcnow().isoformat(),
+            "finished_at": None,
+            "stopped_reason": None,
+            "url": url,
+            "max_requests": max_requests,
+            "rate_per_minute": rate_per_minute,
+            "max_consecutive_harness_reds": max_consecutive_harness_reds,
+            "health": {"start": None, "end": None},
+            "requests_used": 0,
+        }
+        report["runs"].append(current_run)
+
         def _flush() -> None:
             report["walks"] = [walks_by_id[w["label"]] for w in walks if w["label"] in walks_by_id]
             report["requests_used_this_run"] = budget.used
             report["requests_used_total"] = requests_used_total_before + budget.used
+            current_run["requests_used"] = budget.used
             atomic_write_json(report_path, report)
 
         def _flush_counters_only() -> None:
@@ -918,10 +977,12 @@ async def run_live_enumeration(
             SIGKILL still leaves the on-disk counters within ONE in-flight
             request of the server's real count, instead of lagging behind by
             however many retries that walk had already spent since its last
-            per-walk flush.
+            per-walk flush. B4-3b: ``current_run["requests_used"]`` gets the
+            same guarantee, for the same reason.
             """
             report["requests_used_this_run"] = budget.used
             report["requests_used_total"] = requests_used_total_before + budget.used
+            current_run["requests_used"] = budget.used
             atomic_write_json(report_path, report)
 
         budget = RequestBudget(max_requests)
@@ -930,7 +991,9 @@ async def run_live_enumeration(
         consecutive_harness_reds = 0
 
         async with httpx.AsyncClient() as client:
-            report["health"]["start"] = await _probe_health(client, health_url, timeout=timeout)
+            health_start = await _probe_health(client, health_url, timeout=timeout)
+            report["health"]["start"] = health_start
+            current_run["health"]["start"] = health_start
             _flush()
 
             for walk in pending_walks:
@@ -990,10 +1053,14 @@ async def run_live_enumeration(
                     stopped_reason = "consecutive_harness_reds_circuit_breaker"
                     break
 
-            report["health"]["end"] = await _probe_health(client, health_url, timeout=timeout)
+            health_end = await _probe_health(client, health_url, timeout=timeout)
+            report["health"]["end"] = health_end
+            current_run["health"]["end"] = health_end
 
         report["stopped_reason"] = stopped_reason
         report["finished_at"] = _utcnow().isoformat()
+        current_run["stopped_reason"] = stopped_reason
+        current_run["finished_at"] = report["finished_at"]
         report["summary"] = _summarize(report["walks"], len(walks))
         _flush()
     finally:
