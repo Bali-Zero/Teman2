@@ -24,7 +24,9 @@ TIMEOUT_S="${KBLI_OSS_REFRESH_TIMEOUT_S:-900}"
 OUT_ROOT="${KBLI_OSS_REFRESH_OUT_ROOT:-$HOME/nuzantara-vault-evidence/oss-refresh}"
 LOG_DIR="${KBLI_OSS_REFRESH_LOG_DIR:-$HOME/logs/kbli-oss-refresh}"
 LOCK_DIR="${KBLI_OSS_REFRESH_LOCK_DIR:-$HOME/.agent/locks/kbli-oss-refresh.lock}"
-EXPECTED_HOST="${KBLI_OSS_REFRESH_EXPECTED_HOST:-mini-pro2}"
+# Lower-cased the same way `host_now` is below (K5): an override left in
+# mixed case must still compare equal, not refuse a real Mini.
+EXPECTED_HOST="$(printf '%s' "${KBLI_OSS_REFRESH_EXPECTED_HOST:-mini-pro2}" | tr '[:upper:]' '[:lower:]')"
 ORGAN_ID="${KBLI_OSS_REFRESH_ORGAN_ID:-mini.kbli_oss_refresh}"
 
 mkdir -p "$LOG_DIR" "$(dirname "$LOCK_DIR")"
