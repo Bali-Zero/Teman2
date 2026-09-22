@@ -1,0 +1,64 @@
+# PWC-7087 C3 / PWC-7074 C1 (PENDING-ARMS 2026-09-21), made executable.
+#
+# `scripts/tests/test_pajak_parse.py` and `scripts/tests/test_pajak_monitor.py`
+# pin the pajak.go.id parser and the monitor's lake write by behaviour: the
+# deadline arm of `_enrich_peraturan_details` (`skipped_for_budget`), the
+# excerpt anchored at the heading match's `m.start()`, and `source_domain` =
+# the item's real host with no fallback to the job's label. Until this file,
+# no PR-triggered workflow ran either of them — in this repo a test under
+# `scripts/tests/` executes on a PR only because a workflow names it, and the
+# nightly `scripts/tests/ sweep` is continue-on-error, so a mutation that
+# reverted any of those fixes would have merged green (superscar #2). Every
+# deploy proof of #7067/#7074/#7087/#7097 had to carry the pytest output on
+# the merged SHA by hand instead.
+#
+# The monitor imports `agent_job`/`browser_job`, which live only on Pro; the
+# tests stub both in `sys.modules`, so the job needs nothing but pytest.
+#
+# NON-REQUIRED by design (same posture as check-cicatrix-scar-pointers.yml):
+# a new signal observes before it can block; promoting it to a required
+# check is a separate, operator-only branch-protection action. No
+# `merge_group` trigger: it cannot carry `paths:`, and pairing it with the
+# path-filtered `pull_request` below is the split lint_trigger_symmetry.py
+# forbids.
+name: pajak-monitor tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "scripts/cron-agent-python/pajak_monitor.py"
+      - "scripts/cron-agent-python/pajak_parse.py"
+      - "scripts/tests/test_pajak_monitor.py"
+      - "scripts/tests/test_pajak_parse.py"
+      - "scripts/tests/fixtures/pajak/**"
+      - "scripts/tests/conftest.py"
+      - ".github/workflows/pajak-monitor-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pajak-monitor-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pajak-monitor-tests:
+    name: pajak-monitor tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Parser and monitor behaviour (deadline arm, excerpt anchor, real host)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py -q
