@@ -22,6 +22,33 @@ function renderNationalities(currentAnswer?: string) {
 }
 
 describe("QuestionScreen country picker", () => {
+  it("shows why-we-ask content after the heading without a click", () => {
+    render(
+      <QuestionScreen
+        language="en"
+        question={QUESTIONS.in_indonesia}
+        onAnswer={vi.fn()}
+        onSkip={vi.fn()}
+        onBack={vi.fn()}
+        canGoBack
+      />,
+    );
+
+    const heading = screen.getByRole("heading", {
+      name: "Are you in Indonesia right now?",
+    });
+    const why = screen.getByText(
+      "Your current location tells the engine whether this is an onshore situation or a future plan.",
+    );
+
+    expect(
+      heading.compareDocumentPosition(why) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /why we ask this question/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("uses localized country names, supports keyboard add/remove, and persists sorted alpha-2 codes", async () => {
     const user = userEvent.setup();
     const { onAnswer } = renderNationalities();

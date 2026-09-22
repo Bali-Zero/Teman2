@@ -1667,3 +1667,7 @@ button.oracle-tree__leaf {
      :51/:85 (~5.7:1 light, ~5.68:1 dark) — no new token declared. */
   background: var(--oracle-bg-elevated);
 }
+
+.oracle-whyweask--inline {
+  width: 100%;
+}
