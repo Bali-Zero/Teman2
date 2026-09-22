@@ -28,11 +28,6 @@
  * - `review_gate` multi-item combinations are outside the manifest's own
  *   declared gap (`enumerate-interview-space.ts`), not this spec's.
  * - One language per run (`en`).
- * - `isSecondHomeStudioOnly` (`VerdictReveal.tsx:87-95`) replaces the
- *   HUMAN_REVIEW_REQUIRED headline when the ONLY review reason is
- *   `SECOND_HOME_BELOW_THRESHOLD_STUDIO`, which no sampled class carries
- *   today — a future rule pack that raises it breaks the headline
- *   assertion below and must update this clause.
  *
  * Opt-in by THREE fences (U8), because the default CI job IMPORTS every
  * spec file to build its `--list` and dies if that import throws
@@ -83,7 +78,10 @@ import {
   initialFlowState,
   type FlowState,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/flow";
-import { buildEngineOutcome } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
+import {
+  buildEngineOutcome,
+  isSecondHomeStudioOnly,
+} from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
 import {
   translate,
   type I18nKey,
@@ -509,9 +507,19 @@ if (LIVE_PARITY) {
         // facts; an omitted option compares static fallback copy
         // against a fact-derived DOM.
         const outcome = buildEngineOutcome(response, { facts: sample.facts });
+        // The expected headline is derived the way the SHIPPED UI derives
+        // it (U6): `VerdictReveal.tsx` and `OutcomeSheet.tsx`'s share text
+        // both select `verdict.headline.SECOND_HOME_STUDIO` over the
+        // generic per-state headline whenever `isSecondHomeStudioOnly`
+        // (imported from `engine-adapter.ts`, never re-implemented here)
+        // is true — the ONE review reason `HUMAN_REVIEW_REQUIRED` must
+        // never say "needs a human, not an algorithm" for. That predicate
+        // already gates on `state === "HUMAN_REVIEW_REQUIRED"` internally.
         const expectedHeadline = translate(
           "en",
-          `verdict.headline.${sample.engineState}` as I18nKey,
+          (isSecondHomeStudioOnly(outcome)
+            ? "verdict.headline.SECOND_HOME_STUDIO"
+            : `verdict.headline.${sample.engineState}`) as I18nKey,
         );
         const expectedNoticeTexts = outcome.conditions.map((c) =>
           localized(c.message, "en"),
