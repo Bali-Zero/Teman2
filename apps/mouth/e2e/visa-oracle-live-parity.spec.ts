@@ -184,7 +184,8 @@ const RESUME_KEY = "visa-oracle:v2:resume:v1";
  * replay a SAMPLED walk's own recorded facts instead of one fixed default
  * per question. U4: if the tree asks a question this walk's facts do not
  * answer, this throws NAMING the question id — never a 30s timeout. The
- * ten `review-gate/<item>` classes replay facts synthesized post hoc
+ * 12 `review-gate/<item>` classes (one class per walk in the pinned
+ * report) replay facts synthesized post hoc
  * (`enumerate-interview-space.ts:540-546`); a throw there is a REPORTED
  * risk, never adjusted.
  *
@@ -198,7 +199,7 @@ const RESUME_KEY = "visa-oracle:v2:resume:v1";
  * finisher's real gated run reached a verdict for all 34 sampled classes,
  * zero throws (U4 v3's own fence). The throw path above stays live and
  * REPORTED (never adjusted) for the two cases it can still legitimately
- * fire: the ten `review-gate/<item>` post-hoc clones, and any future walk
+ * fire: the 12 `review-gate/<item>` post-hoc clones, and any future walk
  * the enumerator synthesizes outside what `flowReducer` will accept.
  */
 function walkToVerdict(facts: OracleFacts, walkId: string): FlowState {
@@ -262,8 +263,8 @@ async function seedVerdictResume(
  * U5: the three response lists are REBUILT from the record's bare-string
  * codes, never overwritten wholesale — `makeVisaOracleResponse` emits at
  * most one review entry, at most one no-path entry and never a notice,
- * while 12 of the 32 classes carry two codes in one list and 13 carry a
- * notice. No-path entries need a DECISIVE ref (`engine-adapter.ts:1630`
+ * while in the pinned report 11 of the 34 classes carry two codes in one
+ * list and 20 carry a notice. No-path entries need a DECISIVE ref (`engine-adapter.ts:1630`
  * `requireDecisiveRefs`) or the adapter throws `RESPONSE_INVARIANT` —
  * `TEST_SOURCE_ID` is the fixture's one decisive source. Review reasons
  * and notices may ship `source_refs: []` (`requireReviewHoldRefs` accepts
