@@ -50,6 +50,7 @@ guard #2550 — sanctioned writer perimeter). Renders live OUTSIDE the repo
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import subprocess
@@ -63,6 +64,7 @@ GATE_DIR = RUN_DIR / "phase0-gate"
 DEFAULT_PDF = Path("~/nuzantara-vault/bps/tabel-konversi-kbli-2020-2025-volume2-2026.pdf").expanduser()
 DEFAULT_RENDER_DIR = Path("~/nuzantara-vault/bps/phase0-renders").expanduser()
 CANONICAL_PATH = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+FROZEN_SEED_LISTS_PATH = Path(__file__).resolve().parent / "phase0_seed_lists_rev4b.json"
 
 PASS_THRESHOLD = 0.995
 
@@ -375,16 +377,61 @@ def cmd_aql() -> int:
     pop_codes = {r["kode_kbli_2025"] for r in pop}
     by_code = {r["kode_kbli_2025"]: r for r in records if r.get("kode_kbli_2025")}
 
-    tier1 = sorted(r["kode_kbli_2025"] for r in pop
-                   if r.get("status_mapping") == "MATCH_CON_AGGREGAZIONE" and len(r.get("pp28_sources") or []) == 1)
-    tier2 = sorted(r["kode_kbli_2025"] for r in pop
-                   if r.get("status_mapping") == "MATCH_LANGSUNG"
-                   and (r.get("pp28_sources") or [None])[0] not in (None, r["kode_kbli_2025"]))
+    # §1.5: Tier 1/2 are FROZEN AT PRE-REGISTRATION — "this list does not grow
+    # or shrink... it is not re-derived". Load the literal sample drawn at
+    # registration and USE it (never the live predicate) for everything
+    # downstream (sampling/AQL parameters).
+    frozen = json.loads(FROZEN_SEED_LISTS_PATH.read_text(encoding="utf-8"))
+    tier1 = list(frozen["tier1"]["codes"])
+    tier2 = list(frozen["tier2"]["codes"])
+    if len(tier1) != 46 or len(tier2) != 16:
+        print(f"FATAL: frozen seed-list file itself is malformed — tier1={len(tier1)} (spec 46), tier2={len(tier2)} (spec 16)", file=sys.stderr)
+        return 2
+
     tier5 = sorted(r["kode_kbli_2025"] for r in pop
                    if r.get("status_mapping") == "BPS_ONLY" or r.get("status_mapping") is None)
-    if len(tier1) != 46 or len(tier2) != 16:
-        print(f"FATAL: frozen seed lists drifted — tier1={len(tier1)} (spec 46), tier2={len(tier2)} (spec 16)", file=sys.stderr)
+
+    # Live re-derivation of the same §1.3 predicates — used ONLY to detect
+    # drift against the frozen sample, never as tier1/tier2 themselves.
+    live_tier1 = {r["kode_kbli_2025"] for r in pop
+                  if r.get("status_mapping") == "MATCH_CON_AGGREGAZIONE" and len(r.get("pp28_sources") or []) == 1}
+    live_tier2 = {r["kode_kbli_2025"] for r in pop
+                  if r.get("status_mapping") == "MATCH_LANGSUNG"
+                  and (r.get("pp28_sources") or [None])[0] not in (None, r["kode_kbli_2025"])}
+
+    def _drift(frozen_codes, live_set):
+        left, vanished = [], []
+        for code in frozen_codes:
+            if code not in by_code:
+                vanished.append(code)
+            elif code not in live_set:
+                left.append(code)
+        return left, vanished
+
+    left1, vanished1 = _drift(tier1, live_tier1)
+    left2, vanished2 = _drift(tier2, live_tier2)
+    if left1 or left2 or vanished1 or vanished2:
+        print(f"FATAL: frozen REV-4b seed code(s) invalidated — a pre-registered unit left the "
+              f"predicate or vanished from the canonical: tier1 left={left1} vanished={vanished1}; "
+              f"tier2 left={left2} vanished={vanished2}", file=sys.stderr)
         return 2
+
+    # Growth is legitimate (a cure can source a new code into the predicate)
+    # and is NEVER folded into the frozen Tier 1/2 — recorded as an explicit
+    # amendment candidate instead.
+    post_registration_candidates = {
+        "tier1": sorted(live_tier1 - set(tier1)),
+        "tier2": sorted(live_tier2 - set(tier2)),
+        "recorded_at": datetime.date.today().isoformat(),
+        "note": "codes newly satisfying the REV-4b §1.3 tier1/tier2 predicate after the "
+                "pre-registration freeze — NOT added to tier1/tier2 (§1.5: 'a closed, "
+                "one-time, pre-registered set, not a live query'); surfaced here for an "
+                "explicit, recorded amendment decision.",
+    }
+    if post_registration_candidates["tier1"] or post_registration_candidates["tier2"]:
+        print(f"NOTICE: post-registration candidate(s) — tier1={post_registration_candidates['tier1']} "
+              f"tier2={post_registration_candidates['tier2']} (recorded in aql-parameters.json, "
+              f"not added to the frozen seed lists)")
 
     # Tier 2.5: codes touched by unresolved rows or unresolved L5<->L10 diffs.
     consistency = json.loads((RUN_DIR / "consistency-l5-l10.json").read_text(encoding="utf-8"))
@@ -474,6 +521,7 @@ def cmd_aql() -> int:
         "switching_rule": "tightened after 2 of 5 consecutive lots rejected; back to normal after 5 consecutive lots accepted under tightened",
         "ratification": "Zero (Legge 5) accept-or-override of this frozen default — PENDING (operator[business])",
         "table_2a_navigation_note": "cells above the Ac=0 diagonal follow the standard's down-arrow to the diagonal plan; below-diagonal Ac follows the standard ladder one step per letter — verify the single derived (n, Ac) cell against a paper Table 2-A at ratification",
+        "post_registration_candidates": post_registration_candidates,
     }
     write_json(GATE_DIR / "aql-parameters.json", out)
     print(json.dumps({k: out[k] for k in ("aql_class_pct", "lot_size", "sample_size_n",
