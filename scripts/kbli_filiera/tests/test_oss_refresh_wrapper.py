@@ -26,7 +26,14 @@ from pathlib import Path
 Path(os.environ["STUB_MARK"]).write_text(" ".join(sys.argv[1:]))
 out = Path(sys.argv[sys.argv.index("--out-root") + 1]) / "data/kbli-filiera/oss-refresh/2026-09-22.json"
 rc = int(os.environ.get("STUB_RC", "0"))
-if os.environ.get("STUB_NO_REPORT") != "1":
+if os.environ.get("STUB_NO_REPORT") == "1":
+    pass
+elif os.environ.get("STUB_BAD_REPORT") == "1":
+    # D5: the path is NAMED (printed) but the report is never written — named,
+    # not "no report by design".
+    out.parent.mkdir(parents=True, exist_ok=True)
+    print(f"OSS_REFRESH_REPORT={out}")
+else:
     out.parent.mkdir(parents=True, exist_ok=True)
     proposed = int(os.environ.get("STUB_PROPOSED", "0"))
     out.write_text(json.dumps({
@@ -135,6 +142,19 @@ def test_cannot_verify_is_a_warning_with_or_without_report(tmp_path, no_report):
     assert hb["status"] == "warning" and "result=cannot_verify" in hb["note"]
 
 
+def test_a_named_report_that_never_parses_is_an_error_not_a_warning(tmp_path):
+    """Guilt (D5): rc=4 with a report path NAMED (the loop printed
+    OSS_REFRESH_REPORT=...) but the file missing/unparseable is the same
+    bucket as "report disagrees with its exit code" — error/loop_failure.
+    Only a report path left EMPTY (no fetch attempted at all) is the "no
+    report by design" warning."""
+    home, env = _sandbox(tmp_path)
+    proc = _run(env, STUB_RC="4", STUB_BAD_REPORT="1")
+    assert proc.returncode == 0, proc.stderr
+    hb = _heartbeat(home)
+    assert hb["status"] == "error" and "result=loop_failure" in hb["note"]
+
+
 @pytest.mark.parametrize("stub", [
     {"STUB_RC": "0", "STUB_NO_REPORT": "1"},    # green exit, no report: the Esiste≠Armato shape
     {"STUB_RC": "0", "STUB_REPORT_RC": "1"},    # report disagrees with the exit code
@@ -158,6 +178,19 @@ def test_wrong_host_never_runs_the_loop(tmp_path):
     assert not (tmp_path / "loop.argv").exists()
     hb = _heartbeat(home)
     assert hb["status"] == "warning" and "result=cannot_verify" in hb["note"]
+
+
+def test_host_case_is_normalised_before_the_guard(tmp_path):
+    """Guilt (D4): the host guard was an exact, case-sensitive match against
+    `mini-pro2` — a hostname reported as `Mini-Pro2` is still Mini and must
+    run, the same idiom the sibling Mini wrappers already use."""
+    home, env = _sandbox(tmp_path)
+    env["KBLI_OSS_REFRESH_HOSTNAME"] = "Mini-Pro2"
+    proc = _run(env, STUB_RC="0")
+    assert proc.returncode == 0, proc.stderr
+    assert (tmp_path / "loop.argv").exists()
+    hb = _heartbeat(home)
+    assert hb["status"] == "ok" and "result=nothing_new" in hb["note"]
 
 
 def test_kill_switch_writes_a_disabled_heartbeat(tmp_path):

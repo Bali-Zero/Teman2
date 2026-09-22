@@ -360,6 +360,17 @@ def test_dry_run_writes_nothing_even_when_scopes_are_proposed(tmp_path):
     assert not out.exists()
 
 
+def test_dry_run_never_claims_the_cure_spec_was_written(tmp_path, capsys):
+    """Guilt (D7): a dry-run computes the same spec path an --apply run would
+    use, but never writes it — the printed summary must not say `cure spec:
+    <path>` as if it had."""
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")))
+    assert rc == L.EXIT_PROPOSED and not out.exists()
+    printed = capsys.readouterr().out
+    assert "cure spec (dry-run, not written): scripts/kbli_filiera/cure_specs/oss_refresh_2026_09_22.json" in printed
+    assert "cure spec: scripts/kbli_filiera/cure_specs" not in printed
+
+
 def test_apply_with_nothing_new_writes_report_and_summary_but_no_spec(tmp_path, capsys):
     session = FakeSession(published_world())
     rc, out = run(tmp_path, default_world(), session, "--apply")
@@ -385,12 +396,29 @@ def test_report_shape(tmp_path):
     assert report["population"] == {
         "derivation": report["population"]["derivation"], "count": 4, "quarantined": 1,
         "by_state": {"declared_gap": 3, "sourced_pp28_vintage_pending": 1}}
-    assert report["coverage"] == {"asked": 4, "fetched": 4, "trusted_answers": 3, "errors": 1, "deferred": 0}
+    assert report["coverage"] == {"asked": 4, "fetched": 3, "attempted": 4, "trusted_answers": 3, "errors": 1,
+                                  "deferred": 0}
     assert set(report["counts"]) == set(L.CLASSES) and report["counts"]["still_404"] == 3
     assert [c["class"] for c in report["controls"]] == [L.UNCHANGED, L.UNCHANGED]
     entry = next(c for c in report["codes"] if c["code"] == "10003")
     assert entry["quarantined_by"] == ["per_skala_disputed_pp28_collision"]
     assert not any(k.startswith("_") for c in report["codes"] for k in c)
+
+
+def test_fetched_excludes_fetch_errors_not_just_deferred(tmp_path):
+    """Guilt (D6): `fetched` used to count ATTEMPTS (attempts > 0), so 1
+    published plus N fetch_errors read as fetched = N+1 — an OSS that never
+    actually answered N of the asked codes could be reported as fully
+    fetched. `fetched` must count only codes that got an HTTP answer: not
+    fetch_error (a timeout has attempts too), not deferred."""
+    answers = published_world("10001")
+    answers[uuid_of("10002")] = L.Answer(0, error="timeout", attempts=3)
+    answers[uuid_of("10004")] = L.Answer(500, error="HTTP 500", attempts=3)
+    rc, out = run(tmp_path, default_world(), FakeSession(answers), "--apply", "--only", "10001,10002,10004")
+    assert rc == L.EXIT_PROPOSED
+    report = json.loads(report_path(out).read_text())
+    assert report["coverage"] == {"asked": 3, "fetched": 1, "attempted": 3, "trusted_answers": 1,
+                                  "errors": 2, "deferred": 0}
 
 
 def test_one_unanswered_code_is_not_nothing_new(tmp_path):
@@ -434,6 +462,24 @@ def test_cure_spec_shape_and_routes(tmp_path):
     assert json.loads((tmp_path / "canonical.json").read_text())["data"] == records
 
 
+def test_a_refused_cure_spec_write_reports_exit_4_not_the_proposal(tmp_path):
+    """Guilt (D2): the spec must be written BEFORE the report that names it —
+    the old order wrote the report first (exit_code: 1, cure_spec: <path>),
+    THEN the spec, so a refused spec write left that lie on disk under a
+    process that had already returned 4. The report written afterwards must
+    itself say exit 4, no cure_spec, and why."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / "out" / "scripts" / "kbli_filiera").mkdir(parents=True)
+    (tmp_path / "out" / "scripts" / "kbli_filiera" / "cure_specs").symlink_to(outside, target_is_directory=True)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    assert list(outside.iterdir()) == []
+    report = json.loads(report_path(out).read_text())
+    assert report["exit_code"] == L.EXIT_CANNOT_VERIFY and report["cure_spec"] is None
+    assert "cure spec" in report["verdict"] and "refused" in report["verdict"]
+
+
 def test_no_applyable_spec_beside_a_failed_control(tmp_path):
     """Guilt (Codex finding 6): a target that looks published while the
     controls fail is not vouched for — exit 4 and no cure spec."""
@@ -452,6 +498,24 @@ def test_a_symlinked_output_dir_is_refused(tmp_path):
     (tmp_path / "out" / "data" / "kbli-filiera" / "oss-refresh").symlink_to(outside, target_is_directory=True)
     rc, _ = run(tmp_path, default_world(), FakeSession(published_world()), "--apply")
     assert rc == L.EXIT_CANNOT_VERIFY and list(outside.iterdir()) == []
+
+
+def test_a_symlinked_intermediate_dir_is_refused_before_anything_is_created(tmp_path):
+    """Guilt (D1): the old `write_contained` ran `path.parent.mkdir(parents=True)`
+    BEFORE the symlink walk — pathlib's own parent-recursion happily creates
+    real directories at a symlinked intermediate's destination (even a
+    dangling one, i.e. one whose target does not exist yet) first, and only
+    THEN would the later walk-up refuse it. Refusing must happen before any
+    directory is created past the symlink."""
+    out_root = tmp_path / "out"
+    outside = tmp_path / "outside"
+    target = outside / "kbli-filiera-target"  # does not exist yet
+    (out_root / "data").mkdir(parents=True)
+    (out_root / "data" / "kbli-filiera").symlink_to(target, target_is_directory=True)
+    path = out_root / "data" / "kbli-filiera" / "oss-refresh" / "2026-09-22.json"
+    with pytest.raises(L.OutputRefused):
+        L.write_contained(out_root, path, "x")
+    assert not target.exists()
 
 
 def test_a_malformed_key_is_refused_without_printing_it(tmp_path, monkeypatch, capsys):
@@ -476,6 +540,17 @@ def test_a_blind_endpoint_cannot_report_nothing_new(tmp_path):
     """Guilt: every code 404, controls included. Without the positive control
     this run would read as 219 honest gaps and exit 0."""
     rc, _ = run(tmp_path, default_world(), FakeSession({}))
+    assert rc == L.EXIT_CANNOT_VERIFY
+
+
+def test_empty_controls_never_pass_as_ok(tmp_path):
+    """Guilt (D3): `bool(control_results) and all(...)` — drop the `bool()` and
+    an EMPTY control list "passes" vacuously (`all()` over nothing is True).
+    No strong (sourced) code exists to draw a control from here, so every
+    asked code being an honest 404 must still exit 4, never read as nothing
+    new."""
+    records = [gap("10001"), gap("10002")]
+    rc, _ = run(tmp_path, records, FakeSession({}))
     assert rc == L.EXIT_CANNOT_VERIFY
 
 
