@@ -2749,6 +2749,45 @@ class TestGuardianConsentArms:
             "DISCLOSED_CRIMINAL_RECORD_REVIEW"
         ]
 
+    def test_minor_privacy_hold_passes_through_an_already_held_decision_unknown_consent(
+        self,
+    ) -> None:
+        """GUILT (B3, rework L2), isolated for the UNKNOWN arm: the same
+        ``:1213``-replicated pass-through the FALSE arm has above also
+        lives inside the ``UnknownFact`` branch, and on the real adapter
+        chain (``_apply_minor_privacy_hold`` FIRST) it never fires either.
+        This calls the two adapters OUT of order — disclosed-review first —
+        to isolate the UNKNOWN arm's own pass-through: an already
+        ``HUMAN_REVIEW_REQUIRED`` decision must come back byte-identical,
+        never rebuilt into ``NEEDS_INPUT``. Drop the UNKNOWN arm's
+        pass-through and this goes red: the adapter would overwrite the
+        disclosed-review hold with ``NEEDS_INPUT`` naming the unasked fact."""
+        compiled = self._compiled()
+        wire = _known_minor_wire(guardian_consent=None)
+        minor_facts = ApplicantFacts.model_validate(wire)
+        baseline = evaluate(
+            minor_facts,
+            compiled,
+            effective_at=gold_loader.GOLD_EFFECTIVE_AT,
+            observed_at=gold_loader.GOLD_EFFECTIVE_AT,
+        )
+        assert baseline.state is DecisionState.SUPPORTED_CANDIDATES
+
+        disclosed = evaluate_path._apply_disclosed_review_flags(
+            baseline, (DisclosedReviewFlag.CRIMINAL_RECORD,)
+        )
+        assert disclosed.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in disclosed.review_reasons] == [
+            "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+        ]
+
+        held = evaluate_path._apply_minor_privacy_hold(disclosed, minor_facts)
+        assert held is disclosed
+        assert held.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in held.review_reasons] == [
+            "DISCLOSED_CRIMINAL_RECORD_REVIEW"
+        ]
+
 
 async def test_public_evaluation_applies_minor_privacy_hold_before_persistence(
     monkeypatch: pytest.MonkeyPatch,
