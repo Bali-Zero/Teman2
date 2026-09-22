@@ -4,8 +4,8 @@
 Bypass for Fly EventBus blocked by DISABLE_BACKGROUND_WORKERS=1 (kill-switch
 from disk-full incident 2026-04-12, never removed). The Fly router code
 exists at apps/backend-rag/backend/services/intel/intel_lake_router.py but
-its EventBus subscriber never fires. This script applies the same regex
-rules from Pro every 5 min instead.
+its EventBus subscriber never fires. This script applies the same rules
+from Pro every 5 min instead.
 
 Tri-LLM review (Codex + Gemini + DeepSeek) caught 7 bugs in the v1 design;
 all addressed below:
@@ -17,9 +17,10 @@ all addressed below:
 3. **conn.transaction() wraps UPDATE+INSERT** — atomicity guaranteed.
 4. **Time-windowed failure counter** — 3 fails within 30 min, reset on
    success. State file holds (timestamp, count); old fails decay.
-5. **Rules loaded from external JSON** — single source of truth in
-   ~/scripts/intel-lake-routing-rules.json (shared with backend long-term).
-6. **None-safe source_domain** — `(domain or '').strip().lower()`.
+5. **Rules imported from `intel_lake_rules.py`** — single source of truth
+   shared with the backend (2026-09-23: JSON copy retired, was drifting —
+   see PENDING-ARMS row intel-lake-pro-fallback-router-rules-drift).
+6. **None-safe source_domain** — handled inside `classify()`.
 7. **Explicit JSONB cast** — `$N::jsonb` in SQL, never raw dict.
 
 Schedule: LaunchAgent com.balizero.intel-lake-router.5min (300s interval).
@@ -30,6 +31,7 @@ host to localhost:15432 via WR2 PG-proxy LaunchAgent).
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import logging
 import os
@@ -47,7 +49,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("intel-lake-router-cron")
 
-RULES_PATH = Path.home() / "scripts" / "intel-lake-routing-rules.json"
 STATE_PATH = Path.home() / "logs" / "intel-lake-router-cron.state.json"
 BATCH_SIZE = 100
 FAILURE_WINDOW_SECONDS = 30 * 60  # 30 min sliding window for failure decay
@@ -55,53 +56,36 @@ FAILURE_WINDOW_SECONDS = 30 * 60  # 30 min sliding window for failure decay
 
 # ─── Rules loader ───────────────────────────────────────────────────────────
 
-
-def _load_rules() -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Parse rules JSON. Returns (rule_list, fallback_dict).
-
-    Each rule entry: {name, pattern (compiled re), status, targets (dict)}.
-    """
-    if not RULES_PATH.exists():
-        raise SystemExit(f"rules file missing: {RULES_PATH}")
-    raw = json.loads(RULES_PATH.read_text())
-    nb_uuids = raw.get("nb_intel_uuids", {})
-
-    compiled: list[dict[str, Any]] = []
-    for r in raw.get("rules", []):
-        targets_key = r.get("targets_key")
-        targets: dict[str, Any] = {}
-        if "targets" in r and not targets_key:
-            targets = r["targets"]
-        elif targets_key:
-            uuid = nb_uuids.get(targets_key)
-            if uuid:
-                targets = {"nb_uuids": [uuid]}
-        compiled.append({
-            "name": r["name"],
-            "pattern": re.compile(r["pattern"]),
-            "status": r["status"],
-            "targets": targets,
-        })
-
-    fallback = raw.get("fallback", {
-        "status": "needs_review",
-        "targets": {},
-        "rule_name": "no_match",
-    })
-    return compiled, fallback
+# Deployed Pro path first (sibling file, no repo checkout needed there), then
+# the repo checkout path (dev/test runs from a worktree). See
+# scripts/intel-lake-router-a2/README.md for the deploy step that copies
+# intel_lake_rules.py next to this script as ~/scripts/intel_lake_rules.py.
+_RULES_MODULE_CANDIDATES = (
+    Path(__file__).resolve().parent / "intel_lake_rules.py",
+    Path(__file__).resolve().parents[2]
+    / "apps"
+    / "backend-rag"
+    / "backend"
+    / "services"
+    / "intel"
+    / "intel_lake_rules.py",
+)
 
 
-def _classify(source_domain: str | None, rules: list[dict[str, Any]], fallback: dict[str, Any]) -> dict[str, Any]:
-    """Pure-logic rule matching. None-safe."""
-    domain = (source_domain or "").strip().lower()
-    for r in rules:
-        if r["pattern"].match(domain):
-            return {"status": r["status"], "targets": r["targets"], "rule": r["name"]}
-    return {
-        "status": fallback["status"],
-        "targets": fallback.get("targets", {}),
-        "rule": fallback.get("rule_name", "no_match"),
-    }
+def _load_rules_module() -> Any:
+    """Import `intel_lake_rules.py` by path — zero backend package imports."""
+    for path in _RULES_MODULE_CANDIDATES:
+        if path.exists():
+            spec = importlib.util.spec_from_file_location("intel_lake_rules", path)
+            if spec is None or spec.loader is None:
+                continue
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    raise SystemExit(
+        "intel_lake_rules.py not found in any of: "
+        + ", ".join(str(p) for p in _RULES_MODULE_CANDIDATES)
+    )
 
 
 # ─── Failure tracking (time-windowed) ───────────────────────────────────────
@@ -161,7 +145,7 @@ def _resolve_database_url() -> str:
 # ─── Routing batch ──────────────────────────────────────────────────────────
 
 
-async def route_batch(pool: asyncpg.Pool, rules: list[dict[str, Any]], fallback: dict[str, Any]) -> dict[str, int]:
+async def route_batch(pool: asyncpg.Pool, classify: Any) -> dict[str, int]:
     """Process up to BATCH_SIZE unrouted items. Returns counts dict."""
     counts: dict[str, int] = {
         "selected": 0, "routed": 0, "noop": 0, "errors": 0,
@@ -169,10 +153,13 @@ async def route_batch(pool: asyncpg.Pool, rules: list[dict[str, Any]], fallback:
     }
 
     async with pool.acquire() as conn:
-        # SKIP LOCKED prevents two cron instances from grabbing same rows
+        # SKIP LOCKED prevents two cron instances from grabbing same rows.
+        # title/canonical_url are needed for the press_general content gate
+        # (see intel_lake_rules.classify) — fetched eagerly here since the
+        # cron already reads the whole unrouted batch every tick.
         rows = await conn.fetch(
             """
-            SELECT id, source_domain
+            SELECT id, source_domain, title, canonical_url
               FROM intel_items
              WHERE routing_status = 'unrouted'
              ORDER BY first_seen_at ASC
@@ -188,7 +175,7 @@ async def route_batch(pool: asyncpg.Pool, rules: list[dict[str, Any]], fallback:
 
         for row in rows:
             item_id = row["id"]
-            decision = _classify(row["source_domain"], rules, fallback)
+            decision = classify(row["source_domain"], row["title"], row["canonical_url"])
             new_status = decision["status"]
             counts[new_status] = counts.get(new_status, 0) + 1
 
@@ -239,7 +226,7 @@ async def route_batch(pool: asyncpg.Pool, rules: list[dict[str, Any]], fallback:
 
 async def main() -> int:
     try:
-        rules, fallback = _load_rules()
+        rules_module = _load_rules_module()
     except SystemExit as exc:
         logger.error(str(exc))
         return 2
@@ -257,7 +244,7 @@ async def main() -> int:
         return _alert_if_threshold(fails)
 
     try:
-        counts = await route_batch(pool, rules, fallback)
+        counts = await route_batch(pool, rules_module.classify)
         logger.info(
             "route_batch ok: selected=%(selected)s routed=%(routed)s noop=%(noop)s "
             "errors=%(errors)s | nb-intel=%(nb-intel)s blog=%(blog)s "
