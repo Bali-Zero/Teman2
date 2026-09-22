@@ -19,7 +19,7 @@ seat_diversity_note:
   question a second model could not settle either."
 diff:
   net_lines:
-    "6 files, +1615/-0 measured by `git diff --numstat origin/main`. One new spec under
+    "6 files, +1616/-0 measured by `git diff --numstat origin/main`. One new spec under
     docs/specs/ (496 lines), one new read-only script (~370), one new test file (~200), one
     JSON fixture, plus this pack and its brief under the per-task evidence path. Zero
     production code, zero migration, zero workflow. This exceeds the ~400-net-line guidance and the
