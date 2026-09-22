@@ -55,8 +55,7 @@
  */
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import { format } from "prettier";
 
@@ -74,14 +73,6 @@ import {
   mapOracleFactsToApplicantFacts,
   type DisclosedReviewFlagWire,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-/** Where the census test reads the corpus from. */
-export const DEFAULT_OUT_DIR = resolve(
-  HERE,
-  "../../../backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks",
-);
 
 /**
  * Frozen interview clock. NOT the wall clock: `computeNextNode` compares
@@ -1142,27 +1133,7 @@ export async function writeWalkCorpus(outDir: string): Promise<WriteResult> {
   return { written, orphans };
 }
 
-async function main(argv: string[]): Promise<void> {
-  const outIndex = argv.indexOf("--out");
-  const outDir =
-    outIndex >= 0 && argv[outIndex + 1]
-      ? resolve(argv[outIndex + 1])
-      : DEFAULT_OUT_DIR;
-  const { written, orphans } = await writeWalkCorpus(outDir);
-  console.log(`wrote ${written.length} walks to ${outDir}`);
-  if (orphans.length > 0) {
-    // Not deleted on purpose: a stale fixture is a review signal, and the
-    // determinism test already fails on it (it compares the file SET too).
-    console.error(
-      `WARNING: ${orphans.length} stale fixture(s) no longer generated — delete them by hand:\n  ${orphans.join("\n  ")}`,
-    );
-    process.exitCode = 1;
-  }
-}
-
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  main(process.argv.slice(2)).catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
-}
+// CLI entry point (`main`, `DEFAULT_OUT_DIR`, the module-URL CLI guard)
+// lives in `generate-walk-corpus.cli.ts` — Slice B5-2 split, so this module
+// stays a plain library a Playwright spec can import directly (see that
+// file's docstring for the CJS transform this fixes).

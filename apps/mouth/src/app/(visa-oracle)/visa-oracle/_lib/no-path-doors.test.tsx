@@ -33,10 +33,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_OUT_DIR,
   enumerateScenarios,
   runWalk,
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
 import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
