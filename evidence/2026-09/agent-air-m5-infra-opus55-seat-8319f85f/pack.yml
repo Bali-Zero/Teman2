@@ -35,6 +35,23 @@ receipts:
     ts: "2026-09-22T17:27:11Z"
     seat: claude-opus-5-5 (M5 conductor)
     exit: 0
-dissent: []
+council_run: council.jsonl
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: BLOCKER apps/cell/tests/learning_pilot/run_experiment.py:37 REVIEWER_MODEL still launched claude-opus-5
+    status: CONFIRMED
+    disposition: cured in this PR (claude-opus-5-5; identity check is exact-equality, pilot suite 30 passed)
+  - seat: codex-gpt-5.6-sol
+    objection: MEDIUM modus SKILL.md hard-lane routing still said Opus-5-xhigh (hyphen form escaped the sweep regex)
+    status: CONFIRMED
+    disposition: cured in this PR
+  - seat: codex-gpt-5.6-sol
+    objection: MEDIUM products/garuda-voa/LANES.md and modus "Gear 1-2 already closed on Opus 5.5 (2026-08-19)" rewrote provenance
+    status: CONFIRMED
+    disposition: LANES.md reverted to origin/main; modus line restored to Opus 5 with the 2026-09-23 seat change stated
+  - seat: kimi-code/k3
+    objection: LOW MODEL_ROSTER fable row pointed to the claude-opus-5 row for the moved roles; ANTHROPIC_API_REFERENCE routed to an id its own roster table lacked
+    status: CONFIRMED
+    disposition: cross-reference fixed; roster row added with context/price marked not re-measured (no invented figures)
 pii_scan: clean
 pii_scan_note: No client data in the diff.

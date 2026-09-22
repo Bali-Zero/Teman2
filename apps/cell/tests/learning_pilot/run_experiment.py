@@ -34,7 +34,7 @@ from .harness import (
 
 LEARNER_MODEL = "claude-sonnet-5"
 LEARNER_EFFORT = "high"
-REVIEWER_MODEL = "claude-opus-5"
+REVIEWER_MODEL = "claude-opus-5-5"
 REVIEWER_EFFORT = "high"
 TIMEOUT_SECONDS = 120
 MAX_PROMPT_CHARS = 12_000
