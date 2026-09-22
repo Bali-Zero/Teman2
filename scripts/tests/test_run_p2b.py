@@ -60,3 +60,53 @@ def test_repo_relative_falls_back_outside_any_repo(run_mod, tmp_path):
 
     result = run_mod.repo_relative(outside)
     assert result == str(outside)
+
+
+def _make_seat(dir_path: Path, config_text: str, with_auth: bool = True) -> Path:
+    dir_path.mkdir(parents=True, exist_ok=True)
+    (dir_path / "config.toml").write_text(config_text)
+    if with_auth:
+        (dir_path / "auth.json").write_text('{"dummy": "not-a-real-credential"}')
+    return dir_path
+
+
+def test_sanitized_codex_home_guilt_uses_the_picked_seat(run_mod, tmp_path, monkeypatch):
+    """The 2026-09-22 merge-queue red: run_p2b.py invoked codex without resolving a seat
+    (scripts/tests/test_codex_seat_lib.py::test_no_call_site_invokes_codex_without_choosing_a_seat).
+    Guilt: when codex_seat_pick() returns a seat directory, sanitized_codex_home must copy
+    FROM that directory, not from ~/.codex -- proven here by planting a decoy ~/.codex (via
+    HOME) that differs from the picked seat and asserting the decoy's content never lands in
+    dest. No real credential is touched: both "auth.json" files are invented dummy strings."""
+    picked_seat = tmp_path / "picked-seat"
+    _make_seat(picked_seat, "a = true\n[features.x]\ny = true\n")
+
+    fake_home = tmp_path / "fake_home"
+    _make_seat(fake_home / ".codex", "decoy = true\n")
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(run_mod, "codex_seat_pick", lambda: str(picked_seat))
+
+    dest = tmp_path / "dest-guilt"
+    result_dest, note = run_mod.sanitized_codex_home(dest)
+
+    assert result_dest == dest
+    assert (dest / "config.toml").read_text() == "a = true\n"
+    assert "decoy" not in (dest / "config.toml").read_text()
+    assert "1 nested" in note
+
+
+def test_sanitized_codex_home_innocence_falls_back_to_home_codex(run_mod, tmp_path, monkeypatch):
+    """Innocence: when codex_seat_pick() returns None (no seat found), sanitized_codex_home
+    falls back to ~/.codex -- codex's own default, exactly as before this file resolved a
+    seat at all. No real credential is touched: the auth.json content is an invented dummy
+    string, and HOME is monkeypatched to a tmp_path directory."""
+    fake_home = tmp_path / "fake_home"
+    _make_seat(fake_home / ".codex", "z = false\n")
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(run_mod, "codex_seat_pick", lambda: None)
+
+    dest = tmp_path / "dest-innocence"
+    result_dest, note = run_mod.sanitized_codex_home(dest)
+
+    assert result_dest == dest
+    assert (dest / "config.toml").read_text() == "z = false\n"
+    assert "0 nested" in note
