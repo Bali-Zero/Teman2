@@ -66,8 +66,8 @@ risks:
   - "Rework re-measurement (2026-09-22, after rebasing onto origin/main
     0027412856): `git diff --numstat $(git merge-base origin/main
     HEAD)..HEAD | grep -vE 'gold_coverage/(fixtures/walks|personas)/' | awk
-    '{add+=$1; del+=$2} END {print add-del}'` -> net **788** lines
-    (fixtures/personas excluded per B9), **903** all-in without the
+    '{add+=$1; del+=$2} END {print add-del}'` -> net **799** lines
+    (fixtures/personas excluded per B9), **914** all-in without the
     exclusion. Both numbers moved up from the pre-rework 522/n.a. because
     the merge-base itself moved forward (0027412856, after #7068/#7094/
     #7091/#7112) and this rework added its own commits: the L1 dead-branch
