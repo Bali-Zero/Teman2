@@ -466,7 +466,7 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
     expect(narratesUnverifiedRoute(0, undefined)).toBe(false);
   });
 
-  it("pins the live population: 0 of the 44 zero-row gold pages", () => {
+  it("pins the live population: 0 of the 39 zero-row gold pages", () => {
     // (see the PMA-verdict-banner block below for the second render site)
     // Measured on the canonical + gold of 2026-07-27, re-measured 2026-08-05.
     // Pinned so that widening or narrowing the frame is a visible, deliberate
@@ -510,7 +510,12 @@ describe("narratesUnverifiedRoute — a route the page says has no basis", () =>
     const framed = zeroRow.filter((r) =>
       narratesUnverifiedRoute(0, goldMap[r.kode_kbli_2025]?.whatYouNeed),
     );
-    expect(zeroRow.length).toBe(44);
+    // 44 -> 39 on 2026-09-23 (#7136 OSS refresh ADOPT): 75002, 75009, 93113,
+    // 93115, 93195 each gain a real OSS RBA 2025 per_skala scope and leave
+    // this zero-row population (the other 3 of #7136's 8 newly-non-empty
+    // codes — 19206, 20111, 93193 — never had gold whatYouNeed text, so they
+    // were never counted here).
+    expect(zeroRow.length).toBe(39);
     expect(framed.map((r) => r.kode_kbli_2025).sort()).toEqual([]);
   });
 });

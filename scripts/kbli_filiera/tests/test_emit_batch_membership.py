@@ -124,22 +124,38 @@ def test_census_and_in_scope_on_real_canonical():
     # A-serving/pp28; `A-empty/gap` is unchanged at 216 because the three
     # departures were excluded outright rather than migrated to the gap
     # bucket. Net: pp28 5-3=2, in_scope_total 5-3=2, total 221-3=218.
+    #
+    # 2026-09-23 (#7136 OSS refresh ADOPT): the loop's proposal + the signed
+    # session adjudication move per_skala/_l2_source on 10 codes. 93114 and
+    # 93191 -- the last two A-serving/pp28 members -- each gain an
+    # OSS-sourced `_l2_source`, so they drop out of `members` entirely, same
+    # shape as 20111/49213 above: pp28 2->0 (key now genuinely absent, not
+    # present-and-zero). Seven more codes (19206, 75002, 75009, 93113, 93115,
+    # 93193, 93195) were A-empty/gap (`_l2_status == "no_oss_risk"` AND
+    # `per_skala == []`) and now ALSO gain per_skala rows + an OSS-sourced
+    # `_l2_source`, so they are excluded the same way rather than staying in
+    # the gap bucket: A-empty/gap 216-7=209. (20111 was already excluded
+    # pre-#7136 -- it already carried a stale OSS `_l2_source` with an empty
+    # per_skala -- so it does not move this count again.) Net: pp28 2-2=0
+    # (key absent), in_scope_total 2-2=0, total 218-9=209.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 2
+    assert cen.get("A-serving/pp28", 0) == 0
     # census() only inserts a reason_code key when >=1 member has it (plain
     # dict accumulation, no defaultdict) -- orphan has hit exactly zero since
     # Lot 6 (80190 was the last orphan, detached by Lot 6; #2843), so the key
     # is genuinely absent, not present-and-zero. Use .get() here, matching
     # how main() already prints it (`cen.get(k, 0)`).
     assert cen.get("A-serving/orphan", 0) == 0
-    assert cen["A-empty/gap"] == 216
-    assert cen["_in_scope_total"] == 2
-    assert cen["_total"] == 218
+    assert cen["A-empty/gap"] == 209
+    assert cen["_in_scope_total"] == 0
+    assert cen["_total"] == 209
     by = {x["kode_kbli_2025"]: x for x in members}
-    # the two OSS-sourced cured codes are absent
+    # the OSS-sourced cured codes are absent, including #7136's 10
     assert "20111" not in by and "49213" not in by
+    for code in ("19206", "75002", "75009", "93113", "93114", "93115", "93191", "93193", "93195"):
+        assert code not in by, f"{code}: still a member after #7136 gave it an OSS-sourced _l2_source"
     # 80190 was the Lot 6 cure's lone pre-cure orphan (empty pp28_sources);
     # it is now detached like the rest of Lot 6, no longer serving/orphan.
     assert by["80190"]["reason_code"] == m.REASON_EMPTY_GAP
@@ -148,11 +164,14 @@ def test_census_and_in_scope_on_real_canonical():
     assert by["51103"]["reason_code"] == m.REASON_EMPTY_GAP
     assert by["51103"]["in_scope"] is False
     # every Lot 1 cured code migrated to the gap watchlist (out of scope)
+    # 19206 left the gap watchlist itself on 2026-09-23 (#7136 above) -- OSS
+    # published its own scope, so it is no longer a member at all.
     lot1 = ["01287", "01700", "02201", "02402", "02409", "05102", "05200",
-            "08920", "19206", "36003", "38122", "38222", "39001"]
+            "08920", "36003", "38122", "38222", "39001"]
     for code in lot1:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
+    assert "19206" not in by
     # every Lot 2 cured code migrated to the gap watchlist (out of scope)
     lot2 = ["42999", "47771", "49233", "49296", "50113", "52103", "52105",
             "52211", "52219", "52232", "52239", "52299", "59131"]
@@ -178,12 +197,14 @@ def test_census_and_in_scope_on_real_canonical():
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
     # every Lot 6 cured code migrated to the gap watchlist (out of scope) --
-    # 80190 included, per the pre-cure-orphan history note above.
-    lot6 = ["72101", "72103", "72105", "75001", "75002", "75009", "77397",
+    # 80190 included, per the pre-cure-orphan history note above. 75002 and
+    # 75009 left the watchlist itself on 2026-09-23 (#7136 above).
+    lot6 = ["72101", "72103", "72105", "75001", "77397",
             "78109", "82911", "85321", "85323", "85324", "80190"]
     for code in lot6:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
+    assert "75002" not in by and "75009" not in by
     # every Lot 7 cured code migrated to the gap watchlist (out of scope) --
     # all 13 were pre-cure A-serving/pp28 (none orphan), per the history
     # note above.
@@ -194,42 +215,43 @@ def test_census_and_in_scope_on_real_canonical():
         assert by[code]["in_scope"] is False, code
     # every Lot 8 cured code migrated to the gap watchlist (out of scope) --
     # all 9 were pre-cure A-serving/pp28 (none orphan), verified directly
-    # against d50d5f33ca^/d50d5f33ca above.
-    lot8 = ["91425", "93113", "93115", "93121", "93122", "93123", "93124",
+    # against d50d5f33ca^/d50d5f33ca above. 93113 and 93115 left the
+    # watchlist itself on 2026-09-23 (#7136 above).
+    lot8 = ["91425", "93121", "93122", "93123", "93124",
             "93125", "93126"]
     for code in lot8:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
+    assert "93113" not in by and "93115" not in by
     # every Lot 9 Group-A detached code migrated to the gap watchlist (out of
     # scope) -- all 8 were pre-cure A-serving/pp28 (none orphan), verified
     # directly against 9acc7fa3d4/39c94f78f5 above. (93191/93193, the 2
     # tier-scoped-held members AT LOT 9, were untouched on per_skala at that
-    # lot and not asserted here then -- Lot 10 below now cures both.)
-    lot9 = ["93127", "93128", "93129", "93192", "93194", "93195", "93197",
+    # lot and not asserted here then -- Lot 10 below now cures both.) 93195
+    # left the watchlist itself on 2026-09-23 (#7136 above).
+    lot9 = ["93127", "93128", "93129", "93192", "93194", "93197",
             "93199"]
     for code in lot9:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
+    assert "93195" not in by
     # Lot 10: 93193's contaminated Tier 1 + independently-unconfirmable
     # Tier 2 both moved (plain full detach, zero sound tiers remain per
     # research/operations/2026-07-21-kbli-batch-a-lot10-conductor-gate.md
     # §2.1/§3.2) -- per_skala is now [], so it migrates to the gap watchlist
-    # like every other lot's full-detach codes.
-    lot10_full_detach = ["93193"]
-    for code in lot10_full_detach:
-        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
-        assert by[code]["in_scope"] is False, code
-    # 93114 and 93191 are Lot 10's OTHER two cure targets, but they used
-    # partial_detach (one tier removed, one sound tier kept) -- per_skala is
-    # non-empty afterward, so _classify() keeps them A-serving/pp28,
-    # deliberately NOT migrated to the watchlist. Asserted explicitly here
-    # (not just "not in lot10_full_detach") so a future regression that
-    # accidentally empties either code's per_skala is caught by THIS test,
-    # not only by test_kbli_batch_a_lot10_registry.py.
-    lot10_partial_detach_still_serving = ["93114", "93191"]
-    for code in lot10_partial_detach_still_serving:
-        assert by[code]["reason_code"] == m.REASON_SERVING_PP28, code
-        assert by[code]["in_scope"] is True, code
+    # like every other lot's full-detach codes. 93193 then left the
+    # watchlist itself on 2026-09-23 (#7136 above: OSS publishes its own
+    # hunting-area scope, distinct from 93191's).
+    assert "93193" not in by
+    # 93114 and 93191 were Lot 10's OTHER two cure targets, and used
+    # partial_detach (one tier removed, one sound tier kept) -- per_skala was
+    # non-empty afterward, so _classify() kept them A-serving/pp28 up to
+    # #7136. On 2026-09-23 (#7136 above) both gained an OSS-sourced
+    # `_l2_source` (93114 via its own l2_transform premises, 93191 via the
+    # signed adjudication) and dropped out of `members` entirely, same as
+    # every other #7136 code -- neither is A-serving/pp28 nor A-empty/gap
+    # any more.
+    assert "93114" not in by and "93191" not in by
 
 
 def test_members_sorted_deterministic():

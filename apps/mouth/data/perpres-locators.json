@@ -2176,10 +2176,10 @@
    "besar": "observed"
   },
   "19206": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "19209": {
    "bucket": "residual-besar-observed",
@@ -2191,7 +2191,7 @@
    "bucket": "priority-lampiran-i",
    "basis": "Pasal 3 ayat (1) huruf a",
    "cite": "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "20112": {
    "bucket": "residual-besar-observed",
@@ -7684,16 +7684,16 @@
    "besar": "unobserved"
   },
   "75002": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "75009": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "77100": {
    "bucket": "residual-besar-observed",
@@ -8992,10 +8992,10 @@
    "besar": "observed"
   },
   "93113": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "93114": {
    "bucket": "residual-besar-observed",
@@ -9004,10 +9004,10 @@
    "besar": "observed"
   },
   "93115": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "93116": {
    "bucket": "residual-besar-observed",
@@ -9088,10 +9088,10 @@
    "besar": "unobserved"
   },
   "93193": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "93194": {
    "bucket": "residual-besar-unobserved",
@@ -9100,10 +9100,10 @@
    "besar": "unobserved"
   },
   "93195": {
-   "bucket": "residual-besar-unobserved",
+   "bucket": "residual-besar-observed",
    "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
    "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
-   "besar": "unobserved"
+   "besar": "observed"
   },
   "93196": {
    "bucket": "residual-besar-observed",

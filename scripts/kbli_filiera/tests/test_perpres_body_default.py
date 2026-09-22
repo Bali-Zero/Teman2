@@ -322,7 +322,13 @@ def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was 877, now 878 — the re-ingested canonical shifted one code's routing back onto the residual default.
     # 878 -> 879 on 2026-09-15 (SAETTA-20260915 W-H PR-2b): 93114/43110 both
     # gained an observed Besar row, adding one net to this bucket.
-    assert rep["buckets"]["residual-besar-observed"] == 879
+    # 879 -> 886 on 2026-09-23 (#7136 OSS refresh ADOPT): 19206, 75002,
+    # 75009, 93113, 93115, 93193, 93195 gain a real OSS RBA 2025 Besar row
+    # each and land here (+7); 20111's own new row routes it to
+    # priority-lampiran-i instead (unrelated bucket, not counted here); 93114
+    # and 93191 were already observed/residual pre-#7136, so they do not move
+    # this count again.
+    assert rep["buckets"]["residual-besar-observed"] == 886
     assert rep["buckets"]["sector-law-carveout"] == 6
 
 
@@ -339,7 +345,11 @@ def test_an_absent_per_skala_is_unobserved_not_an_absence_of_besar(canonical):
     assert besar_state({"per_skala": [{"skala_usaha": ["Mikro"]}]}) == "absent"
     assert besar_state({"per_skala": [{"skala_usaha": ["Mikro", BESAR]}]}) == "observed"
     unobserved = [c for c, r in canonical.items() if besar_state(r) == "unobserved"]
-    assert len(unobserved) == 217
+    # 217 -> 209 on 2026-09-23 (#7136 OSS refresh ADOPT): 19206, 20111,
+    # 75002, 75009, 93113, 93115, 93193, 93195 each gain a real OSS RBA 2025
+    # per_skala scope (8 codes leave unobserved; 93114/93191 already carried
+    # non-empty per_skala before #7136, so they were not unobserved here).
+    assert len(unobserved) == 209
 
 
 def test_the_besar_axis_partitions_every_record(rep):
@@ -347,7 +357,10 @@ def test_the_besar_axis_partitions_every_record(rep):
     # 2026-09-11 OSS re-snapshot (v11.0-L2-oss-risk-20260911): was {observed 1318, absent 24, unobserved 217}, now {1319, 23, 217} — one Besar-absent record gained an observed scale row in the re-ingestion.
     # {1319, 23} -> {1321, 21} on 2026-09-15 (PR-2b): 93114 and 43110 BOTH
     # gained a real Besar row, moving each from absent to observed.
-    assert rep["besar_axis"] == {"observed": 1321, "absent": 21, "unobserved": 217}
+    # {1321, 21, 217} -> {1329, 21, 209} on 2026-09-23 (#7136 OSS refresh
+    # ADOPT): 8 codes leave unobserved (see the test right above), all 8
+    # landing on an observed Besar row -- absent is untouched.
+    assert rep["besar_axis"] == {"observed": 1329, "absent": 21, "unobserved": 209}
 
 
 # --------------------------------------------------------------------------
