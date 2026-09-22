@@ -12,6 +12,7 @@ title (or the pager).
 """
 from __future__ import annotations
 
+import html as _html
 import re
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -44,20 +45,31 @@ _LINK_ITEM_RE = re.compile(
 
 
 def canonical_pajak_url(href: str) -> str:
-    """Absolute pajak.go.id URL, `/index.php` prefix stripped.
+    """Absolute pajak.go.id URL, `/index.php` prefix stripped, query string and
+    trailing slash normalised away.
 
     This is the identity the Redis seen-set and `intel_items.canonical_url`
     dedup on — it must stay exactly `https://pajak.go.id/id/...`, whether
-    the source href was relative, already absolute, on `www.`, or carried
-    the new `/index.php` prefix.
+    the source href was relative, already absolute, on `www.`, carried the
+    `/index.php` prefix, a trailing slash, or a tracking query string
+    (`.../peraturan/x/` and `.../peraturan/x?utm=1` must both canonicalise
+    to `.../peraturan/x`). No caller reads the query string back out of a
+    canonicalised URL for pagination or anything else — the pager's own
+    `?title=&page=0` link never reaches this function in the first place,
+    since `_LINK_ITEM_RE`'s href group excludes `?`/`#` and the peraturan
+    index parser only reads `<a href>`s from inside `views-field-field-
+    nomor-dokumen` blocks, never the `<nav class="pager">` block.
     """
     href = href.strip()
     m = re.match(r"^https?://(?:www\.)?pajak\.go\.id(/.*)$", href, re.IGNORECASE)
     path = m.group(1) if m else href
     if not path.startswith("/"):
         path = "/" + path
+    path = path.split("?", 1)[0]
     if path == "/index.php" or path.startswith("/index.php/"):
         path = path[len("/index.php"):] or "/"
+    if len(path) > 1 and path.endswith("/"):
+        path = path.rstrip("/")
     return PAJAK_DOMAIN + path
 
 
@@ -108,7 +120,7 @@ def parse_peraturan_index(html: str) -> list[dict]:
         seen.add(url)
 
         title_m = _TITLE_RE.search(block)
-        title = re.sub(r"\s+", " ", title_m.group(1)).strip() if title_m else ""
+        title = re.sub(r"\s+", " ", _html.unescape(title_m.group(1))).strip() if title_m else ""
 
         jenis_m = _JENIS_RE.search(block)
         jenis = jenis_m.group(1).strip() if jenis_m else None
@@ -147,6 +159,7 @@ def parse_link_items(html: str) -> list[tuple[str, str]]:
     for m in _LINK_ITEM_RE.finditer(html):
         href, raw_text = m.group(1), m.group(2)
         text = re.sub(r"<[^>]+>", "", raw_text)
+        text = _html.unescape(text)
         text = re.sub(r"\s+", " ", text).strip()
 
         if len(text) < 15:
