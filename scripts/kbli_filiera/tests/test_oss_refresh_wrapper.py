@@ -26,7 +26,11 @@ from pathlib import Path
 Path(os.environ["STUB_MARK"]).write_text(" ".join(sys.argv[1:]))
 out = Path(sys.argv[sys.argv.index("--out-root") + 1]) / "data/kbli-filiera/oss-refresh/2026-09-22.json"
 rc = int(os.environ.get("STUB_RC", "0"))
-if os.environ.get("STUB_NO_REPORT") == "1":
+if os.environ.get("STUB_OUTPUT_REFUSED") == "1":
+    # M3: the loop already unwound whatever it wrote this run — no report
+    # path at all, just the marker.
+    print("OSS_REFRESH_OUTPUT_REFUSED=PermissionError: [Errno 13] Permission denied")
+elif os.environ.get("STUB_NO_REPORT") == "1":
     pass
 elif os.environ.get("STUB_BAD_REPORT") == "1":
     # D5: the path is NAMED (printed) but the report is never written — named,
@@ -153,6 +157,24 @@ def test_a_named_report_that_never_parses_is_an_error_not_a_warning(tmp_path):
     assert proc.returncode == 0, proc.stderr
     hb = _heartbeat(home)
     assert hb["status"] == "error" and "result=loop_failure" in hb["note"]
+
+
+@pytest.mark.parametrize("loop_rc", ["4", "1", "0"])
+def test_an_output_refused_marker_is_an_error_regardless_of_rc(tmp_path, loop_rc):
+    """Guilt (M3b, cross-family Codex red-team): the loop prints
+    `OSS_REFRESH_OUTPUT_REFUSED=` when it had to unwind every output it wrote
+    this run — no report file exists to read an outcome from at all. That
+    marker alone must map to error/loop_failure (tier p0), REGARDLESS of
+    loop_rc: an OSError racing the write can land on 0, 1 or 4 depending on
+    which write failed first, and none of them mean what they normally do
+    once the marker is present."""
+    home, env = _sandbox(tmp_path)
+    proc = _run(env, STUB_RC=loop_rc, STUB_OUTPUT_REFUSED="1")
+    assert proc.returncode == 0, proc.stderr
+    hb = _heartbeat(home)
+    assert hb["status"] == "error" and "result=loop_failure" in hb["note"]
+    argv = _gateway(tmp_path)
+    assert argv[argv.index("--tier") + 1] == "p0"
 
 
 @pytest.mark.parametrize("stub", [

@@ -480,6 +480,64 @@ def test_a_refused_cure_spec_write_reports_exit_4_not_the_proposal(tmp_path):
     assert "cure spec" in report["verdict"] and "refused" in report["verdict"]
 
 
+def test_an_os_error_during_output_writes_exits_4_not_1(tmp_path, monkeypatch):
+    """Guilt (M2, cross-family Codex red-team): only `OutputRefused` was
+    caught around every output write — a plain `OSError` (permission denied,
+    ENOSPC, a directory that vanished mid-run) used to escape UNCAUGHT, and
+    an uncaught Python exception exits the interpreter with 1: the SAME code
+    as "new scopes proposed". Both the spec write and the report write must
+    turn an OSError into exit 4, never let it propagate."""
+    real_write = L.write_contained
+
+    def spec_boom(out_root, path, text):
+        if path.parent.name == "cure_specs":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", spec_boom)
+    spec_dir = tmp_path / "spec_case"
+    spec_dir.mkdir()
+    rc, _ = run(spec_dir, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+
+    def report_boom(out_root, path, text):
+        if path.parent.name == "oss-refresh":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", report_boom)
+    report_dir = tmp_path / "report_case"
+    report_dir.mkdir()
+    rc2, _ = run(report_dir, default_world(), FakeSession(published_world()), "--apply")
+    assert rc2 == L.EXIT_CANNOT_VERIFY
+
+
+def test_a_later_output_failure_unwinds_the_report_already_written(tmp_path, monkeypatch, capsys):
+    """Guilt (M3, cross-family Codex red-team): the report JSON used to be
+    written, THEN the .md summary — if the .md write failed, the JSON stayed
+    on disk saying `exit_code: 1` (or whatever the real verdict was) while
+    the PROCESS returned 4, and no `OSS_REFRESH_REPORT=` line was printed
+    (the wrapper would then read rc 4 + no report path as "no report by
+    design", a warning — not the loop_failure this actually is). The loop
+    must undo the JSON it already wrote and print one parseable marker."""
+    real_write = L.write_contained
+
+    def md_boom(out_root, path, text):
+        if path.suffix == ".md":
+            raise PermissionError(13, "Permission denied")
+        return real_write(out_root, path, text)
+
+    monkeypatch.setattr(L, "write_contained", md_boom)
+    rc, out = run(tmp_path, default_world(), FakeSession(published_world("10001")), "--apply")
+    assert rc == L.EXIT_CANNOT_VERIFY
+    assert not report_path(out).exists()
+    assert not report_path(out).with_suffix(".md").exists()
+    assert not spec_path(out).exists()  # the earlier, successful spec write is unwound too
+    printed = capsys.readouterr().out
+    assert "OSS_REFRESH_OUTPUT_REFUSED=" in printed and "Permission denied" in printed
+    assert "OSS_REFRESH_REPORT=" not in printed
+
+
 def test_no_applyable_spec_beside_a_failed_control(tmp_path):
     """Guilt (Codex finding 6): a target that looks published while the
     controls fail is not vouched for — exit 4 and no cure spec."""
@@ -516,6 +574,28 @@ def test_a_symlinked_intermediate_dir_is_refused_before_anything_is_created(tmp_
     with pytest.raises(L.OutputRefused):
         L.write_contained(out_root, path, "x")
     assert not target.exists()
+
+
+def test_a_symlinked_intermediate_to_an_existing_dir_creates_nothing_inside_it(tmp_path):
+    """Guilt (L1, cross-family Codex red-team): the DANGLING-target case above
+    makes the old code fail with an unrelated FileExistsError — it fails, but
+    not for the reason D1 claims. Here the symlink target already EXISTS (an
+    operator-owned outside directory) and only a DESCENDANT below it is
+    missing. The old code does NOT crash here: `mkdir(parents=True,
+    exist_ok=True)` quietly materialises that missing descendant INSIDE the
+    outside directory (following the symlink transparently), and only its
+    later walk-up eventually hits the symlink and raises — after the
+    directory already exists outside `out_root`. `OutputRefused` alone
+    cannot tell the two codepaths apart; nothing-created-outside can."""
+    out_root = tmp_path / "out"
+    outside = tmp_path / "outside"
+    outside.mkdir()  # the symlink target EXISTS this time — only descends below it are missing
+    (out_root / "data").mkdir(parents=True)
+    (out_root / "data" / "kbli-filiera").symlink_to(outside, target_is_directory=True)
+    path = out_root / "data" / "kbli-filiera" / "oss-refresh" / "2026-09-22.json"
+    with pytest.raises(L.OutputRefused):
+        L.write_contained(out_root, path, "x")
+    assert list(outside.iterdir()) == []
 
 
 def test_a_malformed_key_is_refused_without_printing_it(tmp_path, monkeypatch, capsys):
