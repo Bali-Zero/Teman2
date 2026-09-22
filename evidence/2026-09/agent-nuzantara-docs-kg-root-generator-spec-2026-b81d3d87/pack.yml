@@ -1,0 +1,181 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "F4 'root and upkeep' — `.agents/skills/kbli-navigator/SKILL.md` §5.5, the 2026-08-02
+  read-only measurement. House shape for a KG cure spec:
+  `docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md` §5-§7."
+lanes:
+  - lane: kg-root-census
+    role: build
+    seat:
+      claude-opus-5 (conducting session, headless on Pro — ran every PROD probe, wrote the
+      census organ and its suite, authored the spec and this pack)
+seat_diversity: not_applicable
+seat_diversity_note:
+  "Single-seat by design and declared rather than left to read as satisfied. Every
+  load-bearing claim in this PR is settled by a query against the live store or by a test's
+  exit code, not by judgement — the arbiter is the probe. The one place a second seat would
+  add something is §6's four owner decisions, and those are not decided here: they are
+  priced two ways each and handed to the owner, which is the correct disposition for a
+  question a second model could not settle either."
+diff:
+  net_lines:
+    "6 files, +1616/-0 measured by `git diff --numstat origin/main`. One new spec under
+    docs/specs/ (496 lines), one new read-only script (~370), one new test file (~200), one
+    JSON fixture, plus this pack and its brief under the per-task evidence path. Zero
+    production code, zero migration, zero workflow. This exceeds the ~400-net-line guidance and the
+    contract's own qualifier is why: the deliverable IS a spec and the census that makes its
+    numbers reproducible, and splitting them would ship a document whose numbers nobody can
+    re-derive — which is the exact failure this PR exists to correct."
+
+  behaviour_change:
+    NONE in any running system. Nothing in this diff is imported by the backend, scheduled
+    by a cron, or wired into a router. The census script is a manual read-only command; the
+    spec is a document. `kg_nodes` and `kg_edges` were read and never written.
+receipts:
+  - claim:
+      THE CENTRAL MEASUREMENT — 13,694 KBLI-ish nodes, 12,131 of them empty, and the id
+      shape names the writer
+    cmd: scripts/kbli_filiera/kg_root_census.py
+    result:
+      "kbli: 1,569 (1,563 with kode) · kbli_ 5,945 (0) · kbli_kbli_ 5,026 (0) · bare digits
+      326 (0) · free text 828 (0). 11,463 of the 13,694 are edge-reachable."
+    exit: 0
+    ts: 2026-09-22T14:10Z
+    seat: session (Pro, nuzantara_readonly via scripts/pg.sh)
+  - claim:
+      THE LOOP THAT CLOSES — the detector's six `kg_node_presence` reverse failures ARE the
+      six `kbli:` nodes with no `kode`, and they are `kg_seed` rows from 2026-01-28 under
+      `entity_type='kbli_code'`
+    cmd:
+      scripts/kbli_filiera/kbli_surface_conformance.py (reverse failures) and pg.sh -c
+      "SELECT entity_id, entity_type, properties FROM kg_nodes WHERE source_collection='kg_seed'
+      AND entity_id LIKE 'kbli%'"
+    result:
+      "Detector: 55111, 62011, 62021, 68110, 73110, 74100 — all kg_status=None, forward
+      failures 0. Store: the same six ids, entity_type=kbli_code, created 2026-01-28, property
+      vocabulary {sector, risk_level, dnil_status, foreign_allowed, source_docs} with no kode,
+      no pma_status, no licensing_status — which is exactly why licensing_status reads NULL."
+    exit: 0
+    ts: 2026-09-22T14:05Z
+    seat: session (Pro, read-only role against production)
+  - claim: THE ROOT CAUSE IS A FORMULA, and the name column proves the mechanism at 100%
+    cmd:
+      git grep -n 'entity_id = f"' origin/main -- 'apps/backend-rag/**/*.py' ; then pg.sh -c
+      "SELECT CASE WHEN lower(name) LIKE 'kbli%' THEN 'name_starts_kbli' ELSE 'name_plain' END,
+      COUNT(*) FROM kg_nodes WHERE entity_type='kbli' AND entity_id LIKE 'kbli\_kbli\_%' GROUP BY 1"
+    result:
+      'Three sites build `f"{entity_type}_{name}"` (autonomous_agents.py:439 and :579,
+      services/autonomous_agents/knowledge_graph_builder.py:300, plus
+      agents/services/kg_repository.py:48); ONE builds `f"{prefix}:{normalized}"`
+      (kg_auto_expansion.py:179) and it is the only correct one. 5,026 of 5,026
+      double-prefixed nodes have a name already starting with KBLI — no exceptions.'
+    exit: 0
+    ts: 2026-09-22T13:40Z
+    seat: session (Pro)
+  - claim: THERE IS NO STRING TO GREP FOR — the bug leaves no literal in the tree
+    cmd: git grep -ln "kbli_kbli_" origin/main
+    result:
+      "Three files, none of them a writer: .agents/skills/kbli-navigator/SKILL.md,
+      .claude/skills/modus/PENDING-ARMS.md, and one backend test fixture. The 5,026 nodes
+      were produced by a formula plus an input; only the store shows it."
+    exit: 0
+    ts: 2026-09-22T13:35Z
+    seat: session (Pro)
+  - claim: THE DETECTOR CANNOT SEE ANY OF THIS, and the reason is one line
+    cmd: grep -n "WHERE n.entity_id ~" scripts/kbli_filiera/kbli_surface_conformance.py
+    result:
+      "Line 182: `WHERE n.entity_id ~ '^kbli:[0-9]{5}$'`. The KG dimension's snapshot
+      contains 1,569 of the store's 13,694 KBLI nodes. The 12,131 empties and the 1,139
+      phantoms are not failures it is missing — they are rows it has never read. A stated
+      scope limit, turned into a measurement by §5."
+    exit: 0
+    ts: 2026-09-22T14:20Z
+    seat: session (Pro)
+  - claim: A REFUTATION FROM 2026-08-02 IS ONE WRITER FROM EXPIRING — max nodes per code moved 3 -> 4
+    cmd: scripts/kbli_filiera/kg_root_census.py (fan-out table)
+    result:
+      "1 node: 557 codes · 2: 907 · 3: 1,144 · 4: 94. The `LIMIT 5` refutation still holds
+      (4 < 5) and this PR claims no live bug — it claims the margin is now one writer wide.
+      The fourth shape is the bare-digits family written 2026-03-08."
+    exit: 0
+    ts: 2026-09-22T14:10Z
+    seat: session (Pro)
+  - claim: EVERY RICH CODE IS DUPLICATED — 1,563 of 1,563, not "most"
+    cmd:
+      pg.sh -c "WITH rich AS (... entity_id LIKE 'kbli:%' AND properties ? 'kode'), n AS (...
+      NOT LIKE 'kbli:%') SELECT COUNT(DISTINCT n.tok), COUNT(*) FROM n JOIN rich ON rich.tok=n.tok"
+    result:
+      "1,563 codes / 2,859 duplicate nodes. The census's rich-node count and the count of rich
+      codes carrying at least one empty duplicate are the same number."
+    exit: 0
+    ts: 2026-09-22T14:30Z
+    seat: session (Pro, read-only role against production)
+  - claim: THE DISEASE IS LIVE, NOT ARCHAEOLOGY — the broken writers wrote seven weeks ago
+    cmd: scripts/kbli_filiera/kg_root_census.py (provenance block)
+    result:
+      "kbli_kbli_ last write 2026-08-21 (balizero_news); kbli_ last write 2026-08-09; 45
+      phantoms written by kbli_2025_final_hybrid up to 2026-08-10. A cure that only deletes
+      is a cure the writers will undo — which is why §7's proof-of-armed for the generator
+      is a census re-run 14 days later, not the merge."
+    exit: 0
+    ts: 2026-09-22T14:10Z
+    seat: session (Pro)
+  - claim: THE SUITE IS GREEN AND THE SCRIPT IS RUFF-CLEAN
+    cmd:
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -q ; ruff
+      check scripts/kbli_filiera/kg_root_census.py scripts/kbli_filiera/tests/test_kg_root_census.py
+    result: 25 passed in 0.13s · "All checks passed!"
+    exit: 0
+    ts: 2026-09-22T14:00Z
+    seat: session (Pro)
+pii_scan: clean
+pii_scan_note:
+  Nothing in this diff, brief or pack transcribes client data. `kg_nodes`/`kg_edges` hold
+  KBLI classification codes, regulation identifiers and permit types — no person, no client
+  record, no contact. Every receipt quotes counts, id shapes, collection names and dates.
+  The test fixture is invented (`kbli:47721`, `kbli_kbli_99999`, `kategori_r`), not a
+  PROD extract. No credential was echoed, printed or committed.
+dissent:
+  - seat: session (the fixture, refuting its own author)
+    objection:
+      "Four of the first-draft test expectations were wrong, and the fixture said so:
+      phantom_count asserted 1 where the correct answer is 2, five_digit_tokens 3 where it is
+      4, fanout {1:2,4:1} where it is {1:3,4:1}, and the kbli_kbli inbound histogram omitted
+      an APPLIES_TO 4 it must carry."
+    status: CONFIRMED
+    resolution:
+      "Every one corrected TO the measured value, never the reverse. The phantom_count error
+      is the instructive one: the draft had silently excluded the `kg_seed` shape — the
+      canonical id with no data — from the phantom definition, which is the same blind spot
+      the whole spec is about, reproduced inside the test that was meant to catch it."
+  - seat: session (hand-written SQL, refuted by the census)
+    objection:
+      "Two ad-hoc SQL probes written in this lane disagreed with the census: 2,869 repointable
+      nodes against 2,859, and 13,683 total nodes against 13,694."
+    status: CONFIRMED
+    resolution:
+      "The census was right both times. The hand SQL used `entity_type='kbli'` (losing the
+      ten `kbli_code` rows) and treated any `kbli:` node as a valid repoint destination
+      (including the six that carry no data). The paper's own thesis, met while writing it —
+      which is why the census widens the WHERE and a test pins that widening."
+  - seat: session (self-review, on a signed measurement)
+    objection:
+      "The 2026-08-02 probe states that `entity_id` predicts emptiness PERFECTLY — 'every
+      `kbli:<code>` row is rich (1,558/1,558)'. That is no longer true."
+    status: CONFIRMED
+    resolution:
+      "Six `kbli:` nodes carry no `kode`. Recorded as a correction in §2.4 with the
+      measurement that moved it, not silently fixed — and the six turn out to be the
+      detector's six standing failures, so the exception is the most load-bearing row in the
+      census rather than a rounding error."
+  - seat: session (declared limit, not fixed here)
+    objection:
+      "§4(a) promotes 1,895 `REQUIRES` edges onto the nodes the client-facing licence list
+      reads. That is the point of the cure and also its blast radius — the 2026-02 'PT PMA is
+      a permit to obtain' failure is exactly this shape at smaller scale."
+    status: CONFIRMED
+    resolution:
+      "Not fixed here because nothing is applied here. Written into §4(a) as a sequencing
+      constraint on the cure: lot (a) may not ship before `kg_stray_admission` reads 0 on
+      the repointed set. Stated in the spec rather than left for the cure session to
+      rediscover."

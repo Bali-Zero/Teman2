@@ -1,0 +1,171 @@
+{
+  "nodes": [
+    {
+      "entity_id": "kbli:47721",
+      "entity_type": "kbli",
+      "name": "PHARMACY RETAIL (APOTEK)",
+      "source_collection": "kbli_2025_import",
+      "created_on": "2026-02-04",
+      "properties_kind": "object",
+      "has_kode": true,
+      "in_degree": 7,
+      "out_degree": 11
+    },
+    {
+      "entity_id": "kbli:55130",
+      "entity_type": "kbli",
+      "name": "VILLA RENTAL (AKTIVITAS VILA)",
+      "source_collection": "kbli_2025_import",
+      "created_on": "2026-02-05",
+      "properties_kind": "object",
+      "has_kode": true,
+      "in_degree": 3,
+      "out_degree": 4
+    },
+    {
+      "entity_id": "kbli:55111",
+      "entity_type": "kbli_code",
+      "name": "KBLI 55111",
+      "source_collection": "kg_seed",
+      "created_on": "2026-01-28",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 0,
+      "out_degree": 0
+    },
+    {
+      "entity_id": "kbli_47721",
+      "entity_type": "kbli",
+      "name": "KBLI 47721",
+      "source_collection": "legal_unified_hybrid",
+      "created_on": "2026-02-08",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 5,
+      "out_degree": 9
+    },
+    {
+      "entity_id": "kbli_kbli_47721",
+      "entity_type": "kbli",
+      "name": "KBLI 47721",
+      "source_collection": "kbli_2025_final_hybrid",
+      "created_on": "2026-07-22",
+      "properties_kind": "string",
+      "has_kode": false,
+      "in_degree": 2,
+      "out_degree": 6
+    },
+    {
+      "entity_id": "47721",
+      "entity_type": "kbli",
+      "name": "47721",
+      "source_collection": "legal_unified_hybrid_hybrid",
+      "created_on": "2026-03-08",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 1,
+      "out_degree": 0
+    },
+    {
+      "entity_id": "kbli_kbli_99999",
+      "entity_type": "kbli",
+      "name": "KBLI 99999",
+      "source_collection": "kbli_unified",
+      "created_on": "2026-02-11",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 4,
+      "out_degree": 0
+    },
+    {
+      "entity_id": "kbli_pembuatan_karet_sintetis",
+      "entity_type": "kbli",
+      "name": "KBLI Pembuatan Karet Sintetis",
+      "source_collection": "legal_unified_hybrid",
+      "created_on": "2026-02-09",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 0,
+      "out_degree": 2
+    },
+    {
+      "entity_id": "kategori_r",
+      "entity_type": "kbli",
+      "name": "Kategori R",
+      "source_collection": "legal_unified_hybrid_hybrid",
+      "created_on": "2026-03-10",
+      "properties_kind": "object",
+      "has_kode": false,
+      "in_degree": 0,
+      "out_degree": 0
+    }
+  ],
+  "edges": [
+    {
+      "entity_id": "kbli:47721",
+      "direction": "in",
+      "relationship_type": "APPLIES_TO",
+      "n": 7
+    },
+    {
+      "entity_id": "kbli:47721",
+      "direction": "out",
+      "relationship_type": "REQUIRES",
+      "n": 11
+    },
+    {
+      "entity_id": "kbli_47721",
+      "direction": "in",
+      "relationship_type": "APPLIES_TO",
+      "n": 5
+    },
+    {
+      "entity_id": "kbli_47721",
+      "direction": "out",
+      "relationship_type": "REQUIRES",
+      "n": 9
+    },
+    {
+      "entity_id": "kbli_kbli_47721",
+      "direction": "in",
+      "relationship_type": "PART_OF",
+      "n": 2
+    },
+    {
+      "entity_id": "kbli_kbli_47721",
+      "direction": "out",
+      "relationship_type": "REFERENCES",
+      "n": 6
+    },
+    {
+      "entity_id": "47721",
+      "direction": "in",
+      "relationship_type": "PART_OF",
+      "n": 1
+    },
+    {
+      "entity_id": "kbli_kbli_99999",
+      "direction": "in",
+      "relationship_type": "APPLIES_TO",
+      "n": 4
+    },
+    {
+      "entity_id": "kbli_pembuatan_karet_sintetis",
+      "direction": "out",
+      "relationship_type": "RELATED_TO",
+      "n": 2
+    },
+    {
+      "entity_id": "kbli:55130",
+      "direction": "in",
+      "relationship_type": "APPLIES_TO",
+      "n": 3
+    },
+    {
+      "entity_id": "kbli:55130",
+      "direction": "out",
+      "relationship_type": "REQUIRES",
+      "n": 4
+    }
+  ]
+}
