@@ -8,15 +8,20 @@ lanes:
     role: build
     seat: claude-sonnet-5 (this build lane, Pro worktree, agent/nuzantara/backend-rag/chat-p2b-cures-20260922)
     note: >-
-      Single build lane across the gate-side commits on this branch: (1) audited the five sha256
+      Single build lane across the gate-side commits, first on
+      agent/nuzantara/backend-rag/chat-p2b-cures-20260922 (frozen after arming, PR #7132)
+      then carried over commit-for-commit onto this successor branch
+      (agent/nuzantara/backend-rag/chat-p2b-cures-s2-20260922): (1) audited the five sha256
       hashes CI's Detect Secrets flagged in the 2026-09-22 re-judge results into
       .secrets.baseline via a byte-level splice (no other entry touched); (2) added
       repo_relative() to run_p2b.py so the manifest records a repo-relative corpus/answers
       path instead of an absolute worktree path carrying the host account name, with
       scripts/tests/test_run_p2b.py covering guilt/innocence/fallback, and normalized the
       already-committed manifest.json to match; (3) this pack, raising gear 2 -> 3 per the
-      brief's own SIZE-term floor once this branch's total diff against origin/main grew
-      past 1,828 churn lines.
+      brief's own SIZE-term floor; (4) on this successor branch, cured the merge-group red
+      #7132 died on -- run_p2b.py invoked `codex exec` without resolving a seat -- by making
+      sanitized_codex_home() build its private CODEX_HOME from scripts/lib/codex_seat's
+      codex_seat_pick(), falling back to ~/.codex only when no seat resolves.
 
 seat_diversity: single_seat
 seat_diversity_note: >-
@@ -46,12 +51,13 @@ diff:
   shape: >-
     Dominated by the 87 committed judging records under
     scripts/kbli_bench/results/2026-09-22-rejudge-3x/ (the P2b re-judge run itself), plus
-    three code/doc commits this pack covers directly: the .secrets.baseline splice (44
-    insertions, additions-only), run_p2b.py + scripts/tests/test_run_p2b.py + the
-    manifest.json path normalization, and this brief.yml/pack.yml pair. Deliberately not
-    narrated as an exact count here (the lint's own countable-claims rule recomputes it
-    from --numstat-file; stating it in prose here would drift the moment this pack itself
-    is committed -- same reasoning as the migration-317 lock-retry pack).
+    the code/doc commits this pack covers directly: the .secrets.baseline splice
+    (additions-only), run_p2b.py + scripts/tests/test_run_p2b.py + the manifest.json path
+    normalization, this brief.yml/pack.yml pair, and -- new on this successor branch -- the
+    codex-seat-resolution cure in sanitized_codex_home() plus its two new guilt/innocence
+    tests. Deliberately not narrated as an exact count here (the lint's own countable-claims
+    rule recomputes it from --numstat-file; stating it in prose here would drift the moment
+    this pack itself is committed -- same reasoning as the migration-317 lock-retry pack).
   measured_at: >-
     `git diff --numstat` against origin/main in the worktree, this session, after each
     cure commit landed -- see the floor receipt above for the exact invocation.
@@ -194,6 +200,34 @@ receipts:
     seat: claude-sonnet-5 (this build lane, Pro worktree)
     exit: 0
 
+  - claim: >-
+      the merge-group failure test now passes: run_p2b.py resolves a codex seat before
+      invoking `codex exec`, closing the census that #7132 tripped
+    cmd: .venv/bin/python -m pytest scripts/tests/test_codex_seat_lib.py -k no_call_site -v
+    result: "test_no_call_site_invokes_codex_without_choosing_a_seat PASSED (1 passed, 22 deselected)"
+    ts: "2026-09-22T15:46:19Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree, successor branch)
+    exit: 0
+  - claim: >-
+      the full scorer + run_p2b suite passes together after the seat-resolution cure, 98
+      cases (93 pre-existing scorer + 3 repo_relative + 2 new sanitized_codex_home
+      guilt/innocence), no regression
+    cmd: .venv/bin/python -m pytest scripts/tests/test_run_p2b.py scripts/tests/test_score_p2b.py -q
+    result: "98 passed in 4.05s"
+    ts: "2026-09-22T15:46:19Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree, successor branch)
+    exit: 0
+  - claim: >-
+      ruff is clean on run_p2b.py and test_run_p2b.py after the seat-resolution cure (an
+      unused `# noqa: E402` this lane first added was dropped -- E402 is not enabled in this
+      repo's ruff config, the same true of every other house codex_seat call site carrying
+      that comment, e.g. scripts/kbli_triangle/cascade_judge.py)
+    cmd: .venv/bin/python -m ruff check scripts/kbli_bench/run_p2b.py scripts/tests/test_run_p2b.py
+    result: "All checks passed!"
+    ts: "2026-09-22T15:46:19Z"
+    seat: claude-sonnet-5 (this build lane, Pro worktree, successor branch)
+    exit: 0
+
 dissent:
   - seat: claude-opus-5 (build lane, self-caught)
     objection: >-
@@ -218,6 +252,16 @@ dissent:
     objection: "VERDICT: OK, 0 objections."
     status: CONFIRMED
     resolution: "Recorded as a council/lane pass, not a dissent requiring a cure — no finding to act on."
+  - seat: merge-queue CI (Immune enforcement, run 35748406022)
+    objection: >-
+      run_p2b.py invoked codex without resolving a seat
+      (test_no_call_site_invokes_codex_without_choosing_a_seat).
+    status: CONFIRMED
+    resolution: >-
+      Cured on this successor branch: sanitized_codex_home() now builds its private
+      CODEX_HOME from scripts/lib/codex_seat's codex_seat_pick(), falling back to
+      ~/.codex only when no seat resolves. PR #7132 itself is frozen (armed, per
+      contract) and superseded by this branch, not amended.
 
 pii_scan: clean
 pii_scan_note: >-
