@@ -20,13 +20,16 @@
 # check is a separate, operator-only branch-protection action. No
 # `merge_group` trigger: it cannot carry `paths:`, and pairing it with the
 # path-filtered `pull_request` below is the split lint_trigger_symmetry.py
-# forbids.
+# forbids. The `push` trigger on main (same paths) is what makes this file's
+# entry in main-push-failure-watch.yml able to alert at all: that watcher
+# fires on push/schedule runs only, so a pull_request-only workflow would be
+# listed there and never heard from.
 name: pajak-monitor tests
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
+    paths: &pajak_paths
       - "scripts/cron-agent-python/pajak_monitor.py"
       - "scripts/cron-agent-python/pajak_parse.py"
       - "scripts/tests/test_pajak_monitor.py"
@@ -34,6 +37,9 @@ on:
       - "scripts/tests/fixtures/pajak/**"
       - "scripts/tests/conftest.py"
       - ".github/workflows/pajak-monitor-tests.yml"
+  push:
+    branches: [main]
+    paths: *pajak_paths
 
 permissions:
   contents: read

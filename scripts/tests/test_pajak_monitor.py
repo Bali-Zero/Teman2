@@ -2,8 +2,9 @@
 Behavioral tests for pajak_monitor.py's enrichment time budget (R1) and monitor wiring
 (M6, M7) — gate REWORK-BUILD on PR #7084 (2026-09-21).
 
-`pajak_monitor.py` imports `agent_job`/`browser_job`, which live only on Pro and are not in
-this repo. Like the gate's own re-run, both are STUBBED in `sys.modules` before
+`pajak_monitor.py` imports `agent_job`/`browser_job`. `browser_job` lives only on Pro;
+`agent_job.py` is in this repo but imports httpx and structlog. Like the gate's own re-run, both
+are STUBBED in `sys.modules` before
 `pajak_monitor.py` is loaded via `importlib.util` — the same isolation trick
 `test_pajak_parse.py` uses for `pajak_parse.py`. `intel_lake_outbox` (also Pro-only) is stubbed
 per-test to CAPTURE what `_write_intel_feed` would have enqueued, since that dict is the only
