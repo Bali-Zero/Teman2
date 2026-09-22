@@ -145,7 +145,18 @@ DEFAULT_MAX_CONSECUTIVE_HARNESS_REDS = 3
 #: same number.
 HEALTH_PROBES_OUTSIDE_BUDGET = 2
 
-REPORT_VERSION = 2
+#: B4-3 -- v3 writes the engine-provided outage envelope per walk. A v2
+#: report is read (not refused) so a run can resume across the bump; the
+#: on-disk ``report_version`` of a RESUMED report is NOT force-bumped to 3
+#: (the merge in ``run_live_enumeration`` reuses ``existing`` as-is), so its
+#: rows are mixed by construction: rows carried over from the v2 file have
+#: no ``outage`` key at all (never even ``null`` -- they predate the field),
+#: while rows this run newly attempts do. Nothing here reads the persisted
+#: ``report_version`` except this readability gate, so the mix is harmless
+#: to every current consumer; a future reader keying behaviour off that
+#: field would need per-row ``"outage" in row``, not the report-level tag.
+REPORT_VERSION = 3
+_READABLE_REPORT_VERSIONS = frozenset((2, REPORT_VERSION))
 
 #: Group/other permission bits -- same posture as probe_evaluate.py's token
 #: check (cicatrix family #4 "secret in the clear").
@@ -460,6 +471,11 @@ class WalkResult:
     engine_state: str | None
     reason_codes: dict[str, list[str]]
     rule_pack: dict[str, Any] | None
+    #: Captured VERBATIM, unlike rule_pack (no isinstance guard) -- the
+    #: envelope's own shape is always a dict or null (evaluate_path.py's
+    #: TEMPORARILY_UNAVAILABLE builder emits {"code", "retryable"}; every
+    #: other path emits None), so the type matches rule_pack's.
+    outage: dict[str, Any] | None
     harness_detail: str | None
     retries: int
     latency_ms: float
@@ -473,6 +489,7 @@ class WalkResult:
             "engine_state": self.engine_state,
             "reason_codes": self.reason_codes,
             "rule_pack": self.rule_pack,
+            "outage": self.outage,
             "harness_detail": self.harness_detail,
             "retries": self.retries,
             "latency_ms": self.latency_ms,
@@ -529,6 +546,7 @@ def _harness_result(
         engine_state=None,
         reason_codes={},
         rule_pack=None,
+        outage=None,
         harness_detail=detail,
         retries=attempts - 1,
         latency_ms=round(latency_ms, 2),
@@ -670,6 +688,7 @@ async def run_walk(
             engine_state=decision.get("state"),
             reason_codes=_reason_codes(decision),
             rule_pack=decision.get("rule_pack") if isinstance(decision.get("rule_pack"), Mapping) else None,
+            outage=decision.get("outage"),
             harness_detail=None,
             retries=attempts - 1,
             latency_ms=round(latency_ms, 2),
@@ -799,7 +818,7 @@ def _load_existing_and_pending(
     if report_path.exists():
         existing = load_report(report_path)
         report_version = existing.get("report_version", "missing")
-        if report_version != REPORT_VERSION:
+        if report_version not in _READABLE_REPORT_VERSIONS:
             raise EnumerateLiveError(
                 f"existing report {report_path} has report_version={report_version!r}; "
                 f"current REPORT_VERSION={REPORT_VERSION} -- refusing to resume"
