@@ -15,7 +15,7 @@ scope:
     proprioception child_calibration model list, dynamic_workflow gate template, FAMILY_MAP and
     the C5 gate-seat entity regex (now Opus 5.5, bare Opus 5 fails), with its tests.
   - Live doctrine — MODEL_ROSTER.md (new claude-opus-5-5 row, claude-opus-5 demoted to valid
-    non-gate pin), RULINGS.md (RULED 2026-09-23), decision D-019, army-map, modus + workflow
+    non-gate pin), RULINGS.md (RULED 2026-09-23), army-map, modus + workflow
     skills, AGENTS.md, codex.md, corner skills, fleet-continuity, ASSEMBLY-LINE, LANES.
   - Automation prompts and trailers — modus_autoloop gate prompt, model_routing_gate messages,
     automation_catalog, co-author trailers of five cron wrappers, claude-live.sh example.
