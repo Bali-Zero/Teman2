@@ -37,7 +37,7 @@ lanes:
       alone; 8 findings raised, all disposed of in the committed README"
 diff:
   files: 5
-  net_lines: '5 files, +68944/-0 (evidence/brief.yml +113, evidence/pack.yml +218, research/operations/2026-09-22-visa-oracle-live-enumeration/{README.md +539, prove-live-b4-2-full-sweep-report-20260922.json +11932, prove-live-b52-manifest-raw-main-1c6d2240-20260922.json +56142}) — from `git diff --numstat "$(git merge-base origin/main HEAD)"`, re-verified against the pushed head in the PR body''s Size section.'
+  net_lines: '5 files, +68979/-0 (evidence/brief.yml +113, evidence/pack.yml +218, research/operations/2026-09-22-visa-oracle-live-enumeration/{README.md +574, prove-live-b4-2-full-sweep-report-20260922.json +11932, prove-live-b52-manifest-raw-main-1c6d2240-20260922.json +56142}) — from `git diff --numstat "$(git merge-base origin/main HEAD)"`, re-verified against the pushed head in the PR body''s Size section.'
   behaviour_change: >-
     None. This diff adds a README and two evidence JSON files under research/operations/, plus
     this evidence pack and brief, and ships no code into any deployed artifact. Nothing here is

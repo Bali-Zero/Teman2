@@ -121,6 +121,38 @@ B4's own Declared limits on what edge coverage does/does not prove still apply.
 
 ## The 6 NEEDS_INPUT walks, named
 
+The mechanical part — walk_id, HTTP status, latency, notices, and the `guardian_consent`
+occurrence count — by script, not prose:
+
+```
+$ python3 -c "
+import json
+d = json.load(open('prove-live-b4-2-full-sweep-report-20260922.json'))
+ni = [w for w in d['walks'] if w['engine_state']=='NEEDS_INPUT']
+print('NEEDS_INPUT walk count:', len(ni))
+for w in ni:
+    print(w['walk_id'], '| http', w['http_status'], '| latency_ms', w['latency_ms'], '| notices', w['reason_codes']['notices'])
+print()
+print('guardian_consent occurrences in report JSON:', open('prove-live-b4-2-full-sweep-report-20260922.json').read().count('guardian_consent'))
+print('guardian_consent occurrences in manifest JSON:', open('prove-live-b52-manifest-raw-main-1c6d2240-20260922.json').read().count('guardian_consent'))
+"
+NEEDS_INPUT walk count: 6
+edge/birth_date=unsure | http 200 | latency_ms 303.99 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+edge/category=unsure | http 200 | latency_ms 219.79 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+edge/overstay_days=unsure | http 200 | latency_ms 261.76 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+edge/secondhome_basis=unsure | http 200 | latency_ms 240.3 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+edge/stay_days=unsure | http 200 | latency_ms 258.42 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+edge/work_indonesia_compensation=unsure | http 200 | latency_ms 268.87 | notices ['DISCLOSED_UNCERTAINTY_CONDITION']
+
+guardian_consent occurrences in report JSON: 0
+guardian_consent occurrences in manifest JSON: 0
+```
+
+The non-mechanical part — WHICH fact each walk targets — cannot come from a script alone: the
+API's own `missing_facts` field is not captured by this runner (next paragraph), so naming the
+target requires reading the mouth's fact-construction source, cited by file:line below, not
+guessed from the label's naming convention.
+
 `enumerate_live.py`'s `_reason_codes()` (`enumerate_live.py:505-513`) extracts only
 `review_reasons`/`no_path_reasons`/`notices` from the engine's response — it does **not**
 capture the API's own `missing_facts` field (a real field, required non-empty for
@@ -265,6 +297,9 @@ code" actually mean here:**
    a persistence-layer fail-closed on the ENFORCE path, `evaluate_path.py:1855-1858,2027-2032`)
    from a pack/adapter code path that answers "unavailable" for a fact set a real UI visitor
    could equally submit.
+
+Routed by the conductor as finding B4-3 (single diagnostic re-POST reading
+`decision.outage.code`; runner to record `outage`).
 
 The one non-A6-2 moved row is not caused by A6-2 (whose 7 payload changes are all under the
 `secondhome_*`/`study_*` labels above — `review-gate/blacklist` is not one of them) or by B5-2
