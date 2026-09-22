@@ -66,7 +66,7 @@ def _write_manifest(path: Path, walks: list[dict[str, Any]]) -> None:
     path.write_text(json.dumps(manifest), encoding="utf-8")
 
 
-def _engine_response(state: str = "SUPPORTED_CANDIDATES") -> _Response:
+def _engine_response(state: str = "SUPPORTED_CANDIDATES", *, outage: dict[str, Any] | None = None) -> _Response:
     return _Response(
         {
             "mode": "CURATED",
@@ -76,6 +76,7 @@ def _engine_response(state: str = "SUPPORTED_CANDIDATES") -> _Response:
                 "no_path_reasons": [],
                 "notices": [{"code": "DISCLOSED_HEALTH_CONCERN_CONDITION"}],
                 "rule_pack": {"rule_pack_id": "x", "sequence": 22, "version": "2026.9.1"},
+                "outage": outage,
             },
         }
     )
@@ -185,6 +186,32 @@ def test_dry_run_validates_and_prints_plan_without_network_call(
     assert not report.exists()
 
 
+def test_dry_run_reads_a_v2_report_without_rewriting_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("recorded")])
+    report = tmp_path / "b4-2-report.json"
+    old_report = {
+        "report_version": 2,
+        "manifest_sha256": enumerate_live.manifest_digest(enumerate_live.load_manifest(manifest)),
+        "walks": [{"walk_id": "recorded", "classification": "engine_verdict"}],
+    }
+    original = json.dumps(old_report)
+    report.write_text(original, encoding="utf-8")
+    _write_token(tmp_path / "driver-token")
+
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25) + ["--dry-run"]
+    )
+
+    assert enumerate_live.run(args) == 0
+    out = capsys.readouterr().out
+    assert "pending=0" in out
+    assert "already_recorded=1" in out
+    assert report.read_text(encoding="utf-8") == original
+
+
 # ---------------------------------------------------------------------------
 # Successful walk / report shape
 # ---------------------------------------------------------------------------
@@ -231,6 +258,28 @@ def test_successful_walk_is_recorded_as_engine_verdict(tmp_path: Path, monkeypat
     assert saved["requests_used_this_run"] == 1
     assert saved["requests_used_total"] == 1
     assert saved["health"]["probes_outside_budget"] == 2
+
+
+def test_temp_unavailable_outage_is_preserved_verbatim_in_the_report_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("temporarily-unavailable")])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+    outage = {"code": "UPSTREAM_MAINTENANCE", "retryable": True, "window": "short"}
+
+    async def fake_post(*_a: object, **_k: object) -> _Response:
+        return _engine_response("TEMPORARILY_UNAVAILABLE", outage=outage)
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    assert enumerate_live.run(args) == 0
+    row = json.loads(report.read_text(encoding="utf-8"))["walks"][0]
+    assert row["engine_state"] == "TEMPORARILY_UNAVAILABLE"
+    assert row["outage"]["code"] == "UPSTREAM_MAINTENANCE"
+    assert row["outage"] == outage
 
 
 # ---------------------------------------------------------------------------
@@ -546,7 +595,7 @@ def test_report_version_stale_integer_refuses_before_any_network_call(
     manifest = tmp_path / "manifest.json"
     _write_manifest(manifest, [_walk("a")])
     report = tmp_path / "report.json"
-    stale_version = enumerate_live.REPORT_VERSION - 1
+    stale_version = 1
     report.write_text(
         json.dumps(
             {
@@ -814,7 +863,7 @@ def test_dry_run_reports_version_mismatch_before_a_bad_token_file(
     manifest = tmp_path / "manifest.json"
     _write_manifest(manifest, [_walk("a")])
     report = tmp_path / "report.json"
-    stale_version = enumerate_live.REPORT_VERSION - 1
+    stale_version = 1
     report.write_text(
         json.dumps(
             {
