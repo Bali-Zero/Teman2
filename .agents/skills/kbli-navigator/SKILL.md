@@ -50,7 +50,8 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 ## 1. LIVE STATE (last update 2026-09-22 — keep current)
 
 **🟢 2026-09-22 — PHASE 1a, THE §7 KG DETECTOR AND PMA RESIDUAL-OPEN LOT 2 ARE ALL SHIPPED AND
-PROVEN LIVE; ONE PRE-EXISTING RUNTIME DRIFT WAS FOUND WHILE VERIFYING THEM.** **#7045** (Phase 1a,
+PROVEN LIVE ON ALL FOUR RUNTIME STORES, INCLUDING A PRE-EXISTING 43-CODE DOCUMENTS-LAG RESIDUAL
+FOUND AND CURED SAME-DAY.** **#7045** (Phase 1a,
 merged 10:09:30Z, Fly **v4514**) built 110 OSS-issued S1/S2 codes into 141 `perizinan:pp28v10:*`
 nodes / 141 REQUIRES edges, idempotent (re-dry-run: `0 acted | 22 nothing-to-do`); `01122` now
 serves 3 licences, `85510`/`03231` untouched. Rework 1: CURED/DRIFTED must be decided before the
@@ -75,14 +76,19 @@ re-run; **260/260** verified `located`. `kbli_documents --pma-only`, 6 chunks �
 applied, integrity 9/9 byte-identical md5. Cache: `1/260 evicted`. Prove-live both directions
 clean: `01192` located+basis, `62900` unchanged declared_gap.
 
-**New residual, found not caused:** canonical says **720** located; live `kbli_documents` reads
-only **677** — a **43-code gap**, zero overlap with Lot 2. All 43 predate this lot (2026-08's
-sea-cabotage/arms/Umrah cures: `25200 30400 47111 47221 47222 50111-50135 50211-50223 51101 51102
-53200 73100 79122 95220 95291 95299`), `pma_verification_status` backfilled on canonical without a
-matching store sync. Ledgered, not cured here. **Near-misses:** the headless Pro lane hit the
-context guard before it could push #7061 itself (confirmed in the PR body); a `python3`/Xcode-stub
-shell quirk and a `brief_ref` staging-contract detail were flagged by the coordinating session
-this round, not independently re-verified here.
+**Residual found, cured the same day:** canonical said **720** located; live `kbli_documents` read
+only **677** — a **43-code gap**, zero overlap with Lot 2, predating it (2026-08's Perpres-cap/UMKM
+lanes: `25200 30400 47111 47221 47222 50111-50135 50211-50223 51101 51102 53200 73100 79122 95220
+95291 95299` among them) — `pma_verification_status` was located on canonical + `kg_nodes` but
+never synced into `kbli_documents` at the time. Cured code-scoped: `kbli_documents_cure.py
+--pma-only --only <43>` → **43/43** applied, integrity 9/9 byte-identical judul/content md5, cache
+bust `0/43 had entry | 0 evicted` (none recently inspected). Qdrant checked, not re-written — dry-
+run `43/43 already agreed | 0 written`, correct since before this lot. `kbli_documents` located now
+**720/720**, matching canonical/`kg_nodes`/Qdrant across all four stores. Prove-live: `inspect_kbli
+41020` → `TERBATAS / 0% / located / cap_verified true`, Lampiran II basis. **Near-misses:** the
+headless Pro lane hit the context guard before it could push #7061 itself (confirmed in the PR
+body); a `python3`/Xcode-stub shell quirk and a `brief_ref` staging-contract detail were flagged by
+the coordinating session this round, not independently re-verified here.
 
 **🟢 2026-09-21 (later) — LOT 0 IS CLOSED: THE 17 PLACEHOLDER "LICENCES" ARE GONE FROM THE GRAPH,
 `01122` ANSWERS 200 INSTEAD OF 404 — AND LOT 0(a) HAD ALREADY SHIPPED TWO DAYS EARLIER WITHOUT THIS
