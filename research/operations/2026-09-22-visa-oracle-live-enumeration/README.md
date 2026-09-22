@@ -119,6 +119,62 @@ B4's own Declared limits on what edge coverage does/does not prove still apply.
 | `DISCLOSED_SOURCE_OF_FUNDS_CONDITION` | 1 |
 | `DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION` | 1 |
 
+## The 6 NEEDS_INPUT walks, named
+
+`enumerate_live.py`'s `_reason_codes()` (`enumerate_live.py:505-513`) extracts only
+`review_reasons`/`no_path_reasons`/`notices` from the engine's response — it does **not**
+capture the API's own `missing_facts` field (a real field, required non-empty for
+`NEEDS_INPUT` by `backend/services/visa_engine/models.py:1466,1527-1529`). No committed JSON in this
+PR carries it, and re-running the live sweep to fetch it is out of scope here. What follows is
+NOT that field — it is independently derived from the **manifest's own construction**.
+**Correction (second adversarial-review pass):** `asked` holds question IDs, some of which are
+pure routing questions with no standalone engine fact/status at all (e.g. `trip_scope`,
+`review_gate`) — the earlier framing that every `asked` entry has "a status" overstated this.
+The narrower, verified claim: for 5 of the 6 walks, exactly one **engine fact** (a path that
+actually appears in the walk's `facts` payload) is `UNKNOWN` while the walk's scenario-relevant
+facts are all `KNOWN`, and that one fact is the walk's deliberate target — verified against
+`apps/mouth/.../_lib/fact-mapper.ts`'s literal mapping from the raw `OracleFacts` field the
+label names to the `ApplicantFactsWire` path the engine receives, not guessed from naming
+convention. Latencies below are rounded to the nearest ms; exact values are in the JSON
+(303.99 / 219.79 / 261.76 / 258.42 / 268.87 / 240.30):
+
+| walk_id | HTTP / latency | notices | target fact (verified in fact-mapper.ts) | status |
+|---|---|---|---|---|
+| `edge/birth_date=unsure` | 200 / ~304 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | `person.birth_date` (`dateFact(facts.birth_date)`, line 922) | UNKNOWN/UNVERIFIED |
+| `edge/category=unsure` | 200 / ~220 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | `intent.purposes` (`mapPurposes`, lines 314-317: `facts.category === "unsure"` → `unknownFact(UNVERIFIED)`; assigned to the wire at line 950) | UNKNOWN/UNVERIFIED |
+| `edge/overstay_days=unsure` | 200 / ~262 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | `immigration.overstay_days` (lines 937-940: `integerFact(facts.overstay_days, 0, 36500)` when `in_indonesia != "no"`) | UNKNOWN/UNVERIFIED |
+| `edge/stay_days=unsure` | 200 / ~258 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | `intent.stay_days` (`mapStayDays`, lines 367-368, `integerFact(facts.stay_days, 1, 36500)`; assigned at line 951) | UNKNOWN/UNVERIFIED |
+| `edge/work_indonesia_compensation=unsure` | 200 / ~269 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | `work.indonesia_source_compensation` (`pairedBooleanFact`, lines 150-157; assigned at lines 960-963) | UNKNOWN/UNVERIFIED |
+| `edge/secondhome_basis=unsure` | 200 / ~240 ms | `DISCLOSED_UNCERTAINTY_CONDITION` | **no single fact** — see below | UNKNOWN/NOT_ASKED (×4) |
+
+`secondhome_basis` is not itself an engine fact path — it is a mouth-side routing input.
+**Correction (second adversarial-review pass):** the earlier text cited `fact-mapper.ts`'s
+`depositBasisDecisivelyNotChosen`/`propertyBasisDecisivelyNotChosen` guards as the gating
+mechanism; those guards only supply a **conservative fallback VALUE** for a fact that was
+already not asked — the actual question-SELECTION logic lives in `flow.ts` (~lines 978-989):
+when `category === "second_home"`, the four sub-questions
+(`secondhome_deposit_usd`/`secondhome_state_bank`/`secondhome_own_name` if `secondhome_basis ===
+"bank_deposit"`, or `secondhome_property_value_usd` if `=== "property"`) are only added to the
+question list for the CHOSEN branch — when `secondhome_basis` is `"unsure"` (neither branch),
+`branchQuestions` is empty and NONE of the four are ever asked. The two monetary facts
+(`secondhome.bank_deposit_usd`, `secondhome.qualifying_property_value_usd`) then fall through
+`integerFact(undefined, ...)` → `unknownFact(NOT_ASKED)` (fact-mapper.ts:89); the two boolean
+facts (`secondhome.bank_deposit_at_state_bank`, `secondhome.bank_deposit_in_own_name`) fall
+through `booleanFact(undefined, ...)` → `unknownFact(NOT_ASKED)` (fact-mapper.ts:71-72) — the
+guard functions never even run their `depositBasisDecisivelyNotChosen`/
+`propertyBasisDecisivelyNotChosen` check in this specific case, since neither branch condition
+they gate on (`"bank_deposit"`/`"property"`) is met either. Confirmed directly in this walk's
+own manifest payload: `secondhome.bank_deposit_usd`, `secondhome.bank_deposit_at_state_bank`,
+`secondhome.bank_deposit_in_own_name`, and `secondhome.qualifying_property_value_usd` are all
+`{status: UNKNOWN, reason: NOT_ASKED}`. This is the one walk of the six where "the missing
+fact" is not a single leaf value.
+
+**`person.guardian_consent`**: zero occurrences of the string `guardian_consent` anywhere in
+either committed JSON (`grep -c` both files → 0/0), and it is not one of the 56 distinct fact
+paths that appear anywhere across all 252 walks' `facts` payloads in the manifest. Consistent
+with A7-B not being merged into this head — none of the 6 NEEDS_INPUT walks (or any of the 252)
+could name it, because the manifest's own schema does not carry that fact path at all yet.
+
 ## MEASURED comparison table over the 251 labels shared with B4
 
 `B4 count = 253`, `B4-2 count = 252`, `shared = 251`, derived by set intersection over
@@ -159,6 +215,56 @@ these 6 plus `secondhome_passive_income_usd`, which did not move (see below) —
 refers to the moved subset of A6-2's seven changes, not a different count of what A6-2 touched.
 
 ### Unexplained observation: `review-gate/blacklist`
+
+B4 had zero `TEMPORARILY_UNAVAILABLE` walks; this sweep has exactly one. Its full record, every
+field the runner's schema carries (verified: the union of keys across all 252 walk records in
+this report is exactly `attempts`, `attempts_history`, `classification`, `engine_state`,
+`harness_detail`, `http_status`, `latency_ms`, `reason_codes` (itself exactly
+`no_path_reasons`/`notices`/`review_reasons`), `retries`, `rule_pack`, `timestamp`, `walk_id` —
+**no `retry_after` or `message` field exists anywhere in the report's schema**, not just on this
+walk):
+
+| field | value |
+|---|---|
+| `walk_id` / label | `review-gate/blacklist` |
+| `engine_state` | `TEMPORARILY_UNAVAILABLE` |
+| `classification` | `engine_verdict` — the runner counted this as a genuine engine verdict, not a harness-level transport failure |
+| `http_status` | 200 |
+| `latency_ms` | 2079.53 |
+| `attempts` / `retries` | 1 / 0 |
+| `reason_codes.review_reasons` | `[]` |
+| `reason_codes.no_path_reasons` | `[]` |
+| `reason_codes.notices` | `[]` |
+| `rule_pack` | `null` |
+| `harness_detail` | `null` |
+| `attempts_history` | one element, byte-identical to this record's own top-level fields (single attempt, nothing retried) |
+| `timestamp` | `2026-09-22T07:37:23.268086+00:00` |
+| B4 state for this same label | `HUMAN_REVIEW_REQUIRED` via `BRIDGING_ADVERSE_HISTORY` (see below) |
+
+**Two corrections (second adversarial-review pass) to what "engine_verdict" and "no explanatory
+code" actually mean here:**
+
+1. `enumerate_live.py`'s classification logic (`enumerate_live.py:654-672`) checks exactly three
+   things before labelling a response `engine_verdict`: HTTP status is 200, the body parses as
+   JSON, and its `decision` key is a mapping. It does **not** validate the decision against the
+   server's own Pydantic schema. `classification=engine_verdict` therefore means "the runner's
+   own transport-level checks passed" (which is what makes `summary.harness_reds == {}`
+   accurate — no 5xx/timeout/connection-error/invalid-body harness red occurred), not an
+   independent confirmation that the envelope conforms to every schema rule
+   `backend/services/visa_engine/models.py` enforces server-side.
+2. The server's `TEMPORARILY_UNAVAILABLE` envelope **does** carry an explanatory code — the
+   builder sets `"outage": {"code": code, "retryable": True}` (`evaluate_path.py:637`,
+   inside the `608-...` envelope function). The report does not lack this field because the
+   server omitted it; `enumerate_live.py`'s `_reason_codes()` (`enumerate_live.py:505-513`)
+   only extracts `review_reasons`/`no_path_reasons`/`notices` from the decision body and never
+   reads `outage` at all, so the code the server sent is discarded before it reaches this
+   report. The record alone therefore cannot say what `code` was — that would need the
+   production server logs for this exact request (not reproducible from this report) or a
+   fresh, separate live request, which this PR does not make. Routed here as a finding, not
+   resolved: it cannot distinguish an engine-side transient (a momentary rule-pack load hiccup,
+   a persistence-layer fail-closed on the ENFORCE path, `evaluate_path.py:1855-1858,2027-2032`)
+   from a pack/adapter code path that answers "unavailable" for a fact set a real UI visitor
+   could equally submit.
 
 The one non-A6-2 moved row is not caused by A6-2 (whose 7 payload changes are all under the
 `secondhome_*`/`study_*` labels above — `review-gate/blacklist` is not one of them) or by B5-2
@@ -390,4 +496,44 @@ Not raised by the reviewer and independently confirmed: the verdict distribution
 these records, and attributing it to A6-2/B5-2 would be unsupported"), latency p50/p95/max/min
 via standard nearest-rank, the `grep -c process.application_channel` == 0 result over every
 existing 020/021/022 pack file, and the PII digit-run accounting (81 lines, all 4 categories).
+
+### Second pass (conductor addendum, same seat)
+
+The conductor asked for the `TEMPORARILY_UNAVAILABLE` walk's own subsection (full payload,
+HTTP/latency, B4 state) and for the 6 `NEEDS_INPUT` walks to be named with their missing facts.
+A second codex `exec` pass (same seat, `gpt-6-astra`, xhigh, read-only) reviewed just those two
+new sections. Verdict **MEDIUM**, 6 findings, all 6 CONFIRMED and fixed:
+
+1. **MEDIUM — the server's envelope does carry an explanatory code.** A draft said the
+   `TEMPORARILY_UNAVAILABLE` envelope "carries no explanatory code of any kind." False:
+   `evaluate_path.py:637` sets `"outage": {"code": code, "retryable": True}` inside the
+   envelope; `enumerate_live.py`'s `_reason_codes()` never reads `outage` at all, so the code is
+   discarded before it reaches this report — the gap is in what the RUNNER persists, not in
+   what the SERVER sends.
+2. **MEDIUM — `classification=engine_verdict` overstated as "a valid decision envelope."** The
+   runner's own check (`enumerate_live.py:654-672`) is exactly three things: HTTP 200, valid
+   JSON, `decision` is a mapping. It does not validate the decision against the server's
+   Pydantic schema. Reworded to say precisely what the classification does and does not confirm.
+3. **LOW — the "full record, every field" table omitted `attempts_history`.** Added, noting it
+   is a single element identical to the top-level fields (one attempt, nothing retried).
+4. **LOW — the six NEEDS_INPUT latencies were unlabelled rounded integers.** Labelled as
+   rounded, with exact values (303.99/219.79/261.76/258.42/268.87/240.30 ms) given alongside.
+5. **LOW — the `secondhome_basis` mechanism and line citations were wrong.** A draft attributed
+   question GATING to `fact-mapper.ts`'s conservative-default guard functions; those guards only
+   supply a fallback VALUE for an already-unasked fact. The actual question-selection logic is
+   in `flow.ts` (~978-989): when `secondhome_basis` is `"unsure"`, none of the four sub-questions
+   are added to the question list at all. Also corrected: the two boolean secondhome facts use
+   `booleanFact` (undefined branch at fact-mapper.ts:71-72), not `integerFact` (line 89, which
+   applies only to the two monetary facts).
+6. **LOW — `asked` conflated with "every entry has a status."** Routing-only question IDs
+   (`trip_scope`, `review_gate`) have no standalone engine fact. Narrowed to the claim that is
+   actually true: 5 of 6 walks have exactly one UNKNOWN/UNVERIFIED **engine fact** matching the
+   target, with the rest of the walk's scenario-relevant facts KNOWN.
+
+Not raised and independently confirmed: the `NEEDS_INPUT` walk_ids, HTTP statuses and notices;
+the `TEMPORARILY_UNAVAILABLE` walk's full field values; the zero-occurrence `guardian_consent`
+grep and the 56-distinct-fact-path count; the B4-vs-B4-2 blacklist comparison (B4 held via
+`BRIDGING_ADVERSE_HISTORY`, independent of the `disclosed_review_flags` state in either
+manifest); and the fail-closed `TEMPORARILY_UNAVAILABLE` state's own definition in
+`enums.py`/`evaluate_path.py`.
 

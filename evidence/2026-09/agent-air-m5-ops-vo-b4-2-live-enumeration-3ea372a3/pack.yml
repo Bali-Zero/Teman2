@@ -37,7 +37,7 @@ lanes:
       alone; 8 findings raised, all disposed of in the committed README"
 diff:
   files: 5
-  net_lines: '5 files, +68759/-0 (evidence/brief.yml +113, evidence/pack.yml +179, research/operations/2026-09-22-visa-oracle-live-enumeration/{README.md +393, prove-live-b4-2-full-sweep-report-20260922.json +11932, prove-live-b52-manifest-raw-main-1c6d2240-20260922.json +56142}) — from `git diff --numstat "$(git merge-base origin/main HEAD)"`, re-verified against the pushed head in the PR body''s Size section.'
+  net_lines: '5 files, +68944/-0 (evidence/brief.yml +113, evidence/pack.yml +218, research/operations/2026-09-22-visa-oracle-live-enumeration/{README.md +539, prove-live-b4-2-full-sweep-report-20260922.json +11932, prove-live-b52-manifest-raw-main-1c6d2240-20260922.json +56142}) — from `git diff --numstat "$(git merge-base origin/main HEAD)"`, re-verified against the pushed head in the PR body''s Size section.'
   behaviour_change: >-
     None. This diff adds a README and two evidence JSON files under research/operations/, plus
     this evidence pack and brief, and ships no code into any deployed artifact. Nothing here is
@@ -156,6 +156,42 @@ dissent:
       The precise ruling timestamp and the "B3 v3 U9" anchor designation are not derivable from
       the two JSON files — they are provenance labels from the conductor's mandate record.
     status: PLAUSIBLE
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      MEDIUM — a conductor addendum asked for the TEMPORARILY_UNAVAILABLE walk's own subsection
+      and the 6 NEEDS_INPUT walks named with missing facts. The added text said the server's
+      outage envelope "carries no explanatory code of any kind" — false: evaluate_path.py:637
+      sets outage:{code, retryable:True}; enumerate_live.py's _reason_codes() never reads it, so
+      the gap is in what the RUNNER persists, not what the SERVER sends.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      MEDIUM — classification=engine_verdict was described as confirming "a valid decision
+      envelope"; the runner's own check (enumerate_live.py:654-672) is only HTTP 200 + valid
+      JSON + decision-is-a-mapping, not a schema validation.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      LOW — the "full record, every field" table for review-gate/blacklist omitted
+      attempts_history.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      LOW — the 6 NEEDS_INPUT walks' latencies were unlabelled rounded integers.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      LOW — the secondhome_basis mechanism cited fact-mapper.ts's conservative-default guards as
+      the gating logic; the real question-selection gate is in flow.ts (~978-989), and two of
+      the four secondhome facts use booleanFact (undefined branch at fact-mapper.ts:71-72), not
+      integerFact (line 89), which applies only to the two monetary facts.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra), second pass"
+    objection: >-
+      LOW — "asked" was treated as if every entry carries an engine-fact status; routing-only
+      question IDs (trip_scope, review_gate) have none. Narrowed to the claim that holds: 5 of 6
+      walks have exactly one UNKNOWN/UNVERIFIED engine fact matching the named target.
+    status: CONFIRMED
 residual_risks:
   - "All 8 dissent items were disposed of in this same PR (depth-1, no fix-of-a-fix needed) —
     none is an open residual risk in the shipped README. Listed as dissent because that is what
@@ -174,6 +210,9 @@ sources:
   - "MANDATE-vo.md's ratified Slice B4-2 section and the 2026-09-22T07:2x-07:3xZ conductor
     records — what this report answers to"
   - "~/logs/codex-spalla/20260922T154800Z-vo-b4-2-direct-review-of-committed-README-and-JSONs.md
-    — the full adversarial review transcript (direct codex exec, not the codex-spalla.sh
+    — the first-pass adversarial review transcript (direct codex exec, not the codex-spalla.sh
     wrapper, whose git-diff-against-main dispatch failed on this worktree — see PR body)"
+  - "~/logs/codex-spalla/20260922T160500Z-vo-b4-2-second-pass-needs-input-and-tu-sections.md —
+    the second-pass transcript, reviewing the conductor-addendum sections (TEMPORARILY_UNAVAILABLE
+    subsection, the 6 NEEDS_INPUT walks named)"
 pii_scan: clean
