@@ -1,7 +1,7 @@
 task_id: chat-p2b-cures-20260922
 gear: 3
 gate_class: opus
-brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-chat-p2b-cures-20260-5b67c62a/brief.yml
+brief_ref: evidence/brief.yml
 
 lanes:
   - lane: p2b harness cure + gate spec + Detect Secrets audit
@@ -43,14 +43,18 @@ seat_override: >-
   mig317-lock-retry-37134ce4/pack.yml) recorded for the same reason.
 
 diff:
-  net_lines: >-
-    98 files, +3861/-13 measured by `git diff --numstat origin/main...HEAD`
-    (scripts/evidence_pack_lint.py --print-measured over that numstat), most of it the 87
-    committed judging records under scripts/kbli_bench/results/2026-09-22-rejudge-3x/ (the
-    P2b re-judge run itself) plus the three code/doc commits this pack covers directly:
-    the .secrets.baseline splice (44 insertions), run_p2b.py + test_run_p2b.py + the
-    manifest.json path normalization (84 insertions/3 deletions), and this brief.yml/pack.yml
-    pair.
+  shape: >-
+    Dominated by the 87 committed judging records under
+    scripts/kbli_bench/results/2026-09-22-rejudge-3x/ (the P2b re-judge run itself), plus
+    three code/doc commits this pack covers directly: the .secrets.baseline splice (44
+    insertions, additions-only), run_p2b.py + scripts/tests/test_run_p2b.py + the
+    manifest.json path normalization, and this brief.yml/pack.yml pair. Deliberately not
+    narrated as an exact count here (the lint's own countable-claims rule recomputes it
+    from --numstat-file; stating it in prose here would drift the moment this pack itself
+    is committed -- same reasoning as the migration-317 lock-retry pack).
+  measured_at: >-
+    `git diff --numstat` against origin/main in the worktree, this session, after each
+    cure commit landed -- see the floor receipt above for the exact invocation.
   behaviour_change: >-
     run_p2b.py's manifest now records repo-relative corpus/answers paths instead of
     whatever str(Path) produced (absolute under this worktree). No other running system
