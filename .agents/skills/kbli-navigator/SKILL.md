@@ -590,7 +590,7 @@ byte-identical — only 2 pin lines move).
 design, so nothing a client sees changed and no store sync was owed. The day something starts reading it,
 that sync becomes its own work.
 
-**🟢 CORRECTED 2026-09-22 (PR #7132-lane) — the "428 gold pages never render the BPS card" finding above
+**🟢 CORRECTED 2026-09-22 (PR #7133 lane) — the "428 gold pages never render the BPS card" finding above
 was a stale-checkout read, not a live bug.** The cited `line 401` / `line 681` / `line 913` shape matches
 `apps/mouth/src/app/kbli/[code]/page.tsx` **before** commit `f6dfda994d` (PR #4215, "release verified KBLI
 Navigator", 2026-08-15) — a checkout roughly a month and 100+ commits behind `origin/main` when this note
