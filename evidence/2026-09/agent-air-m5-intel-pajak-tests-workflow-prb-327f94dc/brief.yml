@@ -1,0 +1,48 @@
+task: >-
+  Run the pajak parser and monitor tests on every PR that touches them. The two files pin the
+  deadline arm, the excerpt anchor and the real-host lake label by behaviour (#7097), but no
+  pull_request-triggered workflow ran either, so a PR reverting any of those fixes would merge
+  green. PWC-7087 C3 and the CI half of PWC-7074 C1 (PENDING-ARMS 2026-09-21), due 2026-09-24.
+lane: intel/pajak-tests-workflow
+machine: M5
+date: 2026-09-22
+
+gear: 3
+gear_reason: >-
+  Chosen by the floor, not by blast radius. `.github/workflows/*` is a HOTZONE path in
+  evidence_pack_lint.py's compute_floor(), so this small diff (one new workflow, one watcher
+  list entry, one test docstring) floors at 3 (source `path`, measured before the pack was
+  written). The workflow touch is the whole point: in this
+  repo a test under scripts/tests/ runs on a PR only because a workflow names it. #7093 carried
+  this file together with the test changes and was closed on its gate's REWORK-BUILD for
+  declaring gear 2 against floor 3; the tests shipped alone as #7097 and this is the other half.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The new job runs both files and they pass on the unmodified tree.
+    probe: python -m pytest scripts/tests/test_pajak_parse.py scripts/tests/test_pajak_monitor.py -q
+  A2: >-
+    Each of the five mutations named by the #7074 and #7087 gates (deadline branch removed;
+    excerpt anchored with find(citation); a `or "pajak.go.id"` fallback; continue -> break on a
+    hostless item; the label split as "pajak.go." + "id") turns a test in those two files red.
+    probe: scratchpad mutate.py, one mutation at a time on a copy of scripts/, pytest exit code per mutation
+  A3: >-
+    The check actually runs on a PR that touches the pajak sources and goes red there when a fix
+    is reverted, not only on a local machine.
+    probe: the `pajak-monitor tests` check on this PR (green), and on a throwaway draft PR carrying
+    one mutation (red), closed afterwards
+  A4: >-
+    No repo workflow invariant breaks: watcher coverage, trigger symmetry, reachable conditions,
+    required-context conformance, actionlint.
+    probe: check_watcher_coverage.py, lint_trigger_symmetry.py, lint_unreachable_workflow_conditions.py,
+    check_required_workflow_conformance.py, actionlint
+
+out_of_scope: >-
+  Making the check REQUIRED (branch-protection, operator-only). The zero-yield alarm for the
+  direct pajak.go.id sources and the intel-router coverage for *.kemenkeu.go.id / ddtc / muc
+  (separate ledger rows, due 2026-09-28). The PROD data migrations (source_domain relabel of
+  the press rows, citation backfill of the peraturan rows), which wait on operator presence.
