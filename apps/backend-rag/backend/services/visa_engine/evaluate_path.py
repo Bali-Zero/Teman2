@@ -1271,16 +1271,13 @@ def _apply_minor_privacy_hold(decision: Decision, facts: ApplicantFacts) -> Deci
         rule_ids=("system.privacy.minor-guardian-review",),
         source_refs=(),
     )
-    existing_reasons = (
-        decision.review_reasons if decision.state is DecisionState.HUMAN_REVIEW_REQUIRED else ()
-    )
     payload = decision.model_dump(mode="python")
     payload.update(
         {
             "state": "HUMAN_REVIEW_REQUIRED",
             "candidates": (),
             "missing_facts": (),
-            "review_reasons": (*existing_reasons, reason),
+            "review_reasons": (reason,),
             "no_path_reasons": (),
             "outage": None,
             "quotes": (),
