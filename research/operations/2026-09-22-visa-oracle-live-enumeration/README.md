@@ -6,6 +6,7 @@ sources:
   - prove-live-b4-2-full-sweep-report-20260922.json (252/252 walks, live)
   - prove-live-b52-manifest-raw-main-1c6d2240-20260922.json (post-A6-2, post-B5-2 manifest, 252 walks)
 discovered_by: session (M5), vo-builder-b4-2-report
+adversarial_review: codex
 ---
 
 # Visa Oracle: B4-2 full live-enumeration re-sweep (2026-09-22)
@@ -24,10 +25,14 @@ supersedes nothing for G1.**
 ## Why this re-sweep, and against which manifest
 
 Between B4 (2026-09-21) and this sweep, two PRs changed the engine's inputs without changing
-the manifest's 252 edge-covering labels: **A6-2** rewrote 7 walk payloads to carry seven
-conservative `=unsure` defaults instead of omitted facts (`secondhome_{deposit_usd,own_name,
-passive_income_usd,property_value_usd,state_bank}`, `study_{admission_confirmed,
-sponsor_confirmed}`), and **B5-2** (#7091, merge commit `1c6d2240044dbd8fb691006019d9762ae6ffb041`)
+the manifest's 252 edge-covering labels: **A6-2** rewrote 7 walk payloads' fact values for
+`secondhome_{deposit_usd,own_name,passive_income_usd,property_value_usd,state_bank}`,
+`study_{admission_confirmed,sponsor_confirmed}` — the underlying fact was already present in
+each walk's `asked` list and carried `status: UNKNOWN, reason: UNVERIFIED` before A6-2 (verified
+against the pre-A6-2 manifest: `secondhome.bank_deposit_usd` on
+`edge/secondhome_deposit_usd=unsure`), not an omitted/unasked question; A6-2 replaced that
+`UNKNOWN/UNVERIFIED` status with an explicit conservative `KNOWN` value (`0`/`false`) the engine
+can act on. **B5-2** (#7091, merge commit `1c6d2240044dbd8fb691006019d9762ae6ffb041`)
 made the two enumerator scripts importable libraries with no payload effect of its own. The
 manifest run against here — `prove-live-b52-manifest-raw-main-1c6d2240-20260922.json` — is the
 POST-A6-2, POST-B5-2 emission from that merged head, not the earlier B5-1 anchor: a browser
@@ -51,10 +56,13 @@ today produces exactly these 252 requests, which is what G2 asks.
 | HTTP status | 200/252 = 200 |
 | latency (standard nearest-rank, `sorted_lat[ceil(n·p) − 1]`, n=252) | p50 273 ms · p95 1350 ms · max 4601 ms · min 203 ms |
 
-Manifest coverage (unchanged from B4/B5-1): `edgesRequired == edgesCovered == 317`,
-`edgesMissing == edgesExtra == []`, `bound == PROVEN`, `walksTotalExact == 55234481243760`
-(edge coverage, proven, is a much smaller claim than combinatorial coverage — B4's own Declared
-limits apply here unchanged).
+Manifest edge coverage (unchanged from B4/B5-1): `edgesRequired == edgesCovered == 317`,
+`edgesMissing == edgesExtra == []`, `bound == PROVEN`. **Not unchanged:** `walksTotalExact ==
+55234481243760`, DOWN from B4's `72165845568960` — the combinatorial space shrank because the
+`application_channel` label churn (one new value, two gone, see the comparison table below)
+changes the tree's branching, not because anything was newly excluded. Edge coverage (proven, a
+much smaller claim than combinatorial coverage) is unchanged; the combinatorial total is not —
+B4's own Declared limits on what edge coverage does/does not prove still apply.
 
 ## Verdict distribution (252/252 walks)
 
@@ -137,24 +145,44 @@ unrelated and unexplained (named separately below).
 conductor's record; it did **not** move state (`NO_SUPPORTED_PATH` in both B4 and B4-2) —
 listed here for completeness, not in the moved-rows table above because nothing moved.
 
-All 6 A6-2 rows are the expected effect of the payload change ruled on 2026-09-22T07:24:41Z: a
-conservative `=unsure` default that used to leave the fact unasked (`NEEDS_INPUT`,
-`DISCLOSED_UNCERTAINTY_CONDITION`) now feeds the engine an explicit value the rule pack can act
-on — `SECOND_HOME_BELOW_THRESHOLD_STUDIO` for the two secondhome-value facts,
-`AGE_BELOW_55`/`LEVEL_BAND_DIKTI` for the other four. None of these six is a rule-pack change:
-same sequence 22 both before and after.
+All 6 moved A6-2 rows are the expected effect of the payload change (per the conductor's record
+at 2026-09-22T07:24:41Z in `MANDATE-vo.md`; this timestamp and label are cited from that record,
+not re-derived from the JSONs, since they are provenance metadata rather than counts): a
+conservative default that used to leave the fact `UNKNOWN/UNVERIFIED` (`NEEDS_INPUT`,
+`DISCLOSED_UNCERTAINTY_CONDITION`) now feeds the engine an explicit `KNOWN` value the rule pack
+can act on — **2 of the 6** move to `HUMAN_REVIEW_REQUIRED` via `SECOND_HOME_BELOW_THRESHOLD_STUDIO`
+(`secondhome_deposit_usd`, `secondhome_property_value_usd`), **4 of the 6** move to
+`NO_SUPPORTED_PATH` via `AGE_BELOW_55` (`secondhome_own_name`, `secondhome_state_bank`) or
+`LEVEL_BAND_DIKTI` (`study_admission_confirmed`, `study_sponsor_confirmed`). None of these six is
+a rule-pack change: same sequence 22 both before and after. A6-2 changed 7 payloads in total —
+these 6 plus `secondhome_passive_income_usd`, which did not move (see below) — so "six" above
+refers to the moved subset of A6-2's seven changes, not a different count of what A6-2 touched.
 
 ### Unexplained observation: `review-gate/blacklist`
 
-The one non-A6-2 moved row is not caused by A6-2 (which touches only the six secondhome/study
-labels above) or by B5-2 (a library-import refactor with no payload effect, confirmed by the
-conductor's manifest diff: identical label set, identical `seed`/`edgesRequired`/`edgesCovered`
-against the B5-1 anchor). In B4 (2026-09-21) and in B4-2's own manifest, `review-gate/blacklist`
-carries the same `disclosed_review_flags` payload that made it `HUMAN_REVIEW_REQUIRED` via
-`BRIDGING_ADVERSE_HISTORY` in B4 (see the B4 README's delta finding). In this sweep it returned
-`engine_state=TEMPORARILY_UNAVAILABLE`, HTTP 200, `classification=engine_verdict` (the runner
-parsed a valid decision envelope — this is not a harness-level transport failure:
-`summary.harness_reds == {}`, `retries == 0`, `attempts == 1` for this walk), `rule_pack: null`.
+The one non-A6-2 moved row is not caused by A6-2 (whose 7 payload changes are all under the
+`secondhome_*`/`study_*` labels above — `review-gate/blacklist` is not one of them) or by B5-2
+(a library-import refactor with no payload effect, confirmed by the conductor's manifest diff:
+identical label set, identical `seed`/`edgesRequired`/`edgesCovered` against the B5-1 anchor).
+**Correction against a first draft of this section (caught by adversarial review):** the first
+draft claimed `review-gate/blacklist` "carries the same `disclosed_review_flags` payload" in B4
+and B4-2 — false. The B4 report entry this README's comparison table uses
+(`prove-live-b4-full-sweep-report-20260921.json`, timestamp `2026-09-21T00:41:18Z`, inside the
+resumed leg's own window) predates A3-M's `disclosed_review_flags` mapping: its source manifest
+(the C3 manifest, pre-A3-M) carries no `disclosed_review_flags` for this walk at all. B4 held it
+`HUMAN_REVIEW_REQUIRED` via `BRIDGING_ADVERSE_HISTORY` anyway, because that rule reads
+`immigration.violation_history` (`["BLACKLIST"]` on this walk), independent of the flag — exactly
+as the B4 README's own delta finding states for its separate 3-walk delta re-sweep. B4-2's
+manifest (post-A3-M, since A3-M long predates A6-2/B5-2) DOES carry
+`disclosed_review_flags: ["BLACKLIST_ENTRY"]` on this walk — verified directly in
+`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json` — but that flag plays no role in
+`BRIDGING_ADVERSE_HISTORY` either. So the two reports' payloads are not "the same" (B4's source
+manifest lacked the flag; B4-2's carries it), and neither payload's flag is what explains this
+row's move — `violation_history` is present and identical in kind in both, and is not what
+changed. In this sweep the walk returned `engine_state=TEMPORARILY_UNAVAILABLE`, HTTP 200,
+`classification=engine_verdict` (the runner parsed a valid decision envelope — this is not a
+harness-level transport failure: `summary.harness_reds == {}`, `retries == 0`, `attempts == 1`
+for this walk), `rule_pack: null`.
 `TEMPORARILY_UNAVAILABLE` is a real, documented engine state
 (`backend/services/visa_engine/enums.py:53`, `evaluate_path.py`) used when the engine fails
 closed — an unavailable rule pack or a persistence failure on the ENFORCE path
@@ -189,12 +217,15 @@ pack change* could be responsible for a distribution shift, it is **not a substi
 
 **Proven**: the same committed, rate-limited, resumable live runner posted all 252 edge-covering
 walks of the manifest emitted from `origin/main` post-A6-2/post-B5-2 (`1c6d2240`) to the deployed
-evaluate endpoint, `traffic_source=synthetic_driver`, a constant Fly release (`build_sha`
-identical start/end) and a constant rule pack (sequence 22) across every response that carried
-one, zero harness reds, zero retries, 252/252 HTTP 200. This is G2-b for the 252 requests a
-browser produces today — B4's engine-side findings (G1, the 40 non-criminal
-`HUMAN_REVIEW_REQUIRED` holds owed to A3'/A8-A9) are unchanged and this report does not touch
-them.
+evaluate endpoint, `traffic_source=synthetic_driver`, matching start/end `build_sha` (bounded to
+this run's own window — see Declared limits for what two probes do and do not prove) and a
+constant rule pack (sequence 22) across every response that carried one, zero harness reds, zero
+retries, 252/252 HTTP 200. This is G2-b for the 252 requests the manifest represents — B5-2
+proved the manifest is produced by a top-level library import of the same enumerator a browser
+runs, which is why these are the requests a browser would produce today, not a claim that this
+sweep itself drove a browser. B4's engine-side findings (G1) are not superseded by this report;
+this sweep's own `HUMAN_REVIEW_REQUIRED` count is 42 (41 non-criminal + 1 criminal-by-design),
+not B4's 41 (40 non-criminal + 1) — see Declared limits for the arithmetic.
 
 **Not proven**: same declared scope as B4 — the manifest's edge-covering set (317/317 edges),
 not the full `55,234,481,243,760`-combination space; the UI half (B3, a separate runner against
@@ -207,9 +238,14 @@ observation above is a new, unresolved item this sweep introduces that B4 did no
   coverage, not the UI half (B3).
 - Two health probes with equal `build_sha` bound only that they matched at start and end of
   this window (07:27–07:37Z); they cannot rule out a change-and-revert inside the window.
-- The 42 `HUMAN_REVIEW_REQUIRED` walks are held, not resolved — same G1 status as B4's 41 (net
-  +1 from the six A6-2 conservative-default rows moving in, minus the one `review-gate/blacklist`
-  row moving out to `TEMPORARILY_UNAVAILABLE`, net effect described in the comparison table).
+- The 42 `HUMAN_REVIEW_REQUIRED` walks are held, not resolved — same G1 status as B4's 41. The
+  arithmetic, corrected against a first draft that wrongly attributed the delta to all 6 moved
+  A6-2 rows: only **2** of the 6 A6-2 rows move INTO `HUMAN_REVIEW_REQUIRED`
+  (`secondhome_deposit_usd`, `secondhome_property_value_usd`, via
+  `SECOND_HOME_BELOW_THRESHOLD_STUDIO`); the other 4 move into `NO_SUPPORTED_PATH`. One row
+  (`review-gate/blacklist`) moves OUT to `TEMPORARILY_UNAVAILABLE`. `41 + 2 − 1 = 42`. Of the 42,
+  1 is `DISCLOSED_CRIMINAL_RECORD_REVIEW` (criminal-by-design, same as B4) and **41** are
+  non-criminal holds owed to A3'/A8-A9 — not B4's 40; B4's 40 describes B4's own sweep only.
 - `review-gate/blacklist`'s `TEMPORARILY_UNAVAILABLE` result is reported, not explained — see
   Unexplained observation above.
 - No client data: both JSON files carry synthetic personas only (`traffic_source
@@ -224,8 +260,11 @@ observation above is a new, unresolved item this sweep introduces that B4 did no
 ## Files
 
 - `prove-live-b4-2-full-sweep-report-20260922.json` — the 252-walk report (this README's
-  primary source), sha256 `20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e`
-  (the B3 v3 U9 source-report anchor).
+  primary source), sha256 `20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e`,
+  printed by the `sha256sum` command below. The "B3 v3 U9 source-report anchor" designation is
+  the ratified `### Slice B3 v3` text in `MANDATE-vo.md` naming THIS report as that anchor — a
+  provenance label from the mandate record, not a value derivable from the JSON itself; the
+  hash next to it is independently computed here, not copied from that record.
 - `prove-live-b52-manifest-raw-main-1c6d2240-20260922.json` — the manifest the sweep ran
   against (post-A6-2, post-B5-2, emitted from merge commit `1c6d2240`, 252 walks,
   `sha256 9de8c1bf…708d` per the conductor's record).
@@ -254,6 +293,16 @@ print("gone from B4:", sorted(set(b4_walks) - set(b42_walks)))
 dist = Counter(w["engine_state"] for w in b42["walks"])
 print("verdicts:", dict(dist))
 
+review_reasons, no_path_reasons, notices = Counter(), Counter(), Counter()
+for w in b42["walks"]:
+    rc = w["reason_codes"]
+    review_reasons.update(rc.get("review_reasons", []))
+    no_path_reasons.update(rc.get("no_path_reasons", []))
+    notices.update(rc.get("notices", []))
+print("review_reasons:", dict(review_reasons), "sum:", sum(review_reasons.values()))
+print("no_path_reasons:", dict(no_path_reasons), "sum:", sum(no_path_reasons.values()))
+print("notices:", dict(notices), "sum:", sum(notices.values()))
+
 lat = sorted(w["latency_ms"] for w in b42["walks"])
 n = len(lat)
 p = lambda pct: lat[math.ceil(n * pct) - 1]
@@ -275,3 +324,70 @@ PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.enumerate_live \
   --report /tmp/reproduce-b4-2-report.json \
   --max-requests 252 --rate-per-minute 25
 ```
+
+## Adversarial review
+
+Seat: **codex** (`gpt-6-astra`, read-only sandbox, xhigh effort), reviewing the committed README
+against the two JSON files directly (not a git diff against `main`, which in this worktree pulls
+in ~483 unrelated files from other merged slices and would have wasted the reviewer's budget on
+noise instead of this artefact). Generator ≠ grader: the session that wrote this report cannot
+certify it.
+
+Verdict: **MEDIUM**. Raised 8 findings against the first-committed draft; all 8 disposed of in
+this text (1 MEDIUM confirmed and fixed, 5 LOW confirmed and fixed, 2 notes on provenance
+sourcing addressed by clarification rather than correction, since the underlying facts were
+already accurately labelled as coming from the mandate record):
+
+1. **MEDIUM — wrong blacklist-payload claim, confirmed and fixed.** A first draft said
+   `review-gate/blacklist` "carries the same `disclosed_review_flags` payload" in B4 and B4-2.
+   False: B4's report entry (used in the comparison table) comes from a run against the pre-A3-M
+   C3 manifest, which carries no `disclosed_review_flags` for this walk at all; only the
+   post-A3-M re-emitted manifest (used for B4's separate 3-walk delta sweep) and B4-2's manifest
+   carry the flag. `BRIDGING_ADVERSE_HISTORY` reads `immigration.violation_history`, not the
+   flag, in both. Corrected in "Unexplained observation" above with the verified facts.
+2. **LOW — "omitted facts" misdescribed A6-2's inputs, confirmed and fixed.** The seven old
+   facts were present in each walk's `asked` list with `status: UNKNOWN, reason: UNVERIFIED`,
+   not unasked/omitted. A6-2 replaced that status with an explicit `KNOWN` value. Corrected in
+   "Why this re-sweep" above, verified against the pre-A6-2 manifest directly.
+3. **LOW — apparent six-vs-seven contradiction, confirmed and fixed.** "A6-2 touches only the
+   six secondhome/study labels" read as contradicting "A6-2 rewrote 7 walk payloads" elsewhere.
+   Both were true (6 moved, 1 — `secondhome_passive_income_usd` — did not) but the wording did
+   not say so at the point of first mention. Reworded above to state the 6-of-7 relationship
+   explicitly at both mentions.
+4. **LOW — combinatorial coverage wrongly called "unchanged", confirmed and fixed.**
+   `walksTotalExact` moved from B4's `72,165,845,568,960` to B4-2's `55,234,481,243,760` (the
+   `application_channel` label churn changes the tree's branching); only edge coverage
+   (317/317, `PROVEN`) is unchanged. Corrected in "Run facts" above.
+5. **LOW — review-count arithmetic wrong, confirmed and fixed.** A first draft attributed the
+   41→42 `HUMAN_REVIEW_REQUIRED` delta to "the six A6-2 rows moving in" — wrong: only 2 of the 6
+   move into `HUMAN_REVIEW_REQUIRED` (the other 4 move into `NO_SUPPORTED_PATH`), and one row
+   (`review-gate/blacklist`) moves OUT. Correct arithmetic `41 + 2 − 1 = 42`; of the 42, 41 are
+   non-criminal holds (not B4's 40 — that number describes B4's own sweep). Corrected in "Proven"
+   and "Declared limits" above.
+6. **LOW — live-proof language overstated what two health probes and a manifest prove,
+   confirmed and fixed.** "A constant Fly release" and "a browser produces today" read as this
+   sweep itself having exercised a browser and having proven release stability beyond its own
+   window. Reworded: release-constancy is bounded to this run's window (unchanged from the
+   Declared limits already stated); "a browser would produce these requests today" is B5-2's
+   proof (top-level library import of the same enumerator), not a claim this sweep drove one.
+7. **LOW — reproduction script incomplete, confirmed and fixed.** The embedded Python computed
+   verdicts, latency, and the label/moved-row comparison, but never computed
+   `review_reasons`/`no_path_reasons`/`notices` despite the README presenting tables for all
+   three. Added the missing Counter block; re-run against the committed JSONs, output matches
+   the README's tables exactly (48/43/59 tag sums).
+8. **Provenance sourcing, addressed by clarification.** The exact ruling timestamp
+   (`2026-09-22T07:24:41Z`) and the "B3 v3 U9" anchor designation are not derivable from the two
+   JSON files — they are identifiers from the conductor's `MANDATE-vo.md` record. This was
+   already true and not misleading (the assigning mandate requires NUMBERS to be re-derived from
+   the JSONs, never transcribed; a ruling timestamp and a slice-anchor label are provenance
+   metadata, not counts) — added one sentence at each mention naming the source explicitly
+   rather than leaving it implicit.
+
+Not raised by the reviewer and independently confirmed: the verdict distribution
+(172/42/31/6/1), every `review_reasons`/`no_path_reasons`/notices tag count (48/43/59), the
+251-shared-label set (1 new, 2 gone), all 7 moved rows' states and reason codes, the
+`review-gate/blacklist` "unexplained" framing itself (codex: "no simpler cause is established by
+these records, and attributing it to A6-2/B5-2 would be unsupported"), latency p50/p95/max/min
+via standard nearest-rank, the `grep -c process.application_channel` == 0 result over every
+existing 020/021/022 pack file, and the PII digit-run accounting (81 lines, all 4 categories).
+

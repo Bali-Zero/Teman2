@@ -1,0 +1,179 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/brief.yml
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (this is a docs-only data-capture PR, not a multi-seat build). The review side
+  is cross-family: a real codex (gpt-6-astra, xhigh, read-only sandbox) adversarial review ran
+  directly against the committed README and the two evidence JSONs (not a git-diff-against-main
+  dispatch, which in this worktree pulls in ~483 unrelated files from other merged slices and
+  would have wasted the reviewer's budget on noise) and is the substance of this pack's dissent
+  below — not a formality. D3's build-lane floor does not fire (single lane, no code).
+seat_override: >-
+  R9's Gear-3 council_run quorum (>=2 distinct COUNCIL_REVIEW_SEATS) does not apply cleanly here:
+  this PR ships ZERO code and zero logic — the Gear-3 floor is driven entirely by the byte size
+  of two verbatim-emitted evidence JSON files (research/operations/**, not hot-zone), not by
+  review-worthy build complexity. One genuine cross-family adversarial review ran (codex
+  gpt-6-astra, xhigh, read-only) against the actual content (every number and every claim in the
+  README), raised 8 findings, all 8 disposed of (1 MEDIUM + 5 LOW confirmed and fixed, 2
+  provenance-sourcing notes addressed by clarification) — a real generator!=grader pass on the
+  artefact that matters, even though it is one seat rather than a 2-seat council. Declared here
+  for the gate to accept or reject, not silently bypassed. Same reasoning as B4's own pack
+  (evidence/2026-09/agent-air-m5-docs-vo-b4-report-159eeeba/pack.yml), which this PR's own task
+  supersedes for G2.
+plan_ref: >-
+  MANDATE-vo.md's ratified "### Slice B4-2 (delta)" section: "the FULL 252-walk re-sweep, not a
+  delta" — research/operations/2026-09-22-visa-oracle-live-enumeration/**. This PR is that
+  artefact.
+lanes:
+  - lane: vo-b4-2-report-build
+    role: build
+    seat: "vo-builder-b4-2-report (Sonnet 5)"
+  - lane: vo-b4-2-report-review
+    role: review
+    seat:
+      "codex (gpt-6-astra, xhigh, read-only sandbox) — every claim in the README verified
+      independently against the two JSON files and the repo directly, not graded from the text
+      alone; 8 findings raised, all disposed of in the committed README"
+diff:
+  files: 5
+  net_lines: '5 files, +68759/-0 (evidence/brief.yml +113, evidence/pack.yml +179, research/operations/2026-09-22-visa-oracle-live-enumeration/{README.md +393, prove-live-b4-2-full-sweep-report-20260922.json +11932, prove-live-b52-manifest-raw-main-1c6d2240-20260922.json +56142}) — from `git diff --numstat "$(git merge-base origin/main HEAD)"`, re-verified against the pushed head in the PR body''s Size section.'
+  behaviour_change: >-
+    None. This diff adds a README and two evidence JSON files under research/operations/, plus
+    this evidence pack and brief, and ships no code into any deployed artifact. Nothing here is
+    imported, executed, or served by any running process.
+receipts:
+  - claim: >-
+      Every number/table in the README (verdict distribution, review_reasons, no_path_reasons,
+      notices, the 251-shared-label comparison, latency p50/p95/max/min) is re-derived directly
+      from the walks[] arrays of the two committed JSONs using the STANDARD nearest-rank
+      percentile definition, not copied from the conductor's mandate log.
+    cmd: >-
+      python3 - (self-contained script, pasted in the PR body's Number derivation section and in
+      README.md's own Reproduction section, re-run after the adversarial-review fixes)
+    result: >-
+      B4 253 / B4-2 252 / shared 251; new ['edge/application_channel=OFFSHORE']; gone
+      ['edge/application_channel=ONSHORE_CONVERSION', 'edge/wants_onshore_conversion=no'];
+      verdicts {SUPPORTED_CANDIDATES: 172, NEEDS_INPUT: 6, NO_SUPPORTED_PATH: 31,
+      HUMAN_REVIEW_REQUIRED: 42, TEMPORARILY_UNAVAILABLE: 1}; review_reasons sum 48;
+      no_path_reasons sum 43; notices sum 59; p50/p95/max/min 273/1350/4601/203ms; 7 moved rows
+    ts: "2026-09-22 (builder, M5; independently re-run by the codex reviewer)"
+    seat: "vo-builder-b4-2-report (Sonnet 5); codex (gpt-6-astra)"
+    exit: 0
+  - claim: >-
+      scripts/check_adversarial_review.py PASSes on the final README (R1 gate) after the
+      adversarial-review fixes were folded in.
+    cmd: "python3 scripts/check_adversarial_review.py --files research/operations/2026-09-22-visa-oracle-live-enumeration/README.md"
+    result: "PASS — 1 research file(s) carry a valid adversarial review"
+    ts: "2026-09-22 (builder, M5)"
+    seat: "vo-builder-b4-2-report (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      Gear 3 is by SIZE, recomputed from the real numstat, not asserted: the path term does not
+      fire (research/operations/** is not hot-zone).
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <cf> --numstat-file <ns>"
+    result: "(3, size)"
+    ts: "2026-09-22 (builder, M5)"
+    seat: "vo-builder-b4-2-report (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      The `grep -c process.application_channel` context fence returns 0 on every existing
+      020/021/022 pack file (020.signed/020.source/021.source/022.signed/022.source;
+      021.signed does not exist).
+    cmd: >-
+      grep -c "process.application_channel"
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-020.*.json
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-021.*.json
+      apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-022.*.json
+    result: "0 on all five existing files"
+    ts: "2026-09-22 (builder, M5)"
+    seat: "vo-builder-b4-2-report (Sonnet 5)"
+    exit: 0
+tests:
+  - "None. This diff adds a README and JSON data files and changes no code path, so there is
+    nothing to unit-test. The assertions that matter are the receipts above."
+static:
+  - "PII sweep over the two JSON files: no email address, no key named
+    email/phone/passport/npwp/ktp/nik; a bare 10+-digit run returns 81 lines: 72 are the round
+    threshold constant 1000000000 (investment/secondhome value fields), 3 are the enumeration
+    edge label edge/investment_amount_usd=1000000000 (2 under walk_id, 1 under label), 1 is the
+    manifest's own walksTotalExact, and 5 are uuid5-derived assessment_id values (each appearing
+    once) — never an applicant-shaped number. Independently re-verified by the codex reviewer
+    (79 manifest lines + 2 report lines = 81, same breakdown)."
+runtime_proof: >-
+  None applicable and none claimed — no code ships. The nearest thing to a prove-live is the
+  live sweep the JSON files themselves already record (against nuzantara-rag.fly.dev, build
+  514151cb7f4a5f26c20b0fbb767ce4bcc96a4bab) — that proves something about the SUBJECT of the
+  report, not about this diff.
+dissent:
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      MEDIUM — a first draft claimed review-gate/blacklist "carries the same
+      disclosed_review_flags payload" in B4 and B4-2. False: B4's report entry (used in the
+      comparison table) comes from a run against the pre-A3-M C3 manifest, which carries no
+      disclosed_review_flags for this walk at all; BRIDGING_ADVERSE_HISTORY reads
+      immigration.violation_history, not the flag, in both reports.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — "unasked/omitted facts" misdescribed A6-2's seven changed inputs: the old facts were
+      present in each walk's asked list with status UNKNOWN/UNVERIFIED, not NOT_ASKED. A6-2
+      replaced that status with an explicit KNOWN value.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — apparent contradiction between "A6-2 touches only the six secondhome/study labels"
+      and "A6-2 rewrote 7 walk payloads" elsewhere in the same README.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — "Manifest coverage (unchanged from B4/B5-1)" wrongly implied walksTotalExact was
+      unchanged; it moved from 72,165,845,568,960 (B4) to 55,234,481,243,760 (B4-2). Only edge
+      coverage (317/317, PROVEN) is actually unchanged.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — the 41->42 HUMAN_REVIEW_REQUIRED arithmetic was wrong: a draft attributed the delta
+      to "the six A6-2 rows moving in", but only 2 of 6 move INTO HUMAN_REVIEW_REQUIRED (the
+      other 4 move into NO_SUPPORTED_PATH), and one row (review-gate/blacklist) moves OUT.
+      Correct arithmetic 41 + 2 - 1 = 42; of the 42, 41 are non-criminal (not B4's 40, which
+      describes B4's own sweep).
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — "a constant Fly release" and "a browser produces today" overstated what two health
+      probes (bounded to this run's own window) and the manifest (proven browser-shaped by B5-2,
+      not exercised live by this sweep) actually establish.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      LOW — the embedded reproduction script computed verdicts/latency/comparison but never
+      computed review_reasons/no_path_reasons/notices despite the README presenting tables for
+      all three.
+    status: CONFIRMED
+  - seat: "codex (gpt-6-astra)"
+    objection: >-
+      The precise ruling timestamp and the "B3 v3 U9" anchor designation are not derivable from
+      the two JSON files — they are provenance labels from the conductor's mandate record.
+    status: PLAUSIBLE
+residual_risks:
+  - "All 8 dissent items were disposed of in this same PR (depth-1, no fix-of-a-fix needed) —
+    none is an open residual risk in the shipped README. Listed as dissent because that is what
+    actually happened to the first draft, not because anything remains wrong."
+  - "This pack declares seat_override on R9 (2-seat council quorum) rather than satisfying it,
+    for the reason stated in seat_override above. If the gate judges a single cross-family
+    review insufficient for a data-capture PR at this size, that is exactly the call
+    seat_override exists to surface rather than silently pass or silently fail."
+  - "review-gate/blacklist's TEMPORARILY_UNAVAILABLE result is an OPEN, unresolved observation
+    of this diff's own subject matter (the live sweep), not a residual risk of the diff itself —
+    it is named in the README's own dedicated section and is not smoothed over. The codex
+    reviewer independently confirmed no simpler cause is established by the records and that
+    attributing it to A6-2/B5-2 would be unsupported."
+sources:
+  - "research/operations/2026-09-22-visa-oracle-live-enumeration/ — this PR's own artefact"
+  - "MANDATE-vo.md's ratified Slice B4-2 section and the 2026-09-22T07:2x-07:3xZ conductor
+    records — what this report answers to"
+  - "~/logs/codex-spalla/20260922T154800Z-vo-b4-2-direct-review-of-committed-README-and-JSONs.md
+    — the full adversarial review transcript (direct codex exec, not the codex-spalla.sh
+    wrapper, whose git-diff-against-main dispatch failed on this worktree — see PR body)"
+pii_scan: clean
