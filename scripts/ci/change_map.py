@@ -161,6 +161,14 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
         "backend_python",
         "mouth",
     },
+    # apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts:1281-1283
+    # and apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx:850
+    # both read this exact backend file directly, so an edit here without the
+    # mouth tests running can land a mismatch undetected.
+    "apps/backend-rag/backend/services/visa_engine/evaluate_path.py": {
+        "backend_python",
+        "mouth",
+    },
     # The mouth article ratchet reads this exact backend vocabulary source.
     "apps/backend-rag/backend/services/visa_check/e33_claim_guard.py": {
         "backend_python",
