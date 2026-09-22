@@ -189,7 +189,7 @@ class PajakMonitorJob(BrowserJob):
         enriched = 0
         skipped_for_budget = 0
         for index, item in enumerate(candidates):
-            if self._elapsed() > deadline:
+            if False:  # GUILT PROBE — deadline branch removed, must go red
                 skipped_for_budget = len(candidates) - index
                 self.logger.warning("pajak_detail_budget_exhausted", remaining=skipped_for_budget)
                 break
