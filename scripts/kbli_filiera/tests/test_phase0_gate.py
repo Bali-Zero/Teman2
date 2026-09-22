@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -231,28 +232,75 @@ def test_aql_rule_and_frozen_seed_lists(gate_env):
 # frozen seed lists (§1.5): freeze-the-sample, not a count (2026-09-23 cure)
 # ---------------------------------------------------------------------------
 
+def _derive_tiers(canonical: dict) -> tuple[list[str], list[str]]:
+    """The §1.3 tier1/tier2 predicates, re-derived here independently of
+    phase0_gate so the frozen file is judged by a second implementation."""
+    pop = [r for r in canonical["data"] if r.get("_l2_source") == "OSS_RBA_resiko_2025"]
+    tier1 = sorted(r["kode_kbli_2025"] for r in pop
+                   if r.get("status_mapping") == "MATCH_CON_AGGREGAZIONE" and len(r.get("pp28_sources") or []) == 1)
+    tier2 = sorted(r["kode_kbli_2025"] for r in pop
+                   if r.get("status_mapping") == "MATCH_LANGSUNG"
+                   and (r.get("pp28_sources") or [None])[0] not in (None, r["kode_kbli_2025"]))
+    return tier1, tier2
+
+
+def _canonical_at_vintage(frozen: dict):
+    """The canonical blob as of the frozen file's own `canonical_source_commit`,
+    or None when that object is not in this checkout (CI checks out at depth 1).
+    Returns (payload, sha256_of_blob)."""
+    commit = frozen["canonical_source_commit"]
+    path = frozen["canonical_path"]
+    repo = Path(gate.__file__).resolve().parents[2]
+    probe = subprocess.run(["git", "cat-file", "-e", f"{commit}:{path}"], cwd=repo, capture_output=True)
+    if probe.returncode != 0:
+        return None
+    blob = subprocess.run(["git", "cat-file", "blob", f"{commit}:{path}"], cwd=repo, capture_output=True, check=True).stdout
+    return json.loads(blob.decode("utf-8")), hashlib.sha256(blob).hexdigest()
+
+
 @pytest.mark.skipif(not gate.CANONICAL_PATH.exists(), reason="canonical not present")
-def test_frozen_seed_lists_pin_matches_live_derivation():
-    """The frozen file is a PIN, never hand-typed: its two lists must equal
-    what the §1.3 predicates derive from the REAL canonical right now (this
-    worktree is fresh from origin/main), and must carry the matching sha256."""
+def test_frozen_seed_lists_are_derived_and_still_valid():
+    """Two claims the pre-#7156 test conflated into one equality.
+
+    PROVENANCE — the lists were DERIVED, never hand-typed: they equal what the
+    §1.3 predicates yield from the canonical at the file's own
+    `canonical_source_commit`, whose blob hashes to the recorded
+    `canonical_sha256`. Exact, and checked wherever that object is reachable.
+
+    LIVE INVARIANT — always checked, and it is a SUBSET, not an equality: §1.5
+    freezes a closed sample, so a later cure sourcing a new code into the
+    predicate is legitimate growth (cmd_aql records it as a
+    post_registration_candidate and never folds it in). What may never happen
+    is a frozen unit leaving the predicate or vanishing from the canonical —
+    cmd_aql's FATAL, mirrored here. Asserting equality against the LIVE
+    canonical would re-impose the very re-derivation the freeze exists to
+    forbid, and would turn every future adoption into a red test."""
     frozen = json.loads(gate.FROZEN_SEED_LISTS_PATH.read_text(encoding="utf-8"))
     assert frozen["tier1"]["count"] == 46
     assert frozen["tier2"]["count"] == 16
     assert len(frozen["tier1"]["codes"]) == 46
     assert len(frozen["tier2"]["codes"]) == 16
+    assert frozen["tier1"]["codes"] == sorted(frozen["tier1"]["codes"])
+    assert frozen["tier2"]["codes"] == sorted(frozen["tier2"]["codes"])
+    assert not set(frozen["tier1"]["codes"]) & set(frozen["tier2"]["codes"])
 
-    canonical = json.loads(gate.CANONICAL_PATH.read_text(encoding="utf-8"))
-    records = canonical["data"]
-    pop = [r for r in records if r.get("_l2_source") == "OSS_RBA_resiko_2025"]
-    live_tier1 = sorted(r["kode_kbli_2025"] for r in pop
-                         if r.get("status_mapping") == "MATCH_CON_AGGREGAZIONE" and len(r.get("pp28_sources") or []) == 1)
-    live_tier2 = sorted(r["kode_kbli_2025"] for r in pop
-                         if r.get("status_mapping") == "MATCH_LANGSUNG"
-                         and (r.get("pp28_sources") or [None])[0] not in (None, r["kode_kbli_2025"]))
-    assert frozen["tier1"]["codes"] == live_tier1
-    assert frozen["tier2"]["codes"] == live_tier2
-    assert frozen["canonical_sha256"] == gate.sha256_file(gate.CANONICAL_PATH)
+    live_tier1, live_tier2 = _derive_tiers(json.loads(gate.CANONICAL_PATH.read_text(encoding="utf-8")))
+    assert set(frozen["tier1"]["codes"]) <= set(live_tier1), (
+        "frozen tier1 code(s) left the predicate or vanished: "
+        f"{sorted(set(frozen['tier1']['codes']) - set(live_tier1))}")
+    assert set(frozen["tier2"]["codes"]) <= set(live_tier2), (
+        "frozen tier2 code(s) left the predicate or vanished: "
+        f"{sorted(set(frozen['tier2']['codes']) - set(live_tier2))}")
+
+    vintage = _canonical_at_vintage(frozen)
+    if vintage is None:
+        pytest.skip(f"vintage blob {frozen['canonical_source_commit'][:10]} not in this checkout "
+                    "(shallow clone) — the subset invariant above still ran")
+    payload, blob_sha = vintage
+    vintage_tier1, vintage_tier2 = _derive_tiers(payload)
+    assert frozen["tier1"]["codes"] == vintage_tier1
+    assert frozen["tier2"]["codes"] == vintage_tier2
+    assert frozen["canonical_sha256"] == blob_sha
 
 
 def _frozen_lists():
