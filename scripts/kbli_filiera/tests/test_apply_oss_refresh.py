@@ -274,6 +274,16 @@ class TestCouncilRound:
     """One guilt test per finding of the 2026-09-23 council (Codex F1-F4,
     Kimi F1/F2/F3/F6). Each fails on the code as it stood before its fix."""
 
+    @pytest.fixture(autouse=True)
+    def _never_touch_the_real_consumers(self, monkeypatch):
+        """No test in this class may reach the real sync_kbli_dataset.sh. On the
+        cured code these are all refusal paths that never reach propagate(), but
+        a mutant that removes the guard under test turns them into --apply runs
+        against the live canonical's consumers. Tests that need propagate to
+        behave differently override this with their own setattr, which lands
+        after the fixture."""
+        monkeypatch.setattr(cure, "propagate", lambda: None)
+
     def _build(self, tmp_path, *, spec=None, adj=None, records=None):
         rec, l2rec = _base_record(), _l2_record()
         q_entry, l2_entry = _spec_entry(rec), _l2_spec_entry(l2rec)
@@ -337,22 +347,41 @@ class TestCouncilRound:
 
     def test_quarantined_record_relabelled_as_l2_transform_refuses(self, tmp_path, capsys):
         """Relabelling a quarantined code as l2_transform used to walk past the
-        adjudication gate entirely and, through drop_keys, delete the disputed
-        block — with no adjudication entry for the code at all."""
+        adjudication gate entirely, with no adjudication entry for the code at all.
+
+        The entry below is a COMPLETE, internally consistent l2_transform entry —
+        every premise present, the rows hashing to their own pin, nothing in
+        `set`/`drop_keys` outside this compiler's writable fields. That is the
+        point: remove the route-admissibility guard and this run SUCCEEDS. If the
+        entry were left incomplete, the row-pin guard would do the refusing and
+        this test would pass for a reason that has nothing to do with F2."""
+        rec = _base_record()
+
         def spec(q_entry, l2_entry):
             q_entry.update(
                 route="l2_transform",
-                premises={"_l2_source": {"old_sha256": H.sha256_of(None),
-                                          "new_sha256": H.sha256_of(coverage.OSS_2025_SOURCE)}},
-                per_skala=q_entry["oss_rows"],
+                premises={
+                    "per_skala": {"old_sha256": H.sha256_of(rec["per_skala"]),
+                                   "new_sha256": H.sha256_of(q_entry["oss_rows"])},
+                    "_l2_source": {"old_sha256": H.sha256_of(rec.get("_l2_source")),
+                                    "new_sha256": H.sha256_of(coverage.OSS_2025_SOURCE)},
+                    "_l2_status": {"old_sha256": H.sha256_of(rec.get("_l2_status")),
+                                    "new_sha256": H.sha256_of(None)},
+                },
+                per_skala=copy.deepcopy(q_entry["oss_rows"]),
                 set={"_l2_source": coverage.OSS_2025_SOURCE},
-                drop_keys=["_l2_status", DISPUTED_KEY],
+                drop_keys=["_l2_status"],
             )
             return _spec_doc((CODE, q_entry), (L2_CODE, l2_entry))
 
         paths = self._build(tmp_path, spec=spec, adj=lambda q: _adjudication_doc())
+        dataset_path = paths[2]
+        before = dataset_path.read_text(encoding="utf-8")
         assert self._run(paths, "--apply") == 2
-        assert "quarantine_owner" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "quarantine_owner" in out
+        assert DISPUTED_KEY in out, "the refusal must name the disputed key it found on the record"
+        assert dataset_path.read_text(encoding="utf-8") == before
 
     def test_drop_keys_naming_the_disputed_block_refuses(self, tmp_path, capsys):
         """The disputed block is the audit trail; no route may drop it."""
