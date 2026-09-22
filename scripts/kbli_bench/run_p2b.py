@@ -47,6 +47,25 @@ def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def repo_relative(p: Path) -> str:
+    """p relative to the git toplevel, falling back to p as given.
+
+    A manifest that records an absolute worktree path (e.g.
+    /Users/<account>/nuzantara/.worktrees/<lane>/scripts/...) carries the host
+    account name into a committed artifact for no reason a reader of the manifest
+    can use — the repo-relative path identifies the same file without it.
+    """
+    resolved = p.resolve()
+    try:
+        toplevel = Path(subprocess.run(
+            ["git", "-C", str(resolved.parent), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()).resolve()
+        return str(resolved.relative_to(toplevel))
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        return str(p)
+
+
 def sanitized_codex_home(dest: Path) -> tuple[Path, str]:
     """A private CODEX_HOME whose config the installed codex can actually parse.
 
@@ -192,8 +211,8 @@ def main() -> int:
         "started_utc": started,
         "finished_utc": datetime.now(timezone.utc).isoformat(),
         "elapsed_s": round(time.time() - t0, 1),
-        "corpus": {"path": str(args.corpus), "sha256": sha256_file(args.corpus)},
-        "answers": {"path": str(args.answers), "sha256": sha256_file(args.answers)},
+        "corpus": {"path": repo_relative(args.corpus), "sha256": sha256_file(args.corpus)},
+        "answers": {"path": repo_relative(args.answers), "sha256": sha256_file(args.answers)},
         "dataset": report.get("dataset"),
         "judge": {
             "model": args.model,

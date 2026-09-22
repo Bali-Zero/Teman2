@@ -3,7 +3,7 @@
   "finished_utc": "2026-09-22T13:56:58.935686+00:00",
   "elapsed_s": 254.3,
   "corpus": {
-    "path": "/Users/nuzantara/nuzantara/.worktrees/backend-rag-chat-p2b-cures-20260922/scripts/kbli_bench/p2b_corpus.json",
+    "path": "scripts/kbli_bench/p2b_corpus.json",
     "sha256": "487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7"
   },
   "answers": {
