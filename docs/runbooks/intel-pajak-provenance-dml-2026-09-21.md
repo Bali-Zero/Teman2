@@ -1,7 +1,8 @@
 # intel_items pajak provenance — DML (drafted 2026-09-21, EXECUTED 2026-09-22)
 
-> **EXECUTED on PROD on 2026-09-22, authorized by the owner.** Both statements ran exactly as
-> written below. Each ran first as a rehearsal with its final `COMMIT` replaced by `ROLLBACK`,
+> **EXECUTED on PROD on 2026-09-22, authorized by the owner.** Statement (a) ran exactly as
+> written below. Statement (b) ran with 18 per-row UPDATEs; one is shown, the other 17 are
+> summarised in a table. Each ran first as a rehearsal with its final `COMMIT` replaced by `ROLLBACK`,
 > and all in-transaction assertions passed. The channel was `fly ssh console -a nuzantara-rag`,
 > running `python3 -` from stdin, with the SQL executed through asyncpg on the app's
 > `DATABASE_URL`.
@@ -288,184 +289,13 @@ SET raw_payload = raw_payload || jsonb_build_object(
 WHERE canonical_url = 'https://pajak.go.id/id/peraturan/kebijakan-administrasi-perpajakan-sehubungan-dengan-bencana-alam-di-wilayah-provinsi-nusa'
   AND NOT (raw_payload ? 'citation');
 
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT1$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 20/MK/EF.2/2026$CIT1$,
-      'verbatim_excerpt', $EXC1$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 20/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 6 MEI 2026 SAMPAI DENGAN 12 MEI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC1$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-05-05T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1476'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT2$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 21/MK/EF.2/2026$CIT2$,
-      'verbatim_excerpt', $EXC2$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 21/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 13 MEI 2026 SAMPAI DENGAN 19 MEI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC2$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-05-12T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1477'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT3$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 22/MK/EF.2/2026$CIT3$,
-      'verbatim_excerpt', $EXC3$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 22/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 20 MEI 2026 SAMPAI DENGAN 26 MEI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC3$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-05-19T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1478'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT4$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 28/MK/EF.2/2026$CIT4$,
-      'verbatim_excerpt', $EXC4$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 28/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 24 JUNI 2026 SAMPAI DENGAN 30 JUNI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC4$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-06-24T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1480'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT5$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 26/MK/EF.2/2026$CIT5$,
-      'verbatim_excerpt', $EXC5$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 26/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 10 JUNI 2026 SAMPAI DENGAN 16 JUNI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC5$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-06-09T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1482'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT6$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 27/MK/EF.2/2026$CIT6$,
-      'verbatim_excerpt', $EXC6$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 27/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 17 JUNI 2026 SAMPAI DENGAN 23 JUNI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC6$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-06-16T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1483'
-  AND NOT (raw_payload ? 'citation');
-
--- d41d251b-bd69-4df0-b122-606fb015ae7a (.../-1484) — SKIPPED, extraction failed
--- (nomor "30/MK/EF.2/2026" not found literally in the body heading). Left
--- untouched.
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT8$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 31/MK/EF.2/2026$CIT8$,
-      'verbatim_excerpt', $EXC8$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 31/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 8 JULI 2026 SAMPAI DENGAN 14 JULI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC8$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-07-07T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1485'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT9$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 33/MK/EF.2/2026$CIT9$,
-      'verbatim_excerpt', $EXC9$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 33/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 22 JULI 2026 SAMPAI DENGAN 28 JULI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC9$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-07-21T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1486'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT10$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 34/MK/EF.2/2026$CIT10$,
-      'verbatim_excerpt', $EXC10$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 34/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 29 JULI 2026 SAMPAI DENGAN 4 AGUSTUS 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC10$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-07-28T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1487'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT11$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 41/MK/EF.2/2026$CIT11$,
-      'verbatim_excerpt', $EXC11$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 41/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 2 SEPTEMBER 2026 SAMPAI DENGAN 8 SEPTEMBER 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC11$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-09-01T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1488'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT12$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 38/MK/EF.2/2026$CIT12$,
-      'verbatim_excerpt', $EXC12$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 38/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 19 AGUSTUS 2026 SAMPAI DENGAN 25 AGUSTUS 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC12$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-08-18T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1492'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT13$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 39/MK/EF.2/2026$CIT13$,
-      'verbatim_excerpt', $EXC13$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 39/MK/EF.2/2026 TENTANG NILAI KURS SEBAGAI DASAR PELUNASAN BEA MASUK, PAJAK PERTAMBAHAN NILAI BARANG DAN JASA DAN PAJAK PENJUALAN ATAS BARANG MEWAH, BEA KELUAR, DAN PAJAK PENGHASILAN YANG BERLAKU UNTUK TANGGAL 26 AGUSTUS 2026 SAMPAI DENGAN 1 SEPTEMBER 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC13$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-08-25T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1493'
-  AND NOT (raw_payload ? 'citation');
-
--- 046a7fc4-305f-44d8-b74c-90dc9d497cfa (.../pajak-pertambahan-nilai-atas-penyerahan-jasa-angkutan-udara-...)
--- SKIPPED, extraction failed (nomor field "PMK 43 TAHUN 2026" vs. body's
--- literal "NOMOR 43 TAHUN 2026" — no "PMK" token in the body heading).
--- Left untouched.
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT15$NOMOR PER-8/PJ/2026$CIT15$,
-      'verbatim_excerpt', $EXC15$NOMOR PER-8/PJ/2026 TENTANG PERUBAHAN ATAS PERATURAN DIREKTUR JENDERAL PAJAK NOMOR PER-10/PJ/2024 TENTANG KETENTUAN PEMBAYARAN DAN PENYETORAN PAJAK SERTA PENGEMBALIAN KELEBIHAN PEMBAYARAN PAJAK DALAM RANGKA PELAKSANAAN SISTEM INTI ADMINISTRASI PERPAJAKAN DIREKTUR JENDERAL PAJAK,$EXC15$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-07-28T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/perubahan-atas-peraturan-direktur-jenderal-pajak-nomor-10pj2024-tentang-ketentuan'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT16$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 019/MK/EF.2/2026$CIT16$,
-      'verbatim_excerpt', $EXC16$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 019/MK/EF.2/2026 TENTANG TARIF BUNGA SEBAGAI DASAR PENGHITUNGAN SANKSI ADMINISTRATIF BERUPA BUNGA DAN PEMBERIAN IMBALAN BUNGA PERIODE 1 MEI 2026 SAMPAI DENGAN 31 MEI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC16$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-04-30T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-54'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT17$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 29/MK/EF.2/2026$CIT17$,
-      'verbatim_excerpt', $EXC17$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 29/MK/EF.2/2026 TENTANG TARIF BUNGA SEBAGAI DASAR PENGHITUNGAN SANKSI ADMINISTRATIF BERUPA BUNGA DAN PEMBERIAN IMBALAN BUNGA PERIODE 1 JULI 2026 SAMPAI DENGAN 31 JULI 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC17$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-06-29T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-56'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT18$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 40/MK/EF.2/2026$CIT18$,
-      'verbatim_excerpt', $EXC18$KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 40/MK/EF.2/2026 TENTANG TARIF BUNGA SEBAGAI DASAR PENGHITUNGAN SANKSI ADMINISTRATIF BERUPA BUNGA DAN PEMBERIAN IMBALAN BUNGA PERIODE 1 SEPTEMBER 2026 SAMPAI DENGAN 30 SEPTEMBER 2026 MENTERI KEUANGAN REPUBLIK INDONESIA,$EXC18$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-08-31T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-58'
-  AND NOT (raw_payload ? 'citation');
-
-UPDATE intel_items
-SET raw_payload = raw_payload || jsonb_build_object(
-      'citation', $CIT19$NOMOR PER-6/PJ/2026$CIT19$,
-      'verbatim_excerpt', $EXC19$NOMOR PER-6/PJ/2026 TENTANG TATA CARA PELAKSANAAN HAK DAN PEMENUHAN KEWAJIBAN PAJAK MINIMUM GLOBAL BERDASARKAN KESEPAKATAN INTERNASIONAL DIREKTUR JENDERAL PAJAK,$EXC19$,
-      'extractor', 'pajak_parse.extract_regulation/1'
-    ),
-    published_at = '2026-05-04T12:00:00Z'::timestamptz
-WHERE canonical_url = 'https://pajak.go.id/id/peraturan/tata-cara-pelaksanaan-hak-dan-pemenuhan-kewajiban-pajak-minimum-global-berdasarkan'
-  AND NOT (raw_payload ? 'citation');
+-- ...then one UPDATE of the same shape for each of the other 17 rows in the
+-- table below (citation and verbatim_excerpt as extracted, published_at =
+-- the regulation date, extractor 'pajak_parse.extract_regulation/1').
+-- Not repeated here: the executed values now sit in each row's raw_payload,
+-- and the pre-mutation values in intel_items_pajak_backfill_archive_20260921.
+-- Skipped, left untouched: d41d251b-bd69-4df0-b122-606fb015ae7a (.../-1484)
+-- and 046a7fc4-305f-44d8-b74c-90dc9d497cfa (...angkutan-udara-...-4).
 
 -- 4. Post-mutation assertion: exactly 18 rows now carry a citation, the
 --    2 known-failed rows still do not.
@@ -487,6 +317,29 @@ END $$;
 
 COMMIT;
 ```
+
+**The 18 backfilled rows** (slug under `https://pajak.go.id/id/peraturan/`, citation, regulation date):
+
+| slug                                                                                        | citation                                                               | date       |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------- |
+| `kebijakan-administrasi-perpajakan-sehubungan-dengan-bencana-alam-di-wilayah-provinsi-nusa` | `NOMOR KEP-185/PJ/2026`                                                | 2026-09-02 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1476` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 20/MK/EF.2/2026`  | 2026-05-05 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1477` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 21/MK/EF.2/2026`  | 2026-05-12 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1478` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 22/MK/EF.2/2026`  | 2026-05-19 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1480` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 28/MK/EF.2/2026`  | 2026-06-24 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1482` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 26/MK/EF.2/2026`  | 2026-06-09 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1483` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 27/MK/EF.2/2026`  | 2026-06-16 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1485` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 31/MK/EF.2/2026`  | 2026-07-07 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1486` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 33/MK/EF.2/2026`  | 2026-07-21 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1487` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 34/MK/EF.2/2026`  | 2026-07-28 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1488` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 41/MK/EF.2/2026`  | 2026-09-01 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1492` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 38/MK/EF.2/2026`  | 2026-08-18 |
+| `nilai-kurs-sebagai-dasar-pelunasan-bea-masuk-pajak-pertambahan-nilai-barang-dan-jasa-1493` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 39/MK/EF.2/2026`  | 2026-08-25 |
+| `perubahan-atas-peraturan-direktur-jenderal-pajak-nomor-10pj2024-tentang-ketentuan`         | `NOMOR PER-8/PJ/2026`                                                  | 2026-07-28 |
+| `tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-54` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 019/MK/EF.2/2026` | 2026-04-30 |
+| `tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-56` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 29/MK/EF.2/2026`  | 2026-06-29 |
+| `tarif-bunga-sebagai-dasar-penghitungan-sanksi-administratif-berupa-bunga-dan-pemberian-58` | `KEPUTUSAN MENTERI KEUANGAN REPUBLIK INDONESIA NOMOR 40/MK/EF.2/2026`  | 2026-08-31 |
+| `tata-cara-pelaksanaan-hak-dan-pemenuhan-kewajiban-pajak-minimum-global-berdasarkan`        | `NOMOR PER-6/PJ/2026`                                                  | 2026-05-04 |
 
 **Rollback** (restores `raw_payload`/`published_at` from the archive for all 20 rows,
 including the 2 that were never touched — a no-op for those):
