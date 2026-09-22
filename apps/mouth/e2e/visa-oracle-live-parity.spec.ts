@@ -8,9 +8,9 @@
  * `page.route` intercepts the SAME-ORIGIN `/api/visa-oracle/evaluate` POST
  * (`_lib/evaluation-client.ts`) inside the browser, before the server-side
  * proxy, and fulfils it with the verdict the LIVE engine already recorded
- * for that `walk_id` in the B4 full sweep
- * (`research/operations/2026-09-21-visa-oracle-live-enumeration/
- * prove-live-b4-full-sweep-report-20260921.json`, 253 walks). The claim is
+ * for that `walk_id` in the B4-2 full sweep
+ * (`research/operations/2026-09-22-visa-oracle-live-enumeration/
+ * prove-live-b4-2-full-sweep-report-20260922.json`, 252 walks). The claim is
  * scoped on purpose: this proves the promoted BUNDLE renders that verdict
  * faithfully, never that the live engine still returns it today — a
  * route-mocked e2e pointed at production would prove the mock, not the
@@ -24,7 +24,7 @@
  *   these verdicts (§6.3, honoured by scoping the assertions as above).
  * - Expectations are pinned to rule pack sequence 22 and to the source sha
  *   asserted in `beforeAll` below (U9) — a re-recorded sweep must update
- *   that constant in a PR, never silently change 253 expectations.
+ *   that constant in a PR, never silently change the measured expectations.
  * - `review_gate` multi-item combinations are outside the manifest's own
  *   declared gap (`enumerate-interview-space.ts`), not this spec's.
  * - One language per run (`en`).
@@ -46,25 +46,30 @@
  * env read — no report read, no `countExactWalks`, no `buildCoveringSubset`
  * — all of that lives in `beforeAll`.
  *
- * TWO REDS MET AND REPORTED (never cured — both are out of this PR's
- * touch-no-source-file/no-tsconfig scope; see the PR body):
- * (a) `apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts` is
- *     import-SAFE for the default job (proven below: a top-level `import`
- *     of its VALUE exports crashed Playwright's OWN `--list` for the
- *     ENTIRE suite — "Total: 0 tests in 0 files" — because that file's
- *     CLI-entrypoint guard uses `import.meta.url`, invalid once
- *     transformed to CJS, which is what this package gets since
- *     `apps/mouth/package.json`, unlike the monorepo root, does not
- *     declare `"type": "module"`; moving the import to a dynamic
- *     `await import()` inside `beforeAll` fixed the default job, proven by
- *     the two `--list` commands in the PR body — but the SAME
- *     `SyntaxError: Cannot use 'import.meta' outside a module` still fires
- *     the moment `beforeAll` actually AWAITS that import during the GATED
- *     run, failing every one of the 32 samples before any render logic
- *     runs. (b) independently of (a): replaying via `flowReducer` (see
- *     `walkToVerdict` below) throws on 30 of the 32 sampled classes, not
- *     only the ten `review-gate/<item>` ones the design anticipated — see
- *     that function's own doc comment for the mechanism.
+ * B5-2 moved the CLI-only `import.meta` code out of this imported library;
+ * B5-1 makes every sampled replay reach a verdict. A replay throw is still
+ * reported rather than adjusted, including for review-gate post-hoc clones.
+ *
+ * A THIRD RED MET AND REPORTED (v3, never cured — the checked-in report
+ * (`prove-live-b4-2-full-sweep-report-20260922.json`, sha 20d429cc…) is
+ * this PR's read-only input, not this PR's file, per U1): the report's
+ * `review-gate/blacklist` row carries `engine_state:
+ * "TEMPORARILY_UNAVAILABLE"` and `rule_pack: null` — a sweep-time engine
+ * outage recorded in place of a real verdict for that walk's facts, not a
+ * business decision. `beforeAll` fails by NAME on it (see the
+ * `missingRulePack` check below) rather than an opaque
+ * `Cannot read properties of null` — but the failure still blocks every
+ * one of the 34 samples before any render logic runs, so none of the five
+ * required guilt-proof mutations (U2, U3, U5, U6, U7) could be captured
+ * via the actual Playwright command; U2 and U3 were independently
+ * re-verified out-of-band (a scratch `tsx` script reading the same report
+ * through the same top-level-imported library, run then deleted — see the
+ * PR body) and hold: 34 classes measured (19 if `notices` is dropped from
+ * the grouping key), and the derived label set equals the report's
+ * `walk_id` set at 252 = 252. Curing the outage row (excluding it, or a
+ * re-sweep that replaces it with a real verdict) is a report-data
+ * question, out of this spec's touch-no-other-file scope — left for the
+ * conductor, most likely as a B4-2 follow-up re-sweep of that one walk.
  */
 
 import { createHash } from "node:crypto";
@@ -90,15 +95,11 @@ import {
   makeVisaOracleResponse,
   TEST_SOURCE_ID,
 } from "../src/app/(visa-oracle)/visa-oracle/_lib/visa-oracle-test-fixture";
-// VALUE imports from this module are deliberately DYNAMIC (inside
-// `beforeAll` below), never a top-level `import`: the module's own CLI
-// entrypoint guard (`if (... import.meta.url === ...)`) uses `import.meta`,
-// which this package's CJS-targeted transform cannot parse — a top-level
-// import of this file crashes Playwright's OWN collection (`--list`) for
-// the ENTIRE suite, not just this spec (measured: "Total: 0 tests in 0
-// files" repo-wide). A type-only import is erased at compile time and
-// carries no such risk.
-import type { CoveringWalk } from "../scripts/visa-oracle/enumerate-interview-space";
+import {
+  buildCoveringSubset,
+  countExactWalks,
+  type CoveringWalk,
+} from "../scripts/visa-oracle/enumerate-interview-space";
 import { installNoWriteGuard } from "./production/_support/no-write-context";
 
 type EngineState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
@@ -108,14 +109,19 @@ const PER_CLASS = (() => {
   const raw = Number(process.env.VISA_ORACLE_PARITY_PER_CLASS ?? "1");
   return Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : 1;
 })();
-// Pinned by U2's own regression fence: dropping `notices` from the grouping
-// key collapses this to 17, and the assertion below goes RED naming it.
-const SAMPLE_CLASS_COUNT = 32;
+// The B4-2 report currently measures 34 classes (re-derived, not a pin to
+// B4's stale 32 — U9 v3). Test declarations must be registered at module
+// evaluation, so this count is the slot count for the static `test()` loop
+// below; `beforeAll` re-derives the real count from the report and asserts
+// it against this constant (U2's regression fence: dropping `notices` from
+// the grouping key collapses the real count and that assertion goes RED),
+// in addition to logging it.
+const SAMPLE_CLASS_COUNT = 34;
 const EXPECTED_REPORT_SHA256 =
-  "0122aff28f760c652356f6285de77d8edab8b552534acddf86c8fc53a2c57070";
+  "20d429cc8eaf0221382d0c0db6eedc76c2862c80b52b6bfc16b5e437c31dd34e";
 const REPORT_RELATIVE_PATH =
-  "../../research/operations/2026-09-21-visa-oracle-live-enumeration/" +
-  "prove-live-b4-full-sweep-report-20260921.json";
+  "../../research/operations/2026-09-22-visa-oracle-live-enumeration/" +
+  "prove-live-b4-2-full-sweep-report-20260922.json";
 const REPORT_PATH = resolve(process.cwd(), REPORT_RELATIVE_PATH);
 const PARITY_REPORT_PATH = resolve(
   process.cwd(),
@@ -307,6 +313,7 @@ function classKey(codes: RawReasonCodes, state: EngineState): string {
 }
 
 let samples: Sample[] = [];
+let measuredClassCount = 0;
 let sourceReportMeta: {
   path: string;
   sha256: string;
@@ -325,7 +332,7 @@ const targetMeta: {
 // when opted in. Unset, the file registers zero tests (never skipped
 // ones), so the default job's `--list` sees nothing from this file.
 if (LIVE_PARITY) {
-  test.describe("Visa Oracle v2 UI-parity — renders the B4 sweep's recorded verdicts", () => {
+  test.describe("Visa Oracle v2 UI-parity — renders the B4-2 sweep's recorded verdicts", () => {
     test.beforeAll(async () => {
       const raw = readFileSync(REPORT_PATH);
       const actualSha256 = createHash("sha256").update(raw).digest("hex");
@@ -333,10 +340,28 @@ if (LIVE_PARITY) {
         throw new Error(
           "live-parity weld: source report sha mismatch — expected " +
             `${EXPECTED_REPORT_SHA256}, got ${actualSha256}. A re-recorded sweep must ` +
-            "update this constant in a PR, never silently change 253 expectations.",
+            "update this constant in a PR, never silently change measured expectations.",
         );
       }
       const report = JSON.parse(raw.toString("utf8")) as RawReport;
+
+      // Discovered red, reported not cured: the B4-2 report can carry an
+      // outage row (a sweep hiccup recorded as `engine_state:
+      // "TEMPORARILY_UNAVAILABLE"` with `rule_pack: null`, not a real
+      // engine verdict for that walk's facts — e.g. `review-gate/blacklist`
+      // in the 20d429cc… report). Fail by NAME here, matching U3/U4's own
+      // idiom, rather than an opaque TypeError on `.rule_pack.payload_sha256`.
+      // Curing this (filtering the row, re-sweeping it) is a report-data
+      // question outside this spec's scope — see the PR body.
+      const missingRulePack = report.walks
+        .filter((w) => !w.rule_pack)
+        .map((w) => w.walk_id);
+      if (missingRulePack.length > 0) {
+        throw new Error(
+          "live-parity weld: walk(s) with no rule_pack in the source report " +
+            `(outage row, not a real engine verdict): ${JSON.stringify(missingRulePack)}`,
+        );
+      }
 
       const rulePackShas = new Set(
         report.walks.map((w) => w.rule_pack.payload_sha256),
@@ -369,7 +394,19 @@ if (LIVE_PARITY) {
         if (bucket) bucket.push(walk);
         else groups.set(key, [walk]);
       }
-      expect(groups.size).toBe(SAMPLE_CLASS_COUNT);
+      console.log(`B3 U9 measured sample classes: ${groups.size}`);
+      // U2's regression fence, re-derived for B4-2 rather than pinned to
+      // B4's stale 32 (U9 v3): the static `test()` loop below is declared
+      // against SAMPLE_CLASS_COUNT at module scope, so a drift between the
+      // measured class count and that constant must fail loudly here, not
+      // silently drop classes from the sample or index `samples[]` out of
+      // bounds. GUILT: drop `notices` from `classKey` → the measured count
+      // no longer equals SAMPLE_CLASS_COUNT and this assertion goes RED.
+      measuredClassCount = groups.size;
+      expect(
+        groups.size,
+        "measured outcome classes vs SAMPLE_CLASS_COUNT",
+      ).toBe(SAMPLE_CLASS_COUNT);
 
       const selected: RawWalk[] = [];
       for (const bucket of groups.values()) {
@@ -381,10 +418,8 @@ if (LIVE_PARITY) {
 
       // U3: the walk set is DERIVED, never transcribed — the derived
       // label set must EQUAL the report's walk_id set, failing by name
-      // before the first page load. Dynamic import — see the top-of-file
-      // note by the type-only import above.
-      const { buildCoveringSubset, countExactWalks } =
-        await import("../scripts/visa-oracle/enumerate-interview-space");
+      // before the first page load. The import is top-level; the expensive
+      // enumeration itself remains confined to this `beforeAll`.
       const space = countExactWalks();
       const subset = buildCoveringSubset(space);
       const derivedByLabel = new Map<string, CoveringWalk>(
@@ -615,7 +650,7 @@ if (LIVE_PARITY) {
         sample: {
           strategy:
             "one walk per (engine_state, review_reasons, no_path_reasons, notices) class, sorted by walk_id",
-          classes: SAMPLE_CLASS_COUNT,
+          classes: measuredClassCount,
           walks: samples.length,
           per_class: PER_CLASS,
           language: "en",
