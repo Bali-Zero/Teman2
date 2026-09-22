@@ -590,15 +590,21 @@ byte-identical — only 2 pin lines move).
 design, so nothing a client sees changed and no store sync was owed. The day something starts reading it,
 that sync becomes its own work.
 
-**🔴 ROOT CAUSE FOUND for the 428 gold pages that never render the BPS transition card.** It is not the
-data and not the component. In `apps/mouth/src/app/kbli/[code]/page.tsx` there is a ternary `{gold ? (` at
-**line 401** whose else-branch opens at **line 681** (same indent, 10); the
-`<KBLITransitionSources transition={kbli.transition} />` call sits at **line 913** — inside the **non-gold**
-branch. The component is innocent: it always renders the section, either as "Authoritative BPS crosswalk"
-or as "BPS crosswalk gap", which is why gold pages show **no block at all** rather than an empty one.
-Measured, not inferred: of a 30-code live sample, the 5 pages missing the card were **5/5 gold** and the
-25 showing it **0/25 gold**. Fix = hoist the call out of the ternary — but that is a client-facing render
-change on 428 pages and wants its own PR and proof. NOT done.
+**🟢 CORRECTED 2026-09-22 (PR #7132-lane) — the "428 gold pages never render the BPS card" finding above
+was a stale-checkout read, not a live bug.** The cited `line 401` / `line 681` / `line 913` shape matches
+`apps/mouth/src/app/kbli/[code]/page.tsx` **before** commit `f6dfda994d` (PR #4215, "release verified KBLI
+Navigator", 2026-08-15) — a checkout roughly a month and 100+ commits behind `origin/main` when this note
+was written (superscar #1, HOME-fork drift). On `origin/main` today the
+`<KBLITransitionSources transition={kbli.transition} />` call already sits **outside** the gold/non-gold
+ternary (page.tsx:992-994, with an explicit comment: "Keep it outside the gold/non-gold branch so gold
+pages cannot hide it"), and has since #4215. A structural regression test already guards this exact shape:
+`apps/mouth/src/components/kbli/KBLITransitionSources.test.tsx` → _"guilt: the transition card sits outside
+the gold/non-gold layout branch"_ (7/7 tests green on `origin/main`). Re-verified live on
+`balizero.com` 2026-09-22 for 3 codes the runtime `discloseKbliEditorial`/`getGoldContent` pipeline
+certifies as gold (`47221`, `50113`, `50131`) and 3 non-gold codes with BPS data (`01111`, `01112`,
+`01113`): all 6 return `data-testid="bps-transition-source"` with "Authoritative BPS crosswalk". No code
+change needed — the "30-code live sample" in the original note likely ran against a stale dev server, not
+`origin/main` or production. Do not re-open this as a code fix.
 
 **The `whatChanged` lying-ancestry lane is MEASURED CLEAN — and its guard is blind on a real template.**
 Using the module's own predicate (`plan_text`), canonical: 1559/1559 carry a `whatChanged`, **0 would be
