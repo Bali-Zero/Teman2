@@ -1,0 +1,43 @@
+gear: 3
+task_id: opus55-seat
+lane: infra
+host: balizero (M5)
+branch: agent/air-m5/infra/opus55-seat
+gate_class: opus
+l_level: L2
+objective: >-
+  Owner ruling 2026-09-23 (verbatim: "sostituire opus 5 con opus 5.5 in ogni superfice,
+  automazione, workflow etc etc, ogni cosa"): claude-opus-5-5 takes every seat claude-opus-5
+  held. Same doctrine, new model. Gear 3 is the deterministic floor (hot-zone path hit), not a
+  choice; the change itself is a mechanical, line-scoped model swap plus one ruling.
+scope:
+  - Operative model pins — FLEET_TOPOLOGY.json gate/verdict/Dux seats and conductor model list,
+    proprioception child_calibration model list, dynamic_workflow gate template, FAMILY_MAP and
+    the C5 gate-seat entity regex (now Opus 5.5, bare Opus 5 fails), with its tests.
+  - Live doctrine — MODEL_ROSTER.md (new claude-opus-5-5 row, claude-opus-5 demoted to valid
+    non-gate pin), RULINGS.md (RULED 2026-09-23), army-map, modus + workflow
+    skills, AGENTS.md, codex.md, corner skills, fleet-continuity, ASSEMBLY-LINE, LANES.
+  - Automation prompts and trailers — modus_autoloop gate prompt, model_routing_gate messages,
+    automation_catalog, co-author trailers of five cron wrappers, claude-live.sh example.
+constraints:
+  - Provenance is not rewritten — superseded rulings, dated measurements, cure_spec authorship,
+    PENDING-ARMS/AMENDMENTS rows, evidence/ and research/ keep "Opus 5" as the record of what
+    ran then. The new ruling states that earlier rulings naming Opus 5 read as Opus 5.5.
+  - apps/backend-rag/** is left out on purpose — merging there deploys, and the only hits are a
+    co-author trailer string and one doc line; they ride the next backend PR.
+  - infra/conductor model cards/endpoint profiles are an inventory of models that exist, with
+    measured capability fields; Opus 5 still exists, and a card for 5.5 needs measurements this
+    PR does not have — no invented capability data.
+  - HOME-only surfaces (~/.claude/CLAUDE.md on M5/Pro/Mini, ~/.codex/AGENTS.md on M5/Pro) are
+    edited on the hosts directly with .bak-opus55-20260923 backups; they are not repo-tracked.
+acceptance:
+  - text: No operative pin to the superseded model remains in FLEET_TOPOLOGY.json.
+    probe: jq -r '.. | .model? // empty' FLEET_TOPOLOGY.json | grep -cx claude-opus-5 (expect 0)
+  - text: The C5 gate judge accepts every Opus 5.5 spelling and refuses bare Opus 5 (guilt+innocence).
+    probe: pytest scripts/tests/test_dynamic_workflow.py
+  - text: Every roster row still resolves to a door.
+    probe: python3 scripts/lint_roster_dispatch.py
+  - text: The decision registry stays valid.
+    probe: python3 scripts/lint_decision_registry.py
+pii: none
+local_evidence: Model identifiers and doctrine prose only; no client data read or written.

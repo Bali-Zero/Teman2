@@ -12,7 +12,7 @@ Wired to the full cross-family arsenal: Sonnet 5 implementers, Codex red-team, G
 > modus (`.claude/skills/modus/SKILL.md`) is the LOOP; this skill is the FAN-OUT ARM the
 > loop reaches for at Gear 3. Doctrine: `sota-architecture-loop` (council gate, asymmetric
 > adversarial review) · executable ancestors: `infra/workflows/README.md`. Nothing here
-> overrides the modus final-gate invariant: **Opus 5 xhigh effort does the last on-disk grep**
+> overrides the modus final-gate invariant: **Opus 5.5 xhigh effort does the last on-disk grep**
 > (Fable is out of the workflow, RULED 2026-08-20 — CLAUDE.md §5) **— never delegable, never
 > cascadable.**
 
@@ -34,7 +34,7 @@ not N workflows), single-file fixes, anything already owned by a live sibling la
 
 ## 1. The contract (non-negotiable)
 
-1. **Opus 5 orchestrates, Sonnet builds, externals grade.** (Fable is out of the workflow, RULED
+1. **Opus 5.5 orchestrates, Sonnet builds, externals grade.** (Fable is out of the workflow, RULED
    2026-08-20.) **PIN `model:` ON EVERY `agent()` CALL — never let a lane inherit the session
    model.** An `agent()` without `model:` runs on whatever the session happens to be, which is
    how a fan-out silently violates the ruling above: measured 2026-08-21, eight research lanes
@@ -142,7 +142,7 @@ Workflow({ scriptPath: "infra/workflows/verify-template.js", args: {
 **council — strategic decision** (inline script): proponent lane drafts the position →
 3 external chairs in parallel (Codex red-team: _find the flaw, default defective_ · agy
 costruttivo: _save it by improving it_ · Kimi/GLM refuter: _falsify the core claim_) →
-Opus 5 xhigh effort synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
+Opus 5.5 xhigh effort synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
 chairs, rounds capped at 2, never "do you all agree?" (conformity hallucination).
 
 **sweep — corpus-scale ground** (pipeline, no barrier): readers fan out per organ/domain
@@ -163,11 +163,11 @@ cross-family seat. Copy its structure for any per-record certification program.
 ## 4. Twin-Opus protocol (M5 + Pro/Mini strategic pair)
 
 > Renamed 2026-08-20 (was "Twin-Fable protocol") — Fable is out of the workflow, RULED 2026-08-20;
-> the interactive/orchestrator default has been Opus 5 since 2026-07-25. Fable may still sit in
+> the interactive/orchestrator default has been Opus 5 since 2026-07-25 and Opus 5.5 since 2026-09-23. Fable may still sit in
 > one leg manually if Zero opens that session with `/model claude-fable-5`, but the protocol
 > itself no longer assumes it.
 
-Two Opus 5 sessions on different machines multiply strategy ONLY with hard lane
+Two Opus 5.5 sessions on different machines multiply strategy ONLY with hard lane
 discipline — without it they produce twin-race casualties (PR #2781):
 
 1. **Claim before work**: each session claims a DISJOINT scope in the corner skill's LIVE

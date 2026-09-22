@@ -702,7 +702,7 @@
       "consumes": "Mission manifest, task briefs, installed OAuth seat and Codex context policy",
       "consumed_by": "SAETTA imperator",
       "monitored_by": "Invoking SAETTA imperator; completed native journal required",
-      "uses_llm": "Claude Opus 5 xhigh through installed subscription CLI; Sonnet smoke child",
+      "uses_llm": "Claude Opus 5.5 xhigh through installed subscription CLI; Sonnet smoke child",
       "llm_interface": "claude CLI OAuth, native Workflow tool",
       "tools_called": ["git", "claude", "codex", "node", "gh"],
       "apis_called": []

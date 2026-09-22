@@ -118,7 +118,7 @@ run in an isolated worktree via scripts/translate-articles-cron-wrapper.sh so th
 main checkout is never written to directly. Re-translation triggered by
 source_sha256 staleness detection.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
   )" >>"$LOG" 2>&1
 

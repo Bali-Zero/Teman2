@@ -875,7 +875,7 @@ def test_judge_disqualifies_a_missing_gate_row(tmp_path, template, clean_objecti
     dw.cmd_brief(_brief_ns(clean_objective, template, kit))
     sha = (kit / "brief.sha").read_text().strip()
     no_gate = dw._CANNED_VALID.format(seat="kimi-k3", sha=sha).replace(
-        "| gate | opus-5 | window | serial | 1 | sign | done |\n", "")
+        "| gate | opus-5-5 | window | serial | 1 | sign | done |\n", "")
     _seed_answered(kit, "kimi-k3", no_gate)
     verdicts = dw.cmd_judge(argparse.Namespace(kit=str(kit)))
     assert verdicts["kimi-k3"]["c5"] is False
@@ -905,16 +905,17 @@ def _tactics_body(*rows: str) -> str:
     return "## Tactics\n" + header + "\n" + "|---|---|---|---|---|---|---|\n" + "\n".join(rows) + "\n"
 
 
-@pytest.mark.parametrize("seat", ["opus-5", "Opus 5", "opus 5", "fresh opus-5 xhigh",
-                                    "`opus-5`", "claude-opus-5", "opus-5-xhigh"])
+@pytest.mark.parametrize("seat", ["opus-5-5", "Opus 5.5", "opus 5.5", "opus-5.5", "fresh opus-5-5 xhigh",
+                                    "`opus-5-5`", "claude-opus-5-5", "opus-5-5-xhigh"])
 def test_check_c5_accepts_an_opus_5_entity_spelled_loosely(seat):
     body = _tactics_body(f"| gate | {seat} | window | serial | 1 | sign | done |")
     assert dw._check_c5(body) == (True, "gate row ok")
 
 
 @pytest.mark.parametrize(
-    "seat", ["opus-4-8", "opus-50", "opus-5.5", "sonnet-5", "claude-opus-4-8", "",
-             "opus-5-1", "claude-opus-5-1"])
+    "seat", ["opus-4-8", "opus-5", "Opus 5", "claude-opus-5", "opus-5-50", "opus-5.55",
+             "opus-5.5.1", "opus-5-5-1", "sonnet-5", "claude-opus-4-8", "", "opus-5-1",
+             "claude-opus-5-1"])
 def test_check_c5_still_rejects_a_seat_that_only_resembles_opus_5(seat):
     body = _tactics_body(f"| gate | {seat} | window | serial | 1 | sign | done |")
     assert dw._check_c5(body)[0] is False
@@ -923,24 +924,24 @@ def test_check_c5_still_rejects_a_seat_that_only_resembles_opus_5(seat):
 @pytest.mark.parametrize("mode", ["window", "Window", "window (on-disk gate)", "windows",
                                     "two windows, post-reset"])
 def test_check_c5_accepts_a_window_mode_spelled_loosely(mode):
-    body = _tactics_body(f"| gate | opus-5 | {mode} | serial | 1 | sign | done |")
+    body = _tactics_body(f"| gate | opus-5-5 | {mode} | serial | 1 | sign | done |")
     assert dw._check_c5(body) == (True, "gate row ok")
 
 
 @pytest.mark.parametrize("mode", ["windowless", "windowed", "batch", ""])
 def test_check_c5_still_rejects_a_mode_that_only_resembles_window(mode):
-    body = _tactics_body(f"| gate | opus-5 | {mode} | serial | 1 | sign | done |")
+    body = _tactics_body(f"| gate | opus-5-5 | {mode} | serial | 1 | sign | done |")
     assert dw._check_c5(body)[0] is False
 
 
 def test_check_c5_lets_a_wrong_pre_gate_row_be_overruled_by_a_correct_final_gate_row():
     body = _tactics_body("| pre-gate | sonnet-5 | in-script | serial | 1 | check | gate |",
-                          "| gate | opus-5 | window | serial | 1 | sign | done |")
+                          "| gate | opus-5-5 | window | serial | 1 | sign | done |")
     assert dw._check_c5(body) == (True, "gate row ok")
 
 
 def test_check_c5_still_rejects_a_wrong_final_gate_row_even_with_a_fine_pre_gate_row():
-    body = _tactics_body("| pre-gate | opus-5 | window | serial | 1 | check | gate |",
+    body = _tactics_body("| pre-gate | opus-5-5 | window | serial | 1 | check | gate |",
                           "| gate | sonnet-5 | in-script | serial | 1 | sign | done |")
     assert dw._check_c5(body)[0] is False
 
@@ -953,7 +954,7 @@ def test_check_c5_still_rejects_a_wrong_final_gate_row_even_with_a_fine_pre_gate
 
 @pytest.mark.parametrize("stage", ["gate", "Final Gate", "on-disk gate", "pre-gate", "Gate 2"])
 def test_check_c5_recognises_a_gate_stage_spelled_loosely(stage):
-    body = _tactics_body(f"| {stage} | opus-5 | window | serial | 1 | sign | done |")
+    body = _tactics_body(f"| {stage} | opus-5-5 | window | serial | 1 | sign | done |")
     assert dw._check_c5(body) == (True, "gate row ok")
 
 
@@ -961,13 +962,13 @@ def test_check_c5_recognises_a_gate_stage_spelled_loosely(stage):
     "stage", ["aggregate results", "delegate to r2", "investigate", "mitigate risk",
               "gatekeeper review"])
 def test_check_c5_does_not_treat_a_gate_substring_as_a_gate_stage(stage):
-    body = _tactics_body(f"| {stage} | opus-5 | window | serial | 1 | sign | done |")
+    body = _tactics_body(f"| {stage} | opus-5-5 | window | serial | 1 | sign | done |")
     assert dw._check_c5(body) == (False, "no gate row in Tactics")
 
 
 def test_check_c5_is_not_fooled_by_a_later_row_whose_stage_only_contains_gate_as_a_substring():
     body = _tactics_body(
-        "| Final Gate | opus-5 | window | serial | 1 | sign | done |",
+        "| Final Gate | opus-5-5 | window | serial | 1 | sign | done |",
         "| aggregate results | sonnet-5 | in-script | serial | 1 | collate | done |")
     assert dw._check_c5(body) == (True, "gate row ok")
 

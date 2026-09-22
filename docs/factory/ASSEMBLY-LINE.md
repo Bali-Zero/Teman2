@@ -132,7 +132,7 @@ is admitted only for an irreversible decision (embedding-model-freeze class).
 
 ## Roles (5 families, all used fully — vendor parity per Zero 2026-08-24)
 
-- **Orchestrator (Opus 5)**: owns `product.yaml`, lane graph, contract freeze, exceptions and
+- **Orchestrator (Opus 5.5)**: owns `product.yaml`, lane graph, contract freeze, exceptions and
   the final gate. Never codes, never style-reviews, max ~5 concurrent decisions — everything
   else is delegated with local lane authority. Escalation to the owner is a one-page decision
   packet: context, recommendation, cost, one button.
@@ -316,7 +316,7 @@ will settle it empirically.
     silently zeroed. **HONEST LIMIT,
     stated in the report's own output every run, not just here**: this tool
     cannot know a seat's family beyond word-matching its raw description — a
-    seat such as `opus-5 Gear-3 on-disk gate (fresh context, did not write
+    seat such as `opus-5-5 Gear-3 on-disk gate (fresh context, did not write
 the diff)` is an independent CONTEXT but the SAME FAMILY as most authors
     in this corpus, and under family-exclusion doctrine that is not
     cross-family review. The report says so and refuses to emit a single

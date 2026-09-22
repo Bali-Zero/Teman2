@@ -365,7 +365,7 @@ disease PR #3762 cured for translate-articles.py; PR #3756 did the one-time
 promotion of the backlog — this is the recurring structural half). Run in an
 isolated worktree so the main checkout is never touched by git.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
     )" >> "$LOG" 2>&1
 

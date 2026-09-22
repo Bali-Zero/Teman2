@@ -130,7 +130,7 @@ worktree via scripts/automations-reference-cron-wrapper.sh so the main
 checkout is never written to directly. The generator is the source; the
 file is output (decision 2026-09-11).
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
   )" >>"$LOG" 2>&1
   COMMIT_RC=$?
