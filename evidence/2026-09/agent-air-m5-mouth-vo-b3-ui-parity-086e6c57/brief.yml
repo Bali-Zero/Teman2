@@ -1,7 +1,7 @@
 task_id: vo-b3-ui-parity
 lane: mouth
 machine: air-m5
-base_sha: f47d773361efcd35560db641f5b17b9d2a373118 # pragma: allowlist secret - public Git commit ID, not a credential
+base_sha: 7976b01fedbedad0b114c3e999e3687b8449dedf # pragma: allowlist secret - public Git commit ID, not a credential
 date: 2026-09-22
 
 gear: 2
@@ -12,30 +12,42 @@ gear_reason: >-
 
 objective: >-
   MANDATE-vo.md "Slice B3 v3": a Playwright UI-parity runner that replays a
-  deterministic sample derived from B4-2's 252 recorded walks. It intercepts
+  deterministic sample derived from B4-2b's 252 recorded walks. It intercepts
   the engine route and compares the rendered DOM with the recorded verdict,
-  spending no engine call. The B4-2 `walk_id` equality and the outcome-class
+  spending no engine call. The B4-2b `walk_id` equality and the outcome-class
   sample size are measured during `beforeAll`, never transcribed (re-measured
-  by this finisher: 252 = 252 derived-label-set equality; 34 outcome classes,
-  19 if `notices` is dropped from the grouping key).
+  by this second finisher launch: 252 = 252 derived-label-set equality; 34
+  outcome classes, 18 if `notices` is dropped from the grouping key — the
+  first launch's own out-of-band re-measure said 19, against the pre-B4-2b
+  report; the count moved by one row when the blacklist walk's class changed).
 
-  A THIRD RED WAS MET AND REPORTED, never cured: the checked-in B4-2 report
-  (sha 20d429cc…) carries one outage row, `review-gate/blacklist`
-  (`engine_state: "TEMPORARILY_UNAVAILABLE"`, `rule_pack: null` — a sweep-time
-  engine hiccup, not a real verdict), which fails `beforeAll` by name and
-  blocks all 34 samples before any render logic runs. None of the five
-  required guilt-proof mutations (U2, U3, U5, U6, U7) could be captured via
-  the actual Playwright command as a result; U2 and U3 were independently
-  re-verified out-of-band (a scratch `tsx` script against the same checked-in
-  report, run then deleted) and hold as stated above. Curing the outage row
-  is a report-data question (a re-sweep of that one walk), out of this PR's
-  touch-no-other-file scope.
+  The THIRD RED the first finisher launch met and reported (the checked-in
+  report's `review-gate/blacklist` row carrying `engine_state:
+  "TEMPORARILY_UNAVAILABLE"`, `rule_pack: null`) is CURED: the conductor's
+  B4-2b data cure (#7130, merged `7976b01fed`) re-swept that one walk (now
+  `HUMAN_REVIEW_REQUIRED`, real rule_pack) and this PR's U9 sha was re-pinned
+  to the patched report in a separate commit before this launch started. This
+  second finisher launch ran the gated opt-in run FOR REAL against a local
+  dev server (`next build && next start`, port 3011, never production):
+  **34 passed, 0 failed** (49.9s on the final tree), and captured all five
+  named guilt-proof mutations (U2, U3, U5, U6, U7) as real Playwright command
+  output — U7-a is a genuine exception, see the PR body's guilt section: the
+  reused `installNoWriteGuard`'s `unexpectedWrites()` only flags writes whose
+  hostname matches `balizero.com`/`nuzantara-rag.fly.dev` (no-write-context.ts
+  `OWN_ORIGIN_RE`), so dropping `allowedWritePathPrefixes` against a local
+  `127.0.0.1` server does NOT reproduce a RED — attempted as literally
+  specified, came back GREEN, root-caused rather than adjusted into a false
+  red. This launch also corrected one stale in-file comment (the `walkToVerdict`
+  docblock still described a pre-B5-1 bug — 30 of 32 classes throwing — that
+  B5-1's `channelConflictsWithOnshoreIntent` guard in `answerFor()` already
+  cured; the real 34/0 run is the evidence).
 
 scope:
   - >-
     apps/mouth/e2e/visa-oracle-live-parity.spec.ts: top-level import of the
-    B5-2 library module; B4-2 report path and sha pin; derived sample-size
-    measurement; every expensive call remains in beforeAll.
+    B5-2 library module; B4-2b report path and sha pin; derived sample-size
+    measurement; every expensive call remains in beforeAll; this launch's
+    one comment fix (the stale pre-B5-1 throw-rate paragraph).
   - This brief.
 
 constraints:
@@ -45,13 +57,19 @@ constraints:
   - >-
     Nothing this spec runs sends a request to production or to a local engine:
     the evaluate route is always intercepted and fulfilled from the checked-in
-    B4-2 record.
+    B4-2b record.
   - >-
-    B5-1 is expected to replay every sampled class, including the ten
-    review-gate clones; a replay throw remains reported and is never adjusted.
+    B5-1 replays every sampled class — measured, not merely expected, by this
+    launch's real gated run (34/0), including the ten review-gate clones; a
+    replay throw remains reported and is never adjusted, should the enumerator
+    ever synthesize one `flowReducer` refuses.
   - >-
-    The codex build seat that prepared this diff did not arm, merge, push,
-    or create a PR — this Sonnet finisher grades the diff, pushes the
-    reviewed commit to the existing #7038 (force-with-lease, the conductor's
-    declared rebase) and re-bodies it, and likewise never arms or merges.
-    No client PII is included in this diff or brief.
+    The codex build seat that prepared the original diff did not arm, merge,
+    push, or create a PR. The first Sonnet finisher launch (context-window
+    jump, nothing lost on disk) re-pinned U9 to the B4-2b report and fixed
+    the headline expectation (U6). This second finisher launch ran the gated
+    run for real, captured all five guilt proofs, fixed one stale comment,
+    pushes the reviewed commit to the existing #7038 (force-with-lease, the
+    conductor's declared rebase) and re-bodies it, and likewise never arms
+    or merges. No client PII is included in this diff or brief; all walks
+    are synthetic corpus fixtures.

@@ -188,20 +188,18 @@ const RESUME_KEY = "visa-oracle:v2:resume:v1";
  * (`enumerate-interview-space.ts:540-546`); a throw there is a REPORTED
  * risk, never adjusted.
  *
- * MEASURED (builder session, this PR): the SAME throw class fires far more
- * broadly than that — 30 of the 32 sampled classes, baseline included,
- * because `generate-walk-corpus.ts`'s `answerFor()` gives `wants_onshore_
- * conversion` and `application_channel` their literal FIRST options
- * ("yes"/"OFFSHORE") without regard to `flow.ts`'s `channelConflicts
- * WithOnshoreIntent` guard — a pairing `runWalk` never validates, because
- * it drives `computeNextNode` directly and never dispatches a real
- * `flowReducer` ANSWER action. `flowReducer` correctly refuses the second
- * of the two answers as incoherent — the SAME refusal a real browser user
- * would hit — so this walk throws by name here rather than silently
- * seeding a resume snapshot the production UI could never itself produce.
- * REPORTED (not adjusted, not worked around) in this PR's body; a fix
- * belongs to the enumerator or the spec design, both out of this PR's
- * touch-no-source-file scope.
+ * An earlier build session measured this throw firing far more broadly —
+ * 30 of the then-32 sampled classes — because `generate-walk-corpus.ts`'s
+ * `answerFor()` gave `wants_onshore_conversion`/`application_channel`
+ * incoherent option pairs `flowReducer` correctly refused. B5-1 (merged
+ * upstream of this PR) added the same `channelConflictsWithOnshoreIntent`
+ * guard to `answerFor()` that `flowReducer` already applied, so every
+ * walk's synthesized answers are coherent by construction now; this
+ * finisher's real gated run reached a verdict for all 34 sampled classes,
+ * zero throws (U4 v3's own fence). The throw path above stays live and
+ * REPORTED (never adjusted) for the two cases it can still legitimately
+ * fire: the ten `review-gate/<item>` post-hoc clones, and any future walk
+ * the enumerator synthesizes outside what `flowReducer` will accept.
  */
 function walkToVerdict(facts: OracleFacts, walkId: string): FlowState {
   let state = flowReducer(initialFlowState("en"), { type: "ADVANCE" });
