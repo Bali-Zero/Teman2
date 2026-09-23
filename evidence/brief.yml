@@ -1,151 +1,35 @@
 gear: 2
-task_id: vo-a7m-guardian-question
+task_id: crm-18-soft-delete
 lane: mouth
-host: air-m5 (M5)
-branch: agent/air-m5/mouth/vo-a7m-guardian-question
+host: pro (Pro)
+branch: sancho/crm18-delete-client
 gate_class: none
 l_level: L2
 objective: >-
-  Slice A7-M (PR 2, mouth + one coupled backend test), MANDATE-vo.md-ratified:
-  the interview now asks the `guardian_consent` question of every minor,
-  closing the residual window Slice A7-B (#7080, merged) opened between the
-  backend fact and a reachable question for it. Built by the codex seat
-  (routing floor D2, gpt-5.6-terra medium, second launch after a stale
-  STEP ZERO check — the first launch correctly refused a B5-2-stale
-  precondition without bypassing its sandbox); the seat's run timed out
-  before writing `CODEX-REPORT-a7-m.md` or updating the backend census pins
-  M5/M7 require, so this finisher re-measured M0-M8 from scratch: ran the
-  coupled backend test (7 reds, all from un-updated pins, none from the
-  shipped logic), regenerated the corpus and the no-path-doors fixture,
-  re-derived and updated every moved census/allowlist/manifest pin by
-  command, ran every M1-M7 guilt on a scratch mutation (restored by `cp`,
-  never `git checkout`), found and cured one spec deviation (the new corpus
-  walk carried three overrides beyond `guardian_consent` that M3 requires as
-  the ONLY difference from its sibling walk — verified empirically that they
-  were not load-bearing for the required verdict, then removed them), found
-  and closed two coverage gaps M3 named but the codex diff left untested
-  (the rewritten review copy and its four-element block had no test at all,
-  so a revert of either was invisible), and rebased onto `origin/main`
-  (the ONE sanctioned rebase, since the branch was stacked on A7-B's
-  pre-squash head — `git rebase --onto origin/main a7c4a05579 HEAD`) to pick
-  up unrelated slices (C2-1 among them) that landed on `main` while the
-  codex seat ran.
+  CRM-18: soft-delete affordance on the client detail desk. The button is
+  offered only to admin/founder or the assigned-to viewer; the backend's
+  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
+  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
+  the offered button, not a bypass). Soft-delete sets status=inactive +
+  deleted_at; nothing is erased. Gate session reviewed the full diff:
+  guilt+innocence corpus present, source assertions pin the predicate wiring
+  rather than constant-folding it, no isAdmin() leakage, backend fence is
+  unchanged.
 scope:
   - >-
-    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts,tree.test.ts —
-    one new `guardian_consent` question (FACT boolean, `group: "identity"`,
-    no `notSure`), moving A6-1's no-notSure cardinality 13 -> 14.
+    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
+    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
+    = {admin, founder}, narrower than api.isAdmin().
   - >-
-    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts,flow.test.ts —
-    the spine asks it only of a minor (`birth_date` < 18 on `today`, exact
-    18th birthday counts as adult, `tree.ts`'s own `parseIsoDateUtc`).
+    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
+    reads currentUserRole from profile, computes canDeleteClient, implements
+    confirmDeleteClient (toast confirmation, router.push on success, error
+    toast on failure).
   - >-
-    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts — three EN/ID
-    key pairs (`q.guardian_consent`, `.help`, `why.guardian_consent`).
+    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
+    Trash2 button rendered only when canDeleteClient=true, disabled during
+    flight, aria-label="Delete client".
   - >-
-    apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts,
-    engine-adapter.test.ts — `REVIEW_REASON_COPY.MINOR_GUARDIAN_PRIVACY_
-    REVIEW` rewritten (no longer describes "being a minor", which after
-    A7-B no longer raises the code) and gains its A5-shape four-element
-    entry; the negation scan's closed source list extended with the two new
-    i18n keys (moving the scan's own pin 64 -> 68); the "persetujuan" false
-    positive this surfaces (the per-...-an nominalization of "setuju",
-    keeping the literal stem unlike "menyetujui") allowlisted the same way
-    "dipastikan" already is — the domain term for consent, not the family's
-    reassuring-approval sense; two new tests close a coverage gap the codex
-    diff left open (reverting the copy or deleting the elements block was
-    invisible to the shipped suite).
-  - >-
-    apps/mouth/scripts/visa-oracle/enumerate-interview-space.ts — `birth_date`
-    joins `BRANCH_RELEVANT_FACT_KEYS` and `REPRESENTATIVE_VALUES` (adult,
-    minor), moving the covering-subset cardinality 252 -> 254 and the typed
-    threshold set 3 -> 4.
-  - >-
-    apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts — one new
-    scenario beside the minor walk, SAME facts with `guardian_consent: "no"`
-    only (corpus 115 -> 116); the stale comment on the sibling walk (which
-    claimed to be "the ONE walk whose PUBLIC outcome is a hold" — no longer
-    true once the tree asks the question) rewritten to name the new walk
-    instead.
-  - >-
-    apps/backend-rag/backend/tests/services/visa_engine/
-    test_interview_walk_census.py, test_seq21_pack.py — every moved pin
-    re-derived from a real run: `EXPECTED_OUTCOME` (the minor walk
-    NEEDS_INPUT -> SUPPORTED_CANDIDATES `(C1, E31E)`, measured, never
-    assumed; the new walk HUMAN_REVIEW_REQUIRED on
-    `MINOR_GUARDIAN_PRIVACY_REVIEW`), `PRIVACY_HELD_WALKS` (empty -> the one
-    new label), `WALK_DEAD_END_ALLOWLIST` (the `person.guardian_consent`
-    row cured, table returns to PR-D3's original two rows),
-    `EXPECTED_DEAD_END_FACT_CENSUS` (that fact drops out), the
-    products-never-shown pin (E31E drops out — the observable close of
-    `FACTS_WITHOUT_A_REACHABLE_QUESTION_YET`), the two regenerated fixtures.
-constraints:
-  - >-
-    `_apply_minor_privacy_hold` (backend, PR 1's), `fact-mapper.ts`
-    (mouth, PR 1's — merge-base diff EMPTY, re-verified), `ASK_FOLLOW_UP`,
-    `questionForFact`, `followUpPrerequisitesMet`, `REVIEW_GATE_ITEMS`/
-    `REVIEW_FLAG_MAP`, A6-1's 54/0 pins: all brought UNCHANGED (M8).
-  - >-
-    Every guilt named in the builder prompt (M1 notSure->55, M2 <=18
-    flip, M3 copy-revert + elements-delete, M4 omit REPRESENTATIVE_VALUES
-    row, M6 closed-list plant, M7 regenerate-without-M2) run on a scratch
-    mutation this turn, restored with `cp` (never `git checkout --`),
-    verified byte-identical after restore.
-  - >-
-    The seat's declared gap (`tsx` CLI `EPERM` in its sandbox, worked
-    around with the `node --import tsx/dist/loader.mjs` fallback) is
-    environmental, not code — reproduced here too, same fallback used
-    throughout this finishing pass.
-  - >-
-    Never `gh pr merge`, never `npm install`/`ci`, never a production
-    request. Rebase declared, not silent — the base moved from A7-B's
-    pre-squash head to `origin/main` with no A7-B content re-applied
-    (`git log --oneline origin/main..HEAD` is exactly this one commit).
-acceptance:
-  - text: >-
-      The coupled backend test named by M7 is green on the rebased head.
-    probe: >-
-      source .venv/bin/activate && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.
-      ./.venv/bin/pytest backend/tests/services/visa_engine/test_interview_walk_census.py
-      backend/tests/services/visa_engine/test_seq21_pack.py -p no:cacheprovider
-  - text: >-
-      The whole mouth visa-oracle tree and `tsc` are green on the rebased
-      head.
-    probe: >-
-      ../../node_modules/.bin/tsc --noEmit -p . && ../../node_modules/.bin/vitest
-      run "src/app/(visa-oracle)" scripts/visa-oracle
-  - text: >-
-      M0: before/after counts re-measured, before on a scratch
-      `git archive origin/main` checkout (node_modules symlinked), after on
-      the rebased head — 1161 -> 1165 tests across the same 44 files (+4:
-      two new flow.test.ts cases, two new engine-adapter.test.ts cases
-      closing the M3 coverage gap).
-    probe: >-
-      cd /private/tmp/.../m0-base/apps/mouth && vitest run "src/app/(visa-oracle)" scripts/visa-oracle
-mutation_evidence: >-
-  M1: added `notSure` to `guardian_consent` -> A6-1's cardinality assertion
-  RED, naming `guardian_consent` missing from the 14-id list. M2: flipped
-  `isMinor`'s `age < 18` to `age <= 18` -> the exact-18th-birthday test RED
-  (expected `category`, got `guardian_consent`). M3a: reverted
-  `REVIEW_REASON_COPY.MINOR_GUARDIAN_PRIVACY_REVIEW` to the shipped "involves
-  a minor" sentence -> the new lead-sentence pin RED (this finisher's own
-  added test — the shipped suite did not catch this before the fix). M3b:
-  deleted `REVIEW_REASON_ELEMENTS.MINOR_GUARDIAN_PRIVACY_REVIEW` -> the new
-  four-element-block test RED, throwing "has no elements" (same gap). M4:
-  removed the `birth_date` row from `REPRESENTATIVE_VALUES` -> the
-  completeness test RED, naming `birth_date` missing. M6: extended the scan's
-  key union (already shipped) then planted "does not change the result" in
-  `q.guardian_consent.help`'s EN string -> the innocence test RED, naming
-  key `q.guardian_consent.help` and family "EN negated effect". M7:
-  temporarily reverted `flow.ts`'s spine branch (birth_date always ->
-  category, skipping M2) and regenerated the corpus on a scratch copy of
-  `flow.ts` -> the minor walk's `person.guardian_consent` byte reverted to
-  `UNKNOWN/NOT_ASKED`, differing from the M2-included corpus this PR ships
-  (determinism-on-bytes proof). All six restored via `cp` from a pre-mutation
-  backup, `cmp -s` confirmed byte-identical before re-running the green
-  suite.
-pii: none
-local_evidence: >-
-  No production read, no client data, no credential touched. All facts in
-  the new corpus scenario and backend fixture are synthetic (birth date
-  2012-11-11, IT/IT family walk already used by the sibling fixture).
+    tests: delete-client-permission.guard.test.ts pins the predicate rule;
+    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
+    source assertion (never a literal, never isAdmin).
