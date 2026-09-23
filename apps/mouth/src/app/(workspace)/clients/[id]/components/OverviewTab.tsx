@@ -10,6 +10,7 @@ import {
   Activity,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -67,6 +68,9 @@ export function OverviewTab({
   formatDate,
   formatCurrency,
   onEditClick,
+  onDeleteClick,
+  canDeleteClient,
+  isDeletingClient,
   onRefresh,
   clientId,
 }: {
@@ -86,6 +90,14 @@ export function OverviewTab({
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
   onEditClick: () => void;
+  /** Opens the soft-delete confirmation. Only reachable when
+   *  `canDeleteClient` is true — the parent owns both. */
+  onDeleteClick: () => void;
+  /** `viewerCanDeleteClient(client, viewerEmail, viewerRole)` as computed by the
+   *  parent. FALSE while the viewer is still unknown, so the button never
+   *  appears on a guess (same law as the copper stamp). */
+  canDeleteClient: boolean;
+  isDeletingClient: boolean;
   onRefresh: () => Promise<void>;
   clientId: number;
 }) {
@@ -194,6 +206,18 @@ export function OverviewTab({
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </Button>
+                {canDeleteClient && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
+                    onClick={onDeleteClick}
+                    disabled={isDeletingClient}
+                    aria-label="Delete client"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
             <div className="p-4 space-y-4 flex-1">
