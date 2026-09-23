@@ -101,3 +101,59 @@ describe("useCrmStats — client-stats failure vs genuine zero", () => {
     expect(result.current.isError).toBe(false);
   });
 });
+
+describe("useCrmStats — practice-stats failure vs genuine zero", () => {
+  const clientStatsFixture = {
+    total: 3,
+    by_status: {},
+    by_team_member: [],
+    passport_expired: 0,
+    passport_expiring_soon: 0,
+    silent_30d: 0,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedRequest.mockResolvedValue(clientStatsFixture);
+    mockedGetInteractionStats.mockResolvedValue(interactionStatsFixture);
+  });
+
+  // GUILT: the practice-stats endpoint fails while client stats succeed.
+  // Before the fix, `?? 0` coalesced activePractices and all three revenue
+  // figures into 0 — a 503 rendered as a book with no money in it. The query
+  // must still succeed (partial degradation is deliberate), but the
+  // practice-derived fields must be null so clients/page.tsx renders "—".
+  it("returns null revenue and activePractices, not 0, when getPracticeStats rejects", async () => {
+    mockedGetPracticeStats.mockRejectedValue(
+      new Error("503 Service Unavailable"),
+    );
+
+    const queryClient = createClient();
+    const { result } = renderHook(() => useCrmStats(), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.revenue).toBeNull();
+    expect(result.current.data?.activePractices).toBeNull();
+    expect(result.current.isError).toBe(false);
+  });
+
+  // INNOCENCE: the practice-stats endpoint succeeds and genuinely reports
+  // zero revenue. A measured 0 must stay 0 — the fix must not turn it into
+  // null.
+  it("keeps a real total_revenue of 0 as 0 when getPracticeStats succeeds", async () => {
+    mockedGetPracticeStats.mockResolvedValue(practiceStatsFixture);
+
+    const queryClient = createClient();
+    const { result } = renderHook(() => useCrmStats(), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.revenue?.total).toBe(0);
+    expect(result.current.data?.activePractices).toBe(0);
+  });
+});
