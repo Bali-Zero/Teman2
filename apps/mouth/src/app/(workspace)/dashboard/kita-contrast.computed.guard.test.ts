@@ -24,7 +24,7 @@ import { describe, it, expect } from "vitest";
  * THE TRAP THIS GUARD ENCODES, and the reason it resolves per-block rather
  * than reading the base token file: `--bz-copper` is NOT its
  * `packages/core/tokens/operative.css` value on this surface. That file
- * declares `#d4845a`; both kita blocks override it to `#a44b36`. Measuring
+ * declares `#d4845a`, and both kita blocks override it to `#a44b36`. Measuring
  * the base value answers a question nobody asked — it reads 4.91:1 against
  * the ink panel, while the value that actually ships reads 2.47:1. Any
  * future edit that reaches for the base value instead of the cascaded one
@@ -245,7 +245,7 @@ describe("the brand value is untouched", () => {
   it("--bz-copper still carries the kita override, not the lifted step", () => {
     // HARD RULE §6: brand identity is not movable. The fix adds a named
     // step beside it; it must never have edited this.
-    expect(light["--bz-copper"]).toBe("#a44b36");
-    expect(dark["--bz-copper"]).toBe("#a44b36");
+    expect(light["--bz-copper"]).toBe("#a44b36"); // token-lint-ok: guard must name the shipped token value
+    expect(dark["--bz-copper"]).toBe("#a44b36"); // token-lint-ok: guard must name the shipped token value
   });
 });
