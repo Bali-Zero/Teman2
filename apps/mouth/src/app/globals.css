@@ -513,6 +513,10 @@
   /* The rail is ink in both light and dark — the K1c-bis workspace sidebar
      carries no theme swap, only the content around it does. */
   --bz-kita-rail: #1d2c3b;
+  /* Copper TEXT on the dashboard's ink hero panel (PortalChallengeWidget
+     paints its band with --bz-text-1, which is ink #1d2c3b here). Raw
+     --bz-copper reads 2.47:1 on it; the on-dark step reads 5.30:1. */
+  --bz-kita-ink-panel-copper: var(--bz-copper-on-dark);
 
   --surface-base: var(--bz-kita-canvas);
   --surface-matter: var(--bz-kita-card);
@@ -687,6 +691,9 @@
   --bz-kita-nav: #121016;
   /* Same ink as light — the rail is invariant across themes. */
   --bz-kita-rail: #1d2c3b;
+  /* After dark --bz-text-1 is PAPER #f7f4ee, so the "ink" hero panel is a
+     paper band: raw copper reads 5.26:1 there, the on-dark step only 2.45:1. */
+  --bz-kita-ink-panel-copper: var(--bz-copper);
 
   --surface-base: var(--bz-kita-canvas);
   --surface-matter: var(--bz-kita-card);
@@ -720,15 +727,17 @@
   --tx-pure: #f7f4ee;
   --tx-primary: #f7f4ee;
   --tx-secondary: rgba(247, 244, 238, 0.62);
-  --tx-tertiary: rgba(247, 244, 238, 0.45);
+  /* Muted was 0.45: 4.25:1 on the canvas, 4.17:1 on the card — under
+     SC 1.4.3 for the 9–11px labels that read it. 0.62 is 7.02 / 6.73:1. */
+  --tx-tertiary: rgba(247, 244, 238, 0.62);
   --bz-text-1: #f7f4ee;
   --bz-text-2: rgba(247, 244, 238, 0.62);
-  --bz-text-3: rgba(247, 244, 238, 0.45);
+  --bz-text-3: rgba(247, 244, 238, 0.62);
   /* --bz-text-pure: see the light block — left to resolve through
      packages/core so the /clients copper pairing is not made worse. */
   --bz-text-primary: #f7f4ee;
   --bz-text-secondary: rgba(247, 244, 238, 0.62);
-  --bz-text-muted: rgba(247, 244, 238, 0.45);
+  --bz-text-muted: rgba(247, 244, 238, 0.62);
 
   --background: var(--bz-kita-canvas);
   --background-secondary: var(--bz-kita-card);
@@ -1302,6 +1311,12 @@ main,
     border-bottom-right-radius: 6px;
     transform: translateY(-150%);
     transition: transform 150ms ease;
+  }
+  /* Kita: white on the dark-theme copper #c46a52 is 3.80:1. The product's
+     own on-accent ink is #121016 on #c46a52 (4.98:1) after dark and #fffcf7
+     on #a44b36 (5.64:1) in daylight. Scoped so other products keep white. */
+  [data-product="kita"] .bz-skip-link {
+    color: var(--accent-foreground, #fff);
   }
   .bz-skip-link:focus,
   .bz-skip-link:focus-visible {
