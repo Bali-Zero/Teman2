@@ -776,7 +776,10 @@ function ClientsListContent() {
     {
       key: "active",
       label: "Active practices",
-      value: stats ? stats.activePractices.toLocaleString("en-US") : "—",
+      value:
+        stats?.activePractices != null
+          ? stats.activePractices.toLocaleString("en-US")
+          : "—",
       tone: "ink",
       copy: "moving",
     },
@@ -790,15 +793,16 @@ function ClientsListContent() {
     {
       key: "outstanding",
       label: "Outstanding",
-      value: stats ? formatIDRCompact(stats.revenue.outstanding) : "—",
-      tone: stats && stats.revenue.outstanding > 0 ? "warning" : "muted",
+      value: stats?.revenue ? formatIDRCompact(stats.revenue.outstanding) : "—",
+      tone:
+        stats?.revenue && stats.revenue.outstanding > 0 ? "warning" : "muted",
       copy: "unpaid",
     },
     {
       key: "paid",
       label: "Paid revenue",
-      value: stats ? formatIDRCompact(stats.revenue.paid) : "—",
-      tone: stats ? "success" : "muted",
+      value: stats?.revenue ? formatIDRCompact(stats.revenue.paid) : "—",
+      tone: stats?.revenue ? "success" : "muted",
       copy: "settled",
     },
   ];

@@ -282,8 +282,11 @@ export function useCrmStats() {
       // query's isError instead. A failed fetch here must surface as a query
       // error, not silently coalesce into 0 (a stats-endpoint 503 was
       // rendering as a legitimate empty book). practice/interaction stats
-      // keep degrading independently below — that tolerance is a separate,
-      // unrelated concern.
+      // keep degrading independently below, but a failed leg becomes null,
+      // never 0: activePractices and revenue are null when getPracticeStats
+      // fails, so the page renders "—" instead of a measured zero. revenue is
+      // one nullable object — its three figures come from the same response
+      // and are absent together.
       if (clientResult.status === "rejected") {
         throw clientResult.reason;
       }
@@ -297,12 +300,14 @@ export function useCrmStats() {
 
       return {
         totalClients: clientStats.total,
-        activePractices: practiceStats?.active_practices ?? 0,
-        revenue: {
-          total: practiceStats?.revenue?.total_revenue ?? 0,
-          paid: practiceStats?.revenue?.paid_revenue ?? 0,
-          outstanding: practiceStats?.revenue?.outstanding_revenue ?? 0,
-        },
+        activePractices: practiceStats ? practiceStats.active_practices : null,
+        revenue: practiceStats?.revenue
+          ? {
+              total: practiceStats.revenue.total_revenue,
+              paid: practiceStats.revenue.paid_revenue,
+              outstanding: practiceStats.revenue.outstanding_revenue,
+            }
+          : null,
         byStatus: clientStats.by_status ?? {},
         interactions: interactionStats ?? null,
         passportExpired: clientStats.passport_expired ?? 0,
