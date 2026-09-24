@@ -86,7 +86,7 @@ describe("PMA editorial certification", () => {
     // pinned the pre-decertification counts and 47111 as certified gold —
     // do not let these numbers drift from the registry again without a test
     // failure naming the exact mismatch.
-    expect(all.filter((code) => code.intel_2026)).toHaveLength(36);
+    expect(all.filter((code) => code.intel_2026)).toHaveLength(35);
     expect(all.filter((code) => code.tier === "gold")).toHaveLength(8);
     expect(goldCodes).toHaveLength(8);
     expect(goldCodes).toEqual(

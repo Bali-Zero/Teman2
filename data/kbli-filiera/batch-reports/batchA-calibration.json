@@ -99,12 +99,12 @@
     "total_sonnet_tokens": 3375127
   },
   "pinned_revisions": {
-    "canonical_git_revision": "92680e5515c24ac64a8d11be3ba327604f53eb2f",
+    "canonical_git_revision": "ee56eec3c737c221bb072cdc6fe9c6b496f4efff",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
     "membership_path": "data/kbli-filiera/membership/batch-a-members.json",
-    "membership_sha256": "955e6d4b98a739afb1430ce9a2a15b6b87991236c3cdeee4580d6a16f2d3f71b"
+    "membership_sha256": "775866fa025f687525427f063a337f920de398953a3db1d7b4028eeb0181aa22"
   },
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md"
 }
