@@ -92,7 +92,8 @@ pilot; this correction does not implement or arm it.
 Run install.py using the host's existing project virtualenv, once per seat,
 with --seat, one or more --root arguments, and --trust-reviewed-hooks. The
 installer backs up the original config and hooks, copies only this adapter,
-enables the hooks feature, and records trust for only the eight exact definitions
+enables the hooks feature, and records trust for only the nine exact definitions
+(eight bridge events plus the output guard below)
 through Codex's own config API. It sets `parent_rollover_enabled=false` and
 removes only the two top-level `model_auto_compact_token_limit` and
 `model_auto_compact_token_limit_scope` overrides, restoring model defaults.
@@ -119,6 +120,26 @@ termination of another session is performed by the installer.
 
 New sessions consume the installation. Existing sessions are not restarted and
 must not be assumed to have reloaded their hook snapshot.
+
+### Output hygiene
+
+The installer also copies `infra/claude-hooks/output_hygiene_guard.py`
+byte-for-byte and registers it once as a `PreToolUse` hook with matcher `Bash`,
+trusted alongside the bridge. Codex reports shell calls to `PreToolUse` as
+`tool_name: "Bash"` with `tool_input.command` (observed in this bridge's own state)
+and documents exit 2 plus a stderr reason as a deny (unverified on this fleet until
+the live proof below). Whether every exec path (unified
+exec, nested code-mode calls) emits `PreToolUse` depends on the upstream version, so
+each release proves the deny live in a fresh session per host; a path that emits no
+event is simply not bounded by this guard. Ownership is the exact installed path of
+this seat's copy, never a substring. The guard only decides: it never
+runs or rewrites the command, fails open on anything it does not recognize, and
+leaves a genuine command failure to surface with its own exit code. Its shapes
+and corpus are the Claude guard's (`docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md`);
+the Read and Skill shapes have no Codex tool and never fire here. Kill switch
+for one session: `NUZ_OUTPUT_HYGIENE_OFF=1`. To remove it, delete its
+`PreToolUse` group from hooks.json; `installation_status.py` reports
+`output_guard_trusted` and counts it in `installed`.
 
 ## Validation
 

@@ -156,7 +156,16 @@ def test_installer_migrates_seat_with_backup(setup, monkeypatch, newline):
             assert method == "hooks/list"
             hooks = bridge.load(seat / "hooks.json")["hooks"]
             return {
-                "data": [{"hooks": [group[0]["hooks"][0] for group in hooks.values()]}]
+                "data": [
+                    {
+                        "hooks": [
+                            h
+                            for groups in hooks.values()
+                            for group in groups
+                            for h in group["hooks"]
+                        ]
+                    }
+                ]
             }
 
         def close(self):
