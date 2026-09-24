@@ -1,0 +1,25 @@
+task: Add the script that strips the pre-#7209 News Room converter's invented TL;DR card and Next Steps filler from legacy article MDX, byte-exact elsewhere.
+lane: mouth/legacy-tldr-script-r2
+machine: M5
+date: 2026-09-25
+mission_id: newsroom-legacy-filler-cleanup
+mission_colour: BLUE
+role: Dux session (Opus 5.5) — builds, arms, deploys; the final gate is a fresh read-only session outside this chain
+gear: 2
+gear_reason: >-
+  Supersedes #7324 (armed, so frozen), which the final on-disk gate BLOCKED:
+  when an emptied Next Steps section ended in a '---', the separator merge
+  cut from the LAST '---' above the heading without checking what sat in
+  between, so a section with no separator of its own (or body prose right
+  under the frontmatter) would be deleted. Cure: merge only when blank
+  lines separate that '---' from the heading; otherwise excise the empty
+  heading alone. The guard never fires on the current corpus: the cured
+  script reproduces the six content chunks (#7325–#7330) blob for blob.
+  Script + tests only (~950 lines): Gear 2 by the size term.
+acceptance:
+  A1: The script removes a Quick Summary InfoCard only when it matches the converter's exact label set, order and value enum; any deviation is reported and left untouched.
+  A2: A Checklist item is removed only when its subItems are exactly ["Review the article for specific actions"]; an emptied Checklist and its now-empty Next Steps section are removed.
+  A3: Frontmatter and every other line stay byte-identical, including a section or prose that sits between the preceding '---' and an emptied heading; dry run (no --write) changes nothing.
+  A4: scripts/content/test_strip_legacy_tldr_filler.py passes, including the two innocence fixtures for the gate's reproductions.
+  A5: Run with --write on origin/main (news/test-article.mdx restored), the output is blob-identical to the files changed by #7325–#7330.
+out_of_scope: The content chunks themselves (#7325–#7330, already gated PASS), the converter fix (backend-rag lane), apps/mouth/src/content/articles/news/test-article.mdx.
