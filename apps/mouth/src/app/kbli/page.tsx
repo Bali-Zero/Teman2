@@ -101,13 +101,12 @@ export default async function KBLIHomePage({
             </div>
           </div>
 
-          {/* Phones: the hero fills the first screen and stops just above the
-              floating handoff pill, so in the first viewport the pill lands
-              on empty ground. Hero top 80px = nav 56 + frame padding 24; the
-              pill spans 44px starting 12px above the fold. Bottom edge =
-              100svh - 60px, 4px above the pill; the 56px section gap puts the
-              first door 8px below it. */}
-          <div className="relative flex flex-col px-5 py-8 max-sm:min-h-[calc(100svh-140px)] sm:px-12 sm:py-12 lg:px-16 lg:py-14">
+          {/* Phones: natural height — no forced min-h stretch. A floating
+              handoff pill may overlay content BELOW the hero (that scrolls
+              under it), but it must never cover the search input, the
+              chips or the proof line here, so this section stays as short
+              as its own content. */}
+          <div className="relative flex flex-col px-5 py-8 sm:px-12 sm:py-12 lg:px-16 lg:py-14">
             {/* Product lockup — the mark BESIDE the wordmark, never as a
                 letter of it (design corner §3.6). */}
             <div className="flex items-center gap-3">
@@ -156,7 +155,7 @@ export default async function KBLIHomePage({
             <p className="mt-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-[13px] tabular-nums text-zinc-400">
               <span>{codeCount} codes</span>
               <span aria-hidden="true">·</span>
-              <span>22 sectors</span>
+              <span>{sections.length} sectors</span>
               <span aria-hidden="true" className="hidden sm:inline">
                 ·
               </span>
