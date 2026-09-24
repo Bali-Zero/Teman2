@@ -21741,6 +21741,11 @@ export interface components {
       cover_image_alt?: string | null;
       /** Enriched At */
       enriched_at: string;
+      /**
+       * Extra Sections
+       * @default []
+       */
+      extra_sections: components["schemas"]["ExtraSection"][];
       /** Facts */
       facts: string;
       /** Headline */
@@ -21873,6 +21878,25 @@ export interface components {
       reason_code?: string | null;
       /** Status */
       status?: ("VERIFIED" | "UNKNOWN") | null;
+    };
+    /**
+     * ExtraSection
+     * @description A draft ``##`` section the converter does not map to a dedicated
+     * EnrichedArticle field (e.g. "In Practice", "Sources"). Preserved
+     * verbatim instead of being silently dropped (2026-09-23 GloBE
+     * regression).
+     */
+    ExtraSection: {
+      /** Body */
+      body: string;
+      /** Heading */
+      heading: string;
+      /**
+       * Insert After
+       * @default next_steps
+       * @enum {string}
+       */
+      insert_after: "facts" | "bali_zero_take" | "next_steps";
     };
     /**
      * ExtractEventRequest
@@ -23834,9 +23858,20 @@ export interface components {
     };
     /** NextSteps */
     NextSteps: {
-      /** Expat */
+      /**
+       * Expat
+       * @default []
+       */
       expat: string[];
-      /** Investor */
+      /**
+       * General
+       * @default []
+       */
+      general: string[];
+      /**
+       * Investor
+       * @default []
+       */
       investor: string[];
     };
     /** NibExtractRequest */

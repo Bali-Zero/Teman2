@@ -24,6 +24,7 @@ from backend.app.routers.article_composer import (
     BaliZeroTake,
     ComposeRequest,
     EnrichedArticle,
+    ExtraSection,
     NextSteps,
     PublishRequest,
     TLDRSection,
@@ -776,6 +777,111 @@ def test_generate_mdx_content_invents_no_tldr_row(sample_enriched_article):
     card = generate_mdx_content(partial, "partial", None)
     assert '{ label: "Who\'s Affected", value: "Multinational groups" }' in card
     assert '"When"' not in card and "Should I Worry?" not in card
+
+
+def test_generate_mdx_content_renders_expat_and_investor_exactly_as_today(
+    sample_enriched_article,
+):
+    """Innocence: a draft with real For Expats/For Investors groups (and no
+    general/extra_sections) renders exactly as before the fix — same two
+    named groups, no third "Recommended Actions" group."""
+    mdx = generate_mdx_content(sample_enriched_article, "visa-rules", None)
+
+    assert '{ text: "For Expats", subItems: ["Check visa expiry", "Gather required documents"] }' in mdx
+    assert (
+        '{ text: "For Investors", subItems: ["Review company sponsorship", '
+        '"Update compliance procedures"] }'
+    ) in mdx
+    assert "Recommended Actions" not in mdx
+
+
+def test_generate_mdx_content_never_invents_filler_or_audience_split(sample_enriched_article):
+    """Guilt: the GloBE article (2026-09-23) got a filler "Review the article
+    for specific actions" step for expats, and its real content was split
+    50/50 into expat/investor groups that invented an audience the draft
+    never named. A single audience-neutral `general` list must render as
+    ONE neutral group, never split, never filled."""
+    article = sample_enriched_article.model_copy(
+        update={
+            "next_steps": NextSteps(
+                expat=[],
+                investor=[],
+                general=["Confirm scope with the group tax team before filing."],
+            )
+        }
+    )
+    mdx = generate_mdx_content(article, "globe", None)
+
+    assert "Review the article for specific actions" not in mdx
+    assert "For Expats" not in mdx
+    assert "For Investors" not in mdx
+    assert (
+        '{ text: "Recommended Actions", '
+        'subItems: ["Confirm scope with the group tax team before filing."] }'
+    ) in mdx
+
+
+def test_generate_mdx_content_omits_next_steps_section_when_empty(sample_enriched_article):
+    """Guilt: a Next Steps with no expat, investor or general items must
+    omit the whole "## Next Steps" section rather than render an empty or
+    filler-filled Checklist."""
+    article = sample_enriched_article.model_copy(
+        update={"next_steps": NextSteps(expat=[], investor=[], general=[])}
+    )
+    mdx = generate_mdx_content(article, "no-steps", None)
+
+    assert "## Next Steps" not in mdx
+    assert "<Checklist" not in mdx
+    assert "Review the article for specific actions" not in mdx
+
+
+def test_generate_mdx_content_preserves_extra_draft_sections_in_place(sample_enriched_article):
+    """Guilt: the GloBE article (2026-09-23) lost its "## In Practice" and
+    "## Sources" sections — the renderer only ever knew about TL;DR/Facts/
+    Bali Zero Take/Next Steps/Primary Source. Any other draft section must
+    render, in the right slot, with its links intact."""
+    article = sample_enriched_article.model_copy(
+        update={
+            "extra_sections": [
+                ExtraSection(
+                    heading="In Practice",
+                    body="A PT PMA's foreign ownership alone does not settle its position.",
+                    insert_after="facts",
+                ),
+                ExtraSection(
+                    heading="Sources",
+                    body="- [DDTCNews](https://news.ddtc.co.id/example)\n"
+                    "- [PMK 136/2024](https://pajak.go.id/example)",
+                    insert_after="next_steps",
+                ),
+            ]
+        }
+    )
+    mdx = generate_mdx_content(article, "globe-sections", None)
+
+    facts_index = mdx.index("## The Facts")
+    in_practice_index = mdx.index("## In Practice")
+    bzt_index = mdx.index("## Bali Zero Take")
+    next_steps_index = mdx.index("## Next Steps")
+    sources_index = mdx.index("## Sources")
+    primary_source_index = mdx.index("## Primary Source")
+
+    assert facts_index < in_practice_index < bzt_index < next_steps_index < sources_index
+    assert sources_index < primary_source_index
+    assert "A PT PMA's foreign ownership alone does not settle its position." in mdx
+    assert "[DDTCNews](https://news.ddtc.co.id/example)" in mdx
+    assert "[PMK 136/2024](https://pajak.go.id/example)" in mdx
+
+
+def test_generate_mdx_content_no_extra_sections_by_default(sample_enriched_article):
+    """Innocence: an article with no extra_sections renders exactly as
+    before — no stray headings appear."""
+    mdx = generate_mdx_content(sample_enriched_article, "visa-rules", None)
+    # The fixture's Facts body is a repeated sentence, not a heading, so the
+    # only "##" headings present are the fixed, known ones.
+    known_headings = {"## TL;DR", "## The Facts", "## Bali Zero Take", "## Next Steps", "## Primary Source"}
+    found_headings = {line for line in mdx.splitlines() if line.startswith("## ")}
+    assert found_headings == known_headings
 
 
 def test_generate_mdx_content_yaml_escapes_untrusted_tags(sample_enriched_article):

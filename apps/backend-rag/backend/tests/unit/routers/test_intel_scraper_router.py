@@ -186,6 +186,122 @@ class TestConvertStagingToEnrichedArticle:
         result = convert_staging_to_enriched_article(data)
         assert len(result["next_steps"]["expat"]) >= 1
         assert len(result["next_steps"]["investor"]) >= 1
+        # Innocence: a draft with real For Expats/For Investors subsections
+        # never grows a fabricated neutral group on top of them.
+        assert result["next_steps"]["general"] == []
+
+    def test_next_steps_without_audience_split_is_one_neutral_group(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) had no "For Expats"/"For
+        Investors" subsections — a single audience-neutral Next Steps body —
+        and the converter split it 50/50 between the two, inventing an
+        audience the draft never named. It must land in one neutral group
+        instead, never split, never filled with a stock filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n"
+                "Ask the group tax team to confirm the scope assessment first.\n\n"
+                "Review the separate reporting obligations with a qualified adviser."
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert len(next_steps["general"]) >= 1
+        joined = " ".join(next_steps["general"])
+        assert "Review the article for specific actions" not in joined
+        assert "confirm the scope assessment" in joined
+
+    def test_next_steps_never_emits_filler_and_omits_empty_groups(self) -> None:
+        """Guilt: a Next Steps section too short to yield any real item must
+        stay empty (and the MDX layer omits the section), never the
+        "Review the article for specific actions" filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Thin Article",
+            "content": "## Facts\nFacts here.\n## Next Steps\nTBD",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        for group in (next_steps["expat"], next_steps["investor"], next_steps["general"]):
+            for item in group:
+                assert "Review the article for specific actions" not in item
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+
+    def test_next_steps_absent_yields_no_filler(self) -> None:
+        """Guilt: a draft with no "## Next Steps" section at all must not
+        grow one out of filler text."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Next Steps",
+            "content": "## Facts\nJust the facts.",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps == {"expat": [], "investor": [], "general": []}
+
+    def test_extra_sections_preserved_in_draft_order(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) lost its "## In Practice"
+        and "## Sources" sections — the converter only ever extracted
+        Summary/Facts/Bali Zero Take/Next Steps and silently dropped any
+        other "##" section. Every other section must survive, in order,
+        anchored to the mapped section it followed."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n\n"
+                "## In Practice\nPractical detail here.\n\n"
+                "## Bali Zero Take\nOur take.\n\n"
+                "## Next Steps\n- Do the thing.\n\n"
+                "## Sources\n"
+                "- [Source One](https://example.com/one)\n"
+                "- [Source Two](https://example.com/two)\n"
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        extras = result["extra_sections"]
+        assert [section["heading"] for section in extras] == ["In Practice", "Sources"]
+        in_practice, sources = extras
+        assert in_practice["insert_after"] == "facts"
+        assert "Practical detail here." in in_practice["body"]
+        assert sources["insert_after"] == "next_steps"
+        assert "[Source One](https://example.com/one)" in sources["body"]
+        assert "[Source Two](https://example.com/two)" in sources["body"]
+
+    def test_extra_sections_do_not_duplicate_mapped_headings(self) -> None:
+        """Guilt: Summary/Facts/Bali Zero Take/Next Steps must never also
+        appear a second time in extra_sections."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Mapped Only",
+            "content": (
+                "## Summary\nSum.\n## Facts\nFacts.\n"
+                "## Bali Zero Take\nTake.\n## Next Steps\n- Step one here.\n"
+            ),
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["extra_sections"] == []
 
     def test_tags_generation(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
