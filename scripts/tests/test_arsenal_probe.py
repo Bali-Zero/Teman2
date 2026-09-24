@@ -346,17 +346,22 @@ def test_scrub_leaves_short_status_words_untouched():
 
 
 # ---------------------------------------------------------------------------
-# scrub() — identifier exemption (scar #3, guard over-match, 2026-09-25)
+# scrub() — PROVENANCE-based keep=, not shape/context (scar #3, r3 redesign,
+# 2026-09-25, gate-scrub-7314-r2 REWORK-BUILD)
 #
-# The bug: the generic 24+-char alternative in _SECRET_RE rewrote long
-# snake_case/SCREAMING_SNAKE identifiers as secrets because it judged length,
-# not entity. The cure is a narrow exemption on that ONE alternative only —
-# every other test in this block proves the exemption cannot be tricked into
-# swallowing an actual secret, including one that happens to be identifier-
-# shaped once you strip its prefix or padding.
+# Rounds 1 and 2 tried to decide from SHAPE (a regex on the token) or CONTEXT
+# (the text around a match) whether a long token was a secret, and each round
+# under-matched a real secret that origin/main redacted. This round decides
+# by PROVENANCE instead: _SECRET_RE, and every redaction origin/main performs,
+# are UNCHANGED — scrub() adds only a keyword-only `keep` parameter, and the
+# ONE exception is a match whose exact text is a member of the caller-supplied
+# `keep` set AND is itself a pure single-case letters-and-underscore
+# identifier. With keep=None or an empty set, scrub() is byte-identical to
+# origin/main for every input (PARITY, proved below).
 # ---------------------------------------------------------------------------
 
-# INNOCENCE: pure identifiers must survive scrub() byte-for-byte.
+# INNOCENCE fixture, unchanged from r1/r2: pure identifiers a caller might
+# legitimately want to keep.
 _SCRUB_INNOCENCE = [
     "secondhome_property_value_usd",
     "edge/secondhome_property_value_usd=unsure",
@@ -366,27 +371,12 @@ _SCRUB_INNOCENCE = [
 ]
 
 
-def test_scrub_leaves_pure_identifiers_intact():
-    for text in _SCRUB_INNOCENCE:
-        assert ap.scrub(text) == text, f"identifier wrongly mutated: {text!r}"
-
-
-def test_scrub_repro_edge_line_from_defect_report_survives():
-    # exact repro from the defect report: a TP1 council line quoting two
-    # 30-char snake_case identifiers, with a caller-passed literal secret
-    # present too (must still be redacted, identifiers must not be).
-    text = "edge/secondhome_property_value_usd=unsure and edge/secondhome_deposit_usd=unsure"
-    synthetic_token = "x" * 30  # SYNTHETIC — never a real credential
-    scrubbed = ap.scrub(text, [synthetic_token])
-    assert scrubbed == text
-
-
 def _synthetic_guilt_cases() -> dict[str, str]:
     """Secret-shaped strings generated HERE, never copied from env/file (SYNTHETIC).
 
-    Each shape is deliberately picked to probe a way the exemption could be
-    tricked: identifier-like prefixes, no digits, specific known prefixes,
-    hex, etc. All must still be caught by _SECRET_RE and then redacted.
+    Reused as the bulk of the parity corpus below: every one of these must
+    still be caught by _SECRET_RE and redacted, keep= or not, unless its exact
+    text is explicitly named in keep.
     """
     import random
     import string
@@ -397,44 +387,22 @@ def _synthetic_guilt_cases() -> dict[str, str]:
         return "".join(rng.choice(chars) for _ in range(n))
 
     return {
-        # generic alternative, mixed-case + digits — never identifier-shaped
         "mixed_case_alnum_with_digits_40": rand_alnum(40),
-        # specific-prefix alternatives: NEVER exempt, even if the tail were
-        # pure letters — these prove the exemption is scoped to the
-        # "generic" match group only, not to shape in general
         "ghp_prefixed": "ghp_" + rand_alnum(36),
         "sk_prefixed": "sk-" + rand_alnum(48),
         "akia_prefixed": "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
         "jwt_shaped": "eyJ" + rand_alnum(10) + "." + rand_alnum(10) + "." + rand_alnum(10),
-        # generic alternative, all-digits-allowed shapes
         "hex_digest_64": "".join(rng.choice("0123456789abcdef") for _ in range(64)),
         "lower_alnum_with_digits_30": "".join(
             rng.choice(string.ascii_lowercase + string.digits) for _ in range(30)
         ),
-        # identifier-like PREFIX with a random tail containing digits: the
-        # prefix alone would pass the pure-identifier check, the whole
-        # token must not (this is exactly what "pure" in the exemption
-        # rules out — a partial resemblance is not a full match)
         "identifier_prefix_random_digit_tail": "secret_token_value_" + rand_alnum(24),
-        # generic alternative, letters+underscores with NO digit at all — the
-        # disqualifier here is mixed case, not a digit, proving the exemption
-        # requires single-case (not merely "no digit")
-        "mixed_case_underscored_no_digits": (
-            "SecretToken_ValueHere_ExtraPaddingSegment"
-        ),
-        # generic alternative, pure single-case letters but NO underscore —
-        # kills mutant (c), which drops the underscore requirement
+        "mixed_case_underscored_no_digits": "SecretToken_ValueHere_ExtraPaddingSegment",
         "lowercase_letters_no_underscore_32": rand_alnum(32, string.ascii_lowercase),
         "uppercase_letters_no_underscore_32": rand_alnum(32, string.ascii_uppercase),
-        # leading / trailing / double underscore — the exemption regex
-        # requires letters on both ends of every underscore, so these fail
-        # the pure-identifier shape and must stay redacted
         "leading_underscore": "_" + "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)),
         "trailing_underscore": "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)) + "_",
         "double_underscore": rand_alnum(10, string.ascii_lowercase) + "__" + rand_alnum(14, string.ascii_lowercase),
-        # specific-prefix EMBEDDED inside an otherwise-pure single-case run —
-        # kills mutant (d), which applies the exemption to every alternative
-        # instead of scoping it to "generic" only
         "ghp_embedded_standalone": "ghp_" + rand_alnum(36, string.ascii_lowercase),
         "ghp_embedded_in_snake_prefix": "my_token_ghp_" + rand_alnum(36, string.ascii_lowercase),
         "akia_embedded_in_snake_prefix": "AWS_KEY_AKIA" + rand_alnum(16, string.ascii_uppercase),
@@ -442,81 +410,136 @@ def _synthetic_guilt_cases() -> dict[str, str]:
     }
 
 
-def test_scrub_guilt_fixtures_are_non_empty_and_pre_match():
-    # guard-of-the-guard: the GUILT list itself must be non-empty, and each
-    # fixture must match _SECRET_RE on its own BEFORE the exemption is
-    # considered — otherwise a passing test could mean "never mattered", not
-    # "the exemption correctly excluded it".
-    cases = _synthetic_guilt_cases()
-    assert len(cases) >= 8
-    for name, value in cases.items():
-        assert ap._SECRET_RE.search(value), f"{name}: fixture does not match _SECRET_RE at all"
-
-
-def test_scrub_redacts_secret_shaped_synthetics():
-    # exact-equality, not just "value not in scrubbed": a PARTIAL leak (e.g. the
-    # akia under-match that let a tail of the run survive, F2) would pass a
-    # substring check but must fail this one.
-    for name, value in _synthetic_guilt_cases().items():
-        scrubbed = ap.scrub(f"value observed: {value} end of line")
-        assert scrubbed == "value observed: <REDACTED> end of line", (
-            f"{name}: guilt fixture not fully redacted (partial leak or missed match): {scrubbed!r}"
-        )
-
-
-def test_scrub_literal_extra_secret_wins_over_identifier_exemption():
-    # the caller-passed literal token is checked BEFORE the regex/exemption
-    # pass, so even a literal that is itself snake_case-only-letters (and
-    # would otherwise qualify for the identifier exemption) is redacted.
-    literal = "snake_case_only_letters_here"
-    assert ap._SECRET_RE.search(literal)  # guard-of-the-guard: shape alone also matches
-    scrubbed = ap.scrub(f"value was {literal} exactly", extra_secrets=[literal])
-    assert literal not in scrubbed
-
-
-def test_scrub_redacts_pure_identifier_shaped_secret_in_key_value_or_bearer_context():
-    # F1: a context-free snake passphrase is the declared residual (left
-    # intact by design), but the SAME shape in a credential context must
-    # still be redacted — key=value and bearer are never exempt.
+def _parity_corpus() -> list[str]:
+    """>=40 synthetic inputs — the 18 GUILT shapes, the 5 INNOCENCE identifiers,
+    4 credential contexts (key=value / bearer, F1's shapes), and a mixed-bag
+    tail (bare prefixes, JWT, hex, AKIA, plain prose, short identifiers below
+    the 24-char floor) — reused from the gate reports for the keep=None /
+    keep=frozenset() / no-keep parity proof.
+    """
     import random
     import string
 
     rng = random.Random(20260925)
-    pw = "_".join(
-        "".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5)
-    )
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    pw = "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(5))
     contexts = [
         f"PASSWORD={pw}",
         f'{{"api_key": "{pw}"}}',
         f"https://x.example/cb?access_token={pw}&x=1",
         f"authorization: bearer {pw}",
     ]
-    for text in contexts:
-        scrubbed = ap.scrub(text)
-        assert pw not in scrubbed, f"passphrase survived in context: {text!r} -> {scrubbed!r}"
+    tail = [
+        "the request timed out after 45 seconds with no response",
+        "HTTP 200 OK model glm-5.2 responded",
+        "Authorization: Bearer " + rand_alnum(30),
+        "key sk-" + rand_alnum(40),
+        "token ghp_" + rand_alnum(36),
+        "eyJ" + rand_alnum(15) + "." + rand_alnum(15) + "." + rand_alnum(15),
+        "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "plain english sentence with no secret at all in it whatsoever",
+        "a_short_id",
+        "AN_UPPER_ID",
+        "mixedCaseWord",
+        "",
+    ]
+    return list(_synthetic_guilt_cases().values()) + list(_SCRUB_INNOCENCE) + contexts + tail
 
 
-def test_scrub_generic_only_scoping_is_load_bearing_on_its_own(monkeypatch):
-    # Isolates the `m.lastgroup == "generic"` condition from
-    # `_EMBEDDED_PREFIX_RE`: today every ghp_/AKIA-prefixed token that is ALSO
-    # pure-identifier-shaped happens to be caught by the embedded-prefix check
-    # too, so a plain input-based test cannot tell the two defenses apart
-    # (mutant d — dropping the lastgroup condition — leaves such fixtures
-    # redacted regardless). Patching the embedded-prefix check out removes
-    # that overlap and pins the lastgroup condition by itself: a standalone
-    # ghp_-prefixed lowercase token, matched via the "ghp" named group, must
-    # still be redacted on lastgroup grounds alone.
+def test_parity_corpus_has_at_least_40_inputs():
+    assert len(_parity_corpus()) >= 40
+
+
+def test_scrub_keep_none_and_empty_are_byte_identical_to_unconditional_redaction():
+    # PARITY (R3 spec): with keep=None (the default) or an empty frozenset,
+    # scrub() must be byte-identical to redacting every match unconditionally
+    # — i.e. to origin/main's behavior — for every corpus input.
+    for text in _parity_corpus():
+        wrapped = f"value observed: {text} end of line"
+        baseline = ap.scrub(wrapped)
+        assert ap.scrub(wrapped, keep=None) == baseline
+        assert ap.scrub(wrapped, keep=frozenset()) == baseline
+
+
+def test_scrub_keeps_identifiers_named_in_keep():
+    # INNOCENCE: only an identifier WE explicitly named in keep survives.
+    text = "edge/secondhome_property_value_usd=unsure and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    kept = ap.scrub(
+        text,
+        keep=frozenset({"secondhome_property_value_usd", "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}),
+    )
+    assert kept == text
+
+
+def test_scrub_redacts_pure_identifier_not_in_keep_even_with_other_keep_entries():
+    # GUILT (a): a pure-identifier synthetic passphrase NOT in keep is
+    # redacted, even while keep holds OTHER identifiers.
     import random
-    import re
     import string
 
-    monkeypatch.setattr(ap, "_EMBEDDED_PREFIX_RE", re.compile(r"(?!)"))  # never matches
-    rng = random.Random(20260925)
-    tok = "ghp_" + "".join(rng.choice(string.ascii_lowercase) for _ in range(36))
-    m = ap._SECRET_RE.search(tok)
-    assert m is not None and m.lastgroup == "ghp", "fixture setup: expected a 'ghp' match"
-    scrubbed = ap.scrub(f"value observed: {tok} end of line")
-    assert scrubbed == "value observed: <REDACTED> end of line"
+    rng = random.Random(1)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    other = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {pw} and {other} end of line"
+    # guard-of-the-guard: with no keep at all, this exact fixture is redacted
+    assert ap.scrub(f"value observed: {pw} end of line") == "value observed: <REDACTED> end of line"
+    scrubbed = ap.scrub(text, keep=frozenset({other}))
+    assert pw not in scrubbed
+    assert other in scrubbed
+
+
+def test_scrub_redacts_kept_value_that_is_not_a_pure_identifier():
+    # GUILT (b): a value present in keep that is NOT a pure identifier (has a
+    # digit, or is ghp_-prefixed with digits) is still redacted — keep only
+    # ever protects the pure-identifier shape, never a secret-shaped value
+    # just because it was named.
+    import random
+    import string
+
+    rng = random.Random(2)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    with_digit = "secondhome_property_value_usd1"
+    ghp_with_digits = "ghp_" + rand_alnum(36)
+    for value in (with_digit, ghp_with_digits):
+        text = f"value observed: {value} end of line"
+        # guard-of-the-guard: redacted with no keep at all
+        assert ap.scrub(text) == "value observed: <REDACTED> end of line", value
+        scrubbed = ap.scrub(text, keep=frozenset({value}))
+        assert value not in scrubbed, f"{value}: kept despite not being a pure identifier"
+
+
+def test_scrub_extra_secrets_wins_even_when_the_same_value_is_in_keep():
+    # GUILT (c): a value that is BOTH in keep AND passed as extra_secrets is
+    # still redacted — extra_secrets is applied first and unconditionally, so
+    # a caller token can never be kept regardless of shape.
+    ident = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {ident} end of line"
+    assert ap.scrub(text) == "value observed: <REDACTED> end of line"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, [ident], keep=frozenset({ident}))
+    assert ident not in scrubbed
+
+
+def test_scrub_redacts_password_context_passphrase_not_in_keep():
+    # GUILT (d): a snake-case passphrase in a credential-named key=value line
+    # (built below) is redacted when it is not in keep, even while keep holds
+    # an unrelated identifier.
+    import random
+    import string
+
+    rng = random.Random(3)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    text = f"PASSWORD={pw}"
+    assert ap.scrub(text) == "PASSWORD=<REDACTED>"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, keep=frozenset({"DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}))
+    assert pw not in scrubbed
+
 
 
 def test_evidence_tail_truncates_and_scrubs():

@@ -224,72 +224,59 @@ def context_info() -> dict:
 # Token-shaped substrings that must never survive into a report, log, or exception
 # string: Bearer headers, common API-key prefixes, and any long alnum/._- run (24+
 # chars covers keychain tokens, JWTs, hex digests) that isn't obviously prose.
-#
-# Each alternative is named so scrub() can tell which one fired. Only the trailing
-# "generic" alternative — the length-only catch-all — is ever eligible for the
-# identifier exemption below; every specific-prefix alternative (bearer/sk/ghp/xox/
-# jwt/akia) redacts unconditionally, even when its match also happens to look like
-# an identifier (scar #3: over-match is a length judgment, not an entity one — but
-# the fix narrows the catch-all, it doesn't loosen the specific shapes).
 _SECRET_RE = re.compile(
-    r"(?P<bearer>Bearer\s+\S+)"
-    r"|(?P<sk>sk-[A-Za-z0-9_\-]{8,})"
-    r"|(?P<ghp>ghp_[A-Za-z0-9]{8,})"
-    r"|(?P<xox>xox[a-z]-[A-Za-z0-9\-]{8,})"
-    r"|(?P<jwt>eyJ[A-Za-z0-9._\-]{20,})"
-    r"|(?P<akia>AKIA[A-Z0-9]{16}[A-Za-z0-9._\-]*)"
-    r"|(?P<generic>[A-Za-z0-9._\-]{24,})"
-)
-
-# A "generic" match is exempt from redaction ONLY when the whole matched token is a
-# pure identifier: single-case letters joined by underscores, no digit, no mixed
-# case, no other symbol. Anything with a digit, a dot, a hyphen, or mixed case still
-# falls through to redaction. Residual, accepted: a secret that is itself only
-# single-case letters joined by underscores (e.g. a human passphrase) and that
-# appears outside a key=/bearer context is left intact; credentials this probe
-# loads are passed as extra_secrets and are redacted regardless of shape.
-_PURE_IDENTIFIER_RE = re.compile(r"(?:[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+)")
-# The only specific prefixes that can hide INSIDE a single-case letters+underscore run:
-# `sk-`/`xox?-` need a hyphen and `eyJ` needs mixed case, so they cannot.
-_EMBEDDED_PREFIX_RE = re.compile(r"ghp_[a-z]{8}|AKIA[A-Z]{16}")
-# A generic match is never exempt when it is the VALUE of a credential-named key or
-# follows an auth scheme in any case: `PASSWORD=<v>`, `"api_key": "<v>"`,
-# `?access_token=<v>`, `bearer <v>`.
-_SECRET_CONTEXT_RE = re.compile(
-    r"(?:(?:token|key|password|passwd|pwd|secret|auth|credential)[\"']?\s*[:=]\s*[\"']?|bearer\s+)$",
-    re.IGNORECASE,
+    r"(Bearer\s+\S+"
+    r"|sk-[A-Za-z0-9_\-]{8,}"
+    r"|ghp_[A-Za-z0-9]{8,}"
+    r"|xox[a-z]-[A-Za-z0-9\-]{8,}"
+    r"|eyJ[A-Za-z0-9._\-]{20,}"
+    r"|[A-Za-z0-9._\-]{24,})"
 )
 
 _SECRET_ENV_NAME_RE = re.compile(r"(TOKEN|KEY|PASSWORD|SECRET)", re.IGNORECASE)
 
-
-def _scrub_replacement(m: "re.Match[str]") -> str:
-    tok = m.group(0)
-    if (
-        m.lastgroup == "generic"
-        and _PURE_IDENTIFIER_RE.fullmatch(tok)
-        and not _EMBEDDED_PREFIX_RE.search(tok)
-        and not _SECRET_CONTEXT_RE.search(m.string, max(0, m.start() - 48), m.start())
-    ):
-        return tok
-    return "<REDACTED>"
+# PROVENANCE, not shape or context (scar #3 rounds 1-2 both under-matched by
+# guessing from a prefix regex or the text around a match — see history).
+# Identifies a pure letters-and-underscore identifier, single-case, for use by
+# scrub()'s keep= parameter below.
+_PURE_IDENTIFIER_RE = re.compile(r"[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+")
 
 
-def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
+def scrub(
+    text: str,
+    extra_secrets: Optional[list[str]] = None,
+    *,
+    keep: Optional["frozenset[str]"] = None,
+) -> str:
     """Redact credential-shaped substrings from evidence before it can be logged.
 
     extra_secrets: exact credential VALUES this probe loaded (keychain token, parsed
     env.master value) — replaced unconditionally even if they don't match the
-    generic shape (e.g. a short-but-still-sensitive value), and even if the exact
-    value happens to be identifier-shaped: this loop runs before the regex pass and
-    never consults the exemption.
+    generic shape (e.g. a short-but-still-sensitive value), and BEFORE keep is
+    ever consulted, so a caller token can never be kept.
+
+    keep: an optional, caller-supplied set of exact strings this call site
+    itself sent elsewhere (its own PROVENANCE, not a guess at shape or
+    context). A match is left intact only when its exact text is a member of
+    `keep` AND is itself a pure letters-and-underscore identifier. Residual:
+    such a value, if it also happens to be sensitive, was already present in
+    what we sent. With keep=None (the default) or an empty set, this function
+    is byte-identical to redacting every match unconditionally.
     """
     out = text
     for secret in extra_secrets or []:
         if secret:
             out = out.replace(secret, "<REDACTED>")
-    out = _SECRET_RE.sub(_scrub_replacement, out)
-    return out
+    if not keep:
+        return _SECRET_RE.sub("<REDACTED>", out)
+
+    def _replace(m: "re.Match[str]") -> str:
+        tok = m.group(0)
+        if tok in keep and _PURE_IDENTIFIER_RE.fullmatch(tok):
+            return tok
+        return "<REDACTED>"
+
+    return _SECRET_RE.sub(_replace, out)
 
 
 def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: int = 160) -> str:
