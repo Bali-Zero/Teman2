@@ -651,3 +651,83 @@ the committed JSON, both printed in the PR body's proof fences: distribution
 `49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9`, `requests_used_total 253`.
 No new claim in this addendum's scope is uncorroborated by a command in the PR body.
 
+
+## A9 addendum (2026-09-24): seq-23 activated in production, 252-walk re-sweep
+
+Seq-23 (`rule_pack_id a72aa24f-344a-58c1-809d-076a9227a1f0`, payload sha256
+`e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204`) was activated in production
+2026-09-24T11:27:25Z by `vo-ceremony-a9-activate` (activation_id
+`5ba3b03c-693a-4ae4-b76a-130977450d3e`). Full ceremony record, including the runbook-drift and
+ceremony-transport findings, is `PROVELIVE-A9-ACTIVATION-REPORT.md` (not committed here). Step 8
+ran 8 targeted prove-live probes (8/8 as expected, no rollback); step 9 re-ran the same B4-class
+252-walk sweep against this directory's manifest
+(`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`) with the same driver command used for
+B4-2/B4-2b:
+
+```
+$ … backend.scripts.visa_engine.enumerate_live \
+    --manifest prove-live-b52-manifest-raw-main-1c6d2240-20260922.json \
+    --report prove-live-a9-seq23-full-sweep-report-20260924.json \
+    --max-requests 260 --rate-per-minute 25 --dry-run
+plan: pending=252 total=252 already_recorded=0 never_attempted=252 retryable_harness_reds=0 max_requests=260 rate_per_minute=25.0 max_consecutive_harness_reds=3 health_probes_outside_budget=2 estimated_minutes=10.08
+$ … backend.scripts.visa_engine.enumerate_live \
+    --manifest prove-live-b52-manifest-raw-main-1c6d2240-20260922.json \
+    --report prove-live-a9-seq23-full-sweep-report-20260924.json \
+    --max-requests 260 --rate-per-minute 25
+wrote 252/252 walks to prove-live-a9-seq23-full-sweep-report-20260924.json (stopped_reason=completed, requests_used_this_run=252, requests_used_total=252)
+SWEEP_RC=0
+```
+
+Report JSON: `prove-live-a9-seq23-full-sweep-report-20260924.json`, sha256
+`899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808`.
+
+### Census (derived by command from the JSON's `engine_state`, `rule_pack.sequence`, `http_status` — never typed)
+
+| | B4-2b (seq-22) | **A9 sweep (seq-23)** |
+|---|---|---|
+| SUPPORTED_CANDIDATES | 172 | **185** |
+| NEEDS_INPUT | 6 | **8** |
+| NO_SUPPORTED_PATH | 31 | **31** |
+| HUMAN_REVIEW_REQUIRED | 43 | **28** |
+| total | 252 | 252 |
+| `rule_pack.sequence` | 22 ×252 | **23 ×252** (payload `e5f791b5…72204` ×252) |
+| `http_status` | — | **200 ×252** |
+
+`HUMAN_REVIEW_REQUIRED = 28` breaks down (by command, over `review_reasons`) as
+`DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` ×25 (adapter hold on the mouth-side flag; closes with
+A3'-B, not built as of this sweep — `git log origin/main --grep "A3'-B"` returns no commit),
+`SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 (D23, owner decision), `DISCLOSED_CRIMINAL_RECORD_REVIEW`
+×1 (G1's allowed exception).
+
+### The 15 walks that moved state vs B4-2b (derived by set-intersection over `walk_id`, diffing `engine_state`)
+
+`shared = 252` (same 252 `walk_id`s in both files — no label added or dropped since B4-2b). 13
+walks moved `HUMAN_REVIEW_REQUIRED → SUPPORTED_CANDIDATES`, 2 moved
+`HUMAN_REVIEW_REQUIRED → NEEDS_INPUT`; the other 237 kept state.
+
+| walk_id | B4-2b state | A9 state |
+|---|---|---|
+| `edge/current_status_code=other` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `edge/current_status_code=unsure` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `edge/in_indonesia=unsure` | HUMAN_REVIEW_REQUIRED | NEEDS_INPUT |
+| `edge/nationalities=unsure` | HUMAN_REVIEW_REQUIRED | NEEDS_INPUT |
+| `edge/stay_permit_code=unsure` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/ambiguous_sponsor` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/blacklist` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/diplomatic_passport` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/health_flag` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/immigration_investigation` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/not_certain` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/overstay` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/pep_or_sanctions` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/prior_refusal` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/source_of_funds_unclear` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+
+New reason codes observed live and absent from B4-2b entirely (by command, over
+`review_reasons`/`no_path_reasons`): `E33G_LOCAL_COMPANY_NOT_ALLOWED` ×7,
+`STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED` ×4, `E33G_LOCAL_MARKET_NOT_ALLOWED` ×2,
+`RETIREMENT_INCOME_BELOW_THRESHOLD` ×1.
+
+**No finding in this sweep**: HUMAN_REVIEW = 28 = the runbook's expectation (A3'-B not live, so
+the 25 `ACTIVITY_BOUNDARY` walks are still held by the adapter flag), 0 transport errors, 0
+harness reds, sequence 23 on all 252, HTTP 200 on all 252.
