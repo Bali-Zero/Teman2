@@ -74,6 +74,12 @@ describe("countExactWalks — determinism", () => {
   }, 120_000);
 });
 
+// Hygiene follow-up, not yet built (GATE-A7-M-REPORT-7135.md, option 2): if the enumerated
+// space keeps growing (Slice A6-bis is pending and may add more facts to
+// BRANCH_RELEVANT_FACT_KEYS), coarsen the memo-key projection for `birth_date` via the
+// injection point T1 proved below, rather than bumping this budget again. Not built here —
+// A6-bis may move the pins this file carries first, and any re-pin is by command.
+
 describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
   it("throws naming the repeated question when a synthetic graph loops", () => {
     // Two REAL question ids (so `answersFor` resolves them against the real
@@ -768,6 +774,9 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // byte-stable across runs — the B1'' memo-key projection is unaffected).
   const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
 
+  // A6-bis (mouth slice, PLAN-ratified, not yet merged) adds two more "Not sure" defaults and may
+  // move this pinned literal — do not re-pin speculatively; re-measure and re-pin only when
+  // A6-bis lands, by command (MANDATE-vo.md, row 4 "enumeration memo-space").
   it("cardinality: the covering subset renders exactly 254 walks (pinned literal, re-measured after Slice A7-M's birth_date branch)", () => {
     // Slice A7-M (2026-09-22): `birth_date` joins `BRANCH_RELEVANT_FACT_KEYS`
     // with two representative values (adult, minor) — 252 → 254.
