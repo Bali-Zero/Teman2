@@ -442,6 +442,21 @@ COMMON_BIN_DIRS = ["~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "~/.ki
 CODEX_BIN_CANDIDATES = ["~/.local/bin/codex", "/opt/homebrew/bin/codex"]
 
 
+def resolve_codex() -> tuple[Optional[str], bool]:
+    """codex, channel-first. resolve_bin is $PATH-first, which is right for every
+    other seat but wrong here: a session whose $PATH lists /opt/homebrew/bin before
+    ~/.local/bin would hand the probe the npm copy even though the standalone is
+    installed. Take the first existing CODEX_BIN_CANDIDATES; via_path reports whether
+    ANY codex is on this process's $PATH (the NOT_ON_PATH note is about $PATH poverty,
+    not about which channel answered). No channel present -> resolve_bin's verdict."""
+    on_path = shutil.which("codex") is not None
+    for cand in CODEX_BIN_CANDIDATES:
+        expanded = os.path.expanduser(cand)
+        if Path(expanded).exists():
+            return expanded, on_path
+    return resolve_bin("codex", CODEX_BIN_CANDIDATES)
+
+
 def resolve_bin(name: str, extra_paths: Optional[list[str]] = None) -> tuple[Optional[str], bool]:
     """Resolve a seat binary. Returns (path_or_None, found_via_path).
 
@@ -875,7 +890,7 @@ def probe_kimi(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", CODEX_BIN_CANDIDATES)
+    binp, via_path = resolve_codex()
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(
@@ -894,7 +909,7 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex_spark(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", CODEX_BIN_CANDIDATES)
+    binp, via_path = resolve_codex()
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(

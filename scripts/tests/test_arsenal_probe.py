@@ -2754,18 +2754,66 @@ def test_codex_candidates_prefer_the_standalone_channel():
     assert "/opt/homebrew/bin/codex" in ap.CODEX_BIN_CANDIDATES
 
 
-def test_resolve_bin_thin_path_takes_the_first_existing_candidate(monkeypatch, tmp_path):
-    ap = _load_module()
-    standalone = tmp_path / ".local" / "bin" / "codex"
-    homebrew = tmp_path / "homebrew" / "bin" / "codex"
-    for f in (standalone, homebrew):
+def _two_codex_channels(tmp_path):
+    local = tmp_path / "local-bin" / "codex"
+    homebrew = tmp_path / "homebrew-bin" / "codex"
+    for f in (local, homebrew):
         f.parent.mkdir(parents=True)
         f.write_text("#!/bin/sh\n")
-    monkeypatch.setattr(ap.shutil, "which", lambda name: None)
-    found, via_path = ap.resolve_bin("codex", [str(standalone), str(homebrew)])
-    assert (found, via_path) == (str(standalone), False)
-    found, _ = ap.resolve_bin("codex", [str(homebrew), str(standalone)])
-    assert found == str(homebrew), "order of candidates is the contract"
+        f.chmod(0o755)
+    return str(local), str(homebrew)
+
+
+def test_resolve_codex_prefers_the_standalone_even_when_homebrew_is_first_on_path(monkeypatch, tmp_path):
+    """guilt: resolve_bin is $PATH-first and would return the homebrew copy here."""
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: homebrew)
+    assert ap.resolve_codex() == (local, True)
+    assert ap.resolve_bin("codex", [local, homebrew]) == (homebrew, True), "the shape resolve_bin still has"
+
+
+def test_resolve_codex_thin_path_reports_not_on_path_but_still_the_standalone(monkeypatch, tmp_path):
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (local, False)
+
+
+def test_resolve_codex_homebrew_only_host_still_answers(monkeypatch, tmp_path):
+    """innocence: a Mac with only the npm copy (M5 today?) keeps working."""
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    Path(local).unlink()
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (homebrew, False)
+
+
+def test_resolve_codex_no_channel_is_resolve_bins_verdict(monkeypatch, tmp_path):
+    ap = _load_module()
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [str(tmp_path / "nope" / "codex")])
+    monkeypatch.setattr(ap, "COMMON_BIN_DIRS", [str(tmp_path / "nothing")])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (None, False)
+
+
+def test_both_codex_probes_resolve_through_resolve_codex(monkeypatch):
+    """Reverting probe_codex / probe_codex_spark to resolve_bin(...) must fail here."""
+    ap = _load_module()
+    calls: list[str] = []
+
+    def fake_resolve_codex():
+        calls.append("resolve_codex")
+        return None, False
+
+    monkeypatch.setattr(ap, "resolve_codex", fake_resolve_codex)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (_ for _ in ()).throw(AssertionError("resolve_bin must not be used for codex")))
+    assert ap.probe_codex(5)[0] == ap.NOT_INSTALLED
+    assert ap.probe_codex_spark(5)[0] == ap.NOT_INSTALLED
+    assert calls == ["resolve_codex", "resolve_codex"]
 
 
 def test_codex_probe_budget_covers_the_measured_cold_start():

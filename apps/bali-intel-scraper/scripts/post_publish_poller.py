@@ -287,11 +287,12 @@ def _codex_env() -> dict:
     defense-in-depth strip in backend codex_image_gen._safe_env.
     """
     env = dict(os.environ)
-    path = env.get("PATH", "")
-    present = path.split(":") if path else []
-    missing = [d for d in codex_bin_dirs() if d not in present]
-    if missing:
-        env["PATH"] = ":".join(missing + ([path] if path else []))
+    # Roots FIRST, always — not "prepend if missing": a PATH that already holds
+    # ~/.local/bin somewhere AFTER /opt/homebrew/bin would otherwise keep the
+    # homebrew copy in front (spalla-review 2026-09-24).
+    roots = codex_bin_dirs()
+    present = [d for d in env.get("PATH", "").split(":") if d]
+    env["PATH"] = ":".join(roots + [d for d in present if d not in roots])
     for key in (
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
