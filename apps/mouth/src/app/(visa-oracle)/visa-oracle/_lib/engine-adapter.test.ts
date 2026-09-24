@@ -840,6 +840,128 @@ describe("support reasons are sentences, not machine codes", () => {
   }
 
   /**
+   * Slice A8-2: `highestSequencePack()` reads signed envelopes, but the pack
+   * whose copy must exist BEFORE signing is the highest-sequence SOURCE pack
+   * — the flat shape (`sequence` and `rules` are top-level, no `.payload`
+   * wrapper, unlike the signed envelope).
+   */
+  function highestSequenceSourcePack(): {
+    sequence: number;
+    rules?: Array<Record<string, unknown>>;
+  } {
+    let best: {
+      pack: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of productionPackFiles()) {
+      const pack = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (typeof pack.sequence !== "number") continue;
+      if (best === null || pack.sequence > best.sequence) {
+        best = {
+          pack: pack as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: pack.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(
+        `no source pack under ${PACKS_DIR} had a numeric sequence`,
+      );
+    }
+    return best.pack;
+  }
+
+  /** Every EXCLUDE reason code a pack's rules can emit. */
+  function excludeReasonCodesOf(pack: {
+    rules?: Array<Record<string, unknown>>;
+  }): Set<string> {
+    const codes = new Set<string>();
+    for (const rule of pack.rules ?? []) {
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        codes.add(effect.reason_code);
+      }
+    }
+    return codes;
+  }
+
+  /**
+   * EXCLUDE codes of ONE numbered SIGNED pack — pinned to an explicit
+   * sequence, never derived from "whichever signed pack is highest": once a
+   * later slice signs seq-23, "highest signed" becomes 23 and the diff
+   * against itself silently goes empty, making the A8-2 tripwire vacuous
+   * exactly when it matters most. Same prior art as
+   * `reviewReasonCodesInSignedPack(20)` above.
+   */
+  function excludeReasonCodesInSignedPack(sequence: number): Set<string> {
+    const envelope = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          PACKS_DIR,
+          `rulepack-prod-${String(sequence).padStart(3, "0")}.signed.json`,
+        ),
+        "utf-8",
+      ),
+    ) as { payload?: { rules?: Array<Record<string, unknown>> } };
+    return excludeReasonCodesOf({ rules: envelope.payload?.rules ?? [] });
+  }
+
+  it("has copy for every EXCLUDE code the highest source pack adds beyond signed seq-22 (Slice A8-2)", () => {
+    const seq22Excludes = excludeReasonCodesInSignedPack(22);
+    const sourceExcludes = excludeReasonCodesOf(highestSequenceSourcePack());
+    const owed = [...sourceExcludes]
+      .filter((code) => !seq22Excludes.has(code))
+      .sort();
+    // eslint-disable-next-line no-console -- printed by design (A8-2 contract: "the set
+    // difference is printed"), not left-over debugging.
+    console.log("Slice A8-2 — EXCLUDE codes owed SUPPORT_REASON_COPY:", owed);
+    // Guard-of-the-guard: a glob/parse that silently found nothing (e.g. the source pack
+    // regressed to fewer EXCLUDE rules, or PACKS_DIR stopped resolving) would make the
+    // assertion below vacuously true. The mandate fixes this floor at exactly 10 today;
+    // >= 10 keeps this test from going quiet if a future pack adds an eleventh.
+    expect(owed.length).toBeGreaterThanOrEqual(10);
+    const missing = owed.filter((code) => !(code in SUPPORT_REASON_COPY));
+    expect(missing).toEqual([]);
+  });
+
+  it("Slice A8-2: LEVEL_BAND_DIKTI keeps its raw-code fallback beside the new STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code: "LEVEL_BAND_DIKTI",
+        rule_ids: ["hf.study.level-band-dikti"],
+        source_refs: [TEST_SOURCE_ID],
+      },
+      {
+        code: "STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED",
+        rule_ids: ["hf.study.admission-or-sponsor-unconfirmed"],
+        source_refs: [TEST_SOURCE_ID],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    expect(outcome.noPathReasons[0].message.en).toBe(
+      "Verified reason: LEVEL_BAND_DIKTI",
+    );
+    expect(outcome.noPathReasons[1].message).toEqual(
+      SUPPORT_REASON_COPY.STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED,
+    );
+  });
+
+  /**
    * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
    * off the raw JSON text) looking for a `{ op: "gte", fact, value }` node
    * on the named fact, at any nesting depth — `el.e33e.retirement` nests its
