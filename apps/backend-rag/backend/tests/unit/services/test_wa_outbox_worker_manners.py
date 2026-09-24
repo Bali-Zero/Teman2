@@ -269,11 +269,14 @@ async def test_apology_localized_to_detected_language() -> None:
     assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("id")
 
 
-# B2.5-1b: `detect_language` returns "auto" — UNKNOWN, never a language — for
-# many ordinary WA openers with no marker word (measured: "Buongiorno,
-# quanto costa aprire una PT PMA a Bali?" scores zero on every language row
-# in `backend.services.communication.language_detector`).
-_UNCLASSIFIABLE_TEXT = "Buongiorno, quanto costa aprire una PT PMA a Bali?"
+# B2.5-1b: `detect_language` returns "auto" — UNKNOWN, never a language —
+# when no language scores any marker at all. "Buongiorno, quanto costa
+# aprire una PT PMA a Bali?" used to be this file's example (it scored zero
+# on every language row before the 2026-09-25 recall fix added "quanto"/
+# "costa" to the Italian marker list); it now classifies as "it" directly,
+# so this constant is a synthetic gibberish string with no marker in any
+# supported language instead.
+_UNCLASSIFIABLE_TEXT = "xzq flerp glorm bnmqw zyx"
 
 
 @pytest.mark.asyncio

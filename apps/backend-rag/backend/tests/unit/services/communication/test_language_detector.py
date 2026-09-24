@@ -55,10 +55,11 @@ class TestLanguageDetector:
         assert result == "auto"
 
     def test_detect_language_mixed(self):
-        """Test detecting language with mixed markers"""
+        """A message with one marker per language is a three-way tie — the
+        scoring rule treats tied evidence as unreliable and returns 'auto'
+        rather than picking one arbitrarily (2026-09-25 recall fix)."""
         result = detect_language("Ciao hello apa")
-        # Should return the language with most markers
-        assert result in ["it", "en", "id"]
+        assert result == "auto"
 
     def test_get_language_instruction_italian(self):
         """Test getting language instruction for Italian"""
@@ -175,3 +176,75 @@ class TestLanguageDetector:
         """Test detecting language with special characters"""
         assert detect_language("Ciao! Come stai?") == "it"
         assert detect_language("Hello! How are you?") == "en"
+
+    # --- 2026-09-25 recall fix: guilt (ordinary phrasing the OLD marker
+    # list missed and returned 'auto' on) + innocence (must NOT flip to a
+    # real language when it shouldn't) synthetic sentences. All sentences
+    # below are written for this test, not taken from any real message. ---
+
+    def test_guilt_italian_ordinary_price_question(self):
+        """'Quanto costa il KITAS investor?' had zero markers in the old
+        list (only 'ciao'/'come'/'cosa'/'sono'/'voglio'/'posso'/'grazie'/
+        'quando'/'dove'/'perché') and returned 'auto'."""
+        assert detect_language("Quanto costa il KITAS investor?") == "it"
+
+    def test_guilt_english_ordinary_document_question(self):
+        """'Which documents do I need for the company?' had zero markers
+        in the old English list and returned 'auto'."""
+        assert detect_language("Which documents do I need for the company?") == "en"
+
+    def test_guilt_indonesian_ordinary_penalty_question(self):
+        """'Klien belum lapor pajak bulan ini, berapa dendanya?' has none
+        of the old Indonesian markers (apa/bagaimana/siapa/dimana/kapan/
+        mengapa/saya/kamu/bisa/mau/terima/kasih/bantuan/bantuannya) and
+        returned 'auto'."""
+        assert detect_language("Klien belum lapor pajak bulan ini, berapa dendanya?") == "id"
+
+    def test_guilt_ukrainian_script_decides_without_old_markers(self):
+        """'Скільки коштує послуга KITAS?' contains none of the old
+        Ukrainian substring markers but has the Ukrainian-only letter 'і'
+        ('Скільки') — script alone now decides."""
+        assert detect_language("Скільки коштує послуга KITAS?") == "uk"
+
+    def test_guilt_russian_script_decides_without_old_markers(self):
+        """'Сколько документов нужно для визы?' contains none of the old
+        Russian substring markers but has the Russian-only letter 'ы'
+        ('визы') — script alone now decides."""
+        assert detect_language("Сколько документов нужно для визы?") == "ru"
+
+    def test_innocence_english_with_italian_loanword_stays_english(self):
+        """A loanword ('cappuccino') must not flip an otherwise-English
+        sentence to Italian — none of the Italian function-word markers
+        appear, only the borrowed noun."""
+        assert (
+            detect_language("I would like a cappuccino and my invoice, please.") == "en"
+        )
+
+    def test_innocence_mixed_language_stays_auto(self):
+        """One marker per language is tied evidence, not a verdict."""
+        assert detect_language("Ciao hello, mau tanya something") == "auto"
+
+    def test_innocence_very_short_stays_auto(self):
+        """Short, generic, or content-free strings never had — and still
+        don't have — enough evidence to name a language."""
+        assert detect_language("ok") == "auto"
+        assert detect_language("?") == "auto"
+        assert detect_language("\U0001f44d") == "auto"  # thumbs-up emoji
+
+    def test_innocence_indonesian_with_english_tech_words_stays_id(self):
+        """Business/tech loanwords ('setup', 'virtual office') must not
+        flip an Indonesian-grammar sentence to English."""
+        assert (
+            detect_language("Klien mau setup PT PMA pakai virtual office, apa boleh?")
+            == "id"
+        )
+
+    def test_detect_language_elongated_greeting_still_italian(self):
+        """WhatsApp-style elongated vowels ('ciaooo') used to defeat the
+        exact-word 'ciao' marker outright."""
+        assert detect_language("ciaooo") == "it"
+        assert detect_language("ciaoooo") == "it"
+
+    def test_detect_language_perche_without_accent(self):
+        """WA clients routinely drop the accent on 'perché'."""
+        assert detect_language("non capisco perche") == "it"
