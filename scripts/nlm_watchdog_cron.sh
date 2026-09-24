@@ -25,12 +25,28 @@ mkdir -p "$LOG_DIR" "$HEARTBEAT_DIR"
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Set to 1 by write_heartbeat_atomic iff its OWN fallback write could not be
+# installed (the `mv` itself failed) — every exit point below checks this and
+# forces a non-zero exit when it is set, because that is the one case where
+# NO fresh heartbeat exists on disk at all, not even the wrapper's own filler
+# (Gear-3 council round 2, codex #4 MAJOR: the old `mv ... || true` let this
+# case report success). Plain variable, not a subshell/command-substitution
+# result, so the assignment inside the function is visible here.
+HB_WRITE_FAILED=0
+
 # Atomic heartbeat write (tmp + mv, same filesystem) — a concurrent
 # organism_digest.py read must never observe a partial write (same class of
 # bug nlm_watchdog.py's OWN atomic write already guards against).
 write_heartbeat_atomic() {
   local status="$1" detail="${2:-}"
   local tmp="$HEARTBEAT_FILE.tmp.$$"
+  # $detail is fixed-vocabulary today — every call site below passes a
+  # hardcoded string, at most with an integer $RC spliced in, never
+  # arbitrary/attacker-controlled text — but it is escaped anyway (backslash
+  # first, then double-quote) so a FUTURE call site can never write invalid
+  # JSON into the heartbeat by surprise (Gear-3 council round 2, kimi
+  # NIT4/qwen MINOR2).
+  detail="$(printf '%s' "$detail" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
   if [ -n "$detail" ]; then
     printf '{"organ":"nlm-watchdog","host":"%s","ts":"%s","status":"%s","note":"%s","last_error":"%s"}\n' \
       "$(hostname -s)" "$(ts)" "$status" "$detail" "$detail" > "$tmp" 2>/dev/null
@@ -38,7 +54,13 @@ write_heartbeat_atomic() {
     printf '{"organ":"nlm-watchdog","host":"%s","ts":"%s","status":"%s"}\n' \
       "$(hostname -s)" "$(ts)" "$status" > "$tmp" 2>/dev/null
   fi
-  mv -f "$tmp" "$HEARTBEAT_FILE" 2>/dev/null || true
+  if ! mv -f "$tmp" "$HEARTBEAT_FILE" 2>/dev/null; then
+    echo "[$(ts)] FATAL: write_heartbeat_atomic could not install $tmp -> $HEARTBEAT_FILE — no fresh heartbeat on disk" >> "$LOG"
+    rm -f "$tmp" 2>/dev/null
+    HB_WRITE_FAILED=1
+    return 1
+  fi
+  return 0
 }
 
 # G5 gene — kill switch: honors BOTH NLM_WATCHDOG_ENABLED=false (kept for
@@ -54,6 +76,7 @@ write_heartbeat_atomic() {
 if [ "${NLM_WATCHDOG_ENABLED:-true}" = "false" ] || [ -e "$KILL_FLAG" ]; then
   write_heartbeat_atomic "disabled"
   echo "[$(ts)] kill switch active (env or $KILL_FLAG) → skip tick (heartbeat=disabled)" >> "$LOG"
+  [ "$HB_WRITE_FAILED" -eq 1 ] && exit 1
   exit 0
 fi
 
@@ -100,5 +123,12 @@ fi
 
 # The wrapper's own exit code now reflects reality too (previously always 0)
 # — launchd's own per-run exit-status accounting is a second, independent
-# signal on top of the heartbeat, not a replacement for it.
+# signal on top of the heartbeat, not a replacement for it. HB_WRITE_FAILED
+# takes priority over $RC: if the fallback write itself could not be
+# installed, NO fresh heartbeat exists on disk at all — that must never
+# exit 0 even if python's own $RC happened to be 0 (Gear-3 council round 2,
+# codex #4 MAJOR).
+if [ "$HB_WRITE_FAILED" -eq 1 ]; then
+  exit 1
+fi
 exit "$RC"

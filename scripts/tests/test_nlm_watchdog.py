@@ -17,9 +17,11 @@ Pro's non-atomically-written inventory file.
 Contract (guilt + innocence, no real ssh/nlm anywhere in this file, no real
 PII anywhere in this file — any email/account string below is the synthetic
 `owner@example.test`, never the real address):
-  - _display_name: PII boundary on notebook titles — GUILT (redacted to an id
-    prefix) on any title outside this fleet's own `NB-...` naming convention;
-    INNOCENCE (title shown, truncated) on a curated title.
+  - _display_name: PII boundary on notebook identification — round 2 (codex
+    #1, BLOCKING) found the round-1 `^NB-...`-prefix gate was not a boundary
+    at all (`NB-CLIENT-CASE Jane Doe` matched it and still leaked). No title
+    is ever shown, curated-looking or not: only the notebook's own id8, or
+    "unknown".
   - classify_login: GUILT on "Authentication invalid" (rc 0 — real CLIs exit 0
     on a status line) reading as DEAD, not ok, and on any unrecognized/
     timeout/ssh-failure shape reading as unknown; INNOCENCE on the real ok
@@ -92,26 +94,19 @@ def _spy(calls, ret):
     return _fn
 
 
-# --- _display_name (PII boundary on notebook titles) ------------------------
+# --- _display_name (PII boundary: id ONLY, never a title) -------------------
+# Round-2 council finding (codex #1, BLOCKING): a `^NB-...` prefix gate is
+# NOT a privacy boundary — `NB-CLIENT-CASE Jane Doe` matched it and leaked
+# the client name verbatim. `_display_name` no longer looks at a title at
+# all; it takes only `nb_id`.
 
-def test_display_name_shows_curated_title():
-    assert nlm_watchdog._display_name("NB-INTEL-AIResearch", "dc5d01cd-e99f") == "NB-INTEL-AIResearch"
-
-
-def test_display_name_redacts_uncurated_title_to_id_prefix():
-    # An operator could rename a notebook to a client's name — anything that
-    # doesn't match this fleet's OWN "NB-..." convention must never surface.
-    assert nlm_watchdog._display_name("Acme Corp Immigration Case", "dc5d01cd-e99f-4c8f") == "dc5d01cd"
+def test_display_name_returns_id_prefix():
+    assert nlm_watchdog._display_name("dc5d01cd-e99f-4c8f") == "dc5d01cd"
 
 
 def test_display_name_missing_id_falls_back_to_unknown():
-    assert nlm_watchdog._display_name("some random title", None) == "unknown"
-
-
-def test_display_name_truncates_curated_title_at_60_chars():
-    long_title = "NB-" + "X" * 200
-    out = nlm_watchdog._display_name(long_title, "abcd1234")
-    assert len(out) == 60
+    assert nlm_watchdog._display_name(None) == "unknown"
+    assert nlm_watchdog._display_name("") == "unknown"
 
 
 # --- classify_login -----------------------------------------------------------
@@ -183,25 +178,71 @@ def test_evaluate_inventory_innocent_when_all_below_cap_and_fresh():
     assert ctx["max_source_count"] == 359
 
 
-def test_evaluate_inventory_guilty_on_notebook_at_cap_curated_title():
+def test_evaluate_inventory_guilty_on_notebook_at_cap_shows_id_and_count():
     data = json.loads(_inventory([
-        {"id": "dc5d01cd", "title": "NB-INTEL-AIResearch — Daily AI Intelligence", "source_count": 500},
+        {"id": "dc5d01cd-e99f", "title": "NB-INTEL-AIResearch — Daily AI Intelligence", "source_count": 500},
     ]))
     ok, reasons, ctx, codes = nlm_watchdog.evaluate_inventory_data(data, cap_warn=450, stale_hours=30, now=NOW)
     assert ok is False
     assert nlm_watchdog.Code.CAP_NEAR in codes
-    assert "NB-INTEL-AIResearch" in reasons[0]
+    assert "dc5d01cd" in reasons[0]
     assert "500" in reasons[0]
+    assert ctx["near_cap_ids"] == ["dc5d01cd"]
 
 
-def test_evaluate_inventory_guilty_on_notebook_at_cap_uncurated_title_redacted():
+def test_evaluate_inventory_never_leaks_any_title_curated_or_not():
+    # Round-2 council finding (codex #1, BLOCKING): a `^NB-...`-prefixed
+    # title is NOT a safe title — `NB-CLIENT-CASE Jane Doe` at cap must
+    # surface only its id8, never "NB-CLIENT" nor "Jane" anywhere in the
+    # output.
     data = json.loads(_inventory([
-        {"id": "dc5d01cd-e99f", "title": "Client Immigration Dossier", "source_count": 480},
+        {"id": "abcd1234xyz", "title": "NB-CLIENT-CASE Jane Doe", "source_count": 460},
     ]))
     ok, reasons, ctx, codes = nlm_watchdog.evaluate_inventory_data(data, cap_warn=450, stale_hours=30, now=NOW)
     assert ok is False
-    assert "Client Immigration Dossier" not in reasons[0]
-    assert "dc5d01cd" in reasons[0]
+    assert nlm_watchdog.Code.CAP_NEAR in codes
+    joined = " ".join(reasons)
+    assert "abcd1234" in joined
+    assert "NB-CLIENT" not in joined
+    assert "Jane" not in joined
+    assert ctx["near_cap_ids"] == ["abcd1234"]
+
+
+def test_evaluate_inventory_near_cap_ids_tracks_multiple_notebooks():
+    data = json.loads(_inventory([
+        {"id": "aaa11111", "title": "NB-3", "source_count": 460},
+        {"id": "bbb22222", "title": "NB-8", "source_count": 470},
+        {"id": "ccc33333", "title": "NB-9", "source_count": 10},
+    ]))
+    ok, reasons, ctx, codes = nlm_watchdog.evaluate_inventory_data(data, cap_warn=450, stale_hours=30, now=NOW)
+    assert ok is False
+    assert ctx["near_cap_ids"] == ["aaa11111", "bbb22222"]
+
+
+def test_evaluate_inventory_guilty_on_non_numeric_source_count_skips_not_crashes():
+    # Round-2 council finding (kimi MINOR2, qwen MINOR1): `or 0` let a
+    # non-numeric producer value pass through and raise TypeError at
+    # `max()`/`>=`, which escaped run_once entirely. Must degrade with a
+    # targeted reason, never crash.
+    data = json.loads(_inventory([
+        {"id": "aaa11111", "title": "NB-3", "source_count": "500"},
+        {"id": "bbb22222", "title": "NB-8", "source_count": 10},
+    ]))
+    ok, reasons, ctx, codes = nlm_watchdog.evaluate_inventory_data(data, cap_warn=450, stale_hours=30, now=NOW)
+    assert ok is False
+    assert nlm_watchdog.Code.INVENTORY_MALFORMED in codes
+    assert "non-numeric source_count" in " ".join(reasons)
+    # The good notebook's count is still counted — one bad entry does not
+    # discard the rest of the tick.
+    assert ctx["max_source_count"] == 10
+
+
+def test_evaluate_inventory_bool_source_count_treated_as_non_numeric():
+    # bool is an int subclass in Python — must NOT be accepted as a count.
+    data = json.loads(_inventory([{"id": "aaa11111", "title": "NB-3", "source_count": True}]))
+    ok, reasons, ctx, codes = nlm_watchdog.evaluate_inventory_data(data, cap_warn=450, stale_hours=30, now=NOW)
+    assert ok is False
+    assert nlm_watchdog.Code.INVENTORY_MALFORMED in codes
 
 
 def test_evaluate_inventory_guilty_on_malformed_notebooks_list():
@@ -292,6 +333,47 @@ def test_fetch_inventory_degrades_after_retry_still_fails():
     assert data is None
     assert code == nlm_watchdog.Code.INVENTORY_MALFORMED
     assert "retry" in reason
+    assert sleeps == [5.0]
+
+
+def test_fetch_inventory_first_empty_retries_then_succeeds():
+    # Round-2 council finding (codex #2, kimi MAJOR2, qwen NIT3): an
+    # rc==0-but-empty first read is the SAME producer-truncation race as a
+    # malformed non-empty read, and must be retried the same way.
+    good = _inventory([{"id": "x", "title": "NB-3", "source_count": 10}])
+    responses = iter([(0, ""), (0, good)])
+    sleeps = []
+    data, reason, code = nlm_watchdog._fetch_inventory_data(
+        inventory_fn=lambda: next(responses), sleep_fn=lambda s: sleeps.append(s), retry_delay_s=5.0
+    )
+    assert data is not None
+    assert reason is None
+    assert sleeps == [5.0]
+
+
+def test_fetch_inventory_first_empty_second_empty_reports_missing():
+    responses = iter([(0, ""), (0, "   ")])
+    sleeps = []
+    data, reason, code = nlm_watchdog._fetch_inventory_data(
+        inventory_fn=lambda: next(responses), sleep_fn=lambda s: sleeps.append(s), retry_delay_s=5.0
+    )
+    assert data is None
+    assert code == nlm_watchdog.Code.INVENTORY_MISSING
+    assert sleeps == [5.0]
+
+
+def test_fetch_inventory_first_malformed_second_ssh_fails_reports_missing():
+    # Non-empty-but-unparseable on the first read still retries; if the
+    # RETRY itself hits a hard ssh failure, that is MISSING, not MALFORMED
+    # (MALFORMED is reserved for "Pro answered but the body still won't
+    # parse", never for "Pro was unreachable on the second try").
+    responses = iter([(0, "{truncated"), (255, "")])
+    sleeps = []
+    data, reason, code = nlm_watchdog._fetch_inventory_data(
+        inventory_fn=lambda: next(responses), sleep_fn=lambda s: sleeps.append(s), retry_delay_s=5.0
+    )
+    assert data is None
+    assert code == nlm_watchdog.Code.INVENTORY_MISSING
     assert sleeps == [5.0]
 
 
@@ -419,18 +501,31 @@ def test_write_heartbeat_returns_false_on_write_failure(tmp_path, monkeypatch):
 
 
 def test_read_previous_state_missing_file_returns_none_and_empty_set(tmp_path):
-    status, codes = nlm_watchdog.read_previous_state(path=tmp_path / "absent.json")
+    status, codes, near_cap_ids = nlm_watchdog.read_previous_state(path=tmp_path / "absent.json")
     assert status is None
     assert codes == set()
+    assert near_cap_ids == []
 
 
 def test_read_previous_state_round_trips_codes(tmp_path):
     hb = tmp_path / "nlm-watchdog.json"
     v = nlm_watchdog.Verdict(ok=False, reasons=["x"], codes={nlm_watchdog.Code.LOGIN_DEAD})
     nlm_watchdog.write_heartbeat(v, path=hb)
-    status, codes = nlm_watchdog.read_previous_state(path=hb)
+    status, codes, near_cap_ids = nlm_watchdog.read_previous_state(path=hb)
     assert status == "degraded"
     assert codes == {nlm_watchdog.Code.LOGIN_DEAD}
+    assert near_cap_ids == []
+
+
+def test_read_previous_state_round_trips_near_cap_ids(tmp_path):
+    hb = tmp_path / "nlm-watchdog.json"
+    v = nlm_watchdog.Verdict(
+        ok=False, reasons=["near cap"], codes={nlm_watchdog.Code.CAP_NEAR},
+        ctx={"near_cap_ids": ["bbb22222", "aaa11111"]},
+    )
+    nlm_watchdog.write_heartbeat(v, path=hb)
+    status, codes, near_cap_ids = nlm_watchdog.read_previous_state(path=hb)
+    assert near_cap_ids == ["aaa11111", "bbb22222"]  # sorted on read back
 
 
 # --- maybe_alert: transition- AND reason-code-gated Telegram ----------------
@@ -512,6 +607,40 @@ def test_maybe_alert_fires_on_first_ever_tick_that_reads_degraded(tmp_path, monk
     fired = nlm_watchdog.maybe_alert(v, previous_status=None, previous_codes=set())
     assert fired is True
     assert marker.exists()
+
+
+def test_maybe_alert_fires_when_a_new_notebook_joins_near_cap(tmp_path, monkeypatch):
+    # Round-2 council finding (codex #3, MAJOR): while notebook A stays
+    # near-cap, notebook B newly crossing the threshold must still alert —
+    # both only ever contribute the SAME `CAP_NEAR` code, so a codes-only
+    # gate would silently swallow B joining.
+    fake, marker = _install_fake_tg_notify(tmp_path)
+    monkeypatch.setattr(nlm_watchdog, "TG_NOTIFY", fake)
+    v = nlm_watchdog.Verdict(
+        ok=False, reasons=["near cap"], codes={nlm_watchdog.Code.CAP_NEAR},
+        ctx={"near_cap_ids": ["aaa11111", "bbb22222"]},
+    )
+    fired = nlm_watchdog.maybe_alert(
+        v, previous_status="degraded", previous_codes={nlm_watchdog.Code.CAP_NEAR},
+        previous_near_cap_ids=["aaa11111"],
+    )
+    assert fired is True
+    assert marker.exists()
+
+
+def test_maybe_alert_silent_when_near_cap_set_is_unchanged(tmp_path, monkeypatch):
+    fake, marker = _install_fake_tg_notify(tmp_path)
+    monkeypatch.setattr(nlm_watchdog, "TG_NOTIFY", fake)
+    v = nlm_watchdog.Verdict(
+        ok=False, reasons=["near cap"], codes={nlm_watchdog.Code.CAP_NEAR},
+        ctx={"near_cap_ids": ["aaa11111", "bbb22222"]},
+    )
+    fired = nlm_watchdog.maybe_alert(
+        v, previous_status="degraded", previous_codes={nlm_watchdog.Code.CAP_NEAR},
+        previous_near_cap_ids=["bbb22222", "aaa11111"],  # same set, different order
+    )
+    assert fired is False
+    assert not marker.exists()
 
 
 def test_maybe_alert_telegram_failure_does_not_raise(tmp_path, monkeypatch):
