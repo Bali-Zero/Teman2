@@ -443,8 +443,11 @@ class TestExecuteStep:
             },
             0,
         )
-        # Should not raise — just logs
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.info.assert_called_once_with(
+            "Verified client data for %s", "user@test.com"
+        )
 
     @pytest.mark.asyncio
     async def test_eligibility_check(self, executor):
@@ -457,7 +460,11 @@ class TestExecuteStep:
             },
             0,
         )
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.info.assert_called_once_with(
+            "Eligibility check passed for %s", "check_npwp_eligibility"
+        )
 
     @pytest.mark.asyncio
     async def test_prepare_documents(self, executor):
@@ -470,7 +477,11 @@ class TestExecuteStep:
             },
             0,
         )
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.info.assert_called_once_with(
+            "Documents prepared for %s", "prepare_npwp_documents"
+        )
 
     @pytest.mark.asyncio
     async def test_submit_critical(self, executor):
@@ -483,7 +494,13 @@ class TestExecuteStep:
             },
             0,
         )
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.info.assert_called_once_with(
+            "CRITICAL action executed (simulated): %s for %s",
+            "submit_to_djp",
+            "user@test.com",
+        )
 
     @pytest.mark.asyncio
     async def test_track_status(self, executor):
@@ -496,7 +513,11 @@ class TestExecuteStep:
             },
             0,
         )
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.info.assert_called_once_with(
+            "Tracking/finalizing: %s", "track_npwp_status"
+        )
 
     @pytest.mark.asyncio
     async def test_unknown_action(self, executor):
@@ -509,8 +530,11 @@ class TestExecuteStep:
             },
             0,
         )
-        # Should just log warning, not raise
-        await executor._execute_step(step, "user@test.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            await executor._execute_step(step, "user@test.com")
+        mock_logger.warning.assert_called_once_with(
+            "Unknown action: %s, skipping", "unknown_action"
+        )
 
 
 # ============================================================================
@@ -606,16 +630,31 @@ class TestApprovalFlow:
         plan = await executor_with_telegram.create_plan("NPWP registration", "user@test.com")
         step = plan["steps"][0]
 
-        # Should not raise
-        await executor_with_telegram._request_approval(plan, step)
+        with patch(
+            "backend.services.rag.autonomous_executor.logger"
+        ) as mock_logger:
+            await executor_with_telegram._request_approval(plan, step)
+
+        assert mock_logger.error.call_args.args[0] == (
+            "Failed to send Telegram approval request: %s"
+        )
+        mock_logger.info.assert_called_once_with(
+            "Approval requested for %s", f"{plan['plan_id']}_{step['step_id']}"
+        )
 
     @pytest.mark.asyncio
     async def test_request_approval_no_telegram(self, executor):
         plan = await executor.create_plan("NPWP registration", "user@test.com")
         step = plan["steps"][0]
 
-        # Should not raise
-        await executor._request_approval(plan, step)
+        with patch(
+            "backend.services.rag.autonomous_executor.logger"
+        ) as mock_logger:
+            await executor._request_approval(plan, step)
+
+        mock_logger.info.assert_called_once_with(
+            "Approval requested for %s", f"{plan['plan_id']}_{step['step_id']}"
+        )
 
     @pytest.mark.asyncio
     async def test_wait_for_approval_timeout(self, executor):
@@ -765,23 +804,30 @@ class TestDequeueNext:
 class TestPersistenceNoOp:
     @pytest.mark.asyncio
     async def test_persist_plan_no_pool(self, executor):
+        assert executor.db_pool is None
         plan = await executor.create_plan("NPWP registration", "user@test.com")
-        # Should be no-op
         await executor._persist_plan(plan)
+        assert executor.db_pool is None
 
     @pytest.mark.asyncio
     async def test_persist_step_update_no_pool(self, executor):
+        assert executor.db_pool is None
         plan = await executor.create_plan("NPWP registration", "user@test.com")
         await executor._persist_step_update(plan, plan["steps"][0])
+        assert executor.db_pool is None
 
     @pytest.mark.asyncio
     async def test_persist_plan_completion_no_pool(self, executor):
+        assert executor.db_pool is None
         plan = await executor.create_plan("NPWP registration", "user@test.com")
         await executor._persist_plan_completion(plan)
+        assert executor.db_pool is None
 
     @pytest.mark.asyncio
     async def test_persist_approval_no_pool(self, executor):
+        assert executor.db_pool is None
         await executor._persist_approval("plan_1", "step_0", True, None, None)
+        assert executor.db_pool is None
 
     @pytest.mark.asyncio
     async def test_query_plans_no_pool(self, executor):

@@ -105,8 +105,13 @@ class TestClientManagement:
 
     @pytest.mark.asyncio
     async def test_close_no_client(self, monitor: HealthMonitor) -> None:
-        # Should not raise
-        await monitor.close()
+        with patch(
+            "backend.services.monitoring.health_monitor.logger"
+        ) as mock_logger:
+            await monitor.close()
+
+        assert monitor._client is None
+        mock_logger.info.assert_called_once_with("HealthMonitor HTTP client closed.")
 
 
 # --------------------------------------------------------------------------- #
@@ -487,7 +492,14 @@ class TestCheckHealth:
             patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True),
             patch("backend.app.dependencies.get_search_service", side_effect=Exception("not init")),
         ):
-            await monitor._check_health()  # Should not raise
+            await monitor._check_health()
+
+        assert monitor.last_status == {
+            "qdrant": True,
+            "postgresql": True,
+            "ai_router": True,
+            "tools": True,
+        }
 
 
 # --------------------------------------------------------------------------- #
@@ -553,9 +565,12 @@ class TestCheckResources:
         with (
             patch("psutil.Process", side_effect=Exception("no proc")),
             patch("backend.app.core.config.settings", MagicMock()),
+            patch("backend.services.monitoring.health_monitor.logger") as mock_logger,
         ):
-            # Should not raise
             await monitor._check_resources()
+
+        mock_logger.debug.assert_called_once()
+        assert mock_logger.debug.call_args.args[0] == "Resource check failed (non-critical): %s"
 
 
 # --------------------------------------------------------------------------- #
@@ -565,9 +580,16 @@ class TestCheckResources:
 
 class TestDBPoolSaturation:
     @pytest.mark.asyncio
-    async def test_no_app_state(self, monitor: HealthMonitor) -> None:
+    async def test_no_app_state(
+        self, monitor: HealthMonitor, mock_alert_service: MagicMock
+    ) -> None:
         monitor.app_state = None
-        await monitor._check_db_pool_saturation()  # Should not raise
+        with patch(
+            "backend.services.monitoring.health_monitor.logger"
+        ) as mock_logger:
+            await monitor._check_db_pool_saturation()
+        mock_alert_service.send_resource_alert.assert_not_awaited()
+        mock_logger.debug.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_pool_below_threshold(
@@ -609,15 +631,29 @@ class TestDBPoolSaturation:
 
 class TestPGHealth:
     @pytest.mark.asyncio
-    async def test_no_app_state(self, monitor: HealthMonitor) -> None:
+    async def test_no_app_state(
+        self, monitor: HealthMonitor, mock_alert_service: MagicMock
+    ) -> None:
         monitor.app_state = None
-        await monitor._check_pg_health()
+        with patch(
+            "backend.services.monitoring.health_monitor.logger"
+        ) as mock_logger:
+            await monitor._check_pg_health()
+        mock_alert_service.send_resource_alert.assert_not_awaited()
+        mock_logger.debug.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_no_db_pool(self, monitor: HealthMonitor) -> None:
+    async def test_no_db_pool(
+        self, monitor: HealthMonitor, mock_alert_service: MagicMock
+    ) -> None:
         monitor.app_state = MagicMock()
         monitor.app_state.db_pool = None
-        await monitor._check_pg_health()
+        with patch(
+            "backend.services.monitoring.health_monitor.logger"
+        ) as mock_logger:
+            await monitor._check_pg_health()
+        mock_alert_service.send_resource_alert.assert_not_awaited()
+        mock_logger.debug.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_dead_tuples_high_ratio_crit(
@@ -681,8 +717,16 @@ class TestPGHealth:
 
         monitor.app_state = MagicMock()
         monitor.app_state.db_pool = mock_pool
+        assert getattr(monitor, "_wal_privilege_warned", False) is False
 
-        await monitor._check_pg_health()  # Should not raise
+        with patch(
+            "backend.services.monitoring.health_monitor.logger"
+        ) as mock_logger:
+            await monitor._check_pg_health()
+
+        assert monitor._wal_privilege_warned is True
+        mock_logger.info.assert_called_once()
+        assert "WAL monitoring disabled" in mock_logger.info.call_args.args[0]
 
     @pytest.mark.asyncio
     async def test_wal_high(
