@@ -1630,16 +1630,30 @@ describe("review reasons cover every code the current pack can emit", () => {
     );
   });
 
-  // EMPTY SINCE THE seq-22 ACTIVATION (2026-09-16T20:16:45Z, activation_id
-  // 10937ac5, payload 3d7555af…6e37). While seq-20 was in force, the eight
-  // codes seq-22 retires still reached real applicants, so their copy had to
-  // stay and this list named them by name. Production now evaluates on
-  // seq-22, which cannot emit any of them, so the copy was deleted in the
-  // same change that emptied this list. An entry here is a claim that a code
-  // is live on signed seq-20 and gone from the highest signed pack; the
-  // honesty test below still enforces that, so the list cannot be used as a
-  // parking lot for a copy nobody wants to delete.
-  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY: string[] = [];
+  // Slice A9.3 (2026-09-24): signed seq-23 turns twelve of seq-22's review
+  // holds into named dead ends or NEEDS_INPUT, so the highest signed pack no
+  // longer emits these codes. Production still evaluates on seq-22 (DB-active
+  // since 2026-09-16T20:16:45Z, payload 3d7555af…6e37) until seq-23 is
+  // activated, and the pre-signed rollback seq-24 carries seq-22's rules, so
+  // their copy stays and this list names them. It replaces the seq-20 list,
+  // empty since the seq-22 activation. An entry here is a claim that a code is
+  // live on signed seq-22 and gone from signed seq-23; the honesty test below
+  // derives both from the pack files, so the list cannot become a parking lot
+  // for a copy nobody wants to delete.
+  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY = [
+    "ACTIVE_OVERSTAY",
+    "BRIDGING_ADVERSE_HISTORY",
+    "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+    "BRIDGING_ONSHORE_ONLY",
+    "BRIDGING_TO_BRIDGING_PROHIBITED",
+    "CALLING_VISA_REVIEW",
+    "CITIZENSHIP_LIST_DIVERGENCE",
+    "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
+    "E33_WORK_RANGKAP_KEGIATAN_GATED",
+    "LOCAL_MARKET_ACTIVITY_REVIEW",
+    "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+    "VOA_NATIONALITY_ONLY",
+  ];
 
   /** Review reason codes a given signed pack's rules can emit. */
   function reviewReasonCodesInSignedPack(sequence: number): Set<string> {
@@ -1686,8 +1700,8 @@ describe("review reasons cover every code the current pack can emit", () => {
     //
     // 38 -> 31 when the signed seq-22 bundle landed (SAETTA-20260916): the
     // highest signed pack is now seq-22, which emits 13 codes (the eight
-    // above retired), + 18 pack-independent = 31, measured. The eight keep
-    // their copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY below.
+    // above retired), + 18 pack-independent = 31, measured. The eight kept
+    // their copy under a seq-20-only list until the seq-22 activation.
     //
     // 31 -> 34 measured after A5-3bis (R-A5-DRIFT-CURE, 2026-09-20): 13 pack
     // + 21 pack-independent (the three A3-B held-only codes joined
@@ -1695,7 +1709,13 @@ describe("review reasons cover every code the current pack can emit", () => {
     // pin; the three new codes are accounted by HELD_ONLY_REVIEW_CODES, not
     // REVIEW_REASON_COPY, so they do not change what "mapped or known gap"
     // means for this assertion.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(31);
+    //
+    // 34 -> 22 measured when the signed seq-23 bundle landed (Slice A9.3,
+    // 2026-09-24): the highest source and the highest signed pack are both
+    // seq-23, which emits one review code (SECOND_HOME_BELOW_THRESHOLD_STUDIO),
+    // + 21 pack-independent = 22. The twelve codes seq-23 retires keep their
+    // copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY below.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(22);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
@@ -1715,31 +1735,28 @@ describe("review reasons cover every code the current pack can emit", () => {
       .filter((code) => !allRealCodes.has(code))
       .sort();
     expect(staleKeys).toEqual(
-      [...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY].sort(),
+      [...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY].sort(),
     );
   });
 
-  it("keeps the seq-20-only list honest: every entry is live on signed seq-20 and gone from the highest signed pack", () => {
-    // The list above is a claim about production, not a parking lot: each
-    // entry must be a code the signed seq-20 pack still emits (or its copy
-    // really is dead and must go), and must be absent from the highest
-    // signed pack (or it is not "seq-20 only" and belongs in the ordinary
-    // stale-key check).
-    const seq20 = reviewReasonCodesInSignedPack(20);
-    const highest = new Set([
-      ...reviewReasonCodesInPack(),
-      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
-    ]);
-    const notLiveOnSeq20 = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
-      (code) => !seq20.has(code),
+  it("keeps the seq-22-only list honest: it is exactly what signed seq-22 emits and signed seq-23 does not, each with copy", () => {
+    // Both packs are named by sequence, never "whichever is highest": once a
+    // later pack is signed, a highest-vs-highest diff would go silently empty
+    // (the same reasoning as A8-2's `excludeReasonCodesInSignedPack(22)`).
+    const seq22 = reviewReasonCodesInSignedPack(22);
+    const seq23 = reviewReasonCodesInSignedPack(23);
+    const derived = [...seq22].filter((code) => !seq23.has(code)).sort();
+    // Guard the guard: if either pack stopped parsing, `derived` would be
+    // empty and the equality below would only prove an empty list.
+    expect(derived.length).toBeGreaterThan(0);
+    expect([...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY].sort()).toEqual(
+      derived,
     );
-    expect(notLiveOnSeq20).toEqual([]);
-    const stillEmittedByHighest =
-      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter((code) =>
-        highest.has(code),
-      );
-    expect(stillEmittedByHighest).toEqual([]);
-    const withoutCopy = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
+    const emittedByBackend = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter(
+      (code) => PACK_INDEPENDENT_REVIEW_REASON_CODES.includes(code),
+    );
+    expect(emittedByBackend).toEqual([]);
+    const withoutCopy = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter(
       (code) => !(code in REVIEW_REASON_COPY),
     );
     expect(withoutCopy).toEqual([]);
@@ -1774,8 +1791,8 @@ describe("review reasons cover every code the current pack can emit", () => {
   });
 
   it("keeps the held-only allowlist honest: every entry is a code the derivation actually produces (stale)", () => {
-    // Mirror image of the seq-20-only honesty test above, for
-    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY:
+    // Mirror image of the seq-22-only honesty test above, for
+    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY:
     // if A3-B's release is ever reverted or the flag renamed, the derivation
     // stops producing that name and this list would be naming a code that
     // is not derived — a dead placeholder no other assertion here would
