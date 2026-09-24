@@ -304,10 +304,13 @@ html[data-oracle-theme-bootstrap="dark"]
   border-color: var(--oracle-canopy);
   color: var(--oracle-canopy);
 }
+/* The panel is the toggle's own drop-down: a right-aligned card under the
+   button, not a full-width row that starts under the logo. */
 .oracle-topbar .oracle-consultant__panel {
   order: 3;
   flex-basis: 100%;
-  margin-top: 0;
+  max-width: min(34rem, 100%);
+  margin: var(--space-1) 0 var(--space-2) auto;
 }
 .oracle-consultant {
   width: 100%;
@@ -1956,6 +1959,10 @@ button.oracle-tree__leaf {
     width: 44px;
     padding: 0;
     justify-content: center;
+  }
+  .oracle-topbar .oracle-consultant__panel {
+    max-width: 100%;
+    margin-left: 0;
   }
   .oracle-consultant__label {
     position: absolute;
