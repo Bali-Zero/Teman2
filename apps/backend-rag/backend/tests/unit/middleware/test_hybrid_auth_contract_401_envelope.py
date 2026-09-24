@@ -37,6 +37,7 @@ import pytest
 import yaml
 
 from backend.middleware.hybrid_auth import (
+    _GARUDA_VOA_CUSTOMER_DOCUMENTS_OPERATIONS,
     _GARUDA_VOA_STAFF_OPERATIONS,
     contract_401_envelope,
 )
@@ -102,13 +103,13 @@ _NON_STAFF_PATHS = [
 ]
 
 
-def _frozen_staff_operation_paths() -> set[str]:
+def _frozen_401_session_required_paths(prefix: str) -> set[str]:
     """Every path the frozen contract declares with a 401 SESSION_REQUIRED
-    response under the staff root — derived from the YAML, never typed here."""
+    response under `prefix` — derived from the YAML, never typed here."""
     doc = yaml.safe_load(_CONTRACT_PATH.open())
     found = set()
     for path, methods in doc["paths"].items():
-        if not isinstance(methods, dict) or not path.startswith("/api/visa/voa/staff/"):
+        if not isinstance(methods, dict) or not path.startswith(prefix):
             continue
         for op in methods.values():
             if not isinstance(op, dict):
@@ -118,6 +119,10 @@ def _frozen_staff_operation_paths() -> set[str]:
             ):
                 found.add(path)
     return found
+
+
+def _frozen_staff_operation_paths() -> set[str]:
+    return _frozen_401_session_required_paths("/api/visa/voa/staff/")
 
 
 @pytest.mark.parametrize("path", _STAFF_PATHS)
@@ -157,6 +162,53 @@ def test_operation_templates_equal_the_frozen_contracts_staff_paths() -> None:
     assert set(_GARUDA_VOA_STAFF_OPERATIONS) == frozen, (
         f"middleware templates {sorted(_GARUDA_VOA_STAFF_OPERATIONS)} != frozen contract "
         f"{sorted(frozen)}"
+    )
+
+
+# L1999 (2026-09-24): the same defect #6235 cured for `/staff/**` was still
+# live on the CUSTOMER documents lane — `uploadIntakeDocument` (POST) and
+# `listIntakeDocuments` (GET) share one path template, both declaring
+# 401 SESSION_REQUIRED.
+_DOCUMENTS_PATHS = [
+    "/api/visa/voa/eligibility-checks/res_abc123/documents",
+    "/api/visa/voa/eligibility-checks/res_abc123/documents/",
+]
+
+_NON_DOCUMENTS_PATHS = [
+    # The bare result route — a different operation, different error code.
+    "/api/visa/voa/eligibility-checks/res_abc123",
+    # An empty path param.
+    "/api/visa/voa/eligibility-checks//documents",
+    # A descendant the contract never declares.
+    "/api/visa/voa/eligibility-checks/res_abc123/documents/doc_1",
+]
+
+
+@pytest.mark.parametrize("path", _DOCUMENTS_PATHS)
+def test_documents_paths_get_the_frozen_contract_envelope(path: str) -> None:
+    result = contract_401_envelope(path)
+    assert result is not None, f"{path} must carry the frozen contract's 401 envelope"
+    body, headers = result
+    assert body == _SESSION_REQUIRED
+    assert headers == _PRIVACY_HEADERS
+
+
+@pytest.mark.parametrize("path", _NON_DOCUMENTS_PATHS)
+def test_non_documents_paths_keep_the_generic_body(path: str) -> None:
+    assert contract_401_envelope(path) is None, (
+        f"{path} must fall through to the middleware's generic "
+        f"{{'detail': 'Authentication required'}} body"
+    )
+
+
+def test_operation_templates_equal_the_frozen_contracts_documents_paths() -> None:
+    """Same anchor discipline as the staff operations above, scoped to the
+    customer documents lane."""
+    frozen = _frozen_401_session_required_paths("/api/visa/voa/eligibility-checks/")
+    assert frozen, "parsed no documents operations out of the frozen contract — fixture is broken"
+    assert set(_GARUDA_VOA_CUSTOMER_DOCUMENTS_OPERATIONS) == frozen, (
+        f"middleware templates {sorted(_GARUDA_VOA_CUSTOMER_DOCUMENTS_OPERATIONS)} != frozen "
+        f"contract {sorted(frozen)}"
     )
 
 

@@ -164,7 +164,7 @@ class TestPrepareSearchContext:
             patch("backend.services.search.search_service.build_search_filter", return_value=None),
         ):
             mock_kt.return_value.translate.return_value = "test"
-            embedding, col, vdb, filt, tiers = await search_service._prepare_search_context(
+            embedding, col, vdb, filt, tiers, substituted = await search_service._prepare_search_context(
                 "test query",
                 1,
                 None,
@@ -173,6 +173,7 @@ class TestPrepareSearchContext:
             )
             assert len(embedding) == 1536
             assert col == "legal_unified"
+            assert substituted is False
 
     @pytest.mark.asyncio
     async def test_embedding_cache_hit(self, search_service):
@@ -208,10 +209,11 @@ class TestPrepareSearchContext:
             patch("backend.services.search.search_service.build_search_filter", return_value=None),
         ):
             mock_kt.return_value.translate.return_value = "test"
-            _, col, _, _, _ = await search_service._prepare_search_context(
+            _, col, _, _, _, substituted = await search_service._prepare_search_context(
                 "test", 1, None, None, None
             )
             assert col == "legal_unified"
+            assert substituted is True
 
     @pytest.mark.asyncio
     async def test_filters_disabled(self, search_service):
@@ -223,7 +225,7 @@ class TestPrepareSearchContext:
             ) as build_filter,
         ):
             mock_kt.return_value.translate.return_value = "test"
-            _, _, _, filt, _ = await search_service._prepare_search_context(
+            _, _, _, filt, _, _ = await search_service._prepare_search_context(
                 "test", 1, None, None, False
             )
             assert filt == {"retrieval_scope": {"$ne": "historical_only"}}

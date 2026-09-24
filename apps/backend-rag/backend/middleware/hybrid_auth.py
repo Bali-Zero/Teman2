@@ -90,9 +90,32 @@ _GARUDA_VOA_STAFF_OPERATIONS: tuple[str, ...] = (
     "/api/visa/voa/staff/orders/{order_id}/late-resolution",
 )
 
+#: L1999 (2026-09-24): the same defect #6235 cured for `/staff/**` was still
+#: live on the CUSTOMER documents lane — `uploadIntakeDocument` (POST) and
+#: `listIntakeDocuments` (GET) share this one path template in
+#: `products/garuda-voa/contracts/openapi.yaml` and both declare
+#: `401 -> SESSION_REQUIRED` under the same `x-public-privacy-response-headers`
+#: anchor. #6235 scoped itself to `/staff/` after seeing only those two
+#: operations in its own 401 census; this is the wider class it missed.
+_GARUDA_VOA_CUSTOMER_DOCUMENTS_OPERATIONS: tuple[str, ...] = (
+    "/api/visa/voa/eligibility-checks/{result_id}/documents",
+)
+
+#: `message_key`/`retryable` are fixed CONSTS for the SESSION_REQUIRED case in
+#: `products/garuda-voa/contracts/errors.yaml` — the same value for every
+#: operation that declares this error, not endpoint-specific text.
 _CONTRACT_401_ENVELOPES: tuple[tuple[tuple[str, ...], dict[str, Any], dict[str, str]], ...] = (
     (
         _GARUDA_VOA_STAFF_OPERATIONS,
+        {
+            "code": "SESSION_REQUIRED",
+            "retryable": False,
+            "message_key": "garuda_voa.error.session_required",
+        },
+        _CONTRACT_401_PRIVACY_HEADERS,
+    ),
+    (
+        _GARUDA_VOA_CUSTOMER_DOCUMENTS_OPERATIONS,
         {
             "code": "SESSION_REQUIRED",
             "retryable": False,

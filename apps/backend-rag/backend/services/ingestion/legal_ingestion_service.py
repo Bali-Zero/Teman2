@@ -389,25 +389,27 @@ class LegalIngestionService:
         Re-ingesting the SAME source document is not a collision and must pass:
         that is how a corpus is refreshed.
 
-        TWO RESIDUAL HOLES, stated rather than papered over:
+        ONE RESIDUAL HOLE, stated rather than papered over:
 
-        1. A point carrying NEITHER ``source_basename`` NOR ``file_path``
-           yields no claimant, so an identity held only by such points is
-           unguarded. Every point written by this service has always carried
-           ``file_path``, so this is about foreign or hand-written payloads.
-           Measurement: scroll the collection grouped by ``document_id`` and
-           count points where neither key resolves; any identity that is 100%
-           keyless is unprotected.
-        2. The ``/upload`` route names its temp file from the
+        1. The ``/upload`` route names its temp file from the
            uploader-supplied filename, so on that path the comparator is only
            as unique as what the uploader typed. Two different laws uploaded
            as ``UU_6_2023.pdf`` would still collide. Curated corpus ingests,
            which is where the incident happened, use repo-controlled
            filenames.
 
-        Neither hole is a reason to withhold the guard: it converts the common
-        case from silent loss into a loud refusal, and a partial guard that
-        says so is worth more than none.
+        That hole is not a reason to withhold the guard: it converts the
+        common case from silent loss into a loud refusal, and a partial guard
+        that says so is worth more than none.
+
+        A point carrying NEITHER ``source_basename`` NOR ``file_path`` yields
+        no claimant. Rather than reading that as "unclaimed, so free to take",
+        an identity held ONLY by such points fails CLOSED: ownership cannot be
+        verified, so the write is refused until the existing points are
+        backfilled with a resolvable claimant. The alternative (treat
+        claimant-less as free) would let a foreign document overwrite it with
+        the guard's own blessing — exactly the silent loss this guard exists
+        to stop.
         """
         existing = await vector_db.scroll_strict(
             metadata_filter={"document_id": document_id},
@@ -427,6 +429,17 @@ class LegalIngestionService:
                 claimant = Path(str(stored_path)).name if stored_path else None
             if claimant:
                 claimants.add(str(claimant))
+
+        if not claimants:
+            raise LegalIngestIntegrityError(
+                "Legal identity collision (unresolvable): document_id "
+                f"{document_id!r} already holds {len(existing)} point(s), none "
+                "of which carry a resolvable source_basename or file_path "
+                "claimant. Ownership cannot be verified, so this identity "
+                "fails closed rather than reading as free to take. Backfill "
+                "source_basename onto the existing points before ingesting "
+                f"onto this identity with {source_basename!r}."
+            )
 
         foreign = claimants - {source_basename}
         if foreign:
