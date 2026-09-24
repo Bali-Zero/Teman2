@@ -6,6 +6,7 @@ import { Bell, Menu, X, MessageCircle, CheckCheck, Search } from "lucide-react";
 import { routeTitles } from "@/types/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
+import { TeamPortalMessageAlerts } from "./TeamPortalMessageAlerts";
 import { useCrmNotifications } from "@/hooks/useCrmNotifications";
 
 interface HeaderProps {
@@ -177,6 +178,8 @@ export function Header({
             </span>
           </button>
         )}
+
+        <TeamPortalMessageAlerts />
 
         {/* Notifications */}
         <div className="relative">

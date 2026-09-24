@@ -1,0 +1,40 @@
+task_id: portal-clear-alerts
+mandate_id: PORTAL-CLEAR-ALERTS-20260925
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: "One two-way messaging fix across client and team UI; no schema, authorization, or dependency changes."
+objective: >-
+  Make unread client/team portal messages conspicuous and actionable everywhere,
+  using existing server counts and preserving thread-only read semantics.
+constraints:
+  - "External builder prepares only; independent Claude gate and Claude release owner."
+  - "Synthetic QA only; no client data, credentials, production messages, or identity analytics."
+  - "In-app polling only; no claim of email, push, sound, or closed-app delivery."
+  - "Existing assignment filters and impersonation scope remain server authoritative."
+acceptance:
+  - "Client banner, bell and mobile navigation share the server-wide unread count."
+  - "Team header links to the correct overview thread; dropdown fits a 360px viewport."
+  - "Indicators never mark read; successful thread reads invalidate counts."
+  - "Hidden client tabs do not mark read; later visible arrivals read without fetch loops."
+  - "Failures preserve previous counts and provide retry; partner portal remains excluded."
+  - "Companies navigation uses a closed analytics label with existing privacy guards."
+verification:
+  unit: "7 Vitest files, 66 tests passing"
+  types: "TypeScript passed in production build"
+  build: "npm run build passed, including public bundle and roster chunk checks"
+  lint: "Repository root ESLint 9.39.5: zero errors; existing warnings only"
+  lint_environment_note: "Nested ESLint 10.10.0 is incompatible with installed React plugin; used existing root ESLint."
+  browser: "Production candidate build, Chrome, synthetic API responses; widths 360/390/1280; no horizontal overflow or page errors."
+  read_proof: "Opening bell: zero read writes; entering chat: both fixture messages read."
+  advisory:
+    model: claude-opus-5-5
+    effort: xhigh
+    session_id: 2ee0c132-5d1f-42c3-b95b-60d41baed7b2
+    verdict: PASS
+    disposition: "Mobile dropdown fixed and browser-proven; server generic total preserved; duplicate live region removed."
+pending:
+  - "Final independent on-disk gate and authorized release."
+  - "Physical iQOO: Tailscale online; ADB absent, wireless debug port requested."
+  - "GA4 custom dimensions: authenticated create returns 403; property Editor/admin required."
