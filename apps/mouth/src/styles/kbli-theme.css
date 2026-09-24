@@ -264,3 +264,13 @@
     animation: none !important;
   }
 }
+
+/* The FunnelFrame handoff rail (sticky, z-40) is a sibling of <main>, and a
+   global rule gives <main> position:relative + z-index:1 — a stacking context
+   that traps the KBLI search dropdown (z-50) beneath the pill (measured
+   2026-09-24: elementFromPoint at the pill returned the pill over result 3 on
+   390px). While a results listbox is open, the pill steps aside. */
+[data-funnel="kbli"]:has([role="listbox"])
+  > [role="group"][aria-label="Next actions"] {
+  visibility: hidden;
+}
