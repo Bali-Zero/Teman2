@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { portalUnreadKey } from "@/hooks/usePortalUnreadMessages";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -44,6 +46,7 @@ const POLL_INTERVAL = 30000; // 30 seconds
 const PAGE_SIZE = 100;
 
 export default function ChatPage() {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const { error } = useToast();
   const { formatDateTime: formatDateTimeLocale, formatDate: formatDateLocale } =
@@ -162,23 +165,29 @@ export default function ChatPage() {
   // That breaks the cycle: messages → markVisibleMessagesAsRead → effect →
   // loadMessages → setMessages → messages → … (was causing ~1167 fetches).
   const markVisibleMessagesAsRead = useCallback(async () => {
+    if (document.visibilityState === "hidden") return;
     const unreadMessages = messagesRef.current.filter(
       (msg) => msg.direction === "team_to_client" && !msg.readAt,
     );
 
+    let readSucceeded = false;
     for (const msg of unreadMessages) {
       try {
         await api.portal.markMessageRead(parseInt(msg.id));
+        readSucceeded = true;
       } catch (err) {
         logger.error("Failed to mark message as read", {}, err as Error);
       }
     }
 
+    if (readSucceeded)
+      void queryClient.invalidateQueries({ queryKey: portalUnreadKey });
+
     // Refresh to update read status
     if (unreadMessages.length > 0) {
       loadMessages(true);
     }
-  }, [loadMessages]);
+  }, [loadMessages, queryClient]);
 
   // Initial load
   useEffect(() => {
@@ -201,27 +210,28 @@ export default function ChatPage() {
     }
   }, [messages]);
 
-  // Mark messages as read once after the initial load completes.
-  // Deps: only [isLoading, markVisibleMessagesAsRead] — NOT `messages`.
-  // Removing `messages` from deps is intentional: we read from messagesRef
-  // inside the callback so we always see the latest list without causing
-  // this effect to re-fire on every fetch (which was the infinite-loop root).
-  const prevIsLoadingRef = useRef(true);
+  // Depend on unread IDs, not message object identity. A poll or read-refresh
+  // with the same IDs cannot trigger the old fetch/read/fetch loop.
+  const visibleUnreadIds = messages
+    .filter(
+      (message) => message.direction === "team_to_client" && !message.readAt,
+    )
+    .map((message) => message.id)
+    .join(",");
   useEffect(() => {
-    // Fire when isLoading transitions from true → false (initial load done)
-    if (
-      prevIsLoadingRef.current &&
-      !isLoading &&
-      messagesRef.current.length > 0
-    ) {
-      const timer = setTimeout(() => {
-        markVisibleMessagesAsRead();
-      }, 1000);
-      prevIsLoadingRef.current = false;
-      return () => clearTimeout(timer);
-    }
-    prevIsLoadingRef.current = isLoading;
-  }, [isLoading, markVisibleMessagesAsRead]);
+    if (!visibleUnreadIds) return;
+    const timer = setTimeout(() => void markVisibleMessagesAsRead(), 1000);
+    return () => clearTimeout(timer);
+  }, [visibleUnreadIds, markVisibleMessagesAsRead]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible")
+        void markVisibleMessagesAsRead();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [markVisibleMessagesAsRead]);
 
   // Send message
   const handleSendMessage = async () => {

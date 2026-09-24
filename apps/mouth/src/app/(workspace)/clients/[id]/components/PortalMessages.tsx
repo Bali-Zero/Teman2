@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   MessageSquare,
   Send,
@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { teamPortalUnreadKey } from "@/hooks/usePortalUnreadMessages";
 import type { PortalMessageThread } from "@/lib/api/crm/crm.types";
 
 export function PortalMessages({
@@ -22,6 +24,8 @@ export function PortalMessages({
   clientId: number;
   clientName: string;
 }) {
+  const queryClient = useQueryClient();
+  const threadRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<PortalMessageThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -31,16 +35,26 @@ export function PortalMessages({
   const hasSeenData = useRef(false);
   const prevMessageCountRef = useRef(0);
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       const data = await api.crm.getPortalMessages(clientId);
       setMessages(data.messages || []);
       setLoadError(false);
-      // Mark unread client messages as read
-      for (const msg of data.messages || []) {
-        if (msg.direction === "client_to_team" && !msg.read_at) {
-          api.crm.markPortalMessageRead(clientId, msg.id).catch(() => {});
-        }
+      setIsLoading(false);
+      if (document.visibilityState === "hidden") return;
+      const unread = (data.messages || []).filter(
+        (msg) => msg.direction === "client_to_team" && !msg.read_at,
+      );
+      const readResults = await Promise.all(
+        unread.map((msg) =>
+          api.crm
+            .markPortalMessageRead(clientId, msg.id)
+            .then(() => true)
+            .catch(() => false),
+        ),
+      );
+      if (readResults.some(Boolean)) {
+        void queryClient.invalidateQueries({ queryKey: teamPortalUnreadKey });
       }
     } catch {
       // A failed load must not present as "no messages" — an operator reading
@@ -51,13 +65,19 @@ export function PortalMessages({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [clientId, queryClient]);
 
   useEffect(() => {
     loadMessages();
     const interval = setInterval(loadMessages, 30000); // Poll every 30s
     return () => clearInterval(interval);
-  }, [clientId]);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    if (!isLoading && window.location.hash === "#portal-messages") {
+      threadRef.current?.scrollIntoView({ block: "start" });
+    }
+  }, [isLoading, clientId]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -106,7 +126,11 @@ export function PortalMessages({
   ).length;
 
   return (
-    <div className="bz-product-panel overflow-hidden flex flex-col">
+    <div
+      ref={threadRef}
+      id="portal-messages"
+      className="bz-product-panel scroll-mt-20 overflow-hidden flex flex-col"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
         <div className="flex items-center gap-2">
