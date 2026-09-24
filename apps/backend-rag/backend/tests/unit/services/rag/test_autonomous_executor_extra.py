@@ -385,17 +385,21 @@ class TestExecuteStepActions:
             "schedule_biometrics",
             "track_kitas_status",
         ]
-        for action in actions:
-            step = _make_step(
-                {
-                    "action": action,
-                    "description": "test",
-                    "safety_level": StepSafety.SAFE,
-                    "rollback_action": "",
-                },
-                0,
-            )
-            await executor._execute_step(step, "u@t.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            for action in actions:
+                step = _make_step(
+                    {
+                        "action": action,
+                        "description": "test",
+                        "safety_level": StepSafety.SAFE,
+                        "rollback_action": "",
+                    },
+                    0,
+                )
+                await executor._execute_step(step, "u@t.com")
+            # Every KITAS action must be recognized by a known branch —
+            # none of them may fall through to the "Unknown action" warning.
+            mock_logger.warning.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_pt_pma_actions(self):
@@ -408,14 +412,18 @@ class TestExecuteStepActions:
             "register_oss",
             "obtain_nib",
         ]
-        for action in actions:
-            step = _make_step(
-                {
-                    "action": action,
-                    "description": "test",
-                    "safety_level": StepSafety.SAFE,
-                    "rollback_action": "",
-                },
-                0,
-            )
-            await executor._execute_step(step, "u@t.com")
+        with patch("backend.services.rag.autonomous_executor.logger") as mock_logger:
+            for action in actions:
+                step = _make_step(
+                    {
+                        "action": action,
+                        "description": "test",
+                        "safety_level": StepSafety.SAFE,
+                        "rollback_action": "",
+                    },
+                    0,
+                )
+                await executor._execute_step(step, "u@t.com")
+            # Every PT PMA action must be recognized by a known branch —
+            # none of them may fall through to the "Unknown action" warning.
+            mock_logger.warning.assert_not_called()
