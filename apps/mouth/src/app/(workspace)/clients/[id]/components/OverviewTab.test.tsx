@@ -14,7 +14,6 @@ vi.mock("@/lib/api", () => ({
       getClientWaCaseIntelligence: vi.fn(),
       // CRM-18: present so a test can assert this component never reaches it.
       deleteClient: vi.fn(),
-      queryClientIntelligence: vi.fn(),
       extractPassportForClient: vi.fn(),
     },
     post: vi.fn(),
@@ -147,7 +146,9 @@ describe("OverviewTab — Needs attention ledger", () => {
       />,
     );
     expect(screen.queryByText("Needs attention")).toBeNull();
-    expect(await screen.findByText("🔮 Ask the Oracle")).toBeTruthy();
+    expect(
+      await screen.findByText("AI Summary not generated yet"),
+    ).toBeTruthy();
   });
 
   it("INNOCENCE: six alerts render five rows plus a quiet Show all (6)", () => {
