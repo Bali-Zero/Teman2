@@ -194,6 +194,7 @@ async def lifespan(app: FastAPI):
         # the ones that poisoned the asyncpg pool during the disk-full cascade:
         # Workflow Queue, Legal Full Ingestion, Practice Status Listener, EventBus.
         # Keep as a safety switch; unset the env var when you want to re-enable.
+        app.state._portal_email_worker_task = None
         if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
             logger.warning(
                 "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Workflow Queue + "
@@ -205,6 +206,19 @@ async def lifespan(app: FastAPI):
             app.state.practice_status_listener = None
             app.state.event_bus = None
         else:
+            # Manual portal-message email has a durable message-keyed queue.
+            try:
+                from backend.services.portal.portal_message_email import (
+                    run_worker as portal_email_worker,
+                )
+
+                app.state._portal_email_worker_task = asyncio.create_task(
+                    portal_email_worker(app.state.db_pool)
+                )
+                logger.info("Portal message email worker started")
+            except Exception as exc:
+                logger.error("Portal email worker initialization failed: %s", type(exc).__name__)
+
             # Initialize Workflow Queue (PG SKIP LOCKED + LangGraph checkpointer)
             try:
                 from backend.services.workflow.checkpointer import get_checkpointer
@@ -367,6 +381,12 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Langfuse flushed")
     except Exception as e:
         logger.warning("⚠️ Langfuse shutdown skipped: %s", e)
+
+    portal_email_task = getattr(app.state, "_portal_email_worker_task", None)
+    if portal_email_task and not portal_email_task.done():
+        portal_email_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await portal_email_task
 
     # Shutdown Workflow Queue Worker
     workflow_worker_task = getattr(app.state, "_workflow_worker_task", None)

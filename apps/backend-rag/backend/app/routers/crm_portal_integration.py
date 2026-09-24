@@ -15,6 +15,7 @@ Created: 2025-12-30
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -27,6 +28,7 @@ from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal._rbac import ClientContext
 from backend.services.portal.portal_profile_service import PLACEHOLDER_PIN_HASH
+from backend.services.portal.portal_reply_service import get_pending_replies
 
 if TYPE_CHECKING:
     from backend.services.portal import InviteService, PortalService
@@ -451,6 +453,7 @@ async def get_unread_messages_count(
         return {
             "success": True,
             "data": {
+                **await get_pending_replies(conn, assigned_filter),
                 "total_unread": total or 0,
                 "by_client": [
                     {
@@ -524,21 +527,30 @@ async def send_message_to_client(
                 client_id, current_user, conn, allow_assigned=True, write=True
             )
 
-            message = await conn.fetchrow(
-                """
-                INSERT INTO portal_messages
-                    (client_id, practice_id, subject, direction, content, sent_by)
-                VALUES ($1, $2, $3, 'team_to_client', $4, $5)
-                RETURNING id, subject, content, sent_by, created_at
-                """,
-                client_id,
-                request.practice_id,
-                request.subject,
-                request.content,
-                current_user.get("email", "team"),
-            )
+            async with conn.transaction():
+                message = await conn.fetchrow(
+                    """
+                    INSERT INTO portal_messages
+                        (client_id, practice_id, subject, direction, content, sent_by)
+                    VALUES ($1, $2, $3, 'team_to_client', $4, $5)
+                    RETURNING id, subject, content, sent_by, created_at
+                    """,
+                    client_id,
+                    request.practice_id,
+                    request.subject,
+                    request.content,
+                    current_user.get("email", "team"),
+                )
 
-            logger.info(f"Team message sent to client {client_id} by {current_user.get('email')}")
+                await conn.execute(
+                    "INSERT INTO portal_message_email_outbox (message_id, idempotency_key) VALUES ($1, $2)",
+                    message["id"],
+                    uuid4(),
+                )
+
+            logger.info(
+                "Manual portal message saved: client_id=%s message_id=%s", client_id, message["id"]
+            )
 
             return {
                 "success": True,

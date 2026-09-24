@@ -51,6 +51,15 @@ from backend.services.notifications.email_http import get_email_client
 if TYPE_CHECKING:
     import asyncpg
 
+
+class EmailProviderRejected(RuntimeError):
+    """The provider explicitly rejected a keyed notification."""
+
+
+class EmailDeliveryUncertain(RuntimeError):
+    """Acceptance could not be established for a keyed notification."""
+
+
 logger = logging.getLogger(__name__)
 
 _EMAIL_API_URL = os.getenv(
@@ -72,6 +81,7 @@ async def send_internal_email(
     pool: asyncpg.Pool | None = None,
     practice_id: int | None = None,
     client_id: int | None = None,
+    idempotency_key: str | None = None,
 ) -> None:
     """Send an email through the internal Brevo adapter.
 
@@ -120,6 +130,9 @@ async def send_internal_email(
             "subject": subject,
             "body": body,
         }
+        if idempotency_key:
+            payload["idempotency_key"] = idempotency_key
+            payload["email_type"] = email_type or "portal_message"
         if cc:
             payload["cc"] = ", ".join(cc)
 
@@ -130,6 +143,10 @@ async def send_internal_email(
             json=payload,
         )
         response.raise_for_status()
+        if idempotency_key and response.json().get("success") is not True:
+            if response.json().get("delivery_uncertain"):
+                raise EmailDeliveryUncertain("email_delivery_uncertain")
+            raise EmailProviderRejected("email_provider_rejected")
 
         logger.info(
             "Internal email sent: to=%s cc_count=%d context=%s",
