@@ -1,0 +1,46 @@
+mandate: >-
+  Land the B4-3 live re-sweep evidence (post-A3'-B, PR #7234 merge
+  d6a2152d05cd96d596cabb3dcadf72cdd8c7cd72, Fly build_sha = merge at
+  2026-09-24T16:25:55Z) as a docs-only research capture, next to the existing
+  A9 sweep in the same directory: copy the 252-walk `enumerate_live` re-sweep
+  report JSON produced against the live engine after #7234 into
+  research/operations/2026-09-22-visa-oracle-live-enumeration/, verify its
+  sha256 against the dispatch-declared digest, and add a dated README section
+  deriving the census and the 25-walk moved-state diff against the A9 (seq-23,
+  pre-#7234) report BY COMMAND from the JSONs — no code changes, no
+  production access, no secrets.
+gear: 3
+dux: team-lead
+implementer: claude-sonnet-5
+organ: research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (new dated section) + prove-live-b4-3-a3pb-full-sweep-report-20260924.json (new evidence file, 403 KB — the diff's own size term is what raises this brief's floor to 3)
+authority: >-
+  team-lead dispatch (this session, 2026-09-24), task vo-b4-3-research:
+  land the post-A3'-B production re-sweep evidence next to the existing
+  A9/B4-2/B4-2b re-sweeps in the same research directory. Source narrative:
+  /Users/balizero/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/PROVELIVE-A3P-B-REPORT-7234.md
+  (the prove-live report for PR #7234's Slice A3'-B, quoted for provenance
+  only — no secret in it). Precedent PR #7230 (the A9 sweep capture, merge
+  8b7724c214) and its three gate rounds (GATE-SWEEP-REPORT-7230.md) are the
+  binding lesson this brief must not repeat — see `static:` and the
+  dissent-shaped design note in `receipts:` below. No production DB touched,
+  no production call made by this docs task.
+acceptance:
+  - text: WHEN the copied JSON's sha256 is computed SHALL it equal the dispatch-declared 017bce8e460a21f52ff49442e79639d624348a1835d0587e04256f0a91ea0d8b
+    probe: "shasum -a 256 research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json"
+  - text: WHEN the census table's counts are read from the JSON's `engine_state` field SHALL they equal 185 SUPPORTED_CANDIDATES / 8 NEEDS_INPUT / 56 NO_SUPPORTED_PATH / 3 HUMAN_REVIEW_REQUIRED over 252 walks
+    probe: 'python3 -c "import json,collections; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(collections.Counter(x[''engine_state''] for x in w))"'
+  - text: WHEN `rule_pack.sequence` and `http_status` are read from every walk SHALL they equal 23 and 200 on all 252/252
+    probe: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(set(x[''rule_pack''][''sequence''] for x in w), set(x[''http_status''] for x in w))"'
+  - text: WHEN the B4-3 walk_ids are diffed against the A9 report's walk_ids by set-intersection SHALL the moved-state count equal 25 (all HUMAN_REVIEW_REQUIRED to NO_SUPPORTED_PATH, 0 moved to SUPPORTED_CANDIDATES)
+    probe: 'python3 -c "import json; a=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; b=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; am={x[''walk_id'']:x[''engine_state''] for x in a}; bm={x[''walk_id'']:x[''engine_state''] for x in b}; moved=[(k,am[k],bm[k]) for k in am if am[k]!=bm.get(k)]; print(len(moved), set(t for _,_,t in moved), set(f for _,f,_ in moved))"'
+  - text: WHEN the residual HUMAN_REVIEW_REQUIRED walk_ids are listed from the B4-3 JSON SHALL they equal exactly {edge/secondhome_deposit_usd=unsure, edge/secondhome_property_value_usd=unsure, review-gate/criminal_record}
+    probe: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(sorted(x[''walk_id''] for x in w if x[''engine_state'']==''HUMAN_REVIEW_REQUIRED''))"'
+  - text: IF the `.json.lock` file exists next to the source JSON SHALL it never be copied into the research directory
+    probe: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock (no match — nothing copied)"
+assumptions:
+  - text: the dispatch-declared sha256 in the conductor's task description accurately describes the artifact produced by the enumerate_live run (this brief verifies the file's hash matches the dispatch, not the prove-live session itself, which is a separate session's record — PROVELIVE-A3P-B-REPORT-7234.md)
+    status: unverified
+    probe: shasum -a 256 against the dispatch-declared digest (run in this task, PASS)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

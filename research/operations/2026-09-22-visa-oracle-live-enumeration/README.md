@@ -6,6 +6,7 @@ sources:
   - prove-live-b4-2-full-sweep-report-20260922.json (252/252 walks, live)
   - prove-live-b52-manifest-raw-main-1c6d2240-20260922.json (post-A6-2, post-B5-2 manifest, 252 walks)
   - prove-live-a9-seq23-full-sweep-report-20260924.json (252/252 walks, live, post-seq-23-activation re-sweep against the same manifest)
+  - prove-live-b4-3-a3pb-full-sweep-report-20260924.json (252/252 walks, live, post-#7234/Slice-A3'-B re-sweep against the same manifest)
 discovered_by: session (M5), vo-builder-b4-2-report
 adversarial_review: codex
 ---
@@ -696,6 +697,33 @@ Not in scope for either TP1 seat (the task was numeric/set claims over the JSON 
 both are text/history claims, not derivable from the report JSONs. That gap is why the fresh
 on-disk gate (not this council) is what caught the qualifier this claim was missing.
 
+### B4-3 addendum (2026-09-24, TP1 council — not a codex pass)
+
+Same seat shape as the A9 addendum above, per R9's Gear-3 quorum (`COUNCIL_REVIEW_SEATS`):
+**`tp1-qwen3.8-max`** (titolare, probed live first) and **`tp1-deepseek-v4-pro`** (reserve,
+substituting for `codex-gpt-5.6-sol`/`kimi-code/k3`). Direct liveness probe this round
+(`scripts/arsenal_probe.py --table`, 2026-09-24): `tp1-qwen3.8-max` LIVE 2549ms,
+`tp1-deepseek-v4-pro` LIVE 2144ms, `codex` TIMEOUT 15044ms, `kimi` TIMEOUT 15087ms — the same
+substitution #7230 made, named in this PR's `evidence/.../pack.yml` `seat_fallback_reason`. Each
+ran independently against the same task (`scripts/tp1_call.py`, task file =
+`evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/refuter-runs/refuter-task.txt`):
+the addendum's claims below (census, `sequence`/`http_status`, the 25-walk moved-state diff vs
+the A9 sweep, the 3 held walk_ids) checked against JSON excerpts of the two committed report
+files — **every** field either claim under review rests on is in the excerpt
+(`walk_id`/`engine_state`/`sequence`/`http_status` on all 252 rows each). The one field left out
+of the excerpt, `rule_pack.payload_sha256` (a 64-hex content hash, uniform across all 252 rows in
+both files), was deliberately excluded and marked explicitly out-of-scope in the task's own
+instructions — not omitted silently the way #7230's narrower excerpt omitted it (which drew 3
+findings, all later RETRACTED against the full data, because the review task never told the
+seats the field was intentionally absent). That uniformity claim was verified separately by the
+builder against the full committed JSONs (`{w["rule_pack"]["payload_sha256"] for w in walks}` has
+exactly one member on both files, matching the README's `e5f791b5…72204`), outside the council's
+scope.
+
+Verdict: both **PASS**, 0 findings — every claim the addendum makes checked out against the
+excerpt on the first pass, no dissent to record. Full transcripts and the task file:
+`evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/{council.jsonl,refuter-runs/}`.
+
 
 ## A9 addendum (2026-09-24): seq-23 activated in production, 252-walk re-sweep
 
@@ -781,3 +809,85 @@ New reason codes observed live and absent from B4-2b entirely (by command, over
 **No finding in this sweep**: HUMAN_REVIEW = 28 = the runbook's expectation (A3'-B not live, so
 the 25 `ACTIVITY_BOUNDARY` walks are still held by the adapter flag), 0 transport errors, 0
 harness reds, sequence 23 on all 252, HTTP 200 on all 252.
+
+
+## B4-3 addendum (2026-09-24, post-A3'-B): the 252-walk re-sweep after #7234, HUMAN_REVIEW 28 → 3
+
+PR #7234 (`d6a2152d05cd96d596cabb3dcadf72cdd8c7cd72`, merged 2026-09-24T16:14:53Z, Slice A3'-B)
+moved `ACTIVITY_BOUNDARY` from `HOLDING_DISCLOSED_FLAGS` to `DEAD_END_DISCLOSED_FLAGS` in the
+engine's disclosed-flag layer; production `build_sha` flipped to match the merge commit at
+2026-09-24T16:25:55Z, confirmed by polling `curl -fsS https://nuzantara-rag.fly.dev/health`
+every 30s from the merge (`vo-provelive-a3p-b`, `PROVELIVE-A3P-B-REPORT-7234.md`, not committed
+here — narrative provenance only, no number below is copied from it uncomputed). Its Step 4
+re-ran the same B4-class 252-walk sweep against this directory's manifest
+(`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`, same driver
+`backend.scripts.visa_engine.enumerate_live`, `--max-requests 260 --rate-per-minute 25`, dry-run
+first with a clean `pending=252 already_recorded=0` plan) between 2026-09-24T16:32:55Z and
+16:42:55Z, `stopped_reason=completed`, `requests_used_this_run=252`,
+`requests_used_total=252`.
+
+Report JSON: `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`, sha256
+`017bce8e460a21f52ff49442e79639d624348a1835d0587e04256f0a91ea0d8b`.
+
+### Census (derived by command from the JSON's `engine_state`, `rule_pack.sequence`, `rule_pack.payload_sha256`, `http_status` — never typed)
+
+| | B4-2b (seq-22) | A9 sweep (seq-23, pre-#7234) | **B4-3 sweep (seq-23, post-#7234)** |
+|---|---|---|---|
+| SUPPORTED_CANDIDATES | 172 | 185 | **185** |
+| NEEDS_INPUT | 6 | 8 | **8** |
+| NO_SUPPORTED_PATH | 31 | 31 | **56** |
+| HUMAN_REVIEW_REQUIRED | 43 | 28 | **3** |
+| total | 252 | 252 | 252 |
+| `rule_pack.sequence` | 22 ×252 | 23 ×252 | **23 ×252** (payload `e5f791b5…72204` ×252) |
+| `http_status` | — | 200 ×252 | **200 ×252** |
+
+252/252 `walk_id`s identical between the A9 report and this one, by set-intersection (0 missing,
+0 extra — no label added or dropped since A9).
+
+### The 25 walks that moved state vs A9 (derived by set-intersection over `walk_id`, diffing `engine_state`)
+
+All 25 moves are one direction, `HUMAN_REVIEW_REQUIRED → NO_SUPPORTED_PATH` — every one of them
+an `ACTIVITY_BOUNDARY`-disclosed edge/review-gate walk. **0 walks moved to
+SUPPORTED_CANDIDATES**; the other 227 walks kept state:
+
+| walk_id | A9 state | B4-3 state |
+|---|---|---|
+| `edge/business_activity=other` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/business_activity=training` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/business_activity=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/diaspora_connection=dual` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/diaspora_connection=other` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/diaspora_connection=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/diaspora_documents=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_amount_usd=1000000000` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_amount_usd=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_currency=idr` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_currency=still_unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_vehicle=family` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_vehicle=undecided` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/investment_vehicle=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_paid_activity=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=arts_sport` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=crew` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=journalism` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=medical` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=other` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=religious` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/other_purpose=volunteer` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `edge/retirement_basis=unsure` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+| `review-gate/activity_boundary` | HUMAN_REVIEW_REQUIRED | NO_SUPPORTED_PATH |
+
+The 3 walks that stayed `HUMAN_REVIEW_REQUIRED`, exactly the three named ahead of the sweep
+(Studio ×2, criminal ×1), none `ACTIVITY_BOUNDARY`-only:
+
+| held walk_id | state |
+|---|---|
+| `edge/secondhome_deposit_usd=unsure` | HUMAN_REVIEW_REQUIRED |
+| `edge/secondhome_property_value_usd=unsure` | HUMAN_REVIEW_REQUIRED |
+| `review-gate/criminal_record` | HUMAN_REVIEW_REQUIRED |
+
+**No finding in this sweep**: `HUMAN_REVIEW_REQUIRED` = 3 = exactly the runbook's expectation
+(the 25 `ACTIVITY_BOUNDARY`-only walks left the hold, matching #7234 in force end-to-end), 0
+walks moved to `SUPPORTED_CANDIDATES`, 0 transport errors, sequence 23 on all 252, HTTP 200 on
+all 252.
