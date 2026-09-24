@@ -98,6 +98,10 @@ module = [
     "backend.core.plugins.executor",
     "backend.core.qdrant_db",
     "backend.app.models.*",
+    "backend.core.cache",
+    "backend.core.embeddings",
+    "backend.core.chunker",
+    "backend.core.legal.hierarchical_indexer",
 ]
 ignore_errors = false
 

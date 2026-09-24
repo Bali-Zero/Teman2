@@ -26,8 +26,12 @@ Semantic text splitting for optimal RAG performance
 """
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
+
+settings: "Settings | None"
 try:
     from backend.app.core.config import settings
 except ImportError:
@@ -43,7 +47,10 @@ class TextChunker:
     """
 
     def __init__(
-        self, chunk_size: int = None, chunk_overlap: int = None, max_chunks: int = None
+        self,
+        chunk_size: int | None = None,
+        chunk_overlap: int | None = None,
+        max_chunks: int | None = None,
     ) -> None:
         """
         Initialize chunker with configuration.
@@ -93,7 +100,7 @@ class TextChunker:
         # Now combine splits into chunks that respect the chunk_size
         # Use list for efficient string concatenation (O(n) instead of O(n²))
         chunks = []
-        chunk_parts = []
+        chunk_parts: list[str] = []
 
         for i, split in enumerate(splits):
             # Add separator back (except for empty separator)
@@ -143,7 +150,9 @@ class TextChunker:
             chunk.get("text", "") if isinstance(chunk, dict) else str(chunk) for chunk in chunks
         ]
 
-    def semantic_chunk(self, text: str, metadata: dict[str, Any] = None) -> list[dict[str, Any]]:
+    def semantic_chunk(
+        self, text: str, metadata: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Split text into semantic chunks with metadata.
 
@@ -187,7 +196,7 @@ class TextChunker:
                 chunks = chunks[: self.max_chunks]
 
             # Create chunk objects with metadata
-            chunk_objects = []
+            chunk_objects: list[dict[str, Any]] = []
             for idx, chunk_text in enumerate(chunks):
                 chunk_obj = {
                     "text": chunk_text,
@@ -216,8 +225,8 @@ class TextChunker:
     def chunk_by_pages(
         self,
         text: str,
-        page_markers: list[int] = None,
-        metadata: dict[str, Any] = None,
+        page_markers: list[int] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Page-aware chunking: honours page boundaries from PDF extraction.

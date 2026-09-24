@@ -11,11 +11,16 @@ from typing import Any
 import asyncpg
 
 from backend.app.core.config import settings
+from backend.core.bm25_vectorizer import BM25Vectorizer
+from backend.core.embeddings import EmbeddingsGenerator
+from backend.core.legal.chunker import LegalChunker
 from backend.core.legal.quality_validators import (
     assess_document_quality,
     extract_ayat_numbers,
     validate_ayat_sequence,
 )
+from backend.core.legal.structure_parser import LegalStructureParser
+from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
 
@@ -56,20 +61,20 @@ class HierarchicalIndexer:
 
     def __init__(
         self,
-        structure_parser,
-        qdrant_client,
-        embeddings,
-        chunker=None,
-        sparse_vectorizer=None,
+        structure_parser: LegalStructureParser,
+        qdrant_client: QdrantClient,
+        embeddings: EmbeddingsGenerator,
+        chunker: LegalChunker | None = None,
+        sparse_vectorizer: BM25Vectorizer | None = None,
     ) -> None:
         self.parser = structure_parser
         self.qdrant = qdrant_client
         self.embeddings = embeddings
         self.chunker = chunker
         self.sparse_vectorizer = sparse_vectorizer
-        self.db_pool = None
+        self.db_pool: asyncpg.Pool | None = None
 
-    async def _get_db_pool(self):
+    async def _get_db_pool(self) -> asyncpg.Pool | None:
         """Get or create DB pool. Returns None if database is not available (non-blocking)."""
         if not self.db_pool:
             if not settings.database_url:
@@ -104,8 +109,8 @@ class HierarchicalIndexer:
         """
         # 1. Parse struttura
         structure = self.parser.parse(document_text)
-        chunks_to_index = []
-        parent_documents = []  # BAB completi per retrieval
+        chunks_to_index: list[HierarchicalChunk] = []
+        parent_documents: list[dict[str, Any]] = []  # BAB completi per retrieval
 
         # 2. Processa ogni BAB (se presenti)
         if structure.get("batang_tubuh"):
@@ -265,14 +270,14 @@ class HierarchicalIndexer:
 
     async def _add_pasal_to_chunks(
         self,
-        pasal,
-        document_id,
-        bab_id,
-        bab_title,
-        metadata,
-        chunks_to_index,
+        pasal: dict[str, Any],
+        document_id: str,
+        bab_id: str | None,
+        bab_title: str | None,
+        metadata: dict[str, Any],
+        chunks_to_index: list[HierarchicalChunk],
         section: str = "batang_tubuh",
-    ):
+    ) -> None:
         """Helper to process a single Pasal and add it to chunks list.
 
         `section` distinguishes the operative article ("batang_tubuh") from the
@@ -491,7 +496,7 @@ class HierarchicalIndexer:
             )
         return documents_added
 
-    async def _upsert_parent_documents(self, parent_docs: list[dict]) -> None:
+    async def _upsert_parent_documents(self, parent_docs: list[dict[str, Any]]) -> None:
         """
         Salva documenti parent (BAB completi) in PostgreSQL.
         Non-blocking: se fallisce, logga warning ma non solleva eccezione.
