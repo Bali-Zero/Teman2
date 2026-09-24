@@ -196,12 +196,17 @@ cd apps/backend-rag
 uvicorn backend.app.main:app --port 8080 --reload
 ```
 
-**Terminal 2: Bali Intel Scraper API**
+**Terminal 2: Bali Intel Scraper**
 
 ```bash
 cd apps/bali-intel-scraper
-python -m uvicorn api.main:app --port 8002 --reload
+uvicorn backend.app.main:app --port 8002 --reload
 ```
+
+(`api/main.py` was a dead, un-COPYed Docker entrypoint deleted 2026-09-24 — the app
+actually runs as `backend.app.main`, driven in production by the nightly cron
+`com.balizero.intel.nightly` on Pro via `apps/bali-intel-scraper/.venv`, not as a
+long-running server; the command above is for local manual testing only.)
 
 **Terminal 3: Zantara Media**
 
