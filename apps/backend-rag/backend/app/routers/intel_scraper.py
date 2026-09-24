@@ -225,29 +225,38 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     investor_steps: list[str] = []
     general_steps: list[str] = []
 
-    # Try to extract expat and investor sections
-    expat_match = re.search(
-        r"(?:###\s*)?(?:For\s+)?Expat[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        next_steps_text,
-        re.DOTALL | re.IGNORECASE,
+    # An audience is named only by a whole label LINE ("### For Expats",
+    # "**For Expats:**", "For Expats:"), never by the word inside a step: a
+    # substring match relabelled "Expats should renew…" as the expat group
+    # and cut "expatriate" to "riate…" (gate BLOCK on #7322). A label runs
+    # until the next label or heading.
+    audience_label = re.compile(
+        r"^\s*(?:#{2,4}\s*)?(?:\*\*)?\s*(?:For\s+)?(Expat|Investor)s?\s*:?\s*(?:\*\*)?\s*:?\s*$",
+        re.IGNORECASE,
     )
-    if expat_match:
-        expat_steps = _extract_labelled_items(expat_match.group(1).strip())
+    audience_lines: dict[str, list[str]] = {}
+    current_audience: str | None = None
+    for line in next_steps_text.splitlines():
+        label = audience_label.match(line)
+        if label:
+            current_audience = label.group(1).lower()
+            audience_lines.setdefault(current_audience, [])
+        elif re.match(r"^\s*#{2,4}\s", line):
+            current_audience = None
+        elif current_audience:
+            audience_lines[current_audience].append(line)
 
-    investor_match = re.search(
-        r"(?:###\s*)?(?:For\s+)?Investor[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        next_steps_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if investor_match:
-        investor_steps = _extract_labelled_items(investor_match.group(1).strip())
+    if "expat" in audience_lines:
+        expat_steps = _extract_labelled_items("\n".join(audience_lines["expat"]).strip())
+    if "investor" in audience_lines:
+        investor_steps = _extract_labelled_items("\n".join(audience_lines["investor"]).strip())
 
     # A draft that never names "For Expats"/"For Investors" states ONE
     # audience-neutral list. Splitting it 50/50 between the two invents an
     # audience the draft never named (2026-09-23 GloBE regression: the
     # expats group got a filler, the investors group got the whole blob).
     # Render it as a single neutral group instead — never split, never fill.
-    if not expat_match and not investor_match and next_steps_text:
+    if not audience_lines and next_steps_text:
         general_steps = _extract_general_items(next_steps_text)
         if not general_steps:
             general_steps = [next_steps_text]

@@ -219,6 +219,68 @@ class TestConvertStagingToEnrichedArticle:
         assert "Review the article for specific actions" not in joined
         assert "confirm the scope assessment" in joined
 
+    def test_neutral_steps_that_mention_expats_or_investors_stay_neutral(self) -> None:
+        """Guilt (gate BLOCK on #7322): the audience regex matched "expat" /
+        "investor" as a SUBSTRING anywhere in the body, so a neutral step that
+        merely mentioned them ("Expats should…", "an expatriate-friendly…")
+        was relabelled to that audience and truncated from the match onward
+        ("expatriate" → "riate…"). Only a label LINE names an audience."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        steps = [
+            "Expats should renew their KITAS before it lapses.",
+            "Investors must file the LKPM report every quarter.",
+            "Hire an expatriate-friendly tax adviser for the annual SPT.",
+        ]
+        data = {
+            "title": "Neutral Steps",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n" + "\n".join(f"- {s}" for s in steps)
+            ),
+            "category": "visa",
+            "relevance_score": 80,
+        }
+        next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert next_steps["general"] == steps
+
+    def test_audience_label_lines_in_heading_bold_and_colon_forms(self) -> None:
+        """Innocence for the fix above: a real label LINE still names its
+        audience whether it is a heading, a bold line or a bare "For X:"
+        line, and a step under it that mentions the other audience stays
+        where it is."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        for expat_label, investor_label in [
+            ("### For Expats", "### For Investors"),
+            ("**For Expats:**", "**For Investors:**"),
+            ("For Expats:", "For Investors:"),
+        ]:
+            data = {
+                "title": "Labelled Steps",
+                "content": (
+                    "## Facts\nFacts here.\n"
+                    "## Next Steps\n"
+                    f"{expat_label}\n"
+                    "- Check your visa status\n"
+                    "- Ask your investor sponsor for the RPTKA letter\n"
+                    f"{investor_label}\n"
+                    "- Review investment plan\n"
+                ),
+                "category": "visa",
+                "relevance_score": 80,
+            }
+            next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+            assert next_steps["expat"] == [
+                "Check your visa status",
+                "Ask your investor sponsor for the RPTKA letter",
+            ], expat_label
+            assert next_steps["investor"] == ["Review investment plan"], investor_label
+            assert next_steps["general"] == [], expat_label
+
     def test_next_steps_never_emits_filler_and_omits_empty_groups(self) -> None:
         """Guilt: a Next Steps section too short to yield any real item must
         stay empty (and the MDX layer omits the section), never the
