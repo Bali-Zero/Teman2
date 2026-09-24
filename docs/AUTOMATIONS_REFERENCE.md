@@ -1,7 +1,7 @@
 # NUZANTARA — AUTOMATIONS REFERENCE
 
 > **Auto-generated from live system state** — do not edit manually.
-> Generated: 2026-09-23 15:15 UTC
+> Generated: 2026-09-24 15:15 UTC
 > Source: `crontab -l` (Pro+Mini) + `launchctl list` (Pro+Mini) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`
 
 ---
@@ -81,24 +81,24 @@ on every run — never hand-edit this table, edit the workflow instead.
 | Metric                | Value   |
 | --------------------- | ------- |
 | Total jobs            | **274** |
-| ✅ Healthy            | **183** |
+| ✅ Healthy            | **185** |
 | 🔄 Running (daemons)  | **58**  |
 | ⚠️ Warning/Skip/NoLog | **13**  |
-| ❌ Failed             | **12**  |
+| ❌ Failed             | **10**  |
 
 ---
 
 ## Sentinel Overview
 
-> Ultimo aggiornamento sentinel: `2026-09-23T15:06:07Z`
+> Ultimo aggiornamento sentinel: `2026-09-24T15:08:54Z`
 
-| Metrica                   | Valore                |
-| ------------------------- | --------------------- |
-| Circuit OPEN              | **1**                 |
-| Circuit TERMINAL          | **168**               |
-| DLQ entries totali        | **1**                 |
-| DLQ phase distribution    | `T0=1 · TERMINAL=168` |
-| Job critici (in registry) | **0**                 |
+| Metrica                   | Valore         |
+| ------------------------- | -------------- |
+| Circuit OPEN              | **0**          |
+| Circuit TERMINAL          | **173**        |
+| DLQ entries totali        | **1**          |
+| DLQ phase distribution    | `TERMINAL=173` |
+| Job critici (in registry) | **0**          |
 
 ---
 
@@ -108,11 +108,11 @@ on every run — never hand-edit this table, edit the workflow instead.
 
 | Label                                           | Status                 | Autonomy   | Exit | Circuit | Scope | Critical |
 | ----------------------------------------------- | ---------------------- | ---------- | ---- | ------- | ----- | -------- |
-| `ai.openclaw.gateway`                           | 🔄 Running (PID=9006)  | —          | 0    | —       | —     |          |
-| `ai.openclaw.node`                              | 🔄 Running (PID=8729)  | —          | -15  | —       | —     |          |
+| `ai.openclaw.gateway`                           | 🔄 Running (PID=66067) | —          | 0    | —       | —     |          |
+| `ai.openclaw.node`                              | 🔄 Running (PID=66032) | —          | -15  | —       | —     |          |
 | `com.balizero.agent-library-evolver.daily`      | ⚠️ NOT LOADED          | —          | ?    | —       | —     |          |
 | `com.balizero.agent-library-evolver.weekly`     | ⚠️ NOT LOADED          | —          | ?    | —       | —     |          |
-| `com.balizero.audit-launchd.daily`              | ✅ OK                  | —          | 0    | —       | —     |          |
+| `com.balizero.audit-launchd.daily`              | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
 | `com.balizero.bz-daily-visual-pipeline`         | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.cicatrix-rotation.monthly`        | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.claude-settings-watcher`          | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -124,25 +124,25 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.balizero.cron-log-sentinel`                | 🔄 Running (PID=877)   | —          | 0    | —       | —     |          |
 | `com.balizero.curiosity.weekly`                 | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.drive-intake-drain`               | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.balizero.dropbox-intake`                   | 🔄 Running (PID=52656) | —          | 1    | —       | —     |          |
+| `com.balizero.dropbox-intake`                   | 🔄 Running (PID=14818) | —          | 0    | —       | —     |          |
 | `com.balizero.fly-cost-alert.weekly`            | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.guardrails-daemon`                | 🔄 Running (PID=957)   | —          | 0    | —       | —     |          |
 | `com.balizero.intel-dedup-gateway`              | 🔄 Running (PID=11139) | —          | 1    | —       | —     |          |
 | `com.balizero.intel-lake-nb-pusher.15min`       | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.intel-lake-router.5min`           | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.balizero.intel-lake.e2e-probe.6h`          | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
+| `com.balizero.intel-lake.e2e-probe.6h`          | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.intel-lake.outbox-drain.minute`   | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.intel-lake.shadow-validate.6h`    | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.balizero.intel-radar-daily-digest`         | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
+| `com.balizero.intel-radar-daily-digest`         | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.intel.nightly`                    | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.meta-dispatcher`                  | 🔄 Running (PID=11124) | —          | 1    | —       | —     |          |
 | `com.balizero.modus.autoloop.nightly`           | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.mos-plus.compression`             | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.mos-plus.qdrant-indexer`          | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.balizero.nb-curator.daily`                 | ✅ OK                  | —          | 0    | —       | —     |          |
+| `com.balizero.nb-curator.daily`                 | ❌ FAILED (exit=2)     | —          | 2    | —       | —     |          |
 | `com.balizero.nexus-session-retention.daily`    | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.nlm-bridge`                       | 🔄 Running (PID=898)   | —          | 0    | —       | —     |          |
-| `com.balizero.nuzantara-drive-sync`             | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
+| `com.balizero.nuzantara-drive-sync`             | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.nuzantara.disk-watchdog`          | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.nuzantara.log-size-watchdog`      | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.observatory`                      | 🔄 Running (PID=11127) | —          | 1    | —       | —     |          |
@@ -153,7 +153,7 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.balizero.profile-monitor-wrapper`          | 🔄 Running (PID=946)   | —          | 0    | —       | —     |          |
 | `com.balizero.qdrant.daemon`                    | 🔄 Running (PID=881)   | —          | 0    | —       | —     |          |
 | `com.balizero.regulatory-watcher.daily`         | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.balizero.renewal-alerts`                   | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
+| `com.balizero.renewal-alerts`                   | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.research-sentinel`                | 🔄 Running (PID=11123) | —          | 1    | —       | —     |          |
 | `com.balizero.s7-yield.weekly`                  | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.seo-cell.28d-check`               | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -180,7 +180,7 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.balizero.wr3.editorial-bench.monthly`      | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.wr3.reflexion.weekly`             | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.balizero.wr3.supervisor`                   | 🔄 Running (PID=13589) | —          | 74   | —       | —     |          |
-| `com.balizero.zoho-mail-loop.daily`             | ❌ FAILED (exit=2)     | —          | 2    | —       | —     |          |
+| `com.balizero.zoho-mail-loop.daily`             | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.cell.metabolic-rollup`                     | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.cell.organism`                             | 🔄 Running (PID=13159) | —          | 1    | —       | —     |          |
 | `com.matagaruda.archiver.hourly`                | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -217,19 +217,19 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.nuzantara.automap-server`                  | 🔄 Running (PID=868)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.automap-telegram`                | 🔄 Running (PID=893)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.automap-watchdog`                | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.automations-reference`           | 🔄 Running (PID=63573) | —          | 0    | —       | —     |          |
+| `com.nuzantara.automations-reference`           | 🔄 Running (PID=22698) | —          | 0    | —       | —     |          |
 | `com.nuzantara.branch-cleanup.weekly`           | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.cell-observatory`                | 🔄 Running (PID=910)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.cell-observatory-prune`          | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.cell-observatory-selfcheck`      | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.chatgpt-marketing-tunnel`        | 🔄 Running (PID=938)   | —          | 0    | —       | —     |          |
+| `com.nuzantara.chatgpt-marketing-tunnel`        | 🔄 Running (PID=26240) | —          | 0    | —       | —     |          |
 | `com.nuzantara.chronic-failure-digest.weekly`   | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.claude-config-sync`              | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.claude-max-usage-watcher`        | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.claude-seats`                    | 🔄 Running (PID=973)   | —          | 0    | —       | —     |          |
+| `com.nuzantara.claude-seats`                    | 🔄 Running (PID=75478) | —          | -15  | —       | —     |          |
 | `com.nuzantara.cloudflared-intake-review`       | 🔄 Running (PID=9360)  | —          | 1    | —       | —     |          |
-| `com.nuzantara.codex-autofix-ci`                | 🔄 Running (PID=63571) | ⚠️ SKIPPED | 0    | —       | —     |          |
-| `com.nuzantara.codex-coverage-improver`         | ✅ OK                  | ⛔ BLOCKED | 0    | —       | —     |          |
+| `com.nuzantara.codex-autofix-ci`                | ✅ OK                  | ⚠️ SKIPPED | 0    | —       | —     |          |
+| `com.nuzantara.codex-coverage-improver`         | ❌ FAILED (exit=1)     | ⛔ BLOCKED | 1    | —       | —     |          |
 | `com.nuzantara.codex-openclaw-analysis`         | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.codex-research-actor`            | ✅ OK                  | ✅ OK/idle | 0    | —       | —     |          |
 | `com.nuzantara.cost-advisor-daily-cap`          | ⚠️ NOT LOADED          | —          | ?    | —       | —     |          |
@@ -254,7 +254,7 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.nuzantara.intake-health-report`            | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.intake-review-reader`            | 🔄 Running (PID=913)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.intake-review-reader-liveness`   | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.intake-worker`                   | 🔄 Running (PID=903)   | —          | 0    | —       | —     |          |
+| `com.nuzantara.intake-worker`                   | 🔄 Running (PID=62310) | —          | -5   | —       | —     |          |
 | `com.nuzantara.iqoo-radar-relay`                | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.kbli-surface-conformance.daily`  | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.launchagent-state-bridge`        | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -269,7 +269,7 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.nuzantara.machine-boot-report`             | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.mailbox-janitor.daily`           | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.mcp-integrity`                   | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.memory-sync-bidirectional`       | ✅ OK                  | —          | 0    | —       | —     |          |
+| `com.nuzantara.memory-sync-bidirectional`       | 🔄 Running (PID=22951) | —          | 0    | —       | —     |          |
 | `com.nuzantara.merge-train`                     | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.meta-one-steward`                | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.nb-intel-delta-watcher.hourly`   | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -277,9 +277,9 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.nuzantara.ollama`                          | 🔄 Running (PID=901)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.openclaw-children-watchdog`      | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.openclaw-logrotate`              | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.openclaw-whatsapp-bridge`        | 🔄 Running (PID=8931)  | —          | -15  | —       | —     |          |
-| `com.nuzantara.openclaw-whatsapp-tunnel`        | 🔄 Running (PID=46331) | —          | 1    | —       | —     |          |
-| `com.nuzantara.openclaw.guardian-board`         | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
+| `com.nuzantara.openclaw-whatsapp-bridge`        | 🔄 Running (PID=66055) | —          | -15  | —       | —     |          |
+| `com.nuzantara.openclaw-whatsapp-tunnel`        | 🔄 Running (PID=83070) | —          | 0    | —       | —     |          |
+| `com.nuzantara.openclaw.guardian-board`         | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.organism.control-panel`          | 🔄 Running (PID=927)   | —          | 0    | —       | —     |          |
 | `com.nuzantara.organism.scheduled-tick`         | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.organism.supervisor`             | 🔄 Running (PID=29765) | —          | -15  | —       | —     |          |
@@ -307,7 +307,7 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `com.nuzantara.sentinel-meta-watchdog`          | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.session-orphan-reaper`           | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.skills-bridge-consumer`          | ✅ OK                  | —          | 0    | —       | —     |          |
-| `com.nuzantara.suite-growth-probe`              | ✅ OK                  | —          | 0    | —       | —     |          |
+| `com.nuzantara.suite-growth-probe`              | ❌ FAILED (exit=1)     | —          | 1    | —       | —     |          |
 | `com.nuzantara.supervisor-liveness-watchdog`    | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.tg-digest-flush`                 | ✅ OK                  | —          | 0    | —       | —     |          |
 | `com.nuzantara.tokenaudit.daily`                | ✅ OK                  | —          | 0    | —       | —     |          |
@@ -338,13 +338,13 @@ on every run — never hand-edit this table, edit the workflow instead.
 | `cache_cleanup`       | 1st+15th 3:30 UTC         | 2026-09-15 03:30 | ✅ OK     | ✅ CLOSED/T0 | LOCAL |          | Tue Sep 15 03:30:33 WITA 2026: cache cleanup done  |
 | `cron_agent`          | Sun 8:00 UTC (+5 more)    | 2026-09-20 08:00 | ✅ OK     | —            | —     |          | [2026-09-20T08:00:02] [cell-weekly-report] OK dura |
 | `cron_runner`         | every 5m (+22 more)       | 2026-09-20 02:00 | ❌ FAIL   | —            | —     |          | [2026-09-20 02:00:01] ⚠️ KG builder failed (HTTP 4 |
-| `cron_state`          | every 5m (+22 more)       | 2026-09-23 23:15 | ? check   | —            | —     |          | [openclaw-bridge] Cannot read jobs.json: [Errno 2] |
+| `cron_state`          | every 5m (+22 more)       | 2026-09-24 23:15 | ? check   | —            | —     |          | [openclaw-bridge] Cannot read jobs.json: [Errno 2] |
 | `cron_wrapper`        | daily 21:00 UTC (+5 more) |                  |           | —            | —     |          |                                                    |
 | `fly_cost_alert`      | Mon 9:00 UTC              | 2026-09-21 09:00 | ? check   | ✅ CLOSED/T0 | LOCAL |          | [2026-09-21 09:00:02] Cost within budget ✅        |
 | `ollama_warm_pin`     | Sun 5:00 UTC              | 2026-09-20 05:00 | ✅ OK     | —            | —     |          | [2026-09-20T05:00:20] Warm-pin complete on Nuzanta |
 | `peraturan_ingestion` | 6 21:30 UTC               |                  | ⚠️ NO LOG | —            | —     |          |                                                    |
 | `pro_heartbeat`       | 0 * * * *                 |                  |           | ✅ CLOSED/T0 | LOCAL |          |                                                    |
-| `run`                 | every 15m (+14 more)      | 2026-09-23 23:15 | ❌ FAIL   | —            | —     |          | 2026-09-23 23:15:02 [info ] check_now_done         |
+| `run`                 | every 15m (+14 more)      | 2026-09-24 23:15 | ❌ FAIL   | —            | —     |          | 2026-09-24 23:15:11 [info ] check_now_done         |
 
 ---
 
@@ -397,11 +397,11 @@ on every run — never hand-edit this table, edit the workflow instead.
 | Job                      | Schedule                 | Last Run         | Status  | Circuit | Scope | Critical | Notes                                              |
 | ------------------------ | ------------------------ | ---------------- | ------- | ------- | ----- | -------- | -------------------------------------------------- |
 | `Tailscale`              | * * * * *                |                  |         | —       | —     |          |                                                    |
-| `crm_kg_build_mediated`  | every 6h (:0)            | 2026-09-23 18:00 |         | —       | —     |          |                                                    |
-| `crm_kg_garbage_collect` | daily 3:00 UTC           | 2026-09-23 03:00 |         | —       | —     |          |                                                    |
-| `cron_runner`            | daily 9:15 UTC (+2 more) | 2026-09-23 09:15 |         | —       | —     |          |                                                    |
-| `drive_poll`             | every 5m                 | 2026-09-23 23:15 | ❌ FAIL | —       | —     |          | [2026-09-23 23:15:02] ⚠️ Drive poll failed (HTTP 4 |
+| `crm_kg_build_mediated`  | every 6h (:0)            | 2026-09-24 18:00 |         | —       | —     |          |                                                    |
+| `crm_kg_garbage_collect` | daily 3:00 UTC           | 2026-09-24 03:00 |         | —       | —     |          |                                                    |
+| `cron_runner`            | daily 9:15 UTC (+2 more) | 2026-09-24 09:15 |         | —       | —     |          |                                                    |
+| `drive_poll`             | every 5m                 | 2026-09-24 23:15 | ❌ FAIL | —       | —     |          | [2026-09-24 23:15:03] ⚠️ Drive poll failed (HTTP 4 |
 
 ---
 
-_Generated by `scripts/generate_automations_reference.py` — 2026-09-23 15:15 UTC_
+_Generated by `scripts/generate_automations_reference.py` — 2026-09-24 15:15 UTC_
