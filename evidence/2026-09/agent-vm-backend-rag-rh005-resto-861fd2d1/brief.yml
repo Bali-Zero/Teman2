@@ -1,0 +1,43 @@
+gear: 2
+task_id: rh005-resto
+lane: backend-rag
+host: cloud (remote session)
+branch: agent/vm/backend-rag/rh005-resto
+gate_class: none
+l_level: L2
+objective: >-
+  Fix the "resto" group of scripts/lint_test_reward_hacking.py RH005 findings
+  (test functions with zero assert/self.assert*/pytest.raises, so they can
+  never fail) across the 46 test files assigned to this group by the
+  orchestrating mandate. 67 findings -> 7 remaining, all documented infra-skips
+  (live Postgres / full KG stack unavailable in this sandbox). Every new
+  assertion was mutation-tested against the corresponding production code
+  (break -> confirm RED -> revert); production code diff is empty. One test
+  deleted (unreachable branch, no honest assertion possible, reason in PR
+  body). No xfail(strict=True) was needed anywhere — every honest new
+  assertion passed against current, unmodified production code on the first
+  try, so no production bugs were uncovered in this pass.
+scope:
+  - >-
+    apps/backend-rag/backend/tests/** — 42 test files touched (of the 46
+    assigned; 4 left untouched as documented infra-skips: services/visa_engine/
+    test_repository.py, services/kg_monitoring/{test_kg_data_quality,
+    test_kg_health,test_kg_performance}.py). Test-only diff: 586 insertions(+),
+    136 deletions(-), zero production-code files.
+  - >-
+    Work was parallelized across 6 background subagents, each assigned a
+    disjoint file subset, each running mutation tests per new assertion and
+    the exact per-file pytest command specified by the mandate. Full details
+    and per-file before/after RH005 counts are in the PR body
+    (Bali-Zero/Teman2#7202).
+assumptions:
+  - text: >-
+      The two visa_engine/test_repository.py RH005 tests and the 5 kg_monitoring
+      tests are pre-existing infra-gated placeholders (pytest.skip on
+      "Requires full KG setup" / live Postgres), not reward-hacked tests this
+      mandate is expected to fix in a sandbox with no live Postgres/KG stack.
+    status: verified
+    probe: >-
+      Reproduced ConnectionRefusedError against 127.0.0.1:5432 locally;
+      confirmed the 5 kg_monitoring tests self-skip via pytest.skip() before
+      any assertion body executes.
