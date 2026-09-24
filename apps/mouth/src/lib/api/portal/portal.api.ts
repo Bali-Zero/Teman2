@@ -4,6 +4,7 @@
  */
 
 import type { ApiClientBase } from "../client";
+import { measurePortalAction } from "@/lib/portal-analytics";
 import type {
   PortalDashboard,
   VisaInfo,
@@ -361,21 +362,30 @@ export class PortalApi {
     documentType: string,
     practiceId?: number,
   ): Promise<PortalDocument> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("document_type", documentType);
-    if (practiceId) {
-      formData.append("practice_id", practiceId.toString());
-    }
+    return measurePortalAction(
+      "document_upload",
+      () => ({
+        role: this.client.getUserProfile?.()?.role,
+        impersonating: this.client.getPortalImpersonation?.() !== null,
+      }),
+      async () => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("document_type", documentType);
+        if (practiceId) {
+          formData.append("practice_id", practiceId.toString());
+        }
 
-    const response = await this.client.request<
-      PortalApiResponse<PortalDocument>
-    >("/api/portal/documents/upload", {
-      method: "POST",
-      body: formData,
-      // Don't set Content-Type - browser will set it with boundary for multipart
-    });
-    return response.data!;
+        const response = await this.client.request<
+          PortalApiResponse<PortalDocument>
+        >("/api/portal/documents/upload", {
+          method: "POST",
+          body: formData,
+          // Don't set Content-Type - browser will set it with boundary for multipart
+        });
+        return response.data!;
+      },
+    );
   }
 
   // ============================================================================
@@ -392,13 +402,22 @@ export class PortalApi {
   }
 
   async sendMessage(request: SendMessageRequest): Promise<PortalMessage> {
-    const response = await this.client.request<
-      PortalApiResponse<RawPortalMessage>
-    >("/api/portal/messages", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
-    return normalizePortalMessage(response.data!);
+    return measurePortalAction(
+      "message_send",
+      () => ({
+        role: this.client.getUserProfile?.()?.role,
+        impersonating: this.client.getPortalImpersonation?.() !== null,
+      }),
+      async () => {
+        const response = await this.client.request<
+          PortalApiResponse<RawPortalMessage>
+        >("/api/portal/messages", {
+          method: "POST",
+          body: JSON.stringify(request),
+        });
+        return normalizePortalMessage(response.data!);
+      },
+    );
   }
 
   async markMessageRead(messageId: number): Promise<void> {
