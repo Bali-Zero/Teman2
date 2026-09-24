@@ -74,11 +74,12 @@ describe("countExactWalks — determinism", () => {
   }, 120_000);
 });
 
-// Hygiene follow-up, not yet built (GATE-A7-M-REPORT-7135.md, option 2): if the enumerated
-// space keeps growing (Slice A6-bis is pending and may add more facts to
-// BRANCH_RELEVANT_FACT_KEYS), coarsen the memo-key projection for `birth_date` via the
-// injection point T1 proved below, rather than bumping this budget again. Not built here —
-// A6-bis may move the pins this file carries first, and any re-pin is by command.
+// Hygiene follow-up, not yet built (MANDATE-vo.md, conductor record 2026-09-22T16:55:58Z,
+// "option 2", after GATE-A7-M-REPORT-7135.md CI-1): if the enumerated space keeps growing,
+// coarsen the memo-key projection for `birth_date` rather than bumping this budget again —
+// `memoProjection` (the injection point T1 proves below) selects KEYS only, so a value-level
+// coarsening widens it first. Not built here — A6-bis may move the pins this file carries
+// first, and any re-pin is by command.
 
 describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
   it("throws naming the repeated question when a synthetic graph loops", () => {
