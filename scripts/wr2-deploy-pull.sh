@@ -6,7 +6,7 @@
 
 set -uo pipefail
 
-DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/nuzantara-deploy}"
+DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/nuzantara}"
 SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/nuzantara}"
 # 2026-06-27: track `main` directly. The old `deploy/main` intermediate branch made sense
 # only when -deploy was a WORKTREE (to isolate its HEAD from the main checkout's branch).

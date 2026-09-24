@@ -74,7 +74,7 @@ PRO_BOUND_IMPORTS = {
 REQUIRED_REPOS = {
     "/Users/nuzantara/Desktop/OSINT-Nexus": None,  # filled at runtime
     "/Users/nuzantara/Desktop/MATA-GARUDA-NEXUS": None,
-    "/Users/nuzantara/nuzantara-deploy": None,
+    "/Users/nuzantara/nuzantara": None,
     "/Users/nuzantara/Desktop/kbli-2025-navigator": None,
 }
 
