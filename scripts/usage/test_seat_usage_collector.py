@@ -77,6 +77,116 @@ def _task_codex(profile, sid, totals, *, parent=None):
     return _write_session(profile, sid + ".jsonl", rows)
 
 
+def _verified_outcome(verifier="gate", role="fresh-gate"):
+    return {"status": "verified_complete", "verifier_role": role,
+            "verifier_session_sha256": suc._sha(verifier),
+            "evidence_sha256": suc._sha("proof"), "verified_utc": "2026-08-19T11:00:00Z"}
+
+
+def test_fork_embedded_parent_meta_never_rebinds_child_usage(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "parent", [1000, 2000])
+    child = _task_codex(profile, "child", [250], parent="parent")
+    rows = child.read_text().splitlines()
+    rows.insert(1, json.dumps({"type": "session_meta", "payload": {"id": "parent", "source": "cli"}}))
+    child.write_text("\n".join(rows) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("codex", "parent")]))["tasks"][0]
+    assert result["by_provider"]["codex"]["input_tokens"] == 2250
+    assert result["descendants_added"] == 1 and result["usage_complete"]
+
+
+def test_only_gate_row_cannot_verify_a_task(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "gate", 10)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("claude", "gate", role="gate")], outcome=_verified_outcome())
+    report = _task_report(tmp_path, index, doc)
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_ancestor_or_descendant_gate_cannot_verify_own_lineage(tmp_path):
+    for gate_parent, builder_parent in (("builder", None), (None, "gate")):
+        profile, index = tmp_path / str(gate_parent), {}
+        _task_codex(profile, "builder", [10], parent=builder_parent)
+        _task_codex(profile, "gate", [5], parent=gate_parent)
+        suc.collect_codex(str(profile), SINCE, task_index=index)
+        doc = _task_doc([_task_row("codex", "builder"), _task_row("codex", "gate", role="gate")], outcome=_verified_outcome())
+        report = _task_report(tmp_path, index, doc)
+        assert report["tasks"][0]["status"] == "unknown"
+        assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_unobserved_gate_and_trusted_only_ci_do_not_enter_denominator(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    for role in ("fresh-gate", "ci"):
+        rows = [_task_row("claude", "builder")]
+        if role == "fresh-gate":
+            rows.append(_task_row("claude", "gate", role="gate"))
+        report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome(role=role)))
+        assert report["tasks"][0]["status"] == "unknown"
+        assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_mtime_scan_cannot_claim_complete_lineage_before_its_window(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    child = _task_claude(profile, "builder", 50, sidecar="old-child")
+    os.utime(child, (1, 1))
+    cutoff = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    suc.collect_claude(str(profile), cutoff, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "builder")]))["tasks"][0]
+    assert not result["usage_complete"]
+    assert "lineage_possibly_truncated" in result["usage_issues"]
+
+
+def test_verifier_cannot_also_be_builder_under_other_provider():
+    doc = _task_doc([_task_row("claude", "same"), _task_row("codex", "same", role="gate")], outcome=_verified_outcome("same"))
+    assert suc._task_manifest(doc)[0]["status"] == "unknown"
+
+
+def test_verified_window_requires_start_independently_of_end():
+    doc = _task_doc([_task_row("claude", "builder"), _task_row("claude", "gate", role="gate")], outcome=_verified_outcome())
+    del doc["started_utc"]
+    assert suc._task_manifest(doc)[0]["status"] == "unknown"
+
+
+def test_unknown_child_timestamp_is_retained_and_marks_usage_incomplete(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "root", 10)
+    _task_claude(profile, "root", 5, sidecar="unknown-time", timestamp="unknown")
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "root")]))["tasks"][0]
+    assert result["descendants_added"] == 1
+    assert "unknown_event_timestamp" in result["usage_issues"] and not result["usage_complete"]
+
+
+def test_partial_response_identity_marks_usage_incomplete(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    path = _task_claude(profile, "root", 10)
+    row = json.loads(path.read_text())
+    del row["requestId"]
+    path.write_text(json.dumps(row) + "\n")
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "root")]))["tasks"][0]
+    assert "incomplete_response_identity" in result["usage_issues"] and not result["usage_complete"]
+
+
+def test_last_counter_larger_than_total_is_unknown(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "root", [10])
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    rows[1]["payload"]["info"]["last_token_usage"]["input_tokens"] = 11
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("codex", "root")]))["tasks"][0]
+    assert result["by_provider"]["codex"]["input_tokens"] == "unknown"
+    assert not result["usage_complete"]
+
+
 def test_task_usage_includes_descendants_retries_and_excludes_replayed_snapshots(tmp_path):
     claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
     root = _task_claude(claude, "claude-root", 5)
@@ -220,7 +330,7 @@ def test_task_report_is_added_by_actual_cli_and_tasks_only_does_not_write(tmp_pa
     monkeypatch.setattr(sys, "argv", args)
     assert suc.main() == 0
     before = json.loads(out.read_text())
-    assert before["tasks_meta"]["status"] == "no_manifests"
+    assert "tasks" not in before and "tasks_meta" not in before
     _task_report(tmp_path, {}, _task_doc([_task_row("claude", "cli-session")]))
     assert suc.main() == 0
     after = json.loads(out.read_text())

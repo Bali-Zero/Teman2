@@ -171,6 +171,8 @@ def collect_claude(profile_dir: str, since: datetime, *, task_index: dict | None
     the code below.
     """
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int)), "models": defaultdict(int)}
+    if task_index is not None:
+        task_index["scan_since"] = max(task_index.get("scan_since", float("-inf")), since.timestamp())
     root = Path(profile_dir) / "projects"
     if not root.is_dir():
         return {"status": "absent", "note": f"{root} non esiste"}
@@ -328,6 +330,8 @@ def _extract_cumulative_token_usage(event: dict) -> dict | None:
 
 def collect_codex(codex_home: str, since: datetime, *, task_index: dict | None = None) -> dict:
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int))}
+    if task_index is not None:
+        task_index["scan_since"] = max(task_index.get("scan_since", float("-inf")), since.timestamp())
     root = Path(codex_home) / "sessions"
     if not root.is_dir():
         return {"status": "absent", "note": f"{root} non esiste"}
@@ -336,6 +340,7 @@ def collect_codex(codex_home: str, since: datetime, *, task_index: dict | None =
         return {"status": "empty"}
     for fp in files:
         task_node = None
+        identity_seen = False
         try:
             if os.path.getmtime(fp) < since.timestamp():
                 continue
@@ -351,7 +356,8 @@ def collect_codex(codex_home: str, since: datetime, *, task_index: dict | None =
                         if task_index is not None and task_node:
                             task_index["nodes"][task_node]["read_error"] = True
                         continue
-                    if task_index is not None and j.get("type") == "session_meta":
+                    if task_index is not None and j.get("type") == "session_meta" and not identity_seen:
+                        identity_seen = True  # Fork history can embed another session's metadata.
                         meta = j.get("payload") or {}
                         source = meta.get("source")
                         sub = source.get("subagent") if isinstance(source, dict) else None
@@ -577,10 +583,10 @@ def _task_manifest(doc: dict) -> tuple[dict, bool]:
     verifier = outcome.get("verifier_session_sha256")
     independent = verifier is not None and any(r["session_sha256"] == verifier and r["role"] == "gate" for r in rows)
     independent = independent and not any(r["session_sha256"] == verifier and r["role"] != "gate" for r in rows)
-    valid_proof = outcome.get("verifier_role") in {"fresh-gate", "ci"} and outcome.get("evidence_sha256") and outcome.get("verified_utc")
-    # CI attestations can identify a job instead of a metered model session.
-    independent_ci = outcome.get("verifier_role") == "ci" and verifier is not None and not any(r["session_sha256"] == verifier for r in rows)
-    valid_proof = valid_proof and (independent or independent_ci)
+    independent = independent and any(r["role"] != "gate" for r in rows)
+    # A CI job hash alone is not observed verifier evidence. Keep such trusted
+    # attestations out of the verified-task denominator until a CI join exists.
+    valid_proof = outcome.get("verifier_role") == "fresh-gate" and outcome.get("evidence_sha256") and outcome.get("verified_utc") and independent
     # Completed-task attribution is frozen; a later turn in a reused session
     # must not silently change the recorded cost of an earlier task.
     valid_proof = valid_proof and "started_utc" in doc and "ended_utc" in doc
@@ -663,6 +669,31 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
         declared = {(r["provider"], r["session_sha256"]): r for r in doc["sessions"]}
         selected = dict(declared)
         nodes = index.get("nodes", {})
+        if doc["status"] == "verified_complete":
+            verifier = doc["outcome"]["verifier_session_sha256"]
+            gates = [k for k, r in declared.items() if k[1] == verifier and r["role"] == "gate"]
+            builders = [k for k, r in declared.items() if r["role"] != "gate"]
+
+            def ancestors(key):
+                lineage = set()
+                while key is not None:
+                    if key in lineage or key not in nodes:
+                        return None
+                    lineage.add(key)
+                    key = nodes[key]["parent"]
+                return lineage
+
+            independent = bool(gates and builders)
+            for gate in gates:
+                lineage = ancestors(gate)
+                independent = independent and lineage is not None and bool(nodes.get(gate, {}).get("events"))
+                for builder in builders:
+                    parentage = ancestors(builder)
+                    independent = (independent and parentage is not None
+                                   and builder not in (lineage or set()) and gate not in (parentage or set()))
+            if not independent:
+                doc["status"] = "unknown"
+                meta["downgraded"] += 1
         while True:
             children = {k: selected[n["parent"]] for k, n in nodes.items() if k not in selected and n["parent"] in selected}
             if not children:
@@ -683,6 +714,8 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
                   "usage_issues": []}
         if result["sessions_missing"]:
             result["usage_issues"].append("missing_sessions")
+        if doc["window"][0] < index.get("scan_since", float("-inf")):
+            result["usage_issues"].append("lineage_possibly_truncated")
         for key, row in selected.items():
             if key not in nodes:
                 continue
@@ -803,7 +836,7 @@ def main() -> int:
         "window_days": args.days,
         "seats": seats,
         "api_mirror": collect_api_mirror("~/.agent/cost-ledger", since),
-        **task_report,
+        **(task_report if task_index is not None else {}),
     }
 
     out = Path(os.path.expanduser(args.out))

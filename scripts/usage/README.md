@@ -43,7 +43,8 @@ Console snapshots: sources with no API live in `~/.agent/seat-usage/console_quot
 
 The existing collector and its 30-minute LaunchAgent also consume
 `~/.agent/cost-ledger/task-outcomes/*.json`. The additive `tasks` and `tasks_meta`
-fields do not change `seats[]`. Use `--task-outcomes DIR` to select a directory;
+fields are emitted only when manifests exist and do not change `seats[]`.
+Use `--task-outcomes DIR` to select a directory;
 `--tasks-only` prints the task report without writing the snapshot. No additional
 daemon is needed. `task_outcome_manifest.example.json` is a valid shape with
 placeholder hashes and an explicitly unknown outcome; replace every placeholder.
@@ -52,17 +53,20 @@ The release owner writes one redacted manifest per task after consulting the
 independent gate. These are **trusted outcome attestations**, not a replacement
 for the gate or a cryptographic verification of the artifact named by its hash.
 Never mark an outcome complete merely because a session exited or a PR merged.
-`verified_complete` requires an evidence SHA-256, verification time, and either
-a distinct listed `gate` session (`verifier_role=fresh-gate`) or an independent
-CI attestation (`verifier_role=ci`, with the distinct job-id hash in
-`verifier_session_sha256`). It also requires a closed, timezone-aware
+`verified_complete` requires an evidence SHA-256, verification time, at least
+one non-gate participant, and a distinct listed `gate` session observed in logs
+(`verifier_role=fresh-gate`). The gate cannot be an ancestor or descendant of
+any non-gate participant. Missing or cyclic lineage cannot establish independence.
+CI-only attestations remain `unknown` and outside the denominator until a CI
+evidence join exists. It also requires a closed, timezone-aware
 `started_utc`/`ended_utc` interval ending no later than the snapshot time and
 containing the verification time. Otherwise the
 collector downgrades the outcome to `unknown`.
 
 Hash **the full identifier**, with SHA-256 and no truncation. Claude main sessions
 use `sessionId`; a sidecar's logical identity is `sessionId:agent-<full-agent-id>`
-(the sidecar filename stem). Codex uses `session_meta.payload.id`; native children
+(the sidecar filename stem). Codex uses the first `session_meta.payload.id` in
+each file, ignoring metadata embedded by a fork; native children
 link through `source.subagent.thread_spawn.parent_thread_id`. The collector adds
 observed local descendants once, including retries. Explicit child rows override
 inherited `overhead`/attempt metadata. Cross-provider CLI children must be listed
@@ -88,7 +92,9 @@ The mean includes only verified tasks with complete observed usage and is withhe
 across different task classes/cohorts. It is not a causal savings estimate.
 
 Coverage is **local Claude/Codex logs in the configured profile map and existing
-mtime window**. There is no automatic cross-host or other-provider accounting.
+mtime window**. A task starting before that scan window is marked
+`lineage_possibly_truncated` and excluded from the denominator; increase `--days`
+to cover it. There is no automatic cross-host or other-provider accounting.
 List nonlocal sessions too: missing joins must remain incomplete until their usage
 is available in the configured sources. Undiscovered remote/manual child sessions
 cannot be inferred, so the manifest author must declare them. Outcome metadata is
