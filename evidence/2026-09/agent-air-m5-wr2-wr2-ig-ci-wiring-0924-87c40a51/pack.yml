@@ -1,0 +1,112 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+seat_fallback_reason: >-
+  codex-gpt-5.6-sol (titolare): excluded per explicit task instruction
+  ("Codex is timing out today — do not use it"). Confirmed borderline by
+  arsenal_probe.py run this session (--seats codex,tp1-qwen3.8-max):
+  codex answered LIVE at 14588ms latency, right against the probe's own
+  15000ms ceiling, and the run's own `transitions` field shows it moving
+  FROM a TIMEOUT classification recorded earlier this session — consistent
+  with the timeout risk the instruction named, so it was not used for this
+  review even though this one probe happened to complete.
+  tp1-qwen3.8-max (titolare): the same probe run showed it LIVE and fast
+  (2327ms) — not unavailable. It was not engaged for this review because the
+  task's mandate named Kimi K3, GLM-5.2/TP1 and Gemini/agy as the three
+  seats to draw the council from; this is a scoping choice made by the
+  mandate, not an observed outage.
+
+lanes:
+  - lane: wr2-ig-ci-wiring — cherry-pick + local proof
+    role: build
+    seat: claude-sonnet-5 (M5 worktree agent)
+    note: >-
+      Clean cherry-pick of commit 05338510ef from
+      origin/agent/air-m5/wr2/ig-metrics-import onto a fresh worktree off
+      origin/main (no conflicts). No rewrite needed.
+  - lane: adversarial review
+    role: review
+    seat: kimi-code/k3
+    note: OK, 0 findings, verified against the real commit tree via git ls-tree.
+  - lane: adversarial review
+    role: review
+    seat: tp1-glm-5.2
+    note: OK, 0 findings, one non-blocking caveat carried into brief.yml risks.
+  - lane: adversarial review
+    role: review
+    seat: agy-gemini-3.1-pro
+    note: OK, 0 findings.
+
+receipts:
+  - claim: >-
+      Cherry-picking 05338510ef onto a fresh worktree off origin/main (HEAD
+      3a165e5973) applied clean with no conflicts, touching exactly
+      .github/workflows/wr2-queue-tests.yml, +9/-1.
+    cmd: git cherry-pick 05338510ef && git show --stat HEAD
+    exit: 0
+    ts: "2026-09-24T08:12:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The workflow's own pytest invocation — all 26 listed test files plus
+      the scripts/wr2_html_renderer/tests directory, PYTHONPATH=apps/backend-rag
+      — passes in full in a venv that already carries pytest/openpyxl/
+      pytest-asyncio/asyncpg/numpy/pydantic/httpx: 780 passed.
+    cmd: >-
+      PYTHONPATH=apps/backend-rag python -m pytest scripts/tests/test_wr2_queue_hygiene.py
+      scripts/tests/test_wr2_visibility_chain.py scripts/tests/test_wr2_rerender_requeue.py
+      scripts/tests/test_wr2_queue_locking.py scripts/tests/test_wr2_pipeline_consolidation.py
+      scripts/tests/test_wr2_daily_reconciler.py scripts/tests/test_wr2_wr3_handoff_emit.py
+      scripts/tests/test_wr2_claims.py scripts/tests/test_wr2_ig_metrics_scraper.py
+      scripts/tests/test_wr2_ig_dashboard_import.py scripts/tests/test_wr3_companion_envelope.py
+      scripts/tests/test_wr2_carousel_ir.py scripts/tests/test_wr2_editorial_pregate.py
+      scripts/tests/test_wr2_planner_writer.py scripts/tests/test_conftest_module_isolation.py
+      scripts/tests/test_wr2_creative_ledger.py scripts/tests/test_wr2_ledger_backfill.py
+      scripts/tests/test_wr2_draft_generator_liveness_tier.py
+      scripts/tests/test_wr2_draft_generator_cover_codex_detection.py
+      scripts/tests/test_wr2_draft_generator_length_per_tier.py
+      scripts/tests/test_wr2_draft_generator_kicker_variety.py
+      scripts/tests/test_wr2_draft_generator_closer_guard.py
+      scripts/tests/test_wr2_draft_generator_enriched_prompt.py
+      scripts/tests/test_wr2_draft_generator_tone_per_tier.py
+      scripts/tests/test_wr2_draft_generator_json_example.py
+      scripts/tests/test_wr2_draft_generator_planner_writer_cutover.py
+      scripts/wr2_html_renderer/tests -q
+    exit: 0
+    ts: "2026-09-24T08:15:10Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Both new-to-the-battery scripts and both new test files import nothing
+      beyond stdlib, pytest, and the sibling wr2_queue_writer module — openpyxl
+      is the one genuinely new third-party dependency the diff adds.
+    cmd: >-
+      grep -n '^import\|^from' scripts/wr2_ig_metrics_scraper.py
+      scripts/wr2_ig_dashboard_import.py scripts/tests/test_wr2_ig_metrics_scraper.py
+      scripts/tests/test_wr2_ig_dashboard_import.py
+    exit: 0
+    ts: "2026-09-24T08:19:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      codex (titolare) answered LIVE this session but at 14588ms against the
+      probe's 15000ms timeout ceiling, transitioning FROM a TIMEOUT
+      classification recorded earlier the same session; tp1-qwen3.8-max
+      (titolare) answered LIVE and fast at 2327ms. Neither was engaged for
+      this council — recorded as the seat_fallback_reason above.
+    cmd: python3 scripts/arsenal_probe.py --seats codex,tp1-qwen3.8-max --json
+    exit: 0
+    ts: "2026-09-24T08:14:08Z"
+    seat: claude-sonnet-5
+
+dissent:
+  - seat: tp1-glm-5.2
+    objection: >-
+      The local 780-pass proof ran in a venv that already had openpyxl,
+      pytest-asyncio, asyncpg, numpy, pydantic and httpx pre-installed — it
+      does not, on its own, prove that a COLD `pip install` on a fresh CI
+      runner using only the workflow's declared package line is sufficient
+      for the two newly-wired test files.
+    status: PLAUSIBLE
+  - seat: kimi-code/k3
+    objection: >-
+      The two new test files import fcntl, which is POSIX-only and would
+      fail on a Windows dev box.
+    status: RETRACTED
