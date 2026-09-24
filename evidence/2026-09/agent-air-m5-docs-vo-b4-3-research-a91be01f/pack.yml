@@ -55,7 +55,7 @@ appetite_exceeded: "brief.yml declared 1h / 0 adversarial rounds before the R9 c
 diff:
   files: 8
   net_lines: >-
-    8 files, +16072/-0 vs the merge-base (computed from `git diff --cached --numstat $(git
+    8 files, +16093/-0 vs the merge-base (computed from `git diff --cached --numstat $(git
     merge-base origin/main HEAD)` on this cure round's final staged tree — using the
     merge-base, not a raw `origin/main` diff, since origin/main has since advanced with
     unrelated merged PRs a raw diff would wrongly pull in; 0 deletions because none of this
