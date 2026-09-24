@@ -95,18 +95,21 @@ def test_guilt_93114_drops_the_unqualified_bali_claims():
 
 def test_guilt_93114_risk_by_scope_matches_per_skala_not_scale():
     record = _by_code()["93114"]
-    per_skala = record["per_skala"]
-    by_scope: dict[int, set[str]] = {}
-    for row in per_skala:
-        by_scope.setdefault(row["scope_index"], set()).add(row["kategori_risiko"])
-    # golf is scope_index 1, other courts scope_index 0 — scale-invariant on the record.
-    assert by_scope[1] == {"Tinggi"}
-    assert by_scope[0] == {"Menengah Rendah"}
+    # Bind each tier to its scope by the scope's OWN description, never by index: a swap
+    # of scope_uraian between the two scopes must turn this red.
+    golf: set[str] = set()
+    courts: set[str] = set()
+    for row in record["per_skala"]:
+        (golf if "golf" in row["scope_uraian"].lower() else courts).add(row["kategori_risiko"])
+    assert golf == {"Tinggi"}, golf
+    assert courts == {"Menengah Rendah"}, courts
 
     body = record["intel_2026"]["editorial"]["body"]
-    assert "golf" in body.lower()
-    assert "Tinggi" in body or "high risk" in body
-    assert "Menengah Rendah" in body
+    sentences = [s for s in body.replace("\n", " ").split(". ") if "recorded at" in s]
+    golf_sentence = next(s for s in sentences if "Golf" in s)
+    courts_sentence = next(s for s in sentences if "badminton" in s)
+    assert "Tinggi" in golf_sentence and "Menengah Rendah" not in golf_sentence
+    assert "Menengah Rendah" in courts_sentence and "Tinggi" not in courts_sentence
 
 
 def test_guilt_every_field_equals_the_graded_text_and_premise_holds():
