@@ -133,10 +133,15 @@ private backup precedes any write. The root key is written through Codex's own
 `config/batchWrite` and then checked with `tomllib`: only that key may change,
 otherwise the installer stops and names the backup (it does not restore on its
 own, so a concurrent writer's edit is never lost). `--check` is read-only and
-exits 1 unless every item matches; `--remove` deletes only items still identical
-to `seat/`, through a validated text edit rather than the config API: it aborts if
-config.toml changed since its plan, but a write landing in the instant between its
-final byte check and the replace cannot be detected (Codex exposes no config lock).
+exits 1 unless every item matches. The post-write check is detection, not a
+no-clobber guarantee: Codex exposes no revision-conditional config write, so a
+concurrent app write in the same instant is reported, never silently accepted.
+Roles are created with a hard link, so a file that appears first always wins.
+There is deliberately no automatic removal. Rollback, with no Codex app or session
+running on that seat (the only writer exclusion available): restore config.toml
+from the backup the install reported (or delete its single `developer_instructions`
+key) and delete the role files that the manifest
+`state/nuzantara-seat-profile-install.json` lists as installed.
 The roles and instructions are guidance: they tell a parent never to use a role in
 place of a required cross-family review, an explicit model/effort assignment or a
 mission-colour gate, and those stay enforced by the harness's required checks, not

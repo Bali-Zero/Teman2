@@ -97,18 +97,6 @@ def test_symlinked_config_is_refused_before_any_write(seat):
     assert not (seat / "agents").exists() and not (seat / "state").exists()
 
 
-def test_remove_deletes_only_items_still_identical(seat):
-    profile.install(seat)
-    (seat / "agents" / "routine-worker.toml").write_text('model = "operator"\n')
-    result = profile.remove(seat)
-    assert result["developer_instructions"] == "absent"
-    assert result["roles"]["routine-worker"] == "drift"
-    assert all(result["roles"][r] == "absent" for r in ROLES if r != "routine-worker")
-    config = tomllib.loads((seat / "config.toml").read_text())
-    assert config == {"model": "example", "features": {"hooks": True}}
-    assert (seat / "config.toml").stat().st_mode & 0o777 == 0o600
-
-
 # Routing contract: which seat does which routine work, and that none widens scope.
 @pytest.mark.parametrize(
     "role,model,effort,read_only",
@@ -164,39 +152,6 @@ def test_role_created_concurrently_is_never_overwritten(seat, monkeypatch):
     assert not list((seat / "agents").glob("*.tmp"))
 
 
-def test_multiline_value_is_refused_before_any_deletion(seat):
-    profile.install(seat)
-    body = (seat / "config.toml").read_text()
-    lines = [
-        line
-        for line in body.splitlines()
-        if not line.startswith("developer_instructions")
-    ]
-    multiline = 'developer_instructions = """\n' + TEXT + '"""\n'
-    (seat / "config.toml").write_text(multiline + "\n".join(lines) + "\n")
-    assert profile.status(seat)["developer_instructions"] == "match"
-    with pytest.raises(ValueError, match="cannot safely remove"):
-        profile.remove(seat)
-    assert all((seat / "agents" / f"{r}.toml").exists() for r in ROLES)
-
-
-def test_remove_aborts_when_config_changes_concurrently(seat, monkeypatch):
-    profile.install(seat)
-    real_backup = profile.backup_seat
-
-    def racing_backup(seat_dir, config_file):
-        backup = real_backup(seat_dir, config_file)
-        config_file.write_text(config_file.read_text() + '\n[tui]\ntheme = "x"\n')
-        return backup
-
-    monkeypatch.setattr(profile, "backup_seat", racing_backup)
-    with pytest.raises(RuntimeError, match="changed concurrently"):
-        profile.remove(seat)
-    config = tomllib.loads((seat / "config.toml").read_text())
-    assert config["developer_instructions"] == TEXT and config["tui"] == {"theme": "x"}
-    assert all((seat / "agents" / f"{r}.toml").exists() for r in ROLES)
-
-
 def test_mode_is_restored_when_the_write_is_refused(seat, monkeypatch):
     monkeypatch.setattr(FakeRPC, "collateral", True)
     real_call = FakeRPC.call
@@ -210,3 +165,26 @@ def test_mode_is_restored_when_the_write_is_refused(seat, monkeypatch):
     with pytest.raises(RuntimeError, match="not exact"):
         profile.install(seat)
     assert (seat / "config.toml").stat().st_mode & 0o777 == 0o600
+
+
+def test_competitor_at_the_create_instant_keeps_its_bytes(seat, monkeypatch):
+    real_link = profile.os.link
+
+    def racing_link(src, dst):
+        profile.Path(dst).write_text('model = "competitor"\n')
+        return real_link(src, dst)
+
+    monkeypatch.setattr(profile.os, "link", racing_link)
+    result = profile.install(seat)
+    for role in ROLES:
+        assert (
+            seat / "agents" / f"{role}.toml"
+        ).read_text() == 'model = "competitor"\n'
+        assert result["roles"][role] == "drift"
+    assert not list((seat / "agents").glob("*.tmp"))
+
+
+def test_there_is_no_automatic_removal(monkeypatch, seat):
+    monkeypatch.setattr(profile.sys, "argv", ["x", "--seat", str(seat), "--remove"])
+    with pytest.raises(SystemExit):
+        profile.main()

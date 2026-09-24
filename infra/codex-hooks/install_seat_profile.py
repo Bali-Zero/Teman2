@@ -5,9 +5,10 @@ Sources live in seat/ and are the M5 seat's reviewed bytes. Per item: absent ->
 installed; identical -> untouched; different -> left alone and reported as
 operator-owned drift, never overwritten. Every write is preceded by a private
 backup. The root key is written through Codex's own config API and then checked
-semantically: only that key may change. --check is read-only; --remove deletes
-only items still identical to these sources, via a validated text edit that aborts
-if config.toml changed since its plan. No auth or other config is copied.
+semantically: only that key may change -- detection after the write, not a
+no-clobber guarantee, because Codex exposes no revision-conditional config write.
+--check is read-only. There is deliberately no automatic removal: rollback is a
+manual step with an exclusive writer (README). No auth or other config is copied.
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 import sys
 import time
@@ -60,13 +60,6 @@ def status(seat: Path) -> dict:
         v == "match" for v in result["roles"].values()
     )
     return result
-
-
-def write_private(path: Path, data: bytes) -> None:
-    temp = path.with_name(path.name + f".{os.getpid()}.tmp")
-    with open(temp, "wb", opener=lambda p, flags: os.open(p, flags, 0o600)) as stream:
-        stream.write(data)
-    os.replace(temp, path)
 
 
 def create_exclusive(path: Path, data: bytes) -> bool:
@@ -163,62 +156,13 @@ def install(seat: Path) -> dict:
     return result
 
 
-def remove(seat: Path) -> dict:
-    seat, config_file = prepare(seat)
-    before = status(seat)
-    _, roles = expected()
-    source = stripped = None
-    if before[KEY] == "match":
-        # The whole plan is validated before anything is deleted.
-        source = config_file.read_bytes()
-        expected_config = tomllib.loads(source.decode())
-        del expected_config[KEY]
-        stripped = re.sub(
-            r"(?m)^[ \t]*" + KEY + r"[ \t]*=[^\n]*(?:\n|$)",
-            "",
-            source.decode(),
-            count=1,
-        )
-        try:
-            safe = tomllib.loads(stripped) == expected_config
-        except tomllib.TOMLDecodeError:
-            safe = False
-        if not safe:
-            raise ValueError(
-                "cannot safely remove developer_instructions; restore the backup"
-            )
-    result = {
-        "seat": str(seat),
-        "before": before,
-        "backup": str(backup_seat(seat, config_file)),
-    }
-    if stripped is not None:
-        mode = config_file.stat().st_mode & 0o777
-        if config_file.read_bytes() != source:
-            raise RuntimeError(
-                "config.toml changed concurrently; nothing removed, rerun"
-            )
-        write_private(config_file, stripped.encode())
-        config_file.chmod(mode)
-    for role, state in before["roles"].items():
-        path = seat / "agents" / f"{role}.toml"
-        if state == "match" and path.exists() and path.read_bytes() == roles[role]:
-            path.unlink()
-    result.update(status(seat))
-    return result
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seat", type=Path, required=True)
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--check", action="store_true")
-    mode.add_argument("--remove", action="store_true")
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     if args.check:
         result = status(args.seat.expanduser().resolve())
-    elif args.remove:
-        result = remove(args.seat)
     else:
         result = install(args.seat)
     print(json.dumps(result, indent=2))
