@@ -1543,19 +1543,28 @@ def _apply_disclosed_review_flags(
 
     Only the flags in ``_resolve_holding_flags()`` (``CRIMINAL_RECORD``
     always, plus whatever ``VISA_ORACLE_HOLDING_FLAGS`` restores) rewrite
-    the decision to a hold — this ALWAYS takes priority over the dead-end
-    branch below, on any pack state, per the 2026-09-13 ruling (see
-    ``HOLDING_DISCLOSED_FLAGS`` above).
+    the decision to a hold on their own — this ALWAYS takes priority over
+    the dead-end branch below, on any pack state, per the 2026-09-13
+    ruling (see ``HOLDING_DISCLOSED_FLAGS`` above). A flag in
+    ``DEAD_END_DISCLOSED_FLAGS`` (``ACTIVITY_BOUNDARY`` by default — Slice
+    A3'-B) that is disclosed ALONGSIDE a holding flag, or that reaches a
+    pack already at ``HUMAN_REVIEW_REQUIRED``, joins that same hold instead
+    of dead-ending: there is no dead end to name once the outcome is
+    already a human review, so the dead-end flag is named by its own
+    ``_REVIEW`` code and folded into the hold's seed — byte-identical to
+    before Slice A3'-B moved it out of ``HOLDING_DISCLOSED_FLAGS`` (gate-
+    a3p-b rework HIGH-1; see ``test_activity_boundary_oracle_innocence``,
+    B3).
 
-    A flag in ``DEAD_END_DISCLOSED_FLAGS`` that is NOT held (``ACTIVITY_
-    BOUNDARY`` by default — Slice A3'-B) names a dead end instead: on a pack
-    base that reached ``SUPPORTED_CANDIDATES`` or ``NEEDS_INPUT``, it
+    A dead-end flag that is NOT held and does NOT reach an
+    already-``HUMAN_REVIEW_REQUIRED`` pack names a dead end instead: on a
+    pack base that reached ``SUPPORTED_CANDIDATES`` or ``NEEDS_INPUT``, it
     rewrites the decision to ``NO_SUPPORTED_PATH`` with only the dead-end
     reason(s) — there is no pack verdict to abstain from. On a pack base
     already at ``NO_SUPPORTED_PATH``, the dead-end reason(s) are appended
-    after the pack's own. On every other pack state (``HUMAN_REVIEW_
-    REQUIRED``, ``TEMPORARILY_UNAVAILABLE``) — or when no dead-end flag is
-    present — the pack's own decision is kept verbatim, today's path.
+    after the pack's own. On every other pack state (``TEMPORARILY_
+    UNAVAILABLE``) — or when no dead-end flag is present — the pack's own
+    decision is kept verbatim, today's path.
 
     Every other disclosed flag becomes a named ``notices`` condition on the
     decision the pack already reached, per the 2026-09-13 ruling. Both the
@@ -1571,7 +1580,23 @@ def _apply_disclosed_review_flags(
         return decision
 
     holding_flags = _resolve_holding_flags()
-    holding = tuple(flag for flag in flags if flag in holding_flags)
+    _raw_holding = tuple(flag for flag in flags if flag in holding_flags)
+    # A dead-end flag (``ACTIVITY_BOUNDARY`` by default) only actually
+    # dead-ends when it would otherwise be the thing deciding the outcome.
+    # The moment a real holding flag is ALSO disclosed, or the pack is
+    # ALREADY at ``HUMAN_REVIEW_REQUIRED``, the request is going to a human
+    # review regardless of the dead-end flag — before Slice A3'-B moved
+    # ``ACTIVITY_BOUNDARY`` out of ``HOLDING_DISCLOSED_FLAGS``, it rode
+    # along in ``holding`` in exactly these two situations (gate-a3p-b
+    # rework HIGH-1), and this branch reproduces that byte-for-byte: the
+    # dead-end flag(s) join ``holding`` — named by their ``_REVIEW`` code,
+    # not their no-path code — instead of being dropped or overridden.
+    if _raw_holding or decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+        holding = tuple(
+            flag for flag in flags if flag in holding_flags or flag in DEAD_END_DISCLOSED_FLAGS
+        )
+    else:
+        holding = _raw_holding
     dead_end = tuple(
         sorted(
             (

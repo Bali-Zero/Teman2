@@ -2210,14 +2210,31 @@ def test_activity_boundary_dead_end_ids_differ_from_the_holding_ids_and_are_stab
 def test_activity_boundary_oracle_innocence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """B3: order never matters for (CRIMINAL_RECORD, ACTIVITY_BOUNDARY) on a
-    SUPPORTED base — CRIMINAL_RECORD alone already holds by the floor, so
-    ACTIVITY_BOUNDARY's position in the tuple changes nothing. And a pack
-    already at HUMAN_REVIEW_REQUIRED that also discloses ACTIVITY_BOUNDARY
-    is never diverted to the dead end — not with the kill switch unset, and
-    not with it explicitly holding ACTIVITY_BOUNDARY. GUILT: sending the
-    pack-HUMAN_REVIEW case to the dead end turns ``state`` to
-    ``NO_SUPPORTED_PATH`` in either branch below."""
+    """B3 (gate-a3p-b rework HIGH-1): CRIMINAL_RECORD alone already holds
+    by the floor, so disclosing ACTIVITY_BOUNDARY alongside it — in either
+    order — never turns the outcome away from a hold. And a pack already
+    at HUMAN_REVIEW_REQUIRED that also discloses ACTIVITY_BOUNDARY is
+    never diverted to the dead end — not with the kill switch unset, and
+    not with it explicitly holding ACTIVITY_BOUNDARY.
+
+    "Oracle innocence" here is byte-for-byte equality with "today"
+    (pre-Slice-A3'-B, when ACTIVITY_BOUNDARY was itself a holding flag),
+    reproduced by the env=ACTIVITY_BOUNDARY kill switch: same state, same
+    reasons IN ORDER, same notices, same decision_id/public_id. It is
+    deliberately NOT ``ordered == reordered`` — the hold's seed has always
+    been ``",".join(flag.value for flag in holding)`` in DISCLOSURE order,
+    not a sorted/order-independent one (gate-a3p-b rework's own probe:
+    origin/main's (CRIMINAL, ACTIVITY_BOUNDARY) and (ACTIVITY_BOUNDARY,
+    CRIMINAL_RECORD) ids differ), so an order-independence assertion here
+    would itself be wrong — the two orderings are each checked against
+    their OWN held counterpart instead. GUILT: reverting the HIGH-1 cure
+    (routing a disclosed dead-end flag through the hold whenever a holding
+    flag is also present, or the pack is already HUMAN_REVIEW_REQUIRED)
+    turns every ``== *_held``/``== held_result`` assertion below RED — the
+    env-unset side drops ACTIVITY_BOUNDARY from review_reasons/the seed
+    while the held side keeps it. Sending the pack-HUMAN_REVIEW case to the
+    dead end instead turns its ``state`` to ``NO_SUPPORTED_PATH`` in either
+    branch, RED on the ``state.value`` asserts below."""
 
     monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
     supported = _supported_baseline()
@@ -2230,8 +2247,24 @@ def test_activity_boundary_oracle_innocence(
         supported,
         (DisclosedReviewFlag.ACTIVITY_BOUNDARY, DisclosedReviewFlag.CRIMINAL_RECORD),
     )
-    assert ordered == reordered
     assert ordered.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reordered.state.value == "HUMAN_REVIEW_REQUIRED"
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "ACTIVITY_BOUNDARY")
+    ordered_held = evaluate_path._apply_disclosed_review_flags(
+        supported,
+        (DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY),
+    )
+    reordered_held = evaluate_path._apply_disclosed_review_flags(
+        supported,
+        (DisclosedReviewFlag.ACTIVITY_BOUNDARY, DisclosedReviewFlag.CRIMINAL_RECORD),
+    )
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+
+    # (CRIMINAL_RECORD, ACTIVITY_BOUNDARY) on SUPPORTED: env unset == env=AB.
+    assert ordered == ordered_held
+    # (ACTIVITY_BOUNDARY, CRIMINAL_RECORD) on SUPPORTED: env unset == env=AB.
+    assert reordered == reordered_held
 
     # A pack already under human review (synthesised here the same way a
     # real HUMAN_REVIEW_REQUIRED pack decision would be: any decision whose
@@ -2249,6 +2282,10 @@ def test_activity_boundary_oracle_innocence(
     held_result = evaluate_path._apply_disclosed_review_flags(
         review_pack, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
     )
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+
+    # (ACTIVITY_BOUNDARY,) on a pack-HUMAN_REVIEW base: env unset == env=AB.
+    assert unset_result == held_result
     assert unset_result.state.value == "HUMAN_REVIEW_REQUIRED"
     assert held_result.state.value == "HUMAN_REVIEW_REQUIRED"
     assert unset_result.no_path_reasons == ()
@@ -2382,6 +2419,43 @@ def test_resolve_holding_flags_can_widen_to_the_three_new_disclosures(
     # ACTIVITY_BOUNDARY left the floor in Slice A3'-B — it is not named by
     # this env value, so it stays a dead end, not a hold.
     assert DisclosedReviewFlag.ACTIVITY_BOUNDARY not in resolved
+
+
+def test_resolve_holding_flags_documented_kill_switch_form_holds_activity_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MEDIUM-1 (gate-a3p-b rework): the documented kill-switch form to
+    re-hold ACTIVITY_BOUNDARY is "the current holding list plus
+    ,ACTIVITY_BOUNDARY" (B9's kill-switch note in the slice spec). A
+    single-token override (``VISA_ORACLE_HOLDING_FLAGS=ACTIVITY_BOUNDARY``,
+    covered above) does not exercise this: it falls into the OTHER
+    fail-closed branch when a mutant resolver filters ACTIVITY_BOUNDARY out
+    of ``recognized`` at parse time, because ``recognized`` becomes empty
+    and every flag is held anyway. The two-token form is the one that
+    distinguishes a correct resolver from that mutant: ``recognized`` stays
+    non-empty (``HEALTH_CONCERN`` alone still parses), so the resolver
+    returns early WITHOUT failing closed, and a mutant that dropped
+    ACTIVITY_BOUNDARY during parsing silently loses it here. GUILT: a
+    resolver of the form
+    ``recognized = frozenset(... for token in tokens if token in
+    known_values and token != "ACTIVITY_BOUNDARY")`` still returns this
+    frozenset without ACTIVITY_BOUNDARY, and the ``_apply_disclosed_review_
+    flags`` call below still dead-ends it (``state == NO_SUPPORTED_PATH``)
+    instead of holding it — RED on either assert."""
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN,ACTIVITY_BOUNDARY")
+    resolved = evaluate_path._resolve_holding_flags()
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
+    assert DisclosedReviewFlag.HEALTH_CONCERN in resolved
+    assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
+
+    held = evaluate_path._apply_disclosed_review_flags(
+        _supported_baseline(), (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    assert held.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert [reason.code for reason in held.review_reasons] == [
+        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    ]
 
 
 def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(
