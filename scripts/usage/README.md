@@ -54,8 +54,10 @@ for the gate or a cryptographic verification of the artifact named by its hash.
 Never mark an outcome complete merely because a session exited or a PR merged.
 `verified_complete` requires an evidence SHA-256, verification time, and either
 a distinct listed `gate` session (`verifier_role=fresh-gate`) or an independent
-CI attestation (`verifier_role=ci`). It also requires a closed, timezone-aware
-`started_utc`/`ended_utc` interval containing the verification time. Otherwise the
+CI attestation (`verifier_role=ci`, with the distinct job-id hash in
+`verifier_session_sha256`). It also requires a closed, timezone-aware
+`started_utc`/`ended_utc` interval ending no later than the snapshot time and
+containing the verification time. Otherwise the
 collector downgrades the outcome to `unknown`.
 
 Hash **the full identifier**, with SHA-256 and no truncation. Claude main sessions

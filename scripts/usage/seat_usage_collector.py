@@ -579,12 +579,13 @@ def _task_manifest(doc: dict) -> tuple[dict, bool]:
     independent = independent and not any(r["session_sha256"] == verifier and r["role"] != "gate" for r in rows)
     valid_proof = outcome.get("verifier_role") in {"fresh-gate", "ci"} and outcome.get("evidence_sha256") and outcome.get("verified_utc")
     # CI attestations can identify a job instead of a metered model session.
-    valid_proof = valid_proof and (independent or outcome.get("verifier_role") == "ci")
+    independent_ci = outcome.get("verifier_role") == "ci" and verifier is not None and not any(r["session_sha256"] == verifier for r in rows)
+    valid_proof = valid_proof and (independent or independent_ci)
     # Completed-task attribution is frozen; a later turn in a reused session
     # must not silently change the recorded cost of an earlier task.
     valid_proof = valid_proof and "started_utc" in doc and "ended_utc" in doc
     if valid_proof:
-        valid_proof = start <= _task_timestamp(outcome["verified_utc"]) <= end
+        valid_proof = start <= _task_timestamp(outcome["verified_utc"]) <= end <= NOW.timestamp()
     return {**doc, "status": "unknown" if verified and not valid_proof else outcome["status"], "window": (start, end)}, bool(verified and not valid_proof)
 
 

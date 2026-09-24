@@ -132,6 +132,10 @@ def test_task_verification_needs_independent_gate_evidence_and_closed_window(tmp
     report = _task_report(tmp_path, index, doc)
     assert report["tasks"][0]["status"] == "verified_complete"
     assert report["tasks_meta"]["tokens_per_verified_task"]["claude"]["input_tokens"] == 12
+    future = {**doc, "ended_utc": "2099-08-20T00:00:00Z"}
+    assert _task_report(tmp_path, index, future)["tasks"][0]["status"] == "unknown"
+    no_ci_identity = {**doc, "outcome": {**outcome, "verifier_role": "ci", "verifier_session_sha256": None}}
+    assert _task_report(tmp_path, index, no_ci_identity)["tasks"][0]["status"] == "unknown"
     for field, replacement in (("evidence_sha256", None), ("verifier_session_sha256", suc._sha("builder")), ("verified_utc", None)):
         invalid = {**doc, "outcome": {**outcome, field: replacement}}
         report = _task_report(tmp_path, index, invalid)
