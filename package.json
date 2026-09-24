@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/backend-rag",
     "apps/mouth",
     "apps/admin-dashboard",
     "apps/admin-dashboard-local",
