@@ -1,0 +1,20 @@
+{
+  "qid": "Q18",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and points to the available KBLI records; it invents no setup steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and identifies the dataset's activity-specific scope; no setup procedure is asserted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains in English and points to the available KBLI records; it invents no incorporation requirements."
+    }
+  ]
+}

@@ -105,12 +105,16 @@ def test_canonical_certification_partition_is_exact(
     # same way — same compiler, same `BASIS` string, ATTENZIONE_FASCIA_BALI
     # Bali axis instead of OK_or_HIGHER_RISK — so they carry the identical
     # basis prefix and join the same set. 329->589.
+    # 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
+    # lot 1/lot 2 by apply_residual_open.py itself (reached by the lot rule,
+    # not previously listed) — same compiler, same BASIS prefix, join the
+    # same set. 589->591.
     residual_lot = {
         code
         for code, record in records.items()
         if str(record.get("pma_official_basis") or "").startswith(RESIDUAL_BASIS_PREFIX)
     }
-    assert len(residual_lot) == 589
+    assert len(residual_lot) == 591
     assert residual_lot.isdisjoint(certified)
     assert all(
         records[code].get("pma_verification_status") == "located"

@@ -19114,9 +19114,10 @@ export interface components {
      *     with all keys required except the transitional fields documented on
      *     ``sponsor_type``, the three ``family.stepchild_*``/
      *     ``family.sponsor_permit_basis`` fields (2026-08-23),
-     *     ``immigration_renewal_paid`` (2026-08-24) and the ten seq-21
-     *     qualification facts (2026-09-13) below — all the same rollout
-     *     mechanism. Field order mirrors ``enums.FactPath``'s
+     *     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
+     *     qualification facts (2026-09-13) and ``person_guardian_consent``
+     *     (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+     *     Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -19318,6 +19319,16 @@ export interface components {
       "person.birth_date":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownDate"];
+      /**
+       * Person.Guardian Consent
+       * @default {
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
+       *     }
+       */
+      "person.guardian_consent":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownBoolean"];
       /** Person.Marital Status */
       "person.marital_status":
         | components["schemas"]["UnknownFact"]
@@ -21882,7 +21893,7 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 56 applicant-collected
+     * @description Every fact path the engine may ever reference — 57 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -21892,12 +21903,14 @@ export interface components {
      *     comment for the grounding), by ``investment.investment_amount_usd``
      *     (2026-09-13, PR-D4c-1 — contract-only: a later PR, D4c-2, asks an
      *     investment applicant for a USD amount; this PR only declares the wire
-     *     key so that question can exist, and no rule reads it yet), and by the
+     *     key so that question can exist, and no rule reads it yet), by the
      *     TEN seq-21 qualification facts (2026-09-13, W-VO-S21 — five
      *     ``sponsor.*`` and five ``investment.*`` booleans, each the ONE
      *     qualification a zero-SUPPORT product's new eligibility rule tests; see
      *     their own inline comments and
-     *     ``backend/scripts/visa_engine/fold_pack_seq21.py``).
+     *     ``backend/scripts/visa_engine/fold_pack_seq21.py``), and by
+     *     ``person.guardian_consent`` (2026-09-21, Slice A7-B — see its own inline
+     *     comment for the grounding).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -21911,6 +21924,7 @@ export interface components {
       | "person.birth_date"
       | "person.nationalities"
       | "person.marital_status"
+      | "person.guardian_consent"
       | "immigration.currently_in_indonesia"
       | "immigration.current_status_code"
       | "immigration.current_status_expiry"
@@ -26630,15 +26644,15 @@ export interface components {
     /** TLDRSection */
     TLDRSection: {
       /** Risk Level */
-      risk_level: string;
+      risk_level?: string | null;
       /** Should Worry */
-      should_worry: string;
+      should_worry?: string | null;
       /** What */
       what: string;
       /** When */
-      when: string;
+      when?: string | null;
       /** Who */
-      who: string;
+      who?: string | null;
     };
     /** TaxCompanyPilotDocument */
     TaxCompanyPilotDocument: {

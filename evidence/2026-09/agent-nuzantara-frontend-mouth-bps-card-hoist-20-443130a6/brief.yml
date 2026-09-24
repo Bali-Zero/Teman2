@@ -1,0 +1,77 @@
+gear: 1
+task_id: mouth-bps-card-hoist-20260922
+lane: frontend
+host: nuzantara (Pro)
+branch: agent/nuzantara/frontend/mouth-bps-card-hoist-20260922
+gate_class: none
+l_level: L2
+objective: >-
+  The lane brief (`.agents/skills/kbli-navigator/SKILL.md` lines 593-601) named a ROOT CAUSE:
+  a `{gold ? (` ternary in `apps/mouth/src/app/kbli/[code]/page.tsx` hiding the BPS transition
+  card on all 428 gold KBLI pages, citing `<KBLITransitionSources>` at line 913 inside the
+  non-gold branch. Ground-truthing it against `origin/main` (as instructed: "prove it, do not
+  guess it") found the cited line numbers (401/681/913) match the file's shape BEFORE commit
+  `f6dfda994d` (PR #4215, "release verified KBLI Navigator", 2026-08-15) byte-for-byte — a
+  checkout over a month and 100+ commits stale relative to `origin/main` when the SKILL.md note
+  was written today (commit `0027412856`, PR #7118, 2026-09-22 07:21Z). On `origin/main` the
+  call already sits outside the ternary (page.tsx:992-994) and has since #4215, guarded by an
+  existing structural regression test in
+  `apps/mouth/src/components/kbli/KBLITransitionSources.test.tsx`. No code fix exists to ship;
+  this PR corrects the stale SKILL.md finding so it stops misleading future sessions into
+  re-attempting an already-shipped fix (superscar #1, HOME-fork drift).
+scope:
+  - ".agents/skills/kbli-navigator/SKILL.md — replace the stale 'ROOT CAUSE FOUND / NOT done'
+    paragraph with a corrected note citing the fixing commit, the guarding test, and live
+    re-verification. No application code touched."
+constraints:
+  - "No change to apps/mouth/src/app/kbli/[code]/page.tsx, KBLITransitionSources.tsx, or its
+    existing test file — all three are already correct and already tested; touching them would
+    be scope creep against an already-shipped fix."
+  - "Doc correction only; not a code PR. No new test file — the existing guard
+    (KBLITransitionSources.test.tsx, guilt: 'the transition card sits outside the gold/non-gold
+    layout branch') already covers this exact regression class."
+acceptance:
+  - text: >-
+      GUILT (mutation-style, on the pre-#4215 shape): swapping page.tsx for the commit
+      f6dfda994d^ version (the exact shape the stale finding describes) makes the existing
+      structural guard test fail.
+    probe: >-
+      cp page.tsx /tmp/backup; git show f6dfda994d^:apps/mouth/src/app/kbli/[code]/page.tsx >
+      page.tsx; npx vitest run src/components/kbli/KBLITransitionSources.test.tsx  → 1
+      failed | 6 passed (the structural placement test is the failure); then cp /tmp/backup back,
+      git diff origin/main -- apps/mouth/src/app/kbli/ → empty.
+  - text: "INNOCENCE: on origin/main HEAD as checked out, the same guard test is green."
+    probe: >-
+      npx vitest run src/components/kbli/KBLITransitionSources.test.tsx → Test Files 1 passed
+      (1), Tests 7 passed (7)
+  - text: >-
+      LIVE, prod (balizero.com): 3 codes the runtime discloseKbliEditorial/getGoldContent
+      pipeline actually certifies as gold, and 3 non-gold codes with BPS data, all render the
+      BPS card.
+    probe: >-
+      curl -sL https://balizero.com/kbli/<code> | grep -c 'data-testid="bps-transition-source"'
+      → 1 for all of 47221, 50113, 50131 (real gold, confirmed via a throwaway vitest probe
+      calling getCode+getGoldContent+discloseKbliEditorial) and 01111, 01112, 01113 (non-gold);
+      badge text "Authoritative BPS crosswalk" on all 6.
+  - text: "NO REGRESSION: the full mouth suite and typecheck stay green untouched."
+    probe: "npx vitest run → 539 test files passed, 7105 tests passed | 2 skipped; npx tsc --noEmit → clean"
+  - text: "Touched file is Prettier-clean."
+    probe: "npx prettier --check .agents/skills/kbli-navigator/SKILL.md → All matched files use Prettier code style!"
+mutation_evidence: >-
+  M1: restored the exact pre-#4215 page.tsx (git show f6dfda994d25a40b8f29d758790236952986e0ac^)
+  over the current one and reran the one existing guard test file → 1 failed / 6 passed (the
+  failure is precisely "guilt: the transition card sits outside the gold/non-gold layout
+  branch", the same regression class the stale SKILL.md note describes). Restored via `cp` from
+  a pre-edit backup (not `git checkout --`, lesson
+  lesson_a_guilt_mutation_restored_with_git_checkout_wipes_the_uncommitted_cure): `git diff
+  origin/main -- apps/mouth/src/app/kbli/` empty afterward, vitest back to 7/7 green.
+pii: none
+local_evidence: >-
+  git blame/show on f6dfda994d (PR #4215, 2026-08-15) and 0027412856 (PR #7118, 2026-09-22)
+  establish the commit dates; `npx vitest run` (full mouth suite, 539 files/7105 tests) and
+  `npx tsc --noEmit` run in this turn on this branch; 6 live curl probes against
+  https://balizero.com/kbli/<code> in this turn (2026-09-22); a throwaway, deleted-before-commit
+  vitest probe (src/find_gold_probe.test.ts, never staged) computed the real isGold set via
+  getAllCodes/getCode/getGoldContent/discloseKbliEditorial to pick genuinely-certified gold
+  codes rather than guessing from the raw gold-JSON key list (which the live check disproved:
+  01111-01115 are IN the gold JSON but discloseKbliEditorial nulls them — not live-gold).

@@ -573,6 +573,13 @@ _STILL_UNSURE_RETIREMENT_ROW: tuple[DeadEnd, ...] = (
         why_unaskable=QUESTION_NOT_IN_THIS_WALK,
     ),
 )
+#: Slice A7-B, 2026-09-21: `person.guardian_consent` — no question in
+#: tree.ts set it yet (B3-bis: the mouth sent it as UNKNOWN, contract-only
+#: that PR), so the ONE walk the fact's UnknownFact arm reached
+#: (`offshore/family/PARENT/spNat=IT/minor`) dead-ended NEEDS_INPUT on it.
+#: Slice A7-M, 2026-09-22: `tree.ts` now asks `guardian_consent` of every
+#: minor, so this row is CURED (not excused) — the walk answers instead of
+#: dead-ending. No `_MINOR_GUARDIAN_CONSENT_ROW` survives this PR.
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] = {
     20: {
         "offshore/other/paid/sponsor_unsure": (
@@ -584,11 +591,23 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
         ),
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
     },
-    21: {"offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW},
+    21: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
     # E23V-DEFECT (mission seq-22): unchanged from seq-21 — the walk this
     # fold cures was never allowlisted (it dead-ended on NO_SUPPORTED_PATH,
     # an ANSWER, not a NEEDS_INPUT this table would need to excuse).
-    22: {"offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW},
+    22: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
+    # A8-1 (seq-23 candidate): unchanged from seq-22 — the 82-walk corpus
+    # exercises none of the eight REQUIRE_REVIEW rules this fold retires, so
+    # the candidate replay (test_every_walk_ends_in_its_pinned_outcome_on_
+    # the_candidate_pack) produces zero dead-end violations against this same
+    # row; confirmed by running the replay, not carried over unverified.
+    23: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
 }
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -710,15 +729,31 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
     "offshore/family/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
     # W-VO-E: the SAME walk with a minor's birth date — the only corpus walk
-    # whose PUBLIC outcome is a hold, and deliberately so. The ENGINE names
-    # C1 and E31E (`el.e31e-child-itas-support`, whose `derived.age_years <
-    # 18` gate no adult walk can clear); `evaluate_path.
-    # _apply_minor_privacy_hold` then empties the candidates of ANY known
-    # minor, unconditionally, because the public contract has no
-    # guardian-consent fact. That is Privacy Policy V1, a product control,
-    # not engine incompleteness — and it is the reason the reachability
-    # guard below reads the engine decision rather than this table.
-    "offshore/family/PARENT/spNat=IT/minor": ("HUMAN_REVIEW_REQUIRED", ()),
+    # whose PUBLIC outcome moves off the engine's own answer, and
+    # deliberately so. The ENGINE names C1 and E31E
+    # (`el.e31e-child-itas-support`, whose `derived.age_years < 18` gate no
+    # adult walk can clear); `evaluate_path._apply_minor_privacy_hold` then
+    # empties the candidates of ANY known minor, because the public contract
+    # has no PROVEN guardian-safety signal for this walk yet. That is
+    # Privacy Policy V1, a product control, not engine incompleteness — and
+    # it is the reason the reachability guard below reads the engine
+    # decision rather than this table.
+    # Slice A7-B, 2026-09-21 (OD-4b re-ruled): the public contract now
+    # carries `person.guardian_consent`. Slice A7-M, 2026-09-22: the tree
+    # now asks it of every minor, and this walk does not override the
+    # answer, so `answerFor` gives it the question's FIRST option (`"yes"`)
+    # — `_apply_minor_privacy_hold`'s `true` arm passes the decision through
+    # UNTOUCHED (no unconditional hold survives), and the underlying
+    # evaluation is SUPPORTED_CANDIDATES (MEASURED, never assumed — see the
+    # module docstring's warning). The sibling walk below declares
+    # `guardian_consent: "no"` and is what now exercises the hold's `false`
+    # arm; see `TestGuardianConsentArms` in test_evaluate_endpoint.py for the
+    # `true`/`false`/UNKNOWN arms pinned directly.
+    "offshore/family/PARENT/spNat=IT/minor": ("SUPPORTED_CANDIDATES", ("C1", "E31E")),
+    # Slice A7-M, 2026-09-22: same facts as the walk above, only
+    # `guardian_consent: "no"` differs — the earned hold, now exercised by a
+    # real walk instead of only PR 1's persona test.
+    "offshore/family/PARENT/spNat=IT/minor/guardian=no": ("HUMAN_REVIEW_REQUIRED", ()),
     "offshore/family/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31J")),
     "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
@@ -1111,10 +1146,20 @@ _SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/bank_deposit/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
 }
 
+#: A8-1 (seq-23 candidate): empty, confirmed by running the candidate
+#: replay — none of the 82 corpus walks exercise any of the eight
+#: REQUIRE_REVIEW rules this fold retires (calling-visa, citizenship
+#: conflict, active overstay, minor-without-guardian, bridging adverse
+#: history, e33 employment, e33g local-market/company), so no walk's
+#: (state, candidates) pair moves off `_EXPECTED_OUTCOME_ON_SEQ20` /
+#: `_SEQ22_OUTCOME_CHANGES`.
+_SEQ23_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {}
+
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
     20: _EXPECTED_OUTCOME_ON_SEQ20,
     21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
     22: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES},
+    23: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES, **_SEQ23_OUTCOME_CHANGES},
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1147,10 +1192,20 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: employer_no walk this fold cures was never a dead end on seq-21 either
 #: (it was NO_SUPPORTED_PATH, not NEEDS_INPUT), so it drops out of neither
 #: table — seq-22 reads identically to seq-21 here.
+#: Slice A7-B, 2026-09-21: `person.guardian_consent` joined on all three
+#: sequences uniformly, moving the same one walk
+#: (`offshore/family/PARENT/spNat=IT/minor`) everywhere. Slice A7-M,
+#: 2026-09-22: `tree.ts` now asks the question, so the fact never dead-ends
+#: a walk again — it drops from all three sequences.
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
-    20: {"work.indonesian_work_sponsor_confirmed": 1, "family.sponsor_confirmed": 1},
+    20: {
+        "work.indonesian_work_sponsor_confirmed": 1,
+        "family.sponsor_confirmed": 1,
+    },
     21: {"family.sponsor_confirmed": 1},
     22: {"family.sponsor_confirmed": 1},
+    # Slice A9.3: measured on the signed seq-23 tree, identical to seq-22.
+    23: {"family.sponsor_confirmed": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1227,18 +1282,21 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
     "offshore/tourism/multi_purpose": ("MULTI_PURPOSE_TRIP",),
 }
 
-#: The walks held by a PUBLIC adapter that is not the disclosure layer — one,
-#: and it is the minor-privacy control (`evaluate_path._apply_minor_privacy_
-#: hold`, Privacy Policy V1: the public contract has no guardian-consent fact,
-#: so a known minor's candidates are emptied unconditionally). W-VO-E's minor
-#: walk is the first corpus walk to exercise it.
+#: The walks held by a PUBLIC adapter that is not the disclosure layer — the
+#: minor-privacy control (`evaluate_path._apply_minor_privacy_hold`, Privacy
+#: Policy V1). The hold is EARNED by a declared no-guardian
+#: (`person.guardian_consent == false`), not by minority alone (Slice A7-B,
+#: 2026-09-21, OD-4b re-ruled). Slice A7-M, 2026-09-22: the tree now asks the
+#: question, and the corpus's `offshore/family/PARENT/spNat=IT/minor/
+#: guardian=no` walk answers it `false` — the hold refills with exactly that
+#: one label, re-earned by a real walk instead of only PR 1's persona test.
 #:
 #: Its own table because the two causes must not be summed: a flag DELETES a
 #: proven verdict and is the subject of `EXPECTED_DISCLOSED_REVIEW_FLAGS`,
-#: while this hold fires on `derived.is_minor` alone, on BOTH censuses, with
+#: while this hold fires on a declared no-guardian, on BOTH censuses, with
 #: or without flags. Counting them together would let a new flag-driven hold
 #: hide behind the privacy one, or the reverse.
-PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor"}
+PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor/guardian=no"}
 
 #: Walks the highest signed pack ITSELF holds — a `REQUIRE_REVIEW` rule in the
 #: pack, so neither a disclosure flag nor the minor-privacy adapter. Empty
@@ -1254,6 +1312,14 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
     20: frozenset(),
     21: frozenset(),
     22: frozenset(
+        {
+            "offshore/invest/bank_deposit/below_threshold",
+            "offshore/invest/property/below_threshold",
+        }
+    ),
+    # Slice A9.3: seq-23 carries `review.e33.below-threshold-studio` forward
+    # byte-identical, so the same two walks hold — measured on the signed tree.
+    23: frozenset(
         {
             "offshore/invest/bank_deposit/below_threshold",
             "offshore/invest/property/below_threshold",
@@ -2019,9 +2085,18 @@ def test_corpus_is_the_115_real_interview_walks(walks: dict[str, dict[str, Any]]
     below. The fourteenth, `CONFLICTING_IMMIGRATION_STATUS`, is impossible
     from the interview by construction (every walk's
     `immigration.overstay_days` is `KNOWN 0`) and is covered by an
-    allowlist row instead. No existing fixture changes a byte."""
+    allowlist row instead. No existing fixture changes a byte.
 
-    assert len(walks) == 115, f"expected 115 interview walks, found {len(walks)}"
+    Slice A7-M, 2026-09-22: adds 1, corpus 115 -> 116:
+    `offshore/family/PARENT/spNat=IT/minor/guardian=no` — the same facts as
+    the sibling `offshore/family/PARENT/spNat=IT/minor` walk, only
+    `guardian_consent: "no"` differs, exercising the earned privacy hold's
+    `false` arm by a real walk. One existing fixture changes one byte:
+    `offshore/family/PARENT/spNat=IT/minor`'s `person.guardian_consent`
+    moves from `UNKNOWN NOT_ASKED` to `KNOWN true` (the tree now asks the
+    question and this walk takes its first option)."""
+
+    assert len(walks) == 116, f"expected 116 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -2223,24 +2298,49 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     # new `_EXPECTED_OUTCOME_ON_SEQ20` rows is overridden by
     # `_SEQ21_OUTCOME_CHANGES` / `_SEQ22_OUTCOME_CHANGES`. No other row
     # moves on any sequence.
+    # Slice A7-B, 2026-09-21 (OD-4b re-ruled): `offshore/family/PARENT/
+    # spNat=IT/minor` moved HUMAN_REVIEW_REQUIRED -> NEEDS_INPUT on every
+    # sequence uniformly (the fact is contract/adapter-layer, not rule-pack
+    # sequence — see `EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE`'s own
+    # comment): -1 HUMAN_REVIEW_REQUIRED / +1 NEEDS_INPUT on each of 20/21/22.
+    # Slice A7-M, 2026-09-22: `tree.ts` now asks the question. That same
+    # walk does not override the answer, so it takes the FIRST option
+    # (`"yes"`) and moves NEEDS_INPUT -> SUPPORTED_CANDIDATES (MEASURED on
+    # the active signed sequence, never assumed): -1 NEEDS_INPUT / +1
+    # SUPPORTED_CANDIDATES. The new sibling walk
+    # (`offshore/family/PARENT/spNat=IT/minor/guardian=no`) answers `false`
+    # and is what now exercises the earned hold: +1 HUMAN_REVIEW_REQUIRED.
+    # Applied uniformly to 20/21/22 by the same contract/adapter-layer
+    # reasoning A7-B used (this fact is not rule-pack-sequence-dependent);
+    # only 22 is the active `_SIGNED_SEQUENCE` this test actually runs
+    # against, and that row is the one re-measured directly.
     by_sequence = {
         20: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 2,
             "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 95,
+            "SUPPORTED_CANDIDATES": 96,
         },
         21: {
             "HUMAN_REVIEW_REQUIRED": 1,
             "NEEDS_INPUT": 1,
             "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 96,
+            "SUPPORTED_CANDIDATES": 97,
         },
         22: {
             "HUMAN_REVIEW_REQUIRED": 3,
             "NEEDS_INPUT": 1,
             "NO_SUPPORTED_PATH": 14,
-            "SUPPORTED_CANDIDATES": 97,
+            "SUPPORTED_CANDIDATES": 98,
+        },
+        # Slice A9.3: re-measured on the signed seq-23 tree (the replay
+        # command is in the signing PR). Identical to seq-22: no walk's
+        # engine-only outcome moves (`_SEQ23_OUTCOME_CHANGES` is empty).
+        23: {
+            "HUMAN_REVIEW_REQUIRED": 3,
+            "NEEDS_INPUT": 1,
+            "NO_SUPPORTED_PATH": 14,
+            "SUPPORTED_CANDIDATES": 98,
         },
     }
     assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
@@ -2254,23 +2354,25 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     # it invisibly", and `test_the_flagged_census_is_the_funnel_the_applicant_
     # meets` is what stopped that being true.
     #
-    # W-VO-E: the zero became a one, and the count became the CAUSE. The minor
-    # walk carries NO disclosure flag — it is held by
-    # `evaluate_path._apply_minor_privacy_hold`, a different adapter on the
-    # same public path — so this is a narrow, deliberate relaxation of the
-    # zero-hold invariant with the one permitted cause pinned, not the
-    # "strictly stronger" it first claimed to be (council round 1). It is
-    # strictly stronger than the `== 1` it could have been: a second held
-    # walk, a DIFFERENT walk holding, or the same walk held for another reason
-    # all fail here.
+    # W-VO-E / Slice A7-B (2026-09-21, OD-4b re-ruled): the minor walk no
+    # longer carries an unconditional hold — the hold is EARNED by a
+    # declared no-guardian, not by minority alone. Slice A7-M, 2026-09-22:
+    # `tree.ts` now asks the question, and the corpus's own
+    # `offshore/family/PARENT/spNat=IT/minor/guardian=no` walk answers it
+    # `false`, so `PRIVACY_HELD_WALKS` refills with exactly that label (see
+    # its own module-level comment) — the hold is now earned by a REAL walk,
+    # not only by a scratch copy. The scratch copy below stays as a second,
+    # narrower proof: the same invariant on a hand-built no-guardian fact
+    # set, independent of the corpus's own generator.
     held = {
         label for label, outcome in outcomes.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
     }
-    assert PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
     assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS
     walks = _load_walks()
     minor_walk = walks["offshore/family/PARENT/spNat=IT/minor"]
-    public = _public_decision(minor_walk["overrides"], "offshore/family/PARENT/spNat=IT/minor")
+    minor_walk_no_guardian = copy.deepcopy(minor_walk["overrides"])
+    minor_walk_no_guardian["person.guardian_consent"] = {"status": "KNOWN", "value": False}
+    public = _public_decision(minor_walk_no_guardian, "offshore/family/PARENT/spNat=IT/minor")
     assert [reason.code for reason in public.review_reasons] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
     # The Studio holds are named by CAUSE too: on seq-22 each of the two walks
     # is held on exactly the one Studio reason, never on a second one.
@@ -2391,7 +2493,7 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
     `WALK_DEAD_END_ALLOWLIST`'s module-level comment. 2 rows remain, neither
     a re-hash of PR-5's shape.
 
-    An equality against a named 2-row dict is still not a loosened count in
+    An equality against a named dict is still not a loosened count in
     the sense PR-3 warned about: it names every row explicitly, and any
     additional row — however well argued — still has to move this literal in
     the PR that adds it.
@@ -2401,7 +2503,14 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
     question cures the other (see `WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE`).
     E23V-DEFECT (mission seq-22): unchanged from seq-21 — the walk this fold
     cures answers instead of dead-ending, so it was never a row here to
-    remove."""
+    remove.
+
+    Slice A7-B, 2026-09-21: a THIRD row joined all three sequences —
+    `offshore/family/PARENT/spNat=IT/minor` on `person.guardian_consent`
+    (`NO_QUESTION_IN_TREE`). Slice A7-M, 2026-09-22: `tree.ts` now asks the
+    question, so that row is CURED the same way PR-D3 cured PR-5's two — the
+    walk answers instead of dead-ending, and the count returns to the
+    original two."""
 
     assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == {
         "offshore/other/paid/sponsor_unsure",
@@ -2759,15 +2868,18 @@ def test_d4a_e31e_minor_named_at_engine_level_privacy_held_at_public_level(
 
     Proves both halves the brief required in one measurement:
       * ENGINE level: E31E is now NAMED (this fix's entire point).
-      * PUBLIC level: `evaluate_path._apply_minor_privacy_hold` (untouched by
-        this PR) still empties candidates and forces
-        HUMAN_REVIEW_REQUIRED — a minor applicant neither gains a review
-        (already unconditional for any known minor) nor loses the privacy
-        protection (it holds on `derived.is_minor` alone, independent of
-        `family.sponsor_status_code`).
+      * PUBLIC level: `evaluate_path._apply_minor_privacy_hold` still empties
+        candidates and forces HUMAN_REVIEW_REQUIRED for a minor who declares
+        no guardian — the privacy protection is not lost, only NARROWED and
+        EARNED (Slice A7-B, OD-4b re-ruled 2026-09-21): it no longer fires
+        on `derived.is_minor` alone, so this test overrides
+        `person.guardian_consent` to `false` to keep exercising the held
+        branch (the UNKNOWN default now asks the question instead — see
+        `TestGuardianConsentArms` in test_evaluate_endpoint.py for that arm).
     """
     overrides = copy.deepcopy(walks["offshore/family/PARENT/spNat=IT"]["overrides"])
     overrides["person.birth_date"] = {"status": "KNOWN", "value": "2015-01-01"}
+    overrides["person.guardian_consent"] = {"status": "KNOWN", "value": False}
 
     engine = _engine_decision(overrides, "adhoc/d4a-e31e-minor")
     assert engine.state is DecisionState.SUPPORTED_CANDIDATES
@@ -2887,13 +2999,12 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     sibling assertion inside `test_every_disclosure_flag_reports_the_walks_
     it_rewrites` for the flagged half of that same claim).
 
-    W-VO-E: the "0 human review at engine level" half of the pre-A1 headline
-    is still not true. One walk — `offshore/family/PARENT/spNat=IT/minor` —
-    raises NO disclosure flag and is still held, by
-    `evaluate_path._apply_minor_privacy_hold`, a different adapter on the
-    same public path. Subtracting it by NAME keeps this test measuring what
-    it was written to measure (the flag layer's own contribution) instead of
-    quietly absorbing a second cause into the count.
+    W-VO-E / Slice A7-B (2026-09-21, OD-4b re-ruled): `offshore/family/
+    PARENT/spNat=IT/minor` raises NO disclosure flag, and it is no longer
+    held unconditionally either — the hold is EARNED by a declared
+    no-guardian. Slice A7-M, 2026-09-22: `tree.ts` now asks the question,
+    and `offshore/family/PARENT/spNat=IT/minor/guardian=no` answers it
+    `false`, so `PRIVACY_HELD_WALKS` refills with exactly that one label.
     """
 
     engine_census = dict(Counter(actual["state"] for actual in outcomes.values()))
@@ -2909,7 +3020,6 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     # either census may carry that no disclosure flag produced, and it must be
     # the same walk on both sides (the adapter reads `derived.is_minor`, which
     # no flag can change).
-    assert PRIVACY_HELD_WALKS == {"offshore/family/PARENT/spNat=IT/minor"}
     for census in (outcomes, flagged_outcomes):
         held_without_a_flag = {
             label
@@ -3222,8 +3332,8 @@ def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
     proves the nine seq-21 products reach the applicant only while seq-21 is
     a candidate, and skips once it is signed. This keeps that property after
     the signature: a product the engine names on some walk but the applicant
-    is never shown may only be E31E (minor-privacy adapter) or C6 (its one
-    witness, ``offshore/other/no_paid_activity/medical``, raises
+    is never shown may only be C6 (its one witness,
+    ``offshore/other/no_paid_activity/medical``, raises
     ``ACTIVITY_BOUNDARY``). PLAN slice A1 (owner ruling 2026-09-13) briefly
     released ACTIVITY_BOUNDARY to a named condition, letting C6 survive at
     funnel level — but gate vo-gate-a1's OBS-1 HIGH (PR #6839) named that a
@@ -3231,12 +3341,34 @@ def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
     not a condition, for exactly this undecidable-purpose case): slice A1'
     put ACTIVITY_BOUNDARY back in ``HOLDING_DISCLOSED_FLAGS``, so C6 is back
     in the gap this test guards, same as pre-A1. Measured 2026-09-19 (A1')
-    on signed seq-22."""
+    on signed seq-22.
 
-    assert sorted(set(engine_named) - set(funnel_named)) == ["C6", "E31E"]
+    Slice A7-B, 2026-09-21: E31E joined this "never shown" set — the mouth
+    sent ``person.guardian_consent`` as UNKNOWN (no question existed yet),
+    so ``offshore/family/PARENT/spNat=IT/minor`` engine-named E31E but never
+    showed it, held by ``_apply_minor_privacy_hold``'s UnknownFact arm
+    (NEEDS_INPUT, empty candidates) — the exact gate observation the A7-B
+    gate report recorded as ``FACTS_WITHOUT_A_REACHABLE_QUESTION_YET`` and
+    told A7-M's gate to demand emptied.
+
+    Slice A7-M, 2026-09-22: `tree.ts` now asks the question. That same walk
+    does not override the answer, so it takes the FIRST option (`"yes"`) and
+    is UNTOUCHED by the hold — E31E is now genuinely SHOWN on that walk, so
+    it drops out of this test's set entirely (this IS the observable proof
+    that the A7-B residual window is closed). The sibling walk that declares
+    `guardian_consent: "no"` still engine-names E31E and still never shows
+    it — same product, same underlying facts, held now by the EARNED arm
+    (`PRIVACY_HELD_WALKS`) instead of the UnknownFact one."""
+
+    assert sorted(set(engine_named) - set(funnel_named)) == ["C6"]
     assert engine_named["C6"] == ("offshore/other/no_paid_activity/medical",)
     assert "C6" not in funnel_named
-    assert set(engine_named["E31E"]) <= PRIVACY_HELD_WALKS
+    assert set(engine_named["E31E"]) == {
+        "offshore/family/PARENT/spNat=IT/minor",
+        "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+    }
+    assert set(funnel_named["E31E"]) == {"offshore/family/PARENT/spNat=IT/minor"}
+    assert set(engine_named["E31E"]) - set(funnel_named["E31E"]) == PRIVACY_HELD_WALKS
 
 
 def test_every_support_bearing_product_is_named_by_some_walk(
@@ -3328,15 +3460,19 @@ def test_the_candidate_ruling_row_still_depends_on_its_forbidden_fact(
     assert set(UNREACHABLE_BY_RULING) <= _support_bearing_product_codes(candidate_pack)
 
 
-#: The nine products the candidate pack makes supportable, as the census
-#: measures them: named at engine level against the candidate (seq-22 today,
-#: seq-21 when first measured — the same nine products, unaffected by
-#: seq-22's two cures) and on no walk against the signed pack.
+#: The nine products seq-21 first made supportable, as the census measures
+#: them: named at engine level against the candidate (seq-22 today, seq-21
+#: when first measured — the same nine products, unaffected by seq-22's two
+#: cures). Originally a delta against the SIGNED pack (#6489: signed was
+#: seq-20, so the nine were named by no walk there); seq-22's own activation
+#: (since #6489) put all nine in the signed pack's own engine-named set too,
+#: so the guard below asserts reachability directly rather than as a delta —
+#: the invariant it protects (seq-21's nine products stay reachable and
+#: visible) does not depend on which sequence happens to be signed.
 SEQ21_ADDED_PRODUCTS = ("E23U", "E23V", "E28B", "E28C", "E28D", "E28F", "E33A", "E33B", "E33C")
 
 
 def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
-    engine_named: dict[str, tuple[str, ...]],
     candidate_engine_named: dict[str, tuple[str, ...]],
     candidate_funnel_named: dict[str, tuple[str, ...]],
 ) -> None:
@@ -3352,9 +3488,8 @@ def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
     because the signed products' public reach is already pinned walk by walk
     in EXPECTED_OUTCOME and E31E's minor-privacy hold is by design."""
 
-    added = tuple(sorted(set(candidate_engine_named) - set(engine_named)))
-    assert added == SEQ21_ADDED_PRODUCTS
-    unseen = sorted(set(added) - set(candidate_funnel_named))
+    assert set(SEQ21_ADDED_PRODUCTS) <= set(candidate_engine_named)
+    unseen = sorted(set(SEQ21_ADDED_PRODUCTS) - set(candidate_funnel_named))
     assert not unseen, (
         f"the candidate pack supports {unseen} on some walk, but every such walk "
         "raises a disclosure flag, so no applicant is ever shown them"
@@ -3405,8 +3540,16 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
     on the derived map: every walk that names the product has its qualifying
     fact reset to UNKNOWN(NOT_ASKED) — the wire a tree that stopped asking
     the question would send — and is re-evaluated against the candidate.
-    The candidate guard then names exactly that product; the signed guard
-    stays silent on the same map, which is why the candidate mode exists."""
+    The candidate guard then names exactly that product.
+
+    Originally (#6489, signed = seq-20) the guard also asserted the SIGNED
+    pack's own reachability check stayed silent on the same mutated map,
+    since seq-20 did not yet define these nine products as support-bearing
+    at all. Seq-22's own activation (since #6489) put them in the signed
+    pack's support-bearing set too — with the identical qualifying fact — so
+    that second assertion no longer isolates anything the `pack=candidate_pack`
+    check above does not already prove; dropped rather than kept red for a
+    reason unrelated to this fold."""
 
     assert sorted(SEQ21_QUALIFYING_FACT) == sorted(SEQ21_ADDED_PRODUCTS)
     witnesses = candidate_engine_named.get(product, ())
@@ -3428,7 +3571,6 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
         mutated.setdefault(code, []).extend(labels)
     named = {code: tuple(labels) for code, labels in mutated.items() if labels}
     assert _unreached_support_products(named, pack=candidate_pack) == [product]
-    assert product not in _unreached_support_products(named)
 
 
 def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:

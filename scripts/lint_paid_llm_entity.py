@@ -55,7 +55,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -63,6 +65,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from redact_for_external import redact  # noqa: E402
 from typesafe_client import ask, available, noul, unavailable_reason  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PARDON = REPO_ROOT / "infra" / "paid-llm-entity" / "pardoned.json"
 
 # ──────────────────────────────────────────────────────────── incumbent, verbatim
 
@@ -293,11 +298,154 @@ def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
     return probs, fired
 
 
+# ─────────────────────────────────────────────────────────────────────── pardon
+
+# A pardon narrows ONLY the model's contribution to the composed verdict
+# (see the module docstring's COMPOSITION section). It can never touch
+# `by_grep` — the incumbent predicate is not in question here, and a pardon
+# that reached it would be able to clear a file today's grep alone condemns.
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _normalize_path(p: str) -> str:
+    """Exact-match key: posix separators, no leading `./`. No globs, no
+    substring, no suffix — this is the only normalisation a pardon gets."""
+    return Path(p).as_posix().removeprefix("./")
+
+
+def _valid_entry(entry: object) -> bool:
+    """One entry, all fields required. Any defect pardons nothing — the same
+    fail-closed shape as `typesafe_client.authorized()`'s entry check: an
+    entry that cannot prove its own shape authorizes/pardons exactly as much
+    as no entry at all."""
+    if not isinstance(entry, dict):
+        return False
+    path = entry.get("path")
+    routes = entry.get("routes")
+    reason = entry.get("reason")
+    pr = entry.get("pr")
+    date = entry.get("date")
+    if not isinstance(path, str) or not path:
+        return False
+    if not isinstance(routes, list) or not routes:
+        return False
+    if not all(isinstance(r, str) and r in ROUTE_QUESTIONS for r in routes):
+        return False
+    if not isinstance(reason, str) or not reason:
+        return False
+    # bool is an int subclass in Python — excluded explicitly, same reason
+    # `noul()` excludes it from a probability.
+    if isinstance(pr, bool) or not isinstance(pr, int) or pr <= 0:
+        return False
+    if not isinstance(date, str) or not _DATE_RE.match(date):
+        return False
+    return True
+
+
+def _parse_pardons(raw: str) -> dict[str, list[dict]]:
+    """path -> [valid entry, ...]. Malformed JSON, a non-dict top level, or a
+    non-list `entries` pardons NOTHING — same choice `load_grandfathered()`
+    makes for the same reason: failing open would make corrupting one file
+    the way to silence every violation it names. An individual entry that
+    fails `_valid_entry` is dropped and the rest of the file still applies —
+    one bad entry cannot take a whole registry down."""
+    try:
+        data = json.loads(raw)
+    except (ValueError, RecursionError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    entries = data.get("entries")
+    if not isinstance(entries, list):
+        return {}
+    by_path: dict[str, list[dict]] = {}
+    for entry in entries:
+        if not _valid_entry(entry):
+            continue
+        by_path.setdefault(_normalize_path(entry["path"]), []).append(entry)
+    return by_path
+
+
+def load_pardons() -> dict[str, list[dict]]:
+    """The registry on disk, path -> [valid entry, ...]. Absent, unreadable
+    or malformed pardons NOTHING — deleting this file must not be the way to
+    clear a violation it never actually pardoned."""
+    try:
+        raw = PARDON.read_text(encoding="utf-8")
+    except (OSError, ValueError, RecursionError):
+        return {}
+    return _parse_pardons(raw)
+
+
+def _pardons_for_path(path: str, pardons: dict[str, list[dict]]) -> dict[str, dict]:
+    """route -> the entry that pardons it, for this one path."""
+    result: dict[str, dict] = {}
+    for entry in pardons.get(_normalize_path(path), []):
+        for route in entry["routes"]:
+            result[route] = entry
+    return result
+
+
+def pardon_grew(base_ref: str) -> list[str] | None:
+    """`path:route` pairs pardoned in HEAD but not at `base_ref`, or `None` when the
+    check could not run at all — the caller must then fail closed (return 3)
+    rather than silently skip.
+
+    Mirrors `lint_ban_prose.grandfather_grew`, with one deliberate
+    difference: here the pardon file being ABSENT at a base ref that DOES
+    resolve is not "unmeasurable" (skip) but "the base line was empty" —
+    every path pardoned in HEAD counts as growth, the same as a renamed or
+    added entry would. A first `pardoned.json` is judged against nothing,
+    not exempted from the check that exists to stop it landing in the same
+    diff as the violation it pardons.
+    """
+    ref_ok = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{base_ref}^{{commit}}"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    if ref_ok.returncode != 0:
+        return None
+    rel = PARDON.relative_to(REPO_ROOT).as_posix()
+    out = subprocess.run(
+        ["git", "show", f"{base_ref}:{rel}"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    before = _pairs(_parse_pardons(out.stdout)) if out.returncode == 0 else set()
+    after = _pairs(load_pardons())
+    return sorted(f"{path}:{route}" for path, route in after - before)
+
+
+def _pairs(by_path: dict[str, list[dict]]) -> set[tuple[str, str]]:
+    """The unit of growth is (path, route), never the path alone: a route
+    added to an entry that already existed at the base is exactly as new as
+    a fresh entry, and a path-only comparison would let it land in the same
+    diff as the violation it pardons."""
+    return {
+        (path, route)
+        for path, entries in by_path.items()
+        for entry in entries
+        for route in entry["routes"]
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────── driver
 
 
-def judge_file(path: str, text: str) -> dict:
-    """The composed verdict for one file. OR, never AND."""
+def judge_file(
+    path: str, text: str, pardons: dict[str, list[dict]] | None = None
+) -> dict:
+    """The composed verdict for one file. OR, never AND — a pardon can only
+    remove entries from `fired_routes` before they reach the OR, it cannot
+    touch `by_grep`."""
+    if pardons is None:
+        pardons = load_pardons()
     by_grep = grep_verdict(text, path)
     probs: dict[str, float] = {}
     fired: list[str] = []
@@ -305,15 +453,22 @@ def judge_file(path: str, text: str) -> dict:
     if worth_asking(text) and available():
         asked = True
         probs, fired = jev_verdict(path, text)
+    entry_by_route = _pardons_for_path(path, pardons)
+    pardoned_routes = [r for r in fired if r in entry_by_route]
+    live = [r for r in fired if r not in entry_by_route]
     return {
         "path": path,
         "grep": by_grep,
         "asked": asked,
         "probabilities": probs,
+        # `fired_routes` keeps EVERY route the model fired, pardoned or not
+        # — the model's opinion is reported unchanged.
         "fired_routes": fired,
-        # OR. `fired` is empty when the service said nothing, so no-opinion is
-        # not a vote either way.
-        "violation": by_grep or bool(fired),
+        "pardoned_routes": pardoned_routes,
+        # OR. `live` is `fired` minus what a pardon narrowed away; `by_grep`
+        # is never in that narrowing. `fired` empty (service silent) still
+        # makes `live` empty, so no-opinion is not a vote either way.
+        "violation": by_grep or bool(live),
     }
 
 
@@ -326,15 +481,50 @@ def main(argv: list[str] | None = None) -> int:
         help="report findings but always exit 0 (the observation period)",
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--base-ref",
+        default=os.environ.get("BASE_SHA", ""),
+        help=(
+            "ref to compare the pardon list against (anti-bypass). The CI step "
+            "already exports BASE_SHA; this flag exists for a local/manual run."
+        ),
+    )
     args = parser.parse_args(argv)
 
     targets = [p for p in args.files if in_scope(p) and Path(p).is_file()]
     if not targets:
+        # NO in-scope files returns 0 before the growth check runs at all —
+        # that is how a pardon lands: in its own PR, touching only the
+        # registry, which is not itself in SOURCE_SUFFIXES.
         if args.json:
             print(json.dumps({"results": []}))
         else:
             print("lint_paid_llm_entity: no in-scope files in this diff.")
         return 0
+
+    if args.base_ref:
+        grew = pardon_grew(args.base_ref)
+        if grew is None:
+            print(
+                f"::error::lint_paid_llm_entity: base ref {args.base_ref} does not "
+                "resolve here — the pardon list cannot be verified, refusing to "
+                "proceed."
+            )
+            return 3
+        if grew:
+            print(
+                "::error::lint_paid_llm_entity: the pardon list GREW by "
+                f"{len(grew)} path:route pair(s) — a new pardon cannot land in the "
+                f"same diff as the violation it pardons: {', '.join(grew)}"
+            )
+            return 3
+    elif not args.json:
+        # Same reason the `reason` diagnostic below is guarded: a line on
+        # stdout ahead of the JSON object makes json.loads() raise instead
+        # of parse.
+        print("lint_paid_llm_entity: pardon growth check skipped (no base ref).")
+
+    pardons = load_pardons()
 
     reason = unavailable_reason()
     if reason is not None and not args.json:
@@ -360,7 +550,7 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             print(f"::warning::could not read {path}: {exc}")
             continue
-        results.append(judge_file(path, text))
+        results.append(judge_file(path, text, pardons))
 
     violations = [r for r in results if r["violation"]]
 
@@ -372,12 +562,29 @@ def main(argv: list[str] | None = None) -> int:
             if r["grep"]:
                 how.append("grep")
             for route in r["fired_routes"]:
+                if route in r["pardoned_routes"]:
+                    continue
                 how.append(f"{route}={r['probabilities'][route]:.2f}")
             print(f"::error file={r['path']}::paid-endpoint route ({', '.join(how)})")
+        pardoned_count = 0
+        for r in results:
+            if not r["pardoned_routes"]:
+                continue
+            entry_by_route = _pardons_for_path(r["path"], pardons)
+            for route in r["pardoned_routes"]:
+                pardoned_count += 1
+                entry = entry_by_route[route]
+                p = r["probabilities"].get(route, 0.0)
+                print(
+                    f"::notice file={r['path']}::paid-endpoint route pardoned "
+                    f"({route}={p:.2f}) — {entry['reason']} "
+                    f"(PR #{entry['pr']}, {entry['date']})"
+                )
         judged = sum(1 for r in results if r["asked"])
         print(
             f"lint_paid_llm_entity: {len(results)} file(s) in scope, "
-            f"{judged} judged, {len(violations)} violation(s)."
+            f"{judged} judged, {len(violations)} violation(s), "
+            f"{pardoned_count} pardoned."
         )
 
     if violations and not args.advisory:

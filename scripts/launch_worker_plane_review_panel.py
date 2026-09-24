@@ -14,8 +14,8 @@ asserts that raise); `V3_FINAL_GATE_READY` in
 as that gate, which was false twice over: the gate does not run at all, and
 Fable 5 was taken out of the workflow
 by the 2026-08-20 ruling ("no doctrine, skill, cron, or script may auto-route
-to it").  When the phase is built, the ruled seat is Opus 5 — CLAUDE.md §5,
-"the final on-disk gate is Opus 5", effort xhigh per the 2026-08-21 amendment.
+to it").  When the phase is built, the ruled seat is Opus 5.5 — CLAUDE.md §5,
+"the final on-disk gate is Opus 5.5", effort xhigh per the 2026-08-21 amendment.
 
 The `FABLE_GATE` seat and `FABLE_GATE_ARGV_SUFFIX` below are left exactly as
 they are on purpose.  Re-pointing them changes what the v3 protocol WOULD do,

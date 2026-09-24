@@ -278,7 +278,7 @@ export function AppSidebar({
           className={
             isPortal
               ? "text-[9px] font-[650] uppercase tracking-[.16em] text-[var(--tx-secondary)] px-3 pt-[18px] pb-2"
-              : "text-[9px] font-bold uppercase tracking-[.16em] pt-[9px] px-[11px] pb-1"
+              : "text-[11px] font-bold uppercase tracking-[0.12em] pt-[9px] px-[11px] pb-1"
           }
           style={isPortal ? undefined : { color: "var(--nav-rule)" }}
         >
@@ -409,7 +409,7 @@ export function AppSidebar({
             />
             <span className="flex-1 leading-relaxed text-left">Zantara</span>
             <span
-              className="text-[8px] font-medium"
+              className="text-[11px] font-medium tracking-[0.1em]"
               style={{
                 color: isPortal ? "var(--tx-secondary)" : "var(--nav-fg-muted)",
               }}

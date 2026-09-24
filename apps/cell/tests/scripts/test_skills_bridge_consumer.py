@@ -229,3 +229,38 @@ async def test_503_counter_reset_after_success(isolated_state_dir):
         assert rc == 0
         # File deleted by _reset_503_counter
         assert not sbc.FAIL_COUNT_FILE.exists()
+
+
+# ── gateway verdict: last canonical line, not first tg_notify: match ────────
+
+
+def test_send_telegram_alert_reads_last_verdict_line_not_first(monkeypatch, tmp_path, caplog):
+    """2026-09-24: an undeliverable P0 makes tg_notify.py print a human
+    diagnostic `tg_notify:` line BEFORE its machine verdict. This module's own
+    (now-retired) private `_GATEWAY_VERDICT_RE.search()` took the FIRST
+    `tg_notify:` match — the diagnostic's leading word — instead of the real,
+    accepted p0_unsent_spooled outcome."""
+    monkeypatch.setattr(sbc, "_find_gateway", lambda: tmp_path / "tg_notify.py")
+    two_line_stderr = (
+        "tg_notify: P0 unsendable (no token/relay) — spooled as p0_unsent\n"
+        "tg_notify: p0_unsent_spooled\n"
+    )
+    fake_proc = MagicMock(returncode=0, stderr=two_line_stderr)
+
+    with caplog.at_level("INFO", logger="skills_bridge"):
+        with patch.object(sbc.subprocess, "run", return_value=fake_proc):
+            sbc._send_telegram_alert("test alert", dedup_key="test-key")
+
+    assert any("p0_unsent_spooled" in r.message for r in caplog.records)
+    assert not any("P0 unsendable" in r.message for r in caplog.records)
+
+
+def test_send_telegram_alert_reads_single_canonical_line(monkeypatch, tmp_path, caplog):
+    monkeypatch.setattr(sbc, "_find_gateway", lambda: tmp_path / "tg_notify.py")
+    fake_proc = MagicMock(returncode=0, stderr="tg_notify: sent\n")
+
+    with caplog.at_level("INFO", logger="skills_bridge"):
+        with patch.object(sbc.subprocess, "run", return_value=fake_proc):
+            sbc._send_telegram_alert("test alert", dedup_key="test-key")
+
+    assert any("tg_notify: sent" in r.message for r in caplog.records)

@@ -78,6 +78,7 @@ vi.mock("@/lib/api", () => ({
     crm: {
       updateClient: mockUpdateClient,
       createInteraction: vi.fn(),
+      deleteClient: vi.fn(),
     },
   },
 }));

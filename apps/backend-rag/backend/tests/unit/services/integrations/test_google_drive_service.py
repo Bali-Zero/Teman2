@@ -169,7 +169,11 @@ class TestClose:
 
     async def test_close_no_client(self):
         svc, _, _ = _make_service()
+        assert svc._client is None
         await svc.close()
+        # No client was ever created: close() must be a safe no-op and must
+        # not create/assign one as a side effect.
+        assert svc._client is None
 
 
 # ---------------------------------------------------------------------------

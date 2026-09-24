@@ -14,8 +14,10 @@ blocks is indistinguishable from a client that never worked.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import threading
+import urllib.request
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -642,3 +644,50 @@ def test_a_redirect_never_reaches_the_second_host(listing, monkeypatch):
     assert result is None, "a refused redirect raises HTTPError(302), which ask() degrades to None"
     assert origin_hits == [1], "no retry: 302 is outside RETRY_STATUS"
     assert target_hits == [], "the second hop must never be reached"
+
+
+# ───────────────────────────── the opener is MODULE-LOCAL (PWC-6999, condition 1)
+
+_SCRIPTS = Path(__file__).resolve().parents[1]
+
+
+def _global_opener_after_import(extra: str = "") -> str:
+    """Probe `urllib.request._opener` in a FRESH interpreter.
+
+    That attribute is process-global state: an in-process assertion would report
+    whatever an earlier test in the same session left there, in either direction.
+    `extra` runs after the import so the probe can be made to say yes on purpose.
+    """
+    code = (
+        "import sys, urllib.request\n"
+        f"sys.path.insert(0, {str(_SCRIPTS)!r})\n"
+        "import typesafe_client\n"
+        f"{extra}\n"
+        "print('installed' if urllib.request._opener is not None else 'none')\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    return done.stdout.strip()
+
+
+def test_importing_the_client_installs_no_process_wide_opener():
+    """The no-redirect opener is held module-local, and this is what keeps it so.
+
+    `urllib.request.install_opener(_OPENER)` would make `_NoRedirects` bind every
+    OTHER `urlopen` caller in the interpreter — a regression elsewhere that this
+    client's own refusal would never reveal. Until this test the property lived
+    in three sentences of prose and no assertion: the gate of PR #6999 measured
+    that mutant GREEN at 120 passed.
+    """
+    assert _global_opener_after_import() == "none"
+    assert isinstance(tc._OPENER, urllib.request.OpenerDirector)
+    assert any(isinstance(h, tc._NoRedirects) for h in tc._OPENER.handlers)
+
+
+def test_the_opener_probe_can_say_yes():
+    """Guilt control for the test above: the same probe with the mutant applied
+    AFTER import reports the installed opener — so a green above is a finding
+    about the module, not about a probe that cannot see."""
+    mutant = "urllib.request.install_opener(typesafe_client._OPENER)"
+    assert _global_opener_after_import(mutant) == "installed"

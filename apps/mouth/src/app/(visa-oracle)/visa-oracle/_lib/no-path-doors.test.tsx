@@ -33,10 +33,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_OUT_DIR,
   enumerateScenarios,
   runWalk,
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 import { OutcomeSheet } from "../_components/OutcomeSheet";
 import { buildEngineOutcome, buildNoPathDoors } from "./engine-adapter";
 import { CATEGORY_TO_PURPOSE } from "./fact-mapper";
@@ -142,7 +142,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 17 dead ends and 2 held walks the census reports", () => {
+  it("covers the 14 dead ends and 1 held walk the census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -174,6 +174,25 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // rulepack-prod-020/021/022.source.json reads process.application_channel
     // (grep -c = 0 in all three, verified this PR), and the onshore section
     // of this replay is byte-identical to before. 17 -> 14, 2 -> 1.
+    //
+    // Slice A7-B rework (2026-09-22): rebased onto origin/main after
+    // #7068/#7094/#7091/#7112, then re-measured by re-running
+    // apps/mouth/scripts/visa-oracle/replay-no-path-doors.py. B5's ratified
+    // move — `offshore/family/PARENT/spNat=IT/minor` sends
+    // `person.guardian_consent` as UNKNOWN, so it leaves
+    // HUMAN_REVIEW_REQUIRED for NEEDS_INPUT — is this PR's own change, not
+    // pack drift: NO_SUPPORTED_PATH is untouched (14, B5-1's number holds),
+    // NEEDS_INPUT gains exactly that one walk. 1 -> 2.
+    //
+    // Slice A7-M (2026-09-22): `tree.ts` now asks `guardian_consent` of
+    // every minor. `offshore/family/PARENT/spNat=IT/minor` does not
+    // override the answer, takes the question's FIRST option (`"yes"`),
+    // and the adapter's `true` arm passes the decision through UNTOUCHED —
+    // it leaves NEEDS_INPUT for SUPPORTED_CANDIDATES (not held, re-measured
+    // — see `test_interview_walk_census.py`, never assumed). The new
+    // sibling walk that declares `guardian_consent: "no"` earns the hold
+    // instead (HUMAN_REVIEW_REQUIRED, not counted here). NEEDS_INPUT loses
+    // that one walk: 2 -> 1.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
@@ -307,6 +326,28 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     });
   }
 
+  // Slice A7-B, 2026-09-21 (restored in the 2026-09-22 rework after the
+  // rebase onto B5-1 overwrote it wholesale): `person.guardian_consent` had
+  // no reachable question in tree.ts yet (B3-bis — the mouth sent the key
+  // contract-only, the question shipped in A7-M) — the backend's own
+  // `WALK_DEAD_END_ALLOWLIST` named this exact fact `NO_QUESTION_IN_TREE`
+  // for the same walk. Gate `vo-gate-a7-b`'s H1 finding named this exact
+  // gap (`GATE-A7-B-REPORT-7080.md`); the conductor's 2026-09-22T07:17:47Z
+  // ruling accepted it as an ORDERING window (A7-M merges in the same queue
+  // window, stacked on this head) rather than a code cure. A7-M (this PR)
+  // is that window closing: `guardian_consent` now has a reachable
+  // question (`tree.ts`'s `guardian_consent` node, asked right after
+  // `birth_date` for a minor — see `_lib/flow.ts`'s `birth_date` case), so
+  // the exemption is emptied rather than deleted outright — kept as the
+  // named escape hatch for the next fact whose question ships in a later
+  // PR than its contract (same ordering-window class as this one was). A
+  // missing input with no mapped question legitimately renders without a
+  // `questionId` (`engine-adapter.ts`'s `match ? { questionId } : {}`), so
+  // membership here is what exempts a fact from the "must be reopenable"
+  // assertion below — do not repopulate it without the same gate-named
+  // gap this entry once carried.
+  const FACTS_WITHOUT_A_REACHABLE_QUESTION_YET = new Set<string>([]);
+
   for (const walk of replay.walks.filter(
     (candidate) => candidate.state === "NEEDS_INPUT",
   )) {
@@ -317,10 +358,12 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       }
       expect(outcome.missingInputs.length).toBeGreaterThan(0);
       for (const input of outcome.missingInputs) {
-        expect(
-          input.questionId,
-          `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,
-        ).toBeTruthy();
+        if (!FACTS_WITHOUT_A_REACHABLE_QUESTION_YET.has(input.code)) {
+          expect(
+            input.questionId,
+            `${walk.label} cannot reopen ${input.code}, so the visitor is left with a dead sentence`,
+          ).toBeTruthy();
+        }
         expect(input.message.en.length).toBeGreaterThan(0);
         expect(input.message.id.length).toBeGreaterThan(0);
       }
@@ -362,4 +405,41 @@ describe("no-path doors — what the visitor actually reads", () => {
       });
     }
   }
+});
+
+// Slice A3'-M (M3): a sourceless dead end names no door — the pack never
+// decided the answer at all, so there is no replay-proven alternative to
+// name either. Unlike the replay-driven suite above, this exercises
+// `buildNoPathDoors` directly against a fact shape the guard must catch
+// EVEN when every other condition for a C1 door is met.
+describe("buildNoPathDoors — the sourceless dead end names no door (A3'-M M3)", () => {
+  it("returns no door when DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH is present, even on facts that would otherwise open C1", () => {
+    const doors = buildNoPathDoors(["DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"], {
+      category: "other",
+      stay_days: "30",
+    });
+    expect(doors).toEqual([]);
+  });
+
+  it("innocence: the SAME facts, without the sourceless code, DO open the C1 door", () => {
+    const doors = buildNoPathDoors(
+      ["OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"],
+      {
+        category: "other",
+        stay_days: "30",
+      },
+    );
+    expect(doors.some((door) => door.productCode === "C1")).toBe(true);
+  });
+
+  it("innocence: a sourceless code alongside an ordinary one still names no door", () => {
+    const doors = buildNoPathDoors(
+      [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES",
+        "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+      ],
+      { category: "other", stay_days: "30" },
+    );
+    expect(doors).toEqual([]);
+  });
 });

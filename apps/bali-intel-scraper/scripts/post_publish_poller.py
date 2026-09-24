@@ -680,7 +680,30 @@ def mark_step_done(slug: str, step: str) -> None:
         log(f"  ⚠ Failed to mark step '{step}' done: {e}")
 
 
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+def _load_gateway_verdict_extractor():
+    """Load scripts/tg_gateway_verdict.py by path (same reason as
+    `_codex_seat_env` above: this file runs from a LaunchAgent with no repo on
+    sys.path). Never a private regex `.search()` here — that returns the FIRST
+    `tg_notify:` match, and a P0-unsendable run prints a human diagnostic line
+    before the machine verdict. A missing module degrades to an explicit
+    unknown, never a crashed poller (#2)."""
+    for cand in (SCRIPT_DIR.resolve().parents[2], Path.home() / "nuzantara"):
+        helper = cand / "scripts" / "tg_gateway_verdict.py"
+        if helper.is_file():
+            try:
+                import importlib.util
+
+                spec = importlib.util.spec_from_file_location("_tg_gateway_verdict", helper)
+                if spec is not None and spec.loader is not None:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    return module.extract_gateway_verdict
+            except Exception:  # noqa: BLE001 — degrade, never crash the poller
+                pass
+    return lambda stderr: None
+
+
+extract_gateway_verdict = _load_gateway_verdict_extractor()
 
 
 def _find_gateway():
@@ -733,8 +756,8 @@ def send_telegram_alert(message: str, *, dedup_key: str, tier: str = "digest"):
         return
     # Verdict on stderr; the gateway exits 0 by design, so the exit code would
     # read every refusal as a success (W104).
-    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    log(f"  tg_notify: {m.group(1) if m else 'NESSUN verdetto rc=' + str(proc.returncode)}")
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    log(f"  tg_notify: {verdict if verdict else 'NESSUN verdetto rc=' + str(proc.returncode)}")
 
 
 def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:

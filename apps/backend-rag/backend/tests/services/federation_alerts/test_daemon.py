@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -303,11 +304,24 @@ async def test_dispatch_production_action_failure_advances_failed(
 @pytest.mark.asyncio
 async def test_process_notify_payload_malformed_json(
     daemon_with_audit_mock,
+    tmp_path,
 ) -> None:
     daemon = daemon_with_audit_mock
     repo = MagicMock()
-    # Should NOT raise
-    await daemon._process_notify_payload("not-json", repo)
+    repo.get_by_proposal_id = AsyncMock()
+
+    # Should NOT raise, and must audit-log the malformed payload instead of
+    # silently dropping it.
+    result = await daemon._process_notify_payload("not-json", repo)
+
+    assert result is None
+    repo.get_by_proposal_id.assert_not_called()
+
+    audit_files = list(tmp_path.glob("*.jsonl"))
+    assert len(audit_files) == 1
+    lines = [json.loads(line) for line in audit_files[0].read_text().splitlines()]
+    malformed_events = [line for line in lines if line["event"] == "daemon.payload_malformed"]
+    assert len(malformed_events) == 1
 
 
 @pytest.mark.asyncio
@@ -324,11 +338,24 @@ async def test_process_notify_payload_missing_proposal_id(
 @pytest.mark.asyncio
 async def test_process_notify_payload_unknown_proposal(
     daemon_with_audit_mock,
+    caplog,
 ) -> None:
     daemon = daemon_with_audit_mock
     repo = MagicMock()
     repo.get_by_proposal_id = AsyncMock(return_value=None)
-    await daemon._process_notify_payload(json.dumps({"v": 1, "proposal_id": "ghost"}), repo)
+    repo.acquire_lease = AsyncMock()
+
+    caplog.set_level(logging.WARNING)
+    result = await daemon._process_notify_payload(
+        json.dumps({"v": 1, "proposal_id": "ghost"}), repo
+    )
+
+    # Should NOT raise, must return without dispatching, and must warn about
+    # the unknown proposal instead of silently dropping the notification.
+    assert result is None
+    repo.get_by_proposal_id.assert_called_once_with("ghost")
+    repo.acquire_lease.assert_not_called()
+    assert "federation_alert references unknown proposal ghost" in caplog.text
 
 
 @pytest.mark.asyncio

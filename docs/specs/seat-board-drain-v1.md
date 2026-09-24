@@ -11,7 +11,8 @@ a PR, rather than resolving it silently in code.
 
 Constrains any process that closes rows on `shared/escalations_*.jsonl`. The producers it
 describes are `scripts/tg_notify.py`, `scripts/cron-state.sh`, `scripts/cron-runner.sh` and
-`scripts/cron-wrapper.sh`. The consumer that must satisfy it does not exist yet; the closed
+`scripts/cron-wrapper.sh`, plus — found by §2's census — Pro's HOME-only `~/scripts/cron-agent.sh`
+and `~/scripts/cron-agent-python/agent_job.py`. The consumer that must satisfy it does not exist yet; the closed
 `scripts/board_seat_consumer.py` from PR #7014 is the reference for the parts that were never in
 doubt (§7).
 
@@ -28,12 +29,12 @@ closed by a gate, and each gate found the SAME two defects one level lower than 
 1. **a count measured on one entity and attributed to another**, and
 2. **a cure that cannot fire on the node it is armed on**.
 
-| PR    | what the gate found                                                                                                                                                                                                                               |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #6984 | two red deterministic checks; closed while frozen by its own arming                                                                                                                                                                               |
-| #6988 | the board's `machine` field compared unsplit against a gateway that splits it                                                                                                                                                                     |
-| #6992 | "13 hand-cures in 30d" was the `healer-mini` FAMILY; the `stale-lock` ENTITY had fired once in 74d, and its only emitter runs on Mini, so the cure was unreachable on Pro                                                                         |
-| #7014 | "73 of 123 closable" was measured by importing the CHECKOUT's gateway; 27 of Pro's producers call a stale HOME copy that does not route at all. And the witness the consumer looked for was named by a different rule than the one that writes it |
+| PR    | what the gate found                                                                                                                                                                                                                                                                                                     |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #6984 | two red deterministic checks; closed while frozen by its own arming                                                                                                                                                                                                                                                     |
+| #6988 | the board's `machine` field compared unsplit against a gateway that splits it                                                                                                                                                                                                                                           |
+| #6992 | "13 hand-cures in 30d" was the `healer-mini` FAMILY; the `stale-lock` ENTITY had fired once in 74d, and its only emitter runs on Mini, so the cure was unreachable on Pro                                                                                                                                               |
+| #7014 | "73 of 123 closable" was measured by importing the CHECKOUT's gateway; it counted 27 of Pro's producers calling a stale HOME copy that does not route at all; §2's census puts it at 74 of 85 active crontab entries. And the witness the consumer looked for was named by a different rule than the one that writes it |
 
 The pattern is not carelessness. It is that **nobody wrote down which gateway copy each producer
 reaches, which board each row lands in, or how an alert key becomes a witness filename** — so each
@@ -64,7 +65,7 @@ takes the pre-#6973 path: Telegram, or the spool, never the board.
 **S1.1 — A measurement of "how many alerts would be routed" SHALL be taken per PRODUCER, against
 the gateway copy that producer actually invokes.** Importing `tg_notify` from the checkout and
 classifying an archive with its `_owner_reserved()` measures what WOULD happen if every producer
-called the checkout. On Pro today that is false for 27 of them. This is the defect that closed
+called the checkout. On Pro today that is false for 74 of the 85 active crontab entries (§2). This is the defect that closed
 #7014 and it is the one most likely to recur, because the wrong method is the convenient one.
 
 **S1.2 — `infra/home-fork/declared-pairs.json` SHALL declare `~/scripts/tg_notify.py`** against
@@ -75,26 +76,54 @@ discovering it a fifth time. Declaring it is not fixing it; see S2.3.
 
 ## 2. Which producer reaches which gateway
 
-Each wrapper resolves the gateway from its own location, not from the repo:
+Each resolver finds the gateway from its own location, not from the repo, and falls back to
+`$HOME/nuzantara/scripts/tg_notify.py` **only if the sibling does not exist**:
 
-- `scripts/cron-runner.sh:135-136` — `gateway="$(dirname "$0")/tg_notify.py"`, falling back to
-  `$HOME/nuzantara/scripts/tg_notify.py` **only if that file does not exist**.
-- `scripts/cron-wrapper.sh:124-125` — identical two lines.
-- `scripts/cron-state.sh` — no gateway resolution of its own; it is reached as a symlink into the
-  checkout, so `dirname $0` is already the checkout.
+- `scripts/cron-runner.sh:135`, `scripts/cron-wrapper.sh:124`, `scripts/cron-state.sh:118`, and on Pro
+  the HOME-only `~/scripts/cron-agent.sh:121` and `~/scripts/fly-qdrant-backup.sh:70` —
+  `gateway="$(dirname "$0")/tg_notify.py"` plus a `[ -f ... ] ||` fallback line.
+- `scripts/cron-agent-python/agent_job.py:147` (`_tg_gateway()`) — `Path(__file__).resolve().parent.parent`
+  first. The 16 `run.sh <job>` entries reach it through `<job>.py` importing `agent_job`.
+- `scripts/job_health.py` and `scripts/drive_token_watchdog.py` — `PROJECT_ROOT / "scripts"` first.
 
 The fallback is the trap. It fires on ABSENCE, not on staleness — so a stale sibling beside the
-caller silently wins over a current canon one directory away.
+caller silently wins over a current canon one directory away. And `$0` is the path the file was
+INVOKED by: `~/scripts/cron-state.sh` is a FILE symlink into the checkout, so `dirname "$0"` stays
+`~/scripts` and the fork wins. An earlier revision of this section said the opposite; two gates on
+#7039 and #7047 found it, and found that a count by wrapper NAME kept missing whole populations.
 
-Measured — `crontab -l | grep -oE '(cron-runner|cron-state|cron-wrapper)\.sh' | sort | uniq -c`,
-plus `ls -la` on each caller path:
+**S2.0 — Every count in this file of which producers reach which gateway SHALL come from
+`scripts/tg_gateway_census.py` run on the machine it names, never from a count by wrapper name.**
+The census reads `crontab -l` and follows each active entry into what it runs (its docstring lists
+how), running each producer's OWN resolution lines in isolation — never the job, and always inside a
+macOS `sandbox-exec` jail that denies writes, network and exec. Anything it cannot
+run is UNRESOLVED and makes it exit 3. A clean exit means every gateway reference in every file it
+followed was run — not more: a resolver counts if the entry loads it, whether or not a given run
+calls it, and env set by files a job sources at run time is not modelled (on Pro, `grep -c
+TG_NOTIFY_BIN` is 0 in the crontab, `~/.zshrc.secrets` and `~/.nuzantara-secrets.env`, 2026-09-21).
 
-| caller            | crontab entries | physical location                                                                                            | gateway it resolves to                                        | routes?        |
-| ----------------- | --------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | -------------- |
-| `cron-state.sh`   | 28              | `~/scripts/cron-state.sh` → symlink → checkout                                                               | checkout copy                                                 | **yes**        |
-| `cron-wrapper.sh` | 7               | `~/Desktop/nuzantara/scripts/` (symlink → checkout)                                                          | checkout copy                                                 | **yes**        |
-| `cron-wrapper.sh` | 1 (`kb-ingest`) | `~/Desktop/nuzantara-deploy/scripts/` — a symlink to a directory renamed `nuzantara-deploy.retired-20260910` | none: the wrapper itself does not resolve, so it never starts | **never runs** |
-| `cron-runner.sh`  | 27              | `~/scripts/cron-runner.sh`, a REAL file                                                                      | `~/scripts/tg_notify.py`, the 18-Aug fork                     | **no**         |
+Measured on Pro (`Nuzantara`) at 2026-09-21T16:58Z over all 85 active entries of `crontab -l` —
+`ssh pro 'python3 -' < scripts/tg_gateway_census.py`, exit 0, `unresolved=0`:
+
+| resolving code, as invoked                                         | entries | gateway it resolves to                                                                                              | routes?        |
+| ------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `~/scripts/cron-state.sh` (FILE symlink → checkout)                | 28      | `~/scripts/tg_notify.py`, the 18-Aug fork                                                                           | **no**         |
+| `~/scripts/cron-runner.sh` (real file)                             | 24      | the fork                                                                                                            | **no**         |
+| `~/scripts/cron-agent-python/agent_job.py` (via `run.sh`)          | 16      | the fork                                                                                                            | **no**         |
+| `~/scripts/cron-agent.sh` (real file)                              | 6       | the fork                                                                                                            | **no**         |
+| `~/scripts/fly-qdrant-backup.sh` (child of `fly-backup.sh`)        | 1       | the fork — inside one of the 28 `cron-state.sh` entries                                                             | **no**         |
+| `~/Desktop/nuzantara/scripts/cron-wrapper.sh` (DIR symlink)        | 7       | `~/nuzantara/scripts/tg_notify.py`, the checkout                                                                    | **yes**        |
+| `~/Desktop/nuzantara/scripts/job_health.py`                        | 1       | the checkout — its entry's `cron-state.sh` wrapper reaches the fork too                                             | **yes**        |
+| `~/Desktop/nuzantara/scripts/drive_token_watchdog.py`              | 1       | the checkout — inside one of the 7 `cron-wrapper.sh` entries                                                        | **yes**        |
+| `~/nuzantara/scripts/sentinel_lib/alerter.py` (package)            | 2       | the checkout — imported by the two WA sentinels, both inside `cron-runner.sh` entries, which reach the fork too     | **yes**        |
+| `~/nuzantara/scripts/wa_{session_liveness,codex_seat_sentinel}.py` | 1 + 1   | the checkout — each one's `except` fallback when `alerter` fails to import, same two entries                        | **yes**        |
+| `~/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh`               | 1       | none: a symlink to a directory renamed `nuzantara-deploy.retired-20260910`, so the entry never starts (`kb-ingest`) | **never runs** |
+
+Per entry, the 85 split without overlap: **74 reach the fork**, 7 reach only the checkout, 3 reach no
+`tg_notify.py` at all (`fly-cost-alert.sh`, `ollama-warm-pin.sh`, `run_peraturan_ingestion.sh`;
+two of them name Telegram in their own text, which this census does not measure), and 1 never runs.
+Ten entries reach the checkout; three of them (`job_health.py`'s and the two WA sentinels') reach the
+fork as well, through the wrapper around them.
 
 **S2.1 — The drain design SHALL state, for each producer family it claims to cure, which gateway
 copy that family reaches.** A cure whose producers all reach a non-routing gateway is a cure with
@@ -104,16 +133,16 @@ no inflow, however sound its logic.
 not appear on the board and never will until S2.3 is done.
 
 **S2.3 — Realigning `~/scripts/tg_notify.py` is a PREREQUISITE, not a side effect, and it is its
-own PR.** It changes the behaviour of 27 cron jobs at once: their p0 stop paging and start landing
+own PR.** It changes the behaviour of 74 crontab entries at once: their p0 stop paging and start landing
 on a board nobody drains yet. Sequencing therefore matters and is fixed here:
 
 1. the consumer lands first, draining what already routes (the 7 running `cron-wrapper.sh` entries);
 2. `~/scripts/tg_notify.py` is realigned second, under its declared HOME pair, with the
    before/after routed-volume measured on the board rather than on an archive;
-3. `cron-runner.sh`'s resolution is changed third, to prefer the checkout and treat a sibling as
-   the fallback — the opposite of today — so the next stale sibling cannot win by existing.
+3. every sibling-first resolver in §2's table is changed third, to prefer the checkout and treat a
+   sibling as the fallback — the opposite of today — so the next stale sibling cannot win by existing.
 
-Doing 2 before 1 recreates #6973's own failure at 27× the volume: noise moved from Telegram to a
+Doing 2 before 1 recreates #6973's own failure at the volume of 74 entries: noise moved from Telegram to a
 board nobody reads down.
 
 ---
@@ -171,7 +200,7 @@ same directory — and the `job` field inside is underscored too, so a `state_jo
 would call it a stranger's witness even after finding it.
 
 And the sting: the 7 running `cron-wrapper.sh` jobs were exactly the ones whose witness could not
-be found, while the 27 `cron-runner.sh` jobs whose naming is consistent never reach the board.
+be found, while the 74 entries that resolve the fork (§2) never reach the board, whatever their naming.
 
 **S4.1 — For a `cron-fail:` row from any of the three cron wrappers, the witness SHALL be
 `<state dir>/<name>.last.json` where `<name>` is the key after the first `:`, verbatim.** This is
@@ -286,7 +315,7 @@ range, not only the type.**
 
 | #   | the claim                                                                                     | how it is falsified                                                                                                               |
 | --- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | Every producer family the design counts reaches a ROUTING gateway                             | for each family, resolve the wrapper's gateway path as the wrapper does and `grep -c gateway_routed` it; any 0 falsifies          |
+| A1  | Every producer family the design counts reaches a ROUTING gateway                             | run `scripts/tg_gateway_census.py` on Pro (S2.0); any entry the design counts showing `NONROUTING`, or exit 3, falsifies          |
 | A2  | Every row the consumer closes had its witness found by S4.1's identity, not by a second guess | the consumer logs the witness path it opened; any path other than `<state dir>/<key after ':'>.last.json` falsifies               |
 | A3  | A job whose raw name had a hyphen is curable                                                  | run the REAL `cron-wrapper.sh` with a failing job `a-b`, then a succeeding one; the board row it produced not closing falsifies   |
 | A4  | A stranger's witness is still refused                                                         | seed `cron-fail:a_b` with `a_b.last.json` whose `job` is `c_d`; closing falsifies                                                 |
@@ -307,9 +336,9 @@ range, not only the type.**
 3. **Consumer PR** — one cure, `cron-fail`, with §5's answer chosen and tested and the ts guard of
    S7.1. Its headline number is measured per S6.2 and S6.3, and it will be SMALL — that is the honest
    state of the surface, not a weakness of the PR.
-4. **`~/scripts/tg_notify.py` realignment** (S2.3) — declared pair first, then the 27 jobs begin
+4. **`~/scripts/tg_notify.py` realignment** (S2.3) — declared pair first, then the 74 entries begin
    routing, then the volume is re-measured on the board.
-5. **`cron-runner.sh` resolution inverted** (S2.3 step 3) — checkout preferred, sibling as fallback.
+5. **Every sibling-first resolver inverted** (S2.3 step 3) — checkout preferred, sibling as fallback.
 
 Steps 2, 4 and 5 each change live fleet behaviour and each get their own PR and their own
 before/after measurement. None of them belongs in step 3.

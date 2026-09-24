@@ -93,8 +93,15 @@ class TestPracticeStatusListenerLifecycle:
 class TestHandleNotification:
     @pytest.mark.asyncio
     async def test_invalid_json(self, listener):
-        # Should not raise, just log warning
-        await listener._handle_notification("not valid json{{{")
+        with patch(
+            "backend.services.crm.practice_status_listener.logger"
+        ) as mock_logger:
+            await listener._handle_notification("not valid json{{{")
+
+        mock_logger.warning.assert_called_once_with(
+            "practice_changed: invalid JSON payload: 'not valid json{{{'"
+        )
+        mock_logger.info.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_payment_transition_to_paid(self, listener):
@@ -195,7 +202,17 @@ class TestOnPaymentReceived:
     @pytest.mark.asyncio
     async def test_exception_caught(self, listener):
         listener._send_payment_emails = AsyncMock(side_effect=Exception("fail"))
-        await listener._on_payment_received(42, {})  # should not raise
+        with patch(
+            "backend.services.crm.practice_status_listener.logger"
+        ) as mock_logger:
+            await listener._on_payment_received(42, {})
+
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args
+        assert call_args.args[0] == "M4 payment email unexpected error for practice %s: %s"
+        assert call_args.args[1] == 42
+        assert str(call_args.args[2]) == "fail"
+        assert call_args.kwargs == {"exc_info": True}
 
 
 # ── _on_status_changed ──────────────────────────────────────────────────────
@@ -219,7 +236,20 @@ class TestOnStatusChanged:
         listener._process_svc.trigger_on_process_start = AsyncMock(
             side_effect=Exception("fail"),
         )
-        await listener._on_status_changed(42, "on_process", {})  # should not raise
+        with patch(
+            "backend.services.crm.practice_status_listener.logger"
+        ) as mock_logger:
+            await listener._on_status_changed(42, "on_process", {})
+
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args
+        assert (
+            call_args.args[0]
+            == "M5: status milestone handler unexpected error for practice %s new_status=%s: %s"
+        )
+        assert call_args.args[1] == 42
+        assert call_args.args[2] == "on_process"
+        assert str(call_args.args[3]) == "fail"
 
 
 # ── _send_payment_emails ────────────────────────────────────────────────────
@@ -229,8 +259,14 @@ class TestSendPaymentEmails:
     @pytest.mark.asyncio
     async def test_practice_not_found(self, listener):
         listener._process_svc._fetch_practice_data = AsyncMock(return_value=None)
-        await listener._send_payment_emails(42, triggered_by="test")
-        # Should return early, no exception
+        listener._process_svc._fetch_client_data = AsyncMock()
+        with patch(
+            "backend.services.crm.practice_status_listener.logger"
+        ) as mock_logger:
+            await listener._send_payment_emails(42, triggered_by="test")
+
+        listener._process_svc._fetch_client_data.assert_not_called()
+        mock_logger.error.assert_called_once_with("M4: practice %s not found", 42)
 
     @pytest.mark.asyncio
     async def test_client_not_found(self, listener):
@@ -238,7 +274,14 @@ class TestSendPaymentEmails:
             return_value={"client_id": 1, "practice_type_name": "KITAS"},
         )
         listener._process_svc._fetch_client_data = AsyncMock(return_value=None)
-        await listener._send_payment_emails(42, triggered_by="test")
+        listener._send_via_internal_api = AsyncMock()
+        with patch(
+            "backend.services.crm.practice_status_listener.logger"
+        ) as mock_logger:
+            await listener._send_payment_emails(42, triggered_by="test")
+
+        listener._send_via_internal_api.assert_not_called()
+        mock_logger.error.assert_called_once_with("M4: client 1 not found")
 
     @pytest.mark.asyncio
     async def test_sends_client_and_team_emails(self, listener):

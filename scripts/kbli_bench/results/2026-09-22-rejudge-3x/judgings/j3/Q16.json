@@ -1,0 +1,20 @@
+{
+  "qid": "Q16",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the definitional gap, avoids unsupported doctrine, and points to the available KBLI records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the gap; cited Bali verdicts follow from each packaged record’s PMA and Bali-block fields."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the gap and points to the available KBLI codes without asserting the missing distinction."
+    }
+  ]
+}

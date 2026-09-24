@@ -12,6 +12,7 @@ Coverage:
 from __future__ import annotations
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -104,30 +105,45 @@ class TestAggregate:
 
 
 class TestRecordViolations:
-    def test_empty_list_is_no_op(self):
-        # Must not raise, must not error even with no loop
+    def test_empty_list_is_no_op(self, monkeypatch):
+        # Must not raise, must not error even with no loop, and must return
+        # before ever consulting the event loop (no task is scheduled).
+        get_loop_spy = MagicMock(side_effect=RuntimeError("should not be called"))
+        monkeypatch.setattr(violation_store.asyncio, "get_running_loop", get_loop_spy)
         record_violations([])
+        get_loop_spy.assert_not_called()
 
-    def test_outside_event_loop_is_noop(self):
-        # Called synchronously → no running loop → silently skip
+    def test_outside_event_loop_is_noop(self, monkeypatch):
+        # Called synchronously → no running loop → silently skip, meaning
+        # _write() is never reached/invoked.
+        write_spy = MagicMock()
+        monkeypatch.setattr(violation_store, "_write", write_spy)
         record_violations(
             [
                 PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
             ]
         )
+        write_spy.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_no_app_registered_is_noop(self):
+    async def test_no_app_registered_is_noop(self, caplog):
         # Reset module state
         violation_store._app = None
-        # Must not raise
-        record_violations(
-            [
-                PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
-            ]
+        # Must not raise, and must take the clean early-return path in
+        # _write() (no DB attempt, no "write_failed" swallow-warning) rather
+        # than falling through to `pool.acquire()` on a None pool.
+        with caplog.at_level(logging.WARNING, logger="backend.services.pii.violation_store"):
+            record_violations(
+                [
+                    PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
+                ]
+            )
+            # Yield so any spawned task (if any) runs
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+        assert not any(
+            r.getMessage() == "pii_violation_store.write_failed" for r in caplog.records
         )
-        # Yield so any spawned task (if any) runs
-        await asyncio.sleep(0)
 
     @pytest.mark.asyncio
     async def test_writes_via_pool_when_app_has_pool(self):
@@ -165,7 +181,7 @@ class TestRecordViolations:
             violation_store._app = None
 
     @pytest.mark.asyncio
-    async def test_db_failure_is_swallowed(self):
+    async def test_db_failure_is_swallowed(self, caplog):
         conn = MagicMock()
         conn.executemany = AsyncMock(side_effect=RuntimeError("db offline"))
 
@@ -182,9 +198,19 @@ class TestRecordViolations:
         app.state.db_pool = pool
         set_app(app)
         try:
-            record_violations([PIIViolation(None, "/x", "ID_KTP", "high", None, 1)])
-            # If the error leaked, this would raise here.
-            await asyncio.sleep(0)
-            await asyncio.sleep(0)
+            with caplog.at_level(
+                logging.WARNING, logger="backend.services.pii.violation_store"
+            ):
+                record_violations([PIIViolation(None, "/x", "ID_KTP", "high", None, 1)])
+                # If the error leaked, this would raise here.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+            # The DB call was actually attempted (and actually failed) ...
+            conn.executemany.assert_awaited_once()
+            # ... and the failure was caught + logged, not silently dropped
+            # nor re-raised into the event loop's exception handler.
+            assert any(
+                r.getMessage() == "pii_violation_store.write_failed" for r in caplog.records
+            )
         finally:
             violation_store._app = None

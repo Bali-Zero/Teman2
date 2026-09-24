@@ -73,6 +73,18 @@ _JOB_URL_RE = re.compile(r"/actions/runs/(\d+)/job/(\d+)")
 
 GhFn = Callable[[str], object]
 
+# family #8 (network flap): `gh api`'s underlying Go HTTP client occasionally
+# hits a real but TRANSIENT TLS/connect timeout on this host (measured
+# 2026-09-22: bare `gh api` latency to api.github.com ranged 1.6s-10s across
+# consecutive calls, no env/PATH difference from a call that then succeeded
+# immediately after) -- retried once here rather than surfacing a false BLIND.
+_TRANSIENT_ERR_RE = re.compile(
+    r"TLS handshake timeout|i/o timeout|connection reset|EOF|dial tcp|"
+    r"Temporary failure in name resolution",
+    re.IGNORECASE,
+)
+_RETRY_BACKOFF_S = (1.0, 2.0)
+
 
 # --------------------------------------------------------------------------
 # gh transport (swapped for a dict-backed fake in tests)
@@ -83,13 +95,25 @@ class GhError(RuntimeError):
 
 def gh_api(path: str) -> object:
     """`gh api <path>`; raises GhError on non-zero exit or non-JSON output.
-    Job logs (`.../logs`) come back as text and are returned as str."""
+    Job logs (`.../logs`) come back as text and are returned as str.
+    Retries a bounded number of times on a TRANSIENT network error only
+    (family #8) -- a real API error (404/403/etc) never matches and fails fast."""
     cmd = ["gh", "api", path]
     if path.endswith("/logs"):  # raw job log: gh refuses ANSI unless told; we strip it ourselves
         cmd.append("--allow-escape-sequences")
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise GhError((proc.stderr or proc.stdout).strip()[:300])
+    attempts = len(_RETRY_BACKOFF_S) + 1
+    last_err = ""
+    for attempt in range(attempts):
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode == 0:
+            break
+        last_err = (proc.stderr or proc.stdout).strip()[:300]
+        if attempt < attempts - 1 and _TRANSIENT_ERR_RE.search(last_err):
+            time.sleep(_RETRY_BACKOFF_S[attempt])
+            continue
+        raise GhError(last_err)
+    else:
+        raise GhError(last_err)  # unreachable: the loop above always breaks or raises
     if path.endswith("/logs"):
         return proc.stdout
     try:

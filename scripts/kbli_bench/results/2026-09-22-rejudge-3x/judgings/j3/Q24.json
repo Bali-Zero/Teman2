@@ -1,0 +1,20 @@
+{
+  "qid": "Q24",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the required gap and asserts neither figure; the duplicated code is immaterial."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the required gap and makes no unsupported claim about either figure."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declines to choose either figure because the supplied records lack the relevant fact."
+    }
+  ]
+}

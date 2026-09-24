@@ -1,0 +1,21 @@
+mandate: >-
+  One source for the Tier-1 intel-lake routing rules: the Fly router and the
+  Pro fallback cron both classify through intel_lake_rules.classify, and the
+  drifted Pro JSON copy is retired. Arms ledger row
+  intel-lake-pro-fallback-router-rules-drift.
+gear: 2
+colour: BLUE
+dux: opus-5-xhigh
+implementer: sonnet-5
+organ: >-
+  apps/backend-rag/backend/services/intel/intel_lake_router.py (Fly, in-process)
+  and scripts/intel-lake-router-a2/ (Pro launchd com.balizero.intel-lake-router.5min)
+authority: >-
+  Zero 2026-09-22 ("allinea"). No production write in this PR; the Pro
+  deploy copies three files and is proved by cmp against origin/main.
+acceptance:
+  - old and new classifier agree on every intel_items row in PROD (1953/1953)
+  - the standalone cron classifies through the same function, content gate included
+  - removing the subdomain prefix, or dropping title/url in route_batch, reds a test
+appetite:
+  wall_clock_hours: 2

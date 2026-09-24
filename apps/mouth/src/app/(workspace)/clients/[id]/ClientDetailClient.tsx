@@ -55,7 +55,11 @@ import {
   EYEBROW,
   FIELD,
 } from "@/components/workspace/r19";
-import { clientStatusTone, viewerIsNext } from "../client-row-model";
+import {
+  clientStatusTone,
+  viewerCanDeleteClient,
+  viewerIsNext,
+} from "../client-row-model";
 import styles from "./client-detail-desk.module.css";
 
 // Local component imports
@@ -170,11 +174,15 @@ export function ClientDetailClient({
   // /clients desk. `null`/no-email means "viewer unknown": no copper, no
   // subtitle, per concept.md §6.
   const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
+  // CRM-18: the viewer's role, read from the same profile, for the
+  // delete-permission predicate only. Unknown = no admin path.
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
   useEffect(() => {
     let mounted = true;
     const viewerProfile = api.getUserProfile?.();
     if (viewerProfile?.email) {
       setCurrentUserEmail(viewerProfile.email);
+      setCurrentUserRole(viewerProfile.role ?? "");
       return;
     }
     // Cache miss — fall back to one network read. Silent failure means the
@@ -184,7 +192,10 @@ export function ClientDetailClient({
     api
       .getProfile()
       .then((user) => {
-        if (mounted && user?.email) setCurrentUserEmail(user.email);
+        if (mounted && user?.email) {
+          setCurrentUserEmail(user.email);
+          setCurrentUserRole(user.role ?? "");
+        }
       })
       .catch(() => {
         // stays unknown — see docstring above
@@ -193,6 +204,7 @@ export function ClientDetailClient({
       mounted = false;
     };
   }, []);
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showLogPanel, setShowLogPanel] = useState(false);
@@ -477,6 +489,47 @@ export function ClientDetailClient({
   const needsViewerAction = Boolean(
     currentUserEmail && viewerIsNext(client, currentUserEmail),
   );
+
+  // CRM-18. The backend is the real fence — `verify_client_access(..,
+  // write=True)` (crm_utils.py:169-232) 403s a viewer who is neither admin
+  // nor owner, whatever this desk renders. This predicate only decides
+  // whether to OFFER the action; it is narrower than the fence on purpose
+  // (see viewerCanDeleteClient) and, while the viewer is unknown, false.
+  const canDeleteClient = viewerCanDeleteClient(
+    client,
+    currentUserEmail,
+    currentUserRole,
+  );
+
+  // Soft delete: status -> inactive + deleted_at set, so list queries drop
+  // the record (crm_clients.py:1838-1847). Nothing is destroyed, which is why
+  // one toast confirmation is the whole ceremony — the same one a process
+  // deletion gets (ProcessTab.tsx:315).
+  const confirmDeleteClient = () => {
+    if (isDeletingClient) return;
+    toast(
+      `Delete client "${client.full_name}"? This marks the record inactive; it is not erased.`,
+      {
+        action: {
+          label: "Delete",
+          onClick: async () => {
+            setIsDeletingClient(true);
+            try {
+              await api.crm.deleteClient(clientId, currentUserEmail);
+              toast.success("Client marked inactive");
+              router.push("/clients");
+            } catch (err) {
+              toast.error("Error", {
+                description: (err as Error).message,
+              });
+              setIsDeletingClient(false);
+            }
+          },
+        },
+        cancel: { label: "Cancel", onClick: () => toast.dismiss() },
+      },
+    );
+  };
   const clientMastheadSubtitle =
     activePractices.length > 0
       ? `${activePractices.length} ${activePractices.length === 1 ? "process is" : "processes are"} moving${
@@ -1079,6 +1132,9 @@ export function ClientDetailClient({
                 formatDate={formatDate}
                 formatCurrency={formatCurrency}
                 onEditClick={() => setActiveModal("edit_client")}
+                onDeleteClick={confirmDeleteClient}
+                canDeleteClient={canDeleteClient}
+                isDeletingClient={isDeletingClient}
                 onRefresh={invalidateClient}
                 clientId={clientId}
               />

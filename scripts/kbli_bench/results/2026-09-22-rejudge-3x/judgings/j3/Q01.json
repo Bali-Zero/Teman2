@@ -1,0 +1,20 @@
+{
+  "qid": "Q01",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menolak menyatakan modal disetor dan dasar hukum; fakta KBLI, keterbukaan Bali, serta batas asing 100% didukung paket."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menolak menyatakan modal disetor; OPEN_IN_BALI, batas asing 100%, dan risiko Menengah Tinggi didukung record serta derivasi yang diizinkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menolak nominal dan dasar hukum; judul, cakupan restoran, keterbukaan Bali, serta batas asing 100% didukung paket."
+    }
+  ]
+}

@@ -68,6 +68,46 @@ export function viewerIsNext(
   return MOVING_CLIENT_STATUSES.has(client.status);
 }
 
+/**
+ * May this viewer soft-delete this client?
+ *
+ * Mirrors the backend rule `verify_client_access(..., write=True)`
+ * (apps/backend-rag/backend/app/utils/crm_utils.py:169-232): admins always
+ * pass; a non-admin passes when their email matches `assigned_to` OR
+ * `created_by`.
+ *
+ * "Admin" here is NOT `api.isAdmin()`. That method (lib/api/client.ts:301-308)
+ * accepts roles admin|founder|owner|board; the backend's `is_crm_admin`
+ * (crm_utils.py:108-118) accepts admin|board member|ceo|founder plus email
+ * allowlists the desk cannot see. Only the INTERSECTION of the two role sets
+ * is offered the admin path, so an owner/board viewer the backend would 403
+ * sees no button. The profile payload
+ * (crm_enhanced.py:1040-1053) does NOT carry `created_by`, so this predicate
+ * can only see the `assigned_to` half and is deliberately NARROWER than the
+ * backend: a non-admin creator who is not also assigned sees no button, and
+ * the button that IS shown never leads to a 403. Widening it needs
+ * `created_by` on the profile response first — a backend change, out of scope
+ * for CRM-18.
+ *
+ * Distinct from `viewerIsNext`, which is a status-gated ATTENTION predicate:
+ * permission does not lapse when a record stops moving.
+ */
+const DELETE_ADMIN_ROLES: ReadonlySet<string> = new Set(["admin", "founder"]);
+
+export function viewerCanDeleteClient(
+  client: Pick<Client, "assigned_to">,
+  viewerEmail: string,
+  viewerRole: string | undefined,
+): boolean {
+  if (DELETE_ADMIN_ROLES.has((viewerRole ?? "").trim().toLowerCase())) {
+    return true;
+  }
+  const viewer = viewerEmail.trim().toLowerCase();
+  const assigned = (client.assigned_to ?? "").trim().toLowerCase();
+  if (!viewer || !assigned) return false;
+  return assigned === viewer;
+}
+
 /** Whole days until the passport expires; negative when expired; null when unset. */
 export function passportDaysLeft(
   expiry: string | undefined,

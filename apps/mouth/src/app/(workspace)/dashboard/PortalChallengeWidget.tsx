@@ -104,7 +104,7 @@ function CountdownBlock({ value, label }: { value: number; label: string }) {
       >
         {String(value).padStart(2, "0")}
       </span>
-      <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--bz-copper)]">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-kita-ink-panel-copper)]">
         {label}
       </span>
     </div>
@@ -120,7 +120,7 @@ function CountdownBlocks({
 }) {
   if (data.status === "closed") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-copper)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-copper)]">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--bz-kita-ink-panel-copper)]">
         Selesai
       </span>
     );
@@ -139,7 +139,7 @@ function CountdownBlocks({
       >
         <Clock
           size={12}
-          className="text-[var(--bz-copper)]"
+          className="text-[var(--bz-kita-ink-panel-copper)]"
           aria-hidden="true"
         />
         {prefix}
@@ -191,7 +191,9 @@ export function PodiumCard({
       data-testid={`podium-tier-${tier}`}
       className={cn(
         CARD,
-        "flex flex-col gap-2 p-4",
+        // @container + min-w-0: the prize numeral sizes to THIS card, not
+        // the viewport — a vw clamp rendered 169px inside a 124px card.
+        "@container min-w-0 flex flex-col gap-2 p-4",
         podiumOrderClass(tier),
         elevated && "md:-translate-y-2 md:shadow-md md:pb-5",
       )}
@@ -206,10 +208,10 @@ export function PodiumCard({
       </div>
       <p
         className={cn(
-          "font-black text-[var(--tx-pure)]",
+          "font-black tabular-nums whitespace-nowrap text-[var(--tx-pure)]",
           elevated
-            ? "text-[clamp(26px,3.6vw,38px)]"
-            : "text-[clamp(20px,2.6vw,26px)]",
+            ? "text-[clamp(20px,9cqi,34px)]"
+            : "text-[clamp(18px,8cqi,26px)]",
         )}
         style={SERIF}
       >
@@ -294,7 +296,7 @@ function PositionScale({
               aria-hidden="true"
               className="h-2 w-px bg-[var(--bz-base)]/60"
             />
-            <span className="mt-1 whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.08em] text-[var(--tx-secondary)]">
+            <span className="mt-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--tx-secondary)]">
               {TIER_LABEL[t.tier] ?? `T${t.tier}`}
             </span>
           </div>
@@ -616,7 +618,7 @@ function RulesDrawer({ data }: { data: PortalChallengeResponse }) {
         aria-haspopup="dialog"
         className={cn(
           FOCUS,
-          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-copper)]/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-copper)] hover:border-[var(--bz-copper)] transition-colors",
+          "inline-flex items-center gap-1.5 rounded-full border border-[var(--bz-kita-ink-panel-copper)]/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--bz-kita-ink-panel-copper)] hover:border-[var(--bz-kita-ink-panel-copper)] transition-colors",
         )}
       >
         <Info size={12} aria-hidden="true" />
@@ -755,7 +757,7 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
                 aria-hidden="true"
                 className="mb-3 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
               />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--bz-copper)]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--bz-kita-ink-panel-copper)]">
                 14–29 September 2026 · WITA
               </p>
               <h2

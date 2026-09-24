@@ -55,8 +55,7 @@
  */
 
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import { format } from "prettier";
 
@@ -74,14 +73,6 @@ import {
   mapOracleFactsToApplicantFacts,
   type DisclosedReviewFlagWire,
 } from "../../src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-/** Where the census test reads the corpus from. */
-export const DEFAULT_OUT_DIR = resolve(
-  HERE,
-  "../../../backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks",
-);
 
 /**
  * Frozen interview clock. NOT the wall clock: `computeNextNode` compares
@@ -791,12 +782,15 @@ export function enumerateScenarios(): Scenario[] {
   // `el.e31e-child-itas-support`: a minor joining a parent who holds a
   // stay permit. Every other family/diaspora walk uses the corpus's
   // 25-year-old identity, so the `derived.age_years < 18` gate could never
-  // clear. This walk is the ONE in the corpus whose PUBLIC outcome is a
-  // hold: `evaluate_path._apply_minor_privacy_hold` empties the candidates
-  // of any known minor unconditionally (Privacy Policy V1 — a product
-  // control, not a claim of ineligibility). The ENGINE names E31E, which
-  // is what the reachability guard reads; see the census test's
-  // HUMAN_REVIEW_REQUIRED pin for the boundary.
+  // clear. This walk does not override `guardian_consent`, so `answerFor`
+  // gives it the new question's FIRST option (`"yes"`) — under A7-B/A7-M's
+  // truth table that leaves `_apply_minor_privacy_hold`'s hold arm UNTOUCHED
+  // (Slice A7-B narrowed the unconditional Privacy Policy V1 hold to fire
+  // only on a declared or unknown guardian; `true` passes through). MEASURED
+  // engine outcome: SUPPORTED_CANDIDATES `["C1", "E31E"]` (never assume —
+  // see the census test's pin). The sibling walk below, which declares
+  // `guardian_consent: "no"`, is now the ONE in the corpus whose PUBLIC
+  // outcome is the guardian-privacy hold.
   scenarios.push({
     label: "offshore/family/PARENT/spNat=IT/minor",
     overrides: {
@@ -805,6 +799,23 @@ export function enumerateScenarios(): Scenario[] {
       family_relation: "PARENT",
       family_sponsor_nationalities: "IT",
       birth_date: MINOR_APPLICANT_BIRTH_DATE,
+    },
+  });
+  // Slice A7-M: the same walk with a declared `guardian_consent: "no"` —
+  // same facts otherwise, so the ONLY thing that moves is the fact this PR
+  // adds. `_apply_minor_privacy_hold`'s narrowed hold arm fires:
+  // HUMAN_REVIEW_REQUIRED on `MINOR_GUARDIAN_PRIVACY_REVIEW` (measured;
+  // verified unchanged whether or not `holds_stay_permit` differs from the
+  // sibling walk above, since the adapter's guilt/innocence never reads it).
+  scenarios.push({
+    label: "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "PARENT",
+      family_sponsor_nationalities: "IT",
+      birth_date: MINOR_APPLICANT_BIRTH_DATE,
+      guardian_consent: "no",
     },
   });
 
@@ -1142,27 +1153,7 @@ export async function writeWalkCorpus(outDir: string): Promise<WriteResult> {
   return { written, orphans };
 }
 
-async function main(argv: string[]): Promise<void> {
-  const outIndex = argv.indexOf("--out");
-  const outDir =
-    outIndex >= 0 && argv[outIndex + 1]
-      ? resolve(argv[outIndex + 1])
-      : DEFAULT_OUT_DIR;
-  const { written, orphans } = await writeWalkCorpus(outDir);
-  console.log(`wrote ${written.length} walks to ${outDir}`);
-  if (orphans.length > 0) {
-    // Not deleted on purpose: a stale fixture is a review signal, and the
-    // determinism test already fails on it (it compares the file SET too).
-    console.error(
-      `WARNING: ${orphans.length} stale fixture(s) no longer generated — delete them by hand:\n  ${orphans.join("\n  ")}`,
-    );
-    process.exitCode = 1;
-  }
-}
-
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  main(process.argv.slice(2)).catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
-}
+// CLI entry point (`main`, `DEFAULT_OUT_DIR`, the module-URL CLI guard)
+// lives in `generate-walk-corpus.cli.ts` — Slice B5-2 split, so this module
+// stays a plain library a Playwright spec can import directly (see that
+// file's docstring for the CJS transform this fixes).

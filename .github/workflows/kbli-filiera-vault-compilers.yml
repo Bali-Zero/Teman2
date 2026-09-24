@@ -22,6 +22,8 @@ on:
       - "apps/mouth/data/kbli-risk-disputes.json"
       - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
       - "data/kbli-filiera/perpres-foreign-caps.json"
+      - "infra/launchagents/wrappers/kbli-oss-refresh-run.sh"
+      - "infra/launchagents/com.nuzantara.kbli-oss-refresh.weekly.plist"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
   push:
     branches:
@@ -35,6 +37,8 @@ on:
       - "apps/mouth/data/kbli-risk-disputes.json"
       - "apps/mouth/data/kbli-perpres-slice-disclosures.json"
       - "data/kbli-filiera/perpres-foreign-caps.json"
+      - "infra/launchagents/wrappers/kbli-oss-refresh-run.sh"
+      - "infra/launchagents/com.nuzantara.kbli-oss-refresh.weekly.plist"
       - ".github/workflows/kbli-filiera-vault-compilers.yml"
 
 permissions:

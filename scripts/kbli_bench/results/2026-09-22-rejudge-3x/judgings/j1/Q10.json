@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the OSS correction procedure absent and points to the available KBLI records without asserting unsupported mechanics."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the package lacks OSS correction rules and identifies the available KBLI records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly states the OSS correction procedure is unavailable and points to the limited categories of supplied data."
+    }
+  ]
+}

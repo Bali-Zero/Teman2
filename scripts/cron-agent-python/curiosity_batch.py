@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,9 +32,20 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 
 TOP_N = 10
 
-# Same contract as agent_job.py's _TG_STATUS_RE / _TG_ACCEPTED: the gateway
-# exits 0 unconditionally, so the real outcome lives on its stderr status line.
-_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+# Same contract as agent_job.py: the gateway exits 0 unconditionally, so the
+# real outcome lives on its stderr status line — read it with the ONE
+# canonical extractor, never a private regex `.search()` (that returns the
+# FIRST `tg_notify:` match, and a P0-unsendable run prints a diagnostic line
+# before the machine verdict; measured 2026-09-24 on the agent_job.py sibling).
+for _cand in (Path(__file__).resolve().parents[2], Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -149,8 +159,7 @@ async def send_telegram_batch(
     # "tg_notify: <outcome>" STDERR line (mirrors scripts/sentinel_lib/
     # alerter.py's own parsing — returncode alone can't tell sent from
     # silently-swallowed).
-    found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
-    outcome = found.group(1) if found else ""
+    outcome = extract_gateway_verdict((err or b"").decode(errors="replace")) or ""
     if outcome in ("sent", "spooled", "logged", "deduped", "p0_overflow_spooled", "p0_unsent_spooled"):
         print(f"Telegram batch queued via gateway ({outcome}): {len(findings)} findings", flush=True)
     else:

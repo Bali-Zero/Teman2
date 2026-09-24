@@ -1,0 +1,184 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-23 ("ok" to the follow-up PR for the 8 LOW notes of the
+  fresh gate on #7136): close D1-D8 from a fresh origin/main, each with a
+  guilt test. The notes are listed in the gate report and in the
+  PENDING-ARMS row kbli-oss-refresh-proposals-have-no-applier.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: refute-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  scripts/kbli_filiera/oss_refresh_loop.py: write_contained walks from
+  --out-root down and refuses a symlinked component before creating it (D1);
+  the cure spec is written before the report (D2); every output write
+  catches OSError as well as OutputRefused, and ANY output failure, spec or
+  report, takes one path: best-effort unwind of the outputs already written
+  in that run, one OSS_REFRESH_OUTPUT_REFUSED line, exit 4, no report left
+  (Codex M2, M3; Kimi K1, K2); the empty-controls guard is
+  pinned by a test (D3); coverage.fetched excludes fetch_error and deferred,
+  and a new attempted field keeps the old count (D6); a dry-run no longer
+  claims to have written the cure spec (D7).
+  infra/launchagents/wrappers/kbli-oss-refresh-run.sh and
+  install_kbli_oss_refresh.sh: the hostname is lower-cased before the Mini
+  guard, in the sibling wrappers' idiom (D4); a named-but-unparseable report
+  is error, not warning (D5); the OSS_REFRESH_OUTPUT_REFUSED marker is error
+  whatever the rc (M3); the expected-host override is lower-cased too (K5).
+  .agents/skills/kbli-navigator/SKILL.md: every F4 mention now says the loop
+  proposes and never writes the canonical; applying is a separate compiler
+  (D8, Codex L2). Tests: 79 in the two suites (was 63).
+
+proof: |
+  See receipts. Deterministic floor 3 / path. Loop + wrapper suites 79
+  passed; full kbli_filiera battery 1766 passed; ruff + shellcheck clean;
+  organ conformance 0 non-conformant births; registry valid (its checksum is
+  over the organ list, not the wrapper, and organs_registry.yaml is
+  untouched). 12 of 12 mutants killed, each reverting one fix. The plist is
+  unchanged, so on Mini a git pull is the whole deploy.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      M1 write_contained keeps a pre-existing TOCTOU race: a concurrent
+      process can plant a symlink between is_symlink() and mkdir(), and the
+      later operations follow it.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed and deliberately NOT cured here. Pre-existing, not introduced here, and outside the threat model: the
+      loop runs as the single Mini user under launchd, writing into that
+      user's own vault directory, so a process able to plant the symlink
+      already owns the account. Closing it would mean a dir_fd/O_NOFOLLOW
+      rewrite of the writer. That is a new surface, not a correction of D1,
+      and the Builder Contract stops a fix-of-a-fix at depth 1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      M2 only OutputRefused is caught: a PermissionError or ENOSPC on the
+      spec escapes as a traceback, exit 1, which reads as new scopes
+      proposed.
+    status: CONFIRMED
+    resolution: >-
+      _write_or_refuse catches OSError on every output write; any output
+      failure is exit 4 (78f4a87513). Guilt tests inject PermissionError into
+      the spec and into the report write; mutant M2-oserror-escapes fails 2.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      M3 if the report JSON is written but the .md summary is refused, a
+      report saying exit_code 1 stays on disk while the process returns 4
+      without OSS_REFRESH_REPORT, and the wrapper reads warning.
+    status: CONFIRMED
+    resolution: >-
+      The loop unwinds every output it wrote in the run and prints
+      OSS_REFRESH_OUTPUT_REFUSED (78f4a87513); the wrapper maps that marker to
+      error/loop_failure whatever the rc (d3c9b7673b). Mutants
+      M3-no-unwind and M3-marker-ignored each fail 1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      L1 the D1 test failed on the old code for the wrong reason (a dangling
+      symlink made the old mkdir raise FileExistsError).
+    status: CONFIRMED
+    resolution: >-
+      Added the case of a symlink to an EXISTING outside directory with a
+      missing descendant (319519ef39); the pre-D1 mutant now fails 2.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      L2 two other corner sentences still said the refresh loop closes the
+      gaps by itself.
+    status: CONFIRMED
+    resolution: "Both corrected (dc7ea79542)."
+
+  - seat: kimi-code/k3
+    objection: >-
+      K1 a refused cure-spec write exits 4 but still writes an agreeing
+      report, so the wrapper records warning while a refused report write
+      records error: two behaviours for one failure class.
+    status: CONFIRMED
+    resolution: >-
+      One path for every output failure: unwind, marker, exit 4, no report
+      (f2871e57b7); guilt tests in both suites; mutant
+      K1-spec-refusal-writes-report fails 1.
+  - seat: kimi-code/k3
+    objection: >-
+      K2 the unwind's unlink is unguarded: an OSError there escapes as a
+      traceback, exit 1.
+    status: CONFIRMED
+    resolution: >-
+      The unwind is best-effort per file and the marker and exit 4 always
+      follow (f2871e57b7); mutant K2-unwind-unguarded fails 1.
+  - seat: kimi-code/k3
+    objection: >-
+      K5 the KBLI_OSS_REFRESH_EXPECTED_HOST override is compared raw, so a
+      mixed-case override refuses the Mini.
+    status: CONFIRMED
+    resolution: "Lower-cased with the same idiom (15dc023610); mutant K5-override-raw fails 1."
+  - seat: kimi-code/k3
+    objection: >-
+      K3 test_empty_controls_never_pass_as_ok passes on the pre-diff code;
+      K4 two of the three rc parametrizations of the marker test pass
+      pre-diff.
+    status: RETRACTED
+    resolution: >-
+      By design, not a defect. D3 was precisely "an existing guard has no
+      test": the test pins it, and the mutant that removes the guard fails
+      it. In the marker test the rc 0/1 cases are innocence cases, and rc 4
+      is the guilt case that mutant M3-marker-ignored kills.
+
+receipts:
+  - claim: "this diff's deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base name-only list>; python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <same list>"
+    result: "floor=3 source=path"
+    exit: 0
+    ts: "2026-09-22T16:46:18Z"
+    seat: claude-opus-5
+  - claim: "loop + wrapper suites green on HEAD a5f2a6de89"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -p no:cacheprovider"
+    result: "79 passed"
+    exit: 0
+    ts: "2026-09-22T17:27:07Z"
+    seat: claude-opus-5
+  - claim: "full kbli_filiera battery green (the blocking CI job that holds these tests)"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/ -q -p no:cacheprovider"
+    result: "1766 passed, 1 skipped"
+    exit: 0
+    ts: "2026-09-22T17:27:15Z"
+    seat: claude-opus-5
+  - claim: "ruff, shellcheck, organ conformance and the registry validator are clean"
+    cmd: "git diff --name-only origin/main...HEAD | grep '\\.py$' | xargs ruff check; shellcheck infra/launchagents/wrappers/kbli-oss-refresh-run.sh infra/launchagents/install_kbli_oss_refresh.sh; python3 infra/organ-conformance/check_organ_conformance.py; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml"
+    result: "All checks passed! / shellcheck clean / 168 plists, 0 regressions, 0 non-conformant births / registry valid"
+    exit: 0
+    ts: "2026-09-22T17:29:13Z"
+    seat: claude-opus-5
+  - claim: "12 of 12 mutants killed on HEAD a5f2a6de89, each reverting one fix: D1-mkdir-first, D3-empty-controls, D6-fetched-counts-errors, D7-dryrun-claims, M2-oserror-escapes, K2-unwind-unguarded, M3-no-unwind, K1-spec-refusal-writes-report (loop); D4-host-case, K5-override-raw, D5-unparseable-warning, M3-marker-ignored (wrapper)"
+    cmd: "per-mutant python3 -m pytest on a cp-backed mutated copy, restored and checked with cmp -s"
+    result: "every mutant: >=1 failed (D1 2, D3 1, D6 2, D7 1, M2 3, K2 1, M3 2, K1 1, D4 1, K5 1, D5 1, M3-wrapper 2); files restored byte-identical"
+    exit: 0
+    ts: "2026-09-22T17:29:48Z"
+    seat: claude-opus-5
+  - claim: "acceptance probes, run literally"
+    cmd: 'python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k symlinked_intermediate; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k refused_cure_spec; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k empty_controls; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "fetched_excludes or dry_run_never_claims"; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -k "host_case or never_parses or override"; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -k "OSError or oserror or permission or output_refused or unwind or marker or unlink or spec_refus"'
+    result: "2 passed / 1 passed / 1 passed / 2 passed / 3 passed / 6 passed"
+    exit: 0
+    ts: "2026-09-22T17:29:57Z"
+    seat: claude-opus-5
+
+pii_scan: clean
+pii_scan_note: >-
+  Public KBLI classification and the public OSS endpoint only; no client
+  data, OSINT or credential is read, written or quoted. The new
+  OSS_REFRESH_OUTPUT_REFUSED line carries an OSError/OutputRefused message
+  (a path), never the OSS_RBA_USER_KEY value. Test fixtures are synthetic.
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"

@@ -1,0 +1,20 @@
+{
+  "qid": "Q10",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the OSS correction procedure absent and points to the limited KBLI records; makes no unsupported mechanics claim."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the package lacks OSS correction rules and identifies the available KBLI records."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly states OSS correction mechanics are unavailable and points to the package’s limited classification, risk, and PMA scope."
+    }
+  ]
+}

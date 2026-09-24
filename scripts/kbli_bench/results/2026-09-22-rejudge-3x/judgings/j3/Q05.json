@@ -1,0 +1,20 @@
+{
+  "qid": "Q05",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "68111 claims are supported, but it fails to state that 68200 is absent from the KBLI 2025 catalogue."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "68111 claims are supported, but missing-record language does not establish the required fact that 68200 is not a KBLI 2025 code."
+    },
+    {
+      "run": 3,
+      "verdict": "wrong",
+      "reason": "68111 claims are supported, but it does not state that 68200 is absent from the KBLI 2025 catalogue."
+    }
+  ]
+}

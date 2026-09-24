@@ -271,8 +271,10 @@ async def test_on_compliance_alert_critical_far_future_does_not_write(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_outbox_write_failure_does_not_raise(monkeypatch):
+async def test_outbox_write_failure_does_not_raise(monkeypatch, caplog):
     """If insert_outbox_event raises, handler must NOT propagate (defensive)."""
+    import logging
+
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(side_effect=RuntimeError("DB down"))
@@ -283,8 +285,17 @@ async def test_outbox_write_failure_does_not_raise(monkeypatch):
     on_client = _get_handler(bus_stub, "client.changed")
 
     h._recent_events.clear()
-    # Must NOT raise
-    await on_client({"client_id": 7, "operation": "INSERT", "email": "x@y"})
+    with caplog.at_level(logging.ERROR, logger="backend.services.events.handlers._core"):
+        # Must NOT raise
+        result = await on_client({"client_id": 7, "operation": "INSERT", "email": "x@y"})
+
+    assert result is None
+    # insert_outbox_event was actually reached and its failure was caught + logged,
+    # not just silently skipped upstream (e.g. by a dedup short-circuit).
+    insert_mock.assert_called_once()
+    assert any(
+        "Bridge outbox write failed for client" in r.message for r in caplog.records
+    )
 
 
 @pytest.mark.asyncio

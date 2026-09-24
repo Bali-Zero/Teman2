@@ -1,0 +1,11 @@
+gear: 2
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: infra/scraper-dead-api-20260924
+    role: build
+    seat: Claude Sonnet 5 (implementer, worktree infra-scraper-dead-api-20260924)
+    task_id: scraper-dead-api-20260924
+    worktree: .worktrees/infra-scraper-dead-api-20260924
+    branch: agent/air-m5/infra/scraper-dead-api-20260924
+pii_scan: clean
+dissent: []

@@ -318,8 +318,13 @@ class TestDeliveryManager:
         return DeliveryManager(db_pool=mock_pool)
 
     @pytest.mark.asyncio
-    async def test_persist_failed_no_pg_no_redis(self, dm: DeliveryManager) -> None:
-        with patch("backend.channels.optimizations._get_redis_client", return_value=None):
+    async def test_persist_failed_no_pg_no_redis(
+        self, dm: DeliveryManager, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with (
+            patch("backend.channels.optimizations._get_redis_client", return_value=None),
+            caplog.at_level(logging.ERROR, logger=_OPTIMIZATIONS_LOGGER_NAME),
+        ):
             # Should not raise, just log error about lost message
             await dm.persist_failed(
                 channel="telegram",
@@ -327,6 +332,9 @@ class TestDeliveryManager:
                 content="hello",
                 error="timeout",
             )
+        text = _all_log_text(caplog.records)
+        assert "message LOST" in text
+        assert "telegram" in text
 
     @pytest.mark.asyncio
     async def test_persist_failed_pg_success(self, dm_with_db: DeliveryManager) -> None:
@@ -467,7 +475,9 @@ class TestDeliveryManager:
             assert dm._retry_task is None
 
     @pytest.mark.asyncio
-    async def test_alert_exhausted_no_token(self) -> None:
+    async def test_alert_exhausted_no_token(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         dm = DeliveryManager()
         mock_settings = MagicMock()
         mock_settings.telegram_bot_token = None
@@ -478,7 +488,13 @@ class TestDeliveryManager:
 
         import sys
 
-        with patch.dict(sys.modules, {"backend.core.config": mock_config_module}):
+        with (
+            patch.dict(sys.modules, {"backend.core.config": mock_config_module}),
+            patch.object(
+                dm, "_get_alert_client", AsyncMock()
+            ) as mock_get_client,
+            caplog.at_level(logging.WARNING, logger=_OPTIMIZATIONS_LOGGER_NAME),
+        ):
             await dm._alert_exhausted(
                 {
                     "id": 1,
@@ -490,6 +506,9 @@ class TestDeliveryManager:
                 },
                 "error msg",
             )
+        # No token -> must bail out BEFORE ever touching the HTTP client.
+        mock_get_client.assert_not_called()
+        assert "TELEGRAM_BOT_TOKEN not set" in _all_log_text(caplog.records)
 
     @pytest.mark.asyncio
     async def test_alert_exhausted_with_token(self) -> None:
@@ -523,7 +542,9 @@ class TestDeliveryManager:
             mock_client.post.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_alert_exhausted_exception(self) -> None:
+    async def test_alert_exhausted_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         dm = DeliveryManager()
         mock_settings = MagicMock()
         mock_settings.telegram_bot_token = "fake_token"
@@ -538,7 +559,10 @@ class TestDeliveryManager:
 
         import sys
 
-        with patch.dict(sys.modules, {"backend.core.config": mock_config_module}):
+        with (
+            patch.dict(sys.modules, {"backend.core.config": mock_config_module}),
+            caplog.at_level(logging.WARNING, logger=_OPTIMIZATIONS_LOGGER_NAME),
+        ):
             dm._alert_client = mock_client
             # Should not raise
             await dm._alert_exhausted(
@@ -552,6 +576,10 @@ class TestDeliveryManager:
                 },
                 "error msg",
             )
+        mock_client.post.assert_awaited_once()
+        text = _all_log_text(caplog.records)
+        assert "failed to send exhaustion alert" in text
+        assert "Network error" in text
 
     @pytest.mark.asyncio
     async def test_get_alert_client_creates(self) -> None:

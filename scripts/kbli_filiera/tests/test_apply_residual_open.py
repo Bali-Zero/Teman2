@@ -102,11 +102,15 @@ def by_code(records) -> dict[str, dict]:
 
 def test_the_lot_is_329_codes_and_the_deferred_arithmetic_is_declared():
     codes = [str(c) for c in SPEC["items"]]
-    assert len(codes) == 329 and len(set(codes)) == 329
+    # 329 -> 330 on 2026-09-23 (#7136 OSS refresh ADOPT): 93113 moves
+    # residual-besar-unobserved -> residual-besar-observed (a real OSS RBA
+    # 2025 per_skala row), newly entering this lot's reach with nothing
+    # withholding it (not a sibling, not excluded, not a title collision).
+    assert len(codes) == 330 and len(set(codes)) == 330
     assert {k: v["codes"] for k, v in SPEC["deferred"].items()} == DEFERRED
     assert SPEC["lot"] == 1 and SPEC["vintage"] == "2021-05-25"
-    # 329 shipped + 61 Pasal 11(2) + 67 unswept statute + 29 sibling
-    # + 19 hand-excluded + 2 title collision = the 507 the rule reaches.
+    # 330 shipped + 61 Pasal 11(2) + 67 unswept statute + 29 sibling
+    # + 19 hand-excluded + 2 title collision = the 508 the rule reaches.
     # `instrument_reached_sibling` is deliberately NOT a term: it withholds
     # nothing, so adding it would double-count 135 shipped codes.
     withheld_count = (
@@ -116,7 +120,7 @@ def test_the_lot_is_329_codes_and_the_deferred_arithmetic_is_declared():
     )
     assert (
         len(codes) + withheld_count + len(SIBLING_WITHHELD) + len(SPEC["excluded_codes"])
-        == 507
+        == 508
     )
     assert not any(c[:2] in SECTOR_DIVISIONS for c in codes)
 
@@ -952,18 +956,25 @@ def test_the_lot_1_spec_still_validates_byte_for_byte_against_pin_1(records):
 
 def test_the_lot_2_spec_is_260_codes_and_the_deferred_arithmetic_is_declared():
     codes = [str(c) for c in SPEC2["items"]]
-    assert len(codes) == 260 and len(set(codes)) == 260
+    # 260 -> 261 on 2026-09-23 (#7136 OSS refresh ADOPT): 93193 moves
+    # residual-besar-unobserved -> residual-besar-observed (a real OSS RBA
+    # 2025 per_skala row), newly entering this lot's ATTENZIONE_FASCIA_BALI
+    # reach with nothing withholding it.
+    assert len(codes) == 261 and len(set(codes)) == 261
     assert SPEC2["lot"] == 2 and SPEC2["vintage"] == "2021-05-25"
     assert {k: v["codes"] for k, v in SPEC2["deferred"].items()} == LOT2_DEFERRED
-    # 260 shipped + 6 sibling + 4 unswept statute + 1 finance referral = the
-    # 271 the rule reaches; the 272-vs-271 gap (62900, legacy prose) is its
-    # own deferred entry, not a term of the reach arithmetic.
+    # 261 shipped + 6 sibling + 4 unswept statute + 1 finance referral = the
+    # 272 the rule reaches (was 271); the 272-vs-271 gap this comment
+    # originally named (62900, legacy prose) was measured on the
+    # 2026-09-19 scoreboard's raw Bali-axis match BEFORE #7136 and is
+    # unaffected by this move -- it stays its own deferred entry, not a
+    # term of this arithmetic.
     withheld_count = (
         LOT2_DEFERRED["adjudicated_sibling"]
         + LOT2_DEFERRED["unswept_sector_statute"]
         + LOT2_DEFERRED["instrument_referral_pasal_11_2"]
     )
-    assert len(codes) + withheld_count == 271
+    assert len(codes) + withheld_count == 272
     assert SPEC2["excluded_codes"] == {}
 
 

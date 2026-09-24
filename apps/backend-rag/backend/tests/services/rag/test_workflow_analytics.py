@@ -600,18 +600,26 @@ class TestOrchestratorTrackingHook:
         assert "INSERT INTO workflow_analytics" in call_sql
 
     @pytest.mark.asyncio
-    async def test_track_workflow_no_db_pool(self, sample_workflow):
+    async def test_track_workflow_no_db_pool(self, sample_workflow, monkeypatch):
         """Test that tracking is skipped when no db_pool is available."""
+        from backend.services.rag.agentic import orchestrator_core
         from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+
+        repo_ctor = MagicMock()
+        monkeypatch.setattr(orchestrator_core, "WorkflowAnalyticsRepository", repo_ctor)
 
         core = OrchestratorCore.__new__(OrchestratorCore)
         core.db_pool = None
 
-        # Should return without error
-        await core._track_workflow(
+        # Should return without error, and without ever touching the repo —
+        # the missing db_pool must short-circuit before any DB access.
+        result = await core._track_workflow(
             query="test",
             workflow=sample_workflow,
         )
+
+        assert result is None
+        repo_ctor.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_track_workflow_generates_workflow_id(self, sample_workflow):
@@ -632,8 +640,10 @@ class TestOrchestratorTrackingHook:
         assert len(workflow_id) == 15  # "wf-" + 12 hex chars
 
     @pytest.mark.asyncio
-    async def test_track_workflow_db_error_suppressed(self, sample_workflow):
+    async def test_track_workflow_db_error_suppressed(self, sample_workflow, caplog):
         """Test that DB errors in tracking don't propagate."""
+        import logging
+
         from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 
         mock_pool, mock_conn = self._make_pool_mock()
@@ -642,8 +652,19 @@ class TestOrchestratorTrackingHook:
         core = OrchestratorCore.__new__(OrchestratorCore)
         core.db_pool = mock_pool
 
-        # Should not raise
-        await core._track_workflow(query="test", workflow=sample_workflow)
+        # Should not raise — the DB call is attempted (proving the code
+        # reached the tracking path) and the failure is caught + logged
+        # rather than propagated to the caller.
+        with caplog.at_level(logging.WARNING):
+            result = await core._track_workflow(query="test", workflow=sample_workflow)
+
+        assert result is None
+        mock_conn.fetchrow.assert_called_once()
+        assert any(
+            record.getMessage() == "Failed to log workflow analytics"
+            and getattr(record, "context", {}).get("error") == "DB connection lost"
+            for record in caplog.records
+        )
 
     @pytest.mark.asyncio
     async def test_track_workflow_captures_steps_count(self, sample_workflow):

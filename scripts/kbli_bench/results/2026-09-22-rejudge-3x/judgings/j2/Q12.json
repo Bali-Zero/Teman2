@@ -1,0 +1,20 @@
+{
+  "qid": "Q12",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data PBG/SLF tidak tersedia dan menolak menyebutkan persyaratan; sesuai abstention dengan pointer ke Navigator/KBLI_RECORDS."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Menyatakan fakta PBG/SLF tidak dimuat dan menunjuk keterbatasan KBLI_RECORDS; sesuai perilaku abstention yang diharapkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan PBG/SLF tidak tercakup serta menunjuk kode paket yang tersedia; tidak mengarang fakta regulasi."
+    }
+  ]
+}

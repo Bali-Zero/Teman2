@@ -1022,22 +1022,46 @@ class TestGoldReplayDriverOffline:
     ``expected_candidates=("E31",)`` fixture value is a generic label that
     was never going to match any real product code, on ANY pack, repaired
     or not; that is a pre-existing gold-fixture staleness this fold does not
-    touch. Persona #6's divergence is unrelated to E31 entirely — its own
-    reason is ``MINOR_GUARDIAN_PRIVACY_REVIEW``, a minor-guardian privacy
-    gate — and is BYTE-IDENTICAL before and after this fold, proving the
-    transplant did not touch it. The ground-truth report's framing of #6/#7
-    as "the E31 fail-open personas" is directionally right about #7's root
-    cause but imprecise about #6's; this refinement is this fold's own
-    finding, carried into the PR body.
+    touch. Persona #6's divergence is unrelated to E31 entirely; before
+    Slice A7-B its own reason was ``MINOR_GUARDIAN_PRIVACY_REVIEW``, a
+    minor-guardian privacy gate — and was BYTE-IDENTICAL before and after
+    this fold, proving the transplant did not touch it. The ground-truth
+    report's framing of #6/#7 as "the E31 fail-open personas" is
+    directionally right about #7's root cause but imprecise about #6's;
+    this refinement is this fold's own finding, carried into the PR body.
+
+    **Revised again 2026-09-21 to 7/20 by Slice A7-B** (OD-4b re-ruled:
+    ``_apply_minor_privacy_hold``'s new arms replicate ``:1213``'s
+    pass-through — an already-``HUMAN_REVIEW_REQUIRED`` decision is
+    returned untouched). Persona #5, "minor without confirmed guardian ->
+    human review", is a known minor whose RULE-level
+    ``MINOR_WITHOUT_CONFIRMED_GUARDIAN`` hold used to be silently
+    OVERWRITTEN by the adapter's own unconditional ``MINOR_GUARDIAN_
+    PRIVACY_REVIEW`` reason (two review codes instead of the fixture's
+    one). With ``person.guardian_consent`` UNKNOWN (this corpus never
+    answers it) and the decision already ``HUMAN_REVIEW_REQUIRED`` before
+    the adapter runs, the new UnknownFact arm's pass-through now returns it
+    untouched — the rule's own single reason survives, matching the
+    fixture exactly. Persona #6 (a DIFFERENT minor, expecting ``E31``)
+    moves the OTHER direction: its actual state was ``HUMAN_REVIEW_
+    REQUIRED``/``MINOR_GUARDIAN_PRIVACY_REVIEW`` (the adapter's old
+    unconditional hold); it is now ``NEEDS_INPUT`` naming
+    ``person.guardian_consent`` — still divergent from its own
+    ``SUPPORTED_CANDIDATES [E31]`` fixture, on the SAME set size but a
+    swapped field (``missing_facts`` in place of ``review_reason_codes``),
+    per ``test_persona_6_divergence_is_unrelated_and_untouched_by_this_
+    fold``. Net: ZERO ``DecisionState`` change for every OTHER persona,
+    ZERO candidate-set change anywhere, one persona gained a match, one
+    persona's own divergence shape moved without becoming a match.
     """
 
     def test_seq18_baseline_reproduces_the_ground_truth_measurement(
         self, report_18: dict[str, Any]
     ) -> None:
         summary = report_18["summary"]
-        assert (summary["personas_match"], summary["personas_total"]) == (6, 20)
+        assert (summary["personas_match"], summary["personas_total"]) == (7, 20)
         matching = {row["persona_id"] for row in report_18["personas"] if not row["divergence"]}
-        assert matching == {3, 4, 12, 13, 15, 18}
+        assert matching == {3, 4, 5, 12, 13, 15, 18}
 
     def test_persona_13_matches_because_it_finally_asks_its_own_fact(
         self, report_18: dict[str, Any], report_19: dict[str, Any]
@@ -1080,6 +1104,17 @@ class TestGoldReplayDriverOffline:
     def test_persona_6_divergence_is_unrelated_and_untouched_by_this_fold(
         self, report_18: dict[str, Any], report_19: dict[str, Any]
     ) -> None:
+        """Persona #6's divergence still owes nothing to the seq18->seq19
+        fold (``canon`` byte-identical across both packs, unchanged by this
+        assertion) — but Slice A7-B DOES move its shape, measured 2026-09-21:
+        before, the adapter's unconditional hold overwrote the decision with
+        its own ``MINOR_GUARDIAN_PRIVACY_REVIEW`` reason, so
+        ``review_reason_codes`` diverged (``actual=["MINOR_GUARDIAN_PRIVACY_
+        REVIEW"]`` vs the fixture's ``expected=[]``). Now the new UnknownFact
+        arm routes to ``NEEDS_INPUT`` naming ``person.guardian_consent``
+        instead: ``review_reason_codes`` no longer diverges at all (both
+        sides ``[]``), and ``missing_facts`` takes its place in the
+        divergent-field set — same set SIZE, one field swapped."""
         assert PERSONAS[5].id == 6
         by_id_18 = {row["persona_id"]: row for row in report_18["personas"]}
         by_id_19 = {row["persona_id"]: row for row in report_19["personas"]}
@@ -1089,11 +1124,11 @@ class TestGoldReplayDriverOffline:
 
         assert canon(by_id_18[6]["differences"]) == canon(by_id_19[6]["differences"])
         codes = {d["field"] for d in by_id_18[6]["differences"]}
-        assert codes == {"candidate_products", "review_reason_codes", "state"}
-        review_codes = next(
-            d for d in by_id_18[6]["differences"] if d["field"] == "review_reason_codes"
+        assert codes == {"candidate_products", "missing_facts", "state"}
+        missing_facts = next(
+            d for d in by_id_18[6]["differences"] if d["field"] == "missing_facts"
         )
-        assert review_codes["actual"] == ["MINOR_GUARDIAN_PRIVACY_REVIEW"]
+        assert missing_facts["actual"] == ["person.guardian_consent"]
 
     def test_match_set_and_count_are_unchanged_end_to_end(
         self, report_18: dict[str, Any], report_19: dict[str, Any]

@@ -113,6 +113,15 @@ def _classify_nlm_error(stderr: str, stdout: str, returncode: int) -> str:
         return "rate_limit"
     if "quota" in tl:
         return "quota"
+    # Full notebook (ledger `nb-intel-press-is-full-and-the-pusher-calls-it-an-unknown-error`,
+    # 2026-09-22): NB-INTEL-Press hit its ~500-source cap on 2026-07-18 and every push since
+    # has come back as a Google `source add` refusal, e.g. "Error: Could not add file source:
+    # API error (code 3): INVALID_ARGUMENT Hint: File paths must be accessible…" — wording that
+    # blames a local path but is actually the notebook rejecting a new source outright. Matched
+    # on the ENTITY (Google's gRPC status code 3 / INVALID_ARGUMENT on a source-add call), not
+    # on the misleading hint sentence, so a reworded hint still classifies correctly.
+    if "code 3" in tl and "invalid_argument" in tl:
+        return "notebook_full"
     if "not found" in tl or ("notebook" in tl and "exist" in tl):
         return "not_found"
     if returncode == 124:  # GNU timeout exit code
@@ -349,8 +358,11 @@ async def update_push_result(
                 push_method,
             )
         else:
-            # Decide status by error class
-            if error_class in ("quota",):
+            # Decide status by error class. `notebook_full` fails fast like `quota`: a full
+            # notebook will not empty itself between the next attempt and this one, so the
+            # 3-attempt retry budget (MAX_ATTEMPTS_PERMANENT) would only delay the terminal
+            # state by two more 15-min ticks for zero chance of success.
+            if error_class in ("quota", "notebook_full"):
                 new_status = "failed_permanent"
             elif error_class in ("not_found",):
                 new_status = "quarantined"
@@ -414,6 +426,88 @@ def _telegram_send(text: str) -> None:
         logger.warning("Telegram send failed: %s", e)
 
 
+# ─── Per-notebook failure-streak alert ─────────────────────────────────────
+#
+# Ledger `nb-intel-press-is-full-and-the-pusher-calls-it-an-unknown-error`: the only existing
+# health signal (`oldest_pending_age_seconds` below) watches PENDING rows, and a row that hits
+# `failed_permanent` is no longer pending — so a notebook that fails every push, forever, never
+# tripped anything. This closes that gap: when one notebook accumulates
+# NOTEBOOK_FAILURE_STREAK_N consecutive terminal outcomes (failed_permanent/quarantined, i.e.
+# no longer retried), one Telegram alert names it. N=3 matches MAX_ATTEMPTS_PERMANENT — the
+# budget already given to a single flaky ITEM before its own row goes terminal — so 3 different
+# items in a row going terminal is evidence the NOTEBOOK, not one item, is the problem.
+
+NOTEBOOK_FAILURE_STREAK_N = 3
+NOTEBOOK_ALERT_STATE_PATH = Path.home() / "logs" / "intel-lake-nb-pusher.notebook_alerts.json"
+_TERMINAL_FAILURE_STATUSES = frozenset({"failed_permanent", "quarantined"})
+
+
+def _notebook_failure_streak(
+    recent_statuses: list[str], n: int = NOTEBOOK_FAILURE_STREAK_N
+) -> bool:
+    """True iff the N most recent push attempts to one notebook — `recent_statuses` ordered
+    MOST-RECENT-FIRST — are ALL terminal failures. A `pushed` row or a still-`pending`/
+    `failed_transient` one anywhere in the first N breaks the streak (recovery, or an item
+    still mid-retry — neither is evidence the notebook itself is broken)."""
+    if len(recent_statuses) < n:
+        return False
+    return all(s in _TERMINAL_FAILURE_STATUSES for s in recent_statuses[:n])
+
+
+async def _fetch_recent_push_statuses(pool: asyncpg.Pool, nb_uuid: str, limit: int) -> list[str]:
+    """Most-recent-first statuses of the last `limit` push attempts to one notebook."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT status
+              FROM intel_item_nb_pushes
+             WHERE nb_uuid = $1
+             ORDER BY updated_at DESC
+             LIMIT $2
+            """,
+            UUID(nb_uuid),
+            limit,
+        )
+        return [r["status"] for r in rows]
+
+
+def _load_notebook_alert_state() -> dict[str, Any]:
+    try:
+        return json.loads(NOTEBOOK_ALERT_STATE_PATH.read_text())
+    except Exception:
+        return {}
+
+
+def _save_notebook_alert_state(state: dict[str, Any]) -> None:
+    NOTEBOOK_ALERT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    NOTEBOOK_ALERT_STATE_PATH.write_text(json.dumps(state, indent=2))
+
+
+def _maybe_alert_notebook_streak(
+    nb_uuid: str,
+    error_class: str,
+    recent_statuses: list[str],
+    state: dict[str, Any],
+    send=_telegram_send,
+) -> bool:
+    """Dedup-key discipline: one alert per notebook per ONGOING streak, on the same Telegram
+    channel this script already uses. A broken streak (recovery) clears the notebook's state
+    so a LATER, fresh streak alerts again; an already-alerted, still-ongoing streak does not
+    re-fire on every 15-min tick. Returns True iff an alert was actually sent."""
+    if not _notebook_failure_streak(recent_statuses):
+        state.pop(nb_uuid, None)
+        return False
+    if nb_uuid in state:
+        return False
+    send(
+        f"🔴 intel-lake-nb-pusher: notebook {nb_uuid} has "
+        f"{NOTEBOOK_FAILURE_STREAK_N}+ consecutive terminal push failures "
+        f"(last class: {error_class}). Check ~/logs/intel-lake-nb-pusher.log"
+    )
+    state[nb_uuid] = {"alerted_at": time.time(), "error_class": error_class}
+    return True
+
+
 # ─── Main ──────────────────────────────────────────────────────────────────
 
 
@@ -459,6 +553,8 @@ async def main() -> int:
         logger.info("selected %d pending push attempts", len(rows))
 
         auth_refresh_attempted = False
+        nb_uuids_succeeded: set[str] = set()
+        nb_uuids_failed: dict[str, str] = {}
         for row in rows:
             push_id = row["push_id"]
             nb_uuid = str(row["nb_uuid"])
@@ -506,10 +602,12 @@ async def main() -> int:
 
             if ok:
                 metrics["pushed_this_run"] += 1
+                nb_uuids_succeeded.add(nb_uuid)
             else:
                 metrics["errored"] += 1
                 key = err_class or "unknown"
                 metrics["failed_this_run"][key] = metrics["failed_this_run"].get(key, 0) + 1
+                nb_uuids_failed[nb_uuid] = key
 
             # Certain-fail-for-all early-out
             if err_class == "auth_expired":
@@ -522,6 +620,20 @@ async def main() -> int:
                 break
 
             time.sleep(SLEEP_BETWEEN_ITEMS_S)
+
+        # Per-notebook failure-streak alert. A success this run clears any ongoing-streak
+        # state for that notebook immediately (real-time recovery signal); a notebook that
+        # failed at least once is checked against its actual DB history, not just this run's
+        # rows, so a streak spanning multiple 15-min ticks is still caught.
+        alert_state = _load_notebook_alert_state()
+        for succeeded_nb in nb_uuids_succeeded:
+            alert_state.pop(succeeded_nb, None)
+        for failed_nb, last_class in nb_uuids_failed.items():
+            recent_statuses = await _fetch_recent_push_statuses(
+                pool, failed_nb, NOTEBOOK_FAILURE_STREAK_N
+            )
+            _maybe_alert_notebook_streak(failed_nb, last_class, recent_statuses, alert_state)
+        _save_notebook_alert_state(alert_state)
 
         # Operational metric: oldest pending age
         async with pool.acquire() as conn:

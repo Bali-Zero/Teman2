@@ -64,8 +64,22 @@ describe("countExactWalks — determinism", () => {
     const first = await renderManifest(buildManifest());
     const second = await renderManifest(buildManifest());
     expect(second).toBe(first);
-  }, 30_000);
+    // A7-M (2026-09-22, gate `vo-gate-a7-m` L4): `birth_date` joining
+    // BRANCH_RELEVANT_FACT_KEYS enlarged the enumerated space enough that
+    // this double full-manifest render measured over the prior 30s budget
+    // under CI/local load (never a wall-clock cliff of its own — a rerun of
+    // the same job went green with no code change). 120s gives the render
+    // headroom without hiding a real regression: a genuine correctness
+    // break here still fails on the assertion, not the clock.
+  }, 120_000);
 });
+
+// Hygiene follow-up, not yet built (MANDATE-vo.md, conductor record 2026-09-22T16:55:58Z,
+// "option 2", after GATE-A7-M-REPORT-7135.md CI-1): if the enumerated space keeps growing,
+// coarsen the memo-key projection for `birth_date` rather than bumping this budget again —
+// `memoProjection` (the injection point T1 proves below) selects KEYS only, so a value-level
+// coarsening widens it first. Not built here — A6-bis may move the pins this file carries
+// first, and any re-pin is by command.
 
 describe("countExactWalks — the cycle guard names the repeated node (guilt)", () => {
   it("throws naming the repeated question when a synthetic graph loops", () => {
@@ -156,9 +170,17 @@ describe("REPRESENTATIVE_VALUES is complete (GATE-B1-REPORT-6842.md Check 2, MED
     expect(missing).toEqual([]);
   });
 
-  it("typedBranchRelevantQuestionIds finds the three known thresholds (not a stale hardcoded pair)", () => {
+  it("typedBranchRelevantQuestionIds finds the four known thresholds (not a stale hardcoded pair)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` (kind "date") joins
+    // `BRANCH_RELEVANT_FACT_KEYS` — `flow.ts` now branches on it (minor vs
+    // adult) — so it joins this typed set too.
     expect(typedBranchRelevantQuestionIds()).toEqual(
-      ["family_sponsor_nationalities", "permit_expiry", "stay_days"].sort(),
+      [
+        "birth_date",
+        "family_sponsor_nationalities",
+        "permit_expiry",
+        "stay_days",
+      ].sort(),
     );
   });
 
@@ -738,7 +760,9 @@ describe("the memo-key projection is injectable, and a guilt/innocence PAIR prov
     expect(withExplicitDefault.walksTotalExact).toBe(
       withDefault.walksTotalExact,
     );
-  }, 30_000);
+    // Same A7-M/L4 budget bump as the determinism test above — two full
+    // countExactWalks() runs over the now-larger space, same cause.
+  }, 120_000);
 });
 
 describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID (B2''-c C2)", () => {
@@ -751,8 +775,13 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // byte-stable across runs — the B1'' memo-key projection is unaffected).
   const RENDERED = renderCoveringWalks(REAL_SUBSET.walks);
 
-  it("cardinality: the covering subset renders exactly 252 walks (pinned literal, re-measured after Slice B5-1's per-edge witnesses)", () => {
-    expect(RENDERED.length).toBe(252);
+  // A6-bis (mouth slice, PLAN-ratified, not yet merged) adds two more "Not sure" defaults and may
+  // move this pinned literal — do not re-pin speculatively; re-measure and re-pin only when
+  // A6-bis lands, by command (MANDATE-vo.md, row 4 "enumeration memo-space").
+  it("cardinality: the covering subset renders exactly 254 walks (pinned literal, re-measured after Slice A7-M's birth_date branch)", () => {
+    // Slice A7-M (2026-09-22): `birth_date` joins `BRANCH_RELEVANT_FACT_KEYS`
+    // with two representative values (adult, minor) — 252 → 254.
+    expect(RENDERED.length).toBe(254);
   });
 
   it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {
@@ -798,5 +827,43 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
       );
     }
     expect(uuidValidate(firstWalk.assessment_id)).toBe(true);
+  });
+});
+
+/**
+ * Y11 — the label-truth invariant (B5-2 amendment, `Y2 ADJUDICATED`,
+ * 2026-09-21). `buildCoveringSubset` labels each edge-targeted walk
+ * `edge/<id>=<value>` and each review-gate walk `review-gate/<item>`; the
+ * label is a CLAIM about what the walk's own `facts` carry, and nothing
+ * upstream re-checks it against the walk that was actually recorded.
+ * `Y2 ADJUDICATED` measured that on all 317 declared edges exactly ONE
+ * (`application_channel=OFFSHORE`) needs its per-EDGE witness rather than
+ * the per-QUESTION one — the two agree everywhere else, so a regression to
+ * the per-question witness stays invisible to every OTHER assertion in this
+ * file (cardinality holds, edge coverage holds) and is caught only here, by
+ * name.
+ */
+describe("Y11 — the label-truth invariant (Slice B5-2, Y2 ADJUDICATED)", () => {
+  it("innocence: every edge/<id>=<value> walk's own facts carry that value, and every review-gate/<item> walk's own facts carry review_gate=<item>", () => {
+    let edgeWalks = 0;
+    let reviewGateWalks = 0;
+    for (const walk of REAL_SUBSET.walks) {
+      if (walk.label.startsWith("edge/")) {
+        edgeWalks += 1;
+        const edge = walk.label.slice("edge/".length);
+        const splitAt = edge.indexOf("=");
+        const id = edge.slice(0, splitAt);
+        const value = edge.slice(splitAt + 1);
+        expect(walk.facts[id]).toBe(value);
+      } else if (walk.label.startsWith("review-gate/")) {
+        reviewGateWalks += 1;
+        const item = walk.label.slice("review-gate/".length);
+        expect(walk.facts.review_gate).toBe(item);
+      }
+    }
+    // Blind-scan floor: a filter that silently matched nothing would leave
+    // the loop above green on zero iterations.
+    expect(edgeWalks).toBeGreaterThan(0);
+    expect(reviewGateWalks).toBeGreaterThan(0);
   });
 });

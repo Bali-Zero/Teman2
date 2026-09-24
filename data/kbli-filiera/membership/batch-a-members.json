@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "4f7bf2580f386c9be2cff127c4d504032695fe5c",
-  "canonical_sha256": "b60cb1bdfeab94c38196b0b32176f3110fbbc4434fe6fead6e2bed4c4cb9cdc4",
+  "canonical_revision": "fc408a89bb51537bec80495721eda099590aec16",
+  "canonical_sha256": "4864051fb552ef1f87558e2294dda66aa7b47a0c28f28bcab55165f678bfe200",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,9 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 216,
-    "A-serving/pp28": 2,
-    "_in_scope_total": 2,
-    "_total": 218
+    "A-empty/gap": 209,
+    "_in_scope_total": 0,
+    "_total": 209
   },
   "members": [
     {
@@ -94,16 +93,6 @@
       "judul": "Ekstraksi Tanah Gambut (Peat)",
       "pp28_sources": [
         "08920"
-      ]
-    },
-    {
-      "kode_kbli_2025": "19206",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.F.c",
-      "judul": "Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel",
-      "pp28_sources": [
-        "19291"
       ]
     },
     {
@@ -799,26 +788,6 @@
       "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Aktivitas Personel Kesehatan Hewan Mandiri",
-      "pp28_sources": [
-        "75000"
-      ]
-    },
-    {
-      "kode_kbli_2025": "75002",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.B",
-      "judul": "Aktivitas Pengelolaan Sarana Kesehatan Hewan",
-      "pp28_sources": [
-        "75000"
-      ]
-    },
-    {
-      "kode_kbli_2025": "75009",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.B",
-      "judul": "Aktivitas Pengelolaan Kesehatan Hewan Lainnya",
       "pp28_sources": [
         "75000"
       ]
@@ -1727,36 +1696,6 @@
       "pp28_sources": []
     },
     {
-      "kode_kbli_2025": "93113",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.J-P",
-      "judul": "Fasilitas Gelanggang/Arena",
-      "pp28_sources": [
-        "93113"
-      ]
-    },
-    {
-      "kode_kbli_2025": "93114",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
-      "sektor_id": "I.J-P",
-      "judul": "Fasilitas Lapangan",
-      "pp28_sources": [
-        "93114"
-      ]
-    },
-    {
-      "kode_kbli_2025": "93115",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.J-P",
-      "judul": "Fasilitas Olahraga Beladiri",
-      "pp28_sources": [
-        "93115"
-      ]
-    },
-    {
       "kode_kbli_2025": "93121",
       "reason_code": "A-empty/gap",
       "in_scope": false,
@@ -1847,16 +1786,6 @@
       ]
     },
     {
-      "kode_kbli_2025": "93191",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
-      "sektor_id": "I.J-P",
-      "judul": "Penyelenggaraan Kegiatan Olahraga",
-      "pp28_sources": [
-        "93191"
-      ]
-    },
-    {
       "kode_kbli_2025": "93192",
       "reason_code": "A-empty/gap",
       "in_scope": false,
@@ -1867,16 +1796,6 @@
       ]
     },
     {
-      "kode_kbli_2025": "93193",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.J-P",
-      "judul": "Aktivitas Perburuan di Kawasan Buru",
-      "pp28_sources": [
-        "93193"
-      ]
-    },
-    {
       "kode_kbli_2025": "93194",
       "reason_code": "A-empty/gap",
       "in_scope": false,
@@ -1884,16 +1803,6 @@
       "judul": "Badan Regulasi dan Liga Olahraga",
       "pp28_sources": [
         "93194"
-      ]
-    },
-    {
-      "kode_kbli_2025": "93195",
-      "reason_code": "A-empty/gap",
-      "in_scope": false,
-      "sektor_id": "I.J-P",
-      "judul": "Aktivitas Olahraga Tradisional",
-      "pp28_sources": [
-        "93195"
       ]
     },
     {

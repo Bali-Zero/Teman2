@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "wrong",
+      "reason": "Klaimnya didukung paket, tetapi tidak secara tegas meminta KBLI klien atau mengarahkan ke halaman kode."
+    },
+    {
+      "run": 2,
+      "verdict": "wrong",
+      "reason": "Fakta didukung paket, tetapi jawaban substantif tidak meminta KBLI klien atau menunjuk halaman kode sebagaimana diwajibkan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara tegas menolak jawaban universal tanpa KBLI; seluruh ilustrasi regulasinya didukung oleh paket run ini."
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+gear: 2
+task_id: docs-kg-root-generator-spec-20260922
+lane: docs
+host: nuzantara (Pro)
+branch: agent/nuzantara/docs/kg-root-generator-spec-20260922
+gate_class: opus
+l_level: L2
+objective: >-
+  Close the measurement half of F4 "root and upkeep"
+  (`.agents/skills/kbli-navigator/SKILL.md` §5.5): the KBLI knowledge graph has
+  no generator, 12,131 of its 13,694 KBLI nodes carry no data, and 1,139
+  well-formed 5-digit codes have no data anywhere. The 2026-08-02 probe measured
+  this ONCE, by hand, and left the numbers in the corner as prose that nobody
+  can re-derive. This PR writes the spec that names the root cause and prices
+  the cure, and ships the read-only census that makes every number in it
+  reproducible. It writes NOTHING to `kg_nodes` or `kg_edges` — §6 asks the
+  owner four questions that must be answered before anything is.
+scope:
+  - >-
+    docs/specs/2026-09-22-kg-root-generator-spec.md — §1 consumer map (which
+    reader lands on which node family, with the query lines), §2 the measured
+    state as tables re-run on PROD today, §3 the root cause (four writers, one
+    convention, the `f"{entity_type}_{name}"` formula against
+    `normalize_entity_id`'s `f"{prefix}:{normalized}"`) and the generator
+    contract that replaces them, §4 the cure in five lots, §5 three detector
+    additions both directions and DECLARED first, §6 four owner decisions
+    priced two ways each, §7 proof-of-armed per lot.
+  - >-
+    scripts/kbli_filiera/kg_root_census.py — read-only, two SELECTs through
+    `scripts/pg.sh`, exit 4 on an empty snapshot. Widens the `WHERE` every
+    earlier census used (`entity_type IN ('kbli','kbli_code')`) and strips id
+    prefixes per family rather than by `replace("kbli:", "")`.
+  - >-
+    scripts/kbli_filiera/tests/test_kg_root_census.py + a 9-node fixture
+    snapshot — 25 tests, guilt and innocence.
+constraints:
+  - >-
+    NO WRITES. This lane never touched `kg_nodes` or `kg_edges`. Every PROD
+    read went through `scripts/pg.sh` as `nuzantara_readonly`. The census holds
+    no INSERT/UPDATE/DELETE/DROP/TRUNCATE and a test pins that.
+  - >-
+    The spec is written under `docs/specs/`, not `research/`, deliberately: a
+    `research/**/*.md` file pulls in the R1 gate, and this is a design document
+    with an owner-decision section, not a research capture.
+  - >-
+    Nothing here is armed and nothing is deployed. The cure lots in §4 are
+    priced, not written; §6's four decisions gate them.
+  - >-
+    One correction to a SIGNED measurement is recorded rather than silently
+    fixed: the 2026-08-02 claim that the id shape predicts emptiness PERFECTLY
+    is refuted at the margin by six `kbli:` nodes that carry no `kode`, and the
+    `LIMIT 5` refutation ("max 3 rows per code") is still valid but the maximum
+    has moved to 4 on 94 codes. Both are stated in §2.4 and §2.6 with the
+    measurement that moved them.
+acceptance:
+  - text: >-
+      REPRODUCIBILITY, the whole point of the census: WHEN the script is run
+      against PROD it SHALL print every table §2 states, and a later session
+      SHALL be able to re-derive the spec's numbers without trusting a
+      date-stamped paragraph.
+    probe: scripts/kbli_filiera/kg_root_census.py
+  - text: >-
+      GUILT for the double prefix: `kbli_kbli_47721` matches BOTH prefix tests,
+      and reading it as the single-prefix family would merge 5,026 nodes into
+      the wrong writer and erase the second bug from the census.
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k
+      double_prefix_is_not_read_as_single_prefix
+  - text: >-
+      GUILT for the live reader's move: `entity_id.replace("kbli:", "")` is a
+      no-op on `kbli_47721`, which is how a malformed code reaches a client.
+      Every shape of 47721 SHALL yield the same five digits.
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k
+      stripped_once_per_family
+  - text: >-
+      INNOCENCE, the rule that keeps the cure honest: a code with a rich twin
+      SHALL NEVER be counted as a phantom, and free text SHALL NEVER enter a
+      cure lot that would assign it a KBLI status.
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k
+      "never_a_phantom or free_text_tokens"
+  - text: >-
+      INNOCENCE for widening the WHERE: filtering `entity_type='kbli'` — as
+      every earlier census did — drops the six `kg_seed` nodes entirely, and
+      those six are the detector's six `kg_node_presence` reverse failures.
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k
+      "non_kbli_entity_type or canonical_id_can_still_be_empty"
+  - text: >-
+      W84: an empty or unreadable snapshot SHALL exit 4, never 0 — "I traversed
+      nothing" must never render as "there is nothing there".
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k cannot_verify
+  - text: >-
+      READ-ONLY BY CONSTRUCTION: the census SHALL hold no write statement, and a
+      future edit that adds one SHALL fail the suite.
+    probe: >-
+      .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -k
+      holds_no_write_statement
+  - text: NO REGRESSION across the filiera suite.
+    probe: .venv/bin/python -m pytest scripts/kbli_filiera/tests/test_kg_root_census.py -q
+  - text: >-
+      The six reverse failures §2.4 attributes to `kg_seed` SHALL be the six the
+      live detector reports.
+    probe: >-
+      scripts/kbli_filiera/kbli_surface_conformance.py | grep -A 7 kg_node_presence
+mutation_evidence: >-
+  Run in this turn, not asserted. The fixture's own arithmetic refuted four of
+  my first-draft assertions and they were corrected to the measured values, not
+  the other way round: phantom_count 1 -> 2 (the `kg_seed` shape IS a phantom
+  and the first draft had excluded it by accident), five_digit_tokens 3 -> 4,
+  fanout {1:2,4:1} -> {1:3,4:1}, and the kbli_kbli inbound histogram was missing
+  the APPLIES_TO 4 it must carry. Separately, two SQL probes written by hand in
+  this lane disagreed with the census by 10 nodes and 253 nodes; both times the
+  CENSUS was right and the hand SQL was the one using the narrow
+  `entity_type='kbli'` filter — which is the paper's own thesis, met while
+  writing it.
+pii: none
+local_evidence: >-
+  Read-only PROD access as `nuzantara_readonly` through `scripts/pg.sh`. No
+  client data was read: `kg_nodes`/`kg_edges` hold KBLI classification codes,
+  regulations and permit types, no person and no client record. No credential
+  was echoed, printed or committed. The fixture snapshot is invented
+  (`kbli:47721`, `kbli_kbli_99999`, `kategori_r`), not a PROD extract.

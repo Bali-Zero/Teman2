@@ -370,7 +370,10 @@ class TestValidateRequiredFields:
     def test_all_present(self) -> None:
         n = ScraperDataNormalizer()
         data: dict[str, Any] = {"title": "Test", "content": "Content"}
-        n._validate_required_fields(data, ["title", "content"])  # Should not raise
+        try:
+            n._validate_required_fields(data, ["title", "content"])
+        except ValueError as exc:
+            pytest.fail(f"unexpected ValueError for fully-populated data: {exc}")
 
     def test_missing_field(self) -> None:
         n = ScraperDataNormalizer()

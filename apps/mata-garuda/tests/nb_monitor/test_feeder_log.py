@@ -67,3 +67,18 @@ def test_compute_global_push_success_rate_handles_stats_legacy_shape(tmp_path):
     )
     rate = compute_global_push_success_rate(p, window_seconds=10**9)
     assert rate == 0.7
+
+
+def test_no_body_items_are_not_push_attempts(tmp_path):
+    p = tmp_path / "feeder.log"
+    p.write_text(
+        '{"agent": "nlm_feeder_stream", "alerts": {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}, '
+        '"enriched": {"processed": 10, "fed": 4, "skipped": 0, "errors": 1, "no_body": 5}}\n'
+    )
+    assert compute_global_push_success_rate(p, window_seconds=10**9) == 4 / 5
+
+
+def test_a_run_of_only_no_body_items_has_no_rate(tmp_path):
+    p = tmp_path / "feeder.log"
+    p.write_text('{"agent": "nlm_feeder_stream", "enriched": {"processed": 3, "fed": 0, "no_body": 3}}\n')
+    assert compute_global_push_success_rate(p, window_seconds=10**9) is None

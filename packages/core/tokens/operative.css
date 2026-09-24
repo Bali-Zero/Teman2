@@ -31,6 +31,11 @@
   --bz-copper: #d4845a;
   --bz-copper-hover: #c07348;
   --bz-copper-deep: #b5633a;
+  /* Copper for TEXT on a dark ink ground (#1d2c3b): 5.30:1, WCAG AA.
+     --bz-copper itself is untouched — it stays the brand value and the fill;
+     this is the lifted step a surface reaches for only when copper type sits
+     on ink. A theme whose "dark" panel flips to paper must not read it. */
+  --bz-copper-on-dark: #d98a70;
   --bz-gold: #d4a853;
   --bz-amber: #e8a849;
   --bz-warm: #c9a96e;

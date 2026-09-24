@@ -1,0 +1,237 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero, 2026-09-22 (/modus gear 2 — F4): the OSS refresh loop that closes the
+  licensing gaps by itself, as a Mini organ with heartbeat on outcome, never a
+  catalogue-wide write; run the first real loop after merge and paste its
+  summary. Spec on disk: session scratchpad f4-spec.md (GROUND facts + design).
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: refute-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  NEW scripts/kbli_filiera/oss_refresh_loop.py (population from
+  build_scoreboard, one persistent keep-alive connection, 404/401/403
+  terminal, bounded retry + Retry-After incl. HTTP-date, wall-clock deadline
+  -> deferred, payload identity check Kbli.id == uuid and kode prefix, full
+  risk-row validation, two positive controls, exit 0/1/2/4, dry-run default,
+  --apply writes report + summary + cure spec only on exit 1, through no
+  symlink via mkstemp); NEW wrapper infra/launchagents/wrappers/
+  kbli-oss-refresh-run.sh (kbli-surface-conformance pattern, Mini-only host
+  guard, heartbeat on OUTCOME, kill switch); NEW weekly plist + Mini-only
+  installer; organs_registry.yaml mini.kbli_oss_refresh (checksum patched in
+  place, not re-dumped); connectome edge on launchd-m5-mini.yaml;
+  kbli-filiera-vault-compilers.yml paths widened so the wrapper + plist
+  changes run the (blocking) battery that holds their tests; 2 test files.
+
+proof: |
+  See receipts. Deterministic floor 3 / path. Loop + wrapper suites green;
+  full kbli_filiera battery green; organ conformance 0 non-conformant
+  births; baseline ratchet holds; registry valid; ruff + shellcheck clean.
+  17 of 17 guard mutants killed on HEAD. A full real dry-run from M5 over
+  the whole population asked and fetched all 219 in 107 s with both controls
+  identity-clean and 0 errors, and found 10 scopes OSS now publishes (8
+  published on an empty gap, 2 changed) -- exit 1, nothing written. The loop
+  is not a no-op on day one: its first Mini run will hand those 10 to the
+  owner as a cure spec, never to the canonical.
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      Clause 1 refuted at loop level: decide_exit returned 0 "nothing new" when
+      at least one answer was trusted, so 217 deferred + 2 still_404 read as
+      nothing new; only the wrapper downgraded it.
+    status: CONFIRMED
+    resolution: >-
+      The loop itself now exits 4 "partial: N of M code(s) got no trustworthy
+      answer" whenever an asked code is deferred/errored/malformed and nothing
+      was proposed (ea41a98967); the wrapper treats rc 0 over unanswered codes
+      as a contradiction (loop_failure). Guilt test:
+      test_one_unanswered_code_is_not_nothing_new.
+  - seat: kimi-code/k3
+    objection: >-
+      Clause 3 refuted: nothing binds a 200 payload to the requested code, so
+      a scope served for the wrong code (remapped uuid, cache) would be
+      proposed as published.
+    status: CONFIRMED
+    resolution: >-
+      Measured live that every scope carries Kbli.id == requested uuid and
+      every risk row a kode "<code>-NN-NN"; payload_identity_mismatch makes
+      any other payload malformed (ea41a98967). Three guilt tests.
+  - seat: kimi-code/k3
+    objection: >-
+      Caveat on (b): a quarantined code's spec entry still embedded per_skala,
+      set and drop_keys — the protection was a label a consumer must honour.
+    status: CONFIRMED
+    resolution: >-
+      A quarantine_owner entry now carries only oss_rows + record_sha256 as
+      evidence, nothing applyable (ea41a98967); asserted in
+      test_cure_spec_shape_and_routes.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F1 symlinked dir under --out-root, or a pre-planted predictable temp name
+      (shared _hardened_cure_io.atomic_write_text), can redirect a write onto
+      the canonical.
+    status: CONFIRMED
+    resolution: >-
+      write_contained refuses any symlink between --out-root and the target
+      and writes through tempfile.mkstemp + os.replace (8142c61628). The shared
+      helper is not changed here (other compilers use it; single-user hosts).
+      Guilt test: test_a_symlinked_output_dir_is_refused (mutation-killed).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F2 a key containing a newline raises an uncaught ValueError whose text
+      quotes the header value, landing the key in the wrapper log.
+    status: CONFIRMED
+    resolution: >-
+      main refuses a key that is not a sendable header value (exit 4, value
+      not printed); the session catches ValueError without echoing it
+      (8142c61628). Two guilt tests.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F3 one proposal + 218 errors: exit 1 and heartbeat ok.
+    status: CONFIRMED
+    resolution: >-
+      Wrapper sets warning on rc 1 when errors or deferred are non-zero
+      (8142c61628). Guilt test: test_new_scopes_from_a_partial_run_is_a_warning.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F4 incomplete payloads accepted: no Resiko -> published with null risk;
+      no SkalaUsaha on one row -> the row silently dropped from the proposal.
+    status: CONFIRMED
+    resolution: >-
+      incomplete_risk_row requires every row to name scale and risk, else
+      malformed (8142c61628). Live controls still pass. Guilt tests (2).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F5 a PP28-vintage gap whose rows equal what OSS publishes reads
+      unchanged and stays a gap forever.
+    status: CONFIRMED
+    resolution: >-
+      For gap targets equal rows are a PUBLISHED provenance proposal; only the
+      controls keep "unchanged" (8142c61628). Guilt test.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F6 with both controls failed and a target looking published, verdict 4
+      but an applyable cure spec is still built.
+    status: CONFIRMED
+    resolution: >-
+      The spec is built only when the verdict is exit 1 (8142c61628). Guilt
+      test: test_no_applyable_spec_beside_a_failed_control.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F7 Retry-After as an HTTP-date is ignored.
+    status: CONFIRMED
+    resolution: >-
+      _retry_delay parses HTTP-dates, capped at MAX_RETRY_AFTER_S (8142c61628).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      F8 replacing response.read() with b"" leaves the suite green: nothing
+      protects the body drain the keep-alive reuse depends on.
+    status: CONFIRMED
+    resolution: >-
+      The fake connection now refuses a request while the previous body is
+      unread (like http.client), and a read timeout reconnects; the no-drain
+      mutant fails 2 tests.
+
+receipts:
+  - claim: "this diff's deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*, .github/workflows/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base name-only list>; python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <same list>"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-22T14:16:48Z"
+    seat: claude-opus-5
+  - claim: "the population is the 219 licensing codes the scoreboard does not count as strong: 217 declared_gap + 2 sourced_pp28_vintage_pending, 1340 sourced_oss_2025"
+    cmd: "python3 scripts/kbli_filiera/kbli_coverage_scoreboard.py; python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k population"
+    result: "licensing declared_gap 217 / sourced_oss_2025 1340 / sourced_pp28_vintage_pending 2; 2 passed"
+    exit: 0
+    ts: "2026-09-22T14:18:12Z"
+    seat: claude-opus-5
+  - claim: "the classifier returns still_404 / published / changed / unchanged / malformed / auth_failed / fetch_error for each answer shape"
+    cmd: 'python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "classif or 404 or published or changed or reordered or malformed or non_answers"'
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-22T14:18:13Z"
+    seat: claude-opus-5
+  - claim: "no trustworthy answer, an unreadable control, an auth refusal or an empty population exits 4, never 0"
+    cmd: 'python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "exits_4 or blind or auth or empty"'
+    result: "9 passed"
+    exit: 0
+    ts: "2026-09-22T14:18:13Z"
+    seat: claude-opus-5
+  - claim: "dry-run writes nothing; --apply writes only report, summary and (on exit 1) the cure spec under --out-root; canonical byte-identical"
+    cmd: 'python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py -q -k "dry_run or apply or cure_spec"'
+    result: "4 passed"
+    exit: 0
+    ts: "2026-09-22T14:18:13Z"
+    seat: claude-opus-5
+  - claim: "the wrapper writes the heartbeat from the OUTCOME and never prints the key"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q"
+    result: "14 passed"
+    exit: 0
+    ts: "2026-09-22T14:18:14Z"
+    seat: claude-opus-5
+  - claim: "loop + wrapper suites green on HEAD 8142c61628 after both review rounds"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/test_oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py -q -p no:cacheprovider"
+    result: "63 passed"
+    exit: 0
+    ts: "2026-09-22T14:15:15Z"
+    seat: claude-opus-5
+  - claim: "full kbli_filiera battery green (the blocking CI job that holds these tests)"
+    cmd: "python3 -m pytest scripts/kbli_filiera/tests/ -q -p no:cacheprovider"
+    result: "1725 passed, 1 skipped"
+    exit: 0
+    ts: "2026-09-22T14:15:17Z"
+    seat: claude-opus-5
+  - claim: "every guard mutation-killed on HEAD: 14 loop mutants (no-control, malformed-trusted, order-sensitive, dry-run-writes, no-retry, population-drift, no-drain, no-identity, no-row-validation, spec-always, no-symlink-walk, no-key-validation, gap-equal-unchanged, partial-green) and 3 wrapper mutants (no-rc-agreement, exit-code-is-enough, partial-hidden)"
+    cmd: "per-mutant python3 -m pytest on a cp-backed mutated copy, restored and checked with cmp -s"
+    result: "17 of 17 mutants: >=1 failed; both files restored byte-identical"
+    exit: 0
+    ts: "2026-09-22T14:17:40Z"
+    seat: claude-opus-5
+  - claim: "the tracked plist is a conformant birth; ratchet holds; registry valid"
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py; python3 infra/organ-conformance/check_baseline_ratchet.py --base origin/main; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml"
+    result: "168 plists scanned, 0 regressions, 0 non-conformant births; ratchet 112 == 112; registry valid"
+    exit: 0
+    ts: "2026-09-22T14:16:46Z"
+    seat: claude-opus-5
+  - claim: "OSS ruang-lingkup answers without user_key and with an invalid one; a gap's 404 carries the Data Not Found body"
+    cmd: "http.client probe from M5: 55203 no header, 55203 invalid user_key, 64995 no header"
+    result: "200 8346B 0.25s / 200 8346B 0.12s / 404 68B {success:false,data:null,message:Data Not Found!,code:404}"
+    exit: 0
+    ts: "2026-09-22T14:18:43Z"
+    seat: claude-opus-5
+  - claim: "full real dry-run from M5 over the whole population: 219 of 219 asked were fetched with 2 of 2 controls ok, 0 errors, 0 deferred, 107 s wall; 209 still_404, 8 published, 2 changed -> 10 proposed, exit 1; nothing written"
+    cmd: "python3 scripts/kbli_filiera/oss_refresh_loop.py"
+    result: "fetched 219/219 asked, trusted 219, errors 0, deferred 0, controls 2/2 ok; still_404 209, published 8, changed 2; verdict 10 new OSS scope(s) proposed (exit 1); DRY-RUN nothing written; rc=1 wall=107s"
+    exit: 1
+    ts: "2026-09-22T14:14:09Z"
+    seat: claude-opus-5
+  - claim: "lint and shell hygiene on the new files"
+    cmd: "ruff check scripts/kbli_filiera/oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_loop.py scripts/kbli_filiera/tests/test_oss_refresh_wrapper.py; shellcheck infra/launchagents/wrappers/kbli-oss-refresh-run.sh infra/launchagents/install_kbli_oss_refresh.sh"
+    result: "All checks passed! / shellcheck clean"
+    exit: 0
+    ts: "2026-09-22T14:16:50Z"
+    seat: claude-opus-5
+
+pii_scan: clean
+pii_scan_note: >-
+  The loop reads the public KBLI classification (codes, OSS scope rows) and
+  the public OSS endpoint; no client data, OSINT or credential is read,
+  written or quoted. OSS_RBA_USER_KEY is a public app credential and is only
+  ever reported as present/absent. Test fixtures are synthetic.
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"

@@ -61,6 +61,11 @@ class EditorialProviderFailure(RuntimeError):
             message = "NotebookLM authentication expired. Run nlm login on Pro, then retry the fact check."
         elif status == "auth_required" and provider == "claude":
             message = "Independent reviewer authentication is unavailable. Restore its subscription login on Pro."
+        elif status == "seat_exhausted":
+            message = (
+                "Independent reviewer has no subscription seat with quota left on Pro. "
+                "Retry after the next quota reset."
+            )
         elif status == "timeout":
             message = "Editorial verification timed out"
         else:
@@ -876,7 +881,17 @@ async def _run_public_subprocess(
                 "authentication expired", "credentials have expired", "nlm login",
             ))
         ) or (provider == "claude" and "not logged in" in output)
-        status = "auth_required" if auth_required else "unavailable"
+        # A Max seat past its quota answers `claude --print` in two shapes, both
+        # measured on Pro 2026-09-24 on the same seat _3 within the hour: the
+        # org-access line, and "You've hit your weekly limit · resets …". Read as
+        # "unavailable" either one hid that the other seats were fine.
+        seat_exhausted = provider == "claude" and _SEAT_EXHAUSTED_RE.search(output) is not None
+        if auth_required:
+            status = "auth_required"
+        elif seat_exhausted:
+            status = "seat_exhausted"
+        else:
+            status = "unavailable"
         logger.warning(
             "Editorial verification provider %s exited %s: status=%s",
             provider,
@@ -922,7 +937,34 @@ async def _editorial_auth_health() -> dict[str, Any]:
     }
 
 
-def _verification_env(provider: str) -> dict[str, str]:
+# The batch seat stays first so a healthy day routes exactly as before; the Team
+# seat (_6) is the fleet's last resort and stays last here too.
+_REVIEWER_SEAT_ORDER = (3, 1, 4, 5, 2, 6)
+_RETRY_NEXT_SEAT = frozenset({"auth_required", "seat_exhausted"})
+_SEAT_EXHAUSTED_RE = re.compile(
+    r"disabled claude subscription access|usage limit|hit your (?:[a-z0-9-]+ )?limit"
+)
+
+
+def _reviewer_seats() -> list[tuple[str, str]]:
+    """Ordered ``(label, token)`` seats for the reviewer; labels are safe to log."""
+
+    candidates = [("env", os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip())]
+    for number in _REVIEWER_SEAT_ORDER:
+        name = f"CLAUDE_CODE_OAUTH_TOKEN_{number}"
+        candidates.append(
+            (f"_{number}", os.environ.get(name, "").strip() or _secrets_file_value(name))
+        )
+    seats: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for label, token in candidates:
+        if token and token not in seen:
+            seen.add(token)
+            seats.append((label, token))
+    return seats
+
+
+def _verification_env(provider: str, oauth_token: str | None = None) -> dict[str, str]:
     """Expose only one verifier's subscription identity, never app secrets."""
 
     allowed = {"HOME", "LANG", "LC_ALL", "PATH", "TMPDIR"}
@@ -939,6 +981,8 @@ def _verification_env(provider: str) -> dict[str, str]:
     env["PATH"] = f"{standard_path}:{env.get('PATH', '')}"
     if provider == "claude":
         env["CLAUDE_CONFIG_DIR"] = str(_verifier_config_dir())
+    if provider == "claude" and oauth_token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
     if provider == "claude" and not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
         # The isolated CLAUDE_CONFIG_DIR has no login of its own, and the tunnel
         # runtime starts this server from `env -i` — so neither the machine's
@@ -1120,8 +1164,8 @@ async def _query_notebooklm(article: dict[str, Any], notebook_id: str) -> str:
 async def _run_independent_fact_reviewer(
     article: dict[str, Any], notebook_evidence: str
 ) -> dict[str, Any]:
-    verifier_env = _verification_env("claude")
-    binary = shutil.which("claude", path=verifier_env.get("PATH"))
+    seats = _reviewer_seats() or [("default", "")]
+    binary = shutil.which("claude", path=_verification_env("claude").get("PATH"))
     if not binary:
         raise RuntimeError("Independent editorial reviewer is unavailable")
     prompt = (
@@ -1146,21 +1190,38 @@ async def _run_independent_fact_reviewer(
         )
         + "\n</EVIDENCE_PACKAGE>"
     )
-    output = await _run_public_subprocess(
-        [
-            binary,
-            "--print",
-            "--model",
-            "claude-sonnet-4-6",
-            "--tools",
-            "",
-            "--disable-slash-commands",
-            "--no-session-persistence",
-        ],
-        stdin_text=prompt,
-        timeout_seconds=180,
-        env=verifier_env,
-    )
+    # One exhausted seat used to fail every fact gate while four others had
+    # quota (2026-09-24). A seat refusal moves to the next seat; any other
+    # failure — timeout, unknown exit — is not a seat problem and stops here.
+    output = ""
+    for index, (label, token) in enumerate(seats):
+        try:
+            output = await _run_public_subprocess(
+                [
+                    binary,
+                    "--print",
+                    "--model",
+                    "claude-sonnet-4-6",
+                    "--tools",
+                    "",
+                    "--disable-slash-commands",
+                    "--no-session-persistence",
+                ],
+                stdin_text=prompt,
+                timeout_seconds=180,
+                env=_verification_env("claude", oauth_token=token or None),
+            )
+        except EditorialProviderFailure as exc:
+            if exc.status not in _RETRY_NEXT_SEAT or index == len(seats) - 1:
+                raise
+            logger.warning(
+                "Editorial reviewer seat %s refused (%s); trying seat %s",
+                label,
+                exc.status,
+                seats[index + 1][0],
+            )
+            continue
+        break
     payload = _extract_json_object(output)
     if payload is None:
         raise RuntimeError("Independent editorial reviewer returned invalid output")

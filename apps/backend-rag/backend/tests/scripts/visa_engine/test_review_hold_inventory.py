@@ -86,16 +86,20 @@ def real_pack() -> M.RulePackPayload:
 def test_inventory_counts_match_the_signed_pack(real_pack: M.RulePackPayload) -> None:
     review_rules = pack_review_rules(real_pack)
     escalations = pack_unknown_escalations(real_pack)
-    assert len(review_rules) == 9, (
-        f"sequence {real_pack.sequence}: expected 9 HUMAN_REVIEW-stage rules, "
-        f"got {len(review_rules)} — PLAN §1.3(c) named exactly 9 for seq-22; a "
-        "changed count on a later sequence is real news, not a stale pin"
+    # Printed by `review_hold_inventory --json` on the signed seq-23 tree
+    # (Slice A9.3), never typed: seq-22's 9 / 7 became 1 / 0 when seq-23
+    # retired 8 review.* rules and flipped the 4 HARD_FILTER escalations to
+    # NEEDS_INPUT — A8.4's derived target.
+    assert len(review_rules) == 1, (
+        f"sequence {real_pack.sequence}: expected 1 HUMAN_REVIEW-stage rule "
+        f"(review.e33.below-threshold-studio), got {len(review_rules)} — "
+        "A8.4 derived exactly 1 for seq-23; a changed count on a later "
+        "sequence is real news, not a stale pin"
     )
-    assert len(escalations) == 7, (
-        f"sequence {real_pack.sequence}: expected 7 on_unknown=HUMAN_REVIEW "
-        f"escalations, got {len(escalations)} — PLAN §1.3(d) named exactly 7 for "
-        "seq-22 (the 3 overlapping HUMAN_REVIEW-stage rules plus 4 HARD_FILTER "
-        "rules)"
+    assert len(escalations) == 0, (
+        f"sequence {real_pack.sequence}: expected 0 on_unknown=HUMAN_REVIEW "
+        f"escalations, got {len(escalations)} — A8.4 derived 0 for seq-23 "
+        "(the 4 bridging/B1 HARD_FILTER rules now ask instead of holding)"
     )
 
 

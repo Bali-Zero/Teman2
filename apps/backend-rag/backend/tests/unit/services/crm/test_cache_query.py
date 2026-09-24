@@ -49,7 +49,14 @@ class TestCRMCache:
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent(self, cache):
+        await cache.set("keep", "value")
+
         await cache.delete("doesnt_exist")  # Should not raise
+
+        # Deleting a missing key must be a true no-op: it neither raises
+        # nor disturbs unrelated entries already in the cache.
+        assert "doesnt_exist" not in cache._cache
+        assert await cache.get("keep") == "value"
 
     @pytest.mark.asyncio
     async def test_clear_pattern(self, cache):

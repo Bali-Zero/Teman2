@@ -139,7 +139,15 @@ REQUIRED_SEATS = {
 DEFAULT_TIMEOUTS = {
     "claude": 15,
     "kimi": 15,
-    "agy": 15,
+    # agy: 40, not 15. Measured 2026-09-24 on Pro: warm PONG 6.8-12 s from a login
+    # session, 8.9 s under a gui/501 LaunchAgent, but agy's own log for the 03:33Z
+    # healer-context run shows ~7 s of cold start (language-server spawn, token refresh,
+    # "Experiments refreshed after login") BEFORE the model call — under the all-seats
+    # concurrent probe that run crossed 15 s with EMPTY stdout and the digest read
+    # `agy TIMEOUT` for a seat that answered in 7 s a minute later. capture_via_files
+    # (probe_agy) already removed the pipe-leak reason the budget was ever 15; a dead
+    # agy now costs the run 40 s once, a live one still returns in ~9.
+    "agy": 40,
     "codex": 15,
     "codex-spark": 15,
     "jules": 15,

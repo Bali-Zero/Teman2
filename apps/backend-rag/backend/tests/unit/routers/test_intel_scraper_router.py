@@ -56,8 +56,7 @@ class TestConvertStagingToEnrichedArticle:
         }
         result = convert_staging_to_enriched_article(data)
         assert result["priority"] == "low"
-        assert result["tldr"]["risk_level"] == "Low"
-        assert result["tldr"]["should_worry"] == "No"
+        assert result["tldr"] == {"what": "Some minor content."}
 
     def test_medium_relevance(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
@@ -70,7 +69,24 @@ class TestConvertStagingToEnrichedArticle:
         }
         result = convert_staging_to_enriched_article(data)
         assert result["priority"] == "medium"
-        assert result["tldr"]["should_worry"] == "Depends"
+        assert set(result["tldr"]) == {"what"}
+
+    def test_high_relevance_does_not_become_reader_risk(self) -> None:
+        """Guilt: the GloBE article (2026-09-24) told expats "Should I Worry? Yes /
+        Risk Level: High / Expats and investors in Indonesia" because relevance
+        85 was read as reader risk. Priority stays editorial; the TL;DR keeps
+        only what the draft says."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Indonesia Records 1,460 GloBE Taxpayer Registrations",
+            "content": "## Facts\nThe tax office recorded 1,460 GloBE registrations.",
+            "category": "tax-legal",
+            "relevance_score": 85,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["priority"] == "high"
+        assert result["tldr"] == {"what": "The tax office recorded 1,460 GloBE registrations."}
 
     def test_no_sections(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article

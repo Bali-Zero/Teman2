@@ -324,7 +324,7 @@ snapshotted=${SNAP_N} changed=${CHANGED_N}
 Source: ~/Library/LaunchAgents/com.{nuzantara,balizero,cell,matagaruda}.*
 Redaction + independent secret-leak verification PASSED before commit.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 if [[ -n "${PARENT}" ]]; then
     COMMIT="$(printf '%s' "${COMMIT_MSG}" | git commit-tree "${TREE}" -p "${PARENT}")"

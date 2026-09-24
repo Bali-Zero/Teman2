@@ -219,10 +219,14 @@ end_of_record
         cov_dir.mkdir()
         (cov_dir / "lcov.info").write_text("INVALID CONTENT\x00\x01")
 
-        # _parse_lcov may fail with weird content but shouldn't crash
-        # If it does parse, that's fine too
-        collector.collect_frontend_coverage(component_path, "test")
-        # Just verify no exception propagates
+        # _parse_lcov tolerates unparseable content: no line matches the
+        # SF:/LF:/LH:/DA: prefixes it scans for, so it must still return a
+        # valid (zeroed-out) ComponentCoverage rather than raising or
+        # falling through to the except-and-return-None path.
+        result = collector.collect_frontend_coverage(component_path, "test")
+        assert result is not None
+        assert result.total_lines == 0
+        assert result.coverage_percent == 0.0
 
 
 # ── _parse_lcov ─────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ FIX-4: ollama_client.py   — structured logging on all Ollama calls
 FIX-5: ollama_client.py   — bare except -> explicit debug log in is_ollama_available
 """
 
+import logging
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -392,18 +393,31 @@ class TestR2TimeoutInConfig:
 class TestR5MetricsEmitter:
     @pytest.mark.asyncio
     async def test_emit_noop_when_redis_unavailable(self):
-        """emit_llm_metric must not raise when Redis is unavailable."""
+        """emit_llm_metric must not raise when Redis is unavailable, and it
+        must short-circuit BEFORE building the metric payload — proved by
+        making time.time() (only called while assembling `fields`) blow up
+        if it's ever reached."""
         from backend.llm.metrics_emitter import emit_llm_metric
 
-        with patch("backend.llm.metrics_emitter._get_redis", return_value=None):
-            # Should complete without raising
-            await emit_llm_metric(
+        with (
+            patch("backend.llm.metrics_emitter._get_redis", return_value=None),
+            patch(
+                "backend.llm.metrics_emitter.time.time",
+                side_effect=AssertionError(
+                    "emit_llm_metric must return before building metric fields"
+                ),
+            ),
+        ):
+            # Should complete without raising, and without ever reaching
+            # the fields-building / xadd code past the redis-unavailable guard.
+            result = await emit_llm_metric(
                 provider="gemini",
                 model="gemini-2.0-flash",
                 latency_ms=250,
                 prompt_tokens=100,
                 completion_tokens=50,
             )
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_emit_calls_xadd_when_redis_available(self):
@@ -434,20 +448,29 @@ class TestR5MetricsEmitter:
         assert fields["status"] == "ok"
 
     @pytest.mark.asyncio
-    async def test_emit_swallows_redis_error(self):
-        """emit_llm_metric must not propagate Redis errors (fire-and-forget)."""
+    async def test_emit_swallows_redis_error(self, caplog: pytest.LogCaptureFixture):
+        """emit_llm_metric must not propagate Redis errors (fire-and-forget),
+        and the swallowed error must be observable via a debug log."""
         from backend.llm.metrics_emitter import emit_llm_metric
 
         mock_redis = AsyncMock()
         mock_redis.xadd.side_effect = ConnectionError("Redis down")
 
-        with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
+        with (
+            patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis),
+            caplog.at_level(logging.DEBUG, logger="backend.llm.metrics_emitter"),
+        ):
             # Must not raise
-            await emit_llm_metric(
+            result = await emit_llm_metric(
                 provider="gemini",
                 model="gemini-2.0-flash",
                 latency_ms=100,
             )
+        assert result is None
+        mock_redis.xadd.assert_awaited_once()
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "LLM metrics emit failed" in text
+        assert "Redis down" in text
 
     @pytest.mark.asyncio
     async def test_emit_error_status(self):

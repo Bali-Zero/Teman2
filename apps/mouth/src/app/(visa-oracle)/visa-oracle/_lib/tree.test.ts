@@ -306,15 +306,15 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     ).toHaveLength(7);
   });
 
-  // INNOCENCE (FIX-B, spec F2): exactly 13 questions declare no `notSure`
-  // at all — three literal ids plus the ten `qualificationQuestion(...)`-
+  // INNOCENCE (FIX-B, spec F2): exactly 14 questions declare no `notSure`
+  // at all — four literal ids plus the ten `qualificationQuestion(...)`-
   // built ones. The ten omit it DELIBERATELY (`tree.ts:182-189`: "a 'not
   // sure' would map to UNKNOWN and the engine would ask the same question
   // again: a loop, not an answer"). Giving any of the ten a `notSure`
   // would add a tenth `"unsure"` option, move the 253-walk manifest pin
   // (`enumerate-interview-space.test.ts:519`) and destroy slice A6-2's
   // manifest-innocence proof — that is a RED to report, never a fix.
-  it("holds exactly 13 questions with no notSure at all, named (A6-1)", () => {
+  it("holds exactly 14 questions with no notSure at all, named (A6-1/A7-M)", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure === undefined)
@@ -322,6 +322,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
         .sort(),
     ).toEqual(
       [
+        "guardian_consent",
         "investment_currency",
         "retirement_undecided_basis",
         "review_gate",
@@ -339,6 +340,6 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     );
     expect(
       Object.entries(QUESTIONS).filter(([, q]) => q.notSure === undefined),
-    ).toHaveLength(13);
+    ).toHaveLength(14);
   });
 });

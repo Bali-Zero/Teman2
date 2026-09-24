@@ -155,9 +155,20 @@ GATE_EVENTS = ("push", "merge_group")
 
 # tg_notify.py prints its real outcome as `tg_notify: <verdict>` on stderr — the
 # gateway's own exit code is always 0 (W104), so this is the only place a caller
-# can tell "sent" from "deduped"/"p0_overflow_spooled"/etc. Same convention as
-# scripts/job_health.py's _GATEWAY_VERDICT_RE.
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+# can tell "sent" from "deduped"/"p0_overflow_spooled"/etc. Read with the ONE
+# canonical extractor, never a private regex `.search()` (that returns the
+# FIRST `tg_notify:` match, and a P0-unsendable run prints a human diagnostic
+# line before the machine verdict — measured 2026-09-24 on this file's own
+# named sibling, scripts/job_health.py's now-retired _GATEWAY_VERDICT_RE).
+for _cand in (Path(__file__).resolve().parent.parent, Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 def _env_float(name: str, default: float) -> float:
@@ -369,9 +380,9 @@ def _run_tg_notify(cmd: list[str], timeout: int = GH_TIMEOUT_TG) -> subprocess.C
     caller of this function inherits the reading for free instead of each one
     re-deriving it (or forgetting to)."""
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    verdict = extract_gateway_verdict(proc.stderr or "")
     print(
-        f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}",
+        f"tg_notify: {verdict if verdict else f'NESSUN verdetto rc={proc.returncode}'}",
         file=sys.stderr,
     )
     return proc

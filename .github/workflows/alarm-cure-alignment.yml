@@ -36,6 +36,14 @@ on:
       # Same study, one step further: an alarm must also name its CAUSE.
       - "scripts/nb-agents-daily-dr.sh"
       - "scripts/tests/test_nb_agents_cause_escapes.sh"
+      # Third case of the same family, 2026-09-20: an alarm must be hearable on
+      # a wire the broken thing cannot mute. `count_undrained`'s `exhausted`
+      # paged only through the API's Telegram, so a page Telegram refused
+      # raised a count whose only reader was the refusal itself.
+      - "scripts/healer_receptor_garuda_outbox.py"
+      - "scripts/tests/test_healer_receptor_garuda_outbox.py"
+      - "infra/healer/healer-run.sh"
+      - "apps/backend-rag/backend/app/routers/health.py"
       - ".github/workflows/alarm-cure-alignment.yml"
   workflow_dispatch: {}
 
@@ -81,3 +89,23 @@ jobs:
 
       - name: Cause escapes the self-redirect AND names the right thing
         run: bash scripts/tests/test_nb_agents_cause_escapes.sh
+
+  second-path:
+    name: the outbox alarm is hearable on a wire its own failure cannot mute
+    runs-on: ubuntu-latest
+    # Same reasoning as the two jobs above on the floor: size the budget by the
+    # checkout, not by the (sub-second) tests.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The receptor, its verdicts, and the tick that calls it
+        # The wiring assertions are the point: a receptor nobody runs is a
+        # file, and a finding that only reaches a log is the silence this
+        # whole family is about. Both carry a GUILT twin in the same file.
+        run: |
+          python3 -m pip -q install pytest
+          python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q
+
+      - name: The receptor's own corpus, run the way the healer runs it
+        run: python3 scripts/healer_receptor_garuda_outbox.py --selftest

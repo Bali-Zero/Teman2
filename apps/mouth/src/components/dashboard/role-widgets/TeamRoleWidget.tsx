@@ -8,7 +8,7 @@ interface Props {
 export function TeamRoleWidget({ metrics }: Props) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[9px] font-bold text-[var(--bz-text-3)] tracking-[.12em]">
+      <span className="text-[11px] font-bold text-[var(--bz-text-3)] tracking-[0.12em]">
         MY CASES
       </span>
       <span className="text-2xl font-black text-[var(--state-success)] leading-none">

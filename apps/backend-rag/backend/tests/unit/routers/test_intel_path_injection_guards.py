@@ -25,11 +25,18 @@ covered — was removed 2026-08-18 along with the rest of ``telegram_webhook.py`
 (Zero ruled REMOVE): the router it lived in was structurally dead by design, so the
 sink was never reachable. See ``.claude/skills/modus/PENDING-ARMS.md`` (closed
 lines) for the measurement.
+
+``TestScraperApiArticleIdRoutes`` — the AST pin over the five `article_id` routes in
+``apps/bali-intel-scraper/api/main.py`` — was removed in the same change that deleted
+that file (chore(bali-intel-scraper): delete the dead api/ entrypoint, 2026-09-24):
+the file was an unreachable, un-COPYed Docker entrypoint importing a module
+(`orchestrator`) that exists nowhere, and CodeQL alert #370 on its `main.py:680` sink
+closes by the sink no longer existing, not by a guard on it. The two sinks that DO
+still run in prod — `intel.upload_cover_image` and `intel_scraper._publish_staging_item`
+— stay pinned by `TestCoverUploadRoute` and `TestPublishStagingItem` below, untouched.
 """
 
-import ast
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -265,102 +272,6 @@ class TestPublishStagingItem:
                 type="news", item_id=LEGIT, body=None, request=None, actor="test"
             )
         assert exc.value.status_code == 404
-
-
-class TestScraperApiArticleIdRoutes:
-    """
-    `apps/bali-intel-scraper/api/main.py` — five routes, a DIFFERENT app.
-
-    Structural pin rather than a behavioural test, deliberately and with the limit
-    stated: that app's own suite (`apps/bali-intel-scraper/tests/`) is executed by no
-    workflow in `.github/workflows/`, and its one test file `importorskip`s an archived
-    module — a behavioural test placed there would be armed at nothing (W81). This file
-    runs inside `pytest backend/tests/`, which `tests.yml` does execute, so the pin
-    lives here and reads the other app's source from disk.
-
-    It walks the AST rather than grepping: a comment mentioning the validator cannot
-    satisfy it, only a call as the first statement of each route can.
-    """
-
-    # ALL FIVE routes in that file that join `article_id` into a path — not just the
-    # two the triage named. The class sweep found the three approval routes only AFTER
-    # the two preview ones were already cured; curing 2 of 5 and calling the file done
-    # is W107, it only moves which route dies in silence.
-    ROUTES = (
-        "get_preview",
-        "upload_preview",
-        "approve_article",
-        "reject_article",
-        "get_approval_status",
-    )
-
-    @pytest.fixture(scope="class")
-    def scraper_api_source(self) -> str:
-        # backend/tests/unit/routers/<this> → repo root is 6 parents up.
-        root = Path(__file__).resolve().parents[6]
-        path = root / "apps" / "bali-intel-scraper" / "api" / "main.py"
-        assert path.exists(), f"scraper api moved; re-anchor this pin (looked at {path})"
-        return path.read_text()
-
-    @pytest.mark.parametrize("route", ROUTES)
-    def test_each_route_validates_before_touching_the_path(
-        self, scraper_api_source: str, route: str
-    ) -> None:
-        tree = ast.parse(scraper_api_source)
-        fn = next(
-            (
-                n
-                for n in ast.walk(tree)
-                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == route
-            ),
-            None,
-        )
-        assert fn is not None, f"{route} disappeared from the scraper api"
-
-        body = [
-            s
-            for s in fn.body
-            if not isinstance(s, ast.Expr) or not isinstance(s.value, ast.Constant)
-        ]
-        first = body[0] if body else None
-        assert isinstance(first, ast.Expr), f"{route}'s first statement is not a call"
-        call = first.value
-        assert isinstance(call, ast.Call)
-        assert getattr(call.func, "id", None) == "_validate_article_id", (
-            f"{route} must validate article_id BEFORE any path is built"
-        )
-
-        # The callee NAME is not enough — `_validate_article_id("constant")` would
-        # satisfy it while the route still builds its path from the caller's value.
-        # Assert the ARGUMENT is the same expression the route goes on to join:
-        # the bare `article_id` parameter, or `request.article_id` for the body route.
-        # (Raised by the cross-family reviewer against the first version of this pin.)
-        assert len(call.args) == 1, f"{route}: validator called with {len(call.args)} args"
-        arg = call.args[0]
-        if isinstance(arg, ast.Attribute):
-            actual = f"{getattr(arg.value, 'id', '?')}.{arg.attr}"
-        else:
-            actual = getattr(arg, "id", "<not a name>")
-        assert actual in ("article_id", "request.article_id"), (
-            f"{route} validates `{actual}`, which is not the value it builds its path from"
-        )
-
-    def test_the_duplicated_regex_still_matches_the_one_it_was_copied_from(
-        self, scraper_api_source: str
-    ) -> None:
-        """
-        Two apps, two processes, nothing to import — so the pattern is duplicated on
-        purpose. A duplicate nothing compares is a duplicate that drifts.
-        """
-        from backend.app.routers.preview import _SAFE_ARTICLE_ID as backend_rag_pattern
-
-        found = re.search(r'_SAFE_ARTICLE_ID = re\.compile\(r"([^"]+)"\)', scraper_api_source)
-        assert found, "scraper api lost its _SAFE_ARTICLE_ID definition"
-        assert found.group(1) == backend_rag_pattern.pattern
-
-    def test_the_length_bound_is_duplicated_too(self, scraper_api_source: str) -> None:
-        """The regex alone is unbounded; the 128 cap is the other half of the guard."""
-        assert "len(article_id) > 128" in scraper_api_source
 
 
 class TestApprovalServiceVotingStatusWrite:

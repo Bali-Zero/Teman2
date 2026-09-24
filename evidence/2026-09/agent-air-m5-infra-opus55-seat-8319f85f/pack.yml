@@ -1,0 +1,57 @@
+task_id: opus55-seat
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: opus55 seat swap
+    role: build
+    seat: claude-opus-5-5 (interactive conductor, M5 worktree agent/air-m5/infra/opus55-seat)
+    note: Line-scoped regex swap over a censused file list, then hand edits to roster, ruling, C5 judge.
+seat_diversity: single_seat
+seat_diversity_note: >-
+  One mechanical build lane; the independent check is the fresh gate session outside the chain.
+diff:
+  files: 29
+bites: >-
+  Consumers: FLEET_TOPOLOGY gate/verdict seats read by the harness, the dynamic_workflow C5 judge,
+  proprioception child_calibration, and every session that loads CLAUDE.md-family doors. Observation:
+  after merge, the C5 judge refuses a brief whose gate seat is opus-5 and accepts opus-5-5.
+receipts:
+  - claim: the C5 gate judge accepts every Opus 5.5 spelling and refuses bare Opus 5, whole dynamic_workflow suite green
+    cmd: python3 -m pytest -q scripts/tests/test_dynamic_workflow.py
+    result: 235 passed
+    ts: "2026-09-22T17:27:11Z"
+    seat: claude-opus-5-5 (M5 conductor)
+    exit: 0
+  - claim: no regression in the suites that name the swapped literals
+    cmd: python3 -m pytest -q scripts/tests/test_lint_roster_dispatch.py scripts/tests/test_proprioception_child_calibration.py infra/claude-hooks/test_model_routing_gate_floor.py scripts/tests/test_evidence_pack_lint.py scripts/tests/test_conductor_model_registry.py scripts/tests/test_dynamic_workflow.py
+    result: 1041 passed, 781 subtests passed
+    ts: "2026-09-22T17:27:11Z"
+    seat: claude-opus-5-5 (M5 conductor)
+    exit: 0
+  - claim: every roster row resolves to a door and the decision registry stays valid
+    cmd: python3 scripts/lint_roster_dispatch.py && python3 scripts/lint_decision_registry.py
+    result: clean, 23 roster rows; no violations, next free id D-020
+    ts: "2026-09-22T17:27:11Z"
+    seat: claude-opus-5-5 (M5 conductor)
+    exit: 0
+council_run: council.jsonl
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: BLOCKER apps/cell/tests/learning_pilot/run_experiment.py:37 REVIEWER_MODEL still launched claude-opus-5
+    status: CONFIRMED
+    disposition: cured in this PR (claude-opus-5-5; identity check is exact-equality, pilot suite 30 passed)
+  - seat: codex-gpt-5.6-sol
+    objection: MEDIUM modus SKILL.md hard-lane routing still said Opus-5-xhigh (hyphen form escaped the sweep regex)
+    status: CONFIRMED
+    disposition: cured in this PR
+  - seat: codex-gpt-5.6-sol
+    objection: MEDIUM products/garuda-voa/LANES.md and modus "Gear 1-2 already closed on Opus 5.5 (2026-08-19)" rewrote provenance
+    status: CONFIRMED
+    disposition: LANES.md reverted to origin/main; modus line restored to Opus 5 with the 2026-09-23 seat change stated
+  - seat: kimi-code/k3
+    objection: LOW MODEL_ROSTER fable row pointed to the claude-opus-5 row for the moved roles; ANTHROPIC_API_REFERENCE routed to an id its own roster table lacked
+    status: CONFIRMED
+    disposition: cross-reference fixed; roster row added with context/price marked not re-measured (no invented figures)
+pii_scan: clean
+pii_scan_note: No client data in the diff.

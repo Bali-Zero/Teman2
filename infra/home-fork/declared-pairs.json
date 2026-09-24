@@ -1110,6 +1110,24 @@
       "repo": "infra/claude-plugins/local-marketplace/machines/mini/typescript-lsp.plugin.json",
       "machines": ["mini"],
       "_note": "Mini half of the typescript-lsp per-machine pair — see the m5 entry above for why this plugin.json is machine-specific. No vendored files under this plugin."
+    },
+    {
+      "live": "~/scripts/intel_lake_rules.py",
+      "repo": "apps/backend-rag/backend/services/intel/intel_lake_rules.py",
+      "machines": ["pro"],
+      "_note": "PR #7152 gate condition 3 (2026-09-23): the Tier-1 intel-lake routing rules single source of truth. The Pro-local fallback cron (com.balizero.intel-lake-router.5min) imports this file from a hand-copied sibling; the Fly backend imports the same repo file as a package. Declared so lint_home_fork.py --check catches the NEXT drift — the one this PR fixed (a stale JSON rules copy on Pro routing 24 rows to needs_review that the backend classifier routed correctly) happened precisely because no pair existed to watch it."
+    },
+    {
+      "live": "~/scripts/intel-lake-router-cron.sh",
+      "repo": "scripts/intel-lake-router-a2/intel-lake-router-cron.sh",
+      "machines": ["pro"],
+      "_note": "PR #7152 gate condition 3: bash wrapper for the Pro-local intel-lake-router fallback cron (loads secrets, holds flock, execs the standalone script). Companion pair to intel_lake_rules.py and intel-lake-router-cron-standalone.py above/below."
+    },
+    {
+      "live": "~/scripts/intel-lake-router-cron-standalone.py",
+      "repo": "scripts/intel-lake-router-a2/intel-lake-router-cron-standalone.py",
+      "machines": ["pro"],
+      "_note": "PR #7152 gate condition 3: the asyncpg classifier driver run every 5min by com.balizero.intel-lake-router.5min. As of this PR it imports intel_lake_rules.py (declared above) instead of parsing a JSON rules copy — declaring all three sibling files closes the HOME-fork blind spot the gate found."
     }
   ],
   "allow": [

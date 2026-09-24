@@ -576,9 +576,12 @@ def test_get_all_metrics(executor):
 @pytest.mark.asyncio
 async def test_warm_plugins(executor):
     plugin = _make_plugin(name="warm.plugin")
+    plugin.on_load = AsyncMock()
     with patch("backend.core.plugins.executor.registry") as mock_registry:
         mock_registry.get.return_value = plugin
         await executor.warm_plugins(["warm.plugin"])
+    # warm_plugins must actually call on_load() on the resolved plugin.
+    plugin.on_load.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -587,6 +590,8 @@ async def test_warm_plugins_not_found(executor):
         mock_registry.get.return_value = None
         # Should not raise
         await executor.warm_plugins(["missing.plugin"])
+    # The loop must still look the plugin up by name even when it is absent.
+    mock_registry.get.assert_called_once_with("missing.plugin")
 
 
 @pytest.mark.asyncio
@@ -597,6 +602,8 @@ async def test_warm_plugins_on_load_failure(executor):
         mock_registry.get.return_value = plugin
         # Should not raise
         await executor.warm_plugins(["warm.fail"])
+    # on_load was attempted (and its failure caught) rather than skipped.
+    plugin.on_load.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -632,7 +639,11 @@ async def test_get_cached_redis_hit(executor_with_redis):
 async def test_cache_result_no_redis(executor):
     # Should not raise
     output = PluginOutput(success=True)
-    await executor._cache_result("test.plugin", {}, output)
+    with patch.object(executor, "_generate_cache_key") as mock_gen:
+        await executor._cache_result("test.plugin", {}, output)
+    # No redis client means _cache_result must short-circuit before doing
+    # any cache-key work.
+    mock_gen.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -650,3 +661,5 @@ async def test_cache_result_redis_error_is_handled(executor_with_redis):
     output = PluginOutput(success=True)
     # Should not raise
     await exe._cache_result("test.plugin", {}, output)
+    # The write was actually attempted (and its failure swallowed), not skipped.
+    redis.setex.assert_called_once()

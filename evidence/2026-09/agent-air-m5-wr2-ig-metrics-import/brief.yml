@@ -1,0 +1,83 @@
+gear: 2
+base_sha: c379b226b65e6a688ad792c223dc8acb0639218b # pragma: allowlist secret
+objective: >-
+  Carry the manual Instagram Professional-dashboard export (.xlsx) into the
+  WR2 queue's engagement_metrics under dashboard_*-prefixed keys, so the
+  wr2-ig-metrics-analyst can read the per-post follower/non-follower split,
+  follows, profile visits and per-viewer rates that the Graph API never
+  exposes, and make that data durable against the scraper, the other queue
+  writers and the M5 pull mirror. Gear 2: the size term floors this diff at
+  2 and no hot-zone path is touched (wiring the tests into the
+  wr2-queue-tests workflow is a separate Gear-3 follow-up).
+constraints:
+  - >-
+    The importer writes only dashboard_* keys and never touches scraper keys
+    (likes, reach, saved, shares, comments, total_interactions, source,
+    scraped_at).
+  - >-
+    Every queue write goes through wr2_queue_writer.queue_lock and
+    write_queue_atomic; the scraper holds no lock during network I/O.
+  - >-
+    The bubble flag in the analyst spec stays operational and never enters
+    the Step 3 constitutional-amendment funnel (N>=5 bar).
+  - >-
+    No real queue is written by this PR or its tests; the M5 mirror path is
+    refused by the importer off Pro.
+  - >-
+    No client PII: post titles printed are Bali Zero's own public carousel
+    titles.
+acceptance:
+  - text: >-
+      WHEN a dashboard row matches a queue item's shortcode, the item SHALL
+      carry dashboard_views, dashboard_follower_share, dashboard_engagement_rate
+      and dashboard_share_rate read from the real export's "/Viewers" headers,
+      and its scraper keys SHALL be unchanged.
+    probe: "test_merge_matches_shortcode_and_preserves_scraper_keys"
+  - text: >-
+      WHEN the scraper refreshes an item, including while an import lands
+      between its fetch and its write, the item's dashboard_* keys SHALL
+      survive.
+    probe: "test_import_during_a_scraper_fetch_survives_its_write"
+  - text: >-
+      WHILE another writer holds human-review-queue.lock, the importer and the
+      scraper SHALL wait and keep that writer's change.
+    probe: "test_import_reads_and_writes_under_the_queue_lock"
+  - text: >-
+      WHEN either script writes, its .bak SHALL be the queue as it was before
+      that write.
+    probe: "test_backup_is_the_pre_import_queue"
+  - text: >-
+      WHEN the target is the pull-only mirror path under a $HOME other than
+      /Users/nuzantara, the importer SHALL exit 2 and write nothing; the same
+      path under the SSOT home SHALL be written.
+    probe: "test_refuses_to_write_the_pull_mirror"
+mutation_evidence: >-
+  Twelve single-point mutations were each run on a scratch copy of the
+  candidate, and each turned at least one named test red while the pristine
+  copy passed 44/44. The mutations: rate headers back to "/Views"; the
+  importer's lock dropped; the scraper writing from its stale pre-fetch
+  baseline; the snapshot replace removed; the username prefix removed from
+  the regex; the missing-columns warning silenced; the scraper's
+  dashboard_* carry removed; the importer's backup reverted to the
+  post-image; the mirror guard removed; duplicates reduced to first-only;
+  the scraper writing outside the lock; the corrupt-workbook catch
+  narrowed to ValueError.
+pii: none
+local_evidence: >-
+  python3 -m pytest scripts/tests/test_wr2_ig_dashboard_import.py
+  scripts/tests/test_wr2_ig_metrics_scraper.py -q -> 44 passed; the
+  wr2-queue-tests battery with these two files added, run locally
+  (PYTHONPATH=apps/backend-rag) -> 780 passed; ruff check on the four .py files -> All checks passed. On a copy
+  of the M5 queue mirror, the real 90-day export imported with
+  matched=4, rates present on 4/4 items, no missing columns. Three fresh
+  adversarial gates (Opus 5.5, fresh context each): BLOCK, then BLOCK, then
+  PASS with six MINOR findings, all pre-existing or out of scope.
+consumer_map:
+  - >-
+    wr2-ig-metrics-analyst (.claude/agents/wr2-ig-metrics-analyst.md, run by
+    infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh on Pro) reads
+    engagement_metrics.dashboard_* from Pro's SSOT queue for Step 1b's bubble
+    flag and hook ranking.
+  - >-
+    wr2_ig_metrics_scraper.py, run on command on Pro, now re-reads the queue
+    under the lock and carries dashboard_* over.

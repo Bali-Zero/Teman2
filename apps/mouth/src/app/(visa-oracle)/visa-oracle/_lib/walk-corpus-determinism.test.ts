@@ -25,10 +25,8 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  DEFAULT_OUT_DIR,
-  writeWalkCorpus,
-} from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { writeWalkCorpus } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
+import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-walk-corpus.cli";
 
 /** The corpus size as committed. A PR that adds an interview branch — or, as
  * of PR-5, a new DIMENSION replayed over existing branches — moves it.
@@ -119,8 +117,14 @@ import {
  * walks that never deliberately override `application_channel` move exactly
  * that one field, one line each; no walk is added or removed, no other
  * field moves. See `enumerate-interview-space.ts`'s module docstring and
- * `PROMPT-builder-b5-1.md` for the enumerator half of the same fix. */
-const EXPECTED_WALK_COUNT = 115;
+ * `PROMPT-builder-b5-1.md` for the enumerator half of the same fix.
+ *
+ * Slice A7-M (2026-09-22): +1, 115 -> 116 —
+ * `offshore/family/PARENT/spNat=IT/minor/guardian=no`, the same facts as
+ * the sibling `offshore/family/PARENT/spNat=IT/minor` walk with
+ * `guardian_consent: "no"` declared, exercising the earned privacy hold's
+ * `false` arm by a real walk. */
+const EXPECTED_WALK_COUNT = 116;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

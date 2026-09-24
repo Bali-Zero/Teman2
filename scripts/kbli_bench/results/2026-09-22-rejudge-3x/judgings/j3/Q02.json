@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan data modal tidak tersedia, tidak mengarang contoh, dan menunjuk keterbatasan catatan; keterangan OJK/BI didukung paket."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak menyatakan fakta modal yang hilang dan menunjuk cakupan kode tanpa mengarang ketentuan."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan fakta modal tidak tersedia dan hanya merangkum cakupan data/kode yang disajikan tanpa mengarang ketentuan."
+    }
+  ]
+}

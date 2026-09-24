@@ -1,0 +1,2 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-22T17:38:06Z", "verdict": "BLOCK", "findings": 3, "note": "codex exec --sandbox read-only, effort high, account default model; red-team"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-22T17:38:06Z", "verdict": "PASS", "findings": 4, "note": "kimi -p -m kimi-code/k3; refuter"}

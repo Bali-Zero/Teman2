@@ -1,0 +1,29 @@
+mandate: >-
+  PWC-7024 condition C2 (PENDING-ARMS row opened 2026-09-21 by the Gear-3 gate of
+  PR #7024): catE step #40c "Paid-endpoint ban judged as an entity" is ARMED and a
+  probabilistic false red from the model has no pardon mechanism — the human reading
+  the red is the only valve. Build the mechanism the row's proof-of-armed names: a
+  registry (infra/paid-llm-entity/pardoned.json) plus its reader in
+  scripts/lint_paid_llm_entity.py, with guilt and innocence tests, so the first
+  false red meets a valve instead of a CI edit. The workflow is NOT touched: the
+  reader takes its base ref from the BASE_SHA the step already exports.
+gear: 2
+dux: claude-fable-5-1
+implementer: claude-sonnet-5
+organ: scripts/lint_paid_llm_entity.py (catE step #40c, the only consumer) + infra/paid-llm-entity/pardoned.json (new registry, ships empty)
+authority: >-
+  Zero 2026-09-22, this session, verbatim "go go go go" on the two open items of the
+  Jev census (PWC-6999 cond. 1 and PWC-7024 C2). RULED 2026-09-21-ter records the
+  missing pardon as the known limit of arming and defers it to "the lane that writes
+  it"; the PWC-7024 row accepts "a pardon mechanism with guilt+innocence tests on
+  origin/main" as proof-of-armed. No production write, no secret, no workflow edit.
+acceptance:
+  - A pardon narrows ONLY the model's contribution — violation = by_grep or bool(fired minus pardoned); a grep hit is never pardoned (test_pardon_never_clears_a_grep_hit, test_pardon_never_clears_a_grep_hit_even_when_its_own_route_fired)
+  - Pardons are per (path x route), exact path after posix/./ normalisation — no glob, substring, prefix or suffix (test_pardon_is_exact_path_not_prefix_suffix_or_superstring, test_pardon_does_not_cover_an_unlisted_route)
+  - The registry fails closed at every level — absent, malformed, top-level non-dict, entries non-list, entry missing any field, unknown route, bool pr, bad date pardons nothing (test_a_malformed_entry_pardons_nothing, the absent/malformed/nested cases)
+  - With a base ref known and an in-scope file in the diff, a (path, route) pair pardoned in HEAD but not at the base exits 3 BEFORE the model is asked; unresolvable base exits 3; no in-scope file returns 0 before the check (test_growth_blocks_before_any_model_call, test_unreadable_base_ref_fails_closed, test_no_in_scope_target_skips_growth_entirely, test_pardon_growth_is_exercised_for_real)
+  - Every shipped entry has the full shape and names a path that exists on disk (test_shipped_pardon_registry_validates)
+  - The --bench entrypoint and the --json output still work; --advisory semantics unchanged
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
