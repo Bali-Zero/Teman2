@@ -1,5 +1,5 @@
 gear: 2
-brief_ref: evidence/2026-09/agent-air-m5-infra-scraper-dead-api-20260924-e6bbd2ff/brief.yml
+brief_ref: evidence/brief.yml
 lanes:
   - lane: infra/scraper-dead-api-20260924
     role: build
