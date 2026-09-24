@@ -47,13 +47,17 @@ must never observe a partial write) on BOTH the ok and the degraded path, and on
 crash or even an `auth_sentinel` import failure (G9 fail-visible — see the module-level import
 guard below). Carries `status` (organism_digest.py's own key), `note`/`last_error` (the
 human-readable reason, organism_stale_detector.py's supported keys — `detail` is not read by
-either consumer), and `codes` (a stable, comparable set of machine reason-codes — see `Code`
+either consumer), `codes` (a stable, comparable set of machine reason-codes — see `Code`
 below; this is what a status-unchanged-but-reason-changed tick alerts on, since comparing free
-text would false-fire on every count/hour fluctuation embedded in the human string).
+text would false-fire on every count/hour fluctuation embedded in the human string), and
+`near_cap_ids` (a sorted, deduped list of the id8 of every notebook currently at/above
+`--cap-warn` — round 2 finding, codex #3: two notebooks near-cap both only ever contribute the
+SAME `CAP_NEAR` code, so a second notebook newly crossing the threshold changed nothing in
+`codes`; comparing this list too closes that gap).
 
-SECONDARY CHANNEL: `scripts/tg_notify.py`, fired on a status TRANSITION *or* a change to the
-SET of active reason codes while degraded (Gear-3 finding: a plain status-only transition gate
-silently swallows "the login recovered but a NEW, different problem appeared" — degraded stays
+SECONDARY CHANNEL: `scripts/tg_notify.py`, fired when ANY of (status, code set, near-cap id8
+set) changes while degraded (Gear-3 finding: a plain status-only transition gate silently
+swallows "the login recovered but a NEW, different problem appeared" — degraded stays
 degraded, nobody is told the problem changed). A Telegram send failure never changes the exit
 code or the heartbeat already written.
 
@@ -62,11 +66,12 @@ message — the real `nlm login --check` success output includes an `Account: <e
 (measured 2026-09-25, read-only, on Pro — the email itself is never reproduced anywhere in
 this file, its tests, or this PR). `classify_login()` only ever returns a FIXED reason string,
 never `out` itself. Notebook TITLES are the second leak surface a council review found
-(Gear-3, kimi #1): an operator could rename a notebook to a client's name, and the old code
-put that title verbatim (just truncated to 60 chars) into the heartbeat/Telegram/log. Fixed by
-`_display_name()`: a title is shown only if it matches this fleet's own curated naming
-convention (`^NB-[A-Za-z0-9]`); anything else shows only the first 8 chars of the notebook's
-opaque id.
+(Gear-3, kimi #1) — and round 2 (codex #1, BLOCKING) rejected the first fix: gating on a
+`^NB-[A-Za-z0-9]` PREFIX still let an operator-renamed title like `NB-CLIENT-CASE Jane Doe`
+through verbatim, since nothing stops a client name from following a curated-looking prefix. A
+prefix match is not a privacy boundary, so this file no longer looks at the title AT ALL:
+`_display_name()` shows only the first 8 chars of the notebook's opaque id (or "unknown"),
+unconditionally. A near-cap entry is `<id[:8]> (<count>)` — never a title, curated or not.
 
 Usage:
     python3 scripts/nlm_watchdog.py                              # one tick, real ssh+heartbeat+telegram
@@ -137,8 +142,6 @@ PRO_NLM_BIN = "~/.local/bin/nlm"
 PRO_INVENTORY_PATH = "~/nuzantara/research/nb-health/nb-inventory-live.json"
 
 MAX_REASON_LEN = 500
-MAX_TITLE_LEN = 60
-_CURATED_TITLE_RE = re.compile(r"^NB-[A-Za-z0-9]")
 
 
 class Code:
@@ -165,14 +168,12 @@ class Verdict:
 
 # --- PII-boundary helper (unit-testable, no I/O) ----------------------------
 
-def _display_name(title: object, nb_id: object) -> str:
-    """A notebook's title is shown only if it matches this fleet's OWN curated
-    naming convention (`NB-<code>...`) — an operator-renamed title (which could
-    be a client name) never reaches a heartbeat/Telegram/log. Anything else
-    shows only the first 8 chars of the opaque id."""
-    t = str(title or "")
-    if _CURATED_TITLE_RE.match(t):
-        return t[:MAX_TITLE_LEN]
+def _display_name(nb_id: object) -> str:
+    """A notebook is NEVER shown by title (Gear-3 council round 2, codex #1
+    BLOCKING: a `^NB-...` prefix gate is not a privacy boundary — a title
+    like `NB-CLIENT-CASE Jane Doe` matched the old prefix check and still
+    leaked the client name verbatim). Only the first 8 chars of the opaque
+    id ever reach a heartbeat/Telegram/log; "unknown" if there is no id."""
     i = str(nb_id or "")
     return i[:8] if i else "unknown"
 
@@ -229,19 +230,44 @@ def evaluate_inventory_data(
         codes.add(Code.INVENTORY_MALFORMED)
         notebooks = []
 
-    near: list[str] = []
+    near_entries: list[tuple[str, int | float]] = []
     max_count = 0
+    bad_count_n = 0
     for nb in notebooks:
         if not isinstance(nb, dict):
             continue
-        count = nb.get("source_count") or 0
+        count = nb.get("source_count")
+        # Gear-3 council round 2 (kimi MINOR2, qwen MINOR1): the old
+        # `count = nb.get("source_count") or 0` let a non-numeric producer
+        # value (e.g. a string) pass `or 0` truthy, then raise TypeError at
+        # `max()`/`>=` — which escaped run_once entirely and let main's
+        # crash handler discard the login probe's verdict for the whole
+        # tick. A non-numeric entry is now SKIPPED (never crashes) and
+        # counted into its own reason/code instead. `bool` is explicitly
+        # excluded even though it is a `int` subclass in Python — a JSON
+        # `true`/`false` is not a source count.
+        if isinstance(count, bool) or not isinstance(count, (int, float)):
+            bad_count_n += 1
+            continue
         max_count = max(max_count, count)
         if count >= cap_warn:
-            near.append(f"{_display_name(nb.get('title'), nb.get('id'))} ({count})")
+            near_entries.append((_display_name(nb.get("id")), count))
     ctx["max_source_count"] = max_count
     ctx["notebook_count"] = len(notebooks)
-    if near:
-        reasons.append(f"near cap (>= {cap_warn}): " + "; ".join(near))
+    if bad_count_n:
+        reasons.append(f"{bad_count_n} notebook(s) with non-numeric source_count")
+        codes.add(Code.INVENTORY_MALFORMED)
+    # Gear-3 council round 2 (codex #3, MAJOR): the alert signature used to be
+    # just (status, codes) — while one notebook stayed near-cap, a SECOND
+    # notebook could newly cross the threshold without ever changing the
+    # code set (both only ever contribute `CAP_NEAR`), so no alert fired for
+    # a genuinely new near-cap notebook. `near_cap_ids` (sorted, deduped id8
+    # list) is now part of the persisted state maybe_alert compares against.
+    near_ids_sorted = sorted({i for i, _c in near_entries})
+    ctx["near_cap_ids"] = near_ids_sorted
+    if near_entries:
+        text = "; ".join(f"{i} ({c})" for i, c in sorted(near_entries))
+        reasons.append(f"near cap (>= {cap_warn}): " + text)
         codes.add(Code.CAP_NEAR)
 
     gen = data.get("generated_at")
@@ -285,23 +311,35 @@ def _fetch_inventory_data(
     the first read lands mid-write. `scripts/nb_generate_inventory.py` writes
     non-atomically (`open('w')` truncates in place, then streams `json.dump`
     directly — confirmed 2026-09-25, no tempfile+rename), so a concurrent
-    `cat` from this organ's own daily tick can genuinely observe a truncated
-    body (this is what raced the very first live run of this organ). Returns
-    (data, reason, code) — data is None iff unrecoverable after the retry."""
+    `cat` from this organ's own daily tick can genuinely observe EITHER a
+    truncated non-empty body OR a momentarily EMPTY file (the truncate lands
+    before any bytes are written back) — Gear-3 council round 2 (codex #2,
+    kimi MAJOR2, qwen NIT3): the first cut treated `rc==0` + empty as an
+    immediate INVENTORY_MISSING with no retry, but that is the exact same
+    race window as a truncated non-empty read and deserves the exact same
+    retry. Only a hard ssh-level failure (`rc != 0`) is never retried — that
+    is not a race, it is Pro being unreachable. Returns (data, reason,
+    code) — data is None iff unrecoverable after the retry."""
     rc, raw = inventory_fn()
-    if rc != 0 or not raw.strip():
+    if rc != 0:
         return None, f"nb-inventory-live.json missing or unreadable on Pro (ssh rc={rc})", Code.INVENTORY_MISSING
 
-    data = _try_parse_inventory(raw)
+    data = _try_parse_inventory(raw) if raw.strip() else None
     if data is not None:
         return data, None, None
 
     sleep_fn(retry_delay_s)
     rc2, raw2 = inventory_fn()
-    if rc2 == 0 and raw2.strip():
-        data = _try_parse_inventory(raw2)
-        if data is not None:
-            return data, None, None
+    if rc2 != 0 or not raw2.strip():
+        # Post-retry: a hard ssh failure OR a still-empty file both mean
+        # "nothing readable on Pro" — reported as MISSING (Gear-3 council
+        # round 2 spec), not MALFORMED (that code is reserved for a
+        # non-empty body that still won't parse, see below).
+        return None, f"nb-inventory-live.json missing or unreadable on Pro (ssh rc={rc2})", Code.INVENTORY_MISSING
+
+    data2 = _try_parse_inventory(raw2)
+    if data2 is not None:
+        return data2, None, None
 
     return (
         None,
@@ -399,26 +437,34 @@ def write_heartbeat(verdict: Verdict, path: Path | None = None) -> bool:
         return False
 
 
-def read_previous_state(path: Path | None = None) -> tuple[str | None, set[str]]:
+def read_previous_state(path: Path | None = None) -> tuple[str | None, set[str], list[str]]:
     path = path or HEARTBEAT_PATH
     try:
         data = json.loads(path.read_text())
-        return data.get("status"), set(data.get("codes") or [])
+        near_cap_ids = data.get("near_cap_ids") or []
+        if not isinstance(near_cap_ids, list):
+            near_cap_ids = []
+        return data.get("status"), set(data.get("codes") or []), sorted(str(i) for i in near_cap_ids)
     except Exception:
-        return None, set()
+        return None, set(), []
 
 
 def maybe_alert(
-    verdict: Verdict, previous_status: str | None, previous_codes: set[str] | None = None
+    verdict: Verdict,
+    previous_status: str | None,
+    previous_codes: set[str] | None = None,
+    previous_near_cap_ids: list[str] | None = None,
 ) -> bool:
-    """Telegram fires on a status TRANSITION *or* a change to the set of
-    active reason codes — Gear-3 council finding (codex #4, qwen #4): a plain
-    status-only gate suppressed a NEW, different problem appearing while
-    already degraded (e.g. login recovers but the inventory goes stale) —
-    the exact "a new failure hides behind an older one" shape this organ
-    exists to prevent. A send failure must never change the exit code or the
-    heartbeat already committed, so its result is deliberately discarded
-    (`_run` never raises).
+    """Telegram fires when ANY of (status, sorted reason-code set, sorted
+    near-cap id8 list) changes — Gear-3 council finding (codex #4, qwen #4;
+    round 2 codex #3 MAJOR added the third term): a status+codes-only gate
+    suppressed a NEW notebook crossing the cap while an OLD one was already
+    near it (both only ever contribute the same `CAP_NEAR` code, so the code
+    SET never changed even though the set of affected notebooks did) — the
+    same "a new failure hides behind an older one" shape this organ exists
+    to prevent, one layer down. A send failure must never change the exit
+    code or the heartbeat already committed, so its result is deliberately
+    discarded (`_run` never raises).
 
     Returns True iff a send was ATTEMPTED — not whether it was delivered.
 
@@ -428,8 +474,14 @@ def maybe_alert(
     tick that is ALREADY degraded still alerts — a genuine new finding, not a
     false transition."""
     previous_codes = previous_codes or set()
+    previous_near_cap_ids = sorted(previous_near_cap_ids or [])
     new_status = "ok" if verdict.ok else "degraded"
-    if previous_status == new_status and verdict.codes == previous_codes:
+    new_near_cap_ids = sorted(verdict.ctx.get("near_cap_ids") or [])
+    if (
+        previous_status == new_status
+        and verdict.codes == previous_codes
+        and new_near_cap_ids == previous_near_cap_ids
+    ):
         return False
     if previous_status is None and new_status == "ok":
         return False
@@ -497,12 +549,14 @@ def main(argv: list[str] | None = None) -> int:
     write_hb = not (args.no_heartbeat or args.dry_run)
     do_alert = not args.dry_run
 
-    previous_status, previous_codes = read_previous_state() if do_alert else (None, set())
+    previous_status, previous_codes, previous_near_cap_ids = (
+        read_previous_state() if do_alert else (None, set(), [])
+    )
     hb_write_ok = True
     if write_hb:
         hb_write_ok = write_heartbeat(verdict)
     if do_alert:
-        maybe_alert(verdict, previous_status, previous_codes)
+        maybe_alert(verdict, previous_status, previous_codes, previous_near_cap_ids)
 
     print(json.dumps({
         "status": "ok" if verdict.ok else "degraded",
