@@ -1968,8 +1968,8 @@ def _default_repo_root() -> Path:
                              capture_output=True, text=True, timeout=10)
         if out.returncode == 0 and out.stdout.strip():
             return Path(out.stdout.strip())
-    except Exception:
-        pass
+    except (OSError, subprocess.SubprocessError):
+        pass  # no git binary, or it timed out/errored — fall through to the __file__ guess below
     # scripts/pending_arms_report.py -> parent = scripts/, parent.parent = repo root.
     return Path(__file__).resolve().parent.parent
 
