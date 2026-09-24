@@ -388,8 +388,8 @@ class PortalBillingMixin:
                     await conn.execute(
                         """
                         INSERT INTO portal_messages
-                            (client_id, practice_id, subject, direction, content, sent_by)
-                        VALUES ($1, NULL, 'Profile updated', 'client_to_team', $2, 'portal')
+                            (client_id, practice_id, subject, direction, content, sent_by, is_system_generated)
+                        VALUES ($1, NULL, 'Profile updated', 'client_to_team', $2, 'portal', TRUE)
                         """,
                         client_id,
                         f"Client updated their profile via the portal: {fields_label}.",
