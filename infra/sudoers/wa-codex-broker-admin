@@ -1,0 +1,26 @@
+# wa-codex-broker-admin sudoers drop-in — passwordless root for the WA codex
+# broker's dedicated-binary admin verbs (status/bump). Installed as
+# /etc/sudoers.d/wa-codex-broker-admin, 0440 root:wheel, by
+# scripts/install_wa_codex_admin.sh, which `visudo -cf`'s a temp copy of
+# THIS file before it ever lands in /etc/sudoers.d — a syntax error here
+# must fail that install, never land half-written on the live sudoers tree.
+#
+# Fixes the "pin drift" outage class (W136): before this, an operator who
+# hit a version-pin pause needed an INTERACTIVE sudo password on Pro to cure
+# it (see the two-line `sed` + `launchctl kickstart` cure the seat sentinel
+# used to print). After this, the `nuzantara` interactive user can run the
+# cure directly.
+#
+# IMPORTANT — the `bump *` wildcard below is NOT the security boundary.
+# sudoers command-line-argument wildcards are matched via glob(3)/fnmatch(3)
+# (man sudoers, "Wildcards" section): `*` matches ANY set of zero or more
+# characters INCLUDING WHITE SPACE. That means this line, on its own, would
+# equally match `bump 1.2.3; rm -rf /` or `bump ../../etc/passwd` as ONE
+# argument string — sudoers has no concept of "one safe token" here, only a
+# glob over the whole trailing string. The real guard lives INSIDE
+# /usr/local/libexec/wa-codex-broker-admin.sh itself: a strict
+# `^[0-9]+\.[0-9]+\.[0-9]+$` regex on the version argument, a hard reject of
+# any extra argument, and `set -euo pipefail` with no `eval` and no argument
+# ever built into a shell string. This drop-in only decides WHO may invoke
+# the two verbs as root — never whether a given argument is safe to run.
+nuzantara ALL=(root) NOPASSWD: /usr/local/libexec/wa-codex-broker-admin.sh status, /usr/local/libexec/wa-codex-broker-admin.sh bump *

@@ -40,6 +40,12 @@
 #      the broker, the probe needs no WA_BROKER_KEY (it only reads
 #      WA_CODEX_BIN/CODEX_HOME from the same env file), so it is useful
 #      even before the operator fills the placeholders.
+#   9. Installs the dedicated-binary admin verb (W136 pin-drift cure) via
+#      scripts/install_wa_codex_admin.sh: the wa-codex-broker-admin.sh
+#      status/bump script + its sudoers drop-in, and — only when the env
+#      file already carries a real (non-placeholder) version pin — bumps
+#      the daemon onto its OWN codex binary immediately, so re-provisioning
+#      an already-armed host keeps it on the dedicated-binary path.
 #
 # What it deliberately does NOT do (spec §Solo-operatore — operator actions):
 #   - `codex login` as zantara-codex (one-time device-code flow):
@@ -90,7 +96,8 @@ for src in "${BACKEND_SRC}/services/integrations/wa_codex_daemon.py" \
     "${BACKEND_SRC}/llm/codex_exec_client.py" "${WRAPPER_SRC}" "${PLIST_SRC}" \
     "${BACKEND_SRC}/services/rag/agentic/_support_signal.py" \
     "${BACKEND_SRC}/services/integrations/wa_completion_envelope.py" \
-    "${PROBE_SCRIPT_SRC}" "${PROBE_WRAPPER_SRC}" "${PROBE_PLIST_SRC}"; do
+    "${PROBE_SCRIPT_SRC}" "${PROBE_WRAPPER_SRC}" "${PROBE_PLIST_SRC}" \
+    "${SCRIPT_DIR}/install_wa_codex_admin.sh"; do
     if [ ! -f "$src" ]; then
         log "ERROR: source file missing: $src (run from a current repo checkout)"
         exit 1
@@ -308,6 +315,9 @@ else
         exit 1
     fi
 fi
+
+# --- 9. dedicated-binary admin verb (W136 pin-drift cure) -----------------
+bash "${SCRIPT_DIR}/install_wa_codex_admin.sh"
 
 log "---- remaining OPERATOR steps (spec §Solo-operatore) ----"
 log "1) one-time seat login:"

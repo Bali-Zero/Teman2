@@ -166,7 +166,7 @@ def _pin_drift_message(
     discriminator under test.
 
     Names a probable version-pin pause plainly (CLI version, when it
-    changed, when the daemon started, both cure commands) ONLY when all
+    changed, when the daemon started, the cure command) ONLY when all
     three facts are in hand AND the package changed strictly AFTER the
     daemon started while the daemon is alive. Every other case falls back
     to the plain `DAEMON_SILENT_MSG` — unchanged from before this
@@ -174,6 +174,16 @@ def _pin_drift_message(
     the daemon is not running at all (the dead case, not a pause), and a
     missing/unreadable package is a fact this organ cannot back with a file
     mtime, so it must not invent one.
+
+    The cure itself changed with W136's second occurrence (2026-09-25): the
+    daemon now runs its OWN dedicated codex binary
+    (/usr/local/lib/wa-codex-broker/codex/<ver>/), decoupled from the
+    shared Homebrew package this function still measures for its
+    discriminator (a shared-package upgrade is still the near-certain
+    TRIGGER an operator forgot to isolate before, even once the daemon no
+    longer reads that package directly) — so the cure is now one
+    passwordless admin verb instead of an interactive-sudo `sed` +
+    `kickstart` pair.
     """
     if daemon_start is None or pkg_version is None or pkg_mtime is None:
         return DAEMON_SILENT_MSG
@@ -185,10 +195,9 @@ def _pin_drift_message(
         f"{pkg_mtime.isoformat(sep=' ')} — AFTER the daemon started at "
         f"{daemon_start.isoformat(sep=' ')}. This is a PROBABLE cause, not "
         "proof: the pin value itself (WA_CODEX_CLI_VERSION_PIN) cannot be "
-        "read without sudo. Cure:\n"
-        "sudo sed -i '' 's/^WA_CODEX_CLI_VERSION_PIN=.*/WA_CODEX_CLI_VERSION_PIN="
-        f"{pkg_version}/' /Users/zantara-codex/.wa-codex-broker.env\n"
-        "sudo launchctl kickstart -k system/com.balizero.wa-codex-broker"
+        "read without sudo. Cure (no password needed once "
+        "scripts/install_wa_codex_admin.sh has run once):\n"
+        f"sudo /usr/local/libexec/wa-codex-broker-admin.sh bump {pkg_version}"
     )
 
 

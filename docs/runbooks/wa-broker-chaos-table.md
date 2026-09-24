@@ -37,6 +37,31 @@
 | 8   | **CLI auto-update changes argv behavior**     | Daemon healthy under pinned CLI                                    | `codex` binary silently upgraded on Pro                         | Startup: version ≠ `WA_CODEX_CLI_VERSION_PIN` → daemon REFUSES to start (launchd restarts, throttled, until the operator reconciles pin↔binary). Mid-run: the 300s re-check flips to STOP CLAIMING (state-change logged once) — no polls → heartbeat gauge stales → server answers `BROKER_ABSENT` → offers fall off to Gemini. A job claimed before the flip completes normally; the pre-exec guard completes `cli_version_mismatch` only for drift the daemon has already SEEN (it reads the cached verdict) — an upgrade landing inside a re-check interval executes on the drifted binary until the next re-check, so this row's bound IS the re-check interval, not zero. | Stop-claiming: ≤ `_VERSION_RECHECK_S` (300s) after the upgrade. Lane fail-off: + `DEFAULT_ABSENT_AFTER_S` (45s) for the gauge to stale.                                                                                                                       | TEST-pinned: `TestVersionPin` (startup refusal, mid-run stop, matching-pin innocence, pre-exec guard) in `test_wa_codex_daemon.py`; `BROKER_ABSENT` offer path in `test_wa_broker.py` + `test_wa_codex_leg.py`.                                                                    |
 | 9   | **Mixed-version deploy**                      | Old worker + new endpoints, or new worker + old endpoints          | Rolling deploy window                                           | Additive schema makes both directions read-safe: m270-274 only ADD tables/columns/constraints consumed by code that ships with them; the old worker never reads the new columns, the new worker treats absent broker rows as the lane being off (`provider_is_codex()` env gate defaults off). No code path interprets a missing value as a corrupt one.                                                                                                                                                                                                                                                                                                                       | The rolling-deploy window itself.                                                                                                                                                                                                                             | DESIGN-argued (spec §7 names it as the additive-schema argument): no test runs two code versions side by side. The flag-OFF default is TEST-pinned in `test_wa_codex_leg.py` / `test_wa_outbox_worker.py`.                                                                         |
 
+## Row 8 cure (W136, 2026-09-25)
+
+Row 8's own outage-in-the-wild bound assumed _reconciling_ pin↔binary was cheap; twice
+(2026-08-20/23, 2026-09-25) it was not — the shared `/opt/homebrew` `@openai/codex` install is
+one package other seats on Pro upgrade for unrelated reasons, and each time the daemon paused
+silently until an operator noticed and ran an interactive-sudo `sed` + `kickstart`.
+
+The daemon now runs its OWN dedicated codex binary, never the shared package:
+`WA_CODEX_BIN` (read directly by `wa_codex_daemon.py`, no code change needed) points at
+`/usr/local/lib/wa-codex-broker/codex/<ver>/bin/codex` — a version-namespaced native darwin-arm64
+build fetched straight from the npm registry and sha512-verified against `dist.integrity`, so a
+`brew upgrade`/`npm i -g` elsewhere on the host can no longer touch it. The cure for row 8 is now
+one passwordless command instead of a manual edit:
+
+```
+sudo /usr/local/libexec/wa-codex-broker-admin.sh bump <version>
+```
+
+`status` shows the current pin, the dedicated binary + its `--version`, and the launchd state
+line. One-time setup (owner, on Pro, once): `sudo bash scripts/install_wa_codex_admin.sh` — also
+wired into `scripts/provision_zantara_codex.sh` so a re-provision keeps it current. See
+`infra/launchagents/wrappers/wa-codex-broker-admin.sh` for the fetch/verify/extract/pin sequence
+and `infra/sudoers/wa-codex-broker-admin` for the passwordless grant (the sudoers wildcard is not
+the guard — the script's own strict argument validation is).
+
 ## Residual, declared
 
 - Rows 1 and 9 carry design-argued halves (machine reboot, dual-version run) — nothing in CI

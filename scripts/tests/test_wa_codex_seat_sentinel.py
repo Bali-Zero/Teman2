@@ -395,10 +395,8 @@ def test_guilt_pin_drift_package_newer_than_daemon_start_names_the_cause() -> No
     assert "PROBABLE cause, not" in msg
     assert "cannot be read without sudo" in msg
     assert (
-        "sudo sed -i '' 's/^WA_CODEX_CLI_VERSION_PIN=.*/WA_CODEX_CLI_VERSION_PIN=0.156.1/' "
-        "/Users/zantara-codex/.wa-codex-broker.env" in msg
+        "sudo /usr/local/libexec/wa-codex-broker-admin.sh bump 0.156.1" in msg
     )
-    assert "sudo launchctl kickstart -k system/com.balizero.wa-codex-broker" in msg
 
 
 def test_innocence_pin_drift_package_older_than_daemon_start_keeps_plain_wording() -> None:
