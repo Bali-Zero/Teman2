@@ -23,20 +23,22 @@ proof: >-
   Sol red-teamed round 1 (REWORK): HIGH mixed-group-wipe-on-upgrade and MEDIUM
   preservation-vs-original_backup both FIXED with dedicated tests; MEDIUM cd-connector
   under-match acknowledged as a pre-existing, fail-open guard limitation out of this PR's
-  scope; MEDIUM git-diff/show path-scoped over/under-match confirmed locally and deferred to
-  a separate spec+corpus PR (PR-G); MEDIUM trust-path-untested FIXED (9 trusted hashes + 9
-  enabled edits asserted, guard hash present, foreign hash absent). Kimi K3 refuted (REWORK,
-  disposed): HIGH coverage-claim overreach FIXED by narrowing the README/installer claim to
-  the bridge's own observed state (438 sessions, last_tool_name Bash) and documenting the
-  unproven unified-exec/code-mode emission path; LOW substring-ownership FIXED by
-  exact-installed-path matching. Gemini reviewed constructively (PASS): the one LOW
-  eventName gap FIXED in 72d81122; the KeyError-on-malformed-manifest LOW rejected as
-  fail-closed by design (a manifest missing those keys is not an installed state).
-  infra/codex-hooks full suite: 149 passed (M5, backend-rag venv 3.11.15, this run). Exit-2
-  honouring by a real Codex client and the trust/registration path are proven only at
-  prove-live (fresh Codex session per host, exit-2 fails open on a non-honouring client) —
-  required before reporting row 1 Codex live on M5, Pro and Mini. Final gate: pending — fresh
-  Opus 5.5 xhigh gate on the exact SHA, not yet run.
+  scope; MEDIUM trust-path-untested FIXED (9 trusted hashes + 9 enabled edits asserted, guard
+  hash present, foreign hash absent). Kimi K3 refuted (REWORK, disposed): HIGH coverage-claim
+  overreach FIXED by narrowing claims to the bridge's own observed state; LOW
+  substring-ownership FIXED by exact-installed-path matching. Gemini constructive (PASS): the
+  eventName gap FIXED; the KeyError-on-malformed-manifest LOW kept fail-closed. Fresh Opus 5.5
+  xhigh gate 1 on ab38f9e4 (REWORK): overstated exit-2 claims narrowed, the guard's Codex copy
+  declared as a HOME-fork pair, untrusted/disabled/wrong-event status tests added. The S4
+  scoped-git cure (PR-G) was withdrawn after its own red-team proved a worktree-size bound
+  unsound; mission SPEC section 8's alternative branch was taken instead: the bounded read path
+  (`git diff <range> -- <file> | head -n 400`, `--stat`) is proven on the live guard (audit
+  receipt reviews/panel-gd/bounded-read-path-receipt.json) and fresh gate 2 on 295c2806
+  assessed the remaining regression as acceptable for Codex activation (one short exit-2
+  denial plus one piped re-issue; no reread; rev:path unbounded as today). infra/codex-hooks
+  full suite: 152 passed. Exit-2 honouring by a real Codex client is proven only at prove-live
+  (fresh Codex session per host), required before reporting row 1 Codex live on M5, Pro and
+  Mini. Final gate: fresh Opus 5.5 xhigh on the exact SHA after this text-only rework.
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: >-
@@ -56,15 +58,21 @@ dissent:
       emit a huge blob without limit.
     status: CONFIRMED
     disposition: >-
-      Confirmed locally against the installed guard; pre-existing in the shared guard and
-      affects Claude today too. Deferred to a separate spec+corpus PR (PR-G) so this PR stays
-      "register the unchanged guard".
+      Confirmed; pre-existing in the shared guard. The separate size-estimation cure was
+      withdrawn after its red-team proved it unsound, so no S4 logic changes in this mission.
+      SPEC section 8 alternative taken: the piped bounded read path is proven on the live guard
+      and fresh gate 2 assessed the remaining one-retry regression as acceptable for Codex.
 receipts:
   - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
     exit: 0
     ts: "2026-09-24T21:36:58Z"
     seat: M5
     claim: 149 passed in 36.19s
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T22:12:00Z"
+    seat: M5
+    claim: 152 passed on 295c2806 (fresh gate 2 rerun, 28.27s)
 pii_scan: clean
 pii_scan_note: >-
   infra/codex-hooks source, tests, README and review artifacts only; no client data, PII
