@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "lane": "W-H prose lot remainder, 50121 PMA fields (M5, 2026-09-25)",
+    "ground": "cure_canonical_47222_nota_kondisi.py --spec cure_specs/canonical_50121_kondisi_nota_2026_09_25.json replaces 50121's pma_kondisi ('Kemitraan dengan PMDN', a condition the annex does not state) and pma_nota ('Angkutan laut luar negeri', international transport on a domestic code). Both fields feed pma_editorial_fingerprint (backend/services/kbli_editorial_certification.py), so the certified pmaFingerprint no longer matches and recert_pma_editorial_registry.py refuses. No compiler re-certifies a moved fingerprint (reissue refuses a pma_* move by design: that is a re-review). Fail closed: de-certify 50121, as 50111/50112 were after PR-3e. The intel_2026 prose itself is not changed and is not re-reviewed here."
+  },
+  "entries": [
+    {
+      "section": "canonicalIntel",
+      "code": "50121",
+      "reason": "pma_kondisi/pma_nota cure (W-H lot remainder) moves pmaFingerprint away from the certified value — recert refuses until de-certified",
+      "expected_content_sha256": "944271468159188e9323d37b464cd9266e571179cea637ab7981d4861f83c4a1"
+    }
+  ]
+}

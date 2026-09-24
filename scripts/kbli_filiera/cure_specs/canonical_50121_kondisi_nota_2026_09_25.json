@@ -1,0 +1,30 @@
+{
+  "code": "50121",
+  "adjudicated": "W-H prose lot remainder (M5, 2026-09-25) — the 2026-09-17 lot spec (never-pushed commit fbf085e1fa) re-graded on origin/main after PR #7231 and the prose-lot PR: both fields still read exactly the lot's 'old' values. Same annex row family as PR-3e (50111/50112, cured the same way and left de-certified): Perpres Lampiran III 'Modal Asing Maksimal 49%', matched by activity name (sea-transport liner/tramper cabotage).",
+  "facts_basis": {
+    "canonical_verdict": "50121 Angkutan Laut Dalam Negeri untuk Barang Umum — TERBATAS, pma_max_asing 49, pma_cap_verified True",
+    "why": "pma_kondisi 'Kemitraan dengan PMDN' contradicts the record's own 49% foreign cap and its own pma_official_basis ('Modal Asing Maksimal 49%'): a reader sees a 49% foreign-capital cap and a condition demanding an Indonesian (PMDN) partnership on the same page — the same defect PR-3e cured on 50111/50112. pma_kondisi is corrected to state the annex condition itself. pma_nota carried a different activity's title ('Angkutan laut luar negeri' — INTERNATIONAL sea transport) on a DOMESTIC ('dalam negeri') code; corrected to the record's own judul plus its own BPS 2020 ancestor (50131), with no invented Lampiran entry number since pma_official_basis states this record was matched by activity name, not by a numbered annex row."
+  },
+  "expect": {
+    "pma_status": "TERBATAS",
+    "pma_max_asing": 49,
+    "pma_cap_verified": true,
+    "pma_official_basis_contains": "Modal Asing Maksimal 49%"
+  },
+  "fields": {
+    "pma_kondisi": {
+      "old": "Kemitraan dengan PMDN",
+      "new": "Modal asing maksimal 49%"
+    },
+    "pma_nota": {
+      "old": "Angkutan laut luar negeri",
+      "new": "Angkutan laut dalam negeri untuk barang umum (KBLI 2020 ancestor 50131)"
+    }
+  },
+  "untouched_fields": [
+    "pma_status",
+    "pma_max_asing",
+    "pma_cap_verified",
+    "pma_official_basis"
+  ]
+}

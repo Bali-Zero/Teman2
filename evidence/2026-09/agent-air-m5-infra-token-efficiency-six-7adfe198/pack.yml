@@ -1,0 +1,79 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero ordered token-efficiency-six row 1 for both Claude and Codex. This pack covers the
+  Codex seat: bound Codex shell output with the existing, reviewed output-hygiene guard.
+lanes:
+  - { lane: implementation, role: build, seat: claude }
+  - { lane: panel-red-team, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: panel-refuter, role: review, seat: kimi-code/k3 }
+  - { lane: panel-constructive, role: review, seat: agy-gemini-3.1-pro }
+  - { lane: final-gate, role: review, seat: fresh-claude-opus-5-5-xhigh }
+what_changed: >-
+  The unchanged, reviewed output-hygiene guard is installed byte-for-byte and registered
+  exactly once as a PreToolUse Bash matcher for the Codex shell calls this bridge observes as
+  tool_name Bash; unified-exec / code-mode emission and exit-2 honouring stay unverified until
+  the per-host live proof. Installation moves only our own handler by exact installed path, leaving
+  a foreign handler sharing the same group untouched. installation_status reports green
+  only when the guard is present, trusted on the PreToolUse event specifically, and every
+  foreign hook is intact. README and installer comments now claim only what this bridge's
+  own state observes (Codex shell calls reported as tool_name Bash); a path that emits no
+  PreToolUse event is documented as unbounded, not silently assumed covered.
+proof: >-
+  Sol red-teamed round 1 (REWORK): HIGH mixed-group-wipe-on-upgrade and MEDIUM
+  preservation-vs-original_backup both FIXED with dedicated tests; MEDIUM cd-connector
+  under-match acknowledged as a pre-existing, fail-open guard limitation out of this PR's
+  scope; MEDIUM trust-path-untested FIXED (9 trusted hashes + 9 enabled edits asserted, guard
+  hash present, foreign hash absent). Kimi K3 refuted (REWORK, disposed): HIGH coverage-claim
+  overreach FIXED by narrowing claims to the bridge's own observed state; LOW
+  substring-ownership FIXED by exact-installed-path matching. Gemini constructive (PASS): the
+  eventName gap FIXED; the KeyError-on-malformed-manifest LOW kept fail-closed. Fresh Opus 5.5
+  xhigh gate 1 on ab38f9e4 (REWORK): overstated exit-2 claims narrowed, the guard's Codex copy
+  declared as a HOME-fork pair, untrusted/disabled/wrong-event status tests added. The S4
+  scoped-git cure (PR-G) was withdrawn after its own red-team proved a worktree-size bound
+  unsound; mission SPEC section 8's alternative branch was taken instead: the bounded read path
+  (`git diff <range> -- <file> | head -n 400`, `--stat`) is proven on the live guard (audit
+  receipt reviews/panel-gd/bounded-read-path-receipt.json) and fresh gate 2 on 295c2806
+  assessed the remaining regression as acceptable for Codex activation (one short exit-2
+  denial plus one piped re-issue; no reread; rev:path unbounded as today). infra/codex-hooks
+  full suite: 152 passed. Exit-2 honouring by a real Codex client is proven only at prove-live
+  (fresh Codex session per host), required before reporting row 1 Codex live on M5, Pro and
+  Mini. Final gate: fresh Opus 5.5 xhigh on the exact SHA after this text-only rework.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      cd /missing || cat big.log (and cd /missing; ...) moves effective_cwd to a directory
+      that does not exist without finding the file there, so the guard allows the command
+      while the real shell stays in its original, unchanged cwd and prints the large file —
+      a connector-semantics under-match.
+    status: CONFIRMED
+    disposition: >-
+      Acknowledged as a known limitation of the unchanged, spec-governed Claude guard;
+      fail-open only (it allows, never blocks a genuine command), out of scope for this
+      register-the-guard-unchanged PR.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      S4 over-blocks common path-scoped reads (git show <commit> -- <file>, git diff
+      <range> -- <file>) while under-matching the unbounded git show <rev>:<path>, which can
+      emit a huge blob without limit.
+    status: CONFIRMED
+    disposition: >-
+      Confirmed; pre-existing in the shared guard. The separate size-estimation cure was
+      withdrawn after its red-team proved it unsound, so no S4 logic changes in this mission.
+      SPEC section 8 alternative taken: the piped bounded read path is proven on the live guard
+      and fresh gate 2 assessed the remaining one-retry regression as acceptable for Codex.
+receipts:
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T21:36:58Z"
+    seat: M5
+    claim: 149 passed in 36.19s
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T22:12:00Z"
+    seat: M5
+    claim: 152 passed on 295c2806 (fresh gate 2 rerun, 28.27s)
+pii_scan: clean
+pii_scan_note: >-
+  infra/codex-hooks source, tests, README and review artifacts only; no client data, PII
+  or credentials.
