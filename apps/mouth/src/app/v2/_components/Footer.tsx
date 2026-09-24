@@ -23,11 +23,11 @@ const SERVICES = [
 ];
 
 const NEWS = [
-  { label: "Visas", href: "/v2/news" },
-  { label: "Business", href: "/v2/news" },
-  { label: "Taxes", href: "/v2/news" },
-  { label: "Property", href: "/v2/news" },
-  { label: "Living", href: "/v2/news" },
+  { label: "Visas", href: "/news?category=visas" },
+  { label: "Business", href: "/news?category=business" },
+  { label: "Taxes", href: "/news?category=taxes" },
+  { label: "Property", href: "/news?category=property" },
+  { label: "Living", href: "/news?category=living" },
 ];
 
 // Only links with a REAL destination (Subhi audit F7). The #team/#careers/
@@ -77,15 +77,7 @@ export function Footer() {
               className="brand-tagline mt-5 mb-4"
               style={{ fontSize: 16, justifyContent: "flex-start" }}
             >
-              Your
-              <img
-                className="brand-logo-3-img"
-                src="/assets/logo/balizero-3-red-fixed.png?v=1"
-                alt="B"
-                style={{ height: "1.6em", width: "auto" }}
-              />
-              ali, from Zer
-              <span className="brand-om-circle" />
+              Your Bali, from Zero.
             </h3>
             <p
               className="text-[13px] leading-relaxed max-w-xs"
