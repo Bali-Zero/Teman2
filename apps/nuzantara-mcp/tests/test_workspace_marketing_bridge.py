@@ -2146,6 +2146,119 @@ def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
     assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
 
 
+async def test_exhausted_seat_is_named_and_its_output_stays_out_of_the_log(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The line an exhausted Max seat prints (measured on Pro 2026-09-24) is a
+    seat refusal, not an unknown provider failure."""
+
+    import sys as _sys
+
+    fake_claude = tmp_path / "claude"
+    fake_claude.write_text(
+        f"#!{_sys.executable}\n"
+        "import sys\n"
+        "print('Your organization has disabled Claude subscription access for Claude Code')\n"
+        "sys.exit(1)\n",
+        encoding="utf-8",
+    )
+    fake_claude.chmod(0o755)
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+
+    with pytest.raises(marketing.EditorialProviderFailure) as refused:
+        await marketing._run_public_subprocess(
+            [str(fake_claude), "--print"], timeout_seconds=20, env={"PATH": "/usr/bin:/bin"},
+        )
+
+    assert refused.value.status == "seat_exhausted"
+    assert "no subscription seat with quota left" in str(refused.value)
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "status=seat_exhausted" in record
+    assert "disabled Claude subscription" not in record
+
+
+def _reviewer_seat_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".nuzantara-secrets.env").write_text(
+        'export CLAUDE_CODE_OAUTH_TOKEN_3="seat-three"\n'
+        "export CLAUDE_CODE_OAUTH_TOKEN_1='seat-one'\n"
+        "CLAUDE_CODE_OAUTH_TOKEN_6=seat-team\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    for number in range(1, 7):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{number}", raising=False)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/fake/claude")
+
+
+async def test_reviewer_moves_past_an_exhausted_seat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Guilt: on 2026-09-24 seat _3 was exhausted and every fact gate failed
+    while _1 _4 _5 had quota."""
+
+    _reviewer_seat_home(tmp_path, monkeypatch)
+    tried: list[str] = []
+
+    async def fake_run(argv: list[str], **kwargs: Any) -> str:
+        tried.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
+        if len(tried) == 1:
+            raise marketing.EditorialProviderFailure("claude", "seat_exhausted")
+        return '{"verdict":"PASS","notebooklm_verdict":"PASS","checked_claims":3,"findings":[]}'
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_run)
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+
+    verdict = await marketing._run_independent_fact_reviewer(
+        {"title": "t", "content": "c", "source_url": "https://example.com"}, "evidence"
+    )
+
+    assert verdict["verdict"] == "PASS"
+    assert tried == ["seat-three", "seat-one"]
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "seat _3 refused (seat_exhausted); trying seat _1" in record
+    assert "seat-three" not in record and "seat-one" not in record
+
+
+async def test_reviewer_does_not_spend_other_seats_on_a_non_seat_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Innocence: a timeout or unknown exit is not the seat's fault."""
+
+    _reviewer_seat_home(tmp_path, monkeypatch)
+    for status in ("timeout", "unavailable"):
+        tried: list[str] = []
+
+        async def fake_run(argv: list[str], *, status: str = status, **kwargs: Any) -> str:
+            tried.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
+            raise marketing.EditorialProviderFailure("claude", status)
+
+        monkeypatch.setattr(marketing, "_run_public_subprocess", fake_run)
+        with pytest.raises(marketing.EditorialProviderFailure) as failed:
+            await marketing._run_independent_fact_reviewer({"title": "t"}, "evidence")
+        assert failed.value.status == status
+        assert tried == ["seat-three"]
+
+
+async def test_reviewer_reports_exhaustion_after_the_last_seat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _reviewer_seat_home(tmp_path, monkeypatch)
+    tried: list[str] = []
+
+    async def fake_run(argv: list[str], **kwargs: Any) -> str:
+        tried.append(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
+        raise marketing.EditorialProviderFailure("claude", "seat_exhausted")
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_run)
+    with pytest.raises(marketing.EditorialProviderFailure, match="no subscription seat"):
+        await marketing._run_independent_fact_reviewer({"title": "t"}, "evidence")
+    assert tried == ["seat-three", "seat-one", "seat-team"]
+
+
 async def test_failed_verifier_never_logs_provider_output(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
