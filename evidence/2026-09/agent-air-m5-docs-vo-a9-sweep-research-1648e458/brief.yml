@@ -1,0 +1,39 @@
+mandate: >-
+  Land the A9 seq-23 production activation evidence as a docs-only research
+  capture: copy the 252-walk `enumerate_live` re-sweep report JSON produced
+  against the live engine after seq-23 activation (activation_id
+  5ba3b03c-693a-4ae4-b76a-130977450d3e, 2026-09-24T11:27:25Z, payload
+  e5f791b5…72204) into research/operations/2026-09-22-visa-oracle-live-
+  enumeration/, verify its sha256 against the operator-reported digest, and
+  add a dated README section deriving the census and the moved-walk diff
+  against the B4-2b (seq-22) report BY COMMAND from the JSONs — no code
+  changes, no production access, no secrets.
+gear: 3
+dux: team-lead
+implementer: claude-sonnet-5
+organ: research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (new dated section) + prove-live-a9-seq23-full-sweep-report-20260924.json (new evidence file, 403 KB — the diff's own size term is what raises this brief's floor to 3)
+authority: >-
+  team-lead dispatch (this session, 2026-09-24), task vo-a9-sweep-research:
+  land the seq-23 production re-sweep evidence next to the existing B4-2/
+  B4-2b re-sweeps in the same research directory. Source narrative:
+  /Users/balizero/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/PROVELIVE-A9-ACTIVATION-REPORT.md
+  (the activation ceremony report, quoted for provenance only — no secret in
+  it). No production DB touched, no production call made by this docs task.
+acceptance:
+  - text: WHEN the copied JSON's sha256 is computed SHALL it equal the dispatch-declared 899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808
+    probe: "shasum -a 256 research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json"
+  - text: WHEN the census table's counts are read from the JSON's `engine_state` field SHALL they equal 185 SUPPORTED_CANDIDATES / 8 NEEDS_INPUT / 31 NO_SUPPORTED_PATH / 28 HUMAN_REVIEW_REQUIRED over 252 walks
+    probe: 'python3 -c "import json,collections; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; print(collections.Counter(x[''engine_state''] for x in w))"'
+  - text: WHEN `rule_pack.sequence` and `http_status` are read from every walk SHALL they equal 23 and 200 on all 252/252
+    probe: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; print(set(x[''rule_pack''][''sequence''] for x in w), set(x[''http_status''] for x in w))"'
+  - text: WHEN the A9 walk_ids are diffed against the B4-2b report's walk_ids by set-intersection SHALL the moved-state count equal 15 (13 HUMAN_REVIEW_REQUIRED to SUPPORTED_CANDIDATES, 2 HUMAN_REVIEW_REQUIRED to NEEDS_INPUT)
+    probe: 'python3 -c "import json; a=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; b=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-2-full-sweep-report-20260922.json''))[''walks'']; am={x[''walk_id'']:x[''engine_state''] for x in a}; bm={x[''walk_id'']:x[''engine_state''] for x in b}; print(sum(1 for k in am if am[k]!=bm.get(k)))"'
+  - text: IF the `.json.lock` file exists next to the source JSON SHALL it never be copied into the research directory
+    probe: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock (no match — nothing copied)"
+assumptions:
+  - text: the operator-reported sha256 and activation_id in the dispatch message accurately describe the artifact produced by the enumerate_live run (this brief verifies the file's hash matches the dispatch, not the production ceremony itself, which is a separate session's record)
+    status: unverified
+    probe: shasum -a 256 against the dispatch-declared digest (run in this task, PASS)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
