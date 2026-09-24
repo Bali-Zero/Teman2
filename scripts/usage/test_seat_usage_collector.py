@@ -86,6 +86,10 @@ def test_task_usage_includes_descendants_retries_and_excludes_replayed_snapshots
     _task_codex(codex, "codex-child", [7], parent="codex-root")
     # The same transcript through a second path still has one session identity.
     first = next((codex / "sessions").rglob("codex-root.jsonl"))
+    rows = [json.loads(line) for line in first.read_text().splitlines()]
+    rows[-1]["payload"]["info"]["total_token_usage"]["output_tokens"] = 40
+    rows[-1]["payload"]["info"]["last_token_usage"]["output_tokens"] = 40
+    first.write_text("\n".join(map(json.dumps, rows)) + "\n")
     first.with_name("alias.jsonl").write_bytes(first.read_bytes())
     before = (suc.collect_claude(str(claude), SINCE), suc.collect_codex(str(codex), SINCE))
     after = (suc.collect_claude(str(claude), SINCE, task_index=index), suc.collect_codex(str(codex), SINCE, task_index=index))
@@ -97,6 +101,7 @@ def test_task_usage_includes_descendants_retries_and_excludes_replayed_snapshots
     assert task["descendants_added"] == 2 and task["sessions_found"] == 4
     assert task["by_provider"]["claude"]["input_tokens"] == 8
     assert task["by_provider"]["codex"]["input_tokens"] == 41  # 30 + reset 4 + child 7
+    assert task["by_provider"]["codex"]["output_tokens"] == 77  # 30 + new epoch 40 + child 7
     assert task["by_provider"]["codex"]["usage_events"] == 4
     assert task["overhead_tokens"]["codex"]["input_tokens"] == 41
     assert task["failed_or_retried_sessions"] == 2 and task["attempts_max"] == 2

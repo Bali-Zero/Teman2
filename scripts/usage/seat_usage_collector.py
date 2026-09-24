@@ -604,6 +604,10 @@ def _task_usage(provider: str, node: dict, window: tuple) -> tuple[dict, set]:
     previous = {}
     selected = set()
     for identity, (stamp, values, last) in sorted(node["events"].items(), key=lambda item: item[1][0]):
+        reset = provider == "codex" and any(
+            values.get(field) is not None and values[field] >= 0
+            and field in previous and values[field] < previous[field] for field in fields
+        )
         delta = {}
         for field in fields:
             value = values.get(field)
@@ -618,7 +622,9 @@ def _task_usage(provider: str, node: dict, window: tuple) -> tuple[dict, set]:
                 # counters. Only this observed call belongs to the new thread.
                 delta[field] = last.get(field)
             else:
-                delta[field] = value if value < old else value - old
+                # A new cumulative epoch resets the vector, even when one new
+                # counter happens to exceed its value in the preceding epoch.
+                delta[field] = value if reset else value - old
             if delta[field] is not None and (delta[field] < 0 or delta[field] > value):
                 delta[field] = None
             previous[field] = value
