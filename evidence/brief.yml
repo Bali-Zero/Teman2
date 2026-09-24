@@ -1,8 +1,8 @@
-gear: 3
+gear: 2
 task_id: legacy-tldr-cleanup
 lane: mouth
 host: air-m5 (M5)
-branch: agent/air-m5/mouth/legacy-tldr-cleanup
+branch: agent/air-m5/mouth/legacy-tldr-cleanup-gear2
 gate_class: none
 l_level: L2
 objective: >-
