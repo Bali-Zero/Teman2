@@ -1,0 +1,140 @@
+task_id: vo-a3p-b-dead-ends
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Slice A3'-B of MANDATE-vo.md: ACTIVITY_BOUNDARY leaves the human-review
+  hold and becomes a named dead end, DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH,
+  instead of forcing HUMAN_REVIEW_REQUIRED. `DEAD_END_DISCLOSED_FLAGS`
+  (evaluate_path.py) carves it out of `HOLDING_DISCLOSED_FLAGS` (now
+  {CRIMINAL_RECORD} only). On a pack base that reached SUPPORTED_CANDIDATES
+  or NEEDS_INPUT, `_apply_disclosed_review_flags` now rewrites the decision
+  to NO_SUPPORTED_PATH with only the dead-end reason(s) — there is no pack
+  verdict to abstain from once the signed pack cannot decide the applicant's
+  activity at all. On a base already at NO_SUPPORTED_PATH the dead-end
+  reason is appended after the pack's own. Every other pack state (already
+  HUMAN_REVIEW_REQUIRED, TEMPORARILY_UNAVAILABLE), or no dead-end flag at
+  all, keeps today's path unchanged. A holding flag (CRIMINAL_RECORD, or
+  ACTIVITY_BOUNDARY explicitly restored via the VISA_ORACLE_HOLDING_FLAGS
+  kill switch) always wins over the dead-end branch, on any pack state.
+  Dead-end decision_id/public_id are reseeded with a "no-path:" prefix so
+  they can never collide with the kill-switch hold's id for the same flag.
+  `review_hold_inventory.py`'s `split_disclosed_review_codes` becomes a
+  3-way partition (holding, dead_end, conditioning). The census
+  (test_interview_walk_census.py) derives the FUNNEL state from both sets.
+  The mouth's engine-adapter.test.ts gains the one coupled test named in
+  the mandate (B8): reads evaluate_path.py's own
+  `_DISCLOSED_NO_PATH_REASON_CODES` and proves every value is in both
+  `SOURCELESS_NO_PATH_CODES` and `SUPPORT_REASON_COPY` — the mouth's copy
+  for this exact code shipped already in A3'-M (#7172), unmoved by this PR
+  (verified: replay-no-path-doors.py regenerates a diff only from the
+  seq-22->seq-23 pack move, unrelated to activity-boundary/dead-end code;
+  restored via `git show HEAD:<path>`, never committed).
+constraints:
+  - "No paid per-token API — Claude CLI OAuth for the build; the council's
+    two TP1 refuters (qwen3.8-max, deepseek-v4-pro) are the sanctioned
+    per-task-flat TP1 gateway, not a per-token Anthropic endpoint."
+  - "No PII — engine/inventory/test code only, no client data touched."
+  - "Every number in this PR's body is printed by a command run at this
+    head, never carried over from the brief's stale seq-22 estimate (Net
+    ~230) or the mandate's OD-2/OD-3 prose — conductor delta 2026-09-24."
+  - "Off-limits respected: zantara_core.py, fly.toml, .env*,
+    scripts/ci/** untouched (A3'-0 owns change_map.py; verified by content
+    at STEP ZERO-bis, not by SHA)."
+acceptance:
+  - "gate-a3p-b REWORK-BUILD cure (2026-09-24, this session): PYTHONPATH=.
+    .venv/bin/python -m pytest
+    backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+    'activity_boundary or resolve_holding_flags' — 23 passed, 270
+    deselected. Whole file: 262 passed, 31 errors (pre-existing
+    Postgres-connect OSError, same 31 error IDs before and after; +1
+    passed vs the pre-rework 261/22 from the new MEDIUM-1 test).
+    test_activity_boundary_oracle_innocence (B3) now asserts full `==`
+    between the env-unset and env=ACTIVITY_BOUNDARY outputs on all three
+    cases the gate probed, not only `ordered == reordered`; GUILT/restore
+    on scratch `cp` copies confirms RED on revert (see pack.yml
+    receipts)."
+  - "PYTHONPATH=. .venv/bin/python -m pytest
+    backend/tests/scripts/visa_engine/test_review_hold_inventory.py — 7
+    passed."
+  - 'PYTHONPATH=. .venv/bin/python -m pytest
+    backend/tests/services/visa_engine/test_interview_walk_census.py -s -k
+    "flagged_census or reports_the_walks_it_rewrites" — 2 passed; the
+    printed funnel table reads SUPPORTED_CANDIDATES 91 / NO_SUPPORTED_PATH
+    20 / NEEDS_INPUT 1 / HUMAN_REVIEW_REQUIRED 4, with the per-flag row
+    ''ACTIVITY_BOUNDARY | 6 | SUPPORTED_CANDIDATES -> NO_SUPPORTED_PATH
+    (x6)''. Whole file: 39 passed, 14 skipped (pre-existing: no unsigned
+    candidate pack sits above the signed one).'
+  - "apps/mouth vitest for engine-adapter.test.ts +
+    OutcomeSheet.test.tsx — 223 passed. tsc --noEmit -p . — clean, no
+    output."
+  - "replay-no-path-doors.py regenerated a diff (pack seq-22->seq-23 move,
+    plus three no_path_reason_codes the seq-23 pack itself now adds on
+    unrelated e33g/retirement walks) — REPORTED as a red this PR did not
+    cause and did not cure; restored via git show HEAD:<path>, confirmed
+    git diff --exit-code clean afterward. Walk fixture count: 116 (ls |
+    grep -c json)."
+  - "Nine GUILT/restore cycles on scratch `cp` copies of evaluate_path.py
+    (B0-B8), each verified RED for its named cause then restored and
+    verified `cmp -s` byte-identical to the pre-mutation backup, then
+    re-verified green."
+  - "Two-refuter council (tp1-qwen3.8-max PASS, tp1-deepseek-v4-pro
+    BLOCK), both probed LIVE first via arsenal_probe.py. deepseek's sole
+    BLOCK finding (qwen raised the same at lower confidence) — dead-end
+    branch does not clear review_reasons — is REFUTED, not cured:
+    models.py:1550/1562 already forbid non-empty review_reasons on
+    SUPPORTED_CANDIDATES/NEEDS_INPUT, so any Decision this function
+    receives in either state already has review_reasons == () before this
+    code runs. Verified live: a real evaluate() SUPPORTED_CANDIDATES
+    decision has review_reasons=(); forcing it non-empty via
+    model_validate raises ValidationError naming exactly that invariant."
+consumer_map:
+  - "B9 (conductor, not this PR): the production engine body
+    (synthetic_driver) composed with the production bundle proves this
+    live post-deploy on 7 labeled walks from the B5-2 manifest — zero
+    HUMAN_REVIEW on the first seven, dead-end code named on five of them."
+  - "Slice A6-bis (PR 3, mouth, queued after this PR merges): reads
+    DEAD_END_DISCLOSED_FLAGS in evaluate_path.py by CONTENT as its base."
+  - "review_hold_inventory.py --json is read by whichever operator script
+    audits 'what holds today vs what dead-ends' — this PR is the only
+    change to its 2-tuple-to-3-tuple return contract; no other caller of
+    split_disclosed_review_codes exists in the repo (grepped)."
+risks:
+  - "Net measured at this head (rework, excludes evidence/**): 513 lines
+    (671 insertions, 158 deletions, git diff --numstat over merge-base) —
+    up from the pre-rework 414, above the mandate's own Net ~230 estimate
+    and past the ~400 Builder Contract line before AND after. The
+    pre-rework overage was almost entirely: (a) two new backend tests the
+    mandate's B3/B4 rows require but did not pre-size (oracle-innocence +
+    dead-end-id tests, ~100 lines together), (b) the three-way split's
+    docstring rewrites in evaluate_path.py explaining a genuinely new
+    third outcome next to the existing hold/condition two, and (c) the
+    two rewritten test bodies in test_interview_walk_census.py whose
+    narrative comments had to stay truthful about which flags now hold vs
+    dead-end. The rework's own +99 lines: the HIGH-1 fix itself (~35
+    lines, mostly the docstring explaining the new hold-routing rule) and
+    the MEDIUM-1 test plus the B3 test's rewrite to assert full equality
+    on three cases instead of one order check (~64 lines,
+    test_evaluate_endpoint.py only). Declared Gear-2 per the mandate's own
+    row rather than re-split: one concern (ACTIVITY_BOUNDARY's
+    disposition, now correctly covering the holding-flag-present and
+    pack-already-HR cases the gate's HIGH-1 named), one production
+    function's branch, one test file each for review_hold_inventory/
+    evaluate_endpoint/interview_walk_census, and the one mouth-side
+    coupling test the mandate names by number (B8)."
+  - "seq-23 activated in production during this build (conductor's delta,
+    11:27:25Z) — every pinned number in this PR was re-measured against
+    the current highest-signed pack, not the mandate's own seq-22-era
+    prose (94/88 walk counts etc superseded by this PR's measured
+    98/91/20/1/4 rows)."
+grader: |
+  generator != grader. This PR is opened UNARMED by the builder seat
+  (vo-builder-a3p-b); the conductor runs the full CI matrix and arms at 0
+  FAIL, and a FRESH gate session performs the on-disk verdict per the
+  repo's Ship Sequence — this session neither arms nor merges its own
+  work. B9 (prove-live) is explicitly the conductor's, not this PR's.
+budget: |
+  Flat-subscription build (Claude CLI OAuth) plus two flat-rate TP1
+  refuter calls (qwen3.8-max, deepseek-v4-pro) — no paid per-token
+  Anthropic endpoint, no other metered API.
+pii: none

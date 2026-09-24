@@ -608,6 +608,60 @@ describe("Slice A3'-M: a sourceless named dead end (M1, M2)", () => {
     expect(missing).toEqual([]);
   });
 
+  // Slice A3'-B (backend-side counterpart of M2): the coupled test named in
+  // the PR body, so it runs on both A3'-0 (backend) and mouth PRs. M2 above
+  // only proves this module's OWN exemption set is internally consistent
+  // (every SOURCELESS_NO_PATH_CODES entry has copy); it says nothing about
+  // whether that set still matches what the backend actually derives a
+  // dead end from. This reads `evaluate_path.py`'s
+  // `_DISCLOSED_NO_PATH_REASON_CODES` — the ONE source of truth for which
+  // codes `_apply_disclosed_review_flags` can emit as a sourceless dead
+  // end — so a backend rename that forgets the mouth is a red HERE, not a
+  // silent `RESPONSE_INVARIANT` discovered live.
+  it("Slice A3'-B: every backend _DISCLOSED_NO_PATH_REASON_CODES value is SOURCELESS_NO_PATH_CODES and SUPPORT_REASON_COPY (B8)", () => {
+    const EVALUATE_PATH = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../../../../../..",
+      "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+    );
+    const evaluatePathText = fs.readFileSync(EVALUATE_PATH, "utf-8");
+    const start = evaluatePathText.indexOf(
+      "_DISCLOSED_NO_PATH_REASON_CODES: MappingProxyType",
+    );
+    if (start < 0) {
+      throw new Error(
+        "could not find _DISCLOSED_NO_PATH_REASON_CODES in evaluate_path.py",
+      );
+    }
+    const end = evaluatePathText.indexOf("\n)", start);
+    if (end < 0) {
+      throw new Error(
+        "could not isolate the _DISCLOSED_NO_PATH_REASON_CODES block",
+      );
+    }
+    const codes =
+      evaluatePathText
+        .slice(start, end)
+        .match(/"[A-Z][A-Z0-9_]*"/g)
+        ?.map((code) => code.slice(1, -1)) ?? [];
+    // Guard the guard (cicatrix family #3): an empty slice would make every
+    // assertion below vacuously true.
+    expect(codes.length).toBeGreaterThan(0);
+    for (const code of codes) {
+      expect(
+        SOURCELESS_NO_PATH_CODES.has(code),
+        `${code}: in evaluate_path.py's _DISCLOSED_NO_PATH_REASON_CODES but ` +
+          "not in SOURCELESS_NO_PATH_CODES — the mouth would throw " +
+          "RESPONSE_INVARIANT on a real dead end carrying this code",
+      ).toBe(true);
+      expect(
+        code in SUPPORT_REASON_COPY,
+        `${code}: in evaluate_path.py's _DISCLOSED_NO_PATH_REASON_CODES but ` +
+          "has no SUPPORT_REASON_COPY entry — the mouth has no sentence to render for it",
+      ).toBe(true);
+    }
+  });
+
   // The CTA the dead end's copy quotes is OracleShell.tsx's OWN consultant
   // toggle label — read from its source text, never retyped, so a rename
   // there cannot silently orphan the quote.

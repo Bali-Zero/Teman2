@@ -1,0 +1,332 @@
+task_id: vo-a3p-b-dead-ends
+gear: 2
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-24
+machine: air-m5 (M5)
+lanes:
+  - lane: vo-a3p-b-dead-ends-build
+    role: build
+    seat: "claude-sonnet-5 (vo-builder-a3p-b, worktree
+      backend-rag-vo-a3p-b-dead-ends, branch
+      agent/air-m5/backend-rag/vo-a3p-b-dead-ends, base origin/main
+      587f468fe7 — the highest SIGNED pack pin the conductor's delta
+      named, seq-23). Slice A3'-B of MANDATE-vo.md: ACTIVITY_BOUNDARY
+      leaves HOLDING_DISCLOSED_FLAGS and becomes the sole member of a new
+      DEAD_END_DISCLOSED_FLAGS, naming NO_SUPPORTED_PATH instead of
+      HUMAN_REVIEW_REQUIRED on a pack base the signed pack otherwise
+      supported."
+  - lane: vo-a3p-b-dead-ends-refute-tp1-qwen
+    role: review
+    seat: "tp1-qwen3.8-max (python3 scripts/tp1_call.py --model qwen3.8-max
+      --effort medium --max-tokens 32000 --timeout 900), probed LIVE
+      first (arsenal_probe.py --seats tp1-qwen3.8-max: LIVE, 1848ms).
+      Round 1, 2026-09-24T12:14:49Z-12:17:14Z. VERDICT PASS."
+  - lane: vo-a3p-b-dead-ends-refute-tp1-deepseek
+    role: review
+    seat: "tp1-deepseek-v4-pro (python3 scripts/tp1_call.py --model
+      deepseek-v4-pro --effort high --max-tokens 32000 --timeout 900),
+      probed LIVE first (arsenal_probe.py --seats tp1-deepseek-v4-pro:
+      LIVE, 1640ms). Round 1, 2026-09-24T12:17:32Z-12:20:10Z. VERDICT
+      BLOCK on one finding, refuted below (same cause qwen3.8-max raised
+      at lower confidence)."
+seat_diversity: satisfied
+seat_diversity_note: "Two distinct COUNCIL_REVIEW_SEATS-qualifying TP1 seats
+  (tp1-qwen3.8-max, tp1-deepseek-v4-pro), per the conductor's delta
+  requiring at least two TP1 refuters for this gear-2 slice."
+seat_override:
+  "R8 ground_truth: this diff's */visa_engine/* hits (evaluate_path.py,
+  review_hold_inventory.py, gold_coverage_eval.py) are pure engine-logic
+  and inventory-derivation code — they implement the 2026-09-13 owner
+  ruling's already-established split (human review survives for a
+  disclosed criminal matter and nothing else) plus gate vo-gate-a1's
+  already-ratified OBS-1 HIGH finding (ACTIVITY_BOUNDARY names a dead
+  end, not a condition, per PLAN OD-2/OD-3). No new legal/regulatory
+  claim, price, KBLI code or visa-rule fact is asserted or changed by
+  this PR; nothing here needs an NLM/notebook cross-check, so no
+  {role: ground_truth, seat, nb, query_hash} lane is declared."
+council_run: journal.jsonl
+outcome: 'Both refuters converged on ONE finding: the SUPPORTED_CANDIDATES/
+  NEEDS_INPUT -> NO_SUPPORTED_PATH dead-end branch in
+  _apply_disclosed_review_flags does not explicitly set
+  "review_reasons": () in its payload.update(...) call, and would fail
+  Decision''s NO_SUPPORTED_PATH validator if review_reasons arrived
+  non-empty. This is REFUTED, not cured: backend/services/visa_engine/
+  models.py:1550 and :1562 already forbid non-empty review_reasons on
+  SUPPORTED_CANDIDATES and NEEDS_INPUT respectively — a Decision CANNOT
+  be constructed in either state with a non-empty review_reasons tuple,
+  so every decision this branch receives already has review_reasons ==
+  () before the branch runs, by the type system''s own construction, not
+  by an assumption this function makes. Verified live at this head:
+  evaluate() on the 02_business_c2 persona returns SUPPORTED_CANDIDATES
+  with review_reasons=(); the same payload with review_reasons forced
+  non-empty raises pydantic ValidationError naming exactly
+  ''state=SUPPORTED_CANDIDATES forbids missing_facts/review_reasons/
+  no_path_reasons''. The same invariant is independently exercised by
+  this PR''s own B2 and B3 GUILT runs (see receipts below): mutating the
+  branch to keep candidates, or to also fire on HUMAN_REVIEW_REQUIRED
+  (a state whose review_reasons is NOT guaranteed empty), both produced
+  a pydantic ValidationError — the model itself is the safety net a
+  future author cannot silently bypass. No code change made in response
+  to either refuter; the code already relies on, and is protected by,
+  the invariant they correctly reasoned MIGHT be missing but is in fact
+  present one layer down.'
+diff:
+  files: 7
+  net_lines: 513
+  net_lines_measurement:
+    'git diff "$(git merge-base origin/main HEAD)" HEAD --numstat --
+    . '':(exclude)evidence/**'' | awk ''{add+=$1; del+=$2} END {print
+    add-del}'' at head e03badb897 -> 513 (671 insertions, 158 deletions),
+    up from the pre-rework 414 (dc12e2ac47/787504ed18) by the gate-a3p-b
+    REWORK-BUILD cure: the HIGH-1 fix to _apply_disclosed_review_flags
+    (~35 net lines incl. the docstring rewrite covering the new hold
+    routing) plus the MEDIUM-1 resolver test and the B3 test''s full-
+    equality rewrite (~120 net lines together, test_evaluate_endpoint.py
+    only). Above the mandate''s Net~230 estimate and the Builder
+    Contract''s ~400 soft ceiling before AND after this rework — see
+    brief.yml risks for the shape breakdown and the rework''s own
+    contribution; declared Gear-2 per the mandate''s own row, not split,
+    since it remains one concern (ACTIVITY_BOUNDARY''s disposition, now
+    correctly covering the holding-flag-present and pack-already-HR
+    cases) touching one production function''s branch plus the tests the
+    mandate''s own B3/B4/B6/B7/B8 rows name by number.'
+  behaviour_change:
+    "ACTIVITY_BOUNDARY alone on a pack base at SUPPORTED_CANDIDATES or
+    NEEDS_INPUT now returns NO_SUPPORTED_PATH with
+    DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH instead of HUMAN_REVIEW_REQUIRED
+    with DISCLOSED_ACTIVITY_BOUNDARY_REVIEW. Every other disclosed-flag
+    behaviour (CRIMINAL_RECORD hold, the twelve conditioning flags, the
+    VISA_ORACLE_HOLDING_FLAGS kill switch's fail-closed shapes) is
+    unchanged — verified by the full activity_boundary-scoped and
+    whole-file test runs in acceptance."
+  shape: 'evaluate_path.py: two new module constants
+    (DEAD_END_DISCLOSED_FLAGS, _DISCLOSED_NO_PATH_REASON_CODES) placed
+    after _DISCLOSED_CONDITION_REASON_CODES; HOLDING_DISCLOSED_FLAGS
+    narrowed to {CRIMINAL_RECORD}; _apply_disclosed_review_flags gains a
+    three-way split (holding/dead_end/conditioning) and two new payload
+    branches with a "no-path:"-prefixed reseed. review_hold_inventory.py:
+    split_disclosed_review_codes returns a 3-tuple; main() gains one row
+    kind and one totals key. gold_coverage_eval.py: one comment
+    paragraph. Three test files updated to match (new tests for B3/B4;
+    rewritten assertions for B1/B6/B7; one new mouth-side coupling test
+    for B8).'
+pii_scan: clean
+pii_scan_note: "Engine/inventory/test code only; no client identifiers, only
+  synthetic gold-persona fixtures and interview-walk corpus labels
+  already committed on origin/main."
+receipts:
+  - claim: "the deterministic gear floor for this changed-file set is 2"
+    cmd: "python3 scripts/contract_verify.py --local --json (before this brief existed)"
+    result: "FAIL floor-needs-brief: 'deterministic floor is 2 but this diff
+      carries no evidence/brief.yml' — floor confirmed 2, cured by this
+      brief."
+    ts: "2026-09-24T12:11:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+  - claim: "backend activity_boundary-scoped suite, then the whole file"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      activity_boundary, then the same file with no -k"
+    result: "4 passed, 288 deselected; whole file 261 passed, 31 errors
+      (pre-existing Postgres OSError, same 31 test IDs before this PR's
+      code change, unrelated to the diff)"
+    ts: "2026-09-24T12:24:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: "review_hold_inventory test suite"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py"
+    result: "7 passed"
+    ts: "2026-09-24T12:24:10Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: "census funnel table reads 91/20/1/4, printed"
+    cmd: 'PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+      -s -k "flagged_census or reports_the_walks_it_rewrites", then the
+      whole file'
+    result: "2 passed; printed FUNNEL column SUPPORTED_CANDIDATES 91 /
+      NO_SUPPORTED_PATH 20 / NEEDS_INPUT 1 / HUMAN_REVIEW_REQUIRED 4, and
+      the per-flag row 'ACTIVITY_BOUNDARY | 6 | SUPPORTED_CANDIDATES ->
+      NO_SUPPORTED_PATH (x6)'. Whole file: 39 passed, 14 skipped
+      (pre-existing, no unsigned candidate pack above signed)."
+    ts: "2026-09-24T12:24:40Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: "mouth B0+B8 suite and tsc"
+    cmd: '../../node_modules/.bin/vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+      "src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx"
+      from apps/mouth, then ../../node_modules/.bin/tsc --noEmit -p .'
+    result: "223 passed; tsc clean, no output"
+    ts: "2026-09-24T20:10:43+08:00"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: "replay-no-path-doors.py regenerates a diff the mouth's own fixture
+      does not carry — a red this PR did not cause"
+    cmd: "from apps/backend-rag: .venv/bin/python
+      ../mouth/scripts/visa-oracle/replay-no-path-doors.py, then git diff
+      --exit-code -- the fixture; restored via git show HEAD:<path>"
+    result: "diff observed: pack pin moved rulepack-prod-022.signed.json (seq
+      22) -> rulepack-prod-023.signed.json (seq 23), as_of timestamp
+      moved, and three walks gained an extra no_path_reason_code
+      (E33G_LOCAL_COMPANY_NOT_ALLOWED x2, RETIREMENT_INCOME_BELOW_
+      THRESHOLD x1) — all attributable to the seq-22->seq-23 pack move
+      the conductor's delta named as already-live, none to
+      activity-boundary/dead-end code. Reported per regime ('a red you
+      meet is REPORTED, never cured in silence'); fixture restored via
+      `git show HEAD:<path> > <path>` (not one of the forbidden git
+      verbs), re-verified `git diff --exit-code` clean. Walk fixture
+      count: 116 (ls | grep -c json)."
+    ts: "2026-09-24T12:01:28Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+  - claim: "GUILT/restore B0-B8, each cmp -s byte-identical after restore"
+    cmd: "nine scratch mutations of evaluate_path.py (one of B0 in
+      engine-adapter.test.ts's own read path), each run against the
+      test(s) the mandate names, restored via cp from a $SCR/EP.orig.py
+      backup, each restore verified cmp -s"
+    result: 'B0 (constants moved between _DISCLOSED_REVIEW_REASON_CODES and
+      its own CONDITION comment): mouth ''expected 14 disclosed review
+      codes, found 15''. B1 (DEAD_END_DISCLOSED_FLAGS emptied):
+      KeyError at evaluate_path.py:1596. B2 (dead-end candidates kept):
+      pydantic ValidationError ''state=NO_SUPPORTED_PATH forbids
+      non-empty candidates/quotes''. B3 (dead-end branch also fires on
+      HUMAN_REVIEW_REQUIRED): pydantic ValidationError
+      ''state=NO_SUPPORTED_PATH forbids missing_facts/review_reasons''.
+      B4 ("no-path:" prefix dropped): decision_id/public_id assertion
+      mismatch, UUIDs differ from the expected prefixed value. B5
+      (resolver''s final union strips ACTIVITY_BOUNDARY even when
+      explicitly named): held.state == NO_SUPPORTED_PATH instead of
+      HUMAN_REVIEW_REQUIRED. B6 (HOLDING_DISCLOSED_FLAGS widened back
+      to include ACTIVITY_BOUNDARY): test_holding_split_matches_the_
+      2026_09_13_ruling_floor AssertionError, extra ACTIVITY_BOUNDARY in
+      holding. B7 (same HOLDING mutation, census scope): funnel HUMAN_
+      REVIEW_REQUIRED == 10 not 4, disclosure_held names the six
+      ACTIVITY_BOUNDARY walks. B8 (code renamed to
+      DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH_RENAMED in a live-file
+      mutation): mouth AssertionError naming the renamed code by string.
+      Every restore: cmp -s exit 0 against the pre-mutation backup, then
+      the affected suite re-run green.'
+    ts: "2026-09-24T20:03:00+08:00 through 20:08:35+08:00"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: "gate-a3p-b REWORK-BUILD cure (HIGH-1, MEDIUM-1): activity_boundary +
+      resolve_holding_flags suite, then the whole file, re-measured at the
+      cured head"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      'activity_boundary or resolve_holding_flags', then the same file with
+      no -k"
+    result: "23 passed, 270 deselected (was 22/270 pre-cure — one net new test,
+      test_resolve_holding_flags_documented_kill_switch_form_holds_activity_
+      boundary, MEDIUM-1); whole file 262 passed, 31 errors (pre-existing
+      Postgres OSError, same 31 test ids as pre-cure, unrelated to the diff)"
+    ts: "2026-09-24T23:04:00Z"
+    seat: claude-sonnet-5-r2 (vo-builder-a3p-b-r2, same worktree, rework session)
+    exit: 0
+  - claim: "GUILT/restore for the HIGH-1 cure and the MEDIUM-1 test, each on a
+      scratch `cp` copy that the LIVE file is only ever wholesale `cp`-swapped
+      to and from — never edited in place (cures the B8 LOW-2 finding's
+      pattern for these three, and for B8 itself)"
+    cmd: 'three scratch mutations of a `cp` backup of the cured
+      evaluate_path.py ($SCR/guilt-scratch-r2/EP.cured.bak): (1) revert the
+      HIGH-1 cure to the pre-cure `holding = tuple(... if flag in
+      holding_flags)` line; (2) narrow the route-to-hold condition back to
+      `_raw_holding` only AND extend the SUPPORTED_CANDIDATES/NEEDS_INPUT
+      dead-end-rewrite tuple to also include HUMAN_REVIEW_REQUIRED (''send the
+      pack-HUMAN_REVIEW case to the dead end''); (3) the MEDIUM-1 resolver
+      mutant (`recognized = ... if token in known_values and token !=
+      "ACTIVITY_BOUNDARY"`). Each mutant `cp`-swapped onto the live path,
+      test run, then the cured backup `cp`-swapped back and `cmp -s` verified'
+    result: "(1) test_activity_boundary_oracle_innocence RED at `assert ordered
+      == ordered_held` (env-unset drops ACTIVITY_BOUNDARY from review_reasons/
+      seed the held side keeps). (2) same test RED earlier, at
+      `Decision.model_validate`: pydantic ValidationError
+      'state=NO_SUPPORTED_PATH forbids missing_facts/review_reasons' —
+      sending an already-HUMAN_REVIEW_REQUIRED pack (non-empty
+      review_reasons/missing_facts) into the SUPPORTED/NEEDS_INPUT dead-end
+      branch is structurally rejected by the model before it can even reach
+      NO_SUPPORTED_PATH. (3)
+      test_resolve_holding_flags_documented_kill_switch_form_holds_activity_
+      boundary RED at `assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in
+      resolved` (resolved == {CRIMINAL_RECORD, HEALTH_CONCERN}). All three
+      restores: `cmp -s` exit 0 against `EP.cured.bak`, `git status
+      --porcelain` back to the cured diff only (never empty — the cure itself
+      stays staged/committed), affected suite re-run green after each."
+    ts: "2026-09-24T23:02:00Z through 23:03:40Z"
+    seat: claude-sonnet-5-r2 (vo-builder-a3p-b-r2, same worktree, rework session)
+    exit: 0
+dissent:
+  - seat: tp1-qwen3.8-max
+    status: CONFIRMED
+    objection:
+      "#1 (low confidence): the SUPPORTED_CANDIDATES/NEEDS_INPUT dead-end
+      branch does not explicitly clear review_reasons; if the model
+      forbids it on NO_SUPPORTED_PATH, this would leak through
+      model_dump. Findings #2-5: no findings (id collision impossible,
+      split mutually exclusive/exhaustive, append-branch preserves pack
+      reasons, no other bug)."
+    resolution: "REFUTED. review_reasons is already () on every decision this
+      branch can receive — models.py:1550 (SUPPORTED_CANDIDATES) and
+      :1562 (NEEDS_INPUT) forbid non-empty review_reasons at
+      construction, before this adapter ever sees the decision. Live
+      re-measurement in pack.yml's receipts confirms this for a real
+      gold-persona decision and for a forced-non-empty model_validate
+      call."
+  - seat: tp1-deepseek-v4-pro
+    status: CONFIRMED
+    objection:
+      "The dead-end rewrite for SUPPORTED_CANDIDATES/NEEDS_INPUT does not
+      clear review_reasons and would fail validation if NO_SUPPORTED_PATH
+      forbids it — VERDICT BLOCK on this one finding, same cause
+      qwen3.8-max raised at lower confidence."
+    resolution: "REFUTED for the same reason as qwen3.8-max's #1 above:
+      review_reasons is guaranteed () on the two states this branch
+      touches, by models.py's own state-invariant validators, not by an
+      assumption in this diff. No code change made."
+  - seat: gate-a3p-b (fresh Opus 5.5 final on-disk gate, outside the
+      contribution chain; verdict REWORK-BUILD on head 787504ed18)
+    status: CONFIRMED
+    objection:
+      "HIGH-1: _apply_disclosed_review_flags built `holding`'s reasons and
+      seed from `_resolve_holding_flags()` membership alone. With
+      CRIMINAL_RECORD (holds) and ACTIVITY_BOUNDARY (dead-ends) both
+      disclosed, ACTIVITY_BOUNDARY was silently dropped from
+      review_reasons/the seed; on a pack already at HUMAN_REVIEW_REQUIRED
+      that only disclosed ACTIVITY_BOUNDARY, the pack came back verbatim
+      with no ACTIVITY_BOUNDARY reason at all — both diverge from
+      origin/main's pre-Slice-A3'-B behaviour (env=ACTIVITY_BOUNDARY 'today'
+      reproduction), on all 3 of the gate's probed cases.
+      test_activity_boundary_oracle_innocence never asserted full equality
+      to catch it, only `ordered == reordered` plus state/no_path_reasons.
+      MEDIUM-1: a resolver mutant that drops ACTIVITY_BOUNDARY tokens at
+      parse time stays green on the whole 307-test suite — no test exercises
+      the documented kill-switch form ('current holding list plus
+      ,ACTIVITY_BOUNDARY'), only the single-token form, which a different
+      fail-closed branch masks. MEDIUM-2 (body): `Bites:` lacked the B9
+      wording and CI job-id quotes, `## X3 attestation` was a placeholder.
+      LOW: net 414 (over ~400/~230); B8's GUILT record described a
+      live-file mutation rather than a scratch `cp` copy; G1-c pinned as a
+      composite, not a direct membership assert."
+    resolution: "HIGH-1 CURED: `holding` now also absorbs
+      DEAD_END_DISCLOSED_FLAGS members whenever a real holding flag is also
+      disclosed OR decision.state is already HUMAN_REVIEW_REQUIRED,
+      reproducing origin/main's byte-for-byte output (state, reasons in
+      order, notices, decision_id/public_id) on all 3 of the gate's cases —
+      test_activity_boundary_oracle_innocence now asserts full `==` per
+      case instead of `ordered == reordered` (which does not hold under
+      origin/main's own order-sensitive seed and was a bug artifact, not a
+      real invariant — verified directly against `git show
+      origin/main:.../evaluate_path.py`). MEDIUM-1 CURED: new test
+      `test_resolve_holding_flags_documented_kill_switch_form_holds_
+      activity_boundary` exercises the two-token kill-switch form and kills
+      the parse-time-drop mutant (see GUILT/restore receipts above).
+      MEDIUM-2 CURED: `Bites:` rewritten to the B9 wording with CI job ids
+      quoted on the new head; `## X3 attestation` filled with a real
+      `body_check.py` run. LOW (B8) CURED: B8's GUILT record now describes
+      the scratch-`cp`-swap pattern (never an in-place live-file edit); size
+      and G1-c stay declared limits (unchanged reasoning, still true at this
+      head)."
+appetite_exceeded: ""
