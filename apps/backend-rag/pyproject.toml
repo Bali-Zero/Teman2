@@ -96,6 +96,10 @@ module = [
     "backend.core.legal.cleaner",
     "backend.core.plugins.plugin",
     "backend.app.models.*",
+    "backend.core.cache",
+    "backend.core.embeddings",
+    "backend.core.chunker",
+    "backend.core.legal.hierarchical_indexer",
 ]
 ignore_errors = false
 
