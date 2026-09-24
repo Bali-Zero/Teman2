@@ -18,6 +18,7 @@ class FakeRPC:
     """hooks/list and config/batchWrite as Codex answers them."""
 
     drop_guard = False
+    guard_override: dict = {}
     edits: list = []
 
     def call(self, method, params):
@@ -42,6 +43,9 @@ class FakeRPC:
         ]
         if self.drop_guard:
             found = [h for h in found if installer.GUARD_MARK not in h["command"]]
+        for h in found:
+            if installer.GUARD_MARK in h["command"]:
+                h.update(self.guard_override)
         return {"data": [{"hooks": found}]}
 
     def close(self):
@@ -244,3 +248,18 @@ def test_lookalike_command_is_foreign_never_rewritten_or_trusted(setup, monkeypa
         e["value"] for e in FakeRPC.edits if e["keyPath"].endswith(".trusted_hash")
     ]
     assert bridge.digest(lookalike["command"].encode()) not in trusted
+
+
+@pytest.mark.parametrize(
+    "override",
+    [{"trustStatus": "untrusted"}, {"eventName": "postToolUse"}, {"enabled": False}],
+)
+def test_status_refuses_an_untrusted_disabled_or_wrong_event_guard(
+    setup, monkeypatch, capsys, override
+):
+    repo, _, _ = setup
+    monkeypatch.setattr(installer, "RPC", FakeRPC)
+    installer.install(bridge.codex_home(), [str(repo)])
+    monkeypatch.setattr(FakeRPC, "guard_override", override)
+    status = run_status(monkeypatch, capsys)
+    assert not status["output_guard_trusted"] and not status["installed"]

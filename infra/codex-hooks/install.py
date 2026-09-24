@@ -26,7 +26,8 @@ from rpc import RPC
 THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
 # The reviewed Claude guard, unchanged. Codex reports shell calls to PreToolUse
 # as tool_name "Bash" with tool_input.command (observed in this bridge's own
-# state) and honours exit 2 + stderr as a deny. Whether every exec path emits
+# state) and documents exit 2 + stderr as a deny, unverified here until the
+# release's live proof. Whether every exec path emits
 # PreToolUse is upstream- and version-dependent: the release proves it live.
 GUARD_NAME = "output_hygiene_guard.py"
 GUARD_SOURCE = Path(__file__).resolve().parent.parent / "claude-hooks" / GUARD_NAME

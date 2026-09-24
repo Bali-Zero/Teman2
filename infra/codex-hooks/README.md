@@ -127,7 +127,8 @@ The installer also copies `infra/claude-hooks/output_hygiene_guard.py`
 byte-for-byte and registers it once as a `PreToolUse` hook with matcher `Bash`,
 trusted alongside the bridge. Codex reports shell calls to `PreToolUse` as
 `tool_name: "Bash"` with `tool_input.command` (observed in this bridge's own state)
-and treats exit 2 plus a stderr reason as a deny. Whether every exec path (unified
+and documents exit 2 plus a stderr reason as a deny (unverified on this fleet until
+the live proof below). Whether every exec path (unified
 exec, nested code-mode calls) emits `PreToolUse` depends on the upstream version, so
 each release proves the deny live in a fresh session per host; a path that emits no
 event is simply not bounded by this guard. Ownership is the exact installed path of
