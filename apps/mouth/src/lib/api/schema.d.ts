@@ -25976,6 +25976,11 @@ export interface components {
      * @description Response from direct email send.
      */
     SendEmailResponse: {
+      /**
+       * Delivery Uncertain
+       * @default false
+       */
+      delivery_uncertain: boolean;
       /** Message */
       message: string;
       /** Success */
@@ -28421,6 +28426,8 @@ export interface components {
       cc?: string | null;
       /** Email Type */
       email_type?: string | null;
+      /** Idempotency Key */
+      idempotency_key?: string | null;
       /** Subject */
       subject: string;
       /** To */

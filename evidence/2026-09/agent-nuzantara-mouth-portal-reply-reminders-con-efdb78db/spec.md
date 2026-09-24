@@ -4,7 +4,7 @@
 
 PORTAL-REPLY-REMINDERS-20260925, BLUE. Gear 3 due to additive message-source schema.
 External Codex builder prepares; independent Claude Opus 5.5 xhigh gate and release owner.
-Pro worktree: /Users/nuzantara/nuzantara/.worktrees/mouth-portal-reply-reminders.
+Pro current worktree: /Users/nuzantara/nuzantara/.worktrees/mouth-portal-reply-reminders-contract.
 Base: e0b18b8bac. Goal: reading a client message must not erase a reminder to reply; a manual team message must enqueue a generic client email.
 
 ## 2. Owned perimeter
@@ -31,7 +31,7 @@ No calendar/token ceiling imposed by owner. One correction depth, suspend repeat
 
 ## 7. Evidence and release
 
-Evidence path from scripts/ci/evidence_paths.py: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-ci-315a5583/.
+Evidence path from scripts/ci/evidence_paths.py: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-con-efdb78db/.
 Bites: authorized workspace users retain an actionable unanswered-message reminder, and an independently running email consumer observes a persisted message notification.
 No overlapping open PR paths in the initial 50-PR probe; leases inspected, native agents inspected. The initial remote-self mailbox probe failed; the corrected local probe succeeded with 93 session entries. No messages sent.
 Scar antidotes: #2 prove downstream state, not producer logs; #5 dedicated worktree; #9 preserve consumers during schema rollout.
@@ -47,3 +47,7 @@ Required Backend Tests failed deterministically before tests: the fresh CI boots
 The successor starts from refreshed origin/main 469c301f32. It adds only the canonical table and three index DDL statements to the CI bootstrap, after SQLModel create_all provides clients/practices. Production SQL321 and application code remain byte-identical. Acceptance is the exact CI setup sequence on an empty database, full apply-all, repeated bootstrap/apply-all with stable table OIDs, canonical indexes/FKs and unchanged321 checksum. PostgreSQL15 CI remains mandatory; local reproduction is PostgreSQL17.8. The actual CI failure is the regression gate, so no duplicate string-snapshot test is introduced.
 
 Evidence erratum: the initial Kimi REWORK remains genuine. The earlier follow-up was a narrower stateless review, not an informed withdrawal; its initial findings were independently adjudicated by BLUE gate v3. New CI-cure council judgements are separately recorded and carry no claim to re-review unchanged runtime. The brief now scopes automatic-notice attribution to new writers after complete producer replacement.
+
+## OpenAPI contract cure after PR7310
+
+The release-owner cure spec /tmp/portal-reply-ci-openapi-pin-cure.md is the assigned bounded delta. PR7310 remains frozen and disarmed after required Backend Shard2 reported1failed/11444passed; all three PostgreSQL15 bootstrap and migration stages passed. This is a distinct original-candidate omission that was hidden before tests ran on PR7306. Regenerate schema.d.ts and its OpenAPI hash using npm run contract:visa-oracle, then repository Prettier. Exactly two generated properties are added in seven declaration lines; no runtime, generator, test or CI-bootstrap source changes. The expected pin is6593a8afa56c310de94a9edcabe785adea3366191a1e86ffc81f408cbf9599ef. If this same pin cause recurs, suspend and write a spec rather than another fix. Root receipt timestamps record receipt creation, not test start time.
