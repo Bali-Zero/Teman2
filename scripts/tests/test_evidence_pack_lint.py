@@ -3162,6 +3162,32 @@ def test_countable_guilt_wrong_commit_count_rejected_digit_and_word():
     assert all("git rev-list --count" in v for v in violations)
 
 
+def test_countable_innocence_hyphenated_identifier_is_not_a_count_claim():
+    """INNOCENCE (superscar #3, guard-over-match — PR #5333): a bare `\\b`
+    fires at the `-` in "seq-17" as readily as at whitespace, so
+    "the seq-17 commit" was misread as a claim of "17 commits" and convicted
+    against a 2-commit branch. The identical trailing digits inside a
+    hyphenated identifier must never be read as a count, for any of the
+    three digit-claim fields (commits/files/tests share the same shape)."""
+    assert check_countable_claims(
+        {"diff": {"net_lines": "the seq-17 commit touched run-64 tests across PR-4 files"},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=2,
+    ) == ([], [])
+
+
+def test_countable_guilt_ordinary_commit_count_still_convicted_after_boundary_fix():
+    """GUILT: tightening the left boundary must not blind the rule to the
+    ordinary phrasing it exists to catch — "17 commits" preceded by
+    whitespace still convicts against a differing measured count."""
+    violations, _ = check_countable_claims(
+        {"diff": {"net_lines": "across 17 commits"}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 1
+    assert "17 commits" in violations[0] and "has 6" in violations[0]
+
+
 def test_countable_guilt_unsubstantiated_test_count_rejected():
     """GUILT: "the 44 tests" with no receipt reporting 44 is prose asserting a
     measurement nobody took."""
@@ -3223,6 +3249,105 @@ def test_countable_innocence_binary_file_downgrades_line_counts_to_notice():
     )
     assert violations == []
     assert any("+10/-2" in n for n in notices)
+
+
+def test_countable_guilt_int_typed_diff_fields_invisible_to_prose_scan_now_convicted():
+    """GUILT (measured 2026-08-30/31, PR #5424 shape): `diff.files`/
+    `diff.net_lines` as YAML INTEGERS — not a "N files" phrase inside a
+    string — are the pack's own permanent headline record, and
+    `_iter_countable_scalars`'s str-only walk cannot see them at all. A note
+    carrying no digits plus wrong int fields used to lint clean regardless of
+    --numstat-file; it must now convict on every diverging field."""
+    violations, _notices = check_countable_claims(
+        {"diff": {"files": 42, "net_lines": 999999, "note": "no digits here"},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert "diff.files declares 42 but the diff measures 2" in joined
+    assert "diff.net_lines declares 999999 but the diff measures 1777" in joined
+
+
+def test_countable_guilt_int_field_insertions_and_deletions_convicted():
+    """GUILT (the literal PR #5424 fields): `files`/`insertions` as integers,
+    contradicting `git diff --shortstat`."""
+    violations, _ = check_countable_claims(
+        {"diff": {"files": 4, "insertions": 70}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert "diff.files declares 4 but the diff measures 2" in joined
+    assert "diff.insertions declares 70 but the diff measures 1860" in joined
+
+
+def test_countable_innocence_int_fields_matching_measurement_pass():
+    """INNOCENCE: the rule convicts inaccuracy, not the act of declaring an
+    int field — correct values pass exactly like correct prose does."""
+    assert check_countable_claims(
+        {"diff": {"files": 2, "insertions": 1860, "deletions": 83, "net_lines": 1777},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_int_fields_unmeasured_notices_never_convicts():
+    """INNOCENCE: with no numstat supplied, a wrong int field NOTICEs — same
+    'could not measure' discipline as every other countable-claims source."""
+    violations, notices = check_countable_claims(
+        {"diff": {"files": 42}, "receipts": CC_RECEIPTS}, None, commits=None,
+    )
+    assert violations == []
+    assert any("diff.files declares 42" in n for n in notices)
+
+
+def test_countable_innocence_int_fields_binary_downgrades_line_counts_only():
+    """INNOCENCE: a binary file makes the line-count fields (insertions/
+    deletions/net_lines) an unreliable lower bound, so they NOTICE — but
+    `files` is unaffected by a binary row and stays enforced."""
+    numstat = "10\t2\ta.py\n-\t-\tlogo.png\n"
+    violations, notices = check_countable_claims(
+        {"diff": {"files": 99, "insertions": 999}, "receipts": CC_RECEIPTS},
+        numstat, commits=1,
+    )
+    assert len(violations) == 1
+    assert "diff.files declares 99" in violations[0]
+    assert any("diff.insertions declares 999" in n for n in notices)
+
+
+def test_countable_innocence_int_field_outside_diff_block_out_of_scope():
+    """INNOCENCE (superscar #3): an int named `files`/`net_lines` anywhere
+    OTHER than directly under `diff` (e.g. inside a `lanes` entry, or a
+    non-dict `diff`) is not this rule's business."""
+    assert check_countable_claims(
+        {"lanes": [{"lane": "D1", "role": "build", "seat": "codex", "files": 42}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+    assert check_countable_claims(
+        {"diff": "not a mapping", "receipts": CC_RECEIPTS}, CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_end_to_end_int_fields_red_pack_fails_and_green_pack_passes(tmp_repo):
+    """RED-FIRST PROOF, end to end through lint(): the exact PR #5424 shape
+    (`diff: {files: 4, insertions: 70}` against a real bigger diff) fails,
+    and correcting the ints to the measured values passes."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2)
+
+    wrong = write_pack(diff={"files": 4, "insertions": 70}, receipts=CC_RECEIPTS)
+    exit_code, violations = lint(wrong, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6)
+    assert exit_code == 1
+    assert len([v for v in violations if "countable claim" in v]) == 2
+
+    right = write_pack(
+        diff={"files": 2, "insertions": 1860, "deletions": 83}, receipts=CC_RECEIPTS
+    )
+    exit_code, violations = lint(right, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6)
+    assert exit_code == 0
+    assert violations == []
 
 
 def test_parse_numstat_totals_guilt_and_innocence():
