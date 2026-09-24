@@ -207,6 +207,10 @@ sibling that merged first even though local git resolves the union cleanly; cure
 merge origin/main` (never `update-branch`, which uses GitHub's own merge and hits the same wall),
 inspect the union result, push. Since RULED 2026-09-12 (SAETTA rule 2) sibling ledger PRs do not exist by construction — one row per mission, at close.
 
+**SHIP+ARM re-run + armed-state probes (PENDING-ARMS 2026-07-30, closed 2026-09-24):**
+- A red check does not get replayed blind: `gh run rerun` re-tests the STALE `refs/pull/N/merge` ref, not the PR against current main — measured on #3463, where a re-run after the cause was already fixed would have failed again for a reason that no longer existed. The honest probe is content, not the gesture: `git show refs/pull/N/merge:<file>` before deciding a rerun proves anything; a NEW head commit (`gh pr update-branch` or a push) is what actually re-points the ref.
+- "Is this PR armed" is never a single field: with a merge queue on `main`, `autoMergeRequest` and `isInMergeQueue` are each null in exactly the state the other is set (queued PRs show `autoMergeRequest: null` + `isInMergeQueue: true`; armed-at-open PRs show the inverse). Read both — the predicate is `autoMergeRequest != null OR isInMergeQueue` — before re-arming; a redundant `gh pr merge --auto` is a MUTATION on an already-armed PR, and with a merge queue on `main` it is REJECTED outright ("The merge strategy for main is set by the merge queue").
+
 Full source: `research/operations/2026-08-10-fleet-order-spec.md` §4.
 
 **REVIEW-È-INVOCABILE (ruling Zero 2026-08-10):** "serve review" is a dispatch instruction, never a

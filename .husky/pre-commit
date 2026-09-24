@@ -365,6 +365,7 @@ else
 fi
 
 # Run Python linting
+# RUFF_LINT_GATE_BEGIN — extracted verbatim by scripts/tests/test_precommit_ruff_absent_gate.sh
 echo "🐍 Running Python linting..."
 PY_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '^apps/backend-rag/.*\.py$' || true)
 if [ -n "$PY_FILES" ]; then
@@ -372,6 +373,15 @@ if [ -n "$PY_FILES" ]; then
     RELATIVE_FILES=$(echo "$PY_FILES" | sed 's|^apps/backend-rag/||')
 
     cd apps/backend-rag
+    # Same guard as the Golden Rule #8 gate above: ruff absent from PATH is a
+    # CANNOT-VERIFY, not a clean bill and not a lint failure (PENDING-ARMS
+    # 2026-08-31 — `2>/dev/null` on a missing-binary xargs was swallowing the
+    # real cause and reporting it as "Python linting failed").
+    if ! command -v ruff >/dev/null 2>&1; then
+        echo "❌ ERROR: cannot verify Python linting — ruff is not on PATH."
+        echo "   This is a CANNOT-VERIFY, not a clean bill. Install ruff (or activate the venv) and retry."
+        exit 1
+    fi
     # Run ruff only on changed files
     echo "$RELATIVE_FILES" | xargs ruff check 2>/dev/null || {
         echo "❌ Python linting failed on staged files. Please fix ruff issues."
@@ -379,6 +389,7 @@ if [ -n "$PY_FILES" ]; then
     }
     cd ../..
 fi
+# RUFF_LINT_GATE_END
 
 # ── W59 SIBLING-RACE BRANCH-TARGETING GUARD (cicatrix 2026-05-27) ────────────
 # Prevents the W59 branch-hijack class where a sibling Claude/Codex session
