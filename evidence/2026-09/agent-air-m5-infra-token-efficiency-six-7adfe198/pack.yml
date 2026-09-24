@@ -11,8 +11,9 @@ lanes:
   - { lane: final-gate, role: review, seat: fresh-claude-opus-5-5-xhigh }
 what_changed: >-
   The unchanged, reviewed output-hygiene guard is installed byte-for-byte and registered
-  exactly once as a PreToolUse Bash matcher for Codex shell, unified-exec and nested
-  code-mode calls. Installation moves only our own handler by exact installed path, leaving
+  exactly once as a PreToolUse Bash matcher for the Codex shell calls this bridge observes as
+  tool_name Bash; unified-exec / code-mode emission and exit-2 honouring stay unverified until
+  the per-host live proof. Installation moves only our own handler by exact installed path, leaving
   a foreign handler sharing the same group untouched. installation_status reports green
   only when the guard is present, trusted on the PreToolUse event specifically, and every
   foreign hook is intact. README and installer comments now claim only what this bridge's

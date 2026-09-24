@@ -4,10 +4,11 @@ l_level: L1
 gate_class: opus
 mission_colour: BLUE
 objective: >-
-  Bound Codex shell output with the existing, reviewed output-hygiene guard.
-  Codex reports shell, unified exec and nested code-mode calls to PreToolUse as
-  tool_name Bash with tool_input.command and honours exit 2 plus stderr as a deny.
-  Row 1 of the token-efficiency-six mandate (Zero ordered all six for Claude and Codex).
+  Bound Codex shell output with the existing, reviewed output-hygiene guard. This bridge's own
+  state observes Codex shell calls reported to PreToolUse as tool_name Bash with
+  tool_input.command; OpenAI documents exit 2 plus stderr as a deny. Both the deny and the
+  emission for unified exec / nested code-mode calls stay unverified until the per-host live
+  proof. Row 1 of the token-efficiency-six mandate (Zero ordered all six for Claude and Codex).
 scope: infra/codex-hooks installer/status/tests and the required guard-conformance executor
 acceptance:
   - text: WHEN installed, the unchanged guard SHALL be copied byte-for-byte and registered exactly once as PreToolUse matcher Bash.
