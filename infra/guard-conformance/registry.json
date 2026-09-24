@@ -495,7 +495,9 @@
         },
         "infra/claude-hooks/stadio_zero_nudge.py": {
           "symbols": {},
-          "tests": ["infra/claude-hooks/test_nudge_hooks_additional_context.py"],
+          "tests": [
+            "infra/claude-hooks/test_nudge_hooks_additional_context.py"
+          ],
           "also_covered_by": ["vaccine"],
           "note": "PENDING-ARMS L1087: warn path used to emit `systemMessage` only — reaches the operator's terminal, never the agent this hook exists to steer, per the Claude Code hooks doc. Now also emits hookSpecificOutput.additionalContext (permissionDecision:\"allow\"), mirroring orchestrate_gate.py's own fix — pinned by test_nudge_hooks_additional_context.py."
         },
