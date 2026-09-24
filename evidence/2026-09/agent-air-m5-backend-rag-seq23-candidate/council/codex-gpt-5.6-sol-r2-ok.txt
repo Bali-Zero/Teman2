@@ -1,0 +1,20 @@
+codex
+**OK — per il candidato A8-1 non firmato e non attivato.** Non ho trovato modifiche funzionali necessarie.
+
+1. **Copia del `when`: corretta per questa disposizione.** I predicati sono puri e mantengono la stessa logica a tre valori. Cambia intenzionalmente la precedenza: `REQUIRE_REVIEW` ferma tutta la decisione; `EXCLUDE` elimina i prodotti interessati. Inoltre, `NEEDS_INPUT` chiede il fatto quando resta un percorso potenzialmente supportabile, non incondizionatamente.
+
+2. **Branch 2: correttamente assorbita.** È `calling_visa ∧ altra_nazionalità`; il primo congiunto coincide esattamente con il nuovo filtro GLOBAL. Quindi branch 2 vera implica necessariamente filtro GLOBAL vero. Ho verificato anche il caso calling-visa + nazionalità non-VOA.
+
+3. **`NO_EFFECT`: corretto.** Non produce supporto: lascia la gestione dell’incertezza alle regole SUPPORT. Le sonde confermano:
+   - STUDY sconosciuto → richiesta del fatto;
+   - STUDY falso + altro requisito sconosciuto → esclusione;
+   - reddito sconosciuto → richiesta del reddito;
+   - 2999 → esclusione; 3000 → supporto, soddisfatti gli altri requisiti.
+
+4. **BRIDGING: comportamento coerente con lo scope dichiarato.** Precisazione: la regola precedente era già `PRODUCTS [BRIDGING]`; il blocco dell’intera decisione derivava dalla precedenza della review nell’[evaluator](/Users/balizero/nuzantara/.worktrees/backend-rag-vo-a8-seq23-fold/apps/backend-rag/backend/services/visa_engine/evaluator.py:1508). Rendere disponibili altri prodotti è dunque un effetto intenzionale della trasformazione. Raccomando di conservare un test comportamentale esplicito: BRIDGING escluso, alternativa disponibile, overstay attivo ancora bloccante globalmente. Non serve ampliare il filtro a GLOBAL.
+
+5. **Fix census: corretto per l’invariante dei nove prodotti.** Il confronto con un riferimento mobile non poteva più rappresentarlo. La verifica diretta conserva raggiungibilità e visibilità; eliminare l’asserzione di “silenzio” del signed è giustificato. Precisazione: questo test protegge quei nove prodotti, non costituisce da solo una garanzia generica per qualsiasi futura aggiunta.
+
+Verifica indipendente: H23 coincide; Studio invariato; edit set conforme. **338 test passati; gli altri 7 bloccati esclusivamente dalla creazione di file temporanei nel sandbox read-only** — non posso dichiarare personalmente 345/345.
+
+Due precisazioni nell’evidenza: il corpus finale contiene **116 walk, non 82**, e i test delle righe di disposizione verificano prevalentemente struttura/AST; non equivalgono a test comportamentali dell’engine per ogni riga. Il replay candidato del corpus finale è passato.

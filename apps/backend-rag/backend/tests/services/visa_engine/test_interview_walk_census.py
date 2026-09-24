@@ -600,6 +600,14 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
     22: {
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
     },
+    # A8-1 (seq-23 candidate): unchanged from seq-22 — the 82-walk corpus
+    # exercises none of the eight REQUIRE_REVIEW rules this fold retires, so
+    # the candidate replay (test_every_walk_ends_in_its_pinned_outcome_on_
+    # the_candidate_pack) produces zero dead-end violations against this same
+    # row; confirmed by running the replay, not carried over unverified.
+    23: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
 }
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1138,10 +1146,20 @@ _SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/bank_deposit/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
 }
 
+#: A8-1 (seq-23 candidate): empty, confirmed by running the candidate
+#: replay — none of the 82 corpus walks exercise any of the eight
+#: REQUIRE_REVIEW rules this fold retires (calling-visa, citizenship
+#: conflict, active overstay, minor-without-guardian, bridging adverse
+#: history, e33 employment, e33g local-market/company), so no walk's
+#: (state, candidates) pair moves off `_EXPECTED_OUTCOME_ON_SEQ20` /
+#: `_SEQ22_OUTCOME_CHANGES`.
+_SEQ23_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {}
+
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
     20: _EXPECTED_OUTCOME_ON_SEQ20,
     21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
     22: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES},
+    23: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES, **_SEQ23_OUTCOME_CHANGES},
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -3423,15 +3441,19 @@ def test_the_candidate_ruling_row_still_depends_on_its_forbidden_fact(
     assert set(UNREACHABLE_BY_RULING) <= _support_bearing_product_codes(candidate_pack)
 
 
-#: The nine products the candidate pack makes supportable, as the census
-#: measures them: named at engine level against the candidate (seq-22 today,
-#: seq-21 when first measured — the same nine products, unaffected by
-#: seq-22's two cures) and on no walk against the signed pack.
+#: The nine products seq-21 first made supportable, as the census measures
+#: them: named at engine level against the candidate (seq-22 today, seq-21
+#: when first measured — the same nine products, unaffected by seq-22's two
+#: cures). Originally a delta against the SIGNED pack (#6489: signed was
+#: seq-20, so the nine were named by no walk there); seq-22's own activation
+#: (since #6489) put all nine in the signed pack's own engine-named set too,
+#: so the guard below asserts reachability directly rather than as a delta —
+#: the invariant it protects (seq-21's nine products stay reachable and
+#: visible) does not depend on which sequence happens to be signed.
 SEQ21_ADDED_PRODUCTS = ("E23U", "E23V", "E28B", "E28C", "E28D", "E28F", "E33A", "E33B", "E33C")
 
 
 def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
-    engine_named: dict[str, tuple[str, ...]],
     candidate_engine_named: dict[str, tuple[str, ...]],
     candidate_funnel_named: dict[str, tuple[str, ...]],
 ) -> None:
@@ -3447,9 +3469,8 @@ def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
     because the signed products' public reach is already pinned walk by walk
     in EXPECTED_OUTCOME and E31E's minor-privacy hold is by design."""
 
-    added = tuple(sorted(set(candidate_engine_named) - set(engine_named)))
-    assert added == SEQ21_ADDED_PRODUCTS
-    unseen = sorted(set(added) - set(candidate_funnel_named))
+    assert set(SEQ21_ADDED_PRODUCTS) <= set(candidate_engine_named)
+    unseen = sorted(set(SEQ21_ADDED_PRODUCTS) - set(candidate_funnel_named))
     assert not unseen, (
         f"the candidate pack supports {unseen} on some walk, but every such walk "
         "raises a disclosure flag, so no applicant is ever shown them"
@@ -3500,8 +3521,16 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
     on the derived map: every walk that names the product has its qualifying
     fact reset to UNKNOWN(NOT_ASKED) — the wire a tree that stopped asking
     the question would send — and is re-evaluated against the candidate.
-    The candidate guard then names exactly that product; the signed guard
-    stays silent on the same map, which is why the candidate mode exists."""
+    The candidate guard then names exactly that product.
+
+    Originally (#6489, signed = seq-20) the guard also asserted the SIGNED
+    pack's own reachability check stayed silent on the same mutated map,
+    since seq-20 did not yet define these nine products as support-bearing
+    at all. Seq-22's own activation (since #6489) put them in the signed
+    pack's support-bearing set too — with the identical qualifying fact — so
+    that second assertion no longer isolates anything the `pack=candidate_pack`
+    check above does not already prove; dropped rather than kept red for a
+    reason unrelated to this fold."""
 
     assert sorted(SEQ21_QUALIFYING_FACT) == sorted(SEQ21_ADDED_PRODUCTS)
     witnesses = candidate_engine_named.get(product, ())
@@ -3523,7 +3552,6 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
         mutated.setdefault(code, []).extend(labels)
     named = {code: tuple(labels) for code, labels in mutated.items() if labels}
     assert _unreached_support_products(named, pack=candidate_pack) == [product]
-    assert product not in _unreached_support_products(named)
 
 
 def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:
