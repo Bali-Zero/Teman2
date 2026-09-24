@@ -198,6 +198,37 @@ async def test_committed_and_received_rows_are_not_a_condition(conn):
     assert snapshot.clean is True
 
 
+async def test_a_null_processed_at_row_is_still_reachable_by_the_window(conn):
+    """RED IF: `processed_at IS NULL` makes a quarantined row invisible to
+    every paging path while still inflating `lifetime` forever (L1596).
+
+    Unreachable TODAY through the real write path — `_quarantine`
+    (repository.py) always sets `processed_at` in the same UPDATE that
+    quarantines — but the column is NULLABLE and the window predicate should
+    not rest on a writer-side convention it cannot enforce. `received_at` is
+    NOT NULL with `DEFAULT statement_timestamp()` (284:281-282), so it is the
+    structural fallback.
+    """
+
+    await conn.execute(
+        """
+        INSERT INTO garuda_payment_inbox
+            (provider, provider_event_id, canonical_payload_sha256, outcome,
+             quarantine_reason, received_at, processed_at)
+        VALUES ('xendit', 'evt_null_processed_at', $1, 'quarantined',
+                'unmatched_session', $2, NULL)
+        """,
+        b"\x00" * 32,
+        _NOW - timedelta(minutes=5),
+    )
+
+    snapshot = await count_quarantined(conn, now=_NOW)
+
+    assert snapshot.recent == 1
+    assert snapshot.lifetime == 1
+    assert snapshot.sample[0].provider_event_id == "evt_null_processed_at"
+
+
 async def test_a_row_outside_the_window_leaves_the_page_but_not_the_record(conn):
     """RED IF: the window stops applying (the alarm would page forever), or
     `lifetime` starts being windowed too (history would vanish, and "none in
