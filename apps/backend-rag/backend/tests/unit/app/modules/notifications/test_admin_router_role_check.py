@@ -44,8 +44,10 @@ def test_founder_role_admin_passes() -> None:
         "role": "founder",
         "permissions": [],
     }
-    # Must not raise.
-    require_admin(founder)
+    try:
+        require_admin(founder)
+    except HTTPException as exc:
+        pytest.fail(f"founder role must pass require_admin, got {exc.status_code}: {exc.detail}")
 
 
 def test_admin_email_passes() -> None:
@@ -58,7 +60,10 @@ def test_admin_email_passes() -> None:
         "role": "user",
         "permissions": [],
     }
-    require_admin(admin_by_email)
+    try:
+        require_admin(admin_by_email)
+    except HTTPException as exc:
+        pytest.fail(f"admin-allowlist email must pass require_admin, got {exc.status_code}: {exc.detail}")
 
 
 def test_regular_user_still_403() -> None:

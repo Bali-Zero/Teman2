@@ -60,8 +60,9 @@ class TestMainCloud:
         app.state.compliance_monitor = None
         app.state.autonomous_scheduler = None
 
-        await on_shutdown()
-        # Should complete without errors
+        result = await on_shutdown()
+        # Should complete without errors, returning cleanly (no active services to stop).
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_on_shutdown_with_redis_task(self):

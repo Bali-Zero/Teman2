@@ -15,6 +15,7 @@ not carry the subscriberId.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -119,7 +120,9 @@ async def test_send_confirmation_email_url_encodes_token(
 
 
 @pytest.mark.asyncio
-async def test_send_confirmation_email_swallows_failures() -> None:
+async def test_send_confirmation_email_swallows_failures(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """The send must be fire-and-forget so subscribe() still succeeds when
     Brevo is briefly unavailable. The token row already persists; admin
     can trigger a re-send via the existing resend-confirmation path."""
@@ -128,8 +131,13 @@ async def test_send_confirmation_email_swallows_failures() -> None:
         "backend.app.routers.newsletter.send_internal_email",
         new=mock_sender,
     ):
-        # Must not raise.
-        await send_confirmation_email(email="x@y.com", token="t")
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.newsletter"):
+            # Must not raise — the RuntimeError is caught and logged, not propagated.
+            await send_confirmation_email(email="x@y.com", token="t")
+
+    assert any("brevo down" in record.message for record in caplog.records), (
+        "send_confirmation_email must log the swallowed failure, not silently drop it"
+    )
 
 
 # ============================================================================
