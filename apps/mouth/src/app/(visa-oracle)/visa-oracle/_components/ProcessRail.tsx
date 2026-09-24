@@ -37,59 +37,6 @@ export interface ProcessRailProps {
 }
 
 const S = {
-  block: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "var(--space-2)",
-    marginBottom: "var(--space-3)",
-  },
-  headline: {
-    margin: 0,
-    fontSize: "var(--text-sm)",
-    fontWeight: 700,
-    color: "var(--oracle-ink)",
-  },
-  label: {
-    margin: 0,
-    fontSize: "var(--text-xs)",
-    fontWeight: 600,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase" as const,
-    color: "var(--oracle-ink-faint)",
-  },
-  body: {
-    margin: 0,
-    fontSize: "var(--text-xs)",
-    lineHeight: 1.5,
-    color: "var(--oracle-ink-muted)",
-    overflowWrap: "anywhere" as const,
-  },
-  list: {
-    listStyle: "none",
-    margin: 0,
-    padding: 0,
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "var(--space-1)",
-  },
-  phaseRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "var(--space-2)",
-    fontSize: "var(--text-xs)",
-    lineHeight: 1.5,
-  },
-  fact: {
-    fontFamily: "ui-monospace, monospace",
-    fontSize: "var(--text-xs)",
-    color: "var(--oracle-ink-muted)",
-    overflowWrap: "anywhere" as const,
-  },
-  divider: {
-    marginTop: "var(--space-3)",
-    paddingTop: "var(--space-3)",
-    borderTop: "1px dashed var(--oracle-border)",
-  },
   /** `oracle.css` styles `.oracle-tree__leaf[data-status="done"]` but has no
    * rule for a chosen-and-still-open branch, and the file is READ-ONLY by
    * ruling. Painting "current" as "done" in the attribute would make the
@@ -108,13 +55,6 @@ const S = {
   },
 } as const;
 
-function phaseTone(status: string): string {
-  if (status === "current") return "var(--oracle-ink)";
-  if (status === "done" || status === "partial")
-    return "var(--oracle-ink-muted)";
-  return "var(--oracle-ink-faint)";
-}
-
 /**
  * The top of the rail: how far along this interview is, which stage is
  * open, and what the question on screen decides — in the engine's own
@@ -131,9 +71,9 @@ export function ProcessProgress({
     <div
       data-process-rail={variant}
       data-process-part="progress"
-      style={S.block}
+      className="oracle-rail-progress"
     >
-      <p style={S.headline} className="oracle-tabular-nums">
+      <p className="oracle-rail-progress__headline oracle-tabular-nums">
         {translate(language, "process.step_of", {
           current: model.answeredQuestions,
           total: model.totalQuestions,
@@ -141,7 +81,7 @@ export function ProcessProgress({
         {model.currentPhase !== null && (
           <>
             {" · "}
-            <span style={{ fontWeight: 500 }}>
+            <span>
               {translate(
                 language,
                 `process.phase.${model.currentPhase}` as I18nKey,
@@ -151,36 +91,40 @@ export function ProcessProgress({
         )}
       </p>
 
-      <p style={S.label}>{translate(language, "process.phases_label")}</p>
-      <ol style={S.list} role="list">
+      {/* The stages read as one segmented meter, labelled by the headline
+          above it; each stage's name and status stay in the DOM for
+          assistive tech and surface as a tooltip on pointer devices. */}
+      <p className="oracle-sr-only">
+        {translate(language, "process.phases_label")}
+      </p>
+      <ol className="oracle-rail-meter" role="list">
         {PROCESS_PHASES.map((key) => {
           const phase = model.phases.find((entry) => entry.key === key);
           if (!phase || phase.total === 0) return null;
+          const name = translate(language, `process.phase.${key}` as I18nKey);
+          const status = translate(
+            language,
+            `process.phase_status.${phase.status}` as I18nKey,
+          );
           return (
             <li
               key={key}
               data-process-phase={key}
               data-status={phase.status}
-              style={{ ...S.phaseRow, color: phaseTone(phase.status) }}
+              className="oracle-rail-meter__stage"
+              title={`${name} — ${status}`}
             >
-              <span
-                style={{ fontWeight: phase.status === "current" ? 700 : 400 }}
-              >
-                {translate(language, `process.phase.${key}` as I18nKey)}
-              </span>
-              <span className="oracle-tabular-nums">
-                {translate(
-                  language,
-                  `process.phase_status.${phase.status}` as I18nKey,
-                )}
-              </span>
+              <span className="oracle-sr-only">{name}</span>
+              <span className="oracle-sr-only">{status}</span>
             </li>
           );
         })}
       </ol>
 
-      <div style={S.divider}>
-        <p style={S.label}>{translate(language, "process.decides_title")}</p>
+      <div className="oracle-rail-decides">
+        <p className="oracle-rail-label">
+          {translate(language, "process.decides_title")}
+        </p>
         {model.decision === null ? (
           // Four truths, not one sentence: at the door nothing is
           // answered; at the confirmation card the request has NOT been
@@ -188,7 +132,7 @@ export function ProcessProgress({
           // failed or disabled — `outcome` is the only evidence the engine
           // actually answered, so the "the engine has your answers" line is
           // spoken only when that evidence is on screen.
-          <p style={S.body}>
+          <p className="oracle-rail-body">
             {translate(
               language,
               model.node === "framing"
@@ -201,10 +145,12 @@ export function ProcessProgress({
             )}
           </p>
         ) : model.decision.mapping === "HUMAN_CONTEXT" ? (
-          <p style={S.body}>{translate(language, "process.decides_context")}</p>
+          <p className="oracle-rail-body">
+            {translate(language, "process.decides_context")}
+          </p>
         ) : (
           <>
-            <p style={S.body}>
+            <p className="oracle-rail-body">
               {translate(
                 language,
                 model.decision.mapping === "REVIEW_ONLY"
@@ -213,9 +159,9 @@ export function ProcessProgress({
                 { count: model.decision.factPaths.length },
               )}
             </p>
-            <ul style={{ ...S.list, marginTop: "var(--space-1)" }} role="list">
+            <ul className="oracle-rail-list" role="list">
               {model.decision.factPaths.map((path) => (
-                <li key={path} style={S.fact}>
+                <li key={path} className="oracle-rail-fact">
                   <code>{path}</code>
                 </li>
               ))}
@@ -274,9 +220,11 @@ export function ProcessBranches({
     <div
       data-process-rail={variant}
       data-process-part="branches"
-      style={S.divider}
+      className="oracle-rail-section"
     >
-      <p style={S.label}>{translate(language, "process.categories_title")}</p>
+      <p className="oracle-rail-label">
+        {translate(language, "process.categories_title")}
+      </p>
       <div
         className="oracle-tree__leaves"
         style={{ marginTop: 0, borderTop: 0, paddingTop: "var(--space-2)" }}
@@ -359,7 +307,7 @@ export function ProcessBranches({
         </AnimatePresence>
       </div>
 
-      <p style={{ ...S.body, marginTop: "var(--space-2)" }}>
+      <p className="oracle-rail-body" style={{ marginTop: "var(--space-2)" }}>
         {model.chosenCategory === null
           ? translate(language, "process.pruned_none")
           : translate(language, "process.pruned_because", {
@@ -394,11 +342,13 @@ export function ProcessOutcome({
     <div
       data-process-rail={variant}
       data-process-part="outcome"
-      style={S.divider}
+      className="oracle-rail-section"
     >
-      <p style={S.label}>{translate(language, "process.candidates_title")}</p>
+      <p className="oracle-rail-label">
+        {translate(language, "process.candidates_title")}
+      </p>
       {!decided ? (
-        <p style={S.body}>
+        <p className="oracle-rail-body">
           {translate(
             language,
             model.atFollowUp
@@ -407,12 +357,12 @@ export function ProcessOutcome({
           )}
         </p>
       ) : outcome.candidates.length > 0 ? (
-        <ul style={{ ...S.list, marginTop: "var(--space-1)" }} role="list">
+        <ul className="oracle-rail-list" role="list">
           {outcome.candidates.map((candidate) => (
             <li
               key={candidate.code}
               data-process-candidate={candidate.code}
-              style={S.body}
+              className="oracle-rail-body"
             >
               <strong className="oracle-tabular-nums">{candidate.code}</strong>
               {" — "}
@@ -421,7 +371,10 @@ export function ProcessOutcome({
           ))}
         </ul>
       ) : (
-        <p style={S.body} data-process-outcome-state={outcome.state}>
+        <p
+          className="oracle-rail-body"
+          data-process-outcome-state={outcome.state}
+        >
           {translate(
             language,
             outcome.state === "NO_SUPPORTED_PATH"
@@ -431,7 +384,7 @@ export function ProcessOutcome({
         </p>
       )}
       {model.atOutcome && (
-        <p style={{ ...S.body, marginTop: "var(--space-2)" }}>
+        <p className="oracle-rail-body" style={{ marginTop: "var(--space-2)" }}>
           {translate(language, "process.outcome_node")}
         </p>
       )}

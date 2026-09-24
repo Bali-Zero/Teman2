@@ -1986,3 +1986,165 @@ button.oracle-tree__leaf {
     border: 2px solid ButtonText;
   }
 }
+
+/* ─── Rail as a route map (design pass 2026-09-24) ─────────────────────── */
+/* Reading order on screen: progress headline → stage meter → the route →
+   what this question decides → purpose branches → what the engine named.
+   The progress wrapper dissolves so its footnote can sit under the route. */
+.oracle-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: calc(var(--space-4) + var(--space-1)) var(--space-4) var(--space-4);
+  background: color-mix(in srgb, var(--oracle-bg-elevated) 72%, transparent);
+}
+.oracle-rail-progress {
+  display: contents;
+}
+.oracle-rail-progress__headline {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--oracle-ink);
+}
+.oracle-rail-progress__headline span {
+  font-weight: 500;
+  color: var(--oracle-ink-muted);
+}
+.oracle-rail-meter {
+  display: flex;
+  gap: 4px;
+  margin: calc(-1 * var(--space-2)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.oracle-rail-meter__stage {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--oracle-leaf-pending);
+}
+.oracle-rail-meter__stage[data-status="partial"] {
+  background: color-mix(
+    in srgb,
+    var(--oracle-canopy) 50%,
+    var(--oracle-leaf-pending)
+  );
+}
+.oracle-rail-meter__stage[data-status="done"] {
+  background: var(--oracle-canopy);
+}
+.oracle-rail-meter__stage[data-status="current"] {
+  background: var(--oracle-accent-gold);
+}
+.oracle-tree__trunk {
+  order: 1;
+  gap: 0;
+}
+.oracle-rail-decides {
+  order: 2;
+}
+[data-process-part="branches"] {
+  order: 3;
+}
+[data-process-part="outcome"] {
+  order: 4;
+}
+.oracle-rail-decides,
+.oracle-rail-section {
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--oracle-border-strong);
+}
+.oracle-rail-label {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oracle-ink-faint);
+}
+.oracle-rail-body {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--oracle-ink-muted);
+  overflow-wrap: anywhere;
+}
+.oracle-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.oracle-rail-fact code {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--oracle-canopy) 8%, transparent);
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-xs);
+  color: var(--oracle-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* The route: one continuous line through station dots — filled where the
+   visitor has been, ringed where they are, hollow ahead. */
+.oracle-tree .oracle-tree__step {
+  /* Editable stations are buttons with font: inherit — pin one size so a
+     visited station never reads larger than the ones ahead of it. */
+  font-size: var(--text-sm);
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border-left: 0;
+  border-radius: var(--radius-sm);
+}
+.oracle-tree .oracle-tree__step::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--oracle-leaf-pending);
+}
+.oracle-tree .oracle-tree__step[data-status="done"]::before {
+  background: var(--oracle-canopy);
+}
+.oracle-tree .oracle-tree__step:first-child::before {
+  top: 50%;
+}
+.oracle-tree .oracle-tree__step:last-child::before {
+  bottom: 50%;
+}
+.oracle-tree .oracle-tree__dot {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--oracle-leaf-pending);
+  background: var(--oracle-bg-elevated);
+}
+.oracle-tree .oracle-tree__step[data-status="done"] .oracle-tree__dot {
+  border-color: var(--oracle-canopy);
+  background: var(--oracle-canopy);
+}
+.oracle-tree .oracle-tree__step[data-status="current"] .oracle-tree__dot {
+  border-color: var(--oracle-canopy);
+  background: var(--oracle-accent-gold);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--oracle-canopy) 16%, transparent);
+  animation: none;
+}
+.oracle-tree button.oracle-tree__step--editable:hover {
+  background: color-mix(in srgb, var(--oracle-canopy) 7%, transparent);
+}
+@media (min-width: 1024px) {
+  /* A one-crumb trail ("Start") repeats the rail's first station. */
+  .oracle-breadcrumb:has(li:only-child) {
+    display: none;
+  }
+}
