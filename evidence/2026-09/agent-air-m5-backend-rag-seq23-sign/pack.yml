@@ -1,6 +1,8 @@
 # Gear-3 evidence pack — seq-23 SIGNING (Slice A9.1/A9.2/A9.3, VISA-ORACLE-DW-20260919).
 # Written by vo-ceremony-a9 (Claude Opus 5.5), the SIGNER and the generator of this PR — never its gate.
-# Every receipt below is a command this writer executed in this session on M5.
+# Every receipt below is a command this writer executed in this session on M5, except those whose
+# seat is vo-a9-finish: that continuing instance (Claude Opus 5.5) ran them after the signer hit its
+# tool ceiling. It signed nothing and never touched the private key or the rollback receipt.
 gear: 3
 brief_ref: evidence/brief.yml
 ruling: MANDATE-vo.md Slice A9 (runbook steps 1-6), owner OD-6 2026-09-22 + «firmo e autorizzo» 2026-09-24T09:23:28Z
@@ -9,6 +11,9 @@ lanes:
   - lane: a9-sign
     role: build
     seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - lane: a9-finish
+    role: build
+    seat: Claude Opus 5.5 (vo-a9-finish)
   - lane: a9-council-qwen
     role: review
     seat: tp1-qwen3.8-max
@@ -29,7 +34,10 @@ lanes:
       rulepack-prod-023.source.json (the signed payload), rulepack-prod-022.signed.json (the H22
       anchor), docs/runbooks/visa-engine-key-ceremony.md (the public trust array).
     query_hash: "d51379bd97be0608df65fa5babf708e9a43770fb81d984859196c3f5c1e03bc0" # pragma: allowlist secret
-    note: query_hash = sha256 of the three files concatenated in that order, computed this session.
+    note: >-
+      query_hash = sha256 of the three files concatenated in that order, computed this session
+      at the signer's head (88081e2c before the rebase). The runbook doc changes afterwards in this PR
+      (D-kid-discrepancy), so recomputing at the new head gives a different hash.
 council_run: council/journal.jsonl
 seat_fallback_reason: >-
   No fallback. scripts/arsenal_probe.py --seats tp1-qwen3.8-max,tp1-deepseek-v4-pro,tp1-glm-5.2
@@ -58,7 +66,22 @@ decisions:
       of seq-20/22/23 and the test pins carry `prod-2026-07-1`. Used verbatim, the doc's array
       rejects the ALREADY-LIVE seq-22 too. So the discrepancy is a stale doc, not a signing
       mismatch, and the ceremony continued with the same public key under the kid the artifacts
-      carry. The doc is not edited here.
+      carry. First recorded as "not edited here"; on the conductor's order the array is corrected in
+      this PR (commit `docs(visa-engine): the key-ceremony trust array names the real kid
+      prod-2026-07-1`). Measured by vo-a9-finish: the doc's array verbatim REJECTS seq-22 with
+      `unknown signing key_id: 'prod-2026-07-1'`; the same array with only that kid relabeled
+      VERIFIES it; the corrected doc's array verbatim VERIFIES seq-22 and seq-23. The TEST kid is
+      relabeled too, on the doc's own 2026-07-25 ERRATA table (no TEST-signed pack is in the repo to
+      measure it against).
+  - id: D-seq22-only-list
+    decision: >-
+      Mouth part, landed on top of Slice A8-2 (#7224). The twelve review codes signed seq-22 emits and
+      signed seq-23 does not keep their REVIEW_REASON_COPY: seq-22 stays in force until activation and
+      the pre-signed rollback seq-24 carries its rules. They are named in
+      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY, which replaces the seq-20 list (empty since the seq-22
+      activation). Its honesty test requires the list to EQUAL signed-22 minus signed-23, both packs
+      named by sequence and read from disk. The union-fed floor moves 31 -> 22 (1 pack + 21
+      pack-independent), measured.
   - id: D-gold-expectations
     decision: >-
       Six PRODUCTION_REPLAY_EXPECTATIONS (2,3,4,5,12,20) re-derived under the owner-ratified §1
@@ -71,7 +94,7 @@ receipts:
     exit: 0
     ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
-  - claim: H23 printed by #7174 equals the JCS digest of the merged source; previous = H22.
+  - claim: H23 printed by PR 7174 equals the JCS digest of the merged source; previous = H22.
     cmd: compile_pack_source -> canonicalize_json -> sha256
     result: "e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204 MATCH; previous 3d7555af…6e37 MATCH"
     exit: 0
@@ -101,6 +124,30 @@ receipts:
     exit: 0
     ts: "2026-09-24T10:01:06Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: Mouth visa-oracle suite on the signed tree BEFORE the mouth part (pre-A8-2 head 88081e2c).
+    cmd: vitest run --root . 'src/app/(visa-oracle)/visa-oracle'; tsc --noEmit
+    result: "2 failed / 1201 passed (1203), both in engine-adapter.test.ts: floor `expected 22 to be greater than or equal to 31`; stale keys = the 12 codes signed seq-23 retires. tsc exit 0."
+    exit: 1
+    ts: "2026-09-24T10:05:56Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: Runbook trust array vs the live seq-22 (before and after the doc fix).
+    cmd: verify_with_doc_array.py <runbook> rulepack-prod-022.signed.json [2026-07-prod-1=prod-2026-07-1]
+    result: "doc verbatim: REJECTED unknown signing key_id 'prod-2026-07-1' (exit 1); kid relabeled only: VERIFIED (exit 0); fixed doc verbatim: VERIFIED seq-22 and seq-23 (exit 0)"
+    exit: 0
+    ts: "2026-09-24T10:08:14Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: GUILT for the seq-22-only list (scratch mutations, restored by cp and cmp).
+    cmd: drop VOA_NATIONALITY_ONLY from the list; then add SECOND_HOME_BELOW_THRESHOLD_STUDIO to it
+    result: "each mutation: 2 failed (stale-key test + seq-22-only honesty test) / 7 passed in the describe"
+    exit: 1
+    ts: "2026-09-24T10:10:43Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: After the rebase onto PR 7224, the whole mouth visa-oracle suite, tsc, the backend dirs and the observer.
+    cmd: vitest run --root . 'src/app/(visa-oracle)/visa-oracle'; tsc --noEmit; pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -rs; python3 scripts/ci/observe_visa_seq23_signed.py
+    result: "vitest 45 files / 1205 passed, 0 failed; tsc exit 0; pytest 2678 passed, 14 skipped, 198 errors, 0 failed (all 198 = Postgres connect ::1/127.0.0.1:5432, no local DB on M5); observer exit 0"
+    exit: 0
+    ts: "2026-09-24T10:20:55Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
 dissent:
   - seat: tp1-qwen3.8-max
     objection: >-

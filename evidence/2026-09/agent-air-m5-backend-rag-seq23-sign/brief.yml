@@ -20,12 +20,16 @@ scope:
   - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/option_matrix.json (remote_work false|true)
   - apps/backend-rag/backend/tests/services/visa_engine/test_evaluator_gold.py (six production replay expectations)
   - scripts/ci/observe_visa_seq23_signed.py (new)
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts (seq-22-only review-copy list; on top of Slice A8-2, PR 7224)
+  - docs/runbooks/visa-engine-key-ceremony.md (trust array kid 2026-07-prod-1 -> prod-2026-07-1)
   - evidence/2026-09/agent-air-m5-backend-rag-seq23-sign/**
 constraints:
   - No activation, no production DB connection, no --yes (runbook steps 7-10 are a separate order).
   - The private key is used by path only; never printed, copied or read into a variable.
   - The rollback bundle lives under kit/receipts/ (dir 0700, files 0600), never under the repo.
-  - apps/mouth engine-adapter.test.ts is NOT touched until the conductor confirms Slice A8-2's state.
+  - >-
+    apps/mouth engine-adapter.test.ts is NOT touched until Slice A8-2 is on main (it merged as PR 7224,
+    6e7512406e, 2026-09-24T10:17:54Z; the branch was rebased onto it before the mouth part was measured).
   - No npm install/ci. No arm, no merge, no gate verdict by this seat.
 acceptance:
   - text: "A9.1 the signed file SHALL verify as VerifiedRulePack(sequence=23, PRODUCTION, prod-2026-07-1, unsigned_dev=False) before AND after Prettier"
@@ -46,8 +50,9 @@ consumer_map:
     The conductor's runbook step 7-8 (activation + sequence-23 probes) consumes the signed file
     after merge; owed, not claimed here.
   - >-
-    apps/mouth engine-adapter.test.ts (latestProductionPackFile) — the mouth part of A9.3, held for
-    the conductor's go on top of Slice A8-2.
+    apps/mouth engine-adapter.test.ts (latestProductionPackFile) — the mouth part of A9.3, on top of
+    Slice A8-2: the twelve review codes signed seq-23 retires keep their copy under
+    REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY, whose honesty test derives the set from the pack files.
 appetite:
   budget: 1 PR, unarmed
   stop_loss: first runbook mismatch stops the ceremony; three reds on the same cause suspends
