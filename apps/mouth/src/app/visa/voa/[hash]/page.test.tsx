@@ -82,6 +82,43 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
     expect(wire).not.toContain("business-meeting");
   });
 
+  it("reads the wizard's hand-off key, the one it writes on submit", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "DECLINE",
+        reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
+      }),
+    });
+    window.localStorage.setItem(
+      "bz.garuda_voa.submitted",
+      JSON.stringify({ values: { trip: { nationality: "USA" } } }),
+    );
+
+    renderWithHash();
+
+    await waitFor(() =>
+      expect(screen.getByText(/passport from USA/)).toBeInTheDocument(),
+    );
+  });
+
+  it("omits the mirror when this browser holds no answers (a shared link)", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "DECLINE",
+        reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
+      }),
+    });
+
+    renderWithHash();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-empty-stamp")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/You told us/)).toBeNull();
+  });
+
   it("shows the empty stamp, never AppStampReveal's ink stamp, on DECLINE", async () => {
     fetchMock.mockResolvedValue({
       ok: true,

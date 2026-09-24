@@ -23,6 +23,7 @@ import { NextSteps } from "../NextSteps";
 import { SafeClockHero } from "../SafeClock";
 import { useVoaLocale } from "../useVoaLocale";
 import { voaCopy, type VoaCopyKey } from "../voa-copy";
+import { SUBMITTED_ANSWERS_KEY } from "../submittedAnswers";
 
 /**
  * GARUDA VOA — public result page (owner decision 5, constraints 5a/5b).
@@ -49,19 +50,25 @@ interface DeclinedResult {
 type VoaResult = AcceptedResult | DeclinedResult;
 
 /** Answers the wizard persisted client-side before submitting (see page.tsx persistKey). */
-function readSubmittedAnswers(): EligibilitySubmission {
-  const fallback: EligibilitySubmission = {
-    case_type: "issuance",
-    nationality: "",
-    purpose: "tourism",
-    travellers: 1,
-    self_pay: true,
-    extension_already_used: false,
-  };
-  if (typeof window === "undefined") return fallback;
+const SUBMITTED_FALLBACK: EligibilitySubmission = {
+  case_type: "issuance",
+  nationality: "",
+  purpose: "tourism",
+  travellers: 1,
+  self_pay: true,
+  extension_already_used: false,
+};
+
+function readSubmittedAnswers(): EligibilitySubmission | null {
+  const fallback = SUBMITTED_FALLBACK;
+  if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem("bz.garuda_voa.wizard");
-    if (!raw) return fallback;
+    // The wizard's own hand-off first; the resume key only as a fallback for
+    // a check started before that hand-off existed.
+    const raw =
+      window.localStorage.getItem(SUBMITTED_ANSWERS_KEY) ??
+      window.localStorage.getItem("bz.garuda_voa.wizard");
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as {
       values?: {
         case_type?: EligibilitySubmission["case_type"];
@@ -85,7 +92,7 @@ function readSubmittedAnswers(): EligibilitySubmission {
         v.dates?.extension_already_used ?? fallback.extension_already_used,
     };
   } catch {
-    return fallback;
+    return null;
   }
 }
 
@@ -185,9 +192,14 @@ export default function VoaResultPage({
       : `/visa/voa/${hash}`;
 
   if (data.verdict === "DECLINE") {
+    // No answers in this browser (a shared link, another device): the
+    // mirror would echo defaults as if the visitor had said them, so it is
+    // left out and the rest of the explanation stands on its own.
     const answers = readSubmittedAnswers();
     const code = primaryDeclineCode(data.reason_codes);
-    const edu = code ? buildDeclineEducation(code, answers, t) : null;
+    const edu = code
+      ? buildDeclineEducation(code, answers ?? SUBMITTED_FALLBACK, t)
+      : null;
 
     return (
       <AppFrame
@@ -218,7 +230,9 @@ export default function VoaResultPage({
               maxWidth: 520,
             }}
           >
-            <p style={{ margin: 0, lineHeight: 1.6 }}>{edu.mirror}</p>
+            {answers ? (
+              <p style={{ margin: 0, lineHeight: 1.6 }}>{edu.mirror}</p>
+            ) : null}
             <p style={{ margin: 0, lineHeight: 1.6 }}>{edu.forbids}</p>
             <p style={{ margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
               {edu.alternative}

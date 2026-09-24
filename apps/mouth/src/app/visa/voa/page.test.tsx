@@ -95,6 +95,14 @@ describe("VoaEligibilityPage — wire contract", () => {
     // Contract allOf: voa_expiry_date is forbidden outside `extension`.
     expect(body).not.toHaveProperty("voa_expiry_date");
 
+    // The verdict's decline mirror reads the answers back from here: the
+    // wizard's resume key is gone by now, the hand-off key is not.
+    expect(window.localStorage.getItem("bz.garuda_voa.wizard")).toBeNull();
+    const handedOff = JSON.parse(
+      window.localStorage.getItem("bz.garuda_voa.submitted") ?? "{}",
+    );
+    expect(handedOff.values.trip.nationality).toBe("ITA");
+
     // Telemetry: field NAMES only (Law 2) — the same payload_keys-only
     // pattern visa/match's W0b fix established, never any answer value.
     expect(trackerMocks.formSubmitted).toHaveBeenCalledWith(

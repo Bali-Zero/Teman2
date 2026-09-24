@@ -10,6 +10,7 @@ import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { voaCopy, type VoaCopyKey } from "./voa-copy";
 import { useVoaLocale } from "./useVoaLocale";
 import { VoaWizard } from "./VoaWizard";
+import { SUBMITTED_ANSWERS_KEY } from "./submittedAnswers";
 
 /**
  * GARUDA VOA — public eligibility wizard (owner decision 5, "Concept A — The
@@ -354,6 +355,19 @@ export default function VoaEligibilityPage() {
         retention_notice_acknowledged?: boolean;
       }) ?? {};
     const requestCaseType = values.case_type as CaseType;
+    // The verdict screen's decline "mirror" ("You told us you hold a passport
+    // from …") reads the answers back from this browser. It used to read the
+    // wizard's resume key — which the wizard deletes the moment it completes,
+    // so every real decline mirrored an empty nationality. The hand-off gets
+    // its own key, written here, just before the check is sent.
+    try {
+      window.localStorage.setItem(
+        SUBMITTED_ANSWERS_KEY,
+        JSON.stringify({ values }),
+      );
+    } catch {
+      /* private mode: the verdict simply omits the mirror line */
+    }
 
     const body = {
       case_type: requestCaseType,
