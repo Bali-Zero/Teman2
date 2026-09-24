@@ -5,7 +5,7 @@ denylist (``client``, ``monitoring``), so a JWT carrying the role the platform
 itself issues to external partners — ``partner``, which
 ``routers/auth.py::_redirect_for_role`` sends to ``/portal/partner`` and
 ``routers/partners.py::_is_partner_role`` defines as "not internal team" — was
-granted team-level authority on the six CRM-intelligence routes, none of which
+granted team-level authority on the five CRM-intelligence routes, none of which
 re-checks the role in its body. These tests pin the gate at the HTTP boundary,
 on the real router, with a database pool that refuses to be touched: a 403
 therefore proves the gate fired BEFORE any client data could be read.
@@ -64,12 +64,11 @@ _ROUTES = [
     ("GET", "/api/crm/intelligence/workspace-ai-snapshots/review", None),
     ("POST", "/api/crm/intelligence/workspace-ai-snapshots/auto-approve", {}),
     ("POST", "/api/crm/intelligence/workspace-ai-snapshots/1/approve", {}),
-    ("POST", "/api/crm/intelligence/1/query", {}),
 ]
 
 
 def test_every_intelligence_route_is_behind_the_team_gate() -> None:
-    """Wiring: the six routes exist and each one declares require_team_member."""
+    """Wiring: the five routes exist and each one declares require_team_member."""
     paths = sorted(route.path for route in crm_intelligence.router.routes)
     assert paths == [
         "/api/crm/intelligence/evidence-dossiers",
@@ -77,7 +76,6 @@ def test_every_intelligence_route_is_behind_the_team_gate() -> None:
         "/api/crm/intelligence/workspace-ai-snapshots/auto-approve",
         "/api/crm/intelligence/workspace-ai-snapshots/review",
         "/api/crm/intelligence/workspace-ai-snapshots/{snapshot_id}/approve",
-        "/api/crm/intelligence/{client_id}/query",
     ], paths
     unguarded = [
         route.path
@@ -110,5 +108,21 @@ def test_staff_passes_the_gate_and_reaches_the_data_layer() -> None:
     """Innocence: a real free-text staff role is let through — the request
     dies on the untouchable pool, i.e. AFTER the gate."""
     client = TestClient(_app_for(_STAFF))
+    with pytest.raises(AssertionError, match=_DB_TOUCHED):
+        client.get("/api/crm/intelligence/evidence-dossiers")
+
+
+def test_the_notebooklm_client_query_route_is_gone() -> None:
+    """Guilt: the per-client NotebookLM query route — which put a client's
+    ``full_name`` in cleartext into a prompt shelled out to Google NotebookLM
+    — is no longer registered on the router, so it 404s before any auth or
+    database dependency even runs. Innocence: a sibling intelligence route
+    is untouched and still resolves (dies on the untouchable pool, i.e.
+    reaches the gate)."""
+    client = TestClient(_app_for(_STAFF))
+
+    gone = client.post("/api/crm/intelligence/1/query", json={})
+    assert gone.status_code == 404, gone.text
+
     with pytest.raises(AssertionError, match=_DB_TOUCHED):
         client.get("/api/crm/intelligence/evidence-dossiers")
