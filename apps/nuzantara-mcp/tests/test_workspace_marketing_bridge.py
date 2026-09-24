@@ -2146,11 +2146,21 @@ def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
     assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
 
 
+# Both shapes printed by the same exhausted seat _3 on Pro 2026-09-24, within
+# the hour. #7194 matched only the first; the second read as "unavailable".
+_EXHAUSTED_SEAT_LINES = (
+    "Your organization has disabled Claude subscription access for Claude Code",
+    "You've hit your weekly limit · resets Sep 26 at 9pm (Asia/Makassar)",
+    "You've hit your limit · resets 3pm",
+)
+
+
+@pytest.mark.parametrize("line", _EXHAUSTED_SEAT_LINES)
 async def test_exhausted_seat_is_named_and_its_output_stays_out_of_the_log(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, line: str
 ) -> None:
-    """The line an exhausted Max seat prints (measured on Pro 2026-09-24) is a
-    seat refusal, not an unknown provider failure."""
+    """The lines an exhausted Max seat prints are a seat refusal, not an
+    unknown provider failure."""
 
     import sys as _sys
 
@@ -2158,7 +2168,7 @@ async def test_exhausted_seat_is_named_and_its_output_stays_out_of_the_log(
     fake_claude.write_text(
         f"#!{_sys.executable}\n"
         "import sys\n"
-        "print('Your organization has disabled Claude subscription access for Claude Code')\n"
+        f"print({line!r})\n"
         "sys.exit(1)\n",
         encoding="utf-8",
     )
@@ -2174,7 +2184,31 @@ async def test_exhausted_seat_is_named_and_its_output_stays_out_of_the_log(
     assert "no subscription seat with quota left" in str(refused.value)
     record = "\n".join(rec.getMessage() for rec in caplog.records)
     assert "status=seat_exhausted" in record
-    assert "disabled Claude subscription" not in record
+    assert line not in record
+
+
+async def test_an_unrelated_claude_failure_is_not_read_as_an_exhausted_seat(
+    tmp_path: Path,
+) -> None:
+    """Innocence: "limit" alone is not quota — a spent seat is retried on
+    another, a broken request must not burn six."""
+
+    import sys as _sys
+
+    fake_claude = tmp_path / "claude"
+    fake_claude.write_text(
+        f"#!{_sys.executable}\n"
+        "import sys\n"
+        "print('API Error: input exceeds the context limit for this model')\n"
+        "sys.exit(1)\n",
+        encoding="utf-8",
+    )
+    fake_claude.chmod(0o755)
+    with pytest.raises(marketing.EditorialProviderFailure) as failed:
+        await marketing._run_public_subprocess(
+            [str(fake_claude), "--print"], timeout_seconds=20, env={"PATH": "/usr/bin:/bin"},
+        )
+    assert failed.value.status == "unavailable"
 
 
 def _reviewer_seat_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

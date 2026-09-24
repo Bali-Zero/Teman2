@@ -881,13 +881,11 @@ async def _run_public_subprocess(
                 "authentication expired", "credentials have expired", "nlm login",
             ))
         ) or (provider == "claude" and "not logged in" in output)
-        # A Max seat past its quota answers `claude --print` with this org-access
-        # line, not with a usage message (measured on Pro 2026-09-24, seats _2 and
-        # _3, while _1 _4 _5 answered). Read as "unavailable" it hid that the
-        # other seats were fine.
-        seat_exhausted = provider == "claude" and any(marker in output for marker in (
-            "disabled claude subscription access", "usage limit", "hit your limit",
-        ))
+        # A Max seat past its quota answers `claude --print` in two shapes, both
+        # measured on Pro 2026-09-24 on the same seat _3 within the hour: the
+        # org-access line, and "You've hit your weekly limit · resets …". Read as
+        # "unavailable" either one hid that the other seats were fine.
+        seat_exhausted = provider == "claude" and _SEAT_EXHAUSTED_RE.search(output) is not None
         if auth_required:
             status = "auth_required"
         elif seat_exhausted:
@@ -943,6 +941,9 @@ async def _editorial_auth_health() -> dict[str, Any]:
 # seat (_6) is the fleet's last resort and stays last here too.
 _REVIEWER_SEAT_ORDER = (3, 1, 4, 5, 2, 6)
 _RETRY_NEXT_SEAT = frozenset({"auth_required", "seat_exhausted"})
+_SEAT_EXHAUSTED_RE = re.compile(
+    r"disabled claude subscription access|usage limit|hit your (?:[a-z0-9-]+ )?limit"
+)
 
 
 def _reviewer_seats() -> list[tuple[str, str]]:
