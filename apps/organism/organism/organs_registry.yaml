@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2d6adc1da4a56d99387f66569894f39ab5a4f2980370fc6bd973a4d2b88ab516 # pragma: allowlist secret
+checksum: 740816bd39e1941a3b6d0198530149dc42ae65af6f3e39f6542ce6db9e5aebac # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3095,5 +3095,36 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.mailbox_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.nlm_watchdog
+  runtime: air_launchd
+  type: cron
+  expected_hb_seconds: 64800
+  owner_module: scripts/nlm_watchdog_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.nlm-watchdog.6h
+  severity_on_silence: warning
+  notes: Cross-host probe (M5 -> ssh pro) for the NLM 500-source-per-notebook cap
+    (>= --cap-warn 450 flags a notebook) and Pro's nlm login liveness, separate from
+    M5's own cookie (M5 expired 2026-09-24 while Pro stayed valid). Also watches
+    nb-curator-daily.sh's own inventory freshness (over 30h stale is degraded).
+    Born 2026-09-25 -- nb_generate_inventory.py already computes near_cap daily,
+    but nb-curator-daily.sh's Telegram gate never reads it, so a notebook sitting
+    at the cap (as NB-INTEL-Press did silently for ~2 months in 2026-07) has no
+    deterministic alert. This organ wires that same daily field to a channel a
+    human actually sees. StartInterval is 21600s (6h); expected_hb_seconds is 3x
+    that (64800, Gear-3 council finding) rather than the usual 2x, because M5 is
+    a workstation that sleeps overnight -- 2x false-warned on one missed tick
+    across an ordinary sleep window. Kill switch NLM_WATCHDOG_ENABLED=false OR a
+    flag file at ~/.organism/kill/nlm_watchdog (the env var alone is dead code
+    under launchd, which never sources shell rc files -- same latent defect,
+    uncured, in auth_sentinel_cron.sh's own gate).
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/nlm-watchdog.json
     timestamp_field: ts
     status_field: status
