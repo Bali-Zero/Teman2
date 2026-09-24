@@ -17,6 +17,15 @@ lanes:
     role: review
     seat: claude-opus-5-5 xhigh
     session: d4ad5383-ce6c-4493-85ad-55b1085e3b72
+  - lane: council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    effort: xhigh
+    artifact: council-sol.md
+  - lane: council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: council-kimi-followup.md
 receipts:
   - claim: Focused backend acceptance including synthetic PostgreSQL
     cmd:
@@ -121,6 +130,25 @@ dissent:
       cached unanswered reminder. The spec now requires the failed poll to retain cached
       pending data and visible retry; backend failure and frontend cached-error tests
       verify this."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      Rolling deployment can retain old automatic writers; stale never-attempted
+      jobs and non-sticky uncertainty need explicit operational limits.
+    status: CONFIRMED
+    resolution:
+      "Spec bounds historical and rolling provenance; release waits for all
+      producer replacement and checks queue age. Follow-up issue #7304 covers operational
+      delivery limits. No P0/P1."
+  - seat: kimi-code/k3
+    objection:
+      Initial static diff-only review requested rework on historical provenance
+      and speculative UI/writer details.
+    status: PLAUSIBLE
+    resolution:
+      Preserved original report and supplied full source, frozen contract
+      and actual preflight facts. Actual follow-up withdrew blocking objections and
+      found no P1/P2 against the bounded contract. Remaining P3 observations concern
+      smooth scrolling, thread badge lag and telemetry; no new runtime edits.
 limitations:
   - Other historical team notices have no reliable source provenance and may be counted
     as manual replies.
@@ -132,10 +160,21 @@ limitations:
     incomplete invocations.
   - First advisory exhausted 18 turns without a verdict; second completed with findings
     addressed above.
+  - Old producers during rolling replacement share the historical provenance limitation;
+    prove all producer machines replaced before asserting the new source-marker behavior.
 release_requirements:
+  - Run scripts/contract_verify.py with the complete real diff span and CI-style evidence
+    staging; a pack-only lint without changed files is insufficient.
   - Fresh independent Opus 5.5 xhigh final gate on committed exact SHA.
   - Claude release owner checks migration application, worker activation switch, provider
     configuration without credentials, schema/query plan and aggregate historical pending
     counts.
   - Release owner proves deployed frontend and backend commits and consumer health.
     No uncontrolled real-client or test sends.
+cloud_ok:
+  "AGENTS.md Builder Contract 4 / SYMBIOSIS Law 2: this code-only lane used
+  repository diffs and synthetic PostgreSQL fixtures. No real client rows, names,
+  addresses, documents or credentials were supplied to any cloud review seat. Production
+  preflight returned aggregates only. This attests the actual no-PII scope, not an
+  exception allowing cloud client-data processing."
+council_run: council-journal.jsonl
