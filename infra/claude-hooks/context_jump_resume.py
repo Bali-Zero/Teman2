@@ -165,8 +165,12 @@ def main() -> int:
     path, jump = picked
 
     handoff = _load(Path(str(jump.get("handoff_path") or "")).expanduser()) if jump.get("handoff_path") else None
+    try:
+        jump_mtime = path.stat().st_mtime
+    except OSError:
+        jump_mtime = 0
     ctx = build_context(jump, handoff if isinstance(handoff, dict) else None,
-                        jump_mtime=path.stat().st_mtime)
+                        jump_mtime=jump_mtime)
 
     jump["to_session"] = session_id
     jump["claimed_ts"] = time.time()

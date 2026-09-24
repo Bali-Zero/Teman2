@@ -161,7 +161,7 @@ RECEIPT_ENV_VARS = (
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "PYTHONHASHSEED", "PYTHONNOUSERSITE",
     "LANG", "LC_ALL", "LC_CTYPE", "TZ", "CI",
 )
-ENV_MAX_ENTRIES = 100_000
+ENV_MAX_ENTRIES = 300_000
 ENV_MAX_SECONDS = 8.0
 
 
@@ -172,9 +172,11 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
     digests of the selected environment values leave this function. Unknown or
     over-limit observations cannot produce reusable evidence.
     """
-    result: dict[str, Any] = {"sha256": None, "programs": programs}
+    result: dict[str, Any] = {"sha256": None, "filesystem_sha256": None,
+                              "programs": programs, "resolved_programs": []}
     started, count = time.monotonic(), 0
     h = hashlib.sha256()
+    projection = hashlib.sha256()
 
     def observe(path: Path) -> None:
         nonlocal count
@@ -192,19 +194,22 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
             raise ValueError("invalid programs")
         for name in RECEIPT_ENV_VARS:
             value = os.environ.get(name)
-            h.update(json.dumps((name, None if value is None else digest(value.encode()))).encode())
+            projection.update(json.dumps((name, None if value is None else digest(value.encode()))).encode())
+        projection.update(json.dumps(sorted(set(programs))).encode())
         search_path = os.pathsep.join(
             str(Path(cwd) / entry) if not os.path.isabs(entry) else entry
             for entry in os.environ.get("PATH", os.defpath).split(os.pathsep)
         )
-        trees: set[Path] = set()
+        resolved: set[Path] = set()
         for program in sorted(set(programs)):
             found = (str(Path(cwd) / program) if os.sep in program
                      else shutil.which(program, path=search_path))
             if not found or not os.access(found, os.X_OK):
                 raise ValueError("unresolved executable")
-            path = Path(os.path.abspath(found))  # preserve venv before resolving its symlink
-            h.update(program.encode())
+            resolved.add(Path(os.path.abspath(found)))  # preserve venv before resolving its symlink
+        result["resolved_programs"] = [str(p) for p in sorted(resolved)]
+        trees: set[Path] = set()
+        for path in sorted(resolved):
             h.update(str(path.resolve()).encode())
             observe(path)
             venv = path.parent.parent
@@ -228,7 +233,8 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
                     raise ValueError("unobservable linked dependencies")
                 for name in sorted(files):
                     observe(Path(root) / name)
-        result["sha256"] = h.hexdigest()
+        result["filesystem_sha256"] = h.hexdigest()
+        result["sha256"] = digest((h.hexdigest() + projection.hexdigest()).encode())
     except ValueError as exc:
         result["reason"] = str(exc) if str(exc) in {
             "environment observation limit", "invalid programs", "unresolved executable",
@@ -236,10 +242,12 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
         } else "environment observation failed"
     except (OSError, TypeError):
         result["reason"] = "environment observation failed"
+    result["entries"] = count
     return result
 
 
-def receipt_state(proof: Any, cwd: str) -> dict[str, str]:
+def receipt_state(proof: Any, cwd: str, *, check_environment: bool = True,
+                  fingerprint: str | None = None) -> dict[str, str]:
     """A receipt is a claim whose code and observed environment must still match."""
     def verdict(state: str, reason: str) -> dict[str, str]:
         return {"state": state, "reason": reason}
@@ -253,16 +261,20 @@ def receipt_state(proof: Any, cwd: str) -> dict[str, str]:
             return verdict("stale", "invalid checks")
         if proof.get("passed") is not True or any(c.get("exit_code") != 0 for c in checks):
             return verdict("failed", "the last check did not pass")
-        if not proof.get("environment"):
+        binding = "environment" if check_environment else "filesystem"
+        if not proof.get(binding):
             return verdict("stale", "no environment binding")
-        if proof.get("fingerprint") != git_fingerprint(cwd):
+        if proof.get("fingerprint") != (fingerprint if fingerprint is not None else git_fingerprint(cwd)):
             return verdict("stale", "code or input changed")
-        observed = environment_fingerprint(proof.get("programs"), cwd)
-        if not observed["sha256"]:
+        programs = proof.get("programs" if check_environment else "resolved_programs")
+        observed = environment_fingerprint(programs, cwd)
+        digest_key = "sha256" if check_environment else "filesystem_sha256"
+        if not observed[digest_key]:
             return verdict("stale", "environment unavailable or over limit")
-        if observed["sha256"] != proof["environment"]:
+        if observed[digest_key] != proof[binding]:
             return verdict("stale", "observed environment changed")
-        return verdict("reusable", "code and observed environment match")
+        return verdict("reusable", "code and observed environment match" if check_environment
+                       else "code and execution files match; tool-shell environment unchecked")
     except Exception:
         return verdict("stale", "receipt could not be verified")
 
@@ -273,10 +285,10 @@ def current_receipt(state: dict[str, Any]) -> Any:
 
 def receipt_guidance(state: dict[str, Any], cwd: str) -> str:
     proof = current_receipt(state)
-    result = receipt_state(proof, cwd)
+    result = receipt_state(proof, cwd, check_environment=False)
     actions = {
         "none": "verify before claiming completion",
-        "reusable": "reuse it; rerun if code or observed environment changes",
+        "reusable": "run status in the execution shell before reusing the checks",
         "stale": "rerun the checks before claiming completion",
         "failed": "the last check FAILED; it is not a PASS",
     }
@@ -480,7 +492,8 @@ def receipt_from_output(value: Any) -> dict[str, Any] | None:
         if all(k in value for k in ("fingerprint", "passed", "checks", "timestamp")):
             return {
                 k: value[k] for k in (
-                    "fingerprint", "passed", "checks", "timestamp", "environment", "programs"
+                    "fingerprint", "passed", "checks", "timestamp", "environment", "programs",
+                    "filesystem", "resolved_programs"
                 ) if k in value
             }
         for key in ("stdout", "output", "content", "text"):
@@ -884,7 +897,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                 and isinstance(proof["checks"], list)
                 and 1 <= len(proof["checks"]) <= 8
             ):
-                proof["receipt_state"] = receipt_state(proof, cwd)
+                proof["receipt_state"] = receipt_state(proof, cwd, check_environment=False)
                 state["verification"] = proof
         if event == "PreToolUse":
             state["last_tool_name"] = payload.get("tool_name")
@@ -1037,7 +1050,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             save(path, latest)
         if state.get("baseline") and current != state["baseline"]:
             proof = current_receipt(state)
-            if receipt_state(proof, cwd)["state"] != "reusable":
+            if receipt_state(proof, cwd, check_environment=False, fingerprint=current)["state"] != "reusable":
                 message = (
                     "Code changed without a current successful verification receipt. "
                     + guidance
@@ -1114,6 +1127,9 @@ def verify(sid: str, data: dict[str, Any], persist: bool = True) -> dict[str, An
         "environment": (environment["sha256"]
                         if environment == after_environment else None),
         "programs": environment["programs"],
+        "filesystem": (environment["filesystem_sha256"]
+                       if environment == after_environment else None),
+        "resolved_programs": environment["resolved_programs"],
     }
     if persist:
         with locked(sid) as (path, latest):

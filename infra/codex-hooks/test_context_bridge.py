@@ -105,7 +105,7 @@ def test_stop_rejects_receipt_after_environment_change(setup: tuple, tmp_path: P
     (repo / "changed.py").write_text("change")
     program = receipt_program(tmp_path)
     bridge.verify(event["session_id"], {"commands": [[str(program)]]})
-    monkeypatch.setenv("NODE_ENV", "changed")
+    program.write_text("#!/bin/sh\nexit 1\n")
     assert bridge.hook({**event, "hook_event_name": "Stop"})["decision"] == "block"
 
 
@@ -119,7 +119,7 @@ def test_continuation_inherits_but_revalidates_receipt(setup: tuple, tmp_path: P
         bridge.save(path, state)
     monkeypatch.setenv("CODEX_CONTEXT_FROM_SESSION", source)
     monkeypatch.setenv("CODEX_CONTEXT_NONCE", "expected")
-    monkeypatch.setenv("NODE_ENV", "changed")
+    program.write_text("#!/bin/sh\nexit 1\n")
     child = {**event, "session_id": "inherited-child-123"}
     text = bridge.hook(child)["hookSpecificOutput"]["additionalContext"]
     state = bridge.load(bridge.state_path(child["session_id"]))
@@ -136,6 +136,40 @@ def test_receipt_status_and_output_round_trip(setup: tuple, tmp_path: Path, monk
     monkeypatch.setattr(sys, "argv", ["context_bridge.py", "status", event["session_id"]])
     assert bridge.main() == 0
     assert json.loads(capsys.readouterr().out)["receipt_state"]["state"] == "reusable"
+
+
+def test_hook_environment_is_not_the_execution_shell(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, event = setup
+    (repo / "changed.py").write_text("change")
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    monkeypatch.setenv("NODE_ENV", "different-hook-context")
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+    assert bridge.receipt_state(proof, str(repo), check_environment=False)["state"] == "reusable"
+    assert bridge.hook({**event, "hook_event_name": "Stop"}) == {}
+    guidance = bridge.receipt_guidance(bridge.load(bridge.state_path(event["session_id"])), str(repo))
+    assert "tool-shell environment unchecked" in guidance and "run status" in guidance
+
+
+def test_contradictory_exit_code_is_never_a_pass(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    proof["checks"][0]["exit_code"] = 7
+    assert proof["passed"] is True
+    assert bridge.receipt_state(proof, str(repo))["state"] == "failed"
+    assert bridge.receipt_state(proof, str(repo), check_environment=False)["state"] == "failed"
+
+
+def test_empty_program_observation_is_incomplete(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    observed = bridge.environment_fingerprint([], str(repo))
+    assert observed["sha256"] is None and observed["filesystem_sha256"] is None
+    proof.update(environment=observed["sha256"], programs=[])
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
 
 
 @pytest.fixture

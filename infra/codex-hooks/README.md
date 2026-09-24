@@ -52,7 +52,11 @@ serialize unrelated Stop hooks.
 ### Reusing verification receipts
 
 SessionStart, PostCompact and `status` classify the most recent receipt as
-`none`, `reusable`, `stale` or `failed`. A continuation inherits the previous
+`none`, `reusable`, `stale` or `failed`. Hook classification covers code and
+resolved executable/dependency files. Hooks do not share the tool login shell's
+environment: their guidance requires running `status` in the execution shell
+before reusing checks. That verb additionally rechecks original executable lookup
+names and the selected environment projection. A continuation inherits the previous
 receipt as a claim and revalidates it against its current worktree. A failed
 command never becomes a reusable PASS; legacy receipts without an environment
 binding are stale. Stop uses the same classification for changed code.
@@ -62,7 +66,7 @@ original executable lookup names, their resolved targets and stat metadata,
 `pyvenv.cfg`, and nested files in the executable's venv `site-packages` trees.
 The original venv path is retained before resolving interpreter symlinks.
 Unreadable, missing or linked dependency subtrees, and observations exceeding
-100,000 entries or eight seconds, fail closed to stale. Environment drift during
+300,000 entries or eight seconds, fail closed to stale. Environment drift during
 the check also prevents reuse. No environment values or test output are stored.
 
 The hashed environment projection is exactly: `PATH`, `PYTHONPATH`, `PYTHONHOME`,
