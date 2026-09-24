@@ -425,7 +425,7 @@ Per-provider kill-switch (no redeploy, takes effect on next restart):
 9. **Verify Sources** — Never presume, verify against actual data.
 10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
 11. **PricingTool Only** — All prices from `PricingTool`. Never hardcode.
-12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` (matches what the harness itself appends; historical commits keep whatever model authored them — never rewrite them). Never `--no-verify`/`--amend` on pushed.
+12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (matches what the harness itself appends; historical commits keep whatever model authored them — never rewrite them). Never `--no-verify`/`--amend` on pushed.
 
 ## 9. Data Invariants (NEVER VIOLATE)
 
