@@ -233,10 +233,28 @@ ON CONFLICT (client_id, alert_type, created_date) DO UPDATE
        sent_at = NULL
 """
 
-_INAPP_MESSAGE = "Client asked to speak to a person on WhatsApp"
+_DEFAULT_REASON = "human_request"
+
+# Both the in-app bell text and the email carry a REASON-specific line — a
+# client who sends a caption-less photo did not ask to speak to a human, and
+# telling the consultant they did is its own small lie (the class this whole
+# module exists to avoid on the client-facing side). Keyed by the `reason`
+# callers pass; an unrecognised reason falls back to the original
+# human-request wording so an old caller (no `reason` kwarg) is
+# byte-identical to before.
+_INAPP_MESSAGES: dict[str, str] = {
+    _DEFAULT_REASON: "Client asked to speak to a person on WhatsApp",
+    "media_attachment_no_caption": "Client sent an attachment with no caption on WhatsApp",
+}
+_INAPP_SUBJECT_TEMPLATES: dict[str, str] = {
+    _DEFAULT_REASON: "[WA] Client asked for a human — thread {thread_id}",
+    "media_attachment_no_caption": "[WA] Client sent an attachment with no caption — thread {thread_id}",
+}
 
 
-async def _record_inapp_alert(pool: asyncpg.Pool, client_id: int, thread_id: int) -> bool:
+async def _record_inapp_alert(
+    pool: asyncpg.Pool, client_id: int, thread_id: int, *, reason: str = _DEFAULT_REASON
+) -> bool:
     """Raise the kita bell for the consultant who owns this client.
 
     Never raises: an in-app failure must not cost the email, and neither may
@@ -247,14 +265,16 @@ async def _record_inapp_alert(pool: asyncpg.Pool, client_id: int, thread_id: int
     find the assignee. An unfamiliar number therefore has no in-app row and is
     carried by the email alone — which is why the email is never conditional.
     """
+    message = _INAPP_MESSAGES.get(reason, _INAPP_MESSAGES[_DEFAULT_REASON])
+    subject = _INAPP_SUBJECT_TEMPLATES.get(reason, _INAPP_SUBJECT_TEMPLATES[_DEFAULT_REASON])
     try:
         async with pool.acquire() as conn:
             await conn.execute(
                 _INAPP_ALERT_SQL,
                 client_id,
                 ALERT_TYPE,
-                _INAPP_MESSAGE,
-                f"[WA] Client asked for a human — thread {thread_id}",
+                message,
+                subject.format(thread_id=thread_id),
             )
     except Exception as exc:
         logger.warning(
@@ -287,14 +307,33 @@ async def _resolve_assignee(
     return row["id"], assigned_to
 
 
+# The email's opening line is the same reason-keyed shape as the in-app
+# messages above, for the same reason: a caption-less attachment is not a
+# request to speak to a human, and the two must read differently to whoever
+# triages the inbox.
+_EMAIL_INTROS: dict[str, str] = {
+    _DEFAULT_REASON: "Klien meminta untuk berbicara dengan kolega manusia melalui WhatsApp.",
+    "media_attachment_no_caption": (
+        "Klien mengirim lampiran (foto/dokumen/audio/video) tanpa keterangan melalui WhatsApp."
+    ),
+}
+_EMAIL_SUBJECT_TEMPLATES: dict[str, str] = {
+    _DEFAULT_REASON: "[WA] Klien minta bicara dengan manusia — thread {thread_id}",
+    "media_attachment_no_caption": (
+        "[WA] Klien kirim lampiran tanpa keterangan — thread {thread_id}"
+    ),
+}
+
+
 async def notify_human_handoff(
     pool: asyncpg.Pool,
     *,
     thread_id: int,
     counterpart_phone: str | None,
     language: str,
+    reason: str = _DEFAULT_REASON,
 ) -> bool:
-    """Tell a human this thread's client asked for one. Never raises.
+    """Tell a human this thread's client needs one. Never raises.
 
     TWO channels, deliberately: the kita notification bell (where the team
     already looks) and email (which reaches a phone at 21:00 and survives a
@@ -302,9 +341,18 @@ async def notify_human_handoff(
     client and is therefore best-effort; the email always goes out, so an
     unrecognised number — the newest lead there is — is never dropped.
 
+    ``reason`` selects the in-app/email WORDING only (``_INAPP_MESSAGES`` /
+    ``_EMAIL_INTROS`` / the two subject templates) — every other mechanic
+    (dedup, assignee resolution, both channels) is identical regardless of
+    caller. Default is the original "client asked for a human" wording, so
+    the existing human-handoff-turn call site is unchanged.
+
     Dedup: per-thread 30-minute window, reusing
     ``human_escalation_notifier``'s TTL map under a namespaced key (this
-    channel is email, not Telegram — only the mechanism is shared).
+    channel is email, not Telegram — only the mechanism is shared). The key
+    is per-THREAD, not per-reason: a colleague already alerted about this
+    thread in the last 30 minutes does not need a second alert for a
+    different reason on the same thread.
     Returns True only on an actually-sent email; False on dedup suppression.
     """
     dedup_key = f"human_handoff:{thread_id}"
@@ -317,16 +365,17 @@ async def notify_human_handoff(
 
     in_app = False
     if client_id is not None:
-        in_app = await _record_inapp_alert(pool, client_id, thread_id)
+        in_app = await _record_inapp_alert(pool, client_id, thread_id, reason=reason)
     logger.info(
-        "wa_human_handoff: notifying thread=%s in_app=%s assignee_known=%s",
+        "wa_human_handoff: notifying thread=%s reason=%s in_app=%s assignee_known=%s",
         thread_id,
+        reason,
         in_app,
         assignee is not None,
     )
 
     body_lines = [
-        "Klien meminta untuk berbicara dengan kolega manusia melalui WhatsApp.",
+        _EMAIL_INTROS.get(reason, _EMAIL_INTROS[_DEFAULT_REASON]),
         "",
         f"Thread: {thread_id}",
     ]
@@ -336,9 +385,10 @@ async def notify_human_handoff(
     body_lines.append("")
     body_lines.append("Silakan buka thread di konsol operator untuk membaca detailnya.")
 
+    subject = _EMAIL_SUBJECT_TEMPLATES.get(reason, _EMAIL_SUBJECT_TEMPLATES[_DEFAULT_REASON])
     await send_internal_email(
         to=to_email,
-        subject=f"[WA] Klien minta bicara dengan manusia — thread {thread_id}",
+        subject=subject.format(thread_id=thread_id),
         body="\n".join(body_lines),
         email_type=_EMAIL_TYPE,
         pool=pool,
