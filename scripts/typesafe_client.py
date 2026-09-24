@@ -38,9 +38,12 @@ from __future__ import annotations
 import json
 import math
 import os
+import queue
+import threading
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -155,6 +158,34 @@ BACKOFF_BASE_S = 0.8
 TIMEOUT_S = 25
 
 
+@dataclass
+class RequestBudget:
+    """A strict wall deadline and HTTP-attempt pool shared across calls."""
+
+    total_deadline_s: float
+    max_http_attempts: int
+    started_at: float = field(default_factory=time.monotonic)
+    http_attempts_used: int = 0
+
+    def remaining_s(self) -> float:
+        return max(0.0, self.total_deadline_s - (time.monotonic() - self.started_at))
+
+    def may_attempt(self) -> bool:
+        return self.http_attempts_used < self.max_http_attempts and self.remaining_s() > 0
+
+    def consume_attempt(self) -> bool:
+        if not self.may_attempt():
+            return False
+        self.http_attempts_used += 1
+        return True
+
+
+@dataclass(frozen=True)
+class AskResult:
+    answers: dict | None
+    telemetry: dict[str, Any]
+
+
 class _NoRedirects(urllib.request.HTTPRedirectHandler):
     """Refuses every redirect instead of following it.
 
@@ -181,6 +212,33 @@ class _NoRedirects(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(_NoRedirects())
 
 
+class _ReadTimedOut(TimeoutError):
+    pass
+
+
+def _open_and_read(req: urllib.request.Request, timeout: float) -> bytes:
+    """Bound open plus full-body read by one wall-clock timeout."""
+    result: queue.Queue[tuple[bool, object]] = queue.Queue(maxsize=1)
+
+    def worker() -> None:
+        try:
+            with _OPENER.open(req, timeout=timeout) as response:
+                result.put((True, response.read()))
+        except Exception as exc:  # transported, never retained in telemetry
+            result.put((False, exc))
+
+    threading.Thread(target=worker, daemon=True).start()
+    try:
+        ok, value = result.get(timeout=timeout)
+    except queue.Empty as exc:
+        raise _ReadTimedOut from exc
+    if ok and isinstance(value, bytes):
+        return value
+    if isinstance(value, Exception):
+        raise value
+    raise RuntimeError("unexpected response worker result")
+
+
 def available() -> bool:
     """True when this client may speak: a key AND an on-disk authorization.
 
@@ -191,26 +249,140 @@ def available() -> bool:
     return unavailable_reason() is None
 
 
-def ask(
-    state: Any, questions: dict[str, dict], *, timeout: int = TIMEOUT_S
-) -> dict | None:
-    """Send one batched request. Returns the `answers` map, or None.
+def _usage(body: object) -> dict[str, int | None]:
+    usage = body.get("usage") if isinstance(body, dict) else None
 
-    None means "no answer available" — no key, network failure, rate limit
-    survived the retries, or a malformed response. It never means "no".
+    def numeric(name: str) -> int | None:
+        value = usage.get(name) if isinstance(usage, dict) else None
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            return None
+        return value
+
+    return {
+        "input_tokens": numeric("input_tokens"),
+        "output_tokens": numeric("output_tokens"),
+    }
+
+
+def _usable_answer(answer: object, question: object) -> bool:
+    """Whether one requested answer is usable by the question's contract."""
+    if not isinstance(answer, dict) or not isinstance(question, dict):
+        return False
+    if question.get("type") != "noul":
+        return bool(answer)
+    value = answer.get("noul")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    probability = float(value)
+    return math.isfinite(probability) and 0.0 <= probability <= 1.0
+
+
+def _telemetry(
+    *,
+    attempted: bool,
+    response_received: bool,
+    schema_valid: bool,
+    abstained: bool,
+    failure: str | None,
+    resolved_model: str | None,
+    usage: dict[str, int | None] | None,
+    started_at: float,
+    http_attempts: int,
+) -> dict[str, Any]:
+    return {
+        "attempted": attempted,
+        "response_received": response_received,
+        "schema_valid": schema_valid,
+        "abstained": abstained,
+        "failure": failure,
+        "requested_model": MODEL,
+        "resolved_model": resolved_model,
+        "usage": usage or {"input_tokens": None, "output_tokens": None},
+        "latency_ms": (
+            round((time.monotonic() - started_at) * 1000, 3) if attempted else 0.0
+        ),
+        "http_attempts": http_attempts,
+        "fallback": not schema_valid or abstained,
+    }
+
+
+def ask_detailed(
+    state: Any,
+    questions: dict[str, dict],
+    *,
+    timeout: float = TIMEOUT_S,
+    budget: RequestBudget | None = None,
+) -> AskResult:
+    """Send one batch and return answers plus non-ambiguous call telemetry.
+
+    The optional budget is mutable by design: callers with more than one batch
+    share one wall deadline and one HTTP-attempt pool. No response body or
+    exception text is retained in telemetry.
     """
-    if unavailable_reason() is not None:
-        # Before the payload exists, not after: an unauthorized endpoint must
-        # never have source text serialised for it, even into a request that
-        # is then discarded.
-        return None
-    key = os.environ.get(ENV_VAR, "").strip()
+    started_at = time.monotonic()
+    reason = unavailable_reason()
+    if reason is not None:
+        failure = "no_key" if reason == NO_KEY else "not_authorized"
+        return AskResult(
+            None,
+            _telemetry(
+                attempted=False,
+                response_received=False,
+                schema_valid=False,
+                abstained=False,
+                failure=failure,
+                resolved_model=None,
+                usage=None,
+                started_at=started_at,
+                http_attempts=0,
+            ),
+        )
 
+    if budget is None:
+        budget = RequestBudget(
+            total_deadline_s=(timeout * MAX_ATTEMPTS)
+            + sum(BACKOFF_BASE_S * (2**n) for n in range(MAX_ATTEMPTS - 1)),
+            max_http_attempts=MAX_ATTEMPTS,
+        )
+
+    # Authorization is checked before serializing repository content.
     payload = json.dumps(
         {"model": MODEL, "state": state, "questions": questions}
     ).encode("utf-8")
+    key = os.environ.get(ENV_VAR, "").strip()
+    attempts = 0
+    response_received = False
+    last_failure: str | None = None
+    last_body: dict | None = None
 
-    for attempt in range(MAX_ATTEMPTS):
+    while attempts < MAX_ATTEMPTS:
+        if not budget.may_attempt():
+            failure = (
+                "deadline_exhausted"
+                if budget.remaining_s() <= 0
+                else "retry_budget_exhausted"
+            )
+            return AskResult(
+                None,
+                _telemetry(
+                    attempted=attempts > 0,
+                    response_received=response_received,
+                    schema_valid=False,
+                    abstained=False,
+                    failure=failure,
+                    resolved_model=(
+                        last_body.get("resolved_model") or last_body.get("model")
+                        if isinstance(last_body, dict)
+                        else None
+                    ),
+                    usage=_usage(last_body),
+                    started_at=started_at,
+                    http_attempts=attempts,
+                ),
+            )
+
+        budget.consume_attempt()
+        attempts += 1
         req = urllib.request.Request(
             ENDPOINT,
             data=payload,
@@ -221,27 +393,112 @@ def ask(
             method="POST",
         )
         try:
-            with _OPENER.open(req, timeout=timeout) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-            answers = body.get("answers")
-            return answers if isinstance(answers, dict) else None
+            raw = _open_and_read(req, min(timeout, budget.remaining_s()))
+            response_received = True
+            if budget.remaining_s() <= 0:
+                return AskResult(
+                    None,
+                    _telemetry(
+                        attempted=True,
+                        response_received=True,
+                        schema_valid=False,
+                        abstained=False,
+                        failure="deadline_exhausted",
+                        resolved_model=None,
+                        usage=None,
+                        started_at=started_at,
+                        http_attempts=attempts,
+                    ),
+                )
+            try:
+                body = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError, RecursionError):
+                last_failure = "invalid_json"
+            else:
+                last_body = body if isinstance(body, dict) else None
+                answers = body.get("answers") if isinstance(body, dict) else None
+                if isinstance(answers, dict):
+                    abstained = not any(
+                        _usable_answer(answers.get(key), question)
+                        for key, question in questions.items()
+                    )
+                    resolved = body.get("resolved_model") or body.get("model")
+                    if not isinstance(resolved, str):
+                        resolved = None
+                    return AskResult(
+                        answers,
+                        _telemetry(
+                            attempted=True,
+                            response_received=True,
+                            schema_valid=True,
+                            abstained=abstained,
+                            failure=None,
+                            resolved_model=resolved,
+                            usage=_usage(body),
+                            started_at=started_at,
+                            http_attempts=attempts,
+                        ),
+                    )
+                last_failure = "invalid_schema"
+        except _ReadTimedOut:
+            last_failure = (
+                "deadline_exhausted"
+                if budget.remaining_s() <= 0
+                else "network_error"
+            )
+            if last_failure == "deadline_exhausted":
+                break
         except urllib.error.HTTPError as exc:
-            if exc.code in RETRY_STATUS and attempt < MAX_ATTEMPTS - 1:
-                time.sleep(BACKOFF_BASE_S * (2**attempt))
-                continue
-            return None
+            last_failure = (
+                "retryable_http_exhausted"
+                if exc.code in RETRY_STATUS
+                else f"http_error_{exc.code}"
+            )
+            if exc.code not in RETRY_STATUS:
+                break
         except Exception:
-            # Broad on purpose. The docstring promises this returns None on any
-            # service problem, and a narrow tuple cannot keep that promise: a
-            # non-UTF-8 error page raises UnicodeDecodeError, which is a
-            # ValueError and matched none of the previous clauses. Caught by an
-            # adversarial reviewer, 2026-09-20 — the exception escaped into a
-            # step whose whole contract is that it never fails the build.
-            if attempt < MAX_ATTEMPTS - 1:
-                time.sleep(BACKOFF_BASE_S * (2**attempt))
-                continue
-            return None
-    return None
+            # Broad by contract: service failures never escape into the caller.
+            last_failure = "network_error"
+
+        if last_failure in {"invalid_json", "invalid_schema"}:
+            break
+        if attempts >= MAX_ATTEMPTS:
+            break
+        if not budget.may_attempt():
+            if last_failure in {"invalid_json", "invalid_schema"}:
+                break
+            continue
+        sleep_s = min(BACKOFF_BASE_S * (2 ** (attempts - 1)), budget.remaining_s())
+        if sleep_s > 0:
+            time.sleep(sleep_s)
+
+    if last_failure == "retryable_http_exhausted" and budget.http_attempts_used >= budget.max_http_attempts:
+        last_failure = "retry_budget_exhausted"
+    return AskResult(
+        None,
+        _telemetry(
+            attempted=attempts > 0,
+            response_received=response_received,
+            schema_valid=False,
+            abstained=False,
+            failure=last_failure or "network_error",
+            resolved_model=(
+                last_body.get("resolved_model") or last_body.get("model")
+                if isinstance(last_body, dict)
+                else None
+            ),
+            usage=_usage(last_body),
+            started_at=started_at,
+            http_attempts=attempts,
+        ),
+    )
+
+
+def ask(
+    state: Any, questions: dict[str, dict], *, timeout: float = TIMEOUT_S
+) -> dict | None:
+    """Compatibility surface: answers or None, with the never-raise promise."""
+    return ask_detailed(state, questions, timeout=timeout).answers
 
 
 def noul(answers: dict | None, key: str) -> float | None:

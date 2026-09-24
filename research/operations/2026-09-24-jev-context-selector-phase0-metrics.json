@@ -1,0 +1,262 @@
+{
+  "artifact_version": 1,
+  "selector_policy_version": "jev-context-selector-phase0-v2",
+  "mandate": "jev-context-selector-pilot-20260925",
+  "run_date": "2026-09-24",
+  "ground_revision": "92526ca8394ba746cd318a72f1ef2256e177b406",
+  "ground_sha256": {
+    "research/operations/2026-09-24-jev-coding-optimization-audit.md": "34cfaf707de5012fdab524c5dfb56a1a85b86e33a105465653e23c6859eac584",
+    "research/operations/2026-09-24-jev-coding-live-probe.json": "04027fb75ebb96c12fde5e85253fbe57d12c6b57ad67e5116bfc438df365f544"
+  },
+  "scope": {
+    "repository_only": true,
+    "fixture_version": 1,
+    "fixture_task_material": "canonical-id-and-task-only",
+    "tasks": ["JCS-001", "JCS-024", "JCS-028", "JCS-029", "JCS-033"],
+    "arms": ["B", "C"],
+    "packet_budget_tokens": 6000,
+    "semantic_total_deadline_s": 1.5,
+    "shared_http_attempt_budget": 2,
+    "cache_condition": "cold-no-cache",
+    "run_order": "B then C per task, serial",
+    "input_size_bands_bytes": {
+      "small": "<10000",
+      "medium": "10000-19999",
+      "large": ">=20000"
+    }
+  },
+  "rows": [
+    {
+      "task_id": "JCS-001",
+      "arm": "B",
+      "selection_input_bytes": 26334,
+      "selection_input_band": "large",
+      "candidate_count": 30,
+      "selected_count": 16,
+      "packet_estimated_tokens": 5832,
+      "elapsed_ms": 7546.303,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": null
+    },
+    {
+      "task_id": "JCS-001",
+      "arm": "C",
+      "selection_input_bytes": 26334,
+      "selection_input_band": "large",
+      "candidate_count": 30,
+      "selected_count": 5,
+      "packet_estimated_tokens": 1595,
+      "elapsed_ms": 17615.688,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": {
+        "attempted": true,
+        "failure": null,
+        "http_attempts": 1,
+        "requested_model": "jev-1.13.0",
+        "response_received": true,
+        "latency_ms": 1255.622,
+        "schema_valid": true,
+        "fallback": false,
+        "resolved_model": "jev-1.13.0",
+        "abstained": false,
+        "usage": {"input_tokens": 9613, "output_tokens": 831}
+      }
+    },
+    {
+      "task_id": "JCS-024",
+      "arm": "B",
+      "selection_input_bytes": 11530,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 18,
+      "packet_estimated_tokens": 5932,
+      "elapsed_ms": 11820.736,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": null
+    },
+    {
+      "task_id": "JCS-024",
+      "arm": "C",
+      "selection_input_bytes": 11530,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 3,
+      "packet_estimated_tokens": 666,
+      "elapsed_ms": 9175.36,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": {
+        "attempted": true,
+        "failure": null,
+        "http_attempts": 1,
+        "requested_model": "jev-1.13.0",
+        "response_received": true,
+        "latency_ms": 1057.298,
+        "schema_valid": true,
+        "fallback": false,
+        "resolved_model": "jev-1.13.0",
+        "abstained": false,
+        "usage": {"input_tokens": 6395, "output_tokens": 835}
+      }
+    },
+    {
+      "task_id": "JCS-028",
+      "arm": "B",
+      "selection_input_bytes": 10850,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 27,
+      "packet_estimated_tokens": 5854,
+      "elapsed_ms": 9041.655,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": null
+    },
+    {
+      "task_id": "JCS-028",
+      "arm": "C",
+      "selection_input_bytes": 10850,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 5,
+      "packet_estimated_tokens": 1755,
+      "elapsed_ms": 6158.995,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": {
+        "attempted": true,
+        "failure": null,
+        "http_attempts": 1,
+        "requested_model": "jev-1.13.0",
+        "response_received": true,
+        "latency_ms": 1086.901,
+        "schema_valid": true,
+        "fallback": false,
+        "resolved_model": "jev-1.13.0",
+        "abstained": false,
+        "usage": {"input_tokens": 6260, "output_tokens": 837}
+      }
+    },
+    {
+      "task_id": "JCS-029",
+      "arm": "B",
+      "selection_input_bytes": 16429,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 21,
+      "packet_estimated_tokens": 5914,
+      "elapsed_ms": 4736.13,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": null
+    },
+    {
+      "task_id": "JCS-029",
+      "arm": "C",
+      "selection_input_bytes": 16429,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 7,
+      "packet_estimated_tokens": 2624,
+      "elapsed_ms": 9412.728,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": {
+        "attempted": true,
+        "failure": null,
+        "http_attempts": 1,
+        "requested_model": "jev-1.13.0",
+        "response_received": true,
+        "latency_ms": 1039.307,
+        "schema_valid": true,
+        "fallback": false,
+        "resolved_model": "jev-1.13.0",
+        "abstained": false,
+        "usage": {"input_tokens": 7585, "output_tokens": 826}
+      }
+    },
+    {
+      "task_id": "JCS-033",
+      "arm": "B",
+      "selection_input_bytes": 19338,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 17,
+      "packet_estimated_tokens": 5958,
+      "elapsed_ms": 5843.407,
+      "fallback": false,
+      "fallback_reason": null,
+      "cache_hit": false,
+      "typesafe": null
+    },
+    {
+      "task_id": "JCS-033",
+      "arm": "C",
+      "selection_input_bytes": 19338,
+      "selection_input_band": "medium",
+      "candidate_count": 30,
+      "selected_count": 17,
+      "packet_estimated_tokens": 5958,
+      "elapsed_ms": 7468.625,
+      "fallback": true,
+      "fallback_reason": "abstention",
+      "cache_hit": false,
+      "typesafe": {
+        "attempted": true,
+        "failure": null,
+        "http_attempts": 1,
+        "requested_model": "jev-1.13.0",
+        "response_received": true,
+        "latency_ms": 1167.433,
+        "schema_valid": true,
+        "fallback": false,
+        "resolved_model": "jev-1.13.0",
+        "abstained": false,
+        "usage": {"input_tokens": 8257, "output_tokens": 826}
+      }
+    }
+  ],
+  "aggregates": {
+    "arm_c": {
+      "attempted": 5,
+      "response_received": 5,
+      "schema_valid": 5,
+      "abstained": 0,
+      "failed": 0,
+      "fallback": 1,
+      "http_attempts": 5,
+      "cache_hits": 0,
+      "reported_input_tokens": 38110,
+      "reported_output_tokens": 4155,
+      "semantic_latency_ms": {"min": 1039.307, "p50": 1086.901, "max": 1255.622}
+    },
+    "packet_estimated_tokens": {
+      "arm_b_total": 29490,
+      "arm_c_total": 12598,
+      "diagnostic_delta_pct": -57.28
+    },
+    "fallback_by_selection_input_band": {
+      "small": {"arm_c_tasks": 0, "fallbacks": 0, "fallback_rate": null},
+      "medium": {"arm_c_tasks": 4, "fallbacks": 1, "fallback_rate": 0.25},
+      "large": {"arm_c_tasks": 1, "fallbacks": 0, "fallback_rate": 0.0}
+    }
+  },
+  "interpretation_limits": [
+    "This is a selector plumbing dry run, not a coding-outcome evaluation.",
+    "Packet token counts are byte estimates, not Codex token receipts.",
+    "The serial B-then-C order was not randomized and elapsed time includes deterministic collection and packet assembly.",
+    "No cache-hit row was measured live; exact-cache behavior is covered by a focused test.",
+    "One all-false semantic selection fell back visibly to B; five calls do not estimate a production fallback rate."
+  ]
+}

@@ -59,12 +59,20 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from redact_for_external import redact  # noqa: E402
-from typesafe_client import ask, available, noul, unavailable_reason  # noqa: E402
+from typesafe_client import (  # noqa: E402
+    MODEL,
+    ask_detailed as ask,
+    available,
+    noul,
+    unavailable_reason,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PARDON = REPO_ROOT / "infra" / "paid-llm-entity" / "pardoned.json"
@@ -268,7 +276,35 @@ ROUTE_QUESTIONS: dict[str, dict] = {
 FIRE_THRESHOLD = 0.80
 
 
-def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
+@dataclass(frozen=True)
+class JevVerdict:
+    probabilities: dict[str, float]
+    fired_routes: list[str]
+    telemetry: dict[str, Any]
+
+    def __iter__(self):
+        # Keeps the existing `probs, fired = jev_verdict(...)` API stable.
+        yield self.probabilities
+        yield self.fired_routes
+
+
+def _not_attempted_telemetry(failure: str) -> dict[str, Any]:
+    return {
+        "attempted": False,
+        "response_received": False,
+        "schema_valid": False,
+        "abstained": False,
+        "failure": failure,
+        "requested_model": MODEL,
+        "resolved_model": None,
+        "usage": {"input_tokens": None, "output_tokens": None},
+        "latency_ms": 0.0,
+        "http_attempts": 0,
+        "fallback": True,
+    }
+
+
+def jev_verdict(path: str, text: str) -> JevVerdict:
     """Ask the four route questions about one file.
 
     Returns (probabilities, fired_routes). An unavailable service yields ({}, [])
@@ -283,9 +319,28 @@ def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
             "auth_token=. Local models and non-Anthropic providers are not covered by this ban."
         ),
     }
-    answers = ask(state, ROUTE_QUESTIONS)
+    raw = ask(state, ROUTE_QUESTIONS)
+    if hasattr(raw, "answers") and hasattr(raw, "telemetry"):
+        answers = raw.answers
+        telemetry = raw.telemetry
+    else:
+        # Compatibility for the lint's long-standing monkeypatch seam. Real
+        # calls always return AskResult; older focused tests replace `ask`
+        # with the former answers-only shape.
+        answers = raw if isinstance(raw, dict) else None
+        telemetry = {
+            **_not_attempted_telemetry(
+                "legacy_service_silence" if answers is None else "legacy_test_stub"
+            ),
+            "attempted": True,
+            "response_received": answers is not None,
+            "schema_valid": answers is not None,
+            "abstained": answers == {},
+            "failure": None if answers is not None else "legacy_service_silence",
+            "fallback": answers in (None, {}),
+        }
     if answers is None:
-        return {}, []
+        return JevVerdict({}, [], telemetry)
     probs: dict[str, float] = {}
     fired: list[str] = []
     for route in ROUTE_QUESTIONS:
@@ -295,7 +350,9 @@ def jev_verdict(path: str, text: str) -> tuple[dict[str, float], list[str]]:
         probs[route] = value
         if value >= FIRE_THRESHOLD:
             fired.append(route)
-    return probs, fired
+    if not probs and telemetry.get("schema_valid"):
+        telemetry = {**telemetry, "abstained": True, "fallback": True}
+    return JevVerdict(probs, fired, telemetry)
 
 
 # ─────────────────────────────────────────────────────────────────────── pardon
@@ -452,14 +509,35 @@ def judge_file(
     asked = False
     if worth_asking(text) and available():
         asked = True
-        probs, fired = jev_verdict(path, text)
+        verdict = jev_verdict(path, text)
+        probs, fired = verdict
+        typesafe = getattr(
+            verdict, "telemetry", _not_attempted_telemetry("legacy_test_stub")
+        )
+        if not hasattr(verdict, "telemetry"):
+            typesafe = {
+                **typesafe,
+                "attempted": True,
+                "response_received": True,
+                "schema_valid": True,
+                "failure": None,
+                "fallback": False,
+            }
+    elif worth_asking(text):
+        reason = unavailable_reason()
+        failure = "no_key" if reason and "key" in reason else "not_authorized"
+        typesafe = _not_attempted_telemetry(failure)
+    else:
+        typesafe = _not_attempted_telemetry("prefilter_skip")
     entry_by_route = _pardons_for_path(path, pardons)
     pardoned_routes = [r for r in fired if r in entry_by_route]
     live = [r for r in fired if r not in entry_by_route]
     return {
         "path": path,
         "grep": by_grep,
+        # Backward-compatible alias. New consumers must use `typesafe`.
         "asked": asked,
+        "typesafe": typesafe,
         "probabilities": probs,
         # `fired_routes` keeps EVERY route the model fired, pardoned or not
         # — the model's opinion is reported unchanged.
@@ -580,10 +658,35 @@ def main(argv: list[str] | None = None) -> int:
                     f"({route}={p:.2f}) — {entry['reason']} "
                     f"(PR #{entry['pr']}, {entry['date']})"
                 )
-        judged = sum(1 for r in results if r["asked"])
+        telemetry_rows = [
+            r.get(
+                "typesafe",
+                {
+                    **_not_attempted_telemetry("legacy_result"),
+                    "attempted": bool(r.get("asked")),
+                },
+            )
+            for r in results
+        ]
+        attempted = sum(1 for row in telemetry_rows if row["attempted"])
+        responses = sum(1 for row in telemetry_rows if row["response_received"])
+        schema_valid = sum(1 for row in telemetry_rows if row["schema_valid"])
+        abstained = sum(1 for row in telemetry_rows if row["abstained"])
+        failed = sum(
+            1
+            for row in telemetry_rows
+            if row["attempted"] and row["failure"] is not None
+        )
+        judged = sum(
+            1
+            for row in telemetry_rows
+            if row["schema_valid"] and not row["abstained"]
+        )
         print(
             f"lint_paid_llm_entity: {len(results)} file(s) in scope, "
-            f"{judged} judged, {len(violations)} violation(s), "
+            f"{attempted} attempted, {responses} response(s), "
+            f"{schema_valid} schema-valid, {abstained} abstention(s), "
+            f"{failed} failed, {judged} judged, {len(violations)} violation(s), "
             f"{pardoned_count} pardoned."
         )
 

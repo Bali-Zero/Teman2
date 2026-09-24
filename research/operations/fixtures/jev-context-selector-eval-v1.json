@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "policy_version": "jev-context-selector-phase0-v1",
+  "repository_revision": "92526ca8394ba746cd318a72f1ef2256e177b406",
+  "label_policy": "Labels were authored before selector output was inspected and are never passed to ranking.",
+  "tasks": [
+    {
+      "id": "JCS-001",
+      "stratum": "bug_fix",
+      "task": "Make scripts/typesafe_client.py distinguish an invalid answers envelope from an unavailable endpoint without weakening the redirect refusal.",
+      "relevant_files": ["scripts/typesafe_client.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/typesafe_client.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-002",
+      "stratum": "bug_fix",
+      "task": "Correct the lint summary so a request attempted before service silence is not described as judged.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py", "scripts/typesafe_client.py"],
+      "protected_files": ["AGENTS.md", "scripts/lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-003",
+      "stratum": "bug_fix",
+      "task": "Reject a boolean Noul payload as malformed while preserving the no-opinion fallback.",
+      "relevant_files": ["scripts/typesafe_client.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/typesafe_client.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-004",
+      "stratum": "bug_fix",
+      "task": "Keep JSON mode machine-readable when the TypeSafe key is absent.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-005",
+      "stratum": "bug_fix",
+      "task": "Prevent scripts/context_budget_audit.py from treating missing token telemetry as a measured zero.",
+      "relevant_files": ["scripts/context_budget_audit.py", "scripts/tests/test_context_budget_audit.py"],
+      "protected_files": ["AGENTS.md", "scripts/context_budget_audit.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-006",
+      "stratum": "bounded_feature",
+      "task": "Add a read-only JSON output mode to scripts/ci/required_context_map.py.",
+      "relevant_files": ["scripts/ci/required_context_map.py", "scripts/tests/test_required_context_map.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/required_context_map.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-007",
+      "stratum": "bounded_feature",
+      "task": "Add a dry-run flag to scripts/ci/snapshot_required_contexts.py that prints the target paths without writing them.",
+      "relevant_files": ["scripts/ci/snapshot_required_contexts.py", "scripts/tests/test_snapshot_required_contexts.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/snapshot_required_contexts.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-008",
+      "stratum": "bounded_feature",
+      "task": "Expose the resolved pinned model in the TypeSafe lint JSON result without returning a response body.",
+      "relevant_files": ["scripts/typesafe_client.py", "scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/typesafe_client.py", "scripts/lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-009",
+      "stratum": "bounded_feature",
+      "task": "Add a compact per-lane count to scripts/suite_growth_probe.py while retaining its existing JSON schema.",
+      "relevant_files": ["scripts/suite_growth_probe.py", "scripts/ci/test_test_cost_gate.py"],
+      "protected_files": ["AGENTS.md", "scripts/suite_growth_probe.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-010",
+      "stratum": "bounded_feature",
+      "task": "Teach scripts/proprioception.py to report one additional door-canon parity mismatch category.",
+      "relevant_files": ["scripts/proprioception.py", "AGENTS.md", "CLAUDE.md"],
+      "protected_files": ["AGENTS.md", "scripts/proprioception.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-011",
+      "stratum": "test",
+      "task": "Add a regression proving redirected TypeSafe requests never reach the Location host.",
+      "relevant_files": ["scripts/typesafe_client.py", "scripts/tests/test_vendor_authorization_fence.py"],
+      "protected_files": ["AGENTS.md", "scripts/tests/test_vendor_authorization_fence.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-012",
+      "stratum": "test",
+      "task": "Add a regression for a pardon route added to an existing file entry.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py", "infra/paid-llm-entity/pardoned.json"],
+      "protected_files": ["AGENTS.md", "scripts/test_lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-013",
+      "stratum": "test",
+      "task": "Add a case proving test/smoke.py remains in the paid endpoint lint scope while tests/smoke.py remains excluded.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/test_lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-014",
+      "stratum": "test",
+      "task": "Prove the test-cost gate stays telemetry-only when test infrastructure is untouched.",
+      "relevant_files": ["scripts/ci/test_cost_gate.py", "scripts/ci/test_test_cost_gate.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/test_test_cost_gate.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-015",
+      "stratum": "test",
+      "task": "Add a fixture showing the context budget audit handles a one-line megabyte file without printing it.",
+      "relevant_files": ["scripts/context_budget_audit.py", "scripts/tests/test_context_budget_audit.py"],
+      "protected_files": ["AGENTS.md", "scripts/tests/test_context_budget_audit.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-016",
+      "stratum": "refactor",
+      "task": "Extract repeated numeric probability validation in scripts/typesafe_client.py without changing Noul behavior.",
+      "relevant_files": ["scripts/typesafe_client.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/typesafe_client.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-017",
+      "stratum": "refactor",
+      "task": "Consolidate duplicate path normalization inside the paid endpoint lint while preserving exact pardon matching.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py"],
+      "protected_files": ["AGENTS.md", "scripts/lint_paid_llm_entity.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-018",
+      "stratum": "refactor",
+      "task": "Move required-context snapshot formatting into a pure helper with no output change.",
+      "relevant_files": ["scripts/ci/snapshot_required_contexts.py", "scripts/tests/test_snapshot_required_contexts.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/snapshot_required_contexts.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-019",
+      "stratum": "refactor",
+      "task": "Separate rendering from measurement in scripts/context_budget_audit.py with byte-for-byte equivalent JSON.",
+      "relevant_files": ["scripts/context_budget_audit.py", "scripts/tests/test_context_budget_audit.py"],
+      "protected_files": ["AGENTS.md", "scripts/context_budget_audit.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-020",
+      "stratum": "configuration",
+      "task": "Wire the pinned TypeSafe client test into the existing catE workflow test step.",
+      "relevant_files": [".github/workflows/catE-sovereignty-lint.yml", "scripts/tests/test_typesafe_client_pin.py"],
+      "protected_files": ["AGENTS.md", ".github/workflows/catE-sovereignty-lint.yml"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-021",
+      "stratum": "configuration",
+      "task": "Keep the token contrast workflow and its focused pytest target in parity.",
+      "relevant_files": [".github/workflows/token-contrast-tests.yml", "scripts/tests/test_check_token_contrast.py", "scripts/check_token_contrast.py"],
+      "protected_files": ["AGENTS.md", ".github/workflows/token-contrast-tests.yml"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-022",
+      "stratum": "configuration",
+      "task": "Add the new paid-endpoint lint regression file to the catE trigger parity contract.",
+      "relevant_files": [".github/workflows/catE-sovereignty-lint.yml", "scripts/tests/test_cate_trigger_parity.py"],
+      "protected_files": ["AGENTS.md", ".github/workflows/catE-sovereignty-lint.yml"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-023",
+      "stratum": "configuration",
+      "task": "Align the migration lint workflow target with the rollback lint test path.",
+      "relevant_files": [".github/workflows/migration-lint.yml", "scripts/lint_migration_rollback.py", "scripts/tests/test_lint_migration_rollback.py"],
+      "protected_files": ["AGENTS.md", ".github/workflows/migration-lint.yml"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-024",
+      "stratum": "cross_file",
+      "task": "Change the paid endpoint firing threshold and update every calibration guard that freezes its meaning.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/test_lint_paid_llm_entity.py", "scripts/typesafe_client.py", "scripts/tests/test_typesafe_client_pin.py"],
+      "protected_files": ["AGENTS.md", "scripts/lint_paid_llm_entity.py", "scripts/tests/test_typesafe_client_pin.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-025",
+      "stratum": "cross_file",
+      "task": "Change the authorized TypeSafe endpoint and update the ruling-backed registry fence and tests together.",
+      "relevant_files": ["scripts/typesafe_client.py", "infra/vendor-authorizations/authorized_endpoints.json", "docs/rules/RULINGS.md", "scripts/tests/test_vendor_authorization_fence.py"],
+      "protected_files": ["AGENTS.md", "docs/rules/RULINGS.md", "infra/vendor-authorizations/authorized_endpoints.json"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-026",
+      "stratum": "cross_file",
+      "task": "Add a new context map consumer and keep snapshot generation, tests and workflow trigger coverage coherent.",
+      "relevant_files": ["scripts/ci/required_context_map.py", "scripts/ci/snapshot_required_contexts.py", "scripts/tests/test_required_context_map.py", "scripts/tests/test_snapshot_required_contexts.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/required_context_map.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-027",
+      "stratum": "cross_file",
+      "task": "Make the test-cost baseline refresh visible in both the probe and the gate without changing blocking policy.",
+      "relevant_files": ["scripts/suite_growth_probe.py", "scripts/ci/test_cost_gate.py", "scripts/ci/test_cost_baseline.json", "scripts/ci/test_test_cost_gate.py"],
+      "protected_files": ["AGENTS.md", "scripts/ci/test_cost_gate.py"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-028",
+      "stratum": "cross_file",
+      "task": "Update a builder-contract sentence identically across every door and retain machine parity.",
+      "relevant_files": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md", "scripts/proprioception.py"],
+      "protected_files": ["AGENTS.md", "CLAUDE.md", "GEMINI.md", "QWEN.md"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-029",
+      "stratum": "ambiguous",
+      "task": "Improve context handling for agent tasks without changing behavior outside the smallest relevant surface.",
+      "relevant_files": ["scripts/context_budget_audit.py", "scripts/ci/required_context_map.py"],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-030",
+      "stratum": "ambiguous",
+      "task": "Make the advisory lint output more honest about what happened.",
+      "relevant_files": ["scripts/lint_paid_llm_entity.py", "scripts/typesafe_client.py"],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-031",
+      "stratum": "ambiguous",
+      "task": "Reduce wasted work in the CI context lane while preserving all gates.",
+      "relevant_files": ["scripts/ci/required_context_map.py", "scripts/ci/snapshot_required_contexts.py", "scripts/context_budget_audit.py"],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-032",
+      "stratum": "ambiguous",
+      "task": "Tighten token reporting so the operator can trust the number.",
+      "relevant_files": ["scripts/context_budget_audit.py", "scripts/cc_context_cost_report.py"],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": false,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-033",
+      "stratum": "no_relevant_candidate",
+      "task": "Implement a GPU kernel scheduler for a proprietary accelerator that is not represented in this repository.",
+      "relevant_files": [],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": true,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-034",
+      "stratum": "no_relevant_candidate",
+      "task": "Correct the lunar navigation firmware for a vehicle whose source tree is not present here.",
+      "relevant_files": [],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": true,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-035",
+      "stratum": "no_relevant_candidate",
+      "task": "Add a Rust audio codec to the absent desktop synthesizer package.",
+      "relevant_files": [],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": true,
+      "labels_authored_independently": true
+    },
+    {
+      "id": "JCS-036",
+      "stratum": "no_relevant_candidate",
+      "task": "Repair the COBOL payroll batch in the external mainframe repository.",
+      "relevant_files": [],
+      "protected_files": ["AGENTS.md"],
+      "no_relevant_candidate": true,
+      "labels_authored_independently": true
+    }
+  ]
+}
