@@ -438,7 +438,17 @@ Per-provider kill-switch (no redeploy, takes effect on next restart):
 
 ## 10. Postgres MCP — Read-Only Access
 
-`postgres-nuzantara` MCP (`mcp__postgres-nuzantara__*`) connects via `nuzantara_readonly` role on Fly Postgres (T3.2 shipped 2026-05-23). **Defense-in-depth**: 255 SELECT grants, ZERO INSERT/UPDATE/DELETE/CREATE. Use `query` tool for ad-hoc data inspection. For mutations: backend code only, NEVER MCP. Password in Keychain (`nuzantara-postgres-readonly`).
+**Per-machine, NOT universal** (L1470, 2026-08-25: this section previously read as
+unconditional and pushed a session with none of this toward `psql`/a Fly proxy/an app
+credential — every one of which bypasses the read-only role below). Where registered
+(`.mcp.json` on that machine carries `postgres-nuzantara`), the `postgres-nuzantara` MCP
+(`mcp__postgres-nuzantara__*`) connects via `nuzantara_readonly` role on Fly Postgres (T3.2
+shipped 2026-05-23). **Defense-in-depth**: 255 SELECT grants, ZERO INSERT/UPDATE/DELETE/CREATE.
+Use `query` tool for ad-hoc data inspection. For mutations: backend code only, NEVER MCP.
+Password in Keychain (`nuzantara-postgres-readonly`). **Before assuming you have it**: check
+this session's own tool list / `.mcp.json` for `postgres-nuzantara` — if absent, you do NOT
+have read-only DB access here; dispatch to a machine that does (Pro/Mini) rather than reaching
+for a route that bypasses `nuzantara_readonly`.
 
 ## 11. Deploy Lifecycle
 

@@ -43,7 +43,7 @@ async def test_prepare_search_context_uses_surface_router_when_available() -> No
         "backend.services.search.keyword_translator.get_keyword_translator",
         return_value=SimpleNamespace(translate=lambda query: query),
     ):
-        _, collection_name, _, _, _ = await service._prepare_search_context(
+        _, collection_name, _, _, _, _ = await service._prepare_search_context(
             "internal ops workflow checklist",
             user_level=3,
             tier_filter=None,
