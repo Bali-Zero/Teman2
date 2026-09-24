@@ -43,6 +43,17 @@ edges:
         type: cmd,
         cmd: "launchctl list | grep -F com.nuzantara.mailbox-janitor.daily",
       }
+  - id: com.nuzantara.kbli-oss-refresh.weekly
+    kind: launchd
+    machine: mini
+    status: UNKNOWN
+    consumer: "infra/launchagents/wrappers/kbli-oss-refresh-run.sh -> scripts/kbli_filiera/oss_refresh_loop.py (weekly Monday 09:40 WITA; F4 OSS refresh over the licensing gaps; reports ~/nuzantara-vault-evidence/oss-refresh; heartbeat mini.kbli_oss_refresh)"
+    notes: "Born 2026-09-22. UNKNOWN until the installer runs on Mini and the first scheduled tick lands a report."
+    probe:
+      {
+        type: cmd,
+        cmd: "launchctl list | grep -F com.nuzantara.kbli-oss-refresh.weekly",
+      }
   - id: com.balizero.nlm-autodownload
     kind: launchd
     machine: m5

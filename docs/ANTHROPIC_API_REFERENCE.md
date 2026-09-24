@@ -6,14 +6,15 @@
 
 ## Current roster (use these IDs verbatim — never invent a date suffix)
 
-| Model               | ID                          | Context / max output | $ per MTok (in/out)                          |
-| ------------------- | --------------------------- | -------------------- | -------------------------------------------- |
-| Claude Fable 5      | `claude-fable-5`            | 1M / 128K            | $10 / $50                                    |
-| **Claude Opus 5**   | `claude-opus-5`             | 1M / 128K            | $5 / $25                                     |
-| Claude Opus 4.8     | `claude-opus-4-8`           | 1M / 128K            | $5 / $25                                     |
-| **Claude Sonnet 5** | `claude-sonnet-5`           | 1M / 128K            | $3 / $15 (intro $2 / $10 through 2026-08-31) |
-| Claude Sonnet 4.6   | `claude-sonnet-4-6`         | 1M / 128K            | $3 / $15                                     |
-| Claude Haiku 4.5    | `claude-haiku-4-5-20251001` | 200K / 64K           | $1 / $5                                      |
+| Model               | ID                          | Context / max output | $ per MTok (in/out)                                                        |
+| ------------------- | --------------------------- | -------------------- | -------------------------------------------------------------------------- |
+| Claude Fable 5      | `claude-fable-5`            | 1M / 128K            | $10 / $50                                                                  |
+| **Claude Opus 5.5** | `claude-opus-5-5`           | not re-measured here | not re-measured here — seat of every former Opus 5 role (RULED 2026-09-23) |
+| **Claude Opus 5**   | `claude-opus-5`             | 1M / 128K            | $5 / $25                                                                   |
+| Claude Opus 4.8     | `claude-opus-4-8`           | 1M / 128K            | $5 / $25                                                                   |
+| **Claude Sonnet 5** | `claude-sonnet-5`           | 1M / 128K            | $3 / $15 (intro $2 / $10 through 2026-08-31)                               |
+| Claude Sonnet 4.6   | `claude-sonnet-4-6`         | 1M / 128K            | $3 / $15                                                                   |
+| Claude Haiku 4.5    | `claude-haiku-4-5-20251001` | 200K / 64K           | $1 / $5                                                                    |
 
 Opus 4.8 and Sonnet 4.6 are **still active** — a pin to either is valid, not deprecated. Fable 5 is the most capable tier but is priced above Opus: it is **not** the default upgrade (see root `CLAUDE.md` §5 "non voglio pagare" contingency).
 
@@ -109,7 +110,7 @@ Parallel tool use is on by default: return **all** `tool_result` blocks in a **s
 | -------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
 | RAG, reasoning, standard workflow      | `claude-sonnet-5`           | Near-Opus quality on agentic/coding at Sonnet cost; re-baseline tokens (+~30% vs 4.6) |
 | Routing / classification               | `claude-haiku-4-5-20251001` | $1/$5 MTok, fast                                                                      |
-| Critical tasks, architecture, red-team | `claude-opus-5`             | 1M ctx, effort `xhigh`/`max`, 128K output                                             |
+| Critical tasks, architecture, red-team | `claude-opus-5-5`           | 1M ctx, effort `xhigh`/`max`, 128K output                                             |
 | KBLI explanations                      | `claude-haiku-4-5-20251001` | Configured in `kbli_notebook.py`                                                      |
 
 > ⚠️ `scripts/cost_baseline.py` still carries the 4.x price table and scenario mapping. Re-baselining it against the 5-family is deliberately **not** bundled with this doc refresh: the numbers move both from prices and from Sonnet 5's tokenizer, so it needs a measured pass, not a find-and-replace.

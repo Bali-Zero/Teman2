@@ -162,7 +162,13 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     # reading of a fact introduced fourteen sequences later, and the number
     # rising by exactly ten is the receipt that the registry grew by exactly
     # ten. `test_seq21_pack.py` is where those rules' readers are proven.
-    assert len(seq7_report.unused_fact_paths) == 24
+    #
+    # Was 24; Slice A7-B (2026-09-21) adds the 25th, `person.guardian_consent`
+    # — read only by `evaluate_path._apply_minor_privacy_hold`, a PUBLIC
+    # POLICY ADAPTER that runs after `evaluate_with_trace`, never by a
+    # compiled RULE this seq-7 (or any) rulepack could reference. Vocabulary-
+    # only against every pack, by construction — not a staleness to fix.
+    assert len(seq7_report.unused_fact_paths) == 25
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:

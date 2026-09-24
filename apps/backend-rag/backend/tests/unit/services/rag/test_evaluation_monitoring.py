@@ -5,7 +5,7 @@ Covers: safe_register_metric, QueryMetricsRecord, AlertThresholds,
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -196,25 +196,57 @@ class TestRetrievalQualityMonitor:
 
     def test_record_query_low_score_alert(self, monitor):
         """Score below threshold triggers low_score counter."""
-        monitor.record_query_metrics(
-            query="bad query",
-            results=[{"score": 0.1}],
-            latency_ms=100.0,
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "low_score_queries_total") as mock_counter:
+            monitor.record_query_metrics(
+                query="bad query",
+                results=[{"score": 0.1}],
+                latency_ms=100.0,
+            )
+
+        mock_counter.labels.assert_called_once_with(
+            threshold=str(monitor.get_alert_thresholds().min_score),
         )
-        # Should not raise; just records the metric
+        mock_counter.labels.return_value.inc.assert_called_once()
 
     # --- record_retrieval_score ---
 
     def test_record_retrieval_score(self, monitor):
-        monitor.record_retrieval_score(0.75)
-        # Should not raise
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "evidence_score_distribution") as mock_hist:
+            monitor.record_retrieval_score(0.75)
+
+        mock_hist.observe.assert_called_once_with(0.75)
 
     def test_record_retrieval_score_clamped(self, monitor):
-        monitor.record_retrieval_score(1.5)  # Above max
-        monitor.record_retrieval_score(-0.5)  # Below min
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "evidence_score_distribution") as mock_hist:
+            monitor.record_retrieval_score(1.5)  # Above max
+            monitor.record_retrieval_score(-0.5)  # Below min
+
+        assert mock_hist.observe.call_count == 2
+        assert mock_hist.observe.call_args_list[0].args[0] == 1.0
+        assert mock_hist.observe.call_args_list[1].args[0] == 0.0
 
     def test_record_retrieval_score_below_threshold(self, monitor):
-        monitor.record_retrieval_score(0.1)  # Below default 0.3
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "alert_threshold_breaches") as mock_breach:
+            monitor.record_retrieval_score(0.1)  # Below default 0.3 — breach fires
+
+        mock_breach.labels.assert_called_once_with(
+            metric_name="retrieval_score",
+            severity="warning",
+        )
+        mock_breach.labels.return_value.inc.assert_called_once()
+
+        with patch.object(monitoring_module, "alert_threshold_breaches") as mock_breach_ok:
+            monitor.record_retrieval_score(0.9)  # Above threshold — no breach
+
+        mock_breach_ok.labels.assert_not_called()
 
     # --- record_abstain ---
 
@@ -231,29 +263,67 @@ class TestRetrievalQualityMonitor:
     # --- record_cache_access ---
 
     def test_record_cache_hit(self, monitor):
-        monitor.record_cache_access(hit=True)
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with (
+            patch.object(monitoring_module, "cache_hits_total") as mock_hits,
+            patch.object(monitoring_module, "cache_misses_total") as mock_misses,
+        ):
+            monitor.record_cache_access(hit=True)
+
+        mock_hits.inc.assert_called_once()
+        mock_misses.inc.assert_not_called()
 
     def test_record_cache_miss(self, monitor):
-        monitor.record_cache_access(hit=False)
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with (
+            patch.object(monitoring_module, "cache_hits_total") as mock_hits,
+            patch.object(monitoring_module, "cache_misses_total") as mock_misses,
+        ):
+            monitor.record_cache_access(hit=False)
+
+        mock_misses.inc.assert_called_once()
+        mock_hits.inc.assert_not_called()
 
     # --- record_reranker_effectiveness ---
 
     def test_record_reranker_effectiveness(self, monitor):
-        monitor.record_reranker_effectiveness(
-            before_scores=[0.3, 0.4, 0.5],
-            after_scores=[0.6, 0.7, 0.8],
-        )
-        # Should not raise
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "reranker_improvement") as mock_hist:
+            monitor.record_reranker_effectiveness(
+                before_scores=[0.3, 0.4, 0.5],
+                after_scores=[0.6, 0.7, 0.8],
+            )
+
+        mock_hist.observe.assert_called_once()
+        assert mock_hist.observe.call_args.args[0] == pytest.approx(0.3)
 
     def test_record_reranker_empty_lists(self, monitor):
-        monitor.record_reranker_effectiveness([], [])
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with (
+            patch.object(monitoring_module, "reranker_improvement") as mock_hist,
+            patch.object(monitoring_module, "logger") as mock_logger,
+        ):
+            monitor.record_reranker_effectiveness([], [])
+
         # Should return early without error
+        mock_hist.observe.assert_not_called()
+        mock_logger.error.assert_not_called()
 
     def test_record_reranker_negative_improvement(self, monitor):
-        monitor.record_reranker_effectiveness(
-            before_scores=[0.8, 0.9],
-            after_scores=[0.3, 0.4],
-        )
+        from backend.services.rag.evaluation import monitoring as monitoring_module
+
+        with patch.object(monitoring_module, "reranker_improvement") as mock_hist:
+            monitor.record_reranker_effectiveness(
+                before_scores=[0.8, 0.9],
+                after_scores=[0.3, 0.4],
+            )
+
+        mock_hist.observe.assert_called_once()
+        assert mock_hist.observe.call_args.args[0] == pytest.approx(-0.5)
 
     # --- set/get alert thresholds ---
 
@@ -485,7 +555,10 @@ class TestRetrievalQualityMonitor:
     @pytest.mark.asyncio
     async def test_maybe_flush_no_db(self, monitor):
         monitor._db_pool = None
-        await monitor._maybe_flush()  # Should not raise
+        with patch.object(monitor, "flush_to_db", new_callable=AsyncMock) as mock_flush:
+            await monitor._maybe_flush()
+
+        mock_flush.assert_not_called()
 
     # --- _parse_time_range ---
 
@@ -631,6 +704,7 @@ class TestRetrievalQualityMonitor:
     # --- _update_prometheus_metrics ---
 
     def test_update_prometheus_metrics(self, monitor):
+        from backend.services.rag.evaluation import monitoring as monitoring_module
         from backend.services.rag.evaluation.monitoring import QueryMetricsRecord
 
         record = QueryMetricsRecord(
@@ -644,9 +718,24 @@ class TestRetrievalQualityMonitor:
             cache_hit=False,
             result_count=5,
         )
-        monitor._update_prometheus_metrics(record)  # Should not raise
+
+        with (
+            patch.object(monitoring_module, "query_total") as mock_query_total,
+            patch.object(monitoring_module, "query_latency_ms") as mock_latency,
+            patch.object(monitoring_module, "evidence_score_distribution") as mock_evidence,
+        ):
+            monitor._update_prometheus_metrics(record)
+
+        mock_query_total.labels.assert_called_once_with(
+            search_type="hybrid",
+            use_reranker="True",
+        )
+        mock_query_total.labels.return_value.inc.assert_called_once()
+        mock_latency.observe.assert_called_once_with(200.0)
+        mock_evidence.observe.assert_called_once_with(0.8)
 
     def test_update_prometheus_abstained_record(self, monitor):
+        from backend.services.rag.evaluation import monitoring as monitoring_module
         from backend.services.rag.evaluation.monitoring import QueryMetricsRecord
 
         record = QueryMetricsRecord(
@@ -661,7 +750,23 @@ class TestRetrievalQualityMonitor:
             result_count=0,
             abstained=True,
         )
-        monitor._update_prometheus_metrics(record)  # Abstained → no evidence_score observe
+
+        with (
+            patch.object(monitoring_module, "query_total") as mock_query_total,
+            patch.object(monitoring_module, "query_latency_ms") as mock_latency,
+            patch.object(monitoring_module, "evidence_score_distribution") as mock_evidence,
+        ):
+            monitor._update_prometheus_metrics(record)
+
+        mock_query_total.labels.assert_called_once_with(
+            search_type="none",
+            use_reranker="False",
+        )
+        mock_query_total.labels.return_value.inc.assert_called_once()
+        # latency_ms == 0.0 → histogram not observed
+        mock_latency.observe.assert_not_called()
+        # Abstained → no evidence_score observe
+        mock_evidence.observe.assert_not_called()
 
 
 # ============================================================================

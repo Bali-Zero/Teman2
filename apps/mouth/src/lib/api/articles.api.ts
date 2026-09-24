@@ -20,11 +20,12 @@ export interface ComposeRequest {
 }
 
 export interface TLDRSection {
-  should_worry: string;
   what: string;
-  who: string;
-  when: string;
-  risk_level: string;
+  // Absent when the source does not state it; the published card omits the row.
+  should_worry?: string | null;
+  who?: string | null;
+  when?: string | null;
+  risk_level?: string | null;
 }
 
 export interface BaliZeroTake {

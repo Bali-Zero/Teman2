@@ -348,7 +348,10 @@ class TestIngestSuccess:
             return_value=[
                 {
                     "id": "old-current-point",
-                    "payload": {"document_id": "Perpres_43_2011"},
+                    "payload": {
+                        "document_id": "Perpres_43_2011",
+                        "source_basename": "perpres_43_2011.pdf",
+                    },
                 }
             ]
         )
@@ -635,7 +638,12 @@ class TestIngestSuccess:
         )
         service.vector_db.ensure_keyword_payload_index = AsyncMock()
         service.vector_db.scroll_strict = AsyncMock(
-            return_value=[{"id": "old-current", "payload": {}}]
+            return_value=[
+                {
+                    "id": "old-current",
+                    "payload": {"source_basename": "perpres_43_2011.pdf"},
+                }
+            ]
         )
         service.vector_db.set_payload_by_filter = AsyncMock()
         service.vector_db.delete_by_filter = AsyncMock()
@@ -1006,6 +1014,36 @@ class TestIdentityCollisionGuard:
             )
 
         assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_guilt_a_claimant_less_identity_fails_closed(
+        self, service: MagicMock
+    ) -> None:
+        """Points with NEITHER source_basename NOR file_path are unclaimed but
+        not free: ownership can't be verified, so the write is refused rather
+        than reading the silence as a blessing."""
+        self._prime(
+            service,
+            existing=[
+                {
+                    "id": "keyless-point",
+                    "payload": {"document_id": "Permen_1_2026"},
+                }
+            ],
+        )
+
+        p1, p2, p3, p4 = _common_ingest_patches()
+        with p1, p2 as mock_logger, p3, p4:
+            mock_logger.start_ingestion.return_value = "trace_id"
+            result = await service.ingest_legal_document(
+                file_path="/tmp/PMK_1_2026_Coretax_System.pdf",
+                title="PMK 1/2026",
+                category="04_fiscale",
+            )
+
+        assert result["success"] is False
+        assert "identity collision" in str(result.get("error", "")).lower()
+        service.indexer.index_legal_document.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_absolute_path_alone_does_not_read_as_a_foreign_document(

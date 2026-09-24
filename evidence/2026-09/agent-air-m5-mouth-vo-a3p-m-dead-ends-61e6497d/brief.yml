@@ -1,0 +1,76 @@
+gear: 2
+base_sha: bed070266f81699790a922f8d45161f0a756d22f # pragma: allowlist secret
+objective: >-
+  Slice A3'-M: the mouth reads a sourceless named dead end before any backend
+  sends one. DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH is the one code no rule in
+  the signed pack could ever cite a source for; the mouth names it, edits it,
+  shows no door, and the pre-provisioned kill-switch condition it replaces
+  retires (MANDATE-vo.md Slice A3'-M).
+constraints:
+  - >-
+    SOURCELESS_NO_PATH_CODES stays narrow: `requireDecisiveRefs` is the
+    default gate on every other NO_SUPPORTED_PATH code; the exemption fires
+    only when the code is listed AND source_refs is actually empty.
+  - >-
+    No door for a sourceless dead end, even on facts that would otherwise
+    open one (buildNoPathDoors guard).
+  - >-
+    The two dead-end copy strings are byte-equal to
+    kit/a3p-spec-strings-20260922.json, inserted by script, never retyped.
+  - >-
+    Off-limits stays untouched — oracle.css, OracleShell.tsx (read-only,
+    source text read by one test), zantara_core.py, fly.toml, .env*.
+  - >-
+    No new dependency, no paid per-token endpoint, no client PII, no POST to
+    /api/visa-oracle/evaluate.
+acceptance:
+  - text: >-
+      WHEN a NO_SUPPORTED_PATH decision carries DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH
+      with empty source_refs, the adapter SHALL name the dead end instead of
+      throwing RESPONSE_INVARIANT (M1).
+    probe: "engine-adapter.test.ts > Slice A3'-M: a sourceless named dead end (M1, M2) > names a sourceless dead end instead of throwing RESPONSE_INVARIANT (M1)"
+  - text: >-
+      WHILE the code is unlisted, or the ref is non-empty and non-decisive,
+      the adapter SHALL still throw RESPONSE_INVARIANT (M1 innocence).
+    probe: "engine-adapter.test.ts > Slice A3'-M: a sourceless named dead end (M1, M2) > innocence: *"
+  - text: >-
+      EVERY SOURCELESS_NO_PATH_CODES entry SHALL have a SUPPORT_REASON_COPY
+      entry, byte-equal to the spec strings and quoting OracleShell's own
+      consultant CTA label (M2).
+    probe: "engine-adapter.test.ts > Slice A3'-M: a sourceless named dead end (M1, M2) > guards the guard: * / quotes OracleShell's own consultant CTA label *"
+  - text: >-
+      WHEN a sourceless dead-end code is present, buildNoPathDoors SHALL
+      return no door, even on facts (category=other, stay_days=30) that
+      would otherwise open the C1 door (M3).
+    probe: "no-path-doors.test.tsx > buildNoPathDoors — the sourceless dead end names no door (A3'-M M3) > returns no door when DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH is present, even on facts that would otherwise open C1"
+  - text: >-
+      THE mouth SHALL name a demonstrated cause and render an Edit affordance
+      for every undecidable answer the interview enumerates (tree.ts options
+      + unsure, minus ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS) on the sourceless
+      dead end, exactly as it already does on DISCLOSED_ACTIVITY_BOUNDARY_REVIEW (M4).
+    probe: "OutcomeSheet.test.tsx > OutcomeSheet — DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH names the same undecidable causes as the _REVIEW hold (A3'-M M4) > *"
+  - text: >-
+      THE pre-provisioned DISCLOSED_ACTIVITY_BOUNDARY_CONDITION row SHALL
+      retire: NOTICE_CONDITION_COPY drops to thirteen codes and
+      PRE_PROVISIONED_NOTICE_CODES becomes empty (M6).
+    probe: "engine-adapter.test.ts > notices render as named conditions (slice A2) > has all thirteen codes N1 names, * / NOTICE_CONDITION_COPY carries no code the backend cannot emit and never provisioned"
+  - text: >-
+      THE conditions-block honesty scan SHALL cover the new sourceless
+      dead-end copy too (pin stays 68: -2 for M6's retired code, +2 for the
+      new one), and SHALL catch a 'cleared' plant on it (FIX-5).
+    probe: "engine-adapter.test.ts > notices render as named conditions (slice A2) > pins the scan's own iteration: * / guilt: A3'-M FIX-5: 'cleared' plant *"
+consumer_map:
+  - >-
+    apps/mouth's OutcomeSheet renders the NO_SUPPORTED_PATH state for any
+    visitor whose disclosed answer the signed pack cannot decide — today
+    reachable only by the mouth's own fixtures/tests (no backend emits the
+    code yet); Slice A3'-B wires the backend emitter next, serialized after
+    this PR merges and promotes (Bites: M8, conductor-run).
+risks:
+  - >-
+    No backend on main emits DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH yet — this
+    PR ships ahead of the emitter by design (like the OBSOLETE_PRODUCT_CODE /
+    A1' precedent in this same file), so M8's prove-live is a mouth-only
+    chunk-grep + a scratch Playwright spec that fulfills the route locally,
+    never a real backend response, until A3'-B ships and promotes.
+grader: A Claude session verifies before merge, per CLAUDE.md ship sequence.

@@ -40,18 +40,19 @@ _CLAIMS_DIR = _REPO_ROOT / "research" / "visa" / "doctrine-factory" / "claims"
 _SLICE_MANIFEST = (
     _REPO_ROOT / "research" / "visa" / "doctrine-factory" / "e5" / "slice-rule-manifest.json"
 )
-_LEDGER_FILES = [
-    _CLAIMS_DIR / "e2a-claim-ledger.md",
-    _CLAIMS_DIR / "e2b-batch1-claim-ledger.md",
-    _CLAIMS_DIR / "e2b-batch2-claim-ledger.md",
-    _CLAIMS_DIR / "e3a-cf1-resolution.md",
-    # E5 increment 3, seq-9 fold (2026-08-19): wired in for the blocked7
-    # manifest's E23U/E23V/E30E/E30F/E33A/E33B/E33C rules — see
-    # TestLedgerHygiene below for the dual-header + product-state-clause
-    # regressions these two files' fixes are pinned by.
-    _CLAIMS_DIR / "e2b-batch3-claim-ledger.md",
-    _CLAIMS_DIR / "e2c-blocked5-claim-ledger.md",
-]
+# PENDING-ARMS L1107: was a hand-wired 6-file list that silently dropped new
+# ledgers landing on disk (e2b-batch2-conflict-report.md, and later
+# inc4-c2-e31c-claim-ledger.md / inc6-sponsor-status-claim-ledger.md, never
+# had a CI reader). Discovery-based instead: every *.md under the claims dir
+# is fed to the same parser a non-ledger doc (conflict-report/coverage-matrix/
+# dualpath-note) parses to 0 records for (verified empirically — see
+# TestLedgerDiscovery below), so this is a strict superset of the old list
+# with the same merged claim set, and a new ledger file is wired in by
+# construction instead of requiring a human/agent to remember to edit this
+# list. `load_claim_ledgers` itself raises `ClaimLedgerError` on any
+# cross-file duplicate-id state conflict, so widening the file set can only
+# ever surface a real collision, never silently change an existing claim.
+_LEDGER_FILES = sorted(_CLAIMS_DIR.glob("*.md"))
 
 
 def _rec(claim_id: str, state: str) -> ClaimRecord:
@@ -1156,6 +1157,44 @@ class TestLedgerHygiene:
 
         superseded_claims = [cid for cid, rec in ledger.items() if rec.state == "SUPERSEDED"]
         assert superseded_claims == []
+
+
+class TestLedgerDiscovery:
+    """PENDING-ARMS L1107: `_LEDGER_FILES` must be a superset of what's on
+    disk — a hand-maintained list silently dropped 3 real files
+    (e2b-batch2-conflict-report.md, inc4-c2-e31c-claim-ledger.md,
+    inc6-sponsor-status-claim-ledger.md), so their claim ids had no CI
+    reader and a cross-ledger duplicate-id collision involving them would
+    have passed unchecked."""
+
+    def test_ledger_files_is_every_md_in_claims_dir(self) -> None:
+        on_disk = sorted(_CLAIMS_DIR.glob("*.md"))
+        assert _LEDGER_FILES == on_disk
+        assert on_disk, "claims dir must not be empty — a glob typo would pass an empty list too"
+
+    def test_previously_unwired_ledgers_are_now_readable(self) -> None:
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        for claim_id in (
+            "CL-E31C-02",
+            "CL-E31C-03",
+            "CL-E31C-04",
+            "CL-SPONSOR-E31B",
+            "CL-SPONSOR-E31E",
+            "CL-SPONSOR-E31H",
+            "CL-SPONSOR-E31J",
+        ):
+            assert claim_id in ledger, f"{claim_id} missing — its ledger file has no CI reader"
+
+    def test_glob_discovery_does_not_change_the_golden_compile(self) -> None:
+        """Widening from the old 6-file hand list to every *.md on disk must
+        not change what the real slice manifest compiles to — the extra
+        files contribute either new, unreferenced claim ids or 0 records
+        (non-ledger docs: conflict-report/coverage-matrix/dualpath-note)."""
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        manifest = load_manifest(_SLICE_MANIFEST)
+        report = compile_manifest(manifest, ledger)
+        assert report.ok, report.render()
+        assert len(report.compiled) == 26
 
 
 # ---------------------------------------------------------------------------

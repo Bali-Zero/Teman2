@@ -18,11 +18,17 @@ def admin_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_require_admin_accepts_admin_email() -> None:
-    guardian._require_admin({"email": "admin@example.com", "role": "user"})
+    try:
+        guardian._require_admin({"email": "admin@example.com", "role": "user"})
+    except HTTPException as exc:
+        pytest.fail(f"admin-allowlist email must pass _require_admin, got {exc.status_code}: {exc.detail}")
 
 
 def test_require_admin_accepts_admin_role() -> None:
-    guardian._require_admin({"email": "admin@internal", "role": "admin"})
+    try:
+        guardian._require_admin({"email": "admin@internal", "role": "admin"})
+    except HTTPException as exc:
+        pytest.fail(f"admin role must pass _require_admin, got {exc.status_code}: {exc.detail}")
 
 
 def test_require_admin_rejects_non_admin() -> None:

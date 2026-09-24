@@ -61,7 +61,23 @@ vi.mock("@/lib/api", () => ({
     crm: {
       updateClient: mockUpdateClient,
       createInteraction: vi.fn(),
+      deleteClient: vi.fn(),
+      // OverviewTab mounts AiSummaryCard / WaCaseIntelligencePanel, which
+      // fetch on mount. Before CRM-18 nothing in this file asserted inside
+      // OverviewTab, so their absence went unnoticed — it made the whole tab
+      // throw. Same "not generated" shape OverviewTab.test.tsx uses.
+      getClientAiSummary: vi.fn().mockResolvedValue({
+        status: "not_generated",
+      }),
+      getClientWaCaseIntelligence: vi.fn().mockResolvedValue({
+        status: "not_generated",
+        cases: [],
+      }),
+      queryClientIntelligence: vi.fn(),
+      extractPassportForClient: vi.fn(),
     },
+    post: vi.fn(),
+    request: vi.fn(),
   },
 }));
 
@@ -1307,6 +1323,74 @@ describe("GLOB: YearSelector row wraps instead of overflowing at 390 (round-6)",
     expect(
       headerMatch,
       "Tax Overview header row lost its flex-col -> sm:flex-row stacking allowance",
+    ).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CRM-18 — the desk feeds OverviewTab the PREDICATE, not a constant.
+//
+// The rule itself is pinned in delete-client-permission.guard.test.ts and
+// OverviewTab's obedience to `canDeleteClient` in OverviewTab.test.tsx.
+// Neither of those sees the wire between them: hardcoding `canDeleteClient`
+// to `true` in ClientDetailClient passes both suites and still hands every
+// viewer a button the backend answers with 403.
+//
+// This is a source assertion for the same reason the TaxTab block below is
+// one: nothing in this file has ever rendered inside OverviewTab (its
+// fetch-on-mount children are stubbed only for the masthead), and a fixture
+// excavation to reach one button is a bigger change than the button.
+// ---------------------------------------------------------------------------
+
+describe("delete client affordance — desk wiring", () => {
+  const detailSource = readFileSync(
+    join(DETAIL_DIR, "ClientDetailClient.tsx"),
+    "utf8",
+  );
+
+  it("passes viewerCanDeleteClient's answer, never a literal", () => {
+    expect(
+      detailSource.match(
+        /canDeleteClient\s*=\s*viewerCanDeleteClient\(\s*client,\s*currentUserEmail,\s*currentUserRole,\s*\)/,
+      ),
+      "ClientDetailClient no longer derives canDeleteClient from viewerCanDeleteClient(client, currentUserEmail, currentUserRole)",
+    ).toBeTruthy();
+    // `api.isAdmin()` accepts owner/board, which the backend's is_crm_admin
+    // does not: feeding it back in would offer a button that 403s.
+    expect(
+      detailSource.match(/viewerCanDeleteClient\([^)]*isAdmin/),
+      "viewerCanDeleteClient is fed api.isAdmin() — its role set is wider than the backend's",
+    ).toBeNull();
+    expect(
+      detailSource.match(/canDeleteClient=\{(true|false)\}/),
+      "canDeleteClient is wired to a literal — the predicate is bypassed",
+    ).toBeNull();
+    expect(
+      detailSource.match(/canDeleteClient=\{canDeleteClient\}/),
+      "OverviewTab no longer receives the computed canDeleteClient",
+    ).toBeTruthy();
+  });
+
+  it("gates on permission, not on the attention predicate", () => {
+    // `viewerIsNext` lapses on a terminal record. Permission does not: a
+    // completed client assigned to the viewer is still theirs to delete.
+    expect(
+      detailSource.match(/canDeleteClient\s*=\s*viewerIsNext\(/),
+      "canDeleteClient was wired to viewerIsNext — permission would lapse when the record stops moving",
+    ).toBeNull();
+  });
+
+  it("the delete request is sent with the signed-in viewer, not a placeholder", () => {
+    // `api.crm.deleteClient` requires a `deletedBy` argument and sends it as
+    // `?deleted_by=`, but the backend ignores that param: `delete_client`
+    // takes the actor from the auth token (crm_clients.py:1826) and writes
+    // THAT into activity_log.performed_by (crm_clients.py:1855). This only
+    // pins that the desk never passes a placeholder in the argument.
+    expect(
+      detailSource.match(
+        /api\.crm\.deleteClient\(\s*clientId,\s*currentUserEmail,?\s*\)/,
+      ),
+      "deleteClient is no longer called with the signed-in viewer's email",
     ).toBeTruthy();
   });
 });

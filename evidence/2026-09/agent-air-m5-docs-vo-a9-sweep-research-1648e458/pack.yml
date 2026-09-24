@@ -1,0 +1,276 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/brief.yml
+council_run: council.jsonl
+seat_fallback_reason: >-
+  Titolare quorum for R9 is codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max. tp1-qwen3.8-max
+  answered live (arsenal_probe.py --seats tp1-qwen3.8-max: LIVE, 1847ms) and is counted as-is —
+  no substitution needed for it. The other two titolari, codex-gpt-5.6-sol and kimi-code/k3,
+  were probed directly this task (arsenal_probe.py --seats codex,kimi, 2026-09-24T13:12:24Z) and
+  both TIMEOUT'd at the probe's flat 15s ceiling with no answer, so tp1-deepseek-v4-pro (reserve
+  bench) substitutes for one of them, counted toward quorum alongside the live titolare
+  tp1-qwen3.8-max. Quorum (2 distinct COUNCIL_REVIEW_SEATS, both ok:true) is met without
+  invoking `seat_override` — R9 is SATISFIED, not waived.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (docs-only data-capture PR, same shape as the B4-2 precedent
+  evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/). The review side is
+  TWO cross-family TP1 seats (tp1-qwen3.8-max, tp1-deepseek-v4-pro), each run independently
+  against the same task file — the README's A9-addendum claims checked against two JSON
+  excerpts (252-walk census/state/reason-code fields) derived by script from the two committed
+  report JSONs. Both seats' full output is journaled in council.jsonl.
+plan_ref: >-
+  team-lead dispatch (this session, 2026-09-24), task vo-a9-sweep-research — curing PR #7230's
+  red floor (Harness floor recompute run 35994943337: Gear-3 pack authored brief.yml without
+  pack.yml, plus the deprecated ROOT evidence/brief.yml write target). This pack + brief.yml
+  land under the canonical per-PR path (scripts/ci/evidence_paths.py --ref
+  agent/air-m5/docs/vo-a9-sweep-research); the ROOT evidence/brief.yml is restored to
+  origin/main's content in the same commit.
+lanes:
+  - lane: vo-a9-sweep-research-build
+    role: build
+    seat: "vo-sweep-pack (Sonnet 5)"
+  - lane: vo-a9-sweep-research-review-1
+    role: review
+    seat: "tp1-qwen3.8-max — README's A9-addendum claims checked against two JSON excerpts derived from the committed report JSONs; 2 findings, both about excerpt narrowness (see dissent), no README defect found"
+  - lane: vo-a9-sweep-research-review-2
+    role: review
+    seat: "tp1-deepseek-v4-pro (reserve, substituting for an unavailable titolare — see seat_fallback_reason) — same task file; 1 finding, same excerpt-narrowness root cause, no README defect found"
+diff:
+  files: 8
+  net_lines: >-
+    8 files, +16151/-0 (computed from `git diff $(git merge-base origin/main HEAD) --numstat`
+    against the working tree, on this PR's final head — using the merge-base, not a raw
+    `origin/main` diff, since origin/main has since advanced with ~50 unrelated files from other
+    merged PRs that a raw diff would wrongly pull in): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md
+    (+130), research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    (+12432, new file), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
+    (+39), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+276),
+    evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/council.jsonl (+3),
+    evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/{refuter-task.txt
+    (+3245), refuter-qwen.txt (+18), refuter-deepseek.txt (+8)}. The ROOT evidence/brief.yml is
+    RESTORED to origin/main's content since the first commit of this PR, so it carries zero net
+    diff against origin/main and does not appear in this numstat.
+  behaviour_change: >-
+    None. This diff adds a README section and one evidence JSON file under research/, plus the
+    per-PR evidence pack/brief and a council journal, and restores the root evidence/brief.yml
+    to origin/main's content. No code changes, ships into no deployed artifact.
+receipts:
+  - claim: >-
+      The copied JSON's sha256 equals the dispatch-declared digest.
+    cmd: >-
+      shasum -a 256
+      research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    result: "899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808 — matches"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      Census, sequence, http_status, and the 15-walk moved-state diff (vs B4-2b) recomputed
+      directly from the two FULL committed JSONs (not the narrower excerpts handed to the
+      review seats) match the README exactly.
+    cmd: "python3 - (self-contained script, run twice: once before dispatch, once after disposing the council's findings)"
+    result: >-
+      census {SUPPORTED_CANDIDATES: 185, NEEDS_INPUT: 8, NO_SUPPORTED_PATH: 31,
+      HUMAN_REVIEW_REQUIRED: 28} = 252; sequence={23} x252; http_status={200} x252;
+      payload_sha256={e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204} x252;
+      shared walk_ids 252/0 added/0 dropped; 15 moved (13 to SUPPORTED_CANDIDATES, 2 to
+      NEEDS_INPUT), exact walk_id set matches README's table; 28-HUMAN_REVIEW breakdown
+      DISCLOSED_ACTIVITY_BOUNDARY_REVIEW=25/SECOND_HOME_BELOW_THRESHOLD_STUDIO=2/DISCLOSED_CRIMINAL_RECORD_REVIEW=1;
+      new-code set (full reason_codes on both files, not the excerpt) =
+      {E33G_LOCAL_COMPANY_NOT_ALLOWED: 7, STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: 4,
+      E33G_LOCAL_MARKET_NOT_ALLOWED: 2, RETIREMENT_INCOME_BELOW_THRESHOLD: 1} — all match README
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      PII sweep over the new JSON and the README section: no email address, no key named
+      email/phone/passport/npwp/ktp/nik, and the only 10+-digit run is the round constant
+      1000000000 (investment-amount field), twice.
+    cmd: >-
+      grep -Eic email-regex / grep -Eio pii-key-regex / grep -Eo '[0-9]{10,}' over
+      prove-live-a9-seq23-full-sweep-report-20260924.json and README.md
+    result: "0 email hits, 0 PII-key hits, 2 occurrences of 1000000000 (round constant, not applicant-shaped)"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: "Gear 3 is by SIZE (research/** is not hot-zone); recomputed from the real numstat."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <cf> --numstat-file <ns> (git diff origin/main...HEAD)"
+    result: "(3, size)"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      gate-sweep-7230's M1 finding reproduces: `git log origin/main --grep "A3'-B"` returns 2
+      commits, neither of which is A3'-B's own commit (both only mention it as future work).
+    cmd: >-
+      git log origin/main --grep "A3'-B" --format=%h | wc -l ;
+      git log origin/main --format=%s | grep -c "A3'-B"
+    result: "2 (d5843d0e93 A3'-M #7172, 01d1f99b60 #7160); 0 (no commit's own subject is A3'-B)"
+    ts: "2026-09-24 (builder, M5, prior rework round)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      gate-sweep-7230-r2's M1′ finding: pinned to the merge-base (immutable), the same two
+      commands return the same 2/0 result — the README's claim is now stable across the PR's own
+      merge, unlike the unpinned `origin/main` form.
+    cmd: >-
+      git log 587f468fe7 --grep "A3'-B" --format=%h | wc -l ;
+      git log 587f468fe7 --format=%s | grep -c "A3'-B"
+    result: "2 (d5843d0e93 A3'-M #7172, 01d1f99b60 #7160); 0 (no commit's own subject is A3'-B)"
+    ts: "2026-09-24 (builder, M5, this round)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+tests:
+  - "None. This diff adds a README section and a data file and changes no code path. The
+    assertions that matter are the receipts above."
+static:
+  - "PII sweep over prove-live-a9-seq23-full-sweep-report-20260924.json and README.md: clean
+    (see receipts). Same shape as the B4-2 precedent's static PII sweep
+    (evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/pack.yml)."
+runtime_proof: >-
+  None applicable and none claimed — no code ships. Step 8 of the A9 activation ceremony
+  (PROVELIVE-A9-ACTIVATION-REPORT.md, not committed here) already ran 8 targeted prove-live
+  probes against the live engine; this PR's own artefact is a docs capture of the follow-on
+  252-walk sweep, not itself a prove-live action.
+dissent:
+  - seat: "tp1-qwen3.8-max"
+    objection: >-
+      The README's payload_sha256 claim (`e5f791b5…72204` on all 252 walks) is not verifiable
+      from the JSON excerpt handed to the review task (the excerpt omitted the
+      rule_pack.payload_sha256 field to keep the task file small).
+    status: RETRACTED
+    reason: >-
+      Excerpt-narrowness artifact, not a README defect. Verified directly against the FULL
+      committed JSON: `set(w["rule_pack"]["payload_sha256"] for w in walks)` ==
+      {"e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204"}, len 1, all 252
+      walks — matches the README verbatim.
+  - seat: "tp1-qwen3.8-max"
+    objection: >-
+      The README's claim that 4 named reason codes are "new in A9, absent from every walk in
+      B4-2b" is not verifiable from the b42b-excerpt (it carries only walk_id/engine_state, no
+      reason_codes) — the review task's own instructions asked the seat to assume an empty
+      universe if load-bearing, which the seat correctly flagged as an assumption rather than
+      silently accepting.
+    status: RETRACTED
+    reason: >-
+      Excerpt-narrowness artifact, not a README defect. Independently recomputed from BOTH FULL
+      committed JSONs' reason_codes.review_reasons + reason_codes.no_path_reasons (a proper
+      Counter difference, not an assumed-empty universe): the set present in A9 but absent from
+      B4-2b is exactly {E33G_LOCAL_COMPANY_NOT_ALLOWED: 7, STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: 4,
+      E33G_LOCAL_MARKET_NOT_ALLOWED: 2, RETIREMENT_INCOME_BELOW_THRESHOLD: 1} — matches the
+      README exactly, no extra or missing code.
+  - seat: "tp1-deepseek-v4-pro"
+    objection: >-
+      Same as tp1-qwen3.8-max's second finding — the new-reason-codes claim cannot be validated
+      from the b42b-excerpt under the stated assumption, and a wider reading of "load-bearing"
+      would make every A9-only code "new", contradicting the README's short 4-code list.
+    status: RETRACTED
+    reason: >-
+      Same disposition as above: the full-data recomputation (not the excerpt, and not an
+      assumed-empty B4-2b universe) matches the README's 4-code list and counts exactly. No fix
+      made to README.md.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5, REWORK-BUILD, PR comment #issuecomment-5815645718)"
+    objection: >-
+      M1 (MEDIUM) — the README's A9 addendum said ``git log origin/main --grep "A3'-B"` returns
+      no commit`. It returns 2: `d5843d0e93` (A3'-M, #7172) and `01d1f99b60` (#7160), both
+      ancestors of the merge-base, so also on main at sweep time. The ceremony report
+      (PROVELIVE-A9-ACTIVATION-REPORT.md:138) carries the qualified form ("→ no commit; only
+      A3'-0 `01d1f99b60` and A3'-M `d5843d0e93`"); the README dropped the qualifier. The
+      conclusion (A3'-B not built) holds; the by-command claim as literally worded did not
+      reproduce.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md (research/operations/2026-09-22-visa-oracle-live-enumeration/README.md,
+      the `HUMAN_REVIEW_REQUIRED = 28` breakdown paragraph): now states the command returns 2
+      commits by hash/PR, that neither commit's own subject IS A3'-B (a separate `grep -c` over
+      commit subjects returns 0), and that both only MENTION A3'-B as future work — matching the
+      ceremony report's qualified form. Reproduced live this round:
+      `git log origin/main --grep "A3'-B" --format=%h | wc -l` -> `2` (both commits' hashes and
+      PR numbers verified: `d5843d0e93` #7172, `01d1f99b60` #7160);
+      `git log origin/main --format=%s | grep -c "A3'-B"` -> `0`.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5), L1/L4/L6"
+    objection: >-
+      L1 — PR body said `contract_verify.py` returned "all 4 checks PASS" then listed 5 check
+      names; the run returns 5 PASS. L4 — README frontmatter `sources:` omitted the new JSON;
+      `adversarial_review: codex` describes only the original B4-2/B4-2b sections, not the A9
+      addendum (reviewed by the TP1 council). L6 — the PR body's `Bites:` line named "the NEXT
+      re-sweep" as a consumer, which is a future job, not a present one.
+    status: CONFIRMED
+    reason: >-
+      L1 fixed in the PR body (corrected count to 5). L4 fixed in README.md frontmatter (added
+      the new JSON to `sources:`) and body (new "### A9 addendum (2026-09-24, TP1 council)"
+      subsection under the existing `## Adversarial review` heading, naming both TP1 seats, their
+      verdicts, and the 3 findings' disposition — `adversarial_review: codex` is left as-is,
+      since it is true of the original sections and the frontmatter schema
+      (`check_adversarial_review.py`) accepts exactly one scalar value, not a per-section list).
+      L6 fixed in the PR body's `Bites:` line: consumer is now the A3'-B prove-live in this same
+      mandate (the conductor diffs the post-A3'-B live walks against THIS JSON; the gate on
+      #7234 already reads it), observation is the post-merge sha match plus the README section
+      landing on main.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5), L2/L3/L5/L7 — no change made"
+    objection: >-
+      L2 — `refuter-task.txt` (78,510 B) is large; is it needed as evidence? L3 — the review
+      task's excerpts (which left out `payload_sha256` and B4-2b `reason_codes`) are why the
+      TP1 council could not have caught M1 (non-numeric/text claims were outside its scope by
+      construction). L5 — pack-lint NOTICEs (acceptance bullets with no `probe:`, 1 assumption
+      `unverified`, no `spend:`). L7 — the codex/kimi TIMEOUTs are recorded only in
+      `seat_fallback_reason`, not as `ok:false` rows in council.jsonl (`arsenal_probe.py` keeps
+      no log, so they cannot be re-checked after the fact).
+    status: PLAUSIBLE
+    reason: >-
+      L2 — kept: the gate itself called this correct (needed as provenance for why the 3
+      RETRACTED dissents above are RETRACTED, not merely asserted). L3 — accurate description of
+      this pack's own design, not a defect to cure; noted for anyone reading dissent to
+      understand the M1 gap. L5 — cured twice: every `acceptance:` bullet in this pack's sibling
+      `brief.yml` carries a `probe:` (round 2), and the 3 that were self-contained-script
+      placeholders now carry a real runnable `python3 -c "..."` one-liner each, run and verified
+      against the committed JSONs this round (census Counter, sequence/http_status sets, the
+      15-moved-walk count — all three reproduce exactly). The 1 `unverified` assumption
+      and missing `spend:` are left as-is — both are accurate (the sha/activation-id assumption
+      genuinely rests on the dispatch message, not a probe this task can run; `spend:` tracking
+      is not wired into this task's tooling). L7 — accurate; `arsenal_probe.py` has no
+      persistent log to backfill `ok:false` rows from, so this is a real tooling gap in the
+      fleet, not something this pack can fix locally.
+  - seat: "gate-sweep-7230-r2 (fresh Opus 5.5, REWORK-BUILD, PR comment #issuecomment-5815645718 addendum, 2026-09-24T14:28:32Z)"
+    objection: >-
+      M1′ (MEDIUM) — the round-1 cure of M1 said `git log origin/main --grep "A3'-B"` "returns
+      2", present tense against a MOVING ref: after this PR's own squash-merge, the squash
+      commit's message quotes the string "A3'-B" (it names the slice it fixes), so the same grep
+      on `origin/main` post-merge returns 3, and returns 4 again after #7234 (the actual A3'-B
+      build) lands. A claim phrased as a fact about `origin/main` goes stale at the exact moment
+      this PR merges — the thing meant to prove non-existence would start lying the moment it
+      landed.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md per gate-sweep-7230-r2's own cure spec, applied VERBATIM (no rewording):
+      both commands are now pinned to this PR's immutable merge-base `587f468fe7`
+      (`git log 587f468fe7 --grep "A3'-B" --format=%h` and
+      `git log 587f468fe7 --format=%s | grep -c "A3'-B"`), with an explicit sentence noting the
+      same grep on a LATER `origin/main` also matches this PR's own squash commit. Reproduced
+      live this round: `git log 587f468fe7 --grep "A3'-B" --format=%h | wc -l` -> `2`
+      (`d5843d0e93` A3'-M #7172, `01d1f99b60` #7160, both merge-base ancestors);
+      `git log 587f468fe7 --format=%s | grep -c "A3'-B"` -> `0`. Also fixed: README:696
+      "above" -> "below" (the claim it refers to now sits below that sentence, not above it, per
+      the same cure spec).
+residual_risks:
+  - "Both review seats' only findings trace to the review task's excerpt being narrower than the
+    full committed JSON (it dropped payload_sha256 and reason_codes from the B4-2b comparison
+    file to keep the task file a manageable size for a TP1 call). Every finding was disposed by
+    re-deriving the same numbers from the FULL data, not by editing README.md — there was
+    nothing in the README itself to fix."
+  - "This pack SATISFIES R9's council_run quorum (2 distinct COUNCIL_REVIEW_SEATS, both
+    ok:true) rather than declaring seat_override, per the caution in this task's dispatch: a
+    prior gate (#7198, 2026-09-24) reworked a PR whose seat_override claimed 'the only live
+    seat was X' without having measured the others. Here codex-gpt-5.6-sol and kimi-code/k3
+    were directly probed and both TIMEOUT'd (arsenal_probe.py, 15s ceiling) before falling back
+    to tp1-deepseek-v4-pro — the substitution is measured, not assumed, and named in
+    seat_fallback_reason."
+sources:
+  - "research/operations/2026-09-22-visa-oracle-live-enumeration/ — this PR's own artefact"
+  - "evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/ — the B4-2 precedent this pack mirrors (single build lane, cross-family review, evidence dir shape)"
+  - "PROVELIVE-A9-ACTIVATION-REPORT.md (not committed) — the ceremony record this docs capture follows on from, and the source of the qualified A3'-B form the README now matches"
+  - "council.jsonl (this pack's own dir) — the two TP1 refuter runs' full receipts"
+  - "GATE-SWEEP-REPORT-7230.md (not committed) / PR #7230 comment #issuecomment-5815645718 — gate-sweep-7230's REWORK-BUILD verdict (1 MEDIUM, 7 LOW) on head 6138fd5d0e, cured in the prior rework round"
+  - "GATE-SWEEP-REPORT-7230.md addendum / PR #7230 comment, gate-sweep-7230-r2 (2026-09-24T14:28:32Z) — REWORK-BUILD verdict (M1′ MEDIUM, 5 LOW) on head 42fe88da24: the round-1 M1 cure went stale at merge (squash adds a 3rd A3'-B grep hit); cured this round by pinning both commands to the immutable merge-base 587f468fe7, per the gate's own cure spec, applied verbatim"
+pii_scan: clean

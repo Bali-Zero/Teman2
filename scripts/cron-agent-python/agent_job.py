@@ -136,7 +136,23 @@ _TG_ACCEPTED = frozenset({
     "sent", "spooled", "deduped", "logged", "p0_overflow_spooled",
     "p0_unsent_spooled",
 })
-_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+# The gateway's verdict is parsed by the ONE canonical extractor, never by a
+# private regex here: a private `.search()` returns the FIRST `tg_notify:`
+# match, and a P0-unsendable run prints a human diagnostic `tg_notify:` line
+# BEFORE the machine verdict (measured 2026-09-24 — pajak-monitor.log logged
+# `status=P0` every run since 09-10 while the real verdict was the accepted
+# `p0_unsent_spooled`). Resolved the same way as `_tg_gateway()` below:
+# repo-relative first, then the HOME-fork copy (#1), so an import failure
+# never kills the job (#2) — it degrades to an explicit unknown.
+for _cand in (Path(__file__).resolve().parents[2], HOME / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 def _tg_gateway() -> Path | None:
@@ -292,8 +308,7 @@ class AgentJob:
         except Exception as e:
             self.logger.error("telegram_gateway_error", error=str(e))
             return False
-        found = _TG_STATUS_RE.search((err or b"").decode(errors="replace"))
-        status = found.group(1) if found else ""
+        status = extract_gateway_verdict((err or b"").decode(errors="replace")) or ""
         if status not in _TG_ACCEPTED:
             self.logger.warning(
                 "telegram_gateway_rejected", tier=tier,

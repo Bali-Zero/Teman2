@@ -322,6 +322,63 @@ Content of Pasal 2."""
         assert len(chunks) >= 2  # Preamble + at least 2 Pasal
 
     @patch("backend.core.legal.chunker.create_embeddings_generator")
+    def test_split_by_pasal_every_chunk_after_first_is_not_garbage(self, mock_create_embedder):
+        """PENDING-ARMS L847 regression: with 3+ Pasal, the old stride-2 walk
+        over re.split()'s output mis-paired every (num, text) pair after the
+        first -- Pasal 2's chunk got Pasal 3's number as its "text" and
+        Pasal 2's real content leaked into Pasal 3's "number" field. Pin the
+        real, ordered content of every chunk, not just a count.
+        """
+        mock_embedder = MagicMock()
+        mock_create_embedder.return_value = mock_embedder
+        chunker = LegalChunker()
+        text = """Preamble text.
+
+Pasal 1
+Content of Pasal 1.
+
+Pasal 2
+Content of Pasal 2.
+
+Pasal 3
+Content of Pasal 3."""
+
+        chunks = chunker._split_by_pasal(text)
+
+        assert chunks == [
+            "Preamble text.",
+            "Pasal 1\nContent of Pasal 1.",
+            "Pasal 2\nContent of Pasal 2.",
+            "Pasal 3\nContent of Pasal 3.",
+        ]
+
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
+    def test_split_by_pasal_survives_an_intervening_bab_header(self, mock_create_embedder):
+        """A BAB header between two Pasal is real, non-empty text sitting
+        between two PASAL_PATTERN matches -- re.split() puts it in the same
+        "separator" slot that was empty in the simpler fixture above, which
+        the old fixed-stride walk could never account for either way.
+        """
+        mock_embedder = MagicMock()
+        mock_create_embedder.return_value = mock_embedder
+        chunker = LegalChunker()
+        text = """Pasal 1
+Content of Pasal 1.
+
+BAB II
+KETENTUAN LAIN
+
+Pasal 2
+Content of Pasal 2."""
+
+        chunks = chunker._split_by_pasal(text)
+
+        assert chunks == [
+            "Pasal 1\nContent of Pasal 1.",
+            "Pasal 2\nContent of Pasal 2.",
+        ]
+
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_split_by_ayat(self, mock_create_embedder):
         """Test _split_by_ayat method"""
         mock_embedder = MagicMock()

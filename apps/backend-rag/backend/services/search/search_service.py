@@ -456,7 +456,7 @@ class SearchService:
         tier_filter: list[TierLevel] | None,
         collection_override: str | None,
         apply_filters: bool | None,
-    ) -> tuple[list[float], str, Any, dict[str, Any] | None, list[str]]:
+    ) -> tuple[list[float], str, Any, dict[str, Any] | None, list[str], bool]:
         """Prepare common context for search operations (DRY helper).
 
         Extracts shared logic from search() and search_with_reranking():
@@ -474,7 +474,12 @@ class SearchService:
             apply_filters: Whether to apply filters (None = default behavior)
 
         Returns:
-            Tuple of (query_embedding, collection_name, vector_db, chroma_filter, tier_values)
+            Tuple of (query_embedding, collection_name, vector_db, chroma_filter,
+            tier_values, collection_substituted). ``collection_substituted`` is True
+            only when the routed/requested collection has no registered vector_db
+            and this helper silently fell back to ``legal_unified`` — the caller
+            MUST surface it rather than let a substitution ride as if it were the
+            collection actually asked for.
 
         Raises:
             ValueError: If query is empty or user_level is out of range
@@ -523,11 +528,13 @@ class SearchService:
         collection_name = routing_info["collection_name"]
 
         # Get vector DB client
+        collection_substituted = False
         vector_db = self.collection_manager.get_collection(collection_name)
         if not vector_db:
             logger.error("❌ Unknown collection: %s, defaulting to legal_unified", collection_name)
             vector_db = self.collection_manager.get_collection("legal_unified")
             collection_name = "legal_unified"
+            collection_substituted = True
             if not vector_db:
                 raise ValueError("Failed to initialize default collection")
 
@@ -564,7 +571,7 @@ class SearchService:
                 else None
             )
 
-        return query_embedding, collection_name, vector_db, chroma_filter, tier_values
+        return query_embedding, collection_name, vector_db, chroma_filter, tier_values, collection_substituted
 
     async def search(
         self,
@@ -622,6 +629,7 @@ class SearchService:
                 vector_db,
                 chroma_filter,
                 tier_values,
+                collection_substituted,
             ) = await self._prepare_search_context(
                 search_query,
                 user_level,
@@ -742,6 +750,7 @@ class SearchService:
                 "user_level": user_level,
                 "allowed_tiers": tier_values,
                 "collection_used": collection_name,  # NEW: tracking which collection was searched
+                "collection_substituted": collection_substituted,
             }
 
         except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError):
@@ -880,6 +889,7 @@ class SearchService:
             vector_db,
             chroma_filter,
             _tier_values,
+            collection_substituted,
         ) = await self._prepare_search_context(query, user_level, tier_filter, None, apply_filters)
         if METRICS_AVAILABLE and embedding_start:
             rag_embedding_duration.observe(time.time() - embedding_start)
@@ -910,6 +920,7 @@ class SearchService:
             "query": query,
             "results": formatted_results,
             "collection_used": collection_name,
+            "collection_substituted": collection_substituted,
         }
 
     @staticmethod
@@ -1138,6 +1149,7 @@ class SearchService:
                 vector_db,
                 chroma_filter,
                 _tier_values,
+                collection_substituted,
             ) = await self._prepare_search_context(
                 query,
                 user_level,
@@ -1226,6 +1238,7 @@ class SearchService:
                 "total_results": len(formatted_results),
                 "search_type": search_type,
                 "bm25_enabled": query_sparse is not None,
+                "collection_substituted": collection_substituted,
             }
 
             # --- Cache write (non-blocking, TTL from redis_manager config) ---

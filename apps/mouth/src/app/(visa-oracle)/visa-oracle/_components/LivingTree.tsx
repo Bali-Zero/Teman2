@@ -6,12 +6,13 @@ import { ChevronDown, TreePine } from "lucide-react";
 import {
   getProcessModel,
   isEditableTreeStep,
+  walkQuestionIds,
   type OracleNode,
   type ProcessModel,
 } from "../_lib/flow";
 import type { Language } from "../_lib/flow";
-import type { OracleFacts } from "../_lib/tree";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { CATEGORY_KEYS, type OracleFacts } from "../_lib/tree";
+import { dict, translate, type I18nKey } from "../_lib/i18n";
 import { formatFactDisplay } from "./ConfirmationCard";
 import {
   ProcessBranches,
@@ -30,6 +31,7 @@ export interface LivingTreeProps {
    * confirmation card's own Edit buttons already use. Only ever called
    * for a step `isEditableTreeStep` accepts. */
   onEditQuestion: (questionId: string) => void;
+  onSelectCategory?: (category: string) => void;
   /** Present only at the terminal node, and only once the engine has
    * answered: the rail names the products the ENGINE returned and never
    * derives one of its own. */
@@ -38,6 +40,25 @@ export interface LivingTreeProps {
    * may call a question "the fact the engine asked for" only on that
    * evidence — see `getProcessModel`'s own parameter doc. */
   visitedVerdict?: boolean;
+}
+
+/** A read-only comparison of the current route with each purpose route. */
+function branchPreview(facts: OracleFacts, today?: Date) {
+  const currentIds = new Set(walkQuestionIds(facts, today));
+  return Object.fromEntries(
+    CATEGORY_KEYS.map((key) => {
+      const unseen = walkQuestionIds({ ...facts, category: key }, today).filter(
+        (id) => !currentIds.has(id),
+      );
+      const labels = unseen
+        .filter((id) =>
+          Object.prototype.hasOwnProperty.call(dict.en, `tree.${id}`),
+        )
+        .slice(0, 4)
+        .map((id) => `tree.${id}`);
+      return [key, { labels, remainder: unseen.length - labels.length }];
+    }),
+  );
 }
 
 /** The answer already on record for a completed step, rendered next to its
@@ -68,6 +89,7 @@ export function LivingTree({
   current,
   facts,
   onEditQuestion,
+  onSelectCategory,
   outcome = null,
   visitedVerdict = false,
 }: LivingTreeProps) {
@@ -80,6 +102,7 @@ export function LivingTree({
   // comes back -1 and every step reads "pending"); projecting it here means
   // the correction reaches every view instead of the progress line alone.
   const model = getProcessModel(current, facts, visitedVerdict);
+  const previews = branchPreview(facts);
   const trunk = model.trunk;
   const visitedSteps = trunk.filter((step) => step.status !== "pending");
   const breadcrumbSteps = visitedSteps.slice(-4);
@@ -230,6 +253,8 @@ export function LivingTree({
               outcome={outcome}
               reducedMotion={!!reducedMotion}
               onEditQuestion={onEditQuestion}
+              onSelectCategory={onSelectCategory}
+              previews={previews}
             />
           </motion.div>
         )}
@@ -244,6 +269,8 @@ export function LivingTree({
           outcome={outcome}
           reducedMotion={!!reducedMotion}
           onEditQuestion={onEditQuestion}
+          onSelectCategory={onSelectCategory}
+          previews={previews}
         />
       </div>
     </>
@@ -258,6 +285,8 @@ function TreePanel({
   outcome,
   reducedMotion,
   onEditQuestion,
+  onSelectCategory,
+  previews,
 }: {
   language: Language;
   model: ProcessModel;
@@ -266,6 +295,8 @@ function TreePanel({
   outcome: ProcessOutcomeSummary | null;
   reducedMotion: boolean;
   onEditQuestion: (questionId: string) => void;
+  onSelectCategory?: (category: string) => void;
+  previews: Record<string, { labels: string[]; remainder: number }>;
 }) {
   return (
     <div className="oracle-tree">
@@ -339,6 +370,8 @@ function TreePanel({
         model={model}
         variant={variant}
         reducedMotion={reducedMotion}
+        onSelectCategory={onSelectCategory}
+        previews={previews}
       />
 
       <ProcessOutcome

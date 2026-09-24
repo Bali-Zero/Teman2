@@ -54,8 +54,10 @@ export type NotSureHoldReason =
 
 /** How a question's "Not sure?" affordance resolves (design doc §3/§4):
  * either it forces HUMAN_REVIEW_REQUIRED — and `because` NAMES why no
- * conservative default exists for this fact (`NotSureHoldReason`) — or it
- * takes a named conservative branch and the assumption is visibly logged.
+ * conservative default exists for this fact (`NotSureHoldReason`; A3'
+ * (slice A3'-B) turns the `"activity-boundary-a3prime"` reason into a dead
+ * end instead, `NO_SUPPORTED_PATH`, not a hold) — or it takes a named
+ * conservative branch and the assumption is visibly logged.
  * Absent = no NotSure affordance rendered. */
 export type NotSureBehavior =
   | { mode: "human-review"; because: NotSureHoldReason }
@@ -473,6 +475,23 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     dateInput: { labelI18nKey: "q.birth_date.label", maxToday: true },
     whyWeAsk: { i18nKey: "why.birth_date" },
     notSure: { mode: "human-review", because: "history-not-assumable" },
+  },
+  guardian_consent: {
+    id: "guardian_consent",
+    i18nKey: "q.guardian_consent",
+    kind: "branch",
+    group: "identity",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["person.guardian_consent"],
+    },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.guardian_consent" },
+    // A missing guardian is an explicit "no": UNKNOWN would only re-ask it.
   },
   category: {
     id: "category",

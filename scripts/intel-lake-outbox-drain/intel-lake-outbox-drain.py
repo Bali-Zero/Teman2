@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -126,7 +125,37 @@ def main() -> int:
     return 0
 
 
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+def _load_gateway_verdict_extractor():
+    """Load scripts/tg_gateway_verdict.py by FILE PATH, never a package
+    import — this drain has two homes at DIFFERENT depths (see
+    `_find_gateway()` below: the repo nests it one directory down, the flat
+    HOME copy does not), so no single `parents[N]` offset resolves both and
+    a path-based load is the only shape that survives either. Never a
+    private regex `.search()` here — that returns the FIRST `tg_notify:`
+    match, and a P0-unsendable run prints a diagnostic line before the
+    machine verdict. A missing module degrades to an explicit unknown,
+    never a crashed drain (#2)."""
+    here = Path(__file__).resolve().parent
+    for candidate in (
+        here / "tg_gateway_verdict.py",
+        here.parent / "tg_gateway_verdict.py",
+        Path.home() / "nuzantara" / "scripts" / "tg_gateway_verdict.py",
+    ):
+        if candidate.is_file():
+            try:
+                import importlib.util
+
+                spec = importlib.util.spec_from_file_location("_tg_gateway_verdict", candidate)
+                if spec is not None and spec.loader is not None:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    return module.extract_gateway_verdict
+            except Exception:  # noqa: BLE001 — degrade, never crash the drain
+                pass
+    return lambda stderr: None
+
+
+extract_gateway_verdict = _load_gateway_verdict_extractor()
 
 
 def _find_gateway() -> Path | None:
@@ -201,9 +230,9 @@ def _alert_rejected(rejected: int, accepted: int, total: int) -> None:
         return
     # The gateway always exits 0 on purpose and prints its verdict on stderr;
     # reading the exit code would take every refusal for a success (W104).
-    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    if match:
-        logger.info("tg_notify: %s (rejected=%s)", match.group(1), rejected)
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    if verdict:
+        logger.info("tg_notify: %s (rejected=%s)", verdict, rejected)
     else:
         tail = " ".join((proc.stderr or "").split())[-160:]
         logger.warning(

@@ -8,10 +8,10 @@ brain + final on-disk gate ONLY — it never does implementer/grunt work
 itself, and it must never LEAK into subagents by inheritance. Fable 5 held
 that seat until Zero's 2026-08-20 ruling took it out of the workflow
 entirely (CLAUDE.md §5, "Togliere Fable 5 dal workflow, lo uso solo io
-quando voglio"): the final on-disk gate is now **Opus 5 at effort xhigh** —
+quando voglio"): the final on-disk gate is now **Opus 5.5 at effort xhigh** —
 same invariant, different name. The Agent tool's default is "inherit the
-parent model": an orchestrator session on Opus 5 that spawns readers/
-implementers without an explicit `model` burns Opus 5 quota on Sonnet-grade
+parent model": an orchestrator session on Opus 5.5 that spawns readers/
+implementers without an explicit `model` burns Opus 5.5 quota on Sonnet-grade
 work (lived: 6 TAC readers on Fable, 2026-07-14 — the same defect, whichever
 model sits in the orchestrator seat).
 
@@ -821,10 +821,10 @@ def main() -> int:
             "BLOCKED by model_routing_gate (regola OBBLIGATORIA, Zero 2026-07-14, "
             "corretta 2026-08-20): "
             f"Agent spawn {desc!r} senza `model` esplicito erediterebbe il modello di "
-            "sessione (Opus 5) e brucerebbe quota da orchestratore su lavoro da "
+            "sessione (Opus 5.5) e brucerebbe quota da orchestratore su lavoro da "
             "implementer. Ripeti la chiamata dichiarando il modello: model:\"sonnet\" "
             "per reader/implementer/analisi, model:\"haiku\" per grunt meccanico, "
-            "model:\"opus\" solo se il task richiede davvero quel tier. Opus 5 (effort "
+            "model:\"opus\" solo se il task richiede davvero quel tier. Opus 5.5 (effort "
             "xhigh) resta SOLO orchestrazione + final on-disk gate — Fable 5 è fuori "
             "dal workflow (RULED 2026-08-20).",
             file=sys.stderr,

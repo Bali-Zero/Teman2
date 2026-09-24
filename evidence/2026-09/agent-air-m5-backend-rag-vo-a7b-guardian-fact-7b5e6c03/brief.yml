@@ -1,0 +1,99 @@
+task_id: vo-a7b-guardian-fact
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Slice A7-B of MANDATE-vo.md: narrow the Visa Oracle engine's minor privacy
+  hold to an EARNED reason instead of one triggered by age alone. Adds
+  person.guardian_consent as FactPath #57/61 (BOOLEAN, rollout-default
+  UNKNOWN) and gives `_apply_minor_privacy_hold` a third arm: UNKNOWN ->
+  NEEDS_INPUT naming the fact (pass-through preserved if the decision is
+  already HUMAN_REVIEW_REQUIRED from an upstream rule, replicating :1213's
+  existing pass-through); True -> the hold clears; False -> the sole
+  remaining producer of MINOR_GUARDIAN_PRIVACY_REVIEW, now earned by a
+  declared absence of guardian consent rather than by minority alone. The
+  mouth's fact-mapper sends the key as UNKNOWN (contract-only — no question
+  yet, that is Slice A7-M/PR 2), and the OpenAPI contract + 115 walk fixtures
+  + 23 gold-harness personas move with the model.
+constraints:
+  - "No paid per-token API — Claude CLI OAuth only, per the repo ban."
+  - "No PII — this PR touches only engine/contract/fixture code, never client
+    data."
+  - "Cross-app commit sanctioned by CLAUDE.md's Builder Contract clause 1
+    (B3-bis in the mandate): apps/mouth's fact-mapper row, the generated
+    OpenAPI artifacts and the 115 regenerated walk fixtures live in this
+    backend-rag PR because the wire contract and the fixture corpus cannot be
+    proven correct without each other."
+  - "Both other public-policy adapters (`_apply_decisive_source_authority_hold`,
+    `_apply_safety_critical_source_hold`) and the mouth's
+    `requireReviewHoldRefs` left byte-identical — verified via merge-base
+    diff, not assumed."
+acceptance:
+  - "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. ./.venv/bin/pytest
+    backend/tests/services/visa_engine/ — 2502 passed, 15 skipped, 39
+    pre-existing DB-environment errors, 2 pre-existing
+    test_visa_engine_retention_fk_registry.py failures (confirmed
+    byte-identical to origin/main via `git status --porcelain` on that
+    untouched file — asyncpg schema-drift, unrelated to this change)."
+  - "GUILT/innocence proofs on scratch copies (rsync-mirrored worktree root,
+    outside the repo) for B1 (registry kind mutation), B2 (rollout default
+    removed -> 422), B3 (three-arm adapter incl. an out-of-order unit test
+    exercising the pass-through GUILT-c targets), B4 (earned hold: two
+    persona tests, both guards proven byte-identical)."
+  - "apps/mouth vitest for the four touched _lib files
+    (fact-mapper/walk-corpus-determinism/engine-adapter/tree/no-path-doors)
+    — 70 + 428 passed across the runs."
+  - "node scripts/validate-visa-oracle-openapi.mjs — 'Visa Oracle OpenAPI
+    contract valid: /api/visa-oracle/evaluate (5 states)'."
+  - "contract.schema.json / condition.schema.json hand-edits proven
+    content-equal to a fresh `export_schemas()` run into a scratch dir,
+    diffing only the fact-path block."
+consumer_map:
+  - "PR 2 (Slice A7-M) reads `person.guardian_consent` off this PR's OpenAPI
+    contract and `applicant-fact-paths.ts` row to wire the actual interview
+    question the mouth asks."
+  - "The conductor's B10 probe (`probe_evaluate --full-body`) proves this live
+    post-deploy against an E31D payload: an adult birth date must not name
+    the fact; birth date 2012-11-11 with the consent key UNKNOWN must return
+    NEEDS_INPUT naming person.guardian_consent; the same body with the key
+    KNOWN false must return HUMAN_REVIEW_REQUIRED carrying exactly
+    MINOR_GUARDIAN_PRIVACY_REVIEW."
+  - "test_seq19_pack.py's offline gold-replay driver and test_seq21_pack.py's
+    unasked-walk census consume the same adapter change end to end (not new
+    consumers, but pinned literals moved by this PR and re-measured, never
+    hand-typed)."
+risks:
+  - "Rework re-measurement (2026-09-22, after rebasing onto origin/main
+    0027412856): `git diff --numstat $(git merge-base origin/main
+    HEAD)..HEAD | grep -vE 'gold_coverage/(fixtures/walks|personas)/' | awk
+    '{add+=$1; del+=$2} END {print add-del}'` -> net **799** lines
+    (fixtures/personas excluded per B9), **914** all-in without the
+    exclusion. Both numbers moved up from the pre-rework 522/n.a. because
+    the merge-base itself moved forward (0027412856, after #7068/#7094/
+    #7091/#7112) and this rework added its own commits: the L1 dead-branch
+    removal, the L2 isolated UNKNOWN-arm pass-through test (+39), the
+    regenerated OpenAPI pair, and the no-path-doors evidence + exemption
+    restoration (+39/-9 net after the H2 fix). The bulk remains
+    test_evaluate_endpoint.py's TestGuardianConsentArms class plus L2 (222
+    lines total) and the cascading census-table updates in
+    test_interview_walk_census.py (127/58), plus the collateral files
+    outside the mandate's named list (test_seq19_pack.py, test_seq21_pack.py,
+    test_evaluation_trace.py, test_sponsor_type_rollout.py) whose pinned
+    literals the same behavioral change legitimately moves. Already above
+    the 380-440 forecast and SIZE_GEAR2_THRESHOLD=400 at the pre-rework
+    number; still Gear-2 at either re-measured number. Declared Gear-2 per
+    R-SIZE rather than split — one concern, one wire change, per B9."
+  - "A rollback here may revert ONLY the adapter's function arms, B4's
+    exemptions and the census pins — NEVER the FactPath member, the model
+    field, the mapper row or the generated contract: with the mouth already
+    sending the key, removing it makes every evaluation extra_forbidden ->
+    422 (B8)."
+grader: |
+  generator != grader. This PR is opened UNARMED by the builder seat
+  (vo-builder-a7-b); the conductor runs `--list` then the full CI run and
+  arms at 0 FAIL, and a FRESH Opus 5 session performs the on-disk gate per
+  the repo's Ship Sequence — this session neither arms nor merges its own
+  work.
+budget: |
+  Flat-subscription only (Claude CLI OAuth), no paid per-token API calls.
+pii: none

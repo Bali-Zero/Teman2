@@ -1,0 +1,20 @@
+{
+  "qid": "Q08",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan keterbatasan doktrin dan hanya menambahkan fakta per-KBLI yang didukung paket serta verdict turunan."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak menjawab perbedaan umum; seluruh contoh status PMA dan Bali didukung paket."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Menyatakan gap doktrin; klaim per-KBLI, kondisi LSPr, dan hubungan verdict nasional-Bali semuanya didukung rekaman dan aturan derivasi."
+    }
+  ]
+}

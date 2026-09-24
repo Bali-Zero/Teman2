@@ -84,7 +84,9 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     // 2026-09-21 naso PR-5 (residual lot 2): 260 more codes — same rule,
     // ATTENZIONE_FASCIA_BALI Bali axis instead of OK_or_HIGHER_RISK —
     // relabelled declared_gap→located. 1099→839 gaps.
-    expect(gaps).toHaveLength(839);
+    // 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
+    // lot 1/lot 2 by the compiler itself, same relabel. 839→837 gaps.
+    expect(gaps).toHaveLength(837);
     for (const code of gaps) {
       expect(code.intel, `${code.code} intel`).toBeUndefined();
     }

@@ -1,0 +1,20 @@
+{
+  "qid": "P27",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the tax rate absent from Navigator and provides no forbidden figure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because no relevant records cover the requested tax rate."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Declares the tax rate absent and accurately identifies the unrelated package codes without supplying a figure."
+    }
+  ]
+}

@@ -11,6 +11,7 @@ Covers:
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from backend.services.integrations.google_drive_service import GoogleDriveService
@@ -154,8 +155,13 @@ class TestClientLifecycle:
     async def test_close_safe_when_no_client(self):
         svc = _make_service()
         svc._client = None
-        # Must not raise
+        # Must not raise, and must not fabricate/corrupt state as a side effect.
         await svc.close()
+        assert svc._client is None
+        # Service remains usable afterward: closing with no client set must
+        # not poison state such that a later _get_client() misbehaves.
+        new_client = svc._get_client()
+        assert isinstance(new_client, httpx.AsyncClient)
 
 
 # ---------------------------------------------------------------------------

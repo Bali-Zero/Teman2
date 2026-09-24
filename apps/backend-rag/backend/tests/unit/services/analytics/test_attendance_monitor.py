@@ -15,6 +15,7 @@ Covers areas NOT in test_unit_attendance_monitor.py:
 
 from __future__ import annotations
 
+import logging
 from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -316,7 +317,11 @@ class TestPostEmail:
             mock_client.post.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_post_email_http_error(self, monitor: AttendanceMonitor) -> None:
+    async def test_post_email_http_error(
+        self,
+        monitor: AttendanceMonitor,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         import httpx
 
         mock_response = MagicMock()
@@ -333,11 +338,20 @@ class TestPostEmail:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_client
 
-            # Should not raise
-            await monitor._post_email(to="a@b.com", subject="Test", html_body="<p>x</p>")
+            # Should not raise — the HTTP error must be swallowed and logged,
+            # not propagated to the caller.
+            with caplog.at_level(logging.ERROR):
+                await monitor._post_email(to="a@b.com", subject="Test", html_body="<p>x</p>")
+
+        assert "500" in caplog.text
+        assert "a@b.com" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_post_email_connection_error(self, monitor: AttendanceMonitor) -> None:
+    async def test_post_email_connection_error(
+        self,
+        monitor: AttendanceMonitor,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         with patch("backend.services.analytics.attendance_monitor.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(side_effect=ConnectionError("Network down"))
@@ -345,8 +359,13 @@ class TestPostEmail:
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_client
 
-            # Should not raise
-            await monitor._post_email(to="a@b.com", subject="Test", html_body="<p>x</p>")
+            # Should not raise — the connection error must be swallowed and
+            # logged as a warning, not propagated to the caller.
+            with caplog.at_level(logging.WARNING):
+                await monitor._post_email(to="a@b.com", subject="Test", html_body="<p>x</p>")
+
+        assert "Network down" in caplog.text
+        assert "a@b.com" in caplog.text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -376,11 +395,23 @@ class TestSendGentleReminder:
 
 class TestCheckAbsentMembers:
     @pytest.mark.asyncio
-    async def test_no_active_members(self, monitor: AttendanceMonitor) -> None:
+    async def test_no_active_members(
+        self,
+        monitor: AttendanceMonitor,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         monitor._get_active_members = AsyncMock(return_value=[])
+        monitor._get_last_clockin_date = AsyncMock()
+        monitor._send_absent_alert = AsyncMock()
 
-        # Should not raise, just return
-        await monitor.check_absent_members()
+        # Should not raise, and should take the "no active members" early
+        # return — never reaching the per-member scan or the alert email.
+        with caplog.at_level(logging.INFO):
+            await monitor.check_absent_members()
+
+        monitor._get_last_clockin_date.assert_not_awaited()
+        monitor._send_absent_alert.assert_not_awaited()
+        assert "no active members found" in caplog.text
 
     @pytest.mark.asyncio
     async def test_no_absences(self, monitor: AttendanceMonitor) -> None:
@@ -468,8 +499,15 @@ class TestSchedulerLifecycle:
 
     @pytest.mark.asyncio
     async def test_stop_schedulers_noop(self, monitor: AttendanceMonitor) -> None:
-        # Should not raise when not started
+        # Should not raise when not started, and should still normalize
+        # the running flag / task attributes even with nothing to cancel.
+        monitor._running = True
+
         await monitor.stop_schedulers()
+
+        assert monitor._running is False
+        assert monitor._escalation_task is None
+        assert monitor._digest_task is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -104,8 +104,12 @@ class TestCloseSchedulerClient:
 
     @pytest.mark.asyncio
     async def test_close_when_no_client(self) -> None:
-        # Should not raise
+        import backend.services.misc.autonomous_scheduler as mod
+
+        assert mod._client is None
+        # Should not raise, and must not create a client as a side effect.
         await close_scheduler_client()
+        assert mod._client is None
 
     @pytest.mark.asyncio
     async def test_close_when_already_closed(self) -> None:
@@ -354,12 +358,27 @@ class TestAutonomousScheduler:
 
     @pytest.mark.asyncio
     async def test_start_already_running(self, scheduler: AutonomousScheduler) -> None:
+        async def dummy() -> None:
+            pass
+
+        scheduler.register_task("t1", dummy, 60)
         scheduler._running = True
-        await scheduler.start()  # Should return early
+
+        with patch(
+            "backend.services.misc.autonomous_scheduler.asyncio.create_task"
+        ) as mock_create_task:
+            await scheduler.start()  # Should return early
+
+        # Early return means no task loop is (re)scheduled for the already
+        # running scheduler.
+        mock_create_task.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_stop_not_running(self, scheduler: AutonomousScheduler) -> None:
+        assert not scheduler._shutdown_event.is_set()
         await scheduler.stop()  # Should return early without error
+        # Early return means shutdown was never signaled.
+        assert not scheduler._shutdown_event.is_set()
 
     @pytest.mark.asyncio
     async def test_stop_cancels_tasks(self, scheduler: AutonomousScheduler) -> None:

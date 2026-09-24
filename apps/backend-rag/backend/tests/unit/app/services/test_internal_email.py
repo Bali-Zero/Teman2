@@ -117,10 +117,12 @@ class TestSendInternalEmail:
             )
 
         # Will raise pydantic.ValidationError if schema drifts
-        SendEmailRequest(**captured["payload"])
+        validated = SendEmailRequest(**captured["payload"])
+        assert validated.to == "kadek.tax@balizero.com"
+        assert validated.cc == "zero@balizero.com, asya@balizero.com"
 
     @pytest.mark.asyncio
-    async def test_http_error_is_swallowed(self) -> None:
+    async def test_http_error_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock(
             side_effect=httpx.HTTPStatusError(
@@ -138,15 +140,20 @@ class TestSendInternalEmail:
             "backend.app.services.internal_email.get_email_client",
             new=AsyncMock(return_value=mock_client),
         ):
-            # Must not raise
-            await send_internal_email(
-                to="x@balizero.com",
-                subject="x",
-                body="<p>x</p>",
-            )
+            with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
+                # Must not raise — the HTTPStatusError is caught and logged.
+                await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                )
+
+        assert any("HTTP 500" in record.getMessage() for record in caplog.records), (
+            "send_internal_email must log the swallowed HTTP failure, not silently drop it"
+        )
 
     @pytest.mark.asyncio
-    async def test_network_error_is_swallowed(self) -> None:
+    async def test_network_error_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
         mock_client = AsyncMock()
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
@@ -158,12 +165,17 @@ class TestSendInternalEmail:
             "backend.app.services.internal_email.get_email_client",
             new=AsyncMock(return_value=mock_client),
         ):
-            # Must not raise
-            await send_internal_email(
-                to="x@balizero.com",
-                subject="x",
-                body="<p>x</p>",
-            )
+            with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
+                # Must not raise — the ConnectError is caught and logged.
+                await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                )
+
+        assert any("connection refused" in record.getMessage() for record in caplog.records), (
+            "send_internal_email must log the swallowed network failure, not silently drop it"
+        )
 
     @pytest.mark.asyncio
     async def test_raise_on_failure_propagates_http_error(self) -> None:

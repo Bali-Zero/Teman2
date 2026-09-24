@@ -1,0 +1,20 @@
+{
+  "qid": "Q01",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declines to assert paid-up capital or legal basis; KBLI title, Bali openness, and 100% foreign ownership are supported."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Declares the capital data unavailable; OPEN_IN_BALI, 100% foreign ownership, and Menengah Tinggi risk are supported by the served record."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains on the nominal and legal basis; the stated KBLI activity, Bali openness, and 100% foreign ownership are supported."
+    }
+  ]
+}

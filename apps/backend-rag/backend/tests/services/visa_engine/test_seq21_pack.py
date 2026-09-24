@@ -1161,10 +1161,30 @@ class TestCensusReplay:
         walks over a 108 -> 111 unasked corpus, none reading any of the ten
         qualification facts and none named in ``_UNASKED_DRIFT_ALLOWLIST``,
         so they answer identically stripped or not: 92 / 15 / 3 / 1 —
-        SUPPORTED_CANDIDATES only, +3, no other row moves."""
+        SUPPORTED_CANDIDATES only, +3, no other row moves.
+
+        Slice A7-B (2026-09-21) moved the fourth column without touching the
+        walk corpus at all: the ONE previously-held row,
+        ``offshore/family/PARENT/spNat=IT/minor``, carried
+        ``person.guardian_consent`` UNKNOWN like every other walk (the fact
+        was brand new — no fixture in that corpus answered it yet), and the
+        adapter's UnknownFact arm routed an unheld minor decision to
+        ``NEEDS_INPUT`` naming that fact instead of the adapter's own
+        unconditional ``HUMAN_REVIEW_REQUIRED`` hold: 92 / 15 / 4 / 0.
+
+        Slice A7-M (2026-09-22) moves both the first and fourth columns,
+        `guardian_consent` not being one of the ten qualification facts this
+        fixture strips back to UNKNOWN. ``offshore/family/PARENT/spNat=IT/
+        minor`` does not override the new question, takes its FIRST option
+        (`"yes"`), and the adapter's `true` arm passes the decision through
+        UNTOUCHED — it moves NEEDS_INPUT -> SUPPORTED_CANDIDATES. The new
+        sibling walk (`offshore/family/PARENT/spNat=IT/minor/guardian=no`)
+        declares `guardian_consent: "no"` and earns the hold instead:
+        93 / 15 / 3 / 1 — `held` names exactly that one walk, no OTHER
+        candidate anywhere changes."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 92
+        assert census["SUPPORTED_CANDIDATES"] == 93
         assert census["NO_SUPPORTED_PATH"] == 15
         assert census["NEEDS_INPUT"] == 3
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
@@ -1173,7 +1193,14 @@ class TestCensusReplay:
             for label, actual in replayed.items()
             if actual["state"] == "HUMAN_REVIEW_REQUIRED"
         ]
-        assert held == ["offshore/family/PARENT/spNat=IT/minor"]
+        assert held == ["offshore/family/PARENT/spNat=IT/minor/guardian=no"]
+        needs_input = [
+            label for label, actual in replayed.items() if actual["state"] == "NEEDS_INPUT"
+        ]
+        assert "offshore/family/PARENT/spNat=IT/minor" not in needs_input
+        assert "offshore/family/PARENT/spNat=IT/minor" not in [
+            label for label, actual in replayed.items() if actual["state"] == "HUMAN_REVIEW_REQUIRED"
+        ]
 
     def test_with_the_answers_walks_only_gain_the_nine_products(
         self,

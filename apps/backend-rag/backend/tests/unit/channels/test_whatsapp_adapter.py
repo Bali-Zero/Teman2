@@ -10,6 +10,7 @@ Tests:
 - Config validation
 """
 
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock
 
@@ -376,9 +377,18 @@ class TestWhatsAppAdapter:
     async def test_send_status_update_noop(
         self,
         adapter: WhatsAppChannelAdapter,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        # WhatsApp doesn't support typing indicators
-        await adapter.send_status_update("123", "typing")
+        # WhatsApp doesn't support typing indicators: no HTTP client is
+        # configured on `adapter` here, so if this were NOT a true no-op it
+        # would raise trying to reach a client that isn't set up. Confirm it
+        # both does not raise AND leaves an observable debug trace naming the
+        # status it no-op'd on.
+        with caplog.at_level(logging.DEBUG, logger="backend.channels.whatsapp.adapter"):
+            await adapter.send_status_update("123", "typing")
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "no-op" in text
+        assert "typing" in text
 
     async def test_stream_response_accumulates_and_sends(
         self,

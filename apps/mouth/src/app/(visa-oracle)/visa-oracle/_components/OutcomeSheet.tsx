@@ -208,6 +208,12 @@ const REVIEW_GATE_CAUSE_ITEM: Readonly<Record<string, string>> = {
   DISCLOSED_PAST_OVERSTAY_REVIEW: "overstay",
   DISCLOSED_BLACKLIST_ENTRY_REVIEW: "blacklist",
   DISCLOSED_IMMIGRATION_INVESTIGATION_REVIEW: "immigration_investigation",
+  // A3'-M (M4): the one NO_PATH code this row set covers. Unlike every row
+  // above, no `DisclosedReviewFlag` backs it (it is a NO_SUPPORTED_PATH
+  // code, never a review one) — the row exists so ticking "activity
+  // boundary" on the review-gate checklist attributes a cause on THIS dead
+  // end exactly as it already does on `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW`.
+  DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: "activity_boundary",
 };
 
 /**
@@ -243,7 +249,12 @@ export function demonstratedReviewCauses(
       if (value === "unsure") add(questionId);
     }
   }
-  if (code === "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW") {
+  if (
+    code === "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW" ||
+    // A3'-M (M4): the sourceless dead end reads the SAME undecidable-answer
+    // table as the hold above — same cause, different destination state.
+    code === "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"
+  ) {
     for (const [questionId, decidable] of Object.entries(
       ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
     ) as [string, readonly string[]][]) {
@@ -372,9 +383,10 @@ function ReasonList({
   language: Language;
   reasons: readonly OutcomeReason[];
   sources: ReadonlyMap<string, OutcomeSource>;
-  /** Supplied only under HUMAN_REVIEW: the interview whose answers may be
-   * shown as the demonstrated cause of each reason. Absent elsewhere — a
-   * candidate's support reason is not something the applicant "caused". */
+  /** Supplied under HUMAN_REVIEW and, since A3'-M (M4), under
+   * NO_SUPPORTED_PATH too: the interview whose answers may be shown as the
+   * demonstrated cause of each reason. Absent elsewhere — a candidate's
+   * support reason is not something the applicant "caused". */
   causeFacts?: OracleFacts;
   onEditMissingInput?: (questionId: string) => void;
 }) {
@@ -947,6 +959,8 @@ export function OutcomeSheet({
             language={language}
             reasons={outcome.noPathReasons}
             sources={sourceIndex}
+            causeFacts={facts}
+            onEditMissingInput={onEditMissingInput}
           />
           {outcome.alternatives.length > 0 && (
             <>

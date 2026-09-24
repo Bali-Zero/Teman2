@@ -1,0 +1,85 @@
+{
+  "started_utc": "2026-09-22T13:52:44.681823+00:00",
+  "finished_utc": "2026-09-22T13:56:58.935686+00:00",
+  "elapsed_s": 254.3,
+  "corpus": {
+    "path": "scripts/kbli_bench/p2b_corpus.json",
+    "sha256": "487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7"
+  },
+  "answers": {
+    "path": "scripts/kbli_bench/results/2026-09-14-k2-gamma/p2b_answers.jsonl",
+    "sha256": "4dab411dca9aec653c3a95b540be7197fa9bf9634d957423d4e53831113f3ee8"
+  },
+  "dataset": {
+    "path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "sha256": "c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40",
+    "anchor": {
+      "pass": true,
+      "loaded_sha256": "c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40",
+      "declared_by_answer_rows": [
+        "c69a260dba597d6b172996da7b99460f1498c3bb9d9df6f2ca6c9e4f782b2b40"
+      ],
+      "rows_without_declaration": 0
+    },
+    "bali_blocked_census": {
+      "blocked": 519,
+      "records": 1559,
+      "by_status": {
+        "BLOCCATO_CLASSE_RISCHIO": 373,
+        "TERTUTUP": 68,
+        "CHIUSO_MORATORIA_BALI": 48,
+        "NON_CLASSIFICABILE": 17,
+        "CHIUSO_PMA_NO_BESAR": 7,
+        "BLOCCATO_DIPENDE_SCOPE": 2,
+        "CHIUSO_REGOLATORE_SETTORIALE": 2,
+        "CHIUSO_BALI": 1,
+        "CHIUSO_BALI_PROPOSTO": 1
+      }
+    }
+  },
+  "judge": {
+    "model": "gpt-5.6-sol",
+    "judgings_requested": 3,
+    "questions": [
+      "P27",
+      "P28",
+      "P29",
+      "Q01",
+      "Q02",
+      "Q03",
+      "Q04",
+      "Q05",
+      "Q06",
+      "Q07",
+      "Q08",
+      "Q09",
+      "Q10",
+      "Q11",
+      "Q12",
+      "Q13",
+      "Q14",
+      "Q15",
+      "Q16",
+      "Q17",
+      "Q18",
+      "Q19",
+      "Q20",
+      "Q21",
+      "Q22",
+      "Q23",
+      "Q24",
+      "Q25",
+      "Q26"
+    ],
+    "codex_version": "codex-cli 0.149.0",
+    "errors": []
+  },
+  "floors": {
+    "i_zero_fabrications": "0/87",
+    "ii_accuracy": "3/8",
+    "iii_wrongful_abstention": "1/8",
+    "iv_gap_abstention": "21/21"
+  },
+  "gate": false,
+  "judging_decisive": true
+}

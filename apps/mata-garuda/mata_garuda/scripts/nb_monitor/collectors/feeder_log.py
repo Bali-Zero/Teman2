@@ -72,8 +72,10 @@ def compute_global_push_success_rate(
             if isinstance(block, dict):
                 p = block.get("processed", 0)
                 f = block.get("fed", 0)
+                # no_body items are refused before any push is tried: not an attempt.
+                nb = block.get("no_body", 0)
                 if isinstance(p, int):
-                    processed += p
+                    processed += p - (nb if isinstance(nb, int) else 0)
                 if isinstance(f, int):
                     fed += f
     if processed == 0:

@@ -572,6 +572,14 @@ assert_redacted "guilt-pem-private-key [no algorithm]" \
 assert_redacted "guilt-pem-private-key [EC]" \
     "printf -- '-----BEGIN EC PRIVATE KEY-----\\nMHc$PEM_V'" "$PEM_V"
 
+# 4j2. FOUR-DASH RFC-4716 ARMOR (L349, deadline 2026-08-29): `ssh-keygen -e`
+#      emits `---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----` — a space on each
+#      side of BEGIN/END and only four dashes, not five. The 4j anchor above
+#      required five dashes glued to BEGIN, so this form was a separate leak.
+PEM4_V="pem4Body$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+assert_redacted "guilt-pem-private-key [RFC-4716 four-dash]" \
+    "printf -- '---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----\\n$PEM4_V\\n---- END SSH2 ENCRYPTED PRIVATE KEY ----'" "$PEM4_V"
+
 # 4k. THE URL SCHEME BOUND, pinned by the LONGEST real schemes rather than by a
 #     round number. The userinfo anchor was unbounded ([a-zA-Z][a-zA-Z0-9+.-]*),
 #     which retries from every position of a long alphanumeric run and rescans to
@@ -748,6 +756,8 @@ assert_intact "innocence-url-host-port-path-with-at-sign [release path]" \
     "curl 'https://example.test:8443/releases/app@2'" "releases/app@2"
 assert_intact "innocence-pem-certificate-is-public-not-a-key" \
     "printf -- '-----BEGIN CERTIFICATE-----'" "BEGIN CERTIFICATE"
+assert_intact "innocence-pem-four-dash-certificate-is-public-not-a-key" \
+    "printf -- '---- BEGIN CERTIFICATE ----'" "BEGIN CERTIFICATE"
 assert_intact "innocence-pem-public-key-block" \
     "printf -- '-----BEGIN PGP PUBLIC KEY BLOCK-----'" "PUBLIC KEY BLOCK"
 assert_intact "innocence-url-path-colon-at-not-userinfo" \

@@ -1,0 +1,20 @@
+{
+  "qid": "Q14",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the terminology facts absent and identifies available records; no unsupported doctrine asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because supplied KBLI records lack definitions of the three terms."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly refuses to invent the missing general terminology doctrine and explains no supplied KBLI supports it."
+    }
+  ]
+}

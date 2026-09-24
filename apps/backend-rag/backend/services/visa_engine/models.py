@@ -1002,15 +1002,36 @@ _S21_QUALIFICATION_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism an eleventh time, 2026-09-21 (Slice A7-B), for
+# ``person.guardian_consent`` — the minor-hold guardian consent assertion
+# ``evaluate_path._apply_minor_privacy_hold``'s third arm reads. No
+# interview asks this yet — the question ships in a following lane (mouth
+# ``tree.ts``); until it does, every request omits this key and the adapter
+# treats a known minor's UNKNOWN consent as a question to ask
+# (``NEEDS_INPUT``, naming this fact), never as an answer. The default MUST
+# be this declared UNKNOWN/NOT_ASKED object, never ``False``: defaulting to
+# ``False`` would read as "no guardian is available" for every minor in the
+# deployed interview — the exact HUMAN_REVIEW_REQUIRED hold this fact exists
+# to narrow, applied to every minor rather than only the ones who actually
+# declare no guardian.
+# FOLLOW-UP (remove the default): once that question ships in mouth's
+# tree.ts and no client omits this key, per
+# ``TestFactVocabularyExtensionRolloutDefault0921`` in
+# ``test_sponsor_type_rollout.py``.
+_GUARDIAN_CONSENT_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
     with all keys required except the transitional fields documented on
     ``sponsor_type``, the three ``family.stepchild_*``/
     ``family.sponsor_permit_basis`` fields (2026-08-23),
-    ``immigration_renewal_paid`` (2026-08-24) and the ten seq-21
-    qualification facts (2026-09-13) below — all the same rollout
-    mechanism. Field order mirrors ``enums.FactPath``'s
+    ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
+    qualification facts (2026-09-13) and ``person_guardian_consent``
+    (2026-09-21, Slice A7-B) below — all the same rollout mechanism.
+    Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
     grouping.
@@ -1031,6 +1052,17 @@ class ApplicantFactsData(BaseModel):
     person_birth_date: Annotated[DateFact, Field(alias="person.birth_date")]
     person_nationalities: Annotated[CountrySetFact, Field(alias="person.nationalities")]
     person_marital_status: Annotated[MaritalStatusFact, Field(alias="person.marital_status")]
+    # person.guardian_consent — Slice A7-B, 2026-09-21. Same rollout-default
+    # treatment as ``immigration_renewal_paid`` above: no interview asks
+    # this yet, so every already-deployed caller omits this key.
+    # FOLLOW-UP (remove the default): once the guardian-consent question
+    # ships in mouth's tree.ts and no client omits this key, per
+    # ``TestFactVocabularyExtensionRolloutDefault0921`` in
+    # ``test_sponsor_type_rollout.py``.
+    person_guardian_consent: Annotated[
+        BooleanFact,
+        Field(alias="person.guardian_consent", default=_GUARDIAN_CONSENT_ROLLOUT_DEFAULT),
+    ]
     immigration_currently_in_indonesia: Annotated[
         BooleanFact, Field(alias="immigration.currently_in_indonesia")
     ]

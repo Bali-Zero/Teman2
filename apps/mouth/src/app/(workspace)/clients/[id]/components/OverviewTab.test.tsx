@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OverviewTab } from "./OverviewTab";
 import { api } from "@/lib/api";
@@ -12,6 +12,8 @@ vi.mock("@/lib/api", () => ({
     crm: {
       getClientAiSummary: vi.fn(),
       getClientWaCaseIntelligence: vi.fn(),
+      // CRM-18: present so a test can assert this component never reaches it.
+      deleteClient: vi.fn(),
       queryClientIntelligence: vi.fn(),
       extractPassportForClient: vi.fn(),
     },
@@ -62,6 +64,12 @@ const baseProps = {
   formatDate: (d: string) => d,
   formatCurrency: (n: number) => String(n),
   onEditClick: vi.fn(),
+  // CRM-18: the delete affordance is OFF by default here, so every pre-existing
+  // case in this file keeps asserting the desk it asserted before. The two
+  // cases that care turn it on explicitly.
+  onDeleteClick: vi.fn(),
+  canDeleteClient: false,
+  isDeletingClient: false,
   onRefresh: vi.fn().mockResolvedValue(undefined),
   clientId: 42,
 };
@@ -159,5 +167,73 @@ describe("OverviewTab — Needs attention ledger", () => {
     );
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByText("Show all (6)")).toBeTruthy();
+  });
+});
+
+/**
+ * CRM-18 — the delete affordance is rendered only when the parent says the
+ * viewer may have it. `viewerCanDeleteClient` decides that (pinned in
+ * ../__tests__/delete-client-permission.guard.test.ts); these two cases pin
+ * that OverviewTab actually obeys the answer instead of always painting the
+ * button and leaning on the backend's 403 to hide the mistake.
+ */
+describe("OverviewTab — delete client affordance", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.crm.getClientAiSummary).mockResolvedValue({
+      status: "not_generated",
+    } as any);
+    vi.mocked(api.crm.getClientWaCaseIntelligence).mockResolvedValue({
+      status: "not_generated",
+      cases: [],
+    } as any);
+  });
+
+  it("GUILT: renders no delete button when the viewer may not delete", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+        canDeleteClient={false}
+      />,
+    );
+    expect(screen.queryByLabelText("Delete client")).toBeNull();
+    // The edit affordance is untouched — this gate is about one button.
+    expect(screen.getByLabelText("Edit client info")).toBeTruthy();
+  });
+
+  it("INNOCENCE: renders the delete button, and it asks the parent to confirm", () => {
+    const onDeleteClick = vi.fn();
+    render(
+      <OverviewTab
+        {...baseProps}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+        canDeleteClient
+        onDeleteClick={onDeleteClick}
+      />,
+    );
+    const button = screen.getByLabelText("Delete client");
+    fireEvent.click(button);
+    // It never calls the API itself: the confirmation and the request both
+    // belong to ClientDetailClient.
+    expect(onDeleteClick).toHaveBeenCalledTimes(1);
+    expect(api.crm.deleteClient).not.toHaveBeenCalled();
+  });
+
+  it("GUILT: the button is disabled while a delete is already in flight", () => {
+    render(
+      <OverviewTab
+        {...baseProps}
+        expiryAlerts={[]}
+        needsViewerAction={false}
+        canDeleteClient
+        isDeletingClient
+      />,
+    );
+    expect(
+      screen.getByLabelText("Delete client").hasAttribute("disabled"),
+    ).toBe(true);
   });
 });

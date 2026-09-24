@@ -7,6 +7,8 @@ from mata_garuda.workers import nlm_feeder
 
 
 def _item(msg_id, **data):
+    # A real body, so these tests exercise the relevance gate and not the no-body guard.
+    data.setdefault("content", "A paragraph of substance about the item. " * 8)
     return {"id": msg_id, "data": data}
 
 

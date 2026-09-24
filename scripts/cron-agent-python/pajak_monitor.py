@@ -50,6 +50,13 @@ REDIS_EXPIRY = 86400 * 90  # 90 days
 
 DETAIL_FETCH_CAP = 10
 EXTRACTOR_NAME = "pajak_parse.extract_regulation/1"
+# Ledger row `pajak-direct-sources-have-no-zero-yield-alarm` (2026-09-21): both DIRECT
+# pajak.go.id sources once died silently — 0 parsed rows, job still exited `ok` — because
+# `log_step` only records `duration_s`. Labels match the ledger's own wording.
+ZERO_YIELD_SOURCE_LABELS = {
+    "pajak_peraturan": "index-peraturan",
+    "pajak_siaran_pers": "siaran-pers-page",
+}
 # R1 (gate REWORK-BUILD, 2026-09-21): a hung/slow detail fetch used to be able to blow past the
 # job's own `timeout_s`, and the OUTER `asyncio.wait_for(run(), timeout_s)` (browser_job.py, not
 # in this repo) then cancels the whole `run()` coroutine mid-flight — before `_mark_seen`,
@@ -83,23 +90,9 @@ class PajakMonitorJob(BrowserJob):
 
     async def run(self) -> RunResult:
         """Multi-source tax regulation monitoring."""
-        all_items: list[dict] = []
-
-        # Source 1: pajak.go.id peraturan terbaru
-        items_peraturan = await self._fetch_page_items(
-            PAJAK_PERATURAN_URL, source="pajak_peraturan"
-        )
-        all_items.extend(items_peraturan)
-        self.log_step("fetch_peraturan", outputs={"count": len(items_peraturan)})
-
-        await self.random_delay(2.0, 4.0)
-
-        # Source 2: pajak.go.id siaran pers
-        items_siaran = await self._fetch_page_items(
-            PAJAK_SIARAN_PERS_URL, source="pajak_siaran_pers"
-        )
-        all_items.extend(items_siaran)
-        self.log_step("fetch_siaran_pers", outputs={"count": len(items_siaran)})
+        all_items, zero_yield_sources = await self._fetch_direct_sources()
+        if zero_yield_sources:
+            await self._signal_zero_yield(zero_yield_sources)
 
         # Source 3: Brave web search for latest DJP regulations
         search_items = await self._search_djp_updates()
@@ -157,6 +150,70 @@ class PajakMonitorJob(BrowserJob):
         except Exception as e:
             self.logger.warning("fetch_error", url=url, error=str(e))
             return []
+
+    async def _fetch_direct_sources(self) -> tuple[list[dict], list[str]]:
+        """Fetch Source 1 (index-peraturan) and Source 2 (siaran-pers-page) — the two DIRECT
+        pajak.go.id fetches, as opposed to Source 3 (`_search_djp_updates`, a Brave web_search
+        this row does not touch) — and report which of them, if any, parsed 0 rows.
+        """
+        all_items: list[dict] = []
+        zero_yield_sources: list[str] = []
+
+        items_peraturan = await self._fetch_page_items(
+            PAJAK_PERATURAN_URL, source="pajak_peraturan"
+        )
+        all_items.extend(items_peraturan)
+        self.log_step("fetch_peraturan", outputs={"count": len(items_peraturan)})
+        if not items_peraturan:
+            zero_yield_sources.append(ZERO_YIELD_SOURCE_LABELS["pajak_peraturan"])
+
+        await self.random_delay(2.0, 4.0)
+
+        items_siaran = await self._fetch_page_items(
+            PAJAK_SIARAN_PERS_URL, source="pajak_siaran_pers"
+        )
+        all_items.extend(items_siaran)
+        self.log_step("fetch_siaran_pers", outputs={"count": len(items_siaran)})
+        if not items_siaran:
+            zero_yield_sources.append(ZERO_YIELD_SOURCE_LABELS["pajak_siaran_pers"])
+
+        return all_items, zero_yield_sources
+
+    async def _signal_zero_yield(self, sources: list[str]) -> None:
+        """Make a direct source's silent death visible instead of a green `ok` exit — same
+        class as superscar #2 (Esiste≠Armato: green cron masking a dead worker).
+
+        Deliberately does NOT touch `RunResult.status`: `run_job()` (agent_job.py, not in
+        this repo) pages `tier="p0"` on ANY `result.status != "ok"` — turning a zero-yield
+        source into exactly the P0 page this row says to avoid, and a page this PR cannot
+        prevent since `agent_job.py` is out of its touch scope. It also does not raise or
+        abort — Source 3 and any items already fetched from the OTHER direct source still get
+        processed by the rest of `run()` exactly as before.
+
+        Instead, two channels the job already has: a structured per-source warning log
+        (greppable, and what `_publish_redis_event`/`_reflect` read the ledger through), and
+        a `digest`-tier Telegram heartbeat (never `p0`; never `log` either — `log` spools to
+        disk only and is never sent, see the tier comment below), deduped so a source stuck
+        at 0 for many
+        consecutive runs costs one message plus a counter, not a flood — the ledger's "N
+        consecutive runs" framing without a new state store to track N in.
+        """
+        for source in sources:
+            self.logger.warning("pajak_direct_source_zero_yield", source=source)
+        msg = (
+            "⚠️ Pajak Monitor — zero-yield direct source(s): "
+            + ", ".join(sources)
+            + "\nDJP markup may have moved again — check pajak_parse.py."
+        )
+        # tier="digest": "log" spools to disk only (tg_notify.py) and is never sent — a
+        # footer count at best, the exact silence this row cures. "p0" is out because
+        # run_job() already pages p0 on any non-"ok" status, and this must not page.
+        ok = await self.send_telegram(msg, tier="digest", dedup_key="pajak-zero-yield")
+        self.log_step(
+            "zero_yield_signal",
+            outputs={"sources": sources},
+            side_effect="pajak_zero_yield_alert" if ok else None,
+        )
 
     async def _enrich_peraturan_details(self, items: list[dict]) -> int:
         """Fetch the detail page for NEW peraturan items and attach the extracted

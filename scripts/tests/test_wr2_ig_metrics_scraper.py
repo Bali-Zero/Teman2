@@ -14,9 +14,11 @@ widened which KEY was searched, not which VALUE was trusted).
 """
 from __future__ import annotations
 
+import fcntl
 import importlib.util
 import json
 import sys
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
@@ -248,3 +250,71 @@ def test_main_skip_path_also_completes_for_old_schema_entry(tmp_path, monkeypatc
 
     assert rc == 0
     assert "skip bali-pma-rental-crackdown" in capsys.readouterr().out
+
+
+def test_main_backup_is_the_pre_run_queue(tmp_path, monkeypatch):
+    # a backup written after the loop mutated the queue is the NEW state, so a
+    # rollback from it restores nothing.
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+        "engagement_metrics": None,
+    }
+    queue_path.write_text(json.dumps([entry]))
+    before = queue_path.read_text()
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path)])
+    monkeypatch.setattr(
+        scraper, "fetch_metrics",
+        lambda media_id, token: {"likes": 5, "source": "ig_metrics_scraper",
+                                  "scraped_at": "2026-07-17T09:00:00+00:00"},
+    )
+
+    assert scraper.main() == 0
+    baks = list(tmp_path.glob("queue.json.bak-scraper-*"))
+    assert len(baks) == 1
+    assert baks[0].read_text() == before
+    assert json.loads(queue_path.read_text())[0]["engagement_metrics"]["likes"] == 5
+
+
+def test_main_writes_under_the_queue_lock(tmp_path, monkeypatch):
+    # another writer holds the queue lock and appends an item while the scraper
+    # is between fetch and write: the scraper must wait and keep that item.
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+        "engagement_metrics": None,
+    }
+    queue_path.write_text(json.dumps([entry]))
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path)])
+    monkeypatch.setattr(scraper.time, "sleep", lambda s: None)
+    monkeypatch.setattr(
+        scraper, "fetch_metrics",
+        lambda media_id, token: {"likes": 5, "source": "ig_metrics_scraper",
+                                  "scraped_at": "2026-07-17T09:00:00+00:00"},
+    )
+    rc: list[int] = []
+    with open(queue_path.with_suffix(".lock"), "w") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: rc.append(scraper.main()))
+        t.start()
+        t.join(0.5)
+        assert t.is_alive()  # blocked on the lock
+        queue = json.loads(queue_path.read_text())
+        queue.append({"item_id": "other-writer", "state": "drafted"})
+        queue_path.write_text(json.dumps(queue))
+        fcntl.flock(lock_fh, fcntl.LOCK_UN)
+    t.join(10)
+    assert rc == [0]
+    updated = json.loads(queue_path.read_text())
+    assert [i["item_id"] for i in updated] == ["bali-pma-rental-crackdown", "other-writer"]
+    assert updated[0]["engagement_metrics"]["likes"] == 5

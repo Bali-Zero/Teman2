@@ -57,6 +57,13 @@ PII_SAMPLES: dict[str, str] = {
     # magic-link bearer and the session secret it establishes on success.
     "token": "t0k3n-aB3dEf9K2mN8pQ7rS5uV1wX6yZ",
     "account_session_secret": "sess-9xQ2mK7vL4pR8tY1wZ3nC6hJ0aB",
+    # Added 2026-09-24 (L1405/L1437): "token" above is exact-match only, so it
+    # does NOT cover a key literally named access_token/refresh_token/
+    # csrf_token — Drive OAuth (google_drive_service.py row/response dicts)
+    # and the auth-cookie bearer (cookie_auth.py) respectively.
+    "access_token": "fake-at-aB3dEf9K2mN8pQ7rS5uV1wX6yZ",
+    "refresh_token": "fake-rt-aB3dEf9K2mN8pQ7rS5uV1wX6yZ",
+    "csrf_token": "csrf-9xQ2mK7vL4pR8tY1wZ3nC6hJ0aBfake",
 }
 
 
@@ -341,6 +348,38 @@ def test_redacts_account_session_secret_in_extra():
             "outcome_kwargs": {
                 "account_session_secret": PII_SAMPLES["account_session_secret"],
                 "result_session_secret": PII_SAMPLES["account_session_secret"],
+            }
+        }
+    }
+    _assert_no_pii(_before_send(event, {}))
+
+
+# --------------------------------------------------------------------------- #
+# L1405/L1437 (2026-09-24): bare "token" is exact-match only and does not
+# cover access_token/refresh_token/csrf_token — Drive OAuth row/response
+# dicts and the auth-cookie bearer respectively.
+# --------------------------------------------------------------------------- #
+def test_redacts_drive_oauth_access_and_refresh_token():
+    event = {
+        "extra": {
+            "token_data": {
+                "access_token": PII_SAMPLES["access_token"],
+                "refresh_token": PII_SAMPLES["refresh_token"],
+            }
+        }
+    }
+    _assert_no_pii(_before_send(event, {}))
+
+
+def test_redacts_auth_cookie_jar_tokens():
+    """request.cookies is a plain dict whose KEYS are the cookie names
+    themselves (`nz_access_token`, `nz_csrf_token`) — not a generic
+    `access_token`/`csrf_token` key."""
+    event = {
+        "request": {
+            "cookies": {
+                "nz_access_token": PII_SAMPLES["access_token"],
+                "nz_csrf_token": PII_SAMPLES["csrf_token"],
             }
         }
     }

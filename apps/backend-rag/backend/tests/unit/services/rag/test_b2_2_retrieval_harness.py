@@ -824,7 +824,7 @@ class TestA55CollectionResolution:
 
     async def test_legal_unified_itself_unresolvable_is_still_a_hard_stop(self) -> None:
         """When even the substitution target is absent, production raises
-        ValueError (search_service.py:531-532) — the harness's one
+        ValueError (search_service.py:538-539) — the harness's one
         remaining hard stop for collection resolution."""
         with pytest.raises(rh.RetrievalError, match="substitution target"):
             await rh.run_query(
@@ -834,7 +834,8 @@ class TestA55CollectionResolution:
             )
 
     def test_search_service_substitution_shape_parity(self) -> None:
-        """A55_1 parity pin: search_service.py:526-532 must keep this
+        """A55_1 parity pin: search_service.py:532-539 (shifted from 526-532
+        by L2104's `collection_substituted` flag, 2026-09-24) must keep this
         literal shape (get_collection -> None -> log + substitute
         'legal_unified' -> get_collection('legal_unified') -> raise
         ValueError if STILL None), or this harness's replica in
@@ -842,7 +843,7 @@ class TestA55CollectionResolution:
         re-verified by hand before this pin is updated."""
         path = _REPO_ROOT / "backend" / "services" / "search" / "search_service.py"
         lines = path.read_text(encoding="utf-8").splitlines()
-        window = "\n".join(lines[525:532])  # 526-532, 1-indexed
+        window = "\n".join(lines[531:539])  # 532-539, 1-indexed
         assert "get_collection(collection_name)" in window
         assert "if not vector_db" in window
         assert 'get_collection("legal_unified")' in window

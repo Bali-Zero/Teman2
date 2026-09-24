@@ -1,0 +1,8 @@
+tp1_call: credential source: env
+VERDICT: BLOCK
+
+1. Census counts (claim 1): recomputed from a9-excerpt.json as SUPPORTED_CANDIDATES=185, NEEDS_INPUT=8, NO_SUPPORTED_PATH=31, HUMAN_REVIEW_REQUIRED=28, total=252. Matches exactly.
+2. Sequence and http_status (claims 2 & 3): all 252 entries have sequence=23 and http_status=200. No exceptions.
+3. Walk_id sets and state transitions (claim 4): the walk_id sets in a9-excerpt.json and b42b-excerpt.json are identical (252 shared, 0 added, 0 dropped). Exactly 15 walks changed engine_state, all from HUMAN_REVIEW_REQUIRED in B4-2b: 13 to SUPPORTED_CANDIDATES and 2 to NEEDS_INPUT, matching the listed walk_ids. The remaining 237 walks retain the same engine_state in both files.
+4. Review reasons breakdown (claim 5): among the 28 HUMAN_REVIEW_REQUIRED walks in A9, <REDACTED> appears 25 times, <REDACTED> appears 2 times, and <REDACTED> appears 1 time. Sum=28, no other codes.
+5. Claim 6 (new reason codes) is unsupported by the attached b42b-excerpt.json. The excerpt contains only walk_id and engine_state; it carries no review_reasons or no_path_reasons. The problem statement instructs us to assume the universe of reason codes in B4-2b is disjoint (i.e., empty) and to flag if that assumption is load-bearing. Under that assumption, every reason code present in A9 would be “absent from B4-2b,” not merely the four listed codes. The a9-excerpt.json contains many additional reason codes (e.g., <REDACTED>, AGE_BELOW_55, <REDACTED>, etc.) that would also qualify, so the README’s short list is inconsistent with the data we can actually verify. The claim therefore cannot be validated with the provided excerpts and appears incorrect under the required assumption.

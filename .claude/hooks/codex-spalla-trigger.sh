@@ -542,7 +542,13 @@ ANCHORS = (
     #     followed immediately by the dashes missed one of the commonest private-key
     #     formats there is. A CERTIFICATE, a PUBLIC KEY and a CERTIFICATE REQUEST are
     #     all still innocent -- none of them contains the words PRIVATE KEY.
-    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY[A-Z ]*-----",
+    #     THE FOUR-DASH ALTERNATIVE (L349, deadline 2026-08-29): `ssh-keygen -e`
+    #     emits RFC-4716 armor, `---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----` --
+    #     four dashes with a SPACE on each side of BEGIN/END, not the five-dash
+    #     OpenSSL form above. The two forms do not share a prefix length, so
+    #     this is a second alternative, not a quantifier on the first.
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY[A-Z ]*-----"
+    r"|---- BEGIN [A-Z0-9 ]*PRIVATE KEY[A-Z ]* ----",
     # 3. URL userinfo: scheme://user:<secret>@host. The whole userinfo form is
     #    the anchor, so a bare scheme:// in an innocent URL does not fire.
     #     ANCHORED ON :// ITSELF, with no scheme pattern at all -- and the two

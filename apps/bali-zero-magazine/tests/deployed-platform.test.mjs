@@ -115,5 +115,9 @@ test("automation reference includes repo-canon magazine jobs without rewriting l
   assert.match(reference, /com\.balizero\.magazine\.morning/);
   assert.match(reference, /08:15 WITA/);
   assert.match(reference, /com\.balizero\.magazine\.breaking/);
-  assert.match(reference, /600s/);
+  // The table is generated from the plist: StartInterval 600 renders as "every 10m".
+  assert.match(
+    reference,
+    /`com\.balizero\.magazine\.breaking`[^\n]*\|\s*(?:every 10m|600s)\s*\|/,
+  );
 });

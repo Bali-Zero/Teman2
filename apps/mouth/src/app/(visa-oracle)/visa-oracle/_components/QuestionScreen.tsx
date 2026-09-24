@@ -154,6 +154,7 @@ export function QuestionScreen({
           language={language}
           i18nKey={question.whyWeAsk.i18nKey as I18nKey}
           decisionMapping={question.decisionMapping}
+          variant="inline"
         />
       )}
 

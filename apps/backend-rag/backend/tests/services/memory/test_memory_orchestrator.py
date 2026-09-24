@@ -5,6 +5,7 @@ Tests mock AlertService to verify the correct alert level, title, and metadata
 are sent without requiring actual Telegram connectivity.
 """
 
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -47,15 +48,21 @@ class TestAlertCriticalFailure:
         assert "Connection refused" in call_kwargs["message"]
 
     @pytest.mark.asyncio
-    async def test_handles_alert_failure_gracefully(self) -> None:
+    async def test_handles_alert_failure_gracefully(self, caplog) -> None:
         orch = _make_orchestrator()
 
+        caplog.set_level(logging.WARNING)
         with patch(
             "backend.services.monitoring.alert_service.get_alert_service",
             side_effect=Exception("Telegram unreachable"),
         ):
-            # Should NOT raise
-            await orch._alert_critical_failure([("test", "error")])
+            # Should NOT raise, and the swallowed exception must be logged
+            # (not silently dropped).
+            result = await orch._alert_critical_failure([("test", "error")])
+
+        assert result is None
+        assert "Could not send Telegram alert for critical failure" in caplog.text
+        assert "Telegram unreachable" in caplog.text
 
     @pytest.mark.asyncio
     async def test_multiple_failures_in_message(self) -> None:
@@ -136,15 +143,21 @@ class TestAlertDegradedMode:
         }
 
     @pytest.mark.asyncio
-    async def test_handles_alert_failure_gracefully(self) -> None:
+    async def test_handles_alert_failure_gracefully(self, caplog) -> None:
         orch = _make_orchestrator()
 
+        caplog.set_level(logging.DEBUG)
         with patch(
             "backend.services.monitoring.alert_service.get_alert_service",
             side_effect=Exception("Telegram down"),
         ):
-            # Should NOT raise
-            await orch._alert_degraded_mode([("test", "error")])
+            # Should NOT raise, and the swallowed exception must be logged
+            # (not silently dropped).
+            result = await orch._alert_degraded_mode([("test", "error")])
+
+        assert result is None
+        assert "Could not send Telegram alert for degraded mode" in caplog.text
+        assert "Telegram down" in caplog.text
 
 
 # ═══════════════════════════════════════════════════════════════

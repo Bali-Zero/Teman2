@@ -1,0 +1,20 @@
+{
+  "qid": "Q13",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "abstained",
+      "reason": "Gate rejected the response without asserting any regulatory facts."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Correctly denies universality and matches each packaged code’s 100% cap and derived Bali verdict."
+    },
+    {
+      "run": 3,
+      "verdict": "abstained",
+      "reason": "Gate rejected the response without asserting any regulatory facts."
+    }
+  ]
+}

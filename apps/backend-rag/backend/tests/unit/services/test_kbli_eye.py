@@ -256,7 +256,11 @@ def test_every_unlocated_record_withholds_cap_and_condition(records: list[dict])
     # leaves RESIDUAL and whose Bali overlay reads ATTENZIONE_FASCIA_BALI —
     # identical rule to lot 1, Bali axis only — relabelled declared_gap→located
     # under the same Pasal 3(1)(d) + 3(2) basis. 1099→839 unlocated.
-    assert len(unlocated) == 839
+    # 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 reached by lot
+    # 1/lot 2's own rule (real OSS RBA 2025 per_skala rows, nothing
+    # withholding them) but not yet listed — carried into both lot specs and
+    # relabelled declared_gap→located the same way, 839→837 unlocated.
+    assert len(unlocated) == 837
     for record in unlocated:
         cap, basis, verified = KBLIEye._foreign_cap(record)
         assert (cap, basis, verified) == (None, None, False)
@@ -288,9 +292,13 @@ def test_umkm_reserved_is_tri_state_and_provenance_gated(records: list[dict]) ->
     # 2026-09-21 naso PR-5 (residual lot 2): same reasoning, 260 more codes
     # (the ATTENZIONE_FASCIA_BALI band) located + TERBUKA + named by no
     # Lampiran II row: 332→592 False / 1194→934 None. True stays 33.
+    # 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
+    # lot 1/lot 2 the same way — located + TERBUKA + named by no Lampiran II
+    # row, so both move from "unknown" to explicit NOT-reserved: 592→594
+    # False / 934→932 None. True stays 33.
     assert verdicts.count(True) == 33
-    assert verdicts.count(False) == 592
-    assert verdicts.count(None) == 934
+    assert verdicts.count(False) == 594
+    assert verdicts.count(None) == 932
     named = {r["kode_kbli_2025"] for r in records if KBLIEye._umkm_reserved(r) is True}
     terbuka = {
         r["kode_kbli_2025"] for r in records if _located(r) and r.get("pma_status") == "TERBUKA"
@@ -331,7 +339,10 @@ def test_only_located_zero_caps_enter_the_rejected_bucket(records: list[dict]) -
     # 2026-09-21 naso PR-5 (residual lot 2): 260 more codes located, all
     # 100% (rule pin requires pma_max_asing == 100), so the rejected bucket
     # is untouched again: 460→720 located / 96 rejected unchanged.
-    assert len(located) == 720
+    # 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
+    # lot 1/lot 2, both 100% (same rule pin), so rejected is untouched again:
+    # 720→722 located / 96 rejected unchanged.
+    assert len(located) == 722
     assert len(new_rejected) == 96
     assert new_rejected <= located
 

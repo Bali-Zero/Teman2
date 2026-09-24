@@ -1,0 +1,33 @@
+gear: 1
+base_sha: 60eab553d1ff36e9cc6591518947cc992241495a # pragma: allowlist secret
+objective: >-
+  Slice A3'-0: route an evaluate_path.py edit to the mouth tests that read it.
+  apps/mouth's engine-adapter.test.ts and OutcomeSheet.test.tsx both read this
+  exact backend file directly; today the classifier puts frontend-tests in
+  would_skip on a backend-only edit, so a drift lands undetected before the
+  A3'-B slice ships (RULED, MANDATE-vo.md Slice A3'-0).
+constraints:
+  - Change only scripts/ci/change_map.py, scripts/ci/test_change_map.py and this brief.
+  - EXACT_RULES entry only, never a directory/prefix rule.
+  - The pre-existing test_scripts_coupling_census_is_not_stale failure (an
+    unrelated script, intel-lake-router-cron-standalone.py) is untouched —
+    reported, not cured.
+acceptance:
+  - text: >-
+      WHEN evaluate_path.py alone is classified, suggested_jobs SHALL be
+      exactly [backend-tests, frontend-tests, e2e-tests].
+    probe: "ChangeMapTests.test_guilt_evaluate_path_edit_also_runs_frontend"
+  - text: >-
+      WHEN A3'-B's six backend paths (five real files plus evaluate_path.py,
+      excluding the mouth test file on purpose) are classified together,
+      frontend-tests SHALL still be in suggested_jobs.
+    probe: "ChangeMapTests.test_guilt_evaluate_path_edit_also_runs_frontend"
+  - text: >-
+      WHILE a sibling file in the same package (engine.py) is classified,
+      it SHALL NOT couple to frontend-tests.
+    probe: "ChangeMapTests.test_innocence_sibling_visa_engine_files_do_not_couple_to_frontend"
+consumer_map:
+  - >-
+    A3'-B's own CI: .github/workflows/security.yml:180 copies the classifier
+    from the BASE ref, so only a merged coupling protects A3'-B's backend-only
+    commits from skipping the two mouth readers.

@@ -10,12 +10,18 @@ Pins the §1.4 REV-4b frozen procedures against silent drift:
 - the ISO 2859-1 derivation rule (Ac=0 diagonal + 100%-inspection edge) and
   the spec-frozen Tier-1/Tier-2 seed-list sizes (46 / 16) against the REAL
   canonical (a drift there breaks pre-registration and must fail loudly).
+- the frozen seed-lists FILE (`phase0_seed_lists_rev4b.json`) — pinned
+  against a hand-edit, and the §1.5 freeze-the-sample behaviour of
+  `cmd_aql()`: growth (a code newly entering the predicate) is recorded as
+  a `post_registration_candidate`, never folded into tier1/tier2; a frozen
+  code leaving the predicate or vanishing from the canonical is FATAL.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -220,6 +226,190 @@ def test_aql_rule_and_frozen_seed_lists(gate_env):
     assert out["acceptance_number_Ac"] == 0
     assert out["sample_size_n"] == 1250
     assert out["rejection_number_Re"] == 1
+
+
+# ---------------------------------------------------------------------------
+# frozen seed lists (§1.5): freeze-the-sample, not a count (2026-09-23 cure)
+# ---------------------------------------------------------------------------
+
+def _derive_tiers(canonical: dict) -> tuple[list[str], list[str]]:
+    """The §1.3 tier1/tier2 predicates, re-derived here independently of
+    phase0_gate so the frozen file is judged by a second implementation."""
+    pop = [r for r in canonical["data"] if r.get("_l2_source") == "OSS_RBA_resiko_2025"]
+    tier1 = sorted(r["kode_kbli_2025"] for r in pop
+                   if r.get("status_mapping") == "MATCH_CON_AGGREGAZIONE" and len(r.get("pp28_sources") or []) == 1)
+    tier2 = sorted(r["kode_kbli_2025"] for r in pop
+                   if r.get("status_mapping") == "MATCH_LANGSUNG"
+                   and (r.get("pp28_sources") or [None])[0] not in (None, r["kode_kbli_2025"]))
+    return tier1, tier2
+
+
+def _canonical_at_vintage(frozen: dict):
+    """The canonical blob as of the frozen file's own `canonical_source_commit`,
+    or None when that object is not in this checkout (CI checks out at depth 1).
+    Returns (payload, sha256_of_blob)."""
+    commit = frozen["canonical_source_commit"]
+    path = frozen["canonical_path"]
+    repo = Path(gate.__file__).resolve().parents[2]
+    probe = subprocess.run(["git", "cat-file", "-e", f"{commit}:{path}"], cwd=repo, capture_output=True)
+    if probe.returncode != 0:
+        return None
+    blob = subprocess.run(["git", "cat-file", "blob", f"{commit}:{path}"], cwd=repo, capture_output=True, check=True).stdout
+    return json.loads(blob.decode("utf-8")), hashlib.sha256(blob).hexdigest()
+
+
+@pytest.mark.skipif(not gate.CANONICAL_PATH.exists(), reason="canonical not present")
+def test_frozen_seed_lists_are_derived_and_still_valid():
+    """Two claims the pre-#7156 test conflated into one equality.
+
+    PROVENANCE — the lists were DERIVED, never hand-typed: they equal what the
+    §1.3 predicates yield from the canonical at the file's own
+    `canonical_source_commit`, whose blob hashes to the recorded
+    `canonical_sha256`. Exact, and checked wherever that object is reachable.
+
+    LIVE INVARIANT — always checked, and it is a SUBSET, not an equality: §1.5
+    freezes a closed sample, so a later cure sourcing a new code into the
+    predicate is legitimate growth (cmd_aql records it as a
+    post_registration_candidate and never folds it in). What may never happen
+    is a frozen unit leaving the predicate or vanishing from the canonical —
+    cmd_aql's FATAL, mirrored here. Asserting equality against the LIVE
+    canonical would re-impose the very re-derivation the freeze exists to
+    forbid, and would turn every future adoption into a red test."""
+    frozen = json.loads(gate.FROZEN_SEED_LISTS_PATH.read_text(encoding="utf-8"))
+    assert frozen["tier1"]["count"] == 46
+    assert frozen["tier2"]["count"] == 16
+    assert len(frozen["tier1"]["codes"]) == 46
+    assert len(frozen["tier2"]["codes"]) == 16
+    assert frozen["tier1"]["codes"] == sorted(frozen["tier1"]["codes"])
+    assert frozen["tier2"]["codes"] == sorted(frozen["tier2"]["codes"])
+    assert not set(frozen["tier1"]["codes"]) & set(frozen["tier2"]["codes"])
+
+    live_tier1, live_tier2 = _derive_tiers(json.loads(gate.CANONICAL_PATH.read_text(encoding="utf-8")))
+    assert set(frozen["tier1"]["codes"]) <= set(live_tier1), (
+        "frozen tier1 code(s) left the predicate or vanished: "
+        f"{sorted(set(frozen['tier1']['codes']) - set(live_tier1))}")
+    assert set(frozen["tier2"]["codes"]) <= set(live_tier2), (
+        "frozen tier2 code(s) left the predicate or vanished: "
+        f"{sorted(set(frozen['tier2']['codes']) - set(live_tier2))}")
+
+    vintage = _canonical_at_vintage(frozen)
+    if vintage is None:
+        pytest.skip(f"vintage blob {frozen['canonical_source_commit'][:10]} not in this checkout "
+                    "(shallow clone) — the subset invariant above still ran")
+    payload, blob_sha = vintage
+    vintage_tier1, vintage_tier2 = _derive_tiers(payload)
+    assert frozen["tier1"]["codes"] == vintage_tier1
+    assert frozen["tier2"]["codes"] == vintage_tier2
+    assert frozen["canonical_sha256"] == blob_sha
+
+
+def _frozen_lists():
+    frozen = json.loads(gate.FROZEN_SEED_LISTS_PATH.read_text(encoding="utf-8"))
+    return list(frozen["tier1"]["codes"]), list(frozen["tier2"]["codes"])
+
+
+def _synthetic_canonical_matching_frozen(extra_records=(), mutate_code=None, mutate_fields=None,
+                                          drop_code=None):
+    """Builds a small synthetic canonical whose population is EXACTLY the
+    real frozen tier1 (46) + tier2 (16) codes (so it agrees with the real
+    `phase0_seed_lists_rev4b.json` by construction) plus 5 tier4 filler
+    codes (keeps `lot_size` inside the ISO 2859-1 table's smallest bucket,
+    2-8, so --aql's GIL2 lookup doesn't need a real-scale population)."""
+    tier1_codes, tier2_codes = _frozen_lists()
+    records = []
+    for code in tier1_codes:
+        records.append({"kode_kbli_2025": code, "_l2_source": "OSS_RBA_resiko_2025",
+                         "status_mapping": "MATCH_CON_AGGREGAZIONE", "pp28_sources": ["00000"]})
+    for code in tier2_codes:
+        records.append({"kode_kbli_2025": code, "_l2_source": "OSS_RBA_resiko_2025",
+                         "status_mapping": "MATCH_LANGSUNG", "pp28_sources": ["00000"]})
+    for i in range(5):
+        code = f"1000{i}"
+        records.append({"kode_kbli_2025": code, "_l2_source": "OSS_RBA_resiko_2025",
+                         "status_mapping": "MATCH_LANGSUNG", "pp28_sources": [code]})  # own code -> tier4
+    records.extend(extra_records)
+    if mutate_code is not None:
+        for r in records:
+            if r["kode_kbli_2025"] == mutate_code:
+                r.update(mutate_fields or {})
+    if drop_code is not None:
+        records = [r for r in records if r["kode_kbli_2025"] != drop_code]
+    return {"data": records}
+
+
+def _install_aql_prereqs(run_dir, gate_dir):
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    (gate_dir / "holdout-scores.json").write_text(json.dumps(
+        {"verdict": "PASS", "precision": 1.0, "recall": 1.0, "holdout_edge_error_rate": 0.0}))
+    (run_dir / "consistency-l5-l10.json").write_text(json.dumps(
+        {"in_l5_only": [], "in_l10_only": []}))
+
+
+@pytest.mark.skipif(not gate.CANONICAL_PATH.exists(), reason="canonical not present")
+def test_aql_post_registration_candidate_not_folded_into_frozen_tier1(gate_env, tmp_path, monkeypatch):
+    """A code ENTERING the tier1 predicate after the freeze (e.g. an OSS
+    refresh cure) must exit 0, be named under post_registration_candidates,
+    and NEVER be added to the tier1 used downstream — tier1 stays exactly
+    the 46 frozen codes."""
+    run_dir, gate_dir = gate_env
+    _install_aql_prereqs(run_dir, gate_dir)
+    entrant = {"kode_kbli_2025": "75009", "_l2_source": "OSS_RBA_resiko_2025",
+               "status_mapping": "MATCH_CON_AGGREGAZIONE", "pp28_sources": ["00000"]}
+    canonical = _synthetic_canonical_matching_frozen(extra_records=[entrant])
+    canon_path = tmp_path / "canonical.json"
+    canon_path.write_text(json.dumps(canonical))
+    monkeypatch.setattr(gate, "CANONICAL_PATH", canon_path)
+
+    assert gate.cmd_aql() == 0
+    out = json.loads((gate_dir / "aql-parameters.json").read_text())
+    assert out["post_registration_candidates"]["tier1"] == ["75009"]
+    assert out["post_registration_candidates"]["tier2"] == []
+    frozen_tier1, _ = _frozen_lists()
+    assert out["tier_census"]["tier1"]["count"] == 46
+    assert out["tier_census"]["tier1"]["codes"] == frozen_tier1
+    assert "75009" not in out["tier_census"]["tier1"]["codes"]
+
+
+@pytest.mark.skipif(not gate.CANONICAL_PATH.exists(), reason="canonical not present")
+def test_aql_frozen_code_leaving_predicate_is_fatal(gate_env, tmp_path, monkeypatch, capsys):
+    """A frozen tier1 code whose status_mapping changes so it no longer
+    satisfies the §1.3 predicate must FATAL (exit 2) and NAME the code —
+    a pre-registered unit leaving the draw invalidates it."""
+    run_dir, gate_dir = gate_env
+    _install_aql_prereqs(run_dir, gate_dir)
+    tier1_codes, _ = _frozen_lists()
+    victim = tier1_codes[0]
+    canonical = _synthetic_canonical_matching_frozen(
+        mutate_code=victim, mutate_fields={"status_mapping": "BPS_ONLY"})
+    canon_path = tmp_path / "canonical.json"
+    canon_path.write_text(json.dumps(canonical))
+    monkeypatch.setattr(gate, "CANONICAL_PATH", canon_path)
+
+    assert gate.cmd_aql() == 2
+    err = capsys.readouterr().err
+    assert "FATAL" in err
+    assert victim in err
+    assert not (gate_dir / "aql-parameters.json").exists()
+
+
+@pytest.mark.skipif(not gate.CANONICAL_PATH.exists(), reason="canonical not present")
+def test_aql_frozen_code_missing_from_canonical_is_fatal(gate_env, tmp_path, monkeypatch, capsys):
+    """A frozen tier2 code dropped entirely from the canonical (not just a
+    predicate change) must also FATAL (exit 2) and NAME the code."""
+    run_dir, gate_dir = gate_env
+    _install_aql_prereqs(run_dir, gate_dir)
+    _, tier2_codes = _frozen_lists()
+    victim = tier2_codes[0]
+    canonical = _synthetic_canonical_matching_frozen(drop_code=victim)
+    canon_path = tmp_path / "canonical.json"
+    canon_path.write_text(json.dumps(canonical))
+    monkeypatch.setattr(gate, "CANONICAL_PATH", canon_path)
+
+    assert gate.cmd_aql() == 2
+    err = capsys.readouterr().err
+    assert "FATAL" in err
+    assert victim in err
+    assert not (gate_dir / "aql-parameters.json").exists()
 
 
 def test_gil2_letter_lookup():

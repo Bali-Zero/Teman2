@@ -1,0 +1,20 @@
+{
+  "qid": "Q03",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menolak checklist universal dan membatasi kesimpulan pada KBLI yang disajikan; semua baris perizinan memang kosong."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Jawaban bersyarat per KBLI; contoh kewajiban, pelaporan, akreditasi, dan penutupan nasional seluruhnya didukung paket run."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit menolak jawaban umum tanpa KBLI; klaim perizinan kosong dan status 91111 didukung penuh oleh paket."
+    }
+  ]
+}

@@ -13,10 +13,17 @@
 //
 // Real records, not synthetic overrides: the three codes below are the whole
 // live population of the two unverified shapes plus one verified control.
+//
+// 2026-09-23 (#7136 OSS refresh ADOPT): 93114 was the SOLE live member of the
+// "pending_crosswalk, rows served" shape (0 codes remain among the rest of
+// the pending_crosswalk population, all of which carry zero rows) — OSS RBA
+// 2025 published its own scope, moving it to oss_native and retiring that
+// render shape. See `test_that_shape_is_now_extinct` below, which replaces
+// the old positive-render assertion with the honest population check.
 
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { getCode } from "@/lib/kbli-data";
+import { getAllCodes, getCode } from "@/lib/kbli-data";
 import { UNVERIFIED_LICENSING_FACT } from "@/lib/kbli-provenance";
 import { LicensingSection } from "./LicensingSection";
 
@@ -29,23 +36,28 @@ function cellValue(label: string): string {
 }
 
 describe("KeyFacts — a licensing cell withholds a value it cannot source", () => {
-  it("93114 (pending_crosswalk, rows served) withholds risk, licence and processing", () => {
+  it("93114 is now oss_native (#7136 cured it) and no longer withholds", () => {
     const kbli = getCode("93114");
     if (!kbli) throw new Error("93114 missing from the canonical");
-    expect(kbli.provenance?.licensing.status).toBe("pending_crosswalk");
+    expect(kbli.provenance?.licensing.status).toBe("oss_native");
     expect(kbli.licensing.length).toBeGreaterThan(0);
 
     render(<LicensingSection kbli={kbli} gold={null} />);
 
-    expect(cellValue("Risk Level")).toBe(UNVERIFIED_LICENSING_FACT);
-    expect(cellValue("License Type")).toBe(UNVERIFIED_LICENSING_FACT);
-    expect(cellValue("Processing")).toBe(UNVERIFIED_LICENSING_FACT);
-    // The withheld values are not lost — they stay in the PP28 block, which
-    // states its own provenance. What changed is that the grid no longer
-    // states them as fact.
+    expect(cellValue("Risk Level")).not.toBe(UNVERIFIED_LICENSING_FACT);
+    expect(cellValue("License Type")).not.toBe(UNVERIFIED_LICENSING_FACT);
     expect(
-      screen.getByText(/KBLI-2025 crosswalk is not verified/),
-    ).toBeInTheDocument();
+      screen.queryByText(/KBLI-2025 crosswalk is not verified/),
+    ).toBeNull();
+  });
+
+  it("the pending_crosswalk-with-rows shape is now extinct (#7136 cured its sole member, 93114)", () => {
+    const withRows = getAllCodes().filter(
+      (c) =>
+        c.provenance?.licensing.status === "pending_crosswalk" &&
+        c.licensing.length > 0,
+    );
+    expect(withRows.map((c) => c.code)).toEqual([]);
   });
 
   it("49213 (rows detached by a code-number collision) withholds them too, and says why", () => {

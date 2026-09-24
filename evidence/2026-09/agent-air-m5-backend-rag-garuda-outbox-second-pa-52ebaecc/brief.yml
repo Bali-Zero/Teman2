@@ -1,0 +1,73 @@
+task_id: backend-rag-garuda-outbox-second-path-20260920
+gear: 3
+l_level: L2
+objective: |
+  The GARUDA outbox's `exhausted` counter — the rows `drain_once` will never
+  claim again — had exactly ONE non-test consumer on origin/main:
+  `_send_outbox_alarm` in `main_api.py`, which pages over Telegram. Cause and
+  signal shared a wire: when the Telegram path is what broke, the count rises
+  and nothing says so, and the silence is indistinguishable from health
+  (superscar #2; W84 — healthy silence must be provable).
+
+  Measured 2026-09-20 and not hypothetical: row 36
+  (`staff_page_charge_without_webhook` — a charge with no webhook, i.e. money)
+  spent all five attempts on `400 Bad Request: can't parse entities`. The send
+  path was healthy; the MESSAGE was malformed. A real money anomaly went unseen
+  for a day, and the only organ that could have said so pages over the wire that
+  refused it.
+
+  This lands BOTH halves the PENDING-ARMS row demands, because "a future job
+  will read it" is not a consumer: a surface where the counts are readable
+  without Telegram, and the reader that pages over a path the broken one cannot
+  mute. Arming is the healer tick that already runs on Mini — no
+  `launchctl bootstrap`, so no half is silently deferred to an operator.
+assumptions:
+  - text:
+      "MEASURED, and the answer changed the arming step. Mini's checkout is current
+      (0 commits behind origin/main, HEAD 32864bcdb2 at 15:26Z) because
+      com.nuzantara.git-pull-main.5min pulls every five minutes — so the receptor FILE
+      arrives by itself. But the healer plist runs /Users/nuzantara/scripts/healer-run.sh,
+      a HOME COPY, not the repo's infra/healer/healer-run.sh: they are a DECLARED PAIR
+      (infra/home-fork/declared-pairs.json, machines: [mini]). Receptor 9 is therefore
+      NOT armed at merge — it is armed when the pair is re-synced, which is superscar #1
+      (HOME-fork drift) and would have been discovered four hours later by a page that
+      never came."
+    status: verified
+    probe: "on mini: git rev-list --count HEAD..origin/main -> 0; PlistBuddy on
+      com.nuzantara.healer.4h.plist -> /Users/nuzantara/scripts/healer-run.sh; after the
+      merge, cp the repo file onto the live one and python3 scripts/lint_home_fork.py
+      --check reports the pair clean"
+  - text:
+      "The fleet gateway on Mini holds a token Telegram accepts. Measured earlier today
+      on Pro/Mini (@zantara0bot live, getMe 200), not re-measured inside this diff."
+    status: verified
+    probe: "scripts/tg_notify.py --selftest on the paging host"
+constraints:
+  - "Design constraint from the ledger row itself: BOTH halves in one PR. A reader
+    that ships without its surface, or a surface with no reader, is the shape the row
+    forbids."
+  - "No PII and no operational detail on the public surface: aggregate counts only —
+    no id, no job_type, no payload. Whoever is paged reads the detail from the database
+    with a credential (scripts/pg.sh)."
+  - "The receptor is stdlib-only: it runs from launchd on a machine that may be sick,
+    so it must not share a failure mode with what it reports (same rule as tg_notify.py)."
+  - "No change to the drain loop, to attempt budgets, or to `_send_outbox_alarm`. PR
+    #6874's reasoning — a job that stops retrying stops being visible as work owed —
+    stands and is not reversed here."
+acceptance:
+  - text:
+      "WHEN the endpoint is deployed and the queue is clean, the receptor run from the
+      fleet SHALL exit 0 and report the live counts."
+    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json"
+  - text:
+      "WHILE the route is not deployed, the same command SHALL exit 2 and SHALL name which
+      404 it is — a probe that cannot say no proves nothing when it says yes."
+    probe: "python3 scripts/healer_receptor_garuda_outbox.py --json"
+  - text:
+      "IF the queue is degraded, the healer tick SHALL page through tg_notify rather than
+      only writing a log line, under a dedup key that differs from the blind one."
+    probe: "python3 -m pytest scripts/tests/test_healer_receptor_garuda_outbox.py -q"
+  - text:
+      "WHERE the healer executes a HOME copy of its script, the pair SHALL be re-synced
+      after merge before receptor 9 is called armed."
+    probe: "python3 scripts/lint_home_fork.py --check on mini"

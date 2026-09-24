@@ -3,7 +3,7 @@
   "_updated": "2026-09-15 (RULED 2026-09-06→08: two-imperator hierarchy — see _invariants[0]; previous: 2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo u…)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
-    "Final on-disk gate, ALL gears (RULED 2026-09-06→08, supersedes the 2026-08-20 permanent-Opus rule below): an ASSIGNMENT to a qualified independent verifier outside the contribution chain — a Claude session on the Opus 5 xhigh seat, rotating across ALL Anthropic accounts (AZ->A2->A3->A1), never cascading to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Two imperators, equal (Fable 5.1 owner-opened window, Astra) appoint a temporary Dux between two equal generals (Opus 5, Sol); imperators never fan out or implement. Fable 5.1 is never auto-routed and never a gate seat. Parity widens no permission. Map: docs/architecture/dual-consul/army-map.md",
+    "Final on-disk gate, ALL gears (RULED 2026-09-06→08, supersedes the 2026-08-20 permanent-Opus rule below): an ASSIGNMENT to a qualified independent verifier outside the contribution chain — a Claude session on the Opus 5.5 xhigh seat, rotating across ALL Anthropic accounts (AZ->A2->A3->A1), never cascading to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Two imperators, equal (Fable 5.1 owner-opened window, Astra) appoint a temporary Dux between two equal generals (Opus 5.5, Sol); imperators never fan out or implement. Fable 5.1 is never auto-routed and never a gate seat. Parity widens no permission. Map: docs/architecture/dual-consul/army-map.md",
     "SUPERSEDED 2026-08-20 ruling (kept for provenance): Final on-disk gate, ALL gears (ruling Zero 2026-08-20, supersedes both rulings below): Opus 5, xhigh effort, rotating across ALL Anthropic accounts (AZ->A2->A3->A1). Never cascades to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Fable 5 is out of the workflow — manual-only via Zero's own /model, never auto-routed, never pay per-token.",
     "SUPERSEDED 2026-08-09 ruling (kept for provenance): Gear-3 harness gate was Fable 5 first, rotating across ALL Anthropic accounts; only when NO account could run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack.",
     "SUPERSEDED 2026-08-19 ruling (kept for provenance): final-gate gear split had Fable 5 (max) as the final reviewer/gate for the Gear-3/large-feature class ONLY, with Gear 1-2 closing on Opus 5; WR2 content gate then stayed unconditionally Fable. RULED 2026-08-20: both tiers and the WR2 gate now close on Opus 5, max effort — no fallback, window dead => SUSPEND.",
@@ -57,7 +57,7 @@
         "AZ": {
           "email": "zero@balizero.com",
           "plan": "Claude Team seat Premium",
-          "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations",
+          "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5.5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations",
           "oauth_token_slot": "CLAUDE_CODE_OAUTH_TOKEN_6",
           "config_dir": "~/.claude-zero-team"
         }
@@ -212,7 +212,7 @@
     "claude": {
       "entry": "claude",
       "reads": ["CLAUDE.md", "AGENTS.md"],
-      "models": ["claude-fable-5", "claude-opus-5", "claude-sonnet-5"],
+      "models": ["claude-fable-5", "claude-opus-5-5", "claude-sonnet-5"],
       "default_conductor": true
     },
     "codex": {
@@ -224,7 +224,16 @@
     "agy": {
       "entry": "agy",
       "reads": ["GEMINI.md", "AGENTS.md"],
-      "models": ["gemini-3.1-pro", "gemini-3.5-flash"],
+      "models": [
+        "gemini-3.1-pro-high",
+        "gemini-3.1-pro-low",
+        "gemini-3.8-flash-high",
+        "gemini-3.8-flash-medium",
+        "gemini-3.8-flash-low"
+      ],
+      "harness": "antigravity-cli 1.2.9 on Pro/M5 (`agy --print`, --model, --json-schema, --output-format json); Antigravity IDE on M5 = same AI Ultra account, GUI-only, prepare-only",
+      "contexts": "LIVE from a login session and from a gui/501 LaunchAgent (probe 2026-09-24: 6.8 s session, 8.9 s launchd alone, 13.7 s launchd with all seats concurrent)",
+      "probe_2026_09_24": "T1 PONG 8 s default / 8 s 3.8-flash-high / 12 s 3.8-flash-low / 68 s 3.1-pro-high · T2 seeded off-by-one found by both 3.8-flash-high (11 s) and 3.1-pro-high (20 s), JSON as asked · T3 --json-schema respected but 144 s · T4 needle in 120 KB inline prompt found in 12 s · T6 scripts/arsenal_probe.py --seats agy LIVE 6770 ms",
       "fence": "candidate-only (MODEL_TOPOLOGY notes)"
     },
     "kimi": {
@@ -240,7 +249,7 @@
       "_renamed_from": "fable_gate_gear3 (RULED 2026-08-20: Fable out of the workflow; key renamed, single Opus-5 tier replaces the old two-tier fable->opus degradation)",
       "chain": [
         {
-          "model": "claude-opus-5",
+          "model": "claude-opus-5-5",
           "effort": "xhigh",
           "accounts": ["AZ", "A2", "A3", "A1"],
           "note": "AZ first (dedicated allowance); A1 last to avoid cannibalizing the live interactive line; A3's window is freed by pausing cron if needed (donor rule). RULED 2026-08-20: this is the whole chain — no fable->opus degradation left to fall back to. RULED 2026-09-06→08: effort xhigh (max only on a declared Gear-3 adjudication); the seat is an independent-verifier assignment, not a permanent reviewer."
@@ -264,7 +273,7 @@
     "interactive_architect": {
       "chain": [
         {
-          "model": "claude-opus-5",
+          "model": "claude-opus-5-5",
           "accounts": ["A1", "A2"]
         },
         {
@@ -342,7 +351,7 @@
     "strategy_panel": {
       "chain": [
         {
-          "model": "claude-opus-5",
+          "model": "claude-opus-5-5",
           "accounts": ["A1"]
         },
         {
@@ -441,10 +450,10 @@
     "gate_gear2": {
       "chain": [
         {
-          "model": "family-conditional: builder=Anthropic -> gemini-agy(G1) -> codex(O1); builder=non-Anthropic -> opus-5(A1,A2) first"
+          "model": "family-conditional: builder=Anthropic -> gemini-agy(G1) -> codex(O1); builder=non-Anthropic -> opus-5-5(A1,A2) first"
         }
       ],
-      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR. The final on-disk review for Gear 1-2 closes on Opus 5, same as Gear 3 now does (RULED 2026-08-20: Fable is out of the workflow entirely, see _invariants).",
+      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR. The final on-disk review for Gear 1-2 closes on Opus 5.5, same as Gear 3 now does (RULED 2026-08-20: Fable is out of the workflow entirely, see _invariants).",
       "on_exhaustion": "queue"
     },
     "reasoner": {
@@ -458,7 +467,7 @@
           "note": "PROBATION — CONFIRMED STILL CORRECT 2026-08-14 (PROBE-1-residual): zero measured calls for -pro specifically in the 2026-08-08→14 burn-rate window; deepseek-v4-flash-0731 (different tier) was ARMED by that same measurement, see accounts.alibaba.slots.TP1 — not the same model, do not conflate."
         },
         {
-          "model": "claude-opus-5",
+          "model": "claude-opus-5-5",
           "accounts": ["A1"]
         }
       ],
@@ -473,9 +482,9 @@
       "note": "RULED 2026-09-06→08; appoint the Dux; talk to each other and to the generals only. RULED 2026-09-10 (PARABELLUM): the staff room is Fable + Astra with Zero only — it also declares the mission COLOUR (BLUE/ORANGE, docs/architecture/dual-consul/army-map.md §1bis) and fixes the battle windows, teams and specs. Context threshold 0.6, not 0.2 (Zero 2026-09-10 04:20, live on M5/Pro/Mini): 0.2 of 258k is below the measured Codex boot, so an imperator consultation at 0.2 parks at its first tool call."
     },
     "generals": {
-      "seats": ["claude-opus-5", "codex gpt-5.6-sol"],
+      "seats": ["claude-opus-5-5", "codex gpt-5.6-sol"],
       "dux": "temporary, per mission, appointed by the imperators",
-      "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali'). RULED 2026-09-10 (PARABELLUM): the mission COLOUR fixes which general is eligible as Dux — Opus 5 on BLUE, Sol on ORANGE — and the Dux is also the release owner of its own mission. No automatic colour fallback; an undeclared mission is BLUE."
+      "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali'). RULED 2026-09-10 (PARABELLUM): the mission COLOUR fixes which general is eligible as Dux — Opus 5.5 on BLUE, Sol on ORANGE — and the Dux is also the release owner of its own mission. No automatic colour fallback; an undeclared mission is BLUE."
     },
     "second_army": {
       "_added": "mission SECONDO-LIVELLO-20260915, 2026-09-15: second-army chain doctrine, docs/architecture/dual-consul/army-map.md §1ter",

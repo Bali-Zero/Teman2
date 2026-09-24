@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -420,17 +421,23 @@ class TestSummaryAndCleanup:
         assert summary["regressions"] == 2
         assert summary["improvements"] == 3
 
-    def test_log_summary_runs_without_error(self, orchestrator):
+    def test_log_summary_runs_without_error(self, orchestrator, caplog):
         summary = {
             "duration": 1.0,
             "components_analyzed": 2,
             "overall_coverage": 45.0,
             "tests_generated": 1,
-            "regressions": 0,
+            "regressions": 2,
             "improvements": 1,
         }
-        orchestrator._log_summary(summary)  # Should not raise
+        with caplog.at_level(logging.INFO):
+            orchestrator._log_summary(summary)  # Should not raise
+        # regressions > 0 must produce the warning line (not be silently dropped).
+        assert "Regressions: 2" in caplog.text
+        assert "Improvements: 1" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_cleanup(self, orchestrator):
-        await orchestrator.cleanup()  # Should not raise
+    async def test_cleanup(self, orchestrator, caplog):
+        with caplog.at_level(logging.INFO):
+            await orchestrator.cleanup()  # Should not raise
+        assert "Cleaning up Unified Orchestrator" in caplog.text

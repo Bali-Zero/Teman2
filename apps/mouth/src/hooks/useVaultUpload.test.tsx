@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useVaultUpload } from "./useVaultUpload";
 
+vi.mock("@/lib/api", () => ({
+  api: {
+    getUserProfile: () => ({ role: "client" }),
+    getPortalImpersonation: () => null,
+  },
+}));
+
 // ------------------------------------------------------------------
 // Mock XMLHttpRequest — surface the instance to the test so we can drive
 // progress / onload / onerror synchronously from assertions.
@@ -357,5 +364,56 @@ describe("useVaultUpload", () => {
 
     act(() => result.current.reset());
     expect(result.current.state.status).toBe("idle");
+  });
+});
+
+describe("Vault usage event consumer", () => {
+  const gtag = vi.fn();
+  beforeEach(() => {
+    gtag.mockReset();
+    vi.stubGlobal("XMLHttpRequest", MockXHR);
+    Object.assign(window, { gtag });
+    window.history.replaceState({}, "", "/portal/vault");
+  });
+  afterEach(() => {
+    delete (window as Window & { gtag?: unknown }).gtag;
+    vi.unstubAllGlobals();
+  });
+
+  it("records preflight rejection without sending the file metadata", () => {
+    const { result } = renderHook(() => useVaultUpload());
+    act(() =>
+      result.current.upload(
+        makeFile("private.exe", 100, "application/x-msdownload"),
+      ),
+    );
+    expect(gtag.mock.calls.map((c) => c[1])).toEqual([
+      "portal_action_started",
+      "portal_action_failed",
+    ]);
+    expect(gtag.mock.calls[1][2].failure_class).toBe("validation");
+    expect(JSON.stringify(gtag.mock.calls)).not.toContain("private.exe");
+  });
+
+  it("pairs an XHR success with its attempt and suppresses duplicate outcomes", () => {
+    const { result } = renderHook(() => useVaultUpload());
+    act(() => result.current.upload(makeFile("private.pdf", 100)));
+    act(() => MockXHR.last!.resolve(200, JSON.stringify(validUploadResp)));
+    act(() => MockXHR.last!.resolve(200, JSON.stringify(validUploadResp)));
+    expect(gtag.mock.calls.map((c) => c[1])).toEqual([
+      "portal_action_started",
+      "portal_action_completed",
+    ]);
+    expect(JSON.stringify(gtag.mock.calls)).not.toMatch(/private|passport/);
+  });
+
+  it("records network failure while retaining the upload retry behavior", () => {
+    const { result } = renderHook(() => useVaultUpload());
+    act(() => result.current.upload(makeFile("private.pdf", 100)));
+    act(() => MockXHR.last!.fail());
+    expect(gtag.mock.calls[1][2].failure_class).toBe("network");
+    expect(result.current.canRetry).toBe(true);
+    act(() => result.current.retry());
+    expect(gtag.mock.calls[2][1]).toBe("portal_action_started");
   });
 });

@@ -944,18 +944,27 @@ async def test_notify_zero_conversation_log_no_chat_id():
     """Should return early when no admin_telegram_chat_id configured."""
     from backend.app.routers.whatsapp_chat import notify_zero_conversation_log
 
-    with patch(
-        "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
-    ) as mock_settings:
+    with (
+        patch(
+            "backend.app.routers.whatsapp_chat.settings", new_callable=_seeded_settings_mock
+        ) as mock_settings,
+        patch(
+            "backend.app.routers.whatsapp_chat.telegram_bot.send_message",
+            new_callable=AsyncMock,
+        ) as mock_send,
+    ):
         mock_settings.admin_telegram_chat_id = None
-        # Should not raise
-        await notify_zero_conversation_log(
+        # Should not raise, and must return before ever reaching the
+        # Telegram send call (no chat_id to send to).
+        result = await notify_zero_conversation_log(
             phone="621234567890",
             sender_name="Client",
             client_message="Hello",
             bot_response="Hi!",
             language="en",
         )
+    assert result is None
+    mock_send.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -34,8 +34,8 @@ sweeps them.
            │     cron.sh (bash wrapper)     │
            │   → intel-lake-router-cron-    │
            │     standalone.py (asyncpg)    │
-           │   → reads intel-lake-routing-  │
-           │     rules.json                 │
+           │   → imports intel_lake_rules   │
+           │     .py (sibling file)         │
            └────────────────────────────────┘
                             │
                             ▼
@@ -52,10 +52,21 @@ DB connection goes through the existing
 
 | File | Deployed path on Pro | Purpose |
 |------|----------------------|---------|
-| `intel-lake-router-cron-standalone.py` | `~/scripts/` | The classifier (asyncpg + re, **zero backend imports**) |
-| `intel-lake-routing-rules.json` | `~/scripts/` | Rules + NB-INTEL UUIDs (kept in sync with backend `_RULES`) |
+| `intel-lake-router-cron-standalone.py` | `~/scripts/` | The classifier driver (asyncpg, **zero backend imports**) |
+| `apps/backend-rag/backend/services/intel/intel_lake_rules.py` | `~/scripts/intel_lake_rules.py` | Single source of truth for rules + NB-INTEL UUIDs (2026-09-23: retired the separate JSON copy — see below) |
 | `intel-lake-router-cron.sh` | `~/scripts/` | Bash wrapper: loads secrets, runs Python, holds flock |
 | `com.balizero.intel-lake-router.5min.plist` | `~/Library/LaunchAgents/` | StartInterval 300, RunAtLoad true |
+
+**2026-09-23 — single rules source (PENDING-ARMS
+`intel-lake-pro-fallback-router-rules-drift`):** the standalone script no
+longer reads a JSON copy of the rules. It imports `classify()` and the
+NB-INTEL UUIDs from `intel_lake_rules.py` — the same stdlib-only module the
+Fly backend's `intel_lake_router.py` imports — loaded by path from a sibling
+file (`~/scripts/intel_lake_rules.py`) or, when running from a repo
+checkout, from `apps/backend-rag/backend/services/intel/intel_lake_rules.py`
+relative to the repo root. Deploying an update to the rules is now: copy
+`intel_lake_rules.py` to `~/scripts/intel_lake_rules.py` on Pro — nothing
+else changes in sync.
 
 ## Tri-LLM design review (Codex + Gemini + DeepSeek, 2026-05-13)
 
@@ -76,35 +87,27 @@ addressed in the implementation:
 4. Time-windowed failure counter — 3 fails within 30 min triggers
    Telegram. Old fails decay (avoids "reboot resurrects state file with
    3 fails" false alarm DeepSeek flagged).
-5. Rules loaded from external JSON — single source of truth shared with
-   backend `_RULES` (manual sync for now; Tier 1.5 GET /api/intel/lake/rules
-   endpoint is a future improvement).
+5. Rules imported from `intel_lake_rules.py` — single source of truth
+   shared with the backend's `_RULES` (2026-09-23: replaced the manually
+   synced JSON copy, which had drifted; see PENDING-ARMS
+   `intel-lake-pro-fallback-router-rules-drift`).
 6. None-safe `source_domain` handling: `(domain or '').strip().lower()`.
 7. Explicit `$N::jsonb` cast in SQL, never raw dict.
 
 ## Unit tests
 
-```bash
-~/.pyenv/versions/3.11.11/bin/python3 - <<'PYEOF'
-import importlib.util
-spec = importlib.util.spec_from_file_location("m", "scripts/intel-lake-router-a2/intel-lake-router-cron-standalone.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-rules, fb = m._load_rules()
-cases = [
-    ("imigrasi.go.id", "nb-intel"), ("pajak.go.id", "nb-intel"),
-    ("bkpm.go.id", "nb-intel"), ("arxiv.org", "nb-intel"),
-    ("detik.com", "blog"), ("reddit.com", "archive"),
-    ("unknown", "needs_review"), ("", "needs_review"),
-    (None, "needs_review"), ("randomsite.example", "needs_review"),
-]
-for d, exp in cases:
-    r = m._classify(d, rules, fb)
-    assert r["status"] == exp, f"{d!r} → {r['status']}, expected {exp}"
-print(f"PASS: {len(cases)}/{len(cases)}")
-PYEOF
-```
+Parity between this script's classification and the backend `_classify` is
+enforced by pytest, not an ad-hoc script (2026-09-23 — both now import the
+same `intel_lake_rules.classify`). The parity test loads THIS script from
+its repo path, where the sibling candidate in `_RULES_MODULE_CANDIDATES`
+never exists — it cannot catch a stale sibling on Pro; that class of drift
+is covered separately by `TestSiblingLoaderPrecedence`, which builds a
+tmp_path layout with both a sibling and a stale repo-path copy and asserts
+the sibling wins:
 
-Last green: 16/16 cases on 2026-05-13.
+```bash
+cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/intel/test_intel_lake_rules_standalone_parity.py
+```
 
 ## Retire path
 
@@ -135,7 +138,9 @@ Fly is healthy.
 
 ## Cross-reference
 
-- Backend router code (source of truth for `_RULES`):
+- Rules single source of truth (`_RULES`, NB-INTEL UUIDs, `classify()`):
+  `apps/backend-rag/backend/services/intel/intel_lake_rules.py`
+- Backend router (imports the rules above, subscribes to the EventBus):
   `apps/backend-rag/backend/services/intel/intel_lake_router.py`
 - Schema: `apps/backend-rag/backend/db/migrations_v2/168_intel_lake_schema.sql`
 - Service layer: `apps/backend-rag/backend/services/intel/intel_lake_service.py`

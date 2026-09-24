@@ -233,6 +233,35 @@ class ChangeMapTests(unittest.TestCase):
         self.assertFalse(result["domains"]["mouth"])
         self.assertNotIn("frontend-tests", result["suggested_jobs"])
 
+    def test_guilt_evaluate_path_edit_also_runs_frontend(self) -> None:
+        # Slice A3'-0: apps/mouth/.../_lib/engine-adapter.test.ts:1281-1283
+        # (slices _DISCLOSED_REVIEW_REASON_CODES and throws unless 14 codes)
+        # and apps/mouth/.../_components/OutcomeSheet.test.tsx:850 both read
+        # this exact backend file directly.
+        ep = "apps/backend-rag/backend/services/visa_engine/evaluate_path.py"
+        result = cm.classify([ep])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertEqual(
+            result["suggested_jobs"],
+            ["backend-tests", "frontend-tests", "e2e-tests"],
+        )
+
+        # A3'-B's six backend paths (the mouth test file is excluded on
+        # purpose: it would select mouth on its own, and a later
+        # backend-only edit of EP must still run the readers).
+        a3p_b_backend_paths = [
+            ep,
+            "apps/backend-rag/backend/scripts/visa_engine/review_hold_inventory.py",
+            "apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py",
+            "apps/backend-rag/backend/tests/services/visa_engine/test_evaluate_endpoint.py",
+            "apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py",
+            "apps/backend-rag/backend/tests/scripts/visa_engine/test_review_hold_inventory.py",
+        ]
+        combined = cm.classify(a3p_b_backend_paths)
+        self.assertIn("frontend-tests", combined["suggested_jobs"])
+
     def test_guilt_rulepack_family_edit_also_runs_frontend(self) -> None:
         # Red-team HIGH-8: apps/mouth/.../engine-adapter.test.ts globs every
         # file matching rulepack-prod-\d+.source.json under this exact

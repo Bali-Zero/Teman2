@@ -1071,3 +1071,38 @@ def test_commit_to_branch_looks_up_the_existing_sha_with_an_explicit_get() -> No
     assert "ref=bot/b" in lookup
     assert "PUT" in put
     assert json.loads(inputs[1])["sha"] == "abc123"
+
+
+def test_send_telegram_alert_reads_last_verdict_line_not_first(monkeypatch, tmp_path) -> None:
+    # 2026-09-24: an undeliverable P0 makes tg_notify.py print a human
+    # diagnostic `tg_notify:` line BEFORE its machine verdict. This module's
+    # own (now-retired) private `_GATEWAY_VERDICT_RE.search()` took the FIRST
+    # `tg_notify:` match — the diagnostic's leading word — instead of the
+    # real, accepted p0_unsent_spooled outcome.
+    logged: list[str] = []
+    monkeypatch.setattr(ppp, "log", lambda msg: logged.append(msg))
+    monkeypatch.setattr(ppp, "_find_gateway", lambda: tmp_path / "tg_notify.py")
+
+    two_line_stderr = (
+        "tg_notify: P0 unsendable (no token/relay) — spooled as p0_unsent\n"
+        "tg_notify: p0_unsent_spooled\n"
+    )
+    fake_proc = subprocess.CompletedProcess(["tg_notify.py"], 0, stdout="", stderr=two_line_stderr)
+
+    with patch("scripts.post_publish_poller.subprocess.run", return_value=fake_proc):
+        ppp.send_telegram_alert("test message", dedup_key="test-key")
+
+    assert any("p0_unsent_spooled" in line for line in logged)
+    assert not any("P0 unsendable" in line for line in logged)
+
+
+def test_send_telegram_alert_reads_single_canonical_line(monkeypatch, tmp_path) -> None:
+    logged: list[str] = []
+    monkeypatch.setattr(ppp, "log", lambda msg: logged.append(msg))
+    monkeypatch.setattr(ppp, "_find_gateway", lambda: tmp_path / "tg_notify.py")
+    fake_proc = subprocess.CompletedProcess(["tg_notify.py"], 0, stdout="", stderr="tg_notify: sent\n")
+
+    with patch("scripts.post_publish_poller.subprocess.run", return_value=fake_proc):
+        ppp.send_telegram_alert("test message", dedup_key="test-key")
+
+    assert any("tg_notify: sent" in line for line in logged)

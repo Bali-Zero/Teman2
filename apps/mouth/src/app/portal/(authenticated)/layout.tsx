@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
+import { PortalUsageTracker } from "@/components/analytics/PortalUsageTracker";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
 import { ToastProvider } from "@/components/ui/toast";
@@ -287,6 +288,7 @@ export default function PortalLayout({
 
   const portalContent = (
     <ToastProvider>
+      <PortalUsageTracker />
       <a href="#portal-main-content" className="bz-skip-link">
         Skip to main content
       </a>

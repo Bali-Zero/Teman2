@@ -1,0 +1,20 @@
+{
+  "qid": "Q07",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap, avoids inventing steps, and accurately summarizes supported PMA/Bali verdicts with a pointer to KBLI-specific data."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the missing setup procedure and points to the supplied KBLI records; listed code titles are supported."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the unavailable general procedure and appropriately redirects to the supplied KBLI-specific data."
+    }
+  ]
+}

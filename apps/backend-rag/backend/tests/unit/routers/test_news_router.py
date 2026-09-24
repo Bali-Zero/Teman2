@@ -7,6 +7,7 @@ Covers: list_news, get_categories, get_news_by_slug, create_news,
         _enqueue_post_publish.
 """
 
+import logging
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -662,7 +663,9 @@ async def test_enqueue_post_publish_success(mock_db_pool):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_post_publish_failure_does_not_raise(mock_db_pool):
+async def test_enqueue_post_publish_failure_does_not_raise(
+    mock_db_pool, caplog: pytest.LogCaptureFixture
+):
     """Should log warning but not raise on failure."""
     conn = mock_db_pool._mock_conn
     conn.execute = AsyncMock(side_effect=Exception("insert failed"))
@@ -670,10 +673,16 @@ async def test_enqueue_post_publish_failure_does_not_raise(mock_db_pool):
     # Should NOT raise
     from backend.app.routers.news import _enqueue_post_publish
 
-    await _enqueue_post_publish(
-        slug="test-slug",
-        title="Test Title",
-        category="business",
-        article_id="uuid-1",
-        pool=mock_db_pool,
-    )
+    with caplog.at_level(logging.WARNING, logger="backend.app.routers.news"):
+        result = await _enqueue_post_publish(
+            slug="test-slug",
+            title="Test Title",
+            category="business",
+            article_id="uuid-1",
+            pool=mock_db_pool,
+        )
+    assert result is None
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    assert "Failed to enqueue" in text
+    assert "test-slug" in text
+    assert "insert failed" in text

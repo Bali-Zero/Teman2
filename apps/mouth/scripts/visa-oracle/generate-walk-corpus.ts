@@ -782,12 +782,15 @@ export function enumerateScenarios(): Scenario[] {
   // `el.e31e-child-itas-support`: a minor joining a parent who holds a
   // stay permit. Every other family/diaspora walk uses the corpus's
   // 25-year-old identity, so the `derived.age_years < 18` gate could never
-  // clear. This walk is the ONE in the corpus whose PUBLIC outcome is a
-  // hold: `evaluate_path._apply_minor_privacy_hold` empties the candidates
-  // of any known minor unconditionally (Privacy Policy V1 — a product
-  // control, not a claim of ineligibility). The ENGINE names E31E, which
-  // is what the reachability guard reads; see the census test's
-  // HUMAN_REVIEW_REQUIRED pin for the boundary.
+  // clear. This walk does not override `guardian_consent`, so `answerFor`
+  // gives it the new question's FIRST option (`"yes"`) — under A7-B/A7-M's
+  // truth table that leaves `_apply_minor_privacy_hold`'s hold arm UNTOUCHED
+  // (Slice A7-B narrowed the unconditional Privacy Policy V1 hold to fire
+  // only on a declared or unknown guardian; `true` passes through). MEASURED
+  // engine outcome: SUPPORTED_CANDIDATES `["C1", "E31E"]` (never assume —
+  // see the census test's pin). The sibling walk below, which declares
+  // `guardian_consent: "no"`, is now the ONE in the corpus whose PUBLIC
+  // outcome is the guardian-privacy hold.
   scenarios.push({
     label: "offshore/family/PARENT/spNat=IT/minor",
     overrides: {
@@ -796,6 +799,23 @@ export function enumerateScenarios(): Scenario[] {
       family_relation: "PARENT",
       family_sponsor_nationalities: "IT",
       birth_date: MINOR_APPLICANT_BIRTH_DATE,
+    },
+  });
+  // Slice A7-M: the same walk with a declared `guardian_consent: "no"` —
+  // same facts otherwise, so the ONLY thing that moves is the fact this PR
+  // adds. `_apply_minor_privacy_hold`'s narrowed hold arm fires:
+  // HUMAN_REVIEW_REQUIRED on `MINOR_GUARDIAN_PRIVACY_REVIEW` (measured;
+  // verified unchanged whether or not `holds_stay_permit` differs from the
+  // sibling walk above, since the adapter's guilt/innocence never reads it).
+  scenarios.push({
+    label: "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+    overrides: {
+      ...base,
+      category: "family",
+      family_relation: "PARENT",
+      family_sponsor_nationalities: "IT",
+      birth_date: MINOR_APPLICANT_BIRTH_DATE,
+      guardian_consent: "no",
     },
   });
 

@@ -131,7 +131,9 @@ async def test_query_truncated_to_500_chars(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_outbox_failure_swallowed(monkeypatch, caplog):
-    """If insert_outbox_event raises, maybe_emit must NOT propagate."""
+    """If insert_outbox_event raises, maybe_emit must NOT propagate; it's logged."""
+    import logging
+
     insert_mock = AsyncMock(side_effect=RuntimeError("DB exploded"))
     monkeypatch.setattr(
         "backend.services.bridge.low_confidence_emitter.insert_outbox_event",
@@ -139,8 +141,17 @@ async def test_outbox_failure_swallowed(monkeypatch, caplog):
     )
 
     pool, _ = _build_pool()
-    # Must NOT raise
-    await maybe_emit_low_confidence(pool, "test", 0.1)
+    with caplog.at_level(
+        logging.ERROR, logger="backend.services.bridge.low_confidence_emitter"
+    ):
+        # Must NOT raise
+        result = await maybe_emit_low_confidence(pool, "test", 0.1)
+
+    assert result is None
+    insert_mock.assert_called_once()
+    assert any(
+        "Failed to emit rag.low_confidence event" in r.message for r in caplog.records
+    )
 
 
 @pytest.mark.asyncio

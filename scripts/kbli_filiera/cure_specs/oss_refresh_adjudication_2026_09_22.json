@@ -1,0 +1,97 @@
+{
+  "_doc": "Signed session adjudication for the 9 quarantine_owner codes proposed by scripts/kbli_filiera/oss_refresh_loop.py's 2026-09-22 run (cure_specs/oss_refresh_2026_09_22.json). ADOPT for all 9: OSS RBA 2025 ruang-lingkup is served under each code's own uuid, its payload identity checked (Kbli.id == uuid, every risk-row kode prefixed by the code), and its scope text describes the code's own activity with no scope text shared with any other code in the batch (sha-checked). scripts/kbli_filiera/apply_oss_refresh.py is the only sanctioned reader of this file: it refuses any quarantine_owner code not named here with decision == 'adopt_oss_2025', and refuses if record_sha256/oss_rows_sha256 no longer match the live record/spec. The disputed block itself is pinned by disputed_sha256: the compiler refuses if the audit trail's CONTENT moved, so a post-cure re-run cannot answer 'noop' over a rewritten block.",
+  "adjudicated_by": "session M5 (Opus 5 architect), owner mandate 2026-09-23: the sessions decide",
+  "basis": "OSS RBA 2025 ruang-lingkup served under the code's own uuid (payload identity checked: Kbli.id == uuid, every risk-row kode prefixed by the code). The scope text describes the code's own activity. No scope text is shared with any other code in the batch (sha-checked). The quarantine disputed PP28-vintage rows, and OSS 2025 is the source the other 1,340 strong codes rest on. This is the precedent of 49213: per_skala restored, disputed block kept.",
+  "codes": {
+    "19206": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "f151f6039a611051189e8fde29dfd630d115ef2f2be6ce13cf99fe0ffa898baf",
+      "body_sha256": "7ca007fa3f5df67bb1d7b24670108b24ddf9f6a06f234fc1f2e557e4887f7a0a",
+      "oss_rows_sha256": "d802ff824691a65e044282827696f32ad92236297e74b2c89eb92b570379702a",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "d6bf2133a1ad9d057547077bc5b2f3f33a9bb63940539f860cc23e14910a215c",
+      "reason": "Pre-split 19291 PP28 row. OSS publishes the 2025 blending scope, Besar only.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 19206's own Besar-only blending scope; the pre-split 19291 PP28 row stays as the disputed audit trail."
+    },
+    "20111": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "ebf82d7fbd91d84329d34da8ac4410fdf482f51d677651a0342c3b78507e8241",
+      "body_sha256": "5f5b2450298bc0201c56dfa76b5baee423b82a0633848625ec9b69bc637bed62",
+      "oss_rows_sha256": "2eb2c5401e12e2c453cc01634c085207c2612bf7f35ca73a6fc2d7a3dd464b46",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "9efd7f3816f4a9f6087ea600afd04ce8d8a0c1b1c06a499f74a463d691ff3e64",
+      "reason": "Single-feeder PP28 block for a many-to-one merge. OSS publishes the merged 2025 code's own 3 scopes. Its disputed value is a DICT {per_skala, per_skala_legacy}, not a list.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 20111's own merged 3-scope licensing basis; the single-feeder PP28 block stays as the disputed audit trail."
+    },
+    "75002": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "b55faf6d48571dad51fa012f7469e30c5ccf7faf8a5b33edd2e7dbb0afcee4b9",
+      "body_sha256": "18eeaaf757b126a356a9f411234db6d1f470f6cb6d5b2207a946159eba0305f0",
+      "oss_rows_sha256": "637c24bd6483d85d0678909c5e7f4e02e70c0cdb8af5f2ea6e4fb6891c3d8527",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "9f8f9fe4aa07bf8ae1924f51c5ca089e17125c88acbbc5af7b07e95e7ab7899f",
+      "reason": "Single-parent lineage. OSS publishes 6 facility scopes (ambulatori, puskeswan, klinik, shelter, RS hewan, lab veteriner).",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 75002's own 6 facility scopes; the single-parent PP28 lineage row stays as the disputed audit trail."
+    },
+    "75009": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "e37cb01420753b47fa23297fca6e2978f10a5f887a3aa1336655943b049415fe",
+      "body_sha256": "8ab3c22a8d087bac0936e9f4a1ae58b862c5429b87cdeaea556fdd20be669e0e",
+      "oss_rows_sha256": "fd8ead1810c7b45c4d3bc2dc66a15310a109be83caea75cb606489506758c750",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "9f8f9fe4aa07bf8ae1924f51c5ca089e17125c88acbbc5af7b07e95e7ab7899f",
+      "reason": "wrong_authority_level, from a 75000 single-parent citation. OSS publishes a Seluruh scope, Menengah Tinggi at every scale.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 75009's own Seluruh scope at Menengah Tinggi; the wrong-authority-level 75000 citation stays as the disputed audit trail."
+    },
+    "93113": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "ea5dda38aba46ebe63de767e88250986567b45ef05f16265e62e3011ae8a3f0e",
+      "body_sha256": "196be1b921d41830c13cf6c467636340804567fb47b970fdce7a10677984c54c",
+      "oss_rows_sha256": "fed9b8bd1ae03badd4bdec096ef3b2ed59ab0f6dfd459c156c8484d8f6da6c54",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "ddf4430a96a5b7581c5d6dcf80e894159bda54362c1ba8ba0e0f6f981dfada73",
+      "reason": "Exhaustive PP28 vault hunt verdict=absent, self-referential pp28_sources. OSS now publishes the code's own facility scope.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 93113's own facility scope, closing the exhaustive PP28 vault hunt absent-verdict gap; the self-referential pp28_sources block stays as the disputed audit trail."
+    },
+    "93115": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "0f600cbf60b9f6a7509041f1189e4b1deb9516086e88be939eeabfeddfd579d3",
+      "body_sha256": "6d8a1ead0e63c81afb0c4f024638d25ea6b700ee1ba607eb1af2a0bf82570cae",
+      "oss_rows_sha256": "de419859a46ba9e7f53b87b58cf72f8d320288c4abd03c5d5d117759f68a9924",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "5b456929a131bef7a19482f284f5199a9d23ba82bee900d53cd2f8e287b08a35",
+      "reason": "Exhaustive PP28 vault hunt verdict=absent, self-referential pp28_sources. OSS now publishes the code's own activity scope.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 93115's own activity scope, closing the exhaustive PP28 vault hunt absent-verdict gap; the self-referential pp28_sources block stays as the disputed audit trail."
+    },
+    "93191": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "9d863e59fb3910fc78eb3df82047bca761042b204adba748c294d93cd2fc55cc",
+      "body_sha256": "36ab4515234e20244284ff4a8aa96a8c4405e1dd21697963c1c25f4951ac320c",
+      "oss_rows_sha256": "667e7d57ce91348fe78038e8e51066843a745a107117c151980b2e48fd1e6f01",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "ad498dcce158f8cbe9b394f7c81f0bb170fefbbb44edc011273c914f898e55ce",
+      "reason": "Partial_detach. OSS confirms the sound promoter tier (Menengah Rendah) and publishes the code's own scope.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 93191's own scope at the sound Menengah Rendah promoter tier; the partial-detach PP28 rows stay as the disputed audit trail."
+    },
+    "93193": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "3feba6cefebd5a4ad936aec542a8bd56e5ca1101b59b7de5b18f5d6072ad6920",
+      "body_sha256": "2b2b3a145ca3c1ef965c1dd51e196454bfca388482fd6de56e9c8a1d4a1c4cfe",
+      "oss_rows_sha256": "b8991011ee91aed42ab9a266914c0bc8052319557b53050b16ad39c151f1f184",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "a3339261da6ea47b9e7d669035a2efa76f756d6afa5af3ae0cb58b836d33a088",
+      "reason": "Payload cross-contamination with 93191. OSS publishes 93193's own hunting-area scope (kawasan buru), whose text is distinct from 93191's.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 93193's own hunting-area (kawasan buru) scope, distinct from 93191's cross-contaminated payload; the disputed rows stay as the audit trail."
+    },
+    "93195": {
+      "decision": "adopt_oss_2025",
+      "record_sha256": "1783821847d84022bdfc49dcc0e3227d21c57edbc168a46a352cd5df3b38dff6",
+      "body_sha256": "c9e3f0883fbad7924d8e9b54fe5bbc2267e0ff7ff70972458cd6d3e477f16292",
+      "oss_rows_sha256": "ca2cc6a046aa6c093067be8a848ada8b5675f803d651c4aaa59971addbac9392",
+      "disputed_key": "per_skala_disputed_pp28_collision",
+      "disputed_sha256": "9076db03efcf12af2f65c66b0ae7a0a425583a5312eaa587ab83c726acea0e69",
+      "reason": "Exhaustive PP28 vault hunt verdict=absent, self-referential pp28_sources. OSS now publishes the code's own facility scope.",
+      "data_note_append": "OSS RBA 2025 ruang-lingkup (fetched 2026-09-22) confirms 93195's own facility scope, closing the exhaustive PP28 vault hunt absent-verdict gap; the self-referential pp28_sources block stays as the disputed audit trail."
+    }
+  }
+}

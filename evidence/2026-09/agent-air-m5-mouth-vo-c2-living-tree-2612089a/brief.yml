@@ -1,0 +1,83 @@
+gear: 2
+task_id: vo-c2-living-tree
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-c2-living-tree
+gate_class: none
+l_level: L2
+objective: >-
+  PR #7081 (Slice C2-1, "the branches not taken get a name, and a way back")
+  is the MANDATE-vo.md-ratified promotion of `LivingTree`'s eleven category
+  chips: a pure `branchPreview` naming the ids a non-chosen branch would ask
+  (clause C2-1), and a pruned chip becoming a real re-entry `<button>` once a
+  category is chosen and the category question itself is closed (clause
+  C2-2). The codex-prepared diff (`8ee5f74c53`) opened green on
+  `Frontend Tests (Next.js) (mouth, true)` but red on
+  `E2E Tests (Playwright)`, TWICE, for two DISTINCT, conductor-approved-at-
+  depth-1 causes: red 1 (`1c20774142`) was a strict-mode DOM collision — after
+  four Backs the category question re-opens while a stale `facts.category`
+  survives `pruneFacts`, so the re-entry gate promoted the chip for the
+  question's OWN answer button too; cured by also gating on
+  `categoryQuestionOpen`. Red 2 (this commit) is this PR's actual size driver:
+  axe's `color-contrast` rule measured 1.68:1 on the promoted `button`
+  (`--oracle-ink-faint` on the "done" sibling's opaque colour bleeding through
+  the button's own inherited `background: transparent` while a Framer-Motion
+  `layout` reflow was still settling into the verdict view) — reproduced
+  locally against a real `next build && next start`, cured with an opaque
+  `background: var(--oracle-bg-elevated)` on `button.oracle-tree__leaf`
+  (already-declared, already AA-measured token pair, no new
+  `--oracle-state-*`), and pinned with a permanent CSS-parsing WCAG-contrast
+  guard plus a DOM-shape test in `ProcessRail.test.tsx`.
+scope:
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css — appended below
+    the C1-fence EOF (`:1642`) only; `button.oracle-tree__leaf` gains an
+    opaque `background`, no line at/above `:160` moved, no new
+    `--oracle-state-*` token (count still 62).
+  - >-
+    apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ProcessRail.test.tsx
+    — four new tests: the CSS rule declares the opaque token (scratch,
+    in-memory mutation reddens it), the declared pair clears 4.5:1 in all
+    four theme blocks, the contrast formula reproduces axe's own 1.68:1, and
+    a DOM-shape pin (a "done" category beside a promoted "pruned" one) proves
+    the exact vulnerable scenario renders the button this CSS rule targets.
+constraints:
+  - >-
+    Clause C2-1's file allow-list is unchanged by this cure: only `oracle.css`
+    and `ProcessRail.test.tsx`, both already on the list. `flow.ts`, `tree.ts`,
+    `i18n.ts`, `fact-mapper.ts`, `engine-adapter.ts` stay untouched.
+  - >-
+    `e2e/visa-oracle-v2.spec.ts` is read, never edited — the spec's
+    assertions (including `expectNoWcagViolations`) are unchanged.
+  - >-
+    No new dependency, no new `--oracle-state-*` token, no axe exclusion, no
+    weakened assertion.
+  - >-
+    This PR (all three commits) crosses the 400-net-line Gear-2 floor
+    (`SIZE_GEAR2_THRESHOLD`, `scripts/evidence_pack_lint.py`) that
+    MANDATE-vo.md's ratified clause C2-8 already forecast at PR-open
+    ("Forecast ≈ +427 net ... declares gear 2"); this brief is that
+    declaration, filed once the measured diff (527 insertions / 29
+    deletions across 2 commits' worth of clause files, `git diff --shortstat`
+    against `origin/main`) actually crossed it on this third commit.
+acceptance:
+  - text: >-
+      GUILT: the promoted re-entry chip's CSS rule declares its own opaque
+      background naming a measured-AA token; stripping the declaration on a
+      scratch, in-memory copy of the rule removes the opaque-token match.
+    probe: >-
+      ../../node_modules/.bin/vitest run ProcessRail --root . -t
+      "GUILT: declares its own opaque background"
+  - text: >-
+      GUILT: the declared foreground/background pair clears WCAG 4.5:1 in
+      every one of the file's four theme blocks (parsed from oracle.css on
+      disk, never hand-copied).
+    probe: >-
+      ../../node_modules/.bin/vitest run ProcessRail --root . -t
+      "clears 4.5:1 in every theme block"
+  - text: >-
+      The previously-red keyboard-only EN and ID e2e journeys reach the
+      verdict with zero axe violations, on the one project CI actually runs.
+    probe: >-
+      PLAYWRIGHT_EXTERNAL_SERVER=1 ../../node_modules/.bin/playwright test
+      e2e/visa-oracle-v2.spec.ts -g keyboard-only --project=chromium

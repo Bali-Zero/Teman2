@@ -138,6 +138,20 @@ export function isSecondHomeStudioOnly(outcome: OutcomeViewModel): boolean {
   );
 }
 
+// A3'-M (Slice A3'-M, M1): dead-end codes the mouth may show WITHOUT a
+// decisive source ref, because no rule in the signed pack — today or ever
+// — could name one for this answer: the pack does not decide it at all, so
+// there is no rule reference to demand. Narrow by design:
+// `requireDecisiveRefs` stays the default gate on every other
+// NO_SUPPORTED_PATH code, and this exemption fires only when BOTH the code
+// is listed here AND `source_refs` is actually empty — a listed code that
+// arrives with a non-empty, non-decisive ref still throws
+// `RESPONSE_INVARIANT`, because that shape is not the sourceless one this
+// exemption exists for.
+export const SOURCELESS_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+]);
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -574,6 +588,58 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
     "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",
   ),
+  // A3'-M (M2): the ONE sourceless dead end SOURCELESS_NO_PATH_CODES lists.
+  // Copy byte-equal to kit/a3p-spec-strings-20260922.json, inserted by
+  // script (never retyped) — the quoted CTA label is OracleShell.tsx's
+  // own `SESSION_COPY.{en,id}.consultant` string, proved in
+  // engine-adapter.test.ts by reading that file's source text.
+  DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: text(
+    "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
+    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
+  ),
+  // Slice A8-2 (2026-09-24): copy for the 10 EXCLUDE codes seq-23 adds beyond
+  // signed seq-22, owed ahead of the A9 signing/activation so a real applicant
+  // never meets the raw machine code.
+  CALLING_VISA_NATIONALITY_NOT_ASSESSED: text(
+    "One of your nationalities is on Indonesia’s Calling Visa list: a visa on that passport goes through the Calling Visa procedure, which the Oracle doesn’t assess. If you also hold another passport, the one you travel on can change the answer — a consultation is the route.",
+    "Salah satu kewarganegaraan Anda termasuk dalam daftar negara Calling Visa: visa dengan paspor tersebut diproses melalui prosedur Calling Visa, yang tidak dinilai oleh Oracle. Jika Anda juga memiliki paspor lain, paspor yang Anda gunakan untuk bepergian dapat mengubah jawabannya — konsultasi adalah jalurnya.",
+  ),
+  VOA_DUAL_NATIONALITY_NOT_ASSESSED: text(
+    "You hold passports on both sides of the Visa on Arrival list. Whether Visa on Arrival applies depends on the passport you travel on, which the Oracle doesn’t assess — a consultation is the route.",
+    "Anda memegang paspor dari negara yang termasuk dan yang tidak termasuk dalam daftar Visa Saat Kedatangan. Berlaku tidaknya Visa Saat Kedatangan bergantung pada paspor yang Anda gunakan untuk bepergian, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  ACTIVE_OVERSTAY_SETTLE_FIRST: text(
+    "You told us you are overstaying now. The Oracle can’t assess a new stay until the overstay is settled with Immigration — a consultation is the route.",
+    "Anda menyatakan sedang overstay. Oracle tidak dapat menilai izin tinggal baru sebelum overstay diselesaikan dengan Imigrasi — konsultasi adalah jalurnya.",
+  ),
+  MINOR_SPONSOR_NOT_CONFIRMED: text(
+    "You told us the family sponsor isn’t confirmed. For a minor, the Oracle can’t assess any route without a confirmed sponsor — a consultation is the route.",
+    "Anda menyatakan bahwa sponsor keluarga belum dikonfirmasi. Untuk anak di bawah umur, Oracle tidak dapat menilai jalur apa pun tanpa sponsor yang sudah dikonfirmasi — konsultasi adalah jalurnya.",
+  ),
+  BRIDGING_ADVERSE_HISTORY_NOT_ASSESSED: text(
+    "The Oracle doesn’t assess the Bridging Visa (Transitional Stay Permit) after a disclosed overstay, deportation, entry ban or immigration investigation — a consultation is the route.",
+    "Oracle tidak menilai Izin Tinggal Peralihan setelah adanya overstay, deportasi, penangkalan, atau pemeriksaan keimigrasian yang Anda ungkapkan — konsultasi adalah jalurnya.",
+  ),
+  E33_EMPLOYMENT_NOT_COVERED: text(
+    "The Second Home visa doesn’t by itself allow employment; working while holding it needs a separate dual-activity permission (rangkap kegiatan), which the Oracle doesn’t assess — a consultation is the route.",
+    "Visa Rumah Kedua tidak dengan sendirinya mengizinkan bekerja; bekerja selama memegangnya memerlukan izin rangkap kegiatan tersendiri, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_MARKET_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) covers work for a company based outside Indonesia, and its permit bars selling services in Indonesia; the Oracle can’t confirm it for work serving Indonesian clients — a consultation is the route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mencakup pekerjaan untuk perusahaan yang berkedudukan di luar Indonesia, dan izinnya melarang penjualan jasa di Indonesia; Oracle tidak dapat mengonfirmasinya untuk pekerjaan yang melayani klien Indonesia — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_COMPANY_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) doesn’t cover owning or running an Indonesian company; that is an investor route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
+  ),
+  STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
+    "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",
+    "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
+  ),
+  RETIREMENT_INCOME_BELOW_THRESHOLD: text(
+    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
+    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
@@ -719,6 +785,12 @@ export function buildNoPathDoors(
   facts: OracleFacts,
 ): NoSupportedPathAlternative[] {
   const doors: NoSupportedPathAlternative[] = [];
+  // A3'-M (M3): a sourceless dead end names no door. The pack never decided
+  // this answer at all, so there is no replay-proven alternative to name —
+  // the CTA on this dead end is a consultation, never a category switch.
+  if (noPathReasonCodes.some((code) => SOURCELESS_NO_PATH_CODES.has(code))) {
+    return doors;
+  }
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
   // Shuts every door under every purpose — measured, not assumed.
@@ -1103,8 +1175,8 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // reviewing guardian identity/consent directly) since this adapter "may
   // only abstain" by its own docstring.
   MINOR_GUARDIAN_PRIVACY_REVIEW: text(
-    "This case involves a minor, and this tool cannot confirm guardian consent on its own — a person needs to review the guardian's identity and consent directly before this case can be resolved.",
-    "Kasus ini melibatkan anak di bawah umur, dan alat ini tidak dapat mengonfirmasi persetujuan wali dengan sendirinya — diperlukan peninjauan langsung oleh seseorang atas identitas dan persetujuan wali sebelum kasus ini dapat diselesaikan.",
+    "You told us no parent or legal guardian is filling this in with the applicant, who is under 18. A Bali Zero consultant continues from here with an adult present.",
+    "Anda menyampaikan bahwa tidak ada orang tua atau wali sah yang mengisi ini bersama pemohon yang berusia di bawah 18 tahun. Konsultan Bali Zero melanjutkan dari sini dengan kehadiran orang dewasa.",
   ),
   // `_apply_safety_critical_source_hold` (evaluate_path.py:1201-1301): same
   // source-integrity pattern as the DECISIVE_* trio above, but global to
@@ -1135,6 +1207,24 @@ export interface ReviewReasonElements {
 export const REVIEW_REASON_ELEMENTS: Partial<
   Record<string, ReviewReasonElements>
 > = {
+  MINOR_GUARDIAN_PRIVACY_REVIEW: {
+    rule: text(
+      "Indonesian personal-data law (UU PDP) does not let someone under 18 consent to this assessment on their own.",
+      "Undang-undang pelindungan data pribadi Indonesia (UU PDP) tidak mengizinkan orang berusia di bawah 18 tahun memberikan persetujuan atas penilaian ini sendiri.",
+    ),
+    checked: text(
+      "That an adult with parental responsibility or legal guardianship is acting for the applicant.",
+      "Bahwa orang dewasa dengan tanggung jawab orang tua atau perwalian sah bertindak untuk pemohon.",
+    ),
+    prepare: text(
+      "A parent or legal guardian who can complete the request together with the applicant.",
+      "Orang tua atau wali sah yang dapat melengkapi permohonan bersama pemohon.",
+    ),
+    handling: text(
+      "A Bali Zero consultant, who confirms the guardian before any application step.",
+      "Konsultan Bali Zero, yang memastikan wali sebelum langkah permohonan apa pun.",
+    ),
+  },
   DISCLOSED_CRIMINAL_RECORD_REVIEW: {
     rule: text(
       "This result is held because you disclosed a criminal record or an ongoing case. It is one of the two disclosures the signed rules still send to a person; the other nine now stay on your result as named conditions.",
@@ -1245,10 +1335,6 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION: text(
     "Whether your sponsor holds a stay permit of their own has not been established here. Our team confirms the sponsor's own stay permit with you before submission and tells you what to prepare.",
     "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Tim kami akan memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
-  ),
-  DISCLOSED_ACTIVITY_BOUNDARY_CONDITION: text(
-    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own. Our team confirms it with you before submission and tells you what to prepare.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan. Tim kami akan memastikannya bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
     "You said your trip serves more than one purpose. Our team reviews how those purposes combine with you before submission and tells you what to prepare.",
@@ -1808,7 +1894,15 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
-          requireDecisiveRefs(item.source_refs);
+          // A3'-M (M1): the narrow exemption. A listed code with a
+          // non-empty ref still goes through the normal decisive-ref gate —
+          // only the actually-sourceless shape skips it.
+          const isSourcelessDeadEnd =
+            SOURCELESS_NO_PATH_CODES.has(item.code) &&
+            item.source_refs.length === 0;
+          if (!isSourcelessDeadEnd) {
+            requireDecisiveRefs(item.source_refs);
+          }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: buildNoPathDoors(

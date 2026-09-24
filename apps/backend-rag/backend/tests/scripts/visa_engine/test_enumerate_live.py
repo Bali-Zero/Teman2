@@ -9,6 +9,7 @@ tests exist to protect.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
@@ -66,7 +67,7 @@ def _write_manifest(path: Path, walks: list[dict[str, Any]]) -> None:
     path.write_text(json.dumps(manifest), encoding="utf-8")
 
 
-def _engine_response(state: str = "SUPPORTED_CANDIDATES") -> _Response:
+def _engine_response(state: str = "SUPPORTED_CANDIDATES", *, outage: dict[str, Any] | None = None) -> _Response:
     return _Response(
         {
             "mode": "CURATED",
@@ -76,6 +77,7 @@ def _engine_response(state: str = "SUPPORTED_CANDIDATES") -> _Response:
                 "no_path_reasons": [],
                 "notices": [{"code": "DISCLOSED_HEALTH_CONCERN_CONDITION"}],
                 "rule_pack": {"rule_pack_id": "x", "sequence": 22, "version": "2026.9.1"},
+                "outage": outage,
             },
         }
     )
@@ -185,6 +187,101 @@ def test_dry_run_validates_and_prints_plan_without_network_call(
     assert not report.exists()
 
 
+def test_dry_run_reads_a_v2_report_without_rewriting_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("recorded")])
+    report = tmp_path / "b4-2-report.json"
+    old_report = {
+        "report_version": 2,
+        "manifest_sha256": enumerate_live.manifest_digest(enumerate_live.load_manifest(manifest)),
+        "walks": [{"walk_id": "recorded", "classification": "engine_verdict"}],
+    }
+    original = json.dumps(old_report)
+    report.write_text(original, encoding="utf-8")
+    _write_token(tmp_path / "driver-token")
+
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25) + ["--dry-run"]
+    )
+
+    assert enumerate_live.run(args) == 0
+    out = capsys.readouterr().out
+    assert "pending=0" in out
+    assert "already_recorded=1" in out
+    assert report.read_text(encoding="utf-8") == original
+
+
+def test_resuming_a_pre_history_v3_report_seeds_one_legacy_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T2 (R3): a report born before ``"runs"`` existed gets ONE legacy entry
+    seeded from its pre-resume top-level block, and its persisted
+    ``report_version`` is not force-bumped (same posture B4-3 already set
+    for a resumed v2 report).
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("only")])
+    report = tmp_path / "report.json"
+    digest = enumerate_live.manifest_digest(enumerate_live.load_manifest(manifest))
+    old_report = {
+        "report_version": 3,
+        "manifest_path": str(manifest),
+        "manifest_sha256": digest,
+        "manifest_walk_count": 1,
+        "url": enumerate_live.DEFAULT_URL,
+        "traffic_source": enumerate_live.TRAFFIC_SOURCE,
+        "max_requests": 5,
+        "rate_per_minute": 20.0,
+        "max_consecutive_harness_reds": 2,
+        "started_at": "2026-01-01T00:00:00+00:00",
+        "finished_at": "2026-01-01T00:05:00+00:00",
+        "stopped_reason": "completed",
+        "health": {
+            "start": {"http_status": 200, "build_sha": "old-sha"},
+            "end": {"http_status": 200, "build_sha": "old-sha"},
+            "probes_outside_budget": enumerate_live.HEALTH_PROBES_OUTSIDE_BUDGET,
+        },
+        "requests_used_this_run": 1,
+        "requests_used_total": 1,
+        "walks": [],
+        "summary": None,
+    }
+    report.write_text(json.dumps(old_report), encoding="utf-8")
+    _write_token(tmp_path / "driver-token")
+
+    async def fake_post(*_a: object, **_k: object) -> _Response:
+        return _engine_response()
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
+    args = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25, max_consecutive_harness_reds=3)
+    )
+
+    assert enumerate_live.run(args) == 0
+    result = json.loads(report.read_text())
+    assert result["report_version"] == 3  # never force-bumped, same rule as v2
+
+    legacy, current = result["runs"]
+    assert legacy["run_index"] == 0
+    assert legacy["legacy_top_level"] is True
+    assert legacy["started_at"] == "2026-01-01T00:00:00+00:00"
+    assert legacy["finished_at"] == "2026-01-01T00:05:00+00:00"
+    assert legacy["stopped_reason"] == "completed"
+    assert legacy["max_requests"] == 5
+    assert legacy["rate_per_minute"] == 20.0
+    assert legacy["max_consecutive_harness_reds"] == 2
+    assert legacy["health"] == {"start": old_report["health"]["start"], "end": old_report["health"]["end"]}
+    assert legacy["requests_used"] == 1
+
+    assert current["run_index"] == 1
+    assert "legacy_top_level" not in current
+    assert current["stopped_reason"] == "completed"
+    assert current["requests_used"] == result["requests_used_this_run"]
+
+
 # ---------------------------------------------------------------------------
 # Successful walk / report shape
 # ---------------------------------------------------------------------------
@@ -231,6 +328,28 @@ def test_successful_walk_is_recorded_as_engine_verdict(tmp_path: Path, monkeypat
     assert saved["requests_used_this_run"] == 1
     assert saved["requests_used_total"] == 1
     assert saved["health"]["probes_outside_budget"] == 2
+
+
+def test_temp_unavailable_outage_is_preserved_verbatim_in_the_report_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("temporarily-unavailable")])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+    outage = {"code": "UPSTREAM_MAINTENANCE", "retryable": True, "window": "short"}
+
+    async def fake_post(*_a: object, **_k: object) -> _Response:
+        return _engine_response("TEMPORARILY_UNAVAILABLE", outage=outage)
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
+    args = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+
+    assert enumerate_live.run(args) == 0
+    row = json.loads(report.read_text(encoding="utf-8"))["walks"][0]
+    assert row["engine_state"] == "TEMPORARILY_UNAVAILABLE"
+    assert row["outage"]["code"] == "UPSTREAM_MAINTENANCE"
+    assert row["outage"] == outage
 
 
 # ---------------------------------------------------------------------------
@@ -546,7 +665,7 @@ def test_report_version_stale_integer_refuses_before_any_network_call(
     manifest = tmp_path / "manifest.json"
     _write_manifest(manifest, [_walk("a")])
     report = tmp_path / "report.json"
-    stale_version = enumerate_live.REPORT_VERSION - 1
+    stale_version = 1
     report.write_text(
         json.dumps(
             {
@@ -814,7 +933,7 @@ def test_dry_run_reports_version_mismatch_before_a_bad_token_file(
     manifest = tmp_path / "manifest.json"
     _write_manifest(manifest, [_walk("a")])
     report = tmp_path / "report.json"
-    stale_version = enumerate_live.REPORT_VERSION - 1
+    stale_version = 1
     report.write_text(
         json.dumps(
             {
@@ -981,6 +1100,12 @@ def test_v1_counters_are_flushed_before_sigkill_and_accumulate_on_resume(tmp_pat
     counted_at_kill = int(count.read_text())
     assert first["requests_used_this_run"] > 0
     assert abs(first["requests_used_this_run"] - counted_at_kill) <= 1
+    # T3 (B4-3b): the SAME mid-run interruption this test already exercises
+    # -- the current run's OWN history record is within the same one-request
+    # tolerance, and is not marked finished (the process never reached the
+    # end-of-run write).
+    assert first["runs"][-1]["finished_at"] is None
+    assert first["runs"][-1]["requests_used"] == first["requests_used_this_run"]
 
     resumed = subprocess.run(base, cwd=backend_root, env=env, check=False)
     assert resumed.returncode == 0
@@ -1070,6 +1195,7 @@ def test_v1_counters_track_a_retry_still_inside_one_unresolved_walk(tmp_path: Pa
     saved = json.loads(report.read_text())
     assert saved["requests_used_this_run"] == 1  # NOT 0 -- the pre-cure bug this test pins
     assert saved["requests_used_total"] == 1
+    assert saved["runs"][-1]["requests_used"] == saved["requests_used_this_run"]  # B4-3b (GATE-SUB-B43B LOW): _flush_counters_only must keep runs[-1] in step too, not just the top-level counters
     assert saved["walks"] == []  # the walk itself never resolved -- only the counters are ahead of it
 
 
@@ -1199,3 +1325,110 @@ def test_summary_never_adds_engine_verdicts_and_harness_reds_together(
     assert set(summary.keys()) == {"total_walks", "recorded", "pending", "engine_verdicts", "harness_reds"}
     assert summary["engine_verdicts"] == {"SUPPORTED_CANDIDATES": 1}
     assert summary["harness_reds"] == {"http_5xx": 1}
+
+
+# ---------------------------------------------------------------------------
+# B4-3b -- runs[] history
+# ---------------------------------------------------------------------------
+
+
+def _two_runs_history_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, second_health_build_sha: str = "cafef00d"
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Shared T1/T4 fixture: run 1 exhausts a 1-request budget over 3 walks
+    (``stopped_reason == "max_requests_exhausted"``), run 2 resumes with
+    DIFFERENT budget knobs and a different ``/health`` build_sha, and
+    completes. Returns (run 1's own record right after run 1, the final
+    on-disk report after run 2).
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("a"), _walk("b"), _walk("c")])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+
+    async def fake_post(*_a: object, **_k: object) -> _Response:
+        return _engine_response()
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
+    args1 = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=1, rate_per_minute=25, max_consecutive_harness_reds=1)
+    )
+    assert enumerate_live.run(args1) == 1
+    run1_after_run1 = json.loads(report.read_text())
+    assert run1_after_run1["stopped_reason"] == "max_requests_exhausted"
+    run1_record = copy.deepcopy(run1_after_run1["runs"][0])
+
+    async def fake_health_run2(client: httpx.AsyncClient, *, url: str, timeout: float) -> _Response:
+        return _Response({"build_sha": second_health_build_sha}, status_code=200)
+
+    monkeypatch.setattr(enumerate_live, "_get_health", fake_health_run2)
+    args2 = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25, max_consecutive_harness_reds=5)
+    )
+    assert enumerate_live.run(args2) == 0
+    final_report = json.loads(report.read_text())
+    return run1_record, final_report
+
+
+def test_two_runs_the_first_runs_facts_survive_in_runs_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T1 GUILT: run 2's own record must never overwrite run 1's."""
+
+    run1_record, final_report = _two_runs_history_fixture(tmp_path, monkeypatch)
+    runs = final_report["runs"]
+    assert len(runs) == 2
+    assert runs[0] == run1_record  # run 1's facts, untouched by run 2
+    assert runs[1]["max_requests"] == 10
+    assert runs[1]["max_consecutive_harness_reds"] == 5
+    assert runs[1]["health"]["start"]["build_sha"] == "cafef00d"
+    assert runs[1]["stopped_reason"] == "completed"
+    assert runs[1]["requests_used"] == final_report["requests_used_this_run"]
+
+
+def test_runs_history_invariants_hold_after_two_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T4 (R4 invariants), pinned against T1's own two-run scenario."""
+
+    _, final_report = _two_runs_history_fixture(tmp_path, monkeypatch, second_health_build_sha="feedface")
+    runs = final_report["runs"]
+    assert sum(r["requests_used"] for r in runs) == final_report["requests_used_total"]
+    assert runs[-1]["requests_used"] == final_report["requests_used_this_run"]
+    assert runs[-1]["max_requests"] == final_report["max_requests"]
+    assert runs[-1]["health"]["start"] == final_report["health"]["start"]
+    assert runs[-1]["health"]["end"] == final_report["health"]["end"]
+    assert runs[-1]["finished_at"] == final_report["finished_at"]
+    assert runs[-1]["stopped_reason"] == final_report["stopped_reason"]
+    assert [r["run_index"] for r in runs] == list(range(len(runs)))
+
+
+def test_dry_run_on_a_runs_history_report_writes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T5 innocence: --dry-run on a report that already carries runs[]
+    writes nothing -- same bytes, same mtime.
+    """
+
+    manifest = tmp_path / "manifest.json"
+    _write_manifest(manifest, [_walk("a")])
+    report = tmp_path / "report.json"
+    _write_token(tmp_path / "driver-token")
+
+    async def fake_post(*_a: object, **_k: object) -> _Response:
+        return _engine_response()
+
+    monkeypatch.setattr(enumerate_live, "_post_evaluate", fake_post)
+    args_live = enumerate_live._parse_args(_args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25))
+    assert enumerate_live.run(args_live) == 0
+    before_bytes = report.read_bytes()
+    before_mtime = report.stat().st_mtime_ns
+    assert json.loads(before_bytes)["runs"]  # sanity: this report DOES carry history
+
+    args_dry = enumerate_live._parse_args(
+        _args(tmp_path, manifest, report, max_requests=10, rate_per_minute=25) + ["--dry-run"]
+    )
+    assert enumerate_live.run(args_dry) == 0
+    assert report.read_bytes() == before_bytes
+    assert report.stat().st_mtime_ns == before_mtime

@@ -2540,7 +2540,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "class": "model<->calibration", "severity": "P3",
         "boundary": "configured child models <-> ~/.claude/state/child-context-capacities/",
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 15,
-        "args": {"models": ["claude-haiku-4-5-20251001", "claude-sonnet-5", "claude-opus-5"],
+        "args": {"models": ["claude-haiku-4-5-20251001", "claude-sonnet-5", "claude-opus-5-5"],
                  "profiles": ["~/.claude", "~/.claude-acct2"]},
         "fix_hint": "MISSING/EXPIRED/VERSION-MISMATCH: re-run the owned native calibration probe "
                     "(child_context.py::calibrate) for that model/profile. UNKNOWN: fix the "

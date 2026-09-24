@@ -153,6 +153,12 @@ const en = {
   "q.birth_date.label": "Date of birth",
   "why.birth_date":
     "Some paths distinguish adults and minors. The interface does not calculate eligibility from your age.",
+  "q.guardian_consent":
+    "Is a parent or legal guardian filling this in with you?",
+  "q.guardian_consent.help":
+    "We ask because the applicant is under 18. We record only your answer to this question — no name, no document, no contact details.",
+  "why.guardian_consent":
+    "An applicant under 18 cannot give this consent alone, so Bali Zero asks an adult to confirm they are present before the assessment continues.",
 
   "lane.expired.notice":
     "Your permit has already expired. Overstay is fixable. It is not the end of your story here — this always goes to a human, and we won’t alarm you with a number on this screen.",
@@ -1049,6 +1055,13 @@ const en = {
   "footer.disclaimer":
     "Visa Oracle is private decision support. It is not a government service, approval, or filing — Ditjen Imigrasi decides. Unknown or complex cases go to human review.",
   "footer.privacy": "Visa Oracle privacy policy",
+  "process.branch_preview_more":
+    "and {{count}} more {{plural:question|questions}}",
+  "process.branch_reopen_aria":
+    "Switch to {{category}} — reopens this branch and asks its questions",
+  "tree.investment_currency": "Investment currency",
+  "tree.investment_amount_usd": "Investment amount",
+  "tree.retirement_undecided_basis": "Long-stay route",
 } as const;
 
 type Keys = keyof typeof en;
@@ -1192,6 +1205,12 @@ const id: Record<Keys, string> = {
   "q.birth_date.label": "Tanggal lahir",
   "why.birth_date":
     "Beberapa jalur membedakan orang dewasa dan anak. Antarmuka tidak menghitung kelayakan dari usia Anda.",
+  "q.guardian_consent":
+    "Apakah orang tua atau wali sah mengisi ini bersama Anda?",
+  "q.guardian_consent.help":
+    "Kami menanyakan ini karena pemohon berusia di bawah 18 tahun. Kami hanya mencatat jawaban Anda atas pertanyaan ini — tanpa nama, tanpa dokumen, tanpa data kontak.",
+  "why.guardian_consent":
+    "Pemohon di bawah 18 tahun tidak dapat memberikan persetujuan ini sendiri, sehingga Bali Zero meminta orang dewasa memastikan kehadirannya sebelum penilaian dilanjutkan.",
 
   "lane.expired.notice":
     "Izin tinggal Anda sudah berakhir. Overstay bisa diselesaikan. Ini bukan akhir cerita Anda di sini — kasus ini selalu ditangani manusia, dan kami tidak akan menampilkan angka yang menakutkan di layar ini.",
@@ -2066,6 +2085,12 @@ const id: Record<Keys, string> = {
   "footer.disclaimer":
     "Visa Oracle adalah alat bantu keputusan privat. Ini bukan layanan pemerintah, persetujuan, atau pengajuan — Ditjen Imigrasi yang memutuskan. Kasus yang tidak diketahui atau kompleks ditinjau manusia.",
   "footer.privacy": "Kebijakan privasi Visa Oracle",
+  "process.branch_preview_more": "dan {{count}} pertanyaan lagi",
+  "process.branch_reopen_aria":
+    "Beralih ke {{category}} — membuka kembali cabang ini dan menanyakan pertanyaannya",
+  "tree.investment_currency": "Mata uang investasi",
+  "tree.investment_amount_usd": "Jumlah investasi",
+  "tree.retirement_undecided_basis": "Jalur tinggal panjang",
 };
 
 export const dict = { en, id };

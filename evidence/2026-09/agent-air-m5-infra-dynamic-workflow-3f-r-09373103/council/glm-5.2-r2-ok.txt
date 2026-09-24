@@ -1,0 +1,13 @@
+VERDICT: SOUND
+
+OBJECTIONS: None. I checked all five failure modes:
+
+1. **Remaining bare `opus-5`/`Opus 5` as a CURRENT seat** — SKILL.md R3 ("fresh Opus 5.5 `xhigh`"), BLUE Dux ("Opus 5.5 window"), C5 description, and brief.template.md C5 rule + gate row (`| final gate | opus-5-5 | window | …`) all use the 5.5 entity. The only bare-spelling hits are the two deliberate ones the brief's A1 calls out: F3 ("fresh Opus 5 session", dated 2026-09-18, pre-ruling) and SKILL.md's C5 description naming `opus-5` as what *now fails*. F12's "Opus 5.5 = architecture" and "Sonnet 5" are different models, not the gate seat.
+
+2. **Test re-implements the regex** — `<REDACTED>…` loads the launcher via `<REDACTED>` and calls `dw._check_c5` for both halves; no hand-rolled C5 regex in the test file.
+
+3. **Template gate row vs main's `_check_c5`** — I traced the regex `\bopus[\s-]+5(?:\.5|-5)(?![\w.]|-\d)` against the shipped seat cell `opus-5-5`: word boundary before `opus`, `-` consumes, `5`, `-5` branch matches, next char is end-of-cell (no `[\w.]`, no `-\d`) → pass. Mode `window` matches `\bwindows?\b`; stage `final gate` matches `\bgates?\b`; it is the only/last gate row. The guilty substitution `opus-5-5`→`opus-5` leaves `5` followed by a space, so `(?:\.5|-5)` cannot match → correctly fails.
+
+4. **Scope creep** — the three intended changes are exactly present (C5 literal migration, MODEL_ROSTER.md 71/91 re-point verified in `<REDACTED>`, GUILT test added). The other 12 test functions, the workflow one-liner, and the allowlist edit are the #6951 cargo carried forward, not new scope.
+
+5. **Workflow edit** — the yml change *adds* `scripts/tests/<REDACTED>` to the pytest invocation; it runs more tests, never fewer, and cannot skip or mask.

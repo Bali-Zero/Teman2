@@ -1,0 +1,250 @@
+# Gear-3 evidence pack — PR3f-r, replaces #6951 (dynamic-workflow skill + brief template,
+# C5 gate literal moved to Opus 5.5). Written by builder-6951r (Claude Sonnet 5), dispatched by
+# the conductor after #7198's Harness floor recompute went red: gear:3 was declared in
+# evidence/brief.yml but no evidence/pack.yml was authored in the same diff. This pack and its
+# council/ journal are that missing half, added in follow-up commits onto the same branch.
+#
+# REWORK-BUILD (gate-7198, fresh Opus 5.5, 2026-09-24): the code/template/tests were SOUND; one
+# MEDIUM on the evidence itself — this revision's fix, below. Report:
+# /Users/balizero/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/GATE-7198-REPORT.md
+# M1 (MEDIUM, cured): the prior seat_override said "the only live non-Anthropic seat was
+# tp1-glm-5.2" off a TARGETED probe (kimi/codex/glm only) that never measured tp1-qwen3.8-max or
+# tp1-deepseek-v4-pro. Both were probed live 2026-09-24T08:19:40Z (LIVE) and both answered as
+# refuters on the SAME task file (council/prompt-glm-5.2-refuter.txt, the diff at cc0d001ad3 —
+# before this pack existed). Quorum is now met on real runs; seat_override is DROPPED (see
+# seat_fallback_reason instead, the correct field once quorum holds on reserve seats).
+# L1 (LOW, cured): council/glm-5.2-r1-died-no-verdict.txt and this pack's GLM receipt previously
+# misrecorded r1's command as `--max-tokens 32000` and its ts as `07:50:00Z` — those numbers
+# belonged to r2. Corrected below and in that file.
+# L2 (LOW, cured): the grep-sweep receipt below is the command's FULL, unedited output — the nine
+# scripts/tests/test_dynamic_workflow_skill.py hits (all legitimately naming the failing spelling
+# inside the GUILT test's own prose/strings) are no longer omitted.
+# I1 (INFO, cured): council/glm-5.2-r2-ok.txt carries three `<REDACTED>` markers. These are
+# tp1_call.py's OWN output scrub, not tampering by this builder or the conductor — the file is
+# byte-identical (`cmp -s`, 1770 B) to the conductor's raw capture
+# (scratchpad/refuter-7198-glm.txt) at the time it was written.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: docs/rules/RULINGS.md RULED 2026-09-23 (Opus 5.5 replaces Opus 5 in every seat) + #7154
+mission: PR3f-r — dynamic-workflow skill/brief template, replaces the frozen #6951 on fresh main
+lanes:
+  - lane: pr3f-r-build
+    role: build
+    seat: Claude Sonnet 5 (builder-6951r)
+  - lane: pr3f-r-council-glm
+    role: review
+    seat: tp1-glm-5.2
+  - lane: pr3f-r-council-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: pr3f-r-council-deepseek
+    role: review
+    seat: tp1-deepseek-v4-pro
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  titolari codex-gpt-5.6-sol and kimi-code/k3 TIMEOUT on arsenal_probe 2026-09-24T07:39:37Z (M5);
+  titolare tp1-qwen3.8-max answered (r2, 2026-09-24T08:33:13Z); reserves tp1-glm-5.2 and
+  tp1-deepseek-v4-pro also answered (2026-09-24T07:57:33Z and 08:33:27Z respectively) — quorum is
+  met with one titolare plus two reserves substituting for the two unavailable titolari.
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3, path-sourced: the diff touches .github/workflows/dynamic-workflow-selftest.yml, a
+      hot-zone path (HOTZONE_PATTERNS), which floors gear at 3 regardless of the diff's size —
+      this is what the conductor's original "Harness floor recompute: declared gear 2 is BELOW
+      the deterministic floor 3" refusal on #6951 was catching, and why #6951 itself never
+      shipped.
+  - id: D-pack-followup
+    decision: >-
+      The C5-literal fix (SKILL.md, brief.template.md, the GUILT test, the two one-line hunks,
+      evidence/.../brief.yml) was committed and pushed FIRST, and #7198 opened, before this
+      Gear-3 requirement was fully satisfied — the pack half was missing (scripts/ci/
+      tracked_file_present_in_diff.sh: PACK_PATH not in the diff's own changed-files set,
+      "inherited" case, since evidence/pack.yml did not exist yet on this branch at all). The
+      conductor disarmed #7198 and this commit adds the missing pack.yml + council/ in-branch,
+      same PR, before re-arming — never validating a pack.yml left by a different task.
+  - id: D-council
+    decision: >-
+      No independent council was convened before #7198 opened (this is a mechanical carry-
+      forward of #6951's own content plus a literal-migration and a re-pointed citation, not new
+      design work). The conductor commissioned one AFTER the gap was found: three independent
+      REFUTER passes on THIS diff (tp1-glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro; all three
+      families != builder), default-to-defective, the same five named failure modes, the same
+      task file. Recorded truthfully as a post-hoc review, not a pre-existing one.
+  - id: D-m1-gate7198
+    decision: >-
+      gate-7198 (fresh Opus 5.5, 2026-09-24) found the first seat_override's "only live" claim
+      unmeasured for tp1-qwen3.8-max/tp1-deepseek-v4-pro (MEDIUM). The conductor then probed both
+      (LIVE) and dispatched both as refuters on the identical task file. Both answered SOUND, no
+      objections. Quorum (>=2 distinct COUNCIL_REVIEW_SEATS, ok:true) is met with tp1-qwen3.8-max
+      (titolare) alone; tp1-glm-5.2 and tp1-deepseek-v4-pro are reserves counted alongside it, so
+      seat_fallback_reason (not seat_override) is the correct field now (check_council_run_gear3's
+      second limb).
+receipts:
+  - claim: Full required test suite green on this head.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_dynamic_workflow.py
+      scripts/tests/test_dynamic_workflow_skill.py scripts/tests/test_skills_canonical.py
+      scripts/tests/test_lint_workflow_script.py -q
+    result: "295 passed in 6.25s"
+    exit: 0
+    ts: "2026-09-24T08:00:49Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: Launcher selftest green on this head.
+    cmd: python3 scripts/dynamic_workflow.py --selftest
+    result: "SELFTEST OK"
+    exit: 0
+    ts: "2026-09-24T08:00:53Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: >-
+      GUILT run on the real template file: the new test goes RED when the shipped gate row is
+      mutated back to the bare opus-5, and the restore is byte-identical.
+    cmd: >-
+      cp brief.template.md /tmp/backup.md; sed -i '' 's/opus-5-5 | window/opus-5 | window/'
+      brief.template.md; pytest -q -k test_shipped_gate_row_passes_c5; cp /tmp/backup.md
+      brief.template.md; cmp -s /tmp/backup.md brief.template.md
+    result: >-
+      mutated run: "1 failed, 13 deselected" (AssertionError: gate row no longer names
+      opus-5-5); restore: cmp -s exited 0 (byte-identical); full suite re-run green after
+      re-staging (295 passed)
+    exit: 0
+    ts: "2026-09-24T07:47:00Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: CI's own dynamic-workflow-selftest workflow ran on this PR's head and passed, including the new GUILT test.
+    cmd: gh run view 35971758554 --repo Bali-Zero/Teman2 --log | grep shipped_gate_row
+    result: >-
+      "test_dynamic_workflow_skill.py::test_shipped_gate_row_passes_c5_and_the_pre_7154_bare_opus_5_spelling_fails_it
+      PASSED"; step totals "249 passed in 11.02s" + "53 passed in 0.68s"
+    exit: 0
+    ts: "2026-09-24T07:52:00Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: >-
+      Grep sweep for any remaining bare opus-5 naming a current seat — FULL, unedited output
+      (gate-7198 L2: the prior receipt omitted the nine legitimate test-file hits).
+    cmd: >-
+      grep -rn -P '\bopus[- ]5\b(?![.-]5)' -i .claude/skills/dynamic-workflow
+      scripts/tests/test_dynamic_workflow_skill.py
+    result: |-
+      .claude/skills/dynamic-workflow/brief.template.md:47:2 shipped as-is, 1 died. Every shipped item was re-verified by a fresh Opus 5 session. The run
+      scripts/tests/test_dynamic_workflow_skill.py:11:gate literal from `opus-5` to `opus-5-5` (RULED 2026-09-23, `docs/rules/RULINGS.md`), and
+      scripts/tests/test_dynamic_workflow_skill.py:12:#6951's gate row still hardcoded the bare `opus-5`, so a brief rendered from that template
+      scripts/tests/test_dynamic_workflow_skill.py:95:back to the bare `opus-5` fails the "shipped template passes" half below, not just the
+      scripts/tests/test_dynamic_workflow_skill.py:96:hand-built "bare opus-5 fails" half.
+      scripts/tests/test_dynamic_workflow_skill.py:405:"""GUILT (replaces #6951): that PR's gate row hardcoded the bare `opus-5`, which fails
+      scripts/tests/test_dynamic_workflow_skill.py:408:a future regression back to `opus-5` fails HERE too, not only in the hand-built guilty row;
+      scripts/tests/test_dynamic_workflow_skill.py:421:# Guilt: the same row with the superseded bare `opus-5` fails C5.
+      scripts/tests/test_dynamic_workflow_skill.py:422:guilty_row = shipped_row.replace("opus-5-5", "opus-5")
+      scripts/tests/test_dynamic_workflow_skill.py:425:f"bare-opus-5 gate row should fail C5 but did not: {guilty_row!r}"
+      .claude/skills/dynamic-workflow/SKILL.md:171:entity (RULED 2026-09-23, `opus-5-5` replaces `opus-5` in every seat) — `opus-5-5`,
+      .claude/skills/dynamic-workflow/SKILL.md:172:`Opus 5.5`, `fresh opus-5-5 xhigh` pass; `opus-5`, `opus-5-50`, `opus-5.55`, `opus-5-1` do
+      12 matches: 1 doc (F3, historical) + 9 test-file (the GUILT test's own prose/strings,
+      legitimately naming the failing spelling) + 2 doc (SKILL.md's C5 description naming what
+      now fails).
+    exit: 0
+    ts: "2026-09-24T09:05:00Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: Diff size against the merge-base (never a two-dot diff against the tip of main).
+    cmd: git diff --shortstat "$(git merge-base origin/main HEAD)" HEAD
+    result: "6 files changed, 1034 insertions(+), 1 deletion(-)"
+    exit: 0
+    ts: "2026-09-24T08:00:56Z"
+    seat: Claude Sonnet 5 (builder-6951r)
+  - claim: tp1-glm-5.2's two runs (corrected per gate-7198 L1 — r1's real command/ts, not r2's).
+    cmd: >-
+      r1: scripts/tp1_call.py --model tp1-glm-5.2 --effort high --timeout 400 (default
+      --max-tokens); r2: --effort high --max-tokens 32000 --timeout 580 (dispatched by the
+      conductor, not this builder)
+    result: >-
+      r1 dispatched 07:55:38Z, died 07:56:41Z, rc=3, finish_reason=length, no answer — recorded
+      as a death (council/glm-5.2-r1-died-no-verdict.txt); r2 rc=0, VERDICT: SOUND, no objections
+      across all five named failure modes (council/glm-5.2-r2-ok.txt)
+    exit: 0
+    ts: "2026-09-24T07:57:33Z"
+    seat: tp1-glm-5.2 (dispatched by the conductor)
+  - claim: >-
+      tp1-qwen3.8-max probed LIVE and dispatched as a second refuter on the same task file
+      (gate-7198 M1 fix) — two runs.
+    cmd: >-
+      probe: scripts/arsenal_probe.py --seats tp1-qwen3.8-max,tp1-deepseek-v4-pro; r1:
+      scripts/tp1_call.py --model tp1-qwen3.8-max --effort high --max-tokens 32000 --timeout 580;
+      r2: --effort medium --max-tokens 32000 --timeout 900
+    result: >-
+      probe 08:19:40Z: both LIVE; r1 dispatched 08:19:50Z, ran to the 580s budget (08:29:30Z) with
+      0 chars of answer (7009 chunks, 87325 chars of reasoning), rc=4, seat ALIVE but not done —
+      recorded as a death, not counted (council/qwen3.8-max-r1-died-no-verdict.txt); r2 dispatched
+      08:29:48Z, rc=0, VERDICT: SOUND, no objections (council/qwen3.8-max-r2-ok.txt)
+    exit: 0
+    ts: "2026-09-24T08:33:13Z"
+    seat: tp1-qwen3.8-max (dispatched by the conductor)
+  - claim: tp1-deepseek-v4-pro probed LIVE and dispatched as a third refuter on the same task file (gate-7198 M1 fix).
+    cmd: >-
+      scripts/tp1_call.py --model tp1-deepseek-v4-pro --effort high --max-tokens 32000
+      --timeout 900 (dispatched by the conductor, not this builder)
+    result: "dispatched 08:29:52Z, rc=0, VERDICT: SOUND, no objections (council/deepseek-v4-pro-r1-ok.txt)"
+    exit: 0
+    ts: "2026-09-24T08:33:27Z"
+    seat: tp1-deepseek-v4-pro (dispatched by the conductor)
+dissent:
+  - seat: glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro
+    objection: >-
+      posed (conductor checklist): does a bare opus-5/Opus 5 remain naming a CURRENT seat
+      anywhere in the diff? — retracted: all three independently confirmed only the two
+      deliberate leftovers remain (F3, dated 2026-09-18, pre-ruling; SKILL.md's C5 description
+      naming what now fails), and every current-seat mention reads opus-5-5/Opus 5.5. glm-5.2:
+      "the only bare-spelling hits are the two deliberate ones... F12's 'Opus 5.5 = architecture'
+      and 'Sonnet 5' are different models, not the gate seat." tp1-qwen3.8-max: "No live seat
+      literal was missed." tp1-deepseek-v4-pro: "The phrase 'fresh-Opus synthesis' in the skill
+      description heading is not a 'bare opus-5' literal... the corresponding §5 heading already
+      states 'Opus 5.5 xhigh'."
+    status: RETRACTED
+  - seat: glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro
+    objection: >-
+      posed (conductor checklist): does the new test re-implement the C5 regex instead of
+      importing the judge? — retracted: all three confirmed the test loads
+      scripts/dynamic_workflow.py and calls dw._check_c5 for both halves, no hand-rolled regex.
+      glm-5.2: "no hand-rolled C5 regex exists in the test file." tp1-qwen3.8-max: "If the
+      template regressed to opus-5, the `in` guard fires before the judge is even called."
+      tp1-deepseek-v4-pro: "The `TEMPLATE_GATE_ROW_RE` used to find the example row is purely
+      structural, not a semantic entity matcher." None of the three, asked whether the test
+      RE-IMPLEMENTS the regex, characterized that same `in` guard as an OVER-match risk in the
+      other direction (a legit `Opus 5.5` edit also tripping it) — gate-7198's own review (L4)
+      names that as a separate, known limitation; declared here and in the PR body, not asked of
+      the refuters and not something any of them raised unprompted.
+    status: RETRACTED
+  - seat: glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro
+    objection: >-
+      posed (conductor checklist): does the shipped template gate row actually pass main's
+      _check_c5, and does the guilty substitution actually fail it? — retracted: all three traced
+      the regex by hand against the shipped and mutated cells. glm-5.2: "the trailing 5 is
+      followed by a space so (?:\.5|-5) cannot match — correctly fails." tp1-qwen3.8-max:
+      "_C5_GATE_STAGE_RE... matches 'final gate'; _C5_SEAT_ENTITY_RE matches opus-5-5;
+      _C5_MODE_WINDOW_RE matches 'window'." tp1-deepseek-v4-pro: "The `_C5_SEAT_ENTITY_RE`
+      explicitly accepts opus-5-5 and rejects bare opus-5... the GUILT test calls _check_c5 on
+      exactly that row and confirms it passes."
+    status: RETRACTED
+  - seat: glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro
+    objection: >-
+      posed (conductor checklist): does the diff carry changes beyond the three intended ones
+      (C5 literal migration, MODEL_ROSTER.md 71/91 re-point, the GUILT test)? — retracted: all
+      three confirmed only those three are present. glm-5.2: "the other twelve test functions...
+      are #6951's own carried-forward cargo, not new scope." tp1-qwen3.8-max: "matching the
+      curated map entries ('MODEL_ROSTER.md','71') and ('MODEL_ROSTER.md','91')." None of the
+      three carved out brief.template.md's F12 "Opus 5 -> Opus 5.5" hunk as separate scope — all
+      three folded it into "the C5 literal updated throughout". gate-7198's own review (L3) did
+      separate it: ruling-mandated (RULINGS 2026-09-23, MODEL_ROSTER.md:264), real, but undeclared
+      by the commit message and the PR body — now declared in both (see the pack header and the
+      PR body's "What changed vs #6951").
+    status: RETRACTED
+  - seat: glm-5.2, tp1-qwen3.8-max, tp1-deepseek-v4-pro
+    objection: >-
+      posed (conductor checklist): could the one-line dynamic-workflow-selftest.yml edit skip or
+      mask any existing test? — retracted: all three confirmed the edit only ADDS
+      scripts/tests/test_dynamic_workflow_skill.py to the pytest invocation. glm-5.2: "it runs
+      strictly more tests, never fewer." tp1-qwen3.8-max: "No `--ignore`, no conditional `if:`, no
+      `continue-on-error`." tp1-deepseek-v4-pro: "no masking occurs because the job is already
+      red" on any failure.
+    status: RETRACTED
+appetite:
+  budget: 2 follow-up commits on an already-open, disarmed PR (evidence pack, then gate-7198's fix list)
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

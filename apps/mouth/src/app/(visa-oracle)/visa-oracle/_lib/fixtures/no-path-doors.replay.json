@@ -7,7 +7,7 @@
   },
   "as_of": "2026-09-16 17:48:07.053088+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "3384f2f385bfcaf072211a62d93f8eab034d0635beedbc1e434be9e7d9c56889",
+  "walk_corpus_fingerprint": "1a1d4998f341e3b49cf41d31a0e7beb9d919b0f8435542b800b7c3e04b07b3fa",
   "walks": [
     {
       "label": "offshore/business",
@@ -29,8 +29,8 @@
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
-      "label": "offshore/family/PARENT/spNat=IT/minor",
-      "walk_fixture": "offshore_family_PARENT_spNat_IT_minor.json",
+      "label": "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+      "walk_fixture": "offshore_family_PARENT_spNat_IT_minor_guardian_no.json",
       "state": "HUMAN_REVIEW_REQUIRED",
       "no_path_reason_codes": [],
       "missing_facts": [],

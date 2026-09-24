@@ -41,7 +41,9 @@ def _complete_persona_kwargs() -> dict:
 
 def test_persona_validates_when_complete():
     p = Persona(**_complete_persona_kwargs())
-    p.validate()  # no exception
+    assert p.count_populated_attrs() >= 15
+    assert len(p.verbatim_quotes) >= 3
+    assert p.validate() is None
 
 
 def test_persona_counts_populated_attrs_excludes_slug_and_segment():

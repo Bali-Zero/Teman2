@@ -54,7 +54,7 @@ export function ConsentBanner() {
       className="fixed bottom-0 left-0 right-0 z-50 px-6 py-4"
       style={{
         backgroundColor: "var(--bz-elevated)",
-        borderTop: "1px solid rgba(255,255,255,0.12)",
+        borderTop: "1px solid var(--bz-border)",
       }}
     >
       <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

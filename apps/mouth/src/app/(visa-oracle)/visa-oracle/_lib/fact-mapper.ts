@@ -457,13 +457,15 @@ const REVIEW_FLAG_MAP: Readonly<
 };
 
 /**
- * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
- * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
- * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
- * a non-empty candidate list in any other state — so raising it DELETES a
- * product the signed pack had already proven. It may be raised only for an
- * answer the signed vocabulary cannot decide, never for the mere fact that a
- * question was answered.
+ * ACTIVITY_BOUNDARY is on its way OUT of the hold group: A3' (`DEAD_END_
+ * DISCLOSED_FLAGS`, evaluate_path.py, slice A3'-B) turns a disclosed flag
+ * into a dead end (`NO_SUPPORTED_PATH`) instead of the hold this comment
+ * used to describe. `candidates=()` either way — `models.py` forbids a
+ * non-empty candidate list in any state that is not SUPPORTED_CANDIDATES —
+ * so raising it still DELETES a product the signed pack had already
+ * proven, which is why it may be raised only for an answer the signed
+ * vocabulary cannot decide, never for the mere fact that a question was
+ * answered.
  *
  * Keyed by question id (`tree.ts`), listing per question the answers the pack
  * decides on its own. Every OTHER answer holds, including an option added to
@@ -947,6 +949,14 @@ export function mapOracleFactsToApplicantFacts(
     // resolve to an explicit UNKNOWN (NOT_ASKED / UNVERIFIED respectively),
     // never a guessed `false`.
     "immigration.renewal_paid": booleanFact(facts.renewal_paid),
+    // Slice A7-B, 2026-09-21: the wire key ships in this PR as CONTRACT-ONLY
+    // (backend #FACT-A7B) — no question in tree.ts sets `facts.guardian_
+    // consent` yet, so every walk yields UNKNOWN(NOT_ASKED) until A7-M ships
+    // the question. Same `booleanFact` treatment as every other yes/no
+    // question: "never asked" and "answered unsure" both resolve to an
+    // explicit UNKNOWN, never a guessed `false` — a guessed `false` here
+    // would wrongly manufacture the minor-privacy hold's earned reason.
+    "person.guardian_consent": booleanFact(facts.guardian_consent),
     "intent.purposes": mapPurposes(facts),
     "intent.stay_days": mapStayDays(facts),
     "intent.desired_entry_date": unknownFact(NOT_ASKED),

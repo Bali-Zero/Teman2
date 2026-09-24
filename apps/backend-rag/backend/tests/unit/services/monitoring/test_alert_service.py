@@ -78,6 +78,9 @@ class TestClose:
     async def test_close_no_client(self):
         svc = _make_service()
         await svc.close()  # Should not raise
+        # No client existed before close(); close() must not create one as a
+        # side effect (it should only ever tear down an existing client).
+        assert svc._client is None
 
 
 # ---------------------------------------------------------------------------
@@ -317,8 +320,12 @@ class TestSendLatencyAlert:
 class TestSendHourlyDigest:
     async def test_skips_when_buffer_empty(self):
         svc = _make_service(telegram=True)
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        svc._client = mock_client
         await svc.send_hourly_digest()
-        # No error, no send
+        # Empty buffer must early-return before ever touching the HTTP client.
+        mock_client.post.assert_not_awaited()
 
     async def test_sends_digest(self):
         svc = _make_service(telegram=True)
@@ -407,8 +414,12 @@ class TestSlackAlert:
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service(telegram=False, slack=False)
-        # _send_slack_alert should early return
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        svc._client = mock_client
+        # _send_slack_alert should early return without ever posting.
         await svc._send_slack_alert("t", "m", AlertLevel.INFO)
+        mock_client.post.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -431,7 +442,12 @@ class TestDiscordAlert:
         from backend.services.monitoring.alert_service import AlertLevel
 
         svc = _make_service(telegram=False, discord=False)
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        svc._client = mock_client
+        # _send_discord_alert should early return without ever posting.
         await svc._send_discord_alert("t", "m", AlertLevel.INFO)
+        mock_client.post.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

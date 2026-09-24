@@ -1,0 +1,2 @@
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-22T14:04:35Z", "verdict": "CLAIM REFUTED", "findings": 3, "note": "refuter on the core claim; 2 refutations + 1 caveat, all cured in ea41a98967"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-22T14:09:44Z", "verdict": "DEFECTIVE (no blocker)", "findings": 8, "note": "red-team via codex-companion (account default model); 7 MAJOR/MINOR cured in 8142c61628, 1 already cured in ea41a98967"}

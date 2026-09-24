@@ -15,6 +15,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "person.guardian_consent": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "immigration.currently_in_indonesia": {
       "status": "KNOWN",
       "value": true

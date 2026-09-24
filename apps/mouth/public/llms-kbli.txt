@@ -384,9 +384,9 @@
 19203 | Industri Produk dari Bahan Limbah Minyak Pelumas | TERBUKA | 100% | Menengah Tinggi / Tinggi
 19204 | Industri Minyak Pelumas Dasar (Bahan Baku Pelumas) | NOT_VERIFIED | Not verified | Menengah Tinggi
 19205 | Industri Briket | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi / Rendah
-19206 | Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel | NOT_VERIFIED | Not verified | Not classified
+19206 | Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel | NOT_VERIFIED | Not verified | Menengah Tinggi
 19209 | Industri Produk Lainnya dari Hasil Kilang Minyak Bumi | TERBUKA | 100% | Menengah Rendah / Tinggi / Rendah
-20111 | Industri Asam, Basa, dan Garam Anorganik | NOT_VERIFIED | Not verified | Not classified
+20111 | Industri Asam, Basa, dan Garam Anorganik | NOT_VERIFIED | Not verified | Menengah Tinggi / Rendah / Tinggi
 20112 | Industri Gas Industri | TERBUKA | 100% | Menengah Rendah / Menengah Tinggi
 20113 | Industri Kimia Dasar Zat Warna dan Pigmen | NOT_VERIFIED | Not verified | Menengah Rendah / Rendah / Menengah Tinggi
 20114 | Industri Kimia Dasar Radioaktif | NOT_VERIFIED | Not verified | Tinggi
@@ -1302,8 +1302,8 @@
 74991 | Jasa Meteorologi dan Prakiraan Cuaca | TERBUKA | 100% | Rendah
 74999 | Semua Aktivitas Profesional, Ilmiah dan Teknis YTDL Lainnya | TERBUKA | 100% | Menengah Tinggi
 75001 | Aktivitas Personel Kesehatan Hewan Mandiri | NOT_VERIFIED | Not verified | Not classified
-75002 | Aktivitas Pengelolaan Sarana Kesehatan Hewan | NOT_VERIFIED | Not verified | Not classified
-75009 | Aktivitas Pengelolaan Kesehatan Hewan Lainnya | NOT_VERIFIED | Not verified | Not classified
+75002 | Aktivitas Pengelolaan Sarana Kesehatan Hewan | NOT_VERIFIED | Not verified | Menengah Rendah / Menengah Tinggi
+75009 | Aktivitas Pengelolaan Kesehatan Hewan Lainnya | NOT_VERIFIED | Not verified | Menengah Tinggi
 77100 | Penyewaan dan Sewa Guna Usaha Kendaraan Bermotor | NOT_VERIFIED | Not verified | Rendah
 77210 | Penyewaan dan Sewa Guna Usaha Alat rekreasi dan Olahraga | TERBUKA | 100% | Rendah
 77291 | Penyewaan Peralatan dan Perlengkapan Acara | TERBUKA | 100% | Rendah
@@ -1520,9 +1520,9 @@
 92000 | Aktivitas Perjudian dan Pertaruhan | TERTUTUP | 0% | Not classified
 93111 | Fasilitas Stadion | NOT_VERIFIED | Not verified | Menengah Rendah
 93112 | Fasilitas Sirkuit | NOT_VERIFIED | Not verified | Menengah Tinggi
-93113 | Fasilitas Gelanggang/Arena | NOT_VERIFIED | Not verified | Not classified
+93113 | Fasilitas Gelanggang/Arena | TERBUKA | 100% | Menengah Tinggi
 93114 | Fasilitas Lapangan | NOT_VERIFIED | Not verified | Menengah Rendah / Tinggi
-93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Not classified
+93115 | Fasilitas Olahraga Beladiri | NOT_VERIFIED | Not verified | Menengah Rendah
 93116 | Fasilitas Pusat Kebugaran/Fitness Center | NOT_VERIFIED | Not verified | Menengah Rendah
 93119 | Pengelolaan Fasilitas Olahraga Lainnya | TERBUKA | 100% | Rendah
 93121 | Klub Sepak Bola | NOT_VERIFIED | Not verified | Not classified
@@ -1536,9 +1536,9 @@
 93129 | Klub Olahraga Lainnya | NOT_VERIFIED | Not verified | Not classified
 93191 | Penyelenggaraan Kegiatan Olahraga | NOT_VERIFIED | Not verified | Menengah Rendah
 93192 | Aktivitas Juri dan Wasit Profesional | NOT_VERIFIED | Not verified | Not classified
-93193 | Aktivitas Perburuan di Kawasan Buru | NOT_VERIFIED | Not verified | Not classified
+93193 | Aktivitas Perburuan di Kawasan Buru | TERBUKA | 100% | Menengah Rendah
 93194 | Badan Regulasi dan Liga Olahraga | NOT_VERIFIED | Not verified | Not classified
-93195 | Aktivitas Olahraga Tradisional | NOT_VERIFIED | Not verified | Not classified
+93195 | Aktivitas Olahraga Tradisional | NOT_VERIFIED | Not verified | Rendah
 93196 | Pengelolaan Fasilitas Pemancingan | TERBUKA | 100% | Rendah / Menengah Tinggi
 93197 | Aktivitas Olaharagawan/Atlet Independen | NOT_VERIFIED | Not verified | Not classified
 93199 | Aktivitas Lainnya yang Berkaitan dengan Olahraga YTDL | NOT_VERIFIED | Not verified | Not classified

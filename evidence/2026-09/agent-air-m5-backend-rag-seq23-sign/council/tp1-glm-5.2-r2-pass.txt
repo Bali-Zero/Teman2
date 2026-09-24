@@ -1,0 +1,5 @@
+WITHDRAWN. Measurement M2 for `<REDACTED>` shows the UNKNOWN persona's `missing_facts` are `['<REDACTED>', 'person.guardian_consent']`. The adapter appends the consent fact rather than replacing the original missing fact, so `<REDACTED>` is present in the decided-level `missing_facts` and the witness check passes.
+
+WITHDRAWN. Measurement M4 explicitly states that `_BRIDGING_APPLICANT` inherits `overstay_days=0` (KNOWN). Because it is KNOWN, the global `hf.active-overstay` filter will not fire on the bridging UNKNOWN personas, preventing any shadowing of the bridging filter's own missing fact. M2 confirms that the bridging UNKNOWN personas correctly surface their own respective missing facts.
+
+VERDICT: PASS

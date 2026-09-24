@@ -24,18 +24,22 @@ function cellValue(label: string): string {
 }
 
 describe("LicensingQuickFacts — the non-gold grid keeps the same honesty rule", () => {
-  it("93114 (pending_crosswalk) withholds risk, licence and processing", () => {
+  // 2026-09-23 (#7136 OSS refresh ADOPT): 93114 moved pending_crosswalk ->
+  // oss_native (OSS RBA 2025 published its own scope) and no longer withholds
+  // here. See LicensingSection.unverified-cells.test.tsx for the sibling
+  // KeyFacts-grid fix and the note that pending_crosswalk-with-rows is now an
+  // extinct shape.
+  it("93114 (oss_native) prints its real values and no qualifier", () => {
     const kbli = getCode("93114");
     if (!kbli) throw new Error("93114 missing from the canonical");
 
     render(<LicensingQuickFacts kbli={kbli} />);
 
-    expect(cellValue("Risk Level")).toBe(UNVERIFIED_LICENSING_FACT);
-    expect(cellValue("License Type")).toBe(UNVERIFIED_LICENSING_FACT);
-    expect(cellValue("Processing")).toBe(UNVERIFIED_LICENSING_FACT);
+    expect(cellValue("Risk Level")).not.toBe(UNVERIFIED_LICENSING_FACT);
+    expect(cellValue("License Type")).not.toBe(UNVERIFIED_LICENSING_FACT);
     expect(
-      screen.getByText(/KBLI-2025 crosswalk is not verified/),
-    ).toBeInTheDocument();
+      screen.queryByText(/KBLI-2025 crosswalk is not verified/),
+    ).toBeNull();
   });
 
   it("49213 (detached rows) withholds them and names the collision", () => {

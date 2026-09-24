@@ -32,6 +32,8 @@ export interface ProcessRailProps {
   variant: "mobile" | "desktop";
   outcome?: ProcessOutcomeSummary | null;
   reducedMotion?: boolean;
+  onSelectCategory?: (category: string) => void;
+  previews?: Record<string, { labels: string[]; remainder: number }>;
 }
 
 const S = {
@@ -236,8 +238,29 @@ export function ProcessBranches({
   model,
   variant,
   reducedMotion = false,
+  onSelectCategory,
+  previews = {},
 }: ProcessRailProps) {
   if (!model.showCategories) return null;
+
+  // C2-2 re-entry is for viewing a pruned branch from a LATER question —
+  // never while the category picker itself is the open question. `BACK`
+  // (flow.ts:1386) truncates history but `pruneFacts` (flow.ts:1269) keeps
+  // a fact whenever its questionId is still anywhere in history, INCLUDING
+  // the current node: landing back on "category" after a prior answer
+  // leaves `facts.category` (and so `model.chosenCategory`) stale until
+  // it is re-answered. Without this check every OTHER category still
+  // reads "pruned" and its rail chip would promote to a `<button>` right
+  // next to the category question's own identically-named answer button —
+  // two elements sharing one accessible name (measured: PR #7081,
+  // `visa-oracle-v2.spec.ts:567`'s `getByRole("button", { name:
+  // /tourism & short visit/i })` resolving to 2 elements, strict-mode
+  // violation). `model.trunk` already carries this: `getTreeSteps`
+  // (flow.ts:1720-1758) sets the "category" step's own status to
+  // "current" exactly when it is the open question — no new prop needed.
+  const categoryQuestionOpen = model.trunk.some(
+    (step) => step.id === "category" && step.status === "current",
+  );
 
   const chosenLabel =
     model.chosenCategory === null
@@ -261,32 +284,25 @@ export function ProcessBranches({
         <AnimatePresence initial={false}>
           {model.categories.map((leaf) => {
             const pruned = leaf.status === "pruned";
-            return (
-              <motion.span
-                key={leaf.key}
-                className="oracle-tree__leaf"
-                data-status={leaf.status}
-                data-process-category={leaf.key}
-                layout={!reducedMotion}
-                // A closed branch is marked by a line through it and a
-                // dashed edge, never by fading it: dimming the text is what
-                // took these chips below the 4.5:1 contrast floor (axe,
-                // measured on this rail before the fix).
-                animate={
-                  reducedMotion ? undefined : { scale: pruned ? 0.96 : 1 }
-                }
-                transition={{
-                  duration: reducedMotion ? 0 : 0.3,
-                  ease: [0.4, 0, 0.2, 1],
-                }}
-                style={
-                  pruned
-                    ? S.prunedLeaf
-                    : leaf.status === "current"
-                      ? S.openLeaf
-                      : undefined
-                }
-              >
+            const preview = previews[leaf.key];
+            const chipProps = {
+              className: "oracle-tree__leaf",
+              "data-status": leaf.status,
+              "data-process-category": leaf.key,
+              layout: !reducedMotion,
+              animate: reducedMotion ? undefined : { scale: pruned ? 0.96 : 1 },
+              transition: {
+                duration: reducedMotion ? 0 : 0.3,
+                ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+              },
+              style: pruned
+                ? S.prunedLeaf
+                : leaf.status === "current"
+                  ? S.openLeaf
+                  : undefined,
+            };
+            const chipLabel = (
+              <>
                 {translate(language, `q.category.opt.${leaf.key}` as I18nKey)}
                 <span className="oracle-sr-only">
                   {" — "}
@@ -295,7 +311,49 @@ export function ProcessBranches({
                     `process.category_status.${leaf.status}` as I18nKey,
                   )}
                 </span>
-              </motion.span>
+              </>
+            );
+            return (
+              <div key={leaf.key} className="oracle-process-branch">
+                {onSelectCategory &&
+                model.chosenCategory !== null &&
+                pruned &&
+                !categoryQuestionOpen ? (
+                  <motion.button
+                    type="button"
+                    onClick={() => onSelectCategory(leaf.key)}
+                    aria-label={translate(
+                      language,
+                      "process.branch_reopen_aria",
+                      {
+                        category: translate(
+                          language,
+                          `q.category.opt.${leaf.key}` as I18nKey,
+                        ),
+                      },
+                    )}
+                    {...chipProps}
+                  >
+                    {chipLabel}
+                  </motion.button>
+                ) : (
+                  <motion.span {...chipProps}>{chipLabel}</motion.span>
+                )}
+                {pruned && preview && (
+                  <ul data-process-branch-preview={leaf.key}>
+                    {preview.labels.map((key) => (
+                      <li key={key}>{translate(language, key as I18nKey)}</li>
+                    ))}
+                    {preview.remainder > 0 && (
+                      <li>
+                        {translate(language, "process.branch_preview_more", {
+                          count: preview.remainder,
+                        })}
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
             );
           })}
         </AnimatePresence>

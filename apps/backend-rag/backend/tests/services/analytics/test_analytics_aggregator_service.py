@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from backend.services.analytics.analytics_aggregator import (
@@ -569,9 +570,13 @@ async def test_close_client(aggregator: AnalyticsAggregator) -> None:
 
 @pytest.mark.asyncio
 async def test_close_when_no_client(aggregator: AnalyticsAggregator) -> None:
-    """close() should not raise when no client has been created."""
+    """close() should not raise when no client has been created, and must
+    not poison state such that a later _get_client() misbehaves."""
     aggregator._client = None
     await aggregator.close()  # Should not raise
+    assert aggregator._client is None
+    new_client = aggregator._get_client()
+    assert isinstance(new_client, httpx.AsyncClient)
 
 
 @pytest.mark.asyncio

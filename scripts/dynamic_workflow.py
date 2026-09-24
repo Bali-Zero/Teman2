@@ -108,7 +108,7 @@ assumptions: 0
 ## Tactics
 | stage | seat(s) | in-script or window | parallel/serial | round cap | exit command | hands to next stage |
 | r1 | sonnet-5 | in-script | serial | 1 | validate | r2 |
-| gate | opus-5 | window | serial | 1 | sign | done |
+| gate | opus-5-5 | window | serial | 1 | sign | done |
 ## Termination
 Ledger sent-row counter caps relaunch at one; a third sent row is refused by the launcher.
 ## Evidence between stages
@@ -867,7 +867,7 @@ def cmd_r1(args: argparse.Namespace) -> dict[str, str]:
 # tokenizer here would silently answer the wrong question, so this is a
 # fresh, explicit map instead (mandate's own family list).
 FAMILY_MAP: dict[str, frozenset[str]] = {
-    "anthropic": frozenset({"fable-5-1", "opus-5", "sonnet-5", "haiku-4-5"}),
+    "anthropic": frozenset({"fable-5-1", "opus-5-5", "opus-5", "sonnet-5", "haiku-4-5"}),
     "openai": frozenset({"astra", "sol", "luna"}),
     "moonshot": frozenset({"kimi-k3", "kimi-code/kimi-for-coding-highspeed"}),
     "alibaba": frozenset({"qwen3.8-max", "qwen3.7-plus", "qwen3.6-flash"}),
@@ -1202,22 +1202,22 @@ def _md_table_rows(body: str, section: str) -> list[list[str]]:
     return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in data_lines]
 
 
-# Entity, not a spelling (scar family #3: over/under-match are symmetric). `\bopus[\s-]+5`
-# accepts "opus-5", "Opus 5", "opus 5", inside `fresh opus-5 xhigh` or backticks — anything with
-# a word boundary before "opus" and one of hyphen/space between the two tokens. The negative
-# lookahead blocks a longer entity wearing opus-5 as a prefix: "opus-50" (digit follows),
-# "opus-5.5" (dot follows) must still fail — and so must "opus-5-1"/"claude-opus-5-1", the
-# vendor's own model-suffix shape (it also names models "fable-5-1"), hence the extra `-\d`
-# branch; "opus-5-xhigh"/"opus-5 xhigh"/"claude-opus-5" (nothing, or a non-digit, after the
-# hyphen) must still pass. "opus-4-8"/"sonnet-5"/"claude-opus-4-8" never match the literal
-# "opus"+"5" pair at all.
-_C5_SEAT_ENTITY_RE = re.compile(r"\bopus[\s-]+5(?![\w.]|-\d)", re.IGNORECASE)
+# Entity, not a spelling (scar family #3: over/under-match are symmetric). The gate seat is Opus
+# 5.5 (RULED 2026-09-23, replaces Opus 5 in every seat). `\bopus[\s-]+5(?:\.5|-5)` accepts
+# "opus-5-5", "opus-5.5", "Opus 5.5", "opus 5-5", inside `fresh opus-5-5 xhigh` or backticks, and
+# "claude-opus-5-5" — a word boundary before "opus", hyphen/space, then the 5.5 pair in either the
+# prose (dot) or the model-id (hyphen) spelling. The negative lookahead blocks a longer entity
+# wearing it as a prefix: "opus-5-50"/"opus-5.55" (word char follows), "opus-5.5.1" (dot follows),
+# "opus-5-5-1" (the vendor's own model-suffix shape, hence the extra `-\d` branch);
+# "opus-5-5-xhigh" (non-digit after the hyphen) must still pass. The superseded bare "opus-5",
+# "claude-opus-5" and "Opus 5" now fail, as do "opus-5-1"/"opus-4-8"/"sonnet-5".
+_C5_SEAT_ENTITY_RE = re.compile(r"\bopus[\s-]+5(?:\.5|-5)(?![\w.]|-\d)", re.IGNORECASE)
 # "window(s)" as a whole word: "window (on-disk gate)" and a real coach's own plural ("two
 # windows, post-reset") both pass; "windowless"/"windowed" must not (no boundary right after
 # "window" when a letter follows it — "windowed" tries "window" then "ed", still a word char
 # right after, so it fails the same way "windowless" does). Owner ruling 2026-09-20 is "contains
 # window", and "windowed" is not the word "window" or "windows", it is a different word wearing
-# it as a prefix — same reasoning as opus-50/opus-5.5 above for the seat cell.
+# it as a prefix — same reasoning as opus-5-50/opus-5.5.1 above for the seat cell.
 _C5_MODE_WINDOW_RE = re.compile(r"\bwindows?\b", re.IGNORECASE)
 # A stage NAMES a gate only as a whole word ("gate"/"gates", any case): "Final Gate", "on-disk
 # gate", "pre-gate" (hyphen is a non-word boundary too) all count. "aggregate results",
@@ -1242,7 +1242,7 @@ def _check_c5(body: str) -> tuple[bool, str]:
     stage, seat, mode = gate_row[0], gate_row[1], gate_row[2]
     if _C5_SEAT_ENTITY_RE.search(seat) and _C5_MODE_WINDOW_RE.search(mode):
         return True, "gate row ok"
-    return False, f"gate row (stage={stage!r}) seat={seat!r} mode={mode!r}, want opus-5/window"
+    return False, f"gate row (stage={stage!r}) seat={seat!r} mode={mode!r}, want opus-5-5/window"
 
 
 def _check_c8(body: str) -> tuple[bool, str]:

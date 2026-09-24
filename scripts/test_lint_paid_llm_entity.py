@@ -19,6 +19,7 @@ Two halves, deliberately separated because they cost different things:
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -34,6 +35,15 @@ CASES = json.loads(
         Path(__file__).parent / "tests/fixtures/paid_llm_entity/bench_cases.json"
     ).read_text()
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_base_ref(monkeypatch):
+    """Every test controls its own view of the pardon growth check
+    explicitly. Without this, a stray BASE_SHA in the calling shell — the
+    exact shape the CI step sets in the real workflow — would make every
+    unrelated test in this file exercise the anti-bypass path by accident."""
+    monkeypatch.delenv("BASE_SHA", raising=False)
 
 
 # ─────────────────────────────────────────────────────────────────── redaction
@@ -494,11 +504,14 @@ def test_a_violation_exits_one_unless_advisory(monkeypatch, tmp_path, capsys):
         "violation": True,
         "grep": True,
         "fired_routes": [],
+        "pardoned_routes": [],
         "probabilities": {},
         "asked": False,
     }
     monkeypatch.setattr(lint, "in_scope", lambda path: True)
-    monkeypatch.setattr(lint, "judge_file", lambda path, text: {"path": path, **verdict})
+    monkeypatch.setattr(
+        lint, "judge_file", lambda path, text, pardons=None: {"path": path, **verdict}
+    )
 
     assert lint.main([str(target)]) == 1
     assert lint.main(["--advisory", str(target)]) == 0
@@ -523,3 +536,487 @@ def test_a_malformed_noul_value_is_no_opinion(bad):
 def test_a_well_formed_noul_value_is_its_probability(good):
     """INNOCENCE. Without this the guard above could be `return None`."""
     assert lint.noul({"route": {"noul": good}}, "route") == float(good)
+
+
+# ───────────────────────────────────────────────────────────────── pardon
+#
+# The pardon narrows ONLY the model's contribution: violation = by_grep or
+# bool(live), where live = fired - pardoned. A grep hit is never pardoned.
+
+
+def _write_pardons(tmp_path, entries):
+    p = tmp_path / "pardoned.json"
+    p.write_text(json.dumps({"_doc": "test fixture", "entries": entries}))
+    return p
+
+
+def test_pardon_clears_a_fired_listed_route(monkeypatch, tmp_path, authorized_vendor):
+    """INNOCENCE. A pardoned path with a pardoned, fired route is no longer a
+    violation — but the model's opinion is still reported in fired_routes."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "x.py",
+                    "routes": ["wrapper_library"],
+                    "reason": "a doc comment describing the ban, not using it",
+                    "pr": 7200,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(
+        lint,
+        "ask",
+        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+    )
+    case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
+    result = lint.judge_file("x.py", case["content"])
+    assert result["violation"] is False
+    assert result["pardoned_routes"] == ["wrapper_library"]
+    assert "wrapper_library" in result["fired_routes"], (
+        "the model's opinion is reported unchanged, pardoned or not"
+    )
+
+
+def test_pardon_never_clears_a_grep_hit(monkeypatch, tmp_path):
+    """GUILT. Mutant: let a pardon entry for the path also clear `by_grep` →
+    this must go RED. A grep hit is never pardoned, by any entry, for any
+    reason."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "x.py",
+                    "routes": ["wrapper_library"],
+                    "reason": "unrelated pardon on the same file",
+                    "pr": 1,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    case = next(
+        c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
+    )
+    result = lint.judge_file("x.py", case["content"])
+    assert result["violation"] is True, "a grep hit is never pardoned"
+
+
+def test_pardon_never_clears_a_grep_hit_even_when_its_own_route_fired(
+    monkeypatch, tmp_path
+):
+    """GUILT, the half the test above cannot see. There the service is silent,
+    so `pardoned_routes` is empty and a mutant that clears `by_grep` ONLY when a
+    pardoned route also fired — `(by_grep and not pardoned_routes) or live` —
+    stays green. Here the pardoned route DOES fire on a grep-guilty file: the
+    route is pardoned, the grep hit is not, and the verdict stays a violation.
+    Caught by the grader's own mutant on 2026-09-22, not by the builder's."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "x.py",
+                    "routes": ["wrapper_library"],
+                    "reason": "the model misreads this file's wrapper",
+                    "pr": 1,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setattr(lint, "available", lambda: True)
+    monkeypatch.setattr(
+        lint,
+        "jev_verdict",
+        lambda path, text: ({"wrapper_library": 0.97}, ["wrapper_library"]),
+    )
+    case = next(
+        c for c in CASES["guilt"] if c["name"].startswith("canonical_constructor")
+    )
+    result = lint.judge_file("x.py", case["content"])
+    assert result["pardoned_routes"] == ["wrapper_library"]
+    assert result["grep"] is True
+    assert result["violation"] is True, "the pardon narrowed the model, never the grep"
+
+
+def test_pardon_does_not_cover_an_unlisted_route(
+    monkeypatch, tmp_path, authorized_vendor
+):
+    """GUILT. The entry pardons a different route than the one that fired."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "x.py",
+                    "routes": ["cloud_reseller_route"],
+                    "reason": "wrong route pardoned on purpose for this test",
+                    "pr": 1,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(
+        lint,
+        "ask",
+        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+    )
+    case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
+    result = lint.judge_file("x.py", case["content"])
+    assert result["violation"] is True
+    assert result["pardoned_routes"] == []
+    assert result["fired_routes"] == ["wrapper_library"]
+
+
+def test_pardons_absent_file_pardons_nothing(monkeypatch, tmp_path):
+    monkeypatch.setattr(lint, "PARDON", tmp_path / "does-not-exist.json")
+    assert lint.load_pardons() == {}
+
+
+def test_pardons_malformed_json_pardons_nothing(monkeypatch, tmp_path):
+    p = tmp_path / "pardoned.json"
+    p.write_text("{this is not json")
+    monkeypatch.setattr(lint, "PARDON", p)
+    assert lint.load_pardons() == {}
+
+
+def test_pardons_deeply_nested_json_pardons_nothing_no_exception():
+    raw = "[" * 60000 + "]" * 60000
+    assert lint._parse_pardons(raw) == {}
+
+
+def test_pardons_top_level_list_pardons_nothing():
+    raw = json.dumps(
+        [{"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": 1, "date": "2026-09-21"}]
+    )
+    assert lint._parse_pardons(raw) == {}
+
+
+def test_pardons_entries_non_list_pardons_nothing():
+    assert lint._parse_pardons(json.dumps({"entries": "nope"})) == {}
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"routes": ["wrapper_library"], "reason": "t", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "reason": "t", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": [], "reason": "t", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["not_a_real_route"], "reason": "t", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": [1], "reason": "t", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "", "pr": 1, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": True, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": "12", "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": 0, "date": "2026-09-21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": 1},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": 1, "date": "2026/09/21"},
+        {"path": "x.py", "routes": ["wrapper_library"], "reason": "t", "pr": 1, "date": "21-09-2026"},
+        "not-a-dict",
+    ],
+    ids=[
+        "missing-path",
+        "missing-routes",
+        "empty-routes",
+        "unknown-route",
+        "route-not-string",
+        "missing-reason",
+        "empty-reason",
+        "missing-pr",
+        "pr-is-bool",
+        "pr-is-string",
+        "pr-not-positive",
+        "missing-date",
+        "bad-date-slashes",
+        "bad-date-order",
+        "entry-not-a-dict",
+    ],
+)
+def test_a_malformed_entry_pardons_nothing(entry):
+    assert lint._parse_pardons(json.dumps({"entries": [entry]})) == {}
+    assert lint._valid_entry(entry) is False
+
+
+@pytest.mark.parametrize("field", ["path", "routes", "reason", "pr", "date"])
+def test_the_validator_refuses_an_entry_missing_each_field(field):
+    """Not an empty-list tripwire (spent) — proof the check bites, one field
+    at a time."""
+    entry = {
+        "path": "x.py",
+        "routes": ["wrapper_library"],
+        "reason": "t",
+        "pr": 1,
+        "date": "2026-09-21",
+    }
+    del entry[field]
+    assert lint._valid_entry(entry) is False
+
+
+def test_pardon_is_exact_path_not_prefix_suffix_or_superstring(
+    monkeypatch, tmp_path, authorized_vendor
+):
+    """GUILT. Mutant: `==` becomes `in`/`endswith`/`startswith` → RED."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "x.py",
+                    "routes": ["wrapper_library"],
+                    "reason": "t",
+                    "pr": 1,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(
+        lint,
+        "ask",
+        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+    )
+    case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
+    for other_path in ("dir/x.py", "x.py.bak", "xx.py", "x.pyc", "a/x.py"):
+        result = lint.judge_file(other_path, case["content"])
+        assert result["violation"] is True, other_path
+        assert result["pardoned_routes"] == [], other_path
+
+
+def test_pardon_normalizes_a_leading_dot_slash(monkeypatch, tmp_path, authorized_vendor):
+    """The entry's path and the judged path can each carry a leading `./`
+    and still match — normalisation, not laxer matching."""
+    monkeypatch.setattr(
+        lint,
+        "PARDON",
+        _write_pardons(
+            tmp_path,
+            [
+                {
+                    "path": "./x.py",
+                    "routes": ["wrapper_library"],
+                    "reason": "t",
+                    "pr": 1,
+                    "date": "2026-09-21",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(
+        lint,
+        "ask",
+        lambda *a, **k: {"wrapper_library": {"type": "noul", "noul": 0.95}},
+    )
+    case = next(c for c in CASES["guilt"] if c["name"] == "litellm_wrapper")
+    result = lint.judge_file("./x.py", case["content"])
+    assert result["violation"] is False
+    assert result["pardoned_routes"] == ["wrapper_library"]
+
+
+def test_shipped_pardon_registry_validates():
+    """The registry actually on disk: parses, every entry has the full
+    shape, every path it names still exists (a stale pardon must be
+    deleted), and every route is one this lint actually asks about. Not an
+    empty-list assertion — see test_the_validator_refuses_an_entry_missing_
+    each_field above for the tripwire that proves the check bites."""
+    data = json.loads(lint.PARDON.read_text(encoding="utf-8"))
+    assert isinstance(data, dict)
+    entries = data["entries"]
+    assert isinstance(entries, list)
+    for entry in entries:
+        assert lint._valid_entry(entry), entry
+        assert set(entry["routes"]) <= set(lint.ROUTE_QUESTIONS), entry
+        target = lint.REPO_ROOT / entry["path"]
+        assert target.is_file(), f"stale pardon: {entry['path']} does not exist on disk"
+
+
+# ─────────────────────────────────────────────────────────────── pardon growth
+
+
+def test_growth_blocks_before_any_model_call(monkeypatch, tmp_path, authorized_vendor):
+    """The gate-7143 notice: the old corpus (`"x = 1\\n"`) made this assertion
+    vacuous. `worth_asking` was False for that text, so `ask` was already
+    unreachable regardless of where the growth block sits in `main` — moving
+    it AFTER the model call, a real regression of the safety ordering, still
+    left this test green. The corpus here is a `missed_by_grep` guilt case, so
+    `worth_asking` is True and the model path is genuinely reachable (the key
+    is set and the endpoint is authorized via `authorized_vendor`); only the
+    growth block standing above the call keeps `ask` unfired."""
+    case = next(c for c in CASES["guilt"] if c["name"] == "raw_http_post")
+    text = case["content"]
+    assert lint.worth_asking(text), "the probe must be able to reach ask()"
+    target = tmp_path / "changed.py"
+    target.write_text(text)
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(lint, "pardon_grew", lambda ref: ["new/path.py"])
+    called: list[int] = []
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(lint, "ask", lambda *a, **k: called.append(1) or None)
+    rc = lint.main(["--base-ref", "deadbeef", str(target)])
+    assert rc == 3
+    assert called == [], "the stubbed ask must never be reached once growth trips"
+
+
+def test_no_growth_continues_to_judge(monkeypatch, tmp_path):
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(lint, "pardon_grew", lambda ref: [])
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    rc = lint.main(["--base-ref", "deadbeef", str(target)])
+    assert rc == 0
+
+
+def test_no_in_scope_target_skips_growth_entirely(monkeypatch, tmp_path):
+    """A diff with NO in-scope files returns 0 BEFORE the growth check —
+    that is how a pardon lands: in its own PR, touching only the registry,
+    which is not itself a SOURCE_SUFFIXES member."""
+    target = tmp_path / "notes.md"
+    target.write_text("hello\n")
+    calls: list[str] = []
+    monkeypatch.setattr(lint, "pardon_grew", lambda ref: calls.append(ref) or [])
+    rc = lint.main(["--base-ref", "deadbeef", str(target)])
+    assert rc == 0
+    assert calls == []
+
+
+def test_unreadable_base_ref_fails_closed(monkeypatch, tmp_path):
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.setattr(lint, "pardon_grew", lambda ref: None)
+    called: list[int] = []
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x")
+    monkeypatch.setattr(lint, "ask", lambda *a, **k: called.append(1) or None)
+    rc = lint.main(["--base-ref", "not-a-real-ref", str(target)])
+    assert rc == 3
+    assert called == []
+
+
+def test_no_base_ref_skips_the_check(monkeypatch, tmp_path):
+    target = tmp_path / "changed.py"
+    target.write_text("x = 1\n")
+    monkeypatch.setattr(lint, "in_scope", lambda path: True)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    called: list[str] = []
+    monkeypatch.setattr(lint, "pardon_grew", lambda ref: called.append(ref) or [])
+    rc = lint.main([str(target)])
+    assert rc == 0
+    assert called == []
+
+
+def test_pardon_growth_is_exercised_for_real(tmp_path, monkeypatch):
+    """Every other growth test stubs `pardon_grew` out. This one builds real
+    git commits so a length-preserving path swap and a genuine shrink are
+    asserted on real diffing, not on a length comparison — mirrors
+    lint_ban_prose's `test_round2_7_the_growth_check_is_exercised_for_REAL`."""
+    repo = tmp_path / "repo"
+    (repo / "infra" / "paid-llm-entity").mkdir(parents=True)
+    registry = repo / "infra" / "paid-llm-entity" / "pardoned.json"
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+
+    def entry(path):
+        return {
+            "path": path,
+            "routes": ["wrapper_library"],
+            "reason": "t",
+            "pr": 1,
+            "date": "2026-09-21",
+        }
+
+    registry.write_text(json.dumps({"entries": [entry("a.py"), entry("b.py")]}))
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True
+    ).stdout.strip()
+
+    monkeypatch.setattr(lint, "REPO_ROOT", repo)
+    monkeypatch.setattr(lint, "PARDON", registry)
+
+    # Same count, one path swapped — a length comparison would call this clean.
+    registry.write_text(json.dumps({"entries": [entry("a.py"), entry("c.py")]}))
+    assert lint.pardon_grew(base) == ["c.py:wrapper_library"], "a swapped path must read as growth"
+
+    # Shrinking is always allowed: remediation must never be punished.
+    registry.write_text(json.dumps({"entries": [entry("a.py")]}))
+    assert lint.pardon_grew(base) == []
+    # The unit is (path, route): a route ADDED to an entry the base already
+    # carried is growth, even though the set of pardoned paths is unchanged.
+    widened = entry("a.py")
+    widened["routes"] = ["wrapper_library", "direct_paid_sdk"]
+    registry.write_text(json.dumps({"entries": [widened, entry("b.py")]}))
+    assert lint.pardon_grew(base) == ["a.py:direct_paid_sdk"], (
+        "a new route on an existing path must read as growth"
+    )
+
+    # Base ref that does not resolve here at all: fail-closed sentinel.
+    assert lint.pardon_grew("not-a-real-ref-anywhere") is None
+
+
+def test_pardon_growth_file_absent_at_base_means_everything_is_growth(tmp_path, monkeypatch):
+    repo = tmp_path / "repo2"
+    (repo / "infra" / "paid-llm-entity").mkdir(parents=True)
+    registry = repo / "infra" / "paid-llm-entity" / "pardoned.json"
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    (repo / "README.md").write_text("x\n")
+    git("add", "-A")
+    git("commit", "-qm", "base without a pardon file")
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True
+    ).stdout.strip()
+
+    monkeypatch.setattr(lint, "REPO_ROOT", repo)
+    monkeypatch.setattr(lint, "PARDON", registry)
+    registry.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "path": "a.py",
+                        "routes": ["wrapper_library"],
+                        "reason": "t",
+                        "pr": 1,
+                        "date": "2026-09-21",
+                    }
+                ]
+            }
+        )
+    )
+    assert lint.pardon_grew(base) == ["a.py:wrapper_library"], (
+        "the registry absent at a resolvable base ref means the base line was "
+        "empty, so every currently-pardoned path is growth"
+    )
