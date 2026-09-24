@@ -377,6 +377,21 @@ def _nlm_fed_marker(url_or_hash: str) -> str:
     return f"nlm_fed {url_or_hash}"
 
 
+# An item whose only text is its own title is not a source. The old fallback
+# (`content or title`) published it anyway, and NB-INTEL-Press filled up with
+# title-only sources until the 2026-09-22 prune removed 184 of them — using this
+# same 200-char bar, measured on the body with the title set aside.
+MIN_BODY_CHARS = 200
+
+
+def _real_body(title: str, content: str) -> str:
+    """The content worth publishing, or "" when the item carries no real body."""
+    body = (content or "").strip()
+    head = (title or "").strip()
+    rest = body[len(head):].strip() if head and body.startswith(head) else body
+    return body if len(rest) > MIN_BODY_CHARS else ""
+
+
 def _dedup_key(title: str, url: str) -> str:
     """Item-identity dedup key — NOT the bare URL (W89 #2).
 
@@ -424,9 +439,9 @@ def run_nlm_feeder(kb: KnowledgeBase, max_items: int = 30) -> dict:
     Reads items from KB, adds URLs to appropriate NLM notebook.
     Tracks what's been fed via KB entry type 'nlm_fed'.
 
-    Returns stats: {processed, fed, skipped, errors}
+    Returns stats: {processed, fed, skipped, errors, no_body}
     """
-    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
+    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
 
     items = kb.get_by_type("harvested_item", limit=max_items)
     if not items:
@@ -464,7 +479,11 @@ def run_nlm_feeder(kb: KnowledgeBase, max_items: int = 30) -> dict:
             success = _nlm_add_url(notebook_id, url)
         else:
             title = content.split("\n")[0][:100]
-            success = _nlm_add_text(notebook_id, title, content[:2000])
+            body = _real_body(title, content)[:2000]
+            if not body:
+                stats["no_body"] += 1
+                continue
+            success = _nlm_add_text(notebook_id, title, body)
 
         if success:
             kb.store("nlm_feeder", "nlm_fed", _nlm_fed_marker(url), url, 1.0)
@@ -496,7 +515,7 @@ def _run_nlm_feeder_from(
     derived from Ollama. The enriched stream lacks `topic` because the
     scorer doesn't write back into it — only into alerts + KB.
     """
-    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
+    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
 
     items = stream_read_new(stream, consumer_group, consumer_name, count=max_items)
     if not items:
@@ -542,6 +561,16 @@ def _run_nlm_feeder_from(
             except (TypeError, ValueError):
                 pass  # unparseable score → fail-open, feed it
 
+        text_body = _real_body(title, content)[:4000]
+        if not text_body:
+            stats["no_body"] += 1
+            logger.info(
+                f"[nlm_feeder] skip (no body beyond title): "
+                f"{(title or url)[:60]} (domain={domain})"
+            )
+            stream_ack(stream, consumer_group, msg_id)
+            continue
+
         # Dedup on ITEM identity (title+url), not the bare URL — distinct items
         # sharing one landing-page URL (LHKPN officials, peraturan harmon docs)
         # must dedup independently (W89 #2). Look up by (type, source) directly —
@@ -556,7 +585,6 @@ def _run_nlm_feeder_from(
         # Feed as text (title + content) so NLM gets context even if URL
         # is paywalled. Matches briefing spec. Title falls back to url (NOT the
         # dedup_key — that's a hash now and would make an unreadable NLM title).
-        text_body = content[:4000] if content else title
         effective_title = (title or url or dedup_key)[:200]
         success = _nlm_add_text(notebook_id, effective_title, text_body)
 
