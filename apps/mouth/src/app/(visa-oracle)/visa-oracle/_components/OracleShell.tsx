@@ -941,8 +941,15 @@ function OracleShellRuntime({
                 <p className="oracle-subhead">
                   {translate(language, "framing.body")}
                 </p>
+                <button
+                  type="button"
+                  className="oracle-cta"
+                  onClick={startInterview}
+                >
+                  {translate(language, "framing.cta")}
+                  <ArrowRight aria-hidden="true" size={18} />
+                </button>
                 <div className="oracle-framing__resume">
-                  <p className="oracle-question__hint">{sessionCopy.resume}</p>
                   <label className="oracle-checklist__item">
                     <input
                       type="checkbox"
@@ -953,15 +960,8 @@ function OracleShellRuntime({
                     />
                     {sessionCopy.resumeOptIn}
                   </label>
+                  <p className="oracle-question__hint">{sessionCopy.resume}</p>
                 </div>
-                <button
-                  type="button"
-                  className="oracle-cta"
-                  onClick={startInterview}
-                >
-                  {translate(language, "framing.cta")}
-                  <ArrowRight aria-hidden="true" size={18} />
-                </button>
               </div>
             )}
 

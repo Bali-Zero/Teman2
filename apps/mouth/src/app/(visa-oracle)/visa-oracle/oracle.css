@@ -335,6 +335,9 @@ html[data-oracle-theme-bootstrap="dark"]
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* main is flex: 1 in a 100dvh shell — without this, auto rows stretch
+     to fill it and open a gap between the path line and the headline. */
+  align-content: start;
   gap: var(--space-6);
   min-width: 0;
   width: 100%;
@@ -1796,19 +1799,14 @@ button.oracle-tree__leaf {
 .oracle-framing .oracle-headline + .oracle-subhead {
   margin-top: calc(-1 * var(--space-2));
 }
+/* Saving is opt-in and secondary: a compact row under Start, its consent
+   note kept verbatim beneath the box it explains. */
 .oracle-framing__resume {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0;
   max-width: 40rem;
-  padding: var(--space-4) calc(var(--space-4) + var(--space-1));
-  border: 1px solid var(--oracle-border);
-  border-radius: var(--oracle-radius-card);
-  background: color-mix(in srgb, var(--oracle-bg-elevated) 55%, transparent);
-}
-.oracle-framing__resume .oracle-question__hint {
-  font-size: var(--text-sm);
-  line-height: 1.55;
+  margin-top: calc(-1 * var(--space-2));
 }
 .oracle-framing__resume .oracle-checklist__item {
   min-height: 44px;
@@ -1817,6 +1815,11 @@ button.oracle-tree__leaf {
   background: transparent;
   color: var(--oracle-ink);
   font-weight: 600;
+}
+.oracle-framing__resume .oracle-question__hint {
+  padding-left: calc(1.25rem + var(--space-3));
+  font-size: var(--text-xs);
+  line-height: 1.5;
 }
 
 /* Checkboxes: a quiet outlined square that fills with canopy when ticked,
@@ -1973,9 +1976,6 @@ button.oracle-tree__leaf {
   }
   .oracle-cta {
     width: 100%;
-  }
-  .oracle-framing__resume {
-    padding: var(--space-3) var(--space-4);
   }
 }
 @media (forced-colors: active) {
@@ -2142,9 +2142,21 @@ button.oracle-tree__leaf {
 .oracle-tree button.oracle-tree__step--editable:hover {
   background: color-mix(in srgb, var(--oracle-canopy) 7%, transparent);
 }
-@media (min-width: 1024px) {
-  /* A one-crumb trail ("Start") repeats the rail's first station. */
-  .oracle-breadcrumb:has(li:only-child) {
-    display: none;
-  }
+/* A one-crumb trail ("Start") says nothing the page does not already say. */
+.oracle-breadcrumb:has(li:only-child) {
+  display: none;
+}
+
+/* Below the desktop rail, the path summary is one thin line: the label and
+   count, with a 3px progress rule (answered / total, set inline) under it. */
+.oracle-root .oracle-tree-minimap-trigger {
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: 0;
+  background:
+    linear-gradient(var(--oracle-canopy), var(--oracle-canopy)) left bottom /
+      var(--oracle-progress, 0%) 3px no-repeat,
+    linear-gradient(var(--oracle-leaf-pending), var(--oracle-leaf-pending)) left
+      bottom / 100% 3px no-repeat;
+  font-size: var(--text-xs);
 }

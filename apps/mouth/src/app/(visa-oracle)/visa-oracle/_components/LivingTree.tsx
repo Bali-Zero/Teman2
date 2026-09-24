@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, TreePine } from "lucide-react";
 import {
@@ -195,6 +195,17 @@ export function LivingTree({
         type="button"
         className="oracle-tree-minimap-trigger"
         aria-expanded={mobileOpen}
+        style={
+          {
+            "--oracle-progress": `${
+              model.totalQuestions > 0
+                ? Math.round(
+                    (model.answeredQuestions / model.totalQuestions) * 100,
+                  )
+                : 0
+            }%`,
+          } as CSSProperties
+        }
         onClick={() => setMobileOpen((v) => !v)}
       >
         <span
