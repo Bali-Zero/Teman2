@@ -125,20 +125,37 @@ def main() -> int:
     return 0
 
 
-# The gateway's verdict is read by the ONE canonical extractor, never a
-# private regex `.search()` (that returns the FIRST `tg_notify:` match, and a
-# P0-unsendable run prints a diagnostic line before the machine verdict).
-# Resolved the same way as `_find_gateway()` below: repo-relative first, then
-# the HOME-fork copy (#1), so an import failure never kills the drain (#2).
-for _cand in (Path(__file__).resolve().parents[2], Path.home() / "nuzantara"):
-    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
-        sys.path.insert(0, str(_cand))
-        break
-try:
-    from scripts.tg_gateway_verdict import extract_gateway_verdict
-except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
-    def extract_gateway_verdict(stderr):  # type: ignore[misc]
-        return None
+def _load_gateway_verdict_extractor():
+    """Load scripts/tg_gateway_verdict.py by FILE PATH, never a package
+    import — this drain has two homes at DIFFERENT depths (see
+    `_find_gateway()` below: the repo nests it one directory down, the flat
+    HOME copy does not), so no single `parents[N]` offset resolves both and
+    a path-based load is the only shape that survives either. Never a
+    private regex `.search()` here — that returns the FIRST `tg_notify:`
+    match, and a P0-unsendable run prints a diagnostic line before the
+    machine verdict. A missing module degrades to an explicit unknown,
+    never a crashed drain (#2)."""
+    here = Path(__file__).resolve().parent
+    for candidate in (
+        here / "tg_gateway_verdict.py",
+        here.parent / "tg_gateway_verdict.py",
+        Path.home() / "nuzantara" / "scripts" / "tg_gateway_verdict.py",
+    ):
+        if candidate.is_file():
+            try:
+                import importlib.util
+
+                spec = importlib.util.spec_from_file_location("_tg_gateway_verdict", candidate)
+                if spec is not None and spec.loader is not None:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    return module.extract_gateway_verdict
+            except Exception:  # noqa: BLE001 — degrade, never crash the drain
+                pass
+    return lambda stderr: None
+
+
+extract_gateway_verdict = _load_gateway_verdict_extractor()
 
 
 def _find_gateway() -> Path | None:
