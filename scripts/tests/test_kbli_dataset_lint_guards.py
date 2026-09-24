@@ -130,6 +130,9 @@ L12_GUILT = [
         "It is not blocked in Bali, so full foreign ownership is available.",
         49,
     ),
+    # a bare "is not" after the claim affirms it — only availability-denying
+    # predicates exonerate
+    ("adversarial is-not-restricted affirms", "Full foreign ownership is not restricted here.", 49),
 ]
 
 L12_INNOCENCE = [
@@ -200,6 +203,9 @@ L12_INNOCENCE = [
         "Full ownership by an Indonesian shareholder is required.",
         49,
     ),
+    # adversarial probe round 2: an availability-denying predicate after the claim
+    ("adversarial not available after", "Full ownership is not available; the cap is 49%.", 49),
+    ("adversarial isn't possible after", "Full foreign ownership isn't possible here.", 49),
 ]
 
 

@@ -401,10 +401,13 @@ L12_NEG_BEFORE = re.compile(
 # most 3 words away — "…fully foreign-owned PMA cannot/can't/may not/is not
 # allowed/is not permitted hold…". Anchored to the START of the (clause-cut)
 # post-window so a negator several clauses downstream cannot exonerate a live
-# claim either.
+# claim either. A bare "is not" is deliberately NOT a negator: "full ownership
+# is not restricted" AFFIRMS the claim — only predicates that deny availability do.
 L12_NEG_AFTER = re.compile(
-    r"^\s*(?:\S+\s+){0,3}(?:cannot|can't|may\s+not|is\s+not\s+allowed|"
-    r"is\s+not\s+permitted)\b",
+    r"^\s*(?:\S+\s+){0,3}(?:cannot|can't|may\s+not|"
+    r"(?:is|are)\s+not\s+(?:allowed|permitted|available|possible|an\s+option)|"
+    r"(?:isn't|aren't)\s+(?:allowed|permitted|available|possible|an\s+option)|"
+    r"(?:is|are)\s+(?:unavailable|impossible|prohibited|barred|ruled\s+out))\b",
     re.IGNORECASE,
 )
 # innocence: the claim attributes the ownership to INDONESIANS, not to a
