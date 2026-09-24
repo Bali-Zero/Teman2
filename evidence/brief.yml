@@ -1,35 +1,62 @@
-gear: 2
-task_id: crm-18-soft-delete
-lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
-gate_class: none
+task_id: wa-team-team-promises-pro-local
+gear: 3
+lane: wa-team
+host: air-m5 (M5)
+branch: agent/air-m5/wa-team/team-promises-pro-local
+gate_class: fable
 l_level: L2
+grader: fable-5 (final on-disk gate, different family from the builder)
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  T3 promise extractor goes live, Pro-local (P1 of the T3-T7 rebuild; owner
+  ruling 2026-09-25 — data never leaves Pro, Symbiosis Law 2). New migration
+  321 adds team_promises to Pro's ledger without depending on anything after
+  246 (Pro stops at 246, slot 200 collides with a probe row); every statement
+  is IF NOT EXISTS so the Fly release's `migrate apply-all` on merge is a
+  no-op on Fly's existing 7-row team_promises table. Floor is Gear 3 because
+  the diff touches migrations_v2/ (hot-zone).
+constraints:
+  - "Every migration statement IF NOT EXISTS — merging apps/backend-rag/**
+    deploys Fly and the release runs `migrate apply-all`."
+  - "No ALTER on whatsapp_message_context (1.6k writes/day from the live
+    bridge) — thread_key lives only in the new team_promises columns."
+  - "Logs and the digest line carry COUNTS ONLY — no body, name or phone
+    (Law 2 / UU-PDP)."
+  - "Past-tense matches (v1 defect 4a) are fulfilments, never stored as a
+    promise."
+acceptance:
+  - "squawk (CI's exact exclude list) against migrations_v2/321_*.sql → 0
+    issues"
+  - "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest
+    scripts/tests/test_wa_team_promises.py -q → 12 passed"
+  - "Pro dry-run, read-only, no migration applied: 354 promise candidates in
+    30 days, 25 past-tense fulfilments correctly excluded, 0 DB writes
+    (open_total/overdue_total stayed None — dry-run never touches
+    team_promises)"
+consumer_map:
+  - "Pro cron (coordinator-installed after this PR merges, not by this PR)
+    → team_promises rows"
+  - "scripts/tg_notify.py --tier digest → Zero's digest spool, a
+    counts-only `promises: new/open/overdue` line"
+risks:
+  - "Honest limit: this session (Sonnet 5, the builder) cannot itself post
+    the Gear-3 fable-gate verdict — a fresh gate session runs
+    scripts/harness_fable_gate.py before merge, per the Builder Contract's
+    generator-never-grader rule. This PR is NOT armed and NOT merged by this
+    session."
+pii: none
 scope:
-  - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
-  - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
-  - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
-  - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+  - "apps/backend-rag/backend/db/migrations_v2/321_team_promises_pro_local.sql
+    — new team_promises table (Pro-local, no FK to clients/
+    whatsapp_conversations), 4 additive columns, uix_team_promises_msg_type
+    unique index."
+  - "scripts/wa_team_promises.py — T3 promise extractor: tense split (fixes
+    v1 defect 4a), D6 due_at default (+48h, owner-changeable), thread_key
+    per spec §2.3, id watermark seeded 30 days back, flock, counts-only
+    digest."
+  - "infra/launchagents/wrappers/wa-team-promises-run.sh — tracked
+    cron-runner.sh wrapper (crontab line documented, NOT installed by this
+    PR)."
+  - "scripts/tests/test_wa_team_promises.py — guilt/innocence tense split
+    (id/en/it), due_at default, watermark idempotency, thread_key, and a
+    payload test proving the digest line never carries a body window or a
+    name."
