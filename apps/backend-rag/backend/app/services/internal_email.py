@@ -179,10 +179,10 @@ async def send_internal_email(
         except ValueError:
             response_data = None
         if not isinstance(response_data, dict) or response_data.get("success") is not True:
-            detail = (
-                response_data.get("message") if isinstance(response_data, dict) else None
-            ) or "email API returned 200 without success=true"
-            raise InternalEmailNotDeliveredError(detail)
+            # Constant text, never the body's `message`: that string relays
+            # provider errors, which can name the rejected recipient, and the
+            # `except` below logs this exception's text.
+            raise InternalEmailNotDeliveredError("email API returned 200 without success=true")
 
         logger.info(
             "Internal email sent: to=%s cc_count=%d context=%s",

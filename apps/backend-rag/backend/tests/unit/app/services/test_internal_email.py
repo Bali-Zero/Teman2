@@ -199,7 +199,10 @@ class TestSendInternalEmail:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json = MagicMock(
-            return_value={"success": False, "message": "All providers failed: brevo, resend, zoho"}
+            return_value={
+                "success": False,
+                "message": "All providers failed: brevo rejected rejected.client@example.com",
+            }
         )
         mock_client = AsyncMock()
         mock_client.__aenter__.return_value = mock_client
@@ -218,9 +221,11 @@ class TestSendInternalEmail:
                 )
 
         assert result is False
-        assert any(
-            "All providers failed" in record.getMessage() for record in caplog.records
-        ), "the endpoint's own failure message must reach the log, not just a generic label"
+        # The endpoint's `message` relays provider errors, which can name the
+        # rejected recipient: the log carries a constant label, never that text.
+        assert "rejected.client@example.com" not in caplog.text
+        assert "All providers failed" not in caplog.text
+        assert "200 without success=true" in caplog.text
 
     @pytest.mark.asyncio
     async def test_http_200_with_unparseable_body_is_treated_as_not_delivered(self) -> None:

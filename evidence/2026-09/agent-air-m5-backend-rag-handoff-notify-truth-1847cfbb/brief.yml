@@ -113,3 +113,14 @@ round_3b: >-
   four PII tests now raise exceptions whose text contains the address; on
   a5dae52df3 they fail 4/8, on the cure 8/8. Probes: same four test files,
   194 passed.
+round_4: >-
+  Codex round-4 review of 641d4c08d2: the diff is clean (25 isolated cases,
+  zero addresses, zero tracebacks). Residual HIGH is PRE-EXISTING and outside
+  this diff: internal_email.py logs format_send_error(e) with the raw text,
+  and zoho_email_service.py logs `to` directly — every sender, every caller.
+  Split to its own PR (one concern). The one thing THIS PR added to that log
+  line was InternalEmailNotDeliveredError carrying the endpoint's `message`,
+  which relays provider errors; it now carries a constant label. The test
+  that required the endpoint message in the log is inverted: a synthetic
+  address inside `message` must not reach the log (fails on 641d4c08d2,
+  passes here). 194 passed on the four suites.
