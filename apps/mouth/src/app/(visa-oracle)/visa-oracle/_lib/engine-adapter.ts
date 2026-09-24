@@ -644,12 +644,11 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
   // seq-23 (already in seq-22) and so were structurally invisible to the
   // Slice A8-2 delta test above, which only diffs against seq-22. Product
-  // names are byte-equal to the mouth's own existing display of each code:
-  // the Bridging/VOA names match this file's own REVIEW_REASON_COPY twins
-  // for the same codes (BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
-  // BRIDGING_TO_BRIDGING_PROHIBITED, VOA_NATIONALITY_ONLY, below); the E28A/
-  // E30A/E30B/E31C/E31E names match `i18n.ts`'s `q.stay_permit_code.opt.*`
-  // catalog entries.
+  // names are byte-equal to the mouth's own display of each code: the
+  // E28A/E30A/E30B/E31C/E31E/E33B/E33C names match `i18n.ts`'s
+  // `q.stay_permit_code.opt.*` catalog entries; Bridging and B1 have no
+  // catalog entry, so their names reuse the wording of the HUMAN_REVIEW copy
+  // these codes carried before Slice A9.6 retired it.
   BRIDGING_ONSHORE_ONLY: text(
     "The Bridging Visa — Transitional Stay Permit can only be issued to applicants already in Indonesia, and you are not currently in the country.",
     "Izin Tinggal Peralihan hanya dapat diterbitkan bagi pemohon yang sudah berada di Indonesia, sedangkan Anda saat ini tidak berada di dalam negeri.",
@@ -660,7 +659,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   BRIDGING_TO_BRIDGING_PROHIBITED: text(
     "You already hold an active Bridging Visa — Transitional Stay Permit, and this route cannot issue a second bridging permit on top of one already active.",
-    "Anda sudah memiliki Izin Tinggal Peralihan yang masih aktif, dan jalur ini tidak dapat menerbitkan izin peralihan kedua di atas izin yang masih berlaku.",
+    "Anda sudah memiliki Izin Tinggal Peralihan yang masih aktif, dan jalur ini tidak dapat menerbitkan izin peralihan kedua selama izin tersebut masih berlaku.",
   ),
   VOA_NATIONALITY_ONLY: text(
     "Visa on Arrival — Tourism (B1) is issued only to nationals of listed VOA-eligible countries, and your nationality is not on that list.",
@@ -688,7 +687,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   LEVEL_BAND_DIKTI: text(
     "The Higher Education Visa (E30B) covers vocational, undergraduate, and postgraduate study levels only, and the level you declared is not one of them.",
-    "Visa Pendidikan Tinggi (E30B) hanya mencakup jenjang vokasi, sarjana, dan pascasarjana, dan jenjang yang Anda nyatakan bukan salah satu dari jenjang tersebut.",
+    "Visa Pendidikan Tinggi (E30B) hanya mencakup jenjang vokasi, sarjana, dan pascasarjana, sedangkan jenjang yang Anda nyatakan bukan salah satunya.",
   ),
   OVERSTAY_EXCEEDS_60_DAYS: text(
     "Your declared overstay is more than 60 days, and no route in this assessment is offered above that limit.",
@@ -703,7 +702,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Keluarga Anak Pemegang ITAS/ITAP (E31E) hanya berlaku untuk pemohon di bawah usia 18 tahun, dan usia yang Anda nyatakan sudah 18 tahun atau lebih.",
   ),
   REQ_UNMARRIED: text(
-    "The Family Visa — Child of ITAS/ITAP Holder (E31E) is only for unmarried applicants, and your declared marital status is not single.",
+    "The Family Visa — Child of ITAS/ITAP Holder (E31E) is only for applicants who have never married, and your declared marital status is not single.",
     "Visa Keluarga Anak Pemegang ITAS/ITAP (E31E) hanya berlaku untuk pemohon yang belum menikah, dan status perkawinan yang Anda nyatakan bukan lajang.",
   ),
 };
