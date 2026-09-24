@@ -288,7 +288,7 @@ dissent:
       assumption in this diff. No code change made."
   - seat: gate-a3p-b (fresh Opus 5.5 final on-disk gate, outside the
       contribution chain; verdict REWORK-BUILD on head 787504ed18)
-    status: CURED
+    status: CONFIRMED
     objection:
       "HIGH-1: _apply_disclosed_review_flags built `holding`'s reasons and
       seed from `_resolve_holding_flags()` membership alone. With
