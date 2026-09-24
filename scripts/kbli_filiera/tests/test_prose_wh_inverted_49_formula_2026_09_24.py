@@ -11,6 +11,7 @@ right for an open code.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -60,6 +61,21 @@ def test_guilt_no_intel_string_in_the_canonical_carries_the_inverted_formula():
     assert hits == []
 
 
+# A later sha256-pinned spec may re-cure a field this one graded (the W-H lot remainder
+# drops 53200's unverified date and 50133's dangling sentence from the text written here).
+# The pin then follows the chain: the later spec must name THIS text as its old_sha256,
+# and the record must carry the later text. Anything else is still drift.
+LATER_SPECS = [C.SPEC.parent / "prose_wh_lot_remainder_2026_09_24.json"]
+
+
+def _graded_text(code: str, path: str, text: str) -> str:
+    for later in LATER_SPECS:
+        patch = json.loads(later.read_text(encoding="utf-8"))["codes"].get(code, {}).get("fields", {}).get(path)
+        if patch and patch["old_sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest():
+            text = patch["new"]
+    return text
+
+
 def test_guilt_each_of_the_sixteen_carries_exactly_the_graded_text():
     spec = json.loads(SPEC.read_text(encoding="utf-8"))
     by_code = {r.get("kode_kbli_2025"): r for r in E.load_records()}
@@ -67,7 +83,8 @@ def test_guilt_each_of_the_sixteen_carries_exactly_the_graded_text():
         record = by_code[code]
         C.check_premise(record, code, entry["expect"])
         for path, patch in entry["fields"].items():
-            assert C.read_field(record, path) == patch["new"], f"{code}.{path} was edited after grading"
+            want = _graded_text(code, path, patch["new"])
+            assert C.read_field(record, path) == want, f"{code}.{path} was edited after grading"
         assert any(CORRECTED.search(s) for s in _strings(record["intel_2026"])), code
 
 
