@@ -16,23 +16,21 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "_agentic_rag_orchestrator",
     "get_orchestrator",
+    "warm_orchestrator",
 ]
 
-# Global orchestrator instance (lazy-loaded on first request)
+# Global orchestrator instance (lazy-loaded on first request, or eager-warmed
+# at startup — see warm_orchestrator())
 _agentic_rag_orchestrator = None
 _orchestrator_lock = asyncio.Lock()
 
 
-async def get_orchestrator(request: Request) -> Any:
-    """
-    Dependency injection for AgenticRAGOrchestrator.
+async def _get_or_create_orchestrator(app: Any) -> Any:
+    """Shared construction path for get_orchestrator() and warm_orchestrator().
 
-    Lazy initialization: created on first call using services from app.state.
-    Subsequent calls return the same singleton. Lock prevents race condition
-    where two concurrent requests both create an instance.
-
-    Returns:
-        AgenticRAGOrchestrator: Singleton orchestrator instance
+    Takes the FastAPI `app` (not `request`) so it can be called both from a
+    request-scoped dependency and from the app lifespan, where no Request
+    exists yet.
     """
     global _agentic_rag_orchestrator
 
@@ -46,12 +44,12 @@ async def get_orchestrator(request: Request) -> Any:
 
         from backend.services.rag.agentic import create_agentic_rag
 
-        db_pool = getattr(request.app.state, "db_pool", None)
-        search_service = getattr(request.app.state, "search_service", None)
-        specialized_router = getattr(request.app.state, "specialized_router", None)
+        db_pool = getattr(app.state, "db_pool", None)
+        search_service = getattr(app.state, "search_service", None)
+        specialized_router = getattr(app.state, "specialized_router", None)
         # P7 (SPEC v2 D3): thread the FAQ cache through so exact-match answers
         # (< 1ms) are reachable from this request-scoped singleton too.
-        faq_cache = getattr(request.app.state, "faq_cache", None)
+        faq_cache = getattr(app.state, "faq_cache", None)
         _agentic_rag_orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
@@ -60,7 +58,7 @@ async def get_orchestrator(request: Request) -> Any:
         )
 
         # R5 Phase 5: inject SurfaceRouter for KG fast-path
-        surface_router = getattr(request.app.state, "surface_router", None)
+        surface_router = getattr(app.state, "surface_router", None)
         if surface_router and hasattr(_agentic_rag_orchestrator, "core"):
             _agentic_rag_orchestrator.core._surface_router = surface_router
             logger.info(
@@ -68,3 +66,29 @@ async def get_orchestrator(request: Request) -> Any:
             )
 
     return _agentic_rag_orchestrator
+
+
+async def get_orchestrator(request: Request) -> Any:
+    """
+    Dependency injection for AgenticRAGOrchestrator.
+
+    Lazy initialization: created on first call using services from app.state.
+    Subsequent calls return the same singleton. Lock prevents race condition
+    where two concurrent requests both create an instance.
+
+    Returns:
+        AgenticRAGOrchestrator: Singleton orchestrator instance
+    """
+    return await _get_or_create_orchestrator(request.app)
+
+
+async def warm_orchestrator(app: Any) -> Any:
+    """Eager-construct the singleton at startup (PENDING-ARMS L345).
+
+    Without this, the first call to get_orchestrator() anywhere happens
+    inside the WhatsApp BackgroundTasks job (after the 200 ack already left
+    the wire), so the first client message after every deploy/restart pays
+    the orchestrator's ~5-25s import cost (langchain_anthropic, torch,
+    sklearn) on the reply path instead of at deploy time.
+    """
+    return await _get_or_create_orchestrator(app)

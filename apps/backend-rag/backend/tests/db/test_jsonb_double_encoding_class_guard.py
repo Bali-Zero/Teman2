@@ -83,6 +83,11 @@ PROTECTED_JSONB_COLUMNS: dict[str, tuple[str, ...]] = {
     "conversations": ("messages", "metadata"),
     "clients": ("passport_ocr_data", "custom_fields"),
     "companies": ("custom_fields",),
+    # Census gap closed (PENDING-ARMS L564, 2026-09-24): both columns proven
+    # jsonb by migration 243's organism-wide backfill but never added to this
+    # registry, so a regression on either would have gone uncaught.
+    "events_outbox_dlq": ("payload",),
+    "crm_settings": ("value",),
 }
 
 # Tables where the shipped cure is pattern (b) -- bind the raw dict/list, no
@@ -412,6 +417,30 @@ def test_guilt_visa_types_real_jsonb_column_missing_cast_fires():
             VALUES ($1, $2, $3)
             \"\"\",
             code, to_jsonb(cost_details), to_jsonb(metadata),
+        )
+    """
+    assert _scan_source(src, "synthetic.py") != []
+
+
+def test_guilt_events_outbox_dlq_payload_missing_cast_fires():
+    """GUILT (PENDING-ARMS L564): events_outbox_dlq.payload was a census gap —
+    a serializer bound without ::text::jsonb must now be caught."""
+    src = """
+        await conn.execute(
+            "INSERT INTO events_outbox_dlq (id, channel, payload) VALUES ($1, $2, $3)",
+            row_id, channel, json.dumps(payload),
+        )
+    """
+    assert _scan_source(src, "synthetic.py") != []
+
+
+def test_guilt_crm_settings_value_missing_cast_fires():
+    """GUILT (PENDING-ARMS L564): crm_settings.value was a census gap —
+    a serializer bound without ::text::jsonb must now be caught."""
+    src = """
+        await conn.execute(
+            "UPDATE crm_settings SET value = $1 WHERE key = $2",
+            json.dumps(value), key,
         )
     """
     assert _scan_source(src, "synthetic.py") != []
