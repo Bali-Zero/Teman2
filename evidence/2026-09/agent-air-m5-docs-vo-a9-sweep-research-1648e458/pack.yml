@@ -1,0 +1,164 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
+council_run: council.jsonl
+seat_fallback_reason: >-
+  Titolare quorum for R9 is codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max. tp1-qwen3.8-max
+  answered live (arsenal_probe.py --seats tp1-qwen3.8-max: LIVE, 1847ms) and is counted as-is —
+  no substitution needed for it. The other two titolari, codex-gpt-5.6-sol and kimi-code/k3,
+  were probed directly this task (arsenal_probe.py --seats codex,kimi, 2026-09-24T13:12:24Z) and
+  both TIMEOUT'd at the probe's flat 15s ceiling with no answer, so tp1-deepseek-v4-pro (reserve
+  bench) substitutes for one of them, counted toward quorum alongside the live titolare
+  tp1-qwen3.8-max. Quorum (2 distinct COUNCIL_REVIEW_SEATS, both ok:true) is met without
+  invoking `seat_override` — R9 is SATISFIED, not waived.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (docs-only data-capture PR, same shape as the B4-2 precedent
+  evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/). The review side is
+  TWO cross-family TP1 seats (tp1-qwen3.8-max, tp1-deepseek-v4-pro), each run independently
+  against the same task file — the README's A9-addendum claims checked against two JSON
+  excerpts (252-walk census/state/reason-code fields) derived by script from the two committed
+  report JSONs. Both seats' full output is journaled in council.jsonl.
+plan_ref: >-
+  team-lead dispatch (this session, 2026-09-24), task vo-a9-sweep-research — curing PR #7230's
+  red floor (Harness floor recompute run 35994943337: Gear-3 pack authored brief.yml without
+  pack.yml, plus the deprecated ROOT evidence/brief.yml write target). This pack + brief.yml
+  land under the canonical per-PR path (scripts/ci/evidence_paths.py --ref
+  agent/air-m5/docs/vo-a9-sweep-research); the ROOT evidence/brief.yml is restored to
+  origin/main's content in the same commit.
+lanes:
+  - lane: vo-a9-sweep-research-build
+    role: build
+    seat: "vo-sweep-pack (Sonnet 5)"
+  - lane: vo-a9-sweep-research-review-1
+    role: review
+    seat: "tp1-qwen3.8-max — README's A9-addendum claims checked against two JSON excerpts derived from the committed report JSONs; 2 findings, both about excerpt narrowness (see dissent), no README defect found"
+  - lane: vo-a9-sweep-research-review-2
+    role: review
+    seat: "tp1-deepseek-v4-pro (reserve, substituting for an unavailable titolare — see seat_fallback_reason) — same task file; 1 finding, same excerpt-narrowness root cause, no README defect found"
+diff:
+  files: 3
+  net_lines: >-
+    3 files: research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+80),
+    research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    (+12432, new file), evidence/brief.yml (restored to origin/main, this pack's own commit) —
+    from `git diff --numstat origin/main...HEAD`. This pack.yml and its sibling brief.yml are
+    new files under the per-PR evidence path, added in the same commit as the root-brief
+    restore.
+  behaviour_change: >-
+    None. This diff adds a README section and one evidence JSON file under research/, plus the
+    per-PR evidence pack/brief and a council journal, and restores the root evidence/brief.yml
+    to origin/main's content. No code changes, ships into no deployed artifact.
+receipts:
+  - claim: >-
+      The copied JSON's sha256 equals the dispatch-declared digest.
+    cmd: >-
+      shasum -a 256
+      research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    result: "899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808 — matches"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      Census, sequence, http_status, and the 15-walk moved-state diff (vs B4-2b) recomputed
+      directly from the two FULL committed JSONs (not the narrower excerpts handed to the
+      review seats) match the README exactly.
+    cmd: "python3 - (self-contained script, run twice: once before dispatch, once after disposing the council's findings)"
+    result: >-
+      census {SUPPORTED_CANDIDATES: 185, NEEDS_INPUT: 8, NO_SUPPORTED_PATH: 31,
+      HUMAN_REVIEW_REQUIRED: 28} = 252; sequence={23} x252; http_status={200} x252;
+      payload_sha256={e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204} x252;
+      shared walk_ids 252/0 added/0 dropped; 15 moved (13 to SUPPORTED_CANDIDATES, 2 to
+      NEEDS_INPUT), exact walk_id set matches README's table; 28-HUMAN_REVIEW breakdown
+      DISCLOSED_ACTIVITY_BOUNDARY_REVIEW=25/SECOND_HOME_BELOW_THRESHOLD_STUDIO=2/DISCLOSED_CRIMINAL_RECORD_REVIEW=1;
+      new-code set (full reason_codes on both files, not the excerpt) =
+      {E33G_LOCAL_COMPANY_NOT_ALLOWED: 7, STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: 4,
+      E33G_LOCAL_MARKET_NOT_ALLOWED: 2, RETIREMENT_INCOME_BELOW_THRESHOLD: 1} — all match README
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      PII sweep over the new JSON and the README section: no email address, no key named
+      email/phone/passport/npwp/ktp/nik, and the only 10+-digit run is the round constant
+      1000000000 (investment-amount field), twice.
+    cmd: >-
+      grep -Eic email-regex / grep -Eio pii-key-regex / grep -Eo '[0-9]{10,}' over
+      prove-live-a9-seq23-full-sweep-report-20260924.json and README.md
+    result: "0 email hits, 0 PII-key hits, 2 occurrences of 1000000000 (round constant, not applicant-shaped)"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: "Gear 3 is by SIZE (research/** is not hot-zone); recomputed from the real numstat."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <cf> --numstat-file <ns> (git diff origin/main...HEAD)"
+    result: "(3, size)"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+tests:
+  - "None. This diff adds a README section and a data file and changes no code path. The
+    assertions that matter are the receipts above."
+static:
+  - "PII sweep over prove-live-a9-seq23-full-sweep-report-20260924.json and README.md: clean
+    (see receipts). Same shape as the B4-2 precedent's static PII sweep
+    (evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/pack.yml)."
+runtime_proof: >-
+  None applicable and none claimed — no code ships. Step 8 of the A9 activation ceremony
+  (PROVELIVE-A9-ACTIVATION-REPORT.md, not committed here) already ran 8 targeted prove-live
+  probes against the live engine; this PR's own artefact is a docs capture of the follow-on
+  252-walk sweep, not itself a prove-live action.
+dissent:
+  - seat: "tp1-qwen3.8-max"
+    objection: >-
+      The README's payload_sha256 claim (`e5f791b5…72204` on all 252 walks) is not verifiable
+      from the JSON excerpt handed to the review task (the excerpt omitted the
+      rule_pack.payload_sha256 field to keep the task file small).
+    status: REJECTED
+    reason: >-
+      Excerpt-narrowness artifact, not a README defect. Verified directly against the FULL
+      committed JSON: `set(w["rule_pack"]["payload_sha256"] for w in walks)` ==
+      {"e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204"}, len 1, all 252
+      walks — matches the README verbatim.
+  - seat: "tp1-qwen3.8-max"
+    objection: >-
+      The README's claim that 4 named reason codes are "new in A9, absent from every walk in
+      B4-2b" is not verifiable from the b42b-excerpt (it carries only walk_id/engine_state, no
+      reason_codes) — the review task's own instructions asked the seat to assume an empty
+      universe if load-bearing, which the seat correctly flagged as an assumption rather than
+      silently accepting.
+    status: REJECTED
+    reason: >-
+      Excerpt-narrowness artifact, not a README defect. Independently recomputed from BOTH FULL
+      committed JSONs' reason_codes.review_reasons + reason_codes.no_path_reasons (a proper
+      Counter difference, not an assumed-empty universe): the set present in A9 but absent from
+      B4-2b is exactly {E33G_LOCAL_COMPANY_NOT_ALLOWED: 7, STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: 4,
+      E33G_LOCAL_MARKET_NOT_ALLOWED: 2, RETIREMENT_INCOME_BELOW_THRESHOLD: 1} — matches the
+      README exactly, no extra or missing code.
+  - seat: "tp1-deepseek-v4-pro"
+    objection: >-
+      Same as tp1-qwen3.8-max's second finding — the new-reason-codes claim cannot be validated
+      from the b42b-excerpt under the stated assumption, and a wider reading of "load-bearing"
+      would make every A9-only code "new", contradicting the README's short 4-code list.
+    status: REJECTED
+    reason: >-
+      Same disposition as above: the full-data recomputation (not the excerpt, and not an
+      assumed-empty B4-2b universe) matches the README's 4-code list and counts exactly. No fix
+      made to README.md.
+residual_risks:
+  - "Both review seats' only findings trace to the review task's excerpt being narrower than the
+    full committed JSON (it dropped payload_sha256 and reason_codes from the B4-2b comparison
+    file to keep the task file a manageable size for a TP1 call). Every finding was disposed by
+    re-deriving the same numbers from the FULL data, not by editing README.md — there was
+    nothing in the README itself to fix."
+  - "This pack SATISFIES R9's council_run quorum (2 distinct COUNCIL_REVIEW_SEATS, both
+    ok:true) rather than declaring seat_override, per the caution in this task's dispatch: a
+    prior gate (#7198, 2026-09-24) reworked a PR whose seat_override claimed 'the only live
+    seat was X' without having measured the others. Here codex-gpt-5.6-sol and kimi-code/k3
+    were directly probed and both TIMEOUT'd (arsenal_probe.py, 15s ceiling) before falling back
+    to tp1-deepseek-v4-pro — the substitution is measured, not assumed, and named in
+    seat_fallback_reason."
+sources:
+  - "research/operations/2026-09-22-visa-oracle-live-enumeration/ — this PR's own artefact"
+  - "evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/ — the B4-2 precedent this pack mirrors (single build lane, cross-family review, evidence dir shape)"
+  - "PROVELIVE-A9-ACTIVATION-REPORT.md (not committed) — the ceremony record this docs capture follows on from"
+  - "council.jsonl (this pack's own dir) — the two TP1 refuter runs' full receipts"
+pii_scan: clean
