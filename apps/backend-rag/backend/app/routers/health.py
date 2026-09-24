@@ -1242,7 +1242,7 @@ async def prometheus_metrics():
     )
 
 
-@router.get("/garuda-outbox")
+@router.get("/garuda-outbox", include_in_schema=False)
 async def garuda_outbox_health(request: Request) -> dict[str, Any]:
     """The GARUDA outbox's undrained counts, readable WITHOUT Telegram.
 
