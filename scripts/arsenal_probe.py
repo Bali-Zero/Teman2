@@ -224,16 +224,38 @@ def context_info() -> dict:
 # Token-shaped substrings that must never survive into a report, log, or exception
 # string: Bearer headers, common API-key prefixes, and any long alnum/._- run (24+
 # chars covers keychain tokens, JWTs, hex digests) that isn't obviously prose.
+#
+# Each alternative is named so scrub() can tell which one fired. Only the trailing
+# "generic" alternative — the length-only catch-all — is ever eligible for the
+# identifier exemption below; every specific-prefix alternative (bearer/sk/ghp/xox/
+# jwt/akia) redacts unconditionally, even when its match also happens to look like
+# an identifier (scar #3: over-match is a length judgment, not an entity one — but
+# the fix narrows the catch-all, it doesn't loosen the specific shapes).
 _SECRET_RE = re.compile(
-    r"(Bearer\s+\S+"
-    r"|sk-[A-Za-z0-9_\-]{8,}"
-    r"|ghp_[A-Za-z0-9]{8,}"
-    r"|xox[a-z]-[A-Za-z0-9\-]{8,}"
-    r"|eyJ[A-Za-z0-9._\-]{20,}"
-    r"|[A-Za-z0-9._\-]{24,})"
+    r"(?P<bearer>Bearer\s+\S+)"
+    r"|(?P<sk>sk-[A-Za-z0-9_\-]{8,})"
+    r"|(?P<ghp>ghp_[A-Za-z0-9]{8,})"
+    r"|(?P<xox>xox[a-z]-[A-Za-z0-9\-]{8,})"
+    r"|(?P<jwt>eyJ[A-Za-z0-9._\-]{20,})"
+    r"|(?P<akia>AKIA[A-Z0-9]{16})"
+    r"|(?P<generic>[A-Za-z0-9._\-]{24,})"
 )
 
+# A "generic" match is exempt from redaction ONLY when the whole matched token is a
+# pure identifier: single-case letters joined by underscores, no digit, no mixed
+# case, no other symbol. Anything with a digit, a dot, a hyphen, or mixed case still
+# falls through to redaction — this is deliberately narrower than "looks like an
+# identifier" so it can never swallow a real secret (hex digests, random-tail
+# tokens, mixed-case blobs all keep at least one disqualifying character).
+_PURE_IDENTIFIER_RE = re.compile(r"^(?:[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+)$")
+
 _SECRET_ENV_NAME_RE = re.compile(r"(TOKEN|KEY|PASSWORD|SECRET)", re.IGNORECASE)
+
+
+def _scrub_replacement(m: "re.Match[str]") -> str:
+    if m.lastgroup == "generic" and _PURE_IDENTIFIER_RE.match(m.group(0)):
+        return m.group(0)
+    return "<REDACTED>"
 
 
 def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
@@ -241,13 +263,15 @@ def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
 
     extra_secrets: exact credential VALUES this probe loaded (keychain token, parsed
     env.master value) — replaced unconditionally even if they don't match the
-    generic shape (e.g. a short-but-still-sensitive value).
+    generic shape (e.g. a short-but-still-sensitive value), and even if the exact
+    value happens to be identifier-shaped: this loop runs before the regex pass and
+    never consults the exemption.
     """
     out = text
     for secret in extra_secrets or []:
         if secret:
             out = out.replace(secret, "<REDACTED>")
-    out = _SECRET_RE.sub("<REDACTED>", out)
+    out = _SECRET_RE.sub(_scrub_replacement, out)
     return out
 
 

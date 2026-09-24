@@ -345,6 +345,114 @@ def test_scrub_leaves_short_status_words_untouched():
     assert ap.scrub(text) == text
 
 
+# ---------------------------------------------------------------------------
+# scrub() — identifier exemption (scar #3, guard over-match, 2026-09-25)
+#
+# The bug: the generic 24+-char alternative in _SECRET_RE rewrote long
+# snake_case/SCREAMING_SNAKE identifiers as secrets because it judged length,
+# not entity. The cure is a narrow exemption on that ONE alternative only —
+# every other test in this block proves the exemption cannot be tricked into
+# swallowing an actual secret, including one that happens to be identifier-
+# shaped once you strip its prefix or padding.
+# ---------------------------------------------------------------------------
+
+# INNOCENCE: pure identifiers must survive scrub() byte-for-byte.
+_SCRUB_INNOCENCE = [
+    "secondhome_property_value_usd",
+    "edge/secondhome_property_value_usd=unsure",
+    "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "SECOND_HOME_BELOW_THRESHOLD_STUDIO",
+    "review_hold_inventory_expected_count",
+]
+
+
+def test_scrub_leaves_pure_identifiers_intact():
+    for text in _SCRUB_INNOCENCE:
+        assert ap.scrub(text) == text, f"identifier wrongly mutated: {text!r}"
+
+
+def test_scrub_repro_edge_line_from_defect_report_survives():
+    # exact repro from the defect report: a TP1 council line quoting two
+    # 30-char snake_case identifiers, with a caller-passed literal secret
+    # present too (must still be redacted, identifiers must not be).
+    text = "edge/secondhome_property_value_usd=unsure and edge/secondhome_deposit_usd=unsure"
+    synthetic_token = "x" * 30  # SYNTHETIC — never a real credential
+    scrubbed = ap.scrub(text, [synthetic_token])
+    assert scrubbed == text
+
+
+def _synthetic_guilt_cases() -> dict[str, str]:
+    """Secret-shaped strings generated HERE, never copied from env/file (SYNTHETIC).
+
+    Each shape is deliberately picked to probe a way the exemption could be
+    tricked: identifier-like prefixes, no digits, specific known prefixes,
+    hex, etc. All must still be caught by _SECRET_RE and then redacted.
+    """
+    import random
+    import string
+
+    rng = random.Random(20260925)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    return {
+        # generic alternative, mixed-case + digits — never identifier-shaped
+        "mixed_case_alnum_with_digits_40": rand_alnum(40),
+        # specific-prefix alternatives: NEVER exempt, even if the tail were
+        # pure letters — these prove the exemption is scoped to the
+        # "generic" match group only, not to shape in general
+        "ghp_prefixed": "ghp_" + rand_alnum(36),
+        "sk_prefixed": "sk-" + rand_alnum(48),
+        "akia_prefixed": "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "jwt_shaped": "eyJ" + rand_alnum(10) + "." + rand_alnum(10) + "." + rand_alnum(10),
+        # generic alternative, all-digits-allowed shapes
+        "hex_digest_64": "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "lower_alnum_with_digits_30": "".join(
+            rng.choice(string.ascii_lowercase + string.digits) for _ in range(30)
+        ),
+        # identifier-like PREFIX with a random tail containing digits: the
+        # prefix alone would pass the pure-identifier check, the whole
+        # token must not (this is exactly what "pure" in the exemption
+        # rules out — a partial resemblance is not a full match)
+        "identifier_prefix_random_digit_tail": "secret_token_value_" + rand_alnum(24),
+        # generic alternative, single-case letters+underscores BUT with one
+        # disqualifying character (a digit) inserted mid-token — proves the
+        # exemption regex is anchored end-to-end, not prefix-matched
+        "mixed_case_underscored_no_digits": (
+            "SecretToken_ValueHere_ExtraPaddingSegment"
+        ),
+    }
+
+
+def test_scrub_guilt_fixtures_are_non_empty_and_pre_match():
+    # guard-of-the-guard: the GUILT list itself must be non-empty, and each
+    # fixture must match _SECRET_RE on its own BEFORE the exemption is
+    # considered — otherwise a passing test could mean "never mattered", not
+    # "the exemption correctly excluded it".
+    cases = _synthetic_guilt_cases()
+    assert len(cases) >= 8
+    for name, value in cases.items():
+        assert ap._SECRET_RE.search(value), f"{name}: fixture does not match _SECRET_RE at all"
+
+
+def test_scrub_redacts_secret_shaped_synthetics():
+    for name, value in _synthetic_guilt_cases().items():
+        scrubbed = ap.scrub(f"value observed: {value} end of line")
+        assert value not in scrubbed, f"{name}: guilt fixture survived scrub() unredacted"
+        assert "<REDACTED>" in scrubbed, f"{name}: scrub() dropped the token without marking it"
+
+
+def test_scrub_literal_extra_secret_wins_over_identifier_exemption():
+    # the caller-passed literal token is checked BEFORE the regex/exemption
+    # pass, so even a literal that is itself snake_case-only-letters (and
+    # would otherwise qualify for the identifier exemption) is redacted.
+    literal = "snake_case_only_letters_here"
+    assert ap._SECRET_RE.search(literal)  # guard-of-the-guard: shape alone also matches
+    scrubbed = ap.scrub(f"value was {literal} exactly", extra_secrets=[literal])
+    assert literal not in scrubbed
+
+
 def test_evidence_tail_truncates_and_scrubs():
     long_secret = "x" * 40
     text = f"prefix {long_secret} suffix " + ("padding " * 40)
