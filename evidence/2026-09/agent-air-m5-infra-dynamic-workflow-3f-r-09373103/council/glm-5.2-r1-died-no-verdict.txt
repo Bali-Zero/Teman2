@@ -1,0 +1,1 @@
+Run 1 (2026-09-24T07:5xZ approx) of `scripts/tp1_call.py --model glm-5.2 --effort high --max-tokens 32000` against the same refuter prompt died with `finish_reason=length` — the model exhausted its thinking budget before producing an answer. No verdict, no objections, no output text: recorded here as a death, not a verdict, and not counted toward quorum.
