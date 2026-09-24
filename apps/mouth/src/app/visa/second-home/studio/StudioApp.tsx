@@ -101,6 +101,16 @@ function canContinue(p: PlanState, q: QuestionId): boolean {
   return isAnswered(p, q);
 }
 
+/** The branch as it stood when this screen opened. The answer being chosen
+ *  here can reshape LATER steps (60+ adds senior funding; income-only drops
+ *  capital), so the rail's "of M" moves when the visitor moves on — never
+ *  while they are still choosing on the same screen. The prefix up to the
+ *  current question depends only on earlier answers, so step N is the same
+ *  in both sequences. */
+function planBeforeAnswering(p: PlanState, q: QuestionId): PlanState {
+  return q === "family" ? p : ({ ...p, [q]: null } as PlanState);
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -649,6 +659,9 @@ export function StudioApp() {
   const sequence = computeSequence(plan);
   const isVerdictStage = stepIndex >= sequence.length;
   const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
+  const railSequence = currentQuestion
+    ? computeSequence(planBeforeAnswering(plan, currentQuestion))
+    : sequence;
   const verdict = isVerdictStage ? evaluatePlan(plan) : null;
   const priceKey = resolveSecondHomePriceKey(
     verdict?.product ?? null,
@@ -805,8 +818,8 @@ export function StudioApp() {
         {!isVerdictStage ? (
           <ProgressRail
             step={stepIndex + 1}
-            total={sequence.length}
-            labels={sequence.map((q) => STEP_LABELS[q])}
+            total={railSequence.length}
+            labels={railSequence.map((q) => STEP_LABELS[q])}
           />
         ) : null}
 
@@ -819,9 +832,10 @@ export function StudioApp() {
               <button
                 type="button"
                 onClick={goBack}
-                style={{ ...navButtonStyle, padding: "6px 14px" }}
+                style={{ ...navButtonStyle, padding: "0 16px" }}
               >
-                ← Back to your answers
+                <ArrowLeft size={16} aria-hidden />
+                Back to your answers
               </button>
             </div>
             <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
@@ -910,7 +924,7 @@ export function StudioApp() {
               />
             </main>
             <aside>
-              <MemoPreview plan={plan} />
+              <MemoPreview plan={plan} total={railSequence.length} />
             </aside>
           </div>
         ) : null}
@@ -944,6 +958,13 @@ export function StudioApp() {
           .bz-shs-content {
             padding: 16px 24px 48px;
           }
+        }
+        /* Step transitions focus the stage heading (P2-3); the browser then
+         * scrolls it to the viewport's top edge — under the fixed site nav.
+         * The margin lands it just below the nav instead. */
+        .bz-shs-studio h1[tabindex="-1"],
+        .bz-shs-studio h2[tabindex="-1"] {
+          scroll-margin-top: 96px;
         }
         .bz-shs-nav {
           display: flex;

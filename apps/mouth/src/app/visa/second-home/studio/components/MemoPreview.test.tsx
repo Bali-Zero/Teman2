@@ -64,8 +64,10 @@ describe("MemoPreview", () => {
     expect(screen.getByText("60 or over")).toBeInTheDocument();
     expect(screen.getByText("Route")).toBeInTheDocument();
     expect(screen.getByText("Bank deposit")).toBeInTheDocument();
-    expect(screen.getByText("Capital")).toBeInTheDocument();
-    expect(screen.getByText("USD 130,000 is ready")).toBeInTheDocument();
+    // Re-pinned 2026-09-24: 60+ with income-only funding never asks capital
+    // (computeSequence), so the stale capital answer is not memo material.
+    expect(screen.queryByText("Capital")).not.toBeInTheDocument();
+    expect(screen.queryByText("USD 130,000 is ready")).not.toBeInTheDocument();
     expect(screen.getByText("Senior funding")).toBeInTheDocument();
     expect(
       screen.getByText("USD 3,000 monthly income only"),
@@ -76,6 +78,36 @@ describe("MemoPreview", () => {
     expect(screen.getByText("As soon as possible")).toBeInTheDocument();
     expect(screen.getByText("Location")).toBeInTheDocument();
     expect(screen.getByText("In Indonesia")).toBeInTheDocument();
+  });
+
+  it("lists only the questions the current branch asks, in the order it asks them", () => {
+    render(
+      <MemoPreview
+        plan={basePlan({
+          age: "under_55",
+          route: "deposit",
+          capital: "ready_130k",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Capital")).toBeInTheDocument();
+    expect(screen.getByText("USD 130,000 is ready")).toBeInTheDocument();
+    expect(screen.queryByText("Senior funding")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByTestId(/^memo-row-/).map((row) => row.dataset.testid),
+    ).toEqual(["memo-row-age", "memo-row-route", "memo-row-capital"]);
+    expect(screen.getByText("3 of 6")).toBeInTheDocument();
+  });
+
+  it("says what the panel is for while nothing is answered yet", () => {
+    render(<MemoPreview plan={basePlan()} />);
+
+    expect(
+      screen.getByText("Your answers fill in here as you go."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("0 of 6")).toBeInTheDocument();
+    expect(screen.queryAllByTestId(/^memo-row-/)).toHaveLength(0);
   });
 
   it("shows the property row for the property route and hides capital", () => {
@@ -96,19 +128,15 @@ describe("MemoPreview", () => {
     expect(screen.queryByText("Capital")).toBeNull();
   });
 
-  it("distinguishes unanswered rows with a placeholder state", () => {
-    render(<MemoPreview plan={basePlan()} />);
+  it("renders no placeholder rows for unanswered questions — the count carries what is left", () => {
+    // Re-pinned 2026-09-24 (council pass): six em-dash rows at step 1 were
+    // dead weight; unanswered rows are no longer rendered at all.
+    render(<MemoPreview plan={basePlan({ age: "under_55" })} />);
 
-    const ageRow = screen.getByTestId("memo-row-age");
-    expect(ageRow).toHaveAttribute("data-known", "false");
-    expect(ageRow.textContent).toContain("—");
-
-    const valueCell = ageRow.querySelector("dd");
-    expect(valueCell).toHaveStyle({
-      fontWeight: "300",
-      opacity: "0.55",
-      fontStyle: "italic",
-    });
+    expect(screen.getByTestId("memo-row-age")).toBeInTheDocument();
+    expect(screen.queryByTestId("memo-row-route")).toBeNull();
+    expect(screen.queryByText("—")).toBeNull();
+    expect(screen.getByText("1 of 6")).toBeInTheDocument();
   });
 
   it("marks rows as known when answered", () => {

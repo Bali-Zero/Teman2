@@ -576,6 +576,35 @@ describe("StudioApp", () => {
     });
   });
 
+  describe("one step count on screen (2026-09-24)", () => {
+    // Reported as "mobile says 1 of 7, desktop says 1 of 6": both viewports
+    // render the same count for the same state — the renders compared two
+    // states. The real defect was the count moving on SELECTION (60+ adds a
+    // step) while the visitor was still on step 1, and the memo's own "of M"
+    // disagreeing with the rail.
+    it("choosing an answer keeps the count; Continue re-counts the branch; memo and rail agree", async () => {
+      render(<StudioApp />);
+      const rail = await screen.findByRole("progressbar");
+      expect(rail).toHaveAttribute("aria-valuemax", "6");
+
+      fireEvent.click(screen.getByRole("radio", { name: "60 or over" }));
+      expect(screen.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuemax",
+        "6",
+      );
+      expect(screen.getByText("Step 1 of 6")).toBeInTheDocument();
+      expect(screen.getByText("1 of 6")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      expect(screen.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuemax",
+        "7",
+      );
+      expect(screen.getByText("Step 2 of 7")).toBeInTheDocument();
+      expect(screen.getByText("1 of 7")).toBeInTheDocument();
+    });
+  });
+
   describe("NavRow contrast fix (WCAG AA, 2026-08-24)", () => {
     // jsdom resolves neither `color-mix()` nor custom properties, so a
     // computed-color assertion here would be vacuous (verified instead on a

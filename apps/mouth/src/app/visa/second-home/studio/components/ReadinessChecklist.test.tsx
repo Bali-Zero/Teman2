@@ -45,6 +45,24 @@ describe("ReadinessChecklist", () => {
     expect(parseClampFloor(heading.style.fontSize)).toBe("1.5rem");
   });
 
+  it("gives the small group headings the UI face, so no global serif rule can shrink Cormorant under the floor", () => {
+    render(
+      <ReadinessChecklist
+        plan={basePlan()}
+        verdict={noopVerdict}
+        onToggle={vi.fn()}
+      />,
+    );
+    const groupHeadings = screen.getAllByRole("heading", { level: 3 });
+
+    expect(groupHeadings.length).toBeGreaterThan(0);
+    for (const heading of groupHeadings) {
+      expect(heading.style.fontFamily).toBe(
+        "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+      );
+    }
+  });
+
   it("meter counts only the applicable group, never the full 10-item union", () => {
     const verdict1: Verdict = {
       band: "strong_fit",

@@ -17,6 +17,9 @@ export interface ReadinessChecklistProps {
 
 const groupHeadingStyle = {
   margin: "0 0 var(--space-2, 0.5rem)",
+  // An <h3> with no face of its own inherited the site's global serif heading
+  // rule and rendered Cormorant at ~14px — under the R4 §3 24px display floor.
+  fontFamily: "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
   fontSize: "var(--text-sm, 0.9rem)",
   fontWeight: 600,
   color: "var(--text-primary)",

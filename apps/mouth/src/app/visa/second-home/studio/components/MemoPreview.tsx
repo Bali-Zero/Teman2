@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
+import { computeSequence } from "@/lib/secondhome-studio/sequence";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
 export interface MemoPreviewProps {
   plan: PlanState;
+  /** The step count the progress rail shows, so the screen carries ONE
+   *  "of M". Defaults to this plan's own branch length. */
+  total?: number;
 }
 
 /** Resolves a wizard option's label from copy.ts. "not_applicable" is a
@@ -98,7 +102,13 @@ function buildRows(plan: PlanState): RowItem[] {
     },
   );
 
-  return rows;
+  // Only the questions this branch will actually ask (2026-09-24): a 60+
+  // deposit plan with a senior funding answer never reaches "capital", and
+  // the memo used to hold a "Capital —" row that could never fill.
+  const sequence: readonly string[] = computeSequence(plan);
+  return rows
+    .filter((row) => sequence.includes(row.id))
+    .sort((a, b) => sequence.indexOf(a.id) - sequence.indexOf(b.id));
 }
 
 function Row({
@@ -118,15 +128,25 @@ function Row({
     <div
       data-testid={testId}
       data-known={isKnown}
-      className={isNew ? "bz-shs-memo-row-enter" : undefined}
+      className={
+        isNew ? "bz-shs-memo-row bz-shs-memo-row-enter" : "bz-shs-memo-row"
+      }
       style={{
         display: "flex",
         justifyContent: "space-between",
-        gap: "var(--space-2, 0.5rem)",
-        fontSize: "var(--text-sm, 0.85rem)",
+        alignItems: "baseline",
+        gap: 12,
+        fontSize: "0.875rem",
+        lineHeight: 1.4,
       }}
     >
-      <dt style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>
+      <dt
+        style={{
+          color: "var(--color-text-muted)",
+          fontWeight: 400,
+          flexShrink: 0,
+        }}
+      >
         {label}
       </dt>
       <dd
@@ -191,7 +211,7 @@ function useIsDesktopStatic(): boolean {
  *  known; a thin left spine grows with the answered rows to read as a
  *  receipt filling in. `prefers-reduced-motion: reduce` disables all
  *  movement. */
-export function MemoPreview({ plan }: MemoPreviewProps) {
+export function MemoPreview({ plan, total }: MemoPreviewProps) {
   const isDesktopStatic = useIsDesktopStatic();
   const rows = useMemo(() => buildRows(plan), [plan]);
 
@@ -223,8 +243,12 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
     isInitialMountRef.current = false;
   }, [rows]);
 
-  const knownCount = rows.filter((r) => r.isKnown).length;
-  const spineProgress = rows.length > 0 ? (knownCount / rows.length) * 100 : 0;
+  // Progressive reveal (2026-09-24 council pass): a column of em-dashes at
+  // step 1 was dead weight. Only answered rows render; the "N of M" count
+  // carries what is still to come. The card itself keeps its column, so the
+  // layout never jumps when the first row lands.
+  const knownRows = rows.filter((r) => r.isKnown);
+  const knownCount = knownRows.length;
 
   return (
     <details
@@ -233,8 +257,8 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
       style={{
         background: "var(--surface-raised)",
         border: "1px solid var(--color-border-subtle)",
-        borderRadius: 12,
-        padding: "var(--space-3, 1rem)",
+        borderRadius: 16,
+        padding: "20px 20px 18px",
       }}
     >
       <summary
@@ -242,59 +266,94 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
         aria-hidden={isDesktopStatic ? true : undefined}
         style={{
           cursor: "pointer",
-          // R4 §3 24px floor: --text-sm resolves to 0.875rem (14px,
-          // packages/core/tokens/primitives.css) — well below the
-          // display-only floor either way (0.9rem fallback is 14.4px) — so
-          // this disclosure summary uses the UI/body face at Inter 600
-          // instead, per R4 §3's own remedy ("smaller headings are Inter
-          // 600"). Size/hierarchy unchanged — only the face and weight move.
-          fontFamily: "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
-          fontSize: "var(--text-sm, 0.9rem)",
-          fontWeight: 600,
-          color: "var(--text-primary)",
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: 12,
         }}
       >
-        Your plan so far
-      </summary>
-      <div
-        style={{
-          position: "relative",
-          marginTop: "var(--space-2, 0.5rem)",
-          paddingLeft: "var(--space-3, 1rem)",
-        }}
-      >
-        <div
-          aria-hidden="true"
-          className="bz-shs-memo-spine"
+        <span
           style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: 2,
-            height: `${spineProgress}%`,
-            background: "var(--color-border-subtle)",
-            borderRadius: 1,
-          }}
-        />
-        <dl
-          style={{
-            display: "grid",
-            gap: "var(--space-2, 0.5rem)",
-            margin: 0,
+            // R4 §3 24px floor: --text-sm resolves to 0.875rem (14px,
+            // packages/core/tokens/primitives.css) — well below the
+            // display-only floor either way (0.9rem fallback is 14.4px) — so
+            // this disclosure summary uses the UI/body face at Inter 600
+            // instead, per R4 §3's own remedy ("smaller headings are Inter
+            // 600"). Size/hierarchy unchanged — only the face and weight move.
+            fontFamily:
+              "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+            fontSize: "var(--text-sm, 0.9rem)",
+            fontWeight: 600,
+            color: "var(--text-primary)",
           }}
         >
-          {rows.map((row) => (
-            <Row
-              key={row.id}
-              testId={`memo-row-${row.id}`}
-              label={row.label}
-              value={row.value}
-              isKnown={row.isKnown}
-              isNew={newRowIds.has(row.id)}
-            />
-          ))}
-        </dl>
-      </div>
+          Your plan so far
+        </span>
+        <span
+          className="bz-shs-memo-count"
+          style={{
+            fontSize: "0.8125rem",
+            fontVariantNumeric: "tabular-nums",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {knownCount} of {total ?? rows.length}
+        </span>
+      </summary>
+      {knownCount === 0 ? (
+        <p
+          style={{
+            margin: "10px 0 0",
+            fontSize: "0.875rem",
+            lineHeight: 1.5,
+            color: "var(--text-secondary)",
+          }}
+        >
+          Your answers fill in here as you go.
+        </p>
+      ) : null}
+      {knownCount > 0 ? (
+        <div
+          style={{
+            position: "relative",
+            marginTop: 14,
+            paddingLeft: 16,
+          }}
+        >
+          {/* The red thread: one merah stitch per answered row, joined by a 1px
+            line — the plan being sewn together as a dossier (progress is one
+            of red's two STRUCTURE duties, R4 §3). */}
+          <div
+            aria-hidden="true"
+            className="bz-shs-memo-spine"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 19,
+              bottom: 19,
+              width: 1,
+              background: "var(--accent-funnel)",
+            }}
+          />
+          <dl
+            style={{
+              display: "grid",
+              margin: 0,
+            }}
+          >
+            {knownRows.map((row) => (
+              <Row
+                key={row.id}
+                testId={`memo-row-${row.id}`}
+                label={row.label}
+                value={row.value}
+                isKnown={row.isKnown}
+                isNew={newRowIds.has(row.id)}
+              />
+            ))}
+          </dl>
+        </div>
+      ) : null}
       <style>{`
         @keyframes bz-shs-memo-row-enter {
           from {
@@ -305,6 +364,25 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        .bz-shs-memo-row {
+          position: relative;
+          padding: 9px 0;
+          border-bottom: 1px dashed var(--border-default);
+        }
+        .bz-shs-memo-row::before {
+          content: "";
+          position: absolute;
+          left: -19px;
+          top: 15px;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--accent-funnel);
+          box-shadow: 0 0 0 2px var(--surface-raised);
+        }
+        .bz-shs-memo-row:last-child {
+          border-bottom: none;
         }
         .bz-shs-memo-row-enter {
           animation: bz-shs-memo-row-enter 180ms ease-out forwards;
