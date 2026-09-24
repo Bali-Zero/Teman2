@@ -148,7 +148,9 @@ describe("ConsentBanner border — sourced from a token, not a literal", () => {
   });
 
   it("reads the shared --bz-border token", () => {
-    expect(bannerSrc).toMatch(/borderTop:\s*["']1px solid var\(--bz-border\)["']/);
+    expect(bannerSrc).toMatch(
+      /borderTop:\s*["']1px solid var\(--bz-border\)["']/,
+    );
   });
 });
 
@@ -165,7 +167,10 @@ describe("ConsentBanner border — visible against --bz-elevated on operative-li
   it("GUILT: the original literal (white hairline on the white banner) was exactly 1.00:1", () => {
     // rgba(255,255,255,0.12) composited onto #ffffff is #ffffff regardless
     // of the alpha value — the original defect this token replaces.
-    const ratio = ratioAgainst("rgba(255,255,255,0.12)", light["--bz-elevated"]);
+    const ratio = ratioAgainst(
+      "rgba(255,255,255,0.12)",
+      light["--bz-elevated"],
+    );
     expect(ratio).toBeCloseTo(1, 2);
     expect(ratio).toBeLessThan(MIN_VISIBLE_RATIO);
   });
