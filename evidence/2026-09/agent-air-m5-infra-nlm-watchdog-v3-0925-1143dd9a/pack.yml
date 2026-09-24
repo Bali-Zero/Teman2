@@ -26,17 +26,36 @@ lanes:
       Round 3: a fresh Opus 5.5 on-disk gate on PR #7307 (HEAD
       3da9d5891d) returned REWORK-BUILD — shipped behavior all PASSED,
       but two comments misdescribed the shipped code (the import
-      guard's rationale, and an "`_run` never raises" claim that was
-      false for the import-failure fallback), and the fallback `_run`
-      itself was a real gap (it raised, which could have crashed
-      maybe_alert's own Telegram attempt on the import-failure path).
-      #7307's branch was already armed (frozen), so this PR is a
-      REBUILD from fresh origin/main (cherry-picking all four real
-      commits, never 603b4a105f) carrying the fix: comments rewritten
-      to match reality, fallback `_run` made total, main()'s own
-      maybe_alert() call wrapped as an independent second layer, one
-      new regression test (verified to fail without the fix, pass
-      with it). 55 tests.
+      guard's rationale, and an "`_run` never raises" claim that did
+      not hold for the import-failure fallback), and the fallback
+      `_run` itself was a real gap: it RAISED instead of returning,
+      which the `main()` try/except swallowed, but the raise meant
+      `maybe_alert`'s attempt to invoke tg_notify.py never actually
+      ran a subprocess at all on that path. #7307's branch was already
+      armed (frozen), so PR #7309 was a REBUILD from fresh origin/main
+      carrying that fix: comments rewritten, the fallback made
+      non-raising, main()'s own maybe_alert() call wrapped as an
+      independent second layer, one new test. 55 tests.
+      Round 4: a SECOND fresh gate on PR #7309 (HEAD 1a8eb53890) FAILED
+      again for the SAME root cause (2nd red) — non-raising was not
+      the same as WORKING: the round-3 fallback `_run` returned a
+      canned `(1, "PROBE_ERR:...")` tuple without ever invoking a real
+      subprocess, so tg_notify.py still never ran on the import-failure
+      path; the gate reproduced this directly (`sys.modules[
+      "auth_sentinel"] = None`, sandbox HOME, previous ok heartbeat,
+      fake tg_notify writing a marker -> marker NOT written). Per the
+      Builder Contract (third red suspends), the conductor wrote spec
+      V3 (F1-F4), implemented exactly here: `_run` is now a LOCAL
+      subprocess runner ALWAYS defined at module scope (not inside the
+      auth_sentinel import guard, and not conditional on it), the
+      import brings in only `_AUTH_DEAD_RE`/`_hostname`, and every
+      sentence claiming otherwise ("still calls `_run`", "no real
+      subprocess machinery", "fallback `_run` made total" as if two
+      runners existed) is corrected. New test reloads the module with
+      `auth_sentinel` genuinely blocked and asserts a fake tg_notify.py
+      actually WRITES A MARKER FILE — proven to fail against both the
+      round-2 raising shape and the round-3 no-op shape (see receipts).
+      55 tests (1 test replaced, not added).
   - lane: review-round1
     role: review
     seat: tp1-qwen3.8-max
@@ -121,9 +140,12 @@ receipts:
     seat: claude-sonnet-5
   - claim: >-
       ROUND-1 CLAIM, SUPERSEDED BY S1 (see the round-2 receipts below —
-      the round-2 gate flagged this exact sentence as stale and it is
-      corrected here rather than deleted, so the fix history stays
-      legible): "_display_name() redacts every notebook title path:
+      the first fresh Opus 5.5 on-disk gate, on PR #7307's HEAD
+      3da9d5891d, flagged this exact sentence as stale; it is a
+      DIFFERENT mechanism from the 3-seat council and ran AFTER round 2,
+      not during it. Corrected here rather than deleted, so the fix
+      history stays legible): "_display_name() redacts every notebook
+      title path:
       curated NB- titles truncate at 60 chars, uncurated titles fall back
       to the first 8 chars of the id, a missing id falls back to
       'unknown'". That curated-title branch no longer exists — S1 (round
@@ -329,11 +351,14 @@ receipts:
     seat: claude-sonnet-5
   - claim: >-
       The real, posted `harness/fable-gate` status on PR #7307's HEAD
-      (3da9d5891d) is `failure`/REWORK-BUILD, with the exact description
-      GitHub shows: shipped behavior (PII, fail-visible, classifier, 54
-      tests, lints, pack lint) passed; the gate failed on two stale
-      comments plus the non-total fallback `_run` — the three items this
-      commit fixes.
+      (3da9d5891d) is `failure`/REWORK-BUILD. GitHub's own `description`
+      field (truncated by GitHub itself to ~140 chars) reads: "REWORK-BUILD
+      | fresh Opus 5.5 gate: stale code comments (:101-104, :466-467) +
+      non-total fallback _run on import-failure path; rest PASS...." — a
+      PARAPHRASE of the fuller reasoning in the actual gate transcript
+      (scratchpad/wd/gate7307.txt), not a verbatim quote of that transcript.
+      The `ts` below is the API's own `updated_at` for this status (when
+      GitHub recorded it), not the moment this command was run.
     cmd: >-
       gh api repos/Bali-Zero/Teman2/commits/3da9d5891d/status --jq
       '.statuses[] | select(.context=="harness/fable-gate") |
@@ -342,24 +367,64 @@ receipts:
     ts: "2026-09-24T21:56:28Z"
     seat: claude-sonnet-5
   - claim: >-
-      The new regression test is real, not tautological: reverting
-      main()'s try/except around maybe_alert() to a bare call (the
-      pre-fix shape) makes it FAIL with the exact RuntimeError the old
-      fallback `_run` used to raise; restoring the fix makes the full
-      55-test suite pass again.
+      The real, posted `harness/fable-gate` status on PR #7309's HEAD
+      (1a8eb53890) — a SECOND fresh gate, the 2nd red for this root cause —
+      is `failure`/REWORK-BUILD. GitHub's own `description` field
+      (truncated by GitHub itself) reads: "REWORK-BUILD | fresh Opus 5.5
+      gate #2: fallback _run is a no-op stub so Telegram still never
+      fires on import-failure; comments/PR body cl...." — again a
+      PARAPHRASE truncated by GitHub, not a verbatim transcript quote.
+      The `ts` below is the API's own `updated_at` for this status, not
+      the moment this command was run (re-run at 2026-09-24T22:30:58Z to
+      confirm it still reads the same verdict before writing this
+      receipt).
     cmd: >-
-      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
-      "import_failure_still_attempts" -v  # run once with main()'s
-      try/except stripped (FAILED), once restored (PASSED)
+      gh api repos/Bali-Zero/Teman2/commits/1a8eb53890/status --jq
+      '.statuses[] | select(.context=="harness/fable-gate") |
+      {context, state, description, updated_at}'
     exit: 0
-    ts: "2026-09-24T22:04:00Z"
+    ts: "2026-09-24T22:13:53Z"
     seat: claude-sonnet-5
   - claim: >-
-      Full suite passes on the rebuilt HEAD: 55/55 (54 from #7307 plus
-      the one new regression test for this gate's finding).
-    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+      F2 red #1: the new test (renamed
+      test_module_reload_with_auth_sentinel_blocked_actually_sends_telegram,
+      no monkeypatch of `_run`) FAILS against the round-3/#7309 no-op
+      stub shape (`_run` returns a canned `(1, "PROBE_ERR:...")` tuple
+      without invoking any subprocess) — the fake tg_notify.py's marker
+      file is never written, reproducing the fresh gate's own finding
+      exactly. `_run` was temporarily reverted to that exact stub shape
+      to produce this run, then restored (see the green receipt below).
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -k
+      "module_reload_with_auth_sentinel_blocked" -v
+    exit: 1
+    ts: "2026-09-24T22:26:37Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      F2 red #2: the same test FAILS against the round-2/#7307 shape too
+      (fallback `_run` raises RuntimeError instead of returning a tuple)
+      — main()'s own try/except swallows the raise, but the marker file
+      is still never written, because no real subprocess ever ran on
+      that path either. `_run` was temporarily reverted to this exact
+      raising shape to produce this run, then restored.
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -k
+      "module_reload_with_auth_sentinel_blocked" -v
+    exit: 1
+    ts: "2026-09-24T22:26:45Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      F2 green: with F1 restored (the single LOCAL, always-defined,
+      never-conditional `_run`), the full suite passes 55/55, including
+      the renamed regression test — the marker file IS written on the
+      import-failure path, proving a real subprocess actually ran.
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -q
     exit: 0
-    ts: "2026-09-24T22:04:02Z"
+    ts: "2026-09-24T22:30:27Z"
     seat: claude-sonnet-5
 dissent:
   - seat: codex-gpt-5.6-sol

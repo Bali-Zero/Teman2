@@ -3,7 +3,7 @@ gear: 3
 objective: >-
   m5.nlm_watchdog is a new M5-resident organ (scripts/nlm_watchdog.py, a 6h
   cron tick) that warns before a NotebookLM notebook hits its 500-source cap
-  and checks Pro's `nlm` CLI login liveness daily, on a channel other than
+  and checks Pro's `nlm` CLI login liveness every 6h, on a channel other than
   Telegram-for-everything (Telegram fires only on a real state transition).
   A real 2-round, 3-seat Gear-3 council (codex-gpt-5.6-sol, kimi-code/k3,
   tp1-qwen3.8-max) reviewed this organ: round 1 on HEAD 603b4a105f returned
@@ -37,8 +37,10 @@ constraints:
   - >-
     No LaunchAgent install, no launchctl bootstrap/kickstart, no HOME-fork
     pair declaration in infra/home-fork/declared-pairs.json, no merge, no
-    arm, no deploy — the conductor runs those after a second council pass
-    on this fixed HEAD.
+    arm, no deploy — the conductor runs those post-merge. The 2-round,
+    3-seat council already ran (see journal.jsonl); what gates THIS rebuild
+    is a fresh on-disk Opus 5.5 gate re-reviewing the fixed HEAD, not
+    another council round.
   - >-
     No client PII, no OSINT, no real e-mail/name in any test fixture or
     committed string — synthetic placeholder (owner@example.test) only.
@@ -146,8 +148,10 @@ consumer_map:
     including a caught crash.
   - >-
     The secondary (non-Telegram-flood) Telegram channel itself, via
-    maybe_alert — fires only on a real status OR code-set transition, so
-    the owner sees exactly one message per new fact, not one per tick.
+    maybe_alert — fires only on a real change to status, reason-code set,
+    OR near-cap id8 set, so the owner sees exactly one message per new
+    fact (including a second notebook newly crossing the cap), not one
+    per tick.
   - >-
     apps/organism/organism/organs_registry.yaml's own consumers (drift
     audits, healer ticks) — the m5.nlm_watchdog entry's
@@ -186,10 +190,11 @@ assumptions:
     status: verified
     probe: grep -n "open(" scripts/nb_generate_inventory.py (read-only, confirmed in the prior read-only prep turn; not re-run this round to avoid an unneeded Pro round-trip)
 grader: >-
-  External council on the real diff: codex-gpt-5.6-sol, kimi-code/k3,
-  tp1-qwen3.8-max — see journal.jsonl for the first-round verdicts this PR
-  fixes. Generator is not grader: this session does not push, merge, arm,
-  or install; the conductor runs a second council pass on this fixed HEAD
-  before any of that.
+  The 2-round, 3-seat external council (codex-gpt-5.6-sol, kimi-code/k3,
+  tp1-qwen3.8-max — see journal.jsonl) already ran and is not repeated by
+  this rebuild; what grades THIS specific fix is a fresh on-disk Opus 5.5
+  gate re-reviewing the rebuilt HEAD. Generator is not grader either way:
+  this session does not merge, arm, or install — the conductor does, after
+  that gate passes.
 budget: Existing subscription seats only; no paid per-token API calls.
 pii: none

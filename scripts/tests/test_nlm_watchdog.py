@@ -685,39 +685,60 @@ def test_main_reports_import_failure_as_degraded_without_crashing(tmp_path, monk
     assert data["codes"] == [nlm_watchdog.Code.IMPORT_FAILED]
 
 
-def test_main_import_failure_still_attempts_telegram_and_never_raises(tmp_path, monkeypatch):
-    # Fresh gate finding, PR #7307: the import-failure fallback `_run` used to
-    # RAISE RuntimeError. maybe_alert() calls `_run` to attempt the Telegram
-    # send on EVERY transition, including ok -> degraded on an import
-    # failure — so that raise would propagate straight out of maybe_alert()
-    # and crash main() on exactly the path this whole guard exists to keep
-    # alive. A previous "ok" heartbeat makes this an ok->degraded
-    # transition, the shape that must alert.
+def test_module_reload_with_auth_sentinel_blocked_actually_sends_telegram(tmp_path):
+    """Reproduces the fresh gate's own probe (#7309 finding #2 — 2nd red for
+    the same cause). Monkeypatching `nlm_watchdog._run` directly (the
+    round-2/#7307 test this replaces) can never exercise this file's OWN
+    import-failure code path — it just substitutes a fake in the caller's
+    frame, so a fallback `_run` that silently does NOTHING (the round-3/
+    #7309 shape: `return 1, "PROBE_ERR:..."` with no real subprocess call at
+    all) still passed that test. Real reproduction: `sys.modules[
+    "auth_sentinel"] = None` forces THIS module's own `from auth_sentinel
+    import ...` statement to genuinely raise ImportError on reload, so
+    `AUTH_SENTINEL_IMPORT_ERROR` is set by the real except branch, not by a
+    monkeypatch pretending it was. The fake tg_notify.py WRITES A MARKER FILE
+    when actually executed — proving a real subprocess ran, not merely that
+    some function returned a tuple claiming one did.
+
+    Must FAIL against: (a) the round-2/#7307 fallback that raised
+    RuntimeError, and (b) the round-3/#7309 fallback that returned a canned
+    tuple without invoking any subprocess. Passes only with F1's local,
+    always-on, real `_run` (verified manually before committing this fix —
+    see the PR report for the red output against both prior shapes)."""
+    import importlib
+
     hb = tmp_path / "nlm-watchdog.json"
     hb.write_text(json.dumps({"organ": "nlm-watchdog", "status": "ok", "codes": []}))
-    monkeypatch.setattr(nlm_watchdog, "HEARTBEAT_PATH", hb)
-    monkeypatch.setattr(nlm_watchdog, "AUTH_SENTINEL_IMPORT_ERROR", "ImportError")
+    marker = tmp_path / "tg-called.marker"
     fake_tg = tmp_path / "tg_notify.py"
-    fake_tg.write_text("import sys\nsys.exit(0)\n")
-    monkeypatch.setattr(nlm_watchdog, "TG_NOTIFY", fake_tg)
-    calls = []
+    fake_tg.write_text(
+        "import pathlib, sys\n"
+        f"pathlib.Path({str(marker)!r}).write_text('called')\n"
+        "sys.exit(0)\n"
+    )
 
-    def _fake_run(*a, **kw):
-        # Simulates the OLD, broken import-failure fallback (raised
-        # RuntimeError) — proves main()'s own try/except around
-        # maybe_alert() is a real, independent second layer, not just a
-        # claim: the attempt is counted BEFORE the raise, so "one send
-        # attempted" holds even though the call never returns normally.
-        calls.append((a, kw))
-        raise RuntimeError("auth_sentinel unavailable")
+    saved_auth_sentinel = sys.modules.get("auth_sentinel")
+    sys.modules["auth_sentinel"] = None  # forces a genuine ImportError below
+    try:
+        mod = importlib.reload(nlm_watchdog)
+        assert mod.AUTH_SENTINEL_IMPORT_ERROR is not None, (
+            "auth_sentinel import did not actually fail — test setup is broken"
+        )
+        mod.HEARTBEAT_PATH = hb
+        mod.TG_NOTIFY = fake_tg
+        rc = mod.main([])
+        data = json.loads(hb.read_text())
+    finally:
+        if saved_auth_sentinel is not None:
+            sys.modules["auth_sentinel"] = saved_auth_sentinel
+        else:
+            sys.modules.pop("auth_sentinel", None)
+        importlib.reload(nlm_watchdog)  # restore normal state for every other test
 
-    monkeypatch.setattr(nlm_watchdog, "_run", _fake_run)
-    rc = nlm_watchdog.main([])  # must not raise, even though _run does
-    assert rc == 1
-    assert len(calls) == 1  # the Telegram send was attempted, not skipped
-    data = json.loads(hb.read_text())
+    assert rc != 0
     assert data["status"] == "degraded"
     assert data["codes"] == [nlm_watchdog.Code.IMPORT_FAILED]
+    assert marker.exists(), "tg_notify.py was never actually executed"
 
 
 def _inventory_now(notebooks):

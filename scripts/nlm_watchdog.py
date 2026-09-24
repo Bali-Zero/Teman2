@@ -87,6 +87,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -94,33 +95,67 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+
+def _run(cmd: list[str] | str, timeout: int = 30, shell: bool = False,
+         env: dict[str, str] | None = None) -> tuple[int, str]:
+    """LOCAL, always-defined, TOTAL subprocess runner — shaped exactly like
+    auth_sentinel.py:81-97 (its own docstring: "probe non deve mai crashare").
+    Owned HERE rather than imported, and defined unconditionally at module
+    scope rather than inside the auth_sentinel import guard below (fresh gate
+    finding #2, PR #7309): a fallback that merely RETURNS a canned (rc, text)
+    tuple without ever invoking a real subprocess means every call site that
+    depends on it — including `maybe_alert()`'s Telegram attempt on the
+    import-failure path — silently does NOTHING instead of actually trying.
+    This function has no dependency on auth_sentinel at all, so it works
+    identically whether that import below succeeds or fails: every ssh probe
+    and every Telegram send in this file goes through this ONE runner, always
+    real, never a stub. Never raises: TimeoutExpired -> (124, "TIMEOUT"),
+    FileNotFoundError -> (127, "NOT_FOUND"), any other Exception -> (1,
+    type(e).__name__) — the exception type only, per this file's PII
+    boundary, never `str(e)` (which could embed CLI output)."""
+    try:
+        p = subprocess.run(
+            cmd, shell=shell, timeout=timeout,
+            stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, env=env,
+        )
+        return p.returncode, (p.stdout + p.stderr).strip()
+    except subprocess.TimeoutExpired:
+        return 124, "TIMEOUT"
+    except FileNotFoundError:
+        return 127, "NOT_FOUND"
+    except Exception as e:  # noqa: BLE001 — must never crash the caller
+        return 1, type(e).__name__
+
+
 # Reuse, don't duplicate: same directory as auth_sentinel.py, which already owns the
-# auth-dead regex and the timeout-safe subprocess runner. A divergent regex here would be
-# exactly the "two copies of the same judgement" failure this repo keeps scarring on.
+# auth-dead regex. A divergent regex here would be exactly the "two copies of the same
+# judgement" failure this repo keeps scarring on. `_run` above is now LOCAL (see its own
+# docstring for why) — this import brings in ONLY `_AUTH_DEAD_RE` and `_hostname`, neither of
+# which this file's own probes can safely reimplement without drifting from auth_sentinel's
+# judgement on what counts as a dead cookie.
 #
 # GUARDED (Gear-3 council finding, qwen #1): a bare module-level `from auth_sentinel import
 # ...` means a future rename/move/signature change over there raises ImportError before
 # main() ever runs — an uncaught ImportError here is a NameError waiting to happen the moment
-# anything below tries to call `_run`/`_hostname`/`_AUTH_DEAD_RE`, and Python does not run this
+# anything below tries to call `_hostname`/`_AUTH_DEAD_RE`, and Python does not run this
 # module's own exception handlers, so an ImportError at THIS import statement would crash
-# before main()'s own try/except ever gets a chance to see it (fresh gate finding, PR #7307:
-# the previous wording here claimed the cron wrapper's `|| true` swallows the traceback and NO
-# heartbeat is written — false today. `nlm_watchdog_cron.sh` uses `|| RC=$?`, never `|| true`,
-# and its own before/after-mtime comparison already fills a GENERIC "wrote no heartbeat"
-# fallback heartbeat when python dies before writing one. The value THIS guard adds is not
-# "a heartbeat exists at all" — the wrapper's fallback already guarantees that — it is
-# reporting the SPECIFIC reason (`Code.IMPORT_FAILED`, "auth_sentinel import failed (...)")
-# instead of the wrapper's generic "wrote no heartbeat" catch-all). The try/except below
+# before main()'s own try/except ever gets a chance to see it. `nlm_watchdog_cron.sh` uses
+# `|| RC=$?`, never `|| true`, and its own before/after-mtime comparison already fills a
+# GENERIC "wrote no heartbeat" fallback heartbeat when python dies before writing one — the
+# value THIS guard adds is not "a heartbeat exists at all" (the wrapper's fallback already
+# guarantees that), it is reporting the SPECIFIC reason (`Code.IMPORT_FAILED`, "auth_sentinel
+# import failed (...)") instead of the wrapper's generic catch-all. The try/except below
 # ensures the module always finishes importing; main() checks AUTH_SENTINEL_IMPORT_ERROR and
-# writes that specific degraded heartbeat instead of ever reaching a NameError. The fallback
-# `_run`/`_hostname` stubs below must themselves be TOTAL (never raise) on this path too —
-# `maybe_alert()` still calls `_run` to attempt a Telegram send even when auth_sentinel could
-# not be imported, and a raise there would crash main() on the exact path this guard exists to
-# keep alive; `main()` also wraps its own `maybe_alert()` call as a second, independent layer
-# (see there) so neither a `_run` regression nor an unrelated bug in `maybe_alert` can escape.
+# writes that specific degraded heartbeat instead of ever reaching a NameError. A missing
+# `_AUTH_DEAD_RE` on this path leaves `classify_login` unable to positively identify a dead
+# cookie by phrase — that is fine, because the import failure ALREADY routes main() to the
+# IMPORT_FAILED verdict path before `classify_login` is ever called. `_hostname` falls back to
+# a plain `socket.gethostname()` so the heartbeat's own `host` field is never itself a
+# casualty of the same failure it is reporting.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from auth_sentinel import _AUTH_DEAD_RE, _hostname, _run
+    from auth_sentinel import _AUTH_DEAD_RE, _hostname
     AUTH_SENTINEL_IMPORT_ERROR: str | None = None
 except Exception as _imp_exc:  # noqa: BLE001 — see comment above; must never propagate
     AUTH_SENTINEL_IMPORT_ERROR = type(_imp_exc).__name__
@@ -129,18 +164,6 @@ except Exception as _imp_exc:  # noqa: BLE001 — see comment above; must never 
     def _hostname() -> str:  # type: ignore[no-redef]
         import socket
         return socket.gethostname().split(".")[0]
-
-    def _run(*_a, **_kw) -> tuple[int, str]:  # type: ignore[no-redef]
-        """Fallback used ONLY when the auth_sentinel import itself failed. Must
-        be TOTAL — never raise — exactly like auth_sentinel's real `_run`: this
-        stands in for it on every call site, including `maybe_alert()`'s own
-        Telegram attempt on the import-failure path (fresh gate finding, PR
-        #7307: the previous version here raised RuntimeError, which would have
-        propagated straight out of `maybe_alert()` and crashed `main()` on the
-        one path this whole guard exists to keep alive). Always reports
-        failure — there is no real subprocess machinery to fall back to — but
-        reports it the same SHAPE a real probe would: a (rc, text) tuple."""
-        return 1, "PROBE_ERR:auth_sentinel unavailable (import failed)"
 
 HOME = Path.home()
 REPO = Path(__file__).resolve().parents[1]
@@ -484,10 +507,13 @@ def maybe_alert(
     same "a new failure hides behind an older one" shape this organ exists
     to prevent, one layer down. A send failure must never change the exit
     code or the heartbeat already committed, so its result is deliberately
-    discarded — `_run` is now TOTAL on both the real and the import-failure
-    fallback path (fresh gate finding, PR #7307: the fallback used to raise),
-    and `main()` additionally wraps this whole call as a second, independent
-    layer, so no path through this function can propagate an exception.
+    discarded — `_run` is the ONE local, always-real runner this file owns
+    (see its own docstring, F1/PR #7309: two prior shapes here either raised
+    on the import-failure path, or silently did nothing at all instead of
+    invoking tg_notify.py — this is neither, it is the same real subprocess
+    call on every path, import-failure included), and `main()` additionally
+    wraps this whole call as a second, independent layer, so no path through
+    this function can propagate an exception.
 
     Returns True iff a send was ATTEMPTED — not whether it was delivered.
 
