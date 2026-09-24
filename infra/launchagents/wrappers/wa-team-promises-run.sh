@@ -1,9 +1,16 @@
 #!/bin/bash
 # wa-team-promises wrapper: T3 promise extractor tick (Pro-local, Law 2 — no
-# secret/env-file needed, the DB is local nuzantara_dev on the loopback).
+# secret/env-file needed, the DB is local nuzantara_dev on the loopback,
+# guarded by WA_TEAM_PROMISES_DSN in wa_team_promises.py itself).
 # Tracked here (scar #1: no HOME-only wrapper) so cron-runner.sh has a
-# stable script path to invoke. crontab line (documented, NOT installed by
-# this PR — see scripts/wa_team_promises.py docstring / PR body):
+# stable script path to invoke.
+#
+# ONE-TIME, before the first cron tick (round 1: the schema moved off
+# migrations_v2 — see scripts/sql/pro_local/team_promises.sql's header):
+#   $HOME/nuzantara/infra/launchagents/wrappers/wa-team-promises-run.sh --init-schema
+#   $HOME/nuzantara/infra/launchagents/wrappers/wa-team-promises-run.sh --dry-run
+#
+# crontab line (documented, NOT installed by this PR — see PR body):
 #   */15 * * * * $HOME/nuzantara/scripts/cron-runner.sh \
 #     $HOME/nuzantara/infra/launchagents/wrappers/wa-team-promises-run.sh \
 #     >> $HOME/logs/wa-team-promises.log 2>&1
