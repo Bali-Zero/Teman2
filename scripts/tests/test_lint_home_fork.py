@@ -184,6 +184,59 @@ def test_discover_innocence_repo_resident_under_home(tmp_path: Path) -> None:
     assert findings == []
 
 
+def test_discover_guilt_undeclared_json_hook_registry(tmp_path: Path) -> None:
+    """W347: a *.json hook registry hardcoding a HOME path the plist/crontab
+    scan never looks at — the shape that let `.codex/hooks.json` read
+    "0 undeclared payloads" while running an untracked live copy."""
+    home, repo = make_env(tmp_path)
+    registry = home / ".codex" / "hooks.json"
+    registry.parent.mkdir(parents=True)
+    rogue = home / ".codex" / "hooks" / "codex-spalla-trigger.sh"
+    registry.write_text(json.dumps({"hooks": [{"command": str(rogue)}]}))
+    errors: list[str] = []
+    findings = lhf.discover_undeclared(
+        [], "", home, repo, set(), [], errors, json_registries=[registry]
+    )
+    assert len(findings) == 1
+    assert "UNDECLARED" in findings[0] and "codex-spalla-trigger.sh" in findings[0]
+    assert errors == []
+
+
+def test_discover_innocence_json_hook_registry_declared_or_absent(tmp_path: Path) -> None:
+    home, repo = make_env(tmp_path)
+    registry = home / ".codex" / "hooks.json"
+    registry.parent.mkdir(parents=True)
+    declared = home / ".codex" / "hooks" / "declared.sh"
+    registry.write_text(json.dumps({"hooks": [{"command": str(declared)}]}))
+    errors: list[str] = []
+    # Declared pair: innocent.
+    findings = lhf.discover_undeclared(
+        [], "", home, repo, {"~/.codex/hooks/declared.sh"}, [], errors,
+        json_registries=[registry],
+    )
+    assert findings == []
+    # Registry file simply absent (untracked, per-machine, most checkouts
+    # won't have it): innocent, no error.
+    findings2 = lhf.discover_undeclared(
+        [], "", home, repo, set(), [], errors,
+        json_registries=[home / ".codex" / "missing.json"],
+    )
+    assert findings2 == [] and errors == []
+
+
+def test_discover_guilt_json_hook_registry_unparseable(tmp_path: Path) -> None:
+    home, repo = make_env(tmp_path)
+    registry = home / ".codex" / "hooks.json"
+    registry.parent.mkdir(parents=True)
+    registry.write_text("{not valid json")
+    errors: list[str] = []
+    findings = lhf.discover_undeclared(
+        [], "", home, repo, set(), [], errors, json_registries=[registry]
+    )
+    assert findings == []
+    assert len(errors) == 1 and "json hook registry unreadable" in errors[0]
+
+
 def test_discover_crontab_lines(tmp_path: Path) -> None:
     home, repo = make_env(tmp_path)
     crontab = "# comment ~/scripts/commented.sh\n*/5 * * * * ~/scripts/cronjob.sh\n"
