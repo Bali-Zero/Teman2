@@ -120,6 +120,24 @@ termination of another session is performed by the installer.
 New sessions consume the installation. Existing sessions are not restarted and
 must not be assumed to have reloaded their hook snapshot.
 
+## Seat profile
+
+`install_seat_profile.py --seat ~/.codex` installs the reviewed seat profile kept in
+`seat/`: the root `developer_instructions` (scoped reads, bounded tool output, the
+code-mode `// @exec` output pragma, routine delegation) and four routine roles in
+`agents/` (`mechanical` Luna low read-only, `routine-explorer` Terra medium
+read-only, `routine-worker` Terra medium, `code-reviewer` Sol high read-only).
+Each item that is absent is installed; an identical item is left untouched; a
+different item is operator-owned drift and is reported, never overwritten. A
+private backup precedes any write. The root key is written through Codex's own
+`config/batchWrite` and then checked with `tomllib`: only that key may change,
+otherwise the installer stops and names the backup (it does not restore on its
+own, so a concurrent writer's edit is never lost). `--check` is read-only and
+exits 1 unless every item matches; `--remove` deletes only items still identical
+to `seat/`. The roles never replace a required cross-family review, an explicit
+model/effort assignment or a mission-colour gate. New sessions consume the
+profile; running sessions keep what they loaded.
+
 ## Validation
 
 - test_context_bridge.py: deterministic regression cases for token measurement,
