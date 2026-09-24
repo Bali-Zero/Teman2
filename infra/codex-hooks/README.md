@@ -134,8 +134,13 @@ private backup precedes any write. The root key is written through Codex's own
 otherwise the installer stops and names the backup (it does not restore on its
 own, so a concurrent writer's edit is never lost). `--check` is read-only and
 exits 1 unless every item matches; `--remove` deletes only items still identical
-to `seat/`. The roles never replace a required cross-family review, an explicit
-model/effort assignment or a mission-colour gate. New sessions consume the
+to `seat/`, through a validated text edit rather than the config API: it aborts if
+config.toml changed since its plan, but a write landing in the instant between its
+final byte check and the replace cannot be detected (Codex exposes no config lock).
+The roles and instructions are guidance: they tell a parent never to use a role in
+place of a required cross-family review, an explicit model/effort assignment or a
+mission-colour gate, and those stay enforced by the harness's required checks, not
+by the roles. New sessions consume the
 profile; running sessions keep what they loaded.
 
 ## Validation

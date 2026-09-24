@@ -6,7 +6,8 @@ installed; identical -> untouched; different -> left alone and reported as
 operator-owned drift, never overwritten. Every write is preceded by a private
 backup. The root key is written through Codex's own config API and then checked
 semantically: only that key may change. --check is read-only; --remove deletes
-only items still identical to these sources. No auth or other config is copied.
+only items still identical to these sources, via a validated text edit that aborts
+if config.toml changed since its plan. No auth or other config is copied.
 """
 
 from __future__ import annotations
