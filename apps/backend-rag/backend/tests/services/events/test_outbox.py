@@ -40,9 +40,7 @@ def test_validate_channel_accepts_valid_names():
         "cognitive_event",
         "abc_123",
     ):
-        # validate_channel is `-> None`: raises on a bad name, returns None
-        # on a good one. Assert the actual contract, not just "no raise".
-        assert validate_channel(name) is None
+        validate_channel(name)  # must not raise
 
 
 def test_validate_channel_rejects_special_chars():

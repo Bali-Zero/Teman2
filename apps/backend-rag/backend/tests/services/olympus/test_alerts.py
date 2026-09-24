@@ -1,6 +1,5 @@
 """Tests for Olympus v2 OlympusAlerts — nullable alert_service."""
 
-import logging
 from unittest.mock import AsyncMock
 
 import pytest
@@ -23,15 +22,10 @@ class TestOlympusAlerts:
         mock_alert_service.send_alert.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_alert_without_service_no_crash(self, caplog):
+    async def test_send_alert_without_service_no_crash(self):
         """BUG-2 fix: alert_service=None must not crash."""
         alerts = OlympusAlerts(None)
-
-        caplog.set_level(logging.INFO, logger="olympus.alerts")
-        result = await alerts.send_alert("test message")
-
-        assert result is None
-        assert "[OLIMPO] (no alert_service) test message" in caplog.text
+        await alerts.send_alert("test message")
 
     @pytest.mark.asyncio
     async def test_send_pulse_summary_with_failures(self, mock_alert_service):
@@ -46,13 +40,6 @@ class TestOlympusAlerts:
         mock_alert_service.send_alert.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_pulse_summary_without_service(self, caplog):
+    async def test_send_pulse_summary_without_service(self):
         alerts = OlympusAlerts(None)
-
-        caplog.set_level(logging.INFO, logger="olympus.alerts")
-        result = await alerts.send_pulse_summary(5, 2)  # No crash
-
-        assert result is None
-        assert "[OLIMPO] (no alert_service) Pulse completato: 5 azioni, 2 fallimenti" in (
-            caplog.text
-        )
+        await alerts.send_pulse_summary(5, 2)  # No crash

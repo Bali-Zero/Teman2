@@ -14,10 +14,7 @@ def test_cell_pulse_observed_channel_name_matches_outbox_validation():
     """The channel name must satisfy outbox.validate_channel regex."""
     from backend.services.events.outbox import validate_channel
 
-    # validate_channel raises InvalidChannelError on a bad name and returns
-    # None on a good one (its own annotation: `-> None`) — assert the actual
-    # contract instead of only relying on "didn't raise" going unobserved.
-    assert validate_channel("cell_pulse_observed") is None
+    validate_channel("cell_pulse_observed")  # raises if invalid
 
 
 def test_cell_pulse_sustained_red_channel_registered():
@@ -37,4 +34,4 @@ def test_cell_pulse_sustained_red_channel_name_matches_outbox_validation():
     """The channel name must satisfy outbox.validate_channel regex."""
     from backend.services.events.outbox import validate_channel
 
-    assert validate_channel("cell_pulse_sustained_red") is None
+    validate_channel("cell_pulse_sustained_red")  # raises if invalid

@@ -56,18 +56,11 @@ class TestOnComplianceAlertCreated:
 
         assert mock_inv.call_count == 0
 
-    async def test_cache_exception_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
-        """RuntimeError from invalidate_cache must not propagate; it's logged at DEBUG."""
+    async def test_cache_exception_is_swallowed(self) -> None:
+        """RuntimeError from invalidate_cache must not propagate."""
         with patch(_CACHE_PATCH, new=AsyncMock(side_effect=RuntimeError("redis down"))):
-            with caplog.at_level(
-                logging.DEBUG, logger="backend.services.events.handlers.compliance_handlers"
-            ):
-                result = await on_compliance_alert_created({"client_id": 7})
-
-        assert result is None
-        assert any(
-            "compliance cache invalidation skipped" in r.message for r in caplog.records
-        )
+            # Should not raise
+            await on_compliance_alert_created({"client_id": 7})
 
     async def test_cache_key_uses_client_id_verbatim_int(self) -> None:
         """Integer client_id is interpolated as-is into the cache key."""

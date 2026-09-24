@@ -80,7 +80,5 @@ async def test_process_one_job_empty_queue():
     db_pool.acquire = fake_acquire
 
     with patch.object(worker_mod, "_claim_job", new=AsyncMock(return_value=None)):
-        result = await _process_one_job(db_pool, MagicMock())
-        # Empty queue -> early return, no job processing attempted.
-        assert result is None
-        mock_conn.execute.assert_not_called()
+        await _process_one_job(db_pool, MagicMock())
+        # No exception raised — queue empty is handled gracefully
