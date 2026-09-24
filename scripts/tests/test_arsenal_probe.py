@@ -416,12 +416,29 @@ def _synthetic_guilt_cases() -> dict[str, str]:
         # token must not (this is exactly what "pure" in the exemption
         # rules out — a partial resemblance is not a full match)
         "identifier_prefix_random_digit_tail": "secret_token_value_" + rand_alnum(24),
-        # generic alternative, single-case letters+underscores BUT with one
-        # disqualifying character (a digit) inserted mid-token — proves the
-        # exemption regex is anchored end-to-end, not prefix-matched
+        # generic alternative, letters+underscores with NO digit at all — the
+        # disqualifier here is mixed case, not a digit, proving the exemption
+        # requires single-case (not merely "no digit")
         "mixed_case_underscored_no_digits": (
             "SecretToken_ValueHere_ExtraPaddingSegment"
         ),
+        # generic alternative, pure single-case letters but NO underscore —
+        # kills mutant (c), which drops the underscore requirement
+        "lowercase_letters_no_underscore_32": rand_alnum(32, string.ascii_lowercase),
+        "uppercase_letters_no_underscore_32": rand_alnum(32, string.ascii_uppercase),
+        # leading / trailing / double underscore — the exemption regex
+        # requires letters on both ends of every underscore, so these fail
+        # the pure-identifier shape and must stay redacted
+        "leading_underscore": "_" + "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)),
+        "trailing_underscore": "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)) + "_",
+        "double_underscore": rand_alnum(10, string.ascii_lowercase) + "__" + rand_alnum(14, string.ascii_lowercase),
+        # specific-prefix EMBEDDED inside an otherwise-pure single-case run —
+        # kills mutant (d), which applies the exemption to every alternative
+        # instead of scoping it to "generic" only
+        "ghp_embedded_standalone": "ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "ghp_embedded_in_snake_prefix": "my_token_ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "akia_embedded_in_snake_prefix": "AWS_KEY_AKIA" + rand_alnum(16, string.ascii_uppercase),
+        "akia_all_upper_tail": "AKIA" + rand_alnum(30, string.ascii_uppercase + string.digits),
     }
 
 
@@ -437,10 +454,14 @@ def test_scrub_guilt_fixtures_are_non_empty_and_pre_match():
 
 
 def test_scrub_redacts_secret_shaped_synthetics():
+    # exact-equality, not just "value not in scrubbed": a PARTIAL leak (e.g. the
+    # akia under-match that let a tail of the run survive, F2) would pass a
+    # substring check but must fail this one.
     for name, value in _synthetic_guilt_cases().items():
         scrubbed = ap.scrub(f"value observed: {value} end of line")
-        assert value not in scrubbed, f"{name}: guilt fixture survived scrub() unredacted"
-        assert "<REDACTED>" in scrubbed, f"{name}: scrub() dropped the token without marking it"
+        assert scrubbed == "value observed: <REDACTED> end of line", (
+            f"{name}: guilt fixture not fully redacted (partial leak or missed match): {scrubbed!r}"
+        )
 
 
 def test_scrub_literal_extra_secret_wins_over_identifier_exemption():
@@ -451,6 +472,51 @@ def test_scrub_literal_extra_secret_wins_over_identifier_exemption():
     assert ap._SECRET_RE.search(literal)  # guard-of-the-guard: shape alone also matches
     scrubbed = ap.scrub(f"value was {literal} exactly", extra_secrets=[literal])
     assert literal not in scrubbed
+
+
+def test_scrub_redacts_pure_identifier_shaped_secret_in_key_value_or_bearer_context():
+    # F1: a context-free snake passphrase is the declared residual (left
+    # intact by design), but the SAME shape in a credential context must
+    # still be redacted — key=value and bearer are never exempt.
+    import random
+    import string
+
+    rng = random.Random(20260925)
+    pw = "_".join(
+        "".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5)
+    )
+    contexts = [
+        f"PASSWORD={pw}",
+        f'{{"api_key": "{pw}"}}',
+        f"https://x.example/cb?access_token={pw}&x=1",
+        f"authorization: bearer {pw}",
+    ]
+    for text in contexts:
+        scrubbed = ap.scrub(text)
+        assert pw not in scrubbed, f"passphrase survived in context: {text!r} -> {scrubbed!r}"
+
+
+def test_scrub_generic_only_scoping_is_load_bearing_on_its_own(monkeypatch):
+    # Isolates the `m.lastgroup == "generic"` condition from
+    # `_EMBEDDED_PREFIX_RE`: today every ghp_/AKIA-prefixed token that is ALSO
+    # pure-identifier-shaped happens to be caught by the embedded-prefix check
+    # too, so a plain input-based test cannot tell the two defenses apart
+    # (mutant d — dropping the lastgroup condition — leaves such fixtures
+    # redacted regardless). Patching the embedded-prefix check out removes
+    # that overlap and pins the lastgroup condition by itself: a standalone
+    # ghp_-prefixed lowercase token, matched via the "ghp" named group, must
+    # still be redacted on lastgroup grounds alone.
+    import random
+    import re
+    import string
+
+    monkeypatch.setattr(ap, "_EMBEDDED_PREFIX_RE", re.compile(r"(?!)"))  # never matches
+    rng = random.Random(20260925)
+    tok = "ghp_" + "".join(rng.choice(string.ascii_lowercase) for _ in range(36))
+    m = ap._SECRET_RE.search(tok)
+    assert m is not None and m.lastgroup == "ghp", "fixture setup: expected a 'ghp' match"
+    scrubbed = ap.scrub(f"value observed: {tok} end of line")
+    assert scrubbed == "value observed: <REDACTED> end of line"
 
 
 def test_evidence_tail_truncates_and_scrubs():

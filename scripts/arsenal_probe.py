@@ -237,24 +237,41 @@ _SECRET_RE = re.compile(
     r"|(?P<ghp>ghp_[A-Za-z0-9]{8,})"
     r"|(?P<xox>xox[a-z]-[A-Za-z0-9\-]{8,})"
     r"|(?P<jwt>eyJ[A-Za-z0-9._\-]{20,})"
-    r"|(?P<akia>AKIA[A-Z0-9]{16})"
+    r"|(?P<akia>AKIA[A-Z0-9]{16}[A-Za-z0-9._\-]*)"
     r"|(?P<generic>[A-Za-z0-9._\-]{24,})"
 )
 
 # A "generic" match is exempt from redaction ONLY when the whole matched token is a
 # pure identifier: single-case letters joined by underscores, no digit, no mixed
 # case, no other symbol. Anything with a digit, a dot, a hyphen, or mixed case still
-# falls through to redaction — this is deliberately narrower than "looks like an
-# identifier" so it can never swallow a real secret (hex digests, random-tail
-# tokens, mixed-case blobs all keep at least one disqualifying character).
-_PURE_IDENTIFIER_RE = re.compile(r"^(?:[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+)$")
+# falls through to redaction. Residual, accepted: a secret that is itself only
+# single-case letters joined by underscores (e.g. a human passphrase) and that
+# appears outside a key=/bearer context is left intact; credentials this probe
+# loads are passed as extra_secrets and are redacted regardless of shape.
+_PURE_IDENTIFIER_RE = re.compile(r"(?:[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+)")
+# The only specific prefixes that can hide INSIDE a single-case letters+underscore run:
+# `sk-`/`xox?-` need a hyphen and `eyJ` needs mixed case, so they cannot.
+_EMBEDDED_PREFIX_RE = re.compile(r"ghp_[a-z]{8}|AKIA[A-Z]{16}")
+# A generic match is never exempt when it is the VALUE of a credential-named key or
+# follows an auth scheme in any case: `PASSWORD=<v>`, `"api_key": "<v>"`,
+# `?access_token=<v>`, `bearer <v>`.
+_SECRET_CONTEXT_RE = re.compile(
+    r"(?:(?:token|key|password|passwd|pwd|secret|auth|credential)[\"']?\s*[:=]\s*[\"']?|bearer\s+)$",
+    re.IGNORECASE,
+)
 
 _SECRET_ENV_NAME_RE = re.compile(r"(TOKEN|KEY|PASSWORD|SECRET)", re.IGNORECASE)
 
 
 def _scrub_replacement(m: "re.Match[str]") -> str:
-    if m.lastgroup == "generic" and _PURE_IDENTIFIER_RE.match(m.group(0)):
-        return m.group(0)
+    tok = m.group(0)
+    if (
+        m.lastgroup == "generic"
+        and _PURE_IDENTIFIER_RE.fullmatch(tok)
+        and not _EMBEDDED_PREFIX_RE.search(tok)
+        and not _SECRET_CONTEXT_RE.search(m.string, max(0, m.start() - 48), m.start())
+    ):
+        return tok
     return "<REDACTED>"
 
 
