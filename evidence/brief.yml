@@ -1,35 +1,46 @@
-gear: 2
-task_id: crm-18-soft-delete
+gear: 3
+task_id: legacy-tldr-cleanup
 lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/legacy-tldr-cleanup
 gate_class: none
 l_level: L2
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  Remove the pre-#7209 News Room converter's invented TL;DR/Next-Steps
+  filler from apps/mouth article content. A deterministic script
+  (scripts/content/strip_legacy_tldr_filler.py, 13 unit tests) removes
+  ONLY an exact-shape "Quick Summary" InfoCard and an exact-string
+  Checklist filler item ("Review the article for specific actions") —
+  anything that deviates in label, order, or value is left byte-identical
+  and reported, never guessed at. Floor is 3 on SIZE alone (580 content
+  files, ~11.4k lines of churn, almost entirely mechanical single-block
+  deletions produced by one script run) — not a hot-zone path hit and not
+  an architectural/security-sensitive change. No application code, no
+  route, no schema, no auth path touched; only MDX content bodies and one
+  new, fully-tested content-lint script.
 scope:
   - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
+    scripts/content/strip_legacy_tldr_filler.py — new script: exact-match
+    InfoCard/Checklist removal, byte-exact elsewhere, deviating cards
+    reported not guessed at.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
+    scripts/content/test_strip_legacy_tldr_filler.py — 13 unit tests,
+    guilt (exact shapes removed) + innocence (hand-edited/unrelated/real
+    content untouched, frontmatter byte-identical).
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
-  - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+    apps/mouth/src/content/articles/**/*.mdx (580 files) — the script's
+    --write output. Verified: all 580 changed files compile clean under
+    @mdx-js/mdx; apps/mouth's content-integrity vitest suite passes
+    (frontmatter-title-integrity, description-fields-integrity,
+    kbli-prose-pins, kbli-reserved-codes-articles, llms-article-exports,
+    secondhome-article-claims, blog articles/body-excerpt); frontmatter
+    byte-identical on all 580 files (scripted diff check).
+seat_override: >-
+  Single implementer session (this PR's builder), no multi-seat council
+  convened — this is a scripted, deterministic, fully-tested content-only
+  edit (no app code/route/schema/auth path touched) that only floors at
+  Gear 3 via the SIZE term (churn 580 files / ~11.4k lines from one
+  script's --write run, not a hot-zone path hit). A 2-seat council_run
+  review is disproportionate to the actual risk surface; flagging this
+  reasoning explicitly for the coordinator, who reviews before merge, to
+  accept, request a real council pass, or ask for the PR to be split.
