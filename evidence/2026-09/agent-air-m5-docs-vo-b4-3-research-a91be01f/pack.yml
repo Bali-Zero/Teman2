@@ -40,7 +40,7 @@ plan_ref: >-
 lanes:
   - lane: vo-b4-3-research-build
     role: build
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
   - lane: vo-b4-3-research-review-1
     role: review
     seat: "tp1-qwen3.8-max — README's B4-3-addendum claims checked against two JSON excerpts derived from the committed report JSONs; VERDICT PASS, 0 findings"
@@ -50,14 +50,19 @@ lanes:
 diff:
   files: 8
   net_lines: >-
-    8 files, +15903/-0 (computed from `git diff --numstat $(git merge-base origin/main
-    HEAD)..HEAD` — using the merge-base, not a raw `origin/main` diff, since origin/main has
-    since advanced with unrelated merged PRs a raw diff would wrongly pull in):
-    research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+110),
+    8 files, +16072/-0 vs the merge-base (computed from `git diff --cached --numstat $(git
+    merge-base origin/main HEAD)` on this cure round's final staged tree — using the
+    merge-base, not a raw `origin/main` diff, since origin/main has since advanced with
+    unrelated merged PRs a raw diff would wrongly pull in; 0 deletions because none of this
+    PR's added content existed at the merge-base to delete from, including this round's
+    in-place rewrites of text this PR itself first introduced):
+    research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+127, gate-b4-3-7287
+    cure: M1 run-window fix, M2 council-scope narrowing, L5 http_status cell),
     research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json
-    (+12448, new file), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/brief.yml
-    (+46, new), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/pack.yml (+180,
-    new, this file, line count includes this net_lines entry describing itself),
+    (+12448, new file, byte-identical since the first commit — this cure round changes no
+    byte of it), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/brief.yml (+46,
+    probe 6 + assumption status cure), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/pack.yml
+    (+332, this file, line count includes this net_lines entry describing itself),
     evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/council.jsonl
     (+3), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/refuter-runs/{refuter-task.txt
     (+3096), refuter-qwen.txt (+16), refuter-deepseek.txt (+4)}. The ROOT evidence/brief.yml is
@@ -74,23 +79,48 @@ receipts:
       research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json
     result: "017bce8e460a21f52ff49442e79639d624348a1835d0587e04256f0a91ea0d8b — matches"
     ts: "2026-09-24 (builder, M5)"
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
     exit: 0
   - claim: >-
-      Census, sequence, http_status, and the 25-walk moved-state diff (vs the A9 sweep JSON on
-      main) recomputed directly from the two FULL committed JSONs (not the excerpts handed to
-      the review seats) match the README exactly; the 3 residual HUMAN_REVIEW_REQUIRED walk_ids
-      match the conductor-named 3 exactly.
-    cmd: "python3 - (self-contained script, run before dispatch and reproduced again after)"
-    result: >-
-      census {SUPPORTED_CANDIDATES: 185, NEEDS_INPUT: 8, NO_SUPPORTED_PATH: 56,
-      HUMAN_REVIEW_REQUIRED: 3} = 252; sequence={23} x252; http_status={200} x252; 252/252
-      shared walk_ids, 0 added/0 dropped vs A9; 25 moved, all HUMAN_REVIEW_REQUIRED ->
-      NO_SUPPORTED_PATH, 0 moved to SUPPORTED_CANDIDATES, exact walk_id set matches README's
-      table; residual HUMAN_REVIEW_REQUIRED = {edge/secondhome_deposit_usd=unsure,
-      edge/secondhome_property_value_usd=unsure, review-gate/criminal_record} — all match README
+      brief.yml acceptance probe 2 — census counts, read from the JSON's `engine_state` field.
+    cmd: 'python3 -c "import json,collections; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(collections.Counter(x[''engine_state''] for x in w))"'
+    result: "Counter({'SUPPORTED_CANDIDATES': 185, 'NO_SUPPORTED_PATH': 56, 'NEEDS_INPUT': 8, 'HUMAN_REVIEW_REQUIRED': 3}) — matches README"
     ts: "2026-09-24 (builder, M5)"
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      brief.yml acceptance probe 3 — `rule_pack.sequence` and `http_status` uniform on all 252
+      walks.
+    cmd: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(set(x[''rule_pack''][''sequence''] for x in w), set(x[''http_status''] for x in w))"'
+    result: "{23} {200} — matches README"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      brief.yml acceptance probe 4 — the 25-walk moved-state diff vs the A9 sweep JSON on main,
+      by set-intersection over `walk_id`.
+    cmd: >-
+      python3 -c "import json; a=json.load(open('research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json'))['walks'];
+      b=json.load(open('research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json'))['walks'];
+      am={x['walk_id']:x['engine_state'] for x in a}; bm={x['walk_id']:x['engine_state'] for x in b};
+      moved=[(k,am[k],bm[k]) for k in am if am[k]!=bm.get(k)]; print(len(moved), set(t for _,_,t in moved), set(f for _,f,_ in moved))"
+    result: "25 {'NO_SUPPORTED_PATH'} {'HUMAN_REVIEW_REQUIRED'} — 25 moved, all one direction, matches README; 0 moved to SUPPORTED_CANDIDATES (not in either set above, confirmed separately)"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      brief.yml acceptance probe 5 — the residual HUMAN_REVIEW_REQUIRED walk_ids in the B4-3
+      JSON equal exactly the 3 the conductor named.
+    cmd: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(sorted(x[''walk_id''] for x in w if x[''engine_state'']==''HUMAN_REVIEW_REQUIRED''))"'
+    result: "['edge/secondhome_deposit_usd=unsure', 'edge/secondhome_property_value_usd=unsure', 'review-gate/criminal_record'] — matches the conductor-named 3 exactly"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
+    exit: 0
+  - claim: "brief.yml acceptance probe 6 — no `.json.lock` file was copied into the research directory."
+    cmd: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock 2>/dev/null | wc -l"
+    result: "0"
+    ts: "2026-09-24 (builder, M5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
     exit: 0
   - claim: >-
       PII sweep over the new JSON and the README's new section: no email address, no key named
@@ -105,13 +135,13 @@ receipts:
       combinatorial-space counts in the README (line 92, B3/B4 comparison prose, not touched by
       this PR) are unrelated to this diff.
     ts: "2026-09-24 (builder, M5)"
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
     exit: 0
   - claim: "Gear 3 is by SIZE (research/** is not hot-zone); recomputed from the real numstat."
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <cf> --numstat-file <ns> --repo-root <worktree>"
     result: "3 (size)"
     ts: "2026-09-24 (builder, M5)"
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
     exit: 0
   - claim: >-
       `check_adversarial_review.py` accepts this README (frontmatter `adversarial_review: codex`
@@ -120,7 +150,7 @@ receipts:
     cmd: "python3 scripts/check_adversarial_review.py --files research/operations/2026-09-22-visa-oracle-live-enumeration/README.md"
     result: "PASS — 1 research file(s) carry a valid adversarial review"
     ts: "2026-09-24 (builder, M5)"
-    seat: "vo-sweep-pack (Sonnet 5)"
+    seat: "vo-research-b4-3 (Sonnet 5)"
     exit: 0
 tests:
   - "None. This diff adds a README section and a data file and changes no code path. The
@@ -135,7 +165,7 @@ runtime_proof: >-
   browser dead-end check, and this same 252-walk sweep against production); this PR's own
   artefact is a docs capture of that sweep's output, not itself a prove-live action.
 dissent:
-  - seat: "vo-sweep-pack (Sonnet 5), self-review — first commit attempt"
+  - seat: "vo-research-b4-3 (Sonnet 5), self-review — first commit attempt"
     objection: >-
       The refuter task file's excerpt embedded `rule_pack.payload_sha256` (a 64-char content
       hash) on all 252 rows of both a9-excerpt.json and b43-excerpt.json. The pre-commit hook's
@@ -154,18 +184,138 @@ dissent:
       either seat saw the final version. Unlike #7230 (which omitted the same field silently and
       let two seats discover the gap as a BLOCK finding, later RETRACTED), this round's task
       file tells the seats up front which claim is out of scope and why.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD, PR #7287 comment #issuecomment-5819305714)"
+    objection: >-
+      M1 (MEDIUM) — README:825-826 gave the sweep window as "between 2026-09-24T16:32:55Z and
+      16:42:55Z", copied from the narrative report (`PROVELIVE-A3P-B-REPORT-7234.md:102`)
+      uncomputed. The committed JSON's own `started_at`/`finished_at` fields say
+      16:32:33.63Z/16:42:45.80Z; 9 of 252 walk timestamps were recorded before the README's
+      stated start.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md: the run-window sentence now reads `started_at`/`finished_at` off the
+      committed JSON by command, with the command and its output shown inline
+      (`python3 -c "...d['started_at'], d['finished_at']..."` → `2026-09-24T16:32:33.625989+00:00
+      2026-09-24T16:42:45.798555+00:00`), never the narrative report's times. The provenance
+      clause is narrowed to name the dry-run plan as the one value the JSON does not record and
+      that IS quoted from the narrative. Reproduced this round: 9 walk timestamps still fall
+      before 16:32:55Z, confirming the gate's own count.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD, PR #7287 comment #issuecomment-5819305714)"
+    objection: >-
+      M2 (MEDIUM) — README:723-724 said "every claim the addendum makes checked out against the
+      excerpt on the first pass". Only 5 claims were actually put to the council (census,
+      seq/http, the 25-walk moved set, the 3 held ids, payload sha declared out of scope). The
+      run window (already wrong, M1), the dry-run plan, `stopped_reason`/requests used, the
+      #7234 merge/build-flip times, the flag-layer move, and the reason-code characterisations
+      were never put to it. "First pass" is also wrong for deepseek — `council.jsonl` row 2
+      records two earlier budget-exhausted attempts. `residual_risks` called `reason_codes` a
+      *future* gap, but this addendum already rests on it (the moved/held-walk reason-code
+      claims).
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md: the Verdict sentence now names exactly the 5 claims the council
+      checked, states deepseek's PASS was its THIRD attempt, and explicitly lists which claims
+      (run facts, reason-code characterisations) were re-derived by the builder from the full
+      JSONs instead of put to the council. Fixed in this pack's own `residual_risks` (below):
+      rewritten to say this addendum already rests on `reason_codes`, not that a *future*
+      addendum might. The claims resting on reason codes were independently re-verified true
+      (the 25 moved walks are `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW`-only in A9 and
+      `DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH`-only in B4-3; the held 3 carry
+      `SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 / `DISCLOSED_CRIMINAL_RECORD_REVIEW` ×1) — the
+      defect was the coverage STATEMENT, not the data, matching the gate's own framing.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD)"
+    objection: >-
+      L1 (LOW) — pack-lint NOTICE: 5 of 6 declared brief.yml probes appeared in no receipt's
+      claim/cmd. Probe 6 did not run as written (`/bin/sh: syntax error` on the parenthetical).
+      Receipt 2's cmd was the placeholder `python3 - (self-contained script…)`. The sha256
+      assumption was `unverified` while its own probe text said "PASS".
+    status: CONFIRMED
+    reason: >-
+      brief.yml probe 6 rewritten to `ls …/*.json.lock 2>/dev/null | wc -l` (runs clean, prints
+      `0`). pack.yml's placeholder receipt split into 4 receipts, each carrying the EXACT
+      acceptance-probe string from brief.yml (probes 2-5) plus a receipt for probe 6, each
+      re-run this round with its real output. The sha256 assumption flipped to `verified` (it
+      IS verified — that's what receipt 1/probe 1 does) with the probe text quoting the actual
+      digest match.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD)"
+    objection: >-
+      L2 (LOW) — pack `lanes[0]` and all 5 receipts named the build seat `vo-sweep-pack (Sonnet
+      5)`; the builder actually dispatched for this PR is `vo-research-b4-3`.
+    status: CONFIRMED
+    reason: "All `seat:` fields in pack.yml's lanes/receipts/dissent renamed to `vo-research-b4-3 (Sonnet 5)`."
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD)"
+    objection: >-
+      L5 (LOW) — README's new census table showed B4-2b `http_status` as "—" (inherited from
+      the A9 table's cell), but `prove-live-b4-2-full-sweep-report-20260922.json` records
+      `200 ×252`.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md: B4-2b `http_status` cell now reads `200 ×252`, verified this round
+      against the B4-2b JSON (`set(w['http_status'] for w in walks)` == `{200}`).
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD)"
+    objection: >-
+      L6 (LOW) — the PR body's `Bites:` line named "A6-bis prove-live" as the consumer.
+      `kit/PROMPT-builder-a6bis.md` has 0 references to this JSON, and MANDATE-vo.md does not
+      tie A6-bis to it. Real consumers exist today: A9.6 reads this exact JSON
+      (`kit/PROMPT-builder-a9-6.md:9`, `GATE-A9-6-REPORT-7280.md:34`).
+    status: CONFIRMED
+    reason: >-
+      Fixed in the PR body: `Bites:` now names A9.6 as the consumer, quoting both citations, and
+      notes the prior misnaming explicitly rather than silently swapping it.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD), L3"
+    objection: >-
+      L3 (LOW) — deepseek's two budget-exhausted attempts are recorded only in council.jsonl's
+      prose note: no `ok:false` rows, no output kept. qwen's own transcript redacts claim 5's
+      second walk_id as `edge/<REDACTED>=unsure` (an artifact of the TP1 gateway's own output
+      filter, not something this task's tooling controls).
+    status: PLAUSIBLE
+    reason: >-
+      Accurate, not cured. `scripts/tp1_call.py` keeps no persistent log of a timed-out
+      attempt's partial output once the process exits, so there is nothing to backfill an
+      `ok:false` row from after the fact — the same tooling gap #7230's L7 named. The qwen
+      redaction is upstream gateway behaviour on this specific run, not reproducible or
+      controllable from this task. Both are disclosed here rather than silently left
+      unmentioned.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD), L4"
+    objection: >-
+      L4 (LOW) — `payload_sha256` was dropped from the council excerpt, against the binding
+      lesson to feed refuters the fields claims rest on. The drop is declared, not silent.
+      `residual_risks` names the cure it did not apply (a non-hex encoding such as `distinct=1,
+      prefix e5f791b5`).
+    status: PLAUSIBLE
+    reason: >-
+      Accurate; not re-cured this round beyond what was already declared (see the first dissent
+      entry above and `residual_risks` below) — the field's uniformity was independently
+      verified by both this pack and the gate itself against the full JSONs
+      (`e5f791b5…72204` ×252 in both A9 and B4-3), and a non-hex re-encoding is left as a named,
+      un-applied option rather than implemented, since the current declared-out-of-scope
+      handling already clears the pre-commit guard without hiding the gap.
+  - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD), L7"
+    objection: >-
+      L7 (LOW, info) — the JSON's `manifest_path` is an absolute local path, where A9's is
+      relative. Not PII; the file must stay byte-identical, so no action per the gate itself.
+    status: PLAUSIBLE
+    reason: "No action, per the gate's own disposition — informational only, file stays byte-identical (sha256 unchanged)."
 residual_risks:
-  - "Both review seats returned PASS/0 findings on the fully-completed pass — the excerpt this
-    round carried every field either claim under review rests on (walk_id, engine_state,
-    sequence, http_status), and the one field pulled from it (payload_sha256, removed after it
-    tripped detect-secrets as a repeated high-entropy value) was named explicitly out-of-scope
-    in the task's own instructions rather than omitted silently, so no finding traces to
-    excerpt-narrowness the way all 3 of #7230's dissents did. That also means this council did
-    not exercise the excerpt-narrowness failure mode at all; if a future addendum's claims rest
-    on fields this excerpt shape omits (e.g. review_reasons/no_path_reasons breakdowns, or
-    payload_sha256 itself if a future rule-pack activation makes it non-uniform), that gap
-    would need a wider excerpt again — or a non-hex-shaped encoding of the hash — not an
-    assumption that this shape is universally sufficient."
+  - "Both review seats returned PASS/0 findings on the fully-completed pass — but ONLY on the 5
+    claims the task file actually put to them (census, sequence/http_status, the 25-walk moved
+    set, the 3 held walk_ids; payload_sha256 declared out of scope). This addendum ALREADY rests
+    on fields the excerpt does not carry, right now, not hypothetically: the reason-code
+    characterisations (the 25 moved walks named `ACTIVITY_BOUNDARY`-only; the 3 held walks named
+    Studio ×2 + criminal ×1, none `ACTIVITY_BOUNDARY`-only) read `reason_codes`, and the run
+    facts (window, dry-run plan, stopped_reason, request counts, #7234 merge/build times) are
+    not walk-level fields at all. Both classes were verified directly by the builder against the
+    two full committed JSONs (`prove-live-a9-seq23-full-sweep-report-20260924.json`,
+    `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`) instead of by the council, and the
+    README says so explicitly (gate-b4-3-7287 M2 cure) rather than claiming 'every claim…checked
+    out'. The one field pulled from the excerpt (payload_sha256, removed after it tripped
+    detect-secrets as a repeated high-entropy value) was named explicitly out-of-scope in the
+    task's own instructions rather than omitted silently, so no finding traces to
+    excerpt-narrowness the way all 3 of #7230's dissents did — but that PASS/0-findings result
+    covers only those 5 claims, not the addendum as a whole. A wider excerpt (adding
+    `reason_codes`) or a second council round would be needed to put the reason-code claims to
+    the council too; a non-hex-shaped payload_sha256 encoding would be needed if a future
+    rule-pack activation makes that field non-uniform."
   - "This pack SATISFIES R9's council_run quorum (2 distinct COUNCIL_REVIEW_SEATS, both
     ok:true) rather than declaring seat_override — codex-gpt-5.6-sol and kimi-code/k3 were
     directly probed and both TIMEOUT'd (arsenal_probe.py --table, 15s ceiling per seat) before
@@ -177,4 +327,6 @@ sources:
   - "PROVELIVE-A3P-B-REPORT-7234.md (not committed) — the prove-live record this docs capture follows on from"
   - "council.jsonl (this pack's own dir) — the two TP1 refuter runs' full receipts"
   - "GATE-SWEEP-REPORT-7230.md (not committed) — PR #7230's three gate rounds; the binding lesson kit/PROMPT-builder-b4-3-research.md names explicitly as 'do NOT repeat'"
+  - "GATE-B4-3-REPORT-7287.md (not committed) / PR #7287 comment #issuecomment-5819305714 — gate-b4-3-7287's REWORK-BUILD verdict (2 MEDIUM, 7 LOW) on head d72d5674f5, cured this round"
+  - "kit/PROMPT-builder-a9-6.md, GATE-A9-6-REPORT-7280.md (not committed) — A9.6, the real consumer this PR's Bites line names after gate-b4-3-7287 L6"
 pii_scan: clean

@@ -36,11 +36,11 @@ acceptance:
   - text: WHEN the residual HUMAN_REVIEW_REQUIRED walk_ids are listed from the B4-3 JSON SHALL they equal exactly {edge/secondhome_deposit_usd=unsure, edge/secondhome_property_value_usd=unsure, review-gate/criminal_record}
     probe: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json''))[''walks'']; print(sorted(x[''walk_id''] for x in w if x[''engine_state'']==''HUMAN_REVIEW_REQUIRED''))"'
   - text: IF the `.json.lock` file exists next to the source JSON SHALL it never be copied into the research directory
-    probe: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock (no match — nothing copied)"
+    probe: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock 2>/dev/null | wc -l"
 assumptions:
   - text: the dispatch-declared sha256 in the conductor's task description accurately describes the artifact produced by the enumerate_live run (this brief verifies the file's hash matches the dispatch, not the prove-live session itself, which is a separate session's record — PROVELIVE-A3P-B-REPORT-7234.md)
-    status: unverified
-    probe: shasum -a 256 against the dispatch-declared digest (run in this task, PASS)
+    status: verified
+    probe: "shasum -a 256 research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json — matches the dispatch-declared 017bce8e…0d8b (run this round, PASS)"
 appetite:
   wall_clock_hours: 1
   adversarial_rounds: 0

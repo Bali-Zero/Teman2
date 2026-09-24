@@ -720,8 +720,17 @@ builder against the full committed JSONs (`{w["rule_pack"]["payload_sha256"] for
 exactly one member on both files, matching the README's `e5f791b5…72204`), outside the council's
 scope.
 
-Verdict: both **PASS**, 0 findings — every claim the addendum makes checked out against the
-excerpt on the first pass, no dissent to record. Full transcripts and the task file:
+Verdict: both **PASS**, 0 findings on the 5 claims the task file actually put to the council:
+the census, `sequence`/`http_status` uniformity, the 25-walk moved set, the 3 held walk_ids, and
+(declared out of scope, not checked) `payload_sha256` uniformity. `tp1-deepseek-v4-pro`'s
+completed PASS was its THIRD attempt, not a first pass (`council.jsonl` row 2: two earlier runs
+exhausted their budget mid-reasoning before this one completed). The rest of this addendum's
+claims were never put to either seat, and are re-derived directly by the builder from the two
+full committed JSONs instead: the run facts (window, dry-run plan, `stopped_reason`, request
+counts, the #7234 merge/build-flip times), and the reason-code characterisations below (the 25
+moved walks as `ACTIVITY_BOUNDARY`-only; the 3 held walks as Studio ×2 + criminal ×1, none
+`ACTIVITY_BOUNDARY`-only) — none of these rest on the council's excerpt, which carries no
+`reason_codes` field. Full transcripts and the task file:
 `evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/{council.jsonl,refuter-runs/}`.
 
 
@@ -818,13 +827,21 @@ moved `ACTIVITY_BOUNDARY` from `HOLDING_DISCLOSED_FLAGS` to `DEAD_END_DISCLOSED_
 engine's disclosed-flag layer; production `build_sha` flipped to match the merge commit at
 2026-09-24T16:25:55Z, confirmed by polling `curl -fsS https://nuzantara-rag.fly.dev/health`
 every 30s from the merge (`vo-provelive-a3p-b`, `PROVELIVE-A3P-B-REPORT-7234.md`, not committed
-here — narrative provenance only, no number below is copied from it uncomputed). Its Step 4
-re-ran the same B4-class 252-walk sweep against this directory's manifest
-(`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`, same driver
+here — narrative provenance only; every number below is recomputed from the JSON EXCEPT the
+dry-run plan `pending=252 already_recorded=0`, which the JSON does not record and is quoted from
+that narrative report). Its Step 4 re-ran the same B4-class 252-walk sweep against this
+directory's manifest (`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`, same driver
 `backend.scripts.visa_engine.enumerate_live`, `--max-requests 260 --rate-per-minute 25`, dry-run
-first with a clean `pending=252 already_recorded=0` plan) between 2026-09-24T16:32:55Z and
-16:42:55Z, `stopped_reason=completed`, `requests_used_this_run=252`,
-`requests_used_total=252`.
+first with that clean plan) between the report JSON's own `started_at` and `finished_at` fields,
+read by command (never the narrative report's times — its window was 22s off at the start and
+10s off at the end):
+
+```
+$ python3 -c "import json; d=json.load(open('prove-live-b4-3-a3pb-full-sweep-report-20260924.json')); print(d['started_at'], d['finished_at'])"
+2026-09-24T16:32:33.625989+00:00 2026-09-24T16:42:45.798555+00:00
+```
+
+`stopped_reason=completed`, `requests_used_this_run=252`, `requests_used_total=252`.
 
 Report JSON: `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`, sha256
 `017bce8e460a21f52ff49442e79639d624348a1835d0587e04256f0a91ea0d8b`.
@@ -839,7 +856,7 @@ Report JSON: `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`, sha256
 | HUMAN_REVIEW_REQUIRED | 43 | 28 | **3** |
 | total | 252 | 252 | 252 |
 | `rule_pack.sequence` | 22 ×252 | 23 ×252 | **23 ×252** (payload `e5f791b5…72204` ×252) |
-| `http_status` | — | 200 ×252 | **200 ×252** |
+| `http_status` | 200 ×252 | 200 ×252 | **200 ×252** |
 
 252/252 `walk_id`s identical between the A9 report and this one, by set-intersection (0 missing,
 0 extra — no label added or dropped since A9).
