@@ -1,0 +1,45 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: User authorized native compact restoration and immediate priority production release.
+lanes:
+  - { lane: implementation, role: build, seat: codex }
+  - { lane: cross-family-review, role: review, seat: claude-opus-5-5 }
+  - { lane: panel-red-team, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: panel-refuter, role: review, seat: kimi-code/k3 }
+  - { lane: panel-constructive, role: review, seat: agy-gemini-3.1-pro }
+  - { lane: final-gate, role: review, seat: fresh-claude-opus-5-5-xhigh }
+what_changed: >-
+  Parent percentage rollover is disabled by installer policy. Safe parked state
+  migration preserves live ownership. Compact no longer clears in-flight freezes.
+  Installer removes root compact overrides after semantic TOML validation; backups,
+  child limits, hook trust and verification survive. Required CI executes native
+  compaction and child-boundary regressions. No new API or runtime dependency.
+proof: >-
+  135 bridge tests passed after all implementation corrections; targeted lint
+  and diff whitespace checks passed. The quorum journal counts Codex and Kimi;
+  Gemini is the additional constructive panel member, not a reserve substitution.
+  Independent review and final gate receipts are recorded separately before release.
+  Fleet installation and lifecycle receipts are required before reporting live.
+dissent:
+  - seat: local-context-audit
+    objection: Disabling the whole adapter would also disable child controls; clearing PostCompact state can release a second writer.
+    status: CONFIRMED
+    disposition: Separate parent flag; preserve starting/accepted states and live supervisors.
+receipts:
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T16:21:59Z"
+    seat: M5
+    claim: 135 passed in 22.54s
+  - cmd: apps/backend-rag/.venv/bin/ruff check infra/codex-hooks/context_bridge.py infra/codex-hooks/install.py infra/codex-hooks/installation_status.py infra/codex-hooks/test_native_compaction.py infra/codex-hooks/test_sixty_percent_boundary.py
+    exit: 0
+    ts: "2026-09-24T16:21:59Z"
+    seat: M5
+    claim: All checks passed.
+  - cmd: git diff --check
+    exit: 0
+    ts: "2026-09-24T16:21:59Z"
+    seat: M5
+    claim: No whitespace errors.
+pii_scan: clean
+pii_scan_note: Synthetic test fixtures and technical state only; no credentials or client data included.
