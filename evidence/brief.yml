@@ -1,35 +1,34 @@
-gear: 2
-task_id: crm-18-soft-delete
-lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
-gate_class: none
-l_level: L2
-objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
-scope:
-  - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
-  - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
-  - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
-  - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+mandate: >-
+  Land the A9 seq-23 production activation evidence as a docs-only research
+  capture: copy the 252-walk `enumerate_live` re-sweep report JSON produced
+  against the live engine after seq-23 activation (activation_id
+  5ba3b03c-693a-4ae4-b76a-130977450d3e, 2026-09-24T11:27:25Z, payload
+  e5f791b5…72204) into research/operations/2026-09-22-visa-oracle-live-
+  enumeration/, verify its sha256 against the operator-reported digest, and
+  add a dated README section deriving the census and the moved-walk diff
+  against the B4-2b (seq-22) report BY COMMAND from the JSONs — no code
+  changes, no production access, no secrets.
+gear: 3
+dux: team-lead
+implementer: claude-sonnet-5
+organ: research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (new dated section) + prove-live-a9-seq23-full-sweep-report-20260924.json (new evidence file, 403 KB — the diff's own size term is what raises this brief's floor to 3)
+authority: >-
+  team-lead dispatch (this session, 2026-09-24), task vo-a9-sweep-research:
+  land the seq-23 production re-sweep evidence next to the existing B4-2/
+  B4-2b re-sweeps in the same research directory. Source narrative:
+  /Users/balizero/BATTAGLIA-20260911/VISA-ORACLE-DW-20260919/PROVELIVE-A9-ACTIVATION-REPORT.md
+  (the activation ceremony report, quoted for provenance only — no secret in
+  it). No production DB touched, no production call made by this docs task.
+acceptance:
+  - WHEN the copied JSON's sha256 is computed SHALL it equal the dispatch-declared 899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808
+  - WHEN the census table's counts are read from the JSON's `engine_state` field SHALL they equal 185 SUPPORTED_CANDIDATES / 8 NEEDS_INPUT / 31 NO_SUPPORTED_PATH / 28 HUMAN_REVIEW_REQUIRED over 252 walks
+  - WHEN `rule_pack.sequence` and `http_status` are read from every walk SHALL they equal 23 and 200 on all 252/252
+  - WHEN the A9 walk_ids are diffed against the B4-2b report's walk_ids by set-intersection SHALL the moved-state count equal 15 (13 HUMAN_REVIEW_REQUIRED to SUPPORTED_CANDIDATES, 2 HUMAN_REVIEW_REQUIRED to NEEDS_INPUT)
+  - IF the `.json.lock` file exists next to the source JSON SHALL it never be copied into the research directory
+assumptions:
+  - text: the operator-reported sha256 and activation_id in the dispatch message accurately describe the artifact produced by the enumerate_live run (this brief verifies the file's hash matches the dispatch, not the production ceremony itself, which is a separate session's record)
+    status: unverified
+    probe: shasum -a 256 against the dispatch-declared digest (run in this task, PASS)
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
