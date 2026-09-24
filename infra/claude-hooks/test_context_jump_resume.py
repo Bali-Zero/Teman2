@@ -51,6 +51,57 @@ def _run(home, session_id="new", cwd=None, env_extra=None):
     return p.returncode, out, jump
 
 
+def test_jump_successes_are_timestamped_claims_with_file_drift(tmp_path):
+    changed = tmp_path / "changed.py"
+    unchanged = tmp_path / "unchanged.py"
+    changed.write_text("new")
+    unchanged.write_text("old")
+    now = time.time()
+    os.utime(changed, (now + 30, now + 30))
+    os.utime(unchanged, (now - 60, now - 60))
+    home = _home_with_jump(str(tmp_path))
+    hp = home / ".claude/state/precompact-handoff-old.json"
+    data = json.loads(hp.read_text())
+    data["successful_file_changes"] = ["changed.py", "unchanged.py", "missing.py"]
+    hp.write_text(json.dumps(data))
+    _, out, _ = _run(home, cwd=str(tmp_path), env_extra={"NZ_JUMP_FROM": "old"})
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert "Previous command claims at " in context
+    assert "not a reusable PASS" in context
+    section = context.split("## Changed after the jump", 1)[1].split("## Prossima", 1)[0]
+    assert "changed.py: changed after the jump" in section
+    assert "missing.py: missing now" in section
+    assert "unchanged.py:" not in section
+
+
+def test_jump_unchanged_file_does_not_become_verified(tmp_path):
+    file = tmp_path / "stable.py"
+    file.write_text("stable")
+    os.utime(file, (1, 1))
+    home = _home_with_jump(str(tmp_path))
+    hp = home / ".claude/state/precompact-handoff-old.json"
+    data = json.loads(hp.read_text())
+    data["successful_file_changes"] = ["stable.py"]
+    hp.write_text(json.dumps(data))
+    _, out, _ = _run(home, cwd=str(tmp_path), env_extra={"NZ_JUMP_FROM": "old"})
+    assert "None of the inspected files changed" in out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_jump_drift_annotation_is_bounded_and_uses_fallback_time(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("resume_hook", HOOK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    handoff = {"successful_commands": ["check"],
+               "successful_file_changes": [f"missing-{i}.py" for i in range(50)]}
+    context = module.build_context({"cwd": str(tmp_path)}, handoff, jump_mtime=1)
+    assert "1970-01-01T00:00:01Z" in context
+    section = context.split("## Changed after the jump", 1)[1].split("## Prossima", 1)[0]
+    assert section.count("missing now") == 20
+    assert "earlier files are unverified" in section
+    assert len(section) < 1500
+
+
 # ---------------- guilt ----------------
 def test_fresh_unclaimed_jump_is_injected_and_stamped():
     home = _home_with_jump(os.getcwd())
