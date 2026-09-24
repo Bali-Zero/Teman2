@@ -23,11 +23,11 @@ acceptance:
   - text: WHEN the copied JSON's sha256 is computed SHALL it equal the dispatch-declared 899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808
     probe: "shasum -a 256 research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json"
   - text: WHEN the census table's counts are read from the JSON's `engine_state` field SHALL they equal 185 SUPPORTED_CANDIDATES / 8 NEEDS_INPUT / 31 NO_SUPPORTED_PATH / 28 HUMAN_REVIEW_REQUIRED over 252 walks
-    probe: "python3 - (self-contained script, run twice: once before dispatch, once after disposing the council's findings)"
+    probe: 'python3 -c "import json,collections; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; print(collections.Counter(x[''engine_state''] for x in w))"'
   - text: WHEN `rule_pack.sequence` and `http_status` are read from every walk SHALL they equal 23 and 200 on all 252/252
-    probe: "python3 - (self-contained script, run twice: once before dispatch, once after disposing the council's findings)"
+    probe: 'python3 -c "import json; w=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; print(set(x[''rule_pack''][''sequence''] for x in w), set(x[''http_status''] for x in w))"'
   - text: WHEN the A9 walk_ids are diffed against the B4-2b report's walk_ids by set-intersection SHALL the moved-state count equal 15 (13 HUMAN_REVIEW_REQUIRED to SUPPORTED_CANDIDATES, 2 HUMAN_REVIEW_REQUIRED to NEEDS_INPUT)
-    probe: "python3 - (self-contained script, run twice: once before dispatch, once after disposing the council's findings)"
+    probe: 'python3 -c "import json; a=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json''))[''walks'']; b=json.load(open(''research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-2-full-sweep-report-20260922.json''))[''walks'']; am={x[''walk_id'']:x[''engine_state''] for x in a}; bm={x[''walk_id'']:x[''engine_state''] for x in b}; print(sum(1 for k in am if am[k]!=bm.get(k)))"'
   - text: IF the `.json.lock` file exists next to the source JSON SHALL it never be copied into the research directory
     probe: "ls research/operations/2026-09-22-visa-oracle-live-enumeration/*.json.lock (no match — nothing copied)"
 assumptions:

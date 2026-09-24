@@ -692,7 +692,7 @@ discrepancy, no fix needed. Full transcripts, the task file, and the journal:
 `evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/{council.jsonl,refuter-runs/}`.
 
 Not in scope for either TP1 seat (the task was numeric/set claims over the JSON data only): the
-`git log --grep "A3'-B"` provenance claim above, and the activation id/timestamp provenance —
+`git log --grep "A3'-B"` provenance claim below, and the activation id/timestamp provenance —
 both are text/history claims, not derivable from the report JSONs. That gap is why the fresh
 on-disk gate (not this council) is what caught the qualifier this claim was missing.
 
@@ -740,10 +740,12 @@ Report JSON: `prove-live-a9-seq23-full-sweep-report-20260924.json`, sha256
 
 `HUMAN_REVIEW_REQUIRED = 28` breaks down (by command, over `review_reasons`) as
 `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` ×25 (adapter hold on the mouth-side flag; closes with
-A3'-B, not built as of this sweep — `git log origin/main --grep "A3'-B" --format=%h` returns 2
-commits, `d5843d0e93` (A3'-M, #7172) and `01d1f99b60` (#7160), neither of which BUILDS A3'-B —
-both merely mention it as future work; no commit's own subject is A3'-B itself
-(`git log origin/main --format=%s | grep -c "A3'-B"` → `0`)),
+A3'-B, not built as of this sweep — on this PR's merge-base `587f468fe7`, `git log 587f468fe7
+--grep "A3'-B" --format=%h` returns 2 commits, `d5843d0e93` (A3'-M, #7172) and `01d1f99b60`
+(#7160), neither of which BUILDS A3'-B — both merely mention it as future work; no commit's own
+subject is A3'-B itself (`git log 587f468fe7 --format=%s | grep -c "A3'-B"` → `0`). The same
+grep on a later `origin/main` also matches this PR's own squash commit, whose messages quote the
+string),
 `SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 (D23, owner decision), `DISCLOSED_CRIMINAL_RECORD_REVIEW`
 ×1 (G1's allowed exception).
 

@@ -39,13 +39,13 @@ lanes:
 diff:
   files: 8
   net_lines: >-
-    8 files, +16113/-0 (computed from `git diff $(git merge-base origin/main HEAD) --numstat`
+    8 files, +16151/-0 (computed from `git diff $(git merge-base origin/main HEAD) --numstat`
     against the working tree, on this PR's final head — using the merge-base, not a raw
     `origin/main` diff, since origin/main has since advanced with ~50 unrelated files from other
     merged PRs that a raw diff would wrongly pull in): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md
-    (+128), research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    (+130), research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
     (+12432, new file), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
-    (+39), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+240),
+    (+39), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+276),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/council.jsonl (+3),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/{refuter-task.txt
     (+3245), refuter-qwen.txt (+18), refuter-deepseek.txt (+8)}. The ROOT evidence/brief.yml is
@@ -107,7 +107,18 @@ receipts:
       git log origin/main --grep "A3'-B" --format=%h | wc -l ;
       git log origin/main --format=%s | grep -c "A3'-B"
     result: "2 (d5843d0e93 A3'-M #7172, 01d1f99b60 #7160); 0 (no commit's own subject is A3'-B)"
-    ts: "2026-09-24 (builder, M5, this rework round)"
+    ts: "2026-09-24 (builder, M5, prior rework round)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      gate-sweep-7230-r2's M1′ finding: pinned to the merge-base (immutable), the same two
+      commands return the same 2/0 result — the README's claim is now stable across the PR's own
+      merge, unlike the unpinned `origin/main` form.
+    cmd: >-
+      git log 587f468fe7 --grep "A3'-B" --format=%h | wc -l ;
+      git log 587f468fe7 --format=%s | grep -c "A3'-B"
+    result: "2 (d5843d0e93 A3'-M #7172, 01d1f99b60 #7160); 0 (no commit's own subject is A3'-B)"
+    ts: "2026-09-24 (builder, M5, this round)"
     seat: "vo-sweep-pack (Sonnet 5)"
     exit: 0
 tests:
@@ -211,13 +222,37 @@ dissent:
       L2 — kept: the gate itself called this correct (needed as provenance for why the 3
       RETRACTED dissents above are RETRACTED, not merely asserted). L3 — accurate description of
       this pack's own design, not a defect to cure; noted for anyone reading dissent to
-      understand the M1 gap. L5 — cured where cheap: every `acceptance:` bullet in this pack's
-      sibling `brief.yml` now carries a `probe:` (see brief.yml). The 1 `unverified` assumption
+      understand the M1 gap. L5 — cured twice: every `acceptance:` bullet in this pack's sibling
+      `brief.yml` carries a `probe:` (round 2), and the 3 that were self-contained-script
+      placeholders now carry a real runnable `python3 -c "..."` one-liner each, run and verified
+      against the committed JSONs this round (census Counter, sequence/http_status sets, the
+      15-moved-walk count — all three reproduce exactly). The 1 `unverified` assumption
       and missing `spend:` are left as-is — both are accurate (the sha/activation-id assumption
       genuinely rests on the dispatch message, not a probe this task can run; `spend:` tracking
       is not wired into this task's tooling). L7 — accurate; `arsenal_probe.py` has no
       persistent log to backfill `ok:false` rows from, so this is a real tooling gap in the
       fleet, not something this pack can fix locally.
+  - seat: "gate-sweep-7230-r2 (fresh Opus 5.5, REWORK-BUILD, PR comment #issuecomment-5815645718 addendum, 2026-09-24T14:28:32Z)"
+    objection: >-
+      M1′ (MEDIUM) — the round-1 cure of M1 said `git log origin/main --grep "A3'-B"` "returns
+      2", present tense against a MOVING ref: after this PR's own squash-merge, the squash
+      commit's message quotes the string "A3'-B" (it names the slice it fixes), so the same grep
+      on `origin/main` post-merge returns 3, and returns 4 again after #7234 (the actual A3'-B
+      build) lands. A claim phrased as a fact about `origin/main` goes stale at the exact moment
+      this PR merges — the thing meant to prove non-existence would start lying the moment it
+      landed.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md per gate-sweep-7230-r2's own cure spec, applied VERBATIM (no rewording):
+      both commands are now pinned to this PR's immutable merge-base `587f468fe7`
+      (`git log 587f468fe7 --grep "A3'-B" --format=%h` and
+      `git log 587f468fe7 --format=%s | grep -c "A3'-B"`), with an explicit sentence noting the
+      same grep on a LATER `origin/main` also matches this PR's own squash commit. Reproduced
+      live this round: `git log 587f468fe7 --grep "A3'-B" --format=%h | wc -l` -> `2`
+      (`d5843d0e93` A3'-M #7172, `01d1f99b60` #7160, both merge-base ancestors);
+      `git log 587f468fe7 --format=%s | grep -c "A3'-B"` -> `0`. Also fixed: README:696
+      "above" -> "below" (the claim it refers to now sits below that sentence, not above it, per
+      the same cure spec).
 residual_risks:
   - "Both review seats' only findings trace to the review task's excerpt being narrower than the
     full committed JSON (it dropped payload_sha256 and reason_codes from the B4-2b comparison
@@ -236,5 +271,6 @@ sources:
   - "evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/ — the B4-2 precedent this pack mirrors (single build lane, cross-family review, evidence dir shape)"
   - "PROVELIVE-A9-ACTIVATION-REPORT.md (not committed) — the ceremony record this docs capture follows on from, and the source of the qualified A3'-B form the README now matches"
   - "council.jsonl (this pack's own dir) — the two TP1 refuter runs' full receipts"
-  - "GATE-SWEEP-REPORT-7230.md (not committed) / PR #7230 comment #issuecomment-5815645718 — gate-sweep-7230's REWORK-BUILD verdict (1 MEDIUM, 7 LOW) on head 6138fd5d0e, cured in this rework round"
+  - "GATE-SWEEP-REPORT-7230.md (not committed) / PR #7230 comment #issuecomment-5815645718 — gate-sweep-7230's REWORK-BUILD verdict (1 MEDIUM, 7 LOW) on head 6138fd5d0e, cured in the prior rework round"
+  - "GATE-SWEEP-REPORT-7230.md addendum / PR #7230 comment, gate-sweep-7230-r2 (2026-09-24T14:28:32Z) — REWORK-BUILD verdict (M1′ MEDIUM, 5 LOW) on head 42fe88da24: the round-1 M1 cure went stale at merge (squash adds a 3rd A3'-B grep hit); cured this round by pinning both commands to the immutable merge-base 587f468fe7, per the gate's own cure spec, applied verbatim"
 pii_scan: clean
