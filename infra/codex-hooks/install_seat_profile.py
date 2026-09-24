@@ -31,12 +31,14 @@ KEY = "developer_instructions"
 
 
 def expected() -> tuple[str, dict[str, bytes]]:
-    text = (SOURCE / "developer_instructions.txt").read_text()
+    text = (SOURCE / "developer_instructions.txt").read_text(encoding="utf-8")
     return text, {r: (SOURCE / "agents" / f"{r}.toml").read_bytes() for r in ROLES}
 
 
 def read_config(config_file: Path) -> dict:
-    return tomllib.loads(config_file.read_text()) if config_file.exists() else {}
+    if not config_file.exists():
+        return {}
+    return tomllib.loads(config_file.read_text(encoding="utf-8"))
 
 
 def status(seat: Path) -> dict:
@@ -49,13 +51,13 @@ def status(seat: Path) -> dict:
     }
     for role, data in roles.items():
         path = seat / "agents" / f"{role}.toml"
-        result["roles"][role] = (
-            "absent"
-            if not path.exists()
-            else "match"
-            if path.read_bytes() == data
-            else "drift"
-        )
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            state = "drift"  # a link, directory or FIFO is never ours to replace
+        elif not path.exists():
+            state = "absent"
+        else:
+            state = "match" if path.read_bytes() == data else "drift"
+        result["roles"][role] = state
     result["installed"] = result[KEY] == "match" and all(
         v == "match" for v in result["roles"].values()
     )
@@ -73,7 +75,7 @@ def create_exclusive(path: Path, data: bytes) -> bool:
     except FileExistsError:
         return False
     finally:
-        temp.unlink()
+        temp.unlink(missing_ok=True)
 
 
 def config_write(seat: Path, edits: list[dict]) -> None:
@@ -107,7 +109,7 @@ def backup_seat(seat: Path, config_file: Path) -> Path:
     (backup / "config.toml").chmod(0o600)
     for role in ROLES:
         path = seat / "agents" / f"{role}.toml"
-        if path.exists():
+        if path.is_file() and not path.is_symlink():
             shutil.copy2(path, backup / path.name)
             (backup / path.name).chmod(0o600)
     return backup

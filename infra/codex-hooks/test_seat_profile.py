@@ -188,3 +188,15 @@ def test_there_is_no_automatic_removal(monkeypatch, seat):
     monkeypatch.setattr(profile.sys, "argv", ["x", "--seat", str(seat), "--remove"])
     with pytest.raises(SystemExit):
         profile.main()
+
+
+def test_symlink_or_directory_at_a_role_path_is_drift(seat):
+    (seat / "agents").mkdir()
+    (seat / "agents" / "mechanical.toml").symlink_to(seat / "missing-target")
+    (seat / "agents" / "routine-worker.toml").mkdir()
+    result = profile.install(seat)
+    assert result["roles"]["mechanical"] == "drift"
+    assert result["roles"]["routine-worker"] == "drift"
+    assert (seat / "agents" / "mechanical.toml").is_symlink()
+    assert (seat / "agents" / "routine-worker.toml").is_dir()
+    assert result["roles"]["routine-explorer"] == "match"
