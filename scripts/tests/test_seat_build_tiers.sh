@@ -118,7 +118,7 @@ case_agy_tier_flash_argv() {
     python3 -c 'import json,sys
 d=json.load(sys.stdin)
 argv=d["argv"]
-assert "--model" in argv and argv[argv.index("--model")+1] == "gemini-3.5-flash", argv
+assert "--model" in argv and argv[argv.index("--model")+1] == "gemini-3.8-flash-high", argv
 assert "--print-timeout" in argv and argv[argv.index("--print-timeout")+1] == "8m", argv
 assert "-p" in argv, argv' <<< "$out"
 }
@@ -233,7 +233,7 @@ d=json.load(sys.stdin)
 assert d["tier"] == "flash", d
 assert d["tier_downgraded_from"] == "pro", d  # caller must be able to tell (codex-sol #5044)
 argv=d["argv"]
-assert argv[argv.index("--model")+1] == "gemini-3.5-flash", argv' <<< "$out"
+assert argv[argv.index("--model")+1] == "gemini-3.8-flash-high", argv' <<< "$out"
 }
 
 case_agy_pro_large_input_keeps_pro() {
@@ -313,7 +313,7 @@ run_case "codex/terra argv carries -m gpt-5.6-terra" case_codex_tier_terra_argv
 run_case "codex/luna argv carries -m gpt-5.6-luna" case_codex_tier_luna_argv
 run_case "kimi/k3 argv carries -m kimi-code/k3" case_kimi_tier_k3_argv
 run_case "kimi/highspeed at medium effort is allowed" case_kimi_tier_highspeed_medium_ok
-run_case "agy/flash argv carries --model gemini-3.5-flash" case_agy_tier_flash_argv
+run_case "agy/flash argv carries --model gemini-3.8-flash-high" case_agy_tier_flash_argv
 run_case "qwen ignores --tier entirely" case_qwen_unchanged_ignores_tier
 run_case "ctx-check fails CLOSED on a missing/unreadable config" case_ctx_config_missing_is_hard_error
 run_case "ctx-check exempts a legitimately-absent pair (qwen)" case_ctx_config_valid_absence_is_exempt
