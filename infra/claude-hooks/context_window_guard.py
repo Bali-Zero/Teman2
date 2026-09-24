@@ -579,6 +579,13 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         "cwd": str(payload.get("cwd") or os.getcwd()),
         "handoff_path": str(handoff_path),
         "mandate": mandate,
+        # PENDING-ARMS L2027: this hook runs in the OLD session's own
+        # environment, where NUZANTARA_MANDATE_ID (if set) is the real budget
+        # key — a fresh shell in the jumped-to window never inherits it.
+        # Carrying it here is what lets nz-jump.sh re-export it, so the
+        # successor keys its budget/deadline tracking under the SAME mandate
+        # as its parent instead of silently falling back to its own session_id.
+        "mandate_id": os.environ.get("NUZANTARA_MANDATE_ID") or "",
         "hops": hops,
         "ts": time.time(),
         "seat": _seat(),

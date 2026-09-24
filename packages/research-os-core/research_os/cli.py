@@ -10,9 +10,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NoReturn
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import BaseModel, ValidationError
 
 from research_os.hashing import HASH_OMISSION_FIELDS, object_hash
+from research_os.schemas import SCHEMA_DIRECTORY
 from research_os.models.action_intent import ActionIntent
 from research_os.models.action_item import ActionItem
 from research_os.models.approval_receipt import ApprovalReceipt
@@ -128,7 +131,16 @@ def _validate(contract_kind: str, path: Path) -> int:
     return 0
 
 
-def _hash(path: Path) -> int:
+def _hash(contract_kind: str, path: Path) -> int:
+    # CONTRACT_MODELS[contract_kind] must exist (JsonArgumentParser's --contract
+    # choices already guarantee membership); the checked-in JSON Schema, not
+    # pydantic's own (lax, coercing) model_validate, is the pre-hash gate here.
+    # pydantic silently coerces a JSON bool into an int field (`False` -> 0)
+    # where the wire-contract JSON Schema correctly rejects it (L1297) — using
+    # the schema keeps `hash` from hashing a type violation the model would
+    # otherwise swallow, which used to surface downstream as a misleading
+    # object_hash_mismatch instead of a type error at this step (L1298).
+    schema_path = SCHEMA_DIRECTORY / f"{contract_kind}.schema.json"
     try:
         payload = _read_json(path)
         if not isinstance(payload, dict):
@@ -136,11 +148,25 @@ def _hash(path: Path) -> int:
         version = payload.get("contract_version")
         if not isinstance(version, str) or version not in HASH_OMISSION_FIELDS:
             raise ValueError("unsupported or missing contract_version")
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(payload)
         digest = object_hash(payload)
+    except SchemaValidationError as exc:
+        _emit(
+            {
+                "contract": contract_kind,
+                "file": str(path),
+                "valid": False,
+                "error": "schema_validation_failed",
+                "detail": exc.message,
+            }
+        )
+        return 1
     except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
         LOGGER.warning("cannot hash %s: %s", path, exc)
         _emit(
             {
+                "contract": contract_kind,
                 "file": str(path),
                 "valid": False,
                 "error": "hash_failed",
@@ -148,7 +174,7 @@ def _hash(path: Path) -> int:
             }
         )
         return 1
-    _emit({"file": str(path), "object_hash": digest, "valid": True})
+    _emit({"contract": contract_kind, "file": str(path), "object_hash": digest, "valid": True})
     return 0
 
 
@@ -233,6 +259,9 @@ def _build_parser() -> JsonArgumentParser:
     validate_parser.add_argument("--file", type=Path, required=True)
 
     hash_parser = subparsers.add_parser("hash")
+    hash_parser.add_argument(
+        "--contract", choices=sorted(CONTRACT_MODELS), required=True
+    )
     hash_parser.add_argument("--file", type=Path, required=True)
 
     fixtures_parser = subparsers.add_parser("fixtures")
@@ -249,7 +278,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "validate":
         return _validate(args.contract, args.file)
     if args.command == "hash":
-        return _hash(args.file)
+        return _hash(args.contract, args.file)
     if args.command == "fixtures":
         return _check_fixtures()
     if args.command == "compat":

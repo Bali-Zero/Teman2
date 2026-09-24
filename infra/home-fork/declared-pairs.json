@@ -1128,6 +1128,12 @@
       "repo": "scripts/intel-lake-router-a2/intel-lake-router-cron-standalone.py",
       "machines": ["pro"],
       "_note": "PR #7152 gate condition 3: the asyncpg classifier driver run every 5min by com.balizero.intel-lake-router.5min. As of this PR it imports intel_lake_rules.py (declared above) instead of parsing a JSON rules copy — declaring all three sibling files closes the HOME-fork blind spot the gate found."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.secrets-permissions-audit.plist",
+      "repo": "infra/launchagents/com.nuzantara.secrets-permissions-audit.plist",
+      "machines": ["pro"],
+      "_note": "PENDING-ARMS L301: installed live by copy (S2 custody lane, 2026-09-10) but never declared, so lint_home_fork could not see drift between ~/Library/LaunchAgents/ and infra/launchagents/ for this canon plist."
     }
   ],
   "allow": [

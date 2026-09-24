@@ -58,6 +58,25 @@ def test_first_trip_writes_pending_jump_and_says_so():
     assert "Salto REGISTRATO" in err and "nz-jump s-one" in err and "AVVIATO" not in err
 
 
+def test_guilt_mandate_id_env_var_is_carried_into_the_jump_file():
+    """PENDING-ARMS L2027: this hook runs in the OLD session's own
+    environment, where NUZANTARA_MANDATE_ID (if set) IS the real budget key —
+    the successor window nz-jump.sh starts never inherits it, so the jump
+    file must carry it across."""
+    rc, _, _, home = run_gate(
+        "Bash", {"command": "ls"}, tokens=TRIP, session_id="s-mandate",
+        env_extra={"NUZANTARA_MANDATE_ID": "mandate-xyz-789"},
+    )
+    assert rc == 2
+    assert _jump(home, "s-mandate")["mandate_id"] == "mandate-xyz-789"
+
+
+def test_innocence_no_mandate_id_env_var_writes_empty_never_fabricated():
+    rc, _, _, home = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-no-mandate")
+    assert rc == 2
+    assert _jump(home, "s-no-mandate")["mandate_id"] == ""
+
+
 def test_second_trip_same_session_does_not_rewrite_the_jump():
     home = pathlib.Path(tempfile.mkdtemp())
     run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-two", home=home)
