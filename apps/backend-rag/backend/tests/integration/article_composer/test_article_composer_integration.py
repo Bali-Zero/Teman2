@@ -181,9 +181,11 @@ class TestArticleComposerIntegration:
             responses.append(response)
 
         # At least one should be rate limited (429)
-        [r.status_code for r in responses]
-        # Note: Rate limiting might not trigger in test environment
-        # This test documents expected behavior
+        status_codes = [r.status_code for r in responses]
+        assert 429 in status_codes, (
+            f"expected the 10/minute limiter to trip within 11 rapid requests, "
+            f"got status codes: {status_codes}"
+        )
 
     @_ENDPOINT_REENABLED_NEEDS_FIXTURE_REWRITE
     @patch.dict("os.environ", {}, clear=True)

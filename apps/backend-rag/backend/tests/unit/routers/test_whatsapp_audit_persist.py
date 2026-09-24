@@ -70,10 +70,14 @@ async def test_db_failure_never_breaks_reply_flow():
 
 @pytest.mark.asyncio
 async def test_no_pool_is_a_noop():
-    await _persist_audit_messages(
+    # With db_pool=None, a real (non-guarded) attempt to call db_pool.execute
+    # would raise AttributeError on the NoneType — so completing cleanly and
+    # returning None IS the behavior under test, not a tautology.
+    result = await _persist_audit_messages(
         db_pool=None,
         phone="+62000000000",
         session_id="wa_s1",
         message_text="hi",
         response_text="hello",
     )
+    assert result is None

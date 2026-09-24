@@ -659,8 +659,11 @@ async def test_ensure_ollama_available_already_running(adapter):
     )
 
     with patch.object(adapter.client, "get", new_callable=AsyncMock, return_value=mock_response):
-        await adapter._ensure_ollama_available()
-    # Should not attempt to start Ollama
+        with patch("shutil.which") as mock_which:
+            await adapter._ensure_ollama_available()
+    # Should not attempt to start Ollama: the "model already available"
+    # branch must return before the shutil.which/start-attempt path runs.
+    mock_which.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -671,8 +674,11 @@ async def test_ensure_ollama_unavailable_no_command(adapter):
         adapter.client, "get", new_callable=AsyncMock, side_effect=Exception("no connection")
     ):
         with patch("shutil.which", return_value=None):
-            # Should not raise
-            await adapter._ensure_ollama_available()
+            with patch("subprocess.Popen") as mock_popen:
+                # Should not raise
+                await adapter._ensure_ollama_available()
+    # No ollama command in PATH → must return before trying to spawn it.
+    mock_popen.assert_not_called()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -716,3 +722,6 @@ async def test_close_llm_adapter_noop_when_none():
     mod._llm_adapter = None
     # Should not raise
     await close_llm_adapter()
+    # The guard must leave the (already-None) singleton untouched — a
+    # regressed guard would instead crash trying to await None.close().
+    assert mod._llm_adapter is None

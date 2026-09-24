@@ -9,6 +9,7 @@ Tests:
 - Config validation
 """
 
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock
 
@@ -234,13 +235,19 @@ class TestInstagramAdapter:
     async def test_send_status_update_never_raises(
         self,
         adapter: InstagramChannelAdapter,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A failed typing bubble must not block / fail the real reply."""
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(side_effect=Exception("Graph down"))
 
-        # Must swallow the error (best-effort), unlike send_response which re-raises.
-        await adapter.send_status_update("123", "processing")
+        # Must swallow the error (best-effort), unlike send_response which
+        # re-raises — and the swallow must be observable, not silent.
+        with caplog.at_level(logging.DEBUG, logger="backend.channels.instagram.adapter"):
+            await adapter.send_status_update("123", "processing")
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "non-critical failure" in text
+        assert "Graph down" in text
 
     async def test_send_response_truncates_long_message(
         self,

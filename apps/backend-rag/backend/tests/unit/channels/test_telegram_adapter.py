@@ -14,6 +14,7 @@ NOTE: TelegramChannelAdapter has a deep import chain
 We mock the TelegramBotService at the module level before importing the adapter.
 """
 
+import logging
 import os
 import sys
 from types import ModuleType
@@ -453,13 +454,19 @@ class TestTelegramAdapter:
     async def test_send_status_update_failure_noncritical(
         self,
         adapter: TelegramChannelAdapter,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         adapter.bot_service.send_chat_action = AsyncMock(
             side_effect=Exception("API error"),
         )
 
-        # Should not raise (non-critical)
-        await adapter.send_status_update("123", "thinking")
+        # Should not raise (non-critical) — and the swallowed error must be
+        # observable as a warning log naming the failure, not silently eaten.
+        with caplog.at_level(logging.WARNING, logger="backend.channels.telegram.adapter"):
+            await adapter.send_status_update("123", "thinking")
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "Failed to send Telegram status update" in text
+        assert "API error" in text
 
     async def test_stream_response_sends_initial_and_final(
         self,

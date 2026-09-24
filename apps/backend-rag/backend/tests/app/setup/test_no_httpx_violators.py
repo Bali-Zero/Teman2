@@ -183,8 +183,6 @@ def _gather_violations() -> list[tuple[str, int, str, str]]:
 def test_no_httpx_violators_outside_http_files() -> None:
     """Fail the build if a Golden Rule #10 violation regrows."""
     violations = _gather_violations()
-    if not violations:
-        return
     msg_lines = [
         f"Golden Rule #10: {len(violations)} httpx.AsyncClient violation(s).",
         "Fix: hoist to a module-level lazy singleton in `*_http.py`",
@@ -195,4 +193,4 @@ def test_no_httpx_violators_outside_http_files() -> None:
     ]
     for rel, lineno, tag, snippet in violations:
         msg_lines.append(f"  [{tag}] {rel}:{lineno}  {snippet}")
-    raise AssertionError("\n".join(msg_lines))
+    assert not violations, "\n".join(msg_lines)

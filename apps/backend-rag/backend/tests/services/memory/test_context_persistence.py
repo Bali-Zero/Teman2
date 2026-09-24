@@ -5,6 +5,7 @@ Tests use mocked Redis (CacheService) and PostgreSQL (asyncpg.Pool) to verify
 the load → cache → save pipeline without external dependencies.
 """
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -165,11 +166,19 @@ class TestSaveContext:
         mock_cache.set.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cache_error_graceful(self) -> None:
+    async def test_cache_error_graceful(self, caplog) -> None:
         engine = _make_engine()
         mock_cache = AsyncMock()
         mock_cache.set = AsyncMock(side_effect=Exception("Redis exploded"))
 
+        caplog.set_level(logging.DEBUG)
         with patch("backend.core.cache.get_cache_service", return_value=mock_cache):
-            # Should not raise
-            await engine._save_context("sess-err", {"history": [{"role": "user", "content": "x"}]})
+            # Should not raise, and the swallowed exception must be logged
+            # (not silently dropped).
+            result = await engine._save_context(
+                "sess-err", {"history": [{"role": "user", "content": "x"}]}
+            )
+
+        assert result is None
+        assert "Failed to cache session context (non-fatal)" in caplog.text
+        assert "Redis exploded" in caplog.text

@@ -100,16 +100,25 @@ class TestNoteCloudOcrBlocked:
         assert "PII-SOVEREIGNTY" in joined
         assert "unit.test.context" in joined
 
-    def test_never_raises_when_alerter_unimportable(self) -> None:
+    def test_never_raises_when_alerter_unimportable(self, caplog) -> None:  # type: ignore[no-untyped-def]
         """If `scripts.sentinel_lib.alerter` can't be imported (real test-env
         condition), the helper must still complete — the import is inside a
         try/except by design."""
+        import logging
+
         # No patching: in the test environment scripts.sentinel_lib is not on the
         # path, so the inner import raises ImportError. Must not propagate.
-        cloud_vision_gate.note_cloud_ocr_blocked("ctx-unimportable")
+        with caplog.at_level(logging.DEBUG, logger="backend.multimodal.cloud_vision_gate"):
+            cloud_vision_gate.note_cloud_ocr_blocked("ctx-unimportable")
+        # Proves the call actually reached and completed the except branch
+        # (swallowing the ImportError), not merely that no exception happened
+        # to propagate up through the test.
+        debug_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+        assert any("Telegram alert unavailable" in msg for msg in debug_messages)
 
-    def test_never_raises_when_send_alert_explodes(self) -> None:
+    def test_never_raises_when_send_alert_explodes(self, caplog) -> None:  # type: ignore[no-untyped-def]
         """When send_alert IS importable but raises, the failure is swallowed."""
+        import logging
         import sys
         import types
 
@@ -128,7 +137,15 @@ class TestNoteCloudOcrBlocked:
             },
         ):
             # Must complete without raising despite send_alert exploding.
-            cloud_vision_gate.note_cloud_ocr_blocked("ctx-explode")
+            with caplog.at_level(logging.DEBUG, logger="backend.multimodal.cloud_vision_gate"):
+                cloud_vision_gate.note_cloud_ocr_blocked("ctx-explode")
+        # Proves the RuntimeError from send_alert was actually caught and
+        # swallowed by the except block, not just that nothing propagated.
+        debug_messages = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+        assert any(
+            "Telegram alert unavailable" in msg and "telegram down" in msg
+            for msg in debug_messages
+        )
 
     def test_returns_none(self) -> None:
         assert cloud_vision_gate.note_cloud_ocr_blocked("ctx") is None
