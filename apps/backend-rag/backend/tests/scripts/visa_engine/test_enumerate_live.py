@@ -1195,6 +1195,7 @@ def test_v1_counters_track_a_retry_still_inside_one_unresolved_walk(tmp_path: Pa
     saved = json.loads(report.read_text())
     assert saved["requests_used_this_run"] == 1  # NOT 0 -- the pre-cure bug this test pins
     assert saved["requests_used_total"] == 1
+    assert saved["runs"][-1]["requests_used"] == saved["requests_used_this_run"]  # B4-3b (GATE-SUB-B43B LOW): _flush_counters_only must keep runs[-1] in step too, not just the top-level counters
     assert saved["walks"] == []  # the walk itself never resolved -- only the counters are ahead of it
 
 
