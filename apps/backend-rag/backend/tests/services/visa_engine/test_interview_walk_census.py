@@ -1204,6 +1204,8 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     },
     21: {"family.sponsor_confirmed": 1},
     22: {"family.sponsor_confirmed": 1},
+    # Slice A9.3: measured on the signed seq-23 tree, identical to seq-22.
+    23: {"family.sponsor_confirmed": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1310,6 +1312,14 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
     20: frozenset(),
     21: frozenset(),
     22: frozenset(
+        {
+            "offshore/invest/bank_deposit/below_threshold",
+            "offshore/invest/property/below_threshold",
+        }
+    ),
+    # Slice A9.3: seq-23 carries `review.e33.below-threshold-studio` forward
+    # byte-identical, so the same two walks hold — measured on the signed tree.
+    23: frozenset(
         {
             "offshore/invest/bank_deposit/below_threshold",
             "offshore/invest/property/below_threshold",
@@ -2318,6 +2328,15 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
             "SUPPORTED_CANDIDATES": 97,
         },
         22: {
+            "HUMAN_REVIEW_REQUIRED": 3,
+            "NEEDS_INPUT": 1,
+            "NO_SUPPORTED_PATH": 14,
+            "SUPPORTED_CANDIDATES": 98,
+        },
+        # Slice A9.3: re-measured on the signed seq-23 tree (the replay
+        # command is in the signing PR). Identical to seq-22: no walk's
+        # engine-only outcome moves (`_SEQ23_OUTCOME_CHANGES` is empty).
+        23: {
             "HUMAN_REVIEW_REQUIRED": 3,
             "NEEDS_INPUT": 1,
             "NO_SUPPORTED_PATH": 14,

@@ -1,0 +1,5 @@
+{"seat": "tp1-qwen3.8-max", "role": "review", "ok": false, "ts": "2026-09-24T09:51:53Z", "note": "VERDICT FAIL: 3 MEDIUM (census masking - REFUTED by replay; e33 UNKNOWN persona not isolating - PLAUSIBLE; EVALUATED_AT validity - REFUTED by construction) + 4 LOW. See pack.yml dissent."}
+{"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": true, "ts": "2026-09-24T09:51:53Z", "note": "VERDICT PASS with no findings (333 bytes) - thin; not counted as independent evidence of non-vacuity."}
+{"seat": "tp1-glm-5.2", "role": "review", "ok": false, "ts": "2026-09-24T10:01:06Z", "note": "Round 1 VERDICT FAIL: 2 MEDIUM (minor UNKNOWN witness; bridging overstay default)."}
+{"seat": "tp1-qwen3.8-max", "role": "review", "ok": true, "ts": "2026-09-24T10:01:06Z", "note": "Round 2 on measured answers: all 3 MEDIUM WITHDRAWN, VERDICT PASS."}
+{"seat": "tp1-glm-5.2", "role": "review", "ok": true, "ts": "2026-09-24T10:01:06Z", "note": "Round 2 on measured answers: both MEDIUM WITHDRAWN, VERDICT PASS."}

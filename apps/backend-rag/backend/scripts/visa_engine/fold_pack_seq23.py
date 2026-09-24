@@ -677,10 +677,18 @@ def assert_only_expected_changes(before: dict[str, Any], after: dict[str, Any]) 
 
     missing = set(before_rules) - set(after_rules)
     if missing != REMOVED_RULE_IDS:
-        _fail(f"removed-rule set mismatch: {sorted(missing)} != {sorted(REMOVED_RULE_IDS)}")
+        _fail(
+            "removed-rule set mismatch: "
+            f"not retired {sorted(REMOVED_RULE_IDS - missing)}, "
+            f"retired unexpectedly {sorted(missing - REMOVED_RULE_IDS)}"
+        )
     added = set(after_rules) - set(before_rules)
     if added != INSERTED_RULE_IDS:
-        _fail(f"added-rule set mismatch: {sorted(added)} != {sorted(INSERTED_RULE_IDS)}")
+        _fail(
+            "added-rule set mismatch: "
+            f"not inserted {sorted(INSERTED_RULE_IDS - added)}, "
+            f"inserted unexpectedly {sorted(added - INSERTED_RULE_IDS)}"
+        )
 
     for rule_id, rule in after_rules.items():
         if rule_id in INSERTED_RULE_IDS:
