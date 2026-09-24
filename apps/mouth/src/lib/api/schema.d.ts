@@ -5680,29 +5680,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/crm/intelligence/{client_id}/query": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Query Notebooklm For Client
-     * @description Query NotebookLM with CRM context for a specific client.
-     *
-     *     Builds an Italian-language prompt that references the client by name and ID,
-     *     then shells out to the NLM CLI to query the CRM notebook.
-     */
-    post: operations["query_notebooklm_for_client_api_crm_intelligence__client_id__query_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/crm/interactions/": {
     parameters: {
       query?: never;
@@ -23861,34 +23838,6 @@ export interface components {
       /** Success */
       success: boolean;
     };
-    /**
-     * NlmCitation
-     * @description A single citation returned by NotebookLM.
-     */
-    NlmCitation: {
-      /** Cited Text */
-      cited_text: string;
-      /** Source Id */
-      source_id: string;
-    };
-    /**
-     * NlmQueryRequest
-     * @description Request body for querying NotebookLM about a specific client.
-     */
-    NlmQueryRequest: {
-      /** Question */
-      question: string;
-    };
-    /**
-     * NlmQueryResponse
-     * @description Response from a NotebookLM client query.
-     */
-    NlmQueryResponse: {
-      /** Answer */
-      answer: string;
-      /** Citations */
-      citations: components["schemas"]["NlmCitation"][];
-    };
     /** NotificationPrefsIn */
     NotificationPrefsIn: {
       /**
@@ -37125,41 +37074,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceAiSnapshotResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  query_notebooklm_for_client_api_crm_intelligence__client_id__query_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        client_id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["NlmQueryRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["NlmQueryResponse"];
         };
       };
       /** @description Validation Error */
