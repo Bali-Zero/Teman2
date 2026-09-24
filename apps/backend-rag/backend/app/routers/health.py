@@ -1240,3 +1240,76 @@ async def prometheus_metrics():
         content=generate_latest(),
         media_type="text/plain; version=0.0.4; charset=utf-8",
     )
+
+
+@router.get("/garuda-outbox")
+async def garuda_outbox_health(request: Request) -> dict[str, Any]:
+    """The GARUDA outbox's undrained counts, readable WITHOUT Telegram.
+
+    THE GAP THIS CLOSES. `count_undrained`'s `exhausted` had exactly one
+    non-test consumer: `_send_outbox_alarm` in `main_api.py`, which pages over
+    Telegram. So the number that says "a job died" could only be heard on the
+    wire that dies with it — and on 2026-09-20 that is precisely what happened:
+    row 36 (`staff_page_charge_without_webhook`, a charge with no webhook, i.e.
+    money) spent all five attempts on a `400 Bad Request: can't parse entities`
+    and nothing said so for a day. Cause and signal shared a wire; the silence
+    read as health (superscar #2, and W84's rule that healthy silence must be
+    provable).
+
+    This endpoint is the OTHER path's eyes. It is deliberately:
+
+    - **unauthenticated**, like every other `/health/*` route here, because a
+      reader that needs a credential is a reader that goes quiet the day the
+      credential does — the failure this whole row exists to end;
+    - **aggregate only**. No id, no job payload, no `job_type`: a count leaks
+      nothing about a customer, while a per-type breakdown on a public URL
+      would narrate which of our jobs fail. Whoever is paged reads the detail
+      from the database with `scripts/pg.sh`, which is credentialed.
+
+    `degraded` is the field a reader acts on. It is computed HERE rather than
+    left to the caller so that two readers cannot disagree about what "bad"
+    means — the drift that makes one alarm fire and another stay silent on the
+    same number.
+    """
+    pool = getattr(request.app.state, "db_pool", None)
+    if pool is None:
+        # Not "healthy": a reader must be able to tell "nothing is stuck" from
+        # "I could not look" (#2 — existence is not arming).
+        return {
+            "status": "unknown",
+            "degraded": None,
+            "error": "no database pool on app.state",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    try:
+        from backend.services.garuda_orders.outbox_consumer import count_undrained
+
+        async with pool.acquire() as conn:
+            counts = await count_undrained(conn)
+    except Exception as exc:  # broad on purpose: the reason must reach the reader
+        logger.warning("garuda-outbox health probe failed: %s", exc)
+        return {
+            "status": "unknown",
+            "degraded": None,
+            "error": type(exc).__name__,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    exhausted = counts.get("exhausted", 0)
+    older_24h = counts.get("older_than_24h", 0)
+    # An hour, not a day, and the reason is a shape the codex/gpt-5.6-terra
+    # council seat found here: an UNROUTABLE row (no handler for its
+    # `job_type`) has its attempt bump rolled back by `drain_once`, so it
+    # never exhausts — it was invisible to both other terms for a full day
+    # while every drain pass failed to dispatch it. The drain loop sleeps
+    # seconds, so a row still undispatched after an hour is stuck by
+    # definition, whatever the reason.
+    older_1h = counts.get("older_than_1h", 0)
+    degraded = bool(exhausted or older_24h or older_1h)
+    return {
+        "status": "ok",
+        "degraded": degraded,
+        "counts": counts,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

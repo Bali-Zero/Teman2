@@ -31,6 +31,19 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
    del cron, non la durata della sessione — e la regola 6 qui sotto ti dà ~40 min a tick.
    Un tick che lavora 11 minuti ed esce 0 è CORRETTO. Non allarmare su quelle righe.
    Una sessione morta comunque non si resuscita: al massimo si riporta.
+   `python3 scripts/healer_receptor_garuda_outbox.py --json` (receptor 9 — la coda
+   `garuda_order_outbox` LETTA FUORI DA TELEGRAM, via `/health/garuda-outbox` sull'app
+   Fly). Esiste perché `exhausted` aveva un solo consumatore, `_send_outbox_alarm`, che
+   pagina via Telegram: il 2026-09-20 la riga 36 (un incasso senza webhook) ha bruciato
+   cinque tentativi su un `400 can't parse entities` e per un giorno nessuno l'ha saputo
+   — causa e segnale sullo stesso filo. exit 1 = righe esaurite o ferme da oltre 24h:
+   NON è nel tuo perimetro curarle (la coda sta in PROD, il drain è dell'app), il tuo
+   lavoro è che la pagina parta e che la riga finisca sul ledger. exit 2 = endpoint
+   illeggibile: quello SÌ è nel tuo perimetro se la causa sta sotto `scripts/`, e in
+   ogni caso «non ho potuto guardare» non si scrive mai come «tutto a posto».
+   Dettaglio della coda solo con credenziale: `./scripts/pg.sh -Atc "SELECT id, job_type,
+attempts, created_at FROM garuda_order_outbox WHERE dispatched_at IS NULL"`.
+   Kill switch: `HEALER_GARUDA_OUTBOX_OFF=1`.
    `python3 scripts/healer_receptor_main_red.py --no-escalate` (receptor 8 — un check
    OBBLIGATORIO rosso su `main`: la coda di merge è ferma e ogni PR armata eredita il
    rosso). Legge lo stato EFFETTIVO per contesto camminando gli sha di main all'indietro
