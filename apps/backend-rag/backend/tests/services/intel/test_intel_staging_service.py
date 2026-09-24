@@ -1,7 +1,10 @@
 import json
 import re
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -429,6 +432,94 @@ def test_archive_item_raises_for_missing_item(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError):
         service.archive_item("visa", "missing", "rejected")
+
+
+def test_backfill_enrichment_if_absent_writes_when_empty(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+    service.save_staging_item("news", "news-1", {"source_url": "https://x", "enrichment": {}})
+
+    backfilled = service.backfill_enrichment_if_absent("news", "news-1", {"a": 1})
+
+    assert backfilled is True
+    assert service.load_staging_item("news", "news-1")["enrichment"] == {"a": 1}
+
+
+def test_backfill_enrichment_if_absent_noops_when_already_populated(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+    service.save_staging_item(
+        "news", "news-1", {"source_url": "https://x", "enrichment": {"already": True}},
+    )
+
+    backfilled = service.backfill_enrichment_if_absent("news", "news-1", {"a": 1})
+
+    assert backfilled is False
+    assert service.load_staging_item("news", "news-1")["enrichment"] == {"already": True}
+
+
+def test_backfill_enrichment_if_absent_returns_false_for_missing_item(tmp_path: Path) -> None:
+    service = _service(tmp_path)
+
+    assert service.backfill_enrichment_if_absent("news", "missing", {"a": 1}) is False
+
+
+def test_backfill_enrichment_if_absent_serializes_concurrent_racers(tmp_path: Path) -> None:
+    """W-L610: two same-URL submissions racing the dedup-heal read-modify-write
+    must not both observe "empty" and both write — that loses one payload
+    under last-write-wins while both callers are told they succeeded.
+
+    Forces the interleaving deterministically: the first racer's `load_staging_item`
+    is made to pause (post-read, pre-write) until the second racer has started and
+    tried to enter the same critical section. Without the per-item `fcntl` lock this
+    reliably reproduces the bug (both calls return True, second payload is lost);
+    with the lock the second racer blocks until the first finishes, observes the
+    already-populated item, and no-ops.
+    """
+    service = _service(tmp_path)
+    service.save_staging_item("news", "news-1", {"source_url": "https://x", "enrichment": {}})
+
+    entered_read = threading.Event()
+    release_first = threading.Event()
+    real_load = service.load_staging_item
+
+    def delayed_load(intel_type: str, item_id: str):
+        result = real_load(intel_type, item_id)
+        if item_id == "news-1" and not entered_read.is_set():
+            entered_read.set()
+            release_first.wait(timeout=2)
+        return result
+
+    results: dict[str, bool] = {}
+
+    def call_first() -> None:
+        with patch.object(service, "load_staging_item", side_effect=delayed_load):
+            results["first"] = service.backfill_enrichment_if_absent(
+                "news", "news-1", {"who": "first"},
+            )
+
+    thread1 = threading.Thread(target=call_first)
+    thread1.start()
+    assert entered_read.wait(timeout=2), "first racer never reached its read"
+
+    def call_second() -> None:
+        results["second"] = service.backfill_enrichment_if_absent(
+            "news", "news-1", {"who": "second"},
+        )
+
+    thread2 = threading.Thread(target=call_second)
+    thread2.start()
+    # Give thread2 a chance to reach (and block on) the lock before releasing thread1.
+    time.sleep(0.1)
+    release_first.set()
+    thread1.join(timeout=2)
+    thread2.join(timeout=2)
+
+    assert results["first"] is True
+    assert results["second"] is False, (
+        "second racer wrote despite the first already populating enrichment — "
+        "the advisory lock did not serialize the racers"
+    )
+    final = service.load_staging_item("news", "news-1")
+    assert final["enrichment"] == {"who": "first"}
 
 
 def test_update_staging_queue_metrics_does_not_require_real_services(tmp_path: Path) -> None:

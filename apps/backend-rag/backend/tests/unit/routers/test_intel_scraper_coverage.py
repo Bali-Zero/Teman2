@@ -251,7 +251,7 @@ async def test_submit_scraper_duplicate_backfills_enrichment(client_no_auth):
     mock_staging_svc = MagicMock()
     mock_staging_svc.generate_item_id.return_value = "news-new-submission"
     mock_staging_svc.check_duplicate.return_value = existing_item
-    mock_staging_svc.load_staging_item.return_value = dict(existing_item)
+    mock_staging_svc.backfill_enrichment_if_absent.return_value = True
     mock_staging_svc.update_staging_queue_metrics = MagicMock()
 
     enrichment_obj = {"the_facts": "Fresh facts.", "bali_zero_take": "Fresh take."}
@@ -279,12 +279,9 @@ async def test_submit_scraper_duplicate_backfills_enrichment(client_no_auth):
     data = response.json()
     assert data["duplicate"] is True
     assert data["enrichment_backfilled"] is True
-    mock_staging_svc.load_staging_item.assert_called_once_with("news", "news-existing-heal")
-    mock_staging_svc.save_staging_item.assert_called_once()
-    saved_type, saved_id, saved_data = mock_staging_svc.save_staging_item.call_args[0]
-    assert saved_type == "news"
-    assert saved_id == "news-existing-heal"
-    assert saved_data["enrichment"] == enrichment_obj
+    mock_staging_svc.backfill_enrichment_if_absent.assert_called_once_with(
+        "news", "news-existing-heal", enrichment_obj
+    )
 
 
 # ---------------------------------------------------------------------------

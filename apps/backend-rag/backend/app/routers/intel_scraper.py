@@ -420,23 +420,27 @@ async def submit_from_scraper(
             # the existing item doesn't already have a usable one. Never
             # let a heal failure turn a successful dedup into a 500 —
             # log and fall through to the unchanged response shape.
+            #
+            # The merge itself goes through `backfill_enrichment_if_absent`
+            # (per-item fcntl advisory lock, same one `compare_and_set_status`
+            # uses) rather than a raw load/save here: two same-URL submissions
+            # racing this read-modify-write could both see "empty" and both
+            # write, silently losing one payload under last-write-wins
+            # (W-L610). The lock serializes the racers instead.
             enrichment_backfilled = False
             new_enrichment = submission.enrichment
-            existing_enrichment = duplicate.get("enrichment")
             dup_item_id = duplicate.get("item_id")
             if (
                 isinstance(new_enrichment, dict)
                 and new_enrichment
-                and not (isinstance(existing_enrichment, dict) and existing_enrichment)
                 and dup_item_id
                 and duplicate.get("status") in (None, "pending")
             ):
                 try:
-                    existing_full = staging_service.load_staging_item(intel_type, dup_item_id)
-                    if existing_full is not None:
-                        existing_full["enrichment"] = new_enrichment
-                        staging_service.save_staging_item(intel_type, dup_item_id, existing_full)
-                        enrichment_backfilled = True
+                    enrichment_backfilled = staging_service.backfill_enrichment_if_absent(
+                        intel_type, dup_item_id, new_enrichment
+                    )
+                    if enrichment_backfilled:
                         logger.info(
                             "Backfilled enrichment onto duplicate staging item",
                             extra={"item_id": dup_item_id},

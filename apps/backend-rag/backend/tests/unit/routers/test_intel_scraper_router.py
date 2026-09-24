@@ -548,7 +548,7 @@ class TestSubmitFromScraper:
                 "enrichment": {},
             }
             mock_stg.check_duplicate.return_value = existing_item
-            mock_stg.load_staging_item.return_value = dict(existing_item)
+            mock_stg.backfill_enrichment_if_absent.return_value = True
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 
@@ -572,20 +572,23 @@ class TestSubmitFromScraper:
         assert result["duplicate"] is True
         assert result["success"] is True
         assert result["enrichment_backfilled"] is True
-        mock_stg.load_staging_item.assert_called_once_with("news", "news-2026-existing")
-        mock_stg.save_staging_item.assert_called_once()
-        saved_type, saved_id, saved_data = mock_stg.save_staging_item.call_args[0]
-        assert saved_type == "news"
-        assert saved_id == "news-2026-existing"
-        assert saved_data["enrichment"] == enrichment_obj
+        # Merge goes through the locked helper (W-L610), not a raw load/save —
+        # see backfill_enrichment_if_absent in intel_staging_service.py.
+        mock_stg.backfill_enrichment_if_absent.assert_called_once_with(
+            "news", "news-2026-existing", enrichment_obj
+        )
 
     @pytest.mark.asyncio
     async def test_duplicate_skips_backfill_when_existing_already_has_enrichment(
         self,
     ) -> None:
         """INNOCENCE: an existing duplicate that ALREADY carries a
-        non-empty enrichment dict must not be touched — no load/save call,
-        no `enrichment_backfilled` key in the response."""
+        non-empty enrichment dict must not be overwritten. The router no
+        longer short-circuits on the (possibly stale, read-outside-any-lock)
+        `duplicate` snapshot's own `enrichment` field — that pre-check was
+        itself part of the W-L610 race — so it still calls the atomic
+        `backfill_enrichment_if_absent` helper, which re-checks under its
+        per-item lock and correctly no-ops here."""
         from backend.app.routers.intel import ScraperSubmission
         from backend.app.routers.intel_scraper import submit_from_scraper
 
@@ -601,9 +604,11 @@ class TestSubmitFromScraper:
                 "item_id": "news-2026-existing2",
                 "enrichment": {"the_facts": "Already there."},
             }
+            mock_stg.backfill_enrichment_if_absent.return_value = False
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 
+            new_enrichment = {"the_facts": "New but should not overwrite."}
             submission = ScraperSubmission(
                 title="Duplicate again",
                 content="Content",
@@ -613,14 +618,15 @@ class TestSubmitFromScraper:
                 relevance_score=50,
                 extraction_method="auto",
                 tier="tier1",
-                enrichment={"the_facts": "New but should not overwrite."},
+                enrichment=new_enrichment,
             )
             result = await submit_from_scraper(submission=submission, _api_key_verified=None)
 
         assert result["duplicate"] is True
         assert "enrichment_backfilled" not in result
-        mock_stg.load_staging_item.assert_not_called()
-        mock_stg.save_staging_item.assert_not_called()
+        mock_stg.backfill_enrichment_if_absent.assert_called_once_with(
+            "news", "news-2026-existing2", new_enrichment
+        )
 
     @pytest.mark.asyncio
     async def test_duplicate_skips_backfill_when_existing_is_published(self) -> None:
@@ -688,7 +694,7 @@ class TestSubmitFromScraper:
                 "item_id": "news-2026-existing3",
                 "enrichment": {},
             }
-            mock_stg.load_staging_item.side_effect = OSError("disk error")
+            mock_stg.backfill_enrichment_if_absent.side_effect = OSError("disk error")
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 
