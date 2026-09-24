@@ -39,11 +39,11 @@ lanes:
 diff:
   files: 8
   net_lines: >-
-    8 files, +15984/-0 (computed from `git diff --numstat origin/main...HEAD` on this PR's
+    8 files, +15988/-0 (computed from `git diff --numstat origin/main...HEAD` on this PR's
     final head): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+80),
     research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
     (+12432, new file), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
-    (+34), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+164),
+    (+34), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+168),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/council.jsonl (+3),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/{refuter-task.txt
     (+3245), refuter-qwen.txt (+18), refuter-deepseek.txt (+8)}. The ROOT evidence/brief.yml is
