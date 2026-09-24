@@ -7,11 +7,15 @@ objective: >-
   Telegram-for-everything (Telegram fires only on a real state transition).
   A real 3-seat Gear-3 council (codex-gpt-5.6-sol, kimi-code/k3,
   tp1-qwen3.8-max) reviewed the first cut on HEAD 603b4a105f and returned
-  BLOCKING on all three seats. This PR is the ONE fix round for every real
-  finding those three verdicts raised (fix-of-a-fix stops at depth 1 per the
-  Builder Contract) — it does not install the LaunchAgent, does not declare
-  the HOME-fork pair, and does not merge or deploy; those are the
-  conductor's own follow-up steps, explicitly out of scope here.
+  BLOCKING on all three seats; round 1 of this PR fixed every finding from
+  that pass. A SECOND council pass on the fixed HEAD (79c2d92a0b) returned
+  kimi-code/k3 OK and tp1-qwen3.8-max OK, but codex-gpt-5.6-sol BLOCKING
+  again — the title fix was a fix-of-a-fix at that point, so per the
+  Builder Contract the conductor wrote the SPEC (S1-S5) rather than letting
+  a third free-form round run; this PR implements exactly that spec. It
+  still does not install the LaunchAgent, does not declare the HOME-fork
+  pair, and does not merge or deploy; those remain the conductor's own
+  follow-up steps.
 constraints:
   - >-
     Touch only scripts/nlm_watchdog.py, scripts/nlm_watchdog_cron.sh,
@@ -47,17 +51,55 @@ acceptance:
     probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "leaves_no_tmp_file_behind" -v
   - text: >-
       WHEN a notebook is near its source cap, the heartbeat/Telegram/log
-      SHALL carry only a redacted display name (curated NB- title truncated
-      to 60 chars, else the first 8 chars of the notebook id, else
-      "unknown") — never the raw client-facing title (codex finding 1,
-      BLOCKING).
-    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "display_name" -v
+      SHALL carry ONLY the notebook's id8 (or "unknown") — never a title,
+      curated-looking or not (round-2 codex finding 1, BLOCKING: a
+      `^NB-...` prefix gate is not a privacy boundary — `NB-CLIENT-CASE
+      Jane Doe` matched round 1's gate and still leaked).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "never_leaks_any_title" -v
   - text: >-
       WHEN status stays degraded across two ticks but the underlying reason
       codes change, maybe_alert SHALL fire — a new failure hiding behind an
       old one is exactly the silent-failure class this organ exists to
       surface (codex finding 4 / qwen finding 4).
     probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "maybe_alert" -v
+  - text: >-
+      WHEN the first inventory fetch returns rc=0 with an empty/whitespace
+      body, it SHALL be retried exactly like a malformed non-empty body —
+      only a hard ssh-level failure (rc != 0) skips the retry (round-2
+      codex finding 2 / kimi MAJOR2 / qwen NIT3).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "fetch_inventory_first_empty" -v
+  - text: >-
+      WHEN one notebook stays near-cap and a SECOND, different notebook
+      newly crosses the cap, maybe_alert SHALL fire even though the reason
+      CODE set is unchanged (both only ever contribute CAP_NEAR) — the
+      sorted near-cap id8 list is now part of the alert signature (round-2
+      codex finding 3, MAJOR).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "new_notebook_joins_near_cap" -v
+  - text: >-
+      WHEN a notebook's source_count is non-numeric (or a bool), it SHALL
+      be skipped without crashing the tick, and counted into its own
+      degraded reason/code — the fix for round-2 kimi MINOR2 / qwen
+      MINOR1 (a bare `or 0` let a non-numeric value raise TypeError at
+      `max()`/`>=`, discarding the whole verdict via main's crash handler).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "non_numeric_source_count or bool_source_count" -v
+  - text: >-
+      WHEN the wrapper's own fallback heartbeat write fails to install
+      (the mv itself fails), the wrapper's final exit SHALL be non-zero —
+      never `|| true`'d into a false success (round-2 codex finding 4,
+      MAJOR).
+    probe: >-
+      S=$(mktemp -d); mkdir -p "$S/nuzantara/scripts" "$S/.organism/last_seen";
+      printf 'import sys\nsys.exit(0)\n' > "$S/nuzantara/scripts/nlm_watchdog.py";
+      chmod 555 "$S/.organism/last_seen";
+      HOME="$S" bash scripts/nlm_watchdog_cron.sh; echo "EXIT=$?"
   - text: >-
       WHEN the module-level `from auth_sentinel import ...` fails at import
       time, main() SHALL still write a degraded heartbeat carrying
