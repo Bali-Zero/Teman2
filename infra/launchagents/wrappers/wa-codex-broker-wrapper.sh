@@ -61,6 +61,25 @@ set -a
 . "$ENV_FILE"
 set +a
 
+# --- codex-pin.env (D2, security round-1 after PR #7313's BLOCK): the
+# daemon's own WA_CODEX_CLI_VERSION_PIN/WA_CODEX_BIN keys in $ENV_FILE
+# above are now LEGACY — this root-owned file is sourced AFTER them, so
+# ITS values win. wa-codex-broker-admin.sh (root-owned, sudoers-gated) is
+# the ONLY writer of this file; it never opens, reads, writes, chowns or
+# chmods $ENV_FILE at all anymore, closing the symlink/TOCTOU vector a
+# daemon-writable env file gave root in round 0 (docs/scars/cicatrix-scars.md
+# W136). Optional: a host that has not yet run
+# scripts/install_wa_codex_admin.sh has no such file, and the daemon keeps
+# reading the legacy keys from $ENV_FILE unchanged — same guarded-source
+# shape as above (presence check before the `.`, never a bare
+# `. file || true`).
+CODEX_PIN_FILE="$RUNTIME_DIR/codex-pin.env"
+if [ -f "$CODEX_PIN_FILE" ]; then
+    set -a
+    . "$CODEX_PIN_FILE"
+    set +a
+fi
+
 # G5_kill_switch — operator stop without uninstall (set in the env file or
 # the plist). Clean exit 0 stays DOWN under KeepAlive.SuccessfulExit=false;
 # the disabled heartbeat keeps a healer from resurrecting an intentional

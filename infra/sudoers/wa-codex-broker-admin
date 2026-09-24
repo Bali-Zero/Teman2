@@ -11,6 +11,19 @@
 # used to print). After this, the `nuzantara` interactive user can run the
 # cure directly.
 #
+# ROUND 1 (after PR #7313's security BLOCK): round 0 shipped an env-var
+# `WA_CODEX_ADMIN_TEST_MODE` escape hatch INSIDE the installed script, and
+# this drop-in did not stop the invoking user's environment from reaching
+# it — sudo's default `env_reset` clears most variables, but nothing here
+# said so explicitly, and nothing forbade `-E`/`VAR=val sudo ...` for THIS
+# command specifically. Round 1 removed that escape hatch from the script
+# entirely (it no longer exists at all — see D8 in the round-1 spec), and
+# this drop-in now ALSO closes the policy layer belt-and-suspenders: a
+# command-specific `env_reset` Default plus `NOSETENV` on the rule itself
+# means no environment variable the invoking user sets can reach this
+# command's execution, regardless of `-E` or a leading `VAR=val`.
+Defaults!/usr/local/libexec/wa-codex-broker-admin.sh env_reset
+
 # IMPORTANT — the `bump *` wildcard below is NOT the security boundary.
 # sudoers command-line-argument wildcards are matched via glob(3)/fnmatch(3)
 # (man sudoers, "Wildcards" section): `*` matches ANY set of zero or more
@@ -22,5 +35,6 @@
 # `^[0-9]+\.[0-9]+\.[0-9]+$` regex on the version argument, a hard reject of
 # any extra argument, and `set -euo pipefail` with no `eval` and no argument
 # ever built into a shell string. This drop-in only decides WHO may invoke
-# the two verbs as root — never whether a given argument is safe to run.
-nuzantara ALL=(root) NOPASSWD: /usr/local/libexec/wa-codex-broker-admin.sh status, /usr/local/libexec/wa-codex-broker-admin.sh bump *
+# the two verbs as root, with what environment — never whether a given
+# argument is safe to run.
+nuzantara ALL=(root) NOPASSWD: NOSETENV: /usr/local/libexec/wa-codex-broker-admin.sh status, /usr/local/libexec/wa-codex-broker-admin.sh bump *

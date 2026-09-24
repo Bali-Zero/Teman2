@@ -62,6 +62,17 @@ wired into `scripts/provision_zantara_codex.sh` so a re-provision keeps it curre
 and `infra/sudoers/wa-codex-broker-admin` for the passwordless grant (the sudoers wildcard is not
 the guard — the script's own strict argument validation is).
 
+**Round 1 (after a cross-family security BLOCK on the first cut):** the pin and binary path no
+longer live in the daemon-writable `.wa-codex-broker.env` at all — they live in a NEW root-owned
+`/usr/local/lib/wa-codex-broker/codex-pin.env` (root:wheel 0644) that `wa-codex-broker-wrapper.sh`
+sources AFTER the daemon's own env file, so the root-owned values win. `wa-codex-broker-admin.sh`
+never opens, reads, writes, chowns or chmods anything under `/Users/zantara-codex` at all. `status`
+never executes a daemon-chosen binary as root either: it validates the exact path pattern and every
+component's ownership/mode/symlink status, then drops privilege (`sudo -u zantara-codex`) before
+running `--version`. `bump` is a transaction — a failed kickstart, or a daemon that does not report
+running within a few seconds, rolls the config back and re-kickstarts. See the round-1 spec in
+PR #7313's thread for the full BLOCK findings and the fix built against them.
+
 ## Residual, declared
 
 - Rows 1 and 9 carry design-argued halves (machine reboot, dual-version run) — nothing in CI
