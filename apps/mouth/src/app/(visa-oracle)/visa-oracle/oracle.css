@@ -282,9 +282,9 @@ html[data-oracle-theme-bootstrap="dark"]
   white-space: nowrap;
 }
 
-/* The consultant action lives in the bar: its wrapper dissolves so the
-   toggle sits beside the language/theme controls and its panel opens as a
-   full-width row under them, instead of an orphan row of its own. */
+/* The consultant toggle lives in the bar: its wrapper dissolves so the
+   toggle sits beside the language/theme controls. Its panel is portalled
+   into the content column (OracleShell.tsx), so the bar stays one row. */
 .oracle-topbar .oracle-consultant {
   display: contents;
 }
@@ -304,14 +304,6 @@ html[data-oracle-theme-bootstrap="dark"]
   border-color: var(--oracle-canopy);
   color: var(--oracle-canopy);
 }
-/* The panel is the toggle's own drop-down: a right-aligned card under the
-   button, not a full-width row that starts under the logo. */
-.oracle-topbar .oracle-consultant__panel {
-  order: 3;
-  flex-basis: 100%;
-  max-width: min(34rem, 100%);
-  margin: var(--space-1) 0 var(--space-2) auto;
-}
 .oracle-consultant {
   width: 100%;
   max-width: 90rem;
@@ -326,9 +318,10 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-consultant__toggle svg {
   flex-shrink: 0;
 }
+/* Heads the content column, above the question or verdict it concerns. */
 .oracle-consultant__panel {
   max-width: var(--oracle-reading-width);
-  margin-top: var(--space-2);
+  margin-bottom: var(--space-6);
   overflow-wrap: anywhere;
 }
 .oracle-consultant__panel[hidden] {
@@ -1959,10 +1952,6 @@ button.oracle-tree__leaf {
     width: 44px;
     padding: 0;
     justify-content: center;
-  }
-  .oracle-topbar .oracle-consultant__panel {
-    max-width: 100%;
-    margin-left: 0;
   }
   .oracle-consultant__label {
     position: absolute;

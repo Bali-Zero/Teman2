@@ -862,6 +862,35 @@ describe("OracleShell persistent consultant contact", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
+  it("opens the verdict handoff in the content column while its toggle stays in the top bar", async () => {
+    const user = userEvent.setup();
+    installVerdictResume();
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const toggle = screen.getByRole("button", { name: consultant });
+    const panel = screen.getByRole("region", { name: consultant });
+    expect(toggle.closest("header")).not.toBeNull();
+    expect(panel.closest("header")).toBeNull();
+    expect(panel.parentElement?.parentElement).toHaveClass(
+      "oracle-main__content",
+    );
+    expect(panel).toHaveClass("oracle-no-print");
+    // Reading order matches the eye: the handoff precedes the verdict.
+    const verdict = document.querySelector(".oracle-verdict-card")!;
+    expect(
+      panel.compareDocumentPosition(verdict) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    toggle.focus();
+    await user.tab();
+    const consent = screen.getByRole("checkbox", {
+      name: /minimal Visa Oracle receipt/,
+    });
+    expect(consent).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(toggle).toHaveFocus();
+  });
+
   it.each(["framing", "question", "confirmation"] as const)(
     "offers generic contact during %s without advancing or evaluating",
     async (stage) => {

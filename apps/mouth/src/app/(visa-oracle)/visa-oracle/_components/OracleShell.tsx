@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { OracleLockup } from "./OracleLockup";
 import { useReducedMotion } from "framer-motion";
@@ -121,9 +121,34 @@ const SESSION_COPY = {
   },
 } as const;
 
-function ConsultantContact(props: ConsentHandoffProps) {
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function tabbablesIn(root: Element): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter(
+    (element) =>
+      element.closest("[hidden]") === null &&
+      (typeof element.checkVisibility !== "function" ||
+        element.checkVisibility()),
+  );
+}
+
+/**
+ * The toggle sits in the top bar; its panel is portalled into the top of the
+ * content column so an open handoff never swells the bar. React events still
+ * bubble along the component tree, so Escape inside the panel reaches this
+ * wrapper. Tab order is bridged so the panel still reads as the toggle's
+ * own: Tab from the open toggle enters the panel, Shift+Tab from its first
+ * control returns to the toggle, Tab past its last control resumes in the
+ * bar right after the toggle.
+ */
+function ConsultantContact({
+  panelSlot,
+  ...props
+}: ConsentHandoffProps & { panelSlot: HTMLElement | null }) {
   const [open, setOpen] = useState(props.context === "ASSESSMENT");
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
@@ -144,21 +169,54 @@ function ConsultantContact(props: ConsentHandoffProps) {
         aria-expanded={open}
         aria-controls="oracle-consultant-panel"
         onClick={() => setOpen((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab" || event.shiftKey || !open) return;
+          const first = panelRef.current && tabbablesIn(panelRef.current)[0];
+          if (!first) return;
+          event.preventDefault();
+          first.focus();
+        }}
       >
         <MessageCircle aria-hidden="true" size={18} />
         <span className="oracle-consultant__label">
           {SESSION_COPY[props.language].consultant}
         </span>
       </button>
-      <div
-        id="oracle-consultant-panel"
-        className="oracle-handoff-slot oracle-consultant__panel"
-        role="region"
-        aria-labelledby="oracle-consultant-toggle"
-        hidden={!open}
-      >
-        <ConsentHandoff {...props} />
-      </div>
+      {panelSlot &&
+        createPortal(
+          <div
+            ref={panelRef}
+            id="oracle-consultant-panel"
+            className="oracle-handoff-slot oracle-consultant__panel oracle-no-print"
+            role="region"
+            aria-labelledby="oracle-consultant-toggle"
+            hidden={!open}
+            onKeyDown={(event) => {
+              const toggle = toggleRef.current;
+              if (event.key !== "Tab" || !toggle || !panelRef.current) return;
+              const inPanel = tabbablesIn(panelRef.current);
+              if (event.shiftKey && event.target === inPanel[0]) {
+                event.preventDefault();
+                toggle.focus();
+                return;
+              }
+              if (
+                event.shiftKey ||
+                event.target !== inPanel[inPanel.length - 1]
+              )
+                return;
+              const bar = toggle.closest(".oracle-topbar");
+              const barControls = bar ? tabbablesIn(bar) : [];
+              const next = barControls[barControls.indexOf(toggle) + 1];
+              if (!next) return;
+              event.preventDefault();
+              next.focus();
+            }}
+          >
+            <ConsentHandoff {...props} />
+          </div>,
+          panelSlot,
+        )}
     </div>
   );
 }
@@ -373,6 +431,9 @@ function OracleShellRuntime({
   const [outcome, setOutcome] = useState<OutcomeViewModel | null>(null);
   const [evaluating, setEvaluating] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [consultantSlot, setConsultantSlot] = useState<HTMLDivElement | null>(
+    null,
+  );
   const [hasLocalResume, setHasLocalResume] = useState(
     initialSnapshot !== null,
   );
@@ -859,6 +920,7 @@ function OracleShellRuntime({
             <OracleLockup language={language} />
             <ConsultantContact
               key={outcome ? "assessment" : "consultation"}
+              panelSlot={consultantSlot}
               language={language}
               guardianConsentRequired={guardianConsentRequired}
               {...(outcome
@@ -922,6 +984,7 @@ function OracleShellRuntime({
           </div>
 
           <div className="oracle-main__content">
+            <div ref={setConsultantSlot} className="oracle-consultant-slot" />
             {current.kind === "question" &&
               !HIDE_COUNTER_ON.has(current.questionId) && (
                 <div style={{ marginBottom: "var(--space-4)" }}>
