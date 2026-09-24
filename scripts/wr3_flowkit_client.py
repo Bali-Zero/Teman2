@@ -37,6 +37,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,23 @@ DEFAULT_IMAGE_COST_CR = int(os.environ.get("WR3_FLOWKIT_IMAGE_COST_CR", "0"))
 
 # Backwards-compat alias — older callers passed plan="pro".
 DEFAULT_PLAN = DEFAULT_PAYGATE
+
+
+def shot_id_to_index(shot_id: str) -> int:
+    """`"s001"` -> `1`. Rejects anything else loudly.
+
+    The real shot-pack schema keys shots by `shot_id` (`s<digits>`), not a
+    bare `index` int — `render_shot_pack` below read `shot["index"]`, a shape
+    the production driver (`wr3_render_episode.py::_shot_index`, same
+    conversion) never emits, so a zero-spend test built on an `{"index": …}`
+    fixture went green on a path production never executes (L352).
+    `str.lstrip` strips a CHARACTER SET, not a prefix — `"shot-2".lstrip("s")`
+    is `"hot-2"` — so a non-conforming id used to reach `int()` and raise
+    ValueError from outside any handler.
+    """
+    if not re.fullmatch(r"s\d+", shot_id):
+        raise ValueError(f"expected s<digits>, got {shot_id!r}")
+    return int(shot_id[1:])
 
 
 @dataclass(frozen=True)
@@ -790,7 +808,7 @@ async def render_shot_pack(
 
     for shot in shots:
         request = ClipRequest(
-            shot_index=shot["index"],
+            shot_index=shot_id_to_index(shot["shot_id"]),
             positive_prompt=shot.get("positive_prompt", ""),
             negative_prompt=shot.get("negative_prompt", ""),
             identity_tokens=tuple(shot.get("identity_tokens") or []),

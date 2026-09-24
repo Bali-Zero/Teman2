@@ -150,6 +150,27 @@ def test_revision_two_without_supersedes_ref_is_rejected(load_json: Any) -> None
     assert "revision_missing_supersedes_ref" in _errors(caught.value)
 
 
+def test_revision_one_explicit_null_supersedes_ref_is_rejected(load_json: Any) -> None:
+    """L1302: an explicit ``"supersedes_content_object_ref": null`` at
+    revision 1 is a DIFFERENT document from an absent key per hashing.py's
+    own presence-preserving contract (``model_dump(exclude_unset=True)`` --
+    an absent field is omitted, an explicit ``None`` is serialized as JSON
+    ``null``, so the two have different canonical bytes and a different
+    ``object_hash``). The schema's ``not: {required: [...]}`` at revision 1
+    tests key presence and correctly rejects this shape; the model's old
+    ``is not None`` check tested the deserialized VALUE instead and let it
+    through, silently contradicting the contract it is supposed to enforce.
+    """
+    payload = load_json(FIXTURE_DIR / "valid_minimal_revision_one.json")
+    candidate = deepcopy(payload)
+    candidate["supersedes_content_object_ref"] = None
+    candidate["object_hash"] = object_hash(candidate)
+
+    with pytest.raises(ValidationError) as caught:
+        ContentObject.model_validate(candidate)
+    assert "initial_revision_cannot_supersede" in _errors(caught.value)
+
+
 def test_content_object_is_immutable(load_json: Any) -> None:
     payload = load_json(FIXTURE_DIR / "valid_minimal_revision_one.json")
     instance = ContentObject.model_validate(payload)

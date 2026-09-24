@@ -258,9 +258,7 @@ class IntelEvent(FrozenCoreModel):
     identity: IntelEventIdentity
     classification: IntelEventClassification
     lineage: IntelEventLineage
-    payload_ref: DurablePayloadReference | InlinePublicPayload = Field(
-        discriminator="ref_type"
-    )
+    payload_ref: DurablePayloadReference | InlinePublicPayload = Field(discriminator="ref_type")
     retention: Retention
     object_hash: Sha256Hex
     extensions: Extensions | None = None

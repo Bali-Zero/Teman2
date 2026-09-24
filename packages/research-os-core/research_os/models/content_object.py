@@ -254,7 +254,18 @@ class ContentObject(FrozenCoreModel):
         # current member -- is graph.select_current_member's job, exactly
         # as successor_edge.py's own FREEZE-CONFLICT comment defers it
         # there).
-        if self.revision == 1 and self.supersedes_content_object_ref is not None:
+        # PRESENCE, not value (L1302): the schema's `not: {required: [...]}`
+        # at revision 1 tests key presence only, and hashing.py's own
+        # docstring states the wire contract verbatim -- "an absent Pydantic
+        # field is omitted, while a field explicitly set to None is
+        # serialized as JSON null" -- so an explicit
+        # `"supersedes_content_object_ref": null` is a DIFFERENT document
+        # from an absent key (different canonical bytes, different
+        # object_hash) and revision 1 must reject both shapes of "the key
+        # is there at all", not just a real ref value. `is not None` here
+        # let an explicit null through: same value as absent per Python,
+        # but NOT the same document per this contract's own stated rule.
+        if self.revision == 1 and "supersedes_content_object_ref" in self.model_fields_set:
             raise PydanticCustomError(
                 "initial_revision_cannot_supersede",
                 "revision 1 of a family cannot carry supersedes_content_object_ref",
