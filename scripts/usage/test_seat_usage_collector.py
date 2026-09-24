@@ -31,6 +31,242 @@ import seat_usage_collector as suc  # noqa: E402
 SINCE = datetime(2000, 1, 1, tzinfo=timezone.utc)  # far enough back to include any fixture mtime
 
 
+def _task_row(provider, sid, **extra):
+    return {"provider": provider, "session_sha256": suc._sha(sid),
+            "parent_session_sha256": None, "role": "implementer", "attempt": 1,
+            "overhead": False, **extra}
+
+
+def _task_doc(rows, **extra):
+    return {"schema": "task-outcome/1", "task_sha256": suc._sha("synthetic-task"),
+            "task_class": "infra-hooks", "cohort": "manual", "sessions": rows,
+            "started_utc": "2026-08-19T00:00:00Z", "ended_utc": "2026-08-20T00:00:00Z", **extra}
+
+
+def _task_report(tmp_path, index, doc):
+    directory = tmp_path / "outcomes"
+    directory.mkdir(exist_ok=True)
+    (directory / "task.json").write_text(json.dumps(doc))
+    return suc.collect_task_outcomes(directory, index)
+
+
+def _task_claude(profile, sid, amount, *, sidecar=None, timestamp="2026-08-19T10:00:00Z"):
+    data = json.loads(_claude_line("message-" + (sidecar or sid), "request-" + (sidecar or sid), amount, amount,
+                                 cache_read=amount, cache_creation=0, ts=timestamp))
+    data["sessionId"] = sid
+    if sidecar:
+        directory = profile / "projects" / "-synthetic-workspace" / sid / "subagents"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"agent-{sidecar}.jsonl"
+        path.write_text(json.dumps(data) + "\n")
+        return path
+    return _write_transcript(profile, sid + ".jsonl", [json.dumps(data)])
+
+
+def _task_codex(profile, sid, totals, *, parent=None):
+    source = {"subagent": {"thread_spawn": {"parent_thread_id": parent}}} if parent else "cli"
+    rows = [json.dumps({"type": "session_meta", "payload": {"id": sid, "source": source}})]
+    previous = 0
+    for step, total in enumerate(totals):
+        delta = total - previous if total >= previous else total
+        event = json.loads(_token_count_line(total, total, delta, delta))
+        event["timestamp"] = f"2026-08-19T10:{step:02d}:00Z"
+        event["payload"]["info"]["last_token_usage"].update(cached_input_tokens=0, reasoning_output_tokens=0)
+        rows.append(json.dumps(event))
+        previous = total
+    return _write_session(profile, sid + ".jsonl", rows)
+
+
+def test_task_usage_includes_descendants_retries_and_excludes_replayed_snapshots(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    root = _task_claude(claude, "claude-root", 5)
+    root.write_text(root.read_text() + root.read_text())
+    _task_claude(claude, "claude-root", 3, sidecar="child")
+    _task_codex(codex, "codex-root", [10, 10, 30, 4])
+    _task_codex(codex, "codex-child", [7], parent="codex-root")
+    # The same transcript through a second path still has one session identity.
+    first = next((codex / "sessions").rglob("codex-root.jsonl"))
+    first.with_name("alias.jsonl").write_bytes(first.read_bytes())
+    before = (suc.collect_claude(str(claude), SINCE), suc.collect_codex(str(codex), SINCE))
+    after = (suc.collect_claude(str(claude), SINCE, task_index=index), suc.collect_codex(str(codex), SINCE, task_index=index))
+    assert before == after  # Legacy seat semantics remain unchanged, including their limitations.
+    doc = _task_doc([_task_row("claude", "claude-root", status="failed"),
+                     _task_row("codex", "codex-root", attempt=2, overhead=True)])
+    report = _task_report(tmp_path, index, doc)
+    task = report["tasks"][0]
+    assert task["descendants_added"] == 2 and task["sessions_found"] == 4
+    assert task["by_provider"]["claude"]["input_tokens"] == 8
+    assert task["by_provider"]["codex"]["input_tokens"] == 41  # 30 + reset 4 + child 7
+    assert task["by_provider"]["codex"]["usage_events"] == 4
+    assert task["overhead_tokens"]["codex"]["input_tokens"] == 41
+    assert task["failed_or_retried_sessions"] == 2 and task["attempts_max"] == 2
+    assert task["status"] == "unknown" and task["usage_complete"]
+    assert report["tasks_meta"]["tokens_per_verified_task"] is None
+    serialized = json.dumps(report)
+    assert all(s not in serialized for s in ("claude-root", "codex-root", "codex-child", "agent-child", str(tmp_path)))
+
+
+def test_task_windows_freeze_usage_and_do_not_charge_inherited_totals(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "shared-session", [100, 140, 190])
+    rows = [json.loads(s) for s in path.read_text().splitlines()]
+    rows[1]["payload"]["info"]["last_token_usage"].update(input_tokens=10, output_tokens=10)
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    whole = _task_report(tmp_path, index, _task_doc([_task_row("codex", "shared-session")]))["tasks"][0]
+    assert whole["by_provider"]["codex"]["input_tokens"] == 100  # own first 10 + subsequent 90
+    doc = _task_doc([_task_row("codex", "shared-session")], started_utc="2026-08-19T10:01:00Z", ended_utc="2026-08-19T10:02:00Z")
+    task = _task_report(tmp_path, index, doc)["tasks"][0]
+    assert task["by_provider"]["codex"]["input_tokens"] == 40
+
+
+def test_task_verification_needs_independent_gate_evidence_and_closed_window(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    _task_claude(profile, "independent-gate", 2)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    outcome = {"status": "verified_complete", "verifier_role": "fresh-gate",
+               "verifier_session_sha256": suc._sha("independent-gate"),
+               "evidence_sha256": suc._sha("independent-gate-receipt"), "verified_utc": "2026-08-19T11:00:00Z"}
+    doc = _task_doc([_task_row("claude", "builder"), _task_row("claude", "independent-gate", role="gate", overhead=True)], outcome=outcome)
+    report = _task_report(tmp_path, index, doc)
+    assert report["tasks"][0]["status"] == "verified_complete"
+    assert report["tasks_meta"]["tokens_per_verified_task"]["claude"]["input_tokens"] == 12
+    for field, replacement in (("evidence_sha256", None), ("verifier_session_sha256", suc._sha("builder")), ("verified_utc", None)):
+        invalid = {**doc, "outcome": {**outcome, field: replacement}}
+        report = _task_report(tmp_path, index, invalid)
+        assert report["tasks"][0]["status"] == "unknown" and report["tasks_meta"]["downgraded"] == 1
+    del doc["ended_utc"]
+    assert _task_report(tmp_path, index, doc)["tasks"][0]["status"] == "unknown"
+
+
+def test_task_missing_usage_and_unknown_counters_never_make_denominator(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "found", [10])
+    rows = [json.loads(s) for s in path.read_text().splitlines()]
+    del rows[1]["payload"]["info"]["last_token_usage"]["reasoning_output_tokens"]
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    task = _task_report(tmp_path, index, _task_doc([_task_row("codex", "found"), _task_row("claude", "missing")]))["tasks"][0]
+    assert task["sessions_missing"] == 1 and not task["usage_complete"]
+    assert task["by_provider"]["codex"]["reasoning_output_tokens"] == "unknown"
+
+
+def test_task_schema_rejects_extra_text_even_when_short(tmp_path):
+    for doc in (_task_doc([_task_row("claude", "a")], client_name="short-pii"),
+                _task_doc([_task_row("claude", "a", secret="small")]),
+                _task_doc([_task_row("claude", "a")], task_sha256="raw-identifier")):
+        report = _task_report(tmp_path, {}, doc)
+        assert report["tasks"] == [] and report["tasks_meta"]["rejected"] == 1
+        assert "short-pii" not in json.dumps(report)
+
+
+def test_task_overlapping_attribution_invalidates_both_denominators(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "shared", 5)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("claude", "shared")])
+    _task_report(tmp_path, index, doc)
+    second = {**doc, "task_sha256": suc._sha("second-task")}
+    (tmp_path / "outcomes/second.json").write_text(json.dumps(second))
+    tasks = suc.collect_task_outcomes(tmp_path / "outcomes", index)["tasks"]
+    assert len(tasks) == 2 and all(not t["usage_complete"] for t in tasks)
+    assert all("overlapping_task_usage" in t["usage_issues"] for t in tasks)
+
+
+def test_task_claude_streaming_and_profile_aliases_keep_latest_field_values(tmp_path):
+    first, second, index = tmp_path / "first", tmp_path / "second", {}
+    _task_claude(first, "same-session", 5)
+    path = _task_claude(second, "same-session", 10, timestamp="2026-08-19T10:01:00Z")
+    row = json.loads(path.read_text())
+    del row["message"]["usage"]["output_tokens"]
+    path.write_text(json.dumps(row) + "\n")
+    before = suc.collect_claude(str(second), SINCE)
+    suc.collect_claude(str(first), SINCE, task_index=index)
+    assert suc.collect_claude(str(second), SINCE, task_index=index) == before
+    task = _task_report(tmp_path, index, _task_doc([_task_row("claude", "same-session")]))["tasks"][0]
+    assert task["by_provider"]["claude"]["input_tokens"] == 10
+    assert task["by_provider"]["claude"]["output_tokens"] == 5
+    assert task["by_provider"]["claude"]["usage_events"] == 1
+
+
+def test_task_malformed_transcript_is_incomplete_without_changing_legacy_seats(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    path = _task_claude(profile, "damaged", 5)
+    path.write_text(path.read_text() + "{invalid partial record\n")
+    before = suc.collect_claude(str(profile), SINCE)
+    assert suc.collect_claude(str(profile), SINCE, task_index=index) == before
+    task = _task_report(tmp_path, index, _task_doc([_task_row("claude", "damaged")]))["tasks"][0]
+    assert not task["usage_complete"] and "source_read_error" in task["usage_issues"]
+
+
+def test_task_report_is_added_by_actual_cli_and_tasks_only_does_not_write(tmp_path, monkeypatch, capsys):
+    profile = tmp_path / "claude"
+    _task_claude(profile, "cli-session", 5)
+    seat_map = tmp_path / "map.json"
+    seat_map.write_text(json.dumps({"claude_profiles": {str(profile): "A1"}, "codex_homes": {}}))
+    out = tmp_path / "snapshot.json"
+    args = ["collector", "--seat-map", str(seat_map), "--out", str(out), "--task-outcomes", str(tmp_path / "outcomes")]
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", args)
+    assert suc.main() == 0
+    before = json.loads(out.read_text())
+    assert before["tasks_meta"]["status"] == "no_manifests"
+    _task_report(tmp_path, {}, _task_doc([_task_row("claude", "cli-session")]))
+    assert suc.main() == 0
+    after = json.loads(out.read_text())
+    assert before["seats"] == after["seats"]
+    assert after["tasks"][0]["by_provider"]["claude"]["input_tokens"] == 5
+    snapshot_bytes = out.read_bytes()
+    capsys.readouterr()
+    monkeypatch.setattr(sys, "argv", [*args, "--tasks-only"])
+    assert suc.main() == 0
+    assert json.loads(capsys.readouterr().out)["tasks"] == after["tasks"]
+    assert out.read_bytes() == snapshot_bytes
+
+
+def test_task_cohorts_are_reported_separately_and_duplicate_manifests_fail_closed(tmp_path):
+    profile, index, docs = tmp_path / "claude", {}, []
+    for cohort, amount in (("baseline", 10), ("post-token-efficiency-six", 6)):
+        builder, gate = cohort + "-builder", cohort + "-gate"
+        _task_claude(profile, builder, amount)
+        _task_claude(profile, gate, 2)
+        docs.append(_task_doc([_task_row("claude", builder), _task_row("claude", gate, role="gate")],
+                             cohort=cohort, task_sha256=suc._sha(cohort), outcome={
+                                 "status": "verified_complete", "verifier_role": "fresh-gate",
+                                 "verifier_session_sha256": suc._sha(gate), "evidence_sha256": suc._sha("receipt-" + cohort),
+                                 "verified_utc": "2026-08-19T11:00:00Z"}))
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    directory = tmp_path / "outcomes"
+    directory.mkdir()
+    for n, doc in enumerate(docs):
+        (directory / f"{n}.json").write_text(json.dumps(doc))
+    meta = suc.collect_task_outcomes(directory, index)["tasks_meta"]
+    assert meta["verified_tasks_with_complete_usage"] == 2 and meta["tokens_per_verified_task"] is None
+    assert [c["tokens_per_verified_task"]["claude"]["input_tokens"] for c in meta["cohorts"]] == [12, 8]
+    (directory / "duplicate.json").write_text(json.dumps(docs[0]))
+    report = suc.collect_task_outcomes(directory, index)
+    assert report["tasks_meta"]["rejected"] == 1
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 1
+    assert "duplicate_task_manifest" in report["tasks"][0]["usage_issues"]
+
+
+def test_task_window_prunes_old_children_but_keeps_active_grandchildren(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "root", [10])
+    _task_codex(profile, "old-child", [5], parent="root")
+    active = _task_codex(profile, "active-grandchild", [7], parent="old-child")
+    rows = [json.loads(line) for line in active.read_text().splitlines()]
+    rows[1]["timestamp"] = "2026-08-19T10:01:00Z"
+    active.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("codex", "root")], started_utc="2026-08-19T10:01:00Z")
+    task = _task_report(tmp_path, index, doc)["tasks"][0]
+    assert task["descendants_added"] == 1 and task["sessions_found"] == 2
+    assert task["by_provider"]["codex"]["input_tokens"] == 7
+    assert task["usage_complete"]
+
+
 def _token_count_line(total_in: int, total_out: int, last_in: int, last_out: int) -> str:
     """One `token_count` event_msg line, shaped exactly like a real Codex
     session file (payload.type == "token_count", info.total_token_usage =

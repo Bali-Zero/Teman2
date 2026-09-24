@@ -50,7 +50,13 @@ Mappatura profili→seat: scripts/usage/seat_map.json (creato al primo run con
 template da editare: quale profilo cswap corrisponde ad A1/A2/A3/AZ, ecc.)
 """
 from __future__ import annotations
-import argparse, glob, json, os, sys, time
+import argparse
+import glob
+import hashlib
+import json
+import os
+import re
+import sys
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
@@ -124,7 +130,7 @@ def _acc_tok(acc: int | str, val: int | None) -> int | str:
     return acc + val
 
 
-def collect_claude(profile_dir: str, since: datetime) -> dict:
+def collect_claude(profile_dir: str, since: datetime, *, task_index: dict | None = None) -> dict:
     """Parse Claude Code JSONL transcripts for one profile/account.
 
     Real bug (2026-09-07, "output 852 vs 14931" on a Sonnet builder
@@ -178,6 +184,7 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
     if not files:
         return {"status": "empty"}
     for fp in files:
+        file_node = None
         try:
             if os.path.getmtime(fp) < since.timestamp():
                 continue
@@ -186,7 +193,14 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
                     try:
                         j = json.loads(line)
                     except Exception:
+                        if task_index is not None and file_node:
+                            task_index["nodes"][file_node]["read_error"] = True
                         continue
+                    if task_index is not None and isinstance(j.get("sessionId"), str):
+                        sid = j["sessionId"]
+                        parent = sid if Path(fp).parent.name == "subagents" else None
+                        identity = f"{sid}:{Path(fp).stem}" if parent else sid
+                        file_node = _task_node(task_index, "claude", identity, parent)
                     msg = j.get("message") or {}
                     usage = msg.get("usage")
                     if not usage:
@@ -226,6 +240,8 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
                         g["order"] = order
                         g["day"] = _day(j.get("timestamp", "")) or "??"
                         g["model"] = msg.get("model", "?")
+                        if task_index is not None:
+                            g["task_node"] = file_node
                     for field, usage_key in (("in", "input_tokens"),
                                              ("out", "output_tokens"),
                                              ("cache_r", "cache_read_input_tokens"),
@@ -237,9 +253,25 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
                         if cur is None or order >= (cur[0], cur[1]):
                             g[field] = (order[0], order[1], v)
         except Exception as e:  # a broken source does not stop the run
+            if task_index is not None and file_node:
+                task_index["nodes"][file_node]["read_error"] = True
             out["status"] = "partial"
             out.setdefault("errors", []).append(f"{fp}: {e}")
-    for g in groups.values():
+    for key, g in groups.items():
+        if task_index is not None and g.get("task_node"):
+            # Reuse the already reduced response groups, including field-level
+            # streaming updates. Cross-profile aliases must not count twice.
+            identity = (*g["task_node"], key) if key[0] == "__incomplete_id__" else key
+            group_key = hashlib.sha256(repr(identity).encode()).hexdigest()
+            old = task_index.setdefault("claude_groups", {}).get(group_key)
+            merged = dict(g if not old or g["order"] >= old["order"] else old)
+            if old:
+                for field in ("in", "out", "cache_r", "cache_w"):
+                    values = [x[field] for x in (old, g) if x[field]]
+                    merged[field] = max(values, key=lambda value: value[:2]) if values else None
+            task_index["claude_groups"][group_key] = merged
+            if key[0] == "__incomplete_id__":
+                task_index["nodes"][g["task_node"]]["incomplete_identity"] = True
         d = out["days"][g["day"]]
         for k in ("in", "out", "cache_r", "cache_w"):
             d[k] = _acc_tok(d[k], g[k][2] if g[k] is not None else None)
@@ -294,7 +326,7 @@ def _extract_cumulative_token_usage(event: dict) -> dict | None:
     return None
 
 
-def collect_codex(codex_home: str, since: datetime) -> dict:
+def collect_codex(codex_home: str, since: datetime, *, task_index: dict | None = None) -> dict:
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int))}
     root = Path(codex_home) / "sessions"
     if not root.is_dir():
@@ -303,6 +335,7 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
     if not files:
         return {"status": "empty"}
     for fp in files:
+        task_node = None
         try:
             if os.path.getmtime(fp) < since.timestamp():
                 continue
@@ -310,19 +343,39 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
             last_total: dict | None = None  # ultimo cumulativo visto in QUESTA sessione
             with open(fp, encoding="utf-8", errors="replace") as fh:
                 for line in fh:
-                    if "token" not in line:
+                    if "token" not in line and not (task_index is not None and "session_meta" in line):
                         continue
                     try:
                         j = json.loads(line)
                     except Exception:
+                        if task_index is not None and task_node:
+                            task_index["nodes"][task_node]["read_error"] = True
                         continue
+                    if task_index is not None and j.get("type") == "session_meta":
+                        meta = j.get("payload") or {}
+                        source = meta.get("source")
+                        sub = source.get("subagent") if isinstance(source, dict) else None
+                        spawn = sub.get("thread_spawn") if isinstance(sub, dict) else None
+                        parent = spawn.get("parent_thread_id") if isinstance(spawn, dict) else None
+                        task_node = _task_node(task_index, "codex", meta.get("id"), parent)
                     usage = _extract_cumulative_token_usage(j)
                     if usage is not None:
                         last_total = usage
+                        if task_index is not None and task_node:
+                            stamp = _ts_epoch(j.get("timestamp", ""))
+                            info = (j.get("payload") or {}).get("info") or {}
+                            raw_total = info.get("total_token_usage") or usage
+                            total = {k: _tok_or_none(raw_total, k) for k in TASK_COUNTERS["codex"]}
+                            event_key = (stamp, tuple(total.values()))
+                            last = info.get("last_token_usage") or {}
+                            last = {k: _tok_or_none(last, k) for k in TASK_COUNTERS["codex"]}
+                            task_index["nodes"][task_node]["events"][event_key] = (stamp, total, last)
             if last_total is not None:
                 out["days"][day]["in"] += last_total.get("input_tokens", 0) or 0
                 out["days"][day]["out"] += last_total.get("output_tokens", 0) or 0
         except Exception as e:
+            if task_index is not None and task_node:
+                task_index["nodes"][task_node]["read_error"] = True
             out["status"] = "partial"
             out.setdefault("errors", []).append(f"{fp}: {e}")
     out["days"] = {k: dict(v) for k, v in out["days"].items()}
@@ -442,20 +495,261 @@ def fmt_metrics(days: dict, provenance: str | None = None) -> str:
     return s
 
 
+TASK_COUNTERS = {
+    "claude": ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens"),
+    "codex": ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens"),
+}
+TASK_ROLES = {"dux", "implementer", "review", "gate", "probe", "release"}
+TASK_CLASSES = {"infra-hooks", "workflow", "code", "docs", "research", "operations", "other"}
+TASK_COHORTS = {"baseline", "pre-token-efficiency-six", "post-token-efficiency-six", "compact-only", "manual"}
+
+
+def _sha(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _is_sha(value) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def _task_node(index: dict, provider: str, sid, parent=None):
+    if not isinstance(sid, str) or not sid or sid.startswith("None:"):
+        return None
+    key = (provider, _sha(sid))
+    node = index.setdefault("nodes", {}).setdefault(key, {"parent": None, "events": {}})
+    if isinstance(parent, str) and parent:
+        node["parent"] = (provider, _sha(parent))
+    return key
+
+
+def _task_timestamp(value):
+    if not isinstance(value, str) or len(value) > 40:
+        raise ValueError("timestamp")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("timezone required")
+    return parsed.timestamp()
+
+
+def _task_manifest(doc: dict) -> tuple[dict, bool]:
+    """Strict whitelist: no arbitrary text, transcript paths, or raw identities."""
+    allowed = {"schema", "task_sha256", "task_class", "cohort", "sessions", "outcome", "started_utc", "ended_utc"}
+    if not isinstance(doc, dict) or set(doc) - allowed or doc.get("schema") != "task-outcome/1":
+        raise ValueError("schema")
+    if not _is_sha(doc.get("task_sha256")) or doc.get("task_class") not in TASK_CLASSES or doc.get("cohort") not in TASK_COHORTS:
+        raise ValueError("task identity")
+    start = _task_timestamp(doc["started_utc"]) if "started_utc" in doc else float("-inf")
+    end = _task_timestamp(doc["ended_utc"]) if "ended_utc" in doc else float("inf")
+    if start >= end:
+        raise ValueError("window")
+    rows = doc.get("sessions")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("sessions")
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict) or set(row) - {"provider", "session_sha256", "parent_session_sha256", "role", "attempt", "overhead", "status"}:
+            raise ValueError("session schema")
+        if row.get("provider") not in TASK_COUNTERS or not _is_sha(row.get("session_sha256")) or row.get("role") not in TASK_ROLES:
+            raise ValueError("session identity")
+        if row.get("parent_session_sha256") is not None and not _is_sha(row["parent_session_sha256"]):
+            raise ValueError("parent identity")
+        if type(row.get("attempt")) is not int or row["attempt"] < 1 or type(row.get("overhead")) is not bool:
+            raise ValueError("attempt")
+        if row.get("status", "unknown") not in {"unknown", "succeeded", "failed"}:
+            raise ValueError("session status")
+        key = (row["provider"], row["session_sha256"])
+        if key in seen:
+            raise ValueError("duplicate session")
+        seen.add(key)
+    outcome = doc.get("outcome", {"status": "unknown"})
+    if not isinstance(outcome, dict) or set(outcome) - {"status", "verifier_role", "verifier_session_sha256", "evidence_sha256", "verified_utc"}:
+        raise ValueError("outcome schema")
+    if outcome.get("status") not in {"verified_complete", "failed", "abandoned", "unknown"}:
+        raise ValueError("outcome")
+    if outcome.get("verifier_role", "none") not in {"fresh-gate", "ci", "none"}:
+        raise ValueError("verifier role")
+    for field in ("verifier_session_sha256", "evidence_sha256"):
+        if outcome.get(field) is not None and not _is_sha(outcome[field]):
+            raise ValueError("verifier identity")
+    if outcome.get("verified_utc") is not None:
+        _task_timestamp(outcome["verified_utc"])
+    verified = outcome.get("status") == "verified_complete"
+    verifier = outcome.get("verifier_session_sha256")
+    independent = verifier is not None and any(r["session_sha256"] == verifier and r["role"] == "gate" for r in rows)
+    independent = independent and not any(r["session_sha256"] == verifier and r["role"] != "gate" for r in rows)
+    valid_proof = outcome.get("verifier_role") in {"fresh-gate", "ci"} and outcome.get("evidence_sha256") and outcome.get("verified_utc")
+    # CI attestations can identify a job instead of a metered model session.
+    valid_proof = valid_proof and (independent or outcome.get("verifier_role") == "ci")
+    # Completed-task attribution is frozen; a later turn in a reused session
+    # must not silently change the recorded cost of an earlier task.
+    valid_proof = valid_proof and "started_utc" in doc and "ended_utc" in doc
+    if valid_proof:
+        valid_proof = start <= _task_timestamp(outcome["verified_utc"]) <= end
+    return {**doc, "status": "unknown" if verified and not valid_proof else outcome["status"], "window": (start, end)}, bool(verified and not valid_proof)
+
+
+def _task_events(index: dict) -> None:
+    """Add Claude response groups to the same hashed, provider-specific index."""
+    mapping = dict(zip(TASK_COUNTERS["claude"], ("in", "cache_r", "cache_w", "out")))
+    for identity, group in index.get("claude_groups", {}).items():
+        values = {field: group[key][2] if group[key] else None for field, key in mapping.items()}
+        index["nodes"][group["task_node"]]["events"][identity] = (group["order"][0], values, {})
+
+
+def _task_usage(provider: str, node: dict, window: tuple) -> tuple[dict, set]:
+    fields = TASK_COUNTERS[provider]
+    result = dict.fromkeys(fields, 0)
+    result["usage_events"] = 0
+    previous = {}
+    selected = set()
+    for identity, (stamp, values, last) in sorted(node["events"].items(), key=lambda item: item[1][0]):
+        delta = {}
+        for field in fields:
+            value = values.get(field)
+            if value is None or value < 0:
+                delta[field] = None
+                continue
+            old = previous.get(field)
+            if provider == "claude":
+                delta[field] = value
+            elif old is None:
+                # Forked/resumed threads can start with inherited cumulative
+                # counters. Only this observed call belongs to the new thread.
+                delta[field] = last.get(field)
+            else:
+                delta[field] = value if value < old else value - old
+            if delta[field] is not None and (delta[field] < 0 or delta[field] > value):
+                delta[field] = None
+            previous[field] = value
+        if window[0] <= stamp < window[1]:
+            # Duplicate cumulative observations are not additional usage/calls.
+            if provider == "codex" and all(v == 0 for v in delta.values()):
+                continue
+            for field in fields:
+                result[field] = _acc_tok(result[field], delta[field])
+            result["usage_events"] += 1
+            selected.add(identity)
+    return result, selected
+
+
+def collect_task_outcomes(directory: Path, index: dict) -> dict:
+    meta = {"schema": "task-usage/1", "status": "ok", "rejected": 0, "downgraded": 0,
+            "scope": "observed local Claude/Codex usage; trusted outcome attestations; no monetary estimate"}
+    paths = sorted(directory.glob("*.json")) if directory.is_dir() else []
+    if not paths:
+        meta["status"] = "no_manifests"
+    _task_events(index)
+    tasks, used, identities = [], {}, {}
+    for path in paths:
+        try:
+            if path.stat().st_size > 1_000_000:
+                raise ValueError("oversized manifest")
+            doc, downgraded = _task_manifest(json.loads(path.read_text()))
+            if doc["task_sha256"] in identities:
+                identities[doc["task_sha256"]]["usage_complete"] = False
+                identities[doc["task_sha256"]]["usage_issues"].append("duplicate_task_manifest")
+                raise ValueError("duplicate task")
+        except (OSError, ValueError, TypeError, KeyError):
+            meta["rejected"] += 1
+            continue
+        meta["downgraded"] += downgraded
+        declared = {(r["provider"], r["session_sha256"]): r for r in doc["sessions"]}
+        selected = dict(declared)
+        nodes = index.get("nodes", {})
+        while True:
+            children = {k: selected[n["parent"]] for k, n in nodes.items() if k not in selected and n["parent"] in selected}
+            if not children:
+                break
+            selected.update(children)
+        # Traverse before pruning so an active grandchild is still found through
+        # a parent whose own usage predates this task's window.
+        selected = {key: row for key, row in selected.items()
+                    if key in declared or not nodes[key]["events"] or nodes[key].get("read_error")
+                    or any(doc["window"][0] <= event[0] < doc["window"][1] or event[0] == float("-inf")
+                           for event in nodes[key]["events"].values())}
+        result = {"task_sha256": doc["task_sha256"], "task_class": doc["task_class"], "cohort": doc["cohort"],
+                  "status": doc["status"], "sessions_declared": len(declared), "sessions_found": 0,
+                  "sessions_missing": sum(k not in nodes for k in declared), "descendants_added": len(selected) - len(declared),
+                  "attempts_max": max(r["attempt"] for r in declared.values()),
+                  "failed_or_retried_sessions": sum(r.get("status") == "failed" or r["attempt"] > 1 for r in declared.values()),
+                  "overhead_sessions": 0, "by_provider": {}, "overhead_tokens": {}, "usage_complete": True,
+                  "usage_issues": []}
+        if result["sessions_missing"]:
+            result["usage_issues"].append("missing_sessions")
+        for key, row in selected.items():
+            if key not in nodes:
+                continue
+            provider = key[0]
+            usage, events = _task_usage(provider, nodes[key], doc["window"])
+            result["sessions_found"] += 1
+            result["overhead_sessions"] += row["overhead"]
+            if not nodes[key]["events"] or any(v == "unknown" for v in usage.values()):
+                result["usage_issues"].append("missing_or_unknown_counters")
+            if nodes[key].get("incomplete_identity"):
+                result["usage_issues"].append("incomplete_response_identity")
+            if nodes[key].get("read_error"):
+                result["usage_issues"].append("source_read_error")
+            if any(event[0] == float("-inf") for event in nodes[key]["events"].values()):
+                result["usage_issues"].append("unknown_event_timestamp")
+            for identity in events:
+                event_key = (key, identity)
+                if event_key in used:
+                    other = used[event_key]
+                    other["usage_complete"] = False
+                    other["usage_issues"].append("overlapping_task_usage")
+                    result["usage_issues"].append("overlapping_task_usage")
+                used[event_key] = result
+            for section in ("by_provider", "overhead_tokens") if row["overhead"] else ("by_provider",):
+                subtotal = result[section].setdefault(provider, dict.fromkeys(usage, 0))
+                for field, value in usage.items():
+                    subtotal[field] = _acc_tok(subtotal[field], value if isinstance(value, int) else None)
+        result["usage_complete"] = not result["usage_issues"]
+        tasks.append(result)
+        identities[doc["task_sha256"]] = result
+    for task in tasks:
+        task["usage_issues"] = sorted(set(task["usage_issues"]))
+    eligible = [t for t in tasks if t["status"] == "verified_complete" and t["usage_complete"]]
+    meta["verified_tasks_with_complete_usage"] = len(eligible)
+    meta["tokens_per_verified_task"] = None
+    meta["average_reason"] = "no_verified_tasks_with_complete_usage"
+    cohorts = defaultdict(list)
+    for task in eligible:
+        cohorts[(task["cohort"], task["task_class"])].append(task)
+    meta["cohorts"] = []
+    for (cohort, task_class), members in sorted(cohorts.items()):
+        averages = {}
+        for provider, fields in TASK_COUNTERS.items():
+            present = [t["by_provider"][provider] for t in members if provider in t["by_provider"]]
+            if present:
+                averages[provider] = {k: sum(t[k] for t in present) / len(members) for k in fields}
+        meta["cohorts"].append({"cohort": cohort, "task_class": task_class,
+                                "verified_tasks": len(members), "tokens_per_verified_task": averages})
+    if len(cohorts) > 1:
+        meta["average_reason"] = "mixed_cohorts_or_task_classes; compare_matched_tasks"
+    elif eligible:
+        meta["tokens_per_verified_task"] = meta["cohorts"][0]["tokens_per_verified_task"]
+        meta["average_reason"] = "provider_counters_separate; denominator_is_verified_tasks_with_complete_usage"
+    return {"tasks": tasks, "tasks_meta": meta}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=8)
     ap.add_argument("--out", default=str(Path.home() / ".agent/cost-ledger/seat_usage_snapshot.json"))
     ap.add_argument("--seat-map", default=str(Path(__file__).parent / "seat_map.json"))
     ap.add_argument("--inject", help="path dashboard html in cui iniettare i seats (opzionale)")
+    ap.add_argument("--task-outcomes", default=str(Path.home() / ".agent/cost-ledger/task-outcomes"))
+    ap.add_argument("--tasks-only", action="store_true", help="Print the additive task report without writing a snapshot")
     args = ap.parse_args()
 
     since = NOW - timedelta(days=args.days)
     smap = _load_seat_map(Path(args.seat_map))
     seats = []
+    task_dir = Path(os.path.expanduser(args.task_outcomes))
+    task_index = {} if task_dir.is_dir() and any(task_dir.glob("*.json")) else None
 
     for pdir, seat_id in (smap.get("claude_profiles") or {}).items():
-        r = collect_claude(os.path.expanduser(pdir), since)
+        r = collect_claude(os.path.expanduser(pdir), since, task_index=task_index)
         seats.append({"id": seat_id, "source": f"claude:{pdir}", "status": r.get("status"),
                       "days": r.get("days", {}), "models": r.get("models", {}),
                       "metrics": fmt_metrics(r.get("days", {}),
@@ -473,11 +767,16 @@ def main() -> int:
                       "note": r.get("note")})
 
     for chome, seat_id in (smap.get("codex_homes") or {}).items():
-        r = collect_codex(os.path.expanduser(chome), since)
+        r = collect_codex(os.path.expanduser(chome), since, task_index=task_index)
         seats.append({"id": seat_id, "source": f"codex:{chome}", "status": r.get("status"),
                       "days": r.get("days", {}),
                       "metrics": fmt_metrics(r.get("days", {})) if r.get("days") else None,
                       "note": r.get("note")})
+
+    task_report = collect_task_outcomes(task_dir, task_index or {})
+    if args.tasks_only:
+        print(json.dumps(task_report, sort_keys=True))
+        return 0
 
     seats.append({"id": "G1", "source": "agy (antigravity-cli) invocation logs", **collect_invocations(
         "~/.gemini/antigravity-cli", since,
@@ -497,6 +796,7 @@ def main() -> int:
         "window_days": args.days,
         "seats": seats,
         "api_mirror": collect_api_mirror("~/.agent/cost-ledger", since),
+        **task_report,
     }
 
     out = Path(os.path.expanduser(args.out))
