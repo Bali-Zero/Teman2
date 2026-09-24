@@ -47,7 +47,17 @@
  * note for the 0-3-0 that one needs.
  */
 [data-product="my"][data-garuda-voa="r19"] {
-  min-height: 100vh;
+  /*
+   * The funnel is a sheet laid on the site's ink ground, and it now reads as
+   * one: a gap under the fixed site header (it used to butt against it with
+   * zero clearance), rounded corners, and a bottom margin so the sheet ENDS
+   * where its content ends. It used to carry min-height 100vh, which on a
+   * 900px desktop left a cream field under the lone Next button that read as
+   * a pasted document rather than a page.
+   */
+  margin: 0.75rem 0 2rem;
+  border-radius: 14px;
+  overflow: clip;
   background: var(--bz-base);
   color: var(--tx-pure);
   font-family: var(--font-sans);
@@ -74,94 +84,6 @@
   --accent-funnel: var(--tx-pure);
   --accent-funnel-text: var(--tx-pure);
   --text-on-accent: var(--bz-base);
-}
-
-/*
- * Hero handoff — "rather ask a person first?".
- *
- * R19 law, three ways: the pill is NOT copper (copper marks ownership, the
- * person who owns a case, never an action a visitor takes), NOT red (the
- * my-block has no red at all — danger itself speaks copper), and its target
- * is 48px tall, above the 44px floor, because on a 390px phone this is the
- * one control a visitor uses when the wizard is not what they wanted.
- * Forest --bz-green carries WhatsApp's meaning inside the palette instead of
- * importing WhatsApp's own brand green, which token-lint would read as a new
- * hardcoded brand hex on a redesigned surface. (Not spelled out here either:
- * this file's own contract test forbids a colour literal anywhere in it,
- * comments included — which is how this docblock first turned it red.)
- *
- * The rule that follows sits BELOW the hero copy and ABOVE the wizard's own
- * "STEP 1 OF 4" strip, so the two rules never stack into the collision the
- * first pass of this lane produced.
- */
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1.25rem;
-  margin: 0 0 1.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--bz-border);
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__line {
-  margin: 0;
-  flex: 1 1 14rem;
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  line-height: 1.45;
-  color: var(--tx-secondary);
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-height: 48px;
-  padding: 0 1.25rem;
-  border: 1px solid var(--bz-green);
-  border-radius: 999px;
-  background: var(--bz-elevated);
-  color: var(--bz-green);
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.2;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background 160ms ease,
-    color 160ms ease;
-}
-
-/* The dot is the only ornament: a presence light, not a logo. */
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--bz-green);
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:focus-visible {
-  background: var(--bz-green);
-  color: var(--bz-elevated);
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover::before,
-[data-product="my"][data-garuda-voa="r19"]
-  .voa-hero-wa__cta:focus-visible::before {
-  background: var(--bz-elevated);
-}
-
-/* Phone: the pill takes the full row rather than crowding the copy. */
-@media (max-width: 30rem) {
-  [data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta {
-    width: 100%;
-  }
 }
 
 /*
@@ -977,4 +899,235 @@
   [data-product="my"][data-garuda-voa="r19"] .voa-wiz__act {
     justify-items: stretch;
   }
+}
+
+@media (min-width: 48rem) {
+  [data-product="my"][data-garuda-voa="r19"] {
+    margin: 2rem 0 4rem;
+  }
+}
+
+/*
+ * The verdict, checkout and tracker screens still stand on core's AppFrame,
+ * whose INLINE min-height of 100vh is the one declaration a stylesheet can
+ * only reach with !important. Scoped to this funnel, and to that one
+ * property: the sheet should end where the screen's content ends, on every
+ * screen of the funnel, not only on the landing.
+ */
+[data-product="my"][data-garuda-voa="r19"] section[data-funnel] {
+  min-height: 0 !important;
+}
+
+/*
+ * ── The landing sheet (Cap Dinas) ──────────────────────────────────────
+ *
+ * One column on a phone, in the order a first-time traveller needs it:
+ * who is speaking (mark + name), the promise, the three terms as a filed
+ * line, the person, then the first question. From 64rem the identity column
+ * and the form sit side by side, so the whole first step — options, action
+ * and the reassurance under it — lands above the fold at 1440x900.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 2rem;
+  color: var(--tx-pure);
+}
+
+@media (min-width: 48rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet {
+    padding: 3rem 2.5rem 3.5rem;
+    gap: 2.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet {
+    max-width: none;
+    grid-template-columns: minmax(0, 21rem) minmax(0, 40rem);
+    justify-content: center;
+    column-gap: 4.5rem;
+    align-items: start;
+    padding: 3.5rem 3rem 4rem;
+  }
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-head {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tx-pure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-head__title {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-serif);
+  font-size: clamp(2.1rem, 5vw, 3rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-head__lede {
+  margin: 0;
+  max-width: 30rem;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--tx-secondary);
+}
+
+/*
+ * The terms, filed: small, one per line, the figure in the data tone every
+ * other figure on this surface wears. They used to be a three-column row of
+ * 2xl numerals — a dashboard between the promise and the first question.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-terms {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--bz-border);
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-terms li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-terms__n {
+  flex: none;
+  min-width: 0.8rem;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  line-height: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--bz-data);
+}
+
+/*
+ * Hero handoff — "rather ask a person first?".
+ *
+ * R19 law, three ways: the pill is NOT copper (copper marks ownership, the
+ * person who owns a case, never an action a visitor takes), NOT red (the
+ * my-block has no red at all — danger itself speaks copper), and its target
+ * is 48px tall, above the 44px floor. Forest --bz-green carries WhatsApp's
+ * meaning inside the palette instead of importing WhatsApp's own brand
+ * green, which token-lint would read as a new hardcoded brand hex. (Not
+ * spelled out here either: this file's own contract test forbids a colour
+ * literal anywhere in it, comments included.)
+ *
+ * The presence dot it used to carry sat to the left of the label exactly
+ * where a radio button's circle sits, a few rows above real choices: it read
+ * as one more option. The named agent's face takes that place instead.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0;
+  padding: 1rem;
+  border: 1px solid var(--bz-border);
+  border-radius: 12px;
+  background: var(--bz-elevated);
+}
+
+/*
+ * On a phone the card's own chrome costs the height the first question
+ * needs to reach the fold; the line and the pill stay, the frame goes.
+ */
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-hero-wa {
+    margin: 0;
+    padding: 0.25rem 0 0;
+    border: none;
+    background: transparent;
+  }
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__line {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__who {
+  color: var(--tx-pure);
+  font-weight: 600;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 1.25rem 0 0.4rem;
+  border: 1px solid var(--bz-green);
+  border-radius: 999px;
+  background: var(--bz-elevated);
+  color: var(--bz-green);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:hover,
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__cta:focus-visible {
+  background: var(--bz-green);
+  color: var(--bz-elevated);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-hero-wa__face {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-main {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-status {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-submit-error {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--bz-border);
 }

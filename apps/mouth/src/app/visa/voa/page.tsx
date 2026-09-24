@@ -2,12 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  AppFrame,
-  AppTrustStrip,
-  useFunnelApp,
-  type WizardStep,
-} from "@balizero/core";
+import { BZLogo, useFunnelApp, type WizardStep } from "@balizero/core";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
@@ -438,81 +433,117 @@ export default function VoaEligibilityPage() {
        * and under the ruling in force this simply re-states `en`.
        */}
       <ContentLangSync locale={locale} />
-      <AppFrame
-        funnel="visa"
-        title={t("frame.title")}
-        subtitle={t("frame.subtitle")}
-        trustStrip={
-          <AppTrustStrip
-            items={[
-              { value: "4", label: t("trust.questions.label") },
-              { value: "1", label: t("trust.price.label") },
-              { value: "0", label: t("trust.government.label") },
-            ]}
-          />
-        }
+      {/*
+       * The sheet the funnel is filed on. It used to be core's AppFrame,
+       * whose inline `minHeight: 100vh` ran the paper to the bottom of every
+       * viewport under a lone Next button, and whose trust strip set three
+       * dashboard numerals between the promise and the first question —
+       * measured at 390px, that pushed step 1's options and its action below
+       * the fold. `data-funnel` stays: voa-r19.css's 0-3-0 accent override
+       * keys on it.
+       */}
+      <section
+        role="region"
+        aria-label={t("frame.title")}
+        data-funnel="visa"
+        className="voa-sheet"
       >
-        {/*
-         * Measured on production 2026-09-16 at 390px: the only WhatsApp
-         * controls on this page were the nav link (height 0 — it lives inside
-         * the collapsed hamburger) and a footer "Get Started". A visitor who
-         * wants a human had nothing to tap in the first screen. This is that
-         * control, and it is a WhatsAppLeadButton rather than a bare wa.me
-         * anchor so the tap writes a lead_intents row first: a tourist who
-         * leaves the funnel for a human is a lead saved, not a lead lost.
-         */}
-        <div className="voa-hero-wa">
-          <p className="voa-hero-wa__line">{t("hero.wa.line")}</p>
-          <WhatsAppLeadButton
-            source="garuda_voa"
-            className="voa-hero-wa__cta"
-            fallbackHref={buildWhatsAppLink("visa", t("hero.wa.message"))}
-            whatsappContext={[
-              {
-                label: t("lead.context.pageLabel"),
-                value: t("lead.context.pageValue"),
-              },
-            ]}
-            context={{ surface: "voa_hero" }}
-          >
-            {t("hero.wa.cta")}
-          </WhatsAppLeadButton>
-        </div>
-        <VoaWizard
-          steps={steps}
-          labels={{
-            stepOf: (current, total) => t("wizard.stepOf", { current, total }),
-            progress: t("wizard.progress"),
-            back: t("wizard.back"),
-            next: t("wizard.next"),
-            finish: t("wizard.finish"),
-            change: t("wizard.change"),
-            assure: t("wizard.assure"),
-          }}
-          persistKey="bz.garuda_voa.wizard"
-          onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
-          onAbandon={(step) => tracker.wizardAbandoned(step)}
-          onComplete={onComplete}
-        />
-        {submitting ? (
-          <p style={{ color: "var(--color-text-muted)" }} role="status">
-            {t("status.checking")}
+        <header className="voa-head">
+          <p className="voa-lockup">
+            <BZLogo variant="round" size={28} priority />
+            <span className="voa-lockup__name">{t("lockup.brand")}</span>
           </p>
-        ) : null}
-        {submitError ? (
-          <p
-            role="alert"
-            style={{
-              color: "var(--tx-pure)",
-              margin: 0,
-              borderLeft: "3px solid var(--bz-border)",
-              paddingLeft: "0.75rem",
+          <h1 className="voa-head__title">{t("frame.title")}</h1>
+          <p className="voa-head__lede">{t("frame.subtitle")}</p>
+          {/* The three terms, read as a filed line rather than a scoreboard. */}
+          <ul className="voa-terms">
+            <li>
+              <span className="voa-terms__n">4</span>
+              {t("trust.questions.label")}
+            </li>
+            <li>
+              <span className="voa-terms__n">1</span>
+              {t("trust.price.label")}
+            </li>
+            <li>
+              <span className="voa-terms__n">0</span>
+              {t("trust.government.label")}
+            </li>
+          </ul>
+          {/*
+           * Measured on production 2026-09-16 at 390px: the only WhatsApp
+           * controls on this page were the nav link (height 0 — it lives
+           * inside the collapsed hamburger) and a footer "Get Started". A
+           * visitor who wants a human had nothing to tap in the first screen.
+           * This is that control, and it is a WhatsAppLeadButton rather than
+           * a bare wa.me anchor so the tap writes a lead_intents row first: a
+           * tourist who leaves the funnel for a human is a lead saved, not a
+           * lead lost. The face is the named agent the owner ruled for this
+           * funnel (Cap Dinas v2, ruling 5) — a person, not a presence dot.
+           */}
+          <div className="voa-hero-wa">
+            <p className="voa-hero-wa__line">
+              {t("hero.wa.line")}{" "}
+              <span className="voa-hero-wa__who">{t("hero.wa.who")}</span>
+            </p>
+            <WhatsAppLeadButton
+              source="garuda_voa"
+              className="voa-hero-wa__cta"
+              fallbackHref={buildWhatsAppLink("visa", t("hero.wa.message"))}
+              whatsappContext={[
+                {
+                  label: t("lead.context.pageLabel"),
+                  value: t("lead.context.pageValue"),
+                },
+              ]}
+              context={{ surface: "voa_hero" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- a 32px staff face; the optimiser adds nothing here */}
+              <img
+                className="voa-hero-wa__face"
+                src="/static/team/surya.jpg"
+                alt=""
+                width={32}
+                height={32}
+              />
+              {t("hero.wa.cta")}
+            </WhatsAppLeadButton>
+          </div>
+        </header>
+        <main className="voa-main">
+          <VoaWizard
+            steps={steps}
+            labels={{
+              stepOf: (current, total) =>
+                t("wizard.stepOf", { current, total }),
+              progress: t("wizard.progress"),
+              back: t("wizard.back"),
+              next: t("wizard.next"),
+              finish: t("wizard.finish"),
+              change: t("wizard.change"),
+              assure: t("wizard.assure"),
             }}
-          >
-            {submitError}
-          </p>
-        ) : null}
-      </AppFrame>
+            persistKey="bz.garuda_voa.wizard"
+            onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
+            onAbandon={(step) => tracker.wizardAbandoned(step)}
+            onComplete={onComplete}
+          />
+          {submitting ? (
+            <p className="voa-status" role="status">
+              {t("status.checking")}
+            </p>
+          ) : null}
+          {submitError ? (
+            <p
+              role="alert"
+              className="voa-submit-error"
+              style={{ color: "var(--tx-pure)" }}
+            >
+              {submitError}
+            </p>
+          ) : null}
+        </main>
+      </section>
     </>
   );
 }

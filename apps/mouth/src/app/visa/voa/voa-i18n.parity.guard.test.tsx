@@ -108,6 +108,8 @@ const SAME_BY_DESIGN: Partial<Record<VoaCopyKey, string>> = {
   "nationality.AUS": "the country's name is the same in both languages",
   "lead.context.pageLabel": "CRM lead context, English on purpose",
   "lead.context.pageValue": "CRM lead context, English on purpose",
+  "lockup.brand":
+    "the brand's own name in the identity lockup, never translated",
 };
 
 describe("voa-i18n — EN and ID are the same funnel, twice", () => {

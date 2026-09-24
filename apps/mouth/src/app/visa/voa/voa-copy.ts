@@ -30,12 +30,14 @@ const en = {
     "Know in 10 seconds, buy in 5 minutes, follow it like a parcel.",
 
   "trust.questions.label": "quick questions",
-  "trust.price.label": "all-inclusive price",
+  "trust.price.label": "all-inclusive price, shown with your answer",
   "trust.government.label": "extra to pay the government after",
 
   "hero.wa.line":
     "Rather ask a person first? Our visa desk answers on WhatsApp.",
   "hero.wa.cta": "Talk to us on WhatsApp",
+  "hero.wa.who": "That's Surya, from our team.",
+  "lockup.brand": "Bali Zero",
   "hero.wa.message": "Hi Bali Zero, I'd like help with a Visa on Arrival.",
 
   "step.case.title": "Your case",
@@ -350,12 +352,15 @@ const id: Record<VoaCopyKey, string> = {
     "Tahu hasilnya dalam 10 detik, beli dalam 5 menit, pantau seperti paket kiriman.",
 
   "trust.questions.label": "pertanyaan singkat",
-  "trust.price.label": "harga sudah termasuk semua biaya",
+  "trust.price.label":
+    "harga sudah termasuk semua biaya, tampil bersama hasil Anda",
   "trust.government.label": "biaya tambahan ke pemerintah setelahnya",
 
   "hero.wa.line":
     "Ingin bertanya kepada orang dulu? Tim visa kami menjawab di WhatsApp.",
   "hero.wa.cta": "Hubungi kami di WhatsApp",
+  "hero.wa.who": "Itu Surya, dari tim kami.",
+  "lockup.brand": "Bali Zero",
   "hero.wa.message":
     "Halo Bali Zero, saya ingin dibantu untuk Visa on Arrival.",
 
