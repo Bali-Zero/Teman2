@@ -274,19 +274,20 @@ class TestUpload201Ready:
         _assert_privacy_headers(resp.headers)
 
 
-class TestUpload202Processing:
-    @pytest.mark.skip(
-        reason=(
-            "ProcessingOutcome is defensively unreachable per service.py's own "
-            "comment (all_confident False implies >=1 uncertain field, so "
-            "to_uncertain_fields is never empty) — not a code this route can "
-            "honestly claim to emit; LowConfidenceDocument covers the real "
-            "202 branch below. Reported honestly rather than faked — see final "
-            "report."
-        )
-    )
-    async def test_no_pass_rated_any_field_returns_202_processing(self):
-        raise AssertionError("unreachable — see skip reason")
+# NOTE (RH005 cleanup): a `TestUpload202Processing.
+# test_no_pass_rated_any_field_returns_202_processing` test previously lived
+# here, decorated `@pytest.mark.skip` and containing only
+# `raise AssertionError("unreachable — see skip reason")` — asserting
+# nothing and never running. It was DELETED rather than given a real
+# assertion because the code path it targeted (`ProcessingOutcome` returned
+# with zero uncertain fields) is defensively unreachable: service.py's own
+# comment at the return site notes `classify_fields` always returns one
+# verdict per `PassportReviewFieldName`, so `all_confident(verdicts) is
+# False` implies `to_uncertain_fields(verdicts)` is never empty. There is no
+# way to drive the route to that branch from the outside, so no honest
+# assertion could be written for it; `TestUpload202LowConfidence` below
+# already covers the real 202 branch (`LOW_CONFIDENCE`). See this file's
+# module docstring for the parallel note on `ProcessingOutcome`.
 
 
 class TestUpload202LowConfidence:

@@ -4,6 +4,7 @@ Target: 100% coverage
 Composer: 4
 """
 
+import logging
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -132,7 +133,7 @@ class TestSlackNotifyErrorHandling:
     """S11: verify run_conversation_trainer handles Slack failures with narrow exceptions."""
 
     @pytest.mark.asyncio
-    async def test_slack_notify_swallows_httpx_error(self, monkeypatch):
+    async def test_slack_notify_swallows_httpx_error(self, monkeypatch, caplog):
         """httpx.HTTPError from the Slack post must not crash the cron."""
         import httpx
 
@@ -174,7 +175,15 @@ class TestSlackNotifyErrorHandling:
             ),
         ):
             # Must not raise
-            await mod.run_conversation_trainer(days_back=1)
+            with caplog.at_level(logging.ERROR):
+                await mod.run_conversation_trainer(days_back=1)
+
+        # The narrow (httpx.HTTPError, OSError) handler must be the one that
+        # caught it — not the outer broad `except Exception`, which logs a
+        # different message and re-raises.
+        assert "Failed to send Slack notification" in caplog.text
+        assert "Error in ConversationTrainer" not in caplog.text
+        mock_trainer.create_improvement_pr.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_slack_notify_does_not_swallow_cancelled_error(self, monkeypatch):

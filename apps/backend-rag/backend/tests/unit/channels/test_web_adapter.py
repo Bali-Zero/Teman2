@@ -11,6 +11,7 @@ Tests:
 """
 
 import json
+import logging
 import os
 
 import pytest
@@ -239,16 +240,29 @@ class TestWebAdapter:
         self,
         adapter: WebChannelAdapter,
         simple_response: ChannelResponse,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        # send_response for web is a no-op (should use stream_response)
-        await adapter.send_response("session_123", simple_response)
+        # send_response for web is a no-op (should use stream_response) — it
+        # must be OBSERVABLE as a no-op, not a silent "success" log, so a
+        # caller routing a real delivery through here can tell it evaporated.
+        with caplog.at_level(logging.WARNING, logger="backend.channels.web.adapter"):
+            await adapter.send_response("session_123", simple_response)
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "NO-OP" in text
+        assert "session_123" in text
 
     async def test_send_status_update(
         self,
         adapter: WebChannelAdapter,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        # Should not raise
-        await adapter.send_status_update("session_123", "processing")
+        # Should not raise, and should emit an observable status log tying
+        # the status string to the channel_id it was reported against.
+        with caplog.at_level(logging.DEBUG, logger="backend.channels.web.adapter"):
+            await adapter.send_status_update("session_123", "processing")
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "processing" in text
+        assert "session_123" in text
 
     def test_format_sse_event(self, adapter: WebChannelAdapter) -> None:
         event = {"type": "token", "data": "Hello"}
