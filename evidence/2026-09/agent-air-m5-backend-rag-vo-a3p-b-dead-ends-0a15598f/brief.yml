@@ -42,11 +42,18 @@ constraints:
     scripts/ci/** untouched (A3'-0 owns change_map.py; verified by content
     at STEP ZERO-bis, not by SHA)."
 acceptance:
-  - "PYTHONPATH=. .venv/bin/python -m pytest
+  - "gate-a3p-b REWORK-BUILD cure (2026-09-24, this session): PYTHONPATH=.
+    .venv/bin/python -m pytest
     backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
-    activity_boundary — 4 passed, 288 deselected. Whole file: 261 passed,
-    31 errors (pre-existing Postgres-connect OSError, unrelated to this
-    diff — same 31 error IDs before and after the code change)."
+    'activity_boundary or resolve_holding_flags' — 23 passed, 270
+    deselected. Whole file: 262 passed, 31 errors (pre-existing
+    Postgres-connect OSError, same 31 error IDs before and after; +1
+    passed vs the pre-rework 261/22 from the new MEDIUM-1 test).
+    test_activity_boundary_oracle_innocence (B3) now asserts full `==`
+    between the env-unset and env=ACTIVITY_BOUNDARY outputs on all three
+    cases the gate probed, not only `ordered == reordered`; GUILT/restore
+    on scratch `cp` copies confirms RED on revert (see pack.yml
+    receipts)."
   - "PYTHONPATH=. .venv/bin/python -m pytest
     backend/tests/scripts/visa_engine/test_review_hold_inventory.py — 7
     passed."
@@ -93,21 +100,28 @@ consumer_map:
     change to its 2-tuple-to-3-tuple return contract; no other caller of
     split_disclosed_review_codes exists in the repo (grepped)."
 risks:
-  - "Net measured at this head: 414 lines (572 insertions, 158 deletions,
-    git diff --numstat over merge-base) — above the mandate's own Net ~230
-    estimate and brushing the ~400 Builder Contract line. The overage is
-    almost entirely: (a) two new backend tests the mandate's B3/B4 rows
-    require but did not pre-size (oracle-innocence + dead-end-id tests,
-    ~100 lines together), (b) the three-way split's docstring rewrites in
-    evaluate_path.py explaining a genuinely new third outcome next to the
-    existing hold/condition two, and (c) the two rewritten test bodies in
-    test_interview_walk_census.py whose narrative comments had to stay
-    truthful about which flags now hold vs dead-end. Declared Gear-2 per
-    the mandate's own row rather than re-split: one concern (ACTIVITY_
-    BOUNDARY's disposition), one production function's branch, one test
-    file each for review_hold_inventory/evaluate_endpoint/interview_walk
-    census, and the one mouth-side coupling test the mandate names by
-    number (B8)."
+  - "Net measured at this head (rework, excludes evidence/**): 513 lines
+    (671 insertions, 158 deletions, git diff --numstat over merge-base) —
+    up from the pre-rework 414, above the mandate's own Net ~230 estimate
+    and past the ~400 Builder Contract line before AND after. The
+    pre-rework overage was almost entirely: (a) two new backend tests the
+    mandate's B3/B4 rows require but did not pre-size (oracle-innocence +
+    dead-end-id tests, ~100 lines together), (b) the three-way split's
+    docstring rewrites in evaluate_path.py explaining a genuinely new
+    third outcome next to the existing hold/condition two, and (c) the
+    two rewritten test bodies in test_interview_walk_census.py whose
+    narrative comments had to stay truthful about which flags now hold vs
+    dead-end. The rework's own +99 lines: the HIGH-1 fix itself (~35
+    lines, mostly the docstring explaining the new hold-routing rule) and
+    the MEDIUM-1 test plus the B3 test's rewrite to assert full equality
+    on three cases instead of one order check (~64 lines,
+    test_evaluate_endpoint.py only). Declared Gear-2 per the mandate's own
+    row rather than re-split: one concern (ACTIVITY_BOUNDARY's
+    disposition, now correctly covering the holding-flag-present and
+    pack-already-HR cases the gate's HIGH-1 named), one production
+    function's branch, one test file each for review_hold_inventory/
+    evaluate_endpoint/interview_walk_census, and the one mouth-side
+    coupling test the mandate names by number (B8)."
   - "seq-23 activated in production during this build (conductor's delta,
     11:27:25Z) — every pinned number in this PR was re-measured against
     the current highest-signed pack, not the mandate's own seq-22-era

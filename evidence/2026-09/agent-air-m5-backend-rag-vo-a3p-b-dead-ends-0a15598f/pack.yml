@@ -73,16 +73,24 @@ outcome: 'Both refuters converged on ONE finding: the SUPPORTED_CANDIDATES/
   present one layer down.'
 diff:
   files: 7
-  net_lines: 414
+  net_lines: 513
   net_lines_measurement:
-    'git diff "$(git merge-base origin/main HEAD)" HEAD --numstat | awk
-    ''{add+=$1; del+=$2} END {print add-del}'' at head dc12e2ac47 -> 414
-    (572 insertions, 158 deletions). Above the mandate''s Net~230
-    estimate and the Builder Contract''s ~400 soft ceiling — see brief.yml
-    risks for the shape breakdown; declared Gear-2 per the mandate''s own
-    row, not split, since it is one concern (ACTIVITY_BOUNDARY''s
-    disposition) touching one production function''s branch plus the
-    tests the mandate''s own B3/B4/B6/B7/B8 rows name by number.'
+    'git diff "$(git merge-base origin/main HEAD)" HEAD --numstat --
+    . '':(exclude)evidence/**'' | awk ''{add+=$1; del+=$2} END {print
+    add-del}'' at head e03badb897 -> 513 (671 insertions, 158 deletions),
+    up from the pre-rework 414 (dc12e2ac47/787504ed18) by the gate-a3p-b
+    REWORK-BUILD cure: the HIGH-1 fix to _apply_disclosed_review_flags
+    (~35 net lines incl. the docstring rewrite covering the new hold
+    routing) plus the MEDIUM-1 resolver test and the B3 test''s full-
+    equality rewrite (~120 net lines together, test_evaluate_endpoint.py
+    only). Above the mandate''s Net~230 estimate and the Builder
+    Contract''s ~400 soft ceiling before AND after this rework — see
+    brief.yml risks for the shape breakdown and the rework''s own
+    contribution; declared Gear-2 per the mandate''s own row, not split,
+    since it remains one concern (ACTIVITY_BOUNDARY''s disposition, now
+    correctly covering the holding-flag-present and pack-already-HR
+    cases) touching one production function''s branch plus the tests the
+    mandate''s own B3/B4/B6/B7/B8 rows name by number.'
   behaviour_change:
     "ACTIVITY_BOUNDARY alone on a pack base at SUPPORTED_CANDIDATES or
     NEEDS_INPUT now returns NO_SUPPORTED_PATH with
@@ -204,6 +212,52 @@ receipts:
     ts: "2026-09-24T20:03:00+08:00 through 20:08:35+08:00"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
+  - claim: "gate-a3p-b REWORK-BUILD cure (HIGH-1, MEDIUM-1): activity_boundary +
+      resolve_holding_flags suite, then the whole file, re-measured at the
+      cured head"
+    cmd: "PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_evaluate_endpoint.py -k
+      'activity_boundary or resolve_holding_flags', then the same file with
+      no -k"
+    result: "23 passed, 270 deselected (was 22/270 pre-cure — one net new test,
+      test_resolve_holding_flags_documented_kill_switch_form_holds_activity_
+      boundary, MEDIUM-1); whole file 262 passed, 31 errors (pre-existing
+      Postgres OSError, same 31 test ids as pre-cure, unrelated to the diff)"
+    ts: "2026-09-24T23:04:00Z"
+    seat: claude-sonnet-5-r2 (vo-builder-a3p-b-r2, same worktree, rework session)
+    exit: 0
+  - claim: "GUILT/restore for the HIGH-1 cure and the MEDIUM-1 test, each on a
+      scratch `cp` copy that the LIVE file is only ever wholesale `cp`-swapped
+      to and from — never edited in place (cures the B8 LOW-2 finding's
+      pattern for these three, and for B8 itself)"
+    cmd: 'three scratch mutations of a `cp` backup of the cured
+      evaluate_path.py ($SCR/guilt-scratch-r2/EP.cured.bak): (1) revert the
+      HIGH-1 cure to the pre-cure `holding = tuple(... if flag in
+      holding_flags)` line; (2) narrow the route-to-hold condition back to
+      `_raw_holding` only AND extend the SUPPORTED_CANDIDATES/NEEDS_INPUT
+      dead-end-rewrite tuple to also include HUMAN_REVIEW_REQUIRED (''send the
+      pack-HUMAN_REVIEW case to the dead end''); (3) the MEDIUM-1 resolver
+      mutant (`recognized = ... if token in known_values and token !=
+      "ACTIVITY_BOUNDARY"`). Each mutant `cp`-swapped onto the live path,
+      test run, then the cured backup `cp`-swapped back and `cmp -s` verified'
+    result: "(1) test_activity_boundary_oracle_innocence RED at `assert ordered
+      == ordered_held` (env-unset drops ACTIVITY_BOUNDARY from review_reasons/
+      seed the held side keeps). (2) same test RED earlier, at
+      `Decision.model_validate`: pydantic ValidationError
+      'state=NO_SUPPORTED_PATH forbids missing_facts/review_reasons' —
+      sending an already-HUMAN_REVIEW_REQUIRED pack (non-empty
+      review_reasons/missing_facts) into the SUPPORTED/NEEDS_INPUT dead-end
+      branch is structurally rejected by the model before it can even reach
+      NO_SUPPORTED_PATH. (3)
+      test_resolve_holding_flags_documented_kill_switch_form_holds_activity_
+      boundary RED at `assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in
+      resolved` (resolved == {CRIMINAL_RECORD, HEALTH_CONCERN}). All three
+      restores: `cmp -s` exit 0 against `EP.cured.bak`, `git status
+      --porcelain` back to the cured diff only (never empty — the cure itself
+      stays staged/committed), affected suite re-run green after each."
+    ts: "2026-09-24T23:02:00Z through 23:03:40Z"
+    seat: claude-sonnet-5-r2 (vo-builder-a3p-b-r2, same worktree, rework session)
+    exit: 0
 dissent:
   - seat: tp1-qwen3.8-max
     status: CONFIRMED
@@ -232,4 +286,47 @@ dissent:
       review_reasons is guaranteed () on the two states this branch
       touches, by models.py's own state-invariant validators, not by an
       assumption in this diff. No code change made."
+  - seat: gate-a3p-b (fresh Opus 5.5 final on-disk gate, outside the
+      contribution chain; verdict REWORK-BUILD on head 787504ed18)
+    status: CURED
+    objection:
+      "HIGH-1: _apply_disclosed_review_flags built `holding`'s reasons and
+      seed from `_resolve_holding_flags()` membership alone. With
+      CRIMINAL_RECORD (holds) and ACTIVITY_BOUNDARY (dead-ends) both
+      disclosed, ACTIVITY_BOUNDARY was silently dropped from
+      review_reasons/the seed; on a pack already at HUMAN_REVIEW_REQUIRED
+      that only disclosed ACTIVITY_BOUNDARY, the pack came back verbatim
+      with no ACTIVITY_BOUNDARY reason at all — both diverge from
+      origin/main's pre-Slice-A3'-B behaviour (env=ACTIVITY_BOUNDARY 'today'
+      reproduction), on all 3 of the gate's probed cases.
+      test_activity_boundary_oracle_innocence never asserted full equality
+      to catch it, only `ordered == reordered` plus state/no_path_reasons.
+      MEDIUM-1: a resolver mutant that drops ACTIVITY_BOUNDARY tokens at
+      parse time stays green on the whole 307-test suite — no test exercises
+      the documented kill-switch form ('current holding list plus
+      ,ACTIVITY_BOUNDARY'), only the single-token form, which a different
+      fail-closed branch masks. MEDIUM-2 (body): `Bites:` lacked the B9
+      wording and CI job-id quotes, `## X3 attestation` was a placeholder.
+      LOW: net 414 (over ~400/~230); B8's GUILT record described a
+      live-file mutation rather than a scratch `cp` copy; G1-c pinned as a
+      composite, not a direct membership assert."
+    resolution: "HIGH-1 CURED: `holding` now also absorbs
+      DEAD_END_DISCLOSED_FLAGS members whenever a real holding flag is also
+      disclosed OR decision.state is already HUMAN_REVIEW_REQUIRED,
+      reproducing origin/main's byte-for-byte output (state, reasons in
+      order, notices, decision_id/public_id) on all 3 of the gate's cases —
+      test_activity_boundary_oracle_innocence now asserts full `==` per
+      case instead of `ordered == reordered` (which does not hold under
+      origin/main's own order-sensitive seed and was a bug artifact, not a
+      real invariant — verified directly against `git show
+      origin/main:.../evaluate_path.py`). MEDIUM-1 CURED: new test
+      `test_resolve_holding_flags_documented_kill_switch_form_holds_
+      activity_boundary` exercises the two-token kill-switch form and kills
+      the parse-time-drop mutant (see GUILT/restore receipts above).
+      MEDIUM-2 CURED: `Bites:` rewritten to the B9 wording with CI job ids
+      quoted on the new head; `## X3 attestation` filled with a real
+      `body_check.py` run. LOW (B8) CURED: B8's GUILT record now describes
+      the scratch-`cp`-swap pattern (never an in-place live-file edit); size
+      and G1-c stay declared limits (unchanged reasoning, still true at this
+      head)."
 appetite_exceeded: ""
