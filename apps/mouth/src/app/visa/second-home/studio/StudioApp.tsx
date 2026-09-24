@@ -101,16 +101,6 @@ function canContinue(p: PlanState, q: QuestionId): boolean {
   return isAnswered(p, q);
 }
 
-/** The branch as it stood when this screen opened. The answer being chosen
- *  here can reshape LATER steps (60+ adds senior funding; income-only drops
- *  capital), so the rail's "of M" moves when the visitor moves on — never
- *  while they are still choosing on the same screen. The prefix up to the
- *  current question depends only on earlier answers, so step N is the same
- *  in both sequences. */
-function planBeforeAnswering(p: PlanState, q: QuestionId): PlanState {
-  return q === "family" ? p : ({ ...p, [q]: null } as PlanState);
-}
-
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -620,6 +610,17 @@ function QuestionStage({
 export function StudioApp() {
   const [plan, setPlan] = useState<PlanState>(emptyPlan);
   const [stepIndex, setStepIndex] = useState(0);
+  // The plan as it stood when the current screen opened. The answer being
+  // chosen here can reshape LATER steps (60+ adds senior funding; income-only
+  // drops capital), so the rail's "of M" moves when the visitor moves on —
+  // never while they are still choosing on the same screen. A snapshot, not
+  // the plan with this answer blanked: Back onto an answered step opens on
+  // the branch that answer already chose. The prefix up to the current
+  // question depends only on earlier answers, so step N is the same in both.
+  const [openedWith, setOpenedWith] = useState<PlanState>(emptyPlan);
+  // "No family members" has no null in PlanState, so only the wizard knows
+  // the family step was answered: once it is passed, the memo lists it.
+  const [familyPassed, setFamilyPassed] = useState(false);
   const hydratedOnce = useRef(false);
   const consentSpaceRef = useRef<HTMLDivElement>(null);
   const [consentHeight, setConsentHeight] = useState(0);
@@ -659,9 +660,7 @@ export function StudioApp() {
   const sequence = computeSequence(plan);
   const isVerdictStage = stepIndex >= sequence.length;
   const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
-  const railSequence = currentQuestion
-    ? computeSequence(planBeforeAnswering(plan, currentQuestion))
-    : sequence;
+  const railSequence = currentQuestion ? computeSequence(openedWith) : sequence;
   const verdict = isVerdictStage ? evaluatePlan(plan) : null;
   const priceKey = resolveSecondHomePriceKey(
     verdict?.product ?? null,
@@ -705,8 +704,11 @@ export function StudioApp() {
       : loadPlan();
 
     const finalPlan = resolved ?? emptyPlan();
+    const resumeAt = initialStepIndex(finalPlan);
     setPlan(finalPlan);
-    setStepIndex(initialStepIndex(finalPlan));
+    setOpenedWith(finalPlan);
+    setFamilyPassed(resumeAt > computeSequence(finalPlan).indexOf("family"));
+    setStepIndex(resumeAt);
   }, []);
 
   function selectAnswer(patch: Partial<PlanState>) {
@@ -719,11 +721,14 @@ export function StudioApp() {
 
   function continueStep() {
     userNavigatedRef.current = true;
+    if (currentQuestion === "family") setFamilyPassed(true);
+    setOpenedWith(plan);
     setStepIndex((idx) => Math.min(idx + 1, computeSequence(plan).length));
   }
 
   function goBack() {
     userNavigatedRef.current = true;
+    setOpenedWith(plan);
     setStepIndex((idx) => Math.max(0, idx - 1));
   }
 
@@ -736,6 +741,8 @@ export function StudioApp() {
   function handleClear() {
     clearPlan();
     setPlan(emptyPlan());
+    setOpenedWith(emptyPlan());
+    setFamilyPassed(false);
     setStepIndex(0);
   }
 
@@ -924,7 +931,11 @@ export function StudioApp() {
               />
             </main>
             <aside>
-              <MemoPreview plan={plan} total={railSequence.length} />
+              <MemoPreview
+                plan={plan}
+                total={railSequence.length}
+                familyAnswered={familyPassed}
+              />
             </aside>
           </div>
         ) : null}
@@ -984,6 +995,7 @@ export function StudioApp() {
           .bz-shs-nav-hint + .bz-shs-cta {
             margin-left: 0 !important;
           }
+        }
         }
         .bz-shs-back:not(:disabled):hover {
           background: var(--surface-base) !important;

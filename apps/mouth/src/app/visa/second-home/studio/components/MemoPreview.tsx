@@ -10,6 +10,10 @@ export interface MemoPreviewProps {
   /** The step count the progress rail shows, so the screen carries ONE
    *  "of M". Defaults to this plan's own branch length. */
   total?: number;
+  /** The wizard has passed the family step. "No family members" has no
+   *  null in PlanState, so the plan alone cannot tell it from "not asked
+   *  yet" — without this, a family step answered with no one never counts. */
+  familyAnswered?: boolean;
 }
 
 /** Resolves a wizard option's label from copy.ts. "not_applicable" is a
@@ -22,13 +26,17 @@ function optionLabel(base: string, value: string | null): string {
   return getCopy(`${base}.options.${value}`);
 }
 
-function familySummary(plan: PlanState): { text: string; isKnown: boolean } {
+function familySummary(
+  plan: PlanState,
+  answered: boolean,
+): { text: string; isKnown: boolean } {
   const parts: string[] = [];
   if (plan.family.spouse) parts.push("Spouse");
   if (plan.family.children > 0) parts.push("Children");
   if (plan.family.parents > 0) parts.push("Parents");
-  return parts.length > 0
-    ? { text: parts.join(", "), isKnown: true }
+  if (parts.length > 0) return { text: parts.join(", "), isKnown: true };
+  return answered
+    ? { text: optionLabel("wizard.family", "none"), isKnown: true }
     : { text: "—", isKnown: false };
 }
 
@@ -39,8 +47,8 @@ interface RowItem {
   isKnown: boolean;
 }
 
-function buildRows(plan: PlanState): RowItem[] {
-  const family = familySummary(plan);
+function buildRows(plan: PlanState, familyAnswered: boolean): RowItem[] {
+  const family = familySummary(plan, familyAnswered);
   const rows: RowItem[] = [
     {
       id: "age",
@@ -211,9 +219,16 @@ function useIsDesktopStatic(): boolean {
  *  known; a thin left spine grows with the answered rows to read as a
  *  receipt filling in. `prefers-reduced-motion: reduce` disables all
  *  movement. */
-export function MemoPreview({ plan, total }: MemoPreviewProps) {
+export function MemoPreview({
+  plan,
+  total,
+  familyAnswered = false,
+}: MemoPreviewProps) {
   const isDesktopStatic = useIsDesktopStatic();
-  const rows = useMemo(() => buildRows(plan), [plan]);
+  const rows = useMemo(
+    () => buildRows(plan, familyAnswered),
+    [plan, familyAnswered],
+  );
 
   // Track which rows have already been seen with a known value so only
   // freshly-known rows animate. We deliberately do NOT remove ids when a

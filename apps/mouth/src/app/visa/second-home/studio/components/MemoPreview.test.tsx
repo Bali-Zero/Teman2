@@ -139,6 +139,23 @@ describe("MemoPreview", () => {
     expect(screen.getByText("1 of 6")).toBeInTheDocument();
   });
 
+  it("counts a family step answered with no one only once the wizard says it was answered", () => {
+    const plan = basePlan({
+      age: "under_55",
+      route: "deposit",
+      capital: "ready_130k",
+    });
+    const { rerender } = render(<MemoPreview plan={plan} />);
+    expect(screen.queryByTestId("memo-row-family")).toBeNull();
+    expect(screen.getByText("3 of 6")).toBeInTheDocument();
+
+    rerender(<MemoPreview plan={plan} familyAnswered />);
+    expect(screen.getByTestId("memo-row-family")).toHaveTextContent(
+      "No family members",
+    );
+    expect(screen.getByText("4 of 6")).toBeInTheDocument();
+  });
+
   it("marks rows as known when answered", () => {
     render(<MemoPreview plan={basePlan({ age: "under_55" })} />);
     const ageRow = screen.getByTestId("memo-row-age");
