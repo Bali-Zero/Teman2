@@ -1,6 +1,6 @@
 # CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
 # evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
-brief_ref: evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council.jsonl
 seat_fallback_reason: >-
   Titolare quorum for R9 is codex-gpt-5.6-sol / kimi-code/k3 / tp1-qwen3.8-max. tp1-qwen3.8-max
@@ -37,14 +37,18 @@ lanes:
     role: review
     seat: "tp1-deepseek-v4-pro (reserve, substituting for an unavailable titolare — see seat_fallback_reason) — same task file; 1 finding, same excerpt-narrowness root cause, no README defect found"
 diff:
-  files: 3
+  files: 8
   net_lines: >-
-    3 files: research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+80),
+    8 files, +15984/-0 (computed from `git diff --numstat origin/main...HEAD` on this PR's
+    final head): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+80),
     research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
-    (+12432, new file), evidence/brief.yml (restored to origin/main, this pack's own commit) —
-    from `git diff --numstat origin/main...HEAD`. This pack.yml and its sibling brief.yml are
-    new files under the per-PR evidence path, added in the same commit as the root-brief
-    restore.
+    (+12432, new file), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
+    (+34), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+164),
+    evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/council.jsonl (+3),
+    evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/{refuter-task.txt
+    (+3245), refuter-qwen.txt (+18), refuter-deepseek.txt (+8)}. The ROOT evidence/brief.yml is
+    RESTORED to origin/main's content in this same commit, so it carries zero net diff against
+    origin/main and does not appear in this numstat.
   behaviour_change: >-
     None. This diff adds a README section and one evidence JSON file under research/, plus the
     per-PR evidence pack/brief and a council journal, and restores the root evidence/brief.yml
@@ -112,7 +116,7 @@ dissent:
       The README's payload_sha256 claim (`e5f791b5…72204` on all 252 walks) is not verifiable
       from the JSON excerpt handed to the review task (the excerpt omitted the
       rule_pack.payload_sha256 field to keep the task file small).
-    status: REJECTED
+    status: RETRACTED
     reason: >-
       Excerpt-narrowness artifact, not a README defect. Verified directly against the FULL
       committed JSON: `set(w["rule_pack"]["payload_sha256"] for w in walks)` ==
@@ -125,7 +129,7 @@ dissent:
       reason_codes) — the review task's own instructions asked the seat to assume an empty
       universe if load-bearing, which the seat correctly flagged as an assumption rather than
       silently accepting.
-    status: REJECTED
+    status: RETRACTED
     reason: >-
       Excerpt-narrowness artifact, not a README defect. Independently recomputed from BOTH FULL
       committed JSONs' reason_codes.review_reasons + reason_codes.no_path_reasons (a proper
@@ -138,7 +142,7 @@ dissent:
       Same as tp1-qwen3.8-max's second finding — the new-reason-codes claim cannot be validated
       from the b42b-excerpt under the stated assumption, and a wider reading of "load-bearing"
       would make every A9-only code "new", contradicting the README's short 4-code list.
-    status: REJECTED
+    status: RETRACTED
     reason: >-
       Same disposition as above: the full-data recomputation (not the excerpt, and not an
       assumed-empty B4-2b universe) matches the README's 4-code list and counts exactly. No fix
