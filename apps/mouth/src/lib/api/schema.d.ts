@@ -21884,6 +21884,13 @@ export interface components {
       /** Message */
       message: string;
     };
+    /** ExtractVisaRequest */
+    ExtractVisaRequest: {
+      /** Doc Id */
+      doc_id?: number | null;
+      /** File Id */
+      file_id: string;
+    };
     /**
      * FactPath
      * @description Every fact path the engine may ever reference — 57 applicant-collected
@@ -35975,9 +35982,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["ExtractVisaRequest"];
       };
     };
     responses: {
