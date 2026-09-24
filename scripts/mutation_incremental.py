@@ -443,6 +443,11 @@ def mutmut_available() -> bool:
         return False
 
 
+class MutmutHarnessError(RuntimeError):
+    """Raised when mutmut itself exits non-zero (L1627): a survivor list parsed
+    from a harness that never ran cleanly is not evidence of zero survivors."""
+
+
 @dataclass(frozen=True)
 class Survivor:
     """A surviving mutant on a changed line, with its mandatory explanation."""
@@ -579,7 +584,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     # agent under test does not.
     logger.info("mutmut present — running incremental mutation on changed files (seed=%s).", args.seed)
     baseline = load_baseline(args.baseline)
-    survivors = _run_mutmut_on_targets(target, seed=args.seed)
+    try:
+        survivors = _run_mutmut_on_targets(target, seed=args.seed)
+    except MutmutHarnessError as exc:
+        logger.error("STRATO-2 mutmut gate FAILED: %s", exc)
+        return EXIT_FAIL
     ok, reasons = evaluate_survivors(survivors, baseline)
     for r in reasons:
         logger.info("survivor-eval: %s", r)
@@ -618,6 +627,17 @@ def _run_mutmut_on_targets(target: ChangedLines, *, seed: int) -> list[Survivor]
         except (OSError, subprocess.SubprocessError) as exc:
             logger.error("mutmut invocation failed for %s: %s", path, exc)
             continue
+        if proc.returncode != 0:
+            # L1627: a non-zero exit means mutmut did not complete cleanly for
+            # this file — treating its (possibly empty) stdout as "zero
+            # survivors" would silently PASS a harness that never ran. Fail
+            # loud instead, exactly as the docstring above already claims.
+            logger.error(
+                "mutmut exited %d for %s — refusing to read its output as "
+                "'no survivors'.\nstdout:\n%s\nstderr:\n%s",
+                proc.returncode, path, proc.stdout, proc.stderr,
+            )
+            raise MutmutHarnessError(f"mutmut exited {proc.returncode} for {path}")
         survivors.extend(_parse_mutmut_survivors(proc.stdout, path))
     return survivors
 
