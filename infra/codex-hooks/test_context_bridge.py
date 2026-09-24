@@ -51,7 +51,8 @@ def test_receipt_detects_observed_drift(setup: tuple, tmp_path: Path, monkeypatc
     assert "--new-input" not in json.dumps(proof)
 
 
-def test_nested_venv_dependency_drift_with_symlink_interpreter(setup: tuple, tmp_path: Path) -> None:
+@pytest.mark.parametrize("change", ["record", "pth", "install", "remove"])
+def test_venv_installation_drift_with_symlink_interpreter(setup: tuple, tmp_path: Path, change: str) -> None:
     repo, _, event = setup
     program = receipt_program(tmp_path)
     venv = tmp_path / "venv"
@@ -63,12 +64,48 @@ def test_nested_venv_dependency_drift_with_symlink_interpreter(setup: tuple, tmp
     packages.mkdir(parents=True)
     dep = packages / "module.py"
     dep.write_text("a = 1")
-    root_time = packages.parent.stat().st_mtime_ns
+    metadata = packages.parent / "pkg-1.0.dist-info"
+    metadata.mkdir()
+    record = metadata / "RECORD"
+    record.write_text("pkg/module.py,old,5\n")
+    pth = packages.parent / "local.pth"
+    pth.write_text("initial\n")
     proof = bridge.verify(event["session_id"], {"commands": [[str(interpreter)]]})
     assert bridge.receipt_state(proof, str(repo))["state"] == "reusable"
-    dep.write_text("a = 2")
-    assert packages.parent.stat().st_mtime_ns == root_time
+    if change == "record":
+        record.write_text("pkg/module.py,new,5\n")
+    elif change == "pth":
+        pth.write_text("changed\n")
+    elif change == "install":
+        (packages.parent / "new_package.py").write_text("installed")
+    else:
+        record.unlink()
     assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+
+
+def test_venv_observation_is_bounded_by_installation_metadata(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    venv = tmp_path / "venv"
+    (venv / "bin").mkdir(parents=True)
+    (venv / "pyvenv.cfg").write_text("fixture")
+    interpreter = venv / "bin/python"
+    interpreter.symlink_to(program)
+    packages = venv / "lib/python3.13/site-packages"
+    nested = packages / "pkg/deep"
+    nested.mkdir(parents=True)
+    record = packages / "pkg-1.dist-info/RECORD"
+    record.parent.mkdir()
+    record.write_text("installation record")
+    for n in range(500):
+        (nested / f"module{n}.py").write_text("installed content")
+    observed = bridge.environment_fingerprint([str(interpreter)], str(repo))
+    assert observed["sha256"] and observed["entries"] <= 8
+    proof = bridge.verify(event["session_id"], {"commands": [[str(interpreter)]]})
+    (nested / "module0.py").write_text("in-place edit is explicitly out of scope")
+    assert bridge.receipt_state(proof, str(repo))["state"] == "reusable"
+    record.unlink()
+    assert bridge.environment_fingerprint([str(interpreter)], str(repo))["sha256"] is None
 
 
 def test_failed_and_legacy_receipts_cannot_reuse(setup: tuple, tmp_path: Path) -> None:
@@ -91,6 +128,14 @@ def test_environment_over_limit_and_unresolved_are_not_reusable(setup: tuple, tm
     assert bridge.environment_fingerprint(["/missing/check"], str(repo))["sha256"] is None
 
 
+def test_receipt_validity_does_not_depend_on_scheduling_delay(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, _ = setup
+    program = receipt_program(tmp_path)
+    ticks = iter((0, 1000, 2000, 3000))
+    monkeypatch.setattr(bridge.time, "monotonic", lambda: next(ticks, 4000))
+    assert bridge.environment_fingerprint([str(program)], str(repo))["sha256"] is not None
+
+
 def test_environment_changed_during_passing_check_is_stale(setup: tuple, tmp_path: Path) -> None:
     repo, _, event = setup
     program = receipt_program(tmp_path)
@@ -98,6 +143,19 @@ def test_environment_changed_during_passing_check_is_stale(setup: tuple, tmp_pat
     proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
     assert proof["passed"] is True
     assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+
+
+def test_during_check_observation_drift_clears_both_bindings(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    before = bridge.environment_fingerprint([str(program)], str(repo))
+    after = {**before, "sha256": "changed", "filesystem_sha256": "changed"}
+    observations = iter((before, after))
+    monkeypatch.setattr(bridge, "environment_fingerprint", lambda *_: next(observations))
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    assert proof["passed"] is True
+    assert proof["environment"] is None
+    assert proof["filesystem"] is None
 
 
 def test_stop_rejects_receipt_after_environment_change(setup: tuple, tmp_path: Path, monkeypatch) -> None:
@@ -149,7 +207,28 @@ def test_hook_environment_is_not_the_execution_shell(setup: tuple, tmp_path: Pat
     assert bridge.receipt_state(proof, str(repo), check_environment=False)["state"] == "reusable"
     assert bridge.hook({**event, "hook_event_name": "Stop"}) == {}
     guidance = bridge.receipt_guidance(bridge.load(bridge.state_path(event["session_id"])), str(repo))
-    assert "tool-shell environment unchecked" in guidance and "run status" in guidance
+    assert "tool-shell environment unchecked" in guidance and "run receipt-status" in guidance
+
+
+def test_final_receipt_overrides_preceding_pass(setup: tuple, tmp_path: Path) -> None:
+    _, _, event = setup
+    proof = bridge.verify(event["session_id"], {"commands": [[str(receipt_program(tmp_path))]]})
+    failed = {**proof, "passed": False}
+    assert bridge.receipt_from_output(json.dumps(proof) + "\n" + json.dumps(failed)) == failed
+    assert bridge.receipt_from_output([{"text": json.dumps(proof)}, {"text": json.dumps(failed)}]) == failed
+
+
+def test_receipt_status_is_compact_and_rechecks_shell(setup: tuple, tmp_path: Path, monkeypatch, capsys) -> None:
+    _, _, event = setup
+    bridge.verify(event["session_id"], {"commands": [[str(receipt_program(tmp_path))]]})
+    monkeypatch.setattr(sys, "argv", ["context_bridge.py", "receipt-status", event["session_id"]])
+    assert bridge.main() == 0
+    text = capsys.readouterr().out
+    assert len(text) < 256 and set(json.loads(text)) == {"receipt_state"}
+    assert json.loads(text)["receipt_state"]["state"] == "reusable"
+    monkeypatch.setenv("NODE_ENV", "changed-after-verification")
+    assert bridge.main() == 0
+    assert json.loads(capsys.readouterr().out)["receipt_state"]["state"] == "stale"
 
 
 def test_contradictory_exit_code_is_never_a_pass(setup: tuple, tmp_path: Path) -> None:

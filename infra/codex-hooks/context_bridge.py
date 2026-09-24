@@ -161,12 +161,11 @@ RECEIPT_ENV_VARS = (
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "PYTHONHASHSEED", "PYTHONNOUSERSITE",
     "LANG", "LC_ALL", "LC_CTYPE", "TZ", "CI",
 )
-ENV_MAX_ENTRIES = 300_000
-ENV_MAX_SECONDS = 8.0
+ENV_MAX_ENTRIES = 10_000
 
 
 def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
-    """Bounded stat-based drift detection, not dependency content attestation.
+    """Bounded installation-metadata observation, not package content attestation.
 
     Keep original lookup names so a subsequent PATH change is observable. Only
     digests of the selected environment values leave this function. Unknown or
@@ -174,14 +173,14 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
     """
     result: dict[str, Any] = {"sha256": None, "filesystem_sha256": None,
                               "programs": programs, "resolved_programs": []}
-    started, count = time.monotonic(), 0
-    h = hashlib.sha256()
+    count = 0
+    h = hashlib.sha256(b"installation-metadata-v1")
     projection = hashlib.sha256()
 
     def observe(path: Path) -> None:
         nonlocal count
         count += 1
-        if count > ENV_MAX_ENTRIES or time.monotonic() - started > ENV_MAX_SECONDS:
+        if count > ENV_MAX_ENTRIES:
             raise ValueError("environment observation limit")
         s = path.stat()
         h.update(json.dumps((str(path), s.st_mode, s.st_size,
@@ -221,18 +220,24 @@ def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
                     raise ValueError("unobservable venv dependencies")
                 trees.update(packages)
 
-        def walk_error(error: OSError) -> None:
-            raise error
-
         for tree in sorted(trees):
-            for root, dirs, files in os.walk(tree, onerror=walk_error):
-                dirs.sort()
-                observe(Path(root))
-                # A linked subtree cannot be bounded by observing only its root.
-                if any((Path(root) / d).is_symlink() for d in dirs):
+            observe(tree)
+            entries = []
+            with os.scandir(tree) as directory:
+                for entry in directory:
+                    if len(entries) + count >= ENV_MAX_ENTRIES:
+                        raise ValueError("environment observation limit")
+                    entries.append(Path(entry.path))
+            for path in sorted(entries):
+                # No recursive package traversal: normal installs update RECORD.
+                # Arbitrary edits inside installed package trees are out of scope.
+                if path.is_symlink() and path.is_dir():
                     raise ValueError("unobservable linked dependencies")
-                for name in sorted(files):
-                    observe(Path(root) / name)
+                observe(path)
+                if path.name.endswith(".dist-info"):
+                    observe(path / "RECORD")
+                elif path.name.endswith(".egg-info"):
+                    raise ValueError("unobservable venv dependencies")
         result["filesystem_sha256"] = h.hexdigest()
         result["sha256"] = digest((h.hexdigest() + projection.hexdigest()).encode())
     except ValueError as exc:
@@ -288,7 +293,7 @@ def receipt_guidance(state: dict[str, Any], cwd: str) -> str:
     result = receipt_state(proof, cwd, check_environment=False)
     actions = {
         "none": "verify before claiming completion",
-        "reusable": "run status in the execution shell before reusing the checks",
+        "reusable": "run receipt-status in the execution shell before reusing the checks",
         "stale": "rerun the checks before claiming completion",
         "failed": "the last check FAILED; it is not a PASS",
     }
@@ -501,12 +506,12 @@ def receipt_from_output(value: Any) -> dict[str, Any] | None:
             if found:
                 return found
     elif isinstance(value, list):
-        for item in value:
+        for item in reversed(value):
             found = receipt_from_output(item)
             if found:
                 return found
     elif isinstance(value, str):
-        for match in re.finditer(r"\{", value):
+        for match in reversed(list(re.finditer(r"\{", value))):
             try:
                 obj, _ = json.JSONDecoder().raw_decode(value[match.start() :])
                 found = receipt_from_output(obj)
@@ -1489,10 +1494,13 @@ def main() -> int:
         if verb == "continue":
             continue_session(sys.argv[2])
             return 0
-        if verb == "status":
+        if verb in ("status", "receipt-status"):
             state = load(state_path(sys.argv[2]))
             state["receipt_state"] = receipt_state(current_receipt(state), state.get("cwd", ""))
-            print(json.dumps(state, indent=2))
+            if verb == "receipt-status":
+                print(json.dumps({"receipt_state": state["receipt_state"]}))
+            else:
+                print(json.dumps(state, indent=2))
             return 0
         if verb == "cancel":
             cancel(sys.argv[2])
