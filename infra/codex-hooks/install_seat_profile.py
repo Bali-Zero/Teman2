@@ -6,9 +6,10 @@ installed; identical -> untouched; different -> left alone and reported as
 operator-owned drift, never overwritten. Every write is preceded by a private
 backup. The root key is validated absent in ONE user-layer snapshot from Codex's
 own config/read and written with config/batchWrite pinned to that snapshot's
-version, so a concurrent change makes Codex refuse the write (configVersionConflict)
-instead of losing it; the binary must first prove it rejects a stale version on a
-scratch seat, and the result is checked semantically afterwards. --check is read-only. There is deliberately no automatic removal: rollback is a
+version, so changes arriving before Codex's version check are refused. This is
+not a cross-process lock; installation requires an otherwise idle seat. The binary
+must first reject a stale version on a scratch seat, and the result is checked
+semantically afterwards. --check is read-only. There is deliberately no automatic removal: rollback is a
 manual step with an exclusive writer (README). No auth or other config is copied.
 """
 
@@ -175,7 +176,7 @@ def install(seat: Path) -> dict:
         return result
     if before[KEY] == "absent" and not conditional_write_proven():
         raise RuntimeError(
-            "this Codex does not refuse a stale config version; nothing written"
+            "this Codex does not refuse a stale config version; seat config unchanged"
         )
     result["backup"] = str(backup_seat(seat, config_file))
     (seat / "agents").mkdir(mode=0o700, exist_ok=True)
@@ -188,7 +189,7 @@ def install(seat: Path) -> dict:
         try:
             if KEY in snapshot:
                 raise RuntimeError(
-                    "developer_instructions appeared concurrently; nothing written"
+                    "developer_instructions appeared concurrently; config not written; backup/role files may exist"
                 )
             edit = {"keyPath": KEY, "value": text, "mergeStrategy": "replace"}
             try:
@@ -196,7 +197,7 @@ def install(seat: Path) -> dict:
             except RuntimeError as exc:
                 if "configVersionConflict" in str(exc):
                     raise RuntimeError(
-                        "config.toml changed since it was validated; nothing written"
+                        "config.toml changed since it was validated; config not written; backup/role files may exist"
                     ) from exc
                 raise
             after, _ = user_layer(seat, config_file)
@@ -292,7 +293,7 @@ def loadout(seat: Path, *, check: bool = False, notebooklm: bool = True) -> dict
     if check or not edits:
         return result
     if not conditional_write_proven():
-        raise RuntimeError("this Codex does not refuse a stale config version; nothing written")
+        raise RuntimeError("this Codex does not refuse a stale config version; seat config unchanged")
     result["backup"] = str(backup_seat(seat, config_file))
     expected_config = copy.deepcopy(snapshot)
     for edit in edits:

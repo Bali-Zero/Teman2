@@ -152,9 +152,11 @@ Each item that is absent is installed; an identical item is left untouched; a
 different item is operator-owned drift and is reported, never overwritten. A
 private backup precedes any write. The root key is validated absent in one
 user-layer snapshot from Codex's own `config/read` (`includeLayers`) and written
-with `config/batchWrite` pinned to that snapshot's `expectedVersion`: if any
-setting changed after the snapshot, Codex refuses the write
-(`configVersionConflict`) and nothing is written. Before writing, the installer
+with `config/batchWrite` pinned to that snapshot's `expectedVersion`: changes
+arriving before Codex's internal version check are refused (`configVersionConflict`).
+This is not a cross-process lock: another writer could still race the internal
+check/write interval. Install only with no other Codex app or session on that seat.
+Before writing, the installer
 proves on a scratch seat that the Codex binary in use refuses a stale version;
 a binary that does not is never used for the write. The version is semantic
 (a comment-only edit does not change it; Codex preserves the file's other
@@ -162,6 +164,11 @@ lines). After the write the user layer is re-read: only that key may change,
 otherwise the installer stops and names the backup (it does not restore on its
 own). `--check` is read-only and exits 1 unless every item matches.
 Roles are created with a hard link, so a file that appears first always wins.
+On a refused config write, role files and the private backup may already exist;
+the install manifest is saved only on success. Rerunning the reviewed installer
+on an idle seat preserves matching files and completes the manifest. If recovering
+manually, inspect the latest private `state/nuzantara-seat-profile-backups/` entry
+and do not infer ownership of role files from a missing manifest.
 There is deliberately no automatic removal. Rollback, with no Codex app or session
 running on that seat (the only writer exclusion available): restore config.toml
 from the backup the install reported (or delete its single `developer_instructions`
