@@ -1,4 +1,4 @@
-task_id: portal-clear-alerts
+task_id: portal-clear-alerts-v2
 mandate_id: PORTAL-CLEAR-ALERTS-20260925
 colour: BLUE
 l_level: L2
@@ -21,7 +21,9 @@ acceptance:
   - "Failures preserve previous counts and provide retry; partner portal remains excluded."
   - "Companies navigation uses a closed analytics label with existing privacy guards."
 verification:
-  unit: "7 Vitest files, 66 tests passing"
+  unit: "8 targeted Vitest files, 68 tests passing"
+  full_frontend: "545 files passed; 7211 tests passed, 2 skipped (maxWorkers=2, no coverage)"
+  unchanged_production: "All feature production files byte-identical to the prior browser-tested candidate"
   types: "TypeScript passed in production build"
   build: "npm run build passed, including public bundle and roster chunk checks"
   lint: "Repository root ESLint 9.39.5: zero errors; existing warnings only"
@@ -38,3 +40,12 @@ pending:
   - "Final independent on-disk gate and authorized release."
   - "Physical iQOO: Tailscale online; ADB absent, wireless debug port requested."
   - "GA4 custom dimensions: authenticated create returns 403; property Editor/admin required."
+
+followup:
+  replaces_pr: 7283
+  base: "643dc86373de"
+  depth: 1
+  reason: "Full CI: 544 files passed; the messages alias test lacked QueryClientProvider."
+  correction: "Give the alias smoke test the same query provider as the root app and chat test."
+  freeze: "Original armed branch remains unchanged; replacement starts from fresh origin/main."
+  prior_gate: "PASS on 2fa05946e3649d7f74881a220c32ec77184fd722; replacement requires a fresh gate."
