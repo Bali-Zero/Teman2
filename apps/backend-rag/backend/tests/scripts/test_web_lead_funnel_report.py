@@ -373,6 +373,28 @@ def test_deduped_is_a_gateway_decision_not_a_failure(monkeypatch, tmp_path):
     assert wlr.send_telegram("7d: 0 clicks") in wlr._GATEWAY_DELIVERED
 
 
+def test_a_p0_unsendable_run_is_read_by_its_last_line_not_its_first(monkeypatch, tmp_path):
+    # GUILT: an undeliverable P0 prints a human diagnostic `tg_notify:` line
+    # BEFORE its machine verdict (measured 2026-09-24, tg_notify.py ~L743/~L1093).
+    # `extract_gateway_verdict` takes the LAST canonical line; a private regex
+    # `.search()` — this module's own retired `_GATEWAY_VERDICT_RE` — takes the
+    # FIRST, misreading "P0" off the diagnostic sentence.
+    monkeypatch.setattr(
+        wlr,
+        "__file__",
+        _fake_gateway(
+            tmp_path,
+            "import sys\n"
+            "print('tg_notify: P0 unsendable (no token/relay) — spooled as "
+            "p0_unsent', file=sys.stderr)\n"
+            "print('tg_notify: p0_unsent_spooled', file=sys.stderr)\n",
+        ),
+    )
+    status = wlr.send_telegram("7d: 0 clicks")
+    assert status == "p0_unsent_spooled"
+    assert status not in wlr._GATEWAY_DELIVERED
+
+
 def test_the_dedup_key_names_this_organs_real_cadence(monkeypatch, tmp_path):
     # The gateway collapses a repeated key inside TG_DEDUP_HOURS. A weekly organ
     # keyed ":daily" never actually collides, so nothing breaks today — which is

@@ -204,6 +204,37 @@ def test_send_telegram_recognizes_every_gateway_outcome(monkeypatch):
         assert _run(job.send_telegram("hello", tier="p0")) is True, outcome
 
 
+def test_send_telegram_reads_last_verdict_line_on_p0_unsendable(monkeypatch):
+    """A P0-unsendable run prints a human diagnostic `tg_notify:` line BEFORE
+    its machine verdict (tg_notify.py ~L743/~L1093, measured 2026-09-24: the
+    pajak-monitor.log misread it as `status=P0` via the private `_TG_STATUS_RE`
+    this module used to carry — a `.search()` on that regex returns the FIRST
+    match). The shared `extract_gateway_verdict` must read the LAST canonical
+    line: p0_unsent_spooled, which IS accepted custody, not a rejection."""
+    import agent_job
+    import importlib
+    importlib.reload(agent_job)
+
+    class _FakeJob(agent_job.AgentJob):
+        name = "test-fake-job-p0-unsendable"
+
+    two_line_stderr = (
+        "tg_notify: P0 unsendable (no token/relay) — spooled as p0_unsent\n"
+        "tg_notify: p0_unsent_spooled\n"
+    ).encode()
+
+    async def _fake_create_subprocess_exec(*args, **kwargs):
+        return _FakeAsyncProc(stderr=two_line_stderr)
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", _fake_create_subprocess_exec)
+
+    job = _FakeJob()
+    ok = _run(job.send_telegram("hello", tier="p0"))
+
+    assert ok is True
+    assert job._side_effects == ["telegram:p0:p0_unsent_spooled"]
+
+
 def test_log_anomaly_tier_follows_alert_severity():
     """RED (FATAL/OOM/502/503/CRM-down) escalates to p0; an all-YELLOW batch
     (circuit-breaker, timeouts) stays digest. Any RED in a mixed batch wins."""
@@ -261,6 +292,41 @@ def test_curiosity_batch_send_telegram_batch_reaches_dry_run_delivery(monkeypatc
     assert len(pending) == 1
     assert "why does X happen?" in json.loads(pending[0])["text"]
     assert not (tmp_path / "sent-dry.jsonl").exists()
+
+
+def test_curiosity_batch_reads_last_verdict_line_on_p0_unsendable(monkeypatch, capsys):
+    """Same guard as agent_job.py's own test above: a P0-unsendable run prints
+    a human diagnostic `tg_notify:` line before the machine verdict, and this
+    module's own (now-retired) private `_TG_STATUS_RE.search()` would have
+    read the diagnostic's leading word instead of the accepted
+    p0_unsent_spooled outcome."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")  # read at import time
+    import curiosity_batch as cb
+    import importlib
+    importlib.reload(cb)
+
+    two_line_stderr = (
+        "tg_notify: P0 unsendable (no token/relay) — spooled as p0_unsent\n"
+        "tg_notify: p0_unsent_spooled\n"
+    ).encode()
+
+    async def _fake_create_subprocess_exec(*args, **kwargs):
+        return _FakeAsyncProc(stderr=two_line_stderr)
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", _fake_create_subprocess_exec)
+
+    findings = [{
+        "source": "pattern_mining", "question": "why does X happen?",
+        "finding": "because Y", "actionable": True,
+        "information_gain": 0.9, "created_at": None,
+    }]
+    stats = {"total": 1, "actionable_cnt": 1, "last_finding_at": None}
+
+    _run(cb.send_telegram_batch(findings, stats))
+
+    out = capsys.readouterr().out
+    assert "(p0_unsent_spooled)" in out
+    assert "gateway error" not in out
 
 
 def test_intel_radar_compose_message_is_plain_text():

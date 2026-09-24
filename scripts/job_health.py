@@ -14,7 +14,6 @@ import json
 import os
 import socket
 import subprocess
-import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -27,8 +26,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
 # p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104)
+# with the ONE canonical extractor, never a private regex `.search()` (that
+# returns the FIRST `tg_notify:` match, and a P0-unsendable run prints a
+# diagnostic line before the machine verdict).
+for _cand in (PROJECT_ROOT, Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 # Expected jobs and their max intervals (hours).
@@ -205,8 +215,8 @@ def send_alert(results: list[dict]) -> None:
              "--source", "job-health", "--dedup-key", dedup_key, "--", msg],
             capture_output=True, text=True, timeout=30,
         )
-        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-        print(f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}", file=sys.stderr)
+        verdict = extract_gateway_verdict(proc.stderr or "")
+        print(f"tg_notify: {verdict if verdict else f'NESSUN verdetto rc={proc.returncode}'}", file=sys.stderr)
         if proc.returncode != 0:
             print(f"WARN: tg_notify exit={proc.returncode}: {proc.stderr[:200]}", file=sys.stderr)
     except Exception as e:
