@@ -10,22 +10,35 @@ import pytest
 
 import context_bridge as bridge
 import install as installer
+import installation_status
 from test_context_bridge import setup  # noqa: F401
 
 
 class FakeRPC:
-    """hooks/list as Codex answers it: every configured handler, with its matcher."""
+    """hooks/list and config/batchWrite as Codex answers them."""
 
     drop_guard = False
+    edits: list = []
 
     def call(self, method, params):
+        if method == "config/batchWrite":
+            FakeRPC.edits.extend(params["edits"])
+            return {}
         assert method == "hooks/list"
         hooks = bridge.load(bridge.codex_home() / "hooks.json")["hooks"]
         found = [
-            dict(h, eventName=event, matcher=group.get("matcher"))
+            dict(
+                h,
+                eventName=event,
+                matcher=group.get("matcher"),
+                key=f"{event}:{i}:{j}",
+                currentHash=bridge.digest(h["command"].encode()),
+                trustStatus="trusted",
+                enabled=True,
+            )
             for event, groups in hooks.items()
-            for group in groups
-            for h in group["hooks"]
+            for i, group in enumerate(groups)
+            for j, h in enumerate(group["hooks"])
         ]
         if self.drop_guard:
             found = [h for h in found if installer.GUARD_MARK not in h["command"]]
@@ -131,3 +144,81 @@ def test_installed_guard_decides_codex_payloads(
     assert run.returncode == (2 if denied else 0)
     assert ("BLOCKED (output-hygiene)" in run.stderr) is denied
     assert run.stdout == ""
+
+
+def test_trust_covers_exactly_our_nine_handlers(setup, monkeypatch):
+    repo, _, _ = setup
+    seat = bridge.codex_home()
+    foreign = {"matcher": "Bash", "hooks": [{"type": "command", "command": "true"}]}
+    bridge.save(seat / "hooks.json", {"hooks": {"PreToolUse": [foreign]}})
+    FakeRPC.edits = []
+    monkeypatch.setattr(installer, "RPC", FakeRPC)
+    installer.install(seat, [str(repo)], trust=True)
+    hashes = [e for e in FakeRPC.edits if e["keyPath"].endswith(".trusted_hash")]
+    enabled = [e for e in FakeRPC.edits if e["keyPath"].endswith(".enabled")]
+    assert len(hashes) == len(enabled) == len(bridge.EVENTS) + 1
+    assert {
+        "keyPath": "features.hooks",
+        "value": True,
+        "mergeStrategy": "replace",
+    } in FakeRPC.edits
+    guard_hash = bridge.digest(
+        bridge.load(seat / "hooks.json")["hooks"]["PreToolUse"][-1]["hooks"][0][
+            "command"
+        ].encode()
+    )
+    assert guard_hash in [e["value"] for e in hashes]
+    assert bridge.digest(b"true") not in [e["value"] for e in hashes]
+
+
+def test_mixed_group_keeps_foreign_handler_and_moves_only_ours(setup, monkeypatch):
+    repo, _, _ = setup
+    seat = bridge.codex_home()
+    foreign = {"type": "command", "command": "true"}
+    stale = {"type": "command", "command": "/old/python x/" + installer.GUARD_MARK}
+    bridge.save(
+        seat / "hooks.json",
+        {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [foreign, stale]}]}},
+    )
+    monkeypatch.setattr(installer, "RPC", FakeRPC)
+    installer.install(seat, [str(repo)])
+    pre = bridge.load(seat / "hooks.json")["hooks"]["PreToolUse"]
+    assert {"matcher": "Bash", "hooks": [foreign]} in pre
+    assert len(guard_groups(seat)) == 1 and len(guard_groups(seat)[0]["hooks"]) == 1
+
+
+def run_status(monkeypatch, capsys):
+    monkeypatch.setattr(installation_status, "RPC", FakeRPC)
+    monkeypatch.setattr(installation_status, "binary_path", lambda: "codex")
+    try:
+        installation_status.main()
+    except RuntimeError:
+        pass
+    return json.loads(capsys.readouterr().out)
+
+
+def test_status_is_green_only_with_guard_and_foreign_handlers_intact(
+    setup, monkeypatch, capsys
+):
+    repo, _, _ = setup
+    seat = bridge.codex_home()
+    foreign = {"type": "command", "command": "true"}
+    bridge.save(seat / "hooks.json", {"hooks": {"PreToolUse": [{"hooks": [foreign]}]}})
+    monkeypatch.setattr(installer, "RPC", FakeRPC)
+    installer.install(seat, [str(repo)])
+    policy = bridge.load(seat / "nuzantara-context-policy.json")
+    assert policy["parent_rollover_enabled"] is False
+    ok = run_status(monkeypatch, capsys)
+    assert (
+        ok["installed"]
+        and ok["output_guard_trusted"]
+        and ok["existing_hooks_preserved"]
+    )
+    config = bridge.load(seat / "hooks.json")
+    config["hooks"]["PreToolUse"][0]["hooks"] = []
+    bridge.save(seat / "hooks.json", config)
+    lost = run_status(monkeypatch, capsys)
+    assert not lost["existing_hooks_preserved"] and not lost["installed"]
+    monkeypatch.setattr(FakeRPC, "drop_guard", True)
+    missing = run_status(monkeypatch, capsys)
+    assert not missing["output_guard_trusted"] and not missing["installed"]

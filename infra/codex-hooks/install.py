@@ -138,12 +138,13 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             groups.append({"hooks": [handler]})
     guard_command = shlex.join([sys.executable, str(dest / GUARD_NAME)])
     pre = events.setdefault("PreToolUse", [])
-    guards = [
-        g
-        for g in pre
-        if any(GUARD_MARK in h.get("command", "") for h in g.get("hooks", []))
+    owned = [
+        (group, h)
+        for group in pre
+        for h in group.get("hooks", [])
+        if GUARD_MARK in h.get("command", "")
     ]
-    if len(guards) > 1:
+    if len(owned) > 1:
         raise ValueError("duplicate output guard hook")
     guard_group = {
         "matcher": "Bash",
@@ -156,10 +157,13 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             }
         ],
     }
-    if guards:
-        guards[0].clear()
-        guards[0].update(guard_group)
+    if owned and len(owned[0][0].get("hooks", [])) == 1:
+        owned[0][0].clear()
+        owned[0][0].update(guard_group)
     else:
+        # Only our handler moves: a foreign handler sharing its group stays put.
+        if owned:
+            owned[0][0]["hooks"].remove(owned[0][1])
         pre.append(guard_group)
     save(hooks_file, config)
     policy = load(seat / "nuzantara-context-policy.json")

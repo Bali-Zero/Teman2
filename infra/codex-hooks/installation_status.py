@@ -19,6 +19,24 @@ def native_compact_defaults(config_file: Path) -> bool:
     return not any(key in config or key in active_profile for key in COMPACT_OVERRIDES)
 
 
+def foreign_hooks(config: dict) -> dict:
+    """Every handler except ours, grouped as configured; empty groups dropped."""
+    result = {}
+    for event, groups in (config.get("hooks") or {}).items():
+        kept = []
+        for group in groups:
+            handlers = [
+                h
+                for h in group.get("hooks", [])
+                if not any(mark in h.get("command", "") for mark in OURS)
+            ]
+            if handlers:
+                kept.append(dict(group, hooks=handlers))
+        if kept:
+            result[event] = kept
+    return result
+
+
 def main() -> None:
     seat = codex_home()
     manifest = load(seat / "state" / "nuzantara-context-install.json")
@@ -38,23 +56,11 @@ def main() -> None:
         name: digest((seat / "hooks" / "nuzantara-context" / name).read_bytes())
         for name in manifest["source_sha256"]
     }
-    old = load(Path(manifest["original_backup"]) / "hooks.json")
-    current = load(seat / "hooks.json")
-    for event in list(current.get("hooks", {})):
-        groups = current["hooks"][event]
-        groups[:] = [
-            g
-            for g in groups
-            if not any(
-                mark in h.get("command", "")
-                for h in g.get("hooks", [])
-                for mark in OURS
-            )
-        ]
-        if not groups and event not in old.get("hooks", {}):
-            del current["hooks"][event]
-    if not current.get("hooks") and not old:
-        current = {}
+    # Preservation is judged against the snapshot taken just before THIS install,
+    # handler by handler; original_backup stays the rollback point only.
+    previous = manifest.get("backup") or manifest["original_backup"]
+    old = foreign_hooks(load(Path(previous) / "hooks.json"))
+    current = foreign_hooks(load(seat / "hooks.json"))
     result = {
         "seat": str(seat),
         "binary": binary_path(),
