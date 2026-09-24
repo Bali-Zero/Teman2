@@ -62,6 +62,32 @@ def _uncovered_locks(update: dict, root: Path) -> list[str]:
     return uncovered
 
 
+def _overbroad_matches(update: dict, root: Path) -> list[str]:
+    """PENDING-ARMS L1856: `_uncovered_locks` only ever proves a pattern set
+    is not too NARROW — `exclude-paths: ["*"]` satisfies it trivially while
+    silently disarming Dependabot for every OTHER file in the directory too,
+    not just the compiled locks. This is the under-tested opposite
+    direction: any exclude-paths pattern that also matches a non-lock file
+    in the block's own directory is over-broad and must be flagged.
+    """
+    directory = update.get("directory", "/").lstrip("/")
+    scanned = root / directory
+    if not scanned.is_dir():
+        return []
+    patterns = update.get("exclude-paths", []) or []
+    offenders = []
+    for entry in sorted(scanned.iterdir()):
+        if not entry.is_file():
+            continue
+        name = entry.name
+        if fnmatch.fnmatch(name, COMPILED_LOCK_GLOB):
+            continue  # a compiled lock IS meant to be excluded
+        for pattern in patterns:
+            if fnmatch.fnmatch(name, pattern):
+                offenders.append(f"{directory}/{name} matched by over-broad pattern {pattern!r}")
+    return offenders
+
+
 def _load(text: str) -> dict:
     return yaml.safe_load(text)
 
@@ -84,6 +110,20 @@ def test_real_config_excludes_every_compiled_lock_it_would_scan():
         + "\n\nAdd them to `exclude-paths` on their pip block. Do NOT instead add "
         "a per-package `ignore` — that is the whack-a-mole this guard exists to "
         "stop (see the module docstring)."
+    )
+
+
+def test_real_config_exclude_paths_are_not_overbroad():
+    """The mirror-image of test_real_config_excludes_every_compiled_lock_it_
+    would_scan: proves the shipped exclude-paths cover the locks WITHOUT
+    also disarming every other file in the same directory."""
+    config = _load(CONFIG.read_text(encoding="utf-8"))
+    offenders = []
+    for update in _pip_updates(config):
+        offenders.extend(_overbroad_matches(update, ROOT))
+    assert not offenders, (
+        "Dependabot's exclude-paths also match non-lock files, silently "
+        "disarming updates for them:\n  " + "\n  ".join(offenders)
     )
 
 
@@ -143,7 +183,50 @@ updates:
     assert len(_uncovered_locks(_pip_updates(config)[0], ROOT)) == 2
 
 
+def test_guilt_star_glob_disarms_every_file_not_only_locks():
+    """`exclude-paths: ["*"]` would pass the under-coverage check for free —
+    the sanity assertion below proves that blindness, then proves the
+    over-broad check closes it. Mutates the REAL config's pip block in
+    place (same mutation shape as test_guilt_missing_exclude_paths_is_
+    flagged above) so the guard is proven against the actual scanned
+    directory, not a synthetic fixture."""
+    config = _load(CONFIG.read_text(encoding="utf-8"))
+    update = _pip_updates(config)[0]
+    update["exclude-paths"] = ["*"]
+    assert _uncovered_locks(update, ROOT) == [], (
+        "sanity: the under-coverage check alone must NOT catch this — that "
+        "blindness is exactly what this row exists to close"
+    )
+    assert _overbroad_matches(update, ROOT), (
+        "exclude-paths: ['*'] must be flagged as over-broad: it matches "
+        "every file in the directory, not just the compiled locks"
+    )
+
+
+def test_guilt_doublestar_glob_disarms_every_file_not_only_locks():
+    config = _load(CONFIG.read_text(encoding="utf-8"))
+    update = _pip_updates(config)[0]
+    update["exclude-paths"] = ["**"]
+    assert _overbroad_matches(update, ROOT)
+
+
 # --- innocence: the checker must not fire on correct configs --------------
+
+
+def test_innocence_shipped_glob_is_not_overbroad():
+    config = _load(
+        """
+updates:
+  - package-ecosystem: "pip"
+    directory: "/apps/backend-rag"
+    exclude-paths:
+      - "*.lock.txt"
+"""
+    )
+    assert _overbroad_matches(_pip_updates(config)[0], ROOT) == []
+
+
+
 
 
 def test_innocence_the_shipped_glob_covers_both_locks():

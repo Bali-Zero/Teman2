@@ -1224,7 +1224,7 @@ def _worker_attestation(manifest_header: dict) -> list[str]:
     probe error is a failure, never a pass-through (W84)."""
     failures: list[str] = []
     deploy_root = os.environ.get(
-        DEPLOY_ROOT_ENV, os.path.expanduser("~/nuzantara-deploy")
+        DEPLOY_ROOT_ENV, os.path.expanduser("~/nuzantara")
     )
     base = os.path.join(
         deploy_root, "apps", "backend-rag", "backend", "services", "intake"

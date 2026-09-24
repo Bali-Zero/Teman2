@@ -84,6 +84,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -167,6 +168,27 @@ MEASURED_DEFAULT_EFFORT = {
 # Calibrating this properly needs stall-length data this repo does not yet
 # collect — tracked in PENDING-ARMS rather than guessed at a second time.
 SILENCE_TIMEOUT_SECONDS = 300.0
+
+# PENDING-ARMS L1835: a JSONDecodeError against qwen3.8-max destroyed its own
+# body — nothing persisted it, only a 200-char stderr tail survived, and that
+# tail looked well-formed while the damage sat somewhere in the ~43KB middle.
+# A module-level path (not a hardcoded literal inline) so tests can
+# monkeypatch it to tmp_path instead of touching the real scratch dir.
+TP1_UNPARSEABLE_SCRATCH_DIR = Path(tempfile.gettempdir()) / "tp1-call-unparseable"
+
+
+def _persist_unparseable_body(full_body: str) -> Optional[Path]:
+    """Best-effort evidence capture: write the raw body that failed to parse
+    to a scratch file and return its path, so the NEXT occurrence is
+    analyzable from a captured body instead of gone. Never raises — a
+    failure to persist evidence must not mask the original parse failure."""
+    try:
+        TP1_UNPARSEABLE_SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+        path = TP1_UNPARSEABLE_SCRATCH_DIR / f"{time.time_ns()}.json"
+        path.write_text(full_body, encoding="utf-8")
+        return path
+    except OSError:
+        return None
 
 
 class StillGenerating(Exception):
@@ -515,10 +537,16 @@ def extract_answer(
         choice = parsed["choices"][0]
         message = choice["message"]
     except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
+        dump_path = _persist_unparseable_body(full_body)
+        location = (
+            f"raw body saved to {dump_path}"
+            if dump_path is not None
+            else "raw body NOT saved (persist failed)"
+        )
         return (
             None,
             None,
-            f"unparseable response ({type(e).__name__}): {full_body[-200:]}",
+            f"unparseable response ({type(e).__name__}), {location}: {full_body[-200:]}",
         )
     content = message.get("content")
     if isinstance(content, str) and content.strip():

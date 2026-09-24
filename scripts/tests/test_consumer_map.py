@@ -613,6 +613,40 @@ def test_innocence_bare_basename_in_tuple_joined_to_repointed_dir_is_not_live(
     assert "bare-basename" in result.stdout
 
 
+def test_guilt_collection_literal_element_later_iterated_and_opened_stays_live(
+    tmp_path: Path,
+) -> None:
+    """PENDING-ARMS L1842: `DATA_CONTAINER_PARENT_KINDS`' downgrade could not
+    tell `CORPUS_FILES = (...)` (never consumed by name, safe to downgrade)
+    apart from `FILES = ["victim.txt"]` later consumed as `for f in FILES:
+    open(f)` — a real, cwd-relative consumer with no directory context on
+    the literal's own line. Only the dataflow trace this row adds can catch
+    it; must stay LIVE, exit 1 (fails/downgrades to bare-basename without
+    the fix, per the mutation check run for this PR)."""
+    repo = _init_repo(tmp_path)
+    target = repo / "victim.txt"
+    _write(target, "payload\n")
+    _write(
+        repo / "scripts" / "reader.py",
+        'FILES = ["victim.txt"]\n'
+        "\n"
+        "\n"
+        "def read_all():\n"
+        "    for f in FILES:\n"
+        "        with open(f) as fh:\n"
+        "            return fh.read()\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete victim.txt")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/reader.py" in result.stdout
+    assert "| LIVE" in result.stdout
+
+
 def test_guilt_basename_built_from_an_OLD_dir_constant_on_another_line_still_blocks(
     tmp_path: Path,
 ) -> None:
