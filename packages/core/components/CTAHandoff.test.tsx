@@ -45,4 +45,17 @@ describe("CTAHandoff", () => {
     expect(wa.style.pointerEvents).toBe("auto");
     expect(wa.style.border).toBe("1px solid var(--accent-funnel)");
   });
+
+  it("wraps its no-wrap pills instead of pushing the first ones off a 320px screen", () => {
+    const { getByRole } = render(
+      <CTAHandoff
+        source="visa-oracle"
+        sessionId="abc"
+        pdfHref="/api/report.pdf"
+        onZantaraClick={() => {}}
+      />,
+    );
+    const rail = getByRole("group", { name: "Next actions" });
+    expect(rail.style.flexWrap).toBe("wrap");
+  });
 });

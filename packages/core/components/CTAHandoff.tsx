@@ -72,6 +72,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
       aria-label="Next actions"
       style={{
         display: "flex",
+        flexWrap: "wrap",
         justifyContent: "flex-end",
         alignItems: "center",
         gap: "var(--space-3)",
