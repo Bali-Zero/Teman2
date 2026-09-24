@@ -56,7 +56,12 @@ Never mark an outcome complete merely because a session exited or a PR merged.
 `verified_complete` requires an evidence SHA-256, verification time, at least
 one non-gate participant, and a distinct listed `gate` session observed in logs
 (`verifier_role=fresh-gate`). The gate cannot be an ancestor or descendant of
-any non-gate participant. Missing or cyclic lineage cannot establish independence.
+any non-gate participant. The graph combines native and declared parent edges,
+including cross-provider edges. Missing, ambiguous or cyclic lineage cannot
+establish independence. The gate needs an event inside the task window no later
+than verification time; unrelated old activity is insufficient. Independent fresh
+CLI roots can be declared as overhead: their usage is included even without a
+shared conversation parent. Never erase a real contribution edge for eligibility.
 CI-only attestations remain `unknown` and outside the denominator until a CI
 evidence join exists. It also requires a closed, timezone-aware
 `started_utc`/`ended_utc` interval ending no later than the snapshot time and
@@ -75,7 +80,11 @@ explicitly: their parent cannot be discovered from a native same-provider tree.
 Provider-native counter names stay separate: Claude `input_tokens`,
 `cache_read_input_tokens`, `cache_creation_input_tokens`, `output_tokens`; Codex
 `input_tokens`, `cached_input_tokens`, `output_tokens`, `reasoning_output_tokens`.
-Never add cache counters to input counters or reasoning counters to output.
+For Codex, cached input is a subset of total input: uncached input is
+`input_tokens - cached_input_tokens`; reasoning output is a subset of output.
+For Claude, input, cache-read input and cache-creation input are separate buckets.
+Do not sum the Codex subsets into their totals or treat its total input as raw
+uncached input. Keep the provider breakdown instead of adding unlike counters.
 `usage_events` counts observed response groups/cumulative updates, **not API calls**.
 Codex repeats are deduplicated, increments are counted across counter resets,
 and the first event uses `last_token_usage` to avoid billing inherited cumulative
@@ -88,6 +97,8 @@ and overlapping task attribution are visible and exclude a task from the verifie
 denominator. Unknown is never zero. `failed_or_retried_sessions` counts declared
 rows with `status=failed` or `attempt>1`; both failed and successful attempts still
 contribute usage. `overhead_tokens` is a subset of `by_provider`, not extra spend.
+An explicitly declared non-overhead participant with no usage inside the window
+is incomplete (`declared_session_without_window_usage`), not a zero-cost worker.
 The mean includes only verified tasks with complete observed usage and is withheld
 across different task classes/cohorts. It is not a causal savings estimate.
 

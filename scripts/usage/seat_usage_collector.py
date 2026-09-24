@@ -673,20 +673,43 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
             verifier = doc["outcome"]["verifier_session_sha256"]
             gates = [k for k, r in declared.items() if k[1] == verifier and r["role"] == "gate"]
             builders = [k for k, r in declared.items() if r["role"] != "gate"]
+            parents = {key: {node["parent"]} if node["parent"] else set() for key, node in nodes.items()}
+            by_hash = defaultdict(set)
+            for key in nodes.keys() | declared.keys():
+                by_hash[key[1]].add(key)
+            for key, row in declared.items():
+                parent = row.get("parent_session_sha256")
+                if parent:
+                    matches = by_hash[parent]
+                    # Missing/ambiguous declared edges stay unresolved. Never
+                    # pick a provider or replace a conflicting native edge.
+                    edge = next(iter(matches)) if len(matches) == 1 else ("unresolved", parent)
+                    parents.setdefault(key, set()).add(edge)
 
             def ancestors(key):
-                lineage = set()
-                while key is not None:
-                    if key in lineage or key not in nodes:
+                lineage, active, stack = set(), set(), [(key, False)]
+                while stack:
+                    key, leaving = stack.pop()
+                    if leaving:
+                        active.remove(key)
+                        lineage.add(key)
+                        continue
+                    if key in active or key not in nodes:
                         return None
-                    lineage.add(key)
-                    key = nodes[key]["parent"]
+                    if key in lineage:
+                        continue
+                    active.add(key)
+                    stack.append((key, True))
+                    stack.extend((parent, False) for parent in parents.get(key, set()))
                 return lineage
 
             independent = bool(gates and builders)
             for gate in gates:
                 lineage = ancestors(gate)
-                independent = independent and lineage is not None and bool(nodes.get(gate, {}).get("events"))
+                gate_activity = any(doc["window"][0] <= event[0] < doc["window"][1]
+                                    and event[0] <= _task_timestamp(doc["outcome"]["verified_utc"])
+                                    for event in nodes.get(gate, {}).get("events", {}).values())
+                independent = independent and lineage is not None and gate_activity
                 for builder in builders:
                     parentage = ancestors(builder)
                     independent = (independent and parentage is not None
@@ -723,6 +746,8 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
             usage, events = _task_usage(provider, nodes[key], doc["window"])
             result["sessions_found"] += 1
             result["overhead_sessions"] += row["overhead"]
+            if key in declared and not row["overhead"] and not events:
+                result["usage_issues"].append("declared_session_without_window_usage")
             if not nodes[key]["events"] or any(v == "unknown" for v in usage.values()):
                 result["usage_issues"].append("missing_or_unknown_counters")
             if nodes[key].get("incomplete_identity"):
