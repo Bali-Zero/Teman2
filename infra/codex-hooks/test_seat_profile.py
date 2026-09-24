@@ -1,11 +1,15 @@
 """The reviewed Codex seat profile: install absent items, never overwrite drift."""
 
 import json
+import sys
 import tomllib
+from pathlib import Path
 
 import pytest
 
-import install_seat_profile as profile
+sys.path.insert(0, str(Path(__file__).parent))
+
+import install_seat_profile as profile  # noqa: E402
 
 TEXT, ROLES = profile.expected()
 
