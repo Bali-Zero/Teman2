@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,129 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 import context_bridge as bridge
+
+
+def receipt_program(tmp_path: Path) -> Path:
+    path = tmp_path / "check"
+    path.write_text("#!/bin/sh\nexit 0\n")
+    path.chmod(0o755)
+    return path
+
+
+def test_receipt_reuse_on_resume_and_compact(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    assert bridge.receipt_state(proof, str(repo))["state"] == "reusable"
+    for kind in ("SessionStart", "PostCompact"):
+        text = bridge.hook({**event, "hook_event_name": kind})["hookSpecificOutput"]["additionalContext"]
+        assert "Verification receipt: reusable" in text
+        assert str(program) not in text
+
+
+@pytest.mark.parametrize("change", ["code", "binary", "path", "env"])
+def test_receipt_detects_observed_drift(setup: tuple, tmp_path: Path, monkeypatch, change: str) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
+    proof = bridge.verify(event["session_id"], {"commands": [["check"]]})
+    if change == "code":
+        (repo / "changed.py").write_text("changed input")
+    elif change == "binary":
+        program.write_text("#!/bin/sh\nexit 1\n")
+    elif change == "path":
+        monkeypatch.setenv("PATH", "/bin")
+    else:
+        monkeypatch.setenv("PYTEST_ADDOPTS", "--new-input")
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+    assert "--new-input" not in json.dumps(proof)
+
+
+def test_nested_venv_dependency_drift_with_symlink_interpreter(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    venv = tmp_path / "venv"
+    (venv / "bin").mkdir(parents=True)
+    (venv / "pyvenv.cfg").write_text("fixture")
+    interpreter = venv / "bin/python"
+    interpreter.symlink_to(program)
+    packages = venv / "lib/python3.13/site-packages/pkg"
+    packages.mkdir(parents=True)
+    dep = packages / "module.py"
+    dep.write_text("a = 1")
+    root_time = packages.parent.stat().st_mtime_ns
+    proof = bridge.verify(event["session_id"], {"commands": [[str(interpreter)]]})
+    assert bridge.receipt_state(proof, str(repo))["state"] == "reusable"
+    dep.write_text("a = 2")
+    assert packages.parent.stat().st_mtime_ns == root_time
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+
+
+def test_failed_and_legacy_receipts_cannot_reuse(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    legacy = {k: v for k, v in proof.items() if k not in ("programs", "environment")}
+    assert bridge.receipt_state(legacy, str(repo))["state"] == "stale"
+    program.write_text("#!/bin/sh\nexit 1\n")
+    failed = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    assert bridge.receipt_state(failed, str(repo))["state"] == "failed"
+
+
+def test_environment_over_limit_and_unresolved_are_not_reusable(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    monkeypatch.setattr(bridge, "ENV_MAX_ENTRIES", 0)
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+    assert bridge.environment_fingerprint(["/missing/check"], str(repo))["sha256"] is None
+
+
+def test_environment_changed_during_passing_check_is_stale(setup: tuple, tmp_path: Path) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    program.write_text('#!/bin/sh\nprintf "\\n# changed\\n" >> "$0"\nexit 0\n')
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    assert proof["passed"] is True
+    assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+
+
+def test_stop_rejects_receipt_after_environment_change(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, event = setup
+    (repo / "changed.py").write_text("change")
+    program = receipt_program(tmp_path)
+    bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    monkeypatch.setenv("NODE_ENV", "changed")
+    assert bridge.hook({**event, "hook_event_name": "Stop"})["decision"] == "block"
+
+
+def test_continuation_inherits_but_revalidates_receipt(setup: tuple, tmp_path: Path, monkeypatch) -> None:
+    repo, _, event = setup
+    program = receipt_program(tmp_path)
+    source = event["session_id"]
+    proof = bridge.verify(source, {"commands": [[str(program)]]})
+    with bridge.locked(source) as (path, state):
+        state.update(rollover="starting", launch_nonce="expected")
+        bridge.save(path, state)
+    monkeypatch.setenv("CODEX_CONTEXT_FROM_SESSION", source)
+    monkeypatch.setenv("CODEX_CONTEXT_NONCE", "expected")
+    monkeypatch.setenv("NODE_ENV", "changed")
+    child = {**event, "session_id": "inherited-child-123"}
+    text = bridge.hook(child)["hookSpecificOutput"]["additionalContext"]
+    state = bridge.load(bridge.state_path(child["session_id"]))
+    assert state["inherited_verification"] == proof
+    assert "Verification receipt: stale" in text
+    assert bridge.receipt_state(state["inherited_verification"], str(repo))["state"] == "stale"
+
+
+def test_receipt_status_and_output_round_trip(setup: tuple, tmp_path: Path, monkeypatch, capsys) -> None:
+    _, _, event = setup
+    program = receipt_program(tmp_path)
+    proof = bridge.verify(event["session_id"], {"commands": [[str(program)]]})
+    assert bridge.receipt_from_output({"stdout": json.dumps(proof)}) == proof
+    monkeypatch.setattr(sys, "argv", ["context_bridge.py", "status", event["session_id"]])
+    assert bridge.main() == 0
+    assert json.loads(capsys.readouterr().out)["receipt_state"]["state"] == "reusable"
 
 
 @pytest.fixture

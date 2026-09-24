@@ -16,6 +16,7 @@ import os
 import queue
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -152,6 +153,143 @@ def git_fingerprint(cwd: str) -> str:
                     if path.is_file() and not path.is_symlink():
                         h.update(path.read_bytes())
     return h.hexdigest()
+
+
+RECEIPT_ENV_VARS = (
+    "PATH", "PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "CONDA_PREFIX",
+    "NODE_PATH", "NODE_OPTIONS", "NODE_ENV", "PYTEST_ADDOPTS",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "PYTHONHASHSEED", "PYTHONNOUSERSITE",
+    "LANG", "LC_ALL", "LC_CTYPE", "TZ", "CI",
+)
+ENV_MAX_ENTRIES = 100_000
+ENV_MAX_SECONDS = 8.0
+
+
+def environment_fingerprint(programs: list[str], cwd: str) -> dict[str, Any]:
+    """Bounded stat-based drift detection, not dependency content attestation.
+
+    Keep original lookup names so a subsequent PATH change is observable. Only
+    digests of the selected environment values leave this function. Unknown or
+    over-limit observations cannot produce reusable evidence.
+    """
+    result: dict[str, Any] = {"sha256": None, "programs": programs}
+    started, count = time.monotonic(), 0
+    h = hashlib.sha256()
+
+    def observe(path: Path) -> None:
+        nonlocal count
+        count += 1
+        if count > ENV_MAX_ENTRIES or time.monotonic() - started > ENV_MAX_SECONDS:
+            raise ValueError("environment observation limit")
+        s = path.stat()
+        h.update(json.dumps((str(path), s.st_mode, s.st_size,
+                             s.st_mtime_ns, s.st_ctime_ns, s.st_ino, s.st_dev)).encode())
+
+    try:
+        if not programs or len(programs) > 8 or not all(
+            isinstance(p, str) and p and len(p) <= 4096 for p in programs
+        ):
+            raise ValueError("invalid programs")
+        for name in RECEIPT_ENV_VARS:
+            value = os.environ.get(name)
+            h.update(json.dumps((name, None if value is None else digest(value.encode()))).encode())
+        search_path = os.pathsep.join(
+            str(Path(cwd) / entry) if not os.path.isabs(entry) else entry
+            for entry in os.environ.get("PATH", os.defpath).split(os.pathsep)
+        )
+        trees: set[Path] = set()
+        for program in sorted(set(programs)):
+            found = (str(Path(cwd) / program) if os.sep in program
+                     else shutil.which(program, path=search_path))
+            if not found or not os.access(found, os.X_OK):
+                raise ValueError("unresolved executable")
+            path = Path(os.path.abspath(found))  # preserve venv before resolving its symlink
+            h.update(program.encode())
+            h.update(str(path.resolve()).encode())
+            observe(path)
+            venv = path.parent.parent
+            cfg = venv / "pyvenv.cfg"
+            if cfg.is_file():
+                observe(cfg)
+                packages = list((venv / "lib").glob("python*/site-packages"))
+                if not packages:
+                    raise ValueError("unobservable venv dependencies")
+                trees.update(packages)
+
+        def walk_error(error: OSError) -> None:
+            raise error
+
+        for tree in sorted(trees):
+            for root, dirs, files in os.walk(tree, onerror=walk_error):
+                dirs.sort()
+                observe(Path(root))
+                # A linked subtree cannot be bounded by observing only its root.
+                if any((Path(root) / d).is_symlink() for d in dirs):
+                    raise ValueError("unobservable linked dependencies")
+                for name in sorted(files):
+                    observe(Path(root) / name)
+        result["sha256"] = h.hexdigest()
+    except ValueError as exc:
+        result["reason"] = str(exc) if str(exc) in {
+            "environment observation limit", "invalid programs", "unresolved executable",
+            "unobservable venv dependencies", "unobservable linked dependencies",
+        } else "environment observation failed"
+    except (OSError, TypeError):
+        result["reason"] = "environment observation failed"
+    return result
+
+
+def receipt_state(proof: Any, cwd: str) -> dict[str, str]:
+    """A receipt is a claim whose code and observed environment must still match."""
+    def verdict(state: str, reason: str) -> dict[str, str]:
+        return {"state": state, "reason": reason}
+
+    if not proof:
+        return verdict("none", "no verification receipt")
+    try:
+        checks = proof.get("checks")
+        if (not isinstance(checks, list) or not 1 <= len(checks) <= 8
+                or not all(isinstance(c, dict) for c in checks)):
+            return verdict("stale", "invalid checks")
+        if proof.get("passed") is not True or any(c.get("exit_code") != 0 for c in checks):
+            return verdict("failed", "the last check did not pass")
+        if not proof.get("environment"):
+            return verdict("stale", "no environment binding")
+        if proof.get("fingerprint") != git_fingerprint(cwd):
+            return verdict("stale", "code or input changed")
+        observed = environment_fingerprint(proof.get("programs"), cwd)
+        if not observed["sha256"]:
+            return verdict("stale", "environment unavailable or over limit")
+        if observed["sha256"] != proof["environment"]:
+            return verdict("stale", "observed environment changed")
+        return verdict("reusable", "code and observed environment match")
+    except Exception:
+        return verdict("stale", "receipt could not be verified")
+
+
+def current_receipt(state: dict[str, Any]) -> Any:
+    return state.get("verification", state.get("inherited_verification"))
+
+
+def receipt_guidance(state: dict[str, Any], cwd: str) -> str:
+    proof = current_receipt(state)
+    result = receipt_state(proof, cwd)
+    actions = {
+        "none": "verify before claiming completion",
+        "reusable": "reuse it; rerun if code or observed environment changes",
+        "stale": "rerun the checks before claiming completion",
+        "failed": "the last check FAILED; it is not a PASS",
+    }
+    count, stamp = 0, "unknown time"
+    if isinstance(proof, dict):
+        checks = proof.get("checks")
+        count = min(len(checks), 8) if isinstance(checks, list) else 0
+        try:
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(float(proof["timestamp"])))
+        except (ValueError, TypeError, KeyError, OverflowError, OSError):
+            pass
+    return (f"Verification receipt: {result['state']} ({result['reason']}; "
+            f"{count} checks at {stamp}). {actions[result['state']]}. ")
 
 
 def records(path: str, tail: bool = False, offset: int = 0) -> Iterator[dict[str, Any]]:
@@ -341,7 +479,9 @@ def receipt_from_output(value: Any) -> dict[str, Any] | None:
     if isinstance(value, dict):
         if all(k in value for k in ("fingerprint", "passed", "checks", "timestamp")):
             return {
-                k: value[k] for k in ("fingerprint", "passed", "checks", "timestamp")
+                k: value[k] for k in (
+                    "fingerprint", "passed", "checks", "timestamp", "environment", "programs"
+                ) if k in value
             }
         for key in ("stdout", "output", "content", "text"):
             found = receipt_from_output(value.get(key))
@@ -744,11 +884,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                 and isinstance(proof["checks"], list)
                 and 1 <= len(proof["checks"]) <= 8
             ):
-                proof["passed"] = (
-                    proof["passed"] is True
-                    and proof["fingerprint"] == git_fingerprint(cwd)
-                    and all(c.get("exit_code") == 0 for c in proof["checks"])
-                )
+                proof["receipt_state"] = receipt_state(proof, cwd)
                 state["verification"] = proof
         if event == "PreToolUse":
             state["last_tool_name"] = payload.get("tool_name")
@@ -807,6 +943,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                         role=source.get("role", "builder"),
                         mandate_root=source.get("mandate_root", source_id),
                         mandate_deadline=source.get("mandate_deadline"),
+                        inherited_verification=current_receipt(source),
                     )
             state.setdefault(
                 "role",
@@ -818,7 +955,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             )
             state.setdefault("baseline", git_fingerprint(cwd))
             save(path, state)
-            return context_output(event, guidance)
+            return context_output(event, guidance + "\n" + receipt_guidance(state, cwd))
         if event == "PostCompact":
             state["ignore_observed"] = state.get("observed")
             if state.get("rollover") not in (
@@ -827,7 +964,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             ) and not supervisor_alive(state):
                 state.pop("rollover", None)
             save(path, state)
-            return context_output(event, guidance)
+            return context_output(event, guidance + "\n" + receipt_guidance(state, cwd))
         fraction = threshold(policy, state.get("role", "builder"))
         over = state.get("used", 0) >= state.get("window", float("inf")) * fraction
         over = over and state.get("observed") != state.get("ignore_observed")
@@ -899,8 +1036,8 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             latest.update(transport_status="stopped", acceptance_status="unverified")
             save(path, latest)
         if state.get("baseline") and current != state["baseline"]:
-            proof = state.get("verification", {})
-            if proof.get("fingerprint") != current or not proof.get("passed"):
+            proof = current_receipt(state)
+            if receipt_state(proof, cwd)["state"] != "reusable":
                 message = (
                     "Code changed without a current successful verification receipt. "
                     + guidance
@@ -946,6 +1083,10 @@ def verify(sid: str, data: dict[str, Any], persist: bool = True) -> dict[str, An
     commands = data.get("commands")
     if not isinstance(commands, list) or not 1 <= len(commands) <= 8:
         raise ValueError("one to eight argv commands required")
+    if any(not isinstance(argv, list) or not argv
+           or not all(isinstance(a, str) for a in argv) for argv in commands):
+        raise ValueError("commands must be argv arrays")
+    environment = environment_fingerprint([argv[0] for argv in commands], state["cwd"])
     before = git_fingerprint(state["cwd"])
     results = []
     for argv in commands:
@@ -964,11 +1105,15 @@ def verify(sid: str, data: dict[str, Any], persist: bool = True) -> dict[str, An
             }
         )
     after = git_fingerprint(state["cwd"])
+    after_environment = environment_fingerprint(environment["programs"], state["cwd"])
     proof = {
         "timestamp": time.time(),
         "fingerprint": after,
         "passed": before == after and all(r["exit_code"] == 0 for r in results),
         "checks": results,
+        "environment": (environment["sha256"]
+                        if environment == after_environment else None),
+        "programs": environment["programs"],
     }
     if persist:
         with locked(sid) as (path, latest):
@@ -1329,7 +1474,9 @@ def main() -> int:
             continue_session(sys.argv[2])
             return 0
         if verb == "status":
-            print(json.dumps(load(state_path(sys.argv[2])), indent=2))
+            state = load(state_path(sys.argv[2]))
+            state["receipt_state"] = receipt_state(current_receipt(state), state.get("cwd", ""))
+            print(json.dumps(state, indent=2))
             return 0
         if verb == "cancel":
             cancel(sys.argv[2])
