@@ -1,0 +1,2 @@
+{"seat": "tp1-qwen3.8-max", "role": "review", "ok": false, "ts": "2026-09-24T09:51:53Z", "note": "VERDICT FAIL: 3 MEDIUM (census masking - REFUTED by replay; e33 UNKNOWN persona not isolating - PLAUSIBLE; EVALUATED_AT validity - REFUTED by construction) + 4 LOW. See pack.yml dissent."}
+{"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": true, "ts": "2026-09-24T09:51:53Z", "note": "VERDICT PASS with no findings (333 bytes) - thin; not counted as independent evidence of non-vacuity."}
