@@ -79,7 +79,8 @@ def main() -> None:
         "output_guard_trusted": len(guard) == 1
         and guard[0]["trustStatus"] == "trusted"
         and guard[0]["enabled"]
-        and guard[0].get("matcher") == "Bash",
+        and guard[0].get("matcher") == "Bash"
+        and str(guard[0].get("eventName", "")).lower() == "pretooluse",
         "artifact_matches_manifest": hashes == manifest["source_sha256"],
         "existing_hooks_preserved": current == old,
         "thresholds": policy["thresholds"],

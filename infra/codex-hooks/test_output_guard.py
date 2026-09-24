@@ -29,7 +29,7 @@ class FakeRPC:
         found = [
             dict(
                 h,
-                eventName=event,
+                eventName=event[0].lower() + event[1:],
                 matcher=group.get("matcher"),
                 key=f"{event}:{i}:{j}",
                 currentHash=bridge.digest(h["command"].encode()),
