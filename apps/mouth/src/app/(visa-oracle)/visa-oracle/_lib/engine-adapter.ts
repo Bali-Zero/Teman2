@@ -597,6 +597,49 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
     "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
   ),
+  // Slice A8-2 (2026-09-24): copy for the 10 EXCLUDE codes seq-23 adds beyond
+  // signed seq-22, owed ahead of the A9 signing/activation so a real applicant
+  // never meets the raw machine code.
+  CALLING_VISA_NATIONALITY_NOT_ASSESSED: text(
+    "One of your nationalities is on Indonesia’s Calling Visa list: a visa on that passport goes through the Calling Visa procedure, which the Oracle doesn’t assess. If you also hold another passport, the one you travel on can change the answer — a consultation is the route.",
+    "Salah satu kewarganegaraan Anda termasuk dalam daftar negara Calling Visa: visa dengan paspor tersebut diproses melalui prosedur Calling Visa, yang tidak dinilai oleh Oracle. Jika Anda juga memiliki paspor lain, paspor yang Anda gunakan untuk bepergian dapat mengubah jawabannya — konsultasi adalah jalurnya.",
+  ),
+  VOA_DUAL_NATIONALITY_NOT_ASSESSED: text(
+    "You hold passports on both sides of the Visa on Arrival list. Whether Visa on Arrival applies depends on the passport you travel on, which the Oracle doesn’t assess — a consultation is the route.",
+    "Anda memegang paspor dari negara yang termasuk dan yang tidak termasuk dalam daftar Visa Saat Kedatangan. Berlaku tidaknya Visa Saat Kedatangan bergantung pada paspor yang Anda gunakan untuk bepergian, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  ACTIVE_OVERSTAY_SETTLE_FIRST: text(
+    "You told us you are overstaying now. The Oracle can’t assess a new stay until the overstay is settled with Immigration — a consultation is the route.",
+    "Anda menyatakan sedang overstay. Oracle tidak dapat menilai izin tinggal baru sebelum overstay diselesaikan dengan Imigrasi — konsultasi adalah jalurnya.",
+  ),
+  MINOR_SPONSOR_NOT_CONFIRMED: text(
+    "You told us the family sponsor isn’t confirmed. For a minor, the Oracle can’t assess any route without a confirmed sponsor — a consultation is the route.",
+    "Anda menyatakan bahwa sponsor keluarga belum dikonfirmasi. Untuk anak di bawah umur, Oracle tidak dapat menilai jalur apa pun tanpa sponsor yang sudah dikonfirmasi — konsultasi adalah jalurnya.",
+  ),
+  BRIDGING_ADVERSE_HISTORY_NOT_ASSESSED: text(
+    "The Oracle doesn’t assess the Bridging Visa (Transitional Stay Permit) after a disclosed overstay, deportation, entry ban or immigration investigation — a consultation is the route.",
+    "Oracle tidak menilai Izin Tinggal Peralihan setelah adanya overstay, deportasi, penangkalan, atau pemeriksaan keimigrasian yang Anda ungkapkan — konsultasi adalah jalurnya.",
+  ),
+  E33_EMPLOYMENT_NOT_COVERED: text(
+    "The Second Home visa doesn’t by itself allow employment; working while holding it needs a separate dual-activity permission (rangkap kegiatan), which the Oracle doesn’t assess — a consultation is the route.",
+    "Visa Rumah Kedua tidak dengan sendirinya mengizinkan bekerja; bekerja selama memegangnya memerlukan izin rangkap kegiatan tersendiri, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_MARKET_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) covers work for a company based outside Indonesia, and its permit bars selling services in Indonesia; the Oracle can’t confirm it for work serving Indonesian clients — a consultation is the route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mencakup pekerjaan untuk perusahaan yang berkedudukan di luar Indonesia, dan izinnya melarang penjualan jasa di Indonesia; Oracle tidak dapat mengonfirmasinya untuk pekerjaan yang melayani klien Indonesia — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_COMPANY_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) doesn’t cover owning or running an Indonesian company; that is an investor route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
+  ),
+  STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
+    "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",
+    "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
+  ),
+  RETIREMENT_INCOME_BELOW_THRESHOLD: text(
+    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
+    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
