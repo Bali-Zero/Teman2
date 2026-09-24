@@ -2080,13 +2080,17 @@ async def test_disclosed_review_flag_can_only_replace_support_with_review(
 
 
 #: The twelve conditioning disclosures (PLAN VISA-ORACLE-DW-20260919 slice
-#: A1', OD-5): every member of the closed enum except the two
-#: `HOLDING_DISCLOSED_FLAGS` holds — `CRIMINAL_RECORD` per the 2026-09-13
-#: ruling, and `ACTIVITY_BOUNDARY` per gate vo-gate-a1's OBS-1 HIGH (it is
-#: the flag raised for what the signed pack cannot decide at all, not a
-#: disclosed-but-decided fact).
+#: A1'/A3'-B, OD-5): every member of the closed enum except
+#: `HOLDING_DISCLOSED_FLAGS` (`CRIMINAL_RECORD`, per the 2026-09-13 ruling)
+#: and `DEAD_END_DISCLOSED_FLAGS` (`ACTIVITY_BOUNDARY`, per gate vo-gate-a1's
+#: OBS-1 HIGH and Slice A3'-B — it is the flag raised for what the signed
+#: pack cannot decide at all, not a disclosed-but-decided fact, so it names
+#: a dead end rather than either holding or conditioning).
 _NON_CRIMINAL_DISCLOSED_FLAGS: tuple[DisclosedReviewFlag, ...] = tuple(
-    flag for flag in DisclosedReviewFlag if flag not in evaluate_path.HOLDING_DISCLOSED_FLAGS
+    flag
+    for flag in DisclosedReviewFlag
+    if flag not in evaluate_path.HOLDING_DISCLOSED_FLAGS
+    and flag not in evaluate_path.DEAD_END_DISCLOSED_FLAGS
 )
 
 
@@ -2105,24 +2109,41 @@ def _supported_baseline() -> Decision:
 
 
 def test_holding_set_is_exactly_the_ruling() -> None:
-    """2026-09-13 ruling + gate vo-gate-a1's OBS-1 HIGH: human review
-    survives for exactly two disclosures — the disclosed criminal matter,
-    and the boundary flag the pack cannot decide at all.
+    """2026-09-13 ruling: human review survives for exactly one disclosure
+    — the disclosed criminal matter. ``ACTIVITY_BOUNDARY`` left this set in
+    Slice A3'-B — see ``test_dead_end_set_is_exactly_activity_boundary``.
 
     If a future PR widens or narrows ``HOLDING_DISCLOSED_FLAGS``, this test
-    names the ruling/gate finding it is breaking.
+    names the ruling it is breaking.
     """
 
     assert evaluate_path.HOLDING_DISCLOSED_FLAGS == frozenset(
-        {DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+        {DisclosedReviewFlag.CRIMINAL_RECORD}
     )
 
 
-def test_activity_boundary_disclosure_still_holds() -> None:
-    """Pin for gate vo-gate-a1's OBS-1 HIGH fix: ``ACTIVITY_BOUNDARY`` is
-    NOT released to a condition — it still forces
-    ``HUMAN_REVIEW_REQUIRED``, exactly like ``CRIMINAL_RECORD``, until A3
-    sub-classifies the raise in ``fact-mapper.ts``."""
+def test_dead_end_set_is_exactly_activity_boundary() -> None:
+    """Slice A3'-B (PLAN VISA-ORACLE-DW-20260919): the boundary flag the
+    pack cannot decide at all names a dead end, not a hold — it is the one
+    member of ``DEAD_END_DISCLOSED_FLAGS``.
+
+    If a future PR widens or narrows ``DEAD_END_DISCLOSED_FLAGS``, this
+    test names the slice it is breaking.
+    """
+
+    assert evaluate_path.DEAD_END_DISCLOSED_FLAGS == frozenset(
+        {DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+    )
+
+
+def test_activity_boundary_is_a_named_dead_end_on_a_supported_base() -> None:
+    """Slice A3'-B: ``ACTIVITY_BOUNDARY`` is released from the hold and
+    names ``NO_SUPPORTED_PATH`` instead — there is no pack verdict to
+    abstain from once the signed pack cannot decide the applicant's
+    activity at all. GUILT: removing ``ACTIVITY_BOUNDARY`` from
+    ``HOLDING_DISCLOSED_FLAGS`` without adding ``DEAD_END_DISCLOSED_FLAGS``
+    raises ``KeyError`` at ``evaluate_path.py`` — the dead-end reason code
+    lookup has no entry for a flag that is neither held nor dead-ended."""
 
     baseline = _supported_baseline()
 
@@ -2130,11 +2151,108 @@ def test_activity_boundary_disclosure_still_holds() -> None:
         baseline,
         (DisclosedReviewFlag.ACTIVITY_BOUNDARY,),
     )
-    assert reviewed.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert reviewed.state.value == "NO_SUPPORTED_PATH"
     assert reviewed.candidates == ()
-    assert [reason.code for reason in reviewed.review_reasons] == [
-        "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    assert reviewed.missing_facts == ()
+    assert reviewed.quotes == ()
+    assert reviewed.review_reasons == ()
+    assert [reason.code for reason in reviewed.no_path_reasons] == [
+        "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"
     ]
+    assert reviewed.no_path_reasons[0].source_refs == ()
+    assert reviewed.no_path_reasons[0].rule_ids == (
+        "system.disclosed-no-path.activity-boundary",
+    )
+    # The dead-end id differs from the baseline's own id (B4).
+    assert reviewed.decision_id != baseline.decision_id
+    assert reviewed.public_id != baseline.public_id
+
+
+def test_activity_boundary_dead_end_ids_differ_from_the_holding_ids_and_are_stable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B4: the dead-end id is ``uuid5(decision_id, "no-path:"+seed)`` and
+    ``sha256(f"{public_id}:no-path:{seed}")[:20]`` — a distinct namespace
+    from the kill-switch hold's plain ``uuid5(decision_id, seed)`` for the
+    SAME flag, so the two outcomes can never collide on the same
+    idempotency key. Both are stable across two calls on the same input.
+    GUILT: dropping the ``"no-path:"`` prefix would collide the dead-end id
+    with the held id below."""
+
+    baseline = _supported_baseline()
+
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+    dead_ended_once = evaluate_path._apply_disclosed_review_flags(
+        baseline, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    dead_ended_twice = evaluate_path._apply_disclosed_review_flags(
+        baseline, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    assert dead_ended_once.decision_id == dead_ended_twice.decision_id
+    assert dead_ended_once.public_id == dead_ended_twice.public_id
+    assert dead_ended_once.decision_id == uuid.uuid5(
+        baseline.decision_id, "no-path:ACTIVITY_BOUNDARY"
+    )
+    assert dead_ended_once.public_id == hashlib.sha256(
+        f"{baseline.public_id}:no-path:ACTIVITY_BOUNDARY".encode()
+    ).hexdigest()[:20]
+
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "ACTIVITY_BOUNDARY")
+    held = evaluate_path._apply_disclosed_review_flags(
+        baseline, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    assert held.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert held.decision_id == uuid.uuid5(baseline.decision_id, "ACTIVITY_BOUNDARY")
+    assert held.decision_id != dead_ended_once.decision_id
+    assert held.public_id != dead_ended_once.public_id
+
+
+def test_activity_boundary_oracle_innocence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B3: order never matters for (CRIMINAL_RECORD, ACTIVITY_BOUNDARY) on a
+    SUPPORTED base — CRIMINAL_RECORD alone already holds by the floor, so
+    ACTIVITY_BOUNDARY's position in the tuple changes nothing. And a pack
+    already at HUMAN_REVIEW_REQUIRED that also discloses ACTIVITY_BOUNDARY
+    is never diverted to the dead end — not with the kill switch unset, and
+    not with it explicitly holding ACTIVITY_BOUNDARY. GUILT: sending the
+    pack-HUMAN_REVIEW case to the dead end turns ``state`` to
+    ``NO_SUPPORTED_PATH`` in either branch below."""
+
+    monkeypatch.delenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, raising=False)
+    supported = _supported_baseline()
+
+    ordered = evaluate_path._apply_disclosed_review_flags(
+        supported,
+        (DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY),
+    )
+    reordered = evaluate_path._apply_disclosed_review_flags(
+        supported,
+        (DisclosedReviewFlag.ACTIVITY_BOUNDARY, DisclosedReviewFlag.CRIMINAL_RECORD),
+    )
+    assert ordered == reordered
+    assert ordered.state.value == "HUMAN_REVIEW_REQUIRED"
+
+    # A pack already under human review (synthesised here the same way a
+    # real HUMAN_REVIEW_REQUIRED pack decision would be: any decision whose
+    # `.state` is already HUMAN_REVIEW_REQUIRED — the branch dispatches on
+    # `.state` alone, never on how it got there).
+    review_pack = evaluate_path._apply_disclosed_review_flags(
+        supported, (DisclosedReviewFlag.CRIMINAL_RECORD,)
+    )
+    assert review_pack.state.value == "HUMAN_REVIEW_REQUIRED"
+
+    unset_result = evaluate_path._apply_disclosed_review_flags(
+        review_pack, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "ACTIVITY_BOUNDARY")
+    held_result = evaluate_path._apply_disclosed_review_flags(
+        review_pack, (DisclosedReviewFlag.ACTIVITY_BOUNDARY,)
+    )
+    assert unset_result.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert held_result.state.value == "HUMAN_REVIEW_REQUIRED"
+    assert unset_result.no_path_reasons == ()
+    assert held_result.no_path_reasons == ()
 
 
 def test_resolve_holding_flags_defaults_to_the_ruling(
@@ -2151,7 +2269,6 @@ def test_resolve_holding_flags_reads_a_valid_override(
     assert evaluate_path._resolve_holding_flags() == frozenset(
         {
             DisclosedReviewFlag.CRIMINAL_RECORD,
-            DisclosedReviewFlag.ACTIVITY_BOUNDARY,
             DisclosedReviewFlag.HEALTH_CONCERN,
             DisclosedReviewFlag.NOT_CERTAIN,
         }
@@ -2161,13 +2278,16 @@ def test_resolve_holding_flags_reads_a_valid_override(
 def test_resolve_holding_flags_floor_always_holds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """CRIMINAL_RECORD and ACTIVITY_BOUNDARY hold ALWAYS, whatever the env
-    says — neither is in the env override's own token list here."""
+    """CRIMINAL_RECORD holds ALWAYS, whatever the env says — it is not in
+    the env override's own token list here. ACTIVITY_BOUNDARY left the
+    floor in Slice A3'-B: it is NOT held by a plain recognized-token env
+    value that does not name it explicitly (it names a dead end instead —
+    see `DEAD_END_DISCLOSED_FLAGS`)."""
 
     monkeypatch.setenv(evaluate_path._HOLDING_FLAGS_ENV_VAR, "HEALTH_CONCERN")
     resolved = evaluate_path._resolve_holding_flags()
     assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
-    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY not in resolved
 
 
 def test_resolve_holding_flags_fails_closed_on_a_malformed_value(
@@ -2238,7 +2358,6 @@ def test_resolve_holding_flags_normalises_case_before_matching(
     assert resolved == frozenset(
         {
             DisclosedReviewFlag.CRIMINAL_RECORD,
-            DisclosedReviewFlag.ACTIVITY_BOUNDARY,
             DisclosedReviewFlag.HEALTH_CONCERN,
         }
     )
@@ -2260,7 +2379,9 @@ def test_resolve_holding_flags_can_widen_to_the_three_new_disclosures(
     assert DisclosedReviewFlag.BLACKLIST_ENTRY in resolved
     assert DisclosedReviewFlag.IMMIGRATION_INVESTIGATION in resolved
     assert DisclosedReviewFlag.CRIMINAL_RECORD in resolved
-    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY in resolved
+    # ACTIVITY_BOUNDARY left the floor in Slice A3'-B — it is not named by
+    # this env value, so it stays a dead end, not a hold.
+    assert DisclosedReviewFlag.ACTIVITY_BOUNDARY not in resolved
 
 
 def test_resolve_holding_flags_fails_closed_on_mixed_recognized_and_unknown(

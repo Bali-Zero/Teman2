@@ -31,6 +31,7 @@ from backend.scripts.visa_engine.review_hold_inventory import (
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.api_models import DisclosedReviewFlag
 from backend.services.visa_engine.evaluate_path import (
+    DEAD_END_DISCLOSED_FLAGS,
     HOLDING_DISCLOSED_FLAGS,
     MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
 )
@@ -110,38 +111,42 @@ def test_every_disclosed_flag_has_exactly_one_code() -> None:
 
 
 def test_holding_split_matches_the_2026_09_13_ruling_floor() -> None:
-    """PLAN VISA-ORACLE-DW-20260919 slice A1' (gate vo-gate-a1, OBS-3
-    MEDIUM): the inventory must derive holding vs conditioning from
-    `HOLDING_DISCLOSED_FLAGS` itself, not hand-list the split.
+    """PLAN VISA-ORACLE-DW-20260919 slice A1'/A3'-B (gate vo-gate-a1, OBS-3
+    MEDIUM; Slice A3'-B): the inventory must derive holding, dead-end and
+    conditioning from `HOLDING_DISCLOSED_FLAGS`/`DEAD_END_DISCLOSED_FLAGS`
+    themselves, not hand-list the split.
 
     Unlike `test_inventory_is_a_derivation_not_a_hand_list` below, THIS test
-    hard-pins the membership (`set(holding) ==
-    {CRIMINAL_RECORD, ACTIVITY_BOUNDARY}`, `len(holding) == 2`,
-    `len(conditioning) == 12`) — on purpose: a widening or narrowing of the
-    ruling's floor SHOULD turn this test red, because
-    `split_disclosed_review_codes` deriving its answer from
-    `HOLDING_DISCLOSED_FLAGS` is what the previous gate's OBS-3 asked for,
-    not a promise that the counts float free. What this test proves instead
-    is that the split is a PARTITION of `adapter_review_codes()`'s 14 rows
-    (no code lost, none duplicated, none moved to the wrong side) rather
-    than an independent hand-list that could silently drift from the
-    production mapping — see the final two assertions below."""
+    hard-pins the membership (`set(holding) == {CRIMINAL_RECORD}`,
+    `set(dead_end) == {ACTIVITY_BOUNDARY}`, `len(holding) == 1`,
+    `len(dead_end) == 1`, `len(conditioning) == 12`) — on purpose: a
+    widening or narrowing of the ruling's floor SHOULD turn this test red,
+    because `split_disclosed_review_codes` deriving its answer from those
+    two constants is what the previous gate's OBS-3 asked for, not a
+    promise that the counts float free. What this test proves instead is
+    that the split is a PARTITION of `adapter_review_codes()`'s 14 rows (no
+    code lost, none duplicated, none moved to the wrong side) rather than
+    an independent hand-list that could silently drift from the production
+    mapping — see the final two assertions below."""
 
     codes = adapter_review_codes()
-    holding, conditioning = split_disclosed_review_codes(codes)
+    holding, dead_end, conditioning = split_disclosed_review_codes(codes)
 
     assert set(holding) == HOLDING_DISCLOSED_FLAGS
-    assert set(holding) == {
-        DisclosedReviewFlag.CRIMINAL_RECORD,
-        DisclosedReviewFlag.ACTIVITY_BOUNDARY,
-    }
-    assert len(holding) == 2
+    assert set(holding) == {DisclosedReviewFlag.CRIMINAL_RECORD}
+    assert set(dead_end) == DEAD_END_DISCLOSED_FLAGS
+    assert set(dead_end) == {DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+    assert len(holding) == 1
+    assert len(dead_end) == 1
     assert len(conditioning) == 12
-    assert set(holding) | set(conditioning) == set(DisclosedReviewFlag)
+    assert set(holding) | set(dead_end) | set(conditioning) == set(DisclosedReviewFlag)
+    assert set(holding) & set(dead_end) == set()
     assert set(holding) & set(conditioning) == set()
+    assert set(dead_end) & set(conditioning) == set()
     # Every code stays paired with its own flag across the split — the
     # split partitions rows, it never rewrites a code.
     assert holding == {flag: codes[flag] for flag in holding}
+    assert dead_end == {flag: codes[flag] for flag in dead_end}
     assert conditioning == {flag: codes[flag] for flag in conditioning}
 
 

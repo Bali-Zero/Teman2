@@ -153,8 +153,9 @@ def _evaluate(
     # the browser also sends whatever `mapDisclosedReviewFlags` (fact-mapper.ts)
     # raised, and `evaluate_path.py::_apply_disclosed_review_flags` rewrites the
     # decision to HUMAN_REVIEW_REQUIRED for a flag in `HOLDING_DISCLOSED_FLAGS`
-    # (`CRIMINAL_RECORD` and `ACTIVITY_BOUNDARY`, since PLAN
-    # VISA-ORACLE-DW-20260919 slice A1') and adds a named `notices` condition
+    # (`CRIMINAL_RECORD`), rewrites it to a named `NO_SUPPORTED_PATH` dead end
+    # for `ACTIVITY_BOUNDARY` (`DEAD_END_DISCLOSED_FLAGS`, since PLAN
+    # VISA-ORACLE-DW-20260919 slice A3'-B), and adds a named `notices` condition
     # for every other flag, keeping the pack's own verdict. Evaluating facts
     # alone therefore measures a funnel the applicant never meets — which is
     # why the interview-walk census reported 0 human review from the day it

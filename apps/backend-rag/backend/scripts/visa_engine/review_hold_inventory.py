@@ -52,6 +52,7 @@ from backend.services.visa_engine.api_models import DisclosedReviewFlag
 from backend.services.visa_engine.enums import OnUnknownAction, RuleStage
 from backend.services.visa_engine.evaluate_path import (
     _DISCLOSED_REVIEW_REASON_CODES,
+    DEAD_END_DISCLOSED_FLAGS,
     HOLDING_DISCLOSED_FLAGS,
     MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
 )
@@ -146,18 +147,18 @@ def pack_unknown_escalations(pack: RulePackPayload) -> tuple[RuleReviewEntry, ..
 
 
 def adapter_review_codes() -> dict[DisclosedReviewFlag, str]:
-    """The 11 UI-disclosed flags' review codes, read from the production
+    """The 14 UI-disclosed flags' review codes, read from the production
     module itself — PLAN §1.3(a). Never a copy: importing the module's own
-    mapping means a twelfth flag added there is visible here without this
+    mapping means a fifteenth flag added there is visible here without this
     script being touched.
 
     Every flag has a review code because any of them CAN hold via the
     fleet-wide kill switch (`VISA_ORACLE_HOLDING_FLAGS`) — but only the
     flags in `HOLDING_DISCLOSED_FLAGS` are hold producers TODAY. Callers
     that want "what actually holds right now" must split this with
-    `split_disclosed_review_codes`, not treat all 11 rows as live holds
-    (gate vo-gate-a1, OBS-3 MEDIUM: A1 stopped 10 of these 11 codes from
-    ever firing, and this reporter kept calling all 11 "hold producers").
+    `split_disclosed_review_codes`, not treat all 14 rows as live holds
+    (gate vo-gate-a1, OBS-3 MEDIUM: A1 stopped 10 of these 14 codes from
+    ever firing, and this reporter kept calling all 14 "hold producers").
     """
 
     return dict(_DISCLOSED_REVIEW_REASON_CODES)
@@ -165,23 +166,29 @@ def adapter_review_codes() -> dict[DisclosedReviewFlag, str]:
 
 def split_disclosed_review_codes(
     codes: dict[DisclosedReviewFlag, str],
-) -> tuple[dict[DisclosedReviewFlag, str], dict[DisclosedReviewFlag, str]]:
-    """Split `adapter_review_codes()`'s 11 rows into holding vs conditioning,
-    against the SHIPPED default (`HOLDING_DISCLOSED_FLAGS`) — never the live
-    env override, which this read-only reporter has no reason to read (it
-    describes what a deploy holds, not what today's `fly secrets` says).
+) -> tuple[dict[DisclosedReviewFlag, str], dict[DisclosedReviewFlag, str], dict[DisclosedReviewFlag, str]]:
+    """Split `adapter_review_codes()`'s 14 rows into holding, dead-end and
+    conditioning, against the SHIPPED default (`HOLDING_DISCLOSED_FLAGS`
+    and `DEAD_END_DISCLOSED_FLAGS`) — never the live env override, which
+    this read-only reporter has no reason to read (it describes what a
+    deploy holds, not what today's `fly secrets` says).
 
-    Returns ``(holding, conditioning)``: `holding` are the flags that force
-    `HUMAN_REVIEW_REQUIRED` on the shipped default; `conditioning` are the
-    flags that only add a named `notices` condition today, per the
-    2026-09-13 ruling (PLAN VISA-ORACLE-DW-20260919 slice A1/A1', gate
-    vo-gate-a1's OBS-3 MEDIUM fix)."""
+    Returns ``(holding, dead_end, conditioning)``: `holding` are the flags
+    that force `HUMAN_REVIEW_REQUIRED` on the shipped default; `dead_end`
+    is the flag that names a `NO_SUPPORTED_PATH` dead end instead
+    (Slice A3'-B); `conditioning` are the flags that only add a named
+    `notices` condition today, per the 2026-09-13 ruling (PLAN
+    VISA-ORACLE-DW-20260919 slice A1/A1'/A3'-B, gate vo-gate-a1's OBS-3
+    MEDIUM fix)."""
 
     holding = {flag: code for flag, code in codes.items() if flag in HOLDING_DISCLOSED_FLAGS}
+    dead_end = {flag: code for flag, code in codes.items() if flag in DEAD_END_DISCLOSED_FLAGS}
     conditioning = {
-        flag: code for flag, code in codes.items() if flag not in HOLDING_DISCLOSED_FLAGS
+        flag: code
+        for flag, code in codes.items()
+        if flag not in HOLDING_DISCLOSED_FLAGS and flag not in DEAD_END_DISCLOSED_FLAGS
     }
-    return holding, conditioning
+    return holding, dead_end, conditioning
 
 
 def minor_privacy_review_code() -> str:
@@ -241,7 +248,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     review_rules = pack_review_rules(pack)
     escalations = pack_unknown_escalations(pack)
     disclosed_codes = adapter_review_codes()
-    holding_disclosed, conditioning_disclosed = split_disclosed_review_codes(disclosed_codes)
+    holding_disclosed, dead_end_disclosed, conditioning_disclosed = split_disclosed_review_codes(
+        disclosed_codes
+    )
     privacy_code = minor_privacy_review_code()
     orphans = orphan_review_gate_items()
 
@@ -250,9 +259,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         entry for entry in escalations if entry.rule_id not in review_rule_ids
     )
     # Only the HOLDING disclosed flags are hold producers today — the
-    # conditioning ones add a notice but keep the pack's own candidate, so
-    # they do not belong in a count of what forces HUMAN_REVIEW_REQUIRED
-    # (gate vo-gate-a1, OBS-3 MEDIUM).
+    # dead-end flag names NO_SUPPORTED_PATH (not HUMAN_REVIEW_REQUIRED) and
+    # the conditioning ones add a notice but keep the pack's own candidate,
+    # so neither belongs in a count of what forces HUMAN_REVIEW_REQUIRED
+    # (gate vo-gate-a1, OBS-3 MEDIUM; Slice A3'-B for the dead-end carve-out).
     total_distinct_hold_producers = (
         len(holding_disclosed) + 1 + len(review_rules) + len(extra_escalations)
     )
@@ -266,6 +276,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     for flag, code in holding_disclosed.items():
         rows.append(("disclosed_review_flag_holding", flag.value, code, "-", "-"))
+    for flag, code in dead_end_disclosed.items():
+        rows.append(("disclosed_review_flag_dead_end", flag.value, code, "-", "-"))
     for flag, code in conditioning_disclosed.items():
         rows.append(("disclosed_review_flag_conditioning", flag.value, code, "-", "-"))
     rows.append(
@@ -276,6 +288,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "pack_review_rules": len(review_rules),
         "pack_unknown_escalations": len(escalations),
         "disclosed_review_flags_holding": len(holding_disclosed),
+        "disclosed_review_flags_dead_end": len(dead_end_disclosed),
         "disclosed_review_flags_conditioning": len(conditioning_disclosed),
         "engine_privacy_holds": 1,
         "total_distinct_hold_producers": total_distinct_hold_producers,
