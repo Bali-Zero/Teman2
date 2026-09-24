@@ -1021,6 +1021,7 @@ class TestRunAndWriteBuildsReport:
             expected_sha256=hashlib.sha256(data).hexdigest(),
             query_entries=[_GENERAL_ENTRY],
             resolve_client=_resolver_one(client),
+            bm25=rh.BM25Vectorizer(vocab_size=30000, k1=1.5, b=0.75),
             manifest_cases=[],
         )
 
@@ -1045,6 +1046,7 @@ class TestRunAndWriteBuildsReport:
             expected_sha256=hashlib.sha256(data).hexdigest(),
             query_entries=[_GENERAL_ENTRY],
             resolve_client=_resolver_one(client),
+            bm25=rh.BM25Vectorizer(vocab_size=30000, k1=1.5, b=0.75),
         )
 
         assert "report" not in payload
