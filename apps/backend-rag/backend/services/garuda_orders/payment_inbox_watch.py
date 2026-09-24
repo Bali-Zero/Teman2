@@ -118,10 +118,18 @@ async def count_quarantined(
 
     cutoff = (now or datetime.now(UTC)) - window
 
+    # `coalesce(processed_at, received_at)`, never bare `processed_at`: every
+    # writer today sets `processed_at` in the same UPDATE that quarantines
+    # (`_quarantine`, repository.py), but that is a WRITER CONVENTION, and
+    # the column is nullable. `received_at` is NOT NULL with
+    # `DEFAULT statement_timestamp()` (284_garuda_orders.sql:281-282), so this
+    # makes "every quarantined row is reachable by the window" structural
+    # instead of conventional (L1596) — a NULL `processed_at` would otherwise
+    # be invisible to every paging path while still inflating `lifetime`.
     totals = await conn.fetchrow(
         """
         SELECT
-            count(*) FILTER (WHERE processed_at >= $1) AS recent,
+            count(*) FILTER (WHERE coalesce(processed_at, received_at) >= $1) AS recent,
             count(*) AS lifetime
           FROM garuda_payment_inbox
          WHERE outcome = 'quarantined'
@@ -134,8 +142,8 @@ async def count_quarantined(
         SELECT provider_event_id, order_id, quarantine_reason
           FROM garuda_payment_inbox
          WHERE outcome = 'quarantined'
-           AND processed_at >= $1
-         ORDER BY processed_at DESC
+           AND coalesce(processed_at, received_at) >= $1
+         ORDER BY coalesce(processed_at, received_at) DESC
          LIMIT $2
         """,
         cutoff,
@@ -152,7 +160,7 @@ async def count_quarantined(
         SELECT DISTINCT coalesce(quarantine_reason, $2) AS reason
           FROM garuda_payment_inbox
          WHERE outcome = 'quarantined'
-           AND processed_at >= $1
+           AND coalesce(processed_at, received_at) >= $1
         """,
         cutoff,
         UNRECORDED,

@@ -740,12 +740,17 @@ async def test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid(pool
     # session and an unbound order are three different incidents with three
     # different cures.
     quarantine = await pool.fetchrow(
-        "SELECT outcome, quarantine_reason FROM garuda_payment_inbox "
+        "SELECT outcome, quarantine_reason, order_id FROM garuda_payment_inbox "
         "WHERE provider = 'xendit' AND provider_event_id = $1",
         "evt-wrong-amount-1",
     )
     assert quarantine["outcome"] == "quarantined"
     assert quarantine["quarantine_reason"] == "amount_mismatch"
+    # RED IF: `_quarantine` still leaves `order_id` NULL here. The repository
+    # had the order row in hand (it just checked its price) and quarantined
+    # it anyway — the operator loses the one identifier reconciliation needs
+    # unless it travels through (L1606).
+    assert quarantine["order_id"] == order_id
 
 
 @pytest.mark.asyncio
