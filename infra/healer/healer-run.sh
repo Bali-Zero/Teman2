@@ -358,6 +358,60 @@ except Exception:
     fi
 fi
 
+# Receptor 9: the GARUDA outbox, heard OFF Telegram. `count_undrained`'s
+# `exhausted` had exactly one non-test consumer — `_send_outbox_alarm` in
+# main_api.py, which pages over Telegram — so the number that says "a money
+# page died" could only be heard on the wire that dies with it. Measured
+# 2026-09-20: row 36 (a charge with no webhook) burned five attempts on a
+# `400 can't parse entities` and nothing said so for a day. This receptor
+# reads /health/garuda-outbox over plain HTTP and pages through THIS machine's
+# tg_notify gateway: a different process, a different token, a different
+# machine from the send that broke. exit 2 = BLIND (endpoint unreadable) and is
+# actionable for the same reason as receptor 4's: a receptor that lost its
+# senses is coverage loss, not a quiet day.
+# Kill switch: HEALER_GARUDA_OUTBOX_OFF=1.
+OUTBOX_OUT=$(python3 scripts/healer_receptor_garuda_outbox.py --json 2>/dev/null)
+OUTBOX_EXIT=$?
+if [ "$OUTBOX_EXIT" -eq 1 ] || [ "$OUTBOX_EXIT" -eq 2 ]; then
+    OUTBOX_REASON=$(printf '%s' "$OUTBOX_OUT" | python3 -c "
+import json,sys
+try:
+    print(json.load(sys.stdin).get('reason','?'))
+except Exception:
+    print('?')
+" 2>/dev/null)
+    if [ "$OUTBOX_EXIT" -eq 1 ]; then
+        ACTIONABLE=1; REASONS="${REASONS}garuda-outbox-undrained "
+    else
+        ACTIONABLE=1; REASONS="${REASONS}garuda-outbox-receptor-blind "
+    fi
+    # Paged HERE, not only folded into the tick summary: this is the one
+    # receptor whose whole purpose is to be heard when the API's own alarm
+    # cannot speak, so it must not depend on the summary being read.
+    #
+    # ONE KEY PER CONDITION, and the reason is the gateway's dedup ladder: a
+    # repeat of the same key gets QUIETER each time (tg_notify.py). A single
+    # key for both verdicts would let a standing "endpoint unreadable" mute
+    # the "rows are stuck" page that follows it — two different conditions,
+    # one of them about money, silenced by the other. Found by the kimi/k3
+    # council seat on this diff; the constant key was already written.
+    OUTBOX_KEY="garuda-outbox-undrained"
+    [ "$OUTBOX_EXIT" -eq 2 ] && OUTBOX_KEY="garuda-outbox-blind"
+    telegram p0 "$OUTBOX_KEY" "GARUDA outbox (via $(hostname -s), second path): ${OUTBOX_REASON:-?}
+
+Il conteggio arriva da /health/garuda-outbox, non da Telegram dell'API: se questa pagina arriva mentre l'allarme dell'API tace, il canale dell'API e' il sospetto.
+Dettaglio (credenziale richiesta): ./scripts/pg.sh -Atc \"SELECT id, job_type, attempts, created_at FROM garuda_order_outbox WHERE dispatched_at IS NULL ORDER BY created_at;\""
+    # THE PAGE CAN STILL BE LOST, and the wrapper cannot tell: tg_notify spools
+    # an unsendable P0 as `p0_unsent` and exits 0 by design. Measured on Mini on
+    # 2026-09-20: 3 P0 sent against 5 spooled in 48h (its own ledger row, opened
+    # 2026-09-21 — not this receptor's to fix). Found here by the
+    # codex/gpt-5.6-terra council seat, which called the second path's delivery
+    # "no actionable failure signal". So the finding is written to the machine's
+    # own log as well, and it is already in REASONS, which the tick summary
+    # carries: three surfaces, and only one of them is Telegram.
+    log "garuda-outbox receptor exit=$OUTBOX_EXIT: ${OUTBOX_REASON:-?}"
+fi
+
 # ---- receptor 7: runs that started and never came back --------------------
 # The REAL detector for "an autonomous run died and every gauge stayed green",
 # replacing the prose-parsing verdict that measured 10/10 false positives.
