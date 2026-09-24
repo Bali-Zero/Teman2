@@ -36,9 +36,9 @@ logger = logging.getLogger("dlq_autopilot")
 
 # The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
 # p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
-
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104)
+# with the ONE canonical extractor (see `send_telegram()` below), never a
+# private regex `.search()`.
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOME = Path.home()
@@ -404,6 +404,20 @@ def sweep_terminal_corpses(queue: list) -> tuple[list, list]:
 #   digest — ✅ auto-fixes, 🧹 corpse-sweeps (informative, grouped 2×/day)
 # The gateway owns token resolution, dedup and the daily P0 budget.
 
+# Resolved the same way as the gateway itself above: repo-relative first,
+# then NUZANTARA_ROOT (this file's own HOME-fork target, #1) — so an import
+# failure never kills the autopilot (#2); it degrades to an explicit unknown.
+for _cand in (Path(__file__).resolve().parent.parent, NUZANTARA_ROOT):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
+
+
 def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> None:
     gateway = Path(__file__).resolve().parent / "tg_notify.py"
     if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
@@ -417,8 +431,8 @@ def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> No
     except Exception as exc:  # noqa: BLE001
         logger.warning("tg_notify unreachable: %s", exc)
         return
-    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    logger.info("tg_notify: %s", m.group(1) if m else f"NESSUN verdetto rc={proc.returncode}")
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    logger.info("tg_notify: %s", verdict if verdict else f"NESSUN verdetto rc={proc.returncode}")
 
 
 # ── Claude CLI token chain (multi-account fallback) ──────────────────────────

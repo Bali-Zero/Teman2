@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -126,7 +125,20 @@ def main() -> int:
     return 0
 
 
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+# The gateway's verdict is read by the ONE canonical extractor, never a
+# private regex `.search()` (that returns the FIRST `tg_notify:` match, and a
+# P0-unsendable run prints a diagnostic line before the machine verdict).
+# Resolved the same way as `_find_gateway()` below: repo-relative first, then
+# the HOME-fork copy (#1), so an import failure never kills the drain (#2).
+for _cand in (Path(__file__).resolve().parents[2], Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 def _find_gateway() -> Path | None:
@@ -201,9 +213,9 @@ def _alert_rejected(rejected: int, accepted: int, total: int) -> None:
         return
     # The gateway always exits 0 on purpose and prints its verdict on stderr;
     # reading the exit code would take every refusal for a success (W104).
-    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    if match:
-        logger.info("tg_notify: %s (rejected=%s)", match.group(1), rejected)
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    if verdict:
+        logger.info("tg_notify: %s (rejected=%s)", verdict, rejected)
     else:
         tail = " ".join((proc.stderr or "").split())[-160:]
         logger.warning(

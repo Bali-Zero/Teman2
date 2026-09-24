@@ -687,3 +687,37 @@ def test_main_healthy_day_exits_zero(tmp_path, monkeypatch):
     assert rc == 0
     written = [p for p in out_dir.glob("*.json") if p.name != ".last-run-pointer.json"]
     assert len(written) == 1
+
+
+def test_run_tg_notify_reads_last_verdict_line_not_first(monkeypatch, capsys):
+    """A P0-unsendable gateway run prints a human diagnostic `tg_notify:` line
+    BEFORE its machine verdict; `_run_tg_notify` must read the LAST canonical
+    line via the shared extractor, not the first `tg_notify:` match (guard:
+    scripts/tests/test_gateway_callers_read_the_verdict.py, measured 2026-09-24
+    on the sibling _GATEWAY_VERDICT_RE this module used to carry)."""
+    two_line_stderr = (
+        "tg_notify: P0 unsendable (no token/relay) — spooled as p0_unsent\n"
+        "tg_notify: p0_unsent_spooled\n"
+    )
+    monkeypatch.setattr(
+        sgp.subprocess, "run",
+        lambda cmd, **kw: _proc(cmd, 0, "", two_line_stderr),
+    )
+
+    sgp._run_tg_notify(["tg_notify.py", "--tier", "p0"])
+
+    logged = capsys.readouterr().err
+    assert "tg_notify: p0_unsent_spooled" in logged
+    assert "P0 unsendable" not in logged
+
+
+def test_run_tg_notify_reads_single_canonical_line(monkeypatch, capsys):
+    """Innocence pin: the common one-line case still reads through."""
+    monkeypatch.setattr(
+        sgp.subprocess, "run",
+        lambda cmd, **kw: _proc(cmd, 0, "", "tg_notify: sent\n"),
+    )
+
+    sgp._run_tg_notify(["tg_notify.py", "--tier", "digest"])
+
+    assert "tg_notify: sent" in capsys.readouterr().err
