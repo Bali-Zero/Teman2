@@ -380,35 +380,55 @@ L12_CLAIMS = (
     L12_CLAIM_WITHOUT_PARTNER,
     L12_CLAIM_NO_PARTNER_NEEDED,
 )
-# innocence: a negation sitting BEFORE the claim, in the same clause — "not a
-# fully foreign-owned operation", "cannot be wholly foreign-owned", "below full
-# ownership", "not full ownership". Searched anywhere in a clause-bounded
-# window (never anchored to the word immediately before the claim: "not a
-# fully…" and "cannot be wholly…" both have a filler word in between).
+# a clause boundary for L12: bare presence of a negator anywhere in a fixed
+# character window judges a TOKEN, not the claim's scope (scar family #3) — a
+# negator two clauses back ("Bali does not block it, and foreign investors can
+# fully own the business") must NOT exonerate a live claim. Every window below
+# is cut at the nearest one of these, in EITHER direction.
+L12_CLAUSE_BOUNDARY = re.compile(r"[.!?,;:]")
+# innocence: a negation sitting BEFORE the claim, and it must SCOPE the claim —
+# the negator is followed by at most 2 filler words and then the claim starts
+# ("not a fully foreign-owned operation", "cannot be wholly foreign-owned",
+# "below full ownership", "not full ownership", "Not Fully Foreign-Owned").
+# Anchored to the END of the (clause-cut) pre-window, never a bare search: a
+# negator that trails off into unrelated words no longer governs the claim.
 L12_NEG_BEFORE = re.compile(
     r"\b(?:not|cannot|can't|never|no|isn't|below|short\s+of|less\s+than|"
-    r"rather\s+than|instead\s+of|no\s+longer)\b",
+    r"rather\s+than|instead\s+of|no\s+longer)\s+(?:\S+\s+){0,2}$",
     re.IGNORECASE,
 )
-# innocence: a negation sitting AFTER the claim, in the same clause — "…fully
-# foreign-owned PMA cannot/can't/may not/is not allowed/is not permitted…"
+# innocence: a negation sitting AFTER the claim, within the same clause and at
+# most 3 words away — "…fully foreign-owned PMA cannot/can't/may not/is not
+# allowed/is not permitted hold…". Anchored to the START of the (clause-cut)
+# post-window so a negator several clauses downstream cannot exonerate a live
+# claim either.
 L12_NEG_AFTER = re.compile(
-    r"\b(?:cannot|can't|may\s+not|is\s+not\s+allowed|is\s+not\s+permitted)\b",
+    r"^\s*(?:\S+\s+){0,3}(?:cannot|can't|may\s+not|is\s+not\s+allowed|"
+    r"is\s+not\s+permitted)\b",
+    re.IGNORECASE,
+)
+# innocence: the claim attributes the ownership to INDONESIANS, not to a
+# foreigner — "wholly owned by Indonesian citizens", "full ownership by an
+# Indonesian shareholder is required". Anchored to the START of the
+# (unbounded) post-window: the attribution must sit immediately after the
+# claim, not several clauses downstream.
+L12_OWNER_IS_INDONESIAN = re.compile(
+    r"^\s*by\s+(?:an?\s+|the\s+)?(?:indonesian|local|domestic|national)\b",
     re.IGNORECASE,
 )
 
 
 def _l12_clause_window(text: str, pos: int, before: bool, max_chars: int = 60) -> str:
     """Text on one side of a match, bounded to the CURRENT clause: capped at
-    `max_chars` and cut at the nearest sentence-ending punctuation so an
-    earlier or later sentence's negation can never exonerate this one."""
+    `max_chars` and cut at the nearest clause boundary (. ! ? , ; :) so a
+    negator in an earlier or later clause can never exonerate this one."""
     if before:
         raw = text[max(0, pos - max_chars) : pos]
-        idx = max(raw.rfind("."), raw.rfind("!"), raw.rfind("?"))
-        return raw[idx + 1 :] if idx != -1 else raw
+        cuts = list(L12_CLAUSE_BOUNDARY.finditer(raw))
+        return raw[cuts[-1].end() :] if cuts else raw
     raw = text[pos : pos + max_chars]
-    ends = [i for i in (raw.find("."), raw.find("!"), raw.find("?")) if i != -1]
-    return raw[: min(ends)] if ends else raw
+    cut = L12_CLAUSE_BOUNDARY.search(raw)
+    return raw[: cut.start()] if cut else raw
 
 
 def l12_full_ownership_claim(text: str, maxa) -> str | None:
@@ -417,9 +437,12 @@ def l12_full_ownership_claim(text: str, maxa) -> str | None:
     Returns the matched window for the FIRST affirmative full-foreign-ownership
     claim in `text` when `maxa` is a number below 100 (a cap under which full
     foreign ownership is impossible), or None if every wordy full-ownership
-    phrasing in the prose is either absent or exonerated by a same-clause
-    negation before or after it. It judges the CLAIM, not a number — L10
-    already covers a bare percentage stated against `maxa`.
+    phrasing in the prose is either absent or exonerated. It judges the
+    CLAIM's SCOPE, not a token's presence: a negation before or after the
+    claim only exonerates when it actually governs that claim (adjacency-
+    bounded, clause-cut), and a claim that attributes the ownership to
+    Indonesians is innocent outright. L10 already covers a bare percentage
+    stated against `maxa`.
     """
     if not isinstance(maxa, int) or maxa >= 100:
         return None
@@ -433,6 +456,8 @@ def l12_full_ownership_claim(text: str, maxa) -> str | None:
             continue
         after = _l12_clause_window(text, m.end(), before=False)
         if L12_NEG_AFTER.search(after):
+            continue
+        if L12_OWNER_IS_INDONESIAN.match(text[m.end() : m.end() + 60]):
             continue
         return text[max(0, m.start() - 40) : m.end() + 40].strip()
     return None

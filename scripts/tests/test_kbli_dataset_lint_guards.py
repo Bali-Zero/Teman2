@@ -113,6 +113,23 @@ L12_GUILT = [
         "Foreign owners may hold it without an Indonesian partner.",
         49,
     ),
+    # adversarial probe 2026-09-25: a negator TWO CLAUSES back must NOT
+    # exonerate a live claim in the current clause (scar family #3 under-match)
+    (
+        "adversarial not-scopes-earlier-clause 1",
+        "Bali does not block it, and foreign investors can fully own the business.",
+        49,
+    ),
+    (
+        "adversarial not-scopes-earlier-clause 2",
+        "With no moratorium in the way, a foreign company can fully own this activity.",
+        49,
+    ),
+    (
+        "adversarial not-scopes-earlier-clause 3",
+        "It is not blocked in Bali, so full foreign ownership is available.",
+        49,
+    ),
 ]
 
 L12_INNOCENCE = [
@@ -171,6 +188,18 @@ L12_INNOCENCE = [
         100,
     ),
     ("maxa is None", "Foreign-owned PMA companies can fully own this business.", None),
+    # adversarial probe 2026-09-25: the claim attributes ownership to
+    # INDONESIANS, not to a foreigner (scar family #3 over-match)
+    (
+        "adversarial owned-by-indonesian 1",
+        "The business must be wholly owned by Indonesian citizens.",
+        49,
+    ),
+    (
+        "adversarial owned-by-indonesian 2",
+        "Full ownership by an Indonesian shareholder is required.",
+        49,
+    ),
 ]
 
 
