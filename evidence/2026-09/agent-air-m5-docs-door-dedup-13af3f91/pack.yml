@@ -19,6 +19,7 @@ proof: >-
   same client/model/prompt, back to back: Claude opus-5-5 input 35,735 -> 35,511 (-224);
   Codex 0.155.0-alpha.9.2 input 35,437 -> 35,075 (-362). A startup-cost reduction only, not
   a task-level or financial saving. Final gate: pending — fresh Opus 5.5 xhigh on the exact SHA.
+dissent: []
 receipts:
   - cmd: python3 tools/measure_startup.py (audit dir) before/after, Claude and Codex
     exit: 0
