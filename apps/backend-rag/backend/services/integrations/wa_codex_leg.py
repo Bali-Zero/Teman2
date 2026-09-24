@@ -533,39 +533,48 @@ class CodexLegResult:
 # file was opened or read.
 _MEDIA_ACK_TYPES = frozenset({"image", "document", "audio", "video", "sticker", "unsupported"})
 
-# Wording rules (hard, PR description): never claims the bot read/opened
-# the file; never invites documents, passport numbers or other personal
-# data over WhatsApp; never assumes the client did not already write a
-# question (see the ingestion-gap note above — a caption may be sitting
-# unread on the Meta side); and — since `notify_human_handoff` can return
-# True on a dedup-suppressed OR an email-delivery-failed send (best-effort,
-# `send_internal_email(..., raise_on_failure=False)`) — never claims a
-# colleague was notified at all. ONE text per language; the notification
-# call stays best-effort and its outcome is logged, but the reply no
-# longer branches on it.
+# Wording rules (hard, PR description + round-2 review finding MEDIUM):
+# never claims the bot read/opened the file; never invites documents,
+# passport numbers or other personal data over WhatsApp; never assumes
+# the client did not already write a question — and says so EXPLICITLY,
+# not just by omission, because the ingestion gap above means a caption
+# sitting unread on the Meta side is a real, common case: the text states
+# plainly that a caption sent together with the file is not read either,
+# so the client understands WHY a second, separate text message is
+# needed instead of silently re-asking; and — since `notify_human_handoff`
+# can return True on a dedup-suppressed OR an email-delivery-failed send
+# (best-effort, `send_internal_email(..., raise_on_failure=False)`) —
+# never claims a colleague was notified at all. ONE text per language;
+# the notification call stays best-effort and its outcome is logged, but
+# the reply no longer branches on it.
 _MEDIA_ACK_TEXTS: dict[str, str] = {
     "en": (
-        "I can't open or check attachments in this chat — if there's "
-        "anything I can help with, please write it here as a text message."
+        "I can't open or check attachments in this chat, and I can't "
+        "read text sent together with a file. If there's anything I can "
+        "help with, please send it here as a separate text message."
     ),
     "id": (
-        "Saya tidak bisa membuka atau memeriksa lampiran di chat ini — "
-        "kalau ada yang bisa saya bantu, silakan tuliskan di sini sebagai "
-        "pesan teks."
+        "Saya tidak bisa membuka atau memeriksa lampiran di chat ini, "
+        "dan tidak bisa membaca teks yang dikirim bersama file. Kalau "
+        "ada yang bisa saya bantu, silakan kirim di sini sebagai pesan "
+        "teks terpisah."
     ),
     "it": (
-        "Non riesco ad aprire o controllare gli allegati in questa chat "
-        "— se c'è qualcosa in cui posso aiutarti, scrivilo qui come "
-        "messaggio di testo."
+        "Non riesco ad aprire o controllare gli allegati in questa "
+        "chat, né a leggere il testo inviato insieme al file. Se c'è "
+        "qualcosa in cui posso aiutarti, mandamelo qui come messaggio "
+        "di testo separato."
     ),
     "ru": (
-        "Я не могу открывать или проверять вложения в этом чате — если "
-        "чем-то можно помочь, напишите об этом здесь текстовым "
+        "Я не могу открывать или проверять вложения в этом чате и не "
+        "вижу текст, отправленный вместе с файлом. Если чем-то можно "
+        "помочь, напишите об этом здесь отдельным текстовым "
         "сообщением."
     ),
     "uk": (
-        "Я не можу відкривати або перевіряти вкладення в цьому чаті — "
-        "якщо чимось можу допомогти, напишіть про це тут текстовим "
+        "Я не можу відкривати або перевіряти вкладення в цьому чаті й "
+        "не бачу текст, надісланий разом із файлом. Якщо чимось можу "
+        "допомогти, напишіть про це тут окремим текстовим "
         "повідомленням."
     ),
 }
