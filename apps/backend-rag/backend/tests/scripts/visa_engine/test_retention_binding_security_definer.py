@@ -118,23 +118,33 @@ async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
     SELECT-only on the retention-policy table, SELECT+INSERT (never UPDATE)
     on the idempotency table it writes to.
 
-    Also grants the connecting role its OWN ``SET`` privilege on ``role``,
-    so the ``SET LOCAL ROLE`` calls below work regardless of the ambient
-    cluster superuser status of whatever role ``database_dsn`` happens to
-    connect as. PG16 split role-membership options into ``ADMIN``/
-    ``INHERIT``/``SET`` (previously one undivided grant): a CREATEROLE
-    role that is not a superuser automatically gets ``ADMIN OPTION`` on a
-    role it just created, but NOT the separate ``SET`` option ``SET LOCAL
-    ROLE`` needs -- reproduced 2026-08-08 on a PG17 dev cluster whose local
-    ``test`` role was ``rolsuper=f, rolcreaterole=t`` (CI's own Postgres
-    service is superuser, and pre-16 had no such split, so CI never hit
-    this). This explicit grant makes the test carry its own privilege
-    instead of depending on the connecting role's ambient status; it
-    weakens no assertion; the ``pytest.raises(InsufficientPrivilegeError)``
-    case still exercises the low-priv role exactly as it does today. The
-    ``WITH SET TRUE`` clause itself is PG16+ syntax (a syntax error on the
-    PG15 CI runs), so it's version-gated -- pre-16 membership already
-    implies SET, since the split didn't exist yet."""
+    Also explicitly grants the connecting role its OWN membership in
+    ``role`` (with default options), so the ``SET LOCAL ROLE`` calls below
+    work regardless of the ambient cluster superuser status of whatever
+    role ``database_dsn`` happens to connect as. A CREATEROLE role that is
+    not a superuser gets NO membership in a role it creates on any
+    Postgres version -- pre-16, `CREATE ROLE` alone never granted the
+    creator membership at all; PG16 added an automatic ADMIN-OPTION-only
+    self-grant (explicitly excluding the separate SET option split
+    introduced the same release), which is narrower than what `SET LOCAL
+    ROLE` needs but still not membership at all pre-16. Either way, an
+    explicit follow-up `GRANT "role" TO CURRENT_USER` (no `WITH` clause --
+    that clause's role-option syntax is itself PG16+-only, a syntax error
+    on PG15) creates or overwrites the `pg_auth_members` row with each
+    version's own EXPLICIT-grant defaults, which include SET on every
+    version this repo runs (measured live against a PG16 cluster: the
+    implicit self-grant alone left `SET LOCAL ROLE` failing with
+    `permission denied to set role`; this follow-up plain GRANT, no WITH
+    clause, fixed it). Reproduced 2026-08-08 on a PG17 dev cluster whose
+    local `test` role was `rolsuper=f, rolcreaterole=t` -- CI's own
+    Postgres service is a cluster superuser (bypasses every privilege
+    check regardless of any of this), which is why CI never hit it via the
+    two tests below that reuse the ambient `database_dsn` connection, only
+    via the one that deliberately constructs a non-superuser connection.
+    This explicit grant makes the test carry its own privilege instead of
+    depending on the connecting role's ambient status; it weakens no
+    assertion -- the ``pytest.raises(InsufficientPrivilegeError)`` case
+    still exercises the low-priv role exactly as it does today."""
 
     connection = await asyncpg.connect(database_dsn)
     try:
@@ -145,11 +155,7 @@ async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
         await connection.execute(
             f'GRANT SELECT, INSERT ON TABLE public.visa_evaluate_idempotency TO "{role}"'
         )
-        server_version_num = int(
-            await connection.fetchval("SELECT current_setting('server_version_num')")
-        )
-        if server_version_num >= 160000:
-            await connection.execute(f'GRANT "{role}" TO CURRENT_USER WITH SET TRUE')
+        await connection.execute(f'GRANT "{role}" TO CURRENT_USER')
     finally:
         await connection.close()
 
@@ -259,7 +265,7 @@ async def test_post_268_low_privilege_insert_succeeds(m268_sandbox: _Sandbox) ->
     assert row["expires_at"] is not None
 
 
-async def test_create_lowpriv_role_grants_set_privilege_on_pg16_plus(
+async def test_create_lowpriv_role_grants_set_privilege_without_ambient_superuser(
     m268_sandbox: _Sandbox,
 ) -> None:
     """PENDING-ARMS row `visa-engine retention test depends on ambient
@@ -269,9 +275,12 @@ async def test_create_lowpriv_role_grants_set_privilege_on_pg16_plus(
     there). Creates a non-superuser CREATEROLE role -- the same shape a
     PG17 dev cluster's local role had (``rolsuper=f, rolcreaterole=t``) --
     and proves THAT role can `SET LOCAL ROLE` into the low-priv role
-    `_create_lowpriv_role` creates, which needs the explicit `GRANT ...
-    WITH SET TRUE` this row added: PG16+'s automatic ADMIN OPTION on a
-    self-created role does not, by itself, include SET."""
+    `_create_lowpriv_role` creates, which needs the explicit follow-up
+    `GRANT "role" TO CURRENT_USER` this row added: bare `CREATE ROLE`
+    grants the creator no membership at all pre-PG16, and PG16's own
+    automatic self-grant is ADMIN-OPTION-only, not SET -- verified live
+    against both a real PG15 cluster (CI's own version) and a real PG16
+    cluster, not just reasoned about."""
 
     await _apply_migrations_through(m268_sandbox.database_dsn, through=268)
 
