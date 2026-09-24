@@ -1,0 +1,16 @@
+task: Add the script that strips the pre-#7209 News Room converter's invented TL;DR card and Next Steps filler from legacy article MDX, byte-exact elsewhere.
+lane: mouth/legacy-tldr-script
+machine: M5
+date: 2026-09-25
+mission_id: newsroom-legacy-filler-cleanup
+mission_colour: BLUE
+role: Dux session (Opus 5.5) — builds, arms, deploys; the final gate is a fresh read-only session outside this chain
+gear: 2
+gear_reason: >-
+  Script + tests only (~912 lines, no content): Gear 2 by the size term. Replaces #7282, which bundled the script with 579 articles (floor 3 by size) and is split into this PR plus six content chunks each under the Gear-3 threshold.
+acceptance:
+  A1: The script removes a Quick Summary InfoCard only when it matches the converter's exact label set, order and value enum; any deviation is reported and left untouched.
+  A2: A Checklist item is removed only when its subItems are exactly ["Review the article for specific actions"]; an emptied Checklist and its now-empty Next Steps section are removed, collapsing separators.
+  A3: Frontmatter and every other line stay byte-identical; dry run (no --write) changes nothing.
+  A4: scripts/content/test_strip_legacy_tldr_filler.py passes (guilt + innocence fixtures).
+out_of_scope: The converter fix that stops new filler at the source (#7322), apps/mouth/src/content/articles/news/test-article.mdx (a leaked test stub whose body would fall under the 400-char integrity floor; left untouched), any hand-edited "Quick Summary" card that deviates from the converter's exact shape (reported by the script, never touched).
