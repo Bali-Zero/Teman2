@@ -170,7 +170,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Extract Summary section
     summary_match = re.search(
-        r"## Summary\s*\n(.*?)(?=\n## |$)",
+        r"## Summary:?[ \t]*\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
@@ -181,7 +181,9 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     )
 
     # Extract Facts section
-    facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
+    facts_match = re.search(
+        r"## Facts:?[ \t]*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+    )
     facts = facts_match.group(1).strip() if facts_match else content
 
     # Extract Bali Zero Take section
@@ -195,7 +197,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Extract Next Steps section
     next_steps_match = re.search(
-        r"## Next Steps\s*\n(.*?)(?=\n## |$)",
+        r"## Next Steps:?[ \t]*\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
@@ -213,12 +215,11 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     def _extract_general_items(text: str) -> list[str]:
         """Split an unlabelled, audience-neutral Next Steps body into list
-        items — same >10-char noise filter the old fallback used."""
-        return [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", text)
-            if item.strip() and len(item.strip()) > 10
-        ]
+        items, keeping every item with any word in it. The old >10-char
+        filter measured the raw "- " item and dropped real short steps
+        such as "Pay PBB." (gate finding on #7322)."""
+        items = (item.strip().lstrip("- ").lstrip("* ") for item in re.split(r"\n(?=-|\*)", text))
+        return [item for item in items if re.search(r"\w", item)]
 
     # Parse Next Steps for expat and investor
     expat_steps: list[str] = []
@@ -343,7 +344,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         "next_steps": {
             "expat": expat_steps[:5],  # Limit to 5 items
             "investor": investor_steps[:5],  # Limit to 5 items
-            "general": general_steps[:5],  # Limit to 5 items
+            "general": general_steps[:10],  # main rendered up to 10 (5 + 5)
         },
         "category": category,
         "priority": priority,

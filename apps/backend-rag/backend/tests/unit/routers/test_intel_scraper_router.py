@@ -247,6 +247,49 @@ class TestConvertStagingToEnrichedArticle:
         assert next_steps["investor"] == []
         assert next_steps["general"] == steps
 
+    def test_neutral_steps_keep_the_old_ten_item_ceiling_and_short_steps(self) -> None:
+        """Guilt (gate findings on #7322): the neutral group was capped at 5
+        items where main still rendered 10 (5 expat + 5 investor), and the
+        >10-char noise filter measured the raw "- " item, so a real short
+        step like "- Pay PBB." vanished."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        steps = ["File SPT.", "Pay PBB."] + [
+            f"Action item number {n} for readers to complete now." for n in range(3, 11)
+        ]
+        data = {
+            "title": "Many Steps",
+            "content": "## Facts\nF.\n## Next Steps\n" + "\n".join(f"- {s}" for s in steps),
+            "category": "tax",
+            "relevance_score": 60,
+        }
+        assert convert_staging_to_enriched_article(data)["next_steps"]["general"] == steps
+
+    def test_mapped_headings_with_a_trailing_colon_are_extracted(self) -> None:
+        """Guilt (gate finding F4 on #7322): "## Next Steps:" / "## Facts:"
+        were classified as known headings (so never kept as extra sections)
+        but the extractors required a newline right after the name, so the
+        steps and facts silently vanished."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Colon Headings",
+            "content": (
+                "## Summary:\nShort summary of the change.\n"
+                "## Facts:\nThe regulation takes effect in March.\n"
+                "## Next Steps:\n- Renew the permit before expiry.\n- Book the notary slot early.\n"
+            ),
+            "category": "visa",
+            "relevance_score": 60,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["facts"] == "The regulation takes effect in March."
+        assert result["next_steps"]["general"] == [
+            "Renew the permit before expiry.",
+            "Book the notary slot early.",
+        ]
+        assert result["extra_sections"] == []
+
     def test_audience_label_lines_in_heading_bold_and_colon_forms(self) -> None:
         """Innocence for the fix above: a real label LINE still names its
         audience whether it is a heading, a bold line or a bare "For X:"
