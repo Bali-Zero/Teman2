@@ -45,11 +45,11 @@ class TestAuthDecorators:
         mock_request.state.user = None
 
         @require_auth()
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     @pytest.mark.asyncio
     async def test_require_auth_with_user(self, mock_request):
@@ -58,10 +58,10 @@ class TestAuthDecorators:
         mock_request.state.user.auth_method = "jwt"
 
         @require_auth()
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "success"}
 
     @pytest.mark.asyncio
@@ -71,11 +71,11 @@ class TestAuthDecorators:
         mock_request.state.user.auth_method = "jwt"  # Wrong auth method
 
         @require_auth(auth_type="api_key")
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     @pytest.mark.asyncio
     async def test_require_auth_jwt_required(self, mock_request):
@@ -84,11 +84,11 @@ class TestAuthDecorators:
         mock_request.state.user.auth_method = "api_key"  # Wrong auth method
 
         @require_auth(auth_type="jwt")
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     @pytest.mark.asyncio
     async def test_require_auth_with_permissions(self, mock_request):
@@ -98,11 +98,11 @@ class TestAuthDecorators:
         mock_request.state.user.permissions = ["read"]
 
         @require_auth(auth_type="api_key", permissions=["read", "write"])
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException for insufficient permissions
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     @pytest.mark.asyncio
     async def test_require_auth_with_wildcard_permission(self, mock_request):
@@ -112,10 +112,10 @@ class TestAuthDecorators:
         mock_request.state.user.permissions = ["*"]
 
         @require_auth(auth_type="api_key", permissions=["read", "write"])
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "success"}
 
     @pytest.mark.asyncio
@@ -123,10 +123,10 @@ class TestAuthDecorators:
         """Test public_endpoint decorator"""
 
         @public_endpoint
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "public"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "public"}
 
     @pytest.mark.asyncio
@@ -136,10 +136,10 @@ class TestAuthDecorators:
         mock_request.state.user.auth_method = "jwt"
 
         @optional_auth
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "success"}
 
     @pytest.mark.asyncio
@@ -148,10 +148,10 @@ class TestAuthDecorators:
         mock_request.state.user = None
 
         @optional_auth
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "anonymous"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "anonymous"}
 
     @pytest.mark.asyncio
@@ -160,10 +160,10 @@ class TestAuthDecorators:
         mock_request.state.user = {"role": "admin"}
 
         @role_required(["admin", "user"])
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
-        result = await test_endpoint(mock_request)
+        result = await sample_endpoint(mock_request)
         assert result == {"message": "success"}
 
     @pytest.mark.asyncio
@@ -172,11 +172,11 @@ class TestAuthDecorators:
         mock_request.state.user = {"role": "guest"}
 
         @role_required(["admin", "user"])
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     @pytest.mark.asyncio
     async def test_role_required_no_user(self, mock_request):
@@ -184,11 +184,11 @@ class TestAuthDecorators:
         mock_request.state.user = None
 
         @role_required(["admin"])
-        async def test_endpoint(request):
+        async def sample_endpoint(request):
             return {"message": "success"}
 
         with pytest.raises(Exception):  # Should raise HTTPException
-            await test_endpoint(mock_request)
+            await sample_endpoint(mock_request)
 
     def test_api_key_required(self):
         """Test api_key_required decorator factory"""

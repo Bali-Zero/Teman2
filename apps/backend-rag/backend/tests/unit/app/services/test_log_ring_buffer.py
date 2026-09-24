@@ -139,6 +139,10 @@ def test_ring_buffer_exception_emit_does_not_crash() -> None:
     # Should not raise — logging.Handler.handleError swallows internally
     handler.emit(bad)
 
+    snapshot = handler.snapshot()
+    assert len(snapshot) == 1
+    assert snapshot[0]["message"].startswith("value=")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

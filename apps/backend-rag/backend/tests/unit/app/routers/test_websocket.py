@@ -122,8 +122,10 @@ class TestConnectionManager:
     async def test_send_personal_message_no_user(self):
         """Test sending message to non-existent user"""
         manager = ConnectionManager()
-        # Should not raise error
+        # Should not raise error, and must not create a connections entry
+        # for a user that never connected.
         await manager.send_personal_message({"type": "test"}, "nonexistent")
+        assert "nonexistent" not in manager.active_connections
 
 
 class TestWebSocketAuth:
