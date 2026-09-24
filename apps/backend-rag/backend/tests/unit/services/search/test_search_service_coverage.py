@@ -6,6 +6,7 @@ Covers: _uses_named_vectors, SearchService (search, search_with_reranking,
         _init_bm25_with_retry, _alert_bm25_failure, property accessors).
 """
 
+import logging
 from collections import OrderedDict
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -447,9 +448,15 @@ class TestInitBM25:
 
 class TestAlertBM25Failure:
     @pytest.mark.asyncio
-    async def test_alert_logs_error(self, search_service):
-        await search_service._alert_bm25_failure(RuntimeError("test error"))
-        # Should not raise
+    async def test_alert_logs_error(self, search_service, caplog):
+        with caplog.at_level(
+            logging.ERROR, logger="backend.services.search.search_service"
+        ):
+            await search_service._alert_bm25_failure(RuntimeError("test error"))
+        records = [r for r in caplog.records if "BM25 Initialization Failed" in r.getMessage()]
+        assert len(records) == 1
+        assert records[0].error_type == "RuntimeError"
+        assert records[0].error == "test error"
 
 
 # ============================================================================

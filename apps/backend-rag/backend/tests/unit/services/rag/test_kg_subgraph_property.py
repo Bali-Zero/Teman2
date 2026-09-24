@@ -72,12 +72,17 @@ def base_state():
 class TestClientManagement:
     @pytest.mark.asyncio
     async def test_close_property_subgraph_client(self):
-        # Should not raise even if no clients exist
+        import backend.services.rag.kg_subgraph_property as mod
+
+        # Should not raise even if no clients exist, and must not create new
+        # clients as a side effect of closing (both globals stay None).
         with (
             patch("backend.services.rag.kg_subgraph_property._client_verified", None),
             patch("backend.services.rag.kg_subgraph_property._client_unverified", None),
         ):
             await close_property_subgraph_client()
+            assert mod._client_verified is None
+            assert mod._client_unverified is None
 
 
 # ============================================================================
