@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- com.balizero.wa-dashboard-m1 — Pro-resident WA team cockpit (T3-T7 P0, 2026-09-25).
+
+     Serves mirrored team WhatsApp chats (/data.json, /thread.json) from the
+     local nuzantara_dev mirror. Contained 2026-09-25: HOST defaults to
+     0.0.0.0 in server.cjs's own fallback, which put the cockpit on the
+     whole Pro LAN unauthenticated (macOS firewall off, no per-user
+     identity — see spec_T37 T6 row). This tracked plist pins
+     HOST=127.0.0.1 explicitly so a re-generation of this file can never
+     silently drop the containment (superscar #1, HOME-fork drift).
+
+     Remote access: `tailscale serve` on Pro (not configured by this PR;
+     owner action, single-user tailnet). Never widen HOST back to a
+     wildcard bind.
+
+     Tracked here as the source of truth; the live copy on Pro is
+     ~/Library/LaunchAgents/com.balizero.wa-dashboard-m1.plist (mode 0400).
+
+     Install:
+       cp infra/launchagents/com.balizero.wa-dashboard-m1.plist \
+          ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) \
+          ~/Library/LaunchAgents/com.balizero.wa-dashboard-m1.plist
+-->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HIDE_TEAM_NAMES</key>
+		<string>Candra,Subhi,Adi BS,Yanti BS,Novi BS,Megi,Lia BS</string>
+		<key>HOST</key>
+		<string>127.0.0.1</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>PORT</key>
+		<string>7790</string>
+		<key>WA_DASHBOARD_DATABASE_URL</key>
+		<string>postgres://nuzantara@127.0.0.1:5432/nuzantara_dev?sslmode=disable</string>
+		<key>WA_MIRROR_ACCOUNTS_JSON</key>
+		<string>/Users/nuzantara/.wa-mirror.accounts.json</string>
+		<key>WA_TEAM_AVATAR_DIR</key>
+		<string>/Users/nuzantara/wa-mirror-media/team</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.balizero.wa-dashboard-m1</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-c</string>
+		<string>set -u; cd /Users/nuzantara/nuzantara/apps/wa-dashboard-m1 || { echo "[wa-dashboard-m1] app dir missing"; sleep 30; exit 1; }; if [ ! -d node_modules/express ] || [ ! -d node_modules/pg ]; then echo "[wa-dashboard-m1] node_modules missing, running npm install"; /opt/homebrew/bin/npm install --no-audit --no-fund --loglevel=error || { echo "[wa-dashboard-m1] npm install failed, retry next cycle"; sleep 30; exit 1; }; fi; exec /opt/homebrew/bin/node server.cjs</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wa-dashboard-m1.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wa-dashboard-m1.log</string>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/nuzantara/apps/wa-dashboard-m1</string>
+</dict>
+</plist>

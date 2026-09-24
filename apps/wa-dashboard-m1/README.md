@@ -116,8 +116,20 @@ anti superscar #7). Heartbeat reale = la riga scritta nel DB (`computed_at`).
 
 - ❌ Send messaggi (read-only)
 - ❌ Live SSE (refresh polling ogni 10s)
-- ❌ Auth (deve girare solo su localhost via firewall macOS)
+- ❌ Auth: nessuna identità per-utente (bind loopback è l'unico perimetro, non un firewall
+  macOS — vedi "Accesso remoto")
 - ❌ Group resolve membership/sender CRM linking (mostra `sender_phone` raw)
+
+## Accesso remoto
+
+Default `HOST=127.0.0.1` (in `server.cjs`, e pinnato nel LaunchAgent tracciato
+`infra/launchagents/com.balizero.wa-dashboard-m1.plist`): `/data.json` e `/thread.json`
+mostrano chat team mirrorate senza autenticazione, quindi un bind wildcard le espone a
+chiunque sia sulla stessa rete. **Contenimento 2026-09-25**: prima di questa data il
+default era `0.0.0.0` — il firewall macOS su Pro era spento, quindi la LAN 192.168.0.x
+poteva leggere `/health.json` e i dati mirrorati. Per accesso remoto legittimo (solo
+Zero, tailnet single-user): `tailscale serve` su Pro verso `127.0.0.1:7790`, MAI
+riportare `HOST` a un bind wildcard.
 
 ## Differenze vs `~/bin/wa-viewer/`
 
@@ -146,3 +158,9 @@ anti superscar #7). Heartbeat reale = la riga scritta nel DB (`computed_at`).
   (`source='wa_mirror'` ~20k msg, aggiornato in giornata); su Fly resta un residuo di
   1872 msg fermo al 24/05. L'intro "Fly via pg-proxy 15432" e la riga `WA_DASHBOARD_DATABASE_URL`
   qui sopra sono storiche — il default operativo reale è il pg locale.
+- **2026-09-25 (LAN containment, spec_T37 P0)**: `HOST` default era `0.0.0.0` in
+  `server.cjs`, e il LaunchAgent non era tracciato nel repo (superscar #1, HOME-fork) —
+  una rigenerazione del plist avrebbe silenziosamente riesposto la LAN. Default ora
+  `127.0.0.1`, warning loud se un operatore imposta esplicitamente un bind wildcard,
+  plist tracciato in `infra/launchagents/` con `HOST=127.0.0.1` esplicito. Vedi
+  "Accesso remoto".
