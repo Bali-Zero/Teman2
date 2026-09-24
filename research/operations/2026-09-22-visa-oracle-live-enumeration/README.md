@@ -5,6 +5,7 @@ client_case: none
 sources:
   - prove-live-b4-2-full-sweep-report-20260922.json (252/252 walks, live)
   - prove-live-b52-manifest-raw-main-1c6d2240-20260922.json (post-A6-2, post-B5-2 manifest, 252 walks)
+  - prove-live-a9-seq23-full-sweep-report-20260924.json (252/252 walks, live, post-seq-23-activation re-sweep against the same manifest)
 discovered_by: session (M5), vo-builder-b4-2-report
 adversarial_review: codex
 ---
@@ -651,6 +652,50 @@ the committed JSON, both printed in the PR body's proof fences: distribution
 `49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9`, `requests_used_total 253`.
 No new claim in this addendum's scope is uncorroborated by a command in the PR body.
 
+### A9 addendum (2026-09-24, TP1 council — not a codex pass)
+
+The frontmatter `adversarial_review: codex` names the seat that reviewed this file's ORIGINAL
+B4-2/B4-2b sections (above); it predates the A9 addendum below and does not describe it. The A9
+addendum's own review is a 2-seat TP1 council, per R9's Gear-3 quorum (`COUNCIL_REVIEW_SEATS`):
+**`tp1-qwen3.8-max`** (titolare, probed live first) and **`tp1-deepseek-v4-pro`** (reserve,
+substituting for `codex-gpt-5.6-sol`/`kimi-code/k3`, both TIMEOUT on a direct liveness probe —
+named in this PR's `evidence/.../pack.yml` `seat_fallback_reason`). Each ran independently
+against the same task (`scripts/tp1_call.py`, task file =
+`evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/refuter-task.txt`):
+the addendum's claims (census, `sequence`/`http_status`, the 15-walk moved-state diff, the
+28-HUMAN_REVIEW breakdown, the 4 new reason codes) checked against JSON excerpts of the two
+committed report files.
+
+Verdict: both **BLOCK**, 3 findings combined (2 from `tp1-qwen3.8-max`, 1 from
+`tp1-deepseek-v4-pro`), all 3 traced to the SAME root cause and all 3 RETRACTED:
+
+1. **The `payload_sha256` claim was not verifiable from the review excerpt** (the excerpt
+   omitted that field to keep the task file a manageable size for a TP1 call) — not a defect in
+   the README. Re-verified directly against the full committed JSON:
+   `{w["rule_pack"]["payload_sha256"] for w in walks}` has exactly one member,
+   `e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204`, on all 252/252 walks —
+   matches the README verbatim.
+2. **The "4 new reason codes, absent from B4-2b" claim was not verifiable from the B4-2b
+   excerpt** (that excerpt carried only `walk_id`/`engine_state`, no `reason_codes`, so the
+   review task's own instructions asked the seats to assume an empty universe if load-bearing —
+   both seats correctly flagged the assumption rather than silently accepting it) — not a defect
+   in the README. Independently recomputed from BOTH full committed JSONs' `reason_codes`
+   (a proper `Counter` difference, not an assumed-empty universe): the A9-only set is exactly
+   `E33G_LOCAL_COMPANY_NOT_ALLOWED` ×7, `STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED` ×4,
+   `E33G_LOCAL_MARKET_NOT_ALLOWED` ×2, `RETIREMENT_INCOME_BELOW_THRESHOLD` ×1 — matches the
+   README exactly, no extra or missing code.
+
+All other claims the review task COULD check from the excerpts (census 185/8/31/28/252,
+`sequence`=23 and `http_status`=200 on all 252, the 15 moved walk_ids with exact transitions,
+the 28-HUMAN_REVIEW breakdown 25/2/1) came back clean from both seats on the first pass — no
+discrepancy, no fix needed. Full transcripts, the task file, and the journal:
+`evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/{council.jsonl,refuter-runs/}`.
+
+Not in scope for either TP1 seat (the task was numeric/set claims over the JSON data only): the
+`git log --grep "A3'-B"` provenance claim above, and the activation id/timestamp provenance —
+both are text/history claims, not derivable from the report JSONs. That gap is why the fresh
+on-disk gate (not this council) is what caught the qualifier this claim was missing.
+
 
 ## A9 addendum (2026-09-24): seq-23 activated in production, 252-walk re-sweep
 
@@ -695,7 +740,10 @@ Report JSON: `prove-live-a9-seq23-full-sweep-report-20260924.json`, sha256
 
 `HUMAN_REVIEW_REQUIRED = 28` breaks down (by command, over `review_reasons`) as
 `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` ×25 (adapter hold on the mouth-side flag; closes with
-A3'-B, not built as of this sweep — `git log origin/main --grep "A3'-B"` returns no commit),
+A3'-B, not built as of this sweep — `git log origin/main --grep "A3'-B" --format=%h` returns 2
+commits, `d5843d0e93` (A3'-M, #7172) and `01d1f99b60` (#7160), neither of which BUILDS A3'-B —
+both merely mention it as future work; no commit's own subject is A3'-B itself
+(`git log origin/main --format=%s | grep -c "A3'-B"` → `0`)),
 `SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 (D23, owner decision), `DISCLOSED_CRIMINAL_RECORD_REVIEW`
 ×1 (G1's allowed exception).
 

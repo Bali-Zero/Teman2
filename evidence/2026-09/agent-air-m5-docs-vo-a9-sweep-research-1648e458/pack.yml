@@ -39,16 +39,18 @@ lanes:
 diff:
   files: 8
   net_lines: >-
-    8 files, +15988/-0 (computed from `git diff --numstat origin/main...HEAD` on this PR's
-    final head): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+80),
-    research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
+    8 files, +16113/-0 (computed from `git diff $(git merge-base origin/main HEAD) --numstat`
+    against the working tree, on this PR's final head — using the merge-base, not a raw
+    `origin/main` diff, since origin/main has since advanced with ~50 unrelated files from other
+    merged PRs that a raw diff would wrongly pull in): research/operations/2026-09-22-visa-oracle-live-enumeration/README.md
+    (+128), research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-a9-seq23-full-sweep-report-20260924.json
     (+12432, new file), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/brief.yml
-    (+34), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+168),
+    (+39), evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/pack.yml (+240),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/council.jsonl (+3),
     evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/{refuter-task.txt
     (+3245), refuter-qwen.txt (+18), refuter-deepseek.txt (+8)}. The ROOT evidence/brief.yml is
-    RESTORED to origin/main's content in this same commit, so it carries zero net diff against
-    origin/main and does not appear in this numstat.
+    RESTORED to origin/main's content since the first commit of this PR, so it carries zero net
+    diff against origin/main and does not appear in this numstat.
   behaviour_change: >-
     None. This diff adds a README section and one evidence JSON file under research/, plus the
     per-PR evidence pack/brief and a council journal, and restores the root evidence/brief.yml
@@ -96,6 +98,16 @@ receipts:
     cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <cf> --numstat-file <ns> (git diff origin/main...HEAD)"
     result: "(3, size)"
     ts: "2026-09-24 (builder, M5)"
+    seat: "vo-sweep-pack (Sonnet 5)"
+    exit: 0
+  - claim: >-
+      gate-sweep-7230's M1 finding reproduces: `git log origin/main --grep "A3'-B"` returns 2
+      commits, neither of which is A3'-B's own commit (both only mention it as future work).
+    cmd: >-
+      git log origin/main --grep "A3'-B" --format=%h | wc -l ;
+      git log origin/main --format=%s | grep -c "A3'-B"
+    result: "2 (d5843d0e93 A3'-M #7172, 01d1f99b60 #7160); 0 (no commit's own subject is A3'-B)"
+    ts: "2026-09-24 (builder, M5, this rework round)"
     seat: "vo-sweep-pack (Sonnet 5)"
     exit: 0
 tests:
@@ -147,6 +159,65 @@ dissent:
       Same disposition as above: the full-data recomputation (not the excerpt, and not an
       assumed-empty B4-2b universe) matches the README's 4-code list and counts exactly. No fix
       made to README.md.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5, REWORK-BUILD, PR comment #issuecomment-5815645718)"
+    objection: >-
+      M1 (MEDIUM) — the README's A9 addendum said ``git log origin/main --grep "A3'-B"` returns
+      no commit`. It returns 2: `d5843d0e93` (A3'-M, #7172) and `01d1f99b60` (#7160), both
+      ancestors of the merge-base, so also on main at sweep time. The ceremony report
+      (PROVELIVE-A9-ACTIVATION-REPORT.md:138) carries the qualified form ("→ no commit; only
+      A3'-0 `01d1f99b60` and A3'-M `d5843d0e93`"); the README dropped the qualifier. The
+      conclusion (A3'-B not built) holds; the by-command claim as literally worded did not
+      reproduce.
+    status: CONFIRMED
+    reason: >-
+      Fixed in README.md (research/operations/2026-09-22-visa-oracle-live-enumeration/README.md,
+      the `HUMAN_REVIEW_REQUIRED = 28` breakdown paragraph): now states the command returns 2
+      commits by hash/PR, that neither commit's own subject IS A3'-B (a separate `grep -c` over
+      commit subjects returns 0), and that both only MENTION A3'-B as future work — matching the
+      ceremony report's qualified form. Reproduced live this round:
+      `git log origin/main --grep "A3'-B" --format=%h | wc -l` -> `2` (both commits' hashes and
+      PR numbers verified: `d5843d0e93` #7172, `01d1f99b60` #7160);
+      `git log origin/main --format=%s | grep -c "A3'-B"` -> `0`.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5), L1/L4/L6"
+    objection: >-
+      L1 — PR body said `contract_verify.py` returned "all 4 checks PASS" then listed 5 check
+      names; the run returns 5 PASS. L4 — README frontmatter `sources:` omitted the new JSON;
+      `adversarial_review: codex` describes only the original B4-2/B4-2b sections, not the A9
+      addendum (reviewed by the TP1 council). L6 — the PR body's `Bites:` line named "the NEXT
+      re-sweep" as a consumer, which is a future job, not a present one.
+    status: CONFIRMED
+    reason: >-
+      L1 fixed in the PR body (corrected count to 5). L4 fixed in README.md frontmatter (added
+      the new JSON to `sources:`) and body (new "### A9 addendum (2026-09-24, TP1 council)"
+      subsection under the existing `## Adversarial review` heading, naming both TP1 seats, their
+      verdicts, and the 3 findings' disposition — `adversarial_review: codex` is left as-is,
+      since it is true of the original sections and the frontmatter schema
+      (`check_adversarial_review.py`) accepts exactly one scalar value, not a per-section list).
+      L6 fixed in the PR body's `Bites:` line: consumer is now the A3'-B prove-live in this same
+      mandate (the conductor diffs the post-A3'-B live walks against THIS JSON; the gate on
+      #7234 already reads it), observation is the post-merge sha match plus the README section
+      landing on main.
+  - seat: "gate-sweep-7230 (fresh Opus 5.5), L2/L3/L5/L7 — no change made"
+    objection: >-
+      L2 — `refuter-task.txt` (78,510 B) is large; is it needed as evidence? L3 — the review
+      task's excerpts (which left out `payload_sha256` and B4-2b `reason_codes`) are why the
+      TP1 council could not have caught M1 (non-numeric/text claims were outside its scope by
+      construction). L5 — pack-lint NOTICEs (acceptance bullets with no `probe:`, 1 assumption
+      `unverified`, no `spend:`). L7 — the codex/kimi TIMEOUTs are recorded only in
+      `seat_fallback_reason`, not as `ok:false` rows in council.jsonl (`arsenal_probe.py` keeps
+      no log, so they cannot be re-checked after the fact).
+    status: PLAUSIBLE
+    reason: >-
+      L2 — kept: the gate itself called this correct (needed as provenance for why the 3
+      RETRACTED dissents above are RETRACTED, not merely asserted). L3 — accurate description of
+      this pack's own design, not a defect to cure; noted for anyone reading dissent to
+      understand the M1 gap. L5 — cured where cheap: every `acceptance:` bullet in this pack's
+      sibling `brief.yml` now carries a `probe:` (see brief.yml). The 1 `unverified` assumption
+      and missing `spend:` are left as-is — both are accurate (the sha/activation-id assumption
+      genuinely rests on the dispatch message, not a probe this task can run; `spend:` tracking
+      is not wired into this task's tooling). L7 — accurate; `arsenal_probe.py` has no
+      persistent log to backfill `ok:false` rows from, so this is a real tooling gap in the
+      fleet, not something this pack can fix locally.
 residual_risks:
   - "Both review seats' only findings trace to the review task's excerpt being narrower than the
     full committed JSON (it dropped payload_sha256 and reason_codes from the B4-2b comparison
@@ -163,6 +234,7 @@ residual_risks:
 sources:
   - "research/operations/2026-09-22-visa-oracle-live-enumeration/ — this PR's own artefact"
   - "evidence/2026-09/agent-air-m5-ops-vo-b4-2-live-enumeration-3ea372a3/ — the B4-2 precedent this pack mirrors (single build lane, cross-family review, evidence dir shape)"
-  - "PROVELIVE-A9-ACTIVATION-REPORT.md (not committed) — the ceremony record this docs capture follows on from"
+  - "PROVELIVE-A9-ACTIVATION-REPORT.md (not committed) — the ceremony record this docs capture follows on from, and the source of the qualified A3'-B form the README now matches"
   - "council.jsonl (this pack's own dir) — the two TP1 refuter runs' full receipts"
+  - "GATE-SWEEP-REPORT-7230.md (not committed) / PR #7230 comment #issuecomment-5815645718 — gate-sweep-7230's REWORK-BUILD verdict (1 MEDIUM, 7 LOW) on head 6138fd5d0e, cured in this rework round"
 pii_scan: clean
