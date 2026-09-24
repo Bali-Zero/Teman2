@@ -69,16 +69,10 @@ dissent:
       FileNotFoundError with zero shadowing.
     status: CONFIRMED
     resolution: >-
-      The shadowing is real (confirmed on the host) but inert for this
-      consumer, measured: after the diff no env value routes
-      to codex or claude (GAP_AGENT and REFLECTION are ollama, REGULATION and
-      CLAUDE_FALLBACK are agy), ProgramArguments use an absolute venv python,
-      and claude lives ONLY in ~/.local/bin so append would expose it
-      identically. agy also lives only in ~/.local/bin, so append would work
-      too; prepend is kept because it is the mandate's specified shape and
-      matches the resolution order #7258 already gives agy at runtime. Flagged
-      to the parent session in the report; switching to append is a one-token
-      change if the parent prefers it.
+      Shadowing confirmed on the host (~/.local/bin/codex 0.155.1 in front of
+      /opt/homebrew/bin/codex 0.156.1). Finding ADOPTED by the parent session:
+      PATH now appends ~/.local/bin; agy lives only there, so the cure is
+      identical and nothing else on PATH changes order.
   - seat: kimi-code/k3
     objection: >-
       The tests read the repo plist, not the installed

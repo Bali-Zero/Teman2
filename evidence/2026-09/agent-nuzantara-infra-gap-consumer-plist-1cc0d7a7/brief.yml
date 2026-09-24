@@ -10,7 +10,7 @@ objective: >-
   infra/launchagents/com.matagaruda.gap.consumer.plist, a hot-zone path
   (HOTZONE_PATTERNS in scripts/evidence_pack_lint.py). The diff is a 4-value
   environment edit in that plist — PATH gains /Users/nuzantara/.local/bin as
-  its first entry, and the three pins of the retired agy model
+  its last entry (appended, so no existing binary is shadowed), and the three pins of the retired agy model
   gemini-3.5-flash (MATA_GARUDA_AGY_MODEL, MATA_GARUDA_CLAUDE_FALLBACK_MODEL,
   MATA_GARUDA_REGULATION_AGENT_MODEL) become gemini-3.8-flash-high. It adds no
   step, removes no step and changes no ProgramArguments, StartInterval or

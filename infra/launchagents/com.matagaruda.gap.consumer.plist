@@ -25,7 +25,7 @@
 		<key>MG_WINDOW</key>
 		<string>6-22</string>
 		<key>PATH</key>
-		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/Users/nuzantara/.local/bin</string>
 		<key>PYTHONPATH</key>
 		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
