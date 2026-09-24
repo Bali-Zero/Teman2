@@ -148,8 +148,12 @@ DEFAULT_TIMEOUTS = {
     # (probe_agy) already removed the pipe-leak reason the budget was ever 15; a dead
     # agy now costs the run 40 s once, a live one still returns in ~9.
     "agy": 40,
-    "codex": 15,
-    "codex-spark": 15,
+    # codex / codex-spark: 60, not 15. Measured 2026-09-24 on Pro under a thin
+    # launchd-like $PATH: the standalone 0.155.1 answers PONG in 32 s cold (its
+    # Stop hooks run before the reply lands), so a 15 s budget reads TIMEOUT for
+    # a seat that is alive. Same lineage as agy above.
+    "codex": 60,
+    "codex-spark": 60,
     "jules": 15,
     "ollama": 15,
     "nlm": 15,
@@ -428,6 +432,14 @@ def run_probe_cmd(
 # an interactive shell seconds earlier (scar family #2 Esiste!=Armato, W108 lineage: the
 # sensor was measuring its OWN environment's poverty, not the seat's absence).
 COMMON_BIN_DIRS = ["~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "~/.kimi-code/bin"]
+# codex has TWO install channels on a Mac: the standalone one codex's self-upgrade
+# writes under ~/.local/bin (and whose config.toml schema it also rewrites), and the
+# npm-global one under /opt/homebrew/bin. Under a thin launchd $PATH the fallback
+# ORDER decides which one answers — on 2026-09-24 the homebrew copy (0.149.0) could
+# not parse the config the standalone (0.155.1) had written, so every launchd probe
+# and the post-publish poller reported codex dead while an interactive shell (whose
+# $PATH had ~/.local/bin first) saw it live. Standalone first.
+CODEX_BIN_CANDIDATES = ["~/.local/bin/codex", "/opt/homebrew/bin/codex"]
 
 
 def resolve_bin(name: str, extra_paths: Optional[list[str]] = None) -> tuple[Optional[str], bool]:
@@ -863,7 +875,7 @@ def probe_kimi(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    binp, via_path = resolve_bin("codex", CODEX_BIN_CANDIDATES)
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(
@@ -882,7 +894,7 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex_spark(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    binp, via_path = resolve_bin("codex", CODEX_BIN_CANDIDATES)
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(

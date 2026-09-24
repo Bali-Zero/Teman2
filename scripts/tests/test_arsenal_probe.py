@@ -2740,3 +2740,38 @@ def test_agy_budget_covers_cold_start_plus_contention():
     assert ap.DEFAULT_TIMEOUTS["agy"] >= 36
     # innocence: the budget is agy-specific — the other CLI seats keep 15
     assert ap.DEFAULT_TIMEOUTS["claude"] == 15 and ap.DEFAULT_TIMEOUTS["kimi"] == 15
+
+
+# ---------------------------------------------------------------- codex install channels
+
+
+def test_codex_candidates_prefer_the_standalone_channel():
+    """~/.local/bin (codex self-upgrade channel, owns config.toml's schema) before
+    /opt/homebrew/bin (npm copy) — 2026-09-24: the homebrew 0.149.0 could not parse the
+    config the standalone 0.155.1 had written, and every thin-$PATH probe called codex dead."""
+    ap = _load_module()
+    assert ap.CODEX_BIN_CANDIDATES[0] == "~/.local/bin/codex"
+    assert "/opt/homebrew/bin/codex" in ap.CODEX_BIN_CANDIDATES
+
+
+def test_resolve_bin_thin_path_takes_the_first_existing_candidate(monkeypatch, tmp_path):
+    ap = _load_module()
+    standalone = tmp_path / ".local" / "bin" / "codex"
+    homebrew = tmp_path / "homebrew" / "bin" / "codex"
+    for f in (standalone, homebrew):
+        f.parent.mkdir(parents=True)
+        f.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(ap.shutil, "which", lambda name: None)
+    found, via_path = ap.resolve_bin("codex", [str(standalone), str(homebrew)])
+    assert (found, via_path) == (str(standalone), False)
+    found, _ = ap.resolve_bin("codex", [str(homebrew), str(standalone)])
+    assert found == str(homebrew), "order of candidates is the contract"
+
+
+def test_codex_probe_budget_covers_the_measured_cold_start():
+    """32 s cold PONG measured 2026-09-24 (standalone 0.155.1, thin $PATH, Stop hooks
+    included); 15 s guaranteed TIMEOUT for a live seat. Pin >= 45 so a future
+    "tidy every seat back to 15" has to come here and read why."""
+    ap = _load_module()
+    assert ap.DEFAULT_TIMEOUTS["codex"] >= 45
+    assert ap.DEFAULT_TIMEOUTS["codex-spark"] >= 45
