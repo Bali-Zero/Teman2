@@ -1,0 +1,76 @@
+{
+  "date": "2026-09-24",
+  "model": "jev-1.13.0",
+  "fixture_head": "29aff5050d",
+  "threshold": 0.8,
+  "limits": {
+    "max_requests": 55,
+    "attempts_per_call": 1,
+    "timeout_s": 5,
+    "wall_budget_s": 240,
+    "max_payload_bytes": 500000
+  },
+  "attempted_cases": 55,
+  "complete_cases": 55,
+  "unavailable_or_partial_cases": 0,
+  "wall_s": 45.218,
+  "latency_ms": {
+    "p50": 811.3,
+    "p95": 919.07
+  },
+  "usage": {
+    "http_attempts": 55,
+    "payload_bytes": 163860,
+    "reported_input_tokens": 52988,
+    "usage_responses": 55
+  },
+  "rates_on_complete_cases": {
+    "guilt": {
+      "fired": 21,
+      "total": 26
+    },
+    "grep_misses": {
+      "fired": 19,
+      "total": 23
+    },
+    "innocence": {
+      "fired": 0,
+      "total": 29
+    }
+  },
+  "misses": [
+    "httpx_async_raw",
+    "shell_curl",
+    "canonical_export_grep_catches_this",
+    "shell_wget_process",
+    "workflow_step_curl"
+  ],
+  "false_alarms": [],
+  "sensitivity": {
+    "0.5": {
+      "guilt_hits": 23,
+      "grep_miss_hits": 21,
+      "false_alarms": 0
+    },
+    "0.6": {
+      "guilt_hits": 22,
+      "grep_miss_hits": 20,
+      "false_alarms": 0
+    },
+    "0.7": {
+      "guilt_hits": 22,
+      "grep_miss_hits": 20,
+      "false_alarms": 0
+    },
+    "0.8": {
+      "guilt_hits": 21,
+      "grep_miss_hits": 19,
+      "false_alarms": 0
+    },
+    "0.9": {
+      "guilt_hits": 18,
+      "grep_miss_hits": 17,
+      "false_alarms": 0
+    }
+  }
+}
