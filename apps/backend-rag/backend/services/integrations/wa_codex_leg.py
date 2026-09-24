@@ -832,12 +832,11 @@ async def _attempt(
     # email describe what actually happened instead of borrowing the
     # human-handoff turn's "client asked for a human" text. The RETURN
     # VALUE is logged, never read by the reply text: `notify_human_handoff`
-    # can report True on a dedup-suppressed call or on an email that
-    # `send_internal_email(..., raise_on_failure=False)` swallowed, so a
-    # reply that says "I've told a colleague" whenever this is True would
-    # sometimes be false. `_media_ack_text` therefore takes no `notified`
-    # argument at all — the text never promises a notification this leg
-    # cannot verify happened.
+    # now reports genuine delivery, but this ack is sent whatever it
+    # returns, and a True from the dedup window means a colleague was
+    # reached about the thread earlier, not about THIS attachment. The ack
+    # text therefore takes no `notified` argument at all — it never
+    # promises a notification about the attachment it cannot vouch for.
     if not query and bound.media_type in _MEDIA_ACK_TYPES:
         language = _media_ack_language(history)
         notified = False

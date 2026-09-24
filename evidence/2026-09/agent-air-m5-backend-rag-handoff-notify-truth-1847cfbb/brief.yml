@@ -23,8 +23,10 @@ date: 2026-09-25
 gear: 2
 gear_reason: >-
   Deterministic floor 2, source `size`: git diff --numstat origin/main...HEAD
-  measures 573 additions / 50 deletions (523 net) across 6 files, above
-  SIZE_GEAR2_THRESHOLD (400) and below the Gear-3 threshold (1828). No
+  measures, at the round-4 gate rework, ~990 additions / ~75 deletions
+  (~915 net) across 9 files — production code ~+308/-41, the rest tests and
+  this brief — above SIZE_GEAR2_THRESHOLD (400) and below the Gear-3
+  threshold (1828). No
   hot-zone path (backend/services/integrations, backend/app/services,
   tests, evidence only).
 
@@ -124,3 +126,16 @@ round_4: >-
   that required the endpoint message in the log is inverted: a synthetic
   address inside `message` must not reach the log (fails on 641d4c08d2,
   passes here). 194 passed on the four suites.
+gate_rework: >-
+  Final on-disk gate on 1f5e26473f returned REWORK-BUILD: (1) the birthday
+  tests patched `send_internal_email` by dotted string, which breaks after
+  the partners conftest's sys.modules shield under xdist ordering (CI red:
+  AttributeError module backend.services has no attribute crm) — now
+  patched on the imported module object; (2) BirthdayNotifierService in
+  notifiers.py has NO production caller (the prod cron imports
+  run_birthday_notifier_task from birthday_notifier_service.py), so its
+  changes here are hygiene on a dead copy and the Bites line names the one
+  real consumer, the B2.5-2 human-handoff turn; the live
+  birthday_notifier_service.py cleartext-email logs join the split
+  sender-PII PR; (3) the media-ack comment no longer claims the notifier
+  reports True on a swallowed email.

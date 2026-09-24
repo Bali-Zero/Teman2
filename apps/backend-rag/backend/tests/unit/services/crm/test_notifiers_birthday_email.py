@@ -20,6 +20,7 @@ import pytest
 
 from backend.app.services.internal_email import InternalEmailNotDeliveredError
 from backend.security.pii_log_identifier import redact_identifier_for_log
+from backend.services.crm import notifiers as _notifiers_mod
 from backend.services.crm.notifiers import BirthdayNotifierService
 
 _LOGGER_NAME = "backend.services.crm.notifiers"
@@ -60,7 +61,8 @@ class TestBrevoToZohoFallback:
     ) -> None:
         service = _make_service()
         monkeypatch.setattr(
-            "backend.services.crm.notifiers.send_internal_email",
+            _notifiers_mod,
+            "send_internal_email",
             AsyncMock(side_effect=brevo_exc),
         )
 
@@ -77,7 +79,8 @@ class TestBrevoToZohoFallback:
     ) -> None:
         service = _make_service()
         monkeypatch.setattr(
-            "backend.services.crm.notifiers.send_internal_email",
+            _notifiers_mod,
+            "send_internal_email",
             AsyncMock(return_value=True),
         )
 
@@ -116,7 +119,8 @@ class TestFailurePathsNeverLogTheClientEmail:
     ) -> None:
         service = _make_service()
         monkeypatch.setattr(
-            "backend.services.crm.notifiers.send_internal_email",
+            _notifiers_mod,
+            "send_internal_email",
             AsyncMock(side_effect=brevo_exc),
         )
 
@@ -141,7 +145,8 @@ class TestFailurePathsNeverLogTheClientEmail:
         like every other branch."""
         service = _make_service()
         monkeypatch.setattr(
-            "backend.services.crm.notifiers.send_internal_email",
+            _notifiers_mod,
+            "send_internal_email",
             AsyncMock(side_effect=httpx.ConnectError("connection refused")),
         )
         service.email_service.send_email = AsyncMock(
