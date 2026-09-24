@@ -1,0 +1,15 @@
+VERDICT: SOUND
+
+OBJECTIONS: none.
+
+Checks performed against all five requested areas:
+
+1. **Remaining bare `opus-5`/`Opus 5` as a CURRENT seat.** I grepped every new/changed file in the diff. The only bare-`opus-5` hits are (a) F3 in `brief.template.md` ("a fresh Opus 5 session"), a dated 2026-09-18 historical fact that predates the 2026-09-23 ruling, and (b) SKILL.md §4's C5 description listing `opus-5` among the spellings that now *fail*. Every current-seat mention (§5 synthesis, §7 BLUE Dux, C5 rule text, the gate-row example, the mechanical-check prose) reads `opus-5-5` / `Opus 5.5`. No live seat literal was missed.
+
+2. **Test re-implements the regex / passes on regression.** `<REDACTED>` imports `dw._check_c5` via `importlib` from the real launcher (`_load_launcher`); it never compiles its own seat-entity regex. The innocence half reads the row verbatim from `brief.template.md` through `TEMPLATE_GATE_ROW_RE`, then asserts both `"opus-5-5" in shipped_row` and `dw._check_c5(...)` returns `True`. If the template regressed to `opus-5`, the `in` guard fires before the judge is even called. The guilt half substitutes to bare `opus-5` and asserts `_check_c5` returns `False`. I traced the regex `\bopus[\s-]+5(?:\.5|-5)(?![\w.]|-\d)` against both strings: `opus-5-5` matches (the `-5` alternative, clean lookahead at cell boundary); bare `opus-5` cannot match (no `.5`/`-5` pair follows). Both halves are correct.
+
+3. **Template gate row vs `_check_c5`.** The shipped row `| final gate | opus-5-5 | window | serial | 1 | <command> | <next> |` parses to ≥3 cells; `_C5_GATE_STAGE_RE` (`\bgates?\b`) matches "final gate"; `_C5_SEAT_ENTITY_RE` matches `opus-5-5`; `_C5_MODE_WINDOW_RE` (`\bwindows?\b`) matches "window". The `_tactics_body` helper produces a valid `## Tactics` section (header + separator skipped by `_md_table_rows`). Passes.
+
+4. **Scope creep.** The delta vs #6951 is exactly: C5 literal updated throughout, MODEL_ROSTER pointers 70→71 / 90→91 (matching the curated map entries `("MODEL_ROSTER.md","71")` and `("MODEL_ROSTER.md","91")`), and the one GUILT test. No launcher code, no unrelated files.
+
+5. **Workflow edit.** The one-line change appends `scripts/tests/<REDACTED>` to the existing `python -m pytest` invocation. No `--ignore`, no conditional `if:`, no `continue-on-error`. Both test files run unconditionally; a collection error in either would fail the step. No masking.
