@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -51,7 +53,7 @@ def test_receipt_detects_observed_drift(setup: tuple, tmp_path: Path, monkeypatc
     assert "--new-input" not in json.dumps(proof)
 
 
-@pytest.mark.parametrize("change", ["record", "pth", "install", "remove"])
+@pytest.mark.parametrize("change", ["record", "pth", "install", "missing_record", "remove", "legacy", "linked"])
 def test_venv_installation_drift_with_symlink_interpreter(setup: tuple, tmp_path: Path, change: str) -> None:
     repo, _, event = setup
     program = receipt_program(tmp_path)
@@ -78,9 +80,20 @@ def test_venv_installation_drift_with_symlink_interpreter(setup: tuple, tmp_path
         pth.write_text("changed\n")
     elif change == "install":
         (packages.parent / "new_package.py").write_text("installed")
-    else:
+    elif change == "missing_record":
         record.unlink()
+    elif change == "remove":
+        shutil.rmtree(packages)
+        shutil.rmtree(metadata)
+    elif change == "legacy":
+        (packages.parent / "old-1.0.egg-info").mkdir()
+    else:
+        target = tmp_path / "linked-target"
+        target.mkdir()
+        (packages.parent / "linked-package").symlink_to(target, target_is_directory=True)
     assert bridge.receipt_state(proof, str(repo))["state"] == "stale"
+    if change in ("missing_record", "legacy", "linked"):
+        assert bridge.environment_fingerprint([str(interpreter)], str(repo))["sha256"] is None
 
 
 def test_venv_observation_is_bounded_by_installation_metadata(setup: tuple, tmp_path: Path) -> None:
@@ -794,6 +807,15 @@ def test_frozen_source_names_its_phase(setup: tuple) -> None:
         bridge.save(path, state)
     reason = bridge.hook(tool)["hookSpecificOutput"]["permissionDecisionReason"]
     assert "Operator decision needed" in reason and " retry " in reason
+
+
+def test_compact_receipt_status_is_allowed_when_source_is_frozen(setup: tuple) -> None:
+    _, _, event = setup
+    sid = parked_source(setup, "TimeoutError", 1)
+    command = shlex.join([sys.executable, str(bridge.SELF), "receipt-status", sid])
+    payload = {**event, "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command}}
+    assert bridge.helper_call(payload, sid) == ("receipt-status", None)
+    assert bridge.hook(payload).get("hookSpecificOutput", {}).get("permissionDecision") != "deny"
 
 
 def test_retry_and_release_verbs(setup: tuple) -> None:

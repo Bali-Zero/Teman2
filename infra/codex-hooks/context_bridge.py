@@ -479,7 +479,7 @@ def helper_call(
         if (
             Path(args[0]).resolve() != Path(sys.executable).resolve()
             or args[1] != str(SELF)
-            or args[2] not in ("checkpoint", "status", "verify")
+            or args[2] not in ("checkpoint", "status", "receipt-status", "verify")
             or args[3] != sid
         ):
             return None
