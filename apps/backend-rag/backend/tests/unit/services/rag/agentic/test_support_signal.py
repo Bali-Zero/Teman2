@@ -549,6 +549,57 @@ class TestSupportInputsFromWire:
         with pytest.raises(ValueError, match="content is blank"):
             support_inputs_from_wire(wire)
 
+    @pytest.mark.parametrize(
+        "query",
+        [
+            pytest.param("ᅟᅟᅟᅟ", id="hangul-choseong-filler"),
+            pytest.param("ᅠᅠ", id="hangul-jungseong-filler"),
+            pytest.param("ㅤㅤㅤ", id="hangul-filler"),
+            pytest.param("ﾠﾠ", id="halfwidth-hangul-filler"),
+            pytest.param("⠀⠀⠀", id="braille-pattern-blank"),
+        ],
+    )
+    def test_query_of_only_default_ignorable_fillers_raises(self, query: str) -> None:
+        """V5 (B2.4 close ledger residual): each of these codepoints has
+        Unicode category `L` (Hangul fillers) or `S` (braille blank), so
+        the plain `category(c)[0] in "LNPS"` rule called them "visible" —
+        but Unicode itself marks them `Default_Ignorable_Code_Point`:
+        glyphless fillers with no rendered form. A message made only of
+        one of these is exactly as blank as one made only of whitespace,
+        and must not be offered/judged on context alone."""
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [{"collection": "c", "text": "only chunk", "score": 1.0}],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        with pytest.raises(ValueError, match="content is blank"):
+            support_inputs_from_wire(wire)
+
+    def test_visible_korean_query_still_passes(self) -> None:
+        """Innocence pair to the filler-only guilt cases above: a REAL
+        Hangul syllable (e.g. U+AC00 가, composed of a leading consonant +
+        vowel, never one of the standalone filler codepoints) must still
+        read as visible."""
+        query = "가장 가까운 이민국?"  # "가장 가까운 이민국?"
+        wire = wa_package_builder._canonical_wire(  # noqa: SLF001
+            {
+                "history": wa_package_builder._sanitize_history([], query),  # noqa: SLF001
+                "chunks": [],
+                "pricing_block": None,
+                "persona_digest": "digest",
+                "evidence_inputs": {},
+                "thread_epoch": 0,
+            }
+        )
+
+        assert support_inputs_from_wire(wire) == (query, "")
+
     def test_last_turn_not_from_user_raises(self) -> None:
         """Codex round 3 (MAJOR, UNSURE): the builder always ends on a user
         turn, so an assistant last turn is a broken producer, never a question."""
