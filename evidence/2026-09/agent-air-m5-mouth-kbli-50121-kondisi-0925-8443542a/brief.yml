@@ -1,0 +1,38 @@
+task_id: kbli-50121-kondisi-nota
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor via SIZE term: canonical + 2 consumer copies + sidecar, registry de-certify +
+# re-stamp, batch-A re-emit, 2 new specs, 1 new test file. 2 fields on 1 code.
+# No hot-zone path, no migration, no new dependency.
+objective: >-
+  Second PR of the W-H lot remainder (the first is #7260). 50121 (Angkutan Laut Dalam
+  Negeri untuk Barang Umum) is TERBATAS with a verified 49% cap and an official basis
+  quoting "Modal Asing Maksimal 49%", yet pma_kondisi said "Kemitraan dengan PMDN" (a
+  partnership the annex row does not state, repeated 4x by the page FAQ and FAQPage
+  JSON-LD) and pma_nota named INTERNATIONAL sea transport on a DOMESTIC code. Cure both
+  fields and de-certify 50121, whose certified pmaFingerprint no longer matches.
+constraints:
+  - >-
+    Shared compiler cure_canonical_47222_nota_kondisi.py, left unmodified, with a
+    premise-pinned spec (TERBATAS / 49 / cap verified / basis quotes the 49% condition).
+    Dry-run first: "2 field(s) to patch, 0 already cured". Same shape as PR-3e 50111/50112
+    (#6661).
+  - >-
+    No hand edit of data/kbli-filiera/** (data-plane guard). Both fields feed
+    pma_editorial_fingerprint, so recert refuses and reissue refuses a pma_* move by
+    design (that is a re-review). decertify_editorial_entries.py removes exactly
+    canonicalIntel/50121 against its pinned contentSha256; canonicalIntel goes from 36
+    to 35 and mouthGold is unchanged. recert --base origin/main then re-stamps
+    sourceDatasetSha256/reviewedAt with 0 fingerprint mismatches; batch-A re-emit.
+  - >-
+    Trade-off, measured live on /kbli/50121 before the cure: the page renders a
+    certified Intelligence section (whatYouNeed, whatChanged, whoThisIsFor plus
+    editorial) and its FAQ and JSON-LD print "Kemitraan dengan PMDN" 4 times. After
+    merge the FAQ and JSON-LD state the annex condition and the section is withheld
+    until a re-review certifies it against the new PMA facts. This is the choice made
+    for 50111/50112.
+acceptance:
+  - "A1 GUILT: 4 guilt tests RED on the pre-cure canonical and registry, GREEN after (condition is the annex condition, note names the domestic activity with ancestor 50131, 50121 not in canonicalIntel, the real cure is a no-op)."
+  - "A2 INNOCENCE: cap/status/verification/basis unchanged; 50111/50112 keep their PR-3e cure; 50122-50126 keep no condition and stay certified; the neighbour fixture is byte-identical; refusal on premise drift; dry-run writes nothing."
+  - "A3 CONSUMERS: mouth and navigator copies IDENTICAL to canonical, sidecar sha256 matches; filiera, backend kbli, navigator and mouth kbli suites green; the 4 CI artifact checks exit 0; kbli_dataset_lint output unchanged vs origin/main."
