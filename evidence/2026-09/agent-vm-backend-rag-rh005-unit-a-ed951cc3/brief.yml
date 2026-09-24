@@ -9,7 +9,8 @@ mandate: >-
 gear: 2
 colour: BLUE
 implementer: sonnet-5
-organ: apps/backend-rag/backend/tests/unit/services (analytics, autonomous_agents,
+organ:
+  apps/backend-rag/backend/tests/unit/services (analytics, autonomous_agents,
   canva_renderer_v2, crm, ingestion, integrations, misc, monitoring, pii,
   rag, rag/agentic, search — 19 files)
 authority: >-
