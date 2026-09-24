@@ -1,0 +1,55 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero ordered token-efficiency-six rows 1 and 4 for both Claude and Codex. This pack covers
+  the Codex seat profile: versioned root developer_instructions and four routine roles,
+  installed per seat by a reviewed installer instead of living only in M5's HOME.
+lanes:
+  - { lane: implementation, role: build, seat: claude }
+  - { lane: panel-red-team, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: panel-refuter, role: review, seat: kimi-code/k3 }
+  - { lane: panel-constructive, role: review, seat: agy-gemini-3.1-pro }
+  - { lane: final-gate, role: review, seat: fresh-claude-opus-5-5-xhigh }
+what_changed: >-
+  infra/codex-hooks/seat/ carries the M5 seat's reviewed developer_instructions and the
+  mechanical, routine-explorer, routine-worker and code-reviewer roles. install_seat_profile.py
+  installs each absent item, leaves identical items untouched and reports different items
+  (including a symlink, directory or FIFO at a role path) as operator-owned drift, never
+  overwritten. Roles are created by hard link so a file that appears first always wins. The
+  root key is validated absent in one Codex user-layer snapshot and written with
+  config/batchWrite pinned to that snapshot's version, after the binary proves on a scratch
+  seat that it refuses a stale version; a collateral change stops the install without
+  auto-restore. There is no automatic removal; rollback is a documented manual step with an
+  exclusive writer.
+proof: >-
+  Sol red-teamed round 1 (REWORK, disposed): HIGH role TOCTOU FIXED by hard-link creation;
+  MEDIUM partial removal and LOW mode restore FIXED. Kimi K3 refuted (PASS) with a LOW
+  remove() TOCTOU; the parent's independent review (REWORK) showed compare-then-replace is not
+  a conditional mutation, so automatic removal was deleted (disposition 1). Gemini (PASS):
+  broken symlink / directory at a role path, utf-8 reads, idempotent temp unlink and test
+  import path all FIXED. The parent then proved Codex's native conditional write
+  (config/read includeLayers version + config/batchWrite expectedVersion); the root-key write
+  now uses it (disposition 2), with a stale-version regression, a refusing-binary test and a
+  real-Codex scratch-seat test. infra/codex-hooks full suite 153 passed (M5, backend-rag venv
+  3.11.15). Live consumption (fresh Codex session rendering the instructions and routing a
+  mechanical task on M5, Pro and Mini) is proven only at prove-live. Final gate: pending —
+  fresh Opus 5.5 xhigh gate on the exact SHA.
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      The roles cannot mechanically stop a parent from using a routine role in place of a
+      required review or an explicit model/effort assignment; the guarantee is prose.
+    status: CONFIRMED
+    disposition: >-
+      Stated as guidance in README and instructions; required reviews, explicit assignments
+      and colour gates stay enforced by the harness's required checks, not by the roles.
+receipts:
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T21:47:00Z"
+    seat: M5
+    claim: 153 passed
+pii_scan: clean
+pii_scan_note: >-
+  infra/codex-hooks seat sources, installer, tests, README and review artifacts only; no
+  client data, PII or credentials.
