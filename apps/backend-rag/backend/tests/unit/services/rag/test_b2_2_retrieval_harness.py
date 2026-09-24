@@ -1002,6 +1002,54 @@ class TestA55Bm25Determinant:
         assert "bm25_b" not in run
 
 
+class TestRunAndWriteBuildsReport:
+    """D3 (gate-6429, folded into the B2 ledger close, row `main --execute
+    never calls build_report`) — `run_and_write` now builds the HC9/HC10
+    report itself (`build_report(outcomes, manifest_cases=...)`) instead of
+    leaving every B2.x evidence pack to be rebuilt OFFLINE by the standalone
+    `build_sample_report.py` script."""
+
+    async def test_manifest_cases_given_adds_a_report_key(self, tmp_path: Path) -> None:
+        client = _FakeVectorDb()
+        data = _artifact_bytes(
+            query_list=[_GENERAL_ENTRY], vectors={f"EN::{_GENERAL_QUERY}": _ONE_VECTOR}
+        )
+        artifact_path = _write_artifact(tmp_path, data)
+
+        payload = await rh.run_and_write(
+            artifact_path=artifact_path,
+            expected_sha256=hashlib.sha256(data).hexdigest(),
+            query_entries=[_GENERAL_ENTRY],
+            resolve_client=_resolver_one(client),
+            manifest_cases=[],
+        )
+
+        assert "report" in payload
+        assert payload["report"]["rows"]
+        assert len(payload["report"]["rows"]) == len(payload["cases"])
+        assert payload["report"]["support_none_sentence"]
+        assert payload["report"]["canary"]
+
+    async def test_manifest_cases_omitted_has_no_report_key(self, tmp_path: Path) -> None:
+        """Backward compatibility: every pre-existing caller that never
+        passes `manifest_cases` keeps getting exactly the payload it always
+        got — no `"report"` key, no behavior change."""
+        client = _FakeVectorDb()
+        data = _artifact_bytes(
+            query_list=[_GENERAL_ENTRY], vectors={f"EN::{_GENERAL_QUERY}": _ONE_VECTOR}
+        )
+        artifact_path = _write_artifact(tmp_path, data)
+
+        payload = await rh.run_and_write(
+            artifact_path=artifact_path,
+            expected_sha256=hashlib.sha256(data).hexdigest(),
+            query_entries=[_GENERAL_ENTRY],
+            resolve_client=_resolver_one(client),
+        )
+
+        assert "report" not in payload
+
+
 class TestInferableCaseCount:
     """Item F — a run-level `inferable_case_count` excluding
     embedding_divergent, score_kind_divergent, AND unbuildable cases."""
@@ -1284,11 +1332,28 @@ with open(plan_path, "wb") as fh:
 # --- SAFE CASE ---
 cm_mod.CollectionManager = _make_cm(None)
 out_path = os.path.join(tmp, "report.json")
+
+build_report_calls = []
+_real_build_report = rh.build_report
+def _traced_build_report(outcomes, **kwargs):
+    build_report_calls.append(kwargs.get("manifest_cases"))
+    return _real_build_report(outcomes, **kwargs)
+rh.build_report = _traced_build_report
+
 exit_code = rh.main(["--execute", "--plan-file", plan_path, "--plan-sha256", plan_sha, "--out", out_path])
 assert exit_code == 0, f"safe case did not go green: {exit_code}"
 assert os.path.exists(out_path), "safe case should write a report"
 for msg, mock in raisers.items():
     assert not mock.called, f"a guard fired on the SAFE case: {msg}"
+
+# D3 (gate-6429): main --execute's OWN code path must call build_report
+# directly — traced here, not inferred from the output shape alone.
+assert len(build_report_calls) == 1, "main --execute must call build_report exactly once"
+assert build_report_calls[0], "build_report must be called with the frozen mandatory manifest's cases"
+with open(out_path, encoding="utf-8") as fh:
+    written = json.load(fh)
+assert "report" in written, "the written --execute payload must carry build_report's report"
+assert written["report"]["rows"], "the report must have one row per case"
 print("SAFE_CASE_OK")
 
 # --- GUILTY CASES ---

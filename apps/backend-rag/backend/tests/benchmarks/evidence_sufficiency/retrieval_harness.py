@@ -1191,6 +1191,7 @@ async def run_and_write(
     resolve_client: Callable[[str], Any],
     bm25: Any | None = None,
     out_path: str | Path | None = None,
+    manifest_cases: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Load+verify the artifact, run every query in `query_entries` (default:
     the artifact's own full `query_list`) through `run_all`, and return
@@ -1201,6 +1202,14 @@ async def run_and_write(
     constructs a vector-store client itself, live or fake. If `run_all`
     raises (`ArtifactError`/`RetrievalError`), it propagates here too and
     NO file is ever written to `out_path`.
+
+    `manifest_cases`, when given, adds a `"report"` key built through
+    `build_report(outcomes, manifest_cases=manifest_cases)` — the SAME
+    HC9/HC10 report shape the offline `build_sample_report.py` rebuild
+    script used to construct out-of-band from a written `--execute`
+    payload. Omitting it (the default) keeps the payload exactly as before
+    this parameter existed: no report key, no behavior change for any
+    caller that does not pass it.
     """
     artifact = load_artifact(artifact_path, expected_sha256=expected_sha256)
     entries = list(query_entries) if query_entries is not None else artifact.query_list
@@ -1247,6 +1256,8 @@ async def run_and_write(
         },
         "cases": [outcome_to_dict(o) for o in outcomes],
     }
+    if manifest_cases is not None:
+        payload["report"] = build_report(outcomes, manifest_cases=manifest_cases)
 
     if out_path is not None:
         out_path = Path(out_path)
@@ -1376,6 +1387,15 @@ def main(argv: list[str] | None = None) -> int:
 
     from backend.app.core.config import settings
     from backend.services.ingestion.collection_manager import CollectionManager
+    from backend.tests.benchmarks.evidence_sufficiency import harness as _harness
+
+    # D3 (gate-6429, folded into the B2 ledger close): --execute used to
+    # write only the raw {"run", "cases"} payload, never the HC9/HC10
+    # report `build_report` produces — every report in every B2.x evidence
+    # pack was rebuilt OFFLINE by a standalone script instead. Loading the
+    # frozen mandatory manifest here (read-only, never mutated, never sent
+    # anywhere) lets run_and_write build that report directly, in-process.
+    manifest_cases = _harness.load(_harness.DEFAULT_MANIFEST).get("cases")
 
     async def _live() -> dict[str, Any]:
         collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
@@ -1395,6 +1415,7 @@ def main(argv: list[str] | None = None) -> int:
             resolve_client=resolve_client,
             bm25=bm25,
             out_path=args.out,
+            manifest_cases=manifest_cases,
         )
 
     report = asyncio.run(_live())

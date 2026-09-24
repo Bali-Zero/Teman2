@@ -72,6 +72,16 @@ def _db_url_for(db_name: str) -> str:
     return _ADMIN_URL.rsplit("/", 1)[0] + f"/{db_name}"
 
 
+def _dsn_with_credentials(dsn: str, *, user: str, password: str) -> str:
+    """Swap the ``user[:password]@`` portion of a Postgres DSN, keeping the
+    host/port/dbname untouched. Used to connect as a freshly-created role
+    rather than whatever ``TEST_DATABASE_URL`` originally named."""
+
+    scheme, rest = dsn.split("://", 1)
+    _, _, host_and_db = rest.partition("@")
+    return f"{scheme}://{user}:{password}@{host_and_db}"
+
+
 async def _apply_migrations_through(database_dsn: str, *, through: int) -> None:
     """Apply every Visa Engine migration up to and including ``through``, in
     the exact order ``fullstack_smoke.MIGRATION_NUMBERS`` defines -- the
@@ -106,7 +116,25 @@ async def _insert_test_retention_policy(database_dsn: str) -> None:
 async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
     """The shape ``backend_rag_v2`` has after the D1 least-privilege repair:
     SELECT-only on the retention-policy table, SELECT+INSERT (never UPDATE)
-    on the idempotency table it writes to."""
+    on the idempotency table it writes to.
+
+    Also grants the connecting role its OWN ``SET`` privilege on ``role``,
+    so the ``SET LOCAL ROLE`` calls below work regardless of the ambient
+    cluster superuser status of whatever role ``database_dsn`` happens to
+    connect as. PG16 split role-membership options into ``ADMIN``/
+    ``INHERIT``/``SET`` (previously one undivided grant): a CREATEROLE
+    role that is not a superuser automatically gets ``ADMIN OPTION`` on a
+    role it just created, but NOT the separate ``SET`` option ``SET LOCAL
+    ROLE`` needs -- reproduced 2026-08-08 on a PG17 dev cluster whose local
+    ``test`` role was ``rolsuper=f, rolcreaterole=t`` (CI's own Postgres
+    service is superuser, and pre-16 had no such split, so CI never hit
+    this). This explicit grant makes the test carry its own privilege
+    instead of depending on the connecting role's ambient status; it
+    weakens no assertion; the ``pytest.raises(InsufficientPrivilegeError)``
+    case still exercises the low-priv role exactly as it does today. The
+    ``WITH SET TRUE`` clause itself is PG16+ syntax (a syntax error on the
+    PG15 CI runs), so it's version-gated -- pre-16 membership already
+    implies SET, since the split didn't exist yet."""
 
     connection = await asyncpg.connect(database_dsn)
     try:
@@ -117,6 +145,11 @@ async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
         await connection.execute(
             f'GRANT SELECT, INSERT ON TABLE public.visa_evaluate_idempotency TO "{role}"'
         )
+        server_version_num = int(
+            await connection.fetchval("SELECT current_setting('server_version_num')")
+        )
+        if server_version_num >= 160000:
+            await connection.execute(f'GRANT "{role}" TO CURRENT_USER WITH SET TRUE')
     finally:
         await connection.close()
 
@@ -224,6 +257,82 @@ async def test_post_268_low_privilege_insert_succeeds(m268_sandbox: _Sandbox) ->
     assert row is not None
     assert row["retention_policy_id"] is not None
     assert row["expires_at"] is not None
+
+
+async def test_create_lowpriv_role_grants_set_privilege_on_pg16_plus(
+    m268_sandbox: _Sandbox,
+) -> None:
+    """PENDING-ARMS row `visa-engine retention test depends on ambient
+    superuser` -- proof-of-armed: `_create_lowpriv_role` must not depend
+    on the CONNECTING role already being a cluster superuser (CI's own
+    Postgres service is, which is exactly why this gap never showed up
+    there). Creates a non-superuser CREATEROLE role -- the same shape a
+    PG17 dev cluster's local role had (``rolsuper=f, rolcreaterole=t``) --
+    and proves THAT role can `SET LOCAL ROLE` into the low-priv role
+    `_create_lowpriv_role` creates, which needs the explicit `GRANT ...
+    WITH SET TRUE` this row added: PG16+'s automatic ADMIN OPTION on a
+    self-created role does not, by itself, include SET."""
+
+    await _apply_migrations_through(m268_sandbox.database_dsn, through=268)
+
+    creator_role = f"visa268_creator_{uuid.uuid4().hex[:12]}"
+    creator_password = secrets.token_urlsafe(16)
+
+    # CREATE ROLE is cluster-wide (any database connection can issue it),
+    # but GRANT ON TABLE must run against the sandbox database that
+    # actually owns those two tables -- NOT `_ADMIN_URL`, which targets
+    # the unrelated "postgres" maintenance database.
+    admin_conn = await asyncpg.connect(_ADMIN_URL)
+    try:
+        await admin_conn.execute(
+            f'CREATE ROLE "{creator_role}" NOSUPERUSER CREATEROLE LOGIN '
+            f"PASSWORD '{creator_password}'"
+        )
+    finally:
+        await admin_conn.close()
+
+    sandbox_admin_conn = await asyncpg.connect(m268_sandbox.database_dsn)
+    try:
+        await sandbox_admin_conn.execute(
+            "GRANT ALL ON TABLE public.visa_decision_retention_policies, "
+            f'public.visa_evaluate_idempotency TO "{creator_role}" WITH GRANT OPTION'
+        )
+    finally:
+        await sandbox_admin_conn.close()
+
+    creator_dsn = _dsn_with_credentials(
+        m268_sandbox.database_dsn, user=creator_role, password=creator_password
+    )
+
+    try:
+        await _create_lowpriv_role(creator_dsn, m268_sandbox.lowpriv_role)
+
+        connection = await asyncpg.connect(creator_dsn)
+        try:
+            async with connection.transaction():
+                await connection.execute(f'SET LOCAL ROLE "{m268_sandbox.lowpriv_role}"')
+                current = await connection.fetchval("SELECT current_user")
+        finally:
+            await connection.close()
+
+        assert current == m268_sandbox.lowpriv_role
+    finally:
+        # Drop everything creator_role owns/was granted IN THE SANDBOX
+        # DATABASE first (the ADMIN ROLE GRANT ... WITH SET TRUE and the
+        # GRANT OPTION on the two tables) -- DROP ROLE fails otherwise,
+        # since the sandbox database itself isn't dropped until the
+        # m268_sandbox fixture's own teardown, which runs AFTER this one.
+        sandbox_admin_conn = await asyncpg.connect(m268_sandbox.database_dsn)
+        try:
+            await sandbox_admin_conn.execute(f'DROP OWNED BY "{creator_role}"')
+        finally:
+            await sandbox_admin_conn.close()
+
+        admin_conn = await asyncpg.connect(_ADMIN_URL)
+        try:
+            await admin_conn.execute(f'DROP ROLE IF EXISTS "{creator_role}"')
+        finally:
+            await admin_conn.close()
 
 
 async def test_268_marks_all_three_retention_binding_triggers_security_definer(
