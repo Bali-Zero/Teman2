@@ -177,7 +177,7 @@ export function KBLISearch({
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
       <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-300 transition-colors">
+        <div className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-300 transition-colors">
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
@@ -226,7 +226,7 @@ export function KBLISearch({
       </div>
 
       {quickFilters && quickFilters.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
+        <div className="mt-4 flex flex-wrap items-center gap-2 justify-start">
           <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mr-2">
             Quick:
           </span>

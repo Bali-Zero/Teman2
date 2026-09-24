@@ -152,7 +152,9 @@ export function ZantaraChat({
         tabIndex={0}
         aria-live="polite"
         aria-label="Conversation with Zantara AI"
-        className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+        // The 300px floor is for a conversation; before the first message it
+        // left one opener bubble floating in an empty box.
+        className={`relative z-10 max-h-96 ${messages.length > 0 || loading ? "min-h-[300px]" : ""} space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent`}
       >
         {opener && messages.length === 0 && (
           <div className="flex animate-fade-in-up">
