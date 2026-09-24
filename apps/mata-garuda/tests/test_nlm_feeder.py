@@ -260,7 +260,10 @@ class TestStreamConsumer:
         kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
         with patch.object(nlm_feeder, "stream_read_new", return_value=[]):
             stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
-        assert stats == {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
+        assert stats == {
+            "processed": 0, "fed": 0, "skipped": 0, "errors": 0,
+            "no_body": 0, "lake_owned": 0,
+        }
         kb.close()
 
     def test_rate_limit_sleep_called_between_items(self, tmp_path):
@@ -281,6 +284,100 @@ class TestStreamConsumer:
         for call in m_sleep.call_args_list:
             assert call.args[0] == 5
         kb.close()
+
+
+class TestLakeOwnedSources:
+    """intel_scraper items are owned end-to-end by the Intel Lake router +
+    nb-pusher (see nlm_feeder._LAKE_OWNED_SOURCES docstring) — this feeder
+    must leave them alone entirely, not feed them and not count them as
+    no_body."""
+
+    def test_intel_scraper_with_a_real_body_is_not_fed(self, tmp_path):
+        """GUILT: even an intel_scraper item that DOES carry a real body
+        (e.g. a future bridge upgrade) must still be left to the lake."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [{
+            "id": "1-0",
+            "data": {
+                "title": "Bali regulation update",
+                "content": BODY,  # well past MIN_BODY_CHARS
+                "url": "https://ex.com/intel-1",
+                "source_type": "intel_scraper",
+            },
+        }]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack") as m_ack:
+            stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
+        kb.close()
+        m_add.assert_not_called()
+        assert stats["lake_owned"] == 1
+        assert stats["fed"] == 0
+        assert stats["no_body"] == 0
+        assert m_ack.call_count == 1
+
+    def test_intel_scraper_via_source_field_is_not_fed(self, tmp_path):
+        """Same short-circuit when `source` (not `source_type`) carries it."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [{
+            "id": "1-0",
+            "data": {
+                "title": "Bali regulation update",
+                "content": BODY,
+                "url": "https://ex.com/intel-2",
+                "source": "intel_scraper",
+            },
+        }]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack"):
+            stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
+        kb.close()
+        m_add.assert_not_called()
+        assert stats["lake_owned"] == 1
+
+    def test_rss_item_with_real_body_is_still_fed(self, tmp_path):
+        """INNOCENCE: an unrelated source still routes+feeds normally."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [{
+            "id": "1-0",
+            "data": {
+                "title": "AI research digest",
+                "content": BODY,
+                "url": "https://ex.com/rss-1",
+                "source_type": "rss",
+            },
+        }]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack"):
+            stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
+        kb.close()
+        m_add.assert_called_once()
+        assert stats["fed"] == 1
+        assert stats["lake_owned"] == 0
+
+    def test_rss_item_without_body_still_counts_no_body(self, tmp_path):
+        """INNOCENCE: a non-lake-owned source with no real body still hits
+        the ordinary no_body path, untouched by the new short-circuit."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [{
+            "id": "1-0",
+            "data": {
+                "title": "Only a headline",
+                "content": "",
+                "url": "https://ex.com/rss-2",
+                "source_type": "rss",
+            },
+        }]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack"):
+            stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
+        kb.close()
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1
+        assert stats["lake_owned"] == 0
 
 
 class TestNlmCliPath:
