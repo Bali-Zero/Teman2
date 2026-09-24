@@ -1,0 +1,210 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Fixed every BLOCKING/MAJOR finding from the first-round Gear-3
+      council on HEAD 603b4a105f: guarded auth_sentinel import, atomic
+      heartbeat write, notebook-title redaction, login-classifier
+      dead-check ordered before the ok branch, reason-code-aware
+      maybe_alert, inventory retry-on-transient-malformed-JSON with
+      naive/future-timestamp handling, a flag-file kill switch alongside
+      the env var, plist/registry rename to the real 6h cadence with
+      3x expected_hb_seconds, and a synthetic e-mail replacing the real
+      one that had leaked into the test file. Rewrote
+      scripts/tests/test_nlm_watchdog.py (47 tests) to cover the fixed
+      behavior end-to-end, not just the classifier's fixed-string return.
+  - lane: review
+    role: review
+    seat: tp1-qwen3.8-max
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl):
+      unguarded import as a fail-invisible ImportError path, TypeError
+      escaping the freshness parse, unproven HOME-fork plist target, and
+      degraded-to-degraded alert suppression on reason change.
+  - lane: review
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl): a
+      real e-mail committed in cleartext inside the PII-boundary test
+      itself, an organ registered as breathing while nothing is
+      installed, a login classifier that reads "invalid" as valid, and a
+      kill switch that is dead code under launchd.
+  - lane: review
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl):
+      unredacted notebook titles reaching heartbeat/Telegram/logs,
+      non-atomic unguarded heartbeat writes with a wrapper that swallows
+      failures, and the same login-classifier word-boundary bug kimi
+      found independently.
+receipts:
+  - claim: >-
+      47/47 tests pass on the fixed HEAD — guilt and innocence proven per
+      probe class (login classifier, inventory evaluation, fetch/retry,
+      heartbeat write/read, maybe_alert, main), no real ssh/nlm subprocess
+      in any test.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-24T20:50:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The specific codex/kimi BLOCKING finding (rc=0 + "Authentication
+      invalid" used to classify as ok) now classifies as dead — the
+      regression test for it passes.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "invalid" -v
+    exit: 0
+    ts: "2026-09-24T20:54:55Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      write_heartbeat's tmp+os.replace sequence leaves no .tmp file
+      behind on the success path (the atomic-write fix for codex finding
+      2 / kimi finding 6).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "leaves_no_tmp_file_behind" -v
+    exit: 0
+    ts: "2026-09-24T20:55:53Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      _display_name() redacts every notebook title path: curated NB-
+      titles truncate at 60 chars, uncurated titles fall back to the
+      first 8 chars of the id, a missing id falls back to "unknown" — the
+      fix for codex finding 1 (BLOCKING, notebook titles leaking into
+      heartbeat/Telegram/logs).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "display_name" -v
+    exit: 0
+    ts: "2026-09-24T20:55:54Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Organ-conformance-at-birth gate reports 0 regressions and 0
+      non-conformant births across the repo, including the renamed
+      com.balizero.nlm-watchdog.6h.plist and the updated m5.nlm_watchdog
+      registry entry.
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    exit: 0
+    ts: "2026-09-24T20:51:03Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      lint_plist_keepalive.py reports 0 findings scanning
+      infra/launchagents (the 2 WARNs it does print name two
+      pre-existing, unrelated plists — wa-codex-broker and
+      wr2.pg-proxy — neither touched by this diff).
+    cmd: python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    exit: 0
+    ts: "2026-09-24T20:51:12Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      lint_home_fork.py exits nonzero on this M5 checkout, but every
+      named finding (a stale codex-hooks checkout, 3 undeclared
+      unrelated payloads, 13 directories of pre-existing .bak shadows)
+      predates this branch and names none of this PR's files — confirmed
+      by reading the full finding list, not inferred from the exit code
+      alone.
+    cmd: python3 scripts/lint_home_fork.py
+    exit: 3
+    ts: "2026-09-24T20:51:17Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      This branch's own diff over origin/main carries zero occurrences
+      of the owner's real e-mail or name (grep -c prints "0" and exits 1
+      under grep's own no-match convention, which is the observed exit
+      code recorded here) — the kimi-found leak is fixed and did not
+      reappear.
+    cmd: git log -p origin/main..HEAD | grep -ci 'gmail\|antonello'
+    exit: 1
+    ts: "2026-09-24T20:51:21Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      auth_sentinel._run() is a total function: it catches
+      subprocess.TimeoutExpired, FileNotFoundError, and any other
+      Exception, returning a (code, string) tuple in every case — it
+      cannot raise OSError/FileNotFoundError past its own boundary,
+      which closes the specific mechanism tp1-qwen3.8-max's dissent
+      named (a raise from _run reopening the no-heartbeat gap).
+    cmd: sed -n '81,96p' scripts/auth_sentinel.py
+    exit: 0
+    ts: "2026-09-24T20:56:40Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      maybe_alert fires on every real transition (ok<->degraded, first
+      tick reads degraded) and on a degraded->degraded code-set change,
+      stays silent on same-status/same-codes and on a first tick that
+      reads ok, and never raises when the Telegram call itself fails —
+      the fix for codex finding 4 / qwen finding 4.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "maybe_alert" -v
+    exit: 0
+    ts: "2026-09-24T20:58:37Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      main() reports an auth_sentinel import failure as a degraded
+      heartbeat carrying Code.IMPORT_FAILED instead of crashing before
+      its own exception handler is reachable — the fix for qwen finding
+      1 (BLOCKING).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "import" -v
+    exit: 0
+    ts: "2026-09-24T20:58:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      _fetch_inventory_data degrades to INVENTORY_MALFORMED only after a
+      retry still fails (and never retries on an ssh-level failure) — the
+      fix for codex finding 5 / kimi finding 7's inventory-race concern.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "retry" -v
+    exit: 0
+    ts: "2026-09-24T20:58:45Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      evaluate_inventory_data degrades safely (not a crash) on a naive
+      timestamp and on a future timestamp beyond the clock-skew
+      tolerance, and stays innocent on a tiny in-tolerance future skew —
+      the fix for kimi finding 5 / qwen finding 2 (TypeError escaping to
+      the top-level crash handler).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "naive or
+      skew or future" -v
+    exit: 0
+    ts: "2026-09-24T20:58:48Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The combined acceptance probe (organ-conformance-at-birth THEN
+      plist-keepalive) exits 0 end-to-end: 0 regressions, 0
+      non-conformant births, 0 keepalive findings.
+    cmd: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    exit: 0
+    ts: "2026-09-24T20:59:38Z"
+    seat: claude-sonnet-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The strongest objection is that this monitoring organ can itself
+      fail, return launchd success, and preserve a stale healthy
+      heartbeat — the exact silent-failure class it claims to eliminate.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Even ignoring the PII line, this PR registers a living organ that
+      does not live — nothing is installed, launchd execution of the
+      exact ssh command shape is unproven, and the registry now asserts
+      a heartbeat no process will ever write.
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Even if the import is made resilient, the entire design rests on
+      _run from auth_sentinel behaving as a total function (never
+      raising). If _run can throw OSError on a missing ssh binary or
+      FileNotFoundError, the same no-heartbeat gap reappears through a
+      different door — the dependency on an external module's internal
+      contract, not just its import surface, is the real fragility.
+    status: RETRACTED
