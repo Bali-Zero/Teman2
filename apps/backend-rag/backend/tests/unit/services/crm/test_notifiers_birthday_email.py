@@ -97,14 +97,22 @@ class TestFailurePathsNeverLogTheClientEmail:
     @pytest.mark.parametrize(
         "brevo_exc",
         [
-            httpx.ConnectError("connection refused"),
-            OSError("network unreachable"),
-            InternalEmailNotDeliveredError("all providers failed: brevo, resend, zoho"),
+            # Each message carries the address itself: a provider error can
+            # name the recipient it rejected, so redacting only the argument
+            # the log line passes is not enough (codex round 3).
+            httpx.ConnectError(f"connection refused for {_CLIENT['email']}"),
+            OSError(f"network unreachable sending to {_CLIENT['email']}"),
+            InternalEmailNotDeliveredError(
+                f"All providers failed: invalid recipient {_CLIENT['email']}"
+            ),
         ],
         ids=["http_error", "os_error", "not_delivered"],
     )
     async def test_brevo_failure_then_zoho_success_never_logs_the_address(
-        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, brevo_exc: Exception
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        brevo_exc: Exception,
     ) -> None:
         service = _make_service()
         monkeypatch.setattr(
@@ -136,7 +144,9 @@ class TestFailurePathsNeverLogTheClientEmail:
             "backend.services.crm.notifiers.send_internal_email",
             AsyncMock(side_effect=httpx.ConnectError("connection refused")),
         )
-        service.email_service.send_email = AsyncMock(side_effect=RuntimeError("zoho boom"))
+        service.email_service.send_email = AsyncMock(
+            side_effect=RuntimeError(f"zoho rejected {_CLIENT['email']}")
+        )
 
         with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
             result = await service.send_birthday_email(_CLIENT)

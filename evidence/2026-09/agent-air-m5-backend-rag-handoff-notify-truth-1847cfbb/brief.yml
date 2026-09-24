@@ -102,3 +102,14 @@ round_3: >-
   backend/tests/unit/services/test_wa_human_handoff.py
   backend/tests/unit/services/test_wa_codex_leg.py
   backend/tests/unit/services/crm/test_notifiers_birthday_email.py -v
+round_3b: >-
+  Codex round-3 review of a5dae52df3 (verdict FIX-FIRST, one HIGH): S3
+  redacted the recipient argument but every birthday log line still
+  interpolated the raw exception, and the outer handler used
+  logger.exception (full traceback). A provider error can name the address
+  it rejected, so the address leaked through the exception text. Spec S3
+  amended: in send_birthday_email a log line carries the redacted recipient
+  and the exception TYPE only — never its message, never a traceback. The
+  four PII tests now raise exceptions whose text contains the address; on
+  a5dae52df3 they fail 4/8, on the cure 8/8. Probes: same four test files,
+  194 passed.

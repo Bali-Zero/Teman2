@@ -231,13 +231,13 @@ class BirthdayNotifierService:
                 logger.warning(
                     "Brevo HTTP failed for birthday %s, trying Zoho: %s",
                     redact_identifier_for_log(client["email"]),
-                    brevo_err,
+                    type(brevo_err).__name__,
                 )
             except OSError as brevo_err:
                 logger.warning(
                     "Brevo connection failed for birthday %s, trying Zoho: %s",
                     redact_identifier_for_log(client["email"]),
-                    brevo_err,
+                    type(brevo_err).__name__,
                 )
             except InternalEmailNotDeliveredError as brevo_err:
                 # Brevo answered 200 but its own provider chain exhausted
@@ -247,7 +247,7 @@ class BirthdayNotifierService:
                 logger.warning(
                     "Brevo did not deliver birthday email for %s, trying Zoho: %s",
                     redact_identifier_for_log(client["email"]),
-                    brevo_err,
+                    type(brevo_err).__name__,
                 )
             if not sent_via_brevo:
                 await self.email_service.send_email(
@@ -267,27 +267,32 @@ class BirthdayNotifierService:
             logger.warning(
                 "Template formatting error for birthday email to %s: %s",
                 redact_identifier_for_log(client.get("email")),
-                e,
+                type(e).__name__,
             )
             return False
         except httpx.HTTPError as e:
             logger.warning(
                 "HTTP error sending birthday email to %s: %s",
                 redact_identifier_for_log(client.get("email")),
-                e,
+                type(e).__name__,
             )
             return False
         except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning(
                 "DB/connection error sending birthday email to %s: %s",
                 redact_identifier_for_log(client.get("email")),
-                e,
+                type(e).__name__,
             )
             return False
-        except Exception:
-            logger.exception(
-                "Failed to send birthday email to %s",
+        except Exception as e:
+            # Type only, never the message or traceback: an exception raised
+            # while mailing a client can carry the client's address in its
+            # text, and `redact_identifier_for_log` only covers the argument
+            # this line passes itself.
+            logger.error(
+                "Failed to send birthday email to %s: %s",
                 redact_identifier_for_log(client.get("email")),
+                type(e).__name__,
             )
             return False
 
