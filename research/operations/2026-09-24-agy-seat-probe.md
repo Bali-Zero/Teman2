@@ -2,6 +2,7 @@
 date: 2026-09-24
 domain: operations
 client_case: none
+adversarial_review: exempt-measurement-record # probe receipts (tool output) + a quoted verdict of the 2026-09-24 4-seat memo review; this note itself has no second-seat review, the parent session's PR review is the check
 sources:
   - scripts/arsenal_probe.py (--seats agy, live run 2026-09-24)
   - agy models / agy --print live runs on Pro, 2026-09-24 (antigravity-cli 1.2.9)
