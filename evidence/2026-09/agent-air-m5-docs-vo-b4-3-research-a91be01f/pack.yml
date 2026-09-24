@@ -61,13 +61,13 @@ diff:
     unrelated merged PRs a raw diff would wrongly pull in; 0 deletions because none of this
     PR's added content existed at the merge-base to delete from, including this round's
     in-place rewrites of text this PR itself first introduced):
-    research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+127, gate-b4-3-7287
+    research/operations/2026-09-22-visa-oracle-live-enumeration/README.md (+131, gate-b4-3-7287
     cure: M1 run-window fix, M2 council-scope narrowing, L5 http_status cell),
     research/operations/2026-09-22-visa-oracle-live-enumeration/prove-live-b4-3-a3pb-full-sweep-report-20260924.json
     (+12448, new file, byte-identical since the first commit — this cure round changes no
     byte of it), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/brief.yml (+46,
     probe 6 + assumption status cure), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/pack.yml
-    (+332, this file, line count includes this net_lines entry describing itself),
+    (+349, this file, line count includes this net_lines entry describing itself),
     evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/council.jsonl
     (+3), evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/refuter-runs/{refuter-task.txt
     (+3096), refuter-qwen.txt (+16), refuter-deepseek.txt (+4)}. The ROOT evidence/brief.yml is
