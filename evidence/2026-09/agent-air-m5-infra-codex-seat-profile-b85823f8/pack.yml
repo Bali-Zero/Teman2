@@ -49,6 +49,11 @@ receipts:
     ts: "2026-09-24T21:47:00Z"
     seat: M5
     claim: 153 passed
+  - cmd: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+    exit: 0
+    ts: "2026-09-24T22:52:00Z"
+    seat: M5
+    claim: 170 passed after merging origin/main (PR-A #7311 landed; README sections combined)
 pii_scan: clean
 pii_scan_note: >-
   infra/codex-hooks seat sources, installer, tests, README and review artifacts only; no
