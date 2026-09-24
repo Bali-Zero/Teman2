@@ -181,3 +181,69 @@ describe("portal message alerts", () => {
     expect(screen.queryByText("7 unread messages from your team")).toBeNull();
   });
 });
+
+describe("team reply reminders", () => {
+  it("keeps a read client conversation visible until a reply is saved", async () => {
+    mocks.team.mockResolvedValue({
+      total_unread: 0,
+      by_client: [],
+      total_pending: 1,
+      pending_by_client: [
+        { client_id: 42, client_name: "Synthetic Client", pending_count: 2 },
+      ],
+    });
+    const { client } = mount(<TeamPortalMessageAlerts />);
+    const trigger = await screen.findByRole("button", {
+      name: "1 client awaiting a reply",
+    });
+    fireEvent.click(trigger);
+    expect(
+      screen.getByText("The reminder stays until you reply."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Synthetic Client/ }),
+    ).toHaveAttribute("href", "/clients/42?tab=overview#portal-messages");
+    expect(mocks.markRead).not.toHaveBeenCalled();
+    fireEvent.click(trigger);
+    expect(
+      screen.getByRole("button", { name: "1 client awaiting a reply" }),
+    ).toBeInTheDocument();
+    mocks.team.mockResolvedValue({
+      total_unread: 0,
+      by_client: [],
+      total_pending: 0,
+      pending_by_client: [],
+    });
+    await act(() =>
+      client.invalidateQueries({ queryKey: teamPortalUnreadKey }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /awaiting a reply/ }),
+      ).toBeNull(),
+    );
+  });
+
+  it("retains a known pending reply when the refresh fails", async () => {
+    mocks.team.mockResolvedValue({
+      total_unread: 0,
+      by_client: [],
+      total_pending: 1,
+      pending_by_client: [
+        { client_id: 42, client_name: "Synthetic Client", pending_count: 1 },
+      ],
+    });
+    const { client } = mount(<TeamPortalMessageAlerts />);
+    await screen.findByRole("button", { name: "1 client awaiting a reply" });
+    mocks.team.mockRejectedValue(new Error("offline"));
+    await act(() =>
+      client.invalidateQueries({ queryKey: teamPortalUnreadKey }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "1 client awaiting a reply" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Retry" }),
+    ).toBeInTheDocument();
+  });
+});

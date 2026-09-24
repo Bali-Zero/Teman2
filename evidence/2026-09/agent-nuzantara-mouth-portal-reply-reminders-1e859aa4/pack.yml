@@ -1,0 +1,141 @@
+task_id: portal-reply-reminders
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+pii_scan: clean
+outcome: Prepared candidate; not yet released or proven live. No real email sent.
+gear_override:
+  A new transactional outbox and source column couple migration, API,
+  worker, provider boundary and UI; tests account for most added lines. Keep the atomic
+  delivery contract in one reviewable PR.
+lanes:
+  - lane: mouth/portal-reply-reminders
+    role: build
+    seat: Codex external builder
+  - lane: advisory
+    role: review
+    seat: claude-opus-5-5 xhigh
+    session: d4ad5383-ce6c-4493-85ad-55b1085e3b72
+receipts:
+  - claim: Focused backend acceptance including synthetic PostgreSQL
+    cmd:
+      pytest portal reply, assignment, email chain/delivery, integration and profile
+      tests
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 78 passed
+    log_sha256: e97535d13441d0a853ee246e9429f075ebbd97f6cc6b72e2d12405d6dbc18537 # pragma: allowlist secret
+  - claim: Final failed-poll contract
+    cmd: pytest test_crm_portal_team_assignment_gates.py
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 12 passed
+    log_sha256: 43b8591bc8ba41ef6edbe6ef9017b7a4f0d87a1959f1cf663a7ba672f69c8a7b # pragma: allowlist secret
+  - claim: Frontend shared alerts and conversation tests
+    cmd: vitest usePortalUnreadMessages.test.tsx PortalMessages.test.tsx
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 16 passed
+    log_sha256: c9d19ddf5991db40c037a54cf0ab86144a75b8dfe4c3efed12756b9e39ad4d9a # pragma: allowlist secret
+  - claim: Frontend typecheck
+    cmd: npm run typecheck
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: passed
+    log_sha256: fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f # pragma: allowlist secret
+  - claim: Frontend production build and public bundle guards
+    cmd: npm run build
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: passed
+    log_sha256: e7db6c7fbb6f8cde71c458f3ca1490b0b509c981ebe5db6bffd0c09a8c650ad8 # pragma: allowlist secret
+  - claim: Factory lifecycle baseline in isolation
+    cmd: pytest test_app_factory.py
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 8 passed
+    log_sha256: f4a21e86494de3ee91c94915d64d8b8b4c7bb62015f9a0cec5ba83f2fbc23159 # pragma: allowlist secret
+  - claim: Lifecycle contract and worker kill switch
+    cmd: pytest test_app_factory_lifecycle_contracts.py
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 11 passed
+    log_sha256: 9039387471608de21eec7add4a9e8de8f94966f877529f7b58b1623bc6448040 # pragma: allowlist secret
+  - claim: Mandatory RAG predeploy regression
+    cmd: pytest test_kg_langgraph.py test_kg_subgraphs.py test_confidence.py
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 91 passed
+    log_sha256: 688aea6e40d81d9aeeb71908d79362ed52973dcd71822f8862c8dd8a314e2533 # pragma: allowlist secret
+  - claim: Notification, email adapter, access-control and profile regression
+    cmd:
+      pytest portal_notification_service, crm_portal_mark_read_bola, internal_email,
+      portal_profile_update
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: 31 passed
+    log_sha256: 6b804774884a39f81433d463926773cd8c0ddd3ffe358b578d3cb85dd73aeb71 # pragma: allowlist secret
+  - claim: Dependency import-chain smoke
+    cmd: python -c 'from backend.app.dependencies import get_current_user'
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: IMPORT_SMOKE_OK
+    log_sha256: 0c12c70001ff9c9a88d67fe68393295c1223e6e784b9c11889eabe4a010149ca # pragma: allowlist secret
+  - claim:
+      Browser fixtures fit 360 and 1280px, pending visible with zero unread, reduced-motion
+      stops pulse
+    cmd: node /tmp/portal-reply-reminders-preview.cjs
+    exit: 0
+    ts: "2026-09-24T20:29:37.019349+00:00"
+    seat: Codex on Pro
+    result: Both widths passed; no page errors; client read behavior retained
+    artifact: browser-receipt.json
+dissent:
+  - seat: claude-opus-5-5 xhigh
+    objection:
+      Automatic inbound profile events created reply obligations; expired leases
+      could exceed the provider-attempt budget; ambiguous acceptance was recorded failed.
+    status: CONFIRMED
+    resolution:
+      Explicit source marker and verified legacy sentinel exclusion; three-attempt
+      limit plus lease fencing; distinct rejected versus uncertain outcomes, with regression
+      tests.
+  - seat: claude-opus-5-5 xhigh
+    objection:
+      Suggested returning an unread-only successful payload after a pending-query
+      failure.
+    status: PLAUSIBLE
+    resolution:
+      "Rejected after a concrete counterexample: zero unread would erase a
+      cached unanswered reminder. The spec now requires the failed poll to retain cached
+      pending data and visible retry; backend failure and frontend cached-error tests
+      verify this."
+limitations:
+  - Other historical team notices have no reliable source provenance and may be counted
+    as manual replies.
+  - Provider acceptance is not inbox-delivery proof; real test recipient approval is
+    still pending.
+  - A mixed exploratory test invocation stalled and was interrupted after 23 passes;
+    a second mixed invocation timed out during collection. All constituent required
+    groups passed in clean isolated processes; no code conclusion is drawn from those
+    incomplete invocations.
+  - First advisory exhausted 18 turns without a verdict; second completed with findings
+    addressed above.
+release_requirements:
+  - Fresh independent Opus 5.5 xhigh final gate on committed exact SHA.
+  - Claude release owner checks migration application, worker activation switch, provider
+    configuration without credentials, schema/query plan and aggregate historical pending
+    counts.
+  - Release owner proves deployed frontend and backend commits and consumer health.
+    No uncontrolled real-client or test sends.
