@@ -492,10 +492,25 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
     expect(
       mapDisclosedReviewFlags({ business_activity: "acquiring-a-bank" }),
     ).toEqual(["ACTIVITY_BOUNDARY"]);
-    expect(mapDisclosedReviewFlags({ retirement_basis: "unsure" })).toEqual([
+    // `business_activity` stays `mode: "human-review"` (unlike A6-bis's
+    // `retirement_basis`/`diaspora_documents`, which now resolve "unsure"
+    // to a conservative, table-decidable value BEFORE this check ever
+    // sees it — see the resolveConservativeAnswers test below).
+    expect(mapDisclosedReviewFlags({ business_activity: "unsure" })).toEqual([
       "ACTIVITY_BOUNDARY",
       "NOT_CERTAIN",
     ]);
+  });
+
+  // Slice A6-bis: the conservative default resolves BEFORE this table is
+  // ever consulted, so an "unsure" answer on either question never reaches
+  // the fail-closed branch above — the pack-inert/decidable conservative
+  // value does, and it is already table-decidable by construction.
+  it("A6-bis: diaspora_documents/retirement_basis unsure no longer fails closed (resolved conservative first)", () => {
+    expect(mapDisclosedReviewFlags({ diaspora_documents: "unsure" })).toEqual(
+      [],
+    );
+    expect(mapDisclosedReviewFlags({ retirement_basis: "unsure" })).toEqual([]);
   });
 
   it("never holds on a question it does not classify", () => {
