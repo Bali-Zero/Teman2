@@ -32,7 +32,7 @@ class TestSendInternalEmail:
             "backend.app.services.internal_email.get_email_client",
             new=AsyncMock(return_value=mock_client),
         ):
-            await send_internal_email(
+            result = await send_internal_email(
                 to="kadek.tax@balizero.com",
                 subject="Hello",
                 body="<p>body</p>",
@@ -40,6 +40,7 @@ class TestSendInternalEmail:
                 log_context="test req=1",
             )
 
+        assert result is True
         assert mock_client.post.call_count == 1
         payload = mock_client.post.call_args.kwargs["json"]
         assert payload["to"] == "kadek.tax@balizero.com"
@@ -142,12 +143,16 @@ class TestSendInternalEmail:
         ):
             with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
                 # Must not raise — the HTTPStatusError is caught and logged.
-                await send_internal_email(
+                result = await send_internal_email(
                     to="x@balizero.com",
                     subject="x",
                     body="<p>x</p>",
                 )
 
+        assert result is False, (
+            "a swallowed HTTP failure must return False, not the pre-2026-09-25 "
+            "None (falsy, but not the explicit truthful signal a caller can rely on)"
+        )
         assert any("HTTP 500" in record.getMessage() for record in caplog.records), (
             "send_internal_email must log the swallowed HTTP failure, not silently drop it"
         )
@@ -167,12 +172,13 @@ class TestSendInternalEmail:
         ):
             with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
                 # Must not raise — the ConnectError is caught and logged.
-                await send_internal_email(
+                result = await send_internal_email(
                     to="x@balizero.com",
                     subject="x",
                     body="<p>x</p>",
                 )
 
+        assert result is False
         assert any("connection refused" in record.getMessage() for record in caplog.records), (
             "send_internal_email must log the swallowed network failure, not silently drop it"
         )

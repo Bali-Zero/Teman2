@@ -24,6 +24,12 @@ Semantics:
   warning. It NEVER raises unless ``raise_on_failure=True``. When ``pool``
   and ``email_type`` are provided, failures are also persisted so the retry
   worker can re-attempt delivery.
+- Returns ``True`` only when the send actually succeeded (Brevo accepted the
+  request), ``False`` on any swallowed failure. A caller that has been
+  ignoring the return value (every caller as of 2026-09-25) sees no change —
+  ``await send_internal_email(...)`` still fires and forgets identically.
+  This exists so a caller that DOES need to know delivery, not just intent,
+  has a truthful signal instead of having to infer it from logs.
 - Schedule via FastAPI ``BackgroundTasks`` if invoked from a request handler,
   so the client does not pay the network latency.
 
@@ -72,13 +78,19 @@ async def send_internal_email(
     pool: asyncpg.Pool | None = None,
     practice_id: int | None = None,
     client_id: int | None = None,
-) -> None:
+) -> bool:
     """Send an email through the internal Brevo adapter.
 
     Fire-and-forget by default: catches every exception, logs a warning,
     never raises. Pass ``raise_on_failure=True`` to propagate exceptions
     instead — useful when the caller has its own fallback transport
     (e.g. Zoho) and needs to detect Brevo failures.
+
+    Returns:
+        ``True`` if Brevo accepted the send, ``False`` on any swallowed
+        failure (network error, non-2xx response). When ``raise_on_failure``
+        is True and the send fails, this raises instead of returning
+        ``False``.
 
     Args:
         to: primary recipient address
@@ -144,6 +156,7 @@ async def send_internal_email(
                 status="sent",
                 provider="brevo",
             )
+        return True
     except Exception as e:
         err_msg = format_send_error(e)
         logger.warning(
@@ -169,3 +182,4 @@ async def send_internal_email(
                 )
         if raise_on_failure:
             raise
+        return False

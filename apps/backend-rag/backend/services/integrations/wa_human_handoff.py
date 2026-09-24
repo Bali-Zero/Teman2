@@ -353,7 +353,18 @@ async def notify_human_handoff(
     is per-THREAD, not per-reason: a colleague already alerted about this
     thread in the last 30 minutes does not need a second alert for a
     different reason on the same thread.
-    Returns True only on an actually-sent email; False on dedup suppression.
+
+    Returns True only when at least one channel actually DELIVERED — the
+    in-app alert row was written, or ``send_internal_email`` reports the
+    Brevo send succeeded. False on dedup suppression, OR when both channels
+    failed (unknown client with no in-app row possible, and the email
+    transport swallowed an error via ``raise_on_failure=False``). Dedup is
+    recorded ONLY on a True return: a failed attempt leaves no trace in the
+    TTL map, so the very next call for the same thread is not suppressed and
+    can retry. Before 2026-09-25 this returned True whenever the email leg
+    was merely ATTEMPTED, even if it failed silently — callers must not
+    assume that shape; see ``wa_codex_leg.py`` callers, which already treat
+    this return as unverifiable for client-facing copy and only log it.
     """
     dedup_key = f"human_handoff:{thread_id}"
     if _already_escalated(dedup_key):
@@ -386,7 +397,7 @@ async def notify_human_handoff(
     body_lines.append("Silakan buka thread di konsol operator untuk membaca detailnya.")
 
     subject = _EMAIL_SUBJECT_TEMPLATES.get(reason, _EMAIL_SUBJECT_TEMPLATES[_DEFAULT_REASON])
-    await send_internal_email(
+    email_sent = await send_internal_email(
         to=to_email,
         subject=subject.format(thread_id=thread_id),
         body="\n".join(body_lines),
@@ -394,5 +405,20 @@ async def notify_human_handoff(
         pool=pool,
         client_id=client_id,
     )
-    _recent_escalations[dedup_key] = time.monotonic()
-    return True
+
+    delivered = email_sent or in_app
+    if delivered:
+        _recent_escalations[dedup_key] = time.monotonic()
+    else:
+        # Neither channel reached anyone: do NOT record dedup, so a retry
+        # (the same client re-sending, or a caller re-attempting) is not
+        # suppressed by a window that opened on a failure.
+        logger.warning(
+            "wa_human_handoff: no channel delivered thread=%s reason=%s "
+            "(email_sent=%s in_app=%s)",
+            thread_id,
+            reason,
+            email_sent,
+            in_app,
+        )
+    return delivered
