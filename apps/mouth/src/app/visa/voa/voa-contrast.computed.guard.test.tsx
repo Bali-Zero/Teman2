@@ -809,6 +809,8 @@ beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   vi.clearAllMocks();
+  URL.createObjectURL = vi.fn(() => "blob:mock");
+  URL.revokeObjectURL = vi.fn();
 });
 
 describe("upload — three error-tone states (M1's own site)", () => {
