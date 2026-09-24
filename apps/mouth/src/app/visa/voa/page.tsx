@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   AppFrame,
   AppTrustStrip,
-  AppWizard,
   useFunnelApp,
   type WizardStep,
 } from "@balizero/core";
@@ -15,6 +14,7 @@ import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
 import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { voaCopy, type VoaCopyKey } from "./voa-copy";
 import { useVoaLocale } from "./useVoaLocale";
+import { VoaWizard } from "./VoaWizard";
 
 /**
  * GARUDA VOA — public eligibility wizard (owner decision 5, "Concept A — The
@@ -478,13 +478,16 @@ export default function VoaEligibilityPage() {
             {t("hero.wa.cta")}
           </WhatsAppLeadButton>
         </div>
-        <AppWizard
+        <VoaWizard
           steps={steps}
           labels={{
             stepOf: (current, total) => t("wizard.stepOf", { current, total }),
+            progress: t("wizard.progress"),
             back: t("wizard.back"),
             next: t("wizard.next"),
             finish: t("wizard.finish"),
+            change: t("wizard.change"),
+            assure: t("wizard.assure"),
           }}
           persistKey="bz.garuda_voa.wizard"
           onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}

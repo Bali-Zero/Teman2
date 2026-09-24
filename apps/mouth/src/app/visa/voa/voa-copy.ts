@@ -99,6 +99,10 @@ const en = {
   "wizard.back": "Back",
   "wizard.next": "Next",
   "wizard.finish": "See result",
+  "wizard.progress": "Your progress",
+  "wizard.change": "Change",
+  "wizard.assure":
+    "No payment on this page. Nothing is charged before you have seen your price.",
 
   // --- verdict leg (ACCEPT path, Safe Clock, what happens next) -------------
   "verdict.title": "Visa on Arrival",
@@ -422,6 +426,10 @@ const id: Record<VoaCopyKey, string> = {
   "wizard.back": "Kembali",
   "wizard.next": "Lanjut",
   "wizard.finish": "Lihat hasil",
+  "wizard.progress": "Kemajuan Anda",
+  "wizard.change": "Ubah",
+  "wizard.assure":
+    "Tidak ada pembayaran di halaman ini. Tidak ada biaya yang ditagih sebelum Anda melihat harganya.",
 
   // --- verdict leg ----------------------------------------------------------
   "verdict.title": "Visa on Arrival",

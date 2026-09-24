@@ -748,3 +748,233 @@
   font-size: 0.92rem;
   color: var(--tx-secondary);
 }
+
+/*
+ * ── The wizard (VoaWizard.tsx) ─────────────────────────────────────────
+ *
+ * Progress is a labelled rail: every step named, the current one in ink,
+ * finished ones in the muted ink, the rest a hairline. The words carry the
+ * state; the bar only repeats it, so no colour here has to pass as text.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz {
+  display: grid;
+  gap: 1rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg {
+  padding-top: 0.5rem;
+  border-top: 3px solid var(--bz-border);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg[data-state="done"] {
+  border-top-color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg-n {
+  margin-right: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg[data-state="current"] {
+  border-top-color: var(--tx-pure);
+  color: var(--tx-pure);
+  font-weight: 650;
+}
+
+/*
+ * On a phone four full labels wrap into two-line stubs (measured in
+ * Indonesian at 390px: "Keperluan Anda", "Tentang Anda"). The rail keeps
+ * every number and names only the step you are on; the other names stay in
+ * the list for a screen reader.
+ */
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"]
+    .voa-wiz__seg:not([data-state="current"])
+    .voa-wiz__seg-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__meta {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: -0.5rem 0 -0.25rem -0.25rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__count {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__back,
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__change {
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--tx-pure);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--tx-tertiary);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/*
+ * Answers already given are FILED, not ghosted: a ledger card, one row per
+ * step, each with its own way back. It replaces a 25%-opacity italic line
+ * (and a 20% "— Purpose ↓" peek under the options) that read as debug text.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__filed {
+  margin: 0;
+  padding: 0 0.25rem 0 1rem;
+  border: 1px solid var(--bz-border);
+  border-radius: 10px;
+  background: var(--bz-elevated);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__filed-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  min-height: 44px;
+  font-family: var(--font-sans);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-wiz__filed-row
+  + .voa-wiz__filed-row {
+  border-top: 1px solid var(--bz-border);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__filed dt {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__filed dd {
+  margin: 0;
+  padding: 0.6rem 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--tx-pure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__change {
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__body {
+  display: grid;
+  scroll-margin-top: 6rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__body:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-wiz__body--nudge {
+    animation: voa-wiz-nudge 320ms ease-out both;
+  }
+}
+
+@keyframes voa-wiz-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__error {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--bz-accent);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--tx-pure);
+}
+
+/*
+ * One confident action, on the reading line: left-aligned on a wide screen,
+ * the full row on a phone, the reassurance directly under it. Before a step
+ * is answered it wears the muted ink — "not yet", never an error tone — and
+ * it still answers a press with the reason, exactly as AppWizard did.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__act {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  margin-top: 0.5rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__next {
+  min-width: 12rem;
+  min-height: 52px;
+  padding: 0 2rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--tx-pure);
+  color: var(--bz-base);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__next[data-ready="false"] {
+  background: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__assure {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--tx-secondary);
+}
+
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-wiz__act {
+    justify-items: stretch;
+  }
+}
