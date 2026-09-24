@@ -244,12 +244,7 @@ export function ConfirmationCard({
         })}
       </p>
 
-      <button
-        type="button"
-        className="oracle-option-card"
-        style={{ width: "fit-content" }}
-        onClick={onConfirm}
-      >
+      <button type="button" className="oracle-cta" onClick={onConfirm}>
         {translate(language, "confirmation.cta")}
         <ArrowRight aria-hidden="true" size={18} />
       </button>

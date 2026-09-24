@@ -200,6 +200,14 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 
 /* ─── Shell layout ──────────────────────────────────────────────────────── */
+/* One centred measure shared by the top bar, the main grid and the footer,
+   so the lockup, the rail and the question line up at every desktop width
+   instead of pinning left and leaving the right half of a 1440 screen empty.
+   Declared here, not in the root block above: the theme blocks' line
+   positions are pinned by oracle-state-tokens.test.ts. */
+.oracle-root {
+  --oracle-measure: 76rem;
+}
 .oracle-shell {
   position: relative;
   z-index: 1;
@@ -208,17 +216,98 @@ html[data-oracle-theme-bootstrap="dark"]
   min-height: 100dvh;
 }
 .oracle-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--oracle-gutter);
+  padding: var(--space-3) var(--oracle-gutter);
   border-bottom: 1px solid var(--oracle-border);
+  background: color-mix(
+    in srgb,
+    var(--oracle-bg-elevated) 45%,
+    var(--oracle-bg)
+  );
+}
+.oracle-topbar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(var(--oracle-measure) - 2 * var(--oracle-gutter));
+  margin-inline: auto;
 }
 .oracle-topbar__actions {
+  order: 2;
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+.oracle-topbar__actions:first-child {
+  margin-left: auto;
+}
+
+/* Product identity: roundel + wordmark in the route's display serif +
+   the descriptor. The serif is the one already on every headline here. */
+.oracle-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.oracle-lockup img {
+  flex-shrink: 0;
+  border-radius: 50%;
+  /* The roundel is black: the hairline keeps its edge on the dark ground. */
+  box-shadow: 0 0 0 1px var(--oracle-border-strong);
+}
+.oracle-lockup__text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.oracle-lockup__name {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--oracle-ink);
+  white-space: nowrap;
+}
+.oracle-lockup__tag {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--oracle-border-strong);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oracle-ink-faint);
+  white-space: nowrap;
+}
+
+/* The consultant action lives in the bar: its wrapper dissolves so the
+   toggle sits beside the language/theme controls and its panel opens as a
+   full-width row under them, instead of an orphan row of its own. */
+.oracle-topbar .oracle-consultant {
+  display: contents;
+}
+.oracle-topbar .oracle-consultant__toggle {
+  order: 1;
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--oracle-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  gap: var(--space-2);
+}
+.oracle-topbar .oracle-consultant__toggle:hover,
+.oracle-topbar .oracle-consultant__toggle[aria-expanded="true"] {
+  border-color: var(--oracle-canopy);
+  color: var(--oracle-canopy);
+}
+.oracle-topbar .oracle-consultant__panel {
+  order: 3;
+  flex-basis: 100%;
+  margin-top: 0;
 }
 .oracle-consultant {
   width: 100%;
@@ -249,15 +338,15 @@ html[data-oracle-theme-bootstrap="dark"]
   gap: var(--space-6);
   min-width: 0;
   width: 100%;
-  max-width: 90rem;
+  max-width: var(--oracle-measure);
   margin-inline: auto;
-  padding: clamp(1.25rem, 4vw, 2.5rem) var(--oracle-gutter) var(--space-12);
+  padding: clamp(1.25rem, 4vw, 3rem) var(--oracle-gutter) var(--space-12);
 }
 @media (min-width: 1024px) {
   .oracle-main {
-    grid-template-columns: 18rem minmax(0, 1fr);
+    grid-template-columns: 17rem minmax(0, 1fr);
     align-items: start;
-    gap: var(--space-8);
+    gap: var(--space-12);
   }
   .oracle-main__tree {
     position: sticky;
@@ -270,8 +359,7 @@ html[data-oracle-theme-bootstrap="dark"]
   width: 100%;
 }
 
-.oracle-main__content > .oracle-question,
-.oracle-main__content > .oracle-verdict-card {
+.oracle-main__content > .oracle-question {
   max-width: var(--oracle-reading-width);
 }
 
@@ -279,6 +367,10 @@ html[data-oracle-theme-bootstrap="dark"]
   border-top: 1px solid var(--oracle-border);
   padding: var(--space-4) var(--oracle-gutter)
     calc(5.5rem + env(safe-area-inset-bottom));
+  padding-left: max(
+    var(--oracle-gutter),
+    calc((100% - var(--oracle-measure)) / 2 + var(--oracle-gutter))
+  );
 }
 .oracle-footer p {
   margin: 0;
@@ -296,7 +388,10 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 
 .oracle-policy__topbar {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
 }
 .oracle-policy {
   width: min(100% - (2 * var(--oracle-gutter)), 46rem);
@@ -305,7 +400,7 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 .oracle-policy h1 {
   max-width: 18ch;
-  margin: var(--space-3) 0 var(--space-5);
+  margin: var(--space-3) 0 calc(var(--space-4) + var(--space-1));
   font-size: clamp(2rem, 7vw, 4.5rem);
   line-height: 0.98;
   letter-spacing: -0.045em;
@@ -411,7 +506,7 @@ html[data-oracle-theme-bootstrap="dark"]
 
 /* ─── Focus (WCAG AA — visible on every interactive element) ───────────── */
 .oracle-root :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--oracle-focus-ring);
+  outline: 3px solid var(--oracle-focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -830,13 +925,21 @@ button.oracle-tree__step--editable:hover {
 .oracle-option-card:active {
   transform: scale(0.99);
 }
-.oracle-option-card[aria-pressed="true"] {
+/* The answer on record (QuestionScreen marks it aria-current) — visible
+   when the visitor comes Back, so a choice is never silently forgotten. */
+.oracle-option-card:is([aria-pressed="true"], [aria-current="true"]),
+.oracle-tile[aria-current="true"] {
   border-color: var(--oracle-canopy);
+  box-shadow: inset 0 0 0 1px var(--oracle-canopy);
   background: color-mix(
     in srgb,
     var(--oracle-canopy) 8%,
     var(--oracle-bg-elevated)
   );
+  font-weight: 600;
+}
+.oracle-option-card[aria-current="true"] svg {
+  color: var(--oracle-canopy);
 }
 /* Finding #5: the review-gate Continue button is disabled until an
    explicit checklist choice is made — visibly, not just functionally. */
@@ -966,7 +1069,7 @@ button.oracle-tree__step--editable:hover {
 
 /* ─── Confirmation card ─────────────────────────────────────────────────── */
 .oracle-confirmation__section + .oracle-confirmation__section {
-  margin-top: var(--space-5);
+  margin-top: calc(var(--space-4) + var(--space-1));
 }
 .oracle-confirmation__group-title {
   margin: 0 0 var(--space-2);
@@ -1104,7 +1207,7 @@ button.oracle-tree__step--editable:hover {
 
 .oracle-candidate-list {
   display: grid;
-  gap: var(--space-5);
+  gap: calc(var(--space-4) + var(--space-1));
 }
 .oracle-candidate-card {
   padding: clamp(1rem, 3vw, 1.5rem);
@@ -1113,7 +1216,7 @@ button.oracle-tree__step--editable:hover {
   background: var(--oracle-bg-elevated);
 }
 .oracle-candidate-card > * + * {
-  margin-top: var(--space-5);
+  margin-top: calc(var(--space-4) + var(--space-1));
 }
 .oracle-candidate-card__header {
   display: flex;
@@ -1138,7 +1241,7 @@ button.oracle-tree__step--editable:hover {
 }
 .oracle-candidate-card__details {
   display: grid;
-  gap: var(--space-5);
+  gap: calc(var(--space-4) + var(--space-1));
 }
 .oracle-axis-grid {
   display: grid;
@@ -1376,7 +1479,7 @@ button.oracle-tree__step--editable:hover {
   align-items: center;
   gap: var(--space-2);
   min-height: 44px;
-  padding: 0 var(--space-5);
+  padding: 0 calc(var(--space-4) + var(--space-1));
   border-radius: var(--radius-md);
   background: var(--accent-whatsapp);
   /* Finding #11: was #ffffff (~1.98:1, failing AA) — see the
@@ -1670,4 +1773,216 @@ button.oracle-tree__leaf {
 
 .oracle-whyweask--inline {
   width: 100%;
+}
+
+/* ─── Design pass 2026-09-24: framing, primary action, answer on record ── */
+.oracle-question .oracle-headline {
+  text-wrap: balance;
+  line-height: 1.1;
+}
+.oracle-question > div > .oracle-headline + .oracle-question__hint {
+  margin-top: var(--space-3);
+}
+.oracle-framing .oracle-headline {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.04;
+}
+.oracle-framing .oracle-subhead {
+  max-width: 44ch;
+  font-size: clamp(1.0625rem, 1.5vw, 1.25rem);
+  line-height: 1.55;
+  color: var(--oracle-ink-muted);
+}
+.oracle-framing .oracle-headline + .oracle-subhead {
+  margin-top: calc(-1 * var(--space-2));
+}
+.oracle-framing__resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+  padding: var(--space-4) calc(var(--space-4) + var(--space-1));
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-card);
+  background: color-mix(in srgb, var(--oracle-bg-elevated) 55%, transparent);
+}
+.oracle-framing__resume .oracle-question__hint {
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+.oracle-framing__resume .oracle-checklist__item {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--oracle-ink);
+  font-weight: 600;
+}
+
+/* Checkboxes: a quiet outlined square that fills with canopy when ticked,
+   instead of the platform's heavy dark square. Border = ink-faint, which
+   already clears 3:1 on both surfaces in both themes. */
+.oracle-root .oracle-checklist__item input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1.5px solid var(--oracle-ink-faint);
+  border-radius: 0.3rem;
+  background: var(--oracle-bg-elevated);
+  cursor: pointer;
+}
+.oracle-root .oracle-checklist__item input[type="checkbox"]:checked {
+  border-color: var(--oracle-canopy);
+  background: var(--oracle-canopy);
+}
+.oracle-root .oracle-checklist__item input[type="checkbox"]:checked::before {
+  content: "";
+  width: 0.7rem;
+  height: 0.38rem;
+  border-left: 2px solid var(--oracle-bg-elevated);
+  border-bottom: 2px solid var(--oracle-bg-elevated);
+  transform: translateY(-0.08rem) rotate(-45deg);
+}
+.oracle-checklist__item:has(input:checked) {
+  border-color: color-mix(in srgb, var(--oracle-canopy) 55%, transparent);
+}
+
+/* The one primary action per screen: Start, Continue, the review-gate and
+   confirmation CTAs, Retry. Filled canopy; everything else stays outlined. */
+.oracle-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: fit-content;
+  min-height: 52px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--oracle-canopy);
+  border-radius: var(--radius-full);
+  background: var(--oracle-canopy);
+  color: var(--oracle-bg-elevated);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 12px 28px -18px var(--oracle-canopy);
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-cta:hover {
+  background: color-mix(in srgb, var(--oracle-canopy) 85%, var(--oracle-ink));
+}
+.oracle-cta:active {
+  transform: translateY(1px);
+}
+.oracle-cta svg {
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-cta:hover svg {
+  transform: translateX(2px);
+}
+/* Disabled reads "not yet": a dashed neutral outline, never an error hue. */
+.oracle-cta:disabled {
+  border: 1px dashed var(--oracle-border-strong);
+  background: transparent;
+  color: var(--oracle-ink-faint);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+.oracle-cta:disabled svg {
+  transform: none;
+}
+
+.oracle-country-picker .oracle-form-control {
+  width: min(100%, 24rem);
+}
+.oracle-country-picker__add {
+  white-space: nowrap;
+}
+.oracle-country-picker__add:disabled {
+  border-style: dashed;
+  background: transparent;
+  color: var(--oracle-ink-faint);
+  opacity: 1;
+}
+
+.oracle-option-card {
+  min-height: 56px;
+  padding: var(--space-4) calc(var(--space-4) + var(--space-1));
+}
+.oracle-option-card svg {
+  flex-shrink: 0;
+  color: var(--oracle-ink-faint);
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-option-card:hover svg {
+  color: var(--oracle-canopy);
+  transform: translateX(2px);
+}
+
+/* Desktop breadcrumb wraps instead of clipping mid-word inside the rail. */
+@media (min-width: 1024px) {
+  .oracle-breadcrumb {
+    overflow: visible;
+  }
+  .oracle-breadcrumb ol {
+    flex-wrap: wrap;
+    min-width: 0;
+    row-gap: 0;
+  }
+  .oracle-breadcrumb button,
+  .oracle-breadcrumb__ellipsis {
+    min-height: 32px;
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .oracle-lockup__tag {
+    display: none;
+  }
+  .oracle-topbar__inner {
+    gap: var(--space-2);
+  }
+  .oracle-topbar .oracle-consultant__toggle {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .oracle-consultant__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 29.99rem) {
+  .oracle-lockup {
+    gap: var(--space-2);
+  }
+  .oracle-lockup__name {
+    font-size: 1.2rem;
+  }
+  .oracle-cta {
+    width: 100%;
+  }
+  .oracle-framing__resume {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+@media (forced-colors: active) {
+  .oracle-root .oracle-checklist__item input[type="checkbox"] {
+    appearance: auto;
+  }
+  .oracle-cta {
+    border: 2px solid ButtonText;
+  }
 }

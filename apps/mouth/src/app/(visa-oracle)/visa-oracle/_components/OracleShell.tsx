@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ArrowRight, MessageCircle } from "lucide-react";
+import { OracleLockup } from "./OracleLockup";
 import { useReducedMotion } from "framer-motion";
 import {
   restoreInterviewSnapshot,
@@ -145,7 +146,9 @@ function ConsultantContact(props: ConsentHandoffProps) {
         onClick={() => setOpen((value) => !value)}
       >
         <MessageCircle aria-hidden="true" size={18} />
-        {SESSION_COPY[props.language].consultant}
+        <span className="oracle-consultant__label">
+          {SESSION_COPY[props.language].consultant}
+        </span>
       </button>
       <div
         id="oracle-consultant-panel"
@@ -206,9 +209,18 @@ export function OracleShell({ internalMode = false }: OracleShellProps = {}) {
   if (hydrated === null) {
     return (
       <div className="oracle-root" data-oracle-theme="light" data-funnel="visa">
-        <p className="oracle-subhead" role="status" aria-live="polite">
-          {SESSION_COPY.en.loading}
-        </p>
+        <div className="oracle-shell">
+          <header className="oracle-topbar">
+            <div className="oracle-topbar__inner">
+              <OracleLockup language="en" />
+            </div>
+          </header>
+          <main className="oracle-main oracle-main--loading">
+            <p className="oracle-subhead" role="status" aria-live="polite">
+              {SESSION_COPY.en.loading}
+            </p>
+          </main>
+        </div>
       </div>
     );
   }
@@ -843,43 +855,39 @@ function OracleShellRuntime({
           </p>
         )}
         <header className="oracle-topbar">
-          <span
-            className="oracle-badge"
-            title={translate(language, "prototype.badge.detail")}
-          >
-            {translate(language, "prototype.badge")}
-          </span>
-          <div className="oracle-topbar__actions">
-            {hasLocalResume && (
-              <button
-                type="button"
-                className="oracle-question__back"
-                onClick={clearSavedInterview}
-              >
-                {sessionCopy.clear}
-              </button>
-            )}
-            <LanguageToggle language={language} onChange={setLanguage} />
-            <ThemeToggle
+          <div className="oracle-topbar__inner">
+            <OracleLockup language={language} />
+            <ConsultantContact
+              key={outcome ? "assessment" : "consultation"}
               language={language}
-              theme={theme}
-              onChange={setTheme}
+              guardianConsentRequired={guardianConsentRequired}
+              {...(outcome
+                ? {
+                    context: "ASSESSMENT",
+                    state: outcome.state as VisaOracleTelemetryState,
+                    assessmentReference: outcomeAssessmentReference,
+                  }
+                : { context: "CONSULTATION" })}
             />
+            <div className="oracle-topbar__actions">
+              {hasLocalResume && (
+                <button
+                  type="button"
+                  className="oracle-question__back"
+                  onClick={clearSavedInterview}
+                >
+                  {sessionCopy.clear}
+                </button>
+              )}
+              <LanguageToggle language={language} onChange={setLanguage} />
+              <ThemeToggle
+                language={language}
+                theme={theme}
+                onChange={setTheme}
+              />
+            </div>
           </div>
         </header>
-
-        <ConsultantContact
-          key={outcome ? "assessment" : "consultation"}
-          language={language}
-          guardianConsentRequired={guardianConsentRequired}
-          {...(outcome
-            ? {
-                context: "ASSESSMENT",
-                state: outcome.state as VisaOracleTelemetryState,
-                assessmentReference: outcomeAssessmentReference,
-              }
-            : { context: "CONSULTATION" })}
-        />
 
         <main className="oracle-main">
           <div className="oracle-main__tree">
@@ -926,28 +934,29 @@ function OracleShellRuntime({
               )}
 
             {current.kind === "framing" && (
-              <div className="oracle-question">
+              <div className="oracle-question oracle-framing">
                 <h1 className="oracle-headline" tabIndex={-1}>
                   {translate(language, "framing.title")}
                 </h1>
                 <p className="oracle-subhead">
                   {translate(language, "framing.body")}
                 </p>
-                <p className="oracle-question__hint">{sessionCopy.resume}</p>
-                <label className="oracle-checklist__item">
-                  <input
-                    type="checkbox"
-                    checked={resumeEnabled}
-                    onChange={(event) =>
-                      handleResumeOptIn(event.currentTarget.checked)
-                    }
-                  />
-                  {sessionCopy.resumeOptIn}
-                </label>
+                <div className="oracle-framing__resume">
+                  <p className="oracle-question__hint">{sessionCopy.resume}</p>
+                  <label className="oracle-checklist__item">
+                    <input
+                      type="checkbox"
+                      checked={resumeEnabled}
+                      onChange={(event) =>
+                        handleResumeOptIn(event.currentTarget.checked)
+                      }
+                    />
+                    {sessionCopy.resumeOptIn}
+                  </label>
+                </div>
                 <button
                   type="button"
-                  className="oracle-option-card"
-                  style={{ width: "fit-content" }}
+                  className="oracle-cta"
                   onClick={startInterview}
                 >
                   {translate(language, "framing.cta")}
@@ -1026,7 +1035,7 @@ function OracleShellRuntime({
                       outcome.outage.retryable && (
                         <button
                           type="button"
-                          className="oracle-option-card"
+                          className="oracle-cta"
                           onClick={retryEvaluation}
                         >
                           {sessionCopy.retry}

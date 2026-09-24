@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import type { Language } from "../_lib/flow";
 import {
   questionPromptI18nKey,
@@ -175,6 +175,7 @@ export function QuestionScreen({
               key={option.key}
               type="button"
               className="oracle-tile"
+              aria-current={currentAnswer === option.key ? "true" : undefined}
               onClick={() => onAnswer(option.key)}
             >
               {translate(language, option.labelI18nKey as I18nKey)}
@@ -194,10 +195,15 @@ export function QuestionScreen({
               key={option.key}
               type="button"
               className="oracle-option-card"
+              aria-current={currentAnswer === option.key ? "true" : undefined}
               onClick={() => onAnswer(option.key)}
             >
               <span>{translate(language, option.labelI18nKey as I18nKey)}</span>
-              <ArrowRight aria-hidden="true" size={18} />
+              {currentAnswer === option.key ? (
+                <Check aria-hidden="true" size={18} />
+              ) : (
+                <ArrowRight aria-hidden="true" size={18} />
+              )}
             </button>
           ))}
         </div>
@@ -326,7 +332,7 @@ export function QuestionScreen({
               {translate(language, inputError)}
             </p>
           )}
-          <button type="submit" className="oracle-option-card oracle-submit">
+          <button type="submit" className="oracle-cta oracle-submit">
             {translate(language, "question.continue")}
             <ArrowRight aria-hidden="true" size={18} />
           </button>
@@ -376,7 +382,7 @@ export function QuestionScreen({
               </span>
             </span>
           </label>
-          <button type="submit" className="oracle-option-card oracle-submit">
+          <button type="submit" className="oracle-cta oracle-submit">
             {translate(language, "question.continue")}
             <ArrowRight aria-hidden="true" size={18} />
           </button>
@@ -580,7 +586,7 @@ function CountryPicker({
 
       <button
         type="submit"
-        className="oracle-option-card oracle-submit"
+        className="oracle-cta oracle-submit"
         disabled={canonical === null}
       >
         {translate(language, "question.continue")}
@@ -678,8 +684,7 @@ function ReviewGateChecklist({
       </fieldset>
       <button
         type="button"
-        className="oracle-option-card"
-        style={{ width: "fit-content" }}
+        className="oracle-cta"
         onClick={onContinue}
         disabled={!hasSelection}
         aria-disabled={!hasSelection}
