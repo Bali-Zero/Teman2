@@ -116,6 +116,7 @@ import asyncpg
 import httpx
 
 from backend.app.core.config import settings
+from backend.services.communication import detect_language
 from backend.services.integrations import wa_broker
 from backend.services.integrations.wa_completion_envelope import decode_completion
 from backend.services.integrations.wa_finalize import (
@@ -510,6 +511,106 @@ class CodexLegResult:
     package_ref: str | None = None
 
 
+# Deterministic scripted reply for a caption-less non-text attachment
+# (B2.5-3). Measured on real delivery, 2026-09-25: thread 394, inbound
+# 899/901 (2026-09-20), both `media_type='image'`, `body` length 0 — the
+# bound inbound classified as `no_customer_message`, the row burned the full
+# five-attempt retry ladder (~7.5 min) and terminalized `failed`. The client
+# got no reply at all and no human was told; they re-sent the photo 12
+# minutes later. In 90 days: 2 image + 2 unsupported out of 282 inbound.
+#
+# Scope: an attachment WITH a caption has a non-empty body and takes the
+# normal route untouched — only a caption-less one lands here (checked
+# against `bound.media_type`, never guessed from `query`, which is already
+# known empty by construction at the call site below).
+_MEDIA_ACK_TYPES = frozenset({"image", "document", "audio", "video", "sticker", "unsupported"})
+
+# Wording rules (hard, PR description): never claims the bot read/opened the
+# file; never invites documents, passport numbers or other personal data
+# over WhatsApp; names a notified colleague ONLY on the branch where
+# `notify_human_handoff` actually reports success — the same discipline
+# `served_by` already applies to itself (never claim a round-trip that did
+# not happen). Two variants per language: (notified, not_notified).
+_MEDIA_ACK_TEXTS: dict[str, tuple[str, str]] = {
+    "en": (
+        "Thanks for sending that over! I can't open attachments here, so "
+        "I've let a Bali Zero colleague know to take a look. In the "
+        "meantime, could you write your question as a text message?",
+        "Thanks for sending that over! I can't open attachments here — "
+        "could you write your question as a text message instead, so I "
+        "can help?",
+    ),
+    "id": (
+        "Terima kasih sudah mengirimkan berkasnya! Saya tidak bisa membuka "
+        "lampiran di sini, jadi sudah saya sampaikan ke kolega Bali Zero "
+        "untuk ditindaklanjuti. Sambil menunggu, boleh tuliskan "
+        "pertanyaan Anda sebagai pesan teks?",
+        "Terima kasih sudah mengirimkan berkasnya! Saya tidak bisa membuka "
+        "lampiran di sini — boleh tuliskan pertanyaan Anda sebagai pesan "
+        "teks supaya saya bisa bantu?",
+    ),
+    "it": (
+        "Grazie per averlo inviato! Non riesco ad aprire gli allegati qui, "
+        "quindi ho avvisato un collega di Bali Zero. Nel frattempo puoi "
+        "scrivermi la tua domanda come messaggio di testo?",
+        "Grazie per averlo inviato! Non riesco ad aprire gli allegati qui "
+        "— puoi scrivermi la tua domanda come messaggio di testo così "
+        "posso aiutarti?",
+    ),
+    "ru": (
+        "Спасибо, что отправили! Я не могу открывать вложения здесь, "
+        "поэтому сообщил об этом коллеге из Bali Zero. Пока не могли бы "
+        "вы написать свой вопрос текстовым сообщением?",
+        "Спасибо, что отправили! Я не могу открывать вложения здесь — не "
+        "могли бы вы написать свой вопрос текстовым сообщением, чтобы я "
+        "мог помочь?",
+    ),
+    "uk": (
+        "Дякую, що надіслали! Я не можу відкривати вкладення тут, тож "
+        "повідомив про це колезі з Bali Zero. А поки напишіть, будь "
+        "ласка, своє питання текстовим повідомленням.",
+        "Дякую, що надіслали! Я не можу відкривати вкладення тут — "
+        "напишіть, будь ласка, своє питання текстовим повідомленням, щоб "
+        "я міг допомогти.",
+    ),
+}
+
+_MEDIA_ACK_FALLBACK_LANG = "en"
+
+
+def _media_ack_language(history: list[dict[str, str]]) -> str:
+    """The language of the latest prior CUSTOMER text turn, newest first.
+
+    `detect_language` (backend.services.communication) is the SAME detector
+    the apology/ack path (`wa_outbox_worker._maybe_send_apology`) already
+    uses for this exact fallback shape, and its own keys ("it"/"en"/"id"/
+    "ru"/"uk"/"auto") are used here DIRECTLY as the `_MEDIA_ACK_TEXTS`
+    lookup — never routed through `get_localized_stub`'s "ITALIAN"-style
+    vocabulary, which is a different table with different keys entirely
+    (wiring one into the other silently answers in English under a
+    matching-looking key — measured 2026-08-11, pinned by
+    `test_an_unknown_language_name_must_not_silently_become_an_english_apology`).
+    'auto' means unclassified, not a language: keep scanning older turns:
+    the SAME history-fallback order `_maybe_send_apology` uses. No
+    classifiable turn at all (empty history, or every candidate 'auto')
+    falls to the fixed English default, never a guess.
+    """
+    for turn in reversed(history):
+        if turn.get("role") != "user":
+            continue
+        detected = detect_language(turn.get("content") or "")
+        if detected != "auto":
+            return detected
+    return _MEDIA_ACK_FALLBACK_LANG
+
+
+def _media_ack_text(language: str, *, notified: bool) -> str:
+    notified_text, not_notified_text = _MEDIA_ACK_TEXTS.get(
+        language, _MEDIA_ACK_TEXTS[_MEDIA_ACK_FALLBACK_LANG]
+    )
+    return notified_text if notified else not_notified_text
+
+
 async def _stub_unsupported(
     *,
     parsed_wire: dict[str, Any],
@@ -666,6 +767,52 @@ async def _attempt(
         bound.inbound_message_id,
         outbox_id,
     )
+
+    # Deterministic caption-less-attachment turn (B2.5-3), checked BEFORE
+    # the `no_customer_message` fall-off below: an empty body on a real
+    # image/document/audio/video/sticker/unsupported message is not the
+    # same standing condition as a thread with no customer inbound at
+    # all — it is a turn with a scripted answer, same reasoning as the
+    # greeting/identity/human-handoff turns further down. Placed here,
+    # before them, because it is the only one of the four whose predicate
+    # is decided by `bound.media_type` rather than by matching `query`
+    # text — and `query` is empty by construction on this branch, so none
+    # of the text matchers below could ever fire on it anyway.
+    #
+    # Notification reuses `notify_human_handoff` (best-effort, wrapped
+    # here for the same reason the human-handoff turn wraps it: a Brevo
+    # failure must never turn a served scripted reply into a text=None
+    # fall-off) with `reason="media_attachment_no_caption"` so the in-app
+    # alert and email describe what actually happened instead of
+    # borrowing the human-handoff turn's "client asked for a human" text.
+    if not query and bound.media_type in _MEDIA_ACK_TYPES:
+        language = _media_ack_language(history)
+        notified = False
+        try:
+            notified = await notify_human_handoff(
+                pool,
+                thread_id=thread_id,
+                counterpart_phone=thread["counterpart_phone"],
+                language=language,
+                reason="media_attachment_no_caption",
+            )
+        except Exception as exc:
+            logger.error(
+                "wa_codex_leg: media-ack notification failed (outbox=%s): %s",
+                outbox_id,
+                type(exc).__name__,
+            )
+        logger.info(
+            "wa_codex_leg: scripted media ack served outbox=%s lang=%s notified=%s",
+            outbox_id,
+            language,
+            notified,
+        )
+        return CodexLegResult(
+            text=_media_ack_text(language, notified=notified),
+            served_by="scripted_media_ack",
+        )
+
     if not query:
         # generate_bot_reply raises BotStandingCondition for this too; the
         # ROUTE decision just steps aside and lets the same reason surface

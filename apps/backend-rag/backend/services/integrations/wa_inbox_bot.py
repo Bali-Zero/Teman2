@@ -318,11 +318,19 @@ class BoundThreadContext:
     see D1 in evidence/2026-09/.../B2-5-design.md), every field here is
     anchored to a single ``inbound_message_id``: never a message that
     arrived after it.
+
+    ``media_type`` (added for the caption-less-attachment turn) is the
+    anchor row's own ``meta_inbox_messages.media_type`` — "text" for an
+    ordinary message, the Meta type string ("image", "document", "audio",
+    "video", "sticker", "unsupported", ...) for anything else, or ``None``
+    when there is no anchor at all (defensive path) or the row predates the
+    column. It is never derived from history — only the anchor carries it.
     """
 
     inbound_message_id: int | None
     query: str
     history: list[dict[str, str]]
+    media_type: str | None = None
 
 
 async def _load_bound_thread_context(
@@ -389,7 +397,7 @@ async def _load_bound_thread_context(
 
         rows = await conn.fetch(
             """
-            SELECT id, sender_role, body
+            SELECT id, sender_role, body, media_type
             FROM meta_inbox_messages
             WHERE thread_id = $1
               AND (id = $2 OR (id < $2 AND body IS NOT NULL AND BTRIM(body) <> ''))
@@ -413,12 +421,15 @@ async def _load_bound_thread_context(
     # that DOES carry content is preserved verbatim, whitespace and all.
     raw_query = rows[0]["body"] or ""
     query = raw_query if raw_query.strip() else ""
+    media_type = rows[0]["media_type"]
     history: list[dict[str, str]] = []
     for r in reversed(rows[1:]):
         role = "user" if r["sender_role"] == "customer" else "assistant"
         history.append({"role": role, "content": r["body"]})
 
-    return BoundThreadContext(inbound_message_id=anchor_id, query=query, history=history)
+    return BoundThreadContext(
+        inbound_message_id=anchor_id, query=query, history=history, media_type=media_type
+    )
 
 
 async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
