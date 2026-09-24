@@ -21,8 +21,6 @@ google-api-python-client>=2.198.0
 google-auth>=2.56.3
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.4.1
-google-cloud-storage>=3.13.1
-google-cloud-aiplatform>=1.164.0  # Now compatible with OTEL (protobuf 5.x)
 
 # Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
@@ -86,16 +84,12 @@ sse-starlette>=3.4.8  # Updated 2026-03-14: SSE disconnect handling improvements
 
 # Web Scraping (Peraturan Spider & Putusan Spider)
 playwright>=1.62.0  # Security and browser updates
-fake-useragent>=2.2.0  # Updated user agent database
-selenium>=4.47.0
-webdriver-manager>=4.1.2
 
 # Authentication
 PyJWT>=2.13.0  # Security fix: CVE-2026-32597 crit header validation
 python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
 cryptography>=50.0.0  # GHSA-537c-gmf6-5ccf fix (vulnerable static OpenSSL in wheels) — pins transitive python-jose dep above the advisory
 bcrypt>=5.0.0  # Security and performance improvements
-passlib[bcrypt]>=1.7.4
 
 # Database
 asyncpg>=0.31.0  # Performance and security improvements
@@ -110,7 +104,6 @@ brotli-asgi>=1.4.0  # Brotli compression middleware (replaces GZip, ~20% better 
 # Utilities - UPGRADED VERSIONS
 python-dotenv>=1.0.0
 # loguru removed - using standard logging instead
-pytz>=2026.3.post1  # Required by dateparser
 packaging>=26.3,<27  # Compatible with langchain-core if needed
 
 # Development & Quality Tools
@@ -119,7 +112,6 @@ ruff>=0.16.3
 pytest>=9.1.1  # Upgraded for better async support
 pytest-asyncio>=1.4.0  # Major upgrade for improved async testing
 pytest-cov>=7.1.0  # Upgraded for coverage improvements
-testcontainers>=4.15.0  # For integration tests with Docker containers
 
 # Observability
 prometheus-fastapi-instrumentator>=8.1.0
@@ -194,9 +186,6 @@ orjson>=3.10.0  # 3-10× faster JSON serialization (FastAPI default response, ho
 
 # Security & HTTP
 certifi>=2026.7.22  # Updated 2026-03-14: SSL certificates updated Feb 2026
-
-# LLM Routing
-litellm>=1.96.2  # Updated 2026-04-25: Gemini 2.5 + new provider fixes + security fix
 
 # Build trigger 1771636448
 
