@@ -10,9 +10,14 @@ plist itself is a hot-zone path and travels in its own PR.
 from __future__ import annotations
 
 import logging
+import plistlib
+from pathlib import Path
 
 from mata_garuda.runtime import cli_runtime
 from mata_garuda.workers import gap_consumer
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PLIST = REPO_ROOT / "infra" / "launchagents" / "com.matagaruda.gap.consumer.plist"
 
 # `agy models`, 2026-09-24 — research/operations/2026-09-24-agy-seat-probe.md.
 SERVED_AGY_MODELS = {
@@ -73,3 +78,25 @@ def test_served_model_passes_through_silently(caplog):
     with caplog.at_level(logging.WARNING, logger=cli_runtime.logger.name):
         assert cli_runtime.served_agy_model("gemini-3.1-pro-high") == "gemini-3.1-pro-high"
     assert not caplog.records
+
+
+def _plist_env() -> dict[str, str]:
+    with PLIST.open("rb") as fh:
+        return plistlib.load(fh)["EnvironmentVariables"]
+
+
+def test_plist_path_reaches_local_bin():
+    env = _plist_env()
+    assert "/Users/nuzantara/.local/bin" in env["PATH"].split(":")
+
+
+def test_plist_agy_routed_models_are_served():
+    env = _plist_env()
+    routed = {
+        key: _agy_model(value)
+        for key, value in env.items()
+        if key == "MATA_GARUDA_AGY_MODEL" or value.startswith("agy:")
+    }
+    assert routed
+    unserved = {key: model for key, model in routed.items() if model not in SERVED_AGY_MODELS}
+    assert not unserved, unserved

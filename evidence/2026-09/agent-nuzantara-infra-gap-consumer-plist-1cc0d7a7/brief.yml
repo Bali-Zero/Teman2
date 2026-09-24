@@ -1,0 +1,26 @@
+gear: 3
+task_id: gap-consumer-plist
+lane: infra
+host: nuzantara (Pro)
+branch: agent/nuzantara/infra/gap-consumer-plist
+gate_class: none
+l_level: L2
+objective: >-
+  Gear 3 is the deterministic floor, not a judgement of risk: the diff touches
+  infra/launchagents/com.matagaruda.gap.consumer.plist, a hot-zone path
+  (HOTZONE_PATTERNS in scripts/evidence_pack_lint.py). The diff is a 4-value
+  environment edit in that plist — PATH gains /Users/nuzantara/.local/bin as
+  its first entry, and the three pins of the retired agy model
+  gemini-3.5-flash (MATA_GARUDA_AGY_MODEL, MATA_GARUDA_CLAUDE_FALLBACK_MODEL,
+  MATA_GARUDA_REGULATION_AGENT_MODEL) become gemini-3.8-flash-high. It adds no
+  step, removes no step and changes no ProgramArguments, StartInterval or
+  KeepAlive. The runtime fix already merged (#7258, ed0940525c) resolves agy
+  through ~/.local/bin and aliases the retired model with a WARNING on every
+  call, so the job is alive today; this is a config-hygiene change whose proof
+  is the WARNING alias line disappearing from
+  ~/logs/matagaruda-gap-consumer.log after the parent session re-installs the
+  plist. Two tests in apps/mata-garuda/tests/test_agy_seat_reachable.py pin
+  the repo plist against both regressions.
+scope:
+  - infra/launchagents/com.matagaruda.gap.consumer.plist — 4 changed string values, exact-string replacement, plutil -lint OK.
+  - apps/mata-garuda/tests/test_agy_seat_reachable.py — two plistlib-based tests (PATH reaches ~/.local/bin; every agy-routed model is served).

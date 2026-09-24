@@ -1,0 +1,99 @@
+brief_ref: evidence/2026-09/agent-nuzantara-infra-gap-consumer-plist-1cc0d7a7/brief.yml
+council_run: council-journal.jsonl
+pii_scan: clean
+
+lanes:
+  - lane: infra/gap-consumer-plist — implement + local proof
+    role: build
+    seat: claude-opus-5-5 (Pro worktree builder seat)
+    note: Exact-string plist edit, two tests, guilt proof against the origin/main plist.
+  - lane: adversarial review
+    role: review
+    seat: kimi-code/k3
+    note: DEFECT, 2 findings — both disposed below (dissent).
+  - lane: adversarial review
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: OK, 0 findings.
+
+receipts:
+  - claim: The edited plist is valid and differs from origin/main in exactly the four mandated string values.
+    cmd: plutil -lint infra/launchagents/com.matagaruda.gap.consumer.plist && git diff --stat
+    result: "OK; com.matagaruda.gap.consumer.plist | 8 ++++---- (4 insertions, 4 deletions)"
+    exit: 0
+    ts: "2026-09-24T17:22:00Z"
+    seat: claude-opus-5-5
+  - claim: The whole test_agy_seat_reachable.py file passes on this branch, the two new plist tests included.
+    cmd: PYTHONPATH=<worktree>/apps/mata-garuda apps/mata-garuda/.venv/bin/python -m pytest apps/mata-garuda/tests/test_agy_seat_reachable.py -q -p no:cacheprovider
+    result: "10 passed in 0.10s"
+    exit: 0
+    ts: "2026-09-24T17:23:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Guilt proof — with the plist temporarily reverted to its origin/main
+      bytes (cure backed up with cp, restored with cp afterwards) the two new
+      tests fail and the eight pre-existing ones still pass, so neither new
+      test passes vacuously.
+    cmd: git show HEAD:<plist> > <plist>; pytest the same file; cp <scratch>/cure.plist <plist>
+    result: "2 failed, 8 passed — test_plist_path_reaches_local_bin and test_plist_agy_routed_models_are_served FAILED"
+    exit: 1
+    ts: "2026-09-24T17:24:00Z"
+    seat: claude-opus-5-5
+  - claim: Deterministic floor for this diff is Gear 3.
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source --changed-files-file <changed paths>
+    result: "3"
+    exit: 0
+    ts: "2026-09-24T17:25:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Seat liveness before dispatch — both titolari used are the ones that
+      answered; no reserve seat counts toward quorum.
+    cmd: python3 scripts/arsenal_probe.py --seats codex,kimi,tp1-qwen3.8-max,agy --json
+    result: "codex TIMEOUT 15016ms (probe ceiling; answered directly afterwards), kimi LIVE 6699ms, tp1-qwen3.8-max LIVE 1751ms, agy LIVE 7388ms"
+    exit: 0
+    ts: "2026-09-24T17:31:00Z"
+    seat: claude-opus-5-5
+  - claim: No open PR touches the same paths (sibling check).
+    cmd: gh pr list --state open --limit 200 --json number,files (filtered on gap.consumer / test_agy_seat_reachable)
+    result: "no match"
+    exit: 0
+    ts: "2026-09-24T17:35:52Z"
+    seat: claude-opus-5-5
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      PATH prepends ~/.local/bin instead of appending it; on this host that
+      shadows /opt/homebrew/bin/codex (0.156.1) with ~/.local/bin/codex
+      (0.155.1) and exposes the user-local claude; append would fix the agy
+      FileNotFoundError with zero shadowing.
+    status: CONFIRMED
+    resolution: >-
+      The shadowing is real (confirmed on the host) but inert for this
+      consumer, measured: after the diff no env value routes
+      to codex or claude (GAP_AGENT and REFLECTION are ollama, REGULATION and
+      CLAUDE_FALLBACK are agy), ProgramArguments use an absolute venv python,
+      and claude lives ONLY in ~/.local/bin so append would expose it
+      identically. agy also lives only in ~/.local/bin, so append would work
+      too; prepend is kept because it is the mandate's specified shape and
+      matches the resolution order #7258 already gives agy at runtime. Flagged
+      to the parent session in the report; switching to append is a one-token
+      change if the parent prefers it.
+  - seat: kimi-code/k3
+    objection: >-
+      The tests read the repo plist, not the installed
+      ~/Library/LaunchAgents copy launchd actually loads, and the diff has no
+      install step.
+    status: CONFIRMED
+    resolution: >-
+      True and by design: this seat must not touch ~/Library/LaunchAgents;
+      the parent session re-installs the plist after merge, and the live
+      proof is observational (the Bites line — the retired-model WARNING
+      stops in ~/logs/matagaruda-gap-consumer.log and the Regulation Watcher
+      logs "Success via agy"). The tests guard the source of truth against
+      regressions; live/repo drift is scar #1 territory and is covered by the
+      launchd liveness probes, not by this unit test.
+
+pii_scan_note: >-
+  Nothing in this diff, the council prompt or this pack carries client PII or
+  a credential: a launchd plist with paths and model names, and unit tests.
