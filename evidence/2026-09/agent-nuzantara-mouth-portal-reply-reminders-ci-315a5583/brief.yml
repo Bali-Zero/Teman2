@@ -1,4 +1,4 @@
-task_id: portal-reply-reminders
+task_id: portal-reply-reminders-ci
 mandate: PORTAL-REPLY-REMINDERS-20260925
 gear: 3
 mission_colour: BLUE
@@ -9,7 +9,8 @@ objective:
   generic client email per manual team message.
 acceptance:
   - Reading never discharges a reply obligation.
-  - Automatic profile and other notices do not open or close reply obligations.
+  - After full producer replacement, new automatic profile and other notices do not
+    open or close reply obligations.
   - A successful manual reply clears earlier client messages; a subsequent client message
     reopens the reminder.
   - Assigned-client access remains unchanged; failed polls preserve cached pending alerts.
@@ -17,6 +18,9 @@ acceptance:
   - Provider I/O is bounded to three attempts; ambiguity remains uncertain, never falsely
     sent.
   - Client unread banner remains; subtle pulse respects reduced motion.
+  - A fresh CI database bootstraps the canonical legacy portal_messages table before
+    migrations_v2/321; full apply-all and repeated bootstrap succeed without weakening
+    production migration checks.
 consumer_map:
   - Workspace header and client conversation reply form
   - Dedicated portal email consumer through the existing internal Brevo adapter
@@ -25,4 +29,4 @@ constraints:
   - External builder prepares; independent fresh BLUE gate; Claude release owner only
   - Preserve existing unread API fields and assignment policy
   - No historical source guessing
-spec_ref: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-1e859aa4/spec.md
+spec_ref: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-ci-315a5583/spec.md
