@@ -1,35 +1,55 @@
 gear: 2
-task_id: crm-18-soft-delete
+task_id: legacy-tldr-cleanup
 lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/legacy-tldr-rebuild
 gate_class: none
 l_level: L2
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  Supersedes #7244, which went DIRTY (merge conflicts with main) and is
+  frozen. Rebuild on fresh origin/main: cherry-pick only the script+tests
+  commit from #7244, then RE-RUN scripts/content/strip_legacy_tldr_filler.py
+  --write against apps/mouth/src/content/articles on the current tree
+  (content NOT cherry-picked, since main moved under it). Removes the
+  pre-#7209 News Room converter's invented "Quick Summary" InfoCard and
+  filler Checklist item, exact-shape match only — anything that deviates
+  in label, order, or value is left byte-identical and reported, never
+  guessed at. Floor is 3 on SIZE alone (579 content files, ~10.5k lines of
+  churn, almost entirely mechanical single-block deletions produced by one
+  script run) — not a hot-zone path hit and not an architectural/
+  security-sensitive change. No application code, no route, no schema, no
+  auth path touched; only MDX content bodies and the (cherry-picked,
+  already-tested) content-lint script.
 scope:
   - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
+    scripts/content/strip_legacy_tldr_filler.py — cherry-picked unchanged
+    from #7244 (commit 0ada13be754ed31df3ed353b9dfad9dc4d02674e): exact-match
+    InfoCard/Checklist removal, byte-exact elsewhere, deviating cards
+    reported not guessed at.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
+    scripts/content/test_strip_legacy_tldr_filler.py — 14 unit tests
+    (cherry-picked with the script), guilt (exact shapes removed) +
+    innocence (hand-edited/unrelated/real content untouched, frontmatter
+    byte-identical). All 14 pass on this tree.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
-  - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+    apps/mouth/src/content/articles/**/*.mdx (579 files) — the script's
+    --write output, RE-RUN on current origin/main (not cherry-picked from
+    #7244). Counts vs #7244: 579 files changed (was 580), 576 cards removed
+    (same), 134 deviating cards (was 135), 699 filler items removed (was
+    700), 222 checklists/sections removed (same). The one-file delta is
+    apps/mouth/src/content/articles/tax-legal/
+    indonesia-globe-tax-1460-registered-entities.mdx, already edited on
+    main (#7205) so it no longer matches either removal rule. Verified:
+    apps/mouth's content-integrity vitest suite passes (8 files, 179 tests
+    — frontmatter-title-integrity, description-fields-integrity,
+    kbli-prose-pins, kbli-reserved-codes-articles, llms-article-exports,
+    secondhome-article-claims, blog/articles, blog/body-excerpt).
+seat_override: >-
+  Single implementer session (this PR's builder), no multi-seat council
+  convened — this is a scripted, deterministic, fully-tested content-only
+  edit (no app code/route/schema/auth path touched) that only floors at
+  Gear 3 via the SIZE term (churn 579 files / ~10.5k lines from one
+  script's --write run, not a hot-zone path hit). A 2-seat council_run
+  review is disproportionate to the actual risk surface; flagging this
+  reasoning explicitly for the coordinator, who reviews before merge, to
+  accept, request a real council pass, or ask for the PR to be split.
