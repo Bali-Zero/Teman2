@@ -24,12 +24,24 @@ from rpc import RPC
 
 
 THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
-# The reviewed Claude guard, unchanged: Codex reports shell (including unified
-# exec and nested code-mode calls) to PreToolUse as tool_name "Bash" with
-# tool_input.command, and honours exit 2 + stderr as a deny.
+# The reviewed Claude guard, unchanged. Codex reports shell calls to PreToolUse
+# as tool_name "Bash" with tool_input.command (observed in this bridge's own
+# state) and honours exit 2 + stderr as a deny. Whether every exec path emits
+# PreToolUse is upstream- and version-dependent: the release proves it live.
 GUARD_NAME = "output_hygiene_guard.py"
 GUARD_SOURCE = Path(__file__).resolve().parent.parent / "claude-hooks" / GUARD_NAME
 GUARD_MARK = "nuzantara-context/" + GUARD_NAME
+
+
+def owns_guard(command: str, seat: Path) -> bool:
+    """Ours only if the command runs this seat's installed copy, not a lookalike."""
+    target = str(seat / "hooks" / "nuzantara-context" / GUARD_NAME)
+    try:
+        return target in shlex.split(command)
+    except ValueError:
+        return False
+
+
 COMPACT_OVERRIDES = (
     "model_auto_compact_token_limit",
     "model_auto_compact_token_limit_scope",
@@ -142,7 +154,7 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
         (group, h)
         for group in pre
         for h in group.get("hooks", [])
-        if GUARD_MARK in h.get("command", "")
+        if owns_guard(h.get("command", ""), seat)
     ]
     if len(owned) > 1:
         raise ValueError("duplicate output guard hook")

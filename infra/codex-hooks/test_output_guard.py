@@ -86,7 +86,8 @@ def test_installer_refuses_when_codex_does_not_list_the_guard(setup, monkeypatch
 def test_installer_refuses_duplicate_guard_groups(setup, monkeypatch):
     repo, _, _ = setup
     seat = bridge.codex_home()
-    handler = {"type": "command", "command": "python3 x/" + installer.GUARD_MARK}
+    installed = seat / "hooks" / "nuzantara-context" / installer.GUARD_NAME
+    handler = {"type": "command", "command": "python3 " + str(installed)}
     dup = {"matcher": "Bash", "hooks": [handler]}
     bridge.save(seat / "hooks.json", {"hooks": {"PreToolUse": [dup, dict(dup)]}})
     monkeypatch.setattr(installer, "RPC", FakeRPC)
@@ -175,7 +176,8 @@ def test_mixed_group_keeps_foreign_handler_and_moves_only_ours(setup, monkeypatc
     repo, _, _ = setup
     seat = bridge.codex_home()
     foreign = {"type": "command", "command": "true"}
-    stale = {"type": "command", "command": "/old/python x/" + installer.GUARD_MARK}
+    installed = seat.resolve() / "hooks" / "nuzantara-context" / installer.GUARD_NAME
+    stale = {"type": "command", "command": "/old/python " + str(installed)}
     bridge.save(
         seat / "hooks.json",
         {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [foreign, stale]}]}},
@@ -222,3 +224,23 @@ def test_status_is_green_only_with_guard_and_foreign_handlers_intact(
     monkeypatch.setattr(FakeRPC, "drop_guard", True)
     missing = run_status(monkeypatch, capsys)
     assert not missing["output_guard_trusted"] and not missing["installed"]
+
+
+def test_lookalike_command_is_foreign_never_rewritten_or_trusted(setup, monkeypatch):
+    repo, _, _ = setup
+    seat = bridge.codex_home()
+    lookalike = {
+        "type": "command",
+        "command": "python3 /elsewhere/" + installer.GUARD_MARK,
+    }
+    group = {"matcher": "Bash", "hooks": [lookalike]}
+    bridge.save(seat / "hooks.json", {"hooks": {"PreToolUse": [group]}})
+    FakeRPC.edits = []
+    monkeypatch.setattr(installer, "RPC", FakeRPC)
+    installer.install(seat, [str(repo)], trust=True)
+    pre = bridge.load(seat / "hooks.json")["hooks"]["PreToolUse"]
+    assert group in pre
+    trusted = [
+        e["value"] for e in FakeRPC.edits if e["keyPath"].endswith(".trusted_hash")
+    ]
+    assert bridge.digest(lookalike["command"].encode()) not in trusted

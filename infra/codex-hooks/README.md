@@ -125,9 +125,13 @@ must not be assumed to have reloaded their hook snapshot.
 
 The installer also copies `infra/claude-hooks/output_hygiene_guard.py`
 byte-for-byte and registers it once as a `PreToolUse` hook with matcher `Bash`,
-trusted alongside the bridge. Codex reports shell calls, including unified exec
-and nested code-mode calls, as `tool_name: "Bash"` with `tool_input.command`, and
-treats exit 2 plus a stderr reason as a deny. The guard only decides: it never
+trusted alongside the bridge. Codex reports shell calls to `PreToolUse` as
+`tool_name: "Bash"` with `tool_input.command` (observed in this bridge's own state)
+and treats exit 2 plus a stderr reason as a deny. Whether every exec path (unified
+exec, nested code-mode calls) emits `PreToolUse` depends on the upstream version, so
+each release proves the deny live in a fresh session per host; a path that emits no
+event is simply not bounded by this guard. Ownership is the exact installed path of
+this seat's copy, never a substring. The guard only decides: it never
 runs or rewrites the command, fails open on anything it does not recognize, and
 leaves a genuine command failure to surface with its own exit code. Its shapes
 and corpus are the Claude guard's (`docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md`);

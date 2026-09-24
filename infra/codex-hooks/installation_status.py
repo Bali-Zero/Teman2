@@ -7,10 +7,10 @@ import tomllib
 from pathlib import Path
 
 from context_bridge import EVENTS, codex_home, digest, load
-from install import COMPACT_OVERRIDES, GUARD_MARK
+from install import COMPACT_OVERRIDES, owns_guard
 from rpc import RPC, binary_path
 
-OURS = ("nuzantara-context/context_bridge.py", GUARD_MARK)
+BRIDGE_MARK = "nuzantara-context/context_bridge.py"
 
 
 def native_compact_defaults(config_file: Path) -> bool:
@@ -19,7 +19,11 @@ def native_compact_defaults(config_file: Path) -> bool:
     return not any(key in config or key in active_profile for key in COMPACT_OVERRIDES)
 
 
-def foreign_hooks(config: dict) -> dict:
+def ours(command: str, seat: Path) -> bool:
+    return BRIDGE_MARK in command or owns_guard(command, seat)
+
+
+def foreign_hooks(config: dict, seat: Path) -> dict:
     """Every handler except ours, grouped as configured; empty groups dropped."""
     result = {}
     for event, groups in (config.get("hooks") or {}).items():
@@ -28,7 +32,7 @@ def foreign_hooks(config: dict) -> dict:
             handlers = [
                 h
                 for h in group.get("hooks", [])
-                if not any(mark in h.get("command", "") for mark in OURS)
+                if not ours(h.get("command", ""), seat)
             ]
             if handlers:
                 kept.append(dict(group, hooks=handlers))
@@ -51,7 +55,7 @@ def main() -> None:
         for h in entries["hooks"]
         if "nuzantara-context/context_bridge.py" in h.get("command", "")
     ]
-    guard = [h for h in entries["hooks"] if GUARD_MARK in h.get("command", "")]
+    guard = [h for h in entries["hooks"] if owns_guard(h.get("command", ""), seat)]
     hashes = {
         name: digest((seat / "hooks" / "nuzantara-context" / name).read_bytes())
         for name in manifest["source_sha256"]
@@ -59,8 +63,8 @@ def main() -> None:
     # Preservation is judged against the snapshot taken just before THIS install,
     # handler by handler; original_backup stays the rollback point only.
     previous = manifest.get("backup") or manifest["original_backup"]
-    old = foreign_hooks(load(Path(previous) / "hooks.json"))
-    current = foreign_hooks(load(seat / "hooks.json"))
+    old = foreign_hooks(load(Path(previous) / "hooks.json"), seat)
+    current = foreign_hooks(load(seat / "hooks.json"), seat)
     result = {
         "seat": str(seat),
         "binary": binary_path(),
