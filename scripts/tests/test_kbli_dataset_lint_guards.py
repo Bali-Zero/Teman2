@@ -149,6 +149,20 @@ L12_GUILT = [
     ("v2 can own outright, unrelated trailing self-object", "Foreign investors can own this company outright; no local equity is required.", 49),
     ("v2 no moratorium, can fully own", "Bali has no moratorium and foreigners can fully own this company.", 49),
     ("v2 can fully own, comma-interrupted", "Foreigners can fully own, and independently manage, the company.", 49),
+    # fresh-Opus gate 2026-09-25, finding 4: object spellings the v2 patterns missed
+    ("gate hold all OF the shares", "Foreign investors can hold all of the shares in this company.", 49),
+    ("gate wholly-owned hyphen", "This company can be wholly-owned by foreign investors.", 49),
+    ("gate fully-owned hyphen", "The business can be fully-owned by a foreign company.", 49),
+    ("gate 100%-foreign-owned hyphens", "This company can be 100%-foreign-owned.", 49),
+    # conductor probe 2026-09-25 on the gate cure: the new innocence routes
+    # must not swallow a foreign owner or a later clause about something else
+    ("only-to in a later clause about land", "Foreigners can fully own this company, although land rights are available only to Indonesian citizens.", 49),
+    ("only-to after an 'and' clause", "Foreign investors can fully own this company and the licence is issued only to Indonesian citizens later.", 49),
+    ("trailing predicate names foreigners, only-to after comma", "Full ownership is available to foreign investors, and the land title only to Indonesian citizens.", 49),
+    ("Indonesians and foreigners alike", "Indonesians and foreigners alike can fully own this company.", 49),
+    ("Indonesian citizens and foreign investors alike", "Indonesian citizens and foreign investors alike can fully own this company.", 49),
+    ("unlike Indonesian citizens, foreigners can", "Unlike Indonesian citizens, foreigners can fully own this company.", 49),
+    ("since May (month) then a real can", "Since May, foreigners can fully own this company.", 49),
 ]
 
 # claims moved OUT of promise: a case that reads as a full-ownership
@@ -163,6 +177,16 @@ L12_OUT_OF_PROMISE = [
     # never flags an object with no governing predicate at all — precision-
     # first, per the OUT-OF-PROMISE note in the function docstring.
     ("nominal claim, no permission predicate at all", "Full foreign ownership is not restricted here.", 49),
+    # fresh-Opus gate 2026-09-25, finding 8: a positive permission word more
+    # than 4 words before the object does not govern it — the LEAD adjacency
+    # budget is exactly 4 filler words, and "also, subject to the usual OSS
+    # registration steps," is 8.
+    (
+        "permission word more than 4 words before the object",
+        "The company can also, subject to the usual OSS registration steps, "
+        "fully own this business.",
+        49,
+    ),
 ]
 
 L12_INNOCENCE = [
@@ -247,6 +271,26 @@ L12_INNOCENCE = [
     ("v2 cannot legally or beneficially fully own", "Foreigners cannot legally or beneficially fully own this company.", 49),
     ("v2 indonesian shareholders may own outright", "Indonesian shareholders may own this business outright.", 49),
     ("v2 full foreign ownership cannot be permitted", "Full foreign ownership cannot be permitted under the cap.", 49),
+    # fresh-Opus gate 2026-09-25 — 4 blocking + 4 hardening findings
+    ("gate negated grant: not granted", "Foreign investors are not granted full ownership of this company.", 49),
+    ("gate negated grant: never given", "Foreign investors are never given full ownership of this company.", 49),
+    ("gate May the month, not the modal", "Since May 2026, full ownership is only possible for Indonesian citizens.", 49),
+    ("gate Indonesians bare subject", "Only Indonesians can fully own this business.", 49),
+    ("gate Indonesians bare by-clause", "This company can be wholly owned by Indonesians.", 49),
+    ("gate maxa is bool True", "Foreign-owned PMA companies can fully own this business.", True),
+    ("gate maxa is a non-int string", "Foreign-owned PMA companies can fully own this business.", "special"),
+    (
+        "gate question with a following answer",
+        "Can foreigners fully own this business? No -- the cap is 49%.",
+        49,
+    ),
+    ("gate question alone", "Can foreigners fully own this business?", 49),
+    ("gate trailing only-to indonesian attribution", "Full ownership is available only to Indonesian citizens.", 49),
+    ("only-to after a parenthetical comma", "Full ownership, however, is available only to Indonesian citizens.", 49),
+    ("day-number May is the month", "As of 13 May full ownership is only possible for Indonesian citizens.", 49),
+    ("Indonesian citizens, not foreigners", "Indonesian citizens, not foreigners, can fully own this company.", 49),
+    ("rather than foreign investors", "Indonesian citizens rather than foreign investors may fully own this company.", 49),
+    ("never foreigners", "Only Indonesian shareholders, never foreigners, can hold all of the shares.", 49),
 ]
 
 

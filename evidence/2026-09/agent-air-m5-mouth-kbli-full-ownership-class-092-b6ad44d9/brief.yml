@@ -29,9 +29,11 @@ constraints:
     (can/may/is allowed to/is granted…) GOVERNING a full-ownership OBJECT
     (fully own, be wholly owned, full ownership…). Innocent by construction:
     the predicate itself negated (≤4-word adjacency), a sentence-level denial
-    frame, the owner is Indonesian (person-noun required), or no permission
-    predicate governs the object at all — precision-first, L10 still owns a
-    bare percentage. Two adversarial-probe rounds (44 unit cases) pinned.
+    frame, the owner is Indonesian (person-noun required; void when the
+    subject also names an un-negated foreign owner), a question, or no
+    permission predicate governs the object at all — precision-first, L10
+    still owns a bare percentage. Adversarial probes from Codex, the fresh
+    Opus gate and the conductor pinned as 73 unit cases.
   - >-
     No hand edit of data/kbli-filiera/** or data/source_documents/** (data-plane
     guard). 50134 is NOT in canonicalIntel (not certified) — verified via the
