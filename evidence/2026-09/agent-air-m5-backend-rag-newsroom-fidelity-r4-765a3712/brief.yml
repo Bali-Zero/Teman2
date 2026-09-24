@@ -1,0 +1,23 @@
+task: Stop the News Room converter from dropping draft "##" sections and inventing Next Steps content that was never in the draft.
+lane: backend-rag/newsroom-fidelity-r4
+machine: M5
+date: 2026-09-25
+mission_id: newsroom-converter-fidelity
+mission_colour: BLUE
+role: Dux session (Opus 5.5) — builds, arms, deploys; the final gate is a fresh read-only session outside this chain
+gear: 2
+gear_reason: >-
+  Supersedes #7322 (armed, so frozen), which the final on-disk gate BLOCKED:
+  A2 failed because the expat/investor regexes matched the words as a
+  substring anywhere in the Next Steps body, so a neutral step that
+  mentioned "expats" or "investors" was relabelled and truncated. Rebuilt on
+  fresh origin/main with #7322's fix commit cherry-picked unchanged plus one
+  cure commit: audiences come only from a whole label line. Fix-of-a-fix
+  depth 1. Churn ~520 lines, no hot-zone path: Gear 2 by the size term.
+acceptance:
+  A1: Every draft "##" section the converter does not map to a dedicated field (e.g. "In Practice", "Sources") is preserved verbatim, in draft order, anchored to the mapped section it followed — never silently dropped.
+  A2: A Next Steps body with no audience label LINE renders as one neutral group, even when its steps mention expats or investors; it is never split and never truncated.
+  A3: An empty Next Steps group is omitted; the filler "Review the article for specific actions" is never emitted; the whole Next Steps section is omitted when there are no steps at all.
+  A4: A draft with real audience label lines ("### For Expats", "**For Expats:**", "For Expats:") renders its steps under the right audience, and a step under one label that mentions the other audience stays where it is.
+  A5: schema.d.ts and its OpenAPI drift pin match this tree; test_generate_openapi_schema_pin passes.
+out_of_scope: Legacy-article cleanup (#7324–#7330, separate lane), LLM-composer prompt changes, text before the first audience label (dropped exactly as before this change).
