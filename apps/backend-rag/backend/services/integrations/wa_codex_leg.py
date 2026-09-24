@@ -125,6 +125,7 @@ from backend.services.integrations.wa_finalize import (
 )
 from backend.services.integrations.wa_greeting import match_greeting
 from backend.services.integrations.wa_human_handoff import (
+    _FALLBACK_RECIPIENT,
     match_human_request,
     notify_human_handoff,
 )
@@ -612,6 +613,50 @@ def _media_ack_text(language: str) -> str:
     return _MEDIA_ACK_TEXTS.get(language, _MEDIA_ACK_TEXTS[_MEDIA_ACK_FALLBACK_LANG])
 
 
+# The B2.5-2 human-handoff turn's honest fallback (round-1 cross-family
+# review finding, 2026-09-25): `notify_human_handoff`'s return now means
+# DELIVERED, not merely attempted — so the turn below picks ITS reply from
+# that truthful signal instead of always returning `human_request.text`
+# ("I'm flagging this for a colleague..."), which would otherwise repeat
+# the exact lie this whole PR exists to stop, one call site downstream of
+# where the notifier itself was fixed. Deliberately never names a phone —
+# `_FALLBACK_RECIPIENT` (imported from `wa_human_handoff`) is the ONE
+# existing constant for "write to us directly" in this codebase; nothing
+# new is invented.
+_HUMAN_HANDOFF_UNREACHABLE_TEXTS: dict[str, str] = {
+    "en": (
+        f"I couldn't reach a colleague automatically just now. Please try "
+        f"again in a few minutes, or write directly to {_FALLBACK_RECIPIENT}."
+    ),
+    "id": (
+        f"Saya belum berhasil menghubungi kolega secara otomatis saat ini. "
+        f"Silakan coba lagi dalam beberapa menit, atau kirim email langsung "
+        f"ke {_FALLBACK_RECIPIENT}."
+    ),
+    "it": (
+        f"Al momento non sono riuscito a contattare automaticamente un "
+        f"collega. Riprova tra qualche minuto, oppure scrivi direttamente a "
+        f"{_FALLBACK_RECIPIENT}."
+    ),
+    "ru": (
+        f"Сейчас не удалось автоматически связаться с коллегой. "
+        f"Попробуйте, пожалуйста, ещё раз через несколько минут или "
+        f"напишите напрямую на {_FALLBACK_RECIPIENT}."
+    ),
+    "uk": (
+        f"Зараз не вдалося автоматично зв'язатися з колегою. Спробуйте, "
+        f"будь ласка, ще раз за кілька хвилин або напишіть напряму на "
+        f"{_FALLBACK_RECIPIENT}."
+    ),
+}
+
+
+def _human_handoff_unreachable_text(language: str) -> str:
+    return _HUMAN_HANDOFF_UNREACHABLE_TEXTS.get(
+        language, _HUMAN_HANDOFF_UNREACHABLE_TEXTS[_MEDIA_ACK_FALLBACK_LANG]
+    )
+
+
 async def _stub_unsupported(
     *,
     parsed_wire: dict[str, Any],
@@ -872,15 +917,26 @@ async def _attempt(
     # list and notify nobody, silently dropping the highest-intent message
     # this bot ever receives. Human-request wins the double-match.
     #
-    # Notification is best-effort and wrapped here, not inside
-    # `notify_human_handoff`: the client's confirmation must never be lost
-    # because Brevo failed, and the outer `attempt()` turns any unhandled
-    # exception from `_attempt` into a text=None fall-off — which would
-    # silently swallow the confirmation this leg is about to return.
+    # Notification is best-effort and wrapped here, not (only) inside
+    # `notify_human_handoff`: `notify_human_handoff` itself never raises
+    # (its own contract), but the outer `attempt()` turns ANY unhandled
+    # exception from `_attempt` into a text=None fall-off, so this stays a
+    # second, independent layer — the client's REPLY must never be lost
+    # even if a future bug breaks that contract.
+    #
+    # The reply text is now CONDITIONED on the truthful return
+    # (round-1 cross-family review, 2026-09-25): `notify_human_handoff`
+    # returning True means a channel actually delivered, so only THEN does
+    # the client hear "I'm flagging this for a colleague". A False (nobody
+    # reached — includes a dedup-suppressed call, which cannot itself tell
+    # this turn a colleague WAS already told earlier) or a caught exception
+    # gets the honest variant instead: no claim that anyone was told, a
+    # concrete next step (try again shortly, or write directly).
     human_request = match_human_request(query)
     if human_request is not None:
+        notified = False
         try:
-            await notify_human_handoff(
+            notified = await notify_human_handoff(
                 pool,
                 thread_id=thread_id,
                 counterpart_phone=thread["counterpart_phone"],
@@ -892,12 +948,18 @@ async def _attempt(
                 outbox_id,
                 type(exc).__name__,
             )
+        reply_text = (
+            human_request.text
+            if notified
+            else _human_handoff_unreachable_text(human_request.language)
+        )
         logger.info(
-            "wa_codex_leg: scripted human handoff served outbox=%s lang=%s",
+            "wa_codex_leg: scripted human handoff served outbox=%s lang=%s notified=%s",
             outbox_id,
             human_request.language,
+            notified,
         )
-        return CodexLegResult(text=human_request.text, served_by="scripted_human_handoff")
+        return CodexLegResult(text=reply_text, served_by="scripted_human_handoff")
 
     # Deterministic identity turn (B2.5-1b), second authority, same order,
     # same reasoning, checked right after the greeting: measured on real

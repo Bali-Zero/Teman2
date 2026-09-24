@@ -210,6 +210,48 @@ SELECT id, assigned_to
 _FALLBACK_RECIPIENT = "zero@balizero.com"
 _EMAIL_TYPE = "wa_human_handoff"
 
+# Attempt cooldown — SEPARATE from `_recent_escalations`'s success dedup
+# above. That map suppresses a REPEATED alert once someone WAS reached; this
+# one rate-limits REPEATED ATTEMPTS while nobody has been reached yet, so a
+# thread whose every channel is failing (assignee's inbox down AND the DB
+# insert erroring) does not turn one client burst into a hundred email
+# attempts. A genuine retry after the window still gets a real attempt —
+# this is throttling, not the same "already told" event the success dedup
+# encodes, which is why it is its own map under its own key namespace.
+_FAILED_ATTEMPT_COOLDOWN_S = 5 * 60
+_FAILED_ATTEMPT_MAX_ENTRIES = 2048
+_recent_failed_attempts: dict[str, float] = {}
+
+
+def _prune_failed_attempts(now: float) -> None:
+    stale = [
+        k for k, ts in _recent_failed_attempts.items() if now - ts >= _FAILED_ATTEMPT_COOLDOWN_S
+    ]
+    for k in stale:
+        _recent_failed_attempts.pop(k, None)
+    if len(_recent_failed_attempts) > _FAILED_ATTEMPT_MAX_ENTRIES:
+        for k, _ in sorted(_recent_failed_attempts.items(), key=lambda kv: kv[1])[:512]:
+            _recent_failed_attempts.pop(k, None)
+
+
+def _recently_failed(thread_key: str) -> bool:
+    """True if this thread's last attempt failed inside the cooldown window.
+
+    Fails OPEN like `_already_escalated`: any surprise here must never be
+    the reason an attempt is skipped — that would make a bug in the
+    throttle itself the cause of a lost lead.
+    """
+    try:
+        now = time.monotonic()
+        _prune_failed_attempts(now)
+        last = _recent_failed_attempts.get(thread_key)
+        return last is not None and (now - last) < _FAILED_ATTEMPT_COOLDOWN_S
+    except Exception as exc:
+        logger.warning(
+            "wa_human_handoff: failed-attempt cooldown check errored, attempting anyway: %s", exc
+        )
+        return False
+
 # The in-app half: the kita notification bell. `ALERT_TYPE` must also appear in
 # `crm_notifications.BELL_ALERT_TYPES` or the row is written and never shown —
 # a test pins the pair, because an unread row nobody renders is the exact shape
@@ -356,19 +398,38 @@ async def notify_human_handoff(
 
     Returns True only when at least one channel actually DELIVERED — the
     in-app alert row was written, or ``send_internal_email`` reports the
-    Brevo send succeeded. False on dedup suppression, OR when both channels
-    failed (unknown client with no in-app row possible, and the email
-    transport swallowed an error via ``raise_on_failure=False``). Dedup is
-    recorded ONLY on a True return: a failed attempt leaves no trace in the
-    TTL map, so the very next call for the same thread is not suppressed and
-    can retry. Before 2026-09-25 this returned True whenever the email leg
-    was merely ATTEMPTED, even if it failed silently — callers must not
-    assume that shape; see ``wa_codex_leg.py`` callers, which already treat
-    this return as unverifiable for client-facing copy and only log it.
+    Brevo send succeeded. False on dedup suppression, on cooldown
+    suppression (see below), OR when both channels failed (unknown client
+    with no in-app row possible, and the email transport failed). Success
+    dedup is recorded ONLY on a True return: a failed attempt leaves no
+    trace in that TTL map, so the very next call for the same thread is not
+    suppressed BY THAT MAP. Before 2026-09-25 this returned True whenever
+    the email leg was merely ATTEMPTED, even if it failed silently —
+    callers must not assume that shape; see ``wa_codex_leg.py`` callers,
+    which use the return to choose the client-facing confirmation text.
+
+    Failed-attempt cooldown: a SEPARATE 5-minute-per-thread throttle (its
+    own map, ``_recent_failed_attempts``) so a thread whose every channel is
+    down does not turn a client burst into a storm of email attempts — a
+    failure records the cooldown, a genuine retry after it expires still
+    gets a real attempt.
+
+    Never raises: an exception from the email leg is caught here (by TYPE
+    only in the log, not the message — the body it was sending may resolve
+    a client_id the log line should not repeat) and counted as a failed
+    send, same as any other email failure.
     """
     dedup_key = f"human_handoff:{thread_id}"
     if _already_escalated(dedup_key):
         logger.info("wa_human_handoff: suppressed thread=%s (dedup window)", thread_id)
+        return False
+
+    if _recently_failed(dedup_key):
+        logger.info(
+            "wa_human_handoff: suppressed thread=%s (failed-attempt cooldown, %ss)",
+            thread_id,
+            _FAILED_ATTEMPT_COOLDOWN_S,
+        )
         return False
 
     client_id, assignee = await _resolve_assignee(pool, counterpart_phone)
@@ -397,22 +458,43 @@ async def notify_human_handoff(
     body_lines.append("Silakan buka thread di konsol operator untuk membaca detailnya.")
 
     subject = _EMAIL_SUBJECT_TEMPLATES.get(reason, _EMAIL_SUBJECT_TEMPLATES[_DEFAULT_REASON])
-    email_sent = await send_internal_email(
-        to=to_email,
-        subject=subject.format(thread_id=thread_id),
-        body="\n".join(body_lines),
-        email_type=_EMAIL_TYPE,
-        pool=pool,
-        client_id=client_id,
-    )
+    try:
+        email_sent = await send_internal_email(
+            to=to_email,
+            subject=subject.format(thread_id=thread_id),
+            body="\n".join(body_lines),
+            email_type=_EMAIL_TYPE,
+            pool=pool,
+            client_id=client_id,
+        )
+    except Exception as exc:
+        # Belt-and-suspenders: the real `send_internal_email` (default
+        # `raise_on_failure=False`) never raises — but THIS function's own
+        # contract is an unconditional "never raises", so an unexpected
+        # raise here must not break that promise for whatever caller relies
+        # on it. Type only, never the message — see the docstring note.
+        logger.error(
+            "wa_human_handoff: email leg raised unexpectedly thread=%s reason=%s: %s",
+            thread_id,
+            reason,
+            type(exc).__name__,
+        )
+        email_sent = False
 
     delivered = email_sent or in_app
     if delivered:
         _recent_escalations[dedup_key] = time.monotonic()
+        # Clear any stale cooldown from an earlier failed attempt on this
+        # thread: it has now genuinely delivered, so a LATER failure must
+        # start its own fresh cooldown rather than inherit this one's clock.
+        _recent_failed_attempts.pop(dedup_key, None)
     else:
-        # Neither channel reached anyone: do NOT record dedup, so a retry
-        # (the same client re-sending, or a caller re-attempting) is not
-        # suppressed by a window that opened on a failure.
+        # Neither channel reached anyone: do NOT record success dedup, so a
+        # retry after the cooldown below is not suppressed by a window that
+        # opened on a failure. DO record the failed-attempt cooldown — its
+        # own, separate map — so a burst on this same failing thread does
+        # not turn into a storm of attempts before that retry is due.
+        _recent_failed_attempts[dedup_key] = time.monotonic()
         logger.warning(
             "wa_human_handoff: no channel delivered thread=%s reason=%s "
             "(email_sent=%s in_app=%s)",

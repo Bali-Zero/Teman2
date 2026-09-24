@@ -24,8 +24,14 @@ Semantics:
   warning. It NEVER raises unless ``raise_on_failure=True``. When ``pool``
   and ``email_type`` are provided, failures are also persisted so the retry
   worker can re-attempt delivery.
-- Returns ``True`` only when the send actually succeeded (Brevo accepted the
-  request), ``False`` on any swallowed failure. A caller that has been
+- Returns ``True`` only when the send actually succeeded — HTTP 2xx AND the
+  response body's ``success`` field is ``True``. The endpoint's own provider
+  chain (Zoho/Brevo/Resend) can exhaust every leg and still answer HTTP 200
+  with ``{"success": false, ...}`` (`SendEmailResponse` in
+  ``notifications/router.py``); a bare ``raise_for_status()`` would call that
+  a delivery. ``False`` on any swallowed failure — network error, non-2xx,
+  OR a 200 that fails this check (including an unparseable/non-dict body,
+  treated as not-delivered rather than guessed at). A caller that has been
   ignoring the return value (every caller as of 2026-09-25) sees no change —
   ``await send_internal_email(...)`` still fires and forgets identically.
   This exists so a caller that DOES need to know delivery, not just intent,
@@ -87,10 +93,13 @@ async def send_internal_email(
     (e.g. Zoho) and needs to detect Brevo failures.
 
     Returns:
-        ``True`` if Brevo accepted the send, ``False`` on any swallowed
-        failure (network error, non-2xx response). When ``raise_on_failure``
-        is True and the send fails, this raises instead of returning
-        ``False``.
+        ``True`` only when the send actually delivered: HTTP 2xx AND the
+        response body's ``success`` field is ``True``. ``False`` on any
+        swallowed failure — network error, non-2xx, or a 200 whose body
+        reports ``success=false`` (the endpoint's own provider chain
+        exhausted every leg) or has no usable ``success`` field at all.
+        When ``raise_on_failure`` is True and any of those happen, this
+        raises instead of returning ``False``.
 
     Args:
         to: primary recipient address
@@ -142,6 +151,23 @@ async def send_internal_email(
             json=payload,
         )
         response.raise_for_status()
+
+        # The endpoint answers HTTP 200 even when its own provider chain
+        # (Zoho -> Brevo, or Brevo -> Resend -> Zoho) exhausted every leg —
+        # `SendEmailResponse(success=False, message="All providers
+        # failed: ...")` in notifications/router.py ~:537. raise_for_status()
+        # cannot see that: a 200 never raises. A missing or unparseable body
+        # counts as NOT delivered, same as an explicit success=false — this
+        # is the one place that decides "delivered" and it must not guess.
+        try:
+            response_data = response.json()
+        except ValueError:
+            response_data = None
+        if not isinstance(response_data, dict) or response_data.get("success") is not True:
+            detail = (
+                response_data.get("message") if isinstance(response_data, dict) else None
+            ) or "email API returned 200 without success=true"
+            raise RuntimeError(detail)
 
         logger.info(
             "Internal email sent: to=%s cc_count=%d context=%s",
