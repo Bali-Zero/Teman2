@@ -322,29 +322,31 @@ export default function VoaResultPage({
           handoffHref={buildWhatsAppLink("visa", t("verdict.wa.deadlineMsg"))}
         />
       ) : null}
-      <div
-        ref={stampRef}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "var(--space-2, 0.5rem)",
-          paddingTop: "var(--space-4, 1.5rem)",
-        }}
-      >
-        <AppStampReveal
-          code={formatIDR(data.price_idr)}
-          ariaLabel={t("verdict.stamp.aria", {
-            price: formatIDR(data.price_idr),
-          })}
-        />
-      </div>
-      {/* ORDER IS THE POINT, and it was backwards. The step that OPENS the
+      <div className="voa-offer">
+        <div
+          ref={stampRef}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "var(--space-2, 0.5rem)",
+            paddingTop: "var(--space-4, 1.5rem)",
+          }}
+        >
+          <AppStampReveal
+            code={formatIDR(data.price_idr)}
+            ariaLabel={t("verdict.stamp.aria", {
+              price: formatIDR(data.price_idr),
+            })}
+          />
+        </div>
+        {/* ORDER IS THE POINT, and it was backwards. The step that OPENS the
           application used to render BELOW "delete this check" — a destructive
           control ahead of the only forward path on the screen. Reachable only
           once `data` is set, which itself requires `hash` (see the two effects
           above), so this is never actually empty at render time. */}
-      <MagicLinkRequestForm resultId={hash ?? ""} />
+        <MagicLinkRequestForm resultId={hash ?? ""} />
+      </div>
       <DeleteCheckControl
         resultId={hash ?? ""}
         onDeleted={() => setDeleted(true)}

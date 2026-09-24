@@ -251,6 +251,7 @@
   align-items: center;
   justify-content: center;
   align-self: flex-start;
+  justify-self: start;
   min-height: 48px;
   margin-top: 0.5rem;
   padding: 0 1.1rem;
@@ -1144,4 +1145,51 @@
   margin: 0;
   padding-left: 0.75rem;
   border-left: 3px solid var(--bz-border);
+}
+
+/*
+ * Verdict (ACCEPT), desktop: the price stamp and the step that opens the
+ * application sit side by side, so the email form no longer leaves the right
+ * half of the sheet empty under a centred stamp. Stacked on a phone, in the
+ * same DOM order (stamp, then the entry — never the delete control first).
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-offer {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 64rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+    align-items: center;
+    column-gap: 3rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer .voa-entry {
+    margin-top: 0;
+  }
+}
+
+/*
+ * Phone, first screen: measured at 390x844, step 1's action ended at the
+ * fold with the site's floating launcher over it. Tighter rhythm above the
+ * question (4-pt steps, nothing removed) lifts the whole action clear.
+ */
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet {
+    gap: 1rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-head,
+  [data-product="my"][data-garuda-voa="r19"] .voa-hero-wa {
+    gap: 0.5rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-wiz {
+    gap: 0.75rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-q {
+    margin-bottom: 0.75rem;
+  }
 }
