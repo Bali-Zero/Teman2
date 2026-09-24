@@ -44,6 +44,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 REPO = Path(
     subprocess.run(
         ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "--show-toplevel"],
@@ -287,9 +289,25 @@ def plist_template(label: str, wrapper_live: str, kind: str, schedule: int) -> s
 '''
 
 
+def _yaml_scalar(value: str) -> str:
+    """An inline YAML scalar for `value`, quoted (or not) by `yaml.safe_dump`.
+
+    L1788: hand-built single-quoting (`f"'{value}'"`) emitted an unescaped
+    apostrophe whenever `value` contained one, corrupting the registry with
+    a `yaml.parser.ParserError` AFTER the entry was already written.
+    `safe_dump` picks correct quoting (doubling an inner `'`, switching to
+    double quotes, etc.) for whatever the string actually contains.
+    """
+    dumped = yaml.safe_dump(value).strip()
+    if dumped.endswith("..."):
+        dumped = dumped[: -len("...")].rstrip()
+    return dumped
+
+
 def registry_entry(organ_id: str, node: str, kind: str, schedule: int,
                    label: str, wrapper_repo: str, description: str) -> str:
     organ_type = "daemon" if kind == "daemon" else "cron"
+    notes = _yaml_scalar(f"{description} (born via organ_birth.py, genes imprinted 2026+)")
     return f'''- id: {organ_id}
   runtime: {node}_launchd
   type: {organ_type}
@@ -301,7 +319,7 @@ def registry_entry(organ_id: str, node: str, kind: str, schedule: int,
     host: {node}
     label: {label}
   severity_on_silence: warning
-  notes: '{description} (born via organ_birth.py, genes imprinted 2026+)'
+  notes: {notes}
   cicatrix_refs: []
   bridge_source:
     type: state_file

@@ -106,6 +106,50 @@ def _third_party_imports(root: Path) -> set[str]:
 # import name -> pip distribution name, where they differ
 _DIST = {"PIL": "Pillow", "pytest_asyncio": "pytest-asyncio"}
 
+# requirements/lock/pyproject filenames scanned for a real pip dependency
+_DEP_FILE_PATTERNS = ("requirements*.txt", "requirements*.lock", "*.lock.txt", "pyproject.toml")
+_DEP_SCAN_EXCLUDE = {"node_modules", ".worktrees", "__pycache__", ".git"}
+
+
+def _git_tracked_pytest_guard_stems(repo: Path) -> set[str]:
+    """Stems of ``scripts/pytest_guards/*.py`` files tracked by git.
+
+    An untracked file left on one machine's disk must not open the exemption
+    only there — this is half of the L1727 predicate.
+    """
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "ls-files", "scripts/pytest_guards/*.py"],
+        cwd=repo, capture_output=True, text=True, check=False,
+    ).stdout
+    return {Path(line).stem for line in out.splitlines() if line.strip()}
+
+
+def _dependency_declared(repo: Path, name: str) -> bool:
+    """True if ``name`` (or its dist name) is a real pip dependency somewhere
+    in the repo's requirements/lock files or a ``[project.dependencies]``.
+
+    This is the other half of the L1727 predicate: a repo-local guard file
+    whose name COLLIDES with a real dependency must not be exempted.
+    """
+    # pip distribution names normalize "-", "_" and "." interchangeably (PEP 503)
+    needles = {name.lower().replace("-", "_"), _DIST.get(name, name).lower().replace("-", "_")}
+    for pattern in _DEP_FILE_PATTERNS:
+        for f in repo.rglob(pattern):
+            if _DEP_SCAN_EXCLUDE & set(f.parts):
+                continue
+            try:
+                text = f.read_text()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for line in text.splitlines():
+                token = re.split(r"[<>=!\[;\s]", line.strip().strip(",")).pop(0)
+                token = token.strip("\"'").lower().replace("-", "_")
+                if token in needles:
+                    return True
+    return False
+
 
 def _repo_provided_modules(repo: Path) -> set[str]:
     """Modules this REPO supplies on ``sys.path`` — never pip installables.
@@ -116,13 +160,22 @@ def _repo_provided_modules(repo: Path) -> set[str]:
     and demanding one would ask the workflow to install something that does not
     exist on PyPI.
 
-    DERIVED from the directory, not enumerated: a guard added tomorrow is
-    covered without editing this file. A hardcoded list is the exact failure
-    this module's own docstring records (`test_dlp.py`, `test_image_handler.py`
-    orphaned because a list does not grow).
+    A name is exempt iff BOTH: (a) ``scripts/pytest_guards/<name>.py`` is
+    tracked by git, and (b) that name is not declared as a real dependency
+    anywhere in the repo (requirements/lock files, `[project.dependencies]`).
+    Both halves are deterministic and offline over data the repo already
+    holds — DERIVED, not enumerated: a guard added tomorrow is covered
+    without editing this file, and a name that collides with a real future
+    dependency is still rejected (L1727 — a hardcoded list does not grow).
     """
     guards = repo / "scripts" / "pytest_guards"
-    return {p.stem for p in guards.glob("*.py") if not p.stem.startswith("__")}
+    tracked = _git_tracked_pytest_guard_stems(repo)
+    return {
+        p.stem for p in guards.glob("*.py")
+        if not p.stem.startswith("__")
+        and p.stem in tracked
+        and not _dependency_declared(repo, p.stem)
+    }
 
 
 def test_the_workflow_installs_every_third_party_module_the_app_imports():
@@ -168,6 +221,49 @@ def test_the_repo_local_exemption_does_not_cover_a_real_pip_dependency():
             "%s must NOT be treated as repo-supplied — it is a pip dependency "
             "the workflow has to install." % real
         )
+
+
+def test_a_sixth_future_dependency_is_rejected_without_being_pinned_by_hand(tmp_path):
+    """L1727: the guilt test above only checks five NAMED dependencies — it
+    would not have caught a sixth. This seeds a synthetic guard file that
+    collides with a synthetic real dependency and proves the PREDICATE
+    rejects it, generically, with no enumeration anywhere in this file.
+    """
+    import subprocess
+
+    guards = tmp_path / "scripts" / "pytest_guards"
+    guards.mkdir(parents=True)
+    (guards / "sixth_dep.py").write_text("# stand-in for a future dependency\n")
+    (tmp_path / "requirements.txt").write_text("sixth-dep>=1.0\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+
+    supplied = _repo_provided_modules(tmp_path)
+    assert "sixth_dep" not in supplied, (
+        "a guard file colliding with a declared dependency must be rejected "
+        "even though its name is pinned nowhere in this test file"
+    )
+
+
+def test_an_untracked_guard_file_does_not_open_the_exemption(tmp_path):
+    """The other half of the L1727 predicate: a file that exists on disk but
+    was never `git add`-ed must not become exempt just by being present.
+    """
+    import subprocess
+
+    guards = tmp_path / "scripts" / "pytest_guards"
+    guards.mkdir(parents=True)
+    (guards / "tracked_guard.py").write_text("# tracked\n")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "scripts/pytest_guards/tracked_guard.py"], cwd=tmp_path, check=True)
+    # dropped on disk after the index was built — never staged, never tracked
+    (guards / "untracked_guard.py").write_text("# untracked\n")
+
+    supplied = _repo_provided_modules(tmp_path)
+    assert "tracked_guard" in supplied
+    assert "untracked_guard" not in supplied, (
+        "an untracked file must not open the exemption on this machine alone"
+    )
 
 
 def test_it_rejects_a_named_file_list():
