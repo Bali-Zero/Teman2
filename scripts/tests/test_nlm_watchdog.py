@@ -685,6 +685,41 @@ def test_main_reports_import_failure_as_degraded_without_crashing(tmp_path, monk
     assert data["codes"] == [nlm_watchdog.Code.IMPORT_FAILED]
 
 
+def test_main_import_failure_still_attempts_telegram_and_never_raises(tmp_path, monkeypatch):
+    # Fresh gate finding, PR #7307: the import-failure fallback `_run` used to
+    # RAISE RuntimeError. maybe_alert() calls `_run` to attempt the Telegram
+    # send on EVERY transition, including ok -> degraded on an import
+    # failure — so that raise would propagate straight out of maybe_alert()
+    # and crash main() on exactly the path this whole guard exists to keep
+    # alive. A previous "ok" heartbeat makes this an ok->degraded
+    # transition, the shape that must alert.
+    hb = tmp_path / "nlm-watchdog.json"
+    hb.write_text(json.dumps({"organ": "nlm-watchdog", "status": "ok", "codes": []}))
+    monkeypatch.setattr(nlm_watchdog, "HEARTBEAT_PATH", hb)
+    monkeypatch.setattr(nlm_watchdog, "AUTH_SENTINEL_IMPORT_ERROR", "ImportError")
+    fake_tg = tmp_path / "tg_notify.py"
+    fake_tg.write_text("import sys\nsys.exit(0)\n")
+    monkeypatch.setattr(nlm_watchdog, "TG_NOTIFY", fake_tg)
+    calls = []
+
+    def _fake_run(*a, **kw):
+        # Simulates the OLD, broken import-failure fallback (raised
+        # RuntimeError) — proves main()'s own try/except around
+        # maybe_alert() is a real, independent second layer, not just a
+        # claim: the attempt is counted BEFORE the raise, so "one send
+        # attempted" holds even though the call never returns normally.
+        calls.append((a, kw))
+        raise RuntimeError("auth_sentinel unavailable")
+
+    monkeypatch.setattr(nlm_watchdog, "_run", _fake_run)
+    rc = nlm_watchdog.main([])  # must not raise, even though _run does
+    assert rc == 1
+    assert len(calls) == 1  # the Telegram send was attempted, not skipped
+    data = json.loads(hb.read_text())
+    assert data["status"] == "degraded"
+    assert data["codes"] == [nlm_watchdog.Code.IMPORT_FAILED]
+
+
 def _inventory_now(notebooks):
     # main() always uses the REAL wall-clock time internally (no `now=`
     # override), so any test that drives main() end-to-end must stamp

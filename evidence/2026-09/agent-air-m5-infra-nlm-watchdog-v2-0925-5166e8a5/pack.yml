@@ -23,6 +23,20 @@ lanes:
       id8 list (S3); the wrapper's fallback write no longer `|| true`s an
       mv failure and detail is sed-escaped (S4); a non-numeric
       source_count is skipped, not crashed on (S5). 54 tests.
+      Round 3: a fresh Opus 5.5 on-disk gate on PR #7307 (HEAD
+      3da9d5891d) returned REWORK-BUILD — shipped behavior all PASSED,
+      but two comments misdescribed the shipped code (the import
+      guard's rationale, and an "`_run` never raises" claim that was
+      false for the import-failure fallback), and the fallback `_run`
+      itself was a real gap (it raised, which could have crashed
+      maybe_alert's own Telegram attempt on the import-failure path).
+      #7307's branch was already armed (frozen), so this PR is a
+      REBUILD from fresh origin/main (cherry-picking all four real
+      commits, never 603b4a105f) carrying the fix: comments rewritten
+      to match reality, fallback `_run` made total, main()'s own
+      maybe_alert() call wrapped as an independent second layer, one
+      new regression test (verified to fail without the fix, pass
+      with it). 55 tests.
   - lane: review-round1
     role: review
     seat: tp1-qwen3.8-max
@@ -106,11 +120,19 @@ receipts:
     ts: "2026-09-24T20:55:53Z"
     seat: claude-sonnet-5
   - claim: >-
-      _display_name() redacts every notebook title path: curated NB-
-      titles truncate at 60 chars, uncurated titles fall back to the
-      first 8 chars of the id, a missing id falls back to "unknown" — the
-      fix for codex finding 1 (BLOCKING, notebook titles leaking into
-      heartbeat/Telegram/logs).
+      ROUND-1 CLAIM, SUPERSEDED BY S1 (see the round-2 receipts below —
+      the round-2 gate flagged this exact sentence as stale and it is
+      corrected here rather than deleted, so the fix history stays
+      legible): "_display_name() redacts every notebook title path:
+      curated NB- titles truncate at 60 chars, uncurated titles fall back
+      to the first 8 chars of the id, a missing id falls back to
+      'unknown'". That curated-title branch no longer exists — S1 (round
+      2) found the round-1 fix itself leaked
+      (`NB-CLIENT-CASE Jane Doe` matched the `^NB-...` gate and still
+      surfaced verbatim) and removed title display entirely.
+      `_display_name` now takes only an id and never shows a title,
+      curated-looking or not — see the "S1" receipt further down for the
+      current, correct behavior.
     cmd: >-
       python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
       "display_name" -v
@@ -304,6 +326,40 @@ receipts:
     cmd: ssh -o ConnectTimeout=10 -o BatchMode=yes pro '~/.local/bin/nlm login --check'
     exit: 0
     ts: "2026-09-24T21:34:29Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The real, posted `harness/fable-gate` status on PR #7307's HEAD
+      (3da9d5891d) is `failure`/REWORK-BUILD, with the exact description
+      GitHub shows: shipped behavior (PII, fail-visible, classifier, 54
+      tests, lints, pack lint) passed; the gate failed on two stale
+      comments plus the non-total fallback `_run` — the three items this
+      commit fixes.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/commits/3da9d5891d/status --jq
+      '.statuses[] | select(.context=="harness/fable-gate") |
+      {context, state, description, updated_at}'
+    exit: 0
+    ts: "2026-09-24T21:56:28Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The new regression test is real, not tautological: reverting
+      main()'s try/except around maybe_alert() to a bare call (the
+      pre-fix shape) makes it FAIL with the exact RuntimeError the old
+      fallback `_run` used to raise; restoring the fix makes the full
+      55-test suite pass again.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "import_failure_still_attempts" -v  # run once with main()'s
+      try/except stripped (FAILED), once restored (PASSED)
+    exit: 0
+    ts: "2026-09-24T22:04:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Full suite passes on the rebuilt HEAD: 55/55 (54 from #7307 plus
+      the one new regression test for this gate's finding).
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-24T22:04:02Z"
     seat: claude-sonnet-5
 dissent:
   - seat: codex-gpt-5.6-sol

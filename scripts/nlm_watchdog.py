@@ -100,13 +100,24 @@ from typing import Callable
 #
 # GUARDED (Gear-3 council finding, qwen #1): a bare module-level `from auth_sentinel import
 # ...` means a future rename/move/signature change over there raises ImportError before
-# main() ever runs, the cron wrapper's `|| true` swallows the traceback, and NO heartbeat is
-# written — this organ goes fully silent (violates G9). The try/except below ensures the
-# module always finishes importing; main() checks AUTH_SENTINEL_IMPORT_ERROR and writes a
-# degraded heartbeat instead of ever reaching a NameError. Verified separately (see PR body):
-# `_run` itself already catches every subprocess exception (FileNotFoundError, OSError, ...)
-# in its own final `except Exception` branch, so it is a total function today — this guard is
-# specifically for the IMPORT surface, not a claim that `_run` could newly start raising.
+# main() ever runs — an uncaught ImportError here is a NameError waiting to happen the moment
+# anything below tries to call `_run`/`_hostname`/`_AUTH_DEAD_RE`, and Python does not run this
+# module's own exception handlers, so an ImportError at THIS import statement would crash
+# before main()'s own try/except ever gets a chance to see it (fresh gate finding, PR #7307:
+# the previous wording here claimed the cron wrapper's `|| true` swallows the traceback and NO
+# heartbeat is written — false today. `nlm_watchdog_cron.sh` uses `|| RC=$?`, never `|| true`,
+# and its own before/after-mtime comparison already fills a GENERIC "wrote no heartbeat"
+# fallback heartbeat when python dies before writing one. The value THIS guard adds is not
+# "a heartbeat exists at all" — the wrapper's fallback already guarantees that — it is
+# reporting the SPECIFIC reason (`Code.IMPORT_FAILED`, "auth_sentinel import failed (...)")
+# instead of the wrapper's generic "wrote no heartbeat" catch-all). The try/except below
+# ensures the module always finishes importing; main() checks AUTH_SENTINEL_IMPORT_ERROR and
+# writes that specific degraded heartbeat instead of ever reaching a NameError. The fallback
+# `_run`/`_hostname` stubs below must themselves be TOTAL (never raise) on this path too —
+# `maybe_alert()` still calls `_run` to attempt a Telegram send even when auth_sentinel could
+# not be imported, and a raise there would crash main() on the exact path this guard exists to
+# keep alive; `main()` also wraps its own `maybe_alert()` call as a second, independent layer
+# (see there) so neither a `_run` regression nor an unrelated bug in `maybe_alert` can escape.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from auth_sentinel import _AUTH_DEAD_RE, _hostname, _run
@@ -119,8 +130,17 @@ except Exception as _imp_exc:  # noqa: BLE001 — see comment above; must never 
         import socket
         return socket.gethostname().split(".")[0]
 
-    def _run(*_a, **_kw):  # type: ignore[no-redef]
-        raise RuntimeError("auth_sentinel unavailable")
+    def _run(*_a, **_kw) -> tuple[int, str]:  # type: ignore[no-redef]
+        """Fallback used ONLY when the auth_sentinel import itself failed. Must
+        be TOTAL — never raise — exactly like auth_sentinel's real `_run`: this
+        stands in for it on every call site, including `maybe_alert()`'s own
+        Telegram attempt on the import-failure path (fresh gate finding, PR
+        #7307: the previous version here raised RuntimeError, which would have
+        propagated straight out of `maybe_alert()` and crashed `main()` on the
+        one path this whole guard exists to keep alive). Always reports
+        failure — there is no real subprocess machinery to fall back to — but
+        reports it the same SHAPE a real probe would: a (rc, text) tuple."""
+        return 1, "PROBE_ERR:auth_sentinel unavailable (import failed)"
 
 HOME = Path.home()
 REPO = Path(__file__).resolve().parents[1]
@@ -464,7 +484,10 @@ def maybe_alert(
     same "a new failure hides behind an older one" shape this organ exists
     to prevent, one layer down. A send failure must never change the exit
     code or the heartbeat already committed, so its result is deliberately
-    discarded (`_run` never raises).
+    discarded — `_run` is now TOTAL on both the real and the import-failure
+    fallback path (fresh gate finding, PR #7307: the fallback used to raise),
+    and `main()` additionally wraps this whole call as a second, independent
+    layer, so no path through this function can propagate an exception.
 
     Returns True iff a send was ATTEMPTED — not whether it was delivered.
 
@@ -556,7 +579,16 @@ def main(argv: list[str] | None = None) -> int:
     if write_hb:
         hb_write_ok = write_heartbeat(verdict)
     if do_alert:
-        maybe_alert(verdict, previous_status, previous_codes, previous_near_cap_ids)
+        try:
+            maybe_alert(verdict, previous_status, previous_codes, previous_near_cap_ids)
+        except Exception:  # noqa: BLE001 — G9: a second, independent layer on top
+            # of maybe_alert's own `_run` now being total (fresh gate finding,
+            # PR #7307). This organ's job is reporting a verdict it already
+            # computed and already wrote to the heartbeat above; a bug in the
+            # ALERT path (this file's own code, or a future change to it) must
+            # never retroactively turn an already-recorded, already-successful
+            # tick into a crash.
+            pass
 
     print(json.dumps({
         "status": "ok" if verdict.ok else "degraded",
