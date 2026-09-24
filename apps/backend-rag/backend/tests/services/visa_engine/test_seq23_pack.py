@@ -24,6 +24,7 @@ output (A8.3), and the derived review inventory (A8.4: ``pack_review_rules ==
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -73,6 +74,7 @@ _PACKS_DIR = (
 _SEQ22_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-022.source.json"
 _SEQ22_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-022.signed.json"
 _SEQ23_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-023.source.json"
+_SEQ23_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-023.signed.json"
 
 #: The pinned production Ed25519 PUBLIC key — the same constant
 #: `test_seq20_signed_bundle.py` verifies seq-20 with, and `test_seq22_pack.py`
@@ -112,6 +114,11 @@ def seq22_source() -> dict[str, Any]:
 @pytest.fixture(scope="module")
 def seq22_signed() -> dict[str, Any]:
     return _read_json(_SEQ22_SIGNED_PATH)
+
+
+@pytest.fixture(scope="module")
+def seq23_signed() -> dict[str, Any]:
+    return _read_json(_SEQ23_SIGNED_PATH)
 
 
 @pytest.fixture
@@ -928,3 +935,61 @@ def test_the_candidate_payload_validates_against_the_model(seq23_source: dict[st
 
 def test_the_candidate_pack_compiles(seq23_compiled: compiler.CompiledRulePack) -> None:
     assert seq23_compiled.sequence == 23
+
+
+# ---------------------------------------------------------------------------
+# The signed artifact IS the tracked source -- no existing test tied
+# rulepack-prod-023.signed.json's payload to rulepack-prod-023.source.json or
+# to its own pinned digest (GATE-A9-3-REPORT-7227.md, finding L1). seq-19 and
+# seq-20 each carry this tie (see test_seq20_signed_bundle.py's
+# TestDigestRecomputedIndependently); this class gives seq-23 the same one,
+# scoped to the exact gap the gate named -- it does not re-verify the
+# Ed25519 signature itself (test_seq20_signed_bundle.py's TestSignatureVerifies
+# and TestTamperingIsRejected already own that shape for their own sequence;
+# this file's own TestFoldIntegrity already owns the unsigned-source chain
+# to SEQ22_PAYLOAD_SHA256).
+# ---------------------------------------------------------------------------
+
+
+#: seq-23's own signed payload digest (H23), independently recomputed off
+#: disk (both from the source file and from the signed envelope's own
+#: canonicalized payload) and cross-checked against the envelope's declared
+#: `payload_sha256` field below -- never copied from a print statement.
+SEQ23_PAYLOAD_SHA256 = "e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204"
+
+
+class TestSignedBundleTiesToSource:
+    def test_sha256_of_canonicalized_source_matches_h23(
+        self, seq23_source: dict[str, Any]
+    ) -> None:
+        assert hashlib.sha256(canonicalize_json(seq23_source)).hexdigest() == SEQ23_PAYLOAD_SHA256
+
+    def test_sha256_of_canonicalized_signed_payload_matches_its_declared_field(
+        self, seq23_signed: dict[str, Any]
+    ) -> None:
+        recomputed = hashlib.sha256(canonicalize_json(seq23_signed["payload"])).hexdigest()
+        assert recomputed == seq23_signed["payload_sha256"]
+        assert recomputed == SEQ23_PAYLOAD_SHA256
+
+    def test_signed_payload_is_byte_identical_to_source_under_jcs(
+        self, seq23_signed: dict[str, Any], seq23_source: dict[str, Any]
+    ) -> None:
+        """The artifact that was signed is the same artifact in version
+        control -- a divergence here would mean the tracked source.json is
+        not what the operator actually signed (the exact gap
+        GATE-A9-3-REPORT-7227.md L1 named: no in-repo test made this tie)."""
+        assert canonicalize_json(seq23_signed["payload"]) == canonicalize_json(seq23_source)
+
+    def test_flipping_one_byte_of_a_scratch_copy_of_the_signed_payload_moves_the_digest_away_from_h23(
+        self, seq23_signed: dict[str, Any]
+    ) -> None:
+        """GUILT: proves H23 actually discriminates -- a scratch bytearray
+        copy of the signed payload's own canonical bytes, ONE byte flipped,
+        must no longer hash to H23. Never mutates the fixture or any file on
+        disk."""
+        canonical = bytearray(canonicalize_json(seq23_signed["payload"]))
+        canonical[-1] ^= 0x01
+        tampered_digest = hashlib.sha256(bytes(canonical)).hexdigest()
+        assert tampered_digest != SEQ23_PAYLOAD_SHA256, (
+            f"one flipped byte must move the digest away from H23={SEQ23_PAYLOAD_SHA256}"
+        )
