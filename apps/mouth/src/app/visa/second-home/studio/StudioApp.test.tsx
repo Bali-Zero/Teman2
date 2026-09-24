@@ -744,5 +744,19 @@ describe("StudioApp", () => {
         /\.bz-shs-actions\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*var\(--bz-shs-consent-h/s,
       );
     });
+
+    it("below 375px the Back/Continue row wraps instead of widening the card past the viewport", () => {
+      // Measured at 320x700 (Playwright): Back 100px + gap 12 + Continue
+      // 142px = 254px against a 214px footer; the row's min-content grew the
+      // 1fr column to 296px and the page scrolled 8px sideways. At 360 the
+      // row fits with zero margin, hence the 375px breakpoint.
+      const { container } = render(<StudioApp />);
+      const css = Array.from(container.querySelectorAll("style"))
+        .map((style) => style.textContent ?? "")
+        .join("\n");
+      expect(css).toMatch(
+        /@media \(max-width:\s*374px\)\s*\{[^@]*\.bz-shs-nav\s*\{[^}]*flex-wrap:\s*wrap;[^@]*\.bz-shs-cta\s*\{[^}]*flex-grow:\s*1;/s,
+      );
+    });
   });
 });

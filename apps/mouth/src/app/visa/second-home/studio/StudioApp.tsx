@@ -996,6 +996,18 @@ export function StudioApp() {
             margin-left: 0 !important;
           }
         }
+        /* At 320px the footer gets 214px (the /visa layout's px-4 plus this
+         * page's own gutter plus the card's) and Back + Continue need 254px:
+         * the row's min-content widened the whole column and the page
+         * scrolled sideways. At 360 it fits with zero margin. Below 375 the
+         * CTA takes its own full-width row instead. */
+        @media (max-width: 374px) {
+          .bz-shs-nav {
+            flex-wrap: wrap;
+          }
+          .bz-shs-cta {
+            flex-grow: 1;
+          }
         }
         .bz-shs-back:not(:disabled):hover {
           background: var(--surface-base) !important;
