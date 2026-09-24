@@ -120,7 +120,18 @@ class TestSendTelegramAlert:
 
     def test_no_bot_token(self) -> None:
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}, clear=False):
-            _send_telegram_alert("test alert")  # Should not raise
+            with patch(
+                "backend.services.crm.drive_poll_service.urllib.request.urlopen"
+            ) as mock_urlopen:
+                with patch(
+                    "backend.services.crm.drive_poll_service.logger"
+                ) as mock_logger:
+                    _send_telegram_alert("test alert")
+
+        mock_urlopen.assert_not_called()
+        mock_logger.warning.assert_called_once_with(
+            "TELEGRAM_BOT_TOKEN non trovato — skip alert circuit breaker"
+        )
 
     def test_successful_send(self) -> None:
         with patch.dict(
@@ -141,7 +152,14 @@ class TestSendTelegramAlert:
                 "backend.services.crm.drive_poll_service.urllib.request.urlopen",
                 side_effect=Exception("network error"),
             ):
-                _send_telegram_alert("test")  # Should not raise
+                with patch(
+                    "backend.services.crm.drive_poll_service.logger"
+                ) as mock_logger:
+                    _send_telegram_alert("test")
+
+        mock_logger.exception.assert_called_once_with(
+            "Telegram alert fallito con errore inatteso"
+        )
 
 
 # ── _infer_document_type tests ───────────────────────────────────

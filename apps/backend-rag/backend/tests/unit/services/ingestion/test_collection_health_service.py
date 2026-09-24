@@ -55,8 +55,15 @@ class TestRecordQuery:
             "backend.services.ingestion.collection_health_service.canonicalize_collection_name",
             return_value="unknown_coll",
         ):
-            health_service.record_query("unknown_coll", had_results=True)
-            # Should log warning, not raise
+            with patch(
+                "backend.services.ingestion.collection_health_service.logger"
+            ) as mock_logger:
+                health_service.record_query("unknown_coll", had_results=True)
+
+        mock_logger.warning.assert_called_once_with(
+            "Unknown collection: %s", "unknown_coll"
+        )
+        assert "unknown_coll" not in health_service.metrics
 
 
 # ── record_queries_batch ────────────────────────────────────────────────────
@@ -64,7 +71,15 @@ class TestRecordQuery:
 
 class TestRecordQueriesBatch:
     def test_batch_empty(self, health_service):
-        health_service.record_queries_batch([])
+        before = {name: dict(m) for name, m in health_service.metrics.items()}
+
+        with patch(
+            "backend.services.ingestion.collection_health_service.logger"
+        ) as mock_logger:
+            health_service.record_queries_batch([])
+
+        assert health_service.metrics == before
+        mock_logger.debug.assert_not_called()
 
     def test_batch_multiple(self, health_service):
         with patch(
@@ -96,11 +111,19 @@ class TestRecordQueriesBatch:
             "backend.services.ingestion.collection_health_service.canonicalize_collection_name",
             return_value="nonexistent",
         ):
-            health_service.record_queries_batch(
-                [
-                    {"collection_name": "nonexistent", "had_results": True},
-                ]
-            )
+            with patch(
+                "backend.services.ingestion.collection_health_service.logger"
+            ) as mock_logger:
+                health_service.record_queries_batch(
+                    [
+                        {"collection_name": "nonexistent", "had_results": True},
+                    ]
+                )
+
+        mock_logger.warning.assert_called_once_with(
+            "Unknown collection in batch: %s", "nonexistent"
+        )
+        assert "nonexistent" not in health_service.metrics
 
 
 # ── calculate_staleness ────────────────────────────────────────────────────

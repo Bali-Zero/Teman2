@@ -215,13 +215,19 @@ class TestPGNotificationRouting:
 
     @pytest.mark.asyncio
     async def test_invalid_json_does_not_crash(self, bus: EventBus) -> None:
-        # Should log warning, not raise
-        await bus._handle_pg_event("client_changed", "not json{{{")
+        with patch("backend.services.events.event_bus.logger") as mock_logger:
+            await bus._handle_pg_event("client_changed", "not json{{{")
+        assert mock_logger.warning.call_args.args[0].startswith(
+            "EventBus: invalid JSON on PG channel 'client_changed':"
+        )
 
     @pytest.mark.asyncio
     async def test_unmapped_channel_logs_warning(self, bus: EventBus) -> None:
-        # Unknown channel should be handled gracefully
-        await bus._handle_pg_event("unknown_channel", '{"data": 1}')
+        with patch("backend.services.events.event_bus.logger") as mock_logger:
+            await bus._handle_pg_event("unknown_channel", '{"data": 1}')
+        mock_logger.warning.assert_called_once_with(
+            "EventBus: unmapped PG channel '%s'", "unknown_channel"
+        )
 
     @pytest.mark.asyncio
     async def test_pg_compliance_alert_reaches_registered_handlers(self) -> None:
@@ -597,7 +603,10 @@ class TestHandlerRegistration:
         register_handlers(bus, mock_pool)
 
         with (
-            patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock),
+            patch(
+                "backend.services.events.handlers._core._send_admin_telegram",
+                new_callable=AsyncMock,
+            ) as mock_telegram,
             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock),
         ):
             await bus.emit(
@@ -612,4 +621,5 @@ class TestHandlerRegistration:
             )
 
             await asyncio.sleep(0.05)
-            # Telegram task was created (verify no errors in trace)
+            mock_telegram.assert_awaited_once()
+            assert "CRITICAL" in mock_telegram.await_args.args[0]

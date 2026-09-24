@@ -791,7 +791,7 @@ def test_convert_staging_low_relevance():
     }
     result = convert_staging_to_enriched_article(staging)
     assert result["priority"] == "low"
-    assert result["tldr"]["should_worry"] == "No"
+    assert "should_worry" not in result["tldr"]
 
 
 def test_convert_staging_medium_relevance():
