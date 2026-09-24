@@ -10,7 +10,10 @@ import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { voaCopy, type VoaCopyKey } from "./voa-copy";
 import { useVoaLocale } from "./useVoaLocale";
 import { VoaWizard } from "./VoaWizard";
-import { SUBMITTED_ANSWERS_KEY } from "./submittedAnswers";
+import {
+  stampSubmittedAnswersHash,
+  writeSubmittedAnswers,
+} from "./submittedAnswers";
 
 /**
  * GARUDA VOA — public eligibility wizard (owner decision 5, "Concept A — The
@@ -359,15 +362,10 @@ export default function VoaEligibilityPage() {
     // from …") reads the answers back from this browser. It used to read the
     // wizard's resume key — which the wizard deletes the moment it completes,
     // so every real decline mirrored an empty nationality. The hand-off gets
-    // its own key, written here, just before the check is sent.
-    try {
-      window.localStorage.setItem(
-        SUBMITTED_ANSWERS_KEY,
-        JSON.stringify({ values }),
-      );
-    } catch {
-      /* private mode: the verdict simply omits the mirror line */
-    }
+    // its own tab-scoped entry, written here just before the check is sent
+    // and stamped with the result hash below once the backend returns one —
+    // see submittedAnswers.ts for why it is unreadable until then.
+    writeSubmittedAnswers(values);
 
     const body = {
       case_type: requestCaseType,
@@ -410,6 +408,7 @@ export default function VoaEligibilityPage() {
         const location = res.headers.get("Location");
         const resultId = location?.split("/").pop();
         if (resultId) {
+          stampSubmittedAnswersHash(resultId);
           router.push(`/visa/voa/${resultId}`);
           return;
         }

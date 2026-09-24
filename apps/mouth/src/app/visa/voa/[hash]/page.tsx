@@ -23,7 +23,10 @@ import { NextSteps } from "../NextSteps";
 import { SafeClockHero } from "../SafeClock";
 import { useVoaLocale } from "../useVoaLocale";
 import { voaCopy, type VoaCopyKey } from "../voa-copy";
-import { SUBMITTED_ANSWERS_KEY } from "../submittedAnswers";
+import {
+  clearSubmittedAnswersForHash,
+  readSubmittedAnswersForHash,
+} from "../submittedAnswers";
 
 /**
  * GARUDA VOA — public result page (owner decision 5, constraints 5a/5b).
@@ -31,7 +34,7 @@ import { SUBMITTED_ANSWERS_KEY } from "../submittedAnswers";
  * The API only ever returns `{verdict, reason_codes, ...}` — no PII, no
  * prose (contracts/openapi.yaml EligibilityResult). The DECLINE education
  * copy is built entirely client-side from the answers this browser tab
- * already holds (localStorage, written by the wizard before it submitted);
+ * already holds (sessionStorage, written by the wizard before it submitted);
  * the backend is never asked to echo them back. See declineEducation.ts.
  */
 
@@ -59,41 +62,35 @@ const SUBMITTED_FALLBACK: EligibilitySubmission = {
   extension_already_used: false,
 };
 
-function readSubmittedAnswers(): EligibilitySubmission | null {
+/**
+ * Reads the wizard's hand-off, gated on it being stamped for THIS `hash` —
+ * a shared link, another device, or a second check run later in the same
+ * tab all carry no entry (or the wrong one) and get no mirror, same as
+ * before this fix (see submittedAnswers.ts's TTL/hash-stamp doc). No
+ * fallback to the wizard's own resume key any more: that key is never
+ * hash-bound, so reading it here would reopen the exact stale-mirror risk
+ * this gate exists to close.
+ */
+function readSubmittedAnswers(hash: string): EligibilitySubmission | null {
   const fallback = SUBMITTED_FALLBACK;
   if (typeof window === "undefined") return null;
-  try {
-    // The wizard's own hand-off first; the resume key only as a fallback for
-    // a check started before that hand-off existed.
-    const raw =
-      window.localStorage.getItem(SUBMITTED_ANSWERS_KEY) ??
-      window.localStorage.getItem("bz.garuda_voa.wizard");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as {
-      values?: {
-        case_type?: EligibilitySubmission["case_type"];
-        purpose?: EligibilitySubmission["purpose"];
-        trip?: {
-          nationality?: string;
-          travellers?: number;
-          self_pay?: boolean;
-        };
-        dates?: { extension_already_used?: boolean };
-      };
-    };
-    const v = parsed.values ?? {};
-    return {
-      case_type: v.case_type ?? fallback.case_type,
-      nationality: v.trip?.nationality ?? fallback.nationality,
-      purpose: v.purpose ?? fallback.purpose,
-      travellers: v.trip?.travellers ?? fallback.travellers,
-      self_pay: v.trip?.self_pay ?? fallback.self_pay,
-      extension_already_used:
-        v.dates?.extension_already_used ?? fallback.extension_already_used,
-    };
-  } catch {
-    return null;
-  }
+  const values = readSubmittedAnswersForHash(hash);
+  if (!values) return null;
+  const v = values as {
+    case_type?: EligibilitySubmission["case_type"];
+    purpose?: EligibilitySubmission["purpose"];
+    trip?: { nationality?: string; travellers?: number; self_pay?: boolean };
+    dates?: { extension_already_used?: boolean };
+  };
+  return {
+    case_type: v.case_type ?? fallback.case_type,
+    nationality: v.trip?.nationality ?? fallback.nationality,
+    purpose: v.purpose ?? fallback.purpose,
+    travellers: v.trip?.travellers ?? fallback.travellers,
+    self_pay: v.trip?.self_pay ?? fallback.self_pay,
+    extension_already_used:
+      v.dates?.extension_already_used ?? fallback.extension_already_used,
+  };
 }
 
 export default function VoaResultPage({
@@ -192,10 +189,11 @@ export default function VoaResultPage({
       : `/visa/voa/${hash}`;
 
   if (data.verdict === "DECLINE") {
-    // No answers in this browser (a shared link, another device): the
-    // mirror would echo defaults as if the visitor had said them, so it is
+    // No answers in this browser (a shared link, another device, an
+    // expired or hash-mismatched entry): the mirror would echo defaults or
+    // another check's answers as if the visitor had said them, so it is
     // left out and the rest of the explanation stands on its own.
-    const answers = readSubmittedAnswers();
+    const answers = readSubmittedAnswers(hash ?? "");
     const code = primaryDeclineCode(data.reason_codes);
     const edu = code
       ? buildDeclineEducation(code, answers ?? SUBMITTED_FALLBACK, t)
@@ -552,6 +550,7 @@ function DeleteCheckControl({
         },
       );
       if (res.status === 204) {
+        clearSubmittedAnswersForHash(resultId);
         onDeleted();
         return;
       }

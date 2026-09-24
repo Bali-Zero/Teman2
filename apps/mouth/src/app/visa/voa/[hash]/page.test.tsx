@@ -38,10 +38,23 @@ function renderWithHash(hash = "opaque-test-hash") {
   return render(<VoaResultPage params={Promise.resolve({ hash })} />);
 }
 
+/** Seeds the wizard's hand-off exactly as writeSubmittedAnswers + stampSubmittedAnswersHash would leave it — sessionStorage, stamped for `hash`. */
+function seedSubmittedAnswers(
+  hash: string,
+  values: Record<string, unknown>,
+  savedAt = Date.now(),
+) {
+  window.sessionStorage.setItem(
+    "bz.garuda_voa.submitted",
+    JSON.stringify({ savedAt, hash, values }),
+  );
+}
+
 describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     fetchMock.mockReset();
   });
 
@@ -53,16 +66,11 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
         reason_codes: ["PURPOSE_NOT_ELIGIBLE"],
       }),
     });
-    window.localStorage.setItem(
-      "bz.garuda_voa.wizard",
-      JSON.stringify({
-        values: {
-          case_type: "issuance",
-          purpose: "business-meeting",
-          trip: { nationality: "USA" },
-        },
-      }),
-    );
+    seedSubmittedAnswers("opaque-decline-hash", {
+      case_type: "issuance",
+      purpose: "business-meeting",
+      trip: { nationality: "USA" },
+    });
     renderWithHash("opaque-decline-hash");
 
     await waitFor(() =>
@@ -90,16 +98,71 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
         reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
       }),
     });
-    window.localStorage.setItem(
-      "bz.garuda_voa.submitted",
-      JSON.stringify({ values: { trip: { nationality: "USA" } } }),
-    );
+    seedSubmittedAnswers("opaque-test-hash", { trip: { nationality: "USA" } });
 
     renderWithHash();
 
     await waitFor(() =>
       expect(screen.getByText(/passport from USA/)).toBeInTheDocument(),
     );
+  });
+
+  it("ignores an entry stamped for a DIFFERENT hash — a later check in the same tab", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "DECLINE",
+        reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
+      }),
+    });
+    seedSubmittedAnswers("opaque-other-hash", { trip: { nationality: "USA" } });
+
+    renderWithHash("opaque-test-hash");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-empty-stamp")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/passport from/)).toBeNull();
+  });
+
+  it("ignores an entry older than the 30-minute TTL", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "DECLINE",
+        reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
+      }),
+    });
+    seedSubmittedAnswers(
+      "opaque-test-hash",
+      { trip: { nationality: "USA" } },
+      Date.now() - 31 * 60 * 1000,
+    );
+
+    renderWithHash();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("bz-empty-stamp")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/passport from/)).toBeNull();
+  });
+
+  it("never writes the hand-off to localStorage — only sessionStorage carries it", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        verdict: "DECLINE",
+        reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
+      }),
+    });
+    seedSubmittedAnswers("opaque-test-hash", { trip: { nationality: "USA" } });
+
+    renderWithHash();
+
+    await waitFor(() =>
+      expect(screen.getByText(/passport from USA/)).toBeInTheDocument(),
+    );
+    expect(window.localStorage.getItem("bz.garuda_voa.submitted")).toBeNull();
   });
 
   it("omits the mirror when this browser holds no answers (a shared link)", async () => {
@@ -127,16 +190,11 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
         reason_codes: ["PURPOSE_NOT_ELIGIBLE"],
       }),
     });
-    window.localStorage.setItem(
-      "bz.garuda_voa.wizard",
-      JSON.stringify({
-        values: {
-          case_type: "issuance",
-          purpose: "business-meeting",
-          trip: { nationality: "USA" },
-        },
-      }),
-    );
+    seedSubmittedAnswers("opaque-test-hash", {
+      case_type: "issuance",
+      purpose: "business-meeting",
+      trip: { nationality: "USA" },
+    });
 
     renderWithHash();
 
@@ -354,10 +412,11 @@ describe("VoaResultPage — ACCEPT", () => {
 describe("VoaResultPage — self-service deletion (design-A §2, DELIBERA lane S6)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     fetchMock.mockReset();
   });
 
-  it("ACCEPT: confirming and deleting sends a same-origin DELETE with an Idempotency-Key, then shows the terminal Deleted screen", async () => {
+  it("ACCEPT: confirming and deleting sends a same-origin DELETE with an Idempotency-Key, then shows the terminal Deleted screen, and clears this check's answer mirror", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -366,6 +425,7 @@ describe("VoaResultPage — self-service deletion (design-A §2, DELIBERA lane S
         price_idr: 790000,
       }),
     });
+    seedSubmittedAnswers("opaque-test-hash", { trip: { nationality: "USA" } });
     renderWithHash("opaque-test-hash");
     await waitFor(() =>
       expect(screen.getByTestId("bz-stamp")).toBeInTheDocument(),
@@ -387,6 +447,8 @@ describe("VoaResultPage — self-service deletion (design-A §2, DELIBERA lane S
         screen.getByText(/this check has been deleted/i),
       ).toBeInTheDocument(),
     );
+    // The deleted check's own answer mirror goes with it.
+    expect(window.sessionStorage.getItem("bz.garuda_voa.submitted")).toBeNull();
 
     // The request itself: same-origin DELETE, cookie included, a real
     // Idempotency-Key header (never empty, never a body).

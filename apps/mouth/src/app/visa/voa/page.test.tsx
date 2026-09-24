@@ -63,6 +63,7 @@ describe("VoaEligibilityPage — wire contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     fetchMock.mockReset();
   });
 
@@ -96,12 +97,18 @@ describe("VoaEligibilityPage — wire contract", () => {
     expect(body).not.toHaveProperty("voa_expiry_date");
 
     // The verdict's decline mirror reads the answers back from here: the
-    // wizard's resume key is gone by now, the hand-off key is not.
+    // wizard's resume key is gone by now, the hand-off key is not — and it
+    // lives in sessionStorage (tab-scoped), never localStorage.
     expect(window.localStorage.getItem("bz.garuda_voa.wizard")).toBeNull();
+    expect(window.localStorage.getItem("bz.garuda_voa.submitted")).toBeNull();
     const handedOff = JSON.parse(
-      window.localStorage.getItem("bz.garuda_voa.submitted") ?? "{}",
+      window.sessionStorage.getItem("bz.garuda_voa.submitted") ?? "{}",
     );
     expect(handedOff.values.trip.nationality).toBe("ITA");
+    // Stamped with the result hash the POST returned, so only this check's
+    // own verdict page may ever mirror it back (see [hash]/page.test.tsx).
+    expect(handedOff.hash).toBe("opaque-id-123");
+    expect(typeof handedOff.savedAt).toBe("number");
 
     // Telemetry: field NAMES only (Law 2) — the same payload_keys-only
     // pattern visa/match's W0b fix established, never any answer value.
@@ -185,6 +192,7 @@ describe("VoaEligibilityPage — customer-facing surface", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     fetchMock.mockReset();
   });
 
@@ -244,6 +252,7 @@ describe("VoaEligibilityPage — hero WhatsApp handoff", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     fetchMock.mockReset();
   });
 
