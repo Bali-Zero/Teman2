@@ -21,6 +21,18 @@ from backend.app.routers import article_composer
 
 app.include_router(article_composer.router)
 
+# Wire slowapi the same way backend/app/setup/app_factory.py does for the real
+# app. Without this, @limiter.limit's own RateLimitExceeded (raised by the
+# decorator itself, independent of app.state.limiter/middleware) has no
+# registered handler on this bare test app and falls through to a generic
+# 500 — so test_compose_article_rate_limit could never observe a 429, no
+# matter how many requests it fired.
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+app.state.limiter = article_composer.limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Tests below were pinned to 501 while the compose endpoint was temporarily
 # disabled. The endpoint is now live again (backend/app/routers/article_composer.py
 # line 295 `@router.post("/compose")`), so the 501 assertions no longer match
