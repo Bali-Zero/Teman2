@@ -990,7 +990,94 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(missing).toEqual([]);
   });
 
-  it("Slice A8-2: LEVEL_BAND_DIKTI keeps its raw-code fallback beside the new STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
+  it("has copy for every EXCLUDE code the highest SIGNED pack can emit (Slice A10)", () => {
+    const payload = highestSequencePack();
+    const codes = excludeReasonCodesOf({ rules: payload.rules ?? [] });
+    // Guard-of-the-guard: today's highest signed pack (seq-23) carries 35
+    // distinct EXCLUDE codes; >= 35 keeps this from going quiet if a pack
+    // regresses to fewer EXCLUDE rules or PACKS_DIR stops resolving. Unlike
+    // the Slice A8-2 test above (a DELTA against seq-22), this is an
+    // ABSOLUTE floor — the technique that let these 14 pre-existing codes go
+    // uncopied for two pack cycles (they were already in seq-22, so a
+    // seq22-vs-source diff can never name them; gate-a8-2's own finding).
+    expect(codes.size).toBeGreaterThanOrEqual(35);
+    const missing = [...codes].filter((code) => !(code in SUPPORT_REASON_COPY));
+    expect(missing).toEqual([]);
+  });
+
+  /**
+   * Walks a rule's `when` tree looking for a `{ op: "lt", fact, value }`
+   * node on the named fact, at any nesting depth — same shape as
+   * `findGteValue` above, mirrored for the `lt` operator the two E28A
+   * below-minimum rules use.
+   */
+  function findLtValue(node: unknown, fact: string): number | undefined {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findLtValue(item, fact);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+    if (node === null || typeof node !== "object") return undefined;
+    const record = node as Record<string, unknown>;
+    if (
+      record.op === "lt" &&
+      record.fact === fact &&
+      typeof record.value === "number"
+    ) {
+      return record.value;
+    }
+    if (Array.isArray(record.args)) {
+      return findLtValue(record.args, fact);
+    }
+    return undefined;
+  }
+
+  it("Slice A10: the E28A below-minimum copy states the signed pack's own two thresholds, in each language's own thousands separator", () => {
+    const payload = highestSequencePack();
+    const rules = payload.rules ?? [];
+    const paidCapitalRule = rules.find(
+      (r) => r.rule_id === "hf.e28a.paid-capital-below-min",
+    );
+    const totalInvestmentRule = rules.find(
+      (r) => r.rule_id === "hf.e28a.total-investment-below-min",
+    );
+    // Guard-of-the-guard: both rules must actually be found in the signed
+    // pack, or the assertions below would vacuously pass on `undefined`.
+    expect(paidCapitalRule).toBeDefined();
+    expect(totalInvestmentRule).toBeDefined();
+    const paidCapitalValue = findLtValue(
+      paidCapitalRule!.when,
+      "investment.paid_up_capital_idr",
+    );
+    const totalInvestmentValue = findLtValue(
+      totalInvestmentRule!.when,
+      "investment.investment_capital_idr",
+    );
+    expect(paidCapitalValue).toBeDefined();
+    expect(totalInvestmentValue).toBeDefined();
+
+    const paidCapitalEn = paidCapitalValue!.toLocaleString("en-US");
+    const paidCapitalId = paidCapitalValue!.toLocaleString("id-ID");
+    const totalInvestmentEn = totalInvestmentValue!.toLocaleString("en-US");
+    const totalInvestmentId = totalInvestmentValue!.toLocaleString("id-ID");
+
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.en).toContain(
+      `IDR ${paidCapitalEn}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).toContain(
+      `IDR ${paidCapitalId}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.en).toContain(
+      `IDR ${totalInvestmentEn}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id).toContain(
+      `IDR ${totalInvestmentId}`,
+    );
+  });
+
+  it("Slice A10: LEVEL_BAND_DIKTI renders its own copy beside the STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
     const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
     response.decision.no_path_reasons = [
       {
@@ -1007,8 +1094,8 @@ describe("support reasons are sentences, not machine codes", () => {
     const outcome = buildEngineOutcome(response);
     if (outcome.state !== "NO_SUPPORTED_PATH")
       throw new Error("unexpected state");
-    expect(outcome.noPathReasons[0].message.en).toBe(
-      "Verified reason: LEVEL_BAND_DIKTI",
+    expect(outcome.noPathReasons[0].message).toEqual(
+      SUPPORT_REASON_COPY.LEVEL_BAND_DIKTI,
     );
     expect(outcome.noPathReasons[1].message).toEqual(
       SUPPORT_REASON_COPY.STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED,
