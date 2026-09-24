@@ -1,0 +1,23 @@
+task_id: token-efficiency-six-door-dedup
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Cut startup context that every Claude and Codex session in the repo pays: door lines outside
+  the canonical Builder Contract block that restated it now point at it. Row 2 of
+  token-efficiency-six (Zero ordered all six for Claude and Codex).
+scope: AGENTS.md and CLAUDE.md lines outside the canonical Builder Contract block
+acceptance:
+  - text: The canonical Builder Contract block SHALL stay byte-identical across the four doors (door_canon_parity RECONCILED).
+    probe: python3 scripts/proprioception.py door_canon_parity probe (RECONCILED, 0 findings)
+  - text: Every removed sentence SHALL remain carried by the canonical block or the retained pointer target; no test or lint SHALL grep the removed text.
+    probe: cross-family red-team text comparison (Sol, reviews/panel-gd/sol-review.md candidate D)
+  - text: WHEN the same client, model and prompt start in the repo before and after, the measured input tokens SHALL not increase.
+    probe: tools/measure_startup.py matched runs on M5 (Claude opus-5-5 35,735 -> 35,511; Codex 0.155 35,437 -> 35,075)
+assumptions:
+  - text: Pro and Mini load the same AGENTS.md/CLAUDE.md bytes from their checkouts once main is pulled.
+    status: unverified
+    fallback: prove-live reads the door sha on each host's checkout after merge.
+budget: One implementation lane (Dux); Codex Sol red-team; fresh Opus 5.5 xhigh gate; Claude release owner.
+council_reason: Gear 2 docs-only change to the doors outside the canonical block; one cross-family red-team plus the fresh gate.

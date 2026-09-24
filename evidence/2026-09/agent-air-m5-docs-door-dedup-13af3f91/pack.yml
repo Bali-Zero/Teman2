@@ -1,0 +1,29 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero ordered token-efficiency-six row 2 for both Claude and Codex: remove proven duplication
+  from the rendered startup instructions without touching the canonical Builder Contract.
+lanes:
+  - { lane: implementation, role: build, seat: claude }
+  - { lane: panel-red-team, role: review, seat: codex-gpt-5.6-sol }
+  - { lane: final-gate, role: review, seat: fresh-claude-opus-5-5-xhigh }
+what_changed: >-
+  AGENTS.md drops its restatements of the PARABELLUM fence, the secrets rule and the PII rule
+  that the canonical Builder Contract block (sections 3-5) already carries, and points at the
+  block instead; CLAUDE.md's always-applicable ship-lifecycle line points at section 5. The
+  canonical block itself is untouched.
+proof: >-
+  Sol red-team (PASS): every removed rule remains in Builder Contract 3-5 or the retained
+  gate-seat wording; door_canon_parity RECONCILED with 0 findings; one normalized canonical
+  hash across the four doors; no test or lint greps the removed phrases. Matched startup on M5,
+  same client/model/prompt, back to back: Claude opus-5-5 input 35,735 -> 35,511 (-224);
+  Codex 0.155.0-alpha.9.2 input 35,437 -> 35,075 (-362). A startup-cost reduction only, not
+  a task-level or financial saving. Final gate: pending — fresh Opus 5.5 xhigh on the exact SHA.
+receipts:
+  - cmd: python3 tools/measure_startup.py (audit dir) before/after, Claude and Codex
+    exit: 0
+    ts: "2026-09-24T22:05:00Z"
+    seat: M5
+    claim: Claude -224 and Codex -362 input tokens at startup
+pii_scan: clean
+pii_scan_note: Repository door documents only; no client data, PII or credentials.
