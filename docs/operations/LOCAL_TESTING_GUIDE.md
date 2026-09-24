@@ -150,9 +150,6 @@ test_api.py::TestAutomationAPI::test_health_check PASSED
 Testing: BALI INTEL SCRAPER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-test_api.py::TestScraperAPI::test_health_check PASSED
-test_api.py::TestScraperAPI::test_trigger_scrape PASSED
-
 ✓ BALI INTEL SCRAPER tests PASSED
 
 ============================================
@@ -203,10 +200,11 @@ cd apps/bali-intel-scraper
 uvicorn backend.app.main:app --port 8002 --reload
 ```
 
-(`api/main.py` was a dead, un-COPYed Docker entrypoint deleted 2026-09-24 — the app
-actually runs as `backend.app.main`, driven in production by the nightly cron
-`com.balizero.intel.nightly` on Pro via `apps/bali-intel-scraper/.venv`, not as a
-long-running server; the command above is for local manual testing only.)
+(`api/main.py` was a dead, un-COPYed Docker entrypoint deleted 2026-09-24. The HTTP
+app is `backend.app.main`, which is also the Docker image's `CMD`; the command above is
+for local manual testing only. Production does not run it as a server: the nightly
+cron `com.balizero.intel.nightly` on Pro runs `scripts/run_intel_pipeline.py` with
+`apps/bali-intel-scraper/.venv`.)
 
 **Terminal 3: Zantara Media**
 
@@ -390,11 +388,11 @@ pytest tests/test_content_orchestrator.py -v
 pytest tests/test_api.py -v
 ```
 
-### Test Scraper API
+### Test Bali Intel Scraper
 
 ```bash
 cd ../../bali-intel-scraper
-pytest tests/test_api.py -v
+pytest tests -v
 ```
 
 ---
