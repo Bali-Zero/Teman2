@@ -123,6 +123,7 @@ AGENTS_SKILLS = REPO_ROOT / ".agents" / "skills"
 KNOWN_SHARED_NAMES = {"bot", "kbli-navigator", "secondhome", "visaoracle", "wr2"}
 KNOWN_CLAUDE_ONLY_NAMES = {
     "agent-session-discipline",
+    "dynamic-workflow",
     "final-gate-discipline",
     "intake",
     "karpathy-discipline",
