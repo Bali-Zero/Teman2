@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from backend.app.services.internal_email import send_internal_email
+from backend.app.services.internal_email import (
+    InternalEmailNotDeliveredError,
+    send_internal_email,
+)
 
 
 def _make_mock_client() -> tuple:
@@ -249,7 +252,11 @@ class TestSendInternalEmail:
         email's manual Zoho retry in crm/notifiers.py) rely on an exception
         to detect a Brevo-chain failure — a silently-accepted 200 that never
         actually sent anything must raise here exactly like a network error
-        or a non-2xx response would."""
+        or a non-2xx response would. The specific type matters: a caller's
+        Brevo-only except leg (httpx.HTTPError/OSError) does NOT catch a
+        bare RuntimeError, so this must be `InternalEmailNotDeliveredError`
+        — round-2 review, 2026-09-25 (spec_Fa_r3.md S2) — not just "a
+        RuntimeError"."""
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json = MagicMock(return_value={"success": False, "message": "nope"})
@@ -262,7 +269,7 @@ class TestSendInternalEmail:
             "backend.app.services.internal_email.get_email_client",
             new=AsyncMock(return_value=mock_client),
         ):
-            with pytest.raises(RuntimeError):
+            with pytest.raises(InternalEmailNotDeliveredError):
                 await send_internal_email(
                     to="x@balizero.com",
                     subject="x",

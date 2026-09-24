@@ -533,18 +533,20 @@ async def test_human_handoff_notification_failure_does_not_lose_the_reply(
 
 
 @pytest.mark.asyncio
-async def test_a_repeated_human_handoff_request_notifies_once_and_the_second_reply_is_honest(
+async def test_a_repeated_human_handoff_request_notifies_once_and_the_second_reply_is_also_confirmed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The dedup window lives inside `notify_human_handoff` (reused from
     `human_escalation_notifier`), not at this call site — this test proves
     the call site does not defeat it: two real calls through the actual
     (unmocked) notifier, second one inside the window, only the first
-    accepts a send. Both replies are non-None, but (round-1 cross-family
-    review, 2026-09-25) they are no longer the SAME text: the second call's
-    `notified=False` (dedup-suppressed — nothing NEW was delivered on this
-    call) gets the honest variant, not a second identical "I'm flagging
-    this" confirmation."""
+    accepts a send. Both replies are non-None AND (S1, round 3, corrected
+    from the round-1 shape this test previously pinned) they ARE the SAME
+    text: `notify_human_handoff`'s dedup-suppressed return is True, not
+    False — a colleague WAS reached, by the first call, and the second
+    request must not tell the client otherwise. `sent.assert_awaited_once()`
+    is what actually proves no second email went out; the reply text is not
+    the signal for that."""
     human_escalation_notifier._recent_escalations.clear()
     wa_human_handoff._recent_failed_attempts.clear()
     sent = AsyncMock(return_value=True)
@@ -563,7 +565,8 @@ async def test_a_repeated_human_handoff_request_notifies_once_and_the_second_rep
 
     assert first.text is not None and second.text is not None
     assert first.text == wa_codex_leg.match_human_request("talk to a human").text
-    assert second.text == wa_codex_leg._human_handoff_unreachable_text("en")
+    assert second.text == wa_codex_leg.match_human_request("talk to a human").text
+    assert second.text != wa_codex_leg._human_handoff_unreachable_text("en")
     sent.assert_awaited_once()
 
 

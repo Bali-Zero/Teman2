@@ -65,6 +65,21 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+class InternalEmailNotDeliveredError(RuntimeError):
+    """The endpoint answered HTTP 200 but its own provider chain never sent
+    the mail (``success`` missing/false, or an unparseable body).
+
+    A ``RuntimeError`` subclass, not a bare one — so a caller with its own
+    fallback transport (``services/crm/notifiers.py::send_birthday_email``,
+    the only one today) can catch THIS specifically, distinct from a network
+    error (``httpx.HTTPError``/``OSError``), instead of a bare
+    ``except Exception`` swallowing it into a generic failure log that
+    carries whatever PII the caller's own except-block was not written to
+    redact.
+    """
+
+
 _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL",
     "https://nuzantara-rag.fly.dev/api/notifications/send-email",
@@ -167,7 +182,7 @@ async def send_internal_email(
             detail = (
                 response_data.get("message") if isinstance(response_data, dict) else None
             ) or "email API returned 200 without success=true"
-            raise RuntimeError(detail)
+            raise InternalEmailNotDeliveredError(detail)
 
         logger.info(
             "Internal email sent: to=%s cc_count=%d context=%s",

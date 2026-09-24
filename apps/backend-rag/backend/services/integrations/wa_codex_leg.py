@@ -925,13 +925,17 @@ async def _attempt(
     # even if a future bug breaks that contract.
     #
     # The reply text is now CONDITIONED on the truthful return
-    # (round-1 cross-family review, 2026-09-25): `notify_human_handoff`
-    # returning True means a channel actually delivered, so only THEN does
-    # the client hear "I'm flagging this for a colleague". A False (nobody
-    # reached — includes a dedup-suppressed call, which cannot itself tell
-    # this turn a colleague WAS already told earlier) or a caught exception
-    # gets the honest variant instead: no claim that anyone was told, a
-    # concrete next step (try again shortly, or write directly).
+    # (round-1 cross-family review, 2026-09-25; corrected round 3, S1 of
+    # spec_Fa_r3.md): `notify_human_handoff` returning True means a
+    # colleague HAS BEEN REACHED for this thread — either by THIS call, or
+    # by an earlier call still live in the dedup window — so only THEN
+    # does the client hear "I'm flagging this for a colleague". A False
+    # (nobody reached AT ALL — every channel failed this call, or the
+    # thread is in the failed-attempt cooldown) or a caught exception gets
+    # the honest variant instead: no claim that anyone was told, a
+    # concrete next step (try again shortly, or write directly). A
+    # dedup-suppressed call is no longer in the False set — it means
+    # someone already was told, and now says so.
     human_request = match_human_request(query)
     if human_request is not None:
         notified = False

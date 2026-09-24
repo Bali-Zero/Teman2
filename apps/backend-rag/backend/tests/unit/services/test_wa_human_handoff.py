@@ -213,6 +213,10 @@ class TestNotifyHumanHandoff:
     async def test_second_request_inside_window_sends_no_second_email(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """S1 (spec_Fa_r3.md, round 3): the dedup-suppressed second call is
+        True, not False — a colleague WAS reached, just not by THIS call.
+        `sent.assert_awaited_once()` is the assertion that actually proves
+        "no second email": the return value alone cannot."""
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
@@ -230,7 +234,7 @@ class TestNotifyHumanHandoff:
         )
 
         assert first is True
-        assert second is False
+        assert second is True
         sent.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -365,8 +369,9 @@ class TestNotifyHumanHandoffDeliveryTruth:
 
         assert first is True
         # Dedup IS recorded on a real delivery: the second call is suppressed
-        # and never attempts a second send.
-        assert second is False
+        # (never attempts a second send) but is STILL True — a colleague was
+        # reached, by the first call (S1, round 3).
+        assert second is True
         sent.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -377,10 +382,19 @@ class TestNotifyHumanHandoffDeliveryTruth:
         email transport fails — one delivered channel is enough to be
         truthfully True, and SUCCESS dedup still applies.
 
-        Mutation killer: if the dedup guard were narrowed from
-        `if delivered:` to `if email_sent:`, this in-app-only delivery
-        would never record dedup and the second call below would attempt
-        again — `sent.await_count` would be 2, not 1."""
+        Mutation killer for `if delivered:` -> `if email_sent:` (round-2
+        review, 2026-09-25: the previous version of this test did not
+        actually kill that mutation — under the mutation, the first call's
+        `delivered` return value is untouched (the mutation only changes
+        which bookkeeping branch runs), and the FAILED-attempt cooldown
+        that branch wrongly sets makes the second call return False via
+        `_recently_failed`, the same False `_already_escalated` would have
+        given for a correctly-recorded success dedup — so the old
+        `second is False` / `sent.assert_awaited_once()` pair could not
+        tell the two apart). This version asserts the map state directly:
+        under the mutation, `email_sent` is False, so the success-dedup map
+        is never written and the assertion below fails BEFORE the second
+        call even runs."""
         conn = _RecordingConn()
         pool = _RecordingPool(conn)
         monkeypatch.setattr(
@@ -392,15 +406,25 @@ class TestNotifyHumanHandoffDeliveryTruth:
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
 
+        dedup_key = "human_handoff:323"
         first = await notify_human_handoff(
-            pool, thread_id=323, counterpart_phone="628111222333", language="en"
-        )
-        second = await notify_human_handoff(
             pool, thread_id=323, counterpart_phone="628111222333", language="en"
         )
 
         assert first is True
-        assert second is False
+        assert len(conn.calls) == 1
+        # The success-dedup map, not just the return value: proves the
+        # branch taken was `if delivered:` (in_app=True), not a mutated
+        # `if email_sent:` (False) that would have skipped this write and
+        # set the failed-attempt cooldown instead.
+        assert dedup_key in human_escalation_notifier._recent_escalations
+        assert dedup_key not in wa_human_handoff._recent_failed_attempts
+
+        second = await notify_human_handoff(
+            pool, thread_id=323, counterpart_phone="628111222333", language="en"
+        )
+
+        assert second is True
         assert len(conn.calls) == 1
         sent.assert_awaited_once()
 

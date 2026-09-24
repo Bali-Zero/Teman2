@@ -67,15 +67,38 @@ acceptance:
 out_of_scope: >-
   Rewriting the media-attachment-ack turn's copy (B2.5-3) — it already never
   branches client-facing text on notify_human_handoff's return, only logs it
-  (notified=). Distinguishing "dedup-suppressed" (a colleague WAS already
-  told, just not on this call) from "genuinely failed" in the honest-variant
-  wording — the coordinator's round-1 instruction treats both as
-  notified=False uniformly; a caller cannot itself tell the two apart from
-  a bool alone, and widening the return type is a separate change. The
-  birthday-email caller's inner Brevo-specific except (httpx.HTTPError/
-  OSError) in crm/notifiers.py does not catch the new 200+success=false
-  RuntimeError and so skips its manual Zoho retry, falling through to its
-  own outer except Exception and returning False instead of the previous
-  silent lie (sent_via_brevo=True while nothing was sent) — a net
-  improvement in truthfulness, left as-is rather than widened to preserve
-  the Zoho fallback for this one failure shape.
+  (notified=). The two items previously listed here — "distinguishing
+  dedup-suppressed from genuinely failed" and "the birthday caller's inner
+  except not catching the 200+success=false failure" — were round-1
+  regressions, not out-of-scope calls; round 3 fixes both (see below) and
+  this brief's `acceptance` A1-A3 probes still hold unchanged.
+
+round_3: >-
+  Codex round-2 review of round-1 commit b25367f620 (verdict FIX-FIRST)
+  found the two items this brief's out_of_scope section had waved off were
+  in fact regressions, not deliberate deferrals: (HIGH) the new
+  InternalEmailNotDeliveredError — round 1 raised a bare RuntimeError on a
+  200+success=false Brevo response — was not caught by the birthday
+  notifier's Brevo-to-Zoho fallback (which only caught httpx.HTTPError/
+  OSError), so Zoho was skipped and the outer `except Exception` logged the
+  client email in cleartext; (MEDIUM) `notify_human_handoff`'s dedup early
+  return stayed `return False` even though a colleague HAD been reached by
+  an earlier call, so a second handoff request on the same thread got "I
+  couldn't reach a colleague" — the exact lie this PR exists to stop, one
+  call later. Spec `spec_Fa_r3.md` (surface written once per Builder
+  Contract §1's "a fix-of-a-fix stops at depth 1" clause) fixed both:
+  `InternalEmailNotDeliveredError` (subclass of RuntimeError, defined in
+  internal_email.py) now has its own except leg in send_birthday_email's
+  Brevo try, alongside httpx.HTTPError/OSError, falling through to Zoho;
+  every log line in that function carrying a client email now goes through
+  `redact_identifier_for_log`, not just the ones round 1 touched. The
+  `_already_escalated` dedup early return in notify_human_handoff.py is now
+  `return True` — dedup suppression means someone was already told, not
+  that nobody was — and the B2.5-2 turn's comment in wa_codex_leg.py (which
+  conditions the client-facing reply on that return) was corrected to match:
+  a dedup-suppressed second request now gets the SAME "colleague notified"
+  confirmation as the first, not the honest-unreachable variant. Probes:
+  PYTHONPATH=. pytest backend/tests/unit/app/services/test_internal_email.py
+  backend/tests/unit/services/test_wa_human_handoff.py
+  backend/tests/unit/services/test_wa_codex_leg.py
+  backend/tests/unit/services/crm/test_notifiers_birthday_email.py -v

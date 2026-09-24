@@ -396,17 +396,23 @@ async def notify_human_handoff(
     thread in the last 30 minutes does not need a second alert for a
     different reason on the same thread.
 
-    Returns True only when at least one channel actually DELIVERED — the
-    in-app alert row was written, or ``send_internal_email`` reports the
-    Brevo send succeeded. False on dedup suppression, on cooldown
-    suppression (see below), OR when both channels failed (unknown client
-    with no in-app row possible, and the email transport failed). Success
-    dedup is recorded ONLY on a True return: a failed attempt leaves no
-    trace in that TTL map, so the very next call for the same thread is not
-    suppressed BY THAT MAP. Before 2026-09-25 this returned True whenever
-    the email leg was merely ATTEMPTED, even if it failed silently —
-    callers must not assume that shape; see ``wa_codex_leg.py`` callers,
-    which use the return to choose the client-facing confirmation text.
+    True means a colleague HAS BEEN REACHED for this thread inside the
+    dedup window — either by THIS call (email OR in-app delivered), or by
+    an earlier call that genuinely delivered and whose dedup entry is still
+    live (the ``_already_escalated`` early return below is now ``return
+    True`` for exactly that reason: dedup suppression means someone was
+    already told, not that nobody was). False means nobody has been
+    reached at all: every channel failed on THIS call, or the thread is in
+    the failed-attempt cooldown (see below) — never a case where an
+    earlier call already succeeded. Success dedup is recorded ONLY on a
+    genuine delivery: a failed attempt leaves no trace in that TTL map, so
+    the very next call for the same thread is not suppressed BY THAT MAP.
+    Before 2026-09-25 this returned True whenever the email leg was merely
+    ATTEMPTED, even if it failed silently, and (until round 3 of this PR)
+    a dedup-suppressed call returned False even though a colleague WAS
+    reached earlier — callers must not assume either of those shapes; see
+    ``wa_codex_leg.py`` callers, which use the return to choose the
+    client-facing confirmation text.
 
     Failed-attempt cooldown: a SEPARATE 5-minute-per-thread throttle (its
     own map, ``_recent_failed_attempts``) so a thread whose every channel is
@@ -421,8 +427,15 @@ async def notify_human_handoff(
     """
     dedup_key = f"human_handoff:{thread_id}"
     if _already_escalated(dedup_key):
-        logger.info("wa_human_handoff: suppressed thread=%s (dedup window)", thread_id)
-        return False
+        # A colleague WAS reached — by an earlier call, still inside the
+        # dedup window — so this is True, not False (S1, round 3: the
+        # round-1 fix treated "no NEW send this call" as "nobody reached",
+        # which told the client nobody was told even though someone was).
+        logger.info(
+            "wa_human_handoff: suppressed thread=%s (dedup window, already delivered)",
+            thread_id,
+        )
+        return True
 
     if _recently_failed(dedup_key):
         logger.info(

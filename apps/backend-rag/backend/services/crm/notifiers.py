@@ -14,8 +14,12 @@ from typing import Any
 import asyncpg
 import httpx
 
-from backend.app.services.internal_email import send_internal_email
+from backend.app.services.internal_email import (
+    InternalEmailNotDeliveredError,
+    send_internal_email,
+)
 from backend.app.utils.logging_utils import get_logger
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 logger = get_logger(__name__)
@@ -226,13 +230,23 @@ class BirthdayNotifierService:
             except httpx.HTTPError as brevo_err:
                 logger.warning(
                     "Brevo HTTP failed for birthday %s, trying Zoho: %s",
-                    client["email"],
+                    redact_identifier_for_log(client["email"]),
                     brevo_err,
                 )
             except OSError as brevo_err:
                 logger.warning(
                     "Brevo connection failed for birthday %s, trying Zoho: %s",
-                    client["email"],
+                    redact_identifier_for_log(client["email"]),
+                    brevo_err,
+                )
+            except InternalEmailNotDeliveredError as brevo_err:
+                # Brevo answered 200 but its own provider chain exhausted
+                # every leg without sending — same fallback as a transport
+                # failure, not a bare RuntimeError caught by the generic
+                # `except Exception` below (which would skip Zoho entirely).
+                logger.warning(
+                    "Brevo did not deliver birthday email for %s, trying Zoho: %s",
+                    redact_identifier_for_log(client["email"]),
                     brevo_err,
                 )
             if not sent_via_brevo:
@@ -243,31 +257,38 @@ class BirthdayNotifierService:
                     content=html_content,
                     is_html=True,
                 )
-                logger.info(f"Birthday email sent to {client['email']} via Zoho ({language})")
+                logger.info(
+                    "Birthday email sent to %s via Zoho (%s)",
+                    redact_identifier_for_log(client["email"]),
+                    language,
+                )
             return True
         except (KeyError, ValueError) as e:
             logger.warning(
                 "Template formatting error for birthday email to %s: %s",
-                client.get("email"),
+                redact_identifier_for_log(client.get("email")),
                 e,
             )
             return False
         except httpx.HTTPError as e:
             logger.warning(
                 "HTTP error sending birthday email to %s: %s",
-                client.get("email"),
+                redact_identifier_for_log(client.get("email")),
                 e,
             )
             return False
         except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as e:
             logger.warning(
                 "DB/connection error sending birthday email to %s: %s",
-                client.get("email"),
+                redact_identifier_for_log(client.get("email")),
                 e,
             )
             return False
         except Exception:
-            logger.exception("Failed to send birthday email to %s", client.get("email"))
+            logger.exception(
+                "Failed to send birthday email to %s",
+                redact_identifier_for_log(client.get("email")),
+            )
             return False
 
     async def run_birthday_notifications(self) -> dict[str, Any]:
