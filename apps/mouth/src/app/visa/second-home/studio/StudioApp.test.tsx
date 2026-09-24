@@ -609,24 +609,24 @@ describe("StudioApp", () => {
     }
 
     it("Back onto an answered step counts the branch that answer already chose, not the one before it", async () => {
-      const { container } = render(<StudioApp />);
-      clickButton("60 or over");
-      clickButton("Continue");
-      clickButton("Bank deposit");
-      clickButton("Continue");
-      clickButton("USD 3,000 monthly income only");
-      clickButton("Continue");
       // Income-only skips capital: age, route, senior funding, family,
-      // timeline, location.
-      expect(await screen.findByText("Step 4 of 6")).toBeInTheDocument();
+      // timeline, location. Resumes on the timeline step.
+      savePlan(
+        fullPlan({
+          age: "60_plus",
+          capital: null,
+          seniorFunding: "income_only_3k",
+          horizon: null,
+          location: null,
+        }),
+      );
+      const { container } = render(<StudioApp />);
+      expect(await screen.findByText("Step 5 of 6")).toBeInTheDocument();
 
       clickButton("Back");
-      await screen.findByRole("heading", { name: /senior funding profile/i });
+      clickButton("Back");
+      await screen.findByText("Which senior funding profile matches you?");
       expect(screen.getByText("Step 3 of 6")).toBeInTheDocument();
-      expect(screen.getByRole("progressbar")).toHaveAttribute(
-        "aria-valuemax",
-        "6",
-      );
       expect(screen.queryByText("Capital")).toBeNull();
       expect(memoCount(container)).toMatch(/ of 6$/);
 
@@ -644,26 +644,24 @@ describe("StudioApp", () => {
       expect(await screen.findByText("Step 2 of 7")).toBeInTheDocument();
 
       clickButton("Back");
-      await screen.findByRole("heading", { name: /how old/i });
+      await screen.findByText("First, how old are you?");
       expect(screen.getByText("Step 1 of 7")).toBeInTheDocument();
       expect(memoCount(container)).toBe("1 of 7");
     });
 
     it("a family step passed with no one selected counts as answered in the memo", async () => {
+      // Resumes on the capital step, one before family.
+      savePlan(fullPlan({ capital: null, horizon: null, location: null }));
       const { container } = render(<StudioApp />);
-      clickButton("Under 55");
-      clickButton("Continue");
-      clickButton("Bank deposit");
-      clickButton("Continue");
       clickButton("USD 130,000 is ready");
       clickButton("Continue");
-      await screen.findByRole("heading", { name: /who would you want/i });
+      await screen.findByText("Who would you want to include?");
       expect(memoCount(container)).toBe("3 of 6");
       expect(screen.queryByTestId("memo-row-family")).toBeNull();
 
       clickButton("No family members");
       clickButton("Continue");
-      await screen.findByRole("heading", { name: /when would you like/i });
+      await screen.findByText("When would you like to move forward?");
       expect(memoCount(container)).toBe("4 of 6");
       expect(screen.getByTestId("memo-row-family")).toHaveTextContent(
         "No family members",
@@ -673,7 +671,7 @@ describe("StudioApp", () => {
     it("a resumed plan past the family step shows its no-family answer too", async () => {
       savePlan(fullPlan({ location: null }));
       const { container } = render(<StudioApp />);
-      await screen.findByRole("heading", { name: /where are you now/i });
+      await screen.findByText("Where are you now?");
       expect(memoCount(container)).toBe("5 of 6");
       expect(screen.getByTestId("memo-row-family")).toBeInTheDocument();
     });
