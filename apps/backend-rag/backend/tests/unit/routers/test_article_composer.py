@@ -744,6 +744,40 @@ def test_generate_mdx_content_json_serialization(sample_enriched_article):
     assert "## Next Steps" in mdx
 
 
+def test_generate_mdx_content_renders_every_stated_tldr_row(sample_enriched_article):
+    """A TL;DR whose source states all four facts keeps the familiar card."""
+    mdx = generate_mdx_content(sample_enriched_article, "visa-rules", None)
+
+    assert (
+        '<InfoCard\n  title="Quick Summary"\n  items={[\n'
+        '    { label: "Should I Worry?", value: "Yes" },\n'
+        '    { label: "Risk Level", value: "High" },\n'
+        '    { label: "Who\'s Affected", value: "All expats on work permits" },\n'
+        '    { label: "When", value: "Effective March 2026" },\n'
+        "  ]}\n/>\n\n**New visa regulations require additional documentation**"
+    ) in mdx
+
+
+def test_generate_mdx_content_invents_no_tldr_row(sample_enriched_article):
+    """Guilt: a TL;DR that states only WHAT must not grow a risk, audience or
+    date row — and an unknown row is left out, never filled with a stock value."""
+    article = sample_enriched_article.model_copy(
+        update={"tldr": TLDRSection(what="1,460 groups registered for GloBE status")}
+    )
+    mdx = generate_mdx_content(article, "globe", None)
+
+    assert "## TL;DR\n\n**1,460 groups registered for GloBE status**" in mdx
+    for invented in ("Should I Worry?", "Risk Level", "Who's Affected", "Quick Summary"):
+        assert invented not in mdx
+
+    partial = sample_enriched_article.model_copy(
+        update={"tldr": TLDRSection(what="w", who="Multinational groups", when=" ")}
+    )
+    card = generate_mdx_content(partial, "partial", None)
+    assert '{ label: "Who\'s Affected", value: "Multinational groups" }' in card
+    assert '"When"' not in card and "Should I Worry?" not in card
+
+
 def test_generate_mdx_content_yaml_escapes_untrusted_tags(sample_enriched_article):
     """Title-derived quotes must not corrupt the publication frontmatter."""
     import yaml

@@ -134,11 +134,15 @@ ComposeRequest = ComposeRequestValidator
 
 
 class TLDRSection(BaseModel):
-    should_worry: str
     what: str
-    who: str
-    when: str
-    risk_level: str
+    # Reader-facing claims. None means the source did not say it, and the MDX
+    # drops the row instead of inventing one: on 2026-09-24 an editorial
+    # relevance score rendered as "Risk Level: High" for expats on a tax rule
+    # that binds only multinational groups.
+    should_worry: str | None = None
+    who: str | None = None
+    when: str | None = None
+    risk_level: str | None = None
 
 
 class BaliZeroTake(BaseModel):
@@ -424,13 +428,7 @@ async def compose_article(
             tldr=TLDRSection(
                 **data.get(
                     "tldr",
-                    {
-                        "should_worry": "Depends",
-                        "what": "Article content",
-                        "who": "Expats and investors",
-                        "when": "Now",
-                        "risk_level": "Medium",
-                    },
+                    {"what": data.get("headline", payload.title)},
                 ),
             ),
             facts=data.get("facts", payload.content[:500]),
@@ -803,10 +801,22 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
             )
     # JSON arrays are valid YAML and correctly escape quotes/newlines in tags.
     tags_json = json_module.dumps(article.ai_tags, ensure_ascii=False)
-    safe_should_worry = json_module.dumps(article.tldr.should_worry, ensure_ascii=False)
-    safe_risk_level = json_module.dumps(article.tldr.risk_level, ensure_ascii=False)
-    safe_who = json_module.dumps(article.tldr.who, ensure_ascii=False)
-    safe_when = json_module.dumps(article.tldr.when, ensure_ascii=False)
+    tldr_rows = [
+        f"    {{ label: {json_module.dumps(label)}, "
+        f"value: {json_module.dumps(value.strip(), ensure_ascii=False)} }},"
+        for label, value in (
+            ("Should I Worry?", article.tldr.should_worry),
+            ("Risk Level", article.tldr.risk_level),
+            ("Who's Affected", article.tldr.who),
+            ("When", article.tldr.when),
+        )
+        if value and value.strip()
+    ]
+    tldr_card = (
+        '<InfoCard\n  title="Quick Summary"\n  items={[\n' + "\n".join(tldr_rows) + "\n  ]}\n/>\n\n"
+        if tldr_rows
+        else ""
+    )
     safe_tldr_what = mdx_safe_markdown(article.tldr.what)
     safe_facts = mdx_safe_markdown(article.facts)
 
@@ -853,17 +863,7 @@ aiOptimization:
 
 ## TL;DR
 
-<InfoCard
-  title="Quick Summary"
-  items={{[
-    {{ label: "Should I Worry?", value: {safe_should_worry} }},
-    {{ label: "Risk Level", value: {safe_risk_level} }},
-    {{ label: "Who's Affected", value: {safe_who} }},
-    {{ label: "When", value: {safe_when} }},
-  ]}}
-/>
-
-**{safe_tldr_what}**
+{tldr_card}**{safe_tldr_what}**
 
 ---
 
