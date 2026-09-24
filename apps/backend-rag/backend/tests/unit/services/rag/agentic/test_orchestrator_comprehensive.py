@@ -363,39 +363,6 @@ class TestAgenticRAGOrchestrator:
 
             assert any(e.type == "metadata" for e in events)
 
-    @pytest.mark.asyncio
-    async def test_quota_exceeded_fallback(self, orchestrator):
-        """Test fallback when quota exceeded"""
-        query = "What is KITAS?"
-        user_id = "test_user"
-
-        from google.api_core.exceptions import ResourceExhausted
-
-        with patch.object(orchestrator, "process_query") as mock_process:
-            mock_process.side_effect = ResourceExhausted("Quota exceeded")
-
-            # Should handle gracefully
-            try:
-                await orchestrator.process_query(query, user_id)
-            except ResourceExhausted:
-                pass  # Expected
-
-    @pytest.mark.asyncio
-    async def test_service_unavailable_handling(self, orchestrator):
-        """Test handling of service unavailable errors"""
-        query = "What is KITAS?"
-        user_id = "test_user"
-
-        from google.api_core.exceptions import ServiceUnavailable
-
-        with patch.object(orchestrator, "process_query") as mock_process:
-            mock_process.side_effect = ServiceUnavailable("Service down")
-
-            try:
-                await orchestrator.process_query(query, user_id)
-            except ServiceUnavailable:
-                pass  # Expected
-
 
 class TestStreamEvent:
     """Tests for StreamEvent model"""
