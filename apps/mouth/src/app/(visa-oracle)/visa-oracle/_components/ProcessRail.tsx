@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PROCESS_PHASES, type Language, type ProcessModel } from "../_lib/flow";
 import type { LocalizedText, OutcomeState } from "../_lib/outcome-view-model";
@@ -59,14 +60,17 @@ const S = {
  * The top of the rail: how far along this interview is, which stage is
  * open, and what the question on screen decides — in the engine's own
  * fact vocabulary, because "we ask this to set THIS fact" is the honest
- * answer to "why am I being asked that".
+ * answer to "why am I being asked that". `children` (the route) renders
+ * between the meter and that decision, so the DOM reads in the order the
+ * eye does.
  */
 export function ProcessProgress({
   language,
   model,
   variant,
   outcome,
-}: ProcessRailProps) {
+  children,
+}: ProcessRailProps & { children?: ReactNode }) {
   const stages = PROCESS_PHASES.flatMap((key) => {
     const phase = model.phases.find((entry) => entry.key === key);
     return phase && phase.total > 0 ? [phase] : [];
@@ -138,6 +142,8 @@ export function ProcessProgress({
           </>
         )}
       </p>
+
+      {children}
 
       <div className="oracle-rail-decides">
         <p className="oracle-rail-label">

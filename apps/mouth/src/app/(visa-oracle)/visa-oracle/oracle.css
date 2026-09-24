@@ -1984,9 +1984,10 @@ button.oracle-tree__leaf {
 }
 
 /* ─── Rail as a route map (design pass 2026-09-24) ─────────────────────── */
-/* Reading order on screen: progress headline → stage meter → the route →
-   what this question decides → purpose branches → what the engine named.
-   The progress wrapper dissolves so its footnote can sit under the route. */
+/* Reading order on screen and in the DOM alike: progress headline → stage
+   meter → the route → what this question decides → purpose branches → what
+   the engine named. The route renders inside the progress wrapper, which
+   dissolves so each of its parts is a row of the tree's own column. */
 .oracle-tree {
   display: flex;
   flex-direction: column;
@@ -2076,17 +2077,7 @@ button.oracle-tree__leaf {
   }
 }
 .oracle-tree__trunk {
-  order: 1;
   gap: 0;
-}
-.oracle-rail-decides {
-  order: 2;
-}
-[data-process-part="branches"] {
-  order: 3;
-}
-[data-process-part="outcome"] {
-  order: 4;
 }
 .oracle-rail-decides,
 .oracle-rail-section {

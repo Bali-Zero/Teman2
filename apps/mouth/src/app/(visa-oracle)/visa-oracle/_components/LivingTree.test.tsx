@@ -271,6 +271,38 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
     expect(onEditQuestion).toHaveBeenCalledWith("category");
   });
 
+  // Screen-reader order must be the visual order: the rail once rendered
+  // "what this question decides" before the route and moved it below with
+  // CSS `order`, so assistive tech heard it first.
+  it("reads the route before what the open question decides, in DOM order", () => {
+    const { container } = render(
+      <LivingTree
+        language="en"
+        current={current}
+        facts={FACTS}
+        onEditQuestion={vi.fn()}
+      />,
+    );
+    const panel = container.querySelector<HTMLElement>(
+      '[data-process-part="progress"][data-process-rail="desktop"]',
+    )?.parentElement;
+    if (!panel) throw new Error("no desktop tree panel");
+    const parts = Array.from(
+      panel.querySelectorAll(
+        ".oracle-rail-meter, .oracle-tree__trunk, .oracle-rail-decides, [data-process-part='branches'], [data-process-part='outcome']",
+      ),
+    ).map((node) =>
+      node.classList.contains("oracle-rail-meter")
+        ? "meter"
+        : node.classList.contains("oracle-tree__trunk")
+          ? "route"
+          : node.classList.contains("oracle-rail-decides")
+            ? "decides"
+            : node.getAttribute("data-process-part"),
+    );
+    expect(parts).toEqual(["meter", "route", "decides", "branches", "outcome"]);
+  });
+
   it("the mobile progress line carries the step count and the open category", () => {
     render(
       <LivingTree

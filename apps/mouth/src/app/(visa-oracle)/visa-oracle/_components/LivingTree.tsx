@@ -316,65 +316,65 @@ function TreePanel({
         model={model}
         variant={variant}
         outcome={outcome}
-      />
+      >
+        <div className="oracle-tree__trunk">
+          {model.trunk.map((step) => {
+            const label = translate(language, step.labelI18nKey as I18nKey);
+            if (isEditableTreeStep(step)) {
+              const answer = answerFor(language, step.id, facts);
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  className="oracle-tree__step oracle-tree__step--editable"
+                  data-status={step.status}
+                  data-process-jump={step.id}
+                  onClick={() => onEditQuestion(step.id)}
+                  aria-label={
+                    answer === null
+                      ? translate(language, "tree.edit_aria" as I18nKey, {
+                          question: label,
+                        })
+                      : translate(language, "process.jump_aria" as I18nKey, {
+                          question: label,
+                          answer,
+                        })
+                  }
+                >
+                  <span className="oracle-tree__dot" aria-hidden="true" />
+                  <span aria-hidden="true" style={{ minWidth: 0 }}>
+                    {label}
+                    {answer !== null && (
+                      <span
+                        style={{
+                          display: "block",
+                          fontSize: "var(--text-xs)",
+                          color: "var(--oracle-ink-faint)",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {answer}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            }
 
-      <div className="oracle-tree__trunk">
-        {model.trunk.map((step) => {
-          const label = translate(language, step.labelI18nKey as I18nKey);
-          if (isEditableTreeStep(step)) {
-            const answer = answerFor(language, step.id, facts);
             return (
-              <button
+              <div
                 key={step.id}
-                type="button"
-                className="oracle-tree__step oracle-tree__step--editable"
+                className="oracle-tree__step"
                 data-status={step.status}
-                data-process-jump={step.id}
-                onClick={() => onEditQuestion(step.id)}
-                aria-label={
-                  answer === null
-                    ? translate(language, "tree.edit_aria" as I18nKey, {
-                        question: label,
-                      })
-                    : translate(language, "process.jump_aria" as I18nKey, {
-                        question: label,
-                        answer,
-                      })
-                }
+                aria-hidden="true"
               >
-                <span className="oracle-tree__dot" aria-hidden="true" />
-                <span aria-hidden="true" style={{ minWidth: 0 }}>
-                  {label}
-                  {answer !== null && (
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: "var(--text-xs)",
-                        color: "var(--oracle-ink-faint)",
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {answer}
-                    </span>
-                  )}
-                </span>
-              </button>
+                <span className="oracle-tree__dot" />
+                <span>{label}</span>
+              </div>
             );
-          }
-
-          return (
-            <div
-              key={step.id}
-              className="oracle-tree__step"
-              data-status={step.status}
-              aria-hidden="true"
-            >
-              <span className="oracle-tree__dot" />
-              <span>{label}</span>
-            </div>
-          );
-        })}
-      </div>
+          })}
+        </div>
+      </ProcessProgress>
 
       <ProcessBranches
         language={language}
