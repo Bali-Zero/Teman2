@@ -1,0 +1,190 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+seat_fallback_reason: >-
+  codex-gpt-5.6-sol (titolare): not engaged. tp1-qwen3.8-max (titolare): not
+  engaged. Both confirmed LIVE this session (arsenal_probe.py --seats
+  codex,tp1-qwen3.8-max --json: codex latency_ms=12971 status=LIVE,
+  tp1-qwen3.8-max latency_ms=1530 status=LIVE) — neither is an observed
+  outage. Reason for not using them: the coordinator's follow-up message
+  named exactly three seats to draw the council from — Kimi K3, GLM-5.2 via
+  TP1 and Gemini via agy — a scoping choice made by the mandate, mirroring
+  the same reasoning the sibling evidence pack on
+  agent/air-m5/wr2/wr2-ig-ci-wiring-0924 recorded the same day for the same
+  two titolari.
+
+lanes:
+  - lane: infra/tg-verdict-parsers-0924 — implement + local proof
+    role: build
+    seat: claude-sonnet-5 (M5 worktree agent)
+    note: >-
+      Migrated all nine live callers of the private
+      _TG_STATUS_RE/_GATEWAY_VERDICT_RE parsing pattern to the shared
+      scripts/tg_gateway_verdict.py::extract_gateway_verdict(), deleted the
+      dead regex constants, tightened the class guard, added guilt+innocence
+      test coverage, and self-caught + fixed a depth-asymmetry bug of its
+      own during guilt-proof (see dissent).
+  - lane: adversarial review
+    role: review
+    seat: kimi-code/k3
+    note: OK, 0 findings, deep tool-assisted trace of every candidate-path arithmetic case.
+  - lane: adversarial review
+    role: review
+    seat: tp1-glm-5.2
+    note: OK, 1 finding raised and resolved (non-issue — see dissent).
+  - lane: adversarial review
+    role: review
+    seat: agy-gemini-3.1-pro
+    note: OK, 0 findings.
+
+receipts:
+  - claim: >-
+      The tightened class guard (scripts/tests/test_gateway_callers_read_the_verdict.py)
+      reports every scanned gateway caller reading the verdict correctly and
+      zero blind callers on this branch's HEAD.
+    cmd: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
+    result: "gateway callers: 31 leggono il verdetto, 0 ciechi (selftest classificatore: 5 casi OK)"
+    exit: 0
+    ts: "2026-09-24T09:16:18Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Reverting all nine migrated source files to their origin/main content
+      in place (test files and the guard itself left cured) makes the SAME
+      tightened guard newly flag eight of them blind — proving the guard
+      actually exercises the anti-pattern it was tightened for, not merely
+      passing because the code changed underneath it. The ninth,
+      agent_job.py, is provably guilty too but via its own dedicated unit
+      test instead: its send_telegram function is not even scanned by the
+      guard's own pre-existing "tg_notify" substring prefilter (a
+      pre-existing, unrelated gap — it delegates gateway-path resolution to
+      a sibling helper and never spells the literal out in its own body).
+      Every file was restored via cp and verified byte-identical to the
+      cured version with cmp before this pack was written.
+    cmd: >-
+      for f in the nine callers: cp <cured> /scratchpad; git show
+      origin/main:<path> > <path>; python3
+      scripts/tests/test_gateway_callers_read_the_verdict.py; then cp the
+      cure back and cmp
+    result: >-
+      "gateway callers: 23 leggono il verdetto, 8 ciechi" naming
+      curiosity_batch.py, dlq_autopilot.py, intel-lake-outbox-drain.py,
+      job_health.py, suite_growth_probe.py, web_lead_funnel_report.py,
+      post_publish_poller.py, skills_bridge_consumer.py; every cp-back
+      verified byte-identical via cmp (silent = match)
+    exit: 1
+    ts: "2026-09-24T09:11:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Every touched pytest file passes in full on this branch's HEAD,
+      including the new guilt (two-line P0-unsendable stderr fixture) and
+      innocence (single canonical line) cases added to five test files.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_agent_job_telegram_gateway.py
+      scripts/tests/test_suite_growth_probe.py; python3 -m pytest
+      apps/bali-intel-scraper/tests/unit/test_post_publish_poller.py; python3
+      -m pytest apps/cell/tests/scripts/test_skills_bridge_consumer.py;
+      python3 -m pytest
+      apps/backend-rag/backend/tests/scripts/test_web_lead_funnel_report.py
+    result: "46 passed; 52 passed; 13 passed; 26 passed (four separate pytest roots, run separately — a combined invocation collides on two identically-named tests/conftest.py module paths)"
+    exit: 0
+    ts: "2026-09-24T09:16:34Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Per-caller guilt proof: reverting each of the six callers with a
+      dedicated test module to its origin/main content individually and
+      running only its new test reproduces the exact production symptom
+      (status/outcome read as the diagnostic line's leading token "P0"
+      instead of the real verdict p0_unsent_spooled), then restoring the
+      cure (cmp byte-identical) turns the same test green again.
+    cmd: >-
+      per file: cp <cured> /scratchpad; git show origin/main:<path> > <path>;
+      python3 -m pytest -k <new test name>; cp the cure back; cmp; re-run the
+      full file
+    result: >-
+      agent_job.py: assert False is True, status=P0, telegram_gateway_rejected
+      logged. curiosity_batch.py: outcome=P0 in the printed line.
+      post_publish_poller.py: p0_unsent_spooled absent from the logged lines.
+      skills_bridge_consumer.py: logged "tg_notify: P0". suite_growth_probe.py:
+      logged verdict "P0" not p0_unsent_spooled. web_lead_funnel_report.py:
+      returned status "P0" not "p0_unsent_spooled". All six restored and
+      re-passed green.
+    exit: 1
+    ts: "2026-09-24T09:00:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      intel-lake-outbox-drain.py's flat HOME-fork copy
+      (infra/home-fork/declared-pairs.json, live ~/scripts/intel-lake-outbox-drain.py,
+      machines m5+pro) sits at a DIFFERENT directory depth than the repo
+      copy. The first commit's parents[2]-based resolution would have landed
+      one level too high in that layout and silently degraded to the no-op
+      stub on the live copy this LaunchAgent actually runs — self-caught
+      before pushing, not found by any external seat. Verified the fix
+      (file-path search via importlib.util, matching the file's own
+      pre-existing _find_gateway() convention) against both a real repo
+      checkout and a scratch tree simulating the flat-copy layout with no
+      ~/nuzantara present.
+    cmd: >-
+      HOME=<scratch> python3 -c "load intel-lake-outbox-drain.py from a
+      scratch tree containing only scripts/tg_gateway_verdict.py and
+      scripts/intel_lake_outbox.py flat, call extract_gateway_verdict on the
+      two-line P0-unsendable fixture"
+    result: "p0_unsent_spooled, in both the real repo checkout and the simulated flat-copy tree"
+    exit: 0
+    ts: "2026-09-24T08:50:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Neither excluded titolare (codex-gpt-5.6-sol, tp1-qwen3.8-max) was
+      down this session — both answered live, so their exclusion from the
+      council is a mandate scoping choice, not an observed outage.
+    cmd: python3 scripts/arsenal_probe.py --seats codex,tp1-qwen3.8-max --json
+    result: "codex: status=LIVE latency_ms=12971; tp1-qwen3.8-max: status=LIVE latency_ms=1530"
+    exit: 0
+    ts: "2026-09-24T09:11:37Z"
+    seat: claude-sonnet-5
+
+dissent:
+  - seat: tp1-glm-5.2
+    objection: >-
+      scripts/dlq_autopilot.py removed the private _GATEWAY_VERDICT_RE
+      regex but kept `import re`, unlike the other eight migrated callers
+      where the now-unused import was dropped — raised as a possible piece
+      of dead code left behind, with the seat unable to confirm from the
+      diff alone whether `re` is used elsewhere in that file.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed correct as written, not a defect: dlq_autopilot.py still
+      defines four other live regex constants
+      (_RATE_LIMIT_RE, _AUTH_FAILURE_RE, _RATE_DIAGNOSTIC_RE,
+      _AUTH_DIAGNOSTIC_RE) plus one re.sub() call, none touched by this
+      diff, so `import re` is genuinely still needed in this one file —
+      unlike its eight siblings, where the migrated regex was the only use.
+  - seat: session (self-review, mid-guilt-proof)
+    objection: >-
+      The first commit's import-resolution for intel-lake-outbox-drain.py
+      used the same parents[2]/Path.home() candidate-loop shape as the
+      other eight callers, but that file's flat HOME-fork copy
+      (declared in infra/home-fork/declared-pairs.json) sits ONE DIRECTORY
+      LEVEL SHALLOWER than its repo copy — the only one of the nine callers
+      where the two layouts are not depth-symmetric. The candidate loop
+      would have resolved to the wrong directory on the live copy the
+      LaunchAgent actually runs, silently degrading to the no-op fallback
+      stub and leaving the production defect uncured on that one caller
+      while every test and the class guard stayed green (both exercise only
+      the repo-checkout layout).
+    status: CONFIRMED
+    resolution: >-
+      Rewritten in the branch's third commit to search for
+      scripts/tg_gateway_verdict.py by FILE PATH (here, here.parent,
+      ~/nuzantara/scripts), mirroring the same three-candidate search the
+      file's own pre-existing _find_gateway() function already uses for
+      tg_notify.py, loaded via importlib.util.spec_from_file_location
+      instead of a package import. Verified against a simulated flat-copy
+      tree (see receipts) before this pack was written.
+
+pii_scan_note: >-
+  Nothing in this diff or in the council prompt carries client PII or a
+  credential. The nine migrated callers are infrastructure/cron scripts;
+  the diff is Python parsing logic, test fixtures and comments. The only
+  string resembling a secret-shaped word anywhere in the diff is the
+  gateway's own literal fixture text "no token/relay" inside a diagnostic
+  message the gateway prints when it has none — not a credential value.
