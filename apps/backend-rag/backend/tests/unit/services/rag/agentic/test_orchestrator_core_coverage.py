@@ -349,8 +349,12 @@ class TestTrackWorkflow:
     @pytest.mark.asyncio
     async def test_no_db_pool_skips(self, orch):
         orch.db_pool = None
-        await orch._track_workflow(query="test", workflow={"type": "visa"})
-        # Should return without error
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository"
+        ) as MockRepo:
+            await orch._track_workflow(query="test", workflow={"type": "visa"})
+            # No db_pool -> must return before ever instantiating the repository
+            MockRepo.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_with_db_pool_logs(self, orch):
@@ -381,12 +385,20 @@ class TestTrackWorkflow:
         mock_pool = MagicMock()
         orch.db_pool = mock_pool
 
-        with patch(
-            "backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository"
-        ) as MockRepo:
+        with (
+            patch(
+                "backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository"
+            ) as MockRepo,
+            patch("backend.services.rag.agentic.orchestrator_core.logger") as mock_logger,
+        ):
             MockRepo.return_value.log_workflow = AsyncMock(side_effect=RuntimeError("db fail"))
+            # Must not raise: the RuntimeError from log_workflow is caught and logged,
+            # never propagated to the caller (fire-and-forget tracking).
             await orch._track_workflow(query="test", workflow={"type": "x"})
-            # Should not raise
+            mock_logger.warning.assert_called_once()
+            warn_args = mock_logger.warning.call_args.args
+            assert "Failed to track workflow analytics" in warn_args[0]
+            assert "db fail" in str(warn_args[1])
 
 
 # ============================================================================

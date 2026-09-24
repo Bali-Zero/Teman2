@@ -129,14 +129,27 @@ class TestSaveConversationMemory:
     @pytest.mark.asyncio
     async def test_save_memory_anonymous_user(self, orchestrator):
         """Test that anonymous users are skipped"""
-        await orchestrator._save_conversation_memory("anonymous", "query", "answer")
-        # Should return early without calling memory orchestrator
+        with patch.object(
+            orchestrator.memory_handler,
+            "get_memory_orchestrator",
+            new_callable=AsyncMock,
+        ) as mock_get:
+            await orchestrator._save_conversation_memory("anonymous", "query", "answer")
+        # "anonymous" is a non-personal identity: must return before ever
+        # trying to lazily initialize the memory orchestrator.
+        mock_get.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_save_memory_none_user_id(self, orchestrator):
         """Test that None user_id is skipped"""
-        await orchestrator._save_conversation_memory(None, "query", "answer")
-        # Should return early
+        with patch.object(
+            orchestrator.memory_handler,
+            "get_memory_orchestrator",
+            new_callable=AsyncMock,
+        ) as mock_get:
+            await orchestrator._save_conversation_memory(None, "query", "answer")
+        # None is a non-personal identity: must return early, same as "anonymous".
+        mock_get.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_save_memory_success(self, orchestrator, mock_db_pool):
@@ -174,7 +187,13 @@ class TestSaveConversationMemory:
             new_callable=AsyncMock,
         ) as mock_get:
             mock_get.return_value = None
-            await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+            # Must not raise: a falsy orchestrator has to short-circuit before
+            # the code ever tries `.process_conversation(...)` on it.
+            result = await orchestrator._save_conversation_memory(
+                "user@test.com", "query", "answer"
+            )
+        assert result is None
+        mock_get.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_save_memory_no_facts_saved(self, orchestrator):
@@ -189,13 +208,19 @@ class TestSaveConversationMemory:
             ),
         )
 
-        with patch.object(
-            orchestrator.memory_handler,
-            "get_memory_orchestrator",
-            new_callable=AsyncMock,
-        ) as mock_get:
+        with (
+            patch.object(
+                orchestrator.memory_handler,
+                "get_memory_orchestrator",
+                new_callable=AsyncMock,
+            ) as mock_get,
+            patch("backend.services.rag.agentic.memory_handler.logger") as mock_logger,
+        ):
             mock_get.return_value = mock_memory
             await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+
+        # facts_saved == 0 -> the "Saved N/M facts" success log must NOT fire.
+        mock_logger.info.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_save_memory_lock_timeout(self, orchestrator):
@@ -217,13 +242,28 @@ class TestSaveConversationMemory:
 
         orchestrator.memory_handler._lock_timeout = 0.01
 
-        with patch.object(
-            orchestrator.memory_handler,
-            "get_memory_orchestrator",
-            new_callable=AsyncMock,
-        ) as mock_get:
+        with (
+            patch.object(
+                orchestrator.memory_handler,
+                "get_memory_orchestrator",
+                new_callable=AsyncMock,
+            ) as mock_get,
+            patch("backend.services.rag.agentic.orchestrator.metrics_collector") as mock_metrics,
+            patch("backend.services.rag.agentic.memory_handler.logger") as mock_logger,
+        ):
             mock_get.return_value = AsyncMock()
             await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+
+            # Timed out acquiring the lock: must record the timeout metric and
+            # never reach get_memory_orchestrator() at all.
+            mock_metrics.record_memory_lock_timeout.assert_called_once_with(
+                user_id="user@test.com"
+            )
+            mock_get.assert_not_awaited()
+            assert any(
+                "lock timeout" in str(call.args[0])
+                for call in mock_logger.warning.call_args_list
+            )
 
         await task
 
@@ -235,13 +275,23 @@ class TestSaveConversationMemory:
         mock_memory = AsyncMock()
         mock_memory.process_conversation = AsyncMock(side_effect=asyncpg.PostgresError("DB error"))
 
-        with patch.object(
-            orchestrator.memory_handler,
-            "get_memory_orchestrator",
-            new_callable=AsyncMock,
-        ) as mock_get:
+        with (
+            patch.object(
+                orchestrator.memory_handler,
+                "get_memory_orchestrator",
+                new_callable=AsyncMock,
+            ) as mock_get,
+            patch("backend.services.rag.agentic.memory_handler.logger") as mock_logger,
+        ):
             mock_get.return_value = mock_memory
+            # Must not raise: asyncpg.PostgresError is caught and logged, not
+            # propagated to the caller.
             await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+
+        mock_logger.warning.assert_called_once()
+        warn_args = mock_logger.warning.call_args.args
+        assert "Failed to save memory" in warn_args[0]
+        assert "DB error" in str(warn_args[1])
 
     @pytest.mark.asyncio
     async def test_save_memory_value_error(self, orchestrator):
@@ -249,13 +299,22 @@ class TestSaveConversationMemory:
         mock_memory = AsyncMock()
         mock_memory.process_conversation = AsyncMock(side_effect=ValueError("Invalid value"))
 
-        with patch.object(
-            orchestrator.memory_handler,
-            "get_memory_orchestrator",
-            new_callable=AsyncMock,
-        ) as mock_get:
+        with (
+            patch.object(
+                orchestrator.memory_handler,
+                "get_memory_orchestrator",
+                new_callable=AsyncMock,
+            ) as mock_get,
+            patch("backend.services.rag.agentic.memory_handler.logger") as mock_logger,
+        ):
             mock_get.return_value = mock_memory
+            # Must not raise: ValueError is caught and logged, not propagated.
             await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+
+        mock_logger.warning.assert_called_once()
+        warn_args = mock_logger.warning.call_args.args
+        assert "Failed to save memory" in warn_args[0]
+        assert "Invalid value" in str(warn_args[1])
 
     @pytest.mark.asyncio
     async def test_save_memory_runtime_error(self, orchestrator):
@@ -263,13 +322,22 @@ class TestSaveConversationMemory:
         mock_memory = AsyncMock()
         mock_memory.process_conversation = AsyncMock(side_effect=RuntimeError("Runtime error"))
 
-        with patch.object(
-            orchestrator.memory_handler,
-            "get_memory_orchestrator",
-            new_callable=AsyncMock,
-        ) as mock_get:
+        with (
+            patch.object(
+                orchestrator.memory_handler,
+                "get_memory_orchestrator",
+                new_callable=AsyncMock,
+            ) as mock_get,
+            patch("backend.services.rag.agentic.memory_handler.logger") as mock_logger,
+        ):
             mock_get.return_value = mock_memory
+            # Must not raise: RuntimeError is caught and logged, not propagated.
             await orchestrator._save_conversation_memory("user@test.com", "query", "answer")
+
+        mock_logger.warning.assert_called_once()
+        warn_args = mock_logger.warning.call_args.args
+        assert "Failed to save memory" in warn_args[0]
+        assert "Runtime error" in str(warn_args[1])
 
     @pytest.mark.asyncio
     async def test_save_memory_lock_contention_metric(self, orchestrator):
