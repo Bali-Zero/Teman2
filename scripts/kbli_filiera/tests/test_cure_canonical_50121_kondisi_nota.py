@@ -17,6 +17,7 @@ an Intelligence section reviewed against the old PMA facts.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -74,10 +75,14 @@ def test_guilt_the_real_condition_is_the_annex_condition_not_a_pmdn_partnership(
 
 
 def test_guilt_the_real_note_names_the_domestic_activity():
-    nota = _real()["50121"].get("pma_nota") or ""
+    rec = _real()["50121"]
+    nota = rec.get("pma_nota") or ""
     assert "luar negeri" not in nota.lower()
     assert "dalam negeri" in nota.lower()
-    assert "50131" in nota
+    # The ancestor the note names must be the record's own BPS 2020 mapping, not a
+    # string the spec happens to carry.
+    named = re.findall(r"ancestor (\d{5})", nota)
+    assert named and set(named) <= set(rec["bps_2020_ancestors"]["codes"])
 
 
 def test_guilt_50121_is_no_longer_certified_against_the_old_pma_facts():

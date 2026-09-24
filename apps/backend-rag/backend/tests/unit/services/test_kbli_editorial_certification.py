@@ -72,7 +72,7 @@ def test_canonical_certification_partition_is_exact(
     }
 
     assert certified == set(registry["canonicalIntel"])
-    assert len(certified) == 36
+    assert len(certified) == 35
     # SAETTA-20260915 W-H PR-3a moved 55201/55203/79903 from declared_gap to
     # located (Perpres 49/2021 Lampiran II allocation); none of the three is
     # a certified canonicalIntel entry, so they join the pre-existing
@@ -85,6 +85,10 @@ def test_canonical_certification_partition_is_exact(
     # pma_kondisi denies (a distribution-network/location requirement
     # instead, Perpres 10/2021 Lampiran III line 4202 #44). 47221 stays
     # located and keeps its mouthGold certification untouched.
+    # 2026-09-25: 50121 de-certified (canonicalIntel only). Its pma_kondisi/
+    # pma_nota cure moved the certified pmaFingerprint, and no compiler
+    # re-certifies a moved fingerprint. 50121 stays located (TERBATAS/49
+    # unchanged). 36 -> 35.
     # W-H PR-3b: 8 specialised-retail codes located under the Lampiran II
     # allocation, prose not certified.
     # 2026-09-18 naso lot: 10307 10308 16291 16293 32201 55106 located under
@@ -168,6 +172,7 @@ def test_canonical_certification_partition_is_exact(
         "32201",
         "55106",
         "13133",
+        "50121",
     }
 
 

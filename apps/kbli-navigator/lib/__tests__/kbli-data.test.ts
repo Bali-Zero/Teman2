@@ -182,8 +182,8 @@ function pmaDisclosureContract() {
   const certifiedIntel = locatedCodes.filter((code) => code.intel_2026);
   assert.equal(
     certifiedIntel.length,
-    36,
-    "only the 36 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies, then -1 for 47221 by W-H PR-3f)",
+    35,
+    "only the 35 manually reviewed canonical editorial blocks may publish (49 - 12 de-certified by W-H PR-3c v3, whose prose still claimed an openness its own tuple denies, then -1 for 47221 by W-H PR-3f, then -1 for 50121 de-certified after its PMA condition cure)",
   );
   for (const code of [
     "10722",
