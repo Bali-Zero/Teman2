@@ -51,7 +51,7 @@ def _assert_loopback_ollama_url(url: str) -> None:
         if host is not None and ipaddress.ip_address(host).is_loopback:
             return
     except ValueError:
-        pass
+        pass  # host is a non-IP hostname (not "localhost") -- falls through to refuse below
     raise OcrEgressBlocked(
         f"garuda_documents: OLLAMA_URL host {host!r} is not loopback — refusing to send "
         "passport OCR image (guardrail G-OCR-LOCAL)"
