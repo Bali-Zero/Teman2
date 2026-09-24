@@ -372,6 +372,7 @@ def _find_daemon_pid() -> Optional[int]:
             text=True,
             timeout=10,
             check=False,
+            env={**os.environ, "LC_ALL": "C", "LANG": "C"},
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -398,7 +399,12 @@ def _find_daemon_pid() -> Optional[int]:
 def _daemon_start_time(pid: int) -> Optional[datetime]:
     """The daemon process's own start time (`ps -o lstart=`), same technique
     as `session_declaration.py::process_start` — no cooperation needed from
-    the process itself, and no root needed to read another user's."""
+    the process itself, and no root needed to read another user's.
+    `LC_ALL=C`/`LANG=C` force `ps` to render `lstart` in the English/POSIX
+    format the parser below expects — on a host whose user locale is
+    non-English (e.g. Pro, Italian), an unforced `ps` prints a localized
+    date (`ven 25 set 02:06:31 2026`), `strptime` fails, and this always
+    falls back to None, silently killing the pin-drift discriminator."""
     try:
         proc = subprocess.run(
             [_ps_bin(), "-p", str(pid), "-o", "lstart="],
@@ -406,6 +412,7 @@ def _daemon_start_time(pid: int) -> Optional[datetime]:
             text=True,
             timeout=10,
             check=False,
+            env={**os.environ, "LC_ALL": "C", "LANG": "C"},
         )
     except (OSError, subprocess.SubprocessError):
         return None

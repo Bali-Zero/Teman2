@@ -509,6 +509,44 @@ def test_innocence_daemon_start_time_unparseable_output_returns_none(
     assert wa._daemon_start_time(888) is None
 
 
+def test_guilt_daemon_start_time_runs_ps_in_the_c_locale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """On Pro the user locale is Italian, and an unforced `ps -o lstart=`
+    there prints `ven 25 set 02:06:31 2026` (2026-09-25 prove-live finding):
+    `strptime`'s English format never parses that, so the pin-drift
+    discriminator silently went inert in production. Forcing
+    `LC_ALL=C`/`LANG=C` on the subprocess env is what keeps `ps` emitting
+    the English `lstart` format this parser expects, on every host locale."""
+    captured: dict = {}
+
+    def _fake_run(*args: object, **kwargs: object) -> "_FakeProc2":
+        captured.update(kwargs)
+        return _FakeProc2(0, "Thu Sep 25 01:00:00 2026\n")
+
+    monkeypatch.setattr(wa.subprocess, "run", _fake_run)
+    wa._daemon_start_time(888)
+    env = captured.get("env")
+    assert env is not None
+    assert env.get("LC_ALL") == "C"
+    assert env.get("LANG") == "C"
+
+
+def test_innocence_daemon_start_time_italian_locale_lstart_returns_none_not_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact string Pro's `ps` printed before this fix — proves WHY the
+    C-locale env override above is load-bearing: without it, `strptime`
+    cannot parse an Italian `lstart` line, and the honest behavior is
+    CANNOT-VERIFY (None), never a crash or a guessed datetime."""
+    monkeypatch.setattr(
+        wa.subprocess,
+        "run",
+        lambda *a, **k: _FakeProc2(0, "ven 25 set 02:06:31 2026\n"),
+    )
+    assert wa._daemon_start_time(888) is None
+
+
 def test_guilt_read_homebrew_codex_package_reads_version_and_mtime(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
