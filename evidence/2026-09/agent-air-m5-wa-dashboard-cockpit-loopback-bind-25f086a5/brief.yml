@@ -1,0 +1,46 @@
+task_id: cockpit-loopback-bind
+gear: 3
+l_level: L1
+gate_class: hot-zone-launchagent
+objective: >
+  Contain the wa-dashboard-m1 cockpit (spec_T37 P0, T6 prerequisite): it
+  served mirrored team WhatsApp chats (/data.json, /thread.json)
+  unauthenticated on a HOST=0.0.0.0 default, exposing them to the whole
+  Pro LAN with the macOS firewall off (measured 2026-09-25 06:20 WITA).
+  server.cjs now defaults HOST to 127.0.0.1 with a loud startup warning
+  on an explicit wildcard override, and the previously-untracked
+  LaunchAgent plist (superscar #1, HOME-fork) is tracked in
+  infra/launchagents/ with HOST=127.0.0.1 pinned so a regeneration can't
+  silently re-expose the LAN. This lands the floor-3 hot-zone touch
+  (infra/launchagents/*) on its own brief; no evidence pack is authored
+  because the change is mechanical (a default value, a tracked copy of an
+  already-live-contained plist, a guilt/innocence test, a doc note) and
+  carries no client data.
+constraints:
+  - Do not touch anything live on Pro — this session only has read-only
+    ssh; live containment was already applied by the coordinator.
+  - The tracked plist must match the live one exactly (HOST=127.0.0.1),
+    checked for secrets before commit (WA_DASHBOARD_DATABASE_URL carries
+    no password; HIDE_TEAM_NAMES is a display filter of team first names,
+    not a credential).
+  - No ALTER/write to any DB table (out of scope for this PR).
+acceptance: apps/wa-dashboard-m1/loopback-bind.test.cjs (guilt case —
+  HOST=0.0.0.0 fixture rejected; innocence case — HOST=127.0.0.1 fixture
+  accepted; asserts both the source default and the tracked plist).
+consumer_map:
+  - Zero's cockpit over the tailnet URL (tailscale serve, owner-configured
+    separately, not part of this PR).
+  - The two local callers of the same listener
+    (com.balizero.wa-lid-refresh, com.balizero.wa-team-metrics-rollup)
+    keep working unchanged (they already call 127.0.0.1:7790).
+risks:
+  - A future plist regeneration on Pro without this tracked copy as the
+    install source would re-widen HOST — mitigated by tracking the plist
+    itself as the source of truth (superscar #1).
+grader: a fresh Claude session at PR review (this session prepares only,
+  per the ship-lifecycle contract — generator != grader).
+budget: ~30 net lines across server.cjs + README.md, one new tracked
+  plist (169 total insertions incl. the test and this brief).
+pii: none — no client data touched; team member first names in
+  HIDE_TEAM_NAMES are an existing, already-live config value, not new
+  PII surfaced by this diff.
