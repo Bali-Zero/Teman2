@@ -1253,6 +1253,12 @@ export class CrmApi {
 
   async getPortalUnreadCount(): Promise<{
     total_unread: number;
+    total_pending?: number;
+    pending_by_client?: {
+      client_id: number;
+      client_name: string;
+      pending_count: number;
+    }[];
     by_client: {
       client_id: number;
       client_name: string;
@@ -1263,6 +1269,12 @@ export class CrmApi {
       success: boolean;
       data: {
         total_unread: number;
+        total_pending?: number;
+        pending_by_client?: {
+          client_id: number;
+          client_name: string;
+          pending_count: number;
+        }[];
         by_client: {
           client_id: number;
           client_name: string;

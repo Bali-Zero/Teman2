@@ -12,6 +12,7 @@ Endpoints:
 
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -21,8 +22,10 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
 from backend.app.modules.notifications.models import ClientInfo
 from backend.app.modules.notifications.service import NotificationService
+from backend.app.services.internal_email import EmailDeliveryUncertain
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
+from backend.services.notifications.email_http import get_email_client
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +73,7 @@ class SendEmailRequest(BaseModel):
     cc: str | None = None  # comma-separated CC addresses
     bcc: str | None = None  # comma-separated BCC addresses
     attachments: list[EmailAttachment] | None = None
+    idempotency_key: UUID | None = None
     # Context for the @balizero.com CC hard rule (Antonello 2026-06-17):
     # invoice → asya@, everything else → the practice's assigned lead.
     # Both optional so legacy callers still work (they fall back to asya@).
@@ -89,6 +93,7 @@ class SendEmailResponse(BaseModel):
 
     success: bool
     message: str
+    delivery_uncertain: bool = False
 
 
 async def get_clients_from_db(pool, client_id: int | None = None) -> list[ClientInfo]:
@@ -497,6 +502,28 @@ async def send_direct_email(
         request.to, cc_list, bcc_list, request.email_type, request.assigned_to
     )
 
+    # Keyed delivery uses one provider so fallback cannot duplicate an
+    # accepted request whose response was lost.
+    if request.idempotency_key is not None:
+        try:
+            accepted = await _send_via_brevo(
+                request.to,
+                request.subject,
+                request.body,
+                cc_list,
+                bcc_list,
+                attachments,
+                idempotency_key=str(request.idempotency_key),
+            )
+        except EmailDeliveryUncertain:
+            return SendEmailResponse(
+                success=False, message="Email delivery uncertain", delivery_uncertain=True
+            )
+        return SendEmailResponse(
+            success=accepted,
+            message="Email accepted" if accepted else "Email not accepted",
+        )
+
     # Provider chain (NB-E 2026-04-29):
     #   intra-domain (@balizero.com): Zoho SMTP → Brevo
     #   external:                     Brevo → Resend → Zoho SMTP
@@ -575,11 +602,10 @@ async def _send_via_brevo(
     cc_list: list[str] | None,
     bcc_list: list[str] | None = None,
     attachments: list[dict] | None = None,
+    idempotency_key: str | None = None,
 ) -> bool:
     """Send via Brevo HTTP API (for external delivery)."""
     import os
-
-    import httpx
 
     api_key = os.getenv("SENDGRID_API_KEY", "")
     if not api_key:
@@ -602,6 +628,10 @@ async def _send_via_brevo(
         ]
 
     is_brevo = api_key.startswith("xkeysib-")
+    if idempotency_key:
+        if not is_brevo:
+            return False
+        payload["headers"] = {"idempotencyKey": idempotency_key}
     url = (
         "https://api.brevo.com/v3/smtp/email"
         if is_brevo
@@ -626,14 +656,28 @@ async def _send_via_brevo(
             payload["personalizations"][0]["bcc"] = [{"email": e} for e in bcc_list]
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
+        client = await get_email_client()
+        resp = await client.post(url, json=payload, headers=headers, timeout=15.0)
         if resp.status_code in (200, 201, 202):
             return True
-        logger.error(f"Brevo API error {resp.status_code}: {resp.text[:300]}")
+        if idempotency_key:
+            if resp.status_code >= 500:
+                raise EmailDeliveryUncertain("provider_server_error")
+            try:
+                error = resp.json()
+            except (ValueError, AttributeError):
+                error = {}
+            if isinstance(error, dict) and error.get("code") == "duplicate_parameter":
+                # The provider does not give us the original acceptance receipt.
+                raise EmailDeliveryUncertain("provider_duplicate_ambiguous")
+        logger.error("Brevo request rejected: status=%s", resp.status_code)
         return False
+    except EmailDeliveryUncertain:
+        raise
     except Exception as e:
-        logger.error("Brevo failed for %s: %s", to_email, e)
+        logger.error("Brevo transport failed: %s", type(e).__name__)
+        if idempotency_key:
+            raise EmailDeliveryUncertain("provider_transport_error") from None
         return False
 
 
