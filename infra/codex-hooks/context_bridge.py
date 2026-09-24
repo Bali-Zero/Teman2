@@ -33,12 +33,15 @@ from mandate_budget import (
     reserve as budget_reserve,
 )
 
-VERSION = "1.2.0"
-HANDSHAKE_SECONDS = 45  # one Stop hook blocks at most this long waiting for the destination
+VERSION = "1.3.0"
+HANDSHAKE_SECONDS = (
+    45  # one Stop hook blocks at most this long waiting for the destination
+)
 # Imported, not redeclared: the ledger's unstarted sweep uses the SAME window to
 # decide whether a reserved row is mid-handshake, and two independent literals
 # drifted apart once already (60 s vs 240 s).
 from mandate_budget import ACKNOWLEDGE_SECONDS  # noqa: E402
+
 MAX_LAUNCH_ATTEMPTS = 3
 POLL_SECONDS = 1
 # MANDATE_SECONDS now comes from mandate_budget: one default, one owner.
@@ -69,6 +72,8 @@ FAILURE_CODES = {
 def failure_code(exc: BaseException) -> str:
     """A stable code for a failure, falling back to the exception type name."""
     return FAILURE_CODES.get(str(exc), type(exc).__name__)
+
+
 SELF = Path(__file__).resolve()
 EVENTS = (
     "SessionStart",
@@ -359,9 +364,10 @@ def receipt_from_output(value: Any) -> dict[str, Any] | None:
     return None
 
 
-def instructions(sid: str) -> str:
+def instructions(sid: str, parent_rollover: bool = True) -> str:
     cmd = shlex.join([sys.executable, str(SELF), "checkpoint", sid])
-    return (
+    verify_cmd = shlex.join([sys.executable, str(SELF), "verify", sid])
+    rollover = (
         "Nuzantara Codex workflow: actual Codex token usage controls context rollover. "
         "Before rollover, save a concise English operational handoff (no client PII, secrets, "
         "or raw outputs): run "
@@ -370,6 +376,15 @@ def instructions(sid: str) -> str:
         '{"objective":"...","next_action":"...","remaining":["..."],"risks":[]}. '
         "Then end this turn; Stop will open the continuation and stop this source only after "
         "Codex accepts it. The continuation uses the same model and permission policy. "
+    )
+    native = (
+        "Nuzantara Codex workflow: native automatic compaction manages this session's "
+        "context. Continue the original mandate in this session after compaction. "
+        "Preserve the objective, remaining work, decisions, worktree and verification "
+        "evidence in the compact summary. Do not stop or open a replacement session "
+        "because of a context percentage. Verification helper: " + verify_cmd + ". "
+    )
+    return (rollover if parent_rollover else native) + (
         "For code changes, record real checks using the same helper with verb verify and "
         '{"commands":[["absolute/path/to/venv/bin/python","-m","pytest","specific_test.py"]]}. '
         "Verify again after editing; a successful tool invocation alone is not proof-live. "
@@ -403,25 +418,45 @@ def chain_summary(state: dict[str, Any], limit: int = 6) -> str:
     if phase == "accepted":
         verdict = "still handing off"
     elif phase == "needs_attention":
-        verdict = "PARKED (" + str(last.get("failure") or "hop limit") + "): open a fresh task"
+        verdict = (
+            "PARKED ("
+            + str(last.get("failure") or "hop limit")
+            + "): open a fresh task"
+        )
     elif phase in ("requested", "starting"):
         verdict = "handing off right now"
     else:
         verdict = "LIVE: open that task"
-    return "chain " + " -> ".join(h[:8] for h in hops) + "; last hop " + hops[-1] + " is " + verdict + "."
+    return (
+        "chain "
+        + " -> ".join(h[:8] for h in hops)
+        + "; last hop "
+        + hops[-1]
+        + " is "
+        + verdict
+        + "."
+    )
 
 
-def frozen_reason(sid: str, state: dict[str, Any]) -> str:
+def frozen_reason(sid: str, state: dict[str, Any], parent_rollover: bool = True) -> str:
     """Name the exact handoff phase, so a frozen source never retries blindly."""
     phase = state.get("rollover")
     attempt = state.get("launch_attempts", 0)
     helpers = "Only the bridge helpers (checkpoint/status/verify) run here."
     if phase == "accepted":
-        return "Handed off: " + chain_summary(state) + " This source is frozen. " + helpers
+        return (
+            "Handed off: " + chain_summary(state) + " This source is frozen. " + helpers
+        )
     if phase == "starting":
         return (
             f"Continuation launching (attempt {attempt} of {MAX_LAUNCH_ATTEMPTS}); "
             "end this turn and wait for the destination to acknowledge. " + helpers
+        )
+    if not parent_rollover:
+        return (
+            "An existing continuation supervisor still owns this source. "
+            "Wait for it to finish; native mode will not launch or retry a jump. "
+            + helpers
         )
     if phase == "needs_attention":
         failure = str(state.get("failure"))
@@ -646,6 +681,8 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
     child = native_child(payload)
     if child:
         return child_hook(payload, child, policy)
+    parent_rollover = policy.get("parent_rollover_enabled", True)
+    guidance = instructions(sid, parent_rollover)
     source_id = os.environ.get("CODEX_CONTEXT_FROM_SESSION")
     if (
         source_id
@@ -724,6 +761,21 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             state.update(measure(transcript))
         state.setdefault("root_transcripts", [transcript] if transcript else [])
         if (
+            not parent_rollover
+            and state.get("rollover") in ("requested", "needs_attention")
+            and not supervisor_alive(state)
+        ):
+            # Retire parked jumps, but never release an in-flight writer.
+            state["released"] = {
+                "from": state["rollover"],
+                "failure": state.get("failure"),
+                "at": time.time(),
+                "reason": "native_compaction",
+            }
+            for field in ("rollover", "failure", "cancel_requested", "launch_nonce"):
+                state.pop(field, None)
+            state["threshold_released"] = True
+        if (
             event == "PreToolUse"
             and state.get("rollover") == "finished"
             and state.get("observed") != state.get("finished_observed")
@@ -766,16 +818,20 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             )
             state.setdefault("baseline", git_fingerprint(cwd))
             save(path, state)
-            return context_output(event, instructions(sid))
+            return context_output(event, guidance)
         if event == "PostCompact":
             state["ignore_observed"] = state.get("observed")
-            state.pop("rollover", None)
+            if state.get("rollover") not in (
+                "starting",
+                "accepted",
+            ) and not supervisor_alive(state):
+                state.pop("rollover", None)
             save(path, state)
-            return context_output(event, instructions(sid))
+            return context_output(event, guidance)
         fraction = threshold(policy, state.get("role", "builder"))
         over = state.get("used", 0) >= state.get("window", float("inf")) * fraction
         over = over and state.get("observed") != state.get("ignore_observed")
-        over = over and not state.get("threshold_released")
+        over = over and parent_rollover and not state.get("threshold_released")
         if over and not state.get("rollover"):
             state["rollover"] = "requested"
         save(path, state)
@@ -786,20 +842,20 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             "needs_attention",
         ):
             if not helper_command(payload, sid):
-                return context_output(event, frozen_reason(sid, state), deny=True)
+                return context_output(
+                    event, frozen_reason(sid, state, parent_rollover), deny=True
+                )
         if event == "PostToolUse" and over:
-            return context_output(
-                event, "Context threshold reached. " + instructions(sid)
-            )
+            return context_output(event, "Context threshold reached. " + guidance)
         if event == "PreCompact":
             return context_output(
                 event,
-                "Preserve the original mandate and remaining work. "
-                + instructions(sid),
+                "Preserve the original mandate and remaining work. " + guidance,
             )
     if event == "Stop":
         if (
-            state.get("rollover") == "needs_attention"
+            parent_rollover
+            and state.get("rollover") == "needs_attention"
             and state.get("failure") in TRANSIENT_FAILURES
             and state.get("launch_attempts", 0) < MAX_LAUNCH_ATTEMPTS
             and state.get("checkpoint", {}).get("remaining")
@@ -813,7 +869,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                     state = latest
         if state.get("rollover") == "starting":
             return await_acceptance(sid)
-        if state.get("rollover") == "requested":
+        if parent_rollover and state.get("rollover") == "requested":
             if not state.get("checkpoint"):
                 if payload.get("stop_hook_active"):
                     with locked(sid) as (path, latest):
@@ -823,9 +879,9 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                         save(path, latest)
                     return {
                         "systemMessage": "Context handoff incomplete; source preserved. "
-                        + instructions(sid)
+                        + guidance
                     }
-                return {"decision": "block", "reason": instructions(sid)}
+                return {"decision": "block", "reason": guidance}
             if state["checkpoint"].get("remaining") == []:
                 with locked(sid) as (path, latest):
                     latest["rollover"] = "finished"
@@ -847,7 +903,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             if proof.get("fingerprint") != current or not proof.get("passed"):
                 message = (
                     "Code changed without a current successful verification receipt. "
-                    + instructions(sid)
+                    + guidance
                 )
                 if not payload.get("stop_hook_active"):
                     return {"decision": "block", "reason": message}
@@ -1235,7 +1291,9 @@ def release(sid: str) -> dict[str, Any]:
     """
     with locked(sid) as (path, state):
         if state.get("rollover") not in ("needs_attention", "requested"):
-            raise ValueError("release applies to a parked (needs_attention/requested) source")
+            raise ValueError(
+                "release applies to a parked (needs_attention/requested) source"
+            )
         # The docstring above has always declared this; the code did not enforce it.
         # Popping launch_nonce under a live supervisor makes it raise "launch
         # ownership changed", which rewrites rollover=needs_attention OVER the

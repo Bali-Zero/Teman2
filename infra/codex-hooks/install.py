@@ -10,10 +10,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import sys
 import time
+import tomllib
 from pathlib import Path
 
 import mandate_budget
@@ -22,6 +24,29 @@ from rpc import RPC
 
 
 THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+COMPACT_OVERRIDES = (
+    "model_auto_compact_token_limit",
+    "model_auto_compact_token_limit_scope",
+)
+
+
+def native_compact_config(source: str) -> str:
+    """Drop only root compact overrides; reject any collateral TOML change."""
+    expected = tomllib.loads(source)
+    result = source
+    for key in COMPACT_OVERRIDES:
+        if key not in expected:
+            continue
+        del expected[key]
+        result = re.sub(
+            r"(?m)^[ \t]*" + re.escape(key) + r"[ \t]*=[^\n]*(?:\n|$)",
+            "",
+            result,
+            count=1,
+        )
+    if tomllib.loads(result) != expected:
+        raise ValueError("cannot safely remove root compaction overrides")
+    return result
 
 
 def merge_thresholds(policy: dict) -> dict:
@@ -43,6 +68,9 @@ def merge_thresholds(policy: dict) -> dict:
 
 def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
     seat = seat.expanduser().resolve()
+    config_file = seat / "config.toml"
+    if config_file.is_symlink():
+        raise ValueError("refusing to replace a symlinked Codex config")
     seat.mkdir(parents=True, exist_ok=True)
     roots = list(dict.fromkeys([*roots, str(seat / "worktrees")]))
     dest = seat / "hooks" / "nuzantara-context"
@@ -59,6 +87,14 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
         if old.exists():
             shutil.copy2(old, backup / old.name)
             (backup / old.name).chmod(0o600)
+    if config_file.exists():
+        original = config_file.read_bytes().decode("utf-8")
+        migrated = native_compact_config(original)
+        if migrated != original:
+            staged = backup / "config.native.toml"
+            staged.write_bytes(migrated.encode("utf-8"))
+            staged.chmod(config_file.stat().st_mode & 0o777)
+            os.replace(staged, config_file)
     hashes = {}
     for name in ("context_bridge.py", "rpc.py", "mandate_budget.py"):
         source = Path(__file__).parent / name
@@ -92,7 +128,9 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             groups.append({"hooks": [handler]})
     save(hooks_file, config)
     policy = load(seat / "nuzantara-context-policy.json")
-    policy.update(version=VERSION, enabled=True, roots=roots)
+    policy.update(
+        version=VERSION, enabled=True, roots=roots, parent_rollover_enabled=False
+    )
     merge_thresholds(policy)
     policy.setdefault("max_hops", 3)
     policy.setdefault(

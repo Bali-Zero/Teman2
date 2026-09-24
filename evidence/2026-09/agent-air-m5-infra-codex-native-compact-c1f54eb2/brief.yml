@@ -1,0 +1,36 @@
+task_id: codex-native-compact
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Restore native automatic Codex compaction and same-session continuity.
+  Remove percentage-triggered parent jumps while retaining child enforcement,
+  continuation ownership and verification checks. User requested priority
+  production release on all three hosts. No Claude policy changes.
+scope: infra/codex-hooks and its existing required guard-conformance workflow
+acceptance:
+  - text: WHEN native mode is enabled, parent context percentages SHALL NOT freeze tools or launch/retry a jump.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+  - text: WHEN compaction occurs, in-flight ownership SHALL remain protected; only parked sources without live supervisors retire.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+  - text: WHILE native mode is enabled, child limits and stale verification rejection SHALL remain enforced.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+  - text: WHEN installed, configuration SHALL be backed up and only two root compact overrides removed.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+  - text: IF config.toml is a symlink, installation SHALL fail before creating directories or copying any backup bytes.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks
+  - text: WHEN released, the reviewed bridge SHALL be trusted with native defaults on M5, Pro and Mini.
+    probe: python3 infra/codex-hooks/installation_status.py
+assumptions:
+  - text: Old policies must retain legacy behavior until explicitly migrated by install.py.
+    status: verified
+    probe: Legacy parent boundary tests pass alongside native parent tests.
+  - text: Existing accepted continuations may still own the worktree.
+    status: verified
+    probe: PostCompact regression tests preserve ownership with and without live supervisors.
+  - text: Named profile overrides and already-running hook snapshots require separate deployment inspection.
+    status: unverified
+    fallback: Inspect effective configuration during release; do not restart active sessions.
+budget: One implementation lane; initial Claude spalla; fixed Gemini/Codex/Kimi council; fresh Opus final gate; Claude release owner.
+council_reason: Required Gear-3 evidence lint enforces council quorum for this runtime/CI change.
