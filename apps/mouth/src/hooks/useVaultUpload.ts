@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { api } from "@/lib/api";
+import { beginPortalAction } from "@/lib/portal-analytics";
 import { sanitizeFilename } from "@/lib/vault/sanitizeFilename";
 import { MAX_SIZE_BYTES, isAllowedUploadMime } from "@/lib/vault/uploadLimits";
 import {
@@ -99,10 +101,15 @@ export function useVaultUpload() {
   }, []);
 
   const upload = useCallback((file: File, opts: UploadOptions = {}) => {
+    const attempt = beginPortalAction("document_upload", () => ({
+      role: api.getUserProfile?.()?.role,
+      impersonating: api.getPortalImpersonation?.() !== null,
+    }));
     retryableUploadRef.current = null;
     setState({ status: "validating" });
 
     if (!isAllowedUploadMime(file.type)) {
+      attempt.fail("validation");
       setState({
         status: "error",
         message: `File type not allowed: ${file.type || "unknown"}`,
@@ -110,6 +117,7 @@ export function useVaultUpload() {
       return;
     }
     if (file.size > MAX_SIZE_BYTES) {
+      attempt.fail("validation");
       setState({
         status: "error",
         message: `File exceeds ${Math.floor(
@@ -152,6 +160,7 @@ export function useVaultUpload() {
           const json = JSON.parse(xhr.responseText);
           const parsed = VaultUploadResponse.parse(json);
           if (!parsed.success) {
+            attempt.fail("response");
             retryableUploadRef.current = null;
             setState({
               status: "error",
@@ -161,11 +170,13 @@ export function useVaultUpload() {
             return;
           }
           retryableUploadRef.current = null;
+          attempt.complete();
           setState({
             status: "done",
             file: parsed.data,
           });
         } catch {
+          attempt.fail("response");
           retryableUploadRef.current = null;
           setState({
             status: "error",
@@ -174,6 +185,7 @@ export function useVaultUpload() {
           });
         }
       } else {
+        attempt.fail(xhr.status >= 500 ? "server" : "request");
         if (!isRetryableHttpStatus(xhr.status)) {
           retryableUploadRef.current = null;
         }
@@ -185,7 +197,10 @@ export function useVaultUpload() {
       }
     };
 
-    xhr.onerror = () => setState({ status: "error", message: "Network error" });
+    xhr.onerror = () => {
+      attempt.fail("network");
+      setState({ status: "error", message: "Network error" });
+    };
 
     xhr.send(fd);
   }, []);
