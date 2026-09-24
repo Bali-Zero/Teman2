@@ -203,9 +203,7 @@ def test_conversion_minimal_data():
         assert len(result["facts"]) > 0, "Facts should have default content"
         assert len(result["next_steps"]["expat"]) > 0, "Should have default expat steps"
         assert len(result["next_steps"]["investor"]) > 0, "Should have default investor steps"
-        assert result["tldr"]["should_worry"] in ["Yes", "No", "Depends"], (
-            "Should have valid worry level"
-        )
+        assert set(result["tldr"]) == {"what"}, "TL;DR must not invent reader risk"
 
         print("\n✅ Defaults generated correctly:")
         print(f"   Facts: {result['facts'][:100]}...")

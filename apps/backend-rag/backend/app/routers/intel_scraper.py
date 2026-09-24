@@ -256,7 +256,8 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     if not investor_steps:
         investor_steps = ["Review the article for specific actions"]
 
-    # Determine priority based on relevance_score
+    # Editorial priority: how much the story matters to Bali Zero (it feeds
+    # `trending`), not how exposed the reader is.
     if relevance_score >= 75:
         priority = "high"
     elif relevance_score >= 50:
@@ -264,14 +265,10 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     else:
         priority = "low"
 
-    # Generate TLDR from summary and facts
+    # The TL;DR states only what the draft supports. A staging item carries no
+    # reader-risk, audience or date field, so those rows stay empty instead of
+    # being derived from relevance_score or filled with a stock audience.
     tldr_what = _summary_from_content(facts, limit=150) or title
-    tldr_who = "Expats and investors in Indonesia"
-    tldr_when = "Check article for specific dates"
-    tldr_should_worry = (
-        "Depends" if priority == "medium" else ("Yes" if priority == "high" else "No")
-    )
-    tldr_risk_level = priority.capitalize()
 
     # Generate tags from category and title
     ai_tags = [category]
@@ -291,13 +288,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     return {
         "title": title,
         "headline": title,
-        "tldr": {
-            "should_worry": tldr_should_worry,
-            "what": tldr_what,
-            "who": tldr_who,
-            "when": tldr_when,
-            "risk_level": tldr_risk_level,
-        },
+        "tldr": {"what": tldr_what},
         "facts": facts,
         "bali_zero_take": bali_zero_take,
         "next_steps": {

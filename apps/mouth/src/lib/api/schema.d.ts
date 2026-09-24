@@ -26637,15 +26637,15 @@ export interface components {
     /** TLDRSection */
     TLDRSection: {
       /** Risk Level */
-      risk_level: string;
+      risk_level?: string | null;
       /** Should Worry */
-      should_worry: string;
+      should_worry?: string | null;
       /** What */
       what: string;
       /** When */
-      when: string;
+      when?: string | null;
       /** Who */
-      who: string;
+      who?: string | null;
     };
     /** TaxCompanyPilotDocument */
     TaxCompanyPilotDocument: {
