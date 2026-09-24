@@ -2560,6 +2560,10 @@ describe("notices render as named conditions (slice A2)", () => {
         | "assumption.secondhome_own_name"
         | "assumption.study_admission_confirmed"
         | "assumption.study_sponsor_confirmed"
+        // Slice A6-bis: two more declared-conservative questions get their
+        // own `assumption.*` string, same reason as A6-4b above.
+        | "assumption.diaspora_documents"
+        | "assumption.retirement_basis"
         | "assumption.generic",
     ) => string;
   }
@@ -2629,6 +2633,10 @@ describe("notices render as named conditions (slice A2)", () => {
       "assumption.secondhome_own_name",
       "assumption.study_admission_confirmed",
       "assumption.study_sponsor_confirmed",
+      // Slice A6-bis: two more declared-conservative questions' own
+      // assumption strings.
+      "assumption.diaspora_documents",
+      "assumption.retirement_basis",
       "assumption.generic",
     ] as const) {
       entries.push({ key, language: "en", text: tables.translate("en", key) });
@@ -2690,12 +2698,17 @@ describe("notices render as named conditions (slice A2)", () => {
     "assumption.secondhome_own_name",
     "assumption.study_admission_confirmed",
     "assumption.study_sponsor_confirmed",
+    // Slice A6-bis: two more declared-conservative questions' own
+    // `assumption.*` keys join the scan, moving this pin 68 → 72 (two keys
+    // × two languages = four new entries).
+    "assumption.diaspora_documents",
+    "assumption.retirement_basis",
     "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback, thirteen codes, guardian consent, one sourceless dead-end code and thirteen assumption keys, both languages (V3, A6-3 + A6-4b + A7-M + A3'-M FIX-5)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, thirteen codes, guardian consent, one sourceless dead-end code and fifteen assumption keys, both languages (V3, A6-3 + A6-4b + A6-bis + A7-M + A3'-M FIX-5)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(68);
+    expect(entries).toHaveLength(72);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2710,7 +2723,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 68 shipped strings pass the scan clean", () => {
+  it("innocence: all 72 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });

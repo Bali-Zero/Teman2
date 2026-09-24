@@ -748,7 +748,9 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
   // inferred" sentence for them — now FALSE, since a value WAS inferred.
   // `assumptionDisplay` must resolve their own `assumption.<id>` key
   // instead of falling through to `assumption.generic`, in both languages.
-  const SEVEN_DECLARED_CONSERVATIVE_QUESTIONS = [
+  // Slice A6-bis adds two more: `diaspora_documents` ("no") and
+  // `retirement_basis` ("undecided"), nine in total.
+  const NINE_DECLARED_CONSERVATIVE_QUESTIONS = [
     "secondhome_deposit_usd",
     "secondhome_property_value_usd",
     "secondhome_passive_income_usd",
@@ -756,9 +758,11 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     "secondhome_own_name",
     "study_admission_confirmed",
     "study_sponsor_confirmed",
+    "diaspora_documents",
+    "retirement_basis",
   ] as const;
 
-  it.each(SEVEN_DECLARED_CONSERVATIVE_QUESTIONS)(
+  it.each(NINE_DECLARED_CONSERVATIVE_QUESTIONS)(
     "assumptionDisplay names the value assumed for %s instead of falling through to the generic sentence (A6-4b)",
     (questionId) => {
       for (const language of ["en", "id"] as const) {
