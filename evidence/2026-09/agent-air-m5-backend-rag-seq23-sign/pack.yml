@@ -15,18 +15,28 @@ lanes:
   - lane: a9-council-deepseek
     role: review
     seat: tp1-deepseek-v4-pro
+  - lane: a9-council-glm
+    role: review
+    seat: tp1-glm-5.2
   - lane: a9-ground-truth
     role: ground_truth
     seat: >-
       session (this writer). The pack asserts no new regulatory figure. Its ground truth is the
       merged seq-23 source (#7174, H23), the signed seq-22 anchor (H22) and the ratified §1
       disposition table in MANDATE-vo.md.
+    nb: >-
+      Three repo files this PR signs or verifies against, read at HEAD:
+      rulepack-prod-023.source.json (the signed payload), rulepack-prod-022.signed.json (the H22
+      anchor), docs/runbooks/visa-engine-key-ceremony.md (the public trust array).
+    query_hash: "d51379bd97be0608df65fa5babf708e9a43770fb81d984859196c3f5c1e03bc0" # pragma: allowlist secret
+    note: query_hash = sha256 of the three files concatenated in that order, computed this session.
 council_run: council/journal.jsonl
 seat_fallback_reason: >-
   No fallback. scripts/arsenal_probe.py --seats tp1-qwen3.8-max,tp1-deepseek-v4-pro,tp1-glm-5.2
-  at 2026-09-24T09:43:08Z measured all three LIVE (1689 / 2011 / 1277 ms, HTTP 200). The two
-  seats the brief names ran. glm-5.2 (optional third) was not dispatched: this seat's tool budget
-  was the constraint, not the seat.
+  at 2026-09-24T09:43:08Z measured all three LIVE (1689 / 2011 / 1277 ms, HTTP 200). All three
+  ran. Round 1: qwen FAIL (3 MEDIUM), glm FAIL (2 MEDIUM), deepseek PASS with no findings.
+  Round 2 sent qwen and glm the MEASURED answers (census replay, F1 table, validity bound,
+  fixture baseline); both WITHDREW every MEDIUM and returned VERDICT PASS.
 pii_scan: clean
 decisions:
   - id: D-f1-witness-shape
@@ -59,42 +69,58 @@ receipts:
     cmd: test -r K && echo READABLE; stat -f '%Sp' K
     result: "READABLE / -rw-------"
     exit: 0
+    ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
   - claim: H23 printed by #7174 equals the JCS digest of the merged source; previous = H22.
     cmd: compile_pack_source -> canonicalize_json -> sha256
     result: "e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204 MATCH; previous 3d7555af…6e37 MATCH"
     exit: 0
+    ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
   - claim: Signed and verified before and after Prettier.
     cmd: sign_pack … --sequence 23 --i-know-this-is-production; verify_rule_pack; prettier --write; verify_rule_pack
     result: "OK — signed and self-verified; VerifiedRulePack(sequence=23, PRODUCTION, prod-2026-07-1, unsigned_dev=False) twice; file sha256 b7edf63088c21748520ffbe6ee91299b60ac3d4c0bd17e70249ae6df79ce1fff"
     exit: 0
+    ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
   - claim: Rollback seq-24 signed off-repo, rejected against head 22.
     cmd: sign_pack --sequence 24 → kit/receipts/; activate_pack (no --yes) --current-sequence 22 --current-payload-sha256 H22
     result: "CHANGED 6 / IDENTICAL 12; receipt sha256 ab933638ed14ae78003ad0e95d72fd2463766bcb878eb6c60ddac67e77e84698; REJECTED candidate previous_payload_sha256 does not match"
     exit: 1
+    ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
   - claim: Whole visa_engine + scripts/visa_engine dirs on the signed tree.
     cmd: pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -rs
     result: "2678 passed, 14 skipped, 198 errors — 0 failed; all 198 errors are `Connect call failed ('::1', 5432)` (no local Postgres on M5); 14 skips = candidate tests with no unsigned pack above seq-23"
     exit: 1
+    ts: "2026-09-24T09:40:00Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
   - claim: The observer exits 0.
     cmd: python3 scripts/ci/observe_visa_seq23_signed.py
     result: "highest signed sequence=23; 93 passed / 39 passed, 14 skipped / 7 passed"
     exit: 0
+    ts: "2026-09-24T10:01:06Z"
     seat: Claude Opus 5.5 (vo-ceremony-a9)
 dissent:
   - seat: tp1-qwen3.8-max
     objection: >-
       MEDIUM: the seq-23 census pin equals seq-22 with no `_SEQ23_OUTCOME_CHANGES`, so the 11 new
       HARD_FILTERs may be masked.
-    status: REFUTED
+    status: RETRACTED
     resolution: >-
       `_SEQ23_OUTCOME_CHANGES = {}` exists since #7174. The replay on the signed tree measures 0
       outcome violations and 0 dead-end violations against EXPECTED_OUTCOME_BY_SEQUENCE[23] over
       116 walks. The engine-only corpus sends no disclosure flag, and no walk trips a retired rule.
+  - seat: tp1-glm-5.2
+    objection: >-
+      MEDIUM ×2 (round 1): the minor row's UNKNOWN witness would miss family.sponsor_confirmed
+      behind the guardian-consent adapter; _BRIDGING_APPLICANT might leave overstay_days
+      UNKNOWN and shadow the bridging facts.
+    status: RETRACTED
+    resolution: >-
+      Withdrawn by the seat in round 2 on the measurements: the minor UNKNOWN decision's
+      missing_facts are ['family.sponsor_confirmed', 'person.guardian_consent'], and the gold
+      baseline carries immigration.overstay_days KNOWN 0.
   - seat: tp1-qwen3.8-max
     objection: >-
       MEDIUM: hf.e33.employment-not-covered's UNKNOWN persona makes intent.purposes UNKNOWN,
@@ -109,7 +135,7 @@ dissent:
     objection: >-
       MEDIUM: EVALUATED_AT assumes valid_period.from 2026-09-23; if the rules were not in force,
       the witnesses would silently pass.
-    status: REFUTED
+    status: RETRACTED
     resolution: >-
       Not silent by construction. The TRUE witness requires the row's rule_id in an EXCLUDED
       proof's Reason.rule_ids, so a rule out of force is RED. Measured: the max inserted
