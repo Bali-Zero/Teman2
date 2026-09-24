@@ -9,9 +9,9 @@
 		<key>HOME</key>
 		<string>/Users/nuzantara</string>
 		<key>MATA_GARUDA_AGY_MODEL</key>
-		<string>gemini-3.5-flash</string>
+		<string>gemini-3.8-flash-high</string>
 		<key>MATA_GARUDA_CLAUDE_FALLBACK_MODEL</key>
-		<string>agy:gemini-3.5-flash</string>
+		<string>agy:gemini-3.8-flash-high</string>
 		<key>MATA_GARUDA_GAP_AGENT_MODEL</key>
 		<string>ollama:qwen2.5vl:7b</string>
 		<key>MATA_GARUDA_OLLAMA_MODEL</key>
@@ -19,13 +19,13 @@
 		<key>MATA_GARUDA_REFLECTION_MODEL</key>
 		<string>ollama:qwen2.5vl:7b</string>
 		<key>MATA_GARUDA_REGULATION_AGENT_MODEL</key>
-		<string>agy:gemini-3.5-flash</string>
+		<string>agy:gemini-3.8-flash-high</string>
 		<key>MATA_GARUDA_VENV_PY</key>
 		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<key>MG_WINDOW</key>
 		<string>6-22</string>
 		<key>PATH</key>
-		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/Users/nuzantara/.local/bin</string>
 		<key>PYTHONPATH</key>
 		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
