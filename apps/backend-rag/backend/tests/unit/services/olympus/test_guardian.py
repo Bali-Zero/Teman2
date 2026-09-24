@@ -257,8 +257,11 @@ class TestPersistAction:
         conn = pool.acquire.return_value.__aenter__.return_value
         conn.execute.side_effect = RuntimeError("DB error")
         action = _make_action()
-        # Should not raise
-        await guardian._persist_action(action)
+        with patch("backend.services.olympus.guardian.logger") as mock_logger:
+            await guardian._persist_action(action)
+        mock_logger.exception.assert_called_once_with(
+            "Failed to persist action: %s", action.action_type
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -271,21 +274,29 @@ class TestCheckV4Readiness:
     async def test_below_threshold(self, guardian, pool) -> None:
         conn = pool.acquire.return_value.__aenter__.return_value
         conn.fetchval.return_value = 100
-        # Should not raise, just log nothing special
-        await guardian._check_v4_readiness()
+        with patch("backend.services.olympus.guardian.logger") as mock_logger:
+            await guardian._check_v4_readiness()
+        mock_logger.info.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_above_threshold(self, guardian, pool) -> None:
         conn = pool.acquire.return_value.__aenter__.return_value
         conn.fetchval.return_value = 600
-        # Should log v4 readiness (no assertion needed, just no crash)
-        await guardian._check_v4_readiness()
+        with patch("backend.services.olympus.guardian.logger") as mock_logger:
+            await guardian._check_v4_readiness()
+        mock_logger.info.assert_called_once_with(
+            "v4 READY: %d insights accumulated (threshold: %d) — Voyager skills activatable",
+            600,
+            500,
+        )
 
     @pytest.mark.asyncio
     async def test_db_error_swallowed(self, guardian, pool) -> None:
         conn = pool.acquire.return_value.__aenter__.return_value
         conn.fetchval.side_effect = RuntimeError("DB down")
-        await guardian._check_v4_readiness()  # Should not raise
+        with patch("backend.services.olympus.guardian.logger") as mock_logger:
+            await guardian._check_v4_readiness()
+        mock_logger.info.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
