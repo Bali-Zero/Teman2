@@ -47,9 +47,16 @@ def test_parent_sixty_percent_boundary(
 
 
 @pytest.mark.parametrize("used", [500, 599, 600, 601])
-def test_native_child_sixty_percent_boundary(setup: tuple, used: int) -> None:
+@pytest.mark.parametrize("parent_rollover", [True, False])
+def test_native_child_sixty_percent_boundary(
+    setup: tuple, used: int, parent_rollover: bool
+) -> None:
     _, log, event = setup
     declare_sixty_percent()
+    policy_path = bridge.codex_home() / "nuzantara-context-policy.json"
+    policy = bridge.load(policy_path)
+    policy["parent_rollover_enabled"] = parent_rollover
+    bridge.save(policy_path, policy)
     child = f"boundary-child-{used}"
     child_transcript(log, child, event["session_id"])
     bridge.hook({**event, "agent_id": child, "hook_event_name": "SubagentStart"})
@@ -73,7 +80,12 @@ def test_native_child_sixty_percent_boundary(setup: tuple, used: int) -> None:
             + "\n"
         )
     result = bridge.hook(
-        {**event, "agent_id": child, "hook_event_name": "PreToolUse", "tool_name": "Read"}
+        {
+            **event,
+            "agent_id": child,
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read",
+        }
     )
     state = bridge.load(bridge.state_path(child))
     assert (state["role"], state["used"], state["window"]) == ("builder", used, 1000)

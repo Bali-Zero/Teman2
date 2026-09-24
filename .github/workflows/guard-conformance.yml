@@ -374,7 +374,7 @@ jobs:
       # infra/guard-conformance/registry.json, and C4 of
       # check_guard_conformance.py refuses a registered hook whose tests no
       # workflow executes (W81: a suite that runs nowhere required is where
-      # defects hide). This step is that executor. The two codex-hooks suites
+      # defects hide). This step is that executor. The codex-hooks suites
       # ride along deliberately: mandate_budget.py is the ledger BOTH adapters
       # write, and context_bridge.py imports it — a change to the ledger that
       # only the Claude side covers would land green with the Codex side
@@ -388,7 +388,9 @@ jobs:
             infra/claude-hooks/test_child_context.py \
             infra/claude-hooks/test_child_review_regressions.py \
             infra/codex-hooks/test_child_lifecycle.py \
-            infra/codex-hooks/test_context_bridge.py
+            infra/codex-hooks/test_context_bridge.py \
+            infra/codex-hooks/test_native_compaction.py \
+            infra/codex-hooks/test_sixty_percent_boundary.py
 
       # Vercel's Ignored Build Step. A guard in the #3 sense — it decides, on a substring-ish
       # signal (changed paths), whether the public site gets rebuilt — so it owes guilt AND

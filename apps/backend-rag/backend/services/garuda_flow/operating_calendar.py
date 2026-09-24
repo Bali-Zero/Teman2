@@ -51,10 +51,12 @@ from backend.data.id_holidays import HOLIDAYS, Holiday, HolidayKind
 
 __all__ = [
     "COVERAGE_END",
+    "COVERAGE_END_HORIZON_WARNING_DAYS",
     "COVERAGE_START",
     "OPERATING_CALENDAR",
     "HolidayKind",
     "OperatingCalendarDate",
+    "coverage_end_horizon_warning",
     "is_open",
     "last_open_day_before",
 ]
@@ -89,6 +91,13 @@ _CLOSED_DATES: frozenset[date] = frozenset(d.at for d in OPERATING_CALENDAR)
 # this bound only exists so a future data error (e.g. an entire month
 # marked closed) fails loudly instead of looping forever.
 _MAX_LOOKBACK_DAYS: int = 60
+
+# How many days of runway before `COVERAGE_END` must remain before
+# `coverage_end_horizon_warning` starts naming the gap (L1326). The 2027
+# SKB is expected around September 2026 (module docstring); 45 days gives
+# a real lead window to source and ship it before ISSUANCE fails closed
+# for lack of a decreed calendar, without paging months in advance.
+COVERAGE_END_HORIZON_WARNING_DAYS: int = 45
 
 
 def is_open(day: date) -> bool:
@@ -135,3 +144,35 @@ def last_open_day_before(day: date) -> date | None:
             return candidate
         candidate -= timedelta(days=1)
     return None
+
+
+def coverage_end_horizon_warning(
+    today: date, *, threshold_days: int = COVERAGE_END_HORIZON_WARNING_DAYS
+) -> str | None:
+    """A named alert once `COVERAGE_END` is within `threshold_days` of
+    `today` — ``None`` while the horizon is still far away (L1326).
+
+    This does NOT invent a 2027 (or later) closure, and never widens
+    `OPERATING_CALENDAR`: it only measures the distance to the decreed
+    boundary this module already carries. Past `COVERAGE_END`, `is_open`
+    and `last_open_day_before` already fail closed on their own — this
+    function's only job is to give a human enough lead time to source and
+    ship the next SKB decree before that happens silently.
+
+    Pure — no I/O, no ``date.today()``; the caller injects ``today``, same
+    discipline as every other function in this module.
+    """
+
+    days_left = (COVERAGE_END - today).days
+    if days_left > threshold_days:
+        return None
+    if days_left < 0:
+        return (
+            f"GARUDA operating calendar: COVERAGE_END ({COVERAGE_END.isoformat()}) "
+            f"is {-days_left} day(s) in the past — issuance has been failing closed "
+            "since then for lack of a decreed calendar beyond it."
+        )
+    return (
+        f"GARUDA operating calendar: COVERAGE_END ({COVERAGE_END.isoformat()}) is "
+        f"{days_left} day(s) away — source and ship the next SKB decree before it arrives."
+    )

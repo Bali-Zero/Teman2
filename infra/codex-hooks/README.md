@@ -2,7 +2,8 @@
 
 This is the Codex adapter for Nuzantara's context and verification workflow. It
 uses Codex lifecycle hooks, native rollout accounting, and the official Codex
-CLI for fresh continuations. It does not modify the Claude/Fable hook files.
+CLI. Parent sessions use native automatic compaction (1.3.0). It does not
+modify the Claude/Fable hook files.
 
 ## Installed behavior
 
@@ -10,15 +11,18 @@ CLI for fresh continuations. It does not modify the Claude/Fable hook files.
   PostCompact, Stop, SubagentStart, SubagentStop. Existing hook definitions and their ordering are retained.
 - Context usage is `last_token_usage.total_tokens / model_context_window` from
   the current Codex rollout, never cumulative lifetime tokens or a guessed 1M
-  window. Thresholds come from the policy file, one validated lookup for the
-  parent seat and the native child alike; `install.py` seeds 60% for imperator,
+  window. Native children retain policy thresholds; legacy parent rollover is
+  disabled by `parent_rollover_enabled=false`. `install.py` seeds 60% for imperator,
   builder and dux, and an undeclared role falls back to 40%. Fresh installs
   seeded 20% imperator / 40% builder until 2026-09-10. Existing keys are never
   overwritten, so a seat keeps a tuned value across reinstalls. The role is
   read from CODEX_CONTEXT_ROLE, falling back to the existing CONTEXT_GUARD_ROLE.
-- Threshold crossing asks for an operational checkpoint and restricts further
-  tools to the exact bridge helpers. Compaction discards stale token readings.
-- A continuation is bound to a source session ID and a single-use nonce, within
+- Parent threshold crossings no longer freeze tools or create continuations.
+  Codex compacts automatically at its model's native threshold and continues
+  in the same session. Compaction discards stale token readings. Parked jumps
+  without a live supervisor are retired lazily on the next hook. In-flight
+  `starting`/`accepted` continuations remain protected, including after compact.
+- Existing legacy continuations remain bound to a source session ID and a single-use nonce, within
   the same CODEX_HOME and working directory. It retains the source model,
   reasoning effort, approval policy and supported sandbox settings. Original
   text instructions and later steering are read transiently from native
@@ -31,7 +35,7 @@ CLI for fresh continuations. It does not modify the Claude/Fable hook files.
   leaves the launch `starting` rather than cancelling it — the next Stop
   re-checks. A failed launch parks the source as needs_attention; transient
   failures (timeout, destination exit, unconfirmed) are retried by the next
-  Stop up to three launch attempts, other failures wait for the operator
+  Stop up to three launch attempts only with legacy parent rollover enabled; other failures wait for the operator
   (`retry` re-arms, `release` unfreezes the source over threshold). The
   maximum chain length is three hops. No GUI automation is involved.
 - Verification executes real argv commands, records exit codes and hashes, and
@@ -89,7 +93,11 @@ Run install.py using the host's existing project virtualenv, once per seat,
 with --seat, one or more --root arguments, and --trust-reviewed-hooks. The
 installer backs up the original config and hooks, copies only this adapter,
 enables the hooks feature, and records trust for only the eight exact definitions
-through Codex's own config API. It never copies auth.json between machines and
+through Codex's own config API. It sets `parent_rollover_enabled=false` and
+removes only the two top-level `model_auto_compact_token_limit` and
+`model_auto_compact_token_limit_scope` overrides, restoring model defaults.
+Named profiles remain untouched; check active profile overrides separately.
+It never copies auth.json between machines and
 never uses a hook-trust or sandbox bypass switch.
 
 The manifest is CODEX_HOME/state/nuzantara-context-install.json. Its
@@ -97,8 +105,13 @@ original_backup points to the first pre-install backup; each update also has
 its own backup. installation_status.py independently verifies persisted trust,
 installed source hashes and preservation of the previous hooks.
 
-For immediate rollback, set enabled=false in
-CODEX_HOME/nuzantara-context-policy.json. This disables only this adapter.
+To restore legacy parent jumps, set `parent_rollover_enabled=true` in
+CODEX_HOME/nuzantara-context-policy.json; previously released sessions remain
+released. Reinstalling explicitly enables native mode again. Restore the compact
+overrides from this update's backup if required. Symlinked configuration is
+rejected without modification; use a regular seat config for this installer.
+Setting `enabled=false` disables the whole adapter, including child and
+verification checks, so it is not the rollback for this migration.
 To remove its definitions, restore the original hooks.json from original_backup
 (or remove hooks.json only if it did not exist there). Restore config.toml only
 when no later unrelated configuration edits would be lost. No restart or

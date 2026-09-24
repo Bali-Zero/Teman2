@@ -175,9 +175,7 @@ def _check_fixtures() -> int:
         for fixture_path in _fixture_paths(contract_kind, "invalid"):
             checked += 1
             try:
-                expected = _read_json(fixture_path.with_suffix(".expect.json"))[
-                    "reason_code"
-                ]
+                expected = _read_json(fixture_path.with_suffix(".expect.json"))["reason_code"]
                 model.model_validate(_read_json(fixture_path))
             except ValidationError as exc:
                 actual_codes = {str(error["type"]) for error in exc.errors()}
@@ -193,9 +191,7 @@ def _check_fixtures() -> int:
             except (OSError, json.JSONDecodeError, KeyError) as exc:
                 failures.append({"file": str(fixture_path), "reason": str(exc)})
             else:
-                failures.append(
-                    {"file": str(fixture_path), "reason": "invalid_fixture_accepted"}
-                )
+                failures.append({"file": str(fixture_path), "reason": "invalid_fixture_accepted"})
     _emit({"valid": not failures, "checked": checked, "failures": failures})
     return 0 if not failures else 1
 
@@ -227,9 +223,7 @@ def _build_parser() -> JsonArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_parser = subparsers.add_parser("validate")
-    validate_parser.add_argument(
-        "--contract", choices=sorted(CONTRACT_MODELS), required=True
-    )
+    validate_parser.add_argument("--contract", choices=sorted(CONTRACT_MODELS), required=True)
     validate_parser.add_argument("--file", type=Path, required=True)
 
     hash_parser = subparsers.add_parser("hash")

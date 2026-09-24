@@ -22,8 +22,10 @@ from datetime import date, timedelta
 
 from backend.services.garuda_flow.operating_calendar import (
     COVERAGE_END,
+    COVERAGE_END_HORIZON_WARNING_DAYS,
     COVERAGE_START,
     OPERATING_CALENDAR,
+    coverage_end_horizon_warning,
     is_open,
     last_open_day_before,
 )
@@ -124,6 +126,51 @@ class TestCoverageBounds:
         # The farther-past tests above still protect fail-closed behavior once
         # the search would have to begin outside the materialized calendar.
         assert last_open_day_before(COVERAGE_END + timedelta(days=1)) == COVERAGE_END
+
+
+class TestCoverageEndHorizonWarning:
+    """L1326: nobody owned the clock on the 130-day-away coverage horizon.
+    RED IF: the alarm stays silent once `COVERAGE_END` is close, or fires
+    while it is still far away."""
+
+    def test_far_from_the_horizon_is_silent(self) -> None:
+        far = COVERAGE_END - timedelta(days=COVERAGE_END_HORIZON_WARNING_DAYS + 1)
+        assert coverage_end_horizon_warning(far) is None
+
+    def test_exactly_at_the_threshold_fires(self) -> None:
+        # `threshold_days` itself is the first day INSIDE the window.
+        at_threshold = COVERAGE_END - timedelta(days=COVERAGE_END_HORIZON_WARNING_DAYS)
+        assert coverage_end_horizon_warning(at_threshold) is not None
+
+    def test_advancing_the_clock_inside_the_threshold_produces_a_named_alert(self) -> None:
+        inside = COVERAGE_END - timedelta(days=COVERAGE_END_HORIZON_WARNING_DAYS - 1)
+        warning = coverage_end_horizon_warning(inside)
+        assert warning is not None
+        assert "COVERAGE_END" in warning
+        assert COVERAGE_END.isoformat() in warning
+
+    def test_exactly_on_coverage_end_fires(self) -> None:
+        assert coverage_end_horizon_warning(COVERAGE_END) is not None
+
+    def test_past_coverage_end_names_the_overrun_not_a_generic_message(self) -> None:
+        warning = coverage_end_horizon_warning(COVERAGE_END + timedelta(days=3))
+        assert warning is not None
+        assert "3 day" in warning
+        assert "past" in warning
+
+    def test_a_custom_threshold_is_honoured(self) -> None:
+        far_but_inside_custom = COVERAGE_END - timedelta(days=90)
+        assert coverage_end_horizon_warning(far_but_inside_custom) is None
+        assert (
+            coverage_end_horizon_warning(far_but_inside_custom, threshold_days=120)
+            is not None
+        )
+
+    def test_never_invents_a_2027_closure(self) -> None:
+        # The warning fires past COVERAGE_END, but OPERATING_CALENDAR itself
+        # must stay exactly what TestCalendarDataNeverExceedsCoverageEnd pins.
+        coverage_end_horizon_warning(COVERAGE_END + timedelta(days=200))
+        assert all(entry.at <= COVERAGE_END for entry in OPERATING_CALENDAR)
 
 
 class TestCalendarDataNeverExceedsCoverageEnd:

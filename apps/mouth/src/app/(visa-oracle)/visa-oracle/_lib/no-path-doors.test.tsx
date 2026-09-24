@@ -5,9 +5,9 @@
  * Every "you would qualify for X" sentence in this product is a claim about
  * the SIGNED rule pack, so prose is not evidence for it. `fixtures/
  * no-path-doors.replay.json` is: it replays each non-supported interview walk
- * against the currently signed rule pack (`rulepack-prod-022.signed.json` as
- * of Slice B5-1) with exactly one declared field changed, and records which
- * products the pack then supports.
+ * against the currently signed rule pack (`rulepack-prod-023.signed.json` as
+ * of the seq-23 regen, 2026-09-25) with exactly one declared field changed,
+ * and records which products the pack then supports.
  *
  * This test drives the REAL interview (`runWalk` from the corpus generator,
  * the same machine that produced the backend census) into the REAL adapter
@@ -193,12 +193,19 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // sibling walk that declares `guardian_consent: "no"` earns the hold
     // instead (HUMAN_REVIEW_REQUIRED, not counted here). NEEDS_INPUT loses
     // that one walk: 2 -> 1.
+    //
+    // seq-23 regen (this PR, 2026-09-25): fixture was stale on origin/main
+    // since the pack 022 -> 023 fold (`kit/DRAFT-SPEC-A8-1.v2.md` §1,
+    // GATE-A3P-B-REPORT-7234.md finding 3). Pack moves 022 -> 023; state
+    // counts are untouched (14, 1) — the fold only appends
+    // `E33G_LOCAL_COMPANY_NOT_ALLOWED` on `offshore/remote` and
+    // `onshore/remote`, both already NO_SUPPORTED_PATH.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
     ).toHaveLength(14);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(1);
-    expect(replay.pack.file).toBe("rulepack-prod-022.signed.json");
+    expect(replay.pack.file).toBe("rulepack-prod-023.signed.json");
   });
 
   for (const walk of replay.walks.filter(

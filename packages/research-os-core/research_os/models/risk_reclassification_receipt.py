@@ -315,9 +315,7 @@ class RiskReclassificationReceipt(FrozenCoreModel):
         # unconditional. Checked as: output sensitivity is already the
         # greater of {output, source} -- i.e. not lower than the source.
         if (
-            max_sensitivity(
-                self.output_object.sensitivity, self.source_object.sensitivity
-            )
+            max_sensitivity(self.output_object.sensitivity, self.source_object.sensitivity)
             != self.output_object.sensitivity
         ):
             raise PydanticCustomError(
@@ -367,10 +365,5 @@ def risk_reclassification_authorizes_output(
         raise ValueError(
             "receipt.output_object.object_hash does not pin this exact output revision"
         )
-    if (
-        receipt.permitted_use.expires_at is not None
-        and at >= receipt.permitted_use.expires_at
-    ):
-        raise ValueError(
-            "risk reclassification receipt is expired at the relied-on instant"
-        )
+    if receipt.permitted_use.expires_at is not None and at >= receipt.permitted_use.expires_at:
+        raise ValueError("risk reclassification receipt is expired at the relied-on instant")

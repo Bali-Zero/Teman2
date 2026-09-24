@@ -120,6 +120,25 @@ def test_extract_answer_unparseable_body_is_an_error_not_a_crash():
     assert error is not None
 
 
+def test_extract_answer_unparseable_body_persists_raw_body_and_names_the_path(
+    monkeypatch, tmp_path
+):
+    """PENDING-ARMS L1835: the failure used to destroy its own body — a
+    corrupted response must now be written to disk AND the stderr-bound
+    error must name that file, not just the last 200 characters."""
+    import tp1_call
+
+    monkeypatch.setattr(tp1_call, "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path)
+    corrupted = '{"choices": [{"message": {"content": "cut off mid-strea'
+    answer, warning, error = extract_answer(corrupted)
+    assert answer is None
+    assert error is not None
+    dumped = list(tmp_path.glob("*.json"))
+    assert len(dumped) == 1
+    assert dumped[0].read_text(encoding="utf-8") == corrupted
+    assert str(dumped[0]) in error
+
+
 if __name__ == "__main__":
     import pytest
 

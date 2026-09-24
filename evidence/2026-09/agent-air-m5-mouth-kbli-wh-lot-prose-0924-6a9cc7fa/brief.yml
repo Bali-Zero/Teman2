@@ -1,0 +1,67 @@
+task_id: kbli-wh-lot-prose-remainder
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor via SIZE term: 5 tracked files touched (+3 consumer copies byte-identical to
+# canonical, cert registry re-stamp, 1 new spec, 1 new test file), 10 fields on 7 codes.
+# No hot-zone path, no migration, no new dependency.
+objective: >-
+  Remainder of the W-H prose lot (commit fbf085e1fa, never shipped), re-graded on
+  origin/main f300402e0e (after PR #7231). Four defect families across 7 codes: (1)
+  50135/50221/51101/50222 pullQuotes said Bali is not moratorium-blocked without stating
+  the national 49% foreign-ownership cap that still applies; (2) 53200 whatYouNeed ended
+  with an unverified precise date ("13 May 2026") the record itself dates only to "third
+  week of May 2026"; (3) 50133 whatYouNeed ended with a dangling self-referential
+  fragment; (4) 93114 (l4_bali BLOCCATO_DIPENDE_SCOPE, uncertified) asserted unqualified
+  Bali registrability against its own scope-dependent verdict — only paragraph 4 of the
+  body changes, paragraphs 1-3 carry the true national-opening facts verbatim.
+constraints:
+  - >-
+    Whole-field, sha256-pinned replacement via cure_prose_national_openness.py, left
+    unmodified. Dry-run before apply: "10 field(s) on 7 code(s); codes still asserting
+    openness overall: 0 -> 0".
+  - >-
+    No hand edit of data/kbli-filiera/** (data-plane guard). 6 of 7 codes are
+    canonicalIntel-certified (93114 is not); reissue_editorial_content_certs.py --base
+    origin/main re-issued exactly those 6 (contentSha256 moved, 93114 untouched in the
+    registry — a latent-defect cure, its Intelligence section already withheld from every
+    surface). recert_pma_editorial_registry.py --base origin/main found 0 pmaFingerprint
+    mismatches on 38 certified entries and needed no write (sourceDatasetSha256/reviewedAt
+    already matched after the canonical commit landed).
+  - >-
+    A pre-existing test from PR #7231 (test_prose_wh_inverted_49_formula_2026_09_24.py)
+    pins 50133.whatYouNeed and 53200.whatYouNeed to the exact bytes this cure re-edits (a
+    first -x run named only 50133 because -x stops at the first red inside the loop). The
+    pin now follows a machine-checked chain instead of a skip: a later spec may replace a
+    graded field only if its old_sha256 is the sha256 of THIS spec's text, and the record
+    must then carry the later text. #7231's spec file (a graded audit artifact) is untouched;
+    the corrected 49% formula that test guards is still asserted on all 16 codes.
+  - >-
+    kbli_dataset_lint.py exits 1 on both origin/main and this branch with byte-identical
+    output (39 pre-existing blocking findings, none of them any of the 7 cured codes) —
+    confirmed by running the lint against a reconstructed origin/main tree and diffing.
+    Not a regression; not touched by this PR.
+acceptance:
+  - text: >-
+      A1 GUILT: each defect family's guilt test is RED before --apply and GREEN after —
+      capless pullQuotes now state 49%, 53200/50133 drop their bad sentences, 93114 drops
+      the unqualified Bali claims and its risk-by-scope statement matches per_skala
+      (golf=Tinggi, other courts=Menengah Rendah, scale-invariant).
+    probe: "pytest scripts/kbli_filiera/tests/test_prose_wh_lot_remainder_2026_09_24.py -v"
+  - text: >-
+      A2 INNOCENCE: 53200/50133 keep their true Perpres citations and 49% sentence; 93114
+      body paragraphs 1-3 are byte-identical pre/post (sha256-pinned); neighbours
+      50211/50213 pullQuotes (already carrying 49%) are untouched; the "13 May 2026" count
+      on every OTHER code is unchanged from its pre-cure value (536).
+    probe: "same test file, innocence_* tests"
+  - text: >-
+      A3 PUBLICATION KEPT / CONSUMERS SYNCED: the 3 tracked consumer copies plus the
+      sidecar version file match the new canonical byte-for-byte and by sha256; 6/7
+      certified codes re-issued (93114 correctly excluded); full local test suites green.
+    probe: >-
+      cmp canonical vs apps/mouth,apps/kbli-navigator,apps/backend-rag copies (all
+      IDENTICAL); pytest scripts/kbli_filiera/tests -q (1821 passed, 1 skipped, 0
+      failed after the #7231 pin fix); pytest scripts/tests/test_kbli_dataset_lint_guards.py
+      -q (36 passed); backend/tests/unit/services/test_kbli_editorial_certification.py (7
+      passed, incl. test_canonical_certification_partition_is_exact); vitest kbli via
+      symlinked non-dot worktree path (63 files / 892 tests passed).

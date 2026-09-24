@@ -23,3 +23,12 @@ exclude = ["tests*"]
 [tool.pytest.ini_options]
 testpaths = ["../../apps/backend-rag/backend/tests/unit/research_os"]
 pythonpath = ["."]
+
+[tool.ruff]
+# Root cause of L1301: with no local [tool.ruff] table, ruff's config
+# discovery stops at THIS file (nearest ancestor pyproject.toml) and never
+# walks up to apps/backend-rag/pyproject.toml's [tool.ruff] (line-length=100)
+# — every file here silently formatted/linted to ruff's bare defaults
+# (line-length 88) instead, and the verdict flipped depending on whether an
+# invocation happened to pass --config explicitly.
+extend = "../../apps/backend-rag/pyproject.toml"

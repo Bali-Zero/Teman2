@@ -454,7 +454,9 @@ for a route that bypasses `nuzantara_readonly`.
 
 **Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (postgres-flex 17.7, `repmgr` HA — NOT Stolon; rolling-upgraded 17.2→17.7 on 2026-08-09 after an isolated restore proof; backup → Tigris daily — WAL archiving re-enabled same day: a legacy override had disabled it, so "DONE" backups were not actually restorable). Frontend on Vercel (auto-deploy on `git push origin main`).
 
-**Pre-deploy** (run sequentially):
+**A merge to `main` already deploys the backend** (PENDING-ARMS 2026-08-25, closed 2026-09-24). `.github/workflows/fly-deploy.yml` is the SSOT: it triggers on `push: branches:[main]` filtered to `apps/backend-rag/**` (docs/README/CLAUDE.md/tests excluded) and runs, in order, `pre-deploy-gate` → `run-migrations` (via `flyctl ssh console`) → `deploy` (rolling) → `run-sql-v2-migrations-post-deploy` (that last job exists because of the 2026-04-26 scar where new SQL ran against the OLD image and silently did nothing) → `run-python-migrations`. Do **not** follow this section's `fly deploy` block after merging — it fires a SECOND, racing deploy against an app the workflow is already mid-rolling-restart on; the workflow's own `concurrency: group: fly-deploy, cancel-in-progress: false` only guards runs of itself, not a hand-run `flyctl` from a laptop.
+
+**Pre-deploy** (run sequentially, before merging):
 ```bash
 git diff --name-only HEAD -- apps/backend-rag/backend/
 cd apps/backend-rag && source .venv/bin/activate
@@ -462,11 +464,11 @@ python -c "from backend.app.dependencies import get_current_user; print('OK')"
 PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py
 ```
 
-**Deploy** — run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:
+**Manual `fly deploy` is a break-glass path only** — use it when the workflow itself is broken (e.g. a Fly-side incident), never as the routine post-merge step. Run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:
 the Dockerfile's `COPY` paths are repo-root-relative — `apps/backend-rag/backend`, `packages/cell-core`,
 `apps/crm-cell/crm_cell` — so a build invoked with cwd=`apps/backend-rag` fails with `"apps/backend-rag/backend": not found`.
 The local `fly` shell-function wrapper on Pro/Mini also hardcodes that wrong cwd regardless of caller
-location — bypass it with a direct `ssh pro`/`ssh mini` call when deploying):
+location — bypass it with a direct `ssh pro`/`ssh mini` call when deploying). Its real prerequisite is a `FLY_API_TOKEN` scoped to `nuzantara-rag` — as of 2026-08-25 no machine in the fleet holds one (M5 has none at all; Pro's token is scoped to `nuzantara-postgres` only and returns `Could not find App "nuzantara-rag"`), so this path is currently unusable outside the CI workflow's own secret:
 ```bash
 cd ~/nuzantara  # repo root, NOT apps/backend-rag — corrected 2026-08-29: the repo moved out of
                 # ~/Desktop (TCC-protected) to ~/nuzantara on all three fleet machines on 2026-07-16;

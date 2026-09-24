@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 from context_bridge import EVENTS, codex_home, digest, load
+from install import COMPACT_OVERRIDES
 from rpc import RPC, binary_path
+
+
+def native_compact_defaults(config_file: Path) -> bool:
+    config = tomllib.loads(config_file.read_text()) if config_file.exists() else {}
+    active_profile = config.get("profiles", {}).get(config.get("profile"), {})
+    return not any(key in config or key in active_profile for key in COMPACT_OVERRIDES)
 
 
 def main() -> None:
@@ -47,6 +55,8 @@ def main() -> None:
         "seat": str(seat),
         "binary": binary_path(),
         "enabled": policy.get("enabled"),
+        "parent_rollover_enabled": policy.get("parent_rollover_enabled", True),
+        "native_compact_defaults": native_compact_defaults(seat / "config.toml"),
         "trusted_events": [
             h["eventName"]
             for h in hooks
@@ -65,6 +75,8 @@ def main() -> None:
         and result["enabled"]
         and result["artifact_matches_manifest"]
         and result["existing_hooks_preserved"]
+        and not result["parent_rollover_enabled"]
+        and result["native_compact_defaults"]
     )
     print(json.dumps(result, indent=2))
     if not result["installed"]:
