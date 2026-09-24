@@ -199,6 +199,18 @@ def test_rpc_initialization_failure_restores_selected_seat(seat, monkeypatch):
     assert profile.os.environ["CODEX_HOME"] == "prior-seat"
 
 
+def test_skills_only_preserves_mcp_and_does_not_discover_tools(seat, monkeypatch, capsys):
+    config = notebook_seat(seat)
+    before = tomllib.loads(config.read_text())["mcp_servers"]
+    monkeypatch.setattr(FakeRPC, "tool_names", set())  # discovery would raise
+    monkeypatch.setattr(sys, "argv", ["installer", "--seat", str(seat), "--skills-only"])
+    profile.main()
+    result = json.loads(capsys.readouterr().out)
+    assert result["installed"] and result[profile.NOTEBOOKLM] == "unchanged"
+    assert tomllib.loads(config.read_text())["mcp_servers"] == before
+    assert FakeRPC.calls[0]["edits"] == [{"keyPath": "skills.max_context_tokens", "value": 3000, "mergeStrategy": "replace"}]
+
+
 def test_fresh_seat_gets_exact_profile_with_backup(seat):
     original = (seat / "config.toml").read_bytes()
     result = profile.install(seat)

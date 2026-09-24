@@ -175,10 +175,15 @@ profile; running sessions keep what they loaded.
 
 ### Skills and NotebookLM loadout
 
-After the seat profile is installed, run
-`install_seat_profile.py --seat ~/.codex --loadout` (or add `--check` for a
+Production skill-budget activation uses
+`install_seat_profile.py --seat ~/.codex --skills-only` (or add `--check` for a
 configuration read-only report). It applies the same absent/match/drift policy
-to `skills.max_context_tokens = 3000`. For an existing enabled `notebooklm-mcp`
+to `skills.max_context_tokens = 3000`, leaving MCP choices unchanged.
+
+The separate `--loadout` flag explicitly opts into a NotebookLM read/query filter
+as well as the skill budget. It is not installed by default: the matched native
+M5 startup experiment observed zero input-token reduction from that filter.
+For an existing enabled `notebooklm-mcp`
 server, it discovers the current tool inventory through native
 `mcpServerStatus/list` and installs `disabled_tools` for everything except:
 `notebook_list`, `notebook_get`, `notebook_describe`, `source_describe`,

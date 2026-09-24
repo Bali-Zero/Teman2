@@ -239,7 +239,7 @@ def notebook_tools(seat: Path) -> set[str]:
     raise RuntimeError("NotebookLM server not observed; no config changes")
 
 
-def loadout_plan(config: dict, tools: set[str] | None) -> tuple[dict, list[dict]]:
+def loadout_plan(config: dict, tools: set[str] | None, *, notebooklm: bool = True) -> tuple[dict, list[dict]]:
     """Per item: absent -> install, match -> noop, different -> report drift."""
     edits = []
 
@@ -252,7 +252,9 @@ def loadout_plan(config: dict, tools: set[str] | None) -> tuple[dict, list[dict]
     result = {"skills.max_context_tokens": item(
         "skills.max_context_tokens", config.get("skills", {}).get("max_context_tokens"), SKILL_BUDGET)}
     server = config.get("mcp_servers", {}).get(NOTEBOOKLM)
-    if server is None:
+    if not notebooklm:
+        result[NOTEBOOKLM] = "unchanged"
+    elif server is None:
         result[NOTEBOOKLM] = "not_configured"
     elif server.get("enabled") is False:
         result[NOTEBOOKLM] = "disabled_by_operator"
@@ -273,19 +275,19 @@ def loadout_plan(config: dict, tools: set[str] | None) -> tuple[dict, list[dict]
             result[NOTEBOOKLM] = item(f"mcp_servers.{NOTEBOOKLM}.disabled_tools", normalized, wanted)
         result["exposed_tools"] = len(tools or [])
     result["installed"] = (result["skills.max_context_tokens"] == "match"
-                           and result[NOTEBOOKLM] in ("match", "not_configured", "disabled_by_operator"))
+                           and result[NOTEBOOKLM] in ("match", "not_configured", "disabled_by_operator", "unchanged"))
     return result, edits
 
 
-def loadout(seat: Path, *, check: bool = False) -> dict:
+def loadout(seat: Path, *, check: bool = False, notebooklm: bool = True) -> dict:
     seat, config_file = prepare(seat)
     # Pin the snapshot BEFORE discovery so a concurrent server/config change
     # cannot apply a filter derived from a different configuration.
     snapshot, version = user_layer(seat, config_file)
     server = snapshot.get("mcp_servers", {}).get(NOTEBOOKLM)
-    tools = (notebook_tools(seat) if server is not None and server.get("enabled") is not False
+    tools = (notebook_tools(seat) if notebooklm and server is not None and server.get("enabled") is not False
              and "enabled_tools" not in server else None)
-    before, edits = loadout_plan(snapshot, tools)
+    before, edits = loadout_plan(snapshot, tools, notebooklm=notebooklm)
     result = {"seat": str(seat), "before": before, "backup": None, **before}
     if check or not edits:
         return result
@@ -309,7 +311,7 @@ def loadout(seat: Path, *, check: bool = False) -> dict:
         if config_file.is_file() and not config_file.is_symlink() and config_file.stat().st_mode & 0o777 != mode:
             config_file.chmod(mode)
     observed = notebook_tools(seat) if tools is not None else None
-    result.update(loadout_plan(after, observed)[0])
+    result.update(loadout_plan(after, observed, notebooklm=notebooklm)[0])
     save(seat / "state" / "nuzantara-seat-loadout-install.json", result)
     return result
 
@@ -318,10 +320,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seat", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
-    parser.add_argument("--loadout", action="store_true", help="install/check bounded skills and NotebookLM read/query tools")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--loadout", action="store_true", help="opt in to bounded skills and NotebookLM read/query tools")
+    scope.add_argument("--skills-only", action="store_true", help="bound skills without changing or querying MCP servers")
     args = parser.parse_args()
-    if args.loadout:
-        result = loadout(args.seat, check=args.check)
+    if args.loadout or args.skills_only:
+        result = loadout(args.seat, check=args.check, notebooklm=args.loadout)
     elif args.check:
         result = status(args.seat.expanduser().resolve())
     else:
