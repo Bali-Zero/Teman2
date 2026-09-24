@@ -201,9 +201,29 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     )
     next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
 
+    def _extract_labelled_items(text: str) -> list[str]:
+        """Split a labelled (For Expats/For Investors) subsection into list
+        items — unchanged from the pre-fix behavior so an innocent draft
+        with real subsections still renders exactly as before."""
+        return [
+            item.strip().lstrip("- ").lstrip("* ")
+            for item in re.split(r"\n(?=-|\*)", text)
+            if item.strip()
+        ]
+
+    def _extract_general_items(text: str) -> list[str]:
+        """Split an unlabelled, audience-neutral Next Steps body into list
+        items — same >10-char noise filter the old fallback used."""
+        return [
+            item.strip().lstrip("- ").lstrip("* ")
+            for item in re.split(r"\n(?=-|\*)", text)
+            if item.strip() and len(item.strip()) > 10
+        ]
+
     # Parse Next Steps for expat and investor
-    expat_steps = []
-    investor_steps = []
+    expat_steps: list[str] = []
+    investor_steps: list[str] = []
+    general_steps: list[str] = []
 
     # Try to extract expat and investor sections
     expat_match = re.search(
@@ -212,13 +232,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         re.DOTALL | re.IGNORECASE,
     )
     if expat_match:
-        expat_text = expat_match.group(1).strip()
-        # Extract list items
-        expat_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", expat_text)
-            if item.strip()
-        ]
+        expat_steps = _extract_labelled_items(expat_match.group(1).strip())
 
     investor_match = re.search(
         r"(?:###\s*)?(?:For\s+)?Investor[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
@@ -226,35 +240,56 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         re.DOTALL | re.IGNORECASE,
     )
     if investor_match:
-        investor_text = investor_match.group(1).strip()
-        # Extract list items
-        investor_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", investor_text)
-            if item.strip()
-        ]
+        investor_steps = _extract_labelled_items(investor_match.group(1).strip())
 
-    # If no specific sections found, try to extract all list items
-    if not expat_steps and not investor_steps:
-        all_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", next_steps_text)
-            if item.strip() and len(item.strip()) > 10
-        ]
-        # Split between expat and investor (rough heuristic)
-        mid_point = len(all_steps) // 2
-        expat_steps = (
-            all_steps[:mid_point] if all_steps else ["Review the article for specific actions"]
-        )
-        investor_steps = (
-            all_steps[mid_point:] if all_steps else ["Review the article for specific actions"]
-        )
+    # A draft that never names "For Expats"/"For Investors" states ONE
+    # audience-neutral list. Splitting it 50/50 between the two invents an
+    # audience the draft never named (2026-09-23 GloBE regression: the
+    # expats group got a filler, the investors group got the whole blob).
+    # Render it as a single neutral group instead — never split, never fill.
+    if not expat_match and not investor_match and next_steps_text:
+        general_steps = _extract_general_items(next_steps_text)
+        if not general_steps:
+            general_steps = [next_steps_text]
 
-    # Ensure we have at least one step for each
-    if not expat_steps:
-        expat_steps = ["Review the article for specific actions"]
-    if not investor_steps:
-        investor_steps = ["Review the article for specific actions"]
+    # Preserve every OTHER draft "##" section instead of silently dropping it
+    # (2026-09-23 GloBE regression: "## In Practice" and "## Sources" never
+    # reached the MDX). Walk every "##" heading in draft order; the four
+    # mapped ones above are consumed into their own fields and skipped here,
+    # everything else is carried through verbatim with an anchor recording
+    # which mapped section it immediately followed, so the renderer can slot
+    # it back into the same relative position.
+    def _classify_known_heading(heading: str) -> str | None:
+        normalized = heading.strip().rstrip(":").lower()
+        if normalized == "summary":
+            return "summary"
+        if normalized == "facts":
+            return "facts"
+        if normalized in {"bali zero take", "bali zero's take", "bali zero’s take"}:
+            return "bali_zero_take"
+        if normalized == "next steps":
+            return "next_steps"
+        return None
+
+    extra_sections: list[dict[str, str]] = []
+    all_headings = list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content))
+    last_known_anchor = "facts"
+    for index, heading_match in enumerate(all_headings):
+        heading_text = heading_match.group(1).strip()
+        body_start = heading_match.end()
+        body_end = (
+            all_headings[index + 1].start() if index + 1 < len(all_headings) else len(content)
+        )
+        body = content[body_start:body_end].strip()
+        known = _classify_known_heading(heading_text)
+        if known:
+            if known != "summary":
+                last_known_anchor = known
+            continue
+        if body:
+            extra_sections.append(
+                {"heading": heading_text, "body": body, "insert_after": last_known_anchor}
+            )
 
     # Editorial priority: how much the story matters to Bali Zero (it feeds
     # `trending`), not how exposed the reader is.
@@ -294,6 +329,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         "next_steps": {
             "expat": expat_steps[:5],  # Limit to 5 items
             "investor": investor_steps[:5],  # Limit to 5 items
+            "general": general_steps[:5],  # Limit to 5 items
         },
         "category": category,
         "priority": priority,
@@ -308,6 +344,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         "seo_title": staging_data.get("seo_title"),
         "seo_description": staging_data.get("seo_description"),
         "cover_image_alt": staging_data.get("cover_image_alt"),
+        "extra_sections": extra_sections,
     }
 
 
@@ -859,6 +896,7 @@ async def _publish_staging_item(
             from backend.app.routers.article_composer import (
                 BaliZeroTake,
                 EnrichedArticle,
+                ExtraSection,
                 NextSteps,
                 PublishRequest,
                 TLDRSection,
@@ -889,6 +927,10 @@ async def _publish_staging_item(
                 seo_title=enriched_dict.get("seo_title"),
                 seo_description=enriched_dict.get("seo_description"),
                 cover_image_alt=enriched_dict.get("cover_image_alt"),
+                extra_sections=[
+                    ExtraSection(**section)
+                    for section in enriched_dict.get("extra_sections", [])
+                ],
             )
 
             # Prepare cover image if available
