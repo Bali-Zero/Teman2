@@ -138,6 +138,20 @@ export function isSecondHomeStudioOnly(outcome: OutcomeViewModel): boolean {
   );
 }
 
+// A3'-M (Slice A3'-M, M1): dead-end codes the mouth may show WITHOUT a
+// decisive source ref, because no rule in the signed pack — today or ever
+// — could name one for this answer: the pack does not decide it at all, so
+// there is no rule reference to demand. Narrow by design:
+// `requireDecisiveRefs` stays the default gate on every other
+// NO_SUPPORTED_PATH code, and this exemption fires only when BOTH the code
+// is listed here AND `source_refs` is actually empty — a listed code that
+// arrives with a non-empty, non-decisive ref still throws
+// `RESPONSE_INVARIANT`, because that shape is not the sourceless one this
+// exemption exists for.
+export const SOURCELESS_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+]);
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -574,6 +588,15 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
     "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",
   ),
+  // A3'-M (M2): the ONE sourceless dead end SOURCELESS_NO_PATH_CODES lists.
+  // Copy byte-equal to kit/a3p-spec-strings-20260922.json, inserted by
+  // script (never retyped) — the quoted CTA label is OracleShell.tsx's
+  // own `SESSION_COPY.{en,id}.consultant` string, proved in
+  // engine-adapter.test.ts by reading that file's source text.
+  DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: text(
+    "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
+    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
@@ -719,6 +742,12 @@ export function buildNoPathDoors(
   facts: OracleFacts,
 ): NoSupportedPathAlternative[] {
   const doors: NoSupportedPathAlternative[] = [];
+  // A3'-M (M3): a sourceless dead end names no door. The pack never decided
+  // this answer at all, so there is no replay-proven alternative to name —
+  // the CTA on this dead end is a consultation, never a category switch.
+  if (noPathReasonCodes.some((code) => SOURCELESS_NO_PATH_CODES.has(code))) {
+    return doors;
+  }
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
   // Shuts every door under every purpose — measured, not assumed.
@@ -1263,10 +1292,6 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION: text(
     "Whether your sponsor holds a stay permit of their own has not been established here. Our team confirms the sponsor's own stay permit with you before submission and tells you what to prepare.",
     "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Tim kami akan memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
-  ),
-  DISCLOSED_ACTIVITY_BOUNDARY_CONDITION: text(
-    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own. Our team confirms it with you before submission and tells you what to prepare.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan. Tim kami akan memastikannya bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
     "You said your trip serves more than one purpose. Our team reviews how those purposes combine with you before submission and tells you what to prepare.",
@@ -1826,7 +1851,15 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
-          requireDecisiveRefs(item.source_refs);
+          // A3'-M (M1): the narrow exemption. A listed code with a
+          // non-empty ref still goes through the normal decisive-ref gate —
+          // only the actually-sourceless shape skips it.
+          const isSourcelessDeadEnd =
+            SOURCELESS_NO_PATH_CODES.has(item.code) &&
+            item.source_refs.length === 0;
+          if (!isSourcelessDeadEnd) {
+            requireDecisiveRefs(item.source_refs);
+          }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: buildNoPathDoors(
