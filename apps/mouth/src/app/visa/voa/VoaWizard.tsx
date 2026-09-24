@@ -58,7 +58,7 @@ export function VoaWizard({
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
   const [nudge, setNudge] = useState(false);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const moved = useRef(false);
 
   useEffect(() => {
@@ -100,13 +100,14 @@ export function VoaWizard({
     return () => window.removeEventListener("beforeunload", handler);
   }, [idx, onAbandon]);
 
-  // A step change moves focus to the new question, so a screen reader hears
-  // it and a phone scrolls back to it — but never on first paint, where it
-  // would steal the page's own starting point.
+  // A step change moves focus to the new step's own heading — not a
+  // nameless wrapper div — so a screen reader announces which question it
+  // landed on and a phone scrolls back to it. Never on first paint, where
+  // it would steal the page's own starting point.
   useEffect(() => {
     if (!moved.current) return;
-    bodyRef.current?.focus({ preventScroll: true });
-    bodyRef.current?.scrollIntoView?.({ block: "nearest" });
+    headingRef.current?.focus({ preventScroll: true });
+    headingRef.current?.scrollIntoView?.({ block: "nearest" });
   }, [idx]);
 
   const step = steps[idx];
@@ -192,11 +193,10 @@ export function VoaWizard({
         </dl>
       ) : null}
 
-      <div
-        ref={bodyRef}
-        tabIndex={-1}
-        className={`voa-wiz__body${nudge ? " voa-wiz__body--nudge" : ""}`}
-      >
+      <div className={`voa-wiz__body${nudge ? " voa-wiz__body--nudge" : ""}`}>
+        <h2 ref={headingRef} tabIndex={-1} className="voa-wiz__heading">
+          {step.title}
+        </h2>
         {step.render({
           value: current,
           setValue: (v) => {

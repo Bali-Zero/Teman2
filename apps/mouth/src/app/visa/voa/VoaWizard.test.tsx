@@ -95,4 +95,18 @@ describe("VoaWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: "See result" }));
     expect(onComplete).toHaveBeenCalledWith({ a: "Alpha", b: "Gamma" });
   });
+
+  it("moves focus to the new step's own heading, never a nameless wrapper", () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Beta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const heading = screen.getByRole("heading", { name: "Second", level: 2 });
+    expect(heading).toHaveFocus();
+  });
+
+  it("never moves focus on first paint", () => {
+    renderWizard();
+    const heading = screen.getByRole("heading", { name: "First", level: 2 });
+    expect(heading).not.toHaveFocus();
+  });
 });

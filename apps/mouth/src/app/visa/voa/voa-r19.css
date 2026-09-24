@@ -840,11 +840,29 @@
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__body {
   display: grid;
-  scroll-margin-top: 6rem;
 }
 
-[data-product="my"][data-garuda-voa="r19"] .voa-wiz__body:focus {
-  outline: none;
+/*
+ * Programmatic focus on a step change lands on THIS heading, not the body
+ * div that used to hold it — a nameless focus target announces nothing to a
+ * screen reader. `scroll-margin-top` moved here with it, since this is now
+ * the element `scrollIntoView` targets.
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__heading {
+  margin: 0 0 0.35rem;
+  scroll-margin-top: 6rem;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__heading:focus {
+  outline: 3px solid var(--bz-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
