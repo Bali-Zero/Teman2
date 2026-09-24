@@ -68,6 +68,20 @@ def write_private(path: Path, data: bytes) -> None:
     os.replace(temp, path)
 
 
+def create_exclusive(path: Path, data: bytes) -> bool:
+    """Create path only if nobody else has; a concurrent writer's file wins."""
+    temp = path.with_name(path.name + f".{os.getpid()}.tmp")
+    with open(temp, "wb", opener=lambda p, flags: os.open(p, flags, 0o600)) as stream:
+        stream.write(data)
+    try:
+        os.link(temp, path)
+        return True
+    except FileExistsError:
+        return False
+    finally:
+        temp.unlink()
+
+
 def config_write(seat: Path, edits: list[dict]) -> None:
     previous = os.environ.get("CODEX_HOME")
     os.environ["CODEX_HOME"] = str(seat)
@@ -119,28 +133,30 @@ def install(seat: Path) -> dict:
     (seat / "agents").mkdir(mode=0o700, exist_ok=True)
     for role, data in roles.items():
         if before["roles"][role] == "absent":
-            write_private(seat / "agents" / f"{role}.toml", data)
+            create_exclusive(seat / "agents" / f"{role}.toml", data)
     if before[KEY] == "absent":
         original = read_config(config_file)
         mode = config_file.stat().st_mode & 0o777
-        config_write(
-            seat, [{"keyPath": KEY, "value": text, "mergeStrategy": "replace"}]
-        )
         try:
-            after = read_config(config_file)
-        except tomllib.TOMLDecodeError:
-            after = {}
-        if (
-            after.get(KEY) != text
-            or {k: v for k, v in after.items() if k != KEY} != original
-        ):
-            # Not restored automatically: a concurrent writer's edit would be lost.
-            raise RuntimeError(
-                "developer_instructions write was not exact; backup at "
-                + result["backup"]
+            config_write(
+                seat, [{"keyPath": KEY, "value": text, "mergeStrategy": "replace"}]
             )
-        if config_file.stat().st_mode & 0o777 != mode:
-            config_file.chmod(mode)
+            try:
+                after = read_config(config_file)
+            except tomllib.TOMLDecodeError:
+                after = {}
+            if (
+                after.get(KEY) != text
+                or {k: v for k, v in after.items() if k != KEY} != original
+            ):
+                # Not restored automatically: a concurrent writer's edit would be lost.
+                raise RuntimeError(
+                    "developer_instructions write was not exact; backup at "
+                    + result["backup"]
+                )
+        finally:
+            if config_file.exists() and config_file.stat().st_mode & 0o777 != mode:
+                config_file.chmod(mode)
     result.update(status(seat))
     save(seat / "state" / "nuzantara-seat-profile-install.json", result)
     return result
@@ -149,28 +165,44 @@ def install(seat: Path) -> dict:
 def remove(seat: Path) -> dict:
     seat, config_file = prepare(seat)
     before = status(seat)
+    _, roles = expected()
+    source = stripped = None
+    if before[KEY] == "match":
+        # The whole plan is validated before anything is deleted.
+        source = config_file.read_bytes()
+        expected_config = tomllib.loads(source.decode())
+        del expected_config[KEY]
+        stripped = re.sub(
+            r"(?m)^[ \t]*" + KEY + r"[ \t]*=[^\n]*(?:\n|$)",
+            "",
+            source.decode(),
+            count=1,
+        )
+        try:
+            safe = tomllib.loads(stripped) == expected_config
+        except tomllib.TOMLDecodeError:
+            safe = False
+        if not safe:
+            raise ValueError(
+                "cannot safely remove developer_instructions; restore the backup"
+            )
     result = {
         "seat": str(seat),
         "before": before,
         "backup": str(backup_seat(seat, config_file)),
     }
-    for role, state in before["roles"].items():
-        if state == "match":
-            (seat / "agents" / f"{role}.toml").unlink()
-    if before[KEY] == "match":
-        source = config_file.read_text()
-        expected_config = tomllib.loads(source)
-        del expected_config[KEY]
-        stripped = re.sub(
-            r"(?m)^[ \t]*" + KEY + r"[ \t]*=[^\n]*(?:\n|$)", "", source, count=1
-        )
-        if tomllib.loads(stripped) != expected_config:
-            raise ValueError(
-                "cannot safely remove developer_instructions; restore the backup"
-            )
+    if stripped is not None:
         mode = config_file.stat().st_mode & 0o777
+        if config_file.read_bytes() != source:
+            raise RuntimeError(
+                "config.toml changed concurrently; nothing removed, rerun"
+            )
         write_private(config_file, stripped.encode())
         config_file.chmod(mode)
+    for role, state in before["roles"].items():
+        path = seat / "agents" / f"{role}.toml"
+        if state == "match" and path.exists() and path.read_bytes() == roles[role]:
+            path.unlink()
     result.update(status(seat))
     return result
 
