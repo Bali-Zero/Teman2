@@ -1,0 +1,16 @@
+task: Stop the News Room converter from dropping draft "##" sections and inventing Next Steps content that was never in the draft.
+lane: backend-rag/newsroom-converter-fidelity
+machine: M5
+date: 2026-09-24
+mission_id: newsroom-converter-fidelity
+mission_colour: BLUE
+role: session, prepare only (coordinator reviews/merges/arms/deploys)
+gear: 2
+gear_reason: Publishing-correctness fix to convert_staging_to_enriched_article and generate_mdx_content, with guilt+innocence regression tests and a regenerated OpenAPI schema pin; no schema/migration/infra change.
+acceptance:
+  A1: Every draft "##" section the converter does not map to a dedicated field (e.g. "In Practice", "Sources") is preserved verbatim, in draft order, anchored to the mapped section it followed — never silently dropped.
+  A2: A Next Steps body with no "For Expats"/"For Investors" subsections renders as one neutral group; it is never split 50/50 between expat and investor.
+  A3: An empty Next Steps group is omitted; the filler "Review the article for specific actions" is never emitted; the whole Next Steps section is omitted when there are no steps at all.
+  A4: A draft with real For Expats/For Investors subsections renders exactly as before this change (innocence).
+  A5: schema.d.ts and its OpenAPI drift pin (schema.d.ts.openapi-sha256) stay in sync with the live backend contract.
+out_of_scope: Publishing/deploying the fix, repairing the already-published GloBE article (apps/mouth PR, separate lane), LLM-composer prompt changes, unrelated router changes.
