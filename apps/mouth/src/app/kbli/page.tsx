@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { getAllCodes, getBaliCensus, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
@@ -8,7 +7,12 @@ import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
-import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
+import {
+  GOOGLE_MAPS_URL,
+  GOOGLE_RATING,
+  GOOGLE_REVIEW_COUNT,
+  MEASURED_ON,
+} from "@/lib/trust-figures";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Navigator — Indonesia Business Classification Guide",
@@ -45,223 +49,164 @@ export default async function KBLIHomePage({
   const baliBlockedPct = Math.round(
     (baliCensus.filter((c) => c.blocked).length / baliCensus.length) * 100,
   );
+  // The sector bars are codeCount / the largest sector's codeCount
+  // (KBLISectorGrid); the caption names that reference so the bar reads.
+  const largest = sections.reduce((a, b) =>
+    b.codeCount > a.codeCount ? b : a,
+  );
 
   return (
-    <FunnelFrame
-      funnel="kbli"
-      sessionId="SSR"
-      trust={{
-        rating: GOOGLE_RATING,
-        reviewCount: GOOGLE_REVIEW_COUNT,
-      }}
-    >
-      <div className="space-y-16">
-        {/* ── HERO ── */}
-        <div className="relative -mx-4 overflow-hidden rounded-3xl sm:-mx-6 lg:-mx-8 bg-[var(--kbli-ink)]">
-          {/* Balinese ornamental pattern */}
+    <FunnelFrame funnel="kbli" sessionId="SSR">
+      <div className="space-y-14 sm:space-y-16">
+        {/* ── HERO: the search is the promise, so it is the peak of the
+            first viewport on every width. The hero does not clip its
+            children — the results dropdown must open over the page — so
+            the ornament and photograph are clipped in their own layer. No
+            z-index here: a stacking context would trap the dropdown's z-50
+            below the sticky handoff pill (z-40). ── */}
+        <section
+          aria-labelledby="kbli-title"
+          className="relative -mx-4 rounded-3xl border border-white/[0.06] bg-[var(--kbli-ink)] sm:-mx-6 lg:-mx-8"
+        >
           <div
-            className="hidden lg:block absolute inset-0 opacity-100"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
-              backgroundSize: "200px 200px",
-            }}
-          />
-          {/* Vignette */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, color-mix(in srgb, var(--kbli-ink) 90%, transparent) 100%)",
-            }}
-          />
-          {/* Ambient orbs — subtle red and white for Indonesian flag feel */}
-          <div
-            className="hidden lg:block absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]"
-            style={{
-              background: "radial-gradient(circle, #D01033, transparent)",
-            }}
-          />
-          <div
-            className="hidden lg:block absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]"
-            style={{
-              background: "radial-gradient(circle, #ffffff, transparent)",
-            }}
-          />
-          <div
-            className="hidden lg:block absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]"
-            style={{
-              background: "radial-gradient(circle, #D01033, transparent)",
-            }}
-          />
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 px-5 py-10 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
-            {/* Left column */}
-            <div className="flex flex-col items-center lg:items-start text-center lg:text-left max-w-xl">
-              {/* Bali Zero branding */}
-              <div className="flex items-center gap-3 mb-8">
-                <Image
-                  src="/assets/logo/balizero-logo-clean.png"
-                  alt="Bali Zero"
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
-                <div className="text-[13px] font-semibold text-white/80 leading-tight tracking-wide">
-                  <span className="block">We don&apos;t sell services.</span>
-                  <span className="block text-white/50">
-                    We offer intelligence.
-                  </span>
-                </div>
-              </div>
-
-              {/* Main title — KBLI 2025 on one line, Montserrat, Indonesian flag effect */}
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none kbli-flag-title">
-                KBLI 2025
-              </h1>
-
-              {/* Subtitle */}
-              <p className="mt-5 text-xl sm:text-2xl text-zinc-400 font-light tracking-tight">
-                Your{" "}
-                <em className="text-white font-medium not-italic">
-                  Indonesian
-                </em>{" "}
-                Business Codes
-              </p>
-
-              {/* Inline stats */}
-              <p className="mt-3 text-sm text-zinc-400 tracking-wide">
-                {codeCount} codes&ensp;&middot;&ensp;22
-                sectors&ensp;&middot;&ensp;PMA rules
-              </p>
-
-              {/* CTA — glassmorphism button */}
-              <Link
-                href="#search"
-                className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/[0.1] px-7 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:bg-[#D01033]/90 hover:border-[#D01033]/60 hover:shadow-[0_0_40px_rgba(208,16,51,0.3)] active:scale-[0.98]"
-              >
-                Explore All KBLI Sectors &rarr;
-              </Link>
-            </div>
-
-            {/* Right column — 3D tilted tablet with video (lg+ only) */}
-            <div className="hidden lg:flex flex-shrink-0 items-center justify-center flex-1 max-w-[580px] relative">
-              {/* Glow behind tablet */}
-              <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] blur-[80px] pointer-events-none"
-                style={{
-                  background:
-                    "radial-gradient(circle, rgba(208,16,51,0.06), transparent 70%)",
-                }}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
+          >
+            <div
+              className="absolute inset-0 hidden lg:block"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
+                backgroundSize: "200px 200px",
+              }}
+            />
+            {/* The editorial still (812x572, see git history for why it is
+                not a video) now sits behind the right half as a masked
+                backdrop instead of inside a tilted tablet frame. Decorative
+                here, so alt is empty; lg+ only, so phones never fetch it. */}
+            <div className="absolute inset-y-0 right-0 hidden w-[48%] lg:block">
+              <Image
+                src="/images/kbli-navigator-hero.jpg"
+                alt=""
+                fill
+                sizes="560px"
+                className="object-cover opacity-70"
               />
               <div
-                className="relative z-10 transition-transform duration-[400ms]"
+                className="absolute inset-0"
                 style={{
-                  transform:
-                    "perspective(1000px) rotateY(-12deg) rotateX(4deg) rotate(-3deg)",
-                  transformStyle: "preserve-3d",
-                  filter:
-                    "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(208,16,51,0.08))",
+                  background:
+                    "linear-gradient(90deg, var(--kbli-ink) 0%, color-mix(in srgb, var(--kbli-ink) 55%, transparent) 45%, color-mix(in srgb, var(--kbli-ink) 20%, transparent) 100%)",
                 }}
-              >
-                {/* Tablet frame — glassmorphism */}
-                <div
-                  className="rounded-[36px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-[18px] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                  style={{ width: 442 }}
-                >
-                  {/* Camera */}
-                  <div className="flex justify-center py-1.5 pb-2.5">
-                    <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
-                  </div>
-                  {/* Screen — an editorial still, deliberately NOT a UI mock-up
-                      and NOT a video. What stood here was a <video> whose src
-                      was /videos/kbli-demo.mp4, a path that never existed in
-                      public/ (the real dir is public/video/, singular), so
-                      production served a broken player with visible controls.
-                      The asset is encoded at exactly 812x572 — the 406x286
-                      screen at 2x — so the browser is never left to guess a
-                      crop. No `priority`: the parent column is `hidden lg:flex`,
-                      so on phones this never enters the viewport and the default
-                      lazy loading keeps its ~109KB off a surface that cannot
-                      display it. */}
-                  <div
-                    className="rounded-[18px] bg-black/60 overflow-hidden"
-                    style={{ height: 286 }}
-                  >
-                    <Image
-                      src="/images/kbli-navigator-hero.jpg"
-                      alt="Aerial photograph at first light of inland Bali, looking down at the line where one permitted land use ends and another begins: flooded rice terraces on the left, a row of workshops and warehouses on the right, a single road running between them."
-                      width={812}
-                      height={572}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  {/* Home bar */}
-                  <div className="flex justify-center pt-2.5 pb-1.5">
-                    <div className="w-[60px] h-1 rounded-sm bg-white/[0.08]" />
-                  </div>
-                </div>
-              </div>
+              />
             </div>
           </div>
-        </div>
+
+          {/* Phones: the hero fills the first screen and stops just above the
+              floating handoff pill, so in the first viewport the pill lands
+              on empty ground. Hero top 80px = nav 56 + frame padding 24; the
+              pill spans 44px starting 12px above the fold. Bottom edge =
+              100svh - 60px, 4px above the pill; the 56px section gap puts the
+              first door 8px below it. */}
+          <div className="relative flex flex-col px-5 py-8 max-sm:min-h-[calc(100svh-140px)] sm:px-12 sm:py-12 lg:px-16 lg:py-14">
+            {/* Product lockup — the mark BESIDE the wordmark, never as a
+                letter of it (design corner §3.6). */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/assets/logo/balizero-logo-clean.png"
+                alt="Bali Zero"
+                width={36}
+                height={36}
+                className="rounded-full"
+              />
+              <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white">
+                KBLI Navigator
+              </span>
+            </div>
+
+            <h1
+              id="kbli-title"
+              className="mt-6 max-w-2xl text-[2.5rem] leading-[1.05] text-white sm:text-5xl lg:max-w-none lg:text-6xl"
+            >
+              Find your KBLI 2025 business code
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">
+              Search by activity, keyword or code number, then check foreign
+              ownership (PMA), licensing and what changed from KBLI 2020.
+            </p>
+
+            <div id="search" className="mt-6 max-w-2xl scroll-mt-24 sm:mt-8">
+              <KBLISearch
+                autoFocus
+                initialQuery={initialQuery}
+                placeholder="Search KBLI codes"
+                quickFilters={[
+                  "Restaurant",
+                  "Tech",
+                  "Real Estate",
+                  "Retail",
+                  "Manufacturing",
+                ]}
+              />
+            </div>
+
+            {/* Proof is a line, not a section (design corner R4). Every
+                figure keeps its previous source: the served code list, the
+                sector count this page always printed, the Bali census, and
+                trust-figures.ts (the rating links to the live profile). */}
+            <p className="mt-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-[13px] tabular-nums text-zinc-400">
+              <span>{codeCount} codes</span>
+              <span aria-hidden="true">·</span>
+              <span>22 sectors</span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                ·
+              </span>
+              <span
+                title={baliBlockedHint(allCodes, baliCensus)}
+                className="basis-full sm:basis-auto"
+              >
+                ~{baliBlockedPct}% blocked in Bali
+              </span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                ·
+              </span>
+              <a
+                href={GOOGLE_MAPS_URL}
+                target="_blank"
+                rel="noreferrer"
+                title={`Read on ${MEASURED_ON}`}
+                className="basis-full underline decoration-white/20 underline-offset-4 hover:text-zinc-200 hover:decoration-white/50 sm:basis-auto"
+              >
+                ★ {GOOGLE_RATING} ·{" "}
+                {GOOGLE_REVIEW_COUNT.toLocaleString("en-US")} Google reviews
+              </a>
+            </p>
+          </div>
+        </section>
 
         <KBLIPersonaDoors />
 
-        {/* ── TRUST BAR ── */}
-        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
-          {[
-            { num: codeCount, label: "KBLI Codes" },
-            { num: "22", label: "Industry Sectors" },
-            {
-              num: `~${baliBlockedPct}%`,
-              label: "Blocked in Bali",
-              hint: baliBlockedHint(allCodes, baliCensus),
-            },
-            { num: "AI", label: "Powered by Zantara" },
-          ].map((t) => (
-            <div
-              key={t.label}
-              title={"hint" in t ? t.hint : undefined}
-              className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
-            >
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {t.num}
-              </div>
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400">
-                {t.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── SEARCH ── */}
-        <div
-          id="search"
-          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[var(--kbli-ink)]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
-        >
-          <KBLISearch
-            autoFocus
-            initialQuery={initialQuery}
-            quickFilters={[
-              "Restaurant",
-              "Tech",
-              "Real Estate",
-              "Retail",
-              "Manufacturing",
-            ]}
-          />
-        </div>
-
         {/* ── SECTORS ── */}
-        <section>
-          <h2 className="mb-4 text-xl font-semibold text-white/90">
-            Browse by Sector
+        <section
+          id="sectors"
+          aria-labelledby="kbli-sectors"
+          className="scroll-mt-20"
+        >
+          <h2 id="kbli-sectors" className="text-3xl text-white">
+            Browse by sector
           </h2>
+          <p className="mt-2 mb-6 max-w-2xl text-sm text-zinc-300">
+            Each bar compares a sector&apos;s number of codes with the largest,{" "}
+            {largest.nameEn} ({largest.codeCount.toLocaleString("en-US")}{" "}
+            codes).
+          </p>
           <KBLISectorBrowser sections={sections} />
         </section>
 
         {/* ── ZANTARA AI ── */}
-        <section>
+        <section aria-labelledby="kbli-ask">
+          <h2 id="kbli-ask" className="mb-6 text-3xl text-white">
+            Ask Zantara
+          </h2>
           <ZantaraChat
             opener="I'm Zantara, your KBLI expert. Ask me anything about Indonesian business codes — which ones you need, PMA rules, what changed in 2025, or how to set up in Bali."
             suggestions={[
@@ -272,29 +217,6 @@ export default async function KBLIHomePage({
             ]}
           />
         </section>
-
-        {/* ── DECODER LINK ── */}
-        <p className="text-xs mt-4" style={{ color: "var(--text-secondary)" }}>
-          Tidak yakin kode yang tepat?{" "}
-          <Link
-            href="/kbli/decoder"
-            className="underline underline-offset-2"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Coba KBLI Decoder →
-          </Link>
-        </p>
-
-        <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
-          Mau setup PT PMA?{" "}
-          <Link
-            href="/kbli/builder"
-            className="underline underline-offset-2"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Coba KBLI Builder →
-          </Link>
-        </p>
       </div>
     </FunnelFrame>
   );
