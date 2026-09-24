@@ -724,13 +724,17 @@ Verdict: both **PASS**, 0 findings on the 5 claims the task file actually put to
 the census, `sequence`/`http_status` uniformity, the 25-walk moved set, the 3 held walk_ids, and
 (declared out of scope, not checked) `payload_sha256` uniformity. `tp1-deepseek-v4-pro`'s
 completed PASS was its THIRD attempt, not a first pass (`council.jsonl` row 2: two earlier runs
-exhausted their budget mid-reasoning before this one completed). The rest of this addendum's
-claims were never put to either seat, and are re-derived directly by the builder from the two
-full committed JSONs instead: the run facts (window, dry-run plan, `stopped_reason`, request
-counts, the #7234 merge/build-flip times), and the reason-code characterisations below (the 25
-moved walks as `ACTIVITY_BOUNDARY`-only; the 3 held walks as Studio ×2 + criminal ×1, none
-`ACTIVITY_BOUNDARY`-only) — none of these rest on the council's excerpt, which carries no
-`reason_codes` field. Full transcripts and the task file:
+exhausted their budget mid-reasoning before this one completed). The rest of this addendum's claims were never put to either seat. The builder re-derived
+these from the two full committed JSONs: the run window (`started_at`/`finished_at`),
+`stopped_reason`, the request counts, and the reason-code characterisations below (in A9 the 25
+moved walks were held by `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` alone; the 3 held walks carry
+Studio ×2 + criminal ×1). The council's excerpt carries no `reason_codes` field. Four claims are
+in neither JSON. The #7234 merge time (16:14:53Z) is GitHub's `mergedAt`. The #7234 flag-layer
+move is read from the #7234 diff. The dry-run plan (`pending=252 already_recorded=0`) and the
+build-flip time (16:25:55Z) are quoted from the narrative report
+`PROVELIVE-A3P-B-REPORT-7234.md` (`vo-provelive-a3p-b`), and nobody in this PR re-derived them.
+The JSON's `health` block only confirms that `build_sha` was `d6a2152d05` at the run's start and
+end. Full transcripts and the task file:
 `evidence/2026-09/agent-air-m5-docs-vo-b4-3-research-a91be01f/{council.jsonl,refuter-runs/}`.
 
 
@@ -833,8 +837,8 @@ that narrative report). Its Step 4 re-ran the same B4-class 252-walk sweep again
 directory's manifest (`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`, same driver
 `backend.scripts.visa_engine.enumerate_live`, `--max-requests 260 --rate-per-minute 25`, dry-run
 first with that clean plan) between the report JSON's own `started_at` and `finished_at` fields,
-read by command (never the narrative report's times — its window was 22s off at the start and
-10s off at the end):
+read by command (never the narrative report's times — its window was about 21s off at the start
+and about 9s off at the end):
 
 ```
 $ python3 -c "import json; d=json.load(open('prove-live-b4-3-a3pb-full-sweep-report-20260924.json')); print(d['started_at'], d['finished_at'])"

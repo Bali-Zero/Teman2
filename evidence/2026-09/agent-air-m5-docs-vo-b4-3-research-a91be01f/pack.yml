@@ -47,6 +47,11 @@ lanes:
   - lane: vo-b4-3-research-review-2
     role: review
     seat: "tp1-deepseek-v4-pro (reserve, substituting for an unavailable titolare — see seat_fallback_reason) — same task file; VERDICT PASS, 0 findings. Two earlier attempts ran out of budget mid-reasoning (0-202 answer chars, seat ALIVE not dead per tp1_call.py's own diagnostic) — the first against an earlier task-file revision that still embedded payload_sha256 per row (before that field was pulled to clear detect-secrets); the final attempt, against the corrected task-file at --effort low --timeout 280, completed in-budget"
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 3
+appetite_exceeded: "brief.yml declared 1h / 0 adversarial rounds before the R9 council and the gate rounds were known; spend is 1 council round (2 TP1 refuters) + 2 gate REWORK rounds on provenance wording (gate-b4-3-7287 r1, r2), and the wall clock runs from the round-1 builder dispatch to this round's commit"
+
 diff:
   files: 8
   net_lines: >-
@@ -214,15 +219,21 @@ dissent:
     status: CONFIRMED
     reason: >-
       Fixed in README.md: the Verdict sentence now names exactly the 5 claims the council
-      checked, states deepseek's PASS was its THIRD attempt, and explicitly lists which claims
-      (run facts, reason-code characterisations) were re-derived by the builder from the full
-      JSONs instead of put to the council. Fixed in this pack's own `residual_risks` (below):
-      rewritten to say this addendum already rests on `reason_codes`, not that a *future*
-      addendum might. The claims resting on reason codes were independently re-verified true
-      (the 25 moved walks are `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW`-only in A9 and
-      `DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH`-only in B4-3; the held 3 carry
-      `SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 / `DISCLOSED_CRIMINAL_RECORD_REVIEW` ×1) — the
-      defect was the coverage STATEMENT, not the data, matching the gate's own framing.
+      checked and states deepseek's PASS was its THIRD attempt. The claims the council never saw
+      are split by source (corrected in round 3 after gate-b4-3-7287-r2 M2′). The builder
+      re-derived these from the two full committed JSONs: the run window
+      (`started_at`/`finished_at`), `stopped_reason`, the request counts and the reason-code
+      characterisations. Four claims are in neither JSON: the #7234 merge time 16:14:53Z is
+      GitHub's `mergedAt`; the #7234 flag-layer move is read from the #7234 diff; the dry-run
+      plan `pending=252 already_recorded=0` and the build-flip time 16:25:55Z are quoted from
+      `PROVELIVE-A3P-B-REPORT-7234.md`, and nobody in this PR re-derived them. Fixed in this
+      pack's own `residual_risks` (below): rewritten to say this addendum already rests on
+      `reason_codes`, not that a *future* addendum might. The claims resting on reason codes
+      were independently re-verified true (in A9 the 25 moved walks are held by
+      `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` alone; in B4-3 they carry
+      `DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH`, 5 of them alongside other no-path reasons; the held
+      3 carry `SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 / `DISCLOSED_CRIMINAL_RECORD_REVIEW` ×1) —
+      the defect was the coverage STATEMENT, not the data, matching the gate's own framing.
   - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD)"
     objection: >-
       L1 (LOW) — pack-lint NOTICE: 5 of 6 declared brief.yml probes appeared in no receipt's
@@ -266,16 +277,18 @@ dissent:
     objection: >-
       L3 (LOW) — deepseek's two budget-exhausted attempts are recorded only in council.jsonl's
       prose note: no `ok:false` rows, no output kept. qwen's own transcript redacts claim 5's
-      second walk_id as `edge/<REDACTED>=unsure` (an artifact of the TP1 gateway's own output
-      filter, not something this task's tooling controls).
+      second walk_id as `edge/<REDACTED>=unsure` (output redaction).
     status: PLAUSIBLE
     reason: >-
       Accurate, not cured. `scripts/tp1_call.py` keeps no persistent log of a timed-out
       attempt's partial output once the process exits, so there is nothing to backfill an
       `ok:false` row from after the fact — the same tooling gap #7230's L7 named. The qwen
-      redaction is upstream gateway behaviour on this specific run, not reproducible or
-      controllable from this task. Both are disclosed here rather than silently left
-      unmentioned.
+      redaction comes from this repo's own tool, not the gateway (corrected in round 3 after
+      gate-b4-3-7287-r2 L9): `scripts/tp1_call.py` passes the model's answer through
+      `arsenal_probe.scrub()` before printing it, and its `_SECRET_RE` over-matches the 29-char
+      identifier `secondhome_property_value_usd`; this reproduces locally and deterministically.
+      The over-match itself is a guard defect outside this PR's scope. Both are disclosed here
+      rather than silently left unmentioned.
   - seat: "gate-b4-3-7287 (fresh Opus 5.5, REWORK-BUILD), L4"
     objection: >-
       L4 (LOW) — `payload_sha256` was dropped from the council excerpt, against the binding
@@ -298,23 +311,27 @@ dissent:
     reason: "No action, per the gate's own disposition — informational only, file stays byte-identical (sha256 unchanged)."
 residual_risks:
   - "Both review seats returned PASS/0 findings on the fully-completed pass — but ONLY on the 5
-    claims the task file actually put to them (census, sequence/http_status, the 25-walk moved
-    set, the 3 held walk_ids; payload_sha256 declared out of scope). This addendum ALREADY rests
-    on fields the excerpt does not carry, right now, not hypothetically: the reason-code
+    claims the task file actually put to them (census, sequence/http_status, the 25-walk moved set,
+    the 3 held walk_ids; payload_sha256 declared out of scope). This addendum ALREADY rests on
+    fields the excerpt does not carry, right now, not hypothetically: the reason-code
     characterisations (the 25 moved walks named `ACTIVITY_BOUNDARY`-only; the 3 held walks named
-    Studio ×2 + criminal ×1, none `ACTIVITY_BOUNDARY`-only) read `reason_codes`, and the run
-    facts (window, dry-run plan, stopped_reason, request counts, #7234 merge/build times) are
-    not walk-level fields at all. Both classes were verified directly by the builder against the
-    two full committed JSONs (`prove-live-a9-seq23-full-sweep-report-20260924.json`,
-    `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`) instead of by the council, and the
-    README says so explicitly (gate-b4-3-7287 M2 cure) rather than claiming 'every claim…checked
-    out'. The one field pulled from the excerpt (payload_sha256, removed after it tripped
-    detect-secrets as a repeated high-entropy value) was named explicitly out-of-scope in the
-    task's own instructions rather than omitted silently, so no finding traces to
-    excerpt-narrowness the way all 3 of #7230's dissents did — but that PASS/0-findings result
-    covers only those 5 claims, not the addendum as a whole. A wider excerpt (adding
-    `reason_codes`) or a second council round would be needed to put the reason-code claims to
-    the council too; a non-hex-shaped payload_sha256 encoding would be needed if a future
+    Studio ×2 + criminal ×1, none `ACTIVITY_BOUNDARY`-only) read `reason_codes`, and the run facts
+    are not walk-level fields at all. The reason-code characterisations, the run window
+    (`started_at`/`finished_at`), `stopped_reason` and the request counts were re-derived by the
+    builder from the two full committed JSONs
+    (`prove-live-a9-seq23-full-sweep-report-20260924.json`,
+    `prove-live-b4-3-a3pb-full-sweep-report-20260924.json`) instead of by the council. Four claims
+    are in neither JSON: the #7234 merge time 16:14:53Z is GitHub's `mergedAt`; the #7234 flag-layer
+    move is read from the #7234 diff; the dry-run plan `pending=252 already_recorded=0` and the
+    build-flip time 16:25:55Z are quoted from `PROVELIVE-A3P-B-REPORT-7234.md`, and nobody in this
+    PR re-derived them. The README says so explicitly (gate-b4-3-7287 M2 cure, corrected after
+    gate-b4-3-7287-r2 M2′) rather than claiming 'every claim…checked out'. The one field pulled from
+    the excerpt (payload_sha256, removed after it tripped detect-secrets as a repeated high-entropy
+    value) was named explicitly out-of-scope in the task's own instructions rather than omitted
+    silently, so no finding traces to excerpt-narrowness the way all 3 of #7230's dissents did — but
+    that PASS/0-findings result covers only those 5 claims, not the addendum as a whole. A wider
+    excerpt (adding `reason_codes`) or a second council round would be needed to put the reason-code
+    claims to the council too; a non-hex-shaped payload_sha256 encoding would be needed if a future
     rule-pack activation makes that field non-uniform."
   - "This pack SATISFIES R9's council_run quorum (2 distinct COUNCIL_REVIEW_SEATS, both
     ok:true) rather than declaring seat_override — codex-gpt-5.6-sol and kimi-code/k3 were
