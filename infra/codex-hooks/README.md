@@ -141,6 +141,38 @@ for one session: `NUZ_OUTPUT_HYGIENE_OFF=1`. To remove it, delete its
 `PreToolUse` group from hooks.json; `installation_status.py` reports
 `output_guard_trusted` and counts it in `installed`.
 
+## Seat profile
+
+`install_seat_profile.py --seat ~/.codex` installs the reviewed seat profile kept in
+`seat/`: the root `developer_instructions` (scoped reads, bounded tool output, the
+code-mode `// @exec` output pragma, routine delegation) and four routine roles in
+`agents/` (`mechanical` Luna low read-only, `routine-explorer` Terra medium
+read-only, `routine-worker` Terra medium, `code-reviewer` Sol high read-only).
+Each item that is absent is installed; an identical item is left untouched; a
+different item is operator-owned drift and is reported, never overwritten. A
+private backup precedes any write. The root key is validated absent in one
+user-layer snapshot from Codex's own `config/read` (`includeLayers`) and written
+with `config/batchWrite` pinned to that snapshot's `expectedVersion`: if any
+setting changed after the snapshot, Codex refuses the write
+(`configVersionConflict`) and nothing is written. Before writing, the installer
+proves on a scratch seat that the Codex binary in use refuses a stale version;
+a binary that does not is never used for the write. The version is semantic
+(a comment-only edit does not change it; Codex preserves the file's other
+lines). After the write the user layer is re-read: only that key may change,
+otherwise the installer stops and names the backup (it does not restore on its
+own). `--check` is read-only and exits 1 unless every item matches.
+Roles are created with a hard link, so a file that appears first always wins.
+There is deliberately no automatic removal. Rollback, with no Codex app or session
+running on that seat (the only writer exclusion available): restore config.toml
+from the backup the install reported (or delete its single `developer_instructions`
+key) and delete the role files that the manifest
+`state/nuzantara-seat-profile-install.json` lists as installed.
+The roles and instructions are guidance: they tell a parent never to use a role in
+place of a required cross-family review, an explicit model/effort assignment or a
+mission-colour gate, and those stay enforced by the harness's required checks, not
+by the roles. New sessions consume the
+profile; running sessions keep what they loaded.
+
 ## Validation
 
 - test_context_bridge.py: deterministic regression cases for token measurement,
