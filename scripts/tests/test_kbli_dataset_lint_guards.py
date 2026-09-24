@@ -20,6 +20,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from kbli_dataset_lint import (  # noqa: E402
     l10_ownership_contradiction,
+    l12_full_ownership_claim,
     l3_dead_ref,
 )
 
@@ -90,6 +91,100 @@ def test_l10_guilt_flags(name, text, code, maxa):
 def test_l10_innocence_passes(name, text, code, maxa):
     assert l10_ownership_contradiction(text, code, maxa, MAXA) is None, (
         f"L10 must NOT flag legitimate case: {name!r}"
+    )
+
+
+# --------------------------------------------------------------------------- L12
+# Fixtures drawn verbatim from the KBLI editorial corpus (census 2026-09-25,
+# records with pma_max_asing < 100 or pma_status != TERBUKA): 50134 is the only
+# affirmative full-ownership claim with no percentage attached; the rest are
+# negations that must NOT be flagged.
+L12_GUILT = [
+    # (name, text, maxa) — a genuine full-ownership overclaim that MUST be flagged
+    (
+        "50134 exact sentence",
+        "Foreign-owned PMA companies can fully own this business in Bali, "
+        "as it's not blocked by local moratoriums.",
+        49,
+    ),
+    ("synthetic own outright", "A foreign investor can own this business outright.", 49),
+    (
+        "synthetic without indonesian partner",
+        "Foreign owners may hold it without an Indonesian partner.",
+        49,
+    ),
+]
+
+L12_INNOCENCE = [
+    # (name, text, maxa) — a legitimate negation that MUST NOT be flagged
+    (
+        "50113 not fully foreign-owned",
+        "That ceiling matters because it describes a structure with permitted "
+        "foreign participation, not a fully foreign-owned operation.",
+        49,
+    ),
+    (
+        "50122 cannot be wholly foreign-owned",
+        "Foreign ownership is capped at 49%, which means a PMA structure "
+        "cannot be wholly foreign-owned under this activity.",
+        49,
+    ),
+    (
+        "50126 fully foreign-owned PMA cannot hold",
+        "International special-cargo sea transport requires an Indonesian "
+        "majority shareholder, so a fully foreign-owned PMA cannot hold this "
+        "code directly.",
+        49,
+    ),
+    (
+        "65112 not full ownership",
+        "The recorded national ceiling is 80% of paid-up capital, not full ownership.",
+        80,
+    ),
+    (
+        "65121 below full ownership",
+        "The national record sets a foreign-share cap below full ownership "
+        "for this activity.",
+        80,
+    ),
+    (
+        "65201 not a minority stake and not full ownership",
+        "A foreign investor is therefore constrained to that 80% ceiling "
+        "recorded here, not a minority stake and not full ownership.",
+        80,
+    ),
+    (
+        "84124 below full ownership to navigate",
+        "There is therefore no foreign-equity structure to interpret or "
+        "percentage below full ownership to navigate; the national ceiling "
+        "is simply 0%.",
+        0,
+    ),
+    (
+        "79110 up to 100% foreign ownership, cap 100 out of scope",
+        "Nationally, this KBLI allows up to 100% foreign ownership under certain conditions.",
+        100,
+    ),
+    (
+        "50142 can hold 100%, cap 100 out of scope",
+        "Nationally, a foreign-owned PT PMA can hold 100% of this KBLI.",
+        100,
+    ),
+    ("maxa is None", "Foreign-owned PMA companies can fully own this business.", None),
+]
+
+
+@pytest.mark.parametrize("name,text,maxa", L12_GUILT, ids=[c[0] for c in L12_GUILT])
+def test_l12_guilt_flags(name, text, maxa):
+    assert l12_full_ownership_claim(text, maxa) is not None, (
+        f"L12 must FLAG genuine full-ownership overclaim: {name!r}"
+    )
+
+
+@pytest.mark.parametrize("name,text,maxa", L12_INNOCENCE, ids=[c[0] for c in L12_INNOCENCE])
+def test_l12_innocence_passes(name, text, maxa):
+    assert l12_full_ownership_claim(text, maxa) is None, (
+        f"L12 must NOT flag legitimate case: {name!r}"
     )
 
 

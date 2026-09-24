@@ -18,6 +18,12 @@ Deterministic, zero-LLM checks over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json:
                            editorials (headline/standfirst/body) — the anti-template gate
                            for the LOOP-2 magazine layer (census 2026-07-08 found the old
                            intel prose had 995× / 258× / 88× stock sentences).
+  L12 full-ownership-overclaim  a wordy affirmative full-foreign-ownership claim
+                           ("fully own", "wholly owned", "without an Indonesian
+                           partner"…) with NO percentage attached, on a record whose
+                           own pma_max_asing is below 100 (50134 class, 2026-09-25).
+                           L10 reads a NUMBER against the cap; L12 reads the CLAIM.
+                           Innocence: same-clause negation before or after the phrase.
 
 Exit 0 = clean (L7 informational only). Exit 1 = findings. --json for machine output.
 Usage: python3 scripts/kbli_dataset_lint.py [--json] [--only L1,L3] [--repo ROOT]
@@ -337,6 +343,102 @@ def l10_ownership_contradiction(text, code, maxa, maxa_by_code):
 
 
 # -----------------------------------------------------------------------------
+# --- L12 / full-ownership-overclaim machinery ---------------------------------
+# The 50134 class: prose asserts full foreign ownership in WORDS, with no
+# percentage attached, so L10 (which reads a NUMBER against pma_max_asing) never
+# sees it. L12 reads the CLAIM instead. Every pattern below is a real phrasing
+# from the corpus (census 2026-09-25 over records with pma_max_asing < 100 or
+# pma_status != TERBUKA).
+L12_CLAIM_FULLY_OWN = re.compile(r"\bfully\s+own\w*\b", re.IGNORECASE)
+# "full ownership" / "full foreign ownership"
+L12_CLAIM_FULL_OWNERSHIP = re.compile(r"\bfull\s+(?:foreign\s+)?ownership\b", re.IGNORECASE)
+# "fully/wholly/entirely foreign-owned" (hyphen or space)
+L12_CLAIM_ADV_FOREIGN_OWNED = re.compile(
+    r"\b(?:fully|wholly|entirely)\s+foreign[- ]owned\b", re.IGNORECASE
+)
+# "wholly owned" on its own — this corpus only ever uses it inside a
+# foreign-ownership sentence
+L12_CLAIM_WHOLLY_OWNED = re.compile(r"\bwholly\s+owned\b", re.IGNORECASE)
+# "own ... outright" — up to 30 chars between the verb and the adverb
+L12_CLAIM_OWN_OUTRIGHT = re.compile(r"\bown\w*\b[^.]{0,30}?\boutright\b", re.IGNORECASE)
+# "without a/an/any local/Indonesian partner/shareholder"
+L12_CLAIM_WITHOUT_PARTNER = re.compile(
+    r"\bwithout\s+(?:a|an|any)\s+(?:local|indonesian)\s+(?:partner|shareholder)s?\b",
+    re.IGNORECASE,
+)
+# "no local/Indonesian partner (is) required/needed"
+L12_CLAIM_NO_PARTNER_NEEDED = re.compile(
+    r"\bno\s+(?:local|indonesian)\s+partner\s+(?:is\s+)?(?:required|needed)\b",
+    re.IGNORECASE,
+)
+L12_CLAIMS = (
+    L12_CLAIM_FULLY_OWN,
+    L12_CLAIM_FULL_OWNERSHIP,
+    L12_CLAIM_ADV_FOREIGN_OWNED,
+    L12_CLAIM_WHOLLY_OWNED,
+    L12_CLAIM_OWN_OUTRIGHT,
+    L12_CLAIM_WITHOUT_PARTNER,
+    L12_CLAIM_NO_PARTNER_NEEDED,
+)
+# innocence: a negation sitting BEFORE the claim, in the same clause — "not a
+# fully foreign-owned operation", "cannot be wholly foreign-owned", "below full
+# ownership", "not full ownership". Searched anywhere in a clause-bounded
+# window (never anchored to the word immediately before the claim: "not a
+# fully…" and "cannot be wholly…" both have a filler word in between).
+L12_NEG_BEFORE = re.compile(
+    r"\b(?:not|cannot|can't|never|no|isn't|below|short\s+of|less\s+than|"
+    r"rather\s+than|instead\s+of|no\s+longer)\b",
+    re.IGNORECASE,
+)
+# innocence: a negation sitting AFTER the claim, in the same clause — "…fully
+# foreign-owned PMA cannot/can't/may not/is not allowed/is not permitted…"
+L12_NEG_AFTER = re.compile(
+    r"\b(?:cannot|can't|may\s+not|is\s+not\s+allowed|is\s+not\s+permitted)\b",
+    re.IGNORECASE,
+)
+
+
+def _l12_clause_window(text: str, pos: int, before: bool, max_chars: int = 60) -> str:
+    """Text on one side of a match, bounded to the CURRENT clause: capped at
+    `max_chars` and cut at the nearest sentence-ending punctuation so an
+    earlier or later sentence's negation can never exonerate this one."""
+    if before:
+        raw = text[max(0, pos - max_chars) : pos]
+        idx = max(raw.rfind("."), raw.rfind("!"), raw.rfind("?"))
+        return raw[idx + 1 :] if idx != -1 else raw
+    raw = text[pos : pos + max_chars]
+    ends = [i for i in (raw.find("."), raw.find("!"), raw.find("?")) if i != -1]
+    return raw[: min(ends)] if ends else raw
+
+
+def l12_full_ownership_claim(text: str, maxa) -> str | None:
+    """The ONE SSOT for the L12 full-ownership-overclaim guard.
+
+    Returns the matched window for the FIRST affirmative full-foreign-ownership
+    claim in `text` when `maxa` is a number below 100 (a cap under which full
+    foreign ownership is impossible), or None if every wordy full-ownership
+    phrasing in the prose is either absent or exonerated by a same-clause
+    negation before or after it. It judges the CLAIM, not a number — L10
+    already covers a bare percentage stated against `maxa`.
+    """
+    if not isinstance(maxa, int) or maxa >= 100:
+        return None
+    matches = sorted(
+        (m for pattern in L12_CLAIMS for m in pattern.finditer(text)),
+        key=lambda m: m.start(),
+    )
+    for m in matches:
+        before = _l12_clause_window(text, m.start(), before=True)
+        if L12_NEG_BEFORE.search(before):
+            continue
+        after = _l12_clause_window(text, m.end(), before=False)
+        if L12_NEG_AFTER.search(after):
+            continue
+        return text[max(0, m.start() - 40) : m.end() + 40].strip()
+    return None
+
+
+# -----------------------------------------------------------------------------
 
 
 def looks_italian(text: str) -> bool:
@@ -484,6 +586,16 @@ def main() -> int:
                             "L10", code, field,
                             f"prose says {val}% but pma_max_asing={maxa} :: …{win.strip()[:100]}…",
                         )
+
+        if enabled("L12"):
+            maxa = rec.get("pma_max_asing")
+            for field, text in iter_prose(rec):
+                hit = l12_full_ownership_claim(text, maxa)
+                if hit:
+                    add(
+                        "L12", code, field,
+                        f"full-ownership claim vs pma_max_asing={maxa} :: …{hit}…",
+                    )
 
         if enabled("L7") and not rec.get("per_skala"):
             add("L7", code, "per_skala", "no scale rows (special regime?)")

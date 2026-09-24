@@ -1,0 +1,39 @@
+task_id: kbli-full-ownership-class-0925
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor via SIZE term: canonical + 2 consumer copies + sidecar, registry re-stamp,
+# batch-A re-emit (4 reports), 1 new detector rule + unit tests, 1 new spec,
+# 1 new population test file. 1 field on 1 code.
+# No hot-zone path, no migration, no new dependency.
+objective: >-
+  50134 (Angkutan Penyeberangan Perintis Antarprovinsi untuk Penumpang) is
+  TERBATAS with a verified 49% cap (Perpres 49/2021 Lampiran III entry #19),
+  yet intel_2026.whatYouNeed opened with "Foreign-owned PMA companies can
+  fully own this business in Bali" — a full-ownership claim with NO number,
+  so L10 (reads a number against the cap) and editorial_record_conformance
+  (needs a national-scope word) were both blind to it. Add L12, the detector
+  that reads the CLAIM instead of a number, and cure the one guilty record.
+constraints:
+  - >-
+    Shared compiler cure_prose_national_openness.py, left unmodified, with a
+    whole-field sha256-pinned spec (TERBATAS / 49 / entry #19). Dry-run first:
+    "1 field(s) on 1 code(s)". Only the guilty first sentence changes; the
+    risk/verification sentence carries verbatim.
+  - >-
+    New lint rule L12 full-ownership-overclaim in scripts/kbli_dataset_lint.py,
+    wired into the rule registry (--only L12 works, full run includes it).
+    L10 and every other rule left byte-identical. Innocence guards: same-clause
+    negation before the phrase (not/cannot/below/...) or after it (fully
+    foreign-owned PMA cannot/may not/is not allowed/is not permitted).
+  - >-
+    No hand edit of data/kbli-filiera/** or data/source_documents/** (data-plane
+    guard). 50134 is NOT in canonicalIntel (not certified) — verified via the
+    registry JSON before running recert, so recert only re-stamps
+    sourceDatasetSha256/reviewedAt with 0 pmaFingerprint mismatches and 0
+    certified-code overlap. Batch-A membership/calibration re-emit reflects the
+    new canonical revision.
+acceptance:
+  - "A1 GUILT: population test RED on origin/main's canonical evaluated in memory (l12_full_ownership_claim fires once, on 50134.intel_2026.whatYouNeed), GREEN on the cured canonical (zero hits repo-wide); real 50134.whatYouNeed equals the spec's new text; re-planning the spec against the cured record refuses (text moved)."
+  - "A2 INNOCENCE: the tail risk/verification sentence is preserved verbatim; the new text states only 49% (the record's own cap) and no other percentage; 50142's whatYouNeed (100% cap) is unchanged and not flagged; no record other than 50134 changed vs origin/main; all nine census negation phrases (50113/50122/50126/65112/65121/65201/84124/79110/50142) stay unflagged at their own caps."
+  - "A3 CONSUMERS: mouth and navigator copies IDENTICAL to canonical, sidecar datasetSha256 matches; filiera, backend kbli, navigator and mouth kbli suites green; the 4 CI artifact checks exit 0; kbli_dataset_lint output vs origin/main differs ONLY by L12 existing (zero L12 findings on the cured branch)."
