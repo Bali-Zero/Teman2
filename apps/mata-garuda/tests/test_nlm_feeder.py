@@ -7,6 +7,9 @@ from mata_garuda.config import NLM_DOMAIN_ROUTING, NLM_NOTEBOOKS
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers import nlm_feeder
 
+# A body the no-body guard lets through: well past MIN_BODY_CHARS once the title is set aside.
+BODY = "Peraturan text with a real paragraph of substance. " * 6
+
 # ── config wiring ──────────────────────────────────────────────────────────
 
 class TestNotebookConfig:
@@ -121,12 +124,12 @@ class TestAlertsConsumer:
         kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
         items = [
             {"id": "1-0", "data": {
-                "title": "Indonesia Visa Update", "content": "imigrasi.go.id news",
+                "title": "Indonesia Visa Update", "content": BODY,
                 "url": "https://ex.com/visa", "topic": "immigration_visa",
                 "score": "5",
             }},
             {"id": "2-0", "data": {
-                "title": "PMK 25/2026", "content": "tax regulation",
+                "title": "PMK 25/2026", "content": BODY,
                 "url": "https://ex.com/tax", "topic": "tax_fiscal",
                 "score": "4",
             }},
@@ -149,7 +152,7 @@ class TestAlertsConsumer:
         items = [{
             "id": "1-0",
             "data": {
-                "title": "arxiv preprint", "content": "neural network paper",
+                "title": "arxiv preprint", "content": BODY,
                 "url": "https://arxiv.org/abs/1234", "source_type": "arxiv",
                 # NO topic / domain field
             },
@@ -165,7 +168,7 @@ class TestAlertsConsumer:
 # ── stream consumer behaviour ─────────────────────────────────────────────
 
 def _fake_enriched_item(
-    msg_id: str, *, domain: str, url: str, title: str = "T", content: str = "C"
+    msg_id: str, *, domain: str, url: str, title: str = "T", content: str = BODY
 ) -> dict:
     return {
         "id": msg_id,
@@ -257,7 +260,7 @@ class TestStreamConsumer:
         kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
         with patch.object(nlm_feeder, "stream_read_new", return_value=[]):
             stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
-        assert stats == {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
+        assert stats == {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
         kb.close()
 
     def test_rate_limit_sleep_called_between_items(self, tmp_path):
@@ -387,3 +390,74 @@ class TestNlmAddTextTitlePreserved:
         # the real title is passed, not a temp filename
         assert argv[argv.index("--title") + 1] == "My Digest Title"
         assert argv[argv.index("--text") + 1] == "the body text"
+
+
+class TestNoBodyIsNotPublished:
+    """An item whose only text is its title must not become an NLM source (the
+    `content or title` fallback filled NB-INTEL-Press with title-only sources)."""
+
+    def _feed(self, tmp_path, *, title, content):
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [_fake_enriched_item("1-0", domain="political_risk",
+                                     url="https://ex.com/a", title=title, content=content)]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack") as m_ack:
+            stats = nlm_feeder.run_nlm_feeder_from_stream(kb, sleep_s=0)
+        kb.close()
+        return stats, m_add, m_ack
+
+    def test_empty_content_is_not_published(self, tmp_path):
+        stats, m_add, m_ack = self._feed(tmp_path, title="Gubernur Bali lantik pejabat", content="")
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1 and stats["fed"] == 0 and stats["errors"] == 0
+        assert m_ack.call_count == 1
+
+    def test_content_equal_to_title_is_not_published(self, tmp_path):
+        title = "Gubernur Bali lantik pejabat"
+        stats, m_add, _ = self._feed(tmp_path, title=title, content=f"  {title}\n")
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1
+
+    def test_title_plus_short_stub_is_not_published(self, tmp_path):
+        title = "Gubernur Bali lantik pejabat"
+        stats, m_add, _ = self._feed(tmp_path, title=title, content=f"{title}\n\nagent")
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1
+
+    def test_long_title_repeated_as_content_is_not_published(self, tmp_path):
+        title = "T" * 250
+        stats, m_add, _ = self._feed(tmp_path, title=title, content=title)
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1
+
+    def test_real_body_is_published_verbatim(self, tmp_path):
+        stats, m_add, _ = self._feed(tmp_path, title="Gubernur Bali lantik pejabat", content=BODY)
+        assert stats["fed"] == 1 and stats["no_body"] == 0
+        assert m_add.call_args.args[2] == BODY.strip()
+
+    def test_title_followed_by_real_body_is_published(self, tmp_path):
+        title = "Gubernur Bali lantik pejabat"
+        stats, m_add, _ = self._feed(tmp_path, title=title, content=f"{title}\n\n{BODY}")
+        assert stats["fed"] == 1
+        assert m_add.call_args.args[2].startswith(title)
+
+    def test_body_just_over_the_bar_is_published(self, tmp_path):
+        body = "x" * (nlm_feeder.MIN_BODY_CHARS + 1)
+        stats, m_add, _ = self._feed(tmp_path, title="t", content=body)
+        assert stats["fed"] == 1
+
+    def test_body_at_the_bar_is_not_published(self, tmp_path):
+        body = "x" * nlm_feeder.MIN_BODY_CHARS
+        stats, m_add, _ = self._feed(tmp_path, title="t", content=body)
+        m_add.assert_not_called()
+
+    def test_legacy_kb_scan_text_path_skips_a_one_line_item(self, tmp_path):
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        kb.store("harvester", "harvested_item", "[rss] Only a headline", "http://ex.com/x", 1.0)
+        with patch.object(nlm_feeder, "_route_to_notebook", return_value="nb-1"), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add:
+            stats = nlm_feeder.run_nlm_feeder(kb)
+        kb.close()
+        m_add.assert_not_called()
+        assert stats["no_body"] == 1
