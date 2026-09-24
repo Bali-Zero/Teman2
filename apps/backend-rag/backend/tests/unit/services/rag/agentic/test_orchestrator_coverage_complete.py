@@ -231,14 +231,21 @@ class TestSaveConversationMemory:
         # user_id — leaving us with a stale lock the code never looked up.
         lock = asyncio.Lock()
         orchestrator.memory_handler._memory_locks["user@test.com::__nosession__"] = lock
+        # Deterministic hand-off instead of a fixed asyncio.sleep(0.01) head
+        # start: a fixed sleep only assumes hold_lock() got scheduled and
+        # acquired the lock within that window, which a loaded scheduler can
+        # violate (PENDING-ARMS L780). Waiting on this Event guarantees the
+        # lock is actually held before the main path's own acquire attempt.
+        lock_acquired = asyncio.Event()
 
         async def hold_lock():
             await lock.acquire()
+            lock_acquired.set()
             await asyncio.sleep(0.1)
             lock.release()
 
         task = asyncio.create_task(hold_lock())
-        await asyncio.sleep(0.01)
+        await lock_acquired.wait()
 
         orchestrator.memory_handler._lock_timeout = 0.01
 
