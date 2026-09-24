@@ -603,5 +603,43 @@ describe("StudioApp", () => {
       expect(border).toBeDefined();
       expect(border).not.toBe("1px solid var(--color-border-subtle)");
     });
+
+    it("disabled Continue reads as 'not yet' — no opacity trick over the action red (2026-09-24: it composited to an alarm pink)", () => {
+      render(<StudioApp />);
+
+      const continueBtn = screen.getByRole("button", { name: "Continue" });
+      expect(continueBtn).toBeDisabled();
+      const styleAttr = continueBtn.getAttribute("style") ?? "";
+      expect(styleAttr).not.toMatch(/opacity/);
+      expect(styleAttr).not.toMatch(/--cta-bg|--accent-funnel/);
+    });
+
+    it("inside the Studio the consent banner's accent turns ink, so Continue owns the only action red", async () => {
+      const { container } = render(<StudioApp />);
+      await screen.findByRole("button", { name: "Got it" });
+
+      const space = container.querySelector<HTMLElement>(
+        ".bz-shs-consent-space",
+      );
+      expect(space?.style.getPropertyValue("--bz-accent").trim()).toBe(
+        "var(--text-primary)",
+      );
+    });
+
+    it("the Back/Continue row is the question card's sticky footer, lifted by the measured consent-banner height", () => {
+      const { container } = render(<StudioApp />);
+
+      const actions = container.querySelector(".bz-shs-actions");
+      expect(actions).not.toBeNull();
+      expect(actions).toContainElement(
+        screen.getByRole("button", { name: "Continue" }),
+      );
+      const css = Array.from(container.querySelectorAll("style"))
+        .map((style) => style.textContent ?? "")
+        .join("\n");
+      expect(css).toMatch(
+        /\.bz-shs-actions\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*var\(--bz-shs-consent-h/s,
+      );
+    });
   });
 });

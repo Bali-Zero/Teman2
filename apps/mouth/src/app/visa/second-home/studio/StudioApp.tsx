@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type Ref } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
 import { getCopy } from "@/lib/secondhome-studio/copy";
@@ -223,13 +224,20 @@ const mastheadLabelStyle: React.CSSProperties = {
  *  TINT, but a boundary's contrast has to be re-measured whenever the ground
  *  flips — the percentage is not the invariant, the ratio is. */
 const navButtonStyle: React.CSSProperties = {
-  padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  padding: "0 18px",
   borderRadius: 12,
   border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",
-  minHeight: 44,
+  minHeight: 48,
+  fontSize: "1rem",
+  fontWeight: 500,
+  fontFamily: "inherit",
 };
 
 /** The primary CTA takes the ACTION red, `--cta-bg` (#D01033 under the Merah
@@ -251,7 +259,8 @@ const navButtonStyle: React.CSSProperties = {
 const primaryNavButtonStyle: React.CSSProperties = {
   ...navButtonStyle,
   marginLeft: "auto",
-  border: "none",
+  padding: "0 22px",
+  border: "1px solid transparent",
   background: "var(--cta-bg, var(--accent-funnel-text))",
   color: "var(--text-on-accent, #fff)",
   fontWeight: 600,
@@ -265,6 +274,17 @@ interface NavRowProps {
   nextLabel?: string;
 }
 
+/** Disabled = "not yet", never an alarm (R4 §3 interactive states: ink-soft
+ *  on carta, no opacity tricks). The old `opacity: 0.6` over the action red
+ *  composited to a washed pink that read as an error state. */
+const disabledPrimaryNavButtonStyle: React.CSSProperties = {
+  ...primaryNavButtonStyle,
+  border: "1px solid var(--border-default)",
+  background: "var(--surface-sunken)",
+  color: "var(--text-secondary)",
+  cursor: "not-allowed",
+};
+
 function NavRow({
   canGoBack,
   canGoNext,
@@ -273,36 +293,38 @@ function NavRow({
   nextLabel = "Continue",
 }: NavRowProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "var(--space-3, 1rem)",
-        marginTop: "var(--space-2, 0.5rem)",
-      }}
-    >
+    <div className="bz-shs-nav">
       <button
         type="button"
+        className="bz-shs-back"
         onClick={onBack}
         disabled={!canGoBack}
         style={{
           ...navButtonStyle,
+          border: canGoBack
+            ? navButtonStyle.border
+            : "1px solid var(--border-default)",
+          color: canGoBack ? "var(--text-primary)" : "var(--text-secondary)",
           cursor: canGoBack ? "pointer" : "not-allowed",
-          opacity: canGoBack ? 1 : 0.5,
         }}
       >
+        <ArrowLeft size={16} aria-hidden />
         Back
       </button>
+      {!canGoNext ? (
+        <p className="bz-shs-nav-hint">Choose an answer to continue</p>
+      ) : null}
       <button
         type="button"
+        className="bz-shs-cta"
         onClick={onNext}
         disabled={!canGoNext}
-        style={{
-          ...primaryNavButtonStyle,
-          cursor: canGoNext ? "pointer" : "not-allowed",
-          opacity: canGoNext ? 1 : 0.6,
-        }}
+        style={
+          canGoNext ? primaryNavButtonStyle : disabledPrimaryNavButtonStyle
+        }
       >
         {nextLabel}
+        <ArrowRight size={18} aria-hidden />
       </button>
     </div>
   );
@@ -360,9 +382,8 @@ function QuestionStage({
               onSelect={() => onSelect({ age: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "route": {
@@ -383,9 +404,8 @@ function QuestionStage({
               onSelect={() => onSelect({ route: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "capital": {
@@ -410,9 +430,8 @@ function QuestionStage({
               onSelect={() => onSelect({ capital: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "seniorFunding": {
@@ -439,9 +458,8 @@ function QuestionStage({
               onSelect={() => onSelect({ seniorFunding: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "property": {
@@ -467,9 +485,8 @@ function QuestionStage({
               onSelect={() => onSelect({ property: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "family": {
@@ -484,6 +501,7 @@ function QuestionStage({
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
           headingRef={headingRef}
+          actions={nav}
         >
           {/* Multi-select (P2-4): stays a plain group of toggle buttons —
              aria-pressed, no radiogroup/radio roles — since this is the
@@ -537,7 +555,6 @@ function QuestionStage({
           >
             {getCopy(`${base}.dependentsNote`)}
           </p>
-          {nav}
         </QuestionCard>
       );
     }
@@ -559,9 +576,8 @@ function QuestionStage({
               onSelect={() => onSelect({ horizon: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     case "location": {
@@ -582,9 +598,8 @@ function QuestionStage({
               onSelect={() => onSelect({ location: opt })}
             />
           ))}
-        >
-          {nav}
-        </QuestionCard>
+          actions={nav}
+        />
       );
     }
     default:
@@ -737,6 +752,11 @@ export function StudioApp() {
         // editorial theme's navy ground and the retired #ff3344 on this route
         // only, and so /visa/layout.tsx's forced Montserrat stops here.
         ...MERAH_PUTIH_DAY_VARS,
+        // Read by QuestionCard's sticky action row so it rides above the
+        // fixed consent banner instead of under it.
+        ...({
+          "--bz-shs-consent-h": `${consentHeight}px`,
+        } as React.CSSProperties),
         background: "var(--surface-base)",
         color: "var(--text-primary)",
         minHeight: "100vh",
@@ -901,6 +921,16 @@ export function StudioApp() {
           style={{
             height: consentHeight,
             display: consentHeight > 0 ? "block" : "contents",
+            // Red hierarchy (2026-09-24): the banner's dismiss button painted
+            // the only full-strength red on screen while Continue waited in
+            // its "not yet" state. R4's red budget on a funnel is the wordmark,
+            // the progress mark and ONE primary action — so inside this
+            // wrapper only, the banner's own accent token turns ink (white on
+            // #16213a = 16:1, links stay underlined). ConsentBanner itself and
+            // every other route are untouched.
+            ...({
+              "--bz-accent": "var(--text-primary)",
+            } as React.CSSProperties),
           }}
         >
           <ConsentBanner />
@@ -914,6 +944,37 @@ export function StudioApp() {
           .bz-shs-content {
             padding: 16px 24px 48px;
           }
+        }
+        .bz-shs-nav {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .bz-shs-nav-hint {
+          display: none;
+          margin: 0 0 0 auto;
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+        }
+        @media (min-width: 520px) {
+          .bz-shs-nav-hint {
+            display: block;
+          }
+          .bz-shs-nav-hint + .bz-shs-cta {
+            margin-left: 0 !important;
+          }
+        }
+        .bz-shs-back:not(:disabled):hover {
+          background: var(--surface-base) !important;
+          border-color: var(--text-primary) !important;
+        }
+        .bz-shs-cta:not(:disabled):hover {
+          background: var(--cta-bg-hover) !important;
+        }
+        .bz-shs-nav button:focus-visible,
+        .bz-shs-back-to-answers button:focus-visible {
+          outline: 3px solid var(--text-primary);
+          outline-offset: 3px;
         }
         .bz-shs-layout {
           display: grid;

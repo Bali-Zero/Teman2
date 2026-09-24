@@ -28,7 +28,11 @@ export interface QuestionCardProps {
    *  step transitions (P2-3) — the heading carries `tabIndex={-1}` so a
    *  non-interactive element can still be a programmatic focus target. */
   headingRef?: Ref<HTMLHeadingElement>;
-  children: ReactNode;
+  /** Back/Continue row. Rendered as the card's own footer — a direct child of
+   *  the card, so it can stay sticky at the bottom of the viewport (above the
+   *  consent banner) while a long question scrolls under it. */
+  actions?: ReactNode;
+  children?: ReactNode;
 }
 
 function handleRadioGroupKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -80,6 +84,7 @@ export function QuestionCard({
   why,
   options,
   headingRef,
+  actions,
   children,
 }: QuestionCardProps) {
   const headingId = useId();
@@ -107,16 +112,7 @@ export function QuestionCard({
   );
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: "var(--space-3, 1rem)",
-        background: "var(--surface-raised)",
-        border: "1px solid var(--color-border-subtle)",
-        borderRadius: 12,
-        padding: "var(--space-4, 1.5rem)",
-      }}
-    >
+    <div className="bz-shs-card">
       <h2
         id={headingId}
         ref={headingRef}
@@ -126,66 +122,121 @@ export function QuestionCard({
           // R4 §3: Cormorant is display-only and never below 24px — under that,
           // low-DPI Android antialiasing shreds the serif.
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.5rem, 3vw, 1.6rem)",
+          fontSize: "clamp(1.625rem, 3vw, 2rem)",
+          fontWeight: 500,
+          lineHeight: 1.15,
+          textWrap: "balance",
           color: "var(--text-primary)",
         }}
       >
         {heading}
       </h2>
-      <p style={{ margin: 0, lineHeight: 1.6, color: "var(--text-primary)" }}>
+      <p
+        style={{
+          margin: 0,
+          fontSize: "1.0625rem",
+          lineHeight: 1.55,
+          color: "var(--text-secondary)",
+        }}
+      >
         {body}
       </p>
-      <details
-        className="bz-shs-why"
-        style={{ fontSize: "var(--text-sm, 0.88rem)" }}
-      >
-        <summary
-          className="bz-shs-why-summary"
-          style={{
-            cursor: "pointer",
-            color: "var(--color-text-muted)",
-            fontWeight: 600,
-            listStyle: "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-1, 0.35rem)",
-          }}
-        >
+      <details className="bz-shs-why">
+        <summary className="bz-shs-why-summary">
           <ChevronRight
-            size={14}
+            size={16}
             aria-hidden
             className="bz-shs-why-chevron"
             style={{ flexShrink: 0 }}
           />
           Why we ask
         </summary>
-        <p
-          style={{
-            margin: "var(--space-2, 0.5rem) 0 0",
-            color: "var(--color-text-muted)",
-            lineHeight: 1.5,
-          }}
-        >
-          {why}
-        </p>
+        <p className="bz-shs-why-body">{why}</p>
       </details>
       {options ? (
         <div
           role="radiogroup"
           aria-labelledby={headingId}
           onKeyDown={handleRadioGroupKeyDown}
-          style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}
+          style={{ display: "grid", gap: 10 }}
         >
           {radioOptions}
         </div>
       ) : null}
-      <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
-        {children}
-      </div>
+      {Children.count(children) > 0 ? (
+        <div style={{ display: "grid", gap: 10 }}>{children}</div>
+      ) : null}
+      {actions ? <div className="bz-shs-actions">{actions}</div> : null}
       {/* Single instance per render (only one question stage is ever
        *  mounted at a time) — matches the local-<style> pattern already
        *  used by ProgressRail/MemoPreview. */}
       <style>{`
+        .bz-shs-card {
+          --bz-shs-card-pad: 20px;
+          display: grid;
+          gap: 12px;
+          padding: 20px var(--bz-shs-card-pad) 0;
+          background: var(--surface-raised);
+          border: 1px solid var(--color-border-subtle);
+          border-radius: 16px;
+          box-shadow:
+            0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent),
+            0 18px 40px -24px color-mix(in srgb, var(--text-primary) 22%, transparent);
+        }
+        @media (min-width: 640px) {
+          .bz-shs-card {
+            --bz-shs-card-pad: 32px;
+            gap: 18px;
+            padding-top: 32px;
+          }
+        }
+        /* The action row is the card's footer and stays in reach: sticky to
+         * the bottom of the viewport, lifted by the measured consent-banner
+         * height StudioApp publishes as --bz-shs-consent-h, so the primary
+         * action is never trapped under site chrome at 390x844. */
+        .bz-shs-actions {
+          position: sticky;
+          bottom: var(--bz-shs-consent-h, 0px);
+          z-index: 2;
+          margin: 8px calc(-1 * var(--bz-shs-card-pad)) 0;
+          padding: 14px var(--bz-shs-card-pad)
+            calc(14px + env(safe-area-inset-bottom, 0px));
+          background: var(--surface-raised);
+          border-top: 1px solid var(--color-border-subtle);
+          border-radius: 0 0 16px 16px;
+        }
+        .bz-shs-why-summary {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 44px;
+          margin: -10px 0;
+          cursor: pointer;
+          list-style: none;
+          font-size: 0.9375rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          text-decoration: underline dotted var(--border-strong);
+          text-underline-offset: 5px;
+        }
+        .bz-shs-why-summary:hover {
+          text-decoration-style: solid;
+        }
+        .bz-shs-why-summary:focus-visible {
+          outline: 3px solid var(--text-primary);
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
+        .bz-shs-why-body {
+          margin: 14px 0 0;
+          padding: 12px 16px;
+          border-left: 2px solid var(--text-primary);
+          border-radius: 0 10px 10px 0;
+          background: var(--surface-sunken);
+          color: var(--text-secondary);
+          font-size: 0.9375rem;
+          line-height: 1.55;
+        }
         .bz-shs-why-summary::-webkit-details-marker {
           display: none;
         }
@@ -211,16 +262,18 @@ export function QuestionCard({
          * now matches instead of undercutting them. */
         .bz-shs-option {
           border: 1px solid var(--border-strong);
-          background: transparent;
+          background: var(--surface-raised);
           box-shadow: inset 0 0 0 0 transparent;
           transition:
             border-color 150ms ease-out,
             background-color 150ms ease-out,
             box-shadow 150ms ease-out;
         }
+        /* Hover is an ink preview of "chosen", not red: red is structure and
+         * action only (R4 §3), and a red hover promised a selection it was not. */
         .bz-shs-option:hover {
-          border-color: var(--accent-funnel);
-          background: color-mix(in srgb, var(--accent-funnel) 6%, transparent);
+          border-color: var(--text-primary);
+          background: var(--surface-base);
         }
         /* R4 §3/§4.5: the chosen option is an INK outline, never red. Red is
            allowed exactly two duties on this page — structure (the progress
@@ -231,11 +284,11 @@ export function QuestionCard({
            stronger boundary than the red it replaces. */
         .bz-shs-option[data-selected="true"] {
           border-color: var(--text-primary);
-          background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+          background: color-mix(in srgb, var(--text-primary) 5%, transparent);
           box-shadow: inset 0 0 0 2px var(--text-primary);
         }
         .bz-shs-option[data-selected="true"]:hover {
-          background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+          background: color-mix(in srgb, var(--text-primary) 8%, transparent);
         }
         .bz-shs-option:focus-visible {
           outline: 3px solid var(--text-primary);
@@ -286,8 +339,8 @@ function RadioAffordance({ selected }: { selected: boolean }) {
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
-        width: 20,
-        height: 20,
+        width: 22,
+        height: 22,
         borderRadius: "50%",
         // R4 §3/§4.5: SELECTION IS NEVER RED. Red carries exactly two duties —
         // structure and action — and letting it also mean "chosen" is the
@@ -300,15 +353,16 @@ function RadioAffordance({ selected }: { selected: boolean }) {
         border: selected
           ? "2px solid var(--text-primary)"
           : "1.5px solid var(--border-strong)",
+        background: selected ? "var(--text-primary)" : "var(--surface-raised)",
       }}
     >
       {selected ? (
         <span
           style={{
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             borderRadius: "50%",
-            background: "var(--text-primary)",
+            background: "var(--surface-raised)",
           }}
         />
       ) : null}
@@ -328,9 +382,9 @@ function CheckAffordance({ selected }: { selected: boolean }) {
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
-        width: 20,
-        height: 20,
-        borderRadius: 5,
+        width: 22,
+        height: 22,
+        borderRadius: 6,
         // R4 §3/§4.5: selection is never red — ink box + white check. The
         // unselected boundary is border-input, not the decorative hairline.
         // White on ink measures 16.00:1; the check glyph is a second,
@@ -378,14 +432,16 @@ export function OptionButton({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "var(--space-3, 0.75rem)",
-        padding: "var(--space-3, 0.85rem) var(--space-4, 1.1rem)",
+        gap: 14,
+        padding: "16px 20px",
         borderRadius: 12,
         color: "var(--text-primary)",
         textAlign: "left",
         cursor: "pointer",
-        minHeight: 44,
-        fontSize: "1rem",
+        minHeight: 56,
+        fontSize: "1.0625rem",
+        fontWeight: 500,
+        lineHeight: 1.35,
         fontFamily: "inherit",
       }}
     >
