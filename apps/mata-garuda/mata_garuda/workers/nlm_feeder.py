@@ -348,6 +348,18 @@ _SOURCE_TO_DOMAIN: dict[str, str] = {
     "intel_scraper": "press",  # bali-intel-scraper articles → press feed
 }
 
+# Sources whose NLM delivery is owned end-to-end by the Intel Lake, not this
+# feeder. intel_scraper_bridge.py writes these items with url/title only (no
+# `content`), so the stream loop would always drop them as no_body — but the
+# Intel Lake (`intel_items`, same canonical_url) has the same articles WITH a
+# real summary, and intel-lake-router-cron already decides per item
+# (nb-intel / blog / needs_review); scripts/intel-lake-nb-pusher-* delivers
+# the nb-intel-routed ones to these same NLM notebooks. Giving this feeder a
+# body would bypass that curation (dumping blog/needs_review into Press) and
+# duplicate what the pusher already delivers. Route these out before domain
+# inference/routing instead of letting them fall through to no_body.
+_LAKE_OWNED_SOURCES = frozenset({"intel_scraper"})
+
 
 def infer_domain_from_item(data: dict) -> str:
     """Best-effort domain inference when the item has none.
@@ -515,7 +527,7 @@ def _run_nlm_feeder_from(
     derived from Ollama. The enriched stream lacks `topic` because the
     scorer doesn't write back into it — only into alerts + KB.
     """
-    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
+    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0, "lake_owned": 0}
 
     items = stream_read_new(stream, consumer_group, consumer_name, count=max_items)
     if not items:
@@ -526,6 +538,17 @@ def _run_nlm_feeder_from(
         stats["processed"] += 1
         msg_id = item["id"]
         data = item.get("data") or {}
+
+        # Lake-owned sources (same normalisation as infer_domain_from_item):
+        # the Intel Lake router + nb-pusher already curate and deliver these
+        # to NLM with a real body, so this feeder must not touch them at all —
+        # not even as a no_body skip. Ack and count, before domain inference.
+        source_type_norm = (data.get("source_type") or "").strip().lower()
+        source_norm = (data.get("source") or "").strip().lower()
+        if source_type_norm in _LAKE_OWNED_SOURCES or source_norm in _LAKE_OWNED_SOURCES:
+            stats["lake_owned"] += 1
+            stream_ack(stream, consumer_group, msg_id)
+            continue
 
         title = data.get("title", "") or ""
         content = data.get("content", "") or ""
@@ -619,7 +642,8 @@ def _run_nlm_feeder_from(
 
     logger.info(
         f"[nlm_feeder] {stream} done: {stats['processed']} processed, "
-        f"{stats['fed']} fed, {stats['skipped']} skipped, {stats['errors']} errors"
+        f"{stats['fed']} fed, {stats['skipped']} skipped, {stats['errors']} errors, "
+        f"{stats['lake_owned']} lake_owned"
     )
     return stats
 
