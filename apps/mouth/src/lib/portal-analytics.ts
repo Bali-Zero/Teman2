@@ -7,6 +7,7 @@ type GtagWindow = Window & { gtag?: (...args: unknown[]) => void };
 const SECTIONS = new Set([
   "visa",
   "company",
+  "companies",
   "taxes",
   "vault",
   "documents",
