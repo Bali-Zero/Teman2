@@ -48,16 +48,24 @@
  */
 [data-product="my"][data-garuda-voa="r19"] {
   /*
-   * The funnel is a sheet laid on the site's ink ground, and it now reads as
-   * one: a gap under the fixed site header (it used to butt against it with
-   * zero clearance), rounded corners, and a bottom margin so the sheet ENDS
-   * where its content ends. It used to carry min-height 100vh, which on a
-   * 900px desktop left a cream field under the lone Next button that read as
-   * a pasted document rather than a page.
+   * Daylight owns the page body, not a card laid on the site's ink ground.
+   * The first cure (a rounded sheet with ink gutters) still read as an
+   * embedded widget in the cross-family critique of 2026-09-24. The site
+   * container this wrapper sits in is max-w-6xl and sibling-owned, so the
+   * ground is widened with a spread shadow in the ground's own token and
+   * clipped to this box's height: full-bleed daylight without a 100vw
+   * width, so no horizontal scroll. The breathing room under the fixed
+   * header is the content's own top padding, and min-height stops the ground
+   * at the viewport bottom instead of letting the ink show through beneath a
+   * short screen. The two rem figures are the parent visa layout's own
+   * container padding (app/visa/layout.tsx: pt-14 above, pb-8 below): the
+   * ground fills the viewport exactly, and the clip reaches 2rem down to
+   * cover that bottom padding, so a short screen neither scrolls nor ends in
+   * an ink strip.
    */
-  margin: 0.75rem 0 2rem;
-  border-radius: 14px;
-  overflow: clip;
+  min-height: calc(100dvh - 5.5rem);
+  box-shadow: 0 0 0 100vmax var(--bz-base);
+  clip-path: inset(0 -100vmax -2rem);
   background: var(--bz-base);
   color: var(--tx-pure);
   font-family: var(--font-sans);
@@ -554,7 +562,11 @@
 /*
  * A choice looks like a choice: the ring on the left is the control's own
  * edge (--tx-tertiary, over 1.4.11's 3:1 on the card), so the row's hairline
- * can stay quiet. Picked = ink ring with an ink centre and a 2px ink edge.
+ * can stay quiet. Picked = copper, because what is picked is the visitor's
+ * OWN answer, and copper on this surface marks ownership (the R19 law: a
+ * person, never an action — the Next button stays ink). Copper here is an
+ * edge and a ring, 5.64:1 on the card, never text and never a fill; the tint
+ * under it is a few percent of the same token over the card.
  */
 [data-product="my"][data-garuda-voa="r19"] .voa-option {
   display: grid;
@@ -590,14 +602,15 @@
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-option[aria-pressed="true"] {
-  border-color: var(--tx-pure);
-  box-shadow: inset 0 0 0 1px var(--tx-pure);
+  border-color: var(--bz-accent);
+  box-shadow: inset 0 0 0 1px var(--bz-accent);
+  background: color-mix(in srgb, var(--bz-accent) 6%, var(--bz-elevated));
 }
 
 [data-product="my"][data-garuda-voa="r19"]
   .voa-option[aria-pressed="true"]::before {
-  border-color: var(--tx-pure);
-  background: var(--tx-pure);
+  border-color: var(--bz-accent);
+  background: var(--bz-accent);
   box-shadow: inset 0 0 0 3px var(--bz-elevated);
 }
 
@@ -605,6 +618,12 @@
   font-size: 1.02rem;
   font-weight: 500;
   line-height: 1.3;
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-option[aria-pressed="true"]
+  .voa-option__label {
+  font-weight: 650;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-option__hint {
@@ -711,7 +730,7 @@
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg[data-state="current"] {
-  border-top-color: var(--tx-pure);
+  border-top-color: var(--bz-accent);
   color: var(--tx-pure);
   font-weight: 650;
 }
@@ -777,6 +796,7 @@
   margin: 0;
   padding: 0 0.25rem 0 1rem;
   border: 1px solid var(--bz-border);
+  border-left: 3px solid var(--bz-accent);
   border-radius: 10px;
   background: var(--bz-elevated);
 }
@@ -898,12 +918,6 @@
 @media (max-width: 47.99rem) {
   [data-product="my"][data-garuda-voa="r19"] .voa-wiz__act {
     justify-items: stretch;
-  }
-}
-
-@media (min-width: 48rem) {
-  [data-product="my"][data-garuda-voa="r19"] {
-    margin: 2rem 0 4rem;
   }
 }
 
@@ -1082,7 +1096,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  width: 100%;
+  justify-self: start;
   min-height: 48px;
   padding: 0 1.25rem 0 0.4rem;
   border: 1px solid var(--bz-green);
