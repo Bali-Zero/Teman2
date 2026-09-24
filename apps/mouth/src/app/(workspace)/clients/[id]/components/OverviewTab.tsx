@@ -22,7 +22,6 @@ import { formatPhoneNumber, isBirthdayToday } from "./utils";
 import { PassportCard } from "./PassportCard";
 import { VisaCard } from "./VisaCard";
 import { AiSummaryCard } from "./AiSummaryCard";
-import { OracleChat } from "./OracleChat";
 import { WaCaseIntelligencePanel } from "./WaCaseIntelligencePanel";
 import {
   LedgerSection,
@@ -160,8 +159,6 @@ export function OverviewTab({
       )}
       {/* AI Summary (CRM-Guardian Phase 1 cross-folder L1) */}
       <AiSummaryCard clientId={clientId} section="overview" />
-      {/* Oracle Chat — NLM-powered Q&A */}
-      <OracleChat clientId={clientId} />
       {/* WhatsApp Case Intelligence — GPT-5.5 case cards linked to this CRM profile */}
       <WaCaseIntelligencePanel clientId={clientId} />
       {/* 3 Columns Layout - Team Member | Passport | Visa */}

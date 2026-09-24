@@ -38,16 +38,4 @@ export const STRINGS = {
     conversionRateLabel: "Conversion rate",
     chartTitle: "Sessions vs conversions per funnel",
   },
-  oracle: {
-    header: "🔮 Ask the Oracle",
-    promptSummarizeProfile: "Summarize the full profile",
-    promptVisaStatus: "Visa status and deadlines",
-    promptTaxLkpm: "Tax and LKPM situation",
-    promptMissingDocs: "Missing or expiring documents",
-    inputPlaceholder: "Ask a question about this client…",
-    sendTitle: "Send question",
-    consulting: "Consulting the Oracle…",
-    requestError: "Request failed",
-    sourcesLabel: "Sources",
-  },
 } as const;
