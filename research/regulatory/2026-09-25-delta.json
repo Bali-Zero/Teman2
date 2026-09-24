@@ -1,0 +1,26 @@
+{
+  "run_at": "2026-09-25T07:04:35+08:00",
+  "today": "2026-09-25",
+  "yesterday_seen_count": 0,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {"url": "https://ortax.org/news", "reason": "http_404"},
+    {"url": "https://muc.co.id/article", "reason": "http_403", "note": "Cloudflare/WAF block"},
+    {"url": "https://peraturan.go.id/rss", "reason": "http_404"},
+    {"url": "https://jdih.kemenkeu.go.id/peraturan", "reason": "timeout", "note": "curl exit 28 after 1 mechanical retry"}
+  ],
+  "sources_checked_no_delta": [
+    {"url": "https://www.hukumonline.com/berita/", "reason": "checked_no_new", "note": "newest article 24 Sep 2026 14:05 WIB, all RUU-draft/court news, none matching reg-type"},
+    {"url": "https://news.ddtc.co.id/", "reason": "checked_no_new", "note": "newest ~9h old; only mention is PP 49/2022 (existing act), no new PMK/PP/UU citation"},
+    {"url": "https://ikpi.or.id/berita/", "reason": "empty_shell", "note": "301->https://ikpi.or.id/articles, JS SPA, zero extractable article markers"},
+    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "empty_shell", "note": "search form only, no server-rendered results"},
+    {"url": "https://www.imigrasi.go.id", "reason": "outside_window", "note": "newest press release 18 Sep 2026"},
+    {"url": "https://www.pajak.go.id/peraturan", "reason": "outside_window", "note": "newest entry still KEP-185/PJ/2026 dated 2026-09-02, unchanged since yesterday"},
+    {"url": "https://jdih.kemnaker.go.id/peraturan", "reason": "outside_window", "note": "listing sorted by hierarchy not date; newest visible UU 2/2026 (30 Apr 2026)"}
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [],
+  "note": "All 4 NB-INTEL returned 'nessuna novita' (Tax NB surfaced only a ministerial statement, not an act citation - dropped). No qualifying regulatory citations found across 11 web sources checked."
+}
