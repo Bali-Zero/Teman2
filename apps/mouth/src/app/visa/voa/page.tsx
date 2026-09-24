@@ -69,47 +69,15 @@ const NATIONALITIES: { iso: string; labelKey: VoaCopyKey }[] = [
   { iso: "OTHER", labelKey: "nationality.OTHER" },
 ];
 
-const labelStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: "var(--font-serif, Georgia, serif)",
-  fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
-};
-
 /**
- * MEASURED ON PRODUCTION, and the number is why this is `--tx-tertiary` and
- * not the subtle divider token it used to be. The boundary read
- * `--color-border-subtle` at 1.42:1 against the field's own fill, under SC
- * 1.4.11's 3:1 for the boundary of a user-interface component — and the fill
- * itself (`--surface-raised`) is only 1.09:1 against the page ground, so the
- * 1px rule was the ONLY thing making these look like fields at all. It now
- * measures 4.18:1. The same swap, for the same reason, cured the verdict
- * screen's entry field (PR 6912).
+ * The field boundary is `--tx-tertiary`, measured on production at 4.18:1
+ * against the field's own fill (SC 1.4.11 asks 3:1 of a control's edge; the
+ * subtle divider token it used to wear read 1.42:1 and was the only thing
+ * making these look like fields at all — PR 6912 cured the verdict screen's
+ * entry field the same way). That rule now lives in `voa-r19.css`
+ * (`.voa-field`), next to every other control on this surface, instead of in
+ * inline style objects the skin could not reach.
  */
-const fieldStyle: React.CSSProperties = {
-  padding: "0.6rem 0.7rem",
-  borderRadius: 4,
-  border: "1px solid var(--tx-tertiary)",
-  background: "var(--surface-raised)",
-  color: "var(--text-primary)",
-  fontSize: "1rem",
-  fontFamily: "inherit",
-  minHeight: 44,
-};
-
-const cardButtonStyle = (selected: boolean): React.CSSProperties => ({
-  padding: "var(--space-3, 0.85rem)",
-  borderRadius: 4,
-  border: selected
-    ? "2px solid var(--accent-funnel)"
-    : "1px solid var(--color-border-subtle)",
-  background: selected ? "var(--surface-raised)" : "transparent",
-  textAlign: "left",
-  cursor: "pointer",
-  color: "var(--text-primary)",
-  minHeight: 44,
-  fontSize: "1rem",
-  fontFamily: "inherit",
-});
 
 interface WizardAnswers {
   case_type?: CaseType;
@@ -147,14 +115,8 @@ export default function VoaEligibilityPage() {
       },
       render: ({ value, setValue }) => (
         <div>
-          <p style={labelStyle}>{t("step.case.question")}</p>
-          <div
-            style={{
-              display: "grid",
-              gap: "var(--space-2, 0.5rem)",
-              marginTop: "var(--space-3, 1rem)",
-            }}
-          >
+          <p className="voa-q">{t("step.case.question")}</p>
+          <div className="voa-options">
             {CASE_TYPES.map((c) => (
               <button
                 key={c.id}
@@ -163,17 +125,11 @@ export default function VoaEligibilityPage() {
                   setValue(c.id);
                   setCaseType(c.id);
                 }}
-                style={cardButtonStyle(value === c.id)}
+                className="voa-option"
+                aria-pressed={value === c.id}
               >
-                <div>{t(c.labelKey)}</div>
-                <div
-                  style={{
-                    fontSize: "var(--text-sm, 0.85rem)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {t(c.hintKey)}
-                </div>
+                <span className="voa-option__label">{t(c.labelKey)}</span>
+                <span className="voa-option__hint">{t(c.hintKey)}</span>
               </button>
             ))}
           </div>
@@ -190,22 +146,17 @@ export default function VoaEligibilityPage() {
       },
       render: ({ value, setValue }) => (
         <div>
-          <p style={labelStyle}>{t("step.purpose.question")}</p>
-          <div
-            style={{
-              display: "grid",
-              gap: "var(--space-2, 0.5rem)",
-              marginTop: "var(--space-3, 1rem)",
-            }}
-          >
+          <p className="voa-q">{t("step.purpose.question")}</p>
+          <div className="voa-options">
             {PURPOSES.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setValue(p.id)}
-                style={cardButtonStyle(value === p.id)}
+                className="voa-option"
+                aria-pressed={value === p.id}
               >
-                {t(p.labelKey)}
+                <span className="voa-option__label">{t(p.labelKey)}</span>
               </button>
             ))}
           </div>
@@ -234,20 +185,15 @@ export default function VoaEligibilityPage() {
             self_pay?: boolean;
           }) ?? {};
         return (
-          <div style={{ display: "grid", gap: "var(--space-4, 1.2rem)" }}>
+          <div className="voa-fields">
             <div>
-              <p style={labelStyle}>{t("trip.nationality.question")}</p>
+              <p className="voa-q">{t("trip.nationality.question")}</p>
               <select
                 value={v.nationality ?? ""}
                 onChange={(e) =>
                   setValue({ ...v, nationality: e.target.value })
                 }
-                style={{
-                  ...fieldStyle,
-                  marginTop: "var(--space-2, 0.5rem)",
-                  width: "100%",
-                  maxWidth: 320,
-                }}
+                className="voa-field voa-field--select"
                 aria-label={t("trip.nationality.aria")}
               >
                 <option value="">{t("trip.nationality.placeholder")}</option>
@@ -259,7 +205,7 @@ export default function VoaEligibilityPage() {
               </select>
             </div>
             <div>
-              <p style={labelStyle}>{t("trip.travellers.question")}</p>
+              <p className="voa-q">{t("trip.travellers.question")}</p>
               <input
                 type="number"
                 min={1}
@@ -271,22 +217,11 @@ export default function VoaEligibilityPage() {
                     travellers: Math.max(1, Number(e.target.value) || 1),
                   })
                 }
-                style={{
-                  ...fieldStyle,
-                  marginTop: "var(--space-2, 0.5rem)",
-                  width: 100,
-                }}
+                className="voa-field voa-field--count"
                 aria-label={t("trip.travellers.aria")}
               />
             </div>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                fontSize: "1rem",
-              }}
-            >
+            <label className="voa-check">
               <input
                 type="checkbox"
                 checked={v.self_pay ?? true}
@@ -316,54 +251,44 @@ export default function VoaEligibilityPage() {
             retention_notice_acknowledged?: boolean;
           }) ?? {};
         return (
-          <div style={{ display: "grid", gap: "var(--space-4, 1.2rem)" }}>
+          <div className="voa-fields">
             <div>
-              <p style={labelStyle}>{t("dates.entry.question")}</p>
+              <p className="voa-q">{t("dates.entry.question")}</p>
               <input
                 type="date"
                 value={v.entry_date ?? ""}
                 onChange={(e) => setValue({ ...v, entry_date: e.target.value })}
-                style={{ ...fieldStyle, marginTop: "var(--space-2, 0.5rem)" }}
+                className="voa-field"
                 aria-label={t("dates.entry.aria")}
               />
             </div>
             <div>
-              <p style={labelStyle}>{t("dates.passport.question")}</p>
+              <p className="voa-q">{t("dates.passport.question")}</p>
               <input
                 type="date"
                 value={v.passport_expiry_date ?? ""}
                 onChange={(e) =>
                   setValue({ ...v, passport_expiry_date: e.target.value })
                 }
-                style={{ ...fieldStyle, marginTop: "var(--space-2, 0.5rem)" }}
+                className="voa-field"
                 aria-label={t("dates.passport.aria")}
               />
             </div>
             {caseType === "extension" ? (
               <>
                 <div>
-                  <p style={labelStyle}>{t("dates.voaExpiry.question")}</p>
+                  <p className="voa-q">{t("dates.voaExpiry.question")}</p>
                   <input
                     type="date"
                     value={v.voa_expiry_date ?? ""}
                     onChange={(e) =>
                       setValue({ ...v, voa_expiry_date: e.target.value })
                     }
-                    style={{
-                      ...fieldStyle,
-                      marginTop: "var(--space-2, 0.5rem)",
-                    }}
+                    className="voa-field"
                     aria-label={t("dates.voaExpiry.aria")}
                   />
                 </div>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    fontSize: "1rem",
-                  }}
-                >
+                <label className="voa-check">
                   <input
                     type="checkbox"
                     checked={v.extension_already_used ?? false}
@@ -378,15 +303,7 @@ export default function VoaEligibilityPage() {
                 </label>
               </>
             ) : null}
-            <label
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "0.5rem",
-                fontSize: "0.92rem",
-                color: "var(--color-text-muted)",
-              }}
-            >
+            <label className="voa-check voa-check--notice">
               <input
                 type="checkbox"
                 checked={v.retention_notice_acknowledged ?? false}
