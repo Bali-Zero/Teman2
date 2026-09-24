@@ -67,6 +67,18 @@ export function ProcessProgress({
   variant,
   outcome,
 }: ProcessRailProps) {
+  const stages = PROCESS_PHASES.flatMap((key) => {
+    const phase = model.phases.find((entry) => entry.key === key);
+    return phase && phase.total > 0 ? [phase] : [];
+  });
+  const openIndex = stages.findIndex(
+    (phase) => phase.key === model.currentPhase,
+  );
+  const stagePosition =
+    openIndex >= 0
+      ? openIndex + 1
+      : stages.filter((phase) => phase.status === "done").length;
+
   return (
     <div
       data-process-rail={variant}
@@ -78,6 +90,42 @@ export function ProcessProgress({
           current: model.answeredQuestions,
           total: model.totalQuestions,
         })}
+      </p>
+
+      {/* The stages read as one segmented meter. Status is carried by shape,
+          not hue alone — filled done, hatched in progress, raised open,
+          hollow ahead — and the caption under it names the open stage in
+          text; each stage's name and status stay in the DOM for assistive
+          tech. */}
+      <p className="oracle-sr-only">
+        {translate(language, "process.phases_label")}
+      </p>
+      <ol className="oracle-rail-meter" role="list">
+        {stages.map((phase) => {
+          const name = translate(
+            language,
+            `process.phase.${phase.key}` as I18nKey,
+          );
+          const status = translate(
+            language,
+            `process.phase_status.${phase.status}` as I18nKey,
+          );
+          return (
+            <li
+              key={phase.key}
+              data-process-phase={phase.key}
+              data-status={phase.status}
+              className="oracle-rail-meter__stage"
+              title={`${name} — ${status}`}
+            >
+              <span className="oracle-sr-only">{name}</span>
+              <span className="oracle-sr-only">{status}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="oracle-rail-meter__caption oracle-tabular-nums">
+        {`${translate(language, "process.phases_label")} ${stagePosition}/${stages.length}`}
         {model.currentPhase !== null && (
           <>
             {" · "}
@@ -90,36 +138,6 @@ export function ProcessProgress({
           </>
         )}
       </p>
-
-      {/* The stages read as one segmented meter, labelled by the headline
-          above it; each stage's name and status stay in the DOM for
-          assistive tech and surface as a tooltip on pointer devices. */}
-      <p className="oracle-sr-only">
-        {translate(language, "process.phases_label")}
-      </p>
-      <ol className="oracle-rail-meter" role="list">
-        {PROCESS_PHASES.map((key) => {
-          const phase = model.phases.find((entry) => entry.key === key);
-          if (!phase || phase.total === 0) return null;
-          const name = translate(language, `process.phase.${key}` as I18nKey);
-          const status = translate(
-            language,
-            `process.phase_status.${phase.status}` as I18nKey,
-          );
-          return (
-            <li
-              key={key}
-              data-process-phase={key}
-              data-status={phase.status}
-              className="oracle-rail-meter__stage"
-              title={`${name} — ${status}`}
-            >
-              <span className="oracle-sr-only">{name}</span>
-              <span className="oracle-sr-only">{status}</span>
-            </li>
-          );
-        })}
-      </ol>
 
       <div className="oracle-rail-decides">
         <p className="oracle-rail-label">

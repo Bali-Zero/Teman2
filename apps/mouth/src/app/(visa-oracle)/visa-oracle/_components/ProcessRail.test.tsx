@@ -9,6 +9,7 @@ import {
   ProcessProgress,
 } from "./ProcessRail";
 import type { OracleFacts } from "../_lib/tree";
+import { translate } from "../_lib/i18n";
 import {
   flowReducer,
   getProcessModel,
@@ -134,6 +135,28 @@ describe("ProcessProgress — where the visitor is", () => {
     ).toHaveAttribute("data-status", "pending");
     // The engine's own vocabulary, not a paraphrase.
     expect(within(panel).getByText("person.nationalities")).toBeInTheDocument();
+  });
+
+  // WCAG 1.4.1: the meter's segments differ by colour and shape, and the
+  // open stage is also named in visible text — never in a tooltip or an
+  // sr-only span alone.
+  it("names the open stage and its position in visible text beside the meter", () => {
+    const model = m(
+      { kind: "question", questionId: "nationalities" },
+      OFFSHORE,
+    );
+    render(<ProcessProgress language="id" model={model} variant="desktop" />);
+    const stages = model.phases.filter((phase) => phase.total > 0);
+    const open = stages.findIndex((phase) => phase.key === "identity") + 1;
+    const caption = rail("progress").querySelector(
+      ".oracle-rail-meter__caption",
+    );
+    expect(open).toBeGreaterThan(0);
+    expect(caption).not.toBeNull();
+    expect(caption?.closest(".oracle-sr-only")).toBeNull();
+    expect(caption?.textContent).toBe(
+      `${translate("id", "process.phases_label")} ${open}/${stages.length} · ${translate("id", "process.phase.identity")}`,
+    );
   });
 
   it("does not claim a HUMAN_CONTEXT answer never reaches the engine — it can feed a DERIVED fact", () => {
@@ -1208,5 +1231,26 @@ describe("button.oracle-tree__leaf keeps AA contrast regardless of what is behin
     );
     expect(business?.tagName).toBe("BUTTON");
     expect(business?.classList.contains("oracle-tree__leaf")).toBe(true);
+  });
+});
+
+describe("the stage meter carries status by shape, not hue alone (WCAG 1.4.1)", () => {
+  const stage = (status?: string) =>
+    ruleBody(
+      ORACLE_CSS,
+      status === undefined
+        ? "\\.oracle-rail-meter__stage"
+        : `\\.oracle-rail-meter__stage\\[data-status="${status}"\\]`,
+    );
+
+  it("GUILT: not started is hollow, in progress hatched, complete filled, open raised", () => {
+    const pending = stage();
+    expect(pending).toMatch(/border:\s*1\.5px solid/);
+    expect(pending).toMatch(/background:\s*transparent;/);
+    expect(stage("partial")).toMatch(/repeating-linear-gradient/);
+    expect(stage("done")).toMatch(/background:\s*var\(--oracle-canopy\);/);
+    const baseHeight = /height:\s*(\d+)px/.exec(pending)?.[1];
+    const openHeight = /height:\s*(\d+)px/.exec(stage("current"))?.[1];
+    expect(Number(openHeight)).toBeGreaterThan(Number(baseHeight));
   });
 });

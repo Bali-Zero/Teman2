@@ -2004,35 +2004,76 @@ button.oracle-tree__leaf {
   line-height: 1.4;
   color: var(--oracle-ink);
 }
-.oracle-rail-progress__headline span {
-  font-weight: 500;
-  color: var(--oracle-ink-muted);
-}
 .oracle-rail-meter {
   display: flex;
+  align-items: center;
   gap: 4px;
+  min-height: 14px;
   margin: calc(-1 * var(--space-2)) 0 0;
   padding: 0;
   list-style: none;
 }
+/* Status by shape first, hue second (WCAG 1.4.1): hollow = not started,
+   hatched = in progress, filled = complete, raised = open now. */
 .oracle-rail-meter__stage {
   flex: 1;
-  height: 6px;
+  height: 8px;
+  border: 1.5px solid var(--oracle-ink-faint);
   border-radius: var(--radius-full);
-  background: var(--oracle-leaf-pending);
+  background: transparent;
+}
+.oracle-rail-meter__stage[data-status="pruned"] {
+  border-style: dashed;
 }
 .oracle-rail-meter__stage[data-status="partial"] {
-  background: color-mix(
-    in srgb,
-    var(--oracle-canopy) 50%,
-    var(--oracle-leaf-pending)
+  border-color: var(--oracle-canopy);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--oracle-canopy) 0 2px,
+    transparent 2px 5px
   );
 }
 .oracle-rail-meter__stage[data-status="done"] {
+  border-color: var(--oracle-canopy);
   background: var(--oracle-canopy);
 }
 .oracle-rail-meter__stage[data-status="current"] {
+  height: 14px;
+  border-color: var(--oracle-canopy);
   background: var(--oracle-accent-gold);
+}
+.oracle-rail-meter__caption {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--oracle-ink-muted);
+}
+.oracle-rail-meter__caption span {
+  font-weight: 500;
+}
+/* Forced colours drop gradients and author fills: keep the meter's shapes
+   legible in system colours. After the rules above so it wins the cascade. */
+@media (forced-colors: active) {
+  .oracle-root .oracle-rail-meter__stage {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  .oracle-root
+    .oracle-rail-meter__stage:is(
+      [data-status="done"],
+      [data-status="current"]
+    ) {
+    background: CanvasText;
+  }
+  .oracle-root .oracle-rail-meter__stage[data-status="partial"] {
+    background: repeating-linear-gradient(
+      -45deg,
+      CanvasText 0 2px,
+      Canvas 2px 5px
+    );
+  }
 }
 .oracle-tree__trunk {
   order: 1;
