@@ -389,7 +389,7 @@ export function SecondHomeLanding() {
                   ...tabularNums,
                   fontFamily: fontSerif,
                   fontSize: "clamp(1.75rem, 3.6vw, 2.4rem)",
-                  fontWeight: 700,
+                  fontWeight: 600,
                   lineHeight: 1.1,
                   color: "var(--accent-funnel-text, var(--accent-funnel))",
                 }}
@@ -542,7 +542,7 @@ export function SecondHomeLanding() {
               ...tabularNums,
               fontFamily: fontSerif,
               fontSize: "clamp(2.4rem, 6vw, 3.6rem)",
-              fontWeight: 700,
+              fontWeight: 600,
               lineHeight: 1,
               color: "var(--accent-funnel-text, var(--accent-funnel))",
             }}

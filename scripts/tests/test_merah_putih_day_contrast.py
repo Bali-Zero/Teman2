@@ -328,17 +328,56 @@ def test_no_serif_heading_below_the_24px_floor() -> None:
     )
 
 
-def test_no_cormorant_weight_below_500() -> None:
+_ALLOWED_CORMORANT_WEIGHTS = (500, 600)
+
+
+def _cormorant_weight_offenders(source_text: str, label: str) -> list[str]:
+    """Serif-context `fontWeight` declarations outside R4 §3's 500/600 range.
+
+    L1773: this used to be a strict FLOOR (`< 500`) while its own assertion
+    message claimed a 500/600 CEILING too — two Second Home headings shipped
+    at weight 700 and passed silently. Factored out of the test below so a
+    guilt fixture can drive it without writing a file to disk.
+    """
+    lines = strip_comments(source_text).splitlines()
+    offenders = []
+    for i, line in enumerate(lines):
+        m = _WEIGHT.search(line)
+        if m and _serif_context(lines, i) and int(m.group(1)) not in _ALLOWED_CORMORANT_WEIGHTS:
+            offenders.append(f"{label}:{i + 1} weight={m.group(1)}")
+    return offenders
+
+
+def test_cormorant_weight_is_500_or_600_only() -> None:
     offenders = []
     for p in _perimeter_sources():
-        lines = strip_comments(p.read_text(encoding="utf-8")).splitlines()
-        for i, line in enumerate(lines):
-            m = _WEIGHT.search(line)
-            if m and _serif_context(lines, i) and int(m.group(1)) < 500:
-                offenders.append(f"{p.relative_to(REPO)}:{i + 1} weight={m.group(1)}")
+        offenders += _cormorant_weight_offenders(
+            p.read_text(encoding="utf-8"), str(p.relative_to(REPO))
+        )
     assert not offenders, (
         f"R4 §3 allows Cormorant at 500/600 only: {offenders}"
     )
+
+
+def test_the_weight_ceiling_guard_catches_a_bolder_serif_heading() -> None:
+    """Guilt case for L1773: a weight ABOVE 600 must be flagged too, not just
+    below 500 — this is exactly the floor-only bug that let two live
+    SecondHomeLanding.tsx headings ship at weight 700 undetected."""
+    guilty = "\n".join(
+        ["const x = {", "  fontFamily: fontSerif,", "  fontWeight: 700,", "};"]
+    )
+    offenders = _cormorant_weight_offenders(guilty, "guilty.tsx")
+    assert offenders, "a Cormorant heading at weight 700 exceeds the 500/600 ceiling and must be flagged"
+
+
+def test_the_weight_ceiling_guard_leaves_500_and_600_alone() -> None:
+    """Innocence case: the two compliant weights must never be flagged."""
+    for weight in _ALLOWED_CORMORANT_WEIGHTS:
+        innocent = "\n".join(
+            ["const x = {", "  fontFamily: fontSerif,", f"  fontWeight: {weight},", "};"]
+        )
+        offenders = _cormorant_weight_offenders(innocent, "innocent.tsx")
+        assert not offenders, f"weight {weight} is within R4 §3's allowed range"
 
 
 # ── 4. the alias trap ────────────────────────────────────────────────────────

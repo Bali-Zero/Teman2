@@ -29,9 +29,11 @@ import os
 import re
 import sys
 
+import yaml
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from organ_birth import wrapper_template  # noqa: E402
+from organ_birth import registry_entry, wrapper_template  # noqa: E402
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 WRAPPER_DIR = os.path.join(REPO_ROOT, "infra", "launchagents", "wrappers")
@@ -117,3 +119,46 @@ def test_repo_wide_wrapper_headers_match_their_own_filenames():
     assert mismatches == [], (
         f"wrapper header self-reference drift (2026-08-23 class): {mismatches}"
     )
+
+
+# --- L1788: an apostrophe in --description must not corrupt the registry ---
+
+def test_a_description_with_an_apostrophe_yields_valid_yaml():
+    """GUILT case: the old hand-built `'{description}'` single-quoting
+    emitted the apostrophe unescaped, so this description alone used to
+    raise `yaml.parser.ParserError` on the generated snippet."""
+    snippet = registry_entry(
+        "mini.zeros_organ", "mini", "cron", 3600, "com.nuzantara.zeros-organ",
+        "infra/launchagents/wrappers/mini-zeros-organ.sh",
+        "Zero's organ for healing",
+    )
+    parsed = yaml.safe_load(snippet)
+    assert parsed[0]["notes"] == "Zero's organ for healing (born via organ_birth.py, genes imprinted 2026+)"
+
+
+def test_a_description_with_both_quote_styles_yields_valid_yaml():
+    """The other half of the proof-of-armed: single AND double quotes."""
+    snippet = registry_entry(
+        "mini.quote_organ", "mini", "cron", 3600, "com.nuzantara.quote-organ",
+        "infra/launchagents/wrappers/mini-quote-organ.sh",
+        """it's the "quoted" organ""",
+    )
+    parsed = yaml.safe_load(snippet)
+    assert parsed[0]["notes"] == (
+        'it\'s the "quoted" organ (born via organ_birth.py, genes imprinted 2026+)'
+    )
+
+
+def test_a_plain_description_still_yields_a_single_registry_entry():
+    """INNOCENCE case: an ordinary description parses to exactly one entry
+    with the expected shape — the yaml.safe_dump switch changed nothing
+    about the common case."""
+    snippet = registry_entry(
+        "mini.plain_organ", "mini", "cron", 3600, "com.nuzantara.plain-organ",
+        "infra/launchagents/wrappers/mini-plain-organ.sh",
+        "does something ordinary",
+    )
+    parsed = yaml.safe_load(snippet)
+    assert len(parsed) == 1
+    assert parsed[0]["id"] == "mini.plain_organ"
+    assert parsed[0]["notes"] == "does something ordinary (born via organ_birth.py, genes imprinted 2026+)"

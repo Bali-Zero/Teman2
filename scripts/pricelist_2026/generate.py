@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import io
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 import qrcode
@@ -191,7 +192,21 @@ def render_html(data: dict, assets_dir: Path, out_path: Path) -> None:
     out_path.write_text(rendered, encoding="utf-8")
 
 
-def render_markdown(data: dict, out_path: Path) -> None:
+def _stamp_last_updated(data: dict, run_date: date | None = None) -> str:
+    """The header's freshness claim, stamped from the RUN date.
+
+    The JSON's own `metadata.last_updated` is a hand-edited field nobody
+    bumps (L1738) — a regeneration that adds rows while leaving it alone
+    misstates the document's own provenance. The header must therefore never
+    read older than the day it was actually generated; it also never reads
+    older than the JSON's own claim, guarding against a wrong system clock.
+    """
+    stamped = run_date or date.today()
+    declared = date.fromisoformat(data["metadata"]["last_updated"])
+    return max(stamped, declared).isoformat()
+
+
+def render_markdown(data: dict, out_path: Path, run_date: date | None = None) -> None:
     _validate_or_raise(data)
     sections = _build_sections(data, assets_dir=None, embed_assets=False)
     env = _jinja_env()
@@ -201,7 +216,7 @@ def render_markdown(data: dict, out_path: Path) -> None:
         contact=data["metadata"]["contact"],
         version=data["version"],
         effective_date=data["effective_date"],
-        last_updated=data["metadata"]["last_updated"],
+        last_updated=_stamp_last_updated(data, run_date),
     )
     out_path.write_text(rendered, encoding="utf-8")
 
