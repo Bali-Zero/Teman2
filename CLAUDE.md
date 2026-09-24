@@ -90,7 +90,7 @@ Agent sessions MUST run under `.worktrees/<lane>-<task-id>/` via `scripts/agent_
 
 ## Regole sempre-applicabili
 
-- Ship-lifecycle: sessione fa tutto, review→merge→arm→deploy→prove-live; codeowner non merga/review/deploya (RULED 2026-07-16, eccezione 2026-09-01): `docs/rules/operations.md`.
+- Ship-lifecycle: Builder Contract 5 sopra; dettaglio `docs/rules/operations.md`.
 - Anti-hallucination: mai citare output tool non eseguito in QUESTO turn; 4-LLM panel + generator≠grader: `docs/rules/operations.md`.
 - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py` (non `alembic/env.py`, non esiste qui, 2026-08-21): `docs/rules/RULINGS.md`.
 

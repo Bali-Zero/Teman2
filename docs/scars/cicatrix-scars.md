@@ -1672,3 +1672,75 @@ corpus — the corpus is the door's own guard and it is tree-wide by design.
 **Family: #3 (Guard-over-match / UNDER-match)** — a guard whose scope (the tree) is wider than
 the trigger that decides whether it runs (the diff); with a **#2 (Esiste≠Armato)** flavour on
 the queue side: the check existed and even fired, and the merge happened anyway.
+
+## W136 — WA broker pin-drift outage — 2026-09-25
+
+**TRAUMA:** at 2026-09-25 01:07 WITA the shared Homebrew codex on Pro was upgraded to 0.156.1.
+The `wa-codex-broker` daemon stayed alive (pid intact) but paused on its own version pin, so
+every inbound message from that point ended in `broker_absent` → apology only. `breaker_state`
+stayed `closed` the whole time — the breaker has no way to see a daemon that is up but not
+claiming. The outage ran ~57 minutes, until the owner bumped the pin to 0.156.1 and kickstarted
+the daemon; `wa_broker_gauge.broker_last_seen_at` resumed advancing at 2026-09-24T18:07Z. This is
+the SECOND occurrence of the same class — the first was 2026-08-20/23.
+
+**ANTIBODY:** the seat sentinel now names a probable version-pin pause as a cause, not just a
+symptom, and carries the cure inline (#7293, #7298), proven against the real readers running on
+Pro: it parses the daemon's start line, reads the installed package version and mtime, and a
+guilt simulation of a stale pin prints the cure instead of a generic "daemon silent" alert.
+
+**GOTCHA:** #7293 merged green and was INERT in production, because Pro runs under an Italian
+locale and `ps -o lstart` (and similar date-bearing subprocess output) is not parseable under
+`it_IT` the way the parser assumed under `C`/`en_US`. #7298 fixed it by forcing `LC_ALL=C` around
+the subprocess call. The lesson generalises: any code that parses another process's textual
+output must pin the locale it parses under, and must be proven on the actual host — not in CI,
+which runs `C` by default and would never have shown this dead on arrival.
+
+**Family: #2 (Esiste≠Armato)** — the daemon was alive and the breaker was green; only the
+gauge, read for advancement rather than for existence, showed the daemon was not doing its job.
+
+## W137 — caption-less attachment → silent standing condition — 2026-09-25
+
+**TRAUMA:** an inbound image with an empty body was classified `no_customer_message`. The
+pipeline burned all five retries on it and then went silent — no reply to the client, no
+notification to any human. The client (thread 394, 2026-09-20) re-sent the photo, getting the
+same silent treatment again.
+
+**ANTIBODY:** #7296 gives a caption-less attachment a scripted acknowledgement
+(`served_by=scripted_media_ack`) instead of five silent retries, plus a best-effort notification
+to a human. The copy is deliberately narrow — it claims nothing it cannot verify (it does not
+say "received your photo, looking into it", it says a caption was not read) — after a Codex
+review BLOCKed the first draft on two HIGH findings, which went through a FIX-FIRST pass before
+landing. Deployed 2026-09-24T19:54Z, confirmed present by grepping the running rag container;
+the first real caption-less event through the cured path has not yet been observed.
+
+**GOTCHA:** the fix treats the symptom, not the root cause: ingestion only stores `body` for
+`type=='text'`, so an image's caption — if the client attaches one — is dropped before
+classification ever sees it, which is why `no_customer_message` fires on captioned images too,
+not only bare ones. Separately, `notify_human_handoff` returns `True` even when the underlying
+email send fails silently, and the B2.5-2 handoff copy is worded as if that return value were
+trustworthy — client-facing copy must not be conditioned on a notifier's return value until that
+return value can actually fail loud.
+
+## W138 — language detector abstained on a third of real clients — 2026-09-25
+
+**TRAUMA:** measured against real inbound traffic, the shared language detector fell back to
+`auto` on 33.5% of messages — meaning every automated ack/apology on those threads went out in
+English regardless of the client's actual language, silently, with nothing in the pipeline
+distinguishing "detected English" from "gave up and defaulted to English".
+
+**ANTIBODY:** #7299 rebuilds the detector precision-first, with an explicit out-of-vocabulary
+guard for languages the marker set does not cover (es/fr/de/pt/nl/tl/ms abstain instead of
+guessing). Re-measured on the same real inbound, `auto` dropped from 33.5% to 4.0%, with 0
+confident flips against the previous detector's calls on 278 real texts. Deployed
+2026-09-24T20:37Z.
+
+**GOTCHA:** the naive first move — widen the marker lists to raise recall — was red-teamed by
+Codex with 30 synthetic cases and broke precision instead: on a 1–0 marker-count lead a Spanish
+text got called Italian and a French text got called English. A shared, cross-language detector
+cannot be tuned for recall alone; widening coverage needs an out-of-vocabulary guard AND a
+confident-flip count measured against real data, not just a synthetic suite, or the fix trades
+one silent-wrong-language failure mode for another.
+
+**Family: #3 (Guard-over-match / UNDER-match)** — precision-only threshold: raising recall by
+widening markers turns the guard into one that renders a verdict on languages it cannot actually
+tell apart, an over-match on the marker-count heuristic dressed up as coverage.

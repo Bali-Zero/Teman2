@@ -15,7 +15,6 @@ const OPERATOR_SURFACES = [
   "app/(workspace)/dashboard/page.tsx",
   "app/(workspace)/analytics/funnel/page.tsx",
   "app/(workspace)/clients/page.tsx",
-  "app/(workspace)/clients/[id]/components/OracleChat.tsx",
 ];
 
 /**

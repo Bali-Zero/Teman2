@@ -391,6 +391,7 @@ jobs:
             infra/codex-hooks/test_seat_profile.py \
             infra/codex-hooks/test_context_bridge.py \
             infra/codex-hooks/test_native_compaction.py \
+            infra/codex-hooks/test_output_guard.py \
             infra/codex-hooks/test_sixty_percent_boundary.py
 
       # Vercel's Ignored Build Step. A guard in the #3 sense — it decides, on a substring-ish
