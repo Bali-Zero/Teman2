@@ -1,10 +1,12 @@
-task_id: portal-reply-reminders
+task_id: portal-reply-reminders-ci
 gear: 3
 mission_colour: BLUE
 gate_class: opus
 brief_ref: evidence/brief.yml
 pii_scan: clean
-outcome: Prepared candidate; not yet released or proven live. No real email sent.
+outcome:
+  Successor candidate in preparation after deterministic CI schema failure
+  in PR7306; no production release or real email send.
 gear_override:
   A new transactional outbox and source column couple migration, API,
   worker, provider boundary and UI; tests account for most added lines. Keep the atomic
@@ -26,6 +28,15 @@ lanes:
     role: review
     seat: kimi-code/k3
     artifact: council-kimi-followup.md
+  - lane: ci-cure-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    effort: xhigh
+    artifact: council-ci-sol.md
+  - lane: ci-cure-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: council-ci-kimi.md
 receipts:
   - claim: Focused backend acceptance including synthetic PostgreSQL
     cmd:
@@ -110,6 +121,17 @@ receipts:
     seat: Codex on Pro
     result: Both widths passed; no page errors; client read behavior retained
     artifact: browser-receipt.json
+  - claim: Fresh CI bootstrap, complete migrations_v2 application and idempotent replay
+    cmd:
+      scripts/ci_bootstrap_schema.py then python -m backend.db.migrate apply-all,
+      twice on task-owned empty database
+    exit: 0
+    ts: "2026-09-24T21:56:54.931693+00:00"
+    seat: Codex on Pro
+    result:
+      PASS on PostgreSQL17.8; three legacy indexes, two FKs, source boolean, empty
+      outbox and stable table OIDs on replay
+    artifact: ci-bootstrap-receipt.yml
 dissent:
   - seat: claude-opus-5-5 xhigh
     objection:
@@ -145,10 +167,20 @@ dissent:
       and speculative UI/writer details.
     status: PLAUSIBLE
     resolution:
-      Preserved original report and supplied full source, frozen contract
-      and actual preflight facts. Actual follow-up withdrew blocking objections and
-      found no P1/P2 against the bounded contract. Remaining P3 observations concern
-      smooth scrolling, thread badge lag and telemetry; no new runtime edits.
+      Initial full-diff Kimi REWORK is genuine and preserved. The narrower
+      second pass was stateless and did not see its initial report, so it was not an
+      informed withdrawal. Fresh BLUE gate v3 independently adjudicated every initial
+      finding and found none blocking. This successor records separate genuine CI-cure
+      reviews.
+  - seat: kimi-code/k3
+    objection:
+      "CI-cure P2 notes: future copied-DDL drift and no dedicated bootstrap
+      log line."
+    status: PLAUSIBLE
+    resolution:
+      Nonblocking static observations. The new block already references the
+      canonical legacy migration, Sol mechanically verified all four statements, and
+      catalog/replay checks passed. No cosmetic logging change added.
 limitations:
   - Other historical team notices have no reliable source provenance and may be counted
     as manual replies.
@@ -162,6 +194,8 @@ limitations:
     addressed above.
   - Old producers during rolling replacement share the historical provenance limitation;
     prove all producer machines replaced before asserting the new source-marker behavior.
+  - Local fresh-bootstrap reproduction used PostgreSQL17.8; CI uses PostgreSQL15. Required
+    fresh CI must pass on the successor before merge.
 release_requirements:
   - Run scripts/contract_verify.py with the complete real diff span and CI-style evidence
     staging; a pack-only lint without changed files is insufficient.
@@ -171,6 +205,9 @@ release_requirements:
     counts.
   - Release owner proves deployed frontend and backend commits and consumer health.
     No uncontrolled real-client or test sends.
+  - Supersede frozen PR7306; recheck production migration321 absence/configuration,
+    obtain fresh BLUE gate on successor SHA, and require PostgreSQL15 CI green. Preserve
+    corrected Kimi account and rolling provenance scope.
 cloud_ok:
   "AGENTS.md Builder Contract 4 / SYMBIOSIS Law 2: this code-only lane used
   repository diffs and synthetic PostgreSQL fixtures. No real client rows, names,

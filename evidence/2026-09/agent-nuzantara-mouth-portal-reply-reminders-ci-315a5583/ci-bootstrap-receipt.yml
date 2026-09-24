@@ -1,0 +1,19 @@
+result: PASS
+empty_db_bootstrap_exit: 0
+full_apply_all_exit: 0
+repeat_bootstrap_and_apply_all_exit: 0
+schema_preserved_on_replay: true
+catalog:
+  portal_oid: 19267
+  outbox_oid: 23289
+  legacy_indexes: 3
+  legacy_fks: 2
+  source_type: boolean
+  queued_rows: 0
+server_version: 17.8 (Homebrew)
+ci_server_version: PostgreSQL15
+migration321_sha256: aa2a94028410cef2b7fff85edef9adfb40857bdfd5a054a8efbc1eea95ae38be # pragma: allowlist secret
+logs:
+  portal-reply-ci-bootstrap.log: 1ba06749ab10823fea87dd81e1c6c0e4f97c5092b458aa8d9fa415d2800e4d6e # pragma: allowlist secret
+  portal-reply-ci-apply-all.log: 8ff0d1c3b96f4e62b1f6abdd53405fc29634e5a7a62c94a63b532ea988783827 # pragma: allowlist secret
+  portal-reply-ci-bootstrap-replay.log: fe540724b281e90a0658ea97090b638cd5a89c71d9ec3ace5bd9d4db060edc71 # pragma: allowlist secret

@@ -1,4 +1,6 @@
-# Kimi council clarification
+# Historical stateless Kimi follow-up
+
+Evidence correction: this was a narrower stateless pass without the initial report in its input. Its withdrawal wording below is preserved as raw model output, not endorsed as an informed withdrawal. The BLUE gate independently adjudicated the initial findings; see the pack erratum.
 
 Actual existing subscription CLI review using kimi-code/k3. Static, no tools or tests; supplied source, frozen spec and aggregate preflight facts only. Initial dissent is preserved in council-kimi-initial.md.
 

@@ -31,7 +31,7 @@ No calendar/token ceiling imposed by owner. One correction depth, suspend repeat
 
 ## 7. Evidence and release
 
-Evidence path from scripts/ci/evidence_paths.py: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-1e859aa4/.
+Evidence path from scripts/ci/evidence_paths.py: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-ci-315a5583/.
 Bites: authorized workspace users retain an actionable unanswered-message reminder, and an independently running email consumer observes a persisted message notification.
 No overlapping open PR paths in the initial 50-PR probe; leases inspected, native agents inspected. The initial remote-self mailbox probe failed; the corrected local probe succeeded with 93 session entries. No messages sent.
 Scar antidotes: #2 prove downstream state, not producer logs; #5 dedicated worktree; #9 preserve consumers during schema rollout.
@@ -39,3 +39,11 @@ Scar antidotes: #2 prove downstream state, not producer logs; #5 dedicated workt
 ## Evidence-pack correction
 
 The first local pack lint omitted changed-file inputs and therefore did not exercise the CRM-seat and Gear-3 council requirements. The release pre-push correctly stopped before publishing. Complete two genuine qualifying council reviews (Sol and Kimi K3 subscription), retain their timestamped journal, and attest the already synthetic/diff-only data boundary. No seat override or client-data exception. The corrected candidate must pass the exact contract preflight and a fresh BLUE final gate.
+
+## CI bootstrap cure after PR7306
+
+Required Backend Tests failed deterministically before tests: the fresh CI bootstrap and migrations_v2 did not create portal_messages, which production already has from legacy migration_031_client_portal.py. All three shards hit migration321 UndefinedTable; no rerun occurred. Auto-merge was disabled; nothing merged or deployed. Same-cause red count: 1.
+
+The successor starts from refreshed origin/main 469c301f32. It adds only the canonical table and three index DDL statements to the CI bootstrap, after SQLModel create_all provides clients/practices. Production SQL321 and application code remain byte-identical. Acceptance is the exact CI setup sequence on an empty database, full apply-all, repeated bootstrap/apply-all with stable table OIDs, canonical indexes/FKs and unchanged321 checksum. PostgreSQL15 CI remains mandatory; local reproduction is PostgreSQL17.8. The actual CI failure is the regression gate, so no duplicate string-snapshot test is introduced.
+
+Evidence erratum: the initial Kimi REWORK remains genuine. The earlier follow-up was a narrower stateless review, not an informed withdrawal; its initial findings were independently adjudicated by BLUE gate v3. New CI-cure council judgements are separately recorded and carry no claim to re-review unchanged runtime. The brief now scopes automatic-notice attribution to new writers after complete producer replacement.
