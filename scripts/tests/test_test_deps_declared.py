@@ -263,9 +263,11 @@ def test_every_inline_installed_dep_is_declared() -> None:
 
 def test_manifest_may_declare_extras() -> None:
     """INNOCENCE: manifest-only entries are legitimate, not a violation."""
+    # testcontainers left the manifest with #7235 (nothing imports it) — no
+    # replacement example needed, mypy and pytest-timeout already cover this case.
     extras = declared_packages() - inline_installed_packages()
-    assert "mypy" in extras and "testcontainers" in extras, (
-        "expected dev-only tooling (mypy, testcontainers) to be declared and NOT "
+    assert "mypy" in extras and "pytest-timeout" in extras, (
+        "expected dev-only tooling (mypy, pytest-timeout) to be declared and NOT "
         "installed by the backend job. If that changed, re-read this test's "
         "premise — do not delete the declarations to make it green."
     )
