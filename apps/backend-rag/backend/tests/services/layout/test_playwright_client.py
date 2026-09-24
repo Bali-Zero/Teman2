@@ -74,5 +74,11 @@ async def test_screenshot_once_returns_error_if_playwright_missing(monkeypatch):
 @pytest.mark.asyncio
 async def test_stop_safe_when_not_started():
     client = PlaywrightClient()
+    assert client._browser is None
+    assert client._playwright is None
     # Should not raise
     await client.stop()
+    # State stays clean — stop() on an unstarted client is a true no-op,
+    # not just an exception-free call.
+    assert client._browser is None
+    assert client._playwright is None
