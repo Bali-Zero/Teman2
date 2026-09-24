@@ -2729,3 +2729,14 @@ def test_probe_agy_asks_for_file_capture_not_a_pipe(monkeypatch):
 
     assert status == module.LIVE
     assert seen.get("capture_via_files") is True
+
+
+def test_agy_budget_covers_cold_start_plus_contention():
+    """2026-09-24: agy's cold start (language server + token refresh) is ~7 s before
+    the model even sees the prompt; warm answers land in 7-12 s; the all-seats
+    concurrent probe pushed one run past the old 15 s budget with EMPTY stdout and
+    the digest read TIMEOUT for a live seat. Pin >= 3x the warm p95 so a future
+    "tidy every seat back to 15" has to come here and read why."""
+    assert ap.DEFAULT_TIMEOUTS["agy"] >= 36
+    # innocence: the budget is agy-specific — the other CLI seats keep 15
+    assert ap.DEFAULT_TIMEOUTS["claude"] == 15 and ap.DEFAULT_TIMEOUTS["kimi"] == 15
