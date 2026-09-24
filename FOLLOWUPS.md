@@ -39,8 +39,6 @@ be promoted. Error counts are from the 2026-04-17 baseline.
 
 | File                                                                  | Errors | Notes                                                          |
 | --------------------------------------------------------------------- | ------ | -------------------------------------------------------------- |
-| `apps/backend-rag/backend/core/plugins/executor.py`                   | 37     | untyped generics, missing return types, dynamic dispatch       |
-| `apps/backend-rag/backend/core/qdrant_db.py`                          | 18     | `dict`/`list` generic params, `Any` returns from qdrant client |
 | `apps/backend-rag/backend/core/legal/hierarchical_indexer.py`         | 12     | generics + missing annotations                                 |
 | `apps/backend-rag/backend/core/cache.py`                              | 12     | async contextmanager typing                                    |
 | `apps/backend-rag/backend/core/embeddings.py`                         | 10     | OpenAI response shape untyped                                  |
