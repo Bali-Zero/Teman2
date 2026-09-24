@@ -1,0 +1,144 @@
+task_id: wa-codex-dedicated-bin
+gear: 3
+objective: >-
+  W136 pin-drift outage class (docs/scars/cicatrix-scars.md): the WA codex
+  broker LaunchDaemon on Pro pauses claiming whenever
+  `codex --version` stops matching `WA_CODEX_CLI_VERSION_PIN`, because the
+  daemon reads the ONE shared Homebrew `@openai/codex` install that any
+  other seat on Pro can upgrade for unrelated reasons. Second occurrence
+  2026-09-25 (first 2026-08-20/23), 57-minute outage, cured only by an
+  interactive-sudo `sed` + `launchctl kickstart`. This PR gives the daemon
+  its OWN dedicated codex binary
+  (/usr/local/lib/wa-codex-broker/codex/<ver>/), fetched/verified straight
+  from the npm registry and pointed at via `WA_CODEX_BIN` (already read by
+  wa_codex_daemon.py — no daemon code change), so a shared-package upgrade
+  can no longer pause it, plus a passwordless admin verb
+  (`wa-codex-broker-admin.sh status|bump <semver>`) so the next drift, if
+  any, is one command instead of a manual edit.
+constraints:
+  - >-
+    New files only touch infra/launchagents/wrappers/,
+    infra/sudoers/, scripts/, scripts/tests/, docs/runbooks/,
+    infra/home-fork/declared-pairs.json — no change to
+    apps/backend-rag/backend/services/integrations/wa_codex_daemon.py
+    itself (it already reads WA_CODEX_BIN).
+  - >-
+    No `eval`, no argument ever built into a shell string and handed to
+    `sh -c`; strict `^[0-9]+\.[0-9]+\.[0-9]+$` regex on the bump version
+    argument; the env file's WA_BROKER_KEY line is never echoed, catted,
+    or printed anywhere.
+  - >-
+    Nothing in scripts/tests/ runs as root, writes to /usr/local or /etc,
+    or invokes a real launchctl — both curl and launchctl are stubbed for
+    every automated test.
+  - No client PII, no OSINT anywhere in this diff.
+acceptance:
+  - text: >-
+      WHEN wa-codex-broker-admin.sh is invoked as `bump` with a malformed
+      version (two-part, semicolon injection, path traversal), an extra
+      argument, or an unknown verb, THEN it SHALL exit non-zero and SHALL
+      NOT invoke curl, tar, or launchctl, and SHALL NOT modify the env
+      file or create any codex/<ver>/ directory.
+    probe: python3 -m pytest scripts/tests/test_wa_codex_broker_admin.py -q
+  - text: >-
+      WHEN invoked as `bump 0.156.1` with the real npm registry (no
+      stub), THEN the script SHALL resolve the darwin-arm64 platform
+      alias, download the tarball, verify its sha512 against
+      dist.integrity, extract a binary that reports `codex-cli 0.156.1`,
+      and rewrite only the two WA_CODEX_CLI_VERSION_PIN/WA_CODEX_BIN env
+      lines (env file byte-count +1 line, WA_BROKER_KEY line unchanged).
+    probe: >-
+      WA_CODEX_ADMIN_TEST_MODE=1
+      WA_CODEX_ADMIN_ROOT_PREFIX=<scratch>
+      infra/launchagents/wrappers/wa-codex-broker-admin.sh bump 0.156.1
+      (run live from M5 against the real registry — see PR body for the
+      captured transcript)
+  - text: >-
+      WHEN the sudoers drop-in is checked with `visudo -cf`, THEN it
+      SHALL parse clean.
+    probe: visudo -cf infra/sudoers/wa-codex-broker-admin
+  - text: >-
+      WHEN shellcheck runs against the three new/changed shell scripts,
+      THEN it SHALL report zero findings.
+    probe: >-
+      shellcheck infra/launchagents/wrappers/wa-codex-broker-admin.sh
+      scripts/install_wa_codex_admin.sh scripts/provision_zantara_codex.sh
+  - text: >-
+      WHEN the pre-existing seat-sentinel test suite runs after the pin-
+      drift cure text was rewritten, THEN every test SHALL still pass
+      (the message content changed, the discriminator logic did not).
+    probe: python3 -m pytest scripts/tests/test_wa_codex_seat_sentinel.py -q
+consumer_map:
+  - >-
+    The wa-codex-broker LaunchDaemon on Pro — once the owner runs `sudo
+    bash scripts/install_wa_codex_admin.sh` once, its next claim happens
+    on the dedicated binary; `status` shows WA_CODEX_BIN under
+    /usr/local/lib/wa-codex-broker/codex/ and the gauge advancing.
+  - >-
+    scripts/wa_codex_seat_sentinel.py's own pin-drift alert — the cure
+    line it prints on a `daemon_silent` RED now names the new admin verb
+    instead of the retired manual sed+kickstart.
+  - >-
+    scripts/provision_zantara_codex.sh — a fresh or re-run provisioning
+    of Pro installs the admin verb + sudoers drop-in and (if the pin is
+    already real) bumps onto the dedicated binary automatically.
+risks:
+  - >-
+    This PR is PREPARE-ONLY (per the team lead's mandate): it does not
+    arm auto-merge, does not merge, and does not ssh to Pro to change
+    anything live. No external multi-LLM council was run for this Gear-3
+    diff — the ship-lifecycle session that reviews/merges/arms/deploys
+    this PR is the one that owes that review before arming, per the
+    builder contract's generator-is-never-grader rule. This brief is
+    honest about that gap rather than fabricating a council record.
+  - >-
+    `bump`'s directory-reuse path (rollback = `bump <old>`) trusts an
+    existing on-disk `<ver>/bin/codex` if its own `--version` output
+    already matches — it does not re-verify sha512 for a dir that was
+    already verified once. Documented in the script's own comment; a
+    test (`test_innocence_bump_reuses_an_already_verified_directory`)
+    pins this behavior explicitly, so it is a declared design choice,
+    not a silent gap.
+  - >-
+    The one-shot installer and provisioning wiring were reviewed and
+    syntax/shellcheck/pytest-verified from M5 but NEVER executed with
+    real root privileges anywhere (including on M5) — the live Pro run
+    is the owner's single sudo command, per the mandate's own
+    instruction not to ssh into Pro and change anything.
+assumptions:
+  - text: >-
+      Pro's shared Homebrew @openai/codex install ships the SAME package
+      layout (optionalDependencies alias `@openai/codex-darwin-arm64` ->
+      `npm:@openai/codex@<ver>-darwin-arm64`, vendor tree at
+      `vendor/aarch64-apple-darwin/{bin,codex-path,codex-resources}`) as
+      the current pinned version 0.156.1, verified live from M5 against
+      the real npm registry.
+    status: verified
+    probe: >-
+      curl -fsSL https://registry.npmjs.org/@openai%2fcodex/0.156.1 and
+      the darwin-arm64 platform metadata + tarball + sha512 integrity +
+      extracted `bin/codex --version` == `codex-cli 0.156.1` — captured
+      live from M5 this session (see PR body).
+  - text: >-
+      wa_codex_daemon.py already reads `WA_CODEX_BIN` from the env file
+      with no PATH fallback when set (`codex_bin=os.environ.get(
+      "WA_CODEX_BIN") or None`, then `binary = self._config.codex_bin or
+      shutil.which("codex")`), so no daemon code change is needed.
+    status: verified
+    probe: >-
+      grep -n 'WA_CODEX_BIN\|codex_bin' apps/backend-rag/backend/services/
+      integrations/wa_codex_daemon.py (l.200, l.285) — read directly,
+      this session, in this repo checkout.
+  - text: >-
+      Both M5 and Pro run macOS's stock /bin/bash 3.2 (no mapfile/
+      readarray) — measured live on both hosts this session; the script
+      avoids every bash 4+ builtin as a result.
+    status: verified
+    probe: "/bin/bash --version (M5) and ssh pro '/bin/bash --version' — both report 3.2.57(1)-release"
+grader: >-
+  Not yet run. This is a prepare-only PR per the team lead's mandate — no
+  auto-merge armed, no merge performed. The ship-lifecycle session that
+  reviews/merges/arms/deploys owes the Gear-3 external-council pass before
+  arming; generator (this session) is never grader.
+budget: Existing subscription seats only (curl/npm-registry reads are free, unauthenticated); no paid per-token API calls.
+pii: none
