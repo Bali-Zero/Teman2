@@ -1,0 +1,81 @@
+task: >-
+  Fix wa_human_handoff.notify_human_handoff(): it returned True and recorded
+  dedup even when the email leg failed silently (send_internal_email's
+  raise_on_failure=False swallowed the error). An unknown client with a
+  broken email transport got no in-app alert (client_id NOT NULL FK,
+  structurally unavailable), no email, an audit row logged 'failed', and the
+  return value still said True — with dedup then suppressing the retry that
+  could have reached someone. Round 1 (cross-family review, Codex) on the
+  first commit: send_internal_email also now treats HTTP 200 with
+  {"success": false} as not-delivered (the notifications endpoint's own
+  provider chain can exhaust every leg and still answer 200 — raise_for_
+  status() alone cannot see that); the B2.5-2 human-handoff turn in
+  wa_codex_leg.py now conditions its client-facing copy on the notifier's
+  truthful return instead of always promising a colleague; a SEPARATE
+  5-minute per-thread failed-attempt cooldown throttles a burst of retries
+  on a thread whose every channel is down; and the notifier's own "never
+  raises" docstring is now honoured for an unexpected exception from the
+  email leg (caught, logged by type only, counted as a failed send).
+lane: backend-rag/handoff-notify-truth
+machine: Air-M5
+date: 2026-09-25
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: git diff --numstat origin/main...HEAD
+  measures 573 additions / 50 deletions (523 net) across 6 files, above
+  SIZE_GEAR2_THRESHOLD (400) and below the Gear-3 threshold (1828). No
+  hot-zone path (backend/services/integrations, backend/app/services,
+  tests, evidence only).
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    send_internal_email returns True only on an actual Brevo/provider
+    delivery (HTTP 2xx AND response body success=true); False on any
+    swallowed failure including a 200 with success=false or an unparseable
+    body; raise_on_failure=True raises on that shape exactly like any other
+    failure.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/app/services/test_internal_email.py -v
+  A2: >-
+    notify_human_handoff returns True only when at least one channel
+    (in-app row written, or the email actually sent) delivered; dedup is
+    recorded only on that True; a failed attempt is throttled by a
+    SEPARATE 5-minute cooldown (not the success-dedup map) so a retry after
+    the cooldown still attempts; an unexpected exception from the email leg
+    is caught, logged by type only, and counted as a failed send.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_wa_human_handoff.py -v
+  A3: >-
+    The B2.5-2 human-handoff turn in wa_codex_leg.py serves "a colleague
+    will contact you" only when notify_human_handoff returned True;
+    False or a caught exception serves an honest per-language variant
+    naming no delivery and pointing at the one existing contact constant
+    (_FALLBACK_RECIPIENT, zero@balizero.com) — nothing invented. No
+    regression on the wa_* unit suite.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_wa_codex_leg.py -v &&
+      PYTHONPATH=. pytest backend/tests/unit/services/ -k wa_
+
+out_of_scope: >-
+  Rewriting the media-attachment-ack turn's copy (B2.5-3) — it already never
+  branches client-facing text on notify_human_handoff's return, only logs it
+  (notified=). Distinguishing "dedup-suppressed" (a colleague WAS already
+  told, just not on this call) from "genuinely failed" in the honest-variant
+  wording — the coordinator's round-1 instruction treats both as
+  notified=False uniformly; a caller cannot itself tell the two apart from
+  a bool alone, and widening the return type is a separate change. The
+  birthday-email caller's inner Brevo-specific except (httpx.HTTPError/
+  OSError) in crm/notifiers.py does not catch the new 200+success=false
+  RuntimeError and so skips its manual Zoho retry, falling through to its
+  own outer except Exception and returning False instead of the previous
+  silent lie (sent_via_brevo=True while nothing was sent) — a net
+  improvement in truthfulness, left as-is rather than widened to preserve
+  the Zoho fallback for this one failure shape.
