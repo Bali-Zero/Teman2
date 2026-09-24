@@ -412,7 +412,7 @@ main() {
             TIER=flash
         fi
         case "$TIER" in
-            flash) MODEL="gemini-3.5-flash" ;;
+            flash) MODEL="gemini-3.8-flash-high" ;;
             pro) MODEL="gemini-3.1-pro" ;;
         esac
     fi
