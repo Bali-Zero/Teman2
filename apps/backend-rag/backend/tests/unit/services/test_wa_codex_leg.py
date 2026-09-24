@@ -605,7 +605,12 @@ async def test_an_attachment_with_a_caption_takes_the_normal_route(
     """Innocence: a real caption makes `query` non-empty, so the media-ack
     check's own `not query` guard steps aside and the package build runs
     exactly as before — an image is not, by itself, a reason to short-
-    circuit."""
+    circuit. This exercises the LEG's own boundary at the bound context it
+    is handed; whether ingestion actually populates `body` with a caption
+    on a non-text message is a SEPARATE, known gap
+    (`whatsapp_chat.py::_handle_meta_inbox_message` fills `body` only for
+    `type == "text"`, ~:1227) — out of scope here, see the module-level
+    comment above `_MEDIA_ACK_TYPES`."""
     stubs = _wire_stubs(
         monkeypatch, query="what is this document about?", media_type="document"
     )
@@ -643,29 +648,31 @@ async def test_a_thread_with_genuinely_no_customer_inbound_still_falls_off(
 
 
 @pytest.mark.asyncio
-async def test_media_ack_notification_failure_serves_the_variant_without_a_colleague_claim(
+async def test_media_ack_notification_failure_still_serves_the_same_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Wording rule (hard): a colleague is named ONLY on the branch where
-    `notify_human_handoff` actually reports success. A raised exception —
-    same shape as `test_human_handoff_notification_failure_does_not_lose_
-    the_confirmation` above — must never lose the scripted reply, and the
-    served text must not claim a notification that did not happen."""
+    """Wording rule (hard, corrected 2026-09-25 review): `notify_human_
+    handoff` can return True on a dedup-suppressed call or on an email
+    `send_internal_email(..., raise_on_failure=False)` swallowed — so the
+    reply text must NEVER brand on the return value at all, success or
+    failure. A raised exception — same shape as `test_human_handoff_
+    notification_failure_does_not_lose_the_confirmation` above — must never
+    lose the scripted reply, and the served text is IDENTICAL to the
+    success case below."""
     stubs = _wire_stubs(monkeypatch, query="", media_type="image")
     notify = AsyncMock(side_effect=RuntimeError("brevo down"))
     monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
 
     result = await _run()
 
-    assert result.text is not None
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
     assert result.reason == "" and not result.stand_down and not result.fail
-    assert "colleague" not in result.text
     notify.assert_awaited_once()
     stubs.rag_client.post.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_media_ack_notification_success_names_a_colleague(
+async def test_media_ack_notification_success_serves_the_same_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stubs = _wire_stubs(monkeypatch, query="", media_type="image")
@@ -673,9 +680,29 @@ async def test_media_ack_notification_success_names_a_colleague(
 
     result = await _run()
 
-    assert result.text is not None
-    assert "colleague" in result.text
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
     stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.parametrize("language", sorted(wa_codex_leg._MEDIA_ACK_TEXTS))
+def test_no_media_ack_text_claims_a_colleague_was_notified(language: str) -> None:
+    """Review finding F2: `notify_human_handoff`'s success return does not
+    prove delivery, so no language's copy may claim one — checked against
+    the actual per-language word for "colleague", not just the English
+    one (guard family #3: an under-match here would let a translated claim
+    slip past an English-only substring check)."""
+    colleague_word = {
+        "en": "colleague",
+        "id": "kolega",
+        "it": "collega",
+        "ru": "коллег",
+        "uk": "колег",
+    }[language]
+    text_lower = wa_codex_leg._MEDIA_ACK_TEXTS[language].lower()
+    assert colleague_word not in text_lower, (
+        f"{language} media-ack text claims a colleague was notified: "
+        f"{wa_codex_leg._MEDIA_ACK_TEXTS[language]!r}"
+    )
 
 
 @pytest.mark.asyncio
@@ -694,7 +721,7 @@ async def test_media_ack_language_comes_from_the_latest_prior_customer_text_turn
 
     result = await _run()
 
-    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["it"][0]
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["it"]
     stubs.rag_client.post.assert_not_awaited()
 
 
@@ -710,7 +737,7 @@ async def test_media_ack_language_falls_back_to_english_with_no_classifiable_his
 
     result = await _run()
 
-    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"][0]
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
     stubs.rag_client.post.assert_not_awaited()
 
 

@@ -519,59 +519,54 @@ class CodexLegResult:
 # got no reply at all and no human was told; they re-sent the photo 12
 # minutes later. In 90 days: 2 image + 2 unsupported out of 282 inbound.
 #
-# Scope: an attachment WITH a caption has a non-empty body and takes the
-# normal route untouched — only a caption-less one lands here (checked
-# against `bound.media_type`, never guessed from `query`, which is already
-# known empty by construction at the call site below).
+# Scope, and a KNOWN GAP left for a follow-up PR: `bound.media_type` is
+# checked, never guessed from `query` — but `query` (the anchor's `body`)
+# is empty on TWO different inputs, and this leg cannot tell them apart.
+# `whatsapp_chat.py::_handle_meta_inbox_message` fills `body` ONLY for
+# `type == "text"` (`~:1227`); Meta ships the caption on other message
+# types as sibling fields the ingest path never reads, so an attachment
+# WITH a caption ALSO lands here today, indistinguishable from one
+# without. Fixing the ingestion gap is its own PR (captures the caption
+# into `body` for every media type) — out of scope here, and the reply
+# copy below is worded to be true either way in the meantime: it never
+# assumes the client did not already ask something, and never claims the
+# file was opened or read.
 _MEDIA_ACK_TYPES = frozenset({"image", "document", "audio", "video", "sticker", "unsupported"})
 
-# Wording rules (hard, PR description): never claims the bot read/opened the
-# file; never invites documents, passport numbers or other personal data
-# over WhatsApp; names a notified colleague ONLY on the branch where
-# `notify_human_handoff` actually reports success — the same discipline
-# `served_by` already applies to itself (never claim a round-trip that did
-# not happen). Two variants per language: (notified, not_notified).
-_MEDIA_ACK_TEXTS: dict[str, tuple[str, str]] = {
+# Wording rules (hard, PR description): never claims the bot read/opened
+# the file; never invites documents, passport numbers or other personal
+# data over WhatsApp; never assumes the client did not already write a
+# question (see the ingestion-gap note above — a caption may be sitting
+# unread on the Meta side); and — since `notify_human_handoff` can return
+# True on a dedup-suppressed OR an email-delivery-failed send (best-effort,
+# `send_internal_email(..., raise_on_failure=False)`) — never claims a
+# colleague was notified at all. ONE text per language; the notification
+# call stays best-effort and its outcome is logged, but the reply no
+# longer branches on it.
+_MEDIA_ACK_TEXTS: dict[str, str] = {
     "en": (
-        "Thanks for sending that over! I can't open attachments here, so "
-        "I've let a Bali Zero colleague know to take a look. In the "
-        "meantime, could you write your question as a text message?",
-        "Thanks for sending that over! I can't open attachments here — "
-        "could you write your question as a text message instead, so I "
-        "can help?",
+        "I can't open or check attachments in this chat — if there's "
+        "anything I can help with, please write it here as a text message."
     ),
     "id": (
-        "Terima kasih sudah mengirimkan berkasnya! Saya tidak bisa membuka "
-        "lampiran di sini, jadi sudah saya sampaikan ke kolega Bali Zero "
-        "untuk ditindaklanjuti. Sambil menunggu, boleh tuliskan "
-        "pertanyaan Anda sebagai pesan teks?",
-        "Terima kasih sudah mengirimkan berkasnya! Saya tidak bisa membuka "
-        "lampiran di sini — boleh tuliskan pertanyaan Anda sebagai pesan "
-        "teks supaya saya bisa bantu?",
+        "Saya tidak bisa membuka atau memeriksa lampiran di chat ini — "
+        "kalau ada yang bisa saya bantu, silakan tuliskan di sini sebagai "
+        "pesan teks."
     ),
     "it": (
-        "Grazie per averlo inviato! Non riesco ad aprire gli allegati qui, "
-        "quindi ho avvisato un collega di Bali Zero. Nel frattempo puoi "
-        "scrivermi la tua domanda come messaggio di testo?",
-        "Grazie per averlo inviato! Non riesco ad aprire gli allegati qui "
-        "— puoi scrivermi la tua domanda come messaggio di testo così "
-        "posso aiutarti?",
+        "Non riesco ad aprire o controllare gli allegati in questa chat "
+        "— se c'è qualcosa in cui posso aiutarti, scrivilo qui come "
+        "messaggio di testo."
     ),
     "ru": (
-        "Спасибо, что отправили! Я не могу открывать вложения здесь, "
-        "поэтому сообщил об этом коллеге из Bali Zero. Пока не могли бы "
-        "вы написать свой вопрос текстовым сообщением?",
-        "Спасибо, что отправили! Я не могу открывать вложения здесь — не "
-        "могли бы вы написать свой вопрос текстовым сообщением, чтобы я "
-        "мог помочь?",
+        "Я не могу открывать или проверять вложения в этом чате — если "
+        "чем-то можно помочь, напишите об этом здесь текстовым "
+        "сообщением."
     ),
     "uk": (
-        "Дякую, що надіслали! Я не можу відкривати вкладення тут, тож "
-        "повідомив про це колезі з Bali Zero. А поки напишіть, будь "
-        "ласка, своє питання текстовим повідомленням.",
-        "Дякую, що надіслали! Я не можу відкривати вкладення тут — "
-        "напишіть, будь ласка, своє питання текстовим повідомленням, щоб "
-        "я міг допомогти.",
+        "Я не можу відкривати або перевіряти вкладення в цьому чаті — "
+        "якщо чимось можу допомогти, напишіть про це тут текстовим "
+        "повідомленням."
     ),
 }
 
@@ -604,11 +599,8 @@ def _media_ack_language(history: list[dict[str, str]]) -> str:
     return _MEDIA_ACK_FALLBACK_LANG
 
 
-def _media_ack_text(language: str, *, notified: bool) -> str:
-    notified_text, not_notified_text = _MEDIA_ACK_TEXTS.get(
-        language, _MEDIA_ACK_TEXTS[_MEDIA_ACK_FALLBACK_LANG]
-    )
-    return notified_text if notified else not_notified_text
+def _media_ack_text(language: str) -> str:
+    return _MEDIA_ACK_TEXTS.get(language, _MEDIA_ACK_TEXTS[_MEDIA_ACK_FALLBACK_LANG])
 
 
 async def _stub_unsupported(
@@ -779,12 +771,19 @@ async def _attempt(
     # text — and `query` is empty by construction on this branch, so none
     # of the text matchers below could ever fire on it anyway.
     #
-    # Notification reuses `notify_human_handoff` (best-effort, wrapped
-    # here for the same reason the human-handoff turn wraps it: a Brevo
-    # failure must never turn a served scripted reply into a text=None
-    # fall-off) with `reason="media_attachment_no_caption"` so the in-app
-    # alert and email describe what actually happened instead of
-    # borrowing the human-handoff turn's "client asked for a human" text.
+    # Notification reuses `notify_human_handoff` (best-effort, wrapped here
+    # for the same reason the human-handoff turn wraps it: a Brevo failure
+    # must never turn a served scripted reply into a text=None fall-off)
+    # with `reason="media_attachment_no_caption"` so the in-app alert and
+    # email describe what actually happened instead of borrowing the
+    # human-handoff turn's "client asked for a human" text. The RETURN
+    # VALUE is logged, never read by the reply text: `notify_human_handoff`
+    # can report True on a dedup-suppressed call or on an email that
+    # `send_internal_email(..., raise_on_failure=False)` swallowed, so a
+    # reply that says "I've told a colleague" whenever this is True would
+    # sometimes be false. `_media_ack_text` therefore takes no `notified`
+    # argument at all — the text never promises a notification this leg
+    # cannot verify happened.
     if not query and bound.media_type in _MEDIA_ACK_TYPES:
         language = _media_ack_language(history)
         notified = False
@@ -809,7 +808,7 @@ async def _attempt(
             notified,
         )
         return CodexLegResult(
-            text=_media_ack_text(language, notified=notified),
+            text=_media_ack_text(language),
             served_by="scripted_media_ack",
         )
 
