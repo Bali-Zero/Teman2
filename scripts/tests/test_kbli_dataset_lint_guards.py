@@ -95,10 +95,12 @@ def test_l10_innocence_passes(name, text, code, maxa):
 
 
 # --------------------------------------------------------------------------- L12
-# Fixtures drawn verbatim from the KBLI editorial corpus (census 2026-09-25,
-# records with pma_max_asing < 100 or pma_status != TERBUKA): 50134 is the only
-# affirmative full-ownership claim with no percentage attached; the rest are
-# negations that must NOT be flagged.
+# v2 (Codex FIX-FIRST, 2026-09-25): L12 flags an AFFIRMATIVE PERMISSION of
+# full foreign ownership — a permission predicate (can/may/is allowed to/is
+# granted…) GOVERNING a full-ownership object — not a token window. A
+# 25-sentence adversarial probe (Codex) found 12 false negatives and 9 false
+# positives in v1's window design; v2 is the grammar-anchored rewrite. Full
+# spec in `l12_full_ownership_claim`'s docstring.
 L12_GUILT = [
     # (name, text, maxa) — a genuine full-ownership overclaim that MUST be flagged
     (
@@ -113,8 +115,8 @@ L12_GUILT = [
         "Foreign owners may hold it without an Indonesian partner.",
         49,
     ),
-    # adversarial probe 2026-09-25: a negator TWO CLAUSES back must NOT
-    # exonerate a live claim in the current clause (scar family #3 under-match)
+    # adversarial probe 2026-09-25 (v1 round): a negator TWO CLAUSES back
+    # must NOT exonerate a live claim in the current clause (scar #3 under-match)
     (
         "adversarial not-scopes-earlier-clause 1",
         "Bali does not block it, and foreign investors can fully own the business.",
@@ -130,9 +132,37 @@ L12_GUILT = [
         "It is not blocked in Bali, so full foreign ownership is available.",
         49,
     ),
-    # a bare "is not" after the claim affirms it — only availability-denying
-    # predicates exonerate
-    ("adversarial is-not-restricted affirms", "Full foreign ownership is not restricted here.", 49),
+    # v2 Codex probe (25 sentences, 2026-09-25) — permission predicates in
+    # every shape the spec promises to catch
+    ("v2 be 100 percent foreign owned", "This business may be 100 percent foreign owned.", 49),
+    ("v2 permitted complete ownership", "Foreign investors are permitted complete ownership of the company.", 49),
+    ("v2 may be the sole foreign owner", "You may be the sole foreign owner of this business.", 49),
+    ("v2 may own all the shares", "Foreign investors may own all the shares in this company.", 49),
+    ("v2 can hold the entire equity", "Foreign investors can hold the entire equity of this company.", 49),
+    ("v2 may own the whole company", "Foreign investors may own the whole company.", 49),
+    ("v2 can be entirely owned by foreign shareholders", "The business can be entirely owned by foreign shareholders.", 49),
+    ("v2 no indonesian shareholder needed", "No Indonesian shareholder is needed for foreign investors to operate this company.", 49),
+    ("v2 can be 100% foreign owned", "This company can be 100% foreign owned.", 49),
+    ("v2 can fully own, unrelated trailing negation", "Foreign investors can fully own the company and cannot be forced to sell.", 49),
+    ("v2 not only granted full ownership", "Foreign investors are not only granted full ownership but also unrestricted voting rights.", 49),
+    ("v2 full foreign ownership by an entity, not a person, is allowed", "Full foreign ownership by an Indonesian incorporated PT PMA is allowed.", 49),
+    ("v2 can own outright, unrelated trailing self-object", "Foreign investors can own this company outright; no local equity is required.", 49),
+    ("v2 no moratorium, can fully own", "Bali has no moratorium and foreigners can fully own this company.", 49),
+    ("v2 can fully own, comma-interrupted", "Foreigners can fully own, and independently manage, the company.", 49),
+]
+
+# claims moved OUT of promise: a case that reads as a full-ownership
+# assertion in prose but carries NO recognised permission predicate (v2 is
+# opt-in on a governing predicate, not flag-by-default like v1 was) — moved
+# here per the v2 spec review rather than bending the spec to keep it guilty.
+L12_OUT_OF_PROMISE = [
+    # "is not restricted" is not one of the enumerated PERMISSION or
+    # negated-PERMISSION predicates (allowed/permitted/available/possible/
+    # granted/given/entitled/free/able). v1 flagged this NP object by
+    # default because nothing in its window matched a specific negation; v2
+    # never flags an object with no governing predicate at all — precision-
+    # first, per the OUT-OF-PROMISE note in the function docstring.
+    ("nominal claim, no permission predicate at all", "Full foreign ownership is not restricted here.", 49),
 ]
 
 L12_INNOCENCE = [
@@ -191,8 +221,8 @@ L12_INNOCENCE = [
         100,
     ),
     ("maxa is None", "Foreign-owned PMA companies can fully own this business.", None),
-    # adversarial probe 2026-09-25: the claim attributes ownership to
-    # INDONESIANS, not to a foreigner (scar family #3 over-match)
+    # adversarial probe 2026-09-25 (v1 round): the claim attributes ownership
+    # to INDONESIANS, not to a foreigner (scar family #3 over-match)
     (
         "adversarial owned-by-indonesian 1",
         "The business must be wholly owned by Indonesian citizens.",
@@ -203,9 +233,20 @@ L12_INNOCENCE = [
         "Full ownership by an Indonesian shareholder is required.",
         49,
     ),
-    # adversarial probe round 2: an availability-denying predicate after the claim
+    # adversarial probe round 2 (v1): an availability-denying predicate after the claim
     ("adversarial not available after", "Full ownership is not available; the cap is 49%.", 49),
     ("adversarial isn't possible after", "Full foreign ownership isn't possible here.", 49),
+    # v2 Codex probe (25 sentences, 2026-09-25) — every innocence class (a)-(d)
+    ("v2 indonesian citizens can fully own", "Indonesian citizens can fully own this business.", 49),
+    ("v2 can be wholly owned by citizens of indonesia", "This company can be wholly owned by citizens of Indonesia.", 49),
+    ("v2 reserved exclusively for indonesian shareholders", "Full ownership is reserved exclusively for Indonesian shareholders.", 49),
+    ("v2 prohibited from acquiring full ownership", "Foreign investors are prohibited from acquiring full ownership.", 49),
+    ("v2 may not under any circumstances fully own", "Foreign investors may not, under any circumstances, fully own this company.", 49),
+    ("v2 full foreign ownership is forbidden", "Full foreign ownership is forbidden.", 49),
+    ("v2 denial frame it is not true that", "It is not true that foreign investors may fully own this business.", 49),
+    ("v2 cannot legally or beneficially fully own", "Foreigners cannot legally or beneficially fully own this company.", 49),
+    ("v2 indonesian shareholders may own outright", "Indonesian shareholders may own this business outright.", 49),
+    ("v2 full foreign ownership cannot be permitted", "Full foreign ownership cannot be permitted under the cap.", 49),
 ]
 
 
@@ -213,6 +254,15 @@ L12_INNOCENCE = [
 def test_l12_guilt_flags(name, text, maxa):
     assert l12_full_ownership_claim(text, maxa) is not None, (
         f"L12 must FLAG genuine full-ownership overclaim: {name!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "name,text,maxa", L12_OUT_OF_PROMISE, ids=[c[0] for c in L12_OUT_OF_PROMISE]
+)
+def test_l12_out_of_promise_not_flagged(name, text, maxa):
+    assert l12_full_ownership_claim(text, maxa) is None, (
+        f"L12 v2 is precision-first and does not promise this case: {name!r}"
     )
 
 

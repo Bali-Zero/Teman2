@@ -15,6 +15,7 @@ negations (or a 100% cap, out of L12's scope by construction).
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sys
@@ -29,10 +30,39 @@ if _SCRIPTS not in sys.path:
 
 import cure_prose_national_openness as C  # noqa: E402
 import editorial_record_conformance as E  # noqa: E402
-from kbli_dataset_lint import iter_prose, l12_full_ownership_claim  # noqa: E402
+from kbli_dataset_lint import l12_full_ownership_claim  # noqa: E402
 
 SPEC = C.SPEC.parent / "prose_full_ownership_class_2026_09_25.json"
 CODE = "50134"
+
+# Codex MINOR (2026-09-25): `iter_prose` only yields its own hardcoded field
+# list — `tkaInfo` is ALWAYS a nested dict on this dataset (never the string
+# `iter_prose` expects), so a defect written into e.g. `tkaInfo.insight` or
+# any other nested leaf would never reach the population test at all. These
+# are the only `intel_2026` subtrees that are pure PROVENANCE/audit metadata
+# (LLM model name, confidence enum, gate verdict, regen tag, gap-disclosure
+# hash/date, a cover-image URL) rather than client-facing prose — excluded
+# by exact key name, everything else is walked.
+_INTEL_METADATA_KEYS = {"_l3_regen", "_l3_gap_disclosure", "coverImage"}
+
+
+def _iter_intel_leaves(record):
+    """Every string leaf under `intel_2026`, recursively — dicts and lists at
+    any depth, not just `iter_prose`'s direct fields."""
+
+    def walk(node, path):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if path == "" and key in _INTEL_METADATA_KEYS:
+                    continue
+                yield from walk(value, f"{path}.{key}" if path else key)
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                yield from walk(value, f"{path}[{i}]")
+        elif isinstance(node, str) and node.strip():
+            yield path, node
+
+    yield from walk(record.get("intel_2026") or {}, "")
 
 # Verbatim pre-cure text (copied from origin/main e0b18b8bac, `repr()`-round-
 # tripped, never hand-typed) — the exact defect this cure removed.
@@ -87,11 +117,12 @@ def test_the_spec_names_the_one_code_and_field():
 
 
 def test_guilt_class_zero_l12_hits_on_the_real_canonical():
-    """The cured population: walking every string leaf of every record's
-    `intel_2026` on the REAL (post-cure) canonical, L12 finds ZERO hits.
+    """The cured population: walking every string leaf (recursively — see
+    `_iter_intel_leaves`, Codex MINOR) of every record's `intel_2026` on the
+    REAL (post-cure) canonical, L12 finds ZERO hits.
 
     Pre-cure, this test is RED: evaluated in memory against
-    `git show origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json`
+    `git show e0b18b8bac:data/source_documents/KBLI_2025_FINAL_CLEAN.json`
     (origin/main e0b18b8bac, before this PR), `l12_full_ownership_claim`
     fires exactly once, on 50134's `intel_2026.whatYouNeed` — the sentence
     pinned in `ORIGINAL_WHATYOUNEED` below.
@@ -100,13 +131,34 @@ def test_guilt_class_zero_l12_hits_on_the_real_canonical():
     for record in _records():
         code = record.get("kode_kbli_2025")
         maxa = record.get("pma_max_asing")
-        for field, text in iter_prose(record):
-            if not field.startswith("intel_2026."):
-                continue
+        for path, text in _iter_intel_leaves(record):
             hit = l12_full_ownership_claim(text, maxa)
             if hit:
-                hits.append(f"{code}.{field} :: {hit}")
+                hits.append(f"{code}.intel_2026.{path} :: {hit}")
     assert hits == [], f"L12 must find zero hits on the cured canonical: {hits}"
+
+
+def test_the_recursive_walker_catches_a_defect_iter_prose_would_miss():
+    """Codex MINOR: `iter_prose` only yields its own hardcoded field list, so
+    a defect written into a nested leaf it never visits (e.g. `tkaInfo.
+    summary` — `tkaInfo` is always a dict on this dataset, never the string
+    `iter_prose` expects) would silently pass the population test above.
+    Proof: inject the exact 50134 defect shape into a record COPY's
+    `tkaInfo.summary` (a field that does not exist in the real schema) and
+    confirm `_iter_intel_leaves` — and therefore the guilt test — finds it.
+    """
+    record = copy.deepcopy(_by_code()[CODE])
+    record["intel_2026"]["tkaInfo"] = {
+        "summary": "Foreign investors can fully own this company."
+    }
+    flagged = [
+        (path, l12_full_ownership_claim(text, record.get("pma_max_asing")))
+        for path, text in _iter_intel_leaves(record)
+    ]
+    flagged = [(path, hit) for path, hit in flagged if hit]
+    assert any(path == "tkaInfo.summary" for path, _ in flagged), (
+        f"the recursive walker must catch a defect injected into a nested leaf: {flagged}"
+    )
 
 
 def test_guilt_the_real_50134_equals_the_spec_and_replanning_is_a_noop():

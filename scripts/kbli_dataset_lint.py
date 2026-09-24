@@ -18,12 +18,14 @@ Deterministic, zero-LLM checks over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json:
                            editorials (headline/standfirst/body) — the anti-template gate
                            for the LOOP-2 magazine layer (census 2026-07-08 found the old
                            intel prose had 995× / 258× / 88× stock sentences).
-  L12 full-ownership-overclaim  a wordy affirmative full-foreign-ownership claim
-                           ("fully own", "wholly owned", "without an Indonesian
-                           partner"…) with NO percentage attached, on a record whose
-                           own pma_max_asing is below 100 (50134 class, 2026-09-25).
-                           L10 reads a NUMBER against the cap; L12 reads the CLAIM.
-                           Innocence: same-clause negation before or after the phrase.
+  L12 full-ownership-overclaim  v2 (Codex FIX-FIRST, 2026-09-25): a PERMISSION
+                           predicate (can/may/is allowed to/is granted…) GOVERNING a
+                           full-ownership OBJECT (fully own, be wholly owned, full
+                           ownership…), with no percentage, on a record whose own
+                           pma_max_asing is below 100 (50134 class). v1 patched a
+                           negation token-window and an adversarial probe broke it
+                           (open phrasing space); v2 anchors to the grammatical
+                           entity instead — see l12_full_ownership_claim's docstring.
 
 Exit 0 = clean (L7 informational only). Exit 1 = findings. --json for machine output.
 Usage: python3 scripts/kbli_dataset_lint.py [--json] [--only L1,L3] [--repo ROOT]
@@ -343,126 +345,255 @@ def l10_ownership_contradiction(text, code, maxa, maxa_by_code):
 
 
 # -----------------------------------------------------------------------------
-# --- L12 / full-ownership-overclaim machinery ---------------------------------
-# The 50134 class: prose asserts full foreign ownership in WORDS, with no
-# percentage attached, so L10 (which reads a NUMBER against pma_max_asing) never
-# sees it. L12 reads the CLAIM instead. Every pattern below is a real phrasing
-# from the corpus (census 2026-09-25 over records with pma_max_asing < 100 or
-# pma_status != TERBUKA).
-L12_CLAIM_FULLY_OWN = re.compile(r"\bfully\s+own\w*\b", re.IGNORECASE)
-# "full ownership" / "full foreign ownership"
-L12_CLAIM_FULL_OWNERSHIP = re.compile(r"\bfull\s+(?:foreign\s+)?ownership\b", re.IGNORECASE)
-# "fully/wholly/entirely foreign-owned" (hyphen or space)
-L12_CLAIM_ADV_FOREIGN_OWNED = re.compile(
-    r"\b(?:fully|wholly|entirely)\s+foreign[- ]owned\b", re.IGNORECASE
-)
-# "wholly owned" on its own — this corpus only ever uses it inside a
-# foreign-ownership sentence
-L12_CLAIM_WHOLLY_OWNED = re.compile(r"\bwholly\s+owned\b", re.IGNORECASE)
+# --- L12 / full-ownership-overclaim machinery (v2, 2026-09-25) ----------------
+# v1 judged a claim by a token-window (negation N chars either side of a
+# phrase). A 25-sentence adversarial probe (Codex) found 12 false negatives
+# and 9 false positives: the phrasing space around "is this claim negated" is
+# open, so patching windows could not converge (scar family #3 again, this
+# time on a moving target). v2 anchors to a GRAMMATICAL ENTITY instead: a
+# PERMISSION predicate GOVERNING a full-ownership OBJECT. Full spec in
+# `l12_full_ownership_claim`'s docstring.
+
+# --- OBJECT: the full-ownership phrase ---------------------------------------
+# "fully own" (bare verb, any inflection)
+L12_OBJ_FULLY_OWN = re.compile(r"\bfully\s+own\w*\b", re.IGNORECASE)
 # "own ... outright" — up to 30 chars between the verb and the adverb
-L12_CLAIM_OWN_OUTRIGHT = re.compile(r"\bown\w*\b[^.]{0,30}?\boutright\b", re.IGNORECASE)
-# "without a/an/any local/Indonesian partner/shareholder"
-L12_CLAIM_WITHOUT_PARTNER = re.compile(
+L12_OBJ_OWN_OUTRIGHT = re.compile(r"\bown\w*\b[^.!?;]{0,30}?\boutright\b", re.IGNORECASE)
+# "own all/all of the shares" / "own the whole company/business"
+L12_OBJ_OWN_ALL_SHARES = re.compile(
+    r"\bown\s+(?:all(?:\s+of)?\s+the\s+shares|the\s+whole\s+(?:company|business))\b",
+    re.IGNORECASE,
+)
+# "hold all/the entire/100 percent of the shares/equity/capital/company"
+L12_OBJ_HOLD_ALL = re.compile(
+    r"\bhold\s+(?:all|the\s+entire|100\s*(?:percent|%)\s+of)\s+"
+    r"(?:the\s+)?(?:shares|equity|capital|company)\b",
+    re.IGNORECASE,
+)
+# "be fully/wholly/entirely/100(%) (foreign-)owned" — "foreign" optional so a
+# trailing "by <someone>" (checked separately, see OWNER_BY_INDONESIAN) never
+# has to be guessed at inside this pattern
+L12_OBJ_BE_OWNED = re.compile(
+    r"\bbe\s+(?:fully|wholly|entirely|100\s*(?:percent|%))\s+"
+    r"(?:foreign[- ]?\s*)?owned\b",
+    re.IGNORECASE,
+)
+# "be the sole (foreign) owner"
+L12_OBJ_BE_SOLE_OWNER = re.compile(r"\bbe\s+the\s+sole\s+(?:foreign\s+)?owner\b", re.IGNORECASE)
+L12_OBJ_VP = (
+    L12_OBJ_FULLY_OWN, L12_OBJ_OWN_OUTRIGHT, L12_OBJ_OWN_ALL_SHARES,
+    L12_OBJ_HOLD_ALL, L12_OBJ_BE_OWNED, L12_OBJ_BE_SOLE_OWNER,
+)
+# "full/complete/100(%) (foreign) ownership" — a bare NOUN object, usable both
+# directly after "permitted"/"granted"/"given" and before a TRAILING predicate
+L12_OBJ_NP = re.compile(
+    r"\b(?:full|complete|100\s*(?:percent|%))\s+(?:foreign\s+)?ownership\b", re.IGNORECASE
+)
+# self-sufficient objects: the phrase IS the whole claim, no governing
+# predicate required — "without a/an/any local/Indonesian partner/shareholder"
+L12_OBJ_SELF_WITHOUT_PARTNER = re.compile(
     r"\bwithout\s+(?:a|an|any)\s+(?:local|indonesian)\s+(?:partner|shareholder)s?\b",
     re.IGNORECASE,
 )
-# "no local/Indonesian partner (is) required/needed"
-L12_CLAIM_NO_PARTNER_NEEDED = re.compile(
-    r"\bno\s+(?:local|indonesian)\s+partner\s+(?:is\s+)?(?:required|needed)\b",
+# "no local/Indonesian partner/shareholder is required/needed"
+L12_OBJ_SELF_NO_PARTNER_NEEDED = re.compile(
+    r"\bno\s+(?:local|indonesian)\s+(?:partner|shareholder)\s+is\s+(?:required|needed)\b",
     re.IGNORECASE,
 )
-L12_CLAIMS = (
-    L12_CLAIM_FULLY_OWN,
-    L12_CLAIM_FULL_OWNERSHIP,
-    L12_CLAIM_ADV_FOREIGN_OWNED,
-    L12_CLAIM_WHOLLY_OWNED,
-    L12_CLAIM_OWN_OUTRIGHT,
-    L12_CLAIM_WITHOUT_PARTNER,
-    L12_CLAIM_NO_PARTNER_NEEDED,
+L12_OBJ_SELF = (L12_OBJ_SELF_WITHOUT_PARTNER, L12_OBJ_SELF_NO_PARTNER_NEEDED)
+
+# --- PREDICATE: the permission/possibility verb governing the object --------
+# leading, positive: can|may|could
+L12_LEAD_MODAL = re.compile(r"\b(?:can|may|could)\b", re.IGNORECASE)
+# leading, positive: (is|are) (allowed|permitted|free|able) to
+L12_LEAD_ALLOWED_TO = re.compile(
+    r"\b(?:is|are)\s+(?:allowed|permitted|free|able)\s+to\b", re.IGNORECASE
 )
-# a clause boundary for L12: bare presence of a negator anywhere in a fixed
-# character window judges a TOKEN, not the claim's scope (scar family #3) — a
-# negator two clauses back ("Bali does not block it, and foreign investors can
-# fully own the business") must NOT exonerate a live claim. Every window below
-# is cut at the nearest one of these, in EITHER direction.
-L12_CLAUSE_BOUNDARY = re.compile(r"[.!?,;:]")
-# innocence: a negation sitting BEFORE the claim, and it must SCOPE the claim —
-# the negator is followed by at most 2 filler words and then the claim starts
-# ("not a fully foreign-owned operation", "cannot be wholly foreign-owned",
-# "below full ownership", "not full ownership", "Not Fully Foreign-Owned").
-# Anchored to the END of the (clause-cut) pre-window, never a bare search: a
-# negator that trails off into unrelated words no longer governs the claim.
-L12_NEG_BEFORE = re.compile(
-    r"\b(?:not|cannot|can't|never|no|isn't|below|short\s+of|less\s+than|"
-    r"rather\s+than|instead\s+of|no\s+longer)\s+(?:\S+\s+){0,2}$",
+# leading, positive: (is|are) [up to 3 filler words, e.g. "not only"] granted/given
+L12_LEAD_GRANTED = re.compile(r"\b(?:is|are)\b(?:\s+\S+){0,3}?\s+(?:granted|given)\b", re.IGNORECASE)
+# leading, positive: (is|are) entitled to
+L12_LEAD_ENTITLED_TO = re.compile(r"\b(?:is|are)\s+entitled\s+to\b", re.IGNORECASE)
+# leading, positive: (is|are) permitted, bare — pairs with a NOUN object directly
+L12_LEAD_PERMITTED_BARE = re.compile(r"\b(?:is|are)\s+permitted\b", re.IGNORECASE)
+L12_POS_LEAD = (
+    L12_LEAD_MODAL, L12_LEAD_ALLOWED_TO, L12_LEAD_GRANTED,
+    L12_LEAD_ENTITLED_TO, L12_LEAD_PERMITTED_BARE,
+)
+# leading, negated: cannot/can't/can not/may not/could not — the predicate ITSELF negated
+L12_NEG_LEAD_MODAL = re.compile(
+    r"\b(?:cannot|can't|can\s+not|may\s+not|could\s+not)\b", re.IGNORECASE
+)
+# leading, negated: (is|are) not (allowed|permitted|able) (to)?
+L12_NEG_LEAD_ALLOWED = re.compile(
+    r"\b(?:is|are)\s+not\s+(?:allowed|permitted|able)(?:\s+to)?\b", re.IGNORECASE
+)
+# leading, negated: bare "not permitted"
+L12_NEG_LEAD_PERMITTED_BARE = re.compile(r"\bnot\s+permitted\b", re.IGNORECASE)
+L12_NEG_LEAD = (L12_NEG_LEAD_MODAL, L12_NEG_LEAD_ALLOWED, L12_NEG_LEAD_PERMITTED_BARE)
+# trailing, positive — for a NOMINAL subject: "Full ownership ... is allowed"
+L12_TRAIL_POS = (
+    re.compile(r"\b(?:is|are)\s+(?:allowed|permitted|available|possible)\b", re.IGNORECASE),
+)
+# trailing, negated: "... is not available", "... cannot be permitted", bare "not permitted"
+L12_TRAIL_NEG = (
+    re.compile(r"\b(?:is|are)\s+not\s+(?:allowed|permitted|available|possible)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:cannot|can't|can\s+not|may\s+not|could\s+not)\s+be\s+(?:allowed|permitted)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bnot\s+permitted\b", re.IGNORECASE),
+)
+
+# innocence (b): a sentence-level denial frame governs the whole clause
+L12_DENIAL_FRAME = re.compile(
+    r"\bit\s+is\s+(?:not\s+true|false)\s+that\b|\bthere\s+is\s+no\s+way\b[^.!?]{0,40}?\bto\b",
     re.IGNORECASE,
 )
-# innocence: a negation sitting AFTER the claim, within the same clause and at
-# most 3 words away — "…fully foreign-owned PMA cannot/can't/may not/is not
-# allowed/is not permitted hold…". Anchored to the START of the (clause-cut)
-# post-window so a negator several clauses downstream cannot exonerate a live
-# claim either. A bare "is not" is deliberately NOT a negator: "full ownership
-# is not restricted" AFFIRMS the claim — only predicates that deny availability do.
-L12_NEG_AFTER = re.compile(
-    r"^\s*(?:\S+\s+){0,3}(?:cannot|can't|may\s+not|"
-    r"(?:is|are)\s+not\s+(?:allowed|permitted|available|possible|an\s+option)|"
-    r"(?:isn't|aren't)\s+(?:allowed|permitted|available|possible|an\s+option)|"
-    r"(?:is|are)\s+(?:unavailable|impossible|prohibited|barred|ruled\s+out))\b",
+# innocence (c): the SUBJECT (before the predicate) is an Indonesian person-noun
+L12_OWNER_SUBJECT_INDONESIAN = re.compile(
+    r"\b(?:indonesian\s+(?:citizens?|nationals?|shareholders?|investors?|owners?)|"
+    r"citizens?\s+of\s+indonesia|nationals?\s+of\s+indonesia|"
+    r"local\s+(?:investors?|shareholders?|owners?)|"
+    r"domestic\s+(?:investors?|shareholders?|owners?))\b",
     re.IGNORECASE,
 )
-# innocence: the claim attributes the ownership to INDONESIANS, not to a
-# foreigner — "wholly owned by Indonesian citizens", "full ownership by an
-# Indonesian shareholder is required". Anchored to the START of the
-# (unbounded) post-window: the attribution must sit immediately after the
-# claim, not several clauses downstream.
-L12_OWNER_IS_INDONESIAN = re.compile(
-    r"^\s*by\s+(?:an?\s+|the\s+)?(?:indonesian|local|domestic|national)\b",
+# innocence (c): "by <Indonesian person-noun>" right after the object — a
+# PERSON-NOUN is required, so "by an Indonesian incorporated PT PMA" (an
+# entity, not a person) does NOT match and stays guilty
+L12_OWNER_BY_INDONESIAN = re.compile(
+    r"^\s*by\s+(?:(?:an?\s+|the\s+)?(?:indonesian|local|domestic|national)\s+"
+    r"(?:citizens?|nationals?|shareholders?|investors?|owners?)|"
+    r"citizens?\s+of\s+indonesia|nationals?\s+of\s+indonesia)\b",
     re.IGNORECASE,
 )
 
+L12_SENTENCE_BOUNDARY = re.compile(r"[.!?]")
 
-def _l12_clause_window(text: str, pos: int, before: bool, max_chars: int = 60) -> str:
-    """Text on one side of a match, bounded to the CURRENT clause: capped at
-    `max_chars` and cut at the nearest clause boundary (. ! ? , ; :) so a
-    negator in an earlier or later clause can never exonerate this one."""
-    if before:
-        raw = text[max(0, pos - max_chars) : pos]
-        cuts = list(L12_CLAUSE_BOUNDARY.finditer(raw))
-        return raw[cuts[-1].end() :] if cuts else raw
-    raw = text[pos : pos + max_chars]
-    cut = L12_CLAUSE_BOUNDARY.search(raw)
-    return raw[: cut.start()] if cut else raw
+
+def _l12_sentence_span(text: str, pos: int) -> tuple[int, int]:
+    """The [start, end) of the sentence containing `pos` — every governance
+    search is bounded to this span so a marker in an earlier or later
+    sentence can never govern an object it does not share a clause with."""
+    start = 0
+    for m in L12_SENTENCE_BOUNDARY.finditer(text, 0, pos):
+        start = m.end()
+    end_match = L12_SENTENCE_BOUNDARY.search(text, pos)
+    end = end_match.start() if end_match else len(text)
+    return start, end
+
+
+def _l12_closest_marker(patterns, text, lo, hi, *, prefer_max_start):
+    """The marker match in text[lo:hi] closest to the relevant edge: the
+    rightmost (prefer_max_start) for a BEFORE-search, the leftmost otherwise."""
+    best = None
+    for pattern in patterns:
+        for m in pattern.finditer(text, lo, hi):
+            if best is None:
+                best = m
+            elif prefer_max_start and m.start() > best.start():
+                best = m
+            elif not prefer_max_start and m.start() < best.start():
+                best = m
+    return best
+
+
+def _l12_word_count(s: str) -> int:
+    return len(s.split())
 
 
 def l12_full_ownership_claim(text: str, maxa) -> str | None:
-    """The ONE SSOT for the L12 full-ownership-overclaim guard.
+    """The ONE SSOT for the L12 full-ownership-overclaim guard (v2 spec).
 
-    Returns the matched window for the FIRST affirmative full-foreign-ownership
-    claim in `text` when `maxa` is a number below 100 (a cap under which full
-    foreign ownership is impossible), or None if every wordy full-ownership
-    phrasing in the prose is either absent or exonerated. It judges the
-    CLAIM's SCOPE, not a token's presence: a negation before or after the
-    claim only exonerates when it actually governs that claim (adjacency-
-    bounded, clause-cut), and a claim that attributes the ownership to
-    Indonesians is innocent outright. L10 already covers a bare percentage
-    stated against `maxa`.
+    Flags an AFFIRMATIVE PERMISSION OF FULL FOREIGN OWNERSHIP on a record
+    whose `pma_max_asing` is a number below 100 — a PERMISSION predicate
+    (can/may/could, is/are allowed|permitted|free|able to, is/are granted|
+    given|entitled to, is/are permitted) GOVERNING a full-ownership OBJECT
+    (fully own; own ... outright; own all the shares/the whole company; hold
+    all/the entire/100% of the shares/equity/capital/company; be fully/
+    wholly/entirely/100%-owned; be the sole owner; full/complete/100%
+    ownership). The predicate may LEAD the object or, for a nominal subject,
+    TRAIL it ("Full ownership ... is allowed|permitted|available|possible").
+    "without a/an/any local/Indonesian partner/shareholder" and "no local/
+    Indonesian partner/shareholder is required/needed" are self-sufficient
+    objects — no separate predicate is required.
+
+    INNOCENT BY CONSTRUCTION:
+      (a) the predicate itself is negated (cannot/can't/may not/could not/
+          is-are-not-allowed|permitted|able/not permitted/is-are-not-
+          available|possible), with up to 4 intervening words (and commas)
+          between the negated modal and the object;
+      (b) a sentence-level denial frame governs the clause ("it is not true
+          that", "it is false that", "there is no way ... to");
+      (c) the owner is Indonesian — an Indonesian person-noun subject before
+          the predicate, or a "by <Indonesian person-noun>" attribution
+          right after the object (a bare entity like "an Indonesian PT PMA"
+          does NOT count — a person-noun is required);
+      (d) no permission predicate governs the object at all.
+
+    OUT OF PROMISE: an arbitrary paraphrase that implies full ownership with
+    NO permission predicate present is not flagged — L12 is precision-first.
+    L10 already owns a bare percentage stated against `maxa`.
     """
     if not isinstance(maxa, int) or maxa >= 100:
         return None
-    matches = sorted(
-        (m for pattern in L12_CLAIMS for m in pattern.finditer(text)),
-        key=lambda m: m.start(),
-    )
-    for m in matches:
-        before = _l12_clause_window(text, m.start(), before=True)
-        if L12_NEG_BEFORE.search(before):
+
+    candidates: list[tuple[int, int, str]] = []
+    for pattern in L12_OBJ_SELF:
+        for m in pattern.finditer(text):
+            candidates.append((m.start(), m.end(), "self"))
+    for pattern in L12_OBJ_VP + (L12_OBJ_NP,):
+        for m in pattern.finditer(text):
+            candidates.append((m.start(), m.end(), "obj"))
+    candidates.sort(key=lambda c: c[0])
+
+    for start, end, kind in candidates:
+        sent_lo, sent_hi = _l12_sentence_span(text, start)
+        if L12_DENIAL_FRAME.search(text, sent_lo, sent_hi):
             continue
-        after = _l12_clause_window(text, m.end(), before=False)
-        if L12_NEG_AFTER.search(after):
+
+        if kind == "self":
+            guilty = True
+        else:
+            lead_pos = _l12_closest_marker(L12_POS_LEAD, text, sent_lo, start, prefer_max_start=True)
+            lead_neg = _l12_closest_marker(L12_NEG_LEAD, text, sent_lo, start, prefer_max_start=True)
+            if lead_pos and lead_neg:
+                lead, lead_is_neg = (lead_pos, False) if lead_pos.start() > lead_neg.start() else (lead_neg, True)
+            else:
+                lead, lead_is_neg = (lead_pos, False) if lead_pos else (lead_neg, True) if lead_neg else (None, None)
+            lead_gap = _l12_word_count(text[lead.end():start]) if lead else None
+            lead_ok = lead is not None and lead_gap <= 4
+
+            trail_pos = _l12_closest_marker(L12_TRAIL_POS, text, end, sent_hi, prefer_max_start=False)
+            trail_neg = _l12_closest_marker(L12_TRAIL_NEG, text, end, sent_hi, prefer_max_start=False)
+            if trail_pos and trail_neg:
+                trail, trail_is_neg = (trail_pos, False) if trail_pos.start() < trail_neg.start() else (trail_neg, True)
+            else:
+                trail, trail_is_neg = (trail_pos, False) if trail_pos else (trail_neg, True) if trail_neg else (None, None)
+            # a TRAILING predicate governs a nominal subject across whatever
+            # modifies that subject ("Full ownership BY AN INDONESIAN
+            # INCORPORATED PT PMA is allowed") — unbounded within the
+            # sentence, unlike the 4-word LEAD budget above.
+            trail_ok = trail is not None
+
+            if lead_ok and trail_ok:
+                governing_is_neg = lead_is_neg if lead_gap <= _l12_word_count(text[end:trail.start()]) else trail_is_neg
+            elif lead_ok:
+                governing_is_neg = lead_is_neg
+            elif trail_ok:
+                governing_is_neg = trail_is_neg
+            else:
+                continue  # (d) no permission predicate governs this object
+            if governing_is_neg:
+                continue  # (a)
+            guilty = True
+
+        if not guilty:
             continue
-        if L12_OWNER_IS_INDONESIAN.match(text[m.end() : m.end() + 60]):
-            continue
-        return text[max(0, m.start() - 40) : m.end() + 40].strip()
+        if L12_OWNER_SUBJECT_INDONESIAN.search(text[sent_lo:start]):
+            continue  # (c)
+        if L12_OWNER_BY_INDONESIAN.match(text[end:end + 60]):
+            continue  # (c)
+        return text[max(sent_lo, start - 40):min(sent_hi, end + 40)].strip()
     return None
 
 

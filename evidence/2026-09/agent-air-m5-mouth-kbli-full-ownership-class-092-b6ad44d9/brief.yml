@@ -23,13 +23,15 @@ constraints:
   - >-
     New lint rule L12 full-ownership-overclaim in scripts/kbli_dataset_lint.py,
     wired into the rule registry (--only L12 works, full run includes it).
-    L10 and every other rule left byte-identical. Innocence guards, all
-    clause-bounded (cut at .!?,;:): a negator that SCOPES the claim (at most 2
-    filler words before it: "not a fully…", "cannot be wholly…", "below full
-    ownership"); an availability-denying predicate at most 3 words after it
-    ("…PMA cannot hold", "is not available", never a bare "is not"); ownership
-    attributed to Indonesians ("wholly owned by Indonesian citizens").
-    Adversarial probes (two rounds, 8 guilt + 7 innocence) pinned as unit cases.
+    L10 and every other rule left byte-identical. v2 (Codex FIX-FIRST, after a
+    v1 token-window design failed a 25-sentence adversarial probe 12/9):
+    anchored to a grammatical entity, not a window — a PERMISSION predicate
+    (can/may/is allowed to/is granted…) GOVERNING a full-ownership OBJECT
+    (fully own, be wholly owned, full ownership…). Innocent by construction:
+    the predicate itself negated (≤4-word adjacency), a sentence-level denial
+    frame, the owner is Indonesian (person-noun required), or no permission
+    predicate governs the object at all — precision-first, L10 still owns a
+    bare percentage. Two adversarial-probe rounds (44 unit cases) pinned.
   - >-
     No hand edit of data/kbli-filiera/** or data/source_documents/** (data-plane
     guard). 50134 is NOT in canonicalIntel (not certified) — verified via the
