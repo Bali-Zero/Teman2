@@ -267,7 +267,10 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     # mapped ones above are consumed into their own fields and skipped here,
     # everything else is carried through verbatim with an anchor recording
     # which mapped section it immediately followed, so the renderer can slot
-    # it back into the same relative position.
+    # it back after that section (one that precedes Facts lands right after
+    # Facts: there is no slot before it). A draft with no "## Facts" heading
+    # already carries every section inside the `facts` fallback above, so
+    # nothing is collected again (gate finding F2 on #7322: printed twice).
     def _classify_known_heading(heading: str) -> str | None:
         normalized = heading.strip().rstrip(":").lower()
         if normalized == "summary":
@@ -281,7 +284,9 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         return None
 
     extra_sections: list[dict[str, str]] = []
-    all_headings = list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content))
+    all_headings = (
+        list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content)) if facts_match else []
+    )
     last_known_anchor = "facts"
     for index, heading_match in enumerate(all_headings):
         heading_text = heading_match.group(1).strip()

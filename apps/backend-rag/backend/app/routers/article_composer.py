@@ -170,7 +170,9 @@ class ExtraSection(BaseModel):
     heading: str
     body: str
     # Which rendered section this immediately followed in the draft, so the
-    # MDX renderer can slot it back into the same relative position.
+    # MDX renderer can slot it back after that section. A section that came
+    # before Facts is anchored to "facts" and lands right after it — there
+    # is no slot before Facts.
     insert_after: Literal["facts", "bali_zero_take", "next_steps"] = "next_steps"
 
 

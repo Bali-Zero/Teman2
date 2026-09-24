@@ -365,6 +365,27 @@ class TestConvertStagingToEnrichedArticle:
         result = convert_staging_to_enriched_article(data)
         assert result["extra_sections"] == []
 
+    def test_draft_without_facts_heading_does_not_emit_sections_twice(self) -> None:
+        """Guilt (gate finding F2 on #7322): with no "## Facts" heading the
+        whole draft falls back into `facts`, so an unmapped section is
+        already there verbatim — carrying it again as an extra section
+        printed it twice."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Facts Heading",
+            "content": (
+                "Opening paragraph.\n"
+                "## In Practice\nWhat this changes for a PT PMA.\n"
+                "## Next Steps\n- Confirm the filing deadline.\n"
+            ),
+            "category": "tax",
+            "relevance_score": 60,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["facts"].count("What this changes for a PT PMA.") == 1
+        assert result["extra_sections"] == []
+
     def test_tags_generation(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
 
