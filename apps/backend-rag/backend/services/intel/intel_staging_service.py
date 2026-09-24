@@ -261,6 +261,46 @@ class IntelStagingService:
             finally:
                 fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
 
+    def backfill_enrichment_if_absent(
+        self,
+        intel_type: Literal["visa", "news"],
+        item_id: str,
+        new_enrichment: dict[str, Any],
+    ) -> bool:
+        """Atomically merge `new_enrichment` onto a staging item iff its current
+        enrichment is missing/empty.
+
+        Uses the same per-item `fcntl` advisory lock as `compare_and_set_status`
+        so two same-URL submissions racing the dedup-heal read-modify-write
+        (W-L610: `submit_from_scraper`'s enrichment backfill was a lockless RMW —
+        both racers could read "empty", both write, and one payload silently
+        vanishes under last-write-wins) instead serialize: the loser observes the
+        winner's write already in place and no-ops.
+
+        Returns:
+            True if this call performed the backfill, False if the item does not
+            exist or already carries a non-empty `enrichment`.
+        """
+        assert_valid_item_id(item_id)
+        staging_dir = self.get_staging_dir(intel_type)
+        lock_dir = staging_dir / ".locks"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = lock_dir / f"{item_id}.lock"
+        with lock_path.open("a+", encoding="utf-8") as lock_handle:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+            try:
+                current = self.load_staging_item(intel_type, item_id)
+                if current is None:
+                    return False
+                existing_enrichment = current.get("enrichment")
+                if isinstance(existing_enrichment, dict) and existing_enrichment:
+                    return False
+                current["enrichment"] = new_enrichment
+                self.save_staging_item(intel_type, item_id, current)
+                return True
+            finally:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+
     def load_staging_item(
         self,
         intel_type: Literal["visa", "news"],
