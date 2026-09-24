@@ -635,8 +635,8 @@ def _task_usage(provider: str, node: dict, window: tuple) -> tuple[dict, set]:
                 delta[field] = None
             previous[field] = value
         if window[0] <= stamp < window[1]:
-            # Duplicate cumulative observations are not additional usage/calls.
-            if provider == "codex" and all(v == 0 for v in delta.values()):
+            # Zero increments, including cumulative repeats, are not usage.
+            if all(v == 0 for v in delta.values()):
                 continue
             for field in fields:
                 result[field] = _acc_tok(result[field], delta[field])
@@ -669,54 +669,34 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
         declared = {(r["provider"], r["session_sha256"]): r for r in doc["sessions"]}
         selected = dict(declared)
         nodes = index.get("nodes", {})
-        if doc["status"] == "verified_complete":
-            verifier = doc["outcome"]["verifier_session_sha256"]
-            gates = [k for k, r in declared.items() if k[1] == verifier and r["role"] == "gate"]
-            builders = [k for k, r in declared.items() if r["role"] != "gate"]
-            parents = {key: {node["parent"]} if node["parent"] else set() for key, node in nodes.items()}
-            by_hash = defaultdict(set)
-            for key in nodes.keys() | declared.keys():
-                by_hash[key[1]].add(key)
-            for key, row in declared.items():
-                parent = row.get("parent_session_sha256")
-                if parent:
-                    matches = by_hash[parent]
-                    # Missing/ambiguous declared edges stay unresolved. Never
-                    # pick a provider or replace a conflicting native edge.
-                    edge = next(iter(matches)) if len(matches) == 1 else ("unresolved", parent)
-                    parents.setdefault(key, set()).add(edge)
+        parents = {key: {node["parent"]} if node["parent"] else set() for key, node in nodes.items()}
+        by_hash = defaultdict(set)
+        for key in nodes.keys() | declared.keys():
+            by_hash[key[1]].add(key)
+        for key, row in declared.items():
+            parent = row.get("parent_session_sha256")
+            if parent:
+                matches = by_hash[parent]
+                # A declared edge never replaces observed conversation lineage.
+                edge = next(iter(matches)) if len(matches) == 1 else ("unresolved", parent)
+                parents.setdefault(key, set()).add(edge)
 
-            def ancestors(key):
-                lineage, active, stack = set(), set(), [(key, False)]
-                while stack:
-                    key, leaving = stack.pop()
-                    if leaving:
-                        active.remove(key)
-                        lineage.add(key)
-                        continue
-                    if key in active or key not in nodes:
-                        return None
-                    if key in lineage:
-                        continue
-                    active.add(key)
-                    stack.append((key, True))
-                    stack.extend((parent, False) for parent in parents.get(key, set()))
-                return lineage
-
-            independent = bool(gates and builders)
-            for gate in gates:
-                lineage = ancestors(gate)
-                gate_activity = any(doc["window"][0] <= event[0] < doc["window"][1]
-                                    and event[0] <= _task_timestamp(doc["outcome"]["verified_utc"])
-                                    for event in nodes.get(gate, {}).get("events", {}).values())
-                independent = independent and lineage is not None and gate_activity
-                for builder in builders:
-                    parentage = ancestors(builder)
-                    independent = (independent and parentage is not None
-                                   and builder not in (lineage or set()) and gate not in (parentage or set()))
-            if not independent:
-                doc["status"] = "unknown"
-                meta["downgraded"] += 1
+        def ancestors(key):
+            lineage, active, stack = set(), set(), [(key, False)]
+            while stack:
+                key, leaving = stack.pop()
+                if leaving:
+                    active.remove(key)
+                    lineage.add(key)
+                    continue
+                if key in active or key not in nodes:
+                    return None
+                if key in lineage:
+                    continue
+                active.add(key)
+                stack.append((key, True))
+                stack.extend((parent, False) for parent in parents.get(key, set()))
+            return lineage
         while True:
             children = {k: selected[n["parent"]] for k, n in nodes.items() if k not in selected and n["parent"] in selected}
             if not children:
@@ -728,13 +708,45 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
                     if key in declared or not nodes[key]["events"] or nodes[key].get("read_error")
                     or any(doc["window"][0] <= event[0] < doc["window"][1] or event[0] == float("-inf")
                            for event in nodes[key]["events"].values())}
+        selected_usage = {key: _task_usage(key[0], nodes[key], doc["window"])
+                          for key in selected if key in nodes}
+        participants_with_usage = {key for key, (_, events) in selected_usage.items() if events}
+        for key in tuple(participants_with_usage):
+            participants_with_usage.update(ancestors(key) or set())
+        verification_issues = []
+        if doc["status"] == "verified_complete":
+            verifier = doc["outcome"]["verifier_session_sha256"]
+            gates = [k for k, r in declared.items() if k[1] == verifier and r["role"] == "gate"]
+            independent = len(gates) == 1 and any(r["role"] != "gate" for r in declared.values())
+            for gate in gates:
+                root_ok = not parents.get(gate) and ancestors(gate) is not None
+                if not root_ok:
+                    verification_issues.append("gate_not_independent_root")
+                if not declared[gate]["overhead"]:
+                    verification_issues.append("gate_not_declared_overhead")
+                gate_events = selected_usage.get(gate, ({}, set()))[1]
+                gate_activity = any(nodes[gate]["events"][identity][0]
+                                    <= _task_timestamp(doc["outcome"]["verified_utc"])
+                                    for identity in gate_events)
+                independent = independent and root_ok and gate_activity and declared[gate]["overhead"]
+                if not gate_activity:
+                    verification_issues.append("gate_usage_not_observed")
+                for participant in selected.keys() - {gate}:
+                    parentage = ancestors(participant)
+                    unrelated = parentage is not None and gate not in (parentage or set())
+                    if not unrelated:
+                        verification_issues.append("gate_not_independent_root")
+                    independent = independent and unrelated
+            if not independent:
+                doc["status"] = "unknown"
+                meta["downgraded"] += 1
         result = {"task_sha256": doc["task_sha256"], "task_class": doc["task_class"], "cohort": doc["cohort"],
                   "status": doc["status"], "sessions_declared": len(declared), "sessions_found": 0,
                   "sessions_missing": sum(k not in nodes for k in declared), "descendants_added": len(selected) - len(declared),
                   "attempts_max": max(r["attempt"] for r in declared.values()),
                   "failed_or_retried_sessions": sum(r.get("status") == "failed" or r["attempt"] > 1 for r in declared.values()),
                   "overhead_sessions": 0, "by_provider": {}, "overhead_tokens": {}, "usage_complete": True,
-                  "usage_issues": []}
+                  "usage_issues": [], "verification_issues": sorted(set(verification_issues))}
         if result["sessions_missing"]:
             result["usage_issues"].append("missing_sessions")
         if doc["window"][0] < index.get("scan_since", float("-inf")):
@@ -743,10 +755,10 @@ def collect_task_outcomes(directory: Path, index: dict) -> dict:
             if key not in nodes:
                 continue
             provider = key[0]
-            usage, events = _task_usage(provider, nodes[key], doc["window"])
+            usage, events = selected_usage[key]
             result["sessions_found"] += 1
             result["overhead_sessions"] += row["overhead"]
-            if key in declared and not row["overhead"] and not events:
+            if key in declared and not row["overhead"] and key not in participants_with_usage:
                 result["usage_issues"].append("declared_session_without_window_usage")
             if not nodes[key]["events"] or any(v == "unknown" for v in usage.values()):
                 result["usage_issues"].append("missing_or_unknown_counters")

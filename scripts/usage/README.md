@@ -55,14 +55,17 @@ for the gate or a cryptographic verification of the artifact named by its hash.
 Never mark an outcome complete merely because a session exited or a PR merged.
 `verified_complete` requires an evidence SHA-256, verification time, at least
 one non-gate participant, and a distinct listed `gate` session observed in logs
-(`verifier_role=fresh-gate`). The gate cannot be an ancestor or descendant of
-any non-gate participant. The graph combines native and declared parent edges,
+(`verifier_role=fresh-gate`). The verifier must be a conversation root, with no
+parent and no participant of any role descending from it. Sibling gates and
+gate-role ancestors do not establish independence. The graph combines native and declared parent edges,
 including cross-provider edges. Missing, ambiguous or cyclic lineage cannot
-establish independence. The gate needs an event inside the task window no later
-than verification time; unrelated old activity is insufficient. Independent fresh
-CLI roots can be declared as overhead: their usage is included even without a
+establish independence. The gate needs a reducer-selected event inside the task
+window no later than verification time; zero-delta repeats and unrelated old
+activity are insufficient. The verifier must be declared as overhead. Independent fresh
+CLI roots have their usage included even without a
 shared conversation parent. Never erase a real contribution edge for eligibility.
-CI-only attestations remain `unknown` and outside the denominator until a CI
+`verification_issues` reports failed root, activity and overhead requirements
+separately from usage completeness. CI-only attestations remain `unknown` and outside the denominator until a CI
 evidence join exists. It also requires a closed, timezone-aware
 `started_utc`/`ended_utc` interval ending no later than the snapshot time and
 containing the verification time. Otherwise the
@@ -97,7 +100,8 @@ and overlapping task attribution are visible and exclude a task from the verifie
 denominator. Unknown is never zero. `failed_or_retried_sessions` counts declared
 rows with `status=failed` or `attempt>1`; both failed and successful attempts still
 contribute usage. `overhead_tokens` is a subset of `by_provider`, not extra spend.
-An explicitly declared non-overhead participant with no usage inside the window
+An explicitly declared non-overhead participant with no selected usage in its own
+session or attributed descendants inside the window
 is incomplete (`declared_session_without_window_usage`), not a zero-cost worker.
 The mean includes only verified tasks with complete observed usage and is withheld
 across different task classes/cohorts. It is not a causal savings estimate.

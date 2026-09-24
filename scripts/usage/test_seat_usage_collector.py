@@ -102,8 +102,90 @@ def test_declared_parent_cannot_erase_observed_lineage(tmp_path):
     _task_codex(profile, "gate", [2], parent="builder")
     _task_codex(profile, "other", [1])
     suc.collect_codex(str(profile), SINCE, task_index=index)
-    rows = [_task_row("codex", "builder"), _task_row("codex", "other", overhead=True),
+    rows = [_task_row("codex", "builder"),
             _task_row("codex", "gate", role="gate", overhead=True, parent_session_sha256=suc._sha("other"))]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_declared_builder_edge_cannot_erase_gate_ancestry(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "gate", [2])
+    _task_codex(profile, "builder", [10], parent="gate")
+    _task_codex(profile, "other", [1])
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder", parent_session_sha256=suc._sha("other")),
+            _task_row("codex", "gate", role="gate", overhead=True)]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_sibling_gate_with_undeclared_ancestor_is_not_a_root(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "common-root", [1])
+    _task_codex(profile, "builder", [10], parent="common-root")
+    _task_codex(profile, "gate", [2], parent="common-root")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown"
+    assert "gate_not_independent_root" in task["verification_issues"]
+
+
+def test_other_gate_roles_do_not_hide_verifier_relatives(tmp_path):
+    for verifier_parent, helper_parent in (("helper", None), (None, "gate")):
+        profile, index = tmp_path / str(verifier_parent), {}
+        _task_codex(profile, "builder", [10])
+        _task_codex(profile, "helper", [1], parent=helper_parent)
+        _task_codex(profile, "gate", [2], parent=verifier_parent)
+        suc.collect_codex(str(profile), SINCE, task_index=index)
+        rows = [_task_row("codex", "builder"), _task_row("codex", "helper", role="gate", overhead=True),
+                _task_row("codex", "gate", role="gate", overhead=True)]
+        task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+        assert task["status"] == "unknown"
+        assert "gate_not_independent_root" in task["verification_issues"]
+
+
+def test_automatic_gate_descendant_is_also_a_participant(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    _task_codex(profile, "gate", [2])
+    _task_codex(profile, "helper", [1], parent="gate")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown" and task["descendants_added"] == 1
+
+
+def test_zero_delta_repeat_is_not_gate_activity(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    gate = _task_codex(profile, "gate", [2, 2])
+    lines = [json.loads(line) for line in gate.read_text().splitlines()]
+    lines[1]["timestamp"] = "2026-06-01T10:00:00Z"
+    gate.write_text("\n".join(map(json.dumps, lines)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_verifier_must_be_declared_as_overhead(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    _task_codex(profile, "gate", [2])
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=False)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown"
+    assert "gate_not_declared_overhead" in task["verification_issues"]
+
+
+def test_zero_usage_claude_event_is_not_gate_activity(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    _task_claude(profile, "gate", 0)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
     assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
 
 
@@ -426,7 +508,7 @@ def test_task_cohorts_are_reported_separately_and_duplicate_manifests_fail_close
         builder, gate = cohort + "-builder", cohort + "-gate"
         _task_claude(profile, builder, amount)
         _task_claude(profile, gate, 2)
-        docs.append(_task_doc([_task_row("claude", builder), _task_row("claude", gate, role="gate")],
+        docs.append(_task_doc([_task_row("claude", builder), _task_row("claude", gate, role="gate", overhead=True)],
                              cohort=cohort, task_sha256=suc._sha(cohort), outcome={
                                  "status": "verified_complete", "verifier_role": "fresh-gate",
                                  "verifier_session_sha256": suc._sha(gate), "evidence_sha256": suc._sha("receipt-" + cohort),
@@ -455,11 +537,12 @@ def test_task_window_prunes_old_children_but_keeps_active_grandchildren(tmp_path
     rows[1]["timestamp"] = "2026-08-19T10:01:00Z"
     active.write_text("\n".join(map(json.dumps, rows)) + "\n")
     suc.collect_codex(str(profile), SINCE, task_index=index)
-    # The inactive root is explicitly overhead; the active worker is the child.
-    doc = _task_doc([_task_row("codex", "root", overhead=True)], started_utc="2026-08-19T10:01:00Z")
+    doc = _task_doc([_task_row("codex", "root")], started_utc="2026-08-19T10:01:00Z")
     task = _task_report(tmp_path, index, doc)["tasks"][0]
     assert task["descendants_added"] == 1 and task["sessions_found"] == 2
     assert task["by_provider"]["codex"]["input_tokens"] == 7
+    assert task["overhead_tokens"].get("codex", {}).get("input_tokens", 0) == 0
+    assert "declared_session_without_window_usage" not in task["usage_issues"]
     assert task["usage_complete"]
 
 
