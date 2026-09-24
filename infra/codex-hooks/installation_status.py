@@ -7,8 +7,10 @@ import tomllib
 from pathlib import Path
 
 from context_bridge import EVENTS, codex_home, digest, load
-from install import COMPACT_OVERRIDES
+from install import COMPACT_OVERRIDES, GUARD_MARK
 from rpc import RPC, binary_path
+
+OURS = ("nuzantara-context/context_bridge.py", GUARD_MARK)
 
 
 def native_compact_defaults(config_file: Path) -> bool:
@@ -31,6 +33,7 @@ def main() -> None:
         for h in entries["hooks"]
         if "nuzantara-context/context_bridge.py" in h.get("command", "")
     ]
+    guard = [h for h in entries["hooks"] if GUARD_MARK in h.get("command", "")]
     hashes = {
         name: digest((seat / "hooks" / "nuzantara-context" / name).read_bytes())
         for name in manifest["source_sha256"]
@@ -43,8 +46,9 @@ def main() -> None:
             g
             for g in groups
             if not any(
-                "nuzantara-context/context_bridge.py" in h.get("command", "")
+                mark in h.get("command", "")
                 for h in g.get("hooks", [])
+                for mark in OURS
             )
         ]
         if not groups and event not in old.get("hooks", {}):
@@ -62,6 +66,10 @@ def main() -> None:
             for h in hooks
             if h["trustStatus"] == "trusted" and h["enabled"]
         ],
+        "output_guard_trusted": len(guard) == 1
+        and guard[0]["trustStatus"] == "trusted"
+        and guard[0]["enabled"]
+        and guard[0].get("matcher") == "Bash",
         "artifact_matches_manifest": hashes == manifest["source_sha256"],
         "existing_hooks_preserved": current == old,
         "thresholds": policy["thresholds"],
@@ -72,6 +80,7 @@ def main() -> None:
     }
     result["installed"] = (
         len(result["trusted_events"]) == len(EVENTS)
+        and result["output_guard_trusted"]
         and result["enabled"]
         and result["artifact_matches_manifest"]
         and result["existing_hooks_preserved"]

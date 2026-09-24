@@ -24,6 +24,12 @@ from rpc import RPC
 
 
 THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+# The reviewed Claude guard, unchanged: Codex reports shell (including unified
+# exec and nested code-mode calls) to PreToolUse as tool_name "Bash" with
+# tool_input.command, and honours exit 2 + stderr as a deny.
+GUARD_NAME = "output_hygiene_guard.py"
+GUARD_SOURCE = Path(__file__).resolve().parent.parent / "claude-hooks" / GUARD_NAME
+GUARD_MARK = "nuzantara-context/" + GUARD_NAME
 COMPACT_OVERRIDES = (
     "model_auto_compact_token_limit",
     "model_auto_compact_token_limit_scope",
@@ -96,8 +102,12 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             staged.chmod(config_file.stat().st_mode & 0o777)
             os.replace(staged, config_file)
     hashes = {}
-    for name in ("context_bridge.py", "rpc.py", "mandate_budget.py"):
-        source = Path(__file__).parent / name
+    sources = {
+        name: Path(__file__).parent / name
+        for name in ("context_bridge.py", "rpc.py", "mandate_budget.py")
+    }
+    sources[GUARD_NAME] = GUARD_SOURCE
+    for name, source in sources.items():
         if (dest / name).exists():
             shutil.copy2(dest / name, backup / name)
         shutil.copy2(source, dest / name)
@@ -126,6 +136,31 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             ours[0].update(handler)
         else:
             groups.append({"hooks": [handler]})
+    guard_command = shlex.join([sys.executable, str(dest / GUARD_NAME)])
+    pre = events.setdefault("PreToolUse", [])
+    guards = [
+        g
+        for g in pre
+        if any(GUARD_MARK in h.get("command", "") for h in g.get("hooks", []))
+    ]
+    if len(guards) > 1:
+        raise ValueError("duplicate output guard hook")
+    guard_group = {
+        "matcher": "Bash",
+        "hooks": [
+            {
+                "type": "command",
+                "command": guard_command,
+                "timeout": 10,
+                "statusMessage": "Nuzantara output hygiene",
+            }
+        ],
+    }
+    if guards:
+        guards[0].clear()
+        guards[0].update(guard_group)
+    else:
+        pre.append(guard_group)
     save(hooks_file, config)
     policy = load(seat / "nuzantara-context-policy.json")
     policy.update(
@@ -158,11 +193,14 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
         hooks = [h for h in items["hooks"] if h.get("command") == command]
         if len(hooks) != len(EVENTS):
             raise RuntimeError("Codex did not discover all bridge events")
+        guard = [h for h in items["hooks"] if h.get("command") == guard_command]
+        if len(guard) != 1:
+            raise RuntimeError("Codex did not discover the output guard")
         if trust:
             edits = [
                 {"keyPath": "features.hooks", "value": True, "mergeStrategy": "replace"}
             ]
-            for h in hooks:
+            for h in hooks + guard:
                 base = "hooks.state." + json.dumps(h["key"])
                 edits.extend(
                     [
