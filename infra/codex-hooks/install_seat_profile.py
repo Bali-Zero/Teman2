@@ -4,10 +4,11 @@
 Sources live in seat/ and are the M5 seat's reviewed bytes. Per item: absent ->
 installed; identical -> untouched; different -> left alone and reported as
 operator-owned drift, never overwritten. Every write is preceded by a private
-backup. The root key is written through Codex's own config API and then checked
-semantically: only that key may change -- detection after the write, not a
-no-clobber guarantee, because Codex exposes no revision-conditional config write.
---check is read-only. There is deliberately no automatic removal: rollback is a
+backup. The root key is validated absent in ONE user-layer snapshot from Codex's
+own config/read and written with config/batchWrite pinned to that snapshot's
+version, so a concurrent change makes Codex refuse the write (configVersionConflict)
+instead of losing it; the binary must first prove it rejects a stale version on a
+scratch seat, and the result is checked semantically afterwards. --check is read-only. There is deliberately no automatic removal: rollback is a
 manual step with an exclusive writer (README). No auth or other config is copied.
 """
 
@@ -18,6 +19,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 import time
 import tomllib
 from pathlib import Path
@@ -78,18 +80,52 @@ def create_exclusive(path: Path, data: bytes) -> bool:
         temp.unlink(missing_ok=True)
 
 
-def config_write(seat: Path, edits: list[dict]) -> None:
+def rpc_call(seat: Path, method: str, params: dict) -> dict:
     previous = os.environ.get("CODEX_HOME")
     os.environ["CODEX_HOME"] = str(seat)
     rpc = RPC()
     try:
-        rpc.call("config/batchWrite", {"edits": edits})
+        return rpc.call(method, params)
     finally:
         rpc.close()
         if previous is None:
             os.environ.pop("CODEX_HOME", None)
         else:
             os.environ["CODEX_HOME"] = previous
+
+
+def user_layer(seat: Path, config_file: Path) -> tuple[dict, str]:
+    """The seat's user-layer config and its opaque version, from one snapshot."""
+    out = rpc_call(seat, "config/read", {"includeLayers": True})
+    for layer in out.get("layers") or []:
+        name = layer.get("name") or {}
+        if (
+            name.get("type") == "user"
+            and name.get("profile") is None
+            and Path(str(name.get("file"))).resolve() == config_file.resolve()
+        ):
+            return layer.get("config") or {}, layer["version"]
+    raise RuntimeError(f"Codex reports no user layer for {config_file}")
+
+
+def pinned_write(seat: Path, edits: list[dict], version: str) -> None:
+    rpc_call(seat, "config/batchWrite", {"edits": edits, "expectedVersion": version})
+
+
+def conditional_write_proven() -> bool:
+    """True only if this Codex refuses a write pinned to a superseded version."""
+    with tempfile.TemporaryDirectory(prefix="seat-profile-cas-") as tmp:
+        scratch = Path(tmp)
+        config_file = scratch / "config.toml"
+        config_file.write_text('probe = "a"\n', encoding="utf-8")
+        _, version = user_layer(scratch, config_file)
+        config_file.write_text('probe = "b"\n', encoding="utf-8")
+        edit = {"keyPath": "probe", "value": "c", "mergeStrategy": "replace"}
+        try:
+            pinned_write(scratch, [edit], version)
+        except RuntimeError as exc:
+            return "configVersionConflict" in str(exc)
+        return False
 
 
 def prepare(seat: Path) -> tuple[Path, Path]:
@@ -125,25 +161,36 @@ def install(seat: Path) -> dict:
     ):
         result.update(status(seat))
         return result
+    if before[KEY] == "absent" and not conditional_write_proven():
+        raise RuntimeError(
+            "this Codex does not refuse a stale config version; nothing written"
+        )
     result["backup"] = str(backup_seat(seat, config_file))
     (seat / "agents").mkdir(mode=0o700, exist_ok=True)
     for role, data in roles.items():
         if before["roles"][role] == "absent":
             create_exclusive(seat / "agents" / f"{role}.toml", data)
     if before[KEY] == "absent":
-        original = read_config(config_file)
         mode = config_file.stat().st_mode & 0o777
+        snapshot, version = user_layer(seat, config_file)
         try:
-            config_write(
-                seat, [{"keyPath": KEY, "value": text, "mergeStrategy": "replace"}]
-            )
+            if KEY in snapshot:
+                raise RuntimeError(
+                    "developer_instructions appeared concurrently; nothing written"
+                )
+            edit = {"keyPath": KEY, "value": text, "mergeStrategy": "replace"}
             try:
-                after = read_config(config_file)
-            except tomllib.TOMLDecodeError:
-                after = {}
+                pinned_write(seat, [edit], version)
+            except RuntimeError as exc:
+                if "configVersionConflict" in str(exc):
+                    raise RuntimeError(
+                        "config.toml changed since it was validated; nothing written"
+                    ) from exc
+                raise
+            after, _ = user_layer(seat, config_file)
             if (
                 after.get(KEY) != text
-                or {k: v for k, v in after.items() if k != KEY} != original
+                or {k: v for k, v in after.items() if k != KEY} != snapshot
             ):
                 # Not restored automatically: a concurrent writer's edit would be lost.
                 raise RuntimeError(

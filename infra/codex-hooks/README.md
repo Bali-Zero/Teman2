@@ -129,13 +129,17 @@ code-mode `// @exec` output pragma, routine delegation) and four routine roles i
 read-only, `routine-worker` Terra medium, `code-reviewer` Sol high read-only).
 Each item that is absent is installed; an identical item is left untouched; a
 different item is operator-owned drift and is reported, never overwritten. A
-private backup precedes any write. The root key is written through Codex's own
-`config/batchWrite` and then checked with `tomllib`: only that key may change,
+private backup precedes any write. The root key is validated absent in one
+user-layer snapshot from Codex's own `config/read` (`includeLayers`) and written
+with `config/batchWrite` pinned to that snapshot's `expectedVersion`: if any
+setting changed after the snapshot, Codex refuses the write
+(`configVersionConflict`) and nothing is written. Before writing, the installer
+proves on a scratch seat that the Codex binary in use refuses a stale version;
+a binary that does not is never used for the write. The version is semantic
+(a comment-only edit does not change it; Codex preserves the file's other
+lines). After the write the user layer is re-read: only that key may change,
 otherwise the installer stops and names the backup (it does not restore on its
-own, so a concurrent writer's edit is never lost). `--check` is read-only and
-exits 1 unless every item matches. The post-write check is detection, not a
-no-clobber guarantee: Codex exposes no revision-conditional config write, so a
-concurrent app write in the same instant is reported, never silently accepted.
+own). `--check` is read-only and exits 1 unless every item matches.
 Roles are created with a hard link, so a file that appears first always wins.
 There is deliberately no automatic removal. Rollback, with no Codex app or session
 running on that seat (the only writer exclusion available): restore config.toml

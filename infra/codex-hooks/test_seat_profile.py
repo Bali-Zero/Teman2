@@ -1,5 +1,6 @@
 """The reviewed Codex seat profile: install absent items, never overwrite drift."""
 
+import hashlib
 import json
 import sys
 import tomllib
@@ -14,16 +15,40 @@ import install_seat_profile as profile  # noqa: E402
 TEXT, ROLES = profile.expected()
 
 
+def version_of(config):
+    data = tomllib.loads(config.read_text())
+    return (
+        "sha256:"
+        + hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    )
+
+
 class FakeRPC:
-    """config/batchWrite as Codex applies a top-level string key."""
+    """Codex config/read (user layer, semantic version) and version-pinned batchWrite."""
 
     calls: list = []
     collateral = False
+    competitor = None
 
     def call(self, method, params):
+        config = profile.Path(profile.os.environ["CODEX_HOME"]) / "config.toml"
+        if method == "config/read":
+            assert params == {"includeLayers": True}
+            name = {"type": "user", "file": str(config), "profile": None}
+            data = tomllib.loads(config.read_text())
+            return {
+                "layers": [
+                    {"name": name, "version": version_of(config), "config": data}
+                ]
+            }
         assert method == "config/batchWrite"
         FakeRPC.calls.append(params)
-        config = profile.Path(profile.os.environ["CODEX_HOME"]) / "config.toml"
+        if FakeRPC.competitor:
+            FakeRPC.competitor(config)
+        if params["expectedVersion"] != version_of(config):
+            raise RuntimeError(
+                "{'code': -32600, 'data': {'config_write_error_code': 'configVersionConflict'}}"
+            )
         (edit,) = params["edits"]
         line = f"{edit['keyPath']} = {json.dumps(edit['value'])}\n"
         extra = 'approval_policy = "never"\n' if self.collateral else ""
@@ -42,7 +67,9 @@ def seat(tmp_path, monkeypatch):
     (seat / "config.toml").chmod(0o600)
     FakeRPC.calls = []
     monkeypatch.setattr(FakeRPC, "collateral", False)
+    monkeypatch.setattr(FakeRPC, "competitor", None)
     monkeypatch.setattr(profile, "RPC", FakeRPC)
+    monkeypatch.setattr(profile, "conditional_write_proven", lambda: True)
     return seat
 
 
@@ -204,3 +231,32 @@ def test_symlink_or_directory_at_a_role_path_is_drift(seat):
     assert (seat / "agents" / "mechanical.toml").is_symlink()
     assert (seat / "agents" / "routine-worker.toml").is_dir()
     assert result["roles"]["routine-explorer"] == "match"
+
+
+def test_a_change_after_the_validated_snapshot_is_never_overwritten(seat, monkeypatch):
+    def competing_edit(config):
+        config.write_text('approval_policy = "on-request"\n' + config.read_text())
+
+    monkeypatch.setattr(FakeRPC, "competitor", staticmethod(competing_edit))
+    with pytest.raises(RuntimeError, match="changed since it was validated"):
+        profile.install(seat)
+    config = tomllib.loads((seat / "config.toml").read_text())
+    assert config["approval_policy"] == "on-request"
+    assert "developer_instructions" not in config
+    assert FakeRPC.calls[0]["expectedVersion"].startswith("sha256:")
+
+
+def test_a_codex_that_accepts_a_stale_version_writes_nothing(seat, monkeypatch):
+    monkeypatch.setattr(profile, "conditional_write_proven", lambda: False)
+    original = (seat / "config.toml").read_bytes()
+    with pytest.raises(RuntimeError, match="does not refuse a stale config version"):
+        profile.install(seat)
+    assert (seat / "config.toml").read_bytes() == original
+    assert not (seat / "agents").exists() and FakeRPC.calls == []
+
+
+def test_the_real_codex_refuses_a_stale_version_on_a_scratch_seat():
+    binary = profile.Path("/Applications/ChatGPT.app/Contents/Resources/codex")
+    if not binary.is_file() and not profile.shutil.which("codex"):
+        pytest.skip("no Codex binary on this host")
+    assert profile.conditional_write_proven() is True
