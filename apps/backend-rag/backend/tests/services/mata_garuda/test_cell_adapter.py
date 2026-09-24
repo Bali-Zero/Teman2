@@ -173,14 +173,15 @@ def test_asset_kind_authoritative_matches_ddl():
 
 
 def test_validate_inputs_accepts_canonical_values():
-    """The happy path should not raise."""
-    _validate_inputs(
+    """The happy path should not raise, and returns nothing (pure guard)."""
+    result = _validate_inputs(
         asset_kind="war_room_post",
         reliability="A",
         credibility=1,
         invalidation_mode="auto",
         tlp="red",
     )
+    assert result is None
 
 
 def test_validate_inputs_rejects_non_canonical_asset_kind():
