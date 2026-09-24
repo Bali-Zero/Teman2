@@ -1,0 +1,19 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "P7 (2026-09-25): 50134 (Angkutan Penyeberangan Perintis Antarprovinsi untuk Penumpang) is TERBATAS with a verified 49% cap (Perpres 49/2021 Lampiran III entry #19), yet its intel_2026.whatYouNeed opened with 'Foreign-owned PMA companies can fully own this business in Bali' — a full-ownership claim with no number, so L10 (which reads a NUMBER against the cap) and editorial_record_conformance.classify (which needs a national-scope word) were both blind to it; same shape as 55105. Census of every intel_2026 string on records with pma_max_asing < 100 or pma_status != TERBUKA: 50134 is the only affirmative full-ownership claim (the other 9 phrase hits are negations — 'not fully foreign-owned', 'cannot be wholly foreign-owned', 'not full ownership', 'below full ownership' — or a 100 cap). Only the guilty first sentence is replaced; the risk/verification sentence that follows is carried verbatim. 50134 is not certified in canonicalIntel, so nothing is re-issued and the field is not served today (latent defect: it would go live the day 50134 is certified).",
+  "codes": {
+    "50134": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #19"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "ac705631361fe73f345ad9084314d248aa3e88e04630168f059b7bbb855587a2",
+          "new": "Foreign ownership in this activity is capped at 49%: foreign shareholders can hold up to 49% of a PT PMA, and the rest of the shares must be held by Indonesian shareholders. The cap is set by Perpres 49/2021, Lampiran III, entry #19, and applies throughout Indonesia. Bali does not add a block on top of it, as the activity is not caught by the local moratorium. However, the government classifies it as medium-high risk, so you'll face extra scrutiny—address-specific verification is mandatory before you can operate, and compliance requirements are stricter than for low-risk activities."
+        }
+      }
+    }
+  }
+}
