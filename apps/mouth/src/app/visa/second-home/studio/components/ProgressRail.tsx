@@ -6,17 +6,29 @@ export interface ProgressRailProps {
   /** Total step count for the CURRENT branch — adapts as answers narrow
    *  down the wizard sequence (spec §4: "M adapts to branch"). */
   total: number;
+  /** One short name per step of the current branch ("Age", "Route", …).
+   *  Optional — without it the rail still reads "Step N of M". */
+  labels?: readonly string[];
 }
 
 type ProgressState = "complete" | "current" | "pending";
 
-/** Bathymetric progress scale + "Step N of M" label. Pure/presentational —
- *  StudioApp owns all step-sequencing logic. */
-export function ProgressRail({ step, total }: ProgressRailProps) {
+/** Labelled progress scale + "Step N of M" label. Pure/presentational —
+ *  StudioApp owns all step-sequencing logic.
+ *
+ *  2026-09-24 design pass: the dashed "bathymetric" segments with square
+ *  end-markers read as decoration (or as a broken line) and named nothing.
+ *  Each segment is now a rounded bar with the step's name under it; reached
+ *  and pending differ by SHAPE as well as colour (a 4px merah bar vs a 2px
+ *  ink-tint track), and the current step carries a merah bar, a node and the ink label; done
+ *  steps turn ink so the red marks only where you are. */
+export function ProgressRail({ step, total, labels }: ProgressRailProps) {
   const safeTotal = Number.isFinite(total) ? Math.max(1, Math.trunc(total)) : 1;
   const safeStep = Number.isFinite(step)
     ? Math.min(safeTotal, Math.max(1, Math.trunc(step)))
     : 1;
+  const names = labels && labels.length === safeTotal ? labels : undefined;
+  const currentName = names?.[safeStep - 1];
 
   // The displayed checkpoint is already reached, so step 1 of 6 is one-sixth complete.
   const soundings = Array.from({ length: safeTotal }, (_, index) => {
@@ -28,7 +40,7 @@ export function ProgressRail({ step, total }: ProgressRailProps) {
           ? "current"
           : "pending";
 
-    return { sounding, state };
+    return { sounding, state, name: names?.[index] };
   });
 
   return (
@@ -38,101 +50,160 @@ export function ProgressRail({ step, total }: ProgressRailProps) {
         aria-valuemax={safeTotal}
         aria-valuemin={0}
         aria-valuenow={safeStep}
+        aria-valuetext={
+          currentName
+            ? `Step ${safeStep} of ${safeTotal}: ${currentName}`
+            : undefined
+        }
         className="bz-shs-progress-scale"
         role="progressbar"
         style={{
           gridTemplateColumns: `repeat(${safeTotal}, minmax(0, 1fr))`,
         }}
       >
-        {soundings.map(({ sounding, state }) => (
+        {soundings.map(({ sounding, state, name }) => (
           <span
             aria-hidden="true"
             className="bz-shs-progress-sounding"
             data-progress-reached={state !== "pending" ? "true" : "false"}
             data-state={state}
             key={sounding}
-          />
+          >
+            {name ? <span className="bz-shs-progress-name">{name}</span> : null}
+          </span>
         ))}
       </div>
-      <p
-        aria-hidden="true"
-        style={{
-          margin: 0,
-          fontSize: "var(--text-xs, 0.72rem)",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "var(--color-text-muted)",
-        }}
-      >
-        Step {safeStep} of {safeTotal}
-      </p>
+      <div className="bz-shs-progress-meta">
+        <p aria-hidden="true" className="bz-shs-progress-count">
+          Step {safeStep} of {safeTotal}
+        </p>
+        {currentName ? (
+          <p aria-hidden="true" className="bz-shs-progress-current">
+            {currentName}
+          </p>
+        ) : null}
+      </div>
       <style>{`
         .bz-shs-progress-rail {
-          --bz-shs-progress-pending: color-mix(
+          --bz-shs-progress-track: color-mix(
             in srgb,
-            var(--text-primary) 46%,
+            var(--text-primary) 16%,
             transparent
           );
           display: grid;
-          gap: var(--space-1, 0.3rem);
+          gap: 10px;
         }
 
         .bz-shs-progress-scale {
           display: grid;
-          align-items: end;
-          gap: clamp(0.3rem, 0.8vw, 0.55rem);
-          min-height: 16px;
+          align-items: start;
+          gap: 6px;
         }
 
         .bz-shs-progress-sounding {
           position: relative;
           display: block;
-          height: 16px;
+          min-height: 12px;
         }
 
         .bz-shs-progress-sounding::before,
         .bz-shs-progress-sounding::after {
           content: "";
           position: absolute;
-          right: 0;
-          bottom: 0;
           box-sizing: border-box;
           transition:
-            border-color 220ms ease-out,
             background-color 220ms ease-out,
-            height 220ms ease-out;
+            height 220ms ease-out,
+            top 220ms ease-out;
         }
 
         .bz-shs-progress-sounding::before {
           left: 0;
+          right: 0;
+          top: 4px;
+          border-radius: 999px;
         }
 
         .bz-shs-progress-sounding[data-state="complete"]::before,
         .bz-shs-progress-sounding[data-state="current"]::before {
-          border-top: 3px solid var(--accent-funnel);
-        }
-
-        .bz-shs-progress-sounding[data-state="complete"]::after {
-          width: 3px;
-          height: 9px;
+          top: 3px;
+          height: 4px;
           background: var(--accent-funnel);
         }
 
-        .bz-shs-progress-sounding[data-state="current"]::after {
-          width: 4px;
-          height: 16px;
-          background: var(--accent-funnel);
+        /* Done is ink, "you are here" is merah: the red marks one place per
+         * viewport (R3) instead of flooding the rail as answers pile up. */
+        .bz-shs-progress-sounding[data-state="complete"]::before {
+          background: var(--text-primary);
         }
 
         .bz-shs-progress-sounding[data-state="pending"]::before {
-          border-top: 3px dashed var(--bz-shs-progress-pending);
+          height: 2px;
+          background: var(--bz-shs-progress-track);
         }
 
-        .bz-shs-progress-sounding[data-state="pending"]::after {
-          width: 7px;
-          height: 9px;
-          border: 2px solid var(--bz-shs-progress-pending);
-          background: var(--surface-base-solid, var(--surface-deep));
+        .bz-shs-progress-sounding[data-state="current"]::after {
+          right: -2px;
+          top: 0;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--accent-funnel);
+          box-shadow: 0 0 0 3px var(--surface-base);
+        }
+
+        .bz-shs-progress-name {
+          display: none;
+        }
+
+        .bz-shs-progress-meta {
+          display: flex;
+          align-items: baseline;
+          gap: 10px;
+        }
+
+        .bz-shs-progress-meta p {
+          margin: 0;
+          font-size: 0.8125rem;
+          line-height: 1.3;
+        }
+
+        .bz-shs-progress-count {
+          color: var(--text-secondary);
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0.02em;
+        }
+
+        .bz-shs-progress-current {
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+
+        .bz-shs-progress-current::before {
+          content: "·";
+          margin-right: 10px;
+          color: var(--text-secondary);
+          font-weight: 400;
+        }
+
+        @media (min-width: 720px) {
+          .bz-shs-progress-name {
+            display: block;
+            padding-top: 18px;
+            font-size: 0.8125rem;
+            line-height: 1.25;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .bz-shs-progress-sounding[data-state="current"] .bz-shs-progress-name {
+            color: var(--text-primary);
+            font-weight: 600;
+          }
+          .bz-shs-progress-rail:has(.bz-shs-progress-name) .bz-shs-progress-current {
+            display: none;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

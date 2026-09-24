@@ -91,14 +91,54 @@ describe("ProgressRail", () => {
     expect(progressbar.querySelectorAll('[data-state="pending"]')).toHaveLength(
       3,
     );
+    // Re-pinned 2026-09-24 (design pass): the dashed segment + square end-marker
+    // read as decoration; the shape channel is now bar THICKNESS (4px reached vs
+    // 2px pending track) plus a node on the current step.
     expect(style).toMatch(
-      /data-state="complete"[\s\S]*?border-top:\s*3px solid/,
+      /data-state="complete"\]::before,[\s\S]*?data-state="current"\]::before\s*\{[^}]*height:\s*4px/,
     );
     expect(style).toMatch(
-      /data-state="pending"[\s\S]*?border-top:\s*3px dashed/,
+      /data-state="pending"\]::before\s*\{[^}]*height:\s*2px/,
     );
     expect(style).toMatch(
-      /data-state="pending"[\s\S]*?::after[\s\S]*?border:\s*2px solid/,
+      /data-state="current"\]::after\s*\{[^}]*border-radius:\s*50%/,
+    );
+  });
+
+  it("names every step and exposes the current one through aria-valuetext", () => {
+    const labels = [
+      "Age",
+      "Route",
+      "Capital",
+      "Family",
+      "Timeline",
+      "Location",
+    ];
+    const { container } = render(
+      <ProgressRail step={2} total={6} labels={labels} />,
+    );
+    const progressbar = screen.getByRole("progressbar");
+
+    expect(progressbar).toHaveAttribute("aria-valuetext", "Step 2 of 6: Route");
+    expect(
+      Array.from(container.querySelectorAll(".bz-shs-progress-name")).map(
+        (n) => n.textContent,
+      ),
+    ).toEqual(labels);
+    expect(screen.getByText("Step 2 of 6")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("ignores a label list that does not match the branch length", () => {
+    const { container } = render(
+      <ProgressRail step={2} total={6} labels={["Age", "Route"]} />,
+    );
+
+    expect(container.querySelectorAll(".bz-shs-progress-name")).toHaveLength(0);
+    expect(screen.getByRole("progressbar")).not.toHaveAttribute(
+      "aria-valuetext",
     );
   });
 

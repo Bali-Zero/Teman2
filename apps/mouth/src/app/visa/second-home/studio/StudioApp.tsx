@@ -104,24 +104,83 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.68rem",
-  letterSpacing: "0.24em",
-  textTransform: "uppercase",
-  color: "var(--color-text-muted)",
-  margin: 0,
+/** Short step names for the labelled progress rail — the same words the
+ *  "Your plan so far" memo uses for its rows, so the two read as one list. */
+const STEP_LABELS: Record<QuestionId, string> = {
+  age: "Age",
+  route: "Route",
+  capital: "Capital",
+  seniorFunding: "Senior funding",
+  property: "Property",
+  family: "Family",
+  horizon: "Timeline",
+  location: "Location",
 };
+
+/** Identity lockup (2026-09-24 design pass): the Bali Zero wordmark in merah
+ *  (R4 §4 restraint budget: "wordmark in merah" is one of red's allowed
+ *  STRUCTURE duties) + the product name, replacing a lone muted eyebrow that
+ *  never said whose studio this is. */
+const lockupStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  margin: 0,
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  color: "var(--text-secondary)",
+};
+
+const lockupMarkStyle: React.CSSProperties = {
+  width: 14,
+  height: 10,
+  borderRadius: 2,
+  flexShrink: 0,
+  background:
+    "linear-gradient(var(--accent-funnel) 50%, var(--surface-raised) 50%)",
+  boxShadow: "0 0 0 1px var(--border-default)",
+};
+
+const lockupRuleStyle: React.CSSProperties = {
+  width: 1,
+  height: 12,
+  background: "var(--border-strong)",
+};
+
+function Lockup() {
+  return (
+    <p style={lockupStyle}>
+      <span aria-hidden="true" style={lockupMarkStyle} />
+      <span style={{ color: "var(--accent-funnel-text)" }}>Bali Zero</span>
+      <span aria-hidden="true" style={lockupRuleStyle} />
+      <span>Second Home Studio</span>
+    </p>
+  );
+}
 
 const mastheadHeadingStyle: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--font-serif, Georgia, serif)",
-  fontSize: "clamp(3.4rem, 8vw, 6.6rem)",
+  // 2026-09-24: was clamp(3.4rem, 8vw, 6.6rem) — a poster title that pushed
+  // the first question below the fold at 390x844. The question is the peak
+  // of this viewport (R3); the masthead names the page and gets out of the way.
+  fontSize: "clamp(2rem, 4.2vw, 3.25rem)",
   fontWeight: 500,
-  letterSpacing: "-0.035em",
-  lineHeight: 0.92,
-  maxWidth: "11ch",
+  letterSpacing: "-0.02em",
+  lineHeight: 1.02,
   textWrap: "balance",
   color: "var(--text-primary)",
+};
+
+/** One plain outcome line under the masthead — what the visitor gets for
+ *  answering. No count, no promise: the rail already shows the steps. */
+const mastheadLedeStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: "1.0625rem",
+  lineHeight: 1.45,
+  color: "var(--text-secondary)",
 };
 
 /** S13 verdict-crown: on the verdict stage the masthead recedes to a quiet,
@@ -681,6 +740,11 @@ export function StudioApp() {
         background: "var(--surface-base)",
         color: "var(--text-primary)",
         minHeight: "100vh",
+        // The site root declares a dark color-scheme for the editorial theme;
+        // on this paper ground it painted every native checkbox (the readiness
+        // checklist) as a solid black square that read as "already ticked".
+        colorScheme: "light",
+        accentColor: "var(--text-primary)",
       }}
     >
       {/* See SecondHomeLanding: <body> is an ancestor and keeps the editorial
@@ -691,33 +755,39 @@ export function StudioApp() {
         className="bz-shs-content"
         style={{
           display: "grid",
-          gap: "var(--space-5, 2rem)",
+          gap: isVerdictStage ? "var(--space-5, 2rem)" : 24,
           maxWidth: "1120px",
           margin: "0 auto",
-          padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
         }}
       >
         <header
           style={{
             display: "grid",
-            gap: isVerdictStage
-              ? "var(--space-1, 0.3rem)"
-              : "var(--space-3, 0.75rem)",
+            gap: isVerdictStage ? 6 : 8,
             padding: isVerdictStage
-              ? "clamp(1rem, 3vw, 1.75rem) 0 clamp(0.5rem, 1vw, 0.75rem)"
-              : "clamp(2rem, 7vw, 5rem) 0 clamp(1rem, 2vw, 1.5rem)",
+              ? "clamp(1rem, 3vw, 1.75rem) 0 0"
+              : "clamp(0.75rem, 3vw, 2.5rem) 0 0",
           }}
         >
-          <p style={eyebrowStyle}>Second Home Studio</p>
+          <Lockup />
           {isVerdictStage ? (
             <p style={mastheadLabelStyle}>Check your fit</p>
           ) : (
-            <h1 style={mastheadHeadingStyle}>Check your fit</h1>
+            <>
+              <h1 style={mastheadHeadingStyle}>Check your fit</h1>
+              <p style={mastheadLedeStyle}>
+                See which Second Home route fits you.
+              </p>
+            </>
           )}
         </header>
 
         {!isVerdictStage ? (
-          <ProgressRail step={stepIndex + 1} total={sequence.length} />
+          <ProgressRail
+            step={stepIndex + 1}
+            total={sequence.length}
+            labels={sequence.map((q) => STEP_LABELS[q])}
+          />
         ) : null}
 
         {isVerdictStage && verdict ? (
@@ -837,6 +907,14 @@ export function StudioApp() {
         </div>
 
         <style>{`
+        .bz-shs-content {
+          padding: 8px 16px 32px;
+        }
+        @media (min-width: 640px) {
+          .bz-shs-content {
+            padding: 16px 24px 48px;
+          }
+        }
         .bz-shs-layout {
           display: grid;
           gap: var(--space-4, 1.5rem);
