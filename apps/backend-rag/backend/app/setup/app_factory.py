@@ -176,6 +176,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("⚠️ CrossEncoder warm-up failed (non-critical): %s", e)
 
+        # Eager-warm the AgenticRAGOrchestrator singleton (PENDING-ARMS L345):
+        # without this, the first call happens inside the WhatsApp
+        # BackgroundTasks job, so the first client reply after every
+        # deploy/restart pays the ~5-25s import cost on the client path.
+        try:
+            from backend.app.deps.orchestrator import warm_orchestrator
+
+            await warm_orchestrator(app)
+            logger.info("✅ AgenticRAGOrchestrator singleton warmed at startup")
+        except Exception as e:
+            logger.warning("⚠️ Orchestrator warm-up failed (non-critical): %s", e)
+
         # Background workers kill switch (2026-04-12 incident).
         # When DISABLE_BACKGROUND_WORKERS=1 we skip every long-running async
         # worker that holds DB connections and retries on failure. These are

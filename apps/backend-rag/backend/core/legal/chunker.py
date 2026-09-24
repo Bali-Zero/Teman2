@@ -257,21 +257,29 @@ class LegalChunker:
         Returns:
             List of Pasal text chunks
         """
-        # Split by Pasal pattern
-        splits = PASAL_PATTERN.split(text)
+        # PENDING-ARMS L847: PASAL_PATTERN has 2 capture groups, so
+        # re.split() inserts an extra separator string (the text between
+        # one Pasal's match-end and the next's match-start -- empty when
+        # they're back-to-back, but a real BAB/Bagian header when one
+        # intervenes) between every (num, text) pair. A fixed stride-2 walk
+        # over that list silently mis-paired num/text for every Pasal after
+        # the first. finditer(), the same approach structure_parser.py
+        # already uses for this pattern, reads each match's own groups
+        # directly and has no separator to miscount.
+        pasal_matches = list(PASAL_PATTERN.finditer(text))
 
-        # First split is usually preamble (before first Pasal)
         pasal_chunks = []
-        if splits[0].strip():
-            pasal_chunks.append(splits[0].strip())
 
-        # Process Pasal pairs (number, text)
-        for i in range(1, len(splits), 2):
-            if i + 1 < len(splits):
-                pasal_num = splits[i]
-                pasal_text = splits[i + 1]
-                pasal_chunk = f"Pasal {pasal_num}\n{pasal_text}"
-                pasal_chunks.append(pasal_chunk.strip())
+        preamble_end = pasal_matches[0].start() if pasal_matches else len(text)
+        preamble = text[:preamble_end].strip()
+        if preamble:
+            pasal_chunks.append(preamble)
+
+        for match in pasal_matches:
+            pasal_num = match.group(1)
+            pasal_text = match.group(2)
+            pasal_chunk = f"Pasal {pasal_num}\n{pasal_text}"
+            pasal_chunks.append(pasal_chunk.strip())
 
         return pasal_chunks
 
