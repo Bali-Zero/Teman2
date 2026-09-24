@@ -29,9 +29,15 @@ class FakeRPC:
     calls: list = []
     collateral = False
     competitor = None
+    tool_names = profile.RESEARCH_READ_TOOLS | {"notebook_create", "runtime_added_write_tool"}
 
     def call(self, method, params):
         config = profile.Path(profile.os.environ["CODEX_HOME"]) / "config.toml"
+        if method == "mcpServerStatus/list":
+            data = tomllib.loads(config.read_text())
+            disabled = data.get("mcp_servers", {}).get(profile.NOTEBOOKLM, {}).get("disabled_tools", [])
+            return {"data": [{"name": profile.NOTEBOOKLM,
+                              "tools": {name: {} for name in self.tool_names - set(disabled)}}]}
         if method == "config/read":
             assert params == {"includeLayers": True}
             name = {"type": "user", "file": str(config), "profile": None}
@@ -49,10 +55,25 @@ class FakeRPC:
             raise RuntimeError(
                 "{'code': -32600, 'data': {'config_write_error_code': 'configVersionConflict'}}"
             )
-        (edit,) = params["edits"]
-        line = f"{edit['keyPath']} = {json.dumps(edit['value'])}\n"
-        extra = 'approval_policy = "never"\n' if self.collateral else ""
-        config.write_text(line + extra + config.read_text())
+        data = tomllib.loads(config.read_text())
+        for edit in params["edits"]:
+            parts = edit["keyPath"].split(".")
+            target = data
+            for part in parts[:-1]:
+                target = target.setdefault(part, {})
+            target[parts[-1]] = edit["value"]
+        if self.collateral:
+            data["approval_policy"] = "never"
+
+        def lines(value, path=()):
+            for name, item in value.items():
+                key = (*path, name)
+                if isinstance(item, dict):
+                    yield from lines(item, key)
+                else:
+                    yield ".".join(map(json.dumps, key)) + " = " + json.dumps(item) + "\n"
+
+        config.write_text("".join(lines(data)))
         return {}
 
     def close(self):
@@ -71,6 +92,111 @@ def seat(tmp_path, monkeypatch):
     monkeypatch.setattr(profile, "RPC", FakeRPC)
     monkeypatch.setattr(profile, "conditional_write_proven", lambda: True)
     return seat
+
+
+def notebook_seat(seat):
+    config = seat / "config.toml"
+    config.write_text(config.read_text() + '\n[mcp_servers.notebooklm-mcp]\ncommand = "fixture"\n')
+    return config
+
+
+def test_loadout_installs_only_absent_skill_bound_without_new_server(seat):
+    before = tomllib.loads((seat / "config.toml").read_text())
+    result = profile.loadout(seat)
+    after = tomllib.loads((seat / "config.toml").read_text())
+    assert result["installed"] and result[profile.NOTEBOOKLM] == "not_configured"
+    assert after.pop("skills") == {"max_context_tokens": 3000}
+    assert after == before and not (seat / "agents").exists()
+
+
+def test_loadout_discovers_runtime_inventory_and_retains_queries(seat):
+    config = notebook_seat(seat)
+    before_bytes = config.read_bytes()
+    result = profile.loadout(seat)
+    data = tomllib.loads(config.read_text())
+    assert result["installed"] and result["exposed_tools"] == 10
+    assert data["mcp_servers"][profile.NOTEBOOKLM]["disabled_tools"] == ["notebook_create", "runtime_added_write_tool"]
+    assert data["mcp_servers"][profile.NOTEBOOKLM]["command"] == "fixture"
+    assert Path(result["backup"], "config.toml").read_bytes() == before_bytes
+    assert (config.stat().st_mode & 0o777) == 0o600
+    assert len(FakeRPC.calls[0]["edits"]) == 2  # one version-pinned batch
+    bytes_after = config.read_bytes()
+    assert profile.loadout(seat)["installed"]
+    assert config.read_bytes() == bytes_after and len(FakeRPC.calls) == 1
+
+
+def test_loadout_check_is_config_read_only(seat):
+    config = notebook_seat(seat)
+    before = config.read_bytes()
+    result = profile.loadout(seat, check=True)
+    assert not result["installed"] and result["backup"] is None
+    assert config.read_bytes() == before and not FakeRPC.calls
+
+
+def test_loadout_preserves_operator_values_and_profiles(seat):
+    config = notebook_seat(seat)
+    config.write_text(config.read_text() + 'disabled_tools = []\n\n[skills]\nmax_context_tokens = 7000\n\n[profiles.research]\nmodel = "assigned"\n')
+    before = config.read_bytes()
+    result = profile.loadout(seat)
+    assert result["skills.max_context_tokens"] == result[profile.NOTEBOOKLM] == "drift"
+    assert config.read_bytes() == before and not FakeRPC.calls
+
+
+def test_loadout_rejects_config_change_during_tool_discovery(seat, monkeypatch):
+    config = notebook_seat(seat)
+    original = profile.notebook_tools
+    concurrent = None
+
+    def discover(path):
+        nonlocal concurrent
+        tools = original(path)
+        config.write_text(config.read_text() + '\n[profiles.concurrent]\nmodel = "other"\n')
+        concurrent = config.read_bytes()
+        return tools
+
+    monkeypatch.setattr(profile, "notebook_tools", discover)
+    with pytest.raises(RuntimeError, match="configVersionConflict"):
+        profile.loadout(seat)
+    assert config.read_bytes() == concurrent
+
+
+def test_loadout_discovery_failure_never_writes_config(seat, monkeypatch):
+    config = notebook_seat(seat)
+    before = config.read_bytes()
+    monkeypatch.setattr(FakeRPC, "tool_names", set())
+    with pytest.raises(RuntimeError, match="discovery unavailable"):
+        profile.loadout(seat)
+    assert config.read_bytes() == before and not FakeRPC.calls
+
+
+def test_loadout_does_not_override_operator_allowlist(seat):
+    config = notebook_seat(seat)
+    config.write_text(config.read_text() + 'enabled_tools = ["notebook_list"]\n\n[skills]\nmax_context_tokens = 3000\n')
+    before = config.read_bytes()
+    result = profile.loadout(seat)
+    assert result[profile.NOTEBOOKLM] == "drift"
+    assert config.read_bytes() == before and not FakeRPC.calls
+
+
+def test_loadout_does_not_start_operator_disabled_server(seat, monkeypatch):
+    config = notebook_seat(seat)
+    config.write_text(config.read_text() + 'enabled = false\n')
+    monkeypatch.setattr(FakeRPC, "tool_names", set())  # discovery would fail if called
+    result = profile.loadout(seat)
+    assert result["installed"] and result[profile.NOTEBOOKLM] == "disabled_by_operator"
+    assert tomllib.loads(config.read_text())["mcp_servers"][profile.NOTEBOOKLM]["enabled"] is False
+
+
+def test_rpc_initialization_failure_restores_selected_seat(seat, monkeypatch):
+    monkeypatch.setenv("CODEX_HOME", "prior-seat")
+
+    def unavailable():
+        raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(profile, "RPC", unavailable)
+    with pytest.raises(RuntimeError, match="unavailable"):
+        profile.rpc_call(seat, "config/read", {})
+    assert profile.os.environ["CODEX_HOME"] == "prior-seat"
 
 
 def test_fresh_seat_gets_exact_profile_with_backup(seat):

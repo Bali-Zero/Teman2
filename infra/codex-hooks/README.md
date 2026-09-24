@@ -173,6 +173,35 @@ mission-colour gate, and those stay enforced by the harness's required checks, n
 by the roles. New sessions consume the
 profile; running sessions keep what they loaded.
 
+### Skills and NotebookLM loadout
+
+After the seat profile is installed, run
+`install_seat_profile.py --seat ~/.codex --loadout` (or add `--check` for a
+configuration read-only report). It applies the same absent/match/drift policy
+to `skills.max_context_tokens = 3000`. For an existing enabled `notebooklm-mcp`
+server, it discovers the current tool inventory through native
+`mcpServerStatus/list` and installs `disabled_tools` for everything except:
+`notebook_list`, `notebook_get`, `notebook_describe`, `source_describe`,
+`source_get_content`, `notebook_query`, `notebook_query_start`,
+`notebook_query_status`, `cross_notebook_query`, `collection_list`.
+
+The server inventory is not hard-coded. An absent server is not created, and an
+operator-disabled server is not started. Existing different skill bounds,
+allowlists and disabled-tool choices are preserved and reported as drift.
+After an initial install, newly discovered tools that would require extending
+the existing filter are likewise drift, requiring review. All config writes use
+one snapshot captured before discovery and the existing version-pinned native
+writer; only the requested keys may change. The install receipt is
+`state/nuzantara-seat-loadout-install.json`; its backup supports manual rollback
+under the same exclusive-writer condition as the seat profile.
+
+For a research session needing the full NotebookLM tool set, launch
+`codex -c 'mcp_servers.notebooklm-mcp.disabled_tools=[]'` with the usual profile
+and command arguments. This per-session override restores disabled tools without
+editing the default loadout. An operator's separate `enabled_tools` allowlist
+still applies. New sessions consume configuration changes; auth, trust, assigned
+models/effort and unrelated profile choices are untouched.
+
 ## Validation
 
 - test_context_bridge.py: deterministic regression cases for token measurement,
