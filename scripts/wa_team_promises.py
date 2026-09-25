@@ -509,6 +509,15 @@ async def run_tick(pool: asyncpg.Pool, *, apply: bool, limit: int | None,
         elif to_insert:
             metrics.promises_created += len(to_insert)
 
+        # Advance the cursor to this batch's highest fetched id REGARDLESS of
+        # `stop` — rows are ORDER BY id, so the last row is always the max —
+        # otherwise the next `id > $1` refetches the exact same batch forever
+        # (a bug caught by the round-1 Pro dry-run: 200 rows reprocessed
+        # ~1000x over 81 minutes until a flaky Ollama call finally broke the
+        # loop). `safe_watermark` still stops short of an unjudged id — this
+        # only moves the SELECT window, not what gets persisted.
+        offset_id = rows[-1]["id"]
+
         if remaining is not None:
             remaining -= len(rows)
         if stop:

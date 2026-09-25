@@ -8,55 +8,77 @@ l_level: L2
 grader: fable-5 (final on-disk gate, different family from the builder)
 objective: >-
   T3 promise extractor goes live, Pro-local (P1 of the T3-T7 rebuild; owner
-  ruling 2026-09-25 — data never leaves Pro, Symbiosis Law 2). New migration
-  321 adds team_promises to Pro's ledger without depending on anything after
-  246 (Pro stops at 246, slot 200 collides with a probe row); every statement
-  is IF NOT EXISTS so the Fly release's `migrate apply-all` on merge is a
-  no-op on Fly's existing 7-row team_promises table. Floor is Gear 3 because
-  the diff touches migrations_v2/ (hot-zone).
+  ruling 2026-09-25 — data never leaves Pro, Symbiosis Law 2). Round 1,
+  built from spec_7316_r1.md after a codex BLOCK on the original PR: the
+  schema left migrations_v2 for Pro-local versioned SQL applied by
+  --init-schema, classification became regex-candidate + local-judge
+  (Pro Ollama qwen3.5:9b) instead of regex alone, the DSN is guarded
+  local-only, and errors are sanitized before they can reach Telegram.
+  Floor stays Gear 3 — the diff still touches a LaunchAgent wrapper
+  (infra/launchagents/wrappers/, hot-zone) even after the migration left.
 constraints:
-  - "Every migration statement IF NOT EXISTS — merging apps/backend-rag/**
-    deploys Fly and the release runs `migrate apply-all`."
+  - "Pro-local DDL only, IF NOT EXISTS everywhere, no BEGIN/COMMIT inside
+    the .sql file — the transaction boundary is the Python caller's."
   - "No ALTER on whatsapp_message_context (1.6k writes/day from the live
     bridge) — thread_key lives only in the new team_promises columns."
+  - "WA_TEAM_PROMISES_DSN only, refused before any connection attempt if
+    the target is not the local Pro DB (host/dbname/FLY_* guard)."
+  - "Every error path is sanitized — type, sqlstate, stage and numeric
+    counts only, never the exception message, DETAIL or a traceback."
+  - "Regex only proposes candidates; the local judge decides
+    future_commitment_by_sender. Ollama unreachable -> unjudged, never
+    stored, watermark does not advance past it."
   - "Logs and the digest line carry COUNTS ONLY — no body, name or phone
     (Law 2 / UU-PDP)."
-  - "Past-tense matches (v1 defect 4a) are fulfilments, never stored as a
-    promise."
 acceptance:
-  - "squawk (CI's exact exclude list) against migrations_v2/321_*.sql → 0
-    issues"
   - "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest
-    scripts/tests/test_wa_team_promises.py -q → 12 passed"
-  - "Pro dry-run, read-only, no migration applied: 354 promise candidates in
-    30 days, 25 past-tense fulfilments correctly excluded, 0 DB writes
-    (open_total/overdue_total stayed None — dry-run never touches
-    team_promises)"
+    scripts/tests/test_wa_team_promises.py -q → 40 passed (round-0 tense
+    corpus verbatim, judge mocked guilt/innocence + fail-fast, DSN guard,
+    error sanitization, pg_catalog index verification, backfill floor,
+    batch-cursor advance — this last one caught a real bug live, see
+    risks below)"
+  - "Pro dry-run, read-only, --init-schema NOT executed, local Ollama used
+    for the judge: 200 scanned, 2 candidates, 0 judged-true, 1
+    judged-false, 1 unjudged (fail-fast fired on real Ollama contention —
+    correct behavior, not a defect), 0 DB writes"
 consumer_map:
   - "Pro cron (coordinator-installed after this PR merges, not by this PR)
-    → team_promises rows"
+    → team_promises rows, seeded by --init-schema (also coordinator-run)"
   - "scripts/tg_notify.py --tier digest → Zero's digest spool, a
-    counts-only `promises: new/open/overdue` line"
+    counts-only `promises: new/open/overdue/unjudged` line"
 risks:
   - "Honest limit: this session (Sonnet 5, the builder) cannot itself post
     the Gear-3 fable-gate verdict — a fresh gate session runs
     scripts/harness_fable_gate.py before merge, per the Builder Contract's
-    generator-never-grader rule. This PR is NOT armed and NOT merged by this
-    session."
+    generator-never-grader rule. This PR is NOT armed and NOT merged by
+    this session."
+  - "The local judge is a second network hop (loopback, Ollama) per
+    candidate — bounded by fail-fast (one unreachable call stops judging
+    the rest of the tick) rather than a per-candidate timeout budget.
+    Measured live on Pro: a single Ollama call took 21.67s total_duration
+    against ~0.93s of actual prompt/eval time — queueing behind the
+    concurrently-cron'd wa-mirror-attention-classifier on the SAME
+    qwen3.5:9b model, exactly the contention risk the original spec
+    named. The first Pro dry-run of this round also caught a real bug
+    live: the batch cursor never advanced (offset_id set once before the
+    loop, never updated), so it rescanned the same 200-row batch ~1000x
+    over 81 minutes until a flaky Ollama call finally broke the loop.
+    Fixed (scripts/wa_team_promises.py) with a regression test that
+    fails against the pre-fix code and passes against the fix."
 pii: none
 scope:
-  - "apps/backend-rag/backend/db/migrations_v2/321_team_promises_pro_local.sql
-    — new team_promises table (Pro-local, no FK to clients/
-    whatsapp_conversations), 4 additive columns, uix_team_promises_msg_type
-    unique index."
-  - "scripts/wa_team_promises.py — T3 promise extractor: tense split (fixes
-    v1 defect 4a), D6 due_at default (+48h, owner-changeable), thread_key
-    per spec §2.3, id watermark seeded 30 days back, flock, counts-only
-    digest."
-  - "infra/launchagents/wrappers/wa-team-promises-run.sh — tracked
-    cron-runner.sh wrapper (crontab line documented, NOT installed by this
-    PR)."
-  - "scripts/tests/test_wa_team_promises.py — guilt/innocence tense split
-    (id/en/it), due_at default, watermark idempotency, thread_key, and a
-    payload test proving the digest line never carries a body window or a
-    name."
+  - "scripts/sql/pro_local/team_promises.sql (NEW) — Pro-local DDL, no
+    migrations_v2 involvement; precedent cited in the file's own header
+    (scripts/replay_outbox_throttled.py's DLQ_DDL)."
+  - "scripts/wa_team_promises.py — --init-schema + pg_catalog index
+    verification; clause-scoped candidate generation feeding a mocked-in-
+    tests Ollama judge; WA_TEAM_PROMISES_DSN guard; sanitized error line;
+    rolling 30-day created_at floor on every batch query."
+  - "infra/launchagents/wrappers/wa-team-promises-run.sh — adds the
+    --init-schema / --dry-run one-time commands to the header; crontab
+    line still documented, NOT installed by this PR."
+  - "scripts/tests/test_wa_team_promises.py — 39 tests: the round-0 tense
+    corpus verbatim, the judge mocked (guilt/innocence/fail-fast), the
+    DSN guard, error-line sanitization, pg_catalog index verification
+    (fake connection), thread_key, due_at, watermark, and the digest
+    payload test."

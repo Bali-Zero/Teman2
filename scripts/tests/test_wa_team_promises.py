@@ -29,6 +29,7 @@ from scripts.wa_team_promises import (
     _thread_key,
     find_candidates_in_message,
     judge_candidates,
+    run_tick,
     verify_unique_index,
 )
 import scripts.wa_team_promises as wa_team_promises
@@ -285,6 +286,85 @@ def test_batch_sql_always_carries_the_30_day_created_at_floor():
     floor into the batch query itself, so watermark=0 is always safe."""
     assert "created_at >= now() - interval '30 days'" in _BATCH_SQL
     assert "id > $1" in _BATCH_SQL
+
+
+# ---------------------------------------------------------------------------
+# run_tick — the batch cursor must ADVANCE (Pro dry-run caught this live:
+# offset_id was set once before the loop and never updated, so every batch
+# refetched the SAME 200 rows — 196,800 "scanned" rows / 81 minutes wall
+# time on a 30-day window that should hold a few thousand at most, until a
+# flaky Ollama call finally broke the loop). Fake pool/conn, no real DB;
+# `fetch` filters an in-memory row set by `id > offset_id` exactly like the
+# real SQL, so a non-advancing cursor reproduces the bug's shape here too.
+# ---------------------------------------------------------------------------
+
+class _FakeAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *_exc):
+        return False
+
+
+class _FakeTxn:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+
+class _FakeTickConn:
+    def __init__(self, rows):
+        self._rows = rows
+        self.fetch_offsets: list[int] = []
+
+    async def fetch(self, _sql, offset_id, limit):
+        self.fetch_offsets.append(offset_id)
+        return [r for r in self._rows if r["id"] > offset_id][:limit]
+
+    def transaction(self):
+        return _FakeTxn()
+
+    async def execute(self, *_args):
+        return "INSERT 0 1"
+
+    async def fetchrow(self, *_args):
+        return {"open_total": 0, "overdue_total": 0}
+
+
+class _FakePool:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
+
+
+def _row(rid: int) -> dict:
+    return {
+        "id": rid, "client_id": None, "team_member_phone": "628", "team_member_email": None,
+        "chat_jid": "jid", "counterpart_phone": None, "counterpart_lid": None,
+        "base_dt": BASE, "body": "no promise pattern here, plain text",
+    }
+
+
+@pytest.mark.asyncio
+async def test_run_tick_cursor_advances_across_batches(tmp_path, monkeypatch):
+    monkeypatch.setattr(wa_team_promises, "WATERMARK_FILE", tmp_path / "wm.txt")
+    conn = _FakeTickConn([_row(1), _row(2), _row(3)])
+    pool = _FakePool(conn)
+
+    metrics = await run_tick(pool, apply=False, limit=10, batch_size=2)
+
+    assert metrics.total_scanned == 3, (
+        "a non-advancing cursor re-scans the same batch until `limit` is "
+        "exhausted — 10 here, not 3"
+    )
+    assert conn.fetch_offsets == [0, 2, 3]
 
 
 # ---------------------------------------------------------------------------
