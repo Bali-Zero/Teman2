@@ -1,0 +1,31 @@
+task_id: token-efficiency-six-task-accounting
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Extend the existing seat usage collector so task-level consumption can be joined, by full
+  SHA-256 session/parent identifiers across Claude and Codex, to explicit independently
+  verified task outcomes, counting children, retries and failures. Row 6 of
+  token-efficiency-six (Zero ordered all six for Claude and Codex).
+scope: scripts/usage collector, its tests, README and the manifest example; no new service or daemon
+acceptance:
+  - text: WHEN no task-outcome manifest exists, the collector SHALL emit the legacy snapshot unchanged (seats[] bytes identical).
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q scripts/usage/test_seat_usage_collector.py
+  - text: A task SHALL be verified_complete only with an evidence hash, a closed window containing the verification time, a non-gate participant, and a verifier that is a lineage root in the union of observed native and declared edges (no parent, no participant of any role descending from it), declared as overhead, with at least one reducer-selected non-zero usage event inside the window and no later than the verification time; otherwise it SHALL stay unknown.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q scripts/usage/test_seat_usage_collector.py
+  - text: Duplicate cumulative usage, parent-child work, failures/retries and missing outcomes SHALL be counted once, visible, and missing or damaged usage SHALL exclude the task from the verified denominator (unknown is never zero).
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q scripts/usage/test_seat_usage_collector.py
+  - text: Output SHALL carry only hashes, enums, counters, booleans and timestamps; provider counters stay separate (Codex cached input and reasoning output are subsets; Claude buckets are separate); no monetary proxy.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q scripts/usage/test_seat_usage_collector.py
+  - text: WHEN released, the existing 30-minute seat-usage LaunchAgent (same label, cadence, seat map and output; on M5 pointed at an immutable release copy of the merged collector) SHALL consume a real mission manifest from ~/.agent/cost-ledger/task-outcomes/ and emit tasks/tasks_meta in its snapshot.
+    probe: per-host snapshot read after the next scheduled run (prove-live)
+assumptions:
+  - text: The seat-usage LaunchAgent runs scripts/usage/seat_usage_collector.py from each host's main checkout every 1800 s.
+    status: verified
+    probe: plutil ProgramArguments/StartInterval on M5, Pro and Mini (2026-09-24T23:33Z)
+  - text: Pro and Mini main checkouts track origin/main; the M5 main checkout is operator-owned and is not pulled by agents.
+    status: verified
+    probe: git rev-list --count HEAD..origin/main per host (Pro 4, Mini 1, M5 68 at 23:33Z) and M5 reflog (manual pulls)
+budget: Parent Codex implementation lane; independent Claude Opus 5.5 reviews (four rounds); fresh Opus 5.5 xhigh gate; Claude release owner.
+council_reason: Floor 2 from the size term (+1049/-7 across 4 files); cross-family review by Claude of a Codex-built candidate (four rounds against the written lineage contracts), then a fresh Opus 5.5 xhigh final gate on the exact bytes.
