@@ -49,6 +49,47 @@ production deployment check, or a global gate on other hooks' memory writes.
 Codex executes matching hooks concurrently, so this adapter does not claim to
 serialize unrelated Stop hooks.
 
+### Reusing verification receipts
+
+SessionStart, PostCompact and `receipt-status` classify the most recent receipt as
+`none`, `reusable`, `stale` or `failed`. Hook classification covers code and
+resolved executable and package-installation metadata. Hooks do not share the tool login shell's
+environment: their guidance requires running `receipt-status` in the execution shell
+before reusing checks. That verb additionally rechecks original executable lookup
+names and the selected environment projection. A continuation inherits the previous
+receipt as a claim and revalidates it against its current worktree. A failed
+command never becomes a reusable PASS; legacy receipts without an environment
+binding are stale. Stop uses the same classification for changed code. `receipt-status`
+prints only the classification; the full `status` verb remains available for diagnostics.
+
+In addition to the existing Git input fingerprint, a receipt observes the
+original executable lookup names, their resolved targets and stat metadata,
+`pyvenv.cfg`, top-level entries in the executable's venv `site-packages`, and
+each distribution's `*.dist-info/RECORD`. Top-level `.pth` files are included.
+Normal package installs, upgrades and removals change these metadata; observation
+cost grows with package count, without recursively walking package contents.
+The original venv path is retained before resolving interpreter symlinks.
+Unreadable metadata, missing distribution records, legacy `.egg-info`, linked
+package directories, and observations exceeding 10,000 entries fail closed to
+stale. Host scheduling delays alone do not invalidate receipts; there is no
+elapsed-time validity cut-off. Environment drift during
+the check also prevents reuse. No environment values or test output are stored.
+
+The hashed environment projection is exactly: `PATH`, `PYTHONPATH`, `PYTHONHOME`,
+`VIRTUAL_ENV`, `CONDA_PREFIX`, `NODE_PATH`, `NODE_OPTIONS`, `NODE_ENV`,
+`PYTEST_ADDOPTS`, `PYTEST_DISABLE_PLUGIN_AUTOLOAD`, `PYTHONHASHSEED`,
+`PYTHONNOUSERSITE`, `LANG`, `LC_ALL`, `LC_CTYPE`, `TZ`, `CI`.
+
+This is observed stat-based drift detection, not complete content attestation.
+It does not detect arbitrary in-place edits inside installed package directories:
+RECORD content is not rehashed against package files. Editable sources outside the
+Git-bound workspace, arbitrary external inputs, remote state, dependencies
+outside the observed venv, and additional environment variables are also outside scope. Checks depending
+on those must be rerun when they change. This receipt never replaces the required
+independent review or production proof. Claude's jump receiver separately labels
+old successful commands as timestamped claims and reports up to 20 changed or
+missing handoff files; unchanged mtimes alone do not establish a reusable PASS.
+
 Version 1.1 adds native child identity, child-local checkpoints, bounded stop
 reminders, shared dispatch accounting and owned continuation cancellation.
 Children use their own measured context and return to their parent. A separate

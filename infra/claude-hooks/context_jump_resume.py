@@ -84,7 +84,38 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
     return (p, j)
 
 
-def build_context(jump: dict, handoff: dict | None) -> str:
+def verification_notes(jump: dict, files: list, timestamp: float) -> list[str]:
+    """Prior successes are claims, not transferable passing receipts."""
+    notes = []
+    cwd = Path(str(jump.get("cwd") or os.getcwd())).resolve()
+    for value in files[-20:]:
+        try:
+            path = Path(str(value)).expanduser()
+            path = path if path.is_absolute() else cwd / path
+            relative = path.relative_to(cwd)
+            label = str(relative).replace("\n", " ")[:160]
+            # Do not inspect a handoff path outside the declared worktree.
+            if not path.resolve().is_relative_to(cwd):
+                notes.append("- [outside worktree; re-verify]")
+            elif not path.exists():
+                notes.append(f"- {label}: missing now")
+            elif path.stat().st_mtime > timestamp:
+                notes.append(f"- {label}: changed after the jump")
+        except (OSError, ValueError):
+            notes.append("- [file state unavailable; re-verify]")
+    if not notes:
+        notes.append("- None of the inspected files changed after the jump; this is not a reusable PASS.")
+    if len(files) > 20:
+        notes.append("- Only the last 20 handoff files were inspected; earlier files are unverified.")
+    return notes
+
+
+def build_context(jump: dict, handoff: dict | None, jump_mtime: float = 0) -> str:
+    try:
+        timestamp = float(jump.get("ts") or jump_mtime)
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(timestamp))
+    except (ValueError, TypeError, OverflowError, OSError):
+        timestamp, stamp = 0, "unknown time"
     lines = [
         f"🪟 SALTO DI FINESTRA — sei la continuazione della sessione {jump.get('from_session')} "
         f"(salto {jump.get('hops', 0)}). Il contesto precedente era pieno: NON è stato compattato, "
@@ -99,10 +130,11 @@ def build_context(jump: dict, handoff: dict | None) -> str:
             lines += ["", "## Ultimi prompt utente"] + [f"- {o}" for o in obj]
         ok = handoff.get("successful_commands") or []
         if ok:
-            lines += ["", "## Comandi riusciti (ultimi)"] + [f"- {c}" for c in ok[-15:]]
+            lines += ["", f"## Previous command claims at {stamp} — not a reusable PASS"] + [f"- {c}" for c in ok[-15:]]
         files = handoff.get("successful_file_changes") or []
         if files:
             lines += ["", "## File modificati"] + [f"- {f}" for f in files[-20:]]
+            lines += ["", "## Changed after the jump — re-verify"] + verification_notes(jump, files, timestamp)
         risks = handoff.get("risks") or []
         if risks:
             lines += ["", "## Rischi rilevati"] + [f"- {r}" for r in risks]
@@ -133,7 +165,12 @@ def main() -> int:
     path, jump = picked
 
     handoff = _load(Path(str(jump.get("handoff_path") or "")).expanduser()) if jump.get("handoff_path") else None
-    ctx = build_context(jump, handoff if isinstance(handoff, dict) else None)
+    try:
+        jump_mtime = path.stat().st_mtime
+    except OSError:
+        jump_mtime = 0
+    ctx = build_context(jump, handoff if isinstance(handoff, dict) else None,
+                        jump_mtime=jump_mtime)
 
     jump["to_session"] = session_id
     jump["claimed_ts"] = time.time()
