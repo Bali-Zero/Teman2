@@ -1,35 +1,61 @@
 gear: 2
-task_id: crm-18-soft-delete
-lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
+task_id: t3-schema-guard
+lane: wa-team
+host: air-m5 (M5)
+branch: agent/air-m5/wa-team/t3-schema-guard
 gate_class: none
 l_level: L2
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  PR #7342 round-1 FIX-FIRST correction (review_7342_out.txt, head
+  87cb7dff06) for T3's schema+guard PR-1. Floor is 2 on SIZE alone (this
+  round's diff, +240 net lines on top of the prior 394) — no hot-zone path
+  hit, no new auth/route/schema-on-Fly surface (the DDL is script-owned
+  Pro-local, never migrations_v2). Closes all four findings: (1) HIGH — a
+  pre-existing mig-200-shaped team_promises missing thread_key/
+  team_member_email/extractor_version/resolution_kind passed --init-schema
+  silently; every non-core column of both tables is now its own ALTER
+  TABLE ADD COLUMN IF NOT EXISTS, verified name+type via information_schema
+  inside the SAME transaction as the DDL, rollback on any gap; (2) MEDIUM —
+  a new SchemaMismatchError carries a STATIC allowlisted identifier that
+  _fail_line now prints, closing the index-name-lost-in-sanitization gap;
+  (3) MEDIUM — a `_SanitizingArgumentParser` and a `--log-level` allowlist
+  stop a synthetic private CLI argument from ever reaching stdout/stderr or
+  an uncaught traceback; (4) MEDIUM — the fake connection now records the
+  REAL sql text of every statement so tests can assert on it (OID filter,
+  indnkeyatts, information_schema.columns), plus a spy proving PG* env is
+  cleared before connect and kwargs match exactly, new negative cases for
+  the second unique index and a partial schema, and an opt-in real-Postgres
+  companion test (gated on WA_TEAM_PROMISES_REAL_PG=1, Homebrew
+  postgresql@17 present on M5) exercising run_init_schema against a
+  throwaway cluster. All four findings red-proved against 87cb7dff06 in an
+  isolated scratch copy (never `git checkout --`); the new SQL-text
+  assertions additionally mutation-proved (stripping the OID filter, or
+  disabling PG* env cleanup, each flips the corresponding new test red).
 scope:
   - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
+    scripts/sql/pro_local/team_promises.sql — non-core columns of both
+    tables moved from CREATE TABLE to their own ALTER TABLE ADD COLUMN IF
+    NOT EXISTS, so a pre-existing table actually gets them.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
+    scripts/wa_team_promises.py — SchemaMismatchError (static allowlisted
+    identifier), verify_required_columns() (name+type via
+    information_schema, same transaction as the DDL and both index
+    checks), _fail_line prints identifier=<name> when present,
+    _SanitizingArgumentParser + a --log-level allowlist so no CLI error
+    path can echo raw argv or raise an uncaught exception with user input
+    in its message.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
+    scripts/tests/test_wa_team_promises.py — 16 tests (was 9): fake
+    conn/pool records real sql text (asserted on directly), negative cases
+    for the second index and a partial (missing-column) schema, a spy
+    proving PG* env clears before connect with exact kwargs, identifier
+    passthrough/downgrade, and parametrized argparse/log-level private-
+    token-never-echoed cases. All pass; ruff clean.
   - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+    scripts/tests/test_wa_team_promises_real_pg.py (new) — opt-in,
+    skipped by default (WA_TEAM_PROMISES_REAL_PG=1 + pg_ctl/initdb on
+    PATH required); spins up a throwaway Homebrew Postgres 17 cluster on a
+    short /tmp socket dir (unix sockets have a kernel path-length limit
+    pytest's own nested tmp_path blows through) and runs run_init_schema
+    for real: complete schema + idempotent re-run + a genuine
+    incompatible-index rollback. Verified passing on M5 before this push.
