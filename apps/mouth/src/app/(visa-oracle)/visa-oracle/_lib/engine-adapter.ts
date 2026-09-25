@@ -933,71 +933,23 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // must (1) name the specific fact/answer, in the applicant's own terms,
   // that the signed rules cannot decide, (2) state authoritatively that the
   // case is held deliberately for that named reason, and (3) name what
-  // resolves it. Applies to these 9 pre-existing entries too, revised below.
-  // review.calling-visa carries on_unknown: "HUMAN_REVIEW" (verified in
-  // rulepack-prod-020.signed.json), so the identical code fires when
-  // nationality itself is UNKNOWN, not only when it is confirmed on the
-  // list — the round-2 refuter gate caught the first draft asserting the
-  // list membership outright, false on that path. Worded to be true on
-  // both without losing the list's own specificity.
-  CALLING_VISA_REVIEW: text(
-    "This case is held because your nationality is on Indonesia's Calling Visa list, or because your nationality has not been established. Confirming your nationality, and the calling-visa clearance that list requires if it applies, is what resolves it before any visa can be confirmed.",
-    "Kasus ini ditahan karena kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi kewarganegaraan Anda, beserta proses persetujuan calling visa yang disyaratkan oleh daftar tersebut apabila berlaku, adalah yang akan menyelesaikannya sebelum visa apa pun dapat dikonfirmasi.",
-  ),
-  ACTIVE_OVERSTAY: text(
-    "You reported active overstay days on your immigration record, so a person needs to review it — clearing the overstay is what resolves it.",
-    "Anda melaporkan adanya hari overstay yang masih berjalan pada catatan keimigrasian Anda, sehingga memerlukan peninjauan oleh seseorang — menyelesaikan overstay tersebut adalah yang akan menyelesaikannya.",
-  ),
-  // Renamed from CITIZENSHIP_EVIDENCE_CONFLICT (QW-4a, 2026-08-17): that key
-  // named no code in any pack from seq-6 onward. CITIZENSHIP_LIST_DIVERGENCE
-  // is its current name (services/visa_engine/contracts/packs/
-  // rulepack-prod-007.source.json). review.citizenship-conflict ALSO carries
-  // on_unknown: "HUMAN_REVIEW" (verified in rulepack-prod-020.signed.json),
-  // so the identical code fires when nationality is entirely UNKNOWN, not
-  // only when multiple declared nationalities are known to diverge — the
-  // round-2 refuter gate caught the first draft asserting "you declared
-  // more than one nationality" outright, false on the unknown path. Worded
-  // to be true on both without losing the known-path specificity.
-  CITIZENSHIP_LIST_DIVERGENCE: text(
-    "This case is held because you declared more than one nationality that falls into different eligibility categories, or because your nationality has not been established. Confirming which passport you will use to apply is what resolves it.",
-    "Kasus ini ditahan karena Anda mencantumkan lebih dari satu kewarganegaraan yang termasuk dalam kategori kelayakan yang berbeda, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi paspor mana yang akan Anda gunakan untuk mengajukan permohonan adalah yang akan menyelesaikannya.",
-  ),
-  // review.minor-without-guardian: derived.is_minor == true AND
-  // family.sponsor_confirmed == false — confirming the sponsor is the fact
-  // that resolves it (the same fact the rule tests).
-  MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
-    "This case involves a minor whose sponsor has not yet been confirmed, and a person needs to review it — confirming the sponsor is what resolves it.",
-    "Kasus ini melibatkan anak di bawah umur yang sponsornya belum dikonfirmasi, dan memerlukan peninjauan oleh seseorang — konfirmasi sponsor adalah yang akan menyelesaikannya.",
-  ),
-  // E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW and E23V_TRADE_OFFICE_STAFF_REVIEW
-  // used to sit here. seq-22 retires both: it supports E23U/E23V outright
-  // instead of holding them for a manual staff-relationship check, so no
-  // verdict can emit either code any more. Activated in PRODUCTION on
-  // 2026-09-16T20:16:45Z (activation_id 10937ac5, payload 3d7555af…6e37),
-  // which is why their copy goes now and not when the bundle landed.
-  // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
-  // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
-  // in rulepack-prod-007+. review.bridging.adverse-history fires on ANY of 4
-  // distinct violation_history values (OVERSTAY / DEPORTATION / BLACKLIST /
-  // IMMIGRATION_INVESTIGATION) OR on that fact being unknown (on_unknown:
-  // "HUMAN_REVIEW") — one code, several distinct causes with different
-  // real-world resolutions. Named all 4 rather than guessing one; flagged as
-  // a split candidate in the PR-O2 report. Round-1 refuter fix (Gemini 3.1
-  // Pro + Kimi K3, converged independently): the first draft asserted the
-  // record "shows" one of the four even on the UNKNOWN-fact trigger path —
-  // false the moment the hold is raised because the record hasn't been
-  // established at all, not because a specific violation was found. Rewritten
-  // to cover both paths without asserting any of the four exists, matching
-  // the "not yet established" pattern already used for the 4 HARD_FILTER
-  // codes above.
-  BRIDGING_ADVERSE_HISTORY: text(
-    "This case is held to check your immigration record while in Indonesia for an overstay, deportation, blacklist entry, or open investigation, or because that record has not been established. Confirming your record is what resolves it before the Bridging Visa — Transitional Stay Permit can be confirmed.",
-    "Kasus ini ditahan untuk memeriksa catatan keimigrasian Anda selama berada di Indonesia terkait overstay, deportasi, entri daftar hitam (blacklist), atau investigasi yang masih berjalan, atau karena catatan tersebut belum dapat dipastikan. Konfirmasi catatan Anda adalah yang akan menyelesaikannya sebelum Izin Tinggal Peralihan dapat dipastikan.",
-  ),
-  LOCAL_MARKET_ACTIVITY_REVIEW: text(
-    "You said your remote work serves Indonesian clients, and the Second Home Visa — Remote Worker (E33G) is for income from outside Indonesia only — a person needs to confirm your work does not cross into locally reserved business.",
-    "Anda menyatakan bahwa pekerjaan jarak jauh Anda melayani klien di Indonesia, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) hanya untuk penghasilan dari luar Indonesia — diperlukan konfirmasi oleh seseorang bahwa pekerjaan Anda tidak melanggar bidang usaha yang dicadangkan untuk lokal.",
-  ),
+  // resolves it.
+  //
+  // Slice A9.6 (2026-09-25): signed seq-23 is ACTIVE in production (switched
+  // from signed seq-22 on 2026-09-24) and turns every review hold seq-22
+  // emitted into a named dead end or NEEDS_INPUT, so no live verdict can
+  // emit any of the twelve retired codes. The six below this comment went
+  // here — CALLING_VISA_REVIEW, ACTIVE_OVERSTAY,
+  // CITIZENSHIP_LIST_DIVERGENCE, MINOR_WITHOUT_CONFIRMED_GUARDIAN,
+  // BRIDGING_ADVERSE_HISTORY, LOCAL_MARKET_ACTIVITY_REVIEW (the E23U/E23V
+  // pair that used to sit above them went with the seq-22 activation
+  // itself, #6683). E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP,
+  // E33_WORK_RANGKAP_KEGIATAN_GATED and the four HARD_FILTER codes
+  // (BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  // BRIDGING_TO_BRIDGING_PROHIBITED, VOA_NATIONALITY_ONLY) retire with
+  // seq-23 too — their copy is gone from the blocks below. The
+  // engine-adapter.test.ts seq-keyed list emptied in the same change.
+
   // fact-mapper.ts::hasUndecidableActivityAnswer raises this ONE code from 7
   // distinct question ids (business_activity, investment_vehicle,
   // retirement_basis, diaspora_connection, diaspora_documents,
@@ -1019,46 +971,27 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // string below is written to D2-bis's three rules too: name the specific
   // fact, state the hold authoritatively, name what resolves it.
 
-  // This block held 8 codes from rulepack-prod-020, stage HUMAN_REVIEW. Six
-  // of them (E28B, E28C, E28D, E28F, E33B, GOVT_INVITATION_REQUIRED) are
-  // retired by seq-22, live in PRODUCTION since 2026-09-16T20:16:45Z, and
-  // their copy went with this change. The two that survive keep theirs.
-  E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP: text(
-    "You said you have committed to PT PMA company ownership, and the Second Home Visa — Remote Worker (E33G) excludes local company ownership — a person needs to confirm your PT PMA commitment before this can be resolved.",
-    "Anda menyatakan telah berkomitmen pada kepemilikan perusahaan PT PMA, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mengecualikan kepemilikan perusahaan lokal — diperlukan konfirmasi oleh seseorang atas komitmen PT PMA Anda sebelum hal ini dapat diselesaikan.",
-  ),
-  E33_WORK_RANGKAP_KEGIATAN_GATED: text(
-    "You selected both a Second Home Visa (E33) purpose and an employment purpose, and a person needs to confirm how the two combine before this case can be resolved.",
-    "Anda memilih tujuan Visa Rumah Kedua (E33) sekaligus tujuan bekerja, dan diperlukan konfirmasi oleh seseorang mengenai bagaimana keduanya digabungkan sebelum kasus ini dapat diselesaikan.",
-  ),
-  // Fires identically for two products (E33A, E33C) that share this reason
-  // code — both name their own product verbatim rather than picking one.
+  // This block held 8 codes from rulepack-prod-020, stage HUMAN_REVIEW. All
+  // eight are retired now: six (E28B, E28C, E28D, E28F, E33B,
+  // GOVT_INVITATION_REQUIRED) when seq-22 activated in production on
+  // 2026-09-16 (#6683), the last two (E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP,
+  // E33_WORK_RANGKAP_KEGIATAN_GATED) when signed seq-23 activated on
+  // 2026-09-24 (Slice A9.6, 2026-09-25) — no live verdict can emit any of
+  // them, so their copy went with this change.
 
   // 4 codes from rulepack-prod-020, stage HARD_FILTER with
   // `on_unknown: "HUMAN_REVIEW"` (hf.bridging.offshore / .from-visit-itk /
-  // .to-bridging / hf.b1.not-voa-nationality). When the underlying fact is
-  // KNOWN these rules EXCLUDE the product outright; when it is UNKNOWN,
+  // .to-bridging / hf.b1.not-voa-nationality) used to sit here. seq-23
+  // retires all four — an UNKNOWN fact now resolves as a named dead end or
+  // NEEDS_INPUT instead of one of these holds — so their copy went with
+  // Slice A9.6 (2026-09-25). The constraint their copy was written under
+  // stands for any future HARD_FILTER review code: when the underlying fact
+  // is KNOWN these rules EXCLUDE the product outright; when it is UNKNOWN,
   // `evaluator.py::_partition_unknowns_by_policy` + `_reason_from_rule`
   // escalate to REVIEW and reuse the SAME reason_code (see
-  // evaluator.py:355-410, 741-751) — so this copy must never read as an
+  // evaluator.py:355-410, 741-751) — so that copy must never read as an
   // exclusion, only as a fact still to be established; naming that missing
   // fact doubles as naming what resolves it (confirming the fact).
-  BRIDGING_ONSHORE_ONLY: text(
-    "This case is held because whether you are currently in Indonesia has not been established, which the Bridging Visa — Transitional Stay Permit requires — confirming your current location is what resolves it.",
-    "Kasus ini ditahan karena belum dapat dipastikan apakah Anda saat ini berada di Indonesia, padahal Izin Tinggal Peralihan mensyaratkan hal itu — konfirmasi lokasi Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  BRIDGING_FROM_VISIT_ITK_PROHIBITED: text(
-    "This case is held because your current immigration status code has not been established, and the Bridging Visa — Transitional Stay Permit cannot be issued from certain visit-based statuses — confirming your current status code is what resolves it.",
-    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat diterbitkan dari status berbasis kunjungan tertentu — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  BRIDGING_TO_BRIDGING_PROHIBITED: text(
-    "This case is held because your current immigration status code has not been established, and a Bridging Visa — Transitional Stay Permit cannot follow one already active — confirming your current status code is what resolves it.",
-    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat mengikuti izin peralihan yang masih aktif — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  VOA_NATIONALITY_ONLY: text(
-    "This case is held because your nationality has not been established, and the Visa on Arrival — Tourism (B1) is issued only for listed nationalities — confirming your nationality is what resolves it.",
-    "Kasus ini ditahan karena kewarganegaraan Anda belum dapat dipastikan, sedangkan Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang terdaftar — konfirmasi kewarganegaraan Anda adalah yang akan menyelesaikannya.",
-  ),
   // `review.e33.below-threshold-studio` (seq-22 unsigned source,
   // `fold_pack_seq22.py`'s DEFECT 3, owner decision D23 "OPTION B-STUDIO"
   // 2026-09-16): the SAME two thresholds seq-21's deleted HARD_FILTER read,
