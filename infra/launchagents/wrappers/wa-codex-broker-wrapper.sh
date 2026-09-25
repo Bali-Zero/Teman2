@@ -24,6 +24,14 @@
 #   mode the daemon would then have to report on).
 # - The env file carries WA_BROKER_KEY: 0600, never echoed, never on argv
 #   (family #4 / W115).
+# - Dedicated-binary pin (scripts/install_wa_codex_pinned.sh, supersedes PR
+#   #7313): read from a HARD-CODED absolute path literal, never built from
+#   a variable the daemon's own env file could reassign — the daemon env is
+#   sourced first and `set -a` exports whatever it assigns, so a pin-path
+#   built from e.g. $RUNTIME_DIR after that source point would follow the
+#   daemon's own redirection (PR #7313 round-2 finding, reproduced then
+#   fixed here). Parsed as DATA — a `while IFS='=' read` loop, two allowed
+#   keys, values validated before use — never sourced as shell.
 
 set -u
 
@@ -46,6 +54,14 @@ heartbeat() { # $1 status, $2 note
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
 }
 
+# --- pin-file value validators (POSIX `expr` BRE — no bash-only [[ =~ ]]) ---
+_is_semver() {
+    expr "$1" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null
+}
+_is_trusted_bin_path() {
+    expr "$1" : '/usr/local/lib/wa-codex-broker/codex/[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/bin/codex$' >/dev/null
+}
+
 if [ ! -f "$ENV_FILE" ]; then
     echo "$TAG: env file missing: $ENV_FILE - refusing to start (run provisioning)" >&2
     heartbeat "refused" "env file missing"
@@ -60,6 +76,32 @@ fi
 set -a
 . "$ENV_FILE"
 set +a
+
+# Dedicated-binary pin — read AFTER the daemon env, from a literal path (not
+# derived from $RUNTIME_DIR or any other name the sourced env could just
+# have reassigned), as DATA, so these two values win over whatever the
+# daemon's own env file set. A missing pin file is legacy behaviour: the
+# wrapper is safe to ship before the operator ever runs
+# scripts/install_wa_codex_pinned.sh.
+CODEX_PIN_FILE="/usr/local/lib/wa-codex-broker/codex-pin.env"
+if [ -f "$CODEX_PIN_FILE" ]; then
+    while IFS='=' read -r pin_key pin_val; do
+        case "$pin_key" in
+            WA_CODEX_CLI_VERSION_PIN)
+                if _is_semver "$pin_val"; then
+                    WA_CODEX_CLI_VERSION_PIN="$pin_val"
+                    export WA_CODEX_CLI_VERSION_PIN
+                fi
+                ;;
+            WA_CODEX_BIN)
+                if _is_trusted_bin_path "$pin_val"; then
+                    WA_CODEX_BIN="$pin_val"
+                    export WA_CODEX_BIN
+                fi
+                ;;
+        esac
+    done < "$CODEX_PIN_FILE"
+fi
 
 # G5_kill_switch — operator stop without uninstall (set in the env file or
 # the plist). Clean exit 0 stays DOWN under KeepAlive.SuccessfulExit=false;
