@@ -155,9 +155,11 @@ def test_loadout_rejects_config_change_during_tool_discovery(seat, monkeypatch):
         return tools
 
     monkeypatch.setattr(profile, "notebook_tools", discover)
-    with pytest.raises(RuntimeError, match="configVersionConflict"):
+    with pytest.raises(RuntimeError, match="configVersionConflict.*backup may exist.*receipt not updated") as exc:
         profile.loadout(seat)
     assert config.read_bytes() == concurrent
+    assert isinstance(exc.value.__cause__, RuntimeError)
+    assert not (seat / "state" / "nuzantara-seat-loadout-install.json").exists()
 
 
 def test_loadout_discovery_failure_never_writes_config(seat, monkeypatch):
@@ -209,6 +211,23 @@ def test_skills_only_preserves_mcp_and_does_not_discover_tools(seat, monkeypatch
     assert result["installed"] and result[profile.NOTEBOOKLM] == "unchanged"
     assert tomllib.loads(config.read_text())["mcp_servers"] == before
     assert FakeRPC.calls[0]["edits"] == [{"keyPath": "skills.max_context_tokens", "value": 3000, "mergeStrategy": "replace"}]
+    installed = config.read_bytes()
+    profile.main()
+    result = json.loads(capsys.readouterr().out)
+    assert result["installed"] and result["backup"] is None
+    assert config.read_bytes() == installed and len(FakeRPC.calls) == 1
+
+
+def test_skills_only_preserves_operator_budget(seat, monkeypatch, capsys):
+    config = notebook_seat(seat)
+    config.write_text(config.read_text() + '\n[skills]\nmax_context_tokens = 7000\n')
+    before = config.read_bytes()
+    monkeypatch.setattr(FakeRPC, "tool_names", set())
+    monkeypatch.setattr(sys, "argv", ["installer", "--seat", str(seat), "--skills-only"])
+    profile.main()
+    result = json.loads(capsys.readouterr().out)
+    assert result["skills.max_context_tokens"] == "drift"
+    assert config.read_bytes() == before and not FakeRPC.calls
 
 
 def test_fresh_seat_gets_exact_profile_with_backup(seat):

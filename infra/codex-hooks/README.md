@@ -186,6 +186,8 @@ Production skill-budget activation uses
 `install_seat_profile.py --seat ~/.codex --skills-only` (or add `--check` for a
 configuration read-only report). It applies the same absent/match/drift policy
 to `skills.max_context_tokens = 3000`, leaving MCP choices unchanged.
+Run it only with no other Codex app or session on that seat; it uses the same
+version-pinned writer, which is not a cross-process lock.
 
 The separate `--loadout` flag explicitly opts into a NotebookLM read/query filter
 as well as the skill budget. It is not installed by default: the matched native
@@ -203,14 +205,16 @@ allowlists and disabled-tool choices are preserved and reported as drift.
 After an initial install, newly discovered tools that would require extending
 the existing filter are likewise drift, requiring review. All config writes use
 one snapshot captured before discovery and the existing version-pinned native
-writer; only the requested keys may change. The install receipt is
-`state/nuzantara-seat-loadout-install.json`; its backup supports manual rollback
+writer; only the requested keys may change. The install receipt,
+`state/nuzantara-seat-loadout-install.json`, is updated only on success. A refused
+write can leave a backup without a new receipt; retain that backup for inspection
+and manual rollback
 under the same exclusive-writer condition as the seat profile.
 
 For a research session needing the full NotebookLM tool set, launch
 `codex -c 'mcp_servers.notebooklm-mcp.disabled_tools=[]'` with the usual profile
 and command arguments. This per-session override restores disabled tools without
-editing the default loadout. An operator's separate `enabled_tools` allowlist
+editing the installed configuration. An operator's separate `enabled_tools` allowlist
 still applies. New sessions consume configuration changes; auth, trust, assigned
 models/effort and unrelated profile choices are untouched.
 

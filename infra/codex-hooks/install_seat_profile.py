@@ -304,7 +304,15 @@ def loadout(seat: Path, *, check: bool = False, notebooklm: bool = True) -> dict
         target[parts[-1]] = edit["value"]
     mode = config_file.stat().st_mode & 0o777
     try:
-        pinned_write(seat, edits, version)
+        try:
+            pinned_write(seat, edits, version)
+        except RuntimeError as exc:
+            if "configVersionConflict" in str(exc):
+                raise RuntimeError(
+                    "configVersionConflict: config.toml changed since it was validated; "
+                    "config not written; backup may exist; install receipt not updated"
+                ) from exc
+            raise
         after, _ = user_layer(seat, config_file)
         if after != expected_config:
             raise RuntimeError("loadout write was not exact; retain backup and inspect concurrent changes")
