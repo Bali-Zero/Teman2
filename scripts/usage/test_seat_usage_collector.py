@@ -25,6 +25,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import seat_usage_collector as suc  # noqa: E402
 
@@ -197,9 +199,24 @@ def test_missing_or_ambiguous_declared_parent_cannot_prove_independence(tmp_path
     suc.collect_claude(str(claude), SINCE, task_index=index)
     suc.collect_codex(str(codex), SINCE, task_index=index)
     for parent in ("missing", "ambiguous"):
-        rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True,
-                 parent_session_sha256=suc._sha(parent))]
-        assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+        for participant in (0, 1):
+            rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+            rows[participant]["parent_session_sha256"] = suc._sha(parent)
+            assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_verifier_hash_must_identify_one_provider_session(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    _task_claude(claude, "builder", 10)
+    _task_claude(claude, "gate", 2)
+    _task_codex(codex, "gate", [3])
+    suc.collect_claude(str(claude), SINCE, task_index=index)
+    suc.collect_codex(str(codex), SINCE, task_index=index)
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True),
+            _task_row("codex", "gate", role="gate", overhead=True)]
+    report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
 
 
 def test_gate_must_have_activity_during_task_and_before_verification(tmp_path):
@@ -393,18 +410,30 @@ def test_task_windows_freeze_usage_and_do_not_charge_inherited_totals(tmp_path):
     assert task["by_provider"]["codex"]["input_tokens"] == 40
 
 
-def test_task_verification_needs_independent_gate_evidence_and_closed_window(tmp_path):
-    profile, index = tmp_path / "claude", {}
-    _task_claude(profile, "builder", 10)
-    _task_claude(profile, "independent-gate", 2)
-    suc.collect_claude(str(profile), SINCE, task_index=index)
+@pytest.mark.parametrize("builder_provider,gate_provider", [
+    ("claude", "claude"), ("claude", "codex"), ("codex", "claude"), ("codex", "codex"),
+])
+def test_task_verification_needs_independent_gate_evidence_and_closed_window(tmp_path, builder_provider, gate_provider):
+    index, expected = {}, {}
+    for provider, sid, amount in ((builder_provider, "builder", 10), (gate_provider, "independent-gate", 2)):
+        profile = tmp_path / provider
+        if provider == "claude":
+            _task_claude(profile, sid, amount)
+        else:
+            _task_codex(profile, sid, [amount])
+        expected[provider] = expected.get(provider, 0) + amount
+    suc.collect_claude(str(tmp_path / "claude"), SINCE, task_index=index)
+    suc.collect_codex(str(tmp_path / "codex"), SINCE, task_index=index)
     outcome = {"status": "verified_complete", "verifier_role": "fresh-gate",
                "verifier_session_sha256": suc._sha("independent-gate"),
                "evidence_sha256": suc._sha("independent-gate-receipt"), "verified_utc": "2026-08-19T11:00:00Z"}
-    doc = _task_doc([_task_row("claude", "builder"), _task_row("claude", "independent-gate", role="gate", overhead=True)], outcome=outcome)
+    doc = _task_doc([_task_row(builder_provider, "builder"),
+                     _task_row(gate_provider, "independent-gate", role="gate", overhead=True)], outcome=outcome)
     report = _task_report(tmp_path, index, doc)
     assert report["tasks"][0]["status"] == "verified_complete"
-    assert report["tasks_meta"]["tokens_per_verified_task"]["claude"]["input_tokens"] == 12
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 1
+    assert {provider: usage["input_tokens"] for provider, usage in
+            report["tasks_meta"]["tokens_per_verified_task"].items()} == expected
     future = {**doc, "ended_utc": "2099-08-20T00:00:00Z"}
     assert _task_report(tmp_path, index, future)["tasks"][0]["status"] == "unknown"
     no_ci_identity = {**doc, "outcome": {**outcome, "verifier_role": "ci", "verifier_session_sha256": None}}
