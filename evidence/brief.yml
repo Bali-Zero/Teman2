@@ -1,35 +1,60 @@
-gear: 2
-task_id: crm-18-soft-delete
-lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
-gate_class: none
-l_level: L2
+gear: 3
+task_id: wa-codex-pinned-installer
+lane: ops
+host: air-m5 (M5)
+branch: agent/air-m5/ops/wa-codex-pinned-installer
+gate_class: hot-zone-migration
+l_level: L1
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  Spec v2 (S1-S10, supersedes PR #7313): scripts/install_wa_codex_pinned.sh
+  gives the wa-codex broker daemon its own dedicated, root-owned codex CLI
+  binary, decoupled from the shared Homebrew @openai/codex install any other
+  seat may upgrade. #7313 took two cross-family security BLOCKs (round 0: 3
+  CRITICAL; round 1 built from a spec: 3 HIGH — unreachable first install,
+  archive-filter fail-open under pipefail/SIGPIPE, installer missing the
+  wrapper) building a NOPASSWD sudoers admin-verb surface. This PR carries
+  NO sudoers drop-in, NO admin verbs, NO passwordless grant — the operator
+  runs the installer by hand, with their own sudo password. Touches
+  infra/launchagents/wrappers/ (hot-zone: launchd payload for a root-run
+  daemon) and adds a new root-run installer script, so it floors at gear 3
+  on path alone (scripts/evidence_pack_lint.py --print-floor = 3). Real
+  end-to-end run performed on M5 against a scratch prefix (not root, not
+  /usr/local) resolving the real npm registry for codex 0.156.1: sha512
+  integrity verified, 44-entry archive listing accepted, extracted,
+  normalized, `--version` printed exactly `codex-cli 0.156.1`. 40 pytest
+  cases (guilt+innocence paired) cover S1-S8's own guilt/innocence pairs,
+  including a RED (deliberately broken, head-truncated archive check) vs
+  GREEN (shipped whole-file awk pass) regression on the exact 20k-entries
+  + trailing-symlink shape #7313 round 2 found accepted.
 scope:
   - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
+    scripts/install_wa_codex_pinned.sh (new) — argv validated by pure bash
+    builtins before any external command; RUNTIME_DIR trust root verified
+    (owner/group/mode/not-a-symlink) before any directory is created;
+    darwin-arm64 build resolved from registry.npmjs.org only, sha512-
+    verified; archive listing written to a file then scanned in ONE
+    whole-file awk pass (never `grep -q` in a pipeline) rejecting
+    symlink/hardlink/absolute-path/`..` entries; extract with
+    --no-same-owner/--no-same-permissions, normalize ownership/mode, strip
+    setuid/setgid, verify with `find`, probe `--version` as the broker's
+    own service account; atomic codex-pin.env write
+    (WA_CODEX_CLI_VERSION_PIN, WA_CODEX_BIN only); reuse of an existing
+    codex/<ver>/ is re-verified, never trusted; installs the wrapper and
+    kickstarts the daemon.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
+    infra/launchagents/wrappers/wa-codex-broker-wrapper.sh — reads the
+    dedicated-binary pin from a hard-coded literal path (never built from a
+    variable the daemon's own env file could reassign — PR #7313's round-2
+    finding, reproduced then fixed here), parsed as data via a
+    `while IFS='=' read` loop with two allowed keys and validated values,
+    exported AFTER the daemon env so the pin wins.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
+    docs/runbooks/wa-broker-chaos-table.md — row 8's remediation now names
+    the actual cure command.
   - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+    tests: scripts/tests/test_install_wa_codex_pinned.py (23 cases) +
+    scripts/tests/test_wa_codex_broker_wrapper.py (17 cases) — every guilt
+    test proves nothing executed / the correct daemon-env value survived,
+    every archive-regression case uses a real tarfile-built archive through
+    a real curl-fixture-stubbed npm registry (real tar/openssl/plutil/find,
+    never a network call).
