@@ -1,0 +1,31 @@
+task_id: token-efficiency-six-continuity-receipts
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Bind the existing Codex continuity checkpoints and the Claude jump resume to revision- and
+  input-bound verification receipts, so a resumed session reuses a still-valid check and a
+  changed revision, input or installed dependency invalidates it. Row 5 of
+  token-efficiency-six (Zero ordered all six for Claude and Codex).
+scope: infra/codex-hooks context_bridge (receipts, receipt-status verb and its helper allowlist entry), its tests and README; infra/claude-hooks context_jump_resume and its test; Claude context guard, thresholds, stop and compaction policy unchanged; Codex native compaction unchanged
+acceptance:
+  - text: WHEN a session resumes after a passing verify and nothing observed has changed, the receipt SHALL be reported reusable.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks infra/claude-hooks/test_context_jump_resume.py
+  - text: WHEN HEAD, the tracked diff, untracked content, a package installation (dist-info RECORD), a .pth file or pyvenv.cfg changes, the receipt SHALL NOT be reusable; an unobservable or over-cap observation SHALL be stale, and host load or elapsed time SHALL NOT decide validity.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_context_bridge.py
+  - text: A failed, partial, contradictory or foreign receipt SHALL never be labelled a reusable PASS, and the final matching receipt SHALL win over earlier output.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_context_bridge.py
+  - text: Hooks SHALL store and print no environment values, command text or file contents; receipt-status output SHALL be bounded.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_context_bridge.py
+  - text: WHEN released, a fresh Codex session using the real backend venv SHALL pass verify, PostToolUse and Stop with Stop output {} and a reusable receipt, and a Claude jump resume SHALL show the receipt label.
+    probe: per-host install then live probe (prove-live)
+assumptions:
+  - text: Arbitrary in-place edits of files inside installed packages and editable sources outside the Git-bound worktree are NOT observed; checks needing that assurance must rerun.
+    status: verified
+    probe: PR-E-DEPENDENCY-BINDING-SPEC.md scope clause; README limitation
+  - text: Environment (PATH, selected variables) invalidation holds only for verify/status/receipt-status run in the execution shell, not for hooks.
+    status: verified
+    probe: README limitation; test_hook_environment_is_not_the_execution_shell
+budget: Parent Codex implementation lane; independent Claude Opus 5.5 reviews (three rounds); fresh Opus 5.5 xhigh gate; Claude release owner.
+council_reason: Floor 2 from the size term (+577/-18 across 5 files); cross-family review by Claude of a Codex-built candidate (three rounds, review3 PASS), then a fresh Opus 5.5 xhigh final gate on the exact bytes.
