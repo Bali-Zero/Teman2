@@ -44,7 +44,7 @@ def pg_socket_dir(tmp_path_factory):
 
 
 @pytest.mark.asyncio
-async def test_real_pg_init_schema_complete_idempotent_then_guilt_rollback(pg_socket_dir):
+async def test_real_pg_init_schema_complete_idempotent_domain_then_index_guilt(pg_socket_dir):
     pool = await asyncpg.create_pool(host=str(pg_socket_dir), user="postgres",
                                       database="postgres", min_size=1, max_size=1)
     try:
@@ -52,21 +52,35 @@ async def test_real_pg_init_schema_complete_idempotent_then_guilt_rollback(pg_so
         async with pool.acquire() as conn:
             assert await conn.fetchval("SELECT to_regclass('public.team_promises')") is not None
             assert await conn.fetchval("SELECT to_regclass('public.team_promise_candidates')") is not None
-            cols = {r["column_name"] for r in await conn.fetch(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'team_promises'")}
-            assert {"thread_key", "team_member_email", "extractor_version", "resolution_kind"} <= cols
+            assert await conn.fetchval(
+                "SELECT count(*) FROM pg_attribute WHERE attrelid = to_regclass('public.team_promises')"
+                "::oid AND attname = 'thread_key' AND atttypid = 'text'::regtype") == 1
         await run_init_schema(pool)  # idempotent re-run must not raise
 
+        # round-2 #2: a domain over text must NOT pass as if it were plain text.
         async with pool.acquire() as conn:
-            await conn.execute("DROP TABLE team_promises, team_promise_candidates CASCADE")
-            await conn.execute("CREATE TABLE team_promises (message_id BIGINT, promise_type TEXT)")
-            await conn.execute(
-                "CREATE UNIQUE INDEX uix_team_promises_msg_type ON team_promises (message_id)")
+            await conn.execute("CREATE DOMAIN my_text_domain AS TEXT")
+            await conn.execute("ALTER TABLE team_promises ALTER COLUMN thread_key "
+                                "TYPE my_text_domain USING thread_key::my_text_domain")
         with pytest.raises(SchemaMismatchError) as exc_info:
             await run_init_schema(pool)
-        assert exc_info.value.identifier == "uix_team_promises_msg_type"
+        assert exc_info.value.identifier == "team_promises.thread_key"
         async with pool.acquire() as conn:
-            # same transaction as the (never-reached) candidates DDL — must not exist either.
-            assert await conn.fetchval("SELECT to_regclass('public.team_promise_candidates')") is None
+            # rolled back — the column is still the domain, not silently "fixed".
+            assert await conn.fetchval(
+                "SELECT atttypid = 'text'::regtype FROM pg_attribute WHERE attrelid = "
+                "to_regclass('public.team_promises')::oid AND attname = 'thread_key'") is False
+            await conn.execute("ALTER TABLE team_promises ALTER COLUMN thread_key "
+                                "TYPE text USING thread_key::text")
+            await conn.execute("DROP DOMAIN my_text_domain")
+
+        # round-1 #4: an incompatible SECOND-index-shaped mismatch, columns untouched.
+        async with pool.acquire() as conn:
+            await conn.execute("DROP INDEX uix_team_promise_candidates_msg_clause")
+            await conn.execute("CREATE UNIQUE INDEX uix_team_promise_candidates_msg_clause "
+                                "ON team_promise_candidates (message_id)")
+        with pytest.raises(SchemaMismatchError) as exc_info:
+            await run_init_schema(pool)
+        assert exc_info.value.identifier == "uix_team_promise_candidates_msg_clause"
     finally:
         await pool.close()

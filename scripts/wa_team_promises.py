@@ -59,13 +59,40 @@ def _clear_pg_env() -> None:
 
 # A — init-schema + catalog verification (columns, then both unique indexes)
 
+# Single source of truth for EVERY column of both tables — name, Postgres
+# type, NOT NULL — as declared in team_promises.sql (round-2 review: the
+# round-1 contract covered only the ALTER-added columns, so a core column
+# with the WRONG type, or missing outright, passed silently). A unit test
+# asserts every column the SQL file declares appears here.
+_REQUIRED_COLUMNS: dict[str, list[tuple[str, str, bool]]] = {
+    "team_promises": [
+        ("promise_id", "bigint", True), ("message_id", "bigint", True),
+        ("conversation_id", "bigint", False), ("client_id", "bigint", False),
+        ("promise_text", "text", True), ("promise_type", "text", False),
+        ("due_at", "timestamp with time zone", False), ("resolved", "boolean", True),
+        ("resolved_at", "timestamp with time zone", False),
+        ("resolved_by_message_id", "bigint", False),
+        ("created_at", "timestamp with time zone", True),
+        ("thread_key", "text", False), ("team_member_email", "text", False),
+        ("extractor_version", "text", False), ("resolution_kind", "text", False),
+    ],
+    "team_promise_candidates": [
+        ("id", "bigint", True), ("message_id", "bigint", True),
+        ("clause_idx", "integer", True), ("clause_hash", "text", True),
+        ("promise_type", "text", True), ("cue", "text", False),
+        ("due_at_hint", "text", False), ("status", "text", True),
+        ("attempts", "integer", True), ("last_attempt_at", "timestamp with time zone", False),
+        ("created_at", "timestamp with time zone", True),
+    ],
+}
+
 # Every identifier a SchemaMismatchError can carry — closed set, so the
 # sanitized fail line can safely print `.identifier` without ever risking a
-# caller-influenced string (round-1 review finding #2).
-_ALLOWED_SCHEMA_IDENTIFIERS = frozenset({
-    "uix_team_promises_msg_type", "uix_team_promise_candidates_msg_clause",
-    "team_promises", "team_promise_candidates",
-})
+# caller-influenced string. Derived from _REQUIRED_COLUMNS so the two never drift.
+_ALLOWED_SCHEMA_IDENTIFIERS = frozenset(
+    {"uix_team_promises_msg_type", "uix_team_promise_candidates_msg_clause"}
+    | {f"{table}.{col}" for table, cols in _REQUIRED_COLUMNS.items() for col, _, _ in cols}
+)
 
 
 class SchemaMismatchError(RuntimeError):
@@ -77,30 +104,35 @@ class SchemaMismatchError(RuntimeError):
         super().__init__(detail or identifier)
 
 
-_REQUIRED_COLUMNS = {
-    "team_promises": {"thread_key": "text", "team_member_email": "text",
-                       "extractor_version": "text", "resolution_kind": "text"},
-    "team_promise_candidates": {"cue": "text", "due_at_hint": "text", "status": "text",
-                                 "attempts": "integer", "last_attempt_at": "timestamp with time zone",
-                                 "created_at": "timestamp with time zone"},
-}
-
+# pg_attribute, not information_schema: information_schema.data_type reads a
+# DOMAIN over text as "text" (its base type), so a column retyped to an
+# incompatible domain would pass silently. atttypid = <type>::regtype fails
+# for a domain (its atttypid is the domain's OWN oid, never the base type's).
 _COLUMN_CHECK_SQL = """
-SELECT column_name, data_type FROM information_schema.columns
-WHERE table_schema = 'public' AND table_name = $1
+SELECT u.column_name,
+       (a.attname IS NOT NULL
+        AND a.atttypid = u.expected_type::regtype
+        AND a.attnotnull = u.expected_notnull) AS ok
+FROM unnest($2::text[], $3::text[], $4::boolean[]) AS u(column_name, expected_type, expected_notnull)
+LEFT JOIN pg_attribute a
+  ON a.attrelid = to_regclass('public.' || $1)::oid
+ AND a.attnum > 0 AND NOT a.attisdropped AND a.attname = u.column_name
 """
 
 
 async def verify_required_columns(conn, table: str) -> None:
-    """A pre-existing mig-200-shaped team_promises may be missing the
-    columns this PR adds by ALTER; a same-named column of the WRONG type
-    would no-op silently too. Verifies name+type via information_schema for
-    every required column; raises SchemaMismatchError(table) on ANY gap."""
-    rows = await conn.fetch(_COLUMN_CHECK_SQL, table)
-    present = {r["column_name"]: r["data_type"] for r in rows}
+    """Verifies name+exact-type(no domains)+NOT NULL for EVERY column of
+    `table`, via pg_attribute inside the caller's transaction. Raises
+    SchemaMismatchError('<table>.<column>') on the first mismatch found."""
     required = _REQUIRED_COLUMNS[table]
-    if any(present.get(col) != typ for col, typ in required.items()):
-        raise SchemaMismatchError(table, f"{table} missing/mistyped required column(s)")
+    names = [c[0] for c in required]
+    types = [c[1] for c in required]
+    notnulls = [c[2] for c in required]
+    rows = await conn.fetch(_COLUMN_CHECK_SQL, table, names, types, notnulls)
+    for row in rows:
+        if not row["ok"]:
+            identifier = f"{table}.{row['column_name']}"
+            raise SchemaMismatchError(identifier, f"{identifier} missing or mistyped")
 
 
 _INDEX_CHECK_SQL = """

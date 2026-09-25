@@ -6,56 +6,60 @@ branch: agent/air-m5/wa-team/t3-schema-guard
 gate_class: none
 l_level: L2
 objective: >-
-  PR #7342 round-1 FIX-FIRST correction (review_7342_out.txt, head
-  87cb7dff06) for T3's schema+guard PR-1. Floor is 2 on SIZE alone (this
-  round's diff, +240 net lines on top of the prior 394) — no hot-zone path
-  hit, no new auth/route/schema-on-Fly surface (the DDL is script-owned
-  Pro-local, never migrations_v2). Closes all four findings: (1) HIGH — a
-  pre-existing mig-200-shaped team_promises missing thread_key/
-  team_member_email/extractor_version/resolution_kind passed --init-schema
-  silently; every non-core column of both tables is now its own ALTER
-  TABLE ADD COLUMN IF NOT EXISTS, verified name+type via information_schema
-  inside the SAME transaction as the DDL, rollback on any gap; (2) MEDIUM —
-  a new SchemaMismatchError carries a STATIC allowlisted identifier that
-  _fail_line now prints, closing the index-name-lost-in-sanitization gap;
-  (3) MEDIUM — a `_SanitizingArgumentParser` and a `--log-level` allowlist
-  stop a synthetic private CLI argument from ever reaching stdout/stderr or
-  an uncaught traceback; (4) MEDIUM — the fake connection now records the
-  REAL sql text of every statement so tests can assert on it (OID filter,
-  indnkeyatts, information_schema.columns), plus a spy proving PG* env is
-  cleared before connect and kwargs match exactly, new negative cases for
-  the second unique index and a partial schema, and an opt-in real-Postgres
-  companion test (gated on WA_TEAM_PROMISES_REAL_PG=1, Homebrew
-  postgresql@17 present on M5) exercising run_init_schema against a
-  throwaway cluster. All four findings red-proved against 87cb7dff06 in an
-  isolated scratch copy (never `git checkout --`); the new SQL-text
-  assertions additionally mutation-proved (stripping the OID filter, or
-  disabling PG* env cleanup, each flips the corresponding new test red).
+  PR #7342 round-2 FIX-FIRST correction (review_7342_r2_out.txt, head
+  cce93510cd) for T3's schema+guard PR-1 — last correction round per an
+  exact spec addendum. Floor is 2 on SIZE alone, unchanged from round 1 —
+  no hot-zone path hit, no new auth/route/schema-on-Fly surface. Round 1's
+  four findings were confirmed cured; round 1's own column-check was itself
+  incomplete: _REQUIRED_COLUMNS covered only the four ALTER-added columns,
+  and information_schema.data_type reads a DOMAIN over text as "text" (its
+  base type), so a core column with the wrong type, a missing core column,
+  or a domain swapped in for a declared type all passed --init-schema
+  silently. Fix per the addendum: _REQUIRED_COLUMNS is now the single
+  source of truth for EVERY column of both tables (name, Postgres type,
+  NOT NULL) as declared in team_promises.sql, cross-checked by a new unit
+  test that parses the SQL file and asserts every declared column appears
+  in the constant (and vice versa). verify_required_columns() now queries
+  pg_attribute directly (attrelid = to_regclass(...)::oid, attnum > 0, NOT
+  attisdropped) and compares atttypid = '<type>'::regtype — which fails for
+  a domain, since its atttypid is the domain's OWN oid, never the base
+  type's (verified against a live Homebrew Postgres 17 cluster before
+  writing the fix). information_schema is no longer used anywhere in this
+  script. A mismatch raises SchemaMismatchError('<table>.<column>'),
+  allowlist-validated, inside the same transaction as the DDL and both
+  index checks — rollback on any gap, never OK on an incomplete/mistyped
+  schema. Both round-2 findings red-proved against cce93510cd in an
+  isolated scratch copy (never `git checkout --`): old code's ALTER-only
+  contract never even had "message_id" as a key, so a wrong-type or
+  missing CORE column could never be caught; and a domain-over-text column
+  reads as plain "text" via information_schema, so old code's string
+  comparison ('text' == 'text') accepted it. The opt-in real-Postgres
+  companion now exercises a genuine domain-over-text mismatch AND an
+  index-only mismatch (columns untouched) against a real cluster —
+  verified passing on M5 (Homebrew postgresql@17) before this push.
 scope:
   - >-
-    scripts/sql/pro_local/team_promises.sql — non-core columns of both
-    tables moved from CREATE TABLE to their own ALTER TABLE ADD COLUMN IF
-    NOT EXISTS, so a pre-existing table actually gets them.
+    scripts/wa_team_promises.py — _REQUIRED_COLUMNS rebuilt as {table:
+    [(column, pg_type, not_null), ...]} covering every column of both
+    tables; _ALLOWED_SCHEMA_IDENTIFIERS derived from it
+    (f"{table}.{column}" for every entry, plus the two index names);
+    verify_required_columns() rewritten against pg_attribute/atttypid/
+    regtype, information_schema removed entirely.
   - >-
-    scripts/wa_team_promises.py — SchemaMismatchError (static allowlisted
-    identifier), verify_required_columns() (name+type via
-    information_schema, same transaction as the DDL and both index
-    checks), _fail_line prints identifier=<name> when present,
-    _SanitizingArgumentParser + a --log-level allowlist so no CLI error
-    path can echo raw argv or raise an uncaught exception with user input
-    in its message.
+    scripts/sql/pro_local/team_promises.sql — unchanged this round (the
+    round-1 CREATE TABLE / ALTER ADD COLUMN split already matches the new
+    Python contract 1:1, confirmed by the new cross-check test).
   - >-
-    scripts/tests/test_wa_team_promises.py — 16 tests (was 9): fake
-    conn/pool records real sql text (asserted on directly), negative cases
-    for the second index and a partial (missing-column) schema, a spy
-    proving PG* env clears before connect with exact kwargs, identifier
-    passthrough/downgrade, and parametrized argparse/log-level private-
-    token-never-echoed cases. All pass; ruff clean.
+    scripts/tests/test_wa_team_promises.py — 20 tests (was 16):
+    parametrized column-mismatch guilt cases (core wrong-type, core
+    missing, core NOT NULL mismatch, ALTER-column missing) plus the SQL-
+    file/constant cross-check test; SQL-text assertions updated to
+    pg_attribute/atttypid/regtype present, information_schema absent. All
+    pass; ruff clean.
   - >-
-    scripts/tests/test_wa_team_promises_real_pg.py (new) — opt-in,
-    skipped by default (WA_TEAM_PROMISES_REAL_PG=1 + pg_ctl/initdb on
-    PATH required); spins up a throwaway Homebrew Postgres 17 cluster on a
-    short /tmp socket dir (unix sockets have a kernel path-length limit
-    pytest's own nested tmp_path blows through) and runs run_init_schema
-    for real: complete schema + idempotent re-run + a genuine
-    incompatible-index rollback. Verified passing on M5 before this push.
+    scripts/tests/test_wa_team_promises_real_pg.py — extended: after the
+    complete-schema+idempotent baseline, mutates one column to a real
+    Postgres DOMAIN over text and asserts the mismatch is caught by
+    identifier (not silently accepted), then a genuine index-only
+    mismatch (unaffected columns) is caught separately. Verified passing
+    on M5 before this push.

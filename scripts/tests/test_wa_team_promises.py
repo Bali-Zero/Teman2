@@ -1,12 +1,13 @@
-"""T3 promise gate tests — PR-1 (schema + guard), round-1 fixes. No real DB:
-`run_init_schema` runs against a fake pool/conn/txn that records the REAL
-sql text of every statement, proving column+index verification runs INSIDE
-the DDL's transaction, before COMMIT, and a mismatch leaves nothing
+"""T3 promise gate tests — PR-1 (schema + guard), round-1+2 fixes. No real
+DB: `run_init_schema` runs against a fake pool/conn/txn that records the
+REAL sql text of every statement, proving column+index verification runs
+INSIDE the DDL's transaction, before COMMIT, and a mismatch leaves nothing
 committed. See test_wa_team_promises_real_pg.py for the opt-in real-PG one.
 """
 from __future__ import annotations
 
 import os
+import re
 
 import pytest
 
@@ -16,6 +17,7 @@ from scripts.wa_team_promises import (
     _fail_line,
     _guard_pro_local_env,
     _REQUIRED_COLUMNS,
+    _SQL_PATH,
     run_init_schema,
 )
 import scripts.wa_team_promises as wa_team_promises
@@ -48,8 +50,8 @@ class _FakeConn:
     async def execute(self, ddl):
         self._log.append(("execute", ddl))
 
-    async def fetch(self, sql, table):
-        self._log.append(("fetch", sql, table))
+    async def fetch(self, sql, table, names, types, notnulls):
+        self._log.append(("fetch", sql, table, names, types, notnulls))
         return self._column_rows.get(table, [])
 
     async def fetchrow(self, sql, table, index):
@@ -88,8 +90,11 @@ _GOOD_TPC_ROW = {
 }
 
 
-def _good_columns(table):
-    return [{"column_name": c, "data_type": t} for c, t in _REQUIRED_COLUMNS[table].items()]
+def _good_columns(table, **not_ok):
+    """All columns `ok: True` except any name passed in `not_ok` (any
+    truthy value) — the SQL comparison (type+notnull+existence) is fully
+    server-side, so the fake only needs the final per-column verdict."""
+    return [{"column_name": c, "ok": c not in not_ok} for c, _, _ in _REQUIRED_COLUMNS[table]]
 
 
 def _good_rows(bad_tp_index=None, bad_tpc_index=None, tp_columns=None, tpc_columns=None):
@@ -138,19 +143,28 @@ async def test_run_init_schema_guilt_incompatible_index_rolls_back(which, overri
     assert log[-1] == "ROLLBACK"
 
 
+@pytest.mark.parametrize("column", [
+    "message_id",  # round-2 #1: CORE column, wrong type (e.g. TEXT not BIGINT) — the
+    # round-1 contract only covered ALTER-added columns, never checked at all.
+    "conversation_id",  # round-2 #1: CORE column missing outright — same gap.
+    "resolved",  # round-2 #1: NOT NULL mismatch on a CORE column — same gap.
+    "resolution_kind",  # round-1 #1 regression guard: an ALTER-added column missing.
+], ids=["core-wrong-type", "core-missing", "core-notnull-mismatch", "alter-missing"])
 @pytest.mark.asyncio
-async def test_run_init_schema_guilt_partial_schema_missing_column_rolls_back():
-    """Round-1 #1: a mig-200-shaped team_promises missing `resolution_kind`
-    must never print OK — both indexes are fine, only a column is missing."""
+async def test_run_init_schema_guilt_column_mismatch_rolls_back(column):
+    """The comparison (existence+type+NOT NULL, via pg_attribute) runs entirely
+    server-side — the fake only carries the final per-column verdict, so each
+    parametrize case differs in WHICH column fails, not in how the fake
+    represents "wrong type" vs "missing" vs "NOT NULL mismatch" (that
+    distinction is what test_wa_team_promises_real_pg.py proves for real)."""
     log: list = []
-    incomplete = [c for c in _good_columns("team_promises") if c["column_name"] != "resolution_kind"]
-    rows, cols = _good_rows(tp_columns=incomplete)
+    rows, cols = _good_rows(tp_columns=_good_columns("team_promises", **{column: True}))
     pool = _FakePool(_FakeConn(log, rows, cols))
 
     with pytest.raises(SchemaMismatchError) as exc_info:
         await run_init_schema(pool)
 
-    assert exc_info.value.identifier == "team_promises"
+    assert exc_info.value.identifier == f"team_promises.{column}"
     assert "COMMIT" not in log
     assert log[-1] == "ROLLBACK"
     # the column check runs before either index check — never reached them.
@@ -184,10 +198,30 @@ async def test_run_init_schema_queries_carry_real_sql_text_not_a_placeholder():
 
     ddl = log[_positions(log, "execute")[0]][1]
     assert "ADD COLUMN IF NOT EXISTS thread_key" in ddl
-    assert all("information_schema.columns" in c[1] for c in
-               [log[i] for i in _positions(log, "fetch")])
+    fetch_calls = [log[i] for i in _positions(log, "fetch")]
+    assert all("pg_attribute" in c[1] and "atttypid" in c[1] and "regtype" in c[1] for c in fetch_calls)
+    assert all("information_schema" not in c[1] for c in fetch_calls)  # round-2 #2: domains
     assert all("to_regclass" in c[1] and "indnkeyatts" in c[1] for c in
                [log[i] for i in _positions(log, "fetchrow")])
+
+
+def test_required_columns_matches_every_column_declared_in_the_sql_file():
+    """The spec addendum's single-source-of-truth requirement: every column
+    the SQL file declares (CREATE TABLE body or ALTER ADD COLUMN) must be a
+    key in _REQUIRED_COLUMNS, so the contract can never silently drift from
+    the schema it is meant to be checking."""
+    sql = _SQL_PATH.read_text()
+    declared: dict[str, set[str]] = {}
+    for table, body in re.findall(r"CREATE TABLE IF NOT EXISTS (\w+) \((.*?)\n\);", sql, re.DOTALL):
+        cols = {line.strip().split()[0] for line in body.strip().split(",") if line.strip()}
+        declared.setdefault(table, set()).update(cols)
+    for table, col in re.findall(r"ALTER TABLE (\w+) ADD COLUMN IF NOT EXISTS (\w+)", sql):
+        declared.setdefault(table, set()).add(col)
+    assert declared  # sanity: the regexes actually matched something
+    for table, cols in declared.items():
+        known = {c for c, _, _ in _REQUIRED_COLUMNS[table]}
+        assert cols <= known, f"{table}: SQL declares {cols - known}, missing from _REQUIRED_COLUMNS"
+        assert known <= cols, f"{table}: _REQUIRED_COLUMNS declares {known - cols}, absent from the SQL"
 
 
 def test_fail_line_identifier_allowlist_passthrough_and_unknown_downgrade():
