@@ -25,10 +25,554 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import seat_usage_collector as suc  # noqa: E402
 
 SINCE = datetime(2000, 1, 1, tzinfo=timezone.utc)  # far enough back to include any fixture mtime
+
+
+def _task_row(provider, sid, **extra):
+    return {"provider": provider, "session_sha256": suc._sha(sid),
+            "parent_session_sha256": None, "role": "implementer", "attempt": 1,
+            "overhead": False, **extra}
+
+
+def _task_doc(rows, **extra):
+    return {"schema": "task-outcome/1", "task_sha256": suc._sha("synthetic-task"),
+            "task_class": "infra-hooks", "cohort": "manual", "sessions": rows,
+            "started_utc": "2026-08-19T00:00:00Z", "ended_utc": "2026-08-20T00:00:00Z", **extra}
+
+
+def _task_report(tmp_path, index, doc):
+    directory = tmp_path / "outcomes"
+    directory.mkdir(exist_ok=True)
+    (directory / "task.json").write_text(json.dumps(doc))
+    return suc.collect_task_outcomes(directory, index)
+
+
+def _task_claude(profile, sid, amount, *, sidecar=None, timestamp="2026-08-19T10:00:00Z"):
+    data = json.loads(_claude_line("message-" + (sidecar or sid), "request-" + (sidecar or sid), amount, amount,
+                                 cache_read=amount, cache_creation=0, ts=timestamp))
+    data["sessionId"] = sid
+    if sidecar:
+        directory = profile / "projects" / "-synthetic-workspace" / sid / "subagents"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"agent-{sidecar}.jsonl"
+        path.write_text(json.dumps(data) + "\n")
+        return path
+    return _write_transcript(profile, sid + ".jsonl", [json.dumps(data)])
+
+
+def _task_codex(profile, sid, totals, *, parent=None):
+    source = {"subagent": {"thread_spawn": {"parent_thread_id": parent}}} if parent else "cli"
+    rows = [json.dumps({"type": "session_meta", "payload": {"id": sid, "source": source}})]
+    previous = 0
+    for step, total in enumerate(totals):
+        delta = total - previous if total >= previous else total
+        event = json.loads(_token_count_line(total, total, delta, delta))
+        event["timestamp"] = f"2026-08-19T10:{step:02d}:00Z"
+        event["payload"]["info"]["last_token_usage"].update(cached_input_tokens=0, reasoning_output_tokens=0)
+        rows.append(json.dumps(event))
+        previous = total
+    return _write_session(profile, sid + ".jsonl", rows)
+
+
+def _verified_outcome(verifier="gate", role="fresh-gate"):
+    return {"status": "verified_complete", "verifier_role": role,
+            "verifier_session_sha256": suc._sha(verifier),
+            "evidence_sha256": suc._sha("proof"), "verified_utc": "2026-08-19T11:00:00Z"}
+
+
+def test_declared_cross_provider_child_gate_is_not_independent(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    _task_claude(claude, "builder", 10)
+    _task_codex(codex, "gate", [2])
+    suc.collect_claude(str(claude), SINCE, task_index=index)
+    suc.collect_codex(str(codex), SINCE, task_index=index)
+    doc = _task_doc([_task_row("claude", "builder"), _task_row("codex", "gate", role="gate", overhead=True,
+                     parent_session_sha256=suc._sha("builder"))], outcome=_verified_outcome())
+    result = _task_report(tmp_path, index, doc)
+    assert result["tasks"][0]["status"] == "unknown"
+    assert result["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_declared_parent_cannot_erase_observed_lineage(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    _task_codex(profile, "gate", [2], parent="builder")
+    _task_codex(profile, "other", [1])
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"),
+            _task_row("codex", "gate", role="gate", overhead=True, parent_session_sha256=suc._sha("other"))]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_declared_builder_edge_cannot_erase_gate_ancestry(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "gate", [2])
+    _task_codex(profile, "builder", [10], parent="gate")
+    _task_codex(profile, "other", [1])
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder", parent_session_sha256=suc._sha("other")),
+            _task_row("codex", "gate", role="gate", overhead=True)]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_sibling_gate_with_undeclared_ancestor_is_not_a_root(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "common-root", [1])
+    _task_codex(profile, "builder", [10], parent="common-root")
+    _task_codex(profile, "gate", [2], parent="common-root")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown"
+    assert "gate_not_independent_root" in task["verification_issues"]
+
+
+def test_other_gate_roles_do_not_hide_verifier_relatives(tmp_path):
+    for verifier_parent, helper_parent in (("helper", None), (None, "gate")):
+        profile, index = tmp_path / str(verifier_parent), {}
+        _task_codex(profile, "builder", [10])
+        _task_codex(profile, "helper", [1], parent=helper_parent)
+        _task_codex(profile, "gate", [2], parent=verifier_parent)
+        suc.collect_codex(str(profile), SINCE, task_index=index)
+        rows = [_task_row("codex", "builder"), _task_row("codex", "helper", role="gate", overhead=True),
+                _task_row("codex", "gate", role="gate", overhead=True)]
+        task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+        assert task["status"] == "unknown"
+        assert "gate_not_independent_root" in task["verification_issues"]
+
+
+def test_automatic_gate_descendant_is_also_a_participant(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    _task_codex(profile, "gate", [2])
+    _task_codex(profile, "helper", [1], parent="gate")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown" and task["descendants_added"] == 1
+
+
+def test_zero_delta_repeat_is_not_gate_activity(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    gate = _task_codex(profile, "gate", [2, 2])
+    lines = [json.loads(line) for line in gate.read_text().splitlines()]
+    lines[1]["timestamp"] = "2026-06-01T10:00:00Z"
+    gate.write_text("\n".join(map(json.dumps, lines)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=True)]
+    report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_verifier_must_be_declared_as_overhead(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "builder", [10])
+    _task_codex(profile, "gate", [2])
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    rows = [_task_row("codex", "builder"), _task_row("codex", "gate", role="gate", overhead=False)]
+    task = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]
+    assert task["status"] == "unknown"
+    assert "gate_not_declared_overhead" in task["verification_issues"]
+
+
+def test_zero_usage_claude_event_is_not_gate_activity(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    _task_claude(profile, "gate", 0)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_missing_or_ambiguous_declared_parent_cannot_prove_independence(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    for name in ("builder", "gate", "ambiguous"):
+        _task_claude(claude, name, 1)
+    _task_codex(codex, "ambiguous", [1])
+    suc.collect_claude(str(claude), SINCE, task_index=index)
+    suc.collect_codex(str(codex), SINCE, task_index=index)
+    for parent in ("missing", "ambiguous"):
+        for participant in (0, 1):
+            rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+            rows[participant]["parent_session_sha256"] = suc._sha(parent)
+            assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_verifier_hash_must_identify_one_provider_session(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    _task_claude(claude, "builder", 10)
+    _task_claude(claude, "gate", 2)
+    _task_codex(codex, "gate", [3])
+    suc.collect_claude(str(claude), SINCE, task_index=index)
+    suc.collect_codex(str(codex), SINCE, task_index=index)
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True),
+            _task_row("codex", "gate", role="gate", overhead=True)]
+    report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_gate_must_have_activity_during_task_and_before_verification(tmp_path):
+    for timestamp in ("2026-06-01T10:00:00Z", "2026-08-19T12:00:00Z"):
+        profile, index = tmp_path / timestamp.replace(":", ""), {}
+        _task_claude(profile, "builder", 10)
+        _task_claude(profile, "gate", 2, timestamp=timestamp)
+        suc.collect_claude(str(profile), SINCE, task_index=index)
+        rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+        result = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+        assert result["tasks"][0]["status"] == "unknown"
+        assert result["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_declared_builder_without_window_usage_is_not_zero_cost(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 1000, timestamp="2026-08-10T10:00:00Z")
+    _task_claude(profile, "gate", 3)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+    result = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))
+    assert "declared_session_without_window_usage" in result["tasks"][0]["usage_issues"]
+    assert not result["tasks"][0]["usage_complete"]
+    assert result["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_empty_gate_and_declared_lineage_cycle_are_unknown(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    suc._task_node(index, "claude", "gate")
+    rows = [_task_row("claude", "builder"), _task_row("claude", "gate", role="gate", overhead=True)]
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+    _task_claude(profile, "gate", 2)
+    _task_claude(profile, "helper", 1)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    rows[1]["parent_session_sha256"] = suc._sha("helper")
+    rows.append(_task_row("claude", "helper", role="gate", overhead=True, parent_session_sha256=suc._sha("gate")))
+    assert _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome()))["tasks"][0]["status"] == "unknown"
+
+
+def test_fork_embedded_parent_meta_never_rebinds_child_usage(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "parent", [1000, 2000])
+    child = _task_codex(profile, "child", [250], parent="parent")
+    rows = child.read_text().splitlines()
+    rows.insert(1, json.dumps({"type": "session_meta", "payload": {"id": "parent", "source": "cli"}}))
+    child.write_text("\n".join(rows) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("codex", "parent")]))["tasks"][0]
+    assert result["by_provider"]["codex"]["input_tokens"] == 2250
+    assert result["descendants_added"] == 1 and result["usage_complete"]
+
+
+def test_only_gate_row_cannot_verify_a_task(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "gate", 10)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("claude", "gate", role="gate")], outcome=_verified_outcome())
+    report = _task_report(tmp_path, index, doc)
+    assert report["tasks"][0]["status"] == "unknown"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_ancestor_or_descendant_gate_cannot_verify_own_lineage(tmp_path):
+    for gate_parent, builder_parent in (("builder", None), (None, "gate")):
+        profile, index = tmp_path / str(gate_parent), {}
+        _task_codex(profile, "builder", [10], parent=builder_parent)
+        _task_codex(profile, "gate", [5], parent=gate_parent)
+        suc.collect_codex(str(profile), SINCE, task_index=index)
+        doc = _task_doc([_task_row("codex", "builder"), _task_row("codex", "gate", role="gate")], outcome=_verified_outcome())
+        report = _task_report(tmp_path, index, doc)
+        assert report["tasks"][0]["status"] == "unknown"
+        assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_unobserved_gate_and_trusted_only_ci_do_not_enter_denominator(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    for role in ("fresh-gate", "ci"):
+        rows = [_task_row("claude", "builder")]
+        if role == "fresh-gate":
+            rows.append(_task_row("claude", "gate", role="gate"))
+        report = _task_report(tmp_path, index, _task_doc(rows, outcome=_verified_outcome(role=role)))
+        assert report["tasks"][0]["status"] == "unknown"
+        assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 0
+
+
+def test_mtime_scan_cannot_claim_complete_lineage_before_its_window(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "builder", 10)
+    child = _task_claude(profile, "builder", 50, sidecar="old-child")
+    os.utime(child, (1, 1))
+    cutoff = datetime(2026, 8, 20, tzinfo=timezone.utc)
+    suc.collect_claude(str(profile), cutoff, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "builder")]))["tasks"][0]
+    assert not result["usage_complete"]
+    assert "lineage_possibly_truncated" in result["usage_issues"]
+
+
+def test_verifier_cannot_also_be_builder_under_other_provider():
+    doc = _task_doc([_task_row("claude", "same"), _task_row("codex", "same", role="gate")], outcome=_verified_outcome("same"))
+    assert suc._task_manifest(doc)[0]["status"] == "unknown"
+
+
+def test_verified_window_requires_start_independently_of_end():
+    doc = _task_doc([_task_row("claude", "builder"), _task_row("claude", "gate", role="gate")], outcome=_verified_outcome())
+    del doc["started_utc"]
+    assert suc._task_manifest(doc)[0]["status"] == "unknown"
+
+
+def test_unknown_child_timestamp_is_retained_and_marks_usage_incomplete(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "root", 10)
+    _task_claude(profile, "root", 5, sidecar="unknown-time", timestamp="unknown")
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "root")]))["tasks"][0]
+    assert result["descendants_added"] == 1
+    assert "unknown_event_timestamp" in result["usage_issues"] and not result["usage_complete"]
+
+
+def test_partial_response_identity_marks_usage_incomplete(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    path = _task_claude(profile, "root", 10)
+    row = json.loads(path.read_text())
+    del row["requestId"]
+    path.write_text(json.dumps(row) + "\n")
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("claude", "root")]))["tasks"][0]
+    assert "incomplete_response_identity" in result["usage_issues"] and not result["usage_complete"]
+
+
+def test_last_counter_larger_than_total_is_unknown(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "root", [10])
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    rows[1]["payload"]["info"]["last_token_usage"]["input_tokens"] = 11
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    result = _task_report(tmp_path, index, _task_doc([_task_row("codex", "root")]))["tasks"][0]
+    assert result["by_provider"]["codex"]["input_tokens"] == "unknown"
+    assert not result["usage_complete"]
+
+
+def test_task_usage_includes_descendants_retries_and_excludes_replayed_snapshots(tmp_path):
+    claude, codex, index = tmp_path / "claude", tmp_path / "codex", {}
+    root = _task_claude(claude, "claude-root", 5)
+    root.write_text(root.read_text() + root.read_text())
+    _task_claude(claude, "claude-root", 3, sidecar="child")
+    _task_codex(codex, "codex-root", [10, 10, 30, 4])
+    _task_codex(codex, "codex-child", [7], parent="codex-root")
+    # The same transcript through a second path still has one session identity.
+    first = next((codex / "sessions").rglob("codex-root.jsonl"))
+    rows = [json.loads(line) for line in first.read_text().splitlines()]
+    rows[-1]["payload"]["info"]["total_token_usage"]["output_tokens"] = 40
+    rows[-1]["payload"]["info"]["last_token_usage"]["output_tokens"] = 40
+    first.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    first.with_name("alias.jsonl").write_bytes(first.read_bytes())
+    before = (suc.collect_claude(str(claude), SINCE), suc.collect_codex(str(codex), SINCE))
+    after = (suc.collect_claude(str(claude), SINCE, task_index=index), suc.collect_codex(str(codex), SINCE, task_index=index))
+    assert before == after  # Legacy seat semantics remain unchanged, including their limitations.
+    doc = _task_doc([_task_row("claude", "claude-root", status="failed"),
+                     _task_row("codex", "codex-root", attempt=2, overhead=True)])
+    report = _task_report(tmp_path, index, doc)
+    task = report["tasks"][0]
+    assert task["descendants_added"] == 2 and task["sessions_found"] == 4
+    assert task["by_provider"]["claude"]["input_tokens"] == 8
+    assert task["by_provider"]["codex"]["input_tokens"] == 41  # 30 + reset 4 + child 7
+    assert task["by_provider"]["codex"]["output_tokens"] == 77  # 30 + new epoch 40 + child 7
+    assert task["by_provider"]["codex"]["usage_events"] == 4
+    assert task["overhead_tokens"]["codex"]["input_tokens"] == 41
+    assert task["failed_or_retried_sessions"] == 2 and task["attempts_max"] == 2
+    assert task["status"] == "unknown" and task["usage_complete"]
+    assert report["tasks_meta"]["tokens_per_verified_task"] is None
+    serialized = json.dumps(report)
+    assert all(s not in serialized for s in ("claude-root", "codex-root", "codex-child", "agent-child", str(tmp_path)))
+
+
+def test_task_windows_freeze_usage_and_do_not_charge_inherited_totals(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "shared-session", [100, 140, 190])
+    rows = [json.loads(s) for s in path.read_text().splitlines()]
+    rows[1]["payload"]["info"]["last_token_usage"].update(input_tokens=10, output_tokens=10)
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    whole = _task_report(tmp_path, index, _task_doc([_task_row("codex", "shared-session")]))["tasks"][0]
+    assert whole["by_provider"]["codex"]["input_tokens"] == 100  # own first 10 + subsequent 90
+    doc = _task_doc([_task_row("codex", "shared-session")], started_utc="2026-08-19T10:01:00Z", ended_utc="2026-08-19T10:02:00Z")
+    task = _task_report(tmp_path, index, doc)["tasks"][0]
+    assert task["by_provider"]["codex"]["input_tokens"] == 40
+
+
+@pytest.mark.parametrize("builder_provider,gate_provider", [
+    ("claude", "claude"), ("claude", "codex"), ("codex", "claude"), ("codex", "codex"),
+])
+def test_task_verification_needs_independent_gate_evidence_and_closed_window(tmp_path, builder_provider, gate_provider):
+    index, expected = {}, {}
+    for provider, sid, amount in ((builder_provider, "builder", 10), (gate_provider, "independent-gate", 2)):
+        profile = tmp_path / provider
+        if provider == "claude":
+            _task_claude(profile, sid, amount)
+        else:
+            _task_codex(profile, sid, [amount])
+        expected[provider] = expected.get(provider, 0) + amount
+    suc.collect_claude(str(tmp_path / "claude"), SINCE, task_index=index)
+    suc.collect_codex(str(tmp_path / "codex"), SINCE, task_index=index)
+    outcome = {"status": "verified_complete", "verifier_role": "fresh-gate",
+               "verifier_session_sha256": suc._sha("independent-gate"),
+               "evidence_sha256": suc._sha("independent-gate-receipt"), "verified_utc": "2026-08-19T11:00:00Z"}
+    doc = _task_doc([_task_row(builder_provider, "builder"),
+                     _task_row(gate_provider, "independent-gate", role="gate", overhead=True)], outcome=outcome)
+    report = _task_report(tmp_path, index, doc)
+    assert report["tasks"][0]["status"] == "verified_complete"
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 1
+    assert {provider: usage["input_tokens"] for provider, usage in
+            report["tasks_meta"]["tokens_per_verified_task"].items()} == expected
+    future = {**doc, "ended_utc": "2099-08-20T00:00:00Z"}
+    assert _task_report(tmp_path, index, future)["tasks"][0]["status"] == "unknown"
+    no_ci_identity = {**doc, "outcome": {**outcome, "verifier_role": "ci", "verifier_session_sha256": None}}
+    assert _task_report(tmp_path, index, no_ci_identity)["tasks"][0]["status"] == "unknown"
+    for field, replacement in (("evidence_sha256", None), ("verifier_session_sha256", suc._sha("builder")), ("verified_utc", None)):
+        invalid = {**doc, "outcome": {**outcome, field: replacement}}
+        report = _task_report(tmp_path, index, invalid)
+        assert report["tasks"][0]["status"] == "unknown" and report["tasks_meta"]["downgraded"] == 1
+    del doc["ended_utc"]
+    assert _task_report(tmp_path, index, doc)["tasks"][0]["status"] == "unknown"
+
+
+def test_task_missing_usage_and_unknown_counters_never_make_denominator(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    path = _task_codex(profile, "found", [10])
+    rows = [json.loads(s) for s in path.read_text().splitlines()]
+    del rows[1]["payload"]["info"]["last_token_usage"]["reasoning_output_tokens"]
+    path.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    task = _task_report(tmp_path, index, _task_doc([_task_row("codex", "found"), _task_row("claude", "missing")]))["tasks"][0]
+    assert task["sessions_missing"] == 1 and not task["usage_complete"]
+    assert task["by_provider"]["codex"]["reasoning_output_tokens"] == "unknown"
+
+
+def test_task_schema_rejects_extra_text_even_when_short(tmp_path):
+    for doc in (_task_doc([_task_row("claude", "a")], client_name="short-pii"),
+                _task_doc([_task_row("claude", "a", secret="small")]),
+                _task_doc([_task_row("claude", "a")], task_sha256="raw-identifier")):
+        report = _task_report(tmp_path, {}, doc)
+        assert report["tasks"] == [] and report["tasks_meta"]["rejected"] == 1
+        assert "short-pii" not in json.dumps(report)
+
+
+def test_task_overlapping_attribution_invalidates_both_denominators(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    _task_claude(profile, "shared", 5)
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("claude", "shared")])
+    _task_report(tmp_path, index, doc)
+    second = {**doc, "task_sha256": suc._sha("second-task")}
+    (tmp_path / "outcomes/second.json").write_text(json.dumps(second))
+    tasks = suc.collect_task_outcomes(tmp_path / "outcomes", index)["tasks"]
+    assert len(tasks) == 2 and all(not t["usage_complete"] for t in tasks)
+    assert all("overlapping_task_usage" in t["usage_issues"] for t in tasks)
+
+
+def test_task_claude_streaming_and_profile_aliases_keep_latest_field_values(tmp_path):
+    first, second, index = tmp_path / "first", tmp_path / "second", {}
+    _task_claude(first, "same-session", 5)
+    path = _task_claude(second, "same-session", 10, timestamp="2026-08-19T10:01:00Z")
+    row = json.loads(path.read_text())
+    del row["message"]["usage"]["output_tokens"]
+    path.write_text(json.dumps(row) + "\n")
+    before = suc.collect_claude(str(second), SINCE)
+    suc.collect_claude(str(first), SINCE, task_index=index)
+    assert suc.collect_claude(str(second), SINCE, task_index=index) == before
+    task = _task_report(tmp_path, index, _task_doc([_task_row("claude", "same-session")]))["tasks"][0]
+    assert task["by_provider"]["claude"]["input_tokens"] == 10
+    assert task["by_provider"]["claude"]["output_tokens"] == 5
+    assert task["by_provider"]["claude"]["usage_events"] == 1
+
+
+def test_task_malformed_transcript_is_incomplete_without_changing_legacy_seats(tmp_path):
+    profile, index = tmp_path / "claude", {}
+    path = _task_claude(profile, "damaged", 5)
+    path.write_text(path.read_text() + "{invalid partial record\n")
+    before = suc.collect_claude(str(profile), SINCE)
+    assert suc.collect_claude(str(profile), SINCE, task_index=index) == before
+    task = _task_report(tmp_path, index, _task_doc([_task_row("claude", "damaged")]))["tasks"][0]
+    assert not task["usage_complete"] and "source_read_error" in task["usage_issues"]
+
+
+def test_task_report_is_added_by_actual_cli_and_tasks_only_does_not_write(tmp_path, monkeypatch, capsys):
+    profile = tmp_path / "claude"
+    _task_claude(profile, "cli-session", 5)
+    seat_map = tmp_path / "map.json"
+    seat_map.write_text(json.dumps({"claude_profiles": {str(profile): "A1"}, "codex_homes": {}}))
+    out = tmp_path / "snapshot.json"
+    args = ["collector", "--seat-map", str(seat_map), "--out", str(out), "--task-outcomes", str(tmp_path / "outcomes")]
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", args)
+    assert suc.main() == 0
+    before = json.loads(out.read_text())
+    assert "tasks" not in before and "tasks_meta" not in before
+    _task_report(tmp_path, {}, _task_doc([_task_row("claude", "cli-session")]))
+    assert suc.main() == 0
+    after = json.loads(out.read_text())
+    assert before["seats"] == after["seats"]
+    assert after["tasks"][0]["by_provider"]["claude"]["input_tokens"] == 5
+    snapshot_bytes = out.read_bytes()
+    capsys.readouterr()
+    monkeypatch.setattr(sys, "argv", [*args, "--tasks-only"])
+    assert suc.main() == 0
+    assert json.loads(capsys.readouterr().out)["tasks"] == after["tasks"]
+    assert out.read_bytes() == snapshot_bytes
+
+
+def test_task_cohorts_are_reported_separately_and_duplicate_manifests_fail_closed(tmp_path):
+    profile, index, docs = tmp_path / "claude", {}, []
+    for cohort, amount in (("baseline", 10), ("post-token-efficiency-six", 6)):
+        builder, gate = cohort + "-builder", cohort + "-gate"
+        _task_claude(profile, builder, amount)
+        _task_claude(profile, gate, 2)
+        docs.append(_task_doc([_task_row("claude", builder), _task_row("claude", gate, role="gate", overhead=True)],
+                             cohort=cohort, task_sha256=suc._sha(cohort), outcome={
+                                 "status": "verified_complete", "verifier_role": "fresh-gate",
+                                 "verifier_session_sha256": suc._sha(gate), "evidence_sha256": suc._sha("receipt-" + cohort),
+                                 "verified_utc": "2026-08-19T11:00:00Z"}))
+    suc.collect_claude(str(profile), SINCE, task_index=index)
+    directory = tmp_path / "outcomes"
+    directory.mkdir()
+    for n, doc in enumerate(docs):
+        (directory / f"{n}.json").write_text(json.dumps(doc))
+    meta = suc.collect_task_outcomes(directory, index)["tasks_meta"]
+    assert meta["verified_tasks_with_complete_usage"] == 2 and meta["tokens_per_verified_task"] is None
+    assert [c["tokens_per_verified_task"]["claude"]["input_tokens"] for c in meta["cohorts"]] == [12, 8]
+    (directory / "duplicate.json").write_text(json.dumps(docs[0]))
+    report = suc.collect_task_outcomes(directory, index)
+    assert report["tasks_meta"]["rejected"] == 1
+    assert report["tasks_meta"]["verified_tasks_with_complete_usage"] == 1
+    assert "duplicate_task_manifest" in report["tasks"][0]["usage_issues"]
+
+
+def test_task_window_prunes_old_children_but_keeps_active_grandchildren(tmp_path):
+    profile, index = tmp_path / "codex", {}
+    _task_codex(profile, "root", [10])
+    _task_codex(profile, "old-child", [5], parent="root")
+    active = _task_codex(profile, "active-grandchild", [7], parent="old-child")
+    rows = [json.loads(line) for line in active.read_text().splitlines()]
+    rows[1]["timestamp"] = "2026-08-19T10:01:00Z"
+    active.write_text("\n".join(map(json.dumps, rows)) + "\n")
+    suc.collect_codex(str(profile), SINCE, task_index=index)
+    doc = _task_doc([_task_row("codex", "root")], started_utc="2026-08-19T10:01:00Z")
+    task = _task_report(tmp_path, index, doc)["tasks"][0]
+    assert task["descendants_added"] == 1 and task["sessions_found"] == 2
+    assert task["by_provider"]["codex"]["input_tokens"] == 7
+    assert task["overhead_tokens"].get("codex", {}).get("input_tokens", 0) == 0
+    assert "declared_session_without_window_usage" not in task["usage_issues"]
+    assert task["usage_complete"]
 
 
 def _token_count_line(total_in: int, total_out: int, last_in: int, last_out: int) -> str:
