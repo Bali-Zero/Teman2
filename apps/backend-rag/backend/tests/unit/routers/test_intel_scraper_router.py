@@ -265,6 +265,49 @@ class TestConvertStagingToEnrichedArticle:
         }
         assert convert_staging_to_enriched_article(data)["next_steps"]["general"] == steps
 
+    def test_a_step_that_opens_in_bold_keeps_its_bold(self) -> None:
+        """Guilt (gate finding E22 on #7331): stripping the bullet with
+        lstrip("- ").lstrip("* ") also ate the opening "**" of a step that
+        starts in bold, leaving an orphan "**" mid-text."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Bold Steps",
+            "content": (
+                "## Facts\nF.\n## Next Steps\n"
+                "- **Deadline**: file the SPT by 31 March.\n"
+                "* Keep the receipt on file.\n"
+            ),
+            "category": "tax",
+            "relevance_score": 60,
+        }
+        assert convert_staging_to_enriched_article(data)["next_steps"]["general"] == [
+            "**Deadline**: file the SPT by 31 March.",
+            "Keep the receipt on file.",
+        ]
+
+    def test_crlf_draft_extracts_every_mapped_section(self) -> None:
+        """Guilt (gate finding on #7331): with CRLF line endings the
+        extractors' `[ \\t]*\\n` never consumed the "\\r", so a colon heading
+        or "## Bali Zero Take" was classified as known but never extracted."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Windows Draft",
+            "content": (
+                "## Facts\r\nThe rule starts in March.\r\n"
+                "## Bali Zero Take\r\nOur take on the rule.\r\n"
+                "## Next Steps:\r\n- Renew the permit before expiry.\r\n"
+            ),
+            "category": "visa",
+            "relevance_score": 60,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["facts"] == "The rule starts in March."
+        assert "Our take on the rule." in str(result["bali_zero_take"])
+        assert result["next_steps"]["general"] == ["Renew the permit before expiry."]
+        assert result["extra_sections"] == []
+
     def test_mapped_headings_with_a_trailing_colon_are_extracted(self) -> None:
         """Guilt (gate finding F4 on #7322): "## Next Steps:" / "## Facts:"
         were classified as known headings (so never kept as extra sections)
@@ -301,6 +344,7 @@ class TestConvertStagingToEnrichedArticle:
             ("### For Expats", "### For Investors"),
             ("**For Expats:**", "**For Investors:**"),
             ("For Expats:", "For Investors:"),
+            ("##### For Expats", "##### For Investors"),
         ]:
             data = {
                 "title": "Labelled Steps",
@@ -343,6 +387,7 @@ class TestConvertStagingToEnrichedArticle:
                 assert "Review the article for specific actions" not in item
         assert next_steps["expat"] == []
         assert next_steps["investor"] == []
+        assert next_steps["general"] == []
 
     def test_next_steps_absent_yields_no_filler(self) -> None:
         """Guilt: a draft with no "## Next Steps" section at all must not

@@ -145,6 +145,16 @@ def _parse_bali_zero_take(text: str) -> dict[str, str]:
     return sections
 
 
+# Next Steps bodies that say "nothing yet" rather than name a step.
+_PLACEHOLDER_STEPS = frozenset({"tbd", "tba", "n/a", "na", "none", "todo"})
+
+
+def _strip_bullet(item: str) -> str:
+    """Drop a leading "- " / "* " list marker and nothing else — an item
+    that opens in bold ("**Deadline**: …") keeps its "**"."""
+    return re.sub(r"^\s*[-*][ \t]+", "", item.strip())
+
+
 def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[str, Any]:
     """
     Convert staging item (markdown simple) to EnrichedArticle format.
@@ -170,7 +180,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Extract Summary section
     summary_match = re.search(
-        r"## Summary:?[ \t]*\n(.*?)(?=\n## |$)",
+        r"## Summary:?[ \t]*\r?\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
@@ -182,13 +192,13 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Extract Facts section
     facts_match = re.search(
-        r"## Facts:?[ \t]*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+        r"## Facts:?[ \t]*\r?\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
     )
     facts = facts_match.group(1).strip() if facts_match else content
 
     # Extract Bali Zero Take section
     bali_zero_take_match = re.search(
-        r"## Bali Zero(?:['’]s)? Take:?[ \t]*\n(.*?)(?=\n## |$)",
+        r"## Bali Zero(?:['’]s)? Take:?[ \t]*\r?\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
@@ -197,7 +207,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Extract Next Steps section
     next_steps_match = re.search(
-        r"## Next Steps:?[ \t]*\n(.*?)(?=\n## |$)",
+        r"## Next Steps:?[ \t]*\r?\n(.*?)(?=\n## |$)",
         content,
         re.DOTALL | re.IGNORECASE,
     )
@@ -205,10 +215,10 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     def _extract_labelled_items(text: str) -> list[str]:
         """Split a labelled (For Expats/For Investors) subsection into list
-        items — unchanged from the pre-fix behavior so an innocent draft
-        with real subsections still renders exactly as before."""
+        items. Only the bullet marker is stripped, so a plain "- step" item
+        renders exactly as before."""
         return [
-            item.strip().lstrip("- ").lstrip("* ")
+            _strip_bullet(item)
             for item in re.split(r"\n(?=-|\*)", text)
             if item.strip()
         ]
@@ -218,8 +228,12 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         items, keeping every item with any word in it. The old >10-char
         filter measured the raw "- " item and dropped real short steps
         such as "Pay PBB." (gate finding on #7322)."""
-        items = (item.strip().lstrip("- ").lstrip("* ") for item in re.split(r"\n(?=-|\*)", text))
-        return [item for item in items if re.search(r"\w", item)]
+        items = (_strip_bullet(item) for item in re.split(r"\n(?=-|\*)", text))
+        return [
+            item
+            for item in items
+            if re.search(r"\w", item) and item.strip(" .").lower() not in _PLACEHOLDER_STEPS
+        ]
 
     # Parse Next Steps for expat and investor
     expat_steps: list[str] = []
@@ -232,7 +246,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     # and cut "expatriate" to "riate…" (gate BLOCK on #7322). A label runs
     # until the next label or heading.
     audience_label = re.compile(
-        r"^\s*(?:#{2,4}\s*)?(?:\*\*)?\s*(?:For\s+)?(Expat|Investor)s?\s*:?\s*(?:\*\*)?\s*:?\s*$",
+        r"^\s*(?:#{2,6}\s*)?(?:\*\*)?\s*(?:For\s+)?(Expat|Investor)s?\s*:?\s*(?:\*\*)?\s*:?\s*$",
         re.IGNORECASE,
     )
     audience_lines: dict[str, list[str]] = {}
@@ -242,7 +256,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         if label:
             current_audience = label.group(1).lower()
             audience_lines.setdefault(current_audience, [])
-        elif re.match(r"^\s*#{2,4}\s", line):
+        elif re.match(r"^\s*#{2,6}\s", line):
             current_audience = None
         elif current_audience:
             audience_lines[current_audience].append(line)
@@ -259,8 +273,6 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     # Render it as a single neutral group instead — never split, never fill.
     if not audience_lines and next_steps_text:
         general_steps = _extract_general_items(next_steps_text)
-        if not general_steps:
-            general_steps = [next_steps_text]
 
     # Preserve every OTHER draft "##" section instead of silently dropping it
     # (2026-09-23 GloBE regression: "## In Practice" and "## Sources" never
