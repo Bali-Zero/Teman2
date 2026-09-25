@@ -345,6 +345,203 @@ def test_scrub_leaves_short_status_words_untouched():
     assert ap.scrub(text) == text
 
 
+# ---------------------------------------------------------------------------
+# scrub() — PROVENANCE-based keep=, not shape/context (scar #3, r3 redesign,
+# 2026-09-25, gate-scrub-7314-r2 REWORK-BUILD)
+#
+# Rounds 1 and 2 tried to decide from SHAPE (a regex on the token) or CONTEXT
+# (the text around a match) whether a long token was a secret, and each round
+# under-matched a real secret that origin/main redacted. This round decides
+# by PROVENANCE instead: _SECRET_RE, and every redaction origin/main performs,
+# are UNCHANGED — scrub() adds only a keyword-only `keep` parameter, and the
+# ONE exception is a match whose exact text is a member of the caller-supplied
+# `keep` set AND is itself a pure single-case letters-and-underscore
+# identifier. With keep=None or an empty set, scrub() is byte-identical to
+# origin/main for every input (PARITY, proved below).
+# ---------------------------------------------------------------------------
+
+# INNOCENCE fixture, unchanged from r1/r2: pure identifiers a caller might
+# legitimately want to keep.
+_SCRUB_INNOCENCE = [
+    "secondhome_property_value_usd",
+    "edge/secondhome_property_value_usd=unsure",
+    "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "SECOND_HOME_BELOW_THRESHOLD_STUDIO",
+    "review_hold_inventory_expected_count",
+]
+
+
+def _synthetic_guilt_cases() -> dict[str, str]:
+    """Secret-shaped strings generated HERE, never copied from env/file (SYNTHETIC).
+
+    Reused as the bulk of the parity corpus below: every one of these must
+    still be caught by _SECRET_RE and redacted, keep= or not, unless its exact
+    text is explicitly named in keep.
+    """
+    import random
+    import string
+
+    rng = random.Random(20260925)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    return {
+        "mixed_case_alnum_with_digits_40": rand_alnum(40),
+        "ghp_prefixed": "ghp_" + rand_alnum(36),
+        "sk_prefixed": "sk-" + rand_alnum(48),
+        "akia_prefixed": "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "jwt_shaped": "eyJ" + rand_alnum(10) + "." + rand_alnum(10) + "." + rand_alnum(10),
+        "hex_digest_64": "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "lower_alnum_with_digits_30": "".join(
+            rng.choice(string.ascii_lowercase + string.digits) for _ in range(30)
+        ),
+        "identifier_prefix_random_digit_tail": "secret_token_value_" + rand_alnum(24),
+        "mixed_case_underscored_no_digits": "SecretToken_ValueHere_ExtraPaddingSegment",
+        "lowercase_letters_no_underscore_32": rand_alnum(32, string.ascii_lowercase),
+        "uppercase_letters_no_underscore_32": rand_alnum(32, string.ascii_uppercase),
+        "leading_underscore": "_" + "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)),
+        "trailing_underscore": "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)) + "_",
+        "double_underscore": rand_alnum(10, string.ascii_lowercase) + "__" + rand_alnum(14, string.ascii_lowercase),
+        "ghp_embedded_standalone": "ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "ghp_embedded_in_snake_prefix": "my_token_ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "akia_embedded_in_snake_prefix": "AWS_KEY_AKIA" + rand_alnum(16, string.ascii_uppercase),
+        "akia_all_upper_tail": "AKIA" + rand_alnum(30, string.ascii_uppercase + string.digits),
+    }
+
+
+def _parity_corpus() -> list[str]:
+    """>=40 synthetic inputs — the 18 GUILT shapes, the 5 INNOCENCE identifiers,
+    4 credential contexts (key=value / bearer, F1's shapes), and a mixed-bag
+    tail (bare prefixes, JWT, hex, AKIA, plain prose, short identifiers below
+    the 24-char floor) — reused from the gate reports for the keep=None /
+    keep=frozenset() / no-keep parity proof.
+    """
+    import random
+    import string
+
+    rng = random.Random(20260925)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    pw = "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(5))
+    contexts = [
+        f"PASSWORD={pw}",
+        f'{{"api_key": "{pw}"}}',
+        f"https://x.example/cb?access_token={pw}&x=1",
+        f"authorization: bearer {pw}",
+    ]
+    tail = [
+        "the request timed out after 45 seconds with no response",
+        "HTTP 200 OK model glm-5.2 responded",
+        "Authorization: Bearer " + rand_alnum(30),
+        "key sk-" + rand_alnum(40),
+        "token ghp_" + rand_alnum(36),
+        "eyJ" + rand_alnum(15) + "." + rand_alnum(15) + "." + rand_alnum(15),
+        "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "plain english sentence with no secret at all in it whatsoever",
+        "a_short_id",
+        "AN_UPPER_ID",
+        "mixedCaseWord",
+        "",
+    ]
+    return list(_synthetic_guilt_cases().values()) + list(_SCRUB_INNOCENCE) + contexts + tail
+
+
+def test_parity_corpus_has_at_least_40_inputs():
+    assert len(_parity_corpus()) >= 40
+
+
+def test_scrub_keep_none_and_empty_are_byte_identical_to_unconditional_redaction():
+    # PARITY (R3 spec): with keep=None (the default) or an empty frozenset,
+    # scrub() must be byte-identical to redacting every match unconditionally
+    # — i.e. to origin/main's behavior — for every corpus input.
+    for text in _parity_corpus():
+        wrapped = f"value observed: {text} end of line"
+        baseline = ap.scrub(wrapped)
+        assert ap.scrub(wrapped, keep=None) == baseline
+        assert ap.scrub(wrapped, keep=frozenset()) == baseline
+
+
+def test_scrub_keeps_identifiers_named_in_keep():
+    # INNOCENCE: only an identifier WE explicitly named in keep survives.
+    text = "edge/secondhome_property_value_usd=unsure and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    kept = ap.scrub(
+        text,
+        keep=frozenset({"secondhome_property_value_usd", "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}),
+    )
+    assert kept == text
+
+
+def test_scrub_redacts_pure_identifier_not_in_keep_even_with_other_keep_entries():
+    # GUILT (a): a pure-identifier synthetic passphrase NOT in keep is
+    # redacted, even while keep holds OTHER identifiers.
+    import random
+    import string
+
+    rng = random.Random(1)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    other = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {pw} and {other} end of line"
+    # guard-of-the-guard: with no keep at all, this exact fixture is redacted
+    assert ap.scrub(f"value observed: {pw} end of line") == "value observed: <REDACTED> end of line"
+    scrubbed = ap.scrub(text, keep=frozenset({other}))
+    assert pw not in scrubbed
+    assert other in scrubbed
+
+
+def test_scrub_redacts_kept_value_that_is_not_a_pure_identifier():
+    # GUILT (b): a value present in keep that is NOT a pure identifier (has a
+    # digit, or is ghp_-prefixed with digits) is still redacted — keep only
+    # ever protects the pure-identifier shape, never a secret-shaped value
+    # just because it was named.
+    import random
+    import string
+
+    rng = random.Random(2)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    with_digit = "secondhome_property_value_usd1"
+    ghp_with_digits = "ghp_" + rand_alnum(36)
+    for value in (with_digit, ghp_with_digits):
+        text = f"value observed: {value} end of line"
+        # guard-of-the-guard: redacted with no keep at all
+        assert ap.scrub(text) == "value observed: <REDACTED> end of line", value
+        scrubbed = ap.scrub(text, keep=frozenset({value}))
+        assert value not in scrubbed, f"{value}: kept despite not being a pure identifier"
+
+
+def test_scrub_extra_secrets_wins_even_when_the_same_value_is_in_keep():
+    # GUILT (c): a value that is BOTH in keep AND passed as extra_secrets is
+    # still redacted — extra_secrets is applied first and unconditionally, so
+    # a caller token can never be kept regardless of shape.
+    ident = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {ident} end of line"
+    assert ap.scrub(text) == "value observed: <REDACTED> end of line"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, [ident], keep=frozenset({ident}))
+    assert ident not in scrubbed
+
+
+def test_scrub_redacts_password_context_passphrase_not_in_keep():
+    # GUILT (d): a snake-case passphrase in a credential-named key=value line
+    # (built below) is redacted when it is not in keep, even while keep holds
+    # an unrelated identifier.
+    import random
+    import string
+
+    rng = random.Random(3)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    text = f"PASSWORD={pw}"
+    assert ap.scrub(text) == "PASSWORD=<REDACTED>"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, keep=frozenset({"DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}))
+    assert pw not in scrubbed
+
+
+
 def test_evidence_tail_truncates_and_scrubs():
     long_secret = "x" * 40
     text = f"prefix {long_secret} suffix " + ("padding " * 40)

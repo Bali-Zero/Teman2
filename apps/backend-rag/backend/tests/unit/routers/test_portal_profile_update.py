@@ -84,6 +84,7 @@ async def test_update_profile_updates_allowed_fields():
 
     msg_sql = mock_conn.execute.call_args_list[3][0][0]
     assert "portal_messages" in msg_sql
+    assert "is_system_generated" in msg_sql and ", TRUE)" in msg_sql
     assert "client_to_team" in msg_sql
 
 
@@ -266,9 +267,7 @@ async def test_update_profile_whatsapp_only_takes_phone_lock():
 
     assert result is not None
     lock_sqls = [
-        c[0][0]
-        for c in mock_conn.execute.call_args_list
-        if "pg_advisory_xact_lock" in c[0][0]
+        c[0][0] for c in mock_conn.execute.call_args_list if "pg_advisory_xact_lock" in c[0][0]
     ]
     assert lock_sqls  # the whatsapp-only update DID take the phonecore lock
     update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]

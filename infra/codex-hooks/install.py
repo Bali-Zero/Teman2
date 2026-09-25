@@ -24,6 +24,25 @@ from rpc import RPC
 
 
 THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+# The reviewed Claude guard, unchanged. Codex reports shell calls to PreToolUse
+# as tool_name "Bash" with tool_input.command (observed in this bridge's own
+# state) and documents exit 2 + stderr as a deny, unverified here until the
+# release's live proof. Whether every exec path emits
+# PreToolUse is upstream- and version-dependent: the release proves it live.
+GUARD_NAME = "output_hygiene_guard.py"
+GUARD_SOURCE = Path(__file__).resolve().parent.parent / "claude-hooks" / GUARD_NAME
+GUARD_MARK = "nuzantara-context/" + GUARD_NAME
+
+
+def owns_guard(command: str, seat: Path) -> bool:
+    """Ours only if the command runs this seat's installed copy, not a lookalike."""
+    target = str(seat / "hooks" / "nuzantara-context" / GUARD_NAME)
+    try:
+        return target in shlex.split(command)
+    except ValueError:
+        return False
+
+
 COMPACT_OVERRIDES = (
     "model_auto_compact_token_limit",
     "model_auto_compact_token_limit_scope",
@@ -96,8 +115,12 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             staged.chmod(config_file.stat().st_mode & 0o777)
             os.replace(staged, config_file)
     hashes = {}
-    for name in ("context_bridge.py", "rpc.py", "mandate_budget.py"):
-        source = Path(__file__).parent / name
+    sources = {
+        name: Path(__file__).parent / name
+        for name in ("context_bridge.py", "rpc.py", "mandate_budget.py")
+    }
+    sources[GUARD_NAME] = GUARD_SOURCE
+    for name, source in sources.items():
         if (dest / name).exists():
             shutil.copy2(dest / name, backup / name)
         shutil.copy2(source, dest / name)
@@ -126,6 +149,35 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             ours[0].update(handler)
         else:
             groups.append({"hooks": [handler]})
+    guard_command = shlex.join([sys.executable, str(dest / GUARD_NAME)])
+    pre = events.setdefault("PreToolUse", [])
+    owned = [
+        (group, h)
+        for group in pre
+        for h in group.get("hooks", [])
+        if owns_guard(h.get("command", ""), seat)
+    ]
+    if len(owned) > 1:
+        raise ValueError("duplicate output guard hook")
+    guard_group = {
+        "matcher": "Bash",
+        "hooks": [
+            {
+                "type": "command",
+                "command": guard_command,
+                "timeout": 10,
+                "statusMessage": "Nuzantara output hygiene",
+            }
+        ],
+    }
+    if owned and len(owned[0][0].get("hooks", [])) == 1:
+        owned[0][0].clear()
+        owned[0][0].update(guard_group)
+    else:
+        # Only our handler moves: a foreign handler sharing its group stays put.
+        if owned:
+            owned[0][0]["hooks"].remove(owned[0][1])
+        pre.append(guard_group)
     save(hooks_file, config)
     policy = load(seat / "nuzantara-context-policy.json")
     policy.update(
@@ -158,11 +210,14 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
         hooks = [h for h in items["hooks"] if h.get("command") == command]
         if len(hooks) != len(EVENTS):
             raise RuntimeError("Codex did not discover all bridge events")
+        guard = [h for h in items["hooks"] if h.get("command") == guard_command]
+        if len(guard) != 1:
+            raise RuntimeError("Codex did not discover the output guard")
         if trust:
             edits = [
                 {"keyPath": "features.hooks", "value": True, "mergeStrategy": "replace"}
             ]
-            for h in hooks:
+            for h in hooks + guard:
                 base = "hooks.state." + json.dumps(h["key"])
                 edits.extend(
                     [

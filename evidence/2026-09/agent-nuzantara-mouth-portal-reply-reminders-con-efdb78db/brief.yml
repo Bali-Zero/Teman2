@@ -1,0 +1,27 @@
+task_id: portal-reply-reminders-contract
+mandate: PORTAL-REPLY-REMINDERS-20260925
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+original_base_sha: e0b18b8bac5a2b79779d10d6a98ed477339261c2 # pragma: allowlist secret
+objective: Keep a team reminder until a manual reply is saved, and durably queue one generic client email per manual team message.
+acceptance:
+  - Reading never discharges a reply obligation.
+  - After full producer replacement, new automatic profile and other notices do not open or close reply obligations.
+  - A successful manual reply clears earlier client messages; a subsequent client message reopens the reminder.
+  - Assigned-client access remains unchanged; failed polls preserve cached pending alerts.
+  - Manual message and unique email outbox row commit atomically.
+  - Provider I/O is bounded to three attempts; ambiguity remains uncertain, never falsely sent.
+  - Client unread banner remains; subtle pulse respects reduced motion.
+  - A fresh CI database bootstraps the canonical legacy portal_messages table before migrations_v2/321; full apply-all and repeated bootstrap succeed without weakening production migration checks.
+  - Canonical OpenAPI generation updates schema.d.ts and its drift pin; the previously failing pin test, Visa Oracle contract validation and mouth typecheck pass without changing runtime code or weakening the guard.
+consumer_map:
+  - Workspace header and client conversation reply form
+  - Dedicated portal email consumer through the existing internal Brevo adapter
+constraints:
+  - No real client data or test emails
+  - External builder prepares; independent fresh BLUE gate; Claude release owner only
+  - Preserve existing unread API fields and assignment policy
+  - No historical source guessing
+spec_ref: evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-con-efdb78db/spec.md
+current_base_sha: 469c301f325026620f90e1ffb2156bd49a5f2991 # pragma: allowlist secret

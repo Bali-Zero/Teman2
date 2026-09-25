@@ -21718,6 +21718,8 @@ export interface components {
       cover_image_alt?: string | null;
       /** Enriched At */
       enriched_at: string;
+      /** Extra Sections */
+      extra_sections?: components["schemas"]["ExtraSection"][];
       /** Facts */
       facts: string;
       /** Headline */
@@ -21850,6 +21852,25 @@ export interface components {
       reason_code?: string | null;
       /** Status */
       status?: ("VERIFIED" | "UNKNOWN") | null;
+    };
+    /**
+     * ExtraSection
+     * @description A draft ``##`` section the converter does not map to a dedicated
+     *     EnrichedArticle field (e.g. "In Practice", "Sources"). Preserved
+     *     verbatim instead of being silently dropped (2026-09-23 GloBE
+     *     regression).
+     */
+    ExtraSection: {
+      /** Body */
+      body: string;
+      /** Heading */
+      heading: string;
+      /**
+       * Insert After
+       * @default next_steps
+       * @enum {string}
+       */
+      insert_after: "facts" | "bali_zero_take" | "next_steps";
     };
     /**
      * ExtractEventRequest
@@ -23812,9 +23833,11 @@ export interface components {
     /** NextSteps */
     NextSteps: {
       /** Expat */
-      expat: string[];
+      expat?: string[];
+      /** General */
+      general?: string[];
       /** Investor */
-      investor: string[];
+      investor?: string[];
     };
     /** NibExtractRequest */
     NibExtractRequest: {
@@ -25976,6 +25999,11 @@ export interface components {
      * @description Response from direct email send.
      */
     SendEmailResponse: {
+      /**
+       * Delivery Uncertain
+       * @default false
+       */
+      delivery_uncertain: boolean;
       /** Message */
       message: string;
       /** Success */
@@ -28421,6 +28449,8 @@ export interface components {
       cc?: string | null;
       /** Email Type */
       email_type?: string | null;
+      /** Idempotency Key */
+      idempotency_key?: string | null;
       /** Subject */
       subject: string;
       /** To */

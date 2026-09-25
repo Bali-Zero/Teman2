@@ -1,0 +1,34 @@
+task_id: token-efficiency-six-codex-seat-profile
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Put the reviewed Codex seat profile under version control and install it on every
+  seat: root developer_instructions (scoped reads, bounded tool output, code-mode
+  output pragma, routine delegation) and four routine roles, which existed only in
+  M5's HOME. Rows 1 and 4 of token-efficiency-six (Zero ordered all six for Claude and Codex).
+scope: infra/codex-hooks seat profile installer, its sources, tests and the required guard-conformance executor
+acceptance:
+  - text: WHEN an item is absent, the installer SHALL install it; WHEN identical, SHALL leave it untouched; WHEN different, SHALL report drift and never overwrite it.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_seat_profile.py
+  - text: WHEN the root key is written, it SHALL be validated absent in one Codex user-layer snapshot and written with config/batchWrite pinned to that snapshot's version; a later change SHALL make Codex refuse the write, and any collateral change SHALL stop the install without auto-restore.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_seat_profile.py
+  - text: IF a role appears concurrently or config.toml changes after validation, the installer SHALL keep the other writer's bytes; there SHALL be no automatic removal.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_seat_profile.py
+  - text: The roles SHALL pin mechanical Luna low RO, routine-explorer Terra medium RO, routine-worker Terra medium, code-reviewer Sol high RO, and SHALL NOT replace required reviews, explicit assignments or gates.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_seat_profile.py
+  - text: WHEN released, --check SHALL pass on M5 (already identical), Pro and Mini, and a fresh Codex session SHALL render the instructions and route a mechanical task to the mechanical role.
+    probe: install_seat_profile.py --check per host + live Codex routing probe (prove-live)
+assumptions:
+  - text: gpt-5.6-terra, gpt-5.6-luna and gpt-5.6-sol exist on every host's catalog.
+    status: verified
+    probe: codex debug models on M5, Pro and Mini (2026-09-25)
+  - text: Codex config/batchWrite writes a top-level developer_instructions string without collateral changes.
+    status: verified
+    probe: scratch CODEX_HOME live round trip with ChatGPT.app codex 0.155.0-alpha.9.2 (install, --check, byte-identical)
+  - text: Codex config/batchWrite refuses a write whose expectedVersion is stale (configVersionConflict) and preserves the competing bytes.
+    status: verified
+    probe: parent PR-B-CAS-PROOF.json and Dux scratch probe 2026-09-24T21:4xZ (M5 ChatGPT.app codex); re-proven per binary at install time by conditional_write_proven()
+budget: One implementation lane (Dux); Codex Sol red-team; Kimi K3 refuter; Gemini constructive; fresh Opus 5.5 xhigh gate; Claude release owner.
+council_reason: Gear-3 floor (.github/workflows hot zone); fixed panel per modus.

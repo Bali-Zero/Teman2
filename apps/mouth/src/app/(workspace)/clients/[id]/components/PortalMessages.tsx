@@ -99,6 +99,7 @@ export function PortalMessages({
     setIsSending(true);
     try {
       await api.crm.sendPortalMessage(clientId, newMessage.trim());
+      void queryClient.invalidateQueries({ queryKey: teamPortalUnreadKey });
       setNewMessage("");
       await loadMessages();
       toast.success("Message sent to client portal");

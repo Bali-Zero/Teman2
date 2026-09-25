@@ -26,7 +26,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -152,8 +152,28 @@ class BaliZeroTake(BaseModel):
 
 
 class NextSteps(BaseModel):
-    expat: list[str]
-    investor: list[str]
+    expat: list[str] = Field(default_factory=list)
+    investor: list[str] = Field(default_factory=list)
+    # A draft with no "For Expats"/"For Investors" subsections states one
+    # audience-neutral list. It belongs here, not split 50/50 between expat
+    # and investor — that fabricates an audience the draft never named
+    # (2026-09-23 GloBE regression).
+    general: list[str] = Field(default_factory=list)
+
+
+class ExtraSection(BaseModel):
+    """A draft ``##`` section the converter does not map to a dedicated
+    EnrichedArticle field (e.g. "In Practice", "Sources"). Preserved
+    verbatim instead of being silently dropped (2026-09-23 GloBE
+    regression)."""
+
+    heading: str
+    body: str
+    # Which rendered section this immediately followed in the draft, so the
+    # MDX renderer can slot it back after that section. A section that came
+    # before Facts is anchored to "facts" and lands right after it — there
+    # is no slot before Facts.
+    insert_after: Literal["facts", "bali_zero_take", "next_steps"] = "next_steps"
 
 
 class EnrichedArticle(BaseModel):
@@ -178,6 +198,7 @@ class EnrichedArticle(BaseModel):
     seo_title: str | None = None
     seo_description: str | None = None
     cover_image_alt: str | None = None
+    extra_sections: list[ExtraSection] = Field(default_factory=list)
 
 
 class ComposeResponse(BaseModel):
@@ -689,6 +710,7 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     # Convert next steps to JSON strings for components
     expat_steps_json = json_module.dumps(article.next_steps.expat)
     investor_steps_json = json_module.dumps(article.next_steps.investor)
+    general_steps_json = json_module.dumps(article.next_steps.general)
 
     # Cover image path (21:9 hero) + card variant (16:10 homepage thumbnail).
     # The post-publish poller renders both: {slug}.jpg + {slug}_card.jpg.
@@ -724,9 +746,25 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
             )
             bali_zero_take_section += "\n"
 
+    # Never invent a filler action ("Review the article for specific
+    # actions") and never render an empty audience group — a group with no
+    # steps is omitted instead (2026-09-23 GloBE regression). A draft with
+    # no explicit "For Expats"/"For Investors" split states one
+    # audience-neutral list — `general` — and gets one neutral Checklist
+    # item, never a fabricated expat/investor split.
+    next_steps_items: list[str] = []
+    if article.next_steps.expat:
+        next_steps_items.append(f'{{ text: "For Expats", subItems: {expat_steps_json} }}')
+    if article.next_steps.investor:
+        next_steps_items.append(f'{{ text: "For Investors", subItems: {investor_steps_json} }}')
+    if article.next_steps.general:
+        next_steps_items.append(
+            f'{{ text: "Recommended Actions", subItems: {general_steps_json} }}'
+        )
+
     next_steps_section = ""
-    has_steps = article.next_steps.expat or article.next_steps.investor
-    if has_steps:
+    if next_steps_items:
+        joined_items = ",\n    ".join(next_steps_items)
         next_steps_section = f"""
 ---
 
@@ -735,11 +773,28 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
 <Checklist
   title="Action Items"
   items={{[
-    {{ text: "For Expats", subItems: {expat_steps_json} }},
-    {{ text: "For Investors", subItems: {investor_steps_json} }},
+    {joined_items},
   ]}}
 />
 """
+
+    # Preserve every draft "##" section the converter does not map to a
+    # dedicated field (e.g. "In Practice", "Sources") instead of silently
+    # dropping it (2026-09-23 GloBE regression). Each one is slotted back in
+    # right after the mapped section it originally followed.
+    def _extra_sections_block(anchor: str) -> str:
+        block = ""
+        for section in article.extra_sections:
+            if section.insert_after != anchor:
+                continue
+            block += f"\n---\n\n## {mdx_safe_markdown(section.heading)}\n\n"
+            block += mdx_safe_markdown(section.body)
+            block += "\n"
+        return block
+
+    extra_after_facts = _extra_sections_block("facts")
+    extra_after_bzt = _extra_sections_block("bali_zero_take")
+    extra_after_next_steps = _extra_sections_block("next_steps")
 
     # AI SEO optimization fields
     ai_confidence = getattr(article, "ai_confidence_score", 0.85)
@@ -870,7 +925,7 @@ aiOptimization:
 ## The Facts
 
 {safe_facts}
-{bali_zero_take_section}{next_steps_section}
+{extra_after_facts}{bali_zero_take_section}{extra_after_bzt}{next_steps_section}{extra_after_next_steps}
 ## Primary Source
 
 {f'[{safe_source_markdown}]({safe_source_url})' if safe_source_url else 'Source URL unavailable.'}

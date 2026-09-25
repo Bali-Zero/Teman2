@@ -1,0 +1,18 @@
+[
+  {
+    "width": 360,
+    "clientOverflow": false,
+    "teamOverflow": false,
+    "panelFits": true,
+    "readCalls": 2,
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "clientOverflow": false,
+    "teamOverflow": false,
+    "panelFits": true,
+    "readCalls": 2,
+    "errors": []
+  }
+]

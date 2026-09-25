@@ -1,0 +1,35 @@
+{
+  "schema": "task-outcome/1",
+  "task_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "task_class": "infra-hooks",
+  "cohort": "manual",
+  "started_utc": "2026-08-19T00:00:00Z",
+  "ended_utc": "2026-08-20T00:00:00Z",
+  "sessions": [
+    {
+      "provider": "claude",
+      "session_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "parent_session_sha256": null,
+      "role": "dux",
+      "attempt": 1,
+      "overhead": false,
+      "status": "unknown"
+    },
+    {
+      "provider": "codex",
+      "session_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "parent_session_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "role": "review",
+      "attempt": 1,
+      "overhead": true,
+      "status": "unknown"
+    }
+  ],
+  "outcome": {
+    "status": "unknown",
+    "verifier_role": "none",
+    "verifier_session_sha256": null,
+    "evidence_sha256": null,
+    "verified_utc": null
+  }
+}

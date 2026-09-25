@@ -1,0 +1,34 @@
+task_id: token-efficiency-six-codex-output-guard
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Bound Codex shell output with the existing, reviewed output-hygiene guard. This bridge's own
+  state observes Codex shell calls reported to PreToolUse as tool_name Bash with
+  tool_input.command; OpenAI documents exit 2 plus stderr as a deny. Both the deny and the
+  emission for unified exec / nested code-mode calls stay unverified until the per-host live
+  proof. Row 1 of the token-efficiency-six mandate (Zero ordered all six for Claude and Codex).
+scope: infra/codex-hooks installer/status/tests and the required guard-conformance executor
+acceptance:
+  - text: WHEN installed, the unchanged guard SHALL be copied byte-for-byte and registered exactly once as PreToolUse matcher Bash.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_output_guard.py
+  - text: WHEN a foreign handler shares a group with ours, the installer SHALL move only our handler and preserve the foreign one.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_output_guard.py
+  - text: WHEN trust is requested, exactly the eight bridge events plus the guard SHALL be trusted and no foreign hook.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_output_guard.py
+  - text: IF the guard is missing, untrusted or a foreign handler is lost, installation_status SHALL NOT report installed.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_output_guard.py
+  - text: WHEN a Codex payload asks to cat a 40 KiB file, the installed guard SHALL deny with a reason; bounded reads, redirects and genuine failures SHALL pass.
+    probe: apps/backend-rag/.venv/bin/python -m pytest -q infra/codex-hooks/test_output_guard.py
+  - text: WHEN released, a fresh Codex session on M5, Pro and Mini SHALL be denied an oversized cat and SHALL still see a genuine failure's exit code.
+    probe: live Codex exec per host after install (prove-live)
+assumptions:
+  - text: Codex PreToolUse shell payload is tool_name Bash with tool_input.command.
+    status: verified
+    probe: bridge state sample (438 sessions, last_tool_name Bash with keys [command]) and learn.chatgpt.com/docs/hooks
+  - text: Codex honours exit 2 plus stderr as a deny.
+    status: unverified
+    fallback: documented by OpenAI; proven only at prove-live; the guard fails open so a non-honouring client degrades to today's behaviour.
+budget: One implementation lane (Dux); Codex Sol red-team; Kimi K3 refuter; Gemini constructive; fresh Opus 5.5 xhigh gate; Claude release owner.
+council_reason: Gear-3 floor (.github/workflows hot zone); fixed panel per modus.

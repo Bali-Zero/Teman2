@@ -32,7 +32,8 @@
 
 ### Decisions / actions for the owner
 
-1. **Restore the bot (urgent)** — on Pro: `sudo grep '^WA_CODEX_CLI_VERSION_PIN=' /Users/zantara-codex/.wa-codex-broker.env`, set it to `0.156.1` (all five exec flags the daemon passes exist in 0.156.1 `exec --help`), then `sudo launchctl kickstart -k system/com.balizero.wa-codex-broker`. Prove it with two ADVANCING reads of `wa_broker_gauge.broker_last_seen_at`.
+1. **Restore the bot (urgent)** — DONE. The owner bumped the pin to 0.156.1 and kickstarted the
+   daemon; the gauge is advancing again as of 2026-09-24T18:07Z, after an outage of ~57 min.
 2. **QR re-pair** for Adit and Damar (logged out), and decide whether Vino's line is still wanted.
 
 ### Next gap
@@ -40,3 +41,32 @@
 F2 structural half: image-only inbound gets `standing_no_customer_message` → five retries →
 silence with no human notified. Then the pin-drift class: the daemon shares the Homebrew codex
 with every agent seat, so any seat upgrade silently stops the bot.
+
+## Iteration 2 — 2026-09-25 (M5)
+
+| Gate            | Change                                                                                                                                                                                                                   | Proof                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| F2-live         | Broker pin-drift outage cured by the owner (pin → 0.156.1, kickstart)                                                                                                                                                    | `wa_broker_gauge.broker_last_seen_at` advancing (18:07:04Z → 18:07:15Z)                                    |
+| F2-alarm        | Seat sentinel names a probable version-pin pause and carries the cure (#7293), with `ps` in the C locale (#7298) — Pro's Italian locale had made it inert                                                                | Real readers run on Pro: daemon start parsed, package version/mtime read; guilt simulation prints the cure |
+| F2-media        | A caption-less attachment gets a scripted ack (`served_by=scripted_media_ack`) + best-effort human notification instead of 5 silent retries (#7296). Copy claims nothing it cannot verify and says a caption is not read | Deployed 2026-09-24T19:54Z, code grep in the rag container; first real event not yet observed              |
+| F1 prerequisite | Language detector: `auto` on real inbound 33.5% → 4.0%, 0 confident flips on 278 real texts, out-of-vocabulary languages (es/fr/de/pt/nl/tl/ms) abstain (#7299)                                                          | Deployed 2026-09-24T20:37Z                                                                                 |
+| F1              | Concierge ack armed: `WA_OUTBOX_MANNERS_ENABLED=true`                                                                                                                                                                    | `printenv` = true in the rag machine, `/health` 200, broker gauge fresh; first real ack not yet observed   |
+
+Red team F1: constant text in en/id/it/ru/fr (uk → en); fenced once per outbox row via `ack_sent_at`; throttled 1/phone/120 s in-process; skipped under 25 chars, trivial text, a closed 24h window, human takeover. Rollback: `fly secrets unset WA_OUTBOX_MANNERS_ENABLED -a nuzantara-rag`.
+
+### Measured, not fixed (inputs for the next gaps)
+
+- **F3 is invisible in SQL**: in 30 days, 23 of ~31 questions that reached retrieval got the fixed `support_abstain` stub (EN ×17, ID ×6). `abstained_at` stays NULL on them by design (D6/B2.3b), and `served_by` is not persisted. Count stubs by body hash until a `served_by` column exists. The lever is KB coverage (F9), not the gate.
+- **F7 holds**: 0 inbound answered twice in 30 days. 5 pairs of identical stubs within 2 minutes are one stub per inbound in a burst (UX, not a duplicate send).
+- **T3-T7 have no living organ**: `team_promises`, `action_queue`, `whatsapp_practice_candidates` exist only on Fly, unfed since the 2026-05-24 cutover. On Pro, `wa_dashboard_outbound_queue`, `wa_dashboard_threads` and 14-day `whatsapp_operator_actions` are all 0.
+- **Open defects found by review** (own PRs): ingestion stores `body` only for `type=='text'`, so captions are lost; `notify_human_handoff` returns True even when the email failed silently (the B2.5-2 handoff copy depends on it); the Homebrew codex is shared between the broker daemon and every agent seat (dedicated pinned binary = sudo provisioning).
+
+### Decisions for the owner
+
+1. QR re-pair: Adit and Damar (401 logged_out); Vino's line — keep or retire?
+2. T3-T7: rebuild the team agent Pro-local (Law 2), or retire those gates?
+3. Dedicated pinned codex binary for the broker daemon (sudo provisioning), to end the pin-drift class.
+
+### Next gap
+
+F9/F3 — the support_abstain rate (~74%) is the biggest client-facing gap now; start by persisting `served_by` so it is countable, then map the abstained topics to KB coverage.

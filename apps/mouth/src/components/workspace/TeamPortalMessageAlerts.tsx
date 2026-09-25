@@ -10,7 +10,9 @@ export function TeamPortalMessageAlerts() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const count = data?.total_unread;
+  const isPending = data?.total_pending !== undefined;
+  const count = isPending ? data?.total_pending : data?.total_unread;
+  const clients = isPending ? data?.pending_by_client : data?.by_client;
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +42,9 @@ export function TeamPortalMessageAlerts() {
         type="button"
         aria-label={
           count
-            ? `${count} unread client messages`
+            ? isPending
+              ? `${count} client${count === 1 ? "" : "s"} awaiting a reply`
+              : `${count} unread client messages`
             : "Client messages unavailable"
         }
         aria-expanded={open}
@@ -48,20 +52,34 @@ export function TeamPortalMessageAlerts() {
         onClick={() => setOpen(!open)}
         className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--bz-copper-text)] bg-[var(--bz-accent-warm)] px-3 text-sm font-semibold text-[var(--bz-on-warm)] focus-ring"
       >
-        <MessageCircle size={18} aria-hidden="true" />
+        <MessageCircle
+          size={18}
+          aria-hidden="true"
+          className={
+            isPending && count
+              ? "motion-safe:animate-pulse motion-reduce:animate-none"
+              : undefined
+          }
+        />
         <span role="status" aria-live="polite">
-          {count ? `${count} new` : "!"}
+          {count ? `${count} ${isPending ? "to reply" : "new"}` : "!"}
         </span>
-        <span className="hidden lg:inline">client messages</span>
+        <span className="hidden lg:inline">
+          {isPending ? "client conversations" : "client messages"}
+        </span>
       </button>
       {open && (
         <div
           id="team-portal-messages"
           className="fixed inset-x-3 top-14 z-50 mt-2 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-80 max-h-[70vh] overflow-y-auto rounded-xl border border-[var(--bz-border)] bg-[var(--surface-overlay)] p-3 shadow-xl text-[var(--tx-primary)]"
         >
-          <h2 className="font-semibold">Client messages</h2>
+          <h2 className="font-semibold">
+            {isPending ? "Awaiting your reply" : "Client messages"}
+          </h2>
           <p className="mb-2 text-xs text-[var(--tx-secondary)]">
-            Open a conversation to read and reply.
+            {isPending
+              ? "The reminder stays until you reply."
+              : "Open a conversation to read and reply."}
           </p>
           {isError && (
             <p role="alert" className="my-2 text-sm">
@@ -78,7 +96,7 @@ export function TeamPortalMessageAlerts() {
               </button>
             </p>
           )}
-          {data?.by_client.map((client) => (
+          {clients?.map((client) => (
             <Link
               key={client.client_id}
               href={`/clients/${client.client_id}?tab=overview#portal-messages`}
@@ -88,19 +106,24 @@ export function TeamPortalMessageAlerts() {
             >
               <span className="min-w-0 break-words">{client.client_name}</span>
               <span className="shrink-0 font-semibold">
-                {client.unread_count} unread →
+                {isPending
+                  ? "Reply →"
+                  : `${"unread_count" in client ? client.unread_count : 0} unread →`}
               </span>
             </Link>
           ))}
           {data &&
-            data.total_unread >
-              data.by_client.reduce(
-                (sum, client) => sum + client.unread_count,
-                0,
-              ) && (
+            (isPending
+              ? (data.total_pending ?? 0) > (clients?.length ?? 0)
+              : data.total_unread >
+                data.by_client.reduce(
+                  (sum, client) => sum + client.unread_count,
+                  0,
+                )) && (
               <p className="text-xs text-[var(--tx-secondary)]">
-                Showing the 10 conversations with most unread messages. More
-                appear as these are read.
+                {isPending
+                  ? "Showing the 10 oldest conversations. More appear as you reply."
+                  : "Showing the 10 conversations with most unread messages. More appear as these are read."}
               </p>
             )}
         </div>

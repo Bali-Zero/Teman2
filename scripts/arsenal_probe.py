@@ -235,20 +235,48 @@ _SECRET_RE = re.compile(
 
 _SECRET_ENV_NAME_RE = re.compile(r"(TOKEN|KEY|PASSWORD|SECRET)", re.IGNORECASE)
 
+# PROVENANCE, not shape or context (scar #3 rounds 1-2 both under-matched by
+# guessing from a prefix regex or the text around a match — see history).
+# Identifies a pure letters-and-underscore identifier, single-case, for use by
+# scrub()'s keep= parameter below.
+_PURE_IDENTIFIER_RE = re.compile(r"[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+")
 
-def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
+
+def scrub(
+    text: str,
+    extra_secrets: Optional[list[str]] = None,
+    *,
+    keep: Optional["frozenset[str]"] = None,
+) -> str:
     """Redact credential-shaped substrings from evidence before it can be logged.
 
     extra_secrets: exact credential VALUES this probe loaded (keychain token, parsed
     env.master value) — replaced unconditionally even if they don't match the
-    generic shape (e.g. a short-but-still-sensitive value).
+    generic shape (e.g. a short-but-still-sensitive value), and BEFORE keep is
+    ever consulted, so a caller token can never be kept.
+
+    keep: an optional, caller-supplied set of exact strings this call site
+    itself sent elsewhere (its own PROVENANCE, not a guess at shape or
+    context). A match is left intact only when its exact text is a member of
+    `keep` AND is itself a pure letters-and-underscore identifier. Residual:
+    such a value, if it also happens to be sensitive, was already present in
+    what we sent. With keep=None (the default) or an empty set, this function
+    is byte-identical to redacting every match unconditionally.
     """
     out = text
     for secret in extra_secrets or []:
         if secret:
             out = out.replace(secret, "<REDACTED>")
-    out = _SECRET_RE.sub("<REDACTED>", out)
-    return out
+    if not keep:
+        return _SECRET_RE.sub("<REDACTED>", out)
+
+    def _replace(m: "re.Match[str]") -> str:
+        tok = m.group(0)
+        if tok in keep and _PURE_IDENTIFIER_RE.fullmatch(tok):
+            return tok
+        return "<REDACTED>"
+
+    return _SECRET_RE.sub(_replace, out)
 
 
 def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: int = 160) -> str:

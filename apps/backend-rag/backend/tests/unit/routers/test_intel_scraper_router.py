@@ -186,6 +186,205 @@ class TestConvertStagingToEnrichedArticle:
         result = convert_staging_to_enriched_article(data)
         assert len(result["next_steps"]["expat"]) >= 1
         assert len(result["next_steps"]["investor"]) >= 1
+        # Innocence: a draft with real For Expats/For Investors subsections
+        # never grows a fabricated neutral group on top of them.
+        assert result["next_steps"]["general"] == []
+
+    def test_next_steps_without_audience_split_is_one_neutral_group(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) had no "For Expats"/"For
+        Investors" subsections — a single audience-neutral Next Steps body —
+        and the converter split it 50/50 between the two, inventing an
+        audience the draft never named. It must land in one neutral group
+        instead, never split, never filled with a stock filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n"
+                "Ask the group tax team to confirm the scope assessment first.\n\n"
+                "Review the separate reporting obligations with a qualified adviser."
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert len(next_steps["general"]) >= 1
+        joined = " ".join(next_steps["general"])
+        assert "Review the article for specific actions" not in joined
+        assert "confirm the scope assessment" in joined
+
+    def test_neutral_steps_that_mention_expats_or_investors_stay_neutral(self) -> None:
+        """Guilt (gate BLOCK on #7322): the audience regex matched "expat" /
+        "investor" as a SUBSTRING anywhere in the body, so a neutral step that
+        merely mentioned them ("Expats should…", "an expatriate-friendly…")
+        was relabelled to that audience and truncated from the match onward
+        ("expatriate" → "riate…"). Only a label LINE names an audience."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        steps = [
+            "Expats should renew their KITAS before it lapses.",
+            "Investors must file the LKPM report every quarter.",
+            "Hire an expatriate-friendly tax adviser for the annual SPT.",
+        ]
+        data = {
+            "title": "Neutral Steps",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n" + "\n".join(f"- {s}" for s in steps)
+            ),
+            "category": "visa",
+            "relevance_score": 80,
+        }
+        next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert next_steps["general"] == steps
+
+    def test_audience_label_lines_in_heading_bold_and_colon_forms(self) -> None:
+        """Innocence for the fix above: a real label LINE still names its
+        audience whether it is a heading, a bold line or a bare "For X:"
+        line, and a step under it that mentions the other audience stays
+        where it is."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        for expat_label, investor_label in [
+            ("### For Expats", "### For Investors"),
+            ("**For Expats:**", "**For Investors:**"),
+            ("For Expats:", "For Investors:"),
+        ]:
+            data = {
+                "title": "Labelled Steps",
+                "content": (
+                    "## Facts\nFacts here.\n"
+                    "## Next Steps\n"
+                    f"{expat_label}\n"
+                    "- Check your visa status\n"
+                    "- Ask your investor sponsor for the RPTKA letter\n"
+                    f"{investor_label}\n"
+                    "- Review investment plan\n"
+                ),
+                "category": "visa",
+                "relevance_score": 80,
+            }
+            next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+            assert next_steps["expat"] == [
+                "Check your visa status",
+                "Ask your investor sponsor for the RPTKA letter",
+            ], expat_label
+            assert next_steps["investor"] == ["Review investment plan"], investor_label
+            assert next_steps["general"] == [], expat_label
+
+    def test_next_steps_never_emits_filler_and_omits_empty_groups(self) -> None:
+        """Guilt: a Next Steps section too short to yield any real item must
+        stay empty (and the MDX layer omits the section), never the
+        "Review the article for specific actions" filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Thin Article",
+            "content": "## Facts\nFacts here.\n## Next Steps\nTBD",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        for group in (next_steps["expat"], next_steps["investor"], next_steps["general"]):
+            for item in group:
+                assert "Review the article for specific actions" not in item
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+
+    def test_next_steps_absent_yields_no_filler(self) -> None:
+        """Guilt: a draft with no "## Next Steps" section at all must not
+        grow one out of filler text."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Next Steps",
+            "content": "## Facts\nJust the facts.",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps == {"expat": [], "investor": [], "general": []}
+
+    def test_extra_sections_preserved_in_draft_order(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) lost its "## In Practice"
+        and "## Sources" sections — the converter only ever extracted
+        Summary/Facts/Bali Zero Take/Next Steps and silently dropped any
+        other "##" section. Every other section must survive, in order,
+        anchored to the mapped section it followed."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n\n"
+                "## In Practice\nPractical detail here.\n\n"
+                "## Bali Zero Take\nOur take.\n\n"
+                "## Next Steps\n- Do the thing.\n\n"
+                "## Sources\n"
+                "- [Source One](https://example.com/one)\n"
+                "- [Source Two](https://example.com/two)\n"
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        extras = result["extra_sections"]
+        assert [section["heading"] for section in extras] == ["In Practice", "Sources"]
+        in_practice, sources = extras
+        assert in_practice["insert_after"] == "facts"
+        assert "Practical detail here." in in_practice["body"]
+        assert sources["insert_after"] == "next_steps"
+        assert "[Source One](https://example.com/one)" in sources["body"]
+        assert "[Source Two](https://example.com/two)" in sources["body"]
+
+    def test_extra_sections_do_not_duplicate_mapped_headings(self) -> None:
+        """Guilt: Summary/Facts/Bali Zero Take/Next Steps must never also
+        appear a second time in extra_sections."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Mapped Only",
+            "content": (
+                "## Summary\nSum.\n## Facts\nFacts.\n"
+                "## Bali Zero Take\nTake.\n## Next Steps\n- Step one here.\n"
+            ),
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["extra_sections"] == []
+
+    def test_draft_without_facts_heading_does_not_emit_sections_twice(self) -> None:
+        """Guilt (gate finding F2 on #7322): with no "## Facts" heading the
+        whole draft falls back into `facts`, so an unmapped section is
+        already there verbatim — carrying it again as an extra section
+        printed it twice."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Facts Heading",
+            "content": (
+                "Opening paragraph.\n"
+                "## In Practice\nWhat this changes for a PT PMA.\n"
+                "## Next Steps\n- Confirm the filing deadline.\n"
+            ),
+            "category": "tax",
+            "relevance_score": 60,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["facts"].count("What this changes for a PT PMA.") == 1
+        assert result["extra_sections"] == []
 
     def test_tags_generation(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article

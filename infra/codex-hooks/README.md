@@ -49,6 +49,47 @@ production deployment check, or a global gate on other hooks' memory writes.
 Codex executes matching hooks concurrently, so this adapter does not claim to
 serialize unrelated Stop hooks.
 
+### Reusing verification receipts
+
+SessionStart, PostCompact and `receipt-status` classify the most recent receipt as
+`none`, `reusable`, `stale` or `failed`. Hook classification covers code and
+resolved executable and package-installation metadata. Hooks do not share the tool login shell's
+environment: their guidance requires running `receipt-status` in the execution shell
+before reusing checks. That verb additionally rechecks original executable lookup
+names and the selected environment projection. A continuation inherits the previous
+receipt as a claim and revalidates it against its current worktree. A failed
+command never becomes a reusable PASS; legacy receipts without an environment
+binding are stale. Stop uses the same classification for changed code. `receipt-status`
+prints only the classification; the full `status` verb remains available for diagnostics.
+
+In addition to the existing Git input fingerprint, a receipt observes the
+original executable lookup names, their resolved targets and stat metadata,
+`pyvenv.cfg`, top-level entries in the executable's venv `site-packages`, and
+each distribution's `*.dist-info/RECORD`. Top-level `.pth` files are included.
+Normal package installs, upgrades and removals change these metadata; observation
+cost grows with package count, without recursively walking package contents.
+The original venv path is retained before resolving interpreter symlinks.
+Unreadable metadata, missing distribution records, legacy `.egg-info`, linked
+package directories, and observations exceeding 10,000 entries fail closed to
+stale. Host scheduling delays alone do not invalidate receipts; there is no
+elapsed-time validity cut-off. Environment drift during
+the check also prevents reuse. No environment values or test output are stored.
+
+The hashed environment projection is exactly: `PATH`, `PYTHONPATH`, `PYTHONHOME`,
+`VIRTUAL_ENV`, `CONDA_PREFIX`, `NODE_PATH`, `NODE_OPTIONS`, `NODE_ENV`,
+`PYTEST_ADDOPTS`, `PYTEST_DISABLE_PLUGIN_AUTOLOAD`, `PYTHONHASHSEED`,
+`PYTHONNOUSERSITE`, `LANG`, `LC_ALL`, `LC_CTYPE`, `TZ`, `CI`.
+
+This is observed stat-based drift detection, not complete content attestation.
+It does not detect arbitrary in-place edits inside installed package directories:
+RECORD content is not rehashed against package files. Editable sources outside the
+Git-bound workspace, arbitrary external inputs, remote state, dependencies
+outside the observed venv, and additional environment variables are also outside scope. Checks depending
+on those must be rerun when they change. This receipt never replaces the required
+independent review or production proof. Claude's jump receiver separately labels
+old successful commands as timestamped claims and reports up to 20 changed or
+missing handoff files; unchanged mtimes alone do not establish a reusable PASS.
+
 Version 1.1 adds native child identity, child-local checkpoints, bounded stop
 reminders, shared dispatch accounting and owned continuation cancellation.
 Children use their own measured context and return to their parent. A separate
@@ -92,7 +133,8 @@ pilot; this correction does not implement or arm it.
 Run install.py using the host's existing project virtualenv, once per seat,
 with --seat, one or more --root arguments, and --trust-reviewed-hooks. The
 installer backs up the original config and hooks, copies only this adapter,
-enables the hooks feature, and records trust for only the eight exact definitions
+enables the hooks feature, and records trust for only the nine exact definitions
+(eight bridge events plus the output guard below)
 through Codex's own config API. It sets `parent_rollover_enabled=false` and
 removes only the two top-level `model_auto_compact_token_limit` and
 `model_auto_compact_token_limit_scope` overrides, restoring model defaults.
@@ -119,6 +161,103 @@ termination of another session is performed by the installer.
 
 New sessions consume the installation. Existing sessions are not restarted and
 must not be assumed to have reloaded their hook snapshot.
+
+### Output hygiene
+
+The installer also copies `infra/claude-hooks/output_hygiene_guard.py`
+byte-for-byte and registers it once as a `PreToolUse` hook with matcher `Bash`,
+trusted alongside the bridge. Codex reports shell calls to `PreToolUse` as
+`tool_name: "Bash"` with `tool_input.command` (observed in this bridge's own state)
+and documents exit 2 plus a stderr reason as a deny (unverified on this fleet until
+the live proof below). Whether every exec path (unified
+exec, nested code-mode calls) emits `PreToolUse` depends on the upstream version, so
+each release proves the deny live in a fresh session per host; a path that emits no
+event is simply not bounded by this guard. Ownership is the exact installed path of
+this seat's copy, never a substring. The guard only decides: it never
+runs or rewrites the command, fails open on anything it does not recognize, and
+leaves a genuine command failure to surface with its own exit code. Its shapes
+and corpus are the Claude guard's (`docs/specs/2026-09-18-output-hygiene-guard-shapes-spec.md`);
+the Read and Skill shapes have no Codex tool and never fire here. Kill switch
+for one session: `NUZ_OUTPUT_HYGIENE_OFF=1`. To remove it, delete its
+`PreToolUse` group from hooks.json; `installation_status.py` reports
+`output_guard_trusted` and counts it in `installed`.
+
+## Seat profile
+
+`install_seat_profile.py --seat ~/.codex` installs the reviewed seat profile kept in
+`seat/`: the root `developer_instructions` (scoped reads, bounded tool output, the
+code-mode `// @exec` output pragma, routine delegation) and four routine roles in
+`agents/` (`mechanical` Luna low read-only, `routine-explorer` Terra medium
+read-only, `routine-worker` Terra medium, `code-reviewer` Sol high read-only).
+Each item that is absent is installed; an identical item is left untouched; a
+different item is operator-owned drift and is reported, never overwritten. A
+private backup precedes any write. The root key is validated absent in one
+user-layer snapshot from Codex's own `config/read` (`includeLayers`) and written
+with `config/batchWrite` pinned to that snapshot's `expectedVersion`: changes
+arriving before Codex's internal version check are refused (`configVersionConflict`).
+This is not a cross-process lock: another writer could still race the internal
+check/write interval. Install only with no other Codex app or session on that seat.
+Before writing, the installer
+proves on a scratch seat that the Codex binary in use refuses a stale version;
+a binary that does not is never used for the write. The version is semantic
+(a comment-only edit does not change it; Codex preserves the file's other
+lines). After the write the user layer is re-read: only that key may change,
+otherwise the installer stops and names the backup (it does not restore on its
+own). `--check` is read-only and exits 1 unless every item matches.
+Roles are created with a hard link, so a file that appears first always wins.
+On a refused config write, role files and the private backup may already exist;
+the install manifest is saved only on success. Rerunning the reviewed installer
+on an idle seat preserves matching files and completes the manifest. If recovering
+manually, inspect the latest private `state/nuzantara-seat-profile-backups/` entry
+and do not infer ownership of role files from a missing manifest.
+There is deliberately no automatic removal. Rollback, with no Codex app or session
+running on that seat (the only writer exclusion available): restore config.toml
+from the backup the install reported (or delete its single `developer_instructions`
+key) and delete the role files that the manifest
+`state/nuzantara-seat-profile-install.json` lists as installed.
+The roles and instructions are guidance: they tell a parent never to use a role in
+place of a required cross-family review, an explicit model/effort assignment or a
+mission-colour gate, and those stay enforced by the harness's required checks, not
+by the roles. New sessions consume the
+profile; running sessions keep what they loaded.
+
+### Skills and NotebookLM loadout
+
+Production skill-budget activation uses
+`install_seat_profile.py --seat ~/.codex --skills-only` (or add `--check` for a
+configuration read-only report). It applies the same absent/match/drift policy
+to `skills.max_context_tokens = 3000`, leaving MCP choices unchanged.
+Run it only with no other Codex app or session on that seat; it uses the same
+version-pinned writer, which is not a cross-process lock.
+
+The separate `--loadout` flag explicitly opts into a NotebookLM read/query filter
+as well as the skill budget. It is not installed by default: the matched native
+M5 startup experiment observed zero input-token reduction from that filter.
+For an existing enabled `notebooklm-mcp`
+server, it discovers the current tool inventory through native
+`mcpServerStatus/list` and installs `disabled_tools` for everything except:
+`notebook_list`, `notebook_get`, `notebook_describe`, `source_describe`,
+`source_get_content`, `notebook_query`, `notebook_query_start`,
+`notebook_query_status`, `cross_notebook_query`, `collection_list`.
+
+The server inventory is not hard-coded. An absent server is not created, and an
+operator-disabled server is not started. Existing different skill bounds,
+allowlists and disabled-tool choices are preserved and reported as drift.
+After an initial install, newly discovered tools that would require extending
+the existing filter are likewise drift, requiring review. All config writes use
+one snapshot captured before discovery and the existing version-pinned native
+writer; only the requested keys may change. The install receipt,
+`state/nuzantara-seat-loadout-install.json`, is updated only on success. A refused
+write can leave a backup without a new receipt; retain that backup for inspection
+and manual rollback
+under the same exclusive-writer condition as the seat profile.
+
+For a research session needing the full NotebookLM tool set, launch
+`codex -c 'mcp_servers.notebooklm-mcp.disabled_tools=[]'` with the usual profile
+and command arguments. This per-session override restores disabled tools without
+editing the installed configuration. An operator's separate `enabled_tools` allowlist
+still applies. New sessions consume configuration changes; auth, trust, assigned
+models/effort and unrelated profile choices are untouched.
 
 ## Validation
 

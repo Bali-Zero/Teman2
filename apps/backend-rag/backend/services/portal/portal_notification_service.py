@@ -115,8 +115,8 @@ class PortalNotificationService:
                 msg_id = await conn.fetchval(
                     """
                     INSERT INTO portal_messages
-                        (client_id, practice_id, subject, direction, content, sent_by)
-                    VALUES ($1, $2, $3, 'team_to_client', $4, $5)
+                        (client_id, practice_id, subject, direction, content, sent_by, is_system_generated)
+                    VALUES ($1, $2, $3, 'team_to_client', $4, $5, TRUE)
                     RETURNING id
                     """,
                     client_id,

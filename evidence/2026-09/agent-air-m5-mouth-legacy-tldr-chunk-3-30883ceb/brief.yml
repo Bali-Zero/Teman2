@@ -1,0 +1,15 @@
+task: Strip the pre-#7209 converter's invented Quick Summary TL;DR card and Next Steps filler from legacy articles — chunk 3/6 (92 files).
+lane: mouth/legacy-tldr-chunk-3
+machine: M5
+date: 2026-09-25
+mission_id: newsroom-legacy-filler-cleanup
+mission_colour: BLUE
+role: Dux session (Opus 5.5) — builds, arms, deploys; the final gate is a fresh read-only session outside this chain
+gear: 2
+gear_reason: >-
+  Content-only deletion produced by scripts/content/strip_legacy_tldr_filler.py (companion PR) run on origin/main; English-source churn under the Gear-3 threshold (translations are size-excluded). Chunk 3 of 6 split from #7282 (floor 3 by size).
+acceptance:
+  A1: Every changed file is blob-identical to the script's --write output on origin/main; 0 lines added; frontmatter byte-identical.
+  A2: No article body falls under the 400-char floor of apps/mouth/src/content/article-body-integrity.test.ts.
+  A3: No changed file still contains 'Review the article for specific actions' or the converter's Quick Summary card.
+out_of_scope: The converter fix that stops new filler at the source (#7322), apps/mouth/src/content/articles/news/test-article.mdx (a leaked test stub whose body would fall under the 400-char integrity floor; left untouched), any hand-edited "Quick Summary" card that deviates from the converter's exact shape (reported by the script, never touched).

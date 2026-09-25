@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -160,13 +161,9 @@ async def test_lifespan_critical_service_failure_sets_failed_state_and_stops_sta
     if failure_mode == "import":
         monkeypatch.setitem(sys.modules, "backend.app.setup.service_initializer", None)
     elif failure_mode == "runtime":
-        calls["initialize_services"].side_effect = RuntimeError(
-            "database is unavailable"
-        )
+        calls["initialize_services"].side_effect = RuntimeError("database is unavailable")
     else:
-        calls["initialize_services"].side_effect = ValueError(
-            "service configuration is invalid"
-        )
+        calls["initialize_services"].side_effect = ValueError("service configuration is invalid")
 
     async with app_factory.lifespan(app):
         await app.state._init_task
@@ -289,3 +286,38 @@ async def test_shutdown_closes_sync_and_async_services_and_continues_after_error
     sync_close.assert_called_once()
     failing_close.assert_called_once()
     close_after_failure.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("disabled", [True, False])
+async def test_portal_email_consumer_lifecycle_respects_kill_switch(monkeypatch, disabled):
+    app, _ = _configure_runtime(monkeypatch)
+    started, stopped = asyncio.Event(), asyncio.Event()
+
+    async def worker(pool):
+        assert pool is app.state.db_pool
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+
+    monkeypatch.setitem(
+        sys.modules,
+        "backend.services.portal.portal_message_email",
+        _module("backend.services.portal.portal_message_email", run_worker=worker),
+    )
+    for name in (
+        "backend.services.ingestion.legal_full_ingestion_worker",
+        "backend.services.crm.practice_status_listener",
+        "backend.services.events.event_bus",
+        "backend.services.channels.webhook_processor",
+    ):
+        monkeypatch.setitem(sys.modules, name, _module(name))
+    if not disabled:
+        monkeypatch.delenv("DISABLE_BACKGROUND_WORKERS", raising=False)
+    async with app_factory.lifespan(app):
+        await app.state._init_task
+        await asyncio.sleep(0)
+        assert started.is_set() is not disabled
+    assert stopped.is_set() is not disabled

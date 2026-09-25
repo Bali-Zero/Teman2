@@ -23,7 +23,17 @@ const {
 const training = require("./training.cjs");
 
 const PORT = parseInt(process.env.PORT || "7790", 10);
-const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
+// Default loopback-only: this cockpit mirrors team WhatsApp chats
+// (/data.json, /thread.json) unauthenticated, and a wildcard bind exposed
+// them to the whole LAN (Law 2 — PII output boundary, contained 2026-09-25).
+// Remote access goes through `tailscale serve`, never a wildcard bind.
+const HOST = process.env.HOST || "127.0.0.1";
+if (HOST === "0.0.0.0" || HOST === "*" || HOST === "::") {
+  console.warn(
+    `[wa-dashboard-m1] WARNING: HOST=${HOST} binds the mirrored-chat cockpit to every ` +
+      "interface, unauthenticated. Use tailscale serve for remote access instead."
+  );
+}
 
 const DATABASE_URL =
   process.env.WA_DASHBOARD_DATABASE_URL || process.env.DATABASE_URL;
