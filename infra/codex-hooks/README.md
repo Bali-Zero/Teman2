@@ -193,9 +193,11 @@ Each item that is absent is installed; an identical item is left untouched; a
 different item is operator-owned drift and is reported, never overwritten. A
 private backup precedes any write. The root key is validated absent in one
 user-layer snapshot from Codex's own `config/read` (`includeLayers`) and written
-with `config/batchWrite` pinned to that snapshot's `expectedVersion`: if any
-setting changed after the snapshot, Codex refuses the write
-(`configVersionConflict`) and nothing is written. Before writing, the installer
+with `config/batchWrite` pinned to that snapshot's `expectedVersion`: changes
+arriving before Codex's internal version check are refused (`configVersionConflict`).
+This is not a cross-process lock: another writer could still race the internal
+check/write interval. Install only with no other Codex app or session on that seat.
+Before writing, the installer
 proves on a scratch seat that the Codex binary in use refuses a stale version;
 a binary that does not is never used for the write. The version is semantic
 (a comment-only edit does not change it; Codex preserves the file's other
@@ -203,6 +205,11 @@ lines). After the write the user layer is re-read: only that key may change,
 otherwise the installer stops and names the backup (it does not restore on its
 own). `--check` is read-only and exits 1 unless every item matches.
 Roles are created with a hard link, so a file that appears first always wins.
+On a refused config write, role files and the private backup may already exist;
+the install manifest is saved only on success. Rerunning the reviewed installer
+on an idle seat preserves matching files and completes the manifest. If recovering
+manually, inspect the latest private `state/nuzantara-seat-profile-backups/` entry
+and do not infer ownership of role files from a missing manifest.
 There is deliberately no automatic removal. Rollback, with no Codex app or session
 running on that seat (the only writer exclusion available): restore config.toml
 from the backup the install reported (or delete its single `developer_instructions`
@@ -213,6 +220,44 @@ place of a required cross-family review, an explicit model/effort assignment or 
 mission-colour gate, and those stay enforced by the harness's required checks, not
 by the roles. New sessions consume the
 profile; running sessions keep what they loaded.
+
+### Skills and NotebookLM loadout
+
+Production skill-budget activation uses
+`install_seat_profile.py --seat ~/.codex --skills-only` (or add `--check` for a
+configuration read-only report). It applies the same absent/match/drift policy
+to `skills.max_context_tokens = 3000`, leaving MCP choices unchanged.
+Run it only with no other Codex app or session on that seat; it uses the same
+version-pinned writer, which is not a cross-process lock.
+
+The separate `--loadout` flag explicitly opts into a NotebookLM read/query filter
+as well as the skill budget. It is not installed by default: the matched native
+M5 startup experiment observed zero input-token reduction from that filter.
+For an existing enabled `notebooklm-mcp`
+server, it discovers the current tool inventory through native
+`mcpServerStatus/list` and installs `disabled_tools` for everything except:
+`notebook_list`, `notebook_get`, `notebook_describe`, `source_describe`,
+`source_get_content`, `notebook_query`, `notebook_query_start`,
+`notebook_query_status`, `cross_notebook_query`, `collection_list`.
+
+The server inventory is not hard-coded. An absent server is not created, and an
+operator-disabled server is not started. Existing different skill bounds,
+allowlists and disabled-tool choices are preserved and reported as drift.
+After an initial install, newly discovered tools that would require extending
+the existing filter are likewise drift, requiring review. All config writes use
+one snapshot captured before discovery and the existing version-pinned native
+writer; only the requested keys may change. The install receipt,
+`state/nuzantara-seat-loadout-install.json`, is updated only on success. A refused
+write can leave a backup without a new receipt; retain that backup for inspection
+and manual rollback
+under the same exclusive-writer condition as the seat profile.
+
+For a research session needing the full NotebookLM tool set, launch
+`codex -c 'mcp_servers.notebooklm-mcp.disabled_tools=[]'` with the usual profile
+and command arguments. This per-session override restores disabled tools without
+editing the installed configuration. An operator's separate `enabled_tools` allowlist
+still applies. New sessions consume configuration changes; auth, trust, assigned
+models/effort and unrelated profile choices are untouched.
 
 ## Validation
 
