@@ -6,7 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from backend.app.services.internal_email import send_internal_email
+from backend.app.services.internal_email import (
+    InternalEmailNotDeliveredError,
+    send_internal_email,
+)
 
 
 def _make_mock_client() -> tuple:
@@ -18,6 +21,7 @@ def _make_mock_client() -> tuple:
     """
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
+    mock_response.json = MagicMock(return_value={"success": True, "message": "sent"})
     mock_client = MagicMock()
     mock_client.post = AsyncMock(return_value=mock_response)
     return mock_client, mock_response
@@ -32,7 +36,7 @@ class TestSendInternalEmail:
             "backend.app.services.internal_email.get_email_client",
             new=AsyncMock(return_value=mock_client),
         ):
-            await send_internal_email(
+            result = await send_internal_email(
                 to="kadek.tax@balizero.com",
                 subject="Hello",
                 body="<p>body</p>",
@@ -40,6 +44,7 @@ class TestSendInternalEmail:
                 log_context="test req=1",
             )
 
+        assert result is True
         assert mock_client.post.call_count == 1
         payload = mock_client.post.call_args.kwargs["json"]
         assert payload["to"] == "kadek.tax@balizero.com"
@@ -95,6 +100,7 @@ class TestSendInternalEmail:
         captured: dict = {}
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
+        mock_response.json = MagicMock(return_value={"success": True, "message": "sent"})
         mock_client = AsyncMock()
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
@@ -142,12 +148,16 @@ class TestSendInternalEmail:
         ):
             with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
                 # Must not raise — the HTTPStatusError is caught and logged.
-                await send_internal_email(
+                result = await send_internal_email(
                     to="x@balizero.com",
                     subject="x",
                     body="<p>x</p>",
                 )
 
+        assert result is False, (
+            "a swallowed HTTP failure must return False, not the pre-2026-09-25 "
+            "None (falsy, but not the explicit truthful signal a caller can rely on)"
+        )
         assert any("HTTP 500" in record.getMessage() for record in caplog.records), (
             "send_internal_email must log the swallowed HTTP failure, not silently drop it"
         )
@@ -167,15 +177,110 @@ class TestSendInternalEmail:
         ):
             with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
                 # Must not raise — the ConnectError is caught and logged.
-                await send_internal_email(
+                result = await send_internal_email(
                     to="x@balizero.com",
                     subject="x",
                     body="<p>x</p>",
                 )
 
+        assert result is False
         assert any("connection refused" in record.getMessage() for record in caplog.records), (
             "send_internal_email must log the swallowed network failure, not silently drop it"
         )
+
+    @pytest.mark.asyncio
+    async def test_http_200_with_success_false_is_treated_as_not_delivered(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The endpoint's own provider chain (Zoho/Brevo/Resend) can exhaust
+        every leg and still answer HTTP 200 with `{"success": false, ...}`
+        (`SendEmailResponse` in notifications/router.py ~:537).
+        `raise_for_status()` alone cannot see that — a 200 never raises."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json = MagicMock(
+            return_value={
+                "success": False,
+                "message": "All providers failed: brevo rejected rejected.client@example.com",
+            }
+        )
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch(
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
+        ):
+            with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
+                result = await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                )
+
+        assert result is False
+        # The endpoint's `message` relays provider errors, which can name the
+        # rejected recipient: the log carries a constant label, never that text.
+        assert "rejected.client@example.com" not in caplog.text
+        assert "All providers failed" not in caplog.text
+        assert "200 without success=true" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_http_200_with_unparseable_body_is_treated_as_not_delivered(self) -> None:
+        """No JSON body / a non-dict body is NOT accidental success — treat
+        it the same as an explicit success=false rather than guessing."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json = MagicMock(side_effect=ValueError("no JSON object could be decoded"))
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch(
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
+        ):
+            result = await send_internal_email(
+                to="x@balizero.com",
+                subject="x",
+                body="<p>x</p>",
+            )
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_raise_on_failure_true_raises_on_200_success_false(self) -> None:
+        """Callers with their own fallback transport (e.g. the birthday
+        email's manual Zoho retry in crm/notifiers.py) rely on an exception
+        to detect a Brevo-chain failure — a silently-accepted 200 that never
+        actually sent anything must raise here exactly like a network error
+        or a non-2xx response would. The specific type matters: a caller's
+        Brevo-only except leg (httpx.HTTPError/OSError) does NOT catch a
+        bare RuntimeError, so this must be `InternalEmailNotDeliveredError`
+        — round-2 review, 2026-09-25 (spec_Fa_r3.md S2) — not just "a
+        RuntimeError"."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json = MagicMock(return_value={"success": False, "message": "nope"})
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch(
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
+        ):
+            with pytest.raises(InternalEmailNotDeliveredError):
+                await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                    raise_on_failure=True,
+                )
 
     @pytest.mark.asyncio
     async def test_raise_on_failure_propagates_http_error(self) -> None:

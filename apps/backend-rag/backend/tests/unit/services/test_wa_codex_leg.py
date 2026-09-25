@@ -30,7 +30,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.services.integrations import human_escalation_notifier, wa_broker, wa_codex_leg
+from backend.services.integrations import (
+    human_escalation_notifier,
+    wa_broker,
+    wa_codex_leg,
+    wa_human_handoff,
+)
 from backend.services.integrations.wa_broker import (
     OfferOutcome,
     OfferResult,
@@ -466,6 +471,10 @@ async def test_a_human_handoff_request_is_served_from_the_script_before_any_io(
     result = await _run()
 
     assert result.text is not None
+    # notified=True -> today's copy: the turn actually promises a colleague.
+    assert result.text == wa_codex_leg.match_human_request(
+        "voglio parlare con una persona"
+    ).text
     assert result.reason == "" and not result.stand_down and not result.fail
     stubs.rag_client.post.assert_not_awaited()
     stubs.offer_job.assert_not_awaited()
@@ -499,13 +508,17 @@ async def test_two_authorities_match_human_request_wins_over_identity(
 
 
 @pytest.mark.asyncio
-async def test_human_handoff_notification_failure_does_not_lose_the_confirmation(
+async def test_human_handoff_notification_failure_does_not_lose_the_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The client's confirmation must never be lost because Brevo failed —
-    the notification is wrapped at THIS call site precisely so an
-    exception from `notify_human_handoff` cannot turn a served confirmation
-    into a text=None fall-off (see `attempt()`'s broad except)."""
+    """The client's REPLY must never be lost because Brevo failed — the
+    notification is wrapped at THIS call site precisely so an exception
+    from `notify_human_handoff` cannot turn a served turn into a text=None
+    fall-off (see `attempt()`'s broad except). But (round-1 cross-family
+    review, 2026-09-25) the reply is no longer the "a colleague will
+    contact you" confirmation on a failure — that would be the exact lie
+    this whole PR exists to stop. It is the honest, no-one-was-notified
+    variant instead."""
     _wire_stubs(monkeypatch, query="talk to a human")
     notify = AsyncMock(side_effect=RuntimeError("brevo down"))
     monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
@@ -513,21 +526,30 @@ async def test_human_handoff_notification_failure_does_not_lose_the_confirmation
     result = await _run()
 
     assert result.text is not None
+    assert result.text == wa_codex_leg._human_handoff_unreachable_text("en")
+    assert result.text != wa_codex_leg.match_human_request("talk to a human").text
     assert result.reason == "" and not result.stand_down and not result.fail
     notify.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once(
+async def test_a_repeated_human_handoff_request_notifies_once_and_the_second_reply_is_also_confirmed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The dedup window lives inside `notify_human_handoff` (reused from
     `human_escalation_notifier`), not at this call site — this test proves
     the call site does not defeat it: two real calls through the actual
-    (unmocked) notifier, second one inside the window, still both confirm
-    the client and only the first accepts a send."""
+    (unmocked) notifier, second one inside the window, only the first
+    accepts a send. Both replies are non-None AND (S1, round 3, corrected
+    from the round-1 shape this test previously pinned) they ARE the SAME
+    text: `notify_human_handoff`'s dedup-suppressed return is True, not
+    False — a colleague WAS reached, by the first call, and the second
+    request must not tell the client otherwise. `sent.assert_awaited_once()`
+    is what actually proves no second email went out; the reply text is not
+    the signal for that."""
     human_escalation_notifier._recent_escalations.clear()
-    sent = AsyncMock()
+    wa_human_handoff._recent_failed_attempts.clear()
+    sent = AsyncMock(return_value=True)
     monkeypatch.setattr(
         "backend.services.integrations.wa_human_handoff.send_internal_email", sent
     )
@@ -542,7 +564,49 @@ async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once
     second = await _run()
 
     assert first.text is not None and second.text is not None
+    assert first.text == wa_codex_leg.match_human_request("talk to a human").text
+    assert second.text == wa_codex_leg.match_human_request("talk to a human").text
+    assert second.text != wa_codex_leg._human_handoff_unreachable_text("en")
     sent.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_human_handoff_notified_false_gets_the_honest_variant_in_indonesian(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A plain `False` return (no exception — e.g. both channels failed,
+    per `notify_human_handoff`'s own delivery-truth contract) must ALSO get
+    the honest variant, in the CLIENT's language, not just the exception
+    path — and it must never claim a colleague was reached."""
+    _wire_stubs(monkeypatch, query="saya mau bicara dengan konsultan soal KITAS saya")
+    notify = AsyncMock(return_value=False)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._human_handoff_unreachable_text("id")
+    assert result.text != wa_codex_leg.match_human_request(
+        "saya mau bicara dengan konsultan soal KITAS saya"
+    ).text
+    notify.assert_awaited_once()
+
+
+def test_human_handoff_unreachable_texts_name_the_direct_contact_not_a_promise() -> None:
+    """Every honest-variant string: (1) reuses the ONE existing 'write to
+    us' constant (`_FALLBACK_RECIPIENT`, imported from `wa_human_handoff` —
+    nothing invented), and (2) never claims a colleague was told."""
+    for language, text in wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS.items():
+        assert wa_codex_leg._FALLBACK_RECIPIENT in text, language
+    # English/Indonesian pinned verbatim — the two the reviewer asked for.
+    assert wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS["en"] == (
+        "I couldn't reach a colleague automatically just now. Please try "
+        "again in a few minutes, or write directly to zero@balizero.com."
+    )
+    assert wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS["id"] == (
+        "Saya belum berhasil menghubungi kolega secara otomatis saat ini. "
+        "Silakan coba lagi dalam beberapa menit, atau kirim email langsung "
+        "ke zero@balizero.com."
+    )
 
 
 # ── gate 2e: the scripted caption-less-attachment turn (B2.5-3) ────────────

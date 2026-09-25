@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from backend.app.routers.crm_notifications import BELL_ALERT_TYPES
-from backend.services.integrations import human_escalation_notifier
+from backend.services.integrations import human_escalation_notifier, wa_human_handoff
 from backend.services.integrations.wa_human_handoff import (
     ALERT_TYPE,
     HumanRequestTurn,
@@ -158,6 +158,7 @@ class TestNotifyHumanHandoff:
         # human_escalation_notifier's own callers — clear it so tests never
         # see another test's window.
         human_escalation_notifier._recent_escalations.clear()
+        wa_human_handoff._recent_failed_attempts.clear()
 
     @pytest.mark.asyncio
     async def test_resolves_assignee_and_sends_to_them(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -166,7 +167,7 @@ class TestNotifyHumanHandoff:
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(4242, "consultant@balizero.com")),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
@@ -195,7 +196,7 @@ class TestNotifyHumanHandoff:
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
@@ -212,11 +213,15 @@ class TestNotifyHumanHandoff:
     async def test_second_request_inside_window_sends_no_second_email(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """S1 (spec_Fa_r3.md, round 3): the dedup-suppressed second call is
+        True, not False — a colleague WAS reached, just not by THIS call.
+        `sent.assert_awaited_once()` is the assertion that actually proves
+        "no second email": the return value alone cannot."""
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
@@ -229,7 +234,7 @@ class TestNotifyHumanHandoff:
         )
 
         assert first is True
-        assert second is False
+        assert second is True
         sent.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -238,7 +243,7 @@ class TestNotifyHumanHandoff:
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
@@ -251,13 +256,18 @@ class TestNotifyHumanHandoff:
         assert sent.await_count == 2
 
     @pytest.mark.asyncio
-    async def test_email_raise_propagates_for_the_caller_to_isolate(
+    async def test_email_raise_is_caught_and_counted_as_a_failed_send(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """`notify_human_handoff` does not itself swallow a send failure —
-        the call site (`wa_codex_leg.py`) is the layer that guarantees the
-        client's confirmation survives an email failure; see
-        test_wa_codex_leg.py's failure-isolation test."""
+        """`notify_human_handoff`'s own contract is an unconditional "never
+        raises" (see docstring). The real `send_internal_email` already
+        never raises by default (`raise_on_failure=False`); this simulates
+        an unexpected bug that bypasses that anyway, and pins that it is
+        still caught here — logged by TYPE only — and counted as a failed
+        send rather than propagated. The call site (`wa_codex_leg.py`)
+        keeps its own belt-and-suspenders try/except as a second,
+        independent layer; see test_wa_codex_leg.py's failure-isolation
+        test."""
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
@@ -267,10 +277,181 @@ class TestNotifyHumanHandoff:
             AsyncMock(side_effect=RuntimeError("brevo down")),
         )
 
-        with pytest.raises(RuntimeError):
-            await notify_human_handoff(
-                object(), thread_id=7, counterpart_phone=None, language="it"
-            )
+        result = await notify_human_handoff(
+            object(), thread_id=7, counterpart_phone=None, language="it"
+        )
+
+        assert result is False
+
+
+class TestNotifyHumanHandoffDeliveryTruth:
+    """The return value must mean DELIVERED, not merely ATTEMPTED.
+
+    Before 2026-09-25, `send_internal_email`'s `raise_on_failure=False`
+    swallowed a Brevo failure silently and `notify_human_handoff` still
+    returned True and recorded dedup — an unknown client with a broken
+    email transport produced NO in-app alert (client_id is None), NO email,
+    an audit row logged `failed`, and a caller that believed the True could
+    tell a client "a colleague was alerted" when nobody was. Dedup then
+    suppressed the retry that could have reached someone on the client's
+    next message.
+    """
+
+    def setup_method(self) -> None:
+        human_escalation_notifier._recent_escalations.clear()
+        wa_human_handoff._recent_failed_attempts.clear()
+
+    @pytest.mark.asyncio
+    async def test_guilt_both_channels_fail_returns_false_and_throttles_repeats(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Unknown client (no in-app row possible) + email transport fails
+        silently (mirrors real `send_internal_email(raise_on_failure=False)`
+        returning False, never raising) -> False. No SUCCESS dedup is
+        recorded (nobody was told) — but the SEPARATE failed-attempt
+        cooldown throttles an immediate repeat on the same thread, so a
+        burst does not become a storm of attempts. A retry after the
+        cooldown window elapses still gets a real attempt."""
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(None, None)),
+        )
+        sent = AsyncMock(return_value=False)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+        )
+
+        first = await notify_human_handoff(
+            object(), thread_id=321, counterpart_phone="628111222333", language="en"
+        )
+        second = await notify_human_handoff(
+            object(), thread_id=321, counterpart_phone="628111222333", language="en"
+        )
+
+        assert first is False
+        assert second is False
+        # The second call was throttled by the cooldown, not a second real
+        # attempt.
+        assert sent.await_count == 1
+
+        # Simulate the 5-minute cooldown window having elapsed.
+        dedup_key = "human_handoff:321"
+        wa_human_handoff._recent_failed_attempts[dedup_key] -= (
+            wa_human_handoff._FAILED_ATTEMPT_COOLDOWN_S + 1
+        )
+
+        third = await notify_human_handoff(
+            object(), thread_id=321, counterpart_phone="628111222333", language="en"
+        )
+
+        assert third is False
+        assert sent.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_innocence_email_delivered_returns_true_and_records_dedup(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(None, None)),
+        )
+        sent = AsyncMock(return_value=True)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+        )
+
+        first = await notify_human_handoff(
+            object(), thread_id=322, counterpart_phone=None, language="en"
+        )
+        second = await notify_human_handoff(
+            object(), thread_id=322, counterpart_phone=None, language="en"
+        )
+
+        assert first is True
+        # Dedup IS recorded on a real delivery: the second call is suppressed
+        # (never attempts a second send) but is STILL True — a colleague was
+        # reached, by the first call (S1, round 3).
+        assert second is True
+        sent.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_innocence_inapp_delivered_email_failed_still_returns_true(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Known client: the in-app bell row is written even though the
+        email transport fails — one delivered channel is enough to be
+        truthfully True, and SUCCESS dedup still applies.
+
+        Mutation killer for `if delivered:` -> `if email_sent:` (round-2
+        review, 2026-09-25: the previous version of this test did not
+        actually kill that mutation — under the mutation, the first call's
+        `delivered` return value is untouched (the mutation only changes
+        which bookkeeping branch runs), and the FAILED-attempt cooldown
+        that branch wrongly sets makes the second call return False via
+        `_recently_failed`, the same False `_already_escalated` would have
+        given for a correctly-recorded success dedup — so the old
+        `second is False` / `sent.assert_awaited_once()` pair could not
+        tell the two apart). This version asserts the map state directly:
+        under the mutation, `email_sent` is False, so the success-dedup map
+        is never written and the assertion below fails BEFORE the second
+        call even runs."""
+        conn = _RecordingConn()
+        pool = _RecordingPool(conn)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(4242, "consultant@balizero.com")),
+        )
+        sent = AsyncMock(return_value=False)
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email", sent
+        )
+
+        dedup_key = "human_handoff:323"
+        first = await notify_human_handoff(
+            pool, thread_id=323, counterpart_phone="628111222333", language="en"
+        )
+
+        assert first is True
+        assert len(conn.calls) == 1
+        # The success-dedup map, not just the return value: proves the
+        # branch taken was `if delivered:` (in_app=True), not a mutated
+        # `if email_sent:` (False) that would have skipped this write and
+        # set the failed-attempt cooldown instead.
+        assert dedup_key in human_escalation_notifier._recent_escalations
+        assert dedup_key not in wa_human_handoff._recent_failed_attempts
+
+        second = await notify_human_handoff(
+            pool, thread_id=323, counterpart_phone="628111222333", language="en"
+        )
+
+        assert second is True
+        assert len(conn.calls) == 1
+        sent.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_innocence_a_swallowed_email_failure_never_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The real `send_internal_email` contract (default
+        `raise_on_failure=False`) never raises on a transport failure — it
+        returns False. `notify_human_handoff` must surface that as a plain
+        False return, not an exception, regardless of whether the in-app
+        leg also failed."""
+        pool = _RecordingPool(_RecordingConn(fail=True))
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff._resolve_assignee",
+            AsyncMock(return_value=(4242, "consultant@balizero.com")),
+        )
+        monkeypatch.setattr(
+            "backend.services.integrations.wa_human_handoff.send_internal_email",
+            AsyncMock(return_value=False),
+        )
+
+        result = await notify_human_handoff(
+            pool, thread_id=324, counterpart_phone="628111222333", language="en"
+        )
+
+        assert result is False
 
 
 class TestInAppAlert:
@@ -278,6 +459,7 @@ class TestInAppAlert:
 
     def setup_method(self) -> None:
         human_escalation_notifier._recent_escalations.clear()
+        wa_human_handoff._recent_failed_attempts.clear()
 
     def test_the_alert_type_is_on_the_bells_guest_list(self) -> None:
         """The row is written AND rendered.
@@ -301,7 +483,8 @@ class TestInAppAlert:
             AsyncMock(return_value=(4242, "consultant@balizero.com")),
         )
         monkeypatch.setattr(
-            "backend.services.integrations.wa_human_handoff.send_internal_email", AsyncMock()
+            "backend.services.integrations.wa_human_handoff.send_internal_email",
+            AsyncMock(return_value=True),
         )
 
         await notify_human_handoff(
@@ -336,7 +519,7 @@ class TestInAppAlert:
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(None, None)),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )
@@ -358,7 +541,7 @@ class TestInAppAlert:
             "backend.services.integrations.wa_human_handoff._resolve_assignee",
             AsyncMock(return_value=(4242, "consultant@balizero.com")),
         )
-        sent = AsyncMock()
+        sent = AsyncMock(return_value=True)
         monkeypatch.setattr(
             "backend.services.integrations.wa_human_handoff.send_internal_email", sent
         )

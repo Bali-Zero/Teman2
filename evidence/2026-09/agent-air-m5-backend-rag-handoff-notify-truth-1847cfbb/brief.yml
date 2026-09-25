@@ -1,0 +1,141 @@
+task: >-
+  Fix wa_human_handoff.notify_human_handoff(): it returned True and recorded
+  dedup even when the email leg failed silently (send_internal_email's
+  raise_on_failure=False swallowed the error). An unknown client with a
+  broken email transport got no in-app alert (client_id NOT NULL FK,
+  structurally unavailable), no email, an audit row logged 'failed', and the
+  return value still said True — with dedup then suppressing the retry that
+  could have reached someone. Round 1 (cross-family review, Codex) on the
+  first commit: send_internal_email also now treats HTTP 200 with
+  {"success": false} as not-delivered (the notifications endpoint's own
+  provider chain can exhaust every leg and still answer 200 — raise_for_
+  status() alone cannot see that); the B2.5-2 human-handoff turn in
+  wa_codex_leg.py now conditions its client-facing copy on the notifier's
+  truthful return instead of always promising a colleague; a SEPARATE
+  5-minute per-thread failed-attempt cooldown throttles a burst of retries
+  on a thread whose every channel is down; and the notifier's own "never
+  raises" docstring is now honoured for an unexpected exception from the
+  email leg (caught, logged by type only, counted as a failed send).
+lane: backend-rag/handoff-notify-truth
+machine: Air-M5
+date: 2026-09-25
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: git diff --numstat origin/main...HEAD
+  measures, at the round-4 gate rework, ~990 additions / ~75 deletions
+  (~915 net) across 9 files — production code ~+308/-41, the rest tests and
+  this brief — above SIZE_GEAR2_THRESHOLD (400) and below the Gear-3
+  threshold (1828). No
+  hot-zone path (backend/services/integrations, backend/app/services,
+  tests, evidence only).
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    send_internal_email returns True only on an actual Brevo/provider
+    delivery (HTTP 2xx AND response body success=true); False on any
+    swallowed failure including a 200 with success=false or an unparseable
+    body; raise_on_failure=True raises on that shape exactly like any other
+    failure.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/app/services/test_internal_email.py -v
+  A2: >-
+    notify_human_handoff returns True only when at least one channel
+    (in-app row written, or the email actually sent) delivered; dedup is
+    recorded only on that True; a failed attempt is throttled by a
+    SEPARATE 5-minute cooldown (not the success-dedup map) so a retry after
+    the cooldown still attempts; an unexpected exception from the email leg
+    is caught, logged by type only, and counted as a failed send.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_wa_human_handoff.py -v
+  A3: >-
+    The B2.5-2 human-handoff turn in wa_codex_leg.py serves "a colleague
+    will contact you" only when notify_human_handoff returned True;
+    False or a caught exception serves an honest per-language variant
+    naming no delivery and pointing at the one existing contact constant
+    (_FALLBACK_RECIPIENT, zero@balizero.com) — nothing invented. No
+    regression on the wa_* unit suite.
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/services/test_wa_codex_leg.py -v &&
+      PYTHONPATH=. pytest backend/tests/unit/services/ -k wa_
+
+out_of_scope: >-
+  Rewriting the media-attachment-ack turn's copy (B2.5-3) — it already never
+  branches client-facing text on notify_human_handoff's return, only logs it
+  (notified=). The two items previously listed here — "distinguishing
+  dedup-suppressed from genuinely failed" and "the birthday caller's inner
+  except not catching the 200+success=false failure" — were round-1
+  regressions, not out-of-scope calls; round 3 fixes both (see below) and
+  this brief's `acceptance` A1-A3 probes still hold unchanged.
+
+round_3: >-
+  Codex round-2 review of round-1 commit b25367f620 (verdict FIX-FIRST)
+  found the two items this brief's out_of_scope section had waved off were
+  in fact regressions, not deliberate deferrals: (HIGH) the new
+  InternalEmailNotDeliveredError — round 1 raised a bare RuntimeError on a
+  200+success=false Brevo response — was not caught by the birthday
+  notifier's Brevo-to-Zoho fallback (which only caught httpx.HTTPError/
+  OSError), so Zoho was skipped and the outer `except Exception` logged the
+  client email in cleartext; (MEDIUM) `notify_human_handoff`'s dedup early
+  return stayed `return False` even though a colleague HAD been reached by
+  an earlier call, so a second handoff request on the same thread got "I
+  couldn't reach a colleague" — the exact lie this PR exists to stop, one
+  call later. Spec `spec_Fa_r3.md` (surface written once per Builder
+  Contract §1's "a fix-of-a-fix stops at depth 1" clause) fixed both:
+  `InternalEmailNotDeliveredError` (subclass of RuntimeError, defined in
+  internal_email.py) now has its own except leg in send_birthday_email's
+  Brevo try, alongside httpx.HTTPError/OSError, falling through to Zoho;
+  every log line in that function carrying a client email now goes through
+  `redact_identifier_for_log`, not just the ones round 1 touched. The
+  `_already_escalated` dedup early return in notify_human_handoff.py is now
+  `return True` — dedup suppression means someone was already told, not
+  that nobody was — and the B2.5-2 turn's comment in wa_codex_leg.py (which
+  conditions the client-facing reply on that return) was corrected to match:
+  a dedup-suppressed second request now gets the SAME "colleague notified"
+  confirmation as the first, not the honest-unreachable variant. Probes:
+  PYTHONPATH=. pytest backend/tests/unit/app/services/test_internal_email.py
+  backend/tests/unit/services/test_wa_human_handoff.py
+  backend/tests/unit/services/test_wa_codex_leg.py
+  backend/tests/unit/services/crm/test_notifiers_birthday_email.py -v
+round_3b: >-
+  Codex round-3 review of a5dae52df3 (verdict FIX-FIRST, one HIGH): S3
+  redacted the recipient argument but every birthday log line still
+  interpolated the raw exception, and the outer handler used
+  logger.exception (full traceback). A provider error can name the address
+  it rejected, so the address leaked through the exception text. Spec S3
+  amended: in send_birthday_email a log line carries the redacted recipient
+  and the exception TYPE only — never its message, never a traceback. The
+  four PII tests now raise exceptions whose text contains the address; on
+  a5dae52df3 they fail 4/8, on the cure 8/8. Probes: same four test files,
+  194 passed.
+round_4: >-
+  Codex round-4 review of 641d4c08d2: the diff is clean (25 isolated cases,
+  zero addresses, zero tracebacks). Residual HIGH is PRE-EXISTING and outside
+  this diff: internal_email.py logs format_send_error(e) with the raw text,
+  and zoho_email_service.py logs `to` directly — every sender, every caller.
+  Split to its own PR (one concern). The one thing THIS PR added to that log
+  line was InternalEmailNotDeliveredError carrying the endpoint's `message`,
+  which relays provider errors; it now carries a constant label. The test
+  that required the endpoint message in the log is inverted: a synthetic
+  address inside `message` must not reach the log (fails on 641d4c08d2,
+  passes here). 194 passed on the four suites.
+gate_rework: >-
+  Final on-disk gate on 1f5e26473f returned REWORK-BUILD: (1) the birthday
+  tests patched `send_internal_email` by dotted string, which breaks after
+  the partners conftest's sys.modules shield under xdist ordering (CI red:
+  AttributeError module backend.services has no attribute crm) — now
+  patched on the imported module object; (2) BirthdayNotifierService in
+  notifiers.py has NO production caller (the prod cron imports
+  run_birthday_notifier_task from birthday_notifier_service.py), so its
+  changes here are hygiene on a dead copy and the Bites line names the one
+  real consumer, the B2.5-2 human-handoff turn; the live
+  birthday_notifier_service.py cleartext-email logs join the split
+  sender-PII PR; (3) the media-ack comment no longer claims the notifier
+  reports True on a swallowed email.
