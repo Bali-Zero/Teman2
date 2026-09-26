@@ -31,11 +31,13 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.2.1"
+RUNNER_VERSION = "0.2.2"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
 EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
+RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
+EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
 TRUSTED_CLASSIFIER_FILES = [
     "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
     "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py",
@@ -350,8 +352,19 @@ def cmd_plan(a):
         checks[name] = {"kind": "trusted_pytest", "cwd": str(wt), "python": venv_py, "trusted_files": [rel],
                         "purpose": f"{rel} extracted from BASE {base[:12]} and run against the candidate tree (candidate cannot rewrite its own guard)"}
     for extra in (a.extra_check or []):
-        name, spec = extra.split("=", 1)
-        checks[name] = json.loads(spec)
+        name, eq, spec_s = extra.partition("=")
+        if not eq or not name.strip():
+            sys.exit(f"--extra-check must be NAME=JSON, got {extra!r}")
+        if name.startswith(RESERVED_CHECK_PREFIXES) or name in checks:
+            sys.exit(f"--extra-check {name!r} collides with a planned or reserved check name ({', '.join(RESERVED_CHECK_PREFIXES)} are reserved): "
+                     "an extra check cannot overwrite a policy or forge a trusted verdict")
+        try:
+            spec = json.loads(spec_s)
+        except json.JSONDecodeError as e:
+            sys.exit(f"--extra-check {name!r}: invalid JSON spec: {e}")
+        if not isinstance(spec, dict) or spec.get("kind") not in EXTRA_CHECK_KINDS:
+            sys.exit(f"--extra-check {name!r}: kind must be one of {EXTRA_CHECK_KINDS}")
+        checks[name] = spec
     ctxs = load_contexts(a.contexts_file)
     seats = [s.strip() for s in ([a.builder_seat] if a.builder_seat else []) + (a.builder_seats.split(",") if a.builder_seats else []) if s and s.strip()]
     created_epoch = time.time()
@@ -492,7 +505,12 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
         status, reason = classify_pytest(rc, counts)
     else:
         counts = None
-        status, reason = ("PASS", "rc=0") if rc == 0 else (("ERROR", f"crashed (signal {-rc})") if rc < 0 else ("FAIL", f"rc={rc}"))
+        if rc == 0:
+            status, reason = "PASS", "rc=0"
+        elif rc < 0:
+            status, reason = "ERROR", f"crashed (signal {-rc})"
+        else:
+            status, reason = "FAIL", f"rc={rc}"
     return {"status": status, "reason": reason, "rc": rc, "duration_s": dur, "counts": counts, "log": str(log)}
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from . import fixture_repo as fr
-from .fixture_repo import PY, cmd_check, git, release_stub, runner, stub_propose
+from .fixture_repo import PY, cmd_check, git, release_stub, stub_propose
 
 STUB = Path(release_stub.__file__)
 

@@ -81,7 +81,8 @@ def test_invalid_contexts_file_is_blocked(fx, tmp_path, body):
 def test_unknown_mapping_is_treated_as_blocked():
     c = runner.load_contexts(None)
     assert c["status"] == "missing"
-    import tempfile, pathlib
+    import pathlib
+    import tempfile
 
     p = pathlib.Path(tempfile.mkdtemp()) / "c.yaml"
     p.write_text("contexts:\n - {name: a, mapping: maybe}\n")
@@ -411,7 +412,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.2.1"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.2.2"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -499,3 +500,33 @@ def test_plan_tampering_is_refused_before_anything_trusts_it(fx, tmp_path):
     for call in (lambda: fr.run(fx), lambda: fr.status(fx), lambda: fr.import_review(fx, tmp_path)):
         with pytest.raises(SystemExit):
             call()
+
+
+# --------------------------------------------------------------- extra checks cannot forge a verdict
+@pytest.mark.parametrize("name", ["policy.paid_anthropic_ban", "policy.brand_new", "tests.scripts_impacted", "review.independent", "trusted.anything"])
+def test_extra_check_cannot_take_a_reserved_or_planned_name(fx, name):
+    with pytest.raises(SystemExit):
+        fr.plan(fx, "--extra-check", fr.cmd_check(name, fx["repo"], [PY, "-c", "pass"]))
+    assert not (fx["run"] / "state" / "plan.json").exists()
+
+
+@pytest.mark.parametrize("spec", [
+    json.dumps({"kind": "record", "status": "PASS", "reason": "forged"}),
+    json.dumps({"kind": "trusted_pytest", "cwd": ".", "python": PY, "trusted_files": ["x.py"]}),
+    json.dumps(["not", "a", "dict"]),
+    "{not json",
+])
+def test_extra_check_must_be_an_executable_spec(fx, spec):
+    with pytest.raises(SystemExit):
+        fr.plan(fx, "--extra-check", "ctx.x=" + spec)
+    assert not (fx["run"] / "state" / "plan.json").exists()
+
+
+def test_extra_check_without_equals_is_refused(fx):
+    with pytest.raises(SystemExit):
+        fr.plan(fx, "--extra-check", "ctx.x")
+
+
+def test_extra_check_in_its_own_namespace_is_planned_and_runs(fx):
+    fr.plan(fx, "--extra-check", fr.cmd_check("ctx.ok", fx["repo"], [PY, "-c", "pass"]))
+    assert checks(fr.load_state(fx))["ctx.ok"] == "QUEUED"

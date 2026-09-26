@@ -1,4 +1,4 @@
-# localci — local CI runner and inert release stub (v0.2.1)
+# localci — local CI runner and inert release stub (v0.2.2)
 
 A durable coordinator that runs checks against a frozen candidate and refuses to call anything green on
 missing evidence. It is a **non-required, single-host** gate: it does not replace GitHub branch protection.
@@ -17,6 +17,10 @@ missing evidence. It is a **non-required, single-host** gate: it does not replac
 BASE ref and executed against the candidate tree (`trusted_pytest`; no candidate `conftest`/ini is honoured).
 Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores user site) with `PYTHONPATH`/`PYTHONSTARTUP`/`PYTHONHOME` removed and `PYTHONSAFEPATH=1`, so a candidate `sitecustomize.py` cannot execute inside them; candidate tests (`pytest` kind) are not trusted checks.
 `plan.json` is re-hashed against its `plan_hash` on every `run`/`review`/`status`; an edited plan aborts.
+
+`--extra-check NAME=JSON` adds a check the operator wants beside the planned ones. It is refused when NAME starts with a reserved
+prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
+`pytest`): an extra check can add evidence, never replace a policy verdict or record a PASS nobody ran (v0.2.2).
 
 ## Statuses and overall
 
