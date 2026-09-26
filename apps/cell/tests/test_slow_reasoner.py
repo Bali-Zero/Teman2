@@ -152,7 +152,7 @@ async def test_reasoner_escalates_low_confidence():
     reasoner = SlowReasoner()
     call_count = 0
 
-    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0, **_kw) -> tuple[str, float]:
         nonlocal call_count
         call_count += 1
         if model == "qwen3.5:9b":
@@ -176,7 +176,7 @@ async def test_reasoner_9b_failure_escalates_to_27b():
     """Qwen 9B fails → escalates to Qwen 27B."""
     reasoner = SlowReasoner()
 
-    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0, **_kw) -> tuple[str, float]:
         if model == "qwen3.5:9b":
             raise Exception("Ollama not running")
         return '{"action": "alert_human", "reason": "9b down", "confidence": 0.8}', 0.0
@@ -187,3 +187,56 @@ async def test_reasoner_9b_failure_escalates_to_27b():
             response_time_ms=8000,
         )
         assert proposal.tier_used == 1
+
+
+
+@pytest.mark.asyncio
+async def test_tier1_does_not_keep_the_27b_and_tier0_keeps_its_default():
+    """Pro 2026-09-26: the 27b loaded beside a busy 9b; it must leave after its call."""
+    reasoner = SlowReasoner()
+    calls = []
+
+    async def mock_ollama(model, system, user, timeout=30.0, keep_alive=None):
+        calls.append((model, keep_alive))
+        if model == "qwen3.5:9b":
+            return '{"action": "restart_service", "reason": "maybe", "confidence": 0.3}', 0.0
+        return '{"action": "alert_human", "reason": "deep", "confidence": 0.9}', 0.0
+
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama):
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+
+    assert proposal.tier_used == 1
+    assert calls == [("qwen3.5:9b", None), ("qwen3.8:27b-mlx", 0)]
+
+
+@pytest.mark.asyncio
+async def test_call_ollama_sends_keep_alive_only_when_asked():
+    reasoner = SlowReasoner()
+    sent = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "{}"}}
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json):
+            sent.append(json)
+            return _Resp()
+
+    with patch("cell.slow.reasoner.httpx.AsyncClient", _Client):
+        await reasoner._call_ollama("m", "s", "u")
+        await reasoner._call_ollama("m", "s", "u", keep_alive=0)
+    assert "keep_alive" not in sent[0]
+    assert sent[1]["keep_alive"] == 0
