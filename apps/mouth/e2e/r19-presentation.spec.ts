@@ -13,6 +13,29 @@ test.afterEach(async ({ page }) => {
   await page.close();
 });
 
+type Rgba = [number, number, number, number];
+const parseColor = (css: string): Rgba => {
+  const [r, g, b, a] = css.match(/[\d.]+/g)!.map(Number);
+  return [r, g, b, a ?? 1];
+};
+const over = (fg: Rgba, bg: Rgba): Rgba => [
+  fg[0] * fg[3] + bg[0] * (1 - fg[3]),
+  fg[1] * fg[3] + bg[1] * (1 - fg[3]),
+  fg[2] * fg[3] + bg[2] * (1 - fg[3]),
+  1,
+];
+const luminance = ([r, g, b]: Rgba) => {
+  const [lr, lg, lb] = [r, g, b].map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+};
+const contrast = (a: Rgba, b: Rgba) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
 test.describe("R19 integration page Page", () => {
   for (const width of [980, 981, 1024]) {
     test(`header and sticky photo stay aligned at ${width}px`, async ({
@@ -137,19 +160,54 @@ test.describe("R19 integration page Page", () => {
     await page.keyboard.press("Tab");
     const heroLink = page.locator(".entry-hero .entry-categories a").first();
     await heroLink.focus();
-    // The transplanted hero sits on a light illustration: the ring is the
-    // slate token, not the cream ring the earlier dark hero needed.
-    expect(
-      await heroLink.evaluate((el) => {
-        const s = getComputedStyle(el);
-        return { color: s.outlineColor, width: s.outlineWidth };
-      }),
-    ).toEqual({ color: "rgb(30, 56, 99)", width: "2px" });
+    // Light hero: the ring is judged by contrast, not by a pinned colour. It
+    // must clear 3:1 (WCAG 1.4.11) against the link's own surface as painted
+    // over the hero ground, and against the hero ground itself. The ring
+    // floats in the offset gap over the illustration, which is not sampled.
+    const ring = await heroLink.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        style: s.outlineStyle,
+        width: parseFloat(s.outlineWidth),
+        color: s.outlineColor,
+        surface: s.backgroundColor,
+        ground: getComputedStyle(el.closest(".entry-hero")!).backgroundColor,
+      };
+    });
+    expect(ring.style).toBe("solid");
+    expect(ring.width).toBeGreaterThanOrEqual(2);
+    const ground = parseColor(ring.ground);
+    const surface = over(parseColor(ring.surface), ground);
+    expect(contrast(parseColor(ring.color), surface)).toBeGreaterThanOrEqual(3);
+    expect(contrast(parseColor(ring.color), ground)).toBeGreaterThanOrEqual(3);
     const heading = page.locator("h1").first();
-    // Variable 100-900 face: weight 450 is real, so nothing is synthesised.
+    // Variable face: the computed weight must lie inside the face's declared
+    // axis and that face must be loaded, so the browser has nothing to fake.
+    const face = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const s = getComputedStyle(document.querySelector("h1")!);
+      const weight = Number(s.fontWeight);
+      const faces = [...document.fonts]
+        .filter((f) => f.family.replace(/["']/g, "") === "R19 Home Fraunces")
+        .map((f) => ({ status: f.status, weight: f.weight }));
+      return {
+        family: s.fontFamily,
+        weight,
+        faces,
+        applied: document.fonts.check(`${weight} 1em "R19 Home Fraunces"`),
+      };
+    });
+    expect(face.family).toMatch(/^"R19 Home Fraunces"/);
+    expect(face.faces.length).toBeGreaterThan(0);
+    expect(face.faces.every((f) => f.status === "loaded")).toBe(true);
     expect(
-      await heading.evaluate((el) => getComputedStyle(el).fontFamily),
-    ).toMatch(/^"R19 Home Fraunces"/);
+      face.faces.some((f) => {
+        const [lo, hi = lo] = f.weight.split(/\s+/).map(Number);
+        return lo <= face.weight && face.weight <= hi;
+      }),
+    ).toBe(true);
+    expect(face.applied).toBe(true);
+    expect(await heading.count()).toBe(1);
     await page.goto("/news");
     const fab = page.locator("#zantara-fab");
     await page.keyboard.press("Tab");
@@ -217,6 +275,11 @@ test.describe("R19 integration page Page", () => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/");
         await page.evaluate(() => document.fonts.ready);
+        const heroHeight = () =>
+          page
+            .locator(".entry-hero")
+            .evaluate((el) => el.getBoundingClientRect().height);
+        const baseline = await heroHeight();
         await page.getByRole("heading", { level: 1 }).evaluate((el, text) => {
           el.textContent = text;
         }, heading);
@@ -236,6 +299,34 @@ test.describe("R19 integration page Page", () => {
         expect(geometry.title.top).toBeGreaterThanOrEqual(geometry.nav.bottom);
         expect(geometry.cta.bottom).toBeLessThanOrEqual(geometry.hero.bottom);
         expect(geometry.overflow).toBeLessThanOrEqual(1);
+        // A heading that runs away must show up as a hero that ballooned.
+        expect(await heroHeight()).toBeLessThanOrEqual(baseline * 1.5);
+        // The last action stays reachable: nothing (the caption included)
+        // sits on top of its centre or intersects its box.
+        const covered = await page.evaluate(() => {
+          const last = document.querySelector<HTMLElement>(
+            ".entry-hero .entry-categories li:last-child a",
+          )!;
+          last.scrollIntoView({ block: "center" });
+          const l = last.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            l.left + l.width / 2,
+            l.top + l.height / 2,
+          );
+          const c = document
+            .querySelector(".entry-hero .hero-caption")!
+            .getBoundingClientRect();
+          return {
+            reachable: !!hit && last.contains(hit),
+            captionOverlaps: !(
+              c.right <= l.left ||
+              c.left >= l.right ||
+              c.bottom <= l.top ||
+              c.top >= l.bottom
+            ),
+          };
+        });
+        expect(covered).toEqual({ reachable: true, captionOverlaps: false });
       });
     }
   }
