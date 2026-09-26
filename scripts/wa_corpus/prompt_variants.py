@@ -73,7 +73,8 @@ If the conversation mixes many distinct clients, say so and stop."""
 
 
 # v4 — winner-candidate: v2's two-level structure (which scored 5/5 on the
-# Alexandre chat) + a one-line HEADLINE on top (v3's good idea) + an explicit
+# Client Alpha chat, see query_lab.py's GROUND_TRUTH) + a one-line HEADLINE
+# on top (v3's good idea) + an explicit
 # length ceiling. PART A multi-perspective, PART B specific data points.
 V4 = """You are a Bali Zero case analyst reviewing ONE WhatsApp conversation \
 between a team member and a single client/lead. Answer ONLY from the source, in \
