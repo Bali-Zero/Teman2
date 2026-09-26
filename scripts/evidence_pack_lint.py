@@ -3394,13 +3394,25 @@ _COUNT_WORDS: dict[str, int] = {
 }
 _COUNT_WORD_ALT = "|".join(_COUNT_WORDS)
 
-_FILES_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+files?\b", re.IGNORECASE)
+#: `\b` alone is not a left boundary against a hyphenated identifier: `\b`
+#: fires at ANY non-word/word transition, including the `-` in "seq-17", so
+#: `\b(\d+)\s+commits?\b` still matched "17 commits" inside "the seq-17
+#: commit" (measured 2026-08-31, PR #5333 — a guard-over-match, superscar
+#: #3). `(?<![\w-])` additionally refuses a digit run immediately preceded
+#: by a hyphen or word character, so a hyphenated identifier like "seq-17"
+#: or "PR-4" no longer donates its trailing digits to the count claim,
+#: while "the 17 commits" (preceded by whitespace/start) still matches.
+#: Applied to all three digit-claim regexes below — they share the exact
+#: same left-boundary shape, so the same phrasing ("the batch-9 files",
+#: "run-64 tests") would have misread each of them identically.
+_LEFT_BOUND = r"(?<![\w-])"
+_FILES_CLAIM_RE = re.compile(rf"{_LEFT_BOUND}(\d{{1,5}})\s+files?\b", re.IGNORECASE)
 #: "+1195/-119", "+1195 / -119", "+1195/−119" (U+2212 minus, seen in prose).
 _DIFFSTAT_CLAIM_RE = re.compile(r"\+\s?(\d{1,7})\s*/\s*[-−]\s?(\d{1,7})\b")
 _COMMITS_CLAIM_RE = re.compile(
-    rf"\b(\d{{1,4}}|{_COUNT_WORD_ALT})\s+commits?\b", re.IGNORECASE
+    rf"{_LEFT_BOUND}(\d{{1,4}}|{_COUNT_WORD_ALT})\s+commits?\b", re.IGNORECASE
 )
-_TESTS_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+tests?\b", re.IGNORECASE)
+_TESTS_CLAIM_RE = re.compile(rf"{_LEFT_BOUND}(\d{{1,5}})\s+tests?\b", re.IGNORECASE)
 _INTEGER_RE = re.compile(r"\d{1,7}")
 
 _NUMSTAT_CMD = "git diff --numstat $(git merge-base origin/main HEAD)..HEAD"
@@ -3496,6 +3508,36 @@ def _iter_countable_scalars(pack: dict[str, Any]) -> list[tuple[str, str]]:
     return out
 
 
+#: The `diff` block's own headline scalars — the permanent record a reader
+#: checks first, and the reason PR #5424 could declare `files: 4 / insertions:
+#: 70` against a real `7 files changed, 561 insertions(+)` and still lint
+#: `clean`: `_iter_countable_scalars` above walks the SAME `diff` subtree but
+#: only collects `str` nodes, so an int-typed field is invisible to it by
+#: construction — measured 2026-08-30/31 two ways, `diff: {files: 42,
+#: net_lines: 999999}` with a digit-free note (no prose phrase to catch) and
+#: PR #5424's `files: 4 / insertions: 70`. `net_lines` is compared against
+#: insertions-minus-deletions, matching `_size_term_net_lines()`'s own
+#: added-minus-deleted convention elsewhere in this file.
+_DIFF_INT_FIELDS: tuple[str, ...] = ("files", "insertions", "deletions", "net_lines")
+
+
+def _diff_int_claims(pack: dict[str, Any]) -> list[tuple[str, int]]:
+    """(field-name, value) for every INTEGER field in `_DIFF_INT_FIELDS`
+    present directly under `pack["diff"]` — deliberately narrow (superscar
+    #3): only the `diff` block's own known headline fields, never a nested
+    string this rule's prose scan already covers, and never `lanes` (no
+    known lane ever carries these keys)."""
+    out: list[tuple[str, int]] = []
+    diff_node = pack.get("diff")
+    if not isinstance(diff_node, dict):
+        return out
+    for field in _DIFF_INT_FIELDS:
+        value = diff_node.get(field)
+        if type(value) is int:  # exclude bool — True/False is not a count
+            out.append((field, value))
+    return out
+
+
 def _receipt_integers(pack: dict[str, Any]) -> set[int]:
     """Every integer appearing in the receipts' `claim`/`result` prose.
 
@@ -3530,6 +3572,43 @@ def check_countable_claims(
     scalars = _iter_countable_scalars(pack)
     totals = parse_numstat_totals(numstat_text)
     receipt_ints = _receipt_integers(pack)
+
+    # ---- (d) diff block's own INT-typed headline fields ------------------
+    # Same source of truth as (a) above (the numstat blob), but a DIFFERENT
+    # claim shape: a literal `diff: {files: 4}` YAML integer rather than a
+    # "4 files" phrase inside a string, so it needs its own comparison —
+    # `_iter_countable_scalars` never sees it (str-only walk).
+    for int_field, claimed in _diff_int_claims(pack):
+        if totals is None:
+            notices.append(
+                f"countable claim (countable-claims rule): diff.{int_field} declares "
+                f"{claimed} but no `git diff --numstat` was supplied (--numstat-file) "
+                f"— not verified this run"
+            )
+            continue
+        files, insertions, deletions, has_binary = totals
+        measured = {
+            "files": files,
+            "insertions": insertions,
+            "deletions": deletions,
+            "net_lines": insertions - deletions,
+        }[int_field]
+        if claimed == measured:
+            continue
+        message = (
+            f"countable claim (countable-claims rule): diff.{int_field} declares "
+            f"{claimed} but the diff measures {measured} — computed from "
+            f"`{_NUMSTAT_CMD}`. Correct the pack to the computed value or drop the "
+            f"field."
+        )
+        if has_binary and int_field != "files":
+            notices.append(
+                message + " (NOTICE only: this diff contains a binary file, "
+                "whose line counts numstat cannot report — the computed "
+                "totals are a lower bound.)"
+            )
+        else:
+            violations.append(message)
 
     for field, text in scalars:
         # ---- (a) diff stats -------------------------------------------
