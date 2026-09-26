@@ -8,6 +8,15 @@
 -- every non-core column is its own ALTER ... ADD COLUMN IF NOT EXISTS,
 -- which DOES apply — caller verifies presence+type via pg_catalog in the
 -- same transaction, same reason it also verifies both unique indexes.
+--
+-- The migrations_v2/200 shape of team_promises (resolved/created_at
+-- NULLABLE, no thread_key/team_member_email/extractor_version/
+-- resolution_kind) is a DIFFERENT, Fly-only, frozen table — this file does
+-- NOT reconcile with it. Landing on top of that shape is REJECTED
+-- fail-closed at `team_promises.resolved` (round-2 NOT NULL contract vs.
+-- round-0 nullable), not upgraded — see PR #7342 gate condition C3 and
+-- test_c3_migration_200_literal_team_promises_shape_is_rejected_not_upgraded
+-- in scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py.
 
 CREATE TABLE IF NOT EXISTS team_promises (
     promise_id              BIGSERIAL PRIMARY KEY,
