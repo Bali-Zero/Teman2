@@ -148,7 +148,7 @@ semanticamente corretti — non un vincolo lessicale. Lasciato come raccomandazi
 
 - **Hole A (pass-case che passano per il motivo sbagliato)** — non c'è un assert meccanico sano che lo chiuda
   per i keyword-escape guard (refuter R3). Richiede disciplina di review umana sui pass-case futuri, o una
-  decisione di design (es. un campo `pass_reason` nel matrix). **Decisione di Antonello**, non auto-fixabile.
+  decisione di design (es. un campo `pass_reason` nel matrix). **Decisione di Zero**, non auto-fixabile.
 - **Cambi alla persona verso i clienti** — nessuno necessario, ma qualunque ritocco al tono è confine-operatore.
 - **DeepSeek refuter morto (HTTP 402 Insufficient Balance)** — il Tier-1 refuter del panel asimmetrico è
   disarmato. Surrogato con Gemini per questa sessione. **Ricarica saldo DeepSeek** è azione operatore.

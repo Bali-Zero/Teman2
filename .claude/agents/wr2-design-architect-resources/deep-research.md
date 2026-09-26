@@ -68,7 +68,7 @@ The actual pattern, distilled:
 - **Photo-illustration pipeline** with mandatory human compositing for sensitive topics.
 - **Style memory** as retrievable archive of past covers/illustrations for in-context learning.
 
-**Speed/quality trade-off**: Reuters published the empirical finding that Fact Genie made _junior_ journalists faster and more standards-compliant, while _senior_ journalists matched its speed without it. AI design agents most help operators below the brand-expert level by **encoding the brand-expert's heuristics**. They rarely push the ceiling — they raise the floor. For Bali Zero: an agent can encode Antonello's editorial taste so non-designers in the team produce on-brand carousels.
+**Speed/quality trade-off**: Reuters published the empirical finding that Fact Genie made _junior_ journalists faster and more standards-compliant, while _senior_ journalists matched its speed without it. AI design agents most help operators below the brand-expert level by **encoding the brand-expert's heuristics**. They rarely push the ceiling — they raise the floor. For Bali Zero: an agent can encode Zero's editorial taste so non-designers in the team produce on-brand carousels.
 
 ---
 
@@ -141,7 +141,7 @@ The 2025 consensus from enterprise AI literature: **layered approach**, not pick
 | Brand subject (logo, founder portraits, recurring iconography) | **DreamBooth** with multi-token (style + subject separated)                           | Only when specific subject appears repeatedly                                                    |
 | Layout fidelity                                                | **ControlNet** with rendered layout-spec masks                                        | When LLM emits structured layout, image-gen fills it                                             |
 
-**Why few-shot beats fine-tuning for voice at this scale**: Bali Zero produces ~10–30 carousels/month. No dataset large enough to fine-tune voice without overfitting. Few-shot examples are auditable (Antonello swaps one and instantly changes tone), revertible, cheap. Fine-tune the _image_ model, not the _language_ model — image model has bigger generalization gaps to bridge.
+**Why few-shot beats fine-tuning for voice at this scale**: Bali Zero produces ~10–30 carousels/month. No dataset large enough to fine-tune voice without overfitting. Few-shot examples are auditable (Zero swaps one and instantly changes tone), revertible, cheap. Fine-tune the _image_ model, not the _language_ model — image model has bigger generalization gaps to bridge.
 
 **CLIP / FashionCLIP / VL-CLIP** for brand visual style matching: build small embedding index of past carousels (1080×1350 PNGs); at design time use CLIP cosine similarity to _retrieve closest past examples_ as in-context references. This is "visual RAG" — cheap, robust, no fine-tuning required.
 
@@ -172,7 +172,7 @@ Anti-patterns observed in academic and industry literature, with mitigations:
 
 ## 9. Sintesi: design agent architecture per Bali Zero
 
-For Bali Zero specifically, given constraints (solo-dev, agency-scale ~10–30 carousels/month, three Indonesian-business verticals visa/tax/property/HR, brand voice in-house with Antonello as authority):
+For Bali Zero specifically, given constraints (solo-dev, agency-scale ~10–30 carousels/month, three Indonesian-business verticals visa/tax/property/HR, brand voice in-house with Zero as authority):
 
 **Composition: orchestrator + 4 specialist sub-agents (centralized, NOT peer-to-peer)**
 
@@ -212,7 +212,7 @@ For Bali Zero specifically, given constraints (solo-dev, agency-scale ~10–30 c
 **Don't build (yet)**:
 
 - Custom fine-tuned LLM for voice (premature — few-shot will get you 90% there).
-- LoRA for visual style (only if/when Antonello decides Bali Zero needs distinctive recurring illustration style; current carousels are typography-first which doesn't need it).
+- LoRA for visual style (only if/when Zero decides Bali Zero needs distinctive recurring illustration style; current carousels are typography-first which doesn't need it).
 - A general-purpose design agent. Build a Bali Zero-specific carousel agent. Generality kills brand fidelity.
 
 ---

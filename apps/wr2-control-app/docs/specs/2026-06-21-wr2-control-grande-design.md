@@ -1,7 +1,7 @@
 # WR2 Control "grande" — design spec
 
 - **Date:** 2026-06-21
-- **Author:** Claude (Opus 4.8) + Antonello (Zero)
+- **Author:** Claude (Opus 4.8) + Zero
 - **Status:** approved (all 6 sections), ready for implementation plan
 - **App location:** `~/Desktop/wr2-control-app/` (native SwiftUI, ISOLATED — not in nuzantara monorepo)
 - **Approach chosen:** A — incremental evolution of the existing prototype (not rewrite)

@@ -45,7 +45,7 @@ expected deploy/main`, last exit 1) with alerts cooldown-suppressed. **WR2 produ
   this `resolved` on a misleading `.git`-absent artifact — the symlink defeated `test -e`;
   corrected via `git worktree list --porcelain` + the active failure log.)
 - **rolsuper W38 is STILL ARMED** — confirmed live via postgres-MCP; spec is DRAFT
-  awaiting Antonello; NOT demoted by this audit.
+  awaiting Zero; NOT demoted by this audit.
 - **2 secret-bearing plists were world-readable (644) at freeze → hardened to 0400**
   (only SAFE fix actionable this turn).
 
@@ -57,7 +57,7 @@ expected deploy/main`, last exit 1) with alerts cooldown-suppressed. **WR2 produ
 | --- | --------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | W62 | agent-worktree broker TTL violated, orphans         | **WORSENED**                | 8 worktrees now (W62 incident had 6); 4 hold REAL uncommitted code WIP; proposed antibodies (cleanup cron, `test_no_stale_worktrees.py`) NOT shipped.                                                                                                                                                                                                                                                                                                                                 |
 | #2  | evolver/sibling vs deploy-puller shared worktree    | **EXPLODED-SILENT** 🔴      | `~/Desktop/nuzantara-deploy` is a SYMLINK (01:53) → `.worktrees/backend-rag-crm-guardian-audit` (sibling worktree on branch `agent/...crm-guardian-audit`, NOT deploy/main; deploy/main SHA ≠ origin/main). `wr2-deploy-pull.log` fails HOURLY through 08:26 (`expected deploy/main`), alert cooldown-suppressed, last-exit 1. WR2 prod cron reading stale code NOW. (First read mis-classed via misleading `.git`-absent artifact; corrected via `worktree list --porcelain` + log.) |
-| #3  | `backend_rag_v2` rolsuper=t (P1 SECURITY)           | **STILL ARMED**             | postgres-MCP (twice): `rolsuper=true`. Spec exists, `status: DRAFT — awaiting Antonello approval`, NOT EXECUTED. No NOSUPERUSER migration. NEEDS-ANTONELLO.                                                                                                                                                                                                                                                                                                                           |
+| #3  | `backend_rag_v2` rolsuper=t (P1 SECURITY)           | **STILL ARMED**             | postgres-MCP (twice): `rolsuper=true`. Spec exists, `status: DRAFT — awaiting Zero approval`, NOT EXECUTED. No NOSUPERUSER migration. NEEDS-ANTONELLO.                                                                                                                                                                                                                                                                                                                           |
 | #4  | 12+1 mata_garuda active-active Pro+Mini             | **DE-FACTO RESOLVED**       | Pro=23 labels, Mini=5 labels, `comm -12` overlap = **ZERO**. Duplicate-firing blast radius gone (work split per-machine). Residual: CI guard `test_genome_no_active_active.py` still absent.                                                                                                                                                                                                                                                                                          |
 | #5  | test-infra mock ≠ prod stack                        | **STILL ARMED**             | Proposed antibodies absent (repo-wide find for `test_endpoints_reachable.py` / `test_manifest_parity.py` = EMPTY). api/rag split still uncovered by full-app reachability test.                                                                                                                                                                                                                                                                                                       |
 | #6  | untracked files lost on sibling branch-switch       | **STILL ARMED** (mitigated) | Antibodies shipped (`stop_verify.py`, `agent_start.py` broker, lease-check) BUT 4 worktrees hold uncommitted WIP NOW incl. untracked new files; 3 with mtime within minutes (active siblings). Risk reduced, not eliminated.                                                                                                                                                                                                                                                          |
@@ -142,7 +142,7 @@ policy. **Nothing safely deletable → 0 branches bonificati.**
   (`DATABASE_URL`) and is the W38 demotion target. **`rolsuper=t` → bomb STILL ARMED.**
 - The other 7 are legacy/Fly-platform — attack surface only for in-repo hardcoded DSNs.
   Separate spec needed → NEEDS-ANTONELLO.
-- **W38 spec status:** `DRAFT — awaiting Antonello approval`; `NOT EXECUTED`. NOT demoted
+- **W38 spec status:** `DRAFT — awaiting Zero approval`; `NOT EXECUTED`. NOT demoted
   here (explicitly needs-Antonello).
 
 **World-readable secret plists (the #10 leak surface):**
@@ -208,7 +208,7 @@ policy. **Nothing safely deletable → 0 branches bonificati.**
 
 1. **W38 rolsuper (`backend_rag_v2 rolsuper=t`)** — _blast: DB-host RCE / DROP DATABASE
    / ALTER SYSTEM if the app secret leaks → entire prod dataset + Postgres host._
-   **Fix:** Antonello sign-off on W38 spec (Stage B `ADMIN_DATABASE_URL` split + GRANT
+   **Fix:** Zero sign-off on W38 spec (Stage B `ADMIN_DATABASE_URL` split + GRANT
    `pg_monitor`, Stage C `ALTER ROLE NOSUPERUSER` in a low-traffic window). Reversible.
 2. 🔴 **deploy-worktree desync (#2) — ALREADY EXPLODED, live** — _blast: WR2 production
    cron is running stale code from a crm-guardian worktree RIGHT NOW; hourly failure is
@@ -218,7 +218,7 @@ policy. **Nothing safely deletable → 0 branches bonificati.**
    the only one already broken in production, not just a latent risk.
 3. **plist-overwrite + world-readable secrets (#10)** — _blast: world-readable Postgres
    DSN + API key on a multi-process box; on reboot the JSON-dump corruption can wipe 51
-   loaded services._ **Fix:** chmod 0400 SHIPPED (stop-gap); Antonello: rotate the 2
+   loaded services._ **Fix:** chmod 0400 SHIPPED (stop-gap); Zero: rotate the 2
    secrets + identify the producer.
 4. **W62 worktree orphans** — _blast: uncommitted code WIP in 4 stale worktrees lost on
    any sibling `git stash`/`checkout` (compounds the #6 sibling-race); 7.0G storage._

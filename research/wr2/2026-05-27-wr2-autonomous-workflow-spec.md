@@ -20,7 +20,7 @@ sources:
 **Scope**: ESTESO — carousel workflow + IG canonicalization gap closure + Cluster C event-driven re-evaluation
 **Date**: 2026-05-27
 **Author**: Claude Opus 4.7 orchestrator session (worktree `wr2-wr2-spec-2026-05-27`)
-**Approver**: Antonello (operator) — pending sign-off
+**Approver**: Zero (operator) — pending sign-off
 
 ---
 
@@ -168,7 +168,7 @@ MAX_CLAUDE_INVOCATIONS_PER_DRAFT = 8  # 5 steps + 2 critic retries + 1 buffer
 MAX_CLAUDE_INVOCATIONS_PER_HOUR = 50
 ```
 
-### 2.2 Cascade fallback explicit mapping (Antonello 2026-05-27 — opus su brief/story/critic, sonnet su image/layout)
+### 2.2 Cascade fallback explicit mapping (Zero 2026-05-27 — opus su brief/story/critic, sonnet su image/layout)
 
 | Step                             | Tier 1 (Claude OAuth MAX) | Tier 2 fallback | Tier 3 fallback | Tier 4                 |
 | -------------------------------- | ------------------------- | --------------- | --------------- | ---------------------- |
@@ -387,8 +387,8 @@ CREATE INDEX idx_carousel_outbox_unconsumed ON wr2_carousel_events_outbox(create
 | `connector_cli`        | Pre-carousel cron (existing)                                 | Hourly                                                                  | Continua come oggi, fornisce topic raw a topic-selector   |
 | `oracle_cli`           | Cron weekly (existing)                                       | Tuesday 09:00                                                           | Strategic council, NO cambio                              |
 | `strategos_cli`        | **NEW outbox consumer**                                      | Polling outbox `carousel_published` every 15min                         | Post-publish strategic synthesis                          |
-| `newsletter_cli`       | Cron weekly independent (no refactor — Antonello 2026-05-27) | Monday 06:00                                                            | News standalone, carousel link in menu inferiore OPTIONAL |
-| `learner_cli`          | **NEW outbox consumer** (Antonello 2026-05-27)               | Polling outbox `carousel_published` + `carousel_rejected` nightly 03:00 | Voyager skill library update da publish/reject pattern    |
+| `newsletter_cli`       | Cron weekly independent (no refactor — Zero 2026-05-27) | Monday 06:00                                                            | News standalone, carousel link in menu inferiore OPTIONAL |
+| `learner_cli`          | **NEW outbox consumer** (Zero 2026-05-27)               | Polling outbox `carousel_published` + `carousel_rejected` nightly 03:00 | Voyager skill library update da publish/reject pattern    |
 | `dossier_compiler_cli` | Cron daily (existing)                                        | 04:30                                                                   | Compila dossier daily, NO cambio                          |
 
 **NB**: outbox consumer idempotent: ogni consumer scrive in `consumed_by` jsonb array prima di processare. Re-run safe.
@@ -552,7 +552,7 @@ def verify_callback(callback_data, token, user_id):
 - Telegram API down → state resta `awaiting_approval` (NO auto-publish bypass)
 - Token expired → operator deve approvare ri-invocando workflow (no auto-renew)
 
-### 10.3 Dual publish_mode design (Antonello 2026-05-27 — auto path in standby Day 1)
+### 10.3 Dual publish_mode design (Zero 2026-05-27 — auto path in standby Day 1)
 
 Env flag controlla pre-publish behavior:
 
@@ -566,15 +566,15 @@ WR2_AUTO_PUBLISH_ENABLED="false"  # path auto codato ma disabled
 
 1. critic PASS → state=awaiting_approval
 2. Telegram inline button [Approve/Reject/Preview]
-3. Antonello approve → invoke ig_publisher.py
-4. Antonello reject → state=rejected
+3. Zero approve → invoke ig_publisher.py
+4. Zero reject → state=rejected
 
 **Path `auto` (codato + tested, NON enabled)**:
 
 1. critic PASS → state=awaiting_approval (ANCHE in auto mode — Telegram gate IRREDUCIBILE per Law 5)
 2. Telegram inline button [Approve/Reject/Preview] (sempre presente)
-3. Antonello approve → invoke ig_publisher.py
-4. Antonello reject → state=rejected
+3. Zero approve → invoke ig_publisher.py
+4. Zero reject → state=rejected
 5. **NEW se WR2_AUTO_PUBLISH_ENABLED=true**: timer 4h auto-approve fallback se nessuna risposta Telegram (defaults safe-fail = reject)
 
 **Implementation contract**:
@@ -606,7 +606,7 @@ WR2_AUTO_PUBLISH_ENABLED="false"  # path auto codato ma disabled
 | Telegram polling         | NO LLM   | —                      | —                   | —                   | $0                    |
 | **TOTAL figurativo/run** |          |                        |                     |                     | **~$1.45**            |
 
-**Implication**: NON pago realmente — è quota MAX consumption. Hard cap audit $5/run, $10/mo (Antonello 2026-05-27).
+**Implication**: NON pago realmente — è quota MAX consumption. Hard cap audit $5/run, $10/mo (Zero 2026-05-27).
 
 ### 11.2 Weekly figurative + headroom
 
@@ -687,7 +687,7 @@ WR2_AUTO_PUBLISH_ENABLED="false"  # path auto codato ma disabled
 
 ---
 
-## 15. Operator decisions log (Antonello sign-off 2026-05-27)
+## 15. Operator decisions log (Zero sign-off 2026-05-27)
 
 | #   | Domanda                 | Decisione                                                   | Note                                                                                                     |
 | --- | ----------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -702,14 +702,14 @@ WR2_AUTO_PUBLISH_ENABLED="false"  # path auto codato ma disabled
 ### 15.1 Critical updates triggered da decisions
 
 - **§2.1 Token/quota**: AUDIT_BUDGET_PER_RUN_USD=$5, AUDIT_BUDGET_PER_MONTH_USD=$10 (figurativi); throttle reale via quota_throttle_check()
-- **§2.2 Cascade mapping**: opus su brief/storyboard/critic, sonnet su image-prompt+layout (Antonello scelta)
+- **§2.2 Cascade mapping**: opus su brief/storyboard/critic, sonnet su image-prompt+layout (Zero scelta)
 - **§7 Cluster C outbox**: newsletter rimosso da consumers list (independent cron preservato); strategos+learner = outbox consumer
 - **§10.3 Dual publish_mode**: orchestrator codifica BOTH `manual` + `auto` path; flag `WR2_AUTO_PUBLISH_ENABLED=false` Day 1; Telegram gate irreducibile
 - **§11 Cost analysis**: figurative ($1.45/run avg vs spec originale $0.30 errato); real metric = quota MAX 5h-window
 
 ---
 
-**Spec status**: APPROVED post-7-decisions (Antonello 2026-05-27). READY FOR PHASE 1 IMPLEMENTATION.
+**Spec status**: APPROVED post-7-decisions (Zero 2026-05-27). READY FOR PHASE 1 IMPLEMENTATION.
 **Wall time sessione**: ~90 min (target on-budget)
 **Panel cost reale**: ~$0.04 (DeepSeek API only) + quota Claude OAuth MAX consumata
 **Next**: Phase 1 — 4 migration SQL + IG validation startup function (vedi §14 roadmap)

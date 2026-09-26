@@ -48,7 +48,7 @@ Trovare alternative a ElevenLabs come TTS / voice-cloning provider per la voce "
 
 ### Tier 1 — Winner candidates
 
-**MiniMax Speech 2.6 HD / 2.8 (cloud, China-stack):** $0.04/1K char is **~4.5× cheaper than ElevenLabs Pro tier and ~7.5× cheaper than ElevenLabs PAYG**. Indonesian is in the 40+ supported language list. Voice cloning needs only **5 seconds** of reference audio (vs. ElevenLabs IVC requires ~1 minute, PVC requires 30+ minutes). Speech 2.8 added native sound tags (laughter, sigh, whisper) and "studio-grade clarity". **Caveat geopolitico:** Chinese stack — if Antonello/Bali Zero ever publishes content on Indonesian government commentary, hosting voice-clone model weights on Chinese cloud is a residual risk. Mitigation: use only for Bali Zero brand voice (not client-data narration), no NPWP/passport content in prompts.
+**MiniMax Speech 2.6 HD / 2.8 (cloud, China-stack):** $0.04/1K char is **~4.5× cheaper than ElevenLabs Pro tier and ~7.5× cheaper than ElevenLabs PAYG**. Indonesian is in the 40+ supported language list. Voice cloning needs only **5 seconds** of reference audio (vs. ElevenLabs IVC requires ~1 minute, PVC requires 30+ minutes). Speech 2.8 added native sound tags (laughter, sigh, whisper) and "studio-grade clarity". **Caveat geopolitico:** Chinese stack — if Zero/Bali Zero ever publishes content on Indonesian government commentary, hosting voice-clone model weights on Chinese cloud is a residual risk. Mitigation: use only for Bali Zero brand voice (not client-data narration), no NPWP/passport content in prompts.
 
 **Cartesia Sonic-3 (US, Y-Combinator pedigree):** $4/month Pro tier gets you instant voice cloning + commercial license + 100K credits/month. Sonic-3 is the only Tier-1 model with documented 90ms time-to-first-audio — overkill for our post-prod use case but enables future realtime use (e.g. agent voice on kita.balizero.com). Top-3 in Artificial Analysis text-to-speech rankings. **Caveat Indonesian:** Cartesia advertises "multilingual" but Indonesian is NOT explicitly listed on the pricing page; needs empirical test before commit.
 
@@ -117,7 +117,7 @@ Assumptions: 18-week editorial cadence (per `2026-05-13-video-format-evergreen-b
 - **MOS / Elo scoring**: vendor-published scores (Chatterbox "63.75% blind preference", Inworld "Elo 1208") are self-disclosed. Artificial Analysis is the most credible third-party leaderboard but its public-facing page only shows top-1 in plain text; full numbers require interactive dashboard. Disagreement among sources is acceptable here — **the only reliable signal is empirical pilot with our reference WAV**.
 - **Cartesia + Hume Indonesian support**: NOT explicitly confirmed in docs. Sources mention "multilingual" generically. Must pilot before committing.
 - **ElevenLabs PAYG vs. Pro plan effective price**: sources cite $0.18, $0.30, $0.165, $66/1M, $206/1M. Resolution: $99 Pro plan ÷ 600K credits = $0.165/1K; PAYG overage $300/1M = $0.30/1K. Both numbers are accurate, different consumption mode. ElevenLabs Multilingual v2 vs v3 vs Flash v2.5 have different credit-per-character ratios (Flash = 0.5 credit/char, v2/v3 = 1 credit/char) — this is the source of cost-per-1K confusion across articles.
-- **MiniMax geopolitical residual risk**: Chinese stack hosting voice clone weights. Bali Zero brand content is low-sensitivity, but worth flagging to Antonello. Mitigation: Chatterbox self-host as fallback.
+- **MiniMax geopolitical residual risk**: Chinese stack hosting voice clone weights. Bali Zero brand content is low-sensitivity, but worth flagging to Zero. Mitigation: Chatterbox self-host as fallback.
 
 ## Recommendation for Zantara voice ingredient
 
@@ -128,18 +128,18 @@ Assumptions: 18-week editorial cadence (per `2026-05-13-video-format-evergreen-b
    - MiniMax Speech 2.8 voice clone API (~$0.01 cost total)
    - Cartesia Sonic-3 Pro tier instant clone ($4 to start, downgradable)
    - Chatterbox Multilingual self-host on Pro (free)
-3. **A/B blind eval**: Antonello + Asya + 2 team members rate each output 1–10 on (a) accent authenticity, (b) brand voice match (warm/precise/calm/protective), (c) editorial production quality. Decision: highest avg score, ties broken on cost.
+3. **A/B blind eval**: Zero + Asya + 2 team members rate each output 1–10 on (a) accent authenticity, (b) brand voice match (warm/precise/calm/protective), (c) editorial production quality. Decision: highest avg score, ties broken on cost.
 4. **Production setup**: integrate winner into `apps/zantara-media/` asset pipeline (Sprint 1.7), with self-host Chatterbox as fallback for sensitive content (client-data narration, NPWP/passport — UU PDP scope). Budget cap: $50/month TTS, alert at $30.
 5. **Skip ElevenLabs migration** unless pilot fails all three. Sunk-cost is not a reason to stay on $0.30/1K when MiniMax delivers Indonesian native + voice cloning at $0.04/1K.
 
 ## Checklist for action
 
-- [ ] Antonello chooses voice talent + records 45–75s reference WAV (deadline: end of week)
+- [ ] Zero chooses voice talent + records 45–75s reference WAV (deadline: end of week)
 - [ ] Sign voice consent agreement (Bali Zero PT exclusive use, revocation right, no third-party model training)
 - [ ] Run 3-way A/B pilot (MiniMax + Cartesia + Chatterbox) on identical test script — budget $10 + 4 hours setup
-- [ ] Blind-rate outputs with team (Antonello, Asya, Damar, Vino — Damar/Vino are marketing focus)
+- [ ] Blind-rate outputs with team (Zero, Asya, Damar, Vino — Damar/Vino are marketing focus)
 - [ ] Verify pilot winner has Indonesian phoneme handling (e.g. "Permenkumham" pronunciation)
-- [ ] If MiniMax wins: implement consent + ToS review; flag Chinese-cloud caveat to Antonello explicitly
+- [ ] If MiniMax wins: implement consent + ToS review; flag Chinese-cloud caveat to Zero explicitly
 - [ ] If Chatterbox wins: integrate into `apps/zantara-media/` pipeline; document GPU/CPU cost on Pro
 - [ ] Set monthly budget alert ($50 cap, $30 yellow) in finance dashboard
 - [ ] Update `~/Desktop/nuzantara/skills/google-flow-video/SKILL.md` with chosen TTS for Veo voice-over overlay workflow

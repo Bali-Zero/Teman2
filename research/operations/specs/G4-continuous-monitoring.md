@@ -288,7 +288,7 @@ rm ~/scripts/orchestration-health-weekly.sh
 1. **Cron interval**: weekly Monday 8am OK? Or daily? Default = weekly (week-over-week comparison meaningful).
 2. **Regression threshold**: agent_calls drop to <50% of last week = alert. Too sensitive? Adjust empirical.
 3. **Multi-machine**: Pro-only or also Mini-Pro2? Default = Pro only (Mini = workhorse, no interactive session).
-4. **Alert escalation**: P1 alert on regression → just Telegram? Or also email Antonello + escalate to Adit? Default = Telegram only.
+4. **Alert escalation**: P1 alert on regression → just Telegram? Or also email Zero + escalate to Adit? Default = Telegram only.
 5. **Auto-rollback trigger**: regression detected → auto-invoke G3? Default = NO, manual decision (G3 destructive).
 
 ## Estimated breakdown

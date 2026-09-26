@@ -159,14 +159,14 @@ Source: [blog.google Feb 2026](https://blog.google/innovation-and-ai/models-and-
 
 | # | Action | Owner | Effort | Timeline |
 |---|---|---|---|---|
-| 1 | Empirical test Vertex AI Veo 3.1 Standard 8s clip with A007 Zantara reference (Ingredients to Video 3 imgs) | Antonello | 1 hr setup + $5-10 credits | This week |
+| 1 | Empirical test Vertex AI Veo 3.1 Standard 8s clip with A007 Zantara reference (Ingredients to Video 3 imgs) | Zero | 1 hr setup + $5-10 credits | This week |
 | 2 | Measure ArcFace ≥0.6 face consistency on Standard output across 5 angles (frontal/3/4/profile/back/extreme) | Engineer | 2 hrs analysis | Post #1 |
-| 3 | Test Veo 3.1 Standard native audio with Bahasa Indonesia dialogue → compare to Chatterbox Emma | Antonello | 2 hrs + $5 credits | Post #1 |
+| 3 | Test Veo 3.1 Standard native audio with Bahasa Indonesia dialogue → compare to Chatterbox Emma | Zero | 2 hrs + $5 credits | Post #1 |
 | 4 | Test Scene Extension chain 8s→24s→60s quality degradation curve | Engineer | 4 hrs + $20 credits | Post #2 |
 | 5 | Patch `wr3-shot-director` for cinematography formula `[Cine]+[Subj]+[Action]+[Context]+[Style]` (replace current Tier 1 banned-modifier hack) | Engineer | 4 hrs | Post features validation |
 | 6 | New WR3 module `wr3_vertex_client.py` for Standard à la carte | Engineer | 16 hrs | Sprint after validation |
 | 7 | Hybrid TTS logic: Veo Standard audio for ambient + Chatterbox for Zantara dialogue, ffmpeg mux | Engineer | 8 hrs | Sprint 2 |
-| 8 | Migrate brand assets (A007 Zantara) → Flow Collections + Ingredients to Video reference library | Antonello | 2 hrs | Once feature validated |
+| 8 | Migrate brand assets (A007 Zantara) → Flow Collections + Ingredients to Video reference library | Zero | 2 hrs | Once feature validated |
 
 ---
 

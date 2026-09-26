@@ -12,7 +12,7 @@ sources:
 
 # SPEC — Memoria semantica per l'harness (richiamo per significato, sovrana, on-M5)
 
-> **Stato: SPEC. Niente codice ancora.** Deliverable di "disegno + spec, poi decidi" (Antonello, 2026-06-16).
+> **Stato: SPEC. Niente codice ancora.** Deliverable di "disegno + spec, poi decidi" (Zero, 2026-06-16).
 > Genesi: opus-mythos TAC del harness, parte 2. Sintesi a 3 voci: SOTA-paper (ambizione) →
 > DeepSeek refuter (taglia l'over-engineering) → Opus gate (tiene il vincolo push/pull che entrambi
 > mancavano). La parte 1 (lifecycle-guard) è in PR #1472.

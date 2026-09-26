@@ -2,7 +2,7 @@
 
 **Date**: 2026-05-30
 **Branch**: `agent/nuzantara/wr3/anchor-i2v-fix`
-**Author**: Claude Opus 4.8 (orchestrated by Antonello)
+**Author**: Claude Opus 4.8 (orchestrated by Zero)
 **Status**: design approved → TDD implementation
 
 ## Problem
@@ -11,11 +11,11 @@ WR3 video episodes that require Zantara's face (identity token `A007`) fail the
 ArcFace identity gate (`scripts/wr3_arcface_verify.py`, cosine threshold 0.6,
 hard-fail 0.55). Empirically measured on episode `content-creator-3-roads-2026-05-29`:
 
-| metric | value |
-|---|---|
-| overall cosine avg | 0.119 |
-| overall cosine min | 0.000 |
-| clips passed | 0 / 18 |
+| metric             | value  |
+| ------------------ | ------ |
+| overall cosine avg | 0.119  |
+| overall cosine min | 0.000  |
+| clips passed       | 0 / 18 |
 
 **Root cause** (verified `scripts/wr3_flowkit_client.py:509-516`): when a shot has no
 `start_image_media_id`, `submit_clip` calls `_generate_start_image(prompt)`, which
@@ -30,12 +30,12 @@ via `POST /api/flow/upload-image` → `media_id`, used it as `start_image_media_
 shot 1's prompt, polled `/api/flow/media/<id>` (6× transient 500 then READY ~48s),
 ran ArcFace on the resulting clip:
 
-| metric | text-prompt (old) | anchor start-image (new) |
-|---|---|---|
-| cosine avg | 0.119 | **0.912** |
-| cosine min | 0.000 | **0.894** |
-| faces found | 7/18 at zero | **8/8** |
-| identity gate | FAIL | **PASS** |
+| metric        | text-prompt (old) | anchor start-image (new) |
+| ------------- | ----------------- | ------------------------ |
+| cosine avg    | 0.119             | **0.912**                |
+| cosine min    | 0.000             | **0.894**                |
+| faces found   | 7/18 at zero      | **8/8**                  |
+| identity gate | FAIL              | **PASS**                 |
 
 The anchor holds identity across the full 8s clip — i2v drift is not a problem.
 
@@ -75,6 +75,7 @@ POSTs `{file_path: str(image_path), project_id: ctx.project_id, file_name: image
 returns `resp["media_id"]`. Raises `FlowkitError` on missing `media_id` / non-200.
 
 **1b. `EpisodeContext`** gains:
+
 - field `anchor_image_path: str | None = None` (persisted in `to_dict`/`from_dict`)
 - field `anchor_media_id: str | None = None` (runtime cache, NOT persisted — media_ids
   are project-scoped and re-uploaded per run; cheap, 0cr)

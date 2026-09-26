@@ -1,6 +1,6 @@
 # Personal Research Lab — SOTA Reconnaissance (2026-05-08)
 
-> Research mission for Antonello Siano (Bali Zero / Nuzantara). Lifecycle target:
+> Research mission for Zero (Bali Zero / Nuzantara). Lifecycle target:
 > nasce → cresce → auto-correct → cosciente → canalizza in NB-9 + Telegram dispatch + memory long-term.
 > Verticals: AI papers, code (GitHub trending), frontier science, robotics.
 
@@ -35,12 +35,12 @@ re-implementable from primitives inside Claude Code via Skills + subagents.
 > now ship as a slash command anyone on the team can invoke."
 > — paddo.dev, [Three Ways to Build Deep Research with Claude](https://paddo.dev/blog/three-ways-deep-research-claude/)
 
-- **Cost**: bundled with Claude Pro ($20/mo) or Max ($100/$200). For Antonello: covered by 3× Max plans already on hand, **zero marginal cost** under the no-paid-API rule.
+- **Cost**: bundled with Claude Pro ($20/mo) or Max ($100/$200). For Zero: covered by 3× Max plans already on hand, **zero marginal cost** under the no-paid-API rule.
 - **Output quality**: highest in qualitative tests when wired with Sonnet subagents under an Opus lead. 90.2% lift over single-Opus baseline on internal eval.
 - **Citations**: inline with hover-cards in Claude.ai; in Claude Code you control via skill's prompt template.
 - **Max source count**: not officially capped; multi-agent fan-out routinely hits 50–150 distinct URLs per deep run.
 - **Time-to-result**: 5–15 min for a typical 3-fan-out run.
-- **API availability**: there is **no standalone "Deep Research API"**. The Messages API + a homegrown subagent loop in Claude Code is the official path, which is exactly the pattern Antonello already runs (multi-LLM wave-orchestrator).
+- **API availability**: there is **no standalone "Deep Research API"**. The Messages API + a homegrown subagent loop in Claude Code is the official path, which is exactly the pattern Zero already runs (multi-LLM wave-orchestrator).
 
 Sources: [paddo.dev — Three Ways to Build Deep Research with Claude](https://paddo.dev/blog/three-ways-deep-research-claude/), [Anthropic — Using Research on Claude](https://support.claude.com/en/articles/11088861-using-research-on-claude), [the-ai-corner.com — Everything Claude Has Shipped in 2026](https://www.the-ai-corner.com/p/everything-claude-shipped-2026-complete-guide), [Claude (language model) — Wikipedia](<https://en.wikipedia.org/wiki/Claude_(language_model)>).
 
@@ -56,7 +56,7 @@ Sources: [paddo.dev — Three Ways to Build Deep Research with Claude](https://p
 - **Max sources**: 30–100+ per run (no documented hard cap).
 - **Time-to-result**: 5–30 min.
 - **API**: `responses.create(model="o3-deep-research", tools=[{"type":"web_search_preview"}, {"type":"code_interpreter"}])`.
-- Note for Antonello's HARD RULE: this is a paid OpenAI API but **does not violate** the rule because the rule is Anthropic-specific (Claude Max already paid). OpenAI is allowed if budget tolerated, but Antonello's stance: ChatGPT Plus covers Codex; per-token research is overlap.
+- Note for Zero's HARD RULE: this is a paid OpenAI API but **does not violate** the rule because the rule is Anthropic-specific (Claude Max already paid). OpenAI is allowed if budget tolerated, but Zero's stance: ChatGPT Plus covers Codex; per-token research is overlap.
 
 Sources: [Pricing | OpenAI API](https://developers.openai.com/api/docs/pricing), [pricepertoken.com — o3 Deep Research](https://pricepertoken.com/pricing-page/model/openai-o3-deep-research), [OpenAI Pricing in 2026 — finout.io](https://www.finout.io/blog/openai-pricing-in-2026), [Community — O3 80% cheaper + o3-pro](https://community.openai.com/t/o3-is-80-cheaper-and-introducing-o3-pro/1284925), [OpenRouter — o3 Deep Research](https://openrouter.ai/openai/o3-deep-research).
 
@@ -98,7 +98,7 @@ Sources: [Pricing — Perplexity Docs](https://docs.perplexity.ai/docs/getting-s
 - **Cost (API)**: ~$2/task standard, ~$5/task Max. Google Search grounding 80 queries/standard task ($14/1K) → $1.12 search cost; 160 queries/Max → $2.24 search cost. Total per task ≈ $3–7.
 - **Output**: hundreds of sources analyzable in minutes.
 - **API availability**: `deep-research-preview-04-2026` and `deep-research-max-preview-04-2026` (Vertex AI).
-- **For Antonello**: Gemini CLI 3.1 Pro is **OAuth free** (already in arsenal). The free Gemini CLI does not expose Deep Research orchestration — just the underlying model. Deep Research itself requires paid Advanced or API.
+- **For Zero**: Gemini CLI 3.1 Pro is **OAuth free** (already in arsenal). The free Gemini CLI does not expose Deep Research orchestration — just the underlying model. Deep Research itself requires paid Advanced or API.
 
 Sources: [Google AI Pro & Ultra — Gemini Subscriptions](https://gemini.google/subscriptions/), [Deep Research Max — blog.google](https://blog.google/innovation-and-ai/models-and-research/gemini-models/next-generation-gemini-deep-research/), [Gemini Deep Research pricing — tokencost.app](https://tokencost.app/blog/gemini-deep-research-agent-cost), [pasqualepillitteri.it — Deep Research Max coverage](https://pasqualepillitteri.it/en/news/1191/google-deep-research-max-gemini-3-1-pro-ai-agents).
 
@@ -138,7 +138,7 @@ Sources: [Our Pricing Plans — You.com](https://you.com/pricing), [You.com Pric
 
 ### 1.7 Comparative summary
 
-| Stack                         | Marginal cost (Antonello)     | Sources/task             | API depth                        | Best at                                 |
+| Stack                         | Marginal cost (Zero)          | Sources/task             | API depth                        | Best at                                 |
 | ----------------------------- | ----------------------------- | ------------------------ | -------------------------------- | --------------------------------------- |
 | Claude Research + Code Skills | **$0** (Max plan)             | 50–150                   | DIY via Messages API + subagents | Long-horizon synthesis, code-aware      |
 | OpenAI Deep Research (o3)     | $10/$40 per Mtok              | 30–100+                  | First-class API                  | Quantitative reports, citation density  |
@@ -147,7 +147,7 @@ Sources: [Our Pricing Plans — You.com](https://you.com/pricing), [You.com Pric
 | Grok DeepSearch               | $30/mo SuperGrok              | 30–80+                   | xAI API                          | X/Twitter data, sociopolitical          |
 | You.com Research              | $15–20/mo                     | 20–40                    | Limited                          | Multi-model UI, flexibility             |
 
-For Antonello's lab: **Claude (Code+Skills+subagents) is the obvious primary** because Max plan
+For Zero's lab: **Claude (Code+Skills+subagents) is the obvious primary** because Max plan
 is already paid; Gemini CLI free is the obvious **secondary** (especially for multi-modal
 grounding); Perplexity/Sonar API is the obvious **third** for fast news/current-events with
 explicit citations on tax and immigration deadlines.
@@ -156,7 +156,7 @@ explicit citations on tax and immigration deadlines.
 
 ## 2. Open-source research agents 2026
 
-Six leading OSS research agents, ranked roughly by maturity and fitness for Antonello's
+Six leading OSS research agents, ranked roughly by maturity and fitness for Zero's
 "nasce → cresce → cosciente" lifecycle.
 
 ### 2.1 Sakana AI — AI Scientist v2
@@ -211,7 +211,7 @@ Sources: [smolagents/examples/open_deep_research — GitHub](https://github.com/
 > OpenAlex, Semantic Scholar & arXiv."
 > — [aiming-lab/AutoResearchClaw — GitHub](https://github.com/aiming-lab/AutoResearchClaw)
 
-- Use case for Antonello: NOT directly applicable to Bali Zero domain (Karpathy's is single-GPU nanochat-tuning), but the **pattern** — autonomous improvement loops on small-scale ML — translates to "auto-correct" lifecycle stage.
+- Use case for Zero: NOT directly applicable to Bali Zero domain (Karpathy's is single-GPU nanochat-tuning), but the **pattern** — autonomous improvement loops on small-scale ML — translates to "auto-correct" lifecycle stage.
 - Curated list: <https://github.com/alvinreal/awesome-autoresearch>.
 
 Sources: [karpathy/autoresearch — GitHub](https://github.com/karpathy/autoresearch), [aiming-lab/AutoResearchClaw — GitHub](https://github.com/aiming-lab/AutoResearchClaw), [awesome-autoresearch — alvinreal](https://github.com/alvinreal/awesome-autoresearch), [Multi-Agent AutoResearch — evoailabs Medium](https://evoailabs.medium.com/multi-agent-autoresearch-automating-ml-optimization-with-open-source-ai-c76d1dabfc0f).
@@ -254,7 +254,7 @@ Sources: [ServiceNow/AgentLab — GitHub](https://github.com/ServiceNow/AgentLab
 - Architecture: planner → executor → publisher.
 - LLM-agnostic (works with OpenAI, Anthropic, Google, Ollama, DeepSeek).
 - Has dedicated `gptr-mcp` MCP server for plug-in to Claude Code: "An MCP server (in a dedicated repository: gptr-mcp) enables AI applications like Claude to conduct deep research."
-- **For Antonello's lab**: this is the **most natural fit** — already MCP-ready, LLM-agnostic (so DeepSeek + Claude OAuth allowed), tree-recursive matches "nasce → cresce".
+- **For Zero's lab**: this is the **most natural fit** — already MCP-ready, LLM-agnostic (so DeepSeek + Claude OAuth allowed), tree-recursive matches "nasce → cresce".
 
 Sources: [gpt-researcher — GitHub](https://github.com/assafelovic/gpt-researcher), [gpt-researcher — DeepWiki](https://deepwiki.com/assafelovic/gpt-researcher), [introduction — gpt-researcher docs](https://github.com/assafelovic/gpt-researcher/blob/master/docs/docs/gpt-researcher/getting-started/introduction.md).
 
@@ -281,11 +281,11 @@ Sources: [gpt-researcher — GitHub](https://github.com/assafelovic/gpt-research
 
 - Architecture: 4 modules — Knowledge Curation, Outline Generation, Article Generation, Article Polishing.
 - Dependencies: Python 3.10+, `dspy`, vector DB (Qdrant/Chroma), search backend (Bing/Brave/You/SerpAPI).
-- **STORM is the canonical pattern** for "long Wikipedia-style report from scratch" — closest match to Antonello's "channel into NB-9 long-form" requirement.
+- **STORM is the canonical pattern** for "long Wikipedia-style report from scratch" — closest match to Zero's "channel into NB-9 long-form" requirement.
 
 Sources: [stanford-oval/storm — GitHub](https://github.com/stanford-oval/storm), [STORM README](https://github.com/stanford-oval/storm/blob/main/README.md), [STORM examples](https://github.com/stanford-oval/storm/blob/main/examples/storm_examples/README.md), [Co-STORM agents source](https://github.com/stanford-oval/storm/blob/main/knowledge_storm/collaborative_storm/modules/co_storm_agents.py).
 
-### 2.7 Recommendation stack (Antonello's lab)
+### 2.7 Recommendation stack (Zero's lab)
 
 | Lifecycle stage  | OSS pick                                          | Why                                            |
 | ---------------- | ------------------------------------------------- | ---------------------------------------------- |
@@ -353,7 +353,7 @@ Sources: [Semantic Scholar API product page](https://www.semanticscholar.org/pro
 
 - Endpoint: `https://inspirehep.net/api/literature?q=...`
 - 1.7M records, daily arXiv harvest, no public rate limit documented (be polite, ~1 req/s).
-- Best for: high-energy physics. Probably out of scope for Antonello unless interested in physics-AI cross.
+- Best for: high-energy physics. Probably out of scope for Zero unless interested in physics-AI cross.
 
 Sources: [inspirehep/rest-api-doc — GitHub](https://github.com/inspirehep/rest-api-doc), [INSPIRE-HEP — Wikipedia](https://en.wikipedia.org/wiki/INSPIRE-HEP), [INSPIRE Internal Help — Introduction](https://internal.help.inspirehep.net/knowledge-base/introduction-to-inspire/), [Inspire-HEP — re3data.org](https://www.re3data.org/repository/r3d100011077), [INSPIRE API — Theory And Practice (Cranmer)](https://theoryandpractice.org/2019/04/INSPIRE%20API/).
 
@@ -427,7 +427,7 @@ Sources: [Papers with Code is Dead — codesota.com](https://www.codesota.com/pa
 > — Same.
 
 - GitHub: <https://github.com/karpathy/arxiv-sanity-lite>
-- Self-hostable, ~200 LOC core, perfect for Antonello to fork and personalize on Mini-Pro2.
+- Self-hostable, ~200 LOC core, perfect for Zero to fork and personalize on Mini-Pro2.
 - **This is the seed pattern for Section 7 personalization**.
 
 Sources: [karpathy/arxiv-sanity-lite — GitHub](https://github.com/karpathy/arxiv-sanity-lite), [arxiv-sanity-preserver — GitHub](https://github.com/karpathy/arxiv-sanity-preserver), [arxiv-sanity-lite — Built At Lightspeed](https://www.builtatlightspeed.com/theme/karpathy-arxiv-sanity-lite), [Choe Lab note](https://yschoe.github.io/none/2020/03/25/Arxiv-sanity-excellent-resource-for-finding-and-organizing-papers.html), [Karpathy on HN about arxiv-sanity](https://news.ycombinator.com/item?id=12021123).
@@ -886,7 +886,7 @@ How to avoid drowning in news. Five empirically-validated patterns:
 
 **Pattern**: tag a small set of papers you like → train per-tag SVM on tfidf abstracts →
 score every new paper → email top-K daily. **Cost: zero LLM calls**. Fits perfectly with
-Antonello's "no paid API" rule. Self-host on Mini-Pro2.
+Zero's "no paid API" rule. Self-host on Mini-Pro2.
 
 ### 7.2 LLM ranking on top of an aggregator (Readwise / Matter pattern)
 
@@ -911,7 +911,7 @@ via MCP picks top-N most-aligned-with-Antonello → write to NB-9 + Telegram dis
 > research feed systems."
 > — referenced in research feed personalization discussion
 
-**Pattern**: embed Antonello's last 1000 read articles using `bge-m3` (local Ollama, free) →
+**Pattern**: embed Zero's last 1000 read articles using `bge-m3` (local Ollama, free) →
 cosine-rank every new candidate → rerank top-50 with `qwen3.5:9b` for "is this Bali Zero
 relevant?". Latency 30–120s on Mini-Pro2 — fits the existing async-only Ollama rule from
 the global CLAUDE.md.
@@ -924,7 +924,7 @@ the global CLAUDE.md.
 > — [composio.dev — Top 10 Claude Code Skills 2026](https://composio.dev/content/top-claude-skills)
 
 **Pattern**: create a `~/.claude/skills/research-lab.md` skill that activates on keywords
-("daily digest", "weekly research summary") and pulls from Antonello's local feed DB +
+("daily digest", "weekly research summary") and pulls from Zero's local feed DB +
 NB-9 history. The skill itself encodes the personalization (interests, NB targeting,
 Telegram routing).
 
@@ -934,7 +934,7 @@ Telegram routing).
 > — [decodingai.com](https://www.decodingai.com/p/llm-knowledge-base-obsidian-readwise-notebooklm)
 
 **Pattern**: Obsidian (notes) + Readwise (read-it-later) + NotebookLM (synthesis) =
-3-tier personal research stack. Antonello already has all three (Obsidian on Pro, Readwise
+3-tier personal research stack. Zero already has all three (Obsidian on Pro, Readwise
 optional, **60 NotebookLM notebooks active**). Missing piece: an Ollama-driven daily
 ingestion pipeline that funnels selected items into the right NB.
 
@@ -1056,11 +1056,11 @@ better by self-hosted Mem0 or Letta on Mini-Pro2.
 > given updates to other pages."
 > — [Nenex — Gwern.net](https://gwern.net/nenex)
 
-This is the **lifecycle target Antonello described** — "cresce → cosciente → canalizza":
+This is the **lifecycle target Zero described** — "cresce → cosciente → canalizza":
 Gwern's Nenex essay is the literature reference for it. The corpus is not a static
 archive; it actively requests updates when cross-cutting facts change.
 
-### 8.8 Recommended architecture for Antonello's lab
+### 8.8 Recommended architecture for Zero's lab
 
 ```
             ┌─────────── INGEST ───────────┐
@@ -1098,9 +1098,9 @@ Sources: [Best Second Brain Apps 2026 — atlasworkspace.ai](https://www.atlaswo
 
 ---
 
-## Closing operational note for Antonello
+## Closing operational note for Zero
 
-The lifecycle Antonello named — **nasce → cresce → auto-correct → cosciente → canalizza
+The lifecycle Zero named — **nasce → cresce → auto-correct → cosciente → canalizza
 in NB-9 + Telegram + memory long-term** — has a clean 1-to-1 mapping onto the OSS stack
 above and the existing Nuzantara arsenal:
 

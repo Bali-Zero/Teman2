@@ -1,7 +1,7 @@
 # Bali Zero Social SOTA 2026 — Research Design
 
 **Date:** 2026-04-22
-**Author:** Claude Opus 4.7 (brainstorming w/ Antonello "Zero" Siano)
+**Author:** Claude Opus 4.7 (brainstorming w/ Zero)
 **Status:** Design approved, plan next
 
 ---
@@ -28,8 +28,9 @@ founder ID, UMKM digital) for future pivot — included in research but not
 in Fase 0 publishing targets.
 
 **SOTA level:** "Agentic / predictive" (per Q5 in brainstorm). Shot 10 days
-+ rolling loop 90 days. Persona engine simulates audience response before
-publication; M13 feedback loop closes post → measure → retrain cycle.
+
+- rolling loop 90 days. Persona engine simulates audience response before
+  publication; M13 feedback loop closes post → measure → retrain cycle.
 
 ---
 
@@ -71,18 +72,18 @@ Files are versioned; monthly retrain increments minor version.
 
 ## Scope decisions locked in brainstorming
 
-| # | Decision | Brainstorm Q | Notes |
-|---|----------|--------------|-------|
-| 1 | Pillar weights 40/30/30 | Q2 D | Balanced |
-| 2 | 14 channels in research | Q4 all | Publishing subset decided in playbook |
-| 3 | SOTA agentic/predictive | Q5 C | Persona engine + M13 loop |
-| 4 | Baseline-first target setting | Q6 D | No numeric target until telemetry runs 10d |
-| 5 | 18 competitors (10 agencies + 8 influencers) | Q7 B | Tribes 3/4 for Cycle 2 |
-| 6 | Research dimensions: Hook + Tone + Cadence + Format | Q8 A4 | Visual + narrative structure derived, not primary |
-| 7 | Hands-off mode + 25 own posts as ground truth | Q9 A (custom) | Zero 20-30min/day Telegram approval |
-| 8 | Hybrid agentic + empirical approach | Q10 C | |
-| 9 | Budget $0 out-of-pocket (except ~$1 DeepSeek over 100d) | arsenale-first audit | Team 25h manual scrape replaces Apify |
-| 10 | Fase 0 = 10d, Loop = 90d rolling | timeline | |
+| #   | Decision                                                | Brainstorm Q         | Notes                                             |
+| --- | ------------------------------------------------------- | -------------------- | ------------------------------------------------- |
+| 1   | Pillar weights 40/30/30                                 | Q2 D                 | Balanced                                          |
+| 2   | 14 channels in research                                 | Q4 all               | Publishing subset decided in playbook             |
+| 3   | SOTA agentic/predictive                                 | Q5 C                 | Persona engine + M13 loop                         |
+| 4   | Baseline-first target setting                           | Q6 D                 | No numeric target until telemetry runs 10d        |
+| 5   | 18 competitors (10 agencies + 8 influencers)            | Q7 B                 | Tribes 3/4 for Cycle 2                            |
+| 6   | Research dimensions: Hook + Tone + Cadence + Format     | Q8 A4                | Visual + narrative structure derived, not primary |
+| 7   | Hands-off mode + 25 own posts as ground truth           | Q9 A (custom)        | Zero 20-30min/day Telegram approval               |
+| 8   | Hybrid agentic + empirical approach                     | Q10 C                |                                                   |
+| 9   | Budget $0 out-of-pocket (except ~$1 DeepSeek over 100d) | arsenale-first audit | Team 25h manual scrape replaces Apify             |
+| 10  | Fase 0 = 10d, Loop = 90d rolling                        | timeline             |                                                   |
 
 ---
 
@@ -97,18 +98,18 @@ Daily deliverables per Section 2 of design. Key constraints:
 
 ### Daily plan
 
-| Day | Focus | Key output |
-|-----|-------|-----------|
-| 1 | Telemetry bootstrap | `00_baseline.json` ≥20 real metrics |
-| 2 | Empirical IG classify + scrape start | `01_balizero_corpus.json` v0 |
-| 3 | Literature research kickoff | `03_sota_literature.md` v0, ≥30 sources |
-| 4 | Persona wave 1 (3 expat) | `04_personas.json` draft |
-| 5 | Persona wave 2 (3 ID) + benchmark halfway | Combined personas |
-| 6 | Consiglio v1 delibera wave 1 + scrape complete | `preliminary_playbook.md` |
-| 7 | Empirical × benchmark reconciliation | `07_gap_analysis.md` + `05_format_matrix.json` |
-| 8 | M13 wiring + WR2 Council v2 | M13 closed, Council reads persona |
-| 9 | Consiglio v1 final delibera | `08_playbook.md` v2 final |
-| 10 | Package + Zero approval + canary go-live | `11_go_live_canary.md` + Loop start |
+| Day | Focus                                          | Key output                                     |
+| --- | ---------------------------------------------- | ---------------------------------------------- |
+| 1   | Telemetry bootstrap                            | `00_baseline.json` ≥20 real metrics            |
+| 2   | Empirical IG classify + scrape start           | `01_balizero_corpus.json` v0                   |
+| 3   | Literature research kickoff                    | `03_sota_literature.md` v0, ≥30 sources        |
+| 4   | Persona wave 1 (3 expat)                       | `04_personas.json` draft                       |
+| 5   | Persona wave 2 (3 ID) + benchmark halfway      | Combined personas                              |
+| 6   | Consiglio v1 delibera wave 1 + scrape complete | `preliminary_playbook.md`                      |
+| 7   | Empirical × benchmark reconciliation           | `07_gap_analysis.md` + `05_format_matrix.json` |
+| 8   | M13 wiring + WR2 Council v2                    | M13 closed, Council reads persona              |
+| 9   | Consiglio v1 final delibera                    | `08_playbook.md` v2 final                      |
+| 10  | Package + Zero approval + canary go-live       | `11_go_live_canary.md` + Loop start            |
 
 ### 7 blocking gates
 
@@ -207,13 +208,13 @@ Triggers: cron every 6h (collect), weekly (aggregate + retrain), monthly
 Zero paid APIs for Anthropic (hard rule). DeepSeek Reasoner the only
 tolerated paid path (~$1 total over 100 days, logged in llm_cost_recorder).
 
-| Module | Stack |
-|--------|-------|
-| **telemetry_bootstrap** | GSC sensor + GA4 sensor (existing) + NEW IG Graph API sensor (~4h dev) + Ahrefs MCP Brand Radar/SOV/AI citations + NEW Brevo stats client + CRM UTM fix |
-| **empirical_ig** | IG Graph API + Playwright+Ollama qwen2.5vl:7b OCR fallback + Claude OAuth classify hook + Gemini 1M ctx classify tone (25 posts together) + DeepSeek correlation (~$0.05) |
-| **benchmark_competitor** | Team member manual Google Sheet (IG 18 × 15, LinkedIn 10 × 10) + Playwright MCP TikTok scraping + Gemini 3.1 video analysis + Ahrefs social-media-* + keywords-explorer-* + site-explorer-organic-keywords |
-| **literature_synthesis** | Gemini 3.1 Pro Deep Research grounded + NotebookLM research_start + existing `docs/x-research-april-2026/` q01-q60 |
-| **consiglio_playbook** | Claude Opus 4.7 (coordinator) + Gemini 3.1 Pro 1M ctx (benchmark analyst) + Codex GPT-5.4 (telemetry engineer, M13 wiring) + DeepSeek Reasoner (red-team falsification, ~$0.30 total) + NotebookLM (authority validator) + Ollama qwen2.5vl:7b (batch classify 300 competitor screenshots overnight) + Ollama gemma4:26b (IT→ID translation for personas) |
+| Module                   | Stack                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **telemetry_bootstrap**  | GSC sensor + GA4 sensor (existing) + NEW IG Graph API sensor (~4h dev) + Ahrefs MCP Brand Radar/SOV/AI citations + NEW Brevo stats client + CRM UTM fix                                                                                                                                                                                                   |
+| **empirical_ig**         | IG Graph API + Playwright+Ollama qwen2.5vl:7b OCR fallback + Claude OAuth classify hook + Gemini 1M ctx classify tone (25 posts together) + DeepSeek correlation (~$0.05)                                                                                                                                                                                 |
+| **benchmark_competitor** | Team member manual Google Sheet (IG 18 × 15, LinkedIn 10 × 10) + Playwright MCP TikTok scraping + Gemini 3.1 video analysis + Ahrefs social-media-* + keywords-explorer-* + site-explorer-organic-keywords                                                                                                                                                |
+| **literature_synthesis** | Gemini 3.1 Pro Deep Research grounded + NotebookLM research_start + existing `docs/x-research-april-2026/` q01-q60                                                                                                                                                                                                                                        |
+| **consiglio_playbook**   | Claude Opus 4.7 (coordinator) + Gemini 3.1 Pro 1M ctx (benchmark analyst) + Codex GPT-5.4 (telemetry engineer, M13 wiring) + DeepSeek Reasoner (red-team falsification, ~$0.30 total) + NotebookLM (authority validator) + Ollama qwen2.5vl:7b (batch classify 300 competitor screenshots overnight) + Ollama gemma4:26b (IT→ID translation for personas) |
 
 ### Cost breakdown
 
@@ -256,18 +257,18 @@ Telegram alert + auto-toggle publisher OFF for degrading channel.
 Ten scenarios, each with detector + mitigator. Nothing is "hope it doesn't
 happen".
 
-| # | Risk | Detector | Mitigator |
-|---|------|----------|-----------|
-| 1 | Team member doesn't finish scraping by day 6 | Gate 3 blocking + daily progress Telegram | Playwright automation for missing accounts |
-| 2 | IG Graph API rate limit during telemetry | Sensor logs 429 errors | Exponential backoff + Ollama OCR screenshot fallback |
-| 3 | Consiglio v1 persistent disagreement (Gate 6 fails) | DeepSeek falsification detects >40% disagreement | Flag claim as "disputed" in playbook, Zero final decision |
-| 4 | Ollama vision classifier unreliable | 10% sample spot-check by Claude | Fallback Gemini 3.1 Pro vision + log accuracy delta |
-| 5 | Playbook overfitting 25 own posts | Cross-validation empirical vs 270 competitor: predictions diverge >30% | Monthly retrain + external (benchmark) weight > internal (empirical) |
-| 6 | M13 retrain loop unstable | retrain_log.jsonl: week-over-week weight variance >40% | Gradual update 20%/week max; disable retrain if variance persists |
-| 7 | Publisher accidentally auto-on during 7d canary | PR #171 kill switch check fail-closed | Default `wr2_publisher_enabled=unset`, explicit ON required per channel |
-| 8 | Pillar metric drops >20% from baseline | Grafana alert thresholds + M13 weekly report | Immediate Telegram + publisher auto-OFF for regressing channel + spec review |
-| 9 | Off-brand content | Telegram Review Gate mandatory per publication | Already deployed PR #171. Canva edit URL review before approve |
-| 10 | DeepSeek budget exceeds $2 | llm_cost_recorder tracking + soft limit | Hard cap: switch to Gemini free tier for red-team if cumulative >$2 |
+| #   | Risk                                                | Detector                                                               | Mitigator                                                                    |
+| --- | --------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | Team member doesn't finish scraping by day 6        | Gate 3 blocking + daily progress Telegram                              | Playwright automation for missing accounts                                   |
+| 2   | IG Graph API rate limit during telemetry            | Sensor logs 429 errors                                                 | Exponential backoff + Ollama OCR screenshot fallback                         |
+| 3   | Consiglio v1 persistent disagreement (Gate 6 fails) | DeepSeek falsification detects >40% disagreement                       | Flag claim as "disputed" in playbook, Zero final decision                    |
+| 4   | Ollama vision classifier unreliable                 | 10% sample spot-check by Claude                                        | Fallback Gemini 3.1 Pro vision + log accuracy delta                          |
+| 5   | Playbook overfitting 25 own posts                   | Cross-validation empirical vs 270 competitor: predictions diverge >30% | Monthly retrain + external (benchmark) weight > internal (empirical)         |
+| 6   | M13 retrain loop unstable                           | retrain_log.jsonl: week-over-week weight variance >40%                 | Gradual update 20%/week max; disable retrain if variance persists            |
+| 7   | Publisher accidentally auto-on during 7d canary     | PR #171 kill switch check fail-closed                                  | Default `wr2_publisher_enabled=unset`, explicit ON required per channel      |
+| 8   | Pillar metric drops >20% from baseline              | Grafana alert thresholds + M13 weekly report                           | Immediate Telegram + publisher auto-OFF for regressing channel + spec review |
+| 9   | Off-brand content                                   | Telegram Review Gate mandatory per publication                         | Already deployed PR #171. Canva edit URL review before approve               |
+| 10  | DeepSeek budget exceeds $2                          | llm_cost_recorder tracking + soft limit                                | Hard cap: switch to Gemini free tier for red-team if cumulative >$2          |
 
 ### Telegram kill switches (Zero can send anytime)
 

@@ -1,7 +1,7 @@
 # CRM-Guardian Activation Phase 1 — Cross-folder L1 Summary
 
 **Date**: 2026-05-16 → 2026-05-18
-**Owner**: Antonello (Zero)
+**Owner**: Zero
 **Status**: ✅ **PHASE 1 COMPLETE 2026-05-18** — pilot 5 VIP validated (5/5 dry_run SUCCESS, confidence mean 0.66, 3/5 tier VIP), LaunchAgent operativo every 15min in dry_run mode
 **Branch**: `feat/crm-guardian-phase1-activation` (PR #694, MERGEABLE)
 
@@ -163,7 +163,7 @@ Flow per ogni job:
    ORDER BY priority ASC, enqueued_at ASC LIMIT 1
 2. UPDATE status='running', attempts=attempts+1, started_at=NOW(), run_id=gen_random_uuid()
 3. Risolvi client_id → cartella cliente Drive + lista companies linkate via JOIN
-4. Lancia Chrome stealth con profilo Workspace Antonello (sessione persistente)
+4. Lancia Chrome stealth con profilo Workspace Zero (sessione persistente)
 5. Naviga a drive.google.com/drive/folders/{client_folder_id}
 6. Apri Gemini Panel Side (selector data-testid="gemini-panel-toggle" o equivalente)
 7. Inietta prompt L1_extraction_v2 con substitution {{drive_folder_ids}} =
@@ -268,7 +268,7 @@ Inserire in:
 | 4. Cascading enqueue          | edit `drive_poll_service.py` + test integration                                                                                                                                  | enqueue su file change cartella company propaga a clienti |
 | 5. Endpoint API               | edit `crm_clients.py` + test unit                                                                                                                                                | curl `/api/crm/clients/1/ai-summary` ritorna 200 + RBAC   |
 | 6. Migration 180 enable flags | new `migrations_v2/180_crm_guardian_phase1_enable.sql` UPDATE crm_guardian_state SET enabled=true WHERE invariant_id IN ('I10_summary_l1','I10b_summary_queue') AND dry_run=true | rows updated 2                                            |
-| 7. Pilot 5 VIP dry_run=true   | Antonello sceglie 5 clienti VIP, enqueue manuale                                                                                                                                 | worker processa, ispeziona output JSON                    |
+| 7. Pilot 5 VIP dry_run=true   | Zero sceglie 5 clienti VIP, enqueue manuale                                                                                                                                      | worker processa, ispeziona output JSON                    |
 | 8. Flip dry_run=false su VIP  | UPDATE crm_guardian_state SET dry_run=false WHERE ...                                                                                                                            | worker scrive in `clients.ai_summary` real                |
 | 9. Componente AiSummaryCard   | edit 8 file tab mouth + new component                                                                                                                                            | UI mostra card su `localhost:3000/clients/{id}`           |
 | 10. Rollout graduale          | UPDATE enabled+dry_run su tier='standard', poi 'archive'                                                                                                                         | tutti clienti coperti                                     |
@@ -295,21 +295,21 @@ Inserire in:
 
 ## Rischi & mitigazioni
 
-| Rischio                                                   | Probabilità                          | Impatto           | Mitigazione                                                                                                                                                                      |
-| --------------------------------------------------------- | ------------------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM drive.google.com cambia → Playwright Panel Side rotto | Media (Google cambia ~ogni 3-6 mesi) | Alto              | Smoke test daily 06:00 WITA su 1 cliente canary; fallback CLI `gemini --print` automatico dopo 3 fail consecutivi                                                                |
-| Workspace AI rate limit non documentato                   | Media                                | Medio             | Throttle 30s tra job, max 3 concorrenti; monitoring via `crm_guardian_events.duration_ms` percentile                                                                             |
-| 5000 clienti × prima generazione = 50h Playwright         | Certa                                | Medio             | Priorità: VIP first (priority=1), standard (50), archive (100). Backfill notturno 22:00-06:00 WITA. Stima: VIP+standard ~500 clienti × 30s × 3 concurrent = ~83 minuti           |
-| Gemini hallucina dati (KBLI sbagliato, capital errato)    | Media                                | Alto (regulatory) | `extraction_confidence < 0.6` → flag `manual_review_required=true`, NON scrive in `ai_summary` finché Antonello/team conferma. Audit trail su `crm_guardian_events` con `run_id` |
-| Drift schema L1 v2 ↔ frontend                             | Bassa                                | Medio             | `schema_version` in JSONB, frontend valida con type guard, fallback `unknown`                                                                                                    |
-| Worker crash mid-job → riga 'running' orfana              | Media                                | Basso             | Watchdog cron 5min: UPDATE status='error' WHERE status='running' AND started_at < NOW() - INTERVAL '15 min'                                                                      |
-| Cliente vede dato sbagliato in portal                     | N/A Phase 1 (portal Phase 3)         | —                 | Phase 3 avrà filtro whitelist campi + manual review obbligatoria pre-published                                                                                                   |
+| Rischio                                                   | Probabilità                          | Impatto           | Mitigazione                                                                                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DOM drive.google.com cambia → Playwright Panel Side rotto | Media (Google cambia ~ogni 3-6 mesi) | Alto              | Smoke test daily 06:00 WITA su 1 cliente canary; fallback CLI `gemini --print` automatico dopo 3 fail consecutivi                                                           |
+| Workspace AI rate limit non documentato                   | Media                                | Medio             | Throttle 30s tra job, max 3 concorrenti; monitoring via `crm_guardian_events.duration_ms` percentile                                                                        |
+| 5000 clienti × prima generazione = 50h Playwright         | Certa                                | Medio             | Priorità: VIP first (priority=1), standard (50), archive (100). Backfill notturno 22:00-06:00 WITA. Stima: VIP+standard ~500 clienti × 30s × 3 concurrent = ~83 minuti      |
+| Gemini hallucina dati (KBLI sbagliato, capital errato)    | Media                                | Alto (regulatory) | `extraction_confidence < 0.6` → flag `manual_review_required=true`, NON scrive in `ai_summary` finché Zero/team conferma. Audit trail su `crm_guardian_events` con `run_id` |
+| Drift schema L1 v2 ↔ frontend                             | Bassa                                | Medio             | `schema_version` in JSONB, frontend valida con type guard, fallback `unknown`                                                                                               |
+| Worker crash mid-job → riga 'running' orfana              | Media                                | Basso             | Watchdog cron 5min: UPDATE status='error' WHERE status='running' AND started_at < NOW() - INTERVAL '15 min'                                                                 |
+| Cliente vede dato sbagliato in portal                     | N/A Phase 1 (portal Phase 3)         | —                 | Phase 3 avrà filtro whitelist campi + manual review obbligatoria pre-published                                                                                              |
 
 ---
 
 ## Pilot 5 clienti VIP — criteri di selezione
 
-Antonello sceglie 5 clienti rappresentativi con questi requisiti:
+Zero sceglie 5 clienti rappresentativi con questi requisiti:
 
 - 1 expat solo (no company) → testa archetype `individual_expat`
 - 2 expat con PT PMA → testa cross-folder cliente+company
@@ -325,7 +325,7 @@ Per ognuno verificare manualmente:
 - [ ] `ai_summary.extraction_confidence` ≥ 0.6
 - [ ] `ai_summary.narrative_en` legge bene (non hallucina)
 
-Sign-off Antonello richiesto prima di flip `dry_run=false`.
+Sign-off Zero richiesto prima di flip `dry_run=false`.
 
 ---
 
@@ -348,7 +348,7 @@ Sign-off Antonello richiesto prima di flip `dry_run=false`.
 | Giorno 2-3 | Worker Playwright completo + smoke test 1 cliente    |
 | Giorno 3-4 | Cascading enqueue + integration test                 |
 | Giorno 4   | Endpoint API + test RBAC                             |
-| Giorno 5   | Pilot 5 VIP dry_run=true + validation Antonello      |
+| Giorno 5   | Pilot 5 VIP dry_run=true + validation Zero           |
 | Giorno 5-6 | 8 tab frontend mouth + AiSummaryCard                 |
 | Giorno 7   | LaunchAgent + rollout standard tier + Telegram alert |
 
@@ -358,7 +358,7 @@ Sign-off Antonello richiesto prima di flip `dry_run=false`.
 
 ## Decisioni acquisite (2026-05-16)
 
-1. **Selezione 5 VIP per pilot**: Antonello indica `client_id` al Giorno 5 (sign-off prima di flip `dry_run=false`)
+1. **Selezione 5 VIP per pilot**: Zero indica `client_id` al Giorno 5 (sign-off prima di flip `dry_run=false`)
 2. **Chrome profile**: profilo Workspace `zero@balizero.com`, PIN sessione `<redacted 2026-07-27 — read it from the Keychain>` (auth persistente in `~/.config/google-chrome/CRM-Guardian/`). PIN gestito via macOS Keychain (`security find-generic-password -s "crm-guardian-chrome-pin"`), MAI in env vars o repo.
 3. **Re-extraction tax_records**: AGGRESSIVA — quando qualunque file in cartella company cambia, re-estraggo `tax_records` + `lkpm_history` from scratch. No cache 7gg. Trade-off accettato: più Playwright calls vs freschezza garantita
 4. **Narrative**: SOLO `narrative_en` (inglese). Rimuovere `narrative_id` dallo schema L1 v2 — inglese sempre, anche per UI italiana

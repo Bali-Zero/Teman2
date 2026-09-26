@@ -7,7 +7,7 @@ sources: 8
 
 # Inventario `gemini` CLI → `agy` migration
 
-**Trigger**: Antonello 2026-05-22 02:30 WITA "gemini cli e' deprecato per agy cli, cerca in tutto il sistema dove usiamo gemini cli".
+**Trigger**: Zero 2026-05-22 02:30 WITA "gemini cli e' deprecato per agy cli, cerca in tutto il sistema dove usiamo gemini cli".
 
 **Reality check**: i due CLI NON sono drop-in compatibili. `agy` ha surface drasticamente diversa.
 

@@ -1,7 +1,7 @@
 # SYMBIOSIS Gap-Closure Loop — Design Spec
 
 **Date**: 2026-05-12
-**Owner**: Antonello (Zero)
+**Owner**: Zero
 **Branch**: `feat/symbiosis-loop-2026-05-12`
 **Mode**: Autonomous L2, mixed (docs default, code only with DeepSeek devils-advocate PASS)
 **Wall-clock cap**: 3h

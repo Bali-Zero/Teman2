@@ -4,7 +4,7 @@
 >
 > **Stima**: 5-8 giorni solo-dev.
 >
-> **Pre-azione richiesta a Antonello**: B5.a (NB-IndonesiaMacro nuova vs estendere NB-8) + B5.b (3 NB-INTEL distinti vs 1 unificato).
+> **Pre-azione richiesta a Zero**: B5.a (NB-IndonesiaMacro nuova vs estendere NB-8) + B5.b (3 NB-INTEL distinti vs 1 unificato).
 
 ---
 
@@ -61,7 +61,7 @@ Prima di tutto, leggi:
 
 8. **Quarterly outlook auto-draft** (R6 sink 1):
    - Last week of quarter → auto-generate "Indonesia Outlook Q-X" 8-page PDF from workbench
-   - Antonello reviews then optional publish to clients (newsletter premium)
+   - Zero reviews then optional publish to clients (newsletter premium)
 
 9. **Cross-domain alert dispatcher** (R6 sink 2):
    - PolicyEvent classified → route:
@@ -116,7 +116,7 @@ Pre-popola `policy_events` table con questi.
 - Atomic mv
 - Branch hijack push post commit
 
-### Pre-azione richiesta a Antonello
+### Pre-azione richiesta a Zero
 
 **PRIMA di partire**:
 
@@ -130,7 +130,7 @@ Pre-popola `policy_events` table con questi.
 
 3. Quarterly outlook PDF — accettazione publish a clienti?
    - Solo internal / newsletter premium opt-in / blog pubblico
-   - Default consigliato: internal-first, decision Antonello dopo Q1 draft
+   - Default consigliato: internal-first, decision Zero dopo Q1 draft
 
 4. Cross-domain alert dispatcher unified vs domain-specific channels?
    - NLM W1 ground-truth: bot @Balizerobot unificato — usa lui, NO new channels

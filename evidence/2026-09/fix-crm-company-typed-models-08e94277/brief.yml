@@ -9,9 +9,9 @@ dux: claude-opus-5
 implementer: claude-opus-5
 organ: apps/backend-rag/backend/app/modules/crm/company_router.py (Fly backend, /api/crm/companies write endpoints)
 authority: >-
-  Antonello 2026-09-21, Communication Log: "Buka PR backend company: keempat
+  Zero 2026-09-21, Communication Log: "Buka PR backend company: keempat
   handler company_router.py pakai model bertipe ... PREPARE SAJA, JANGAN ARM.
-  Merge di backend-rag = deploy, dikerjakan Antonello." No production write.
+  Merge di backend-rag = deploy, dikerjakan Zero." No production write.
 acceptance:
   - PATCH with an ISO date string binds datetime.date (test_update_date_string_is_bound_as_date)
   - PATCH with null or "" on a date column writes NULL (test_update_null_or_empty_date_clears_the_column)

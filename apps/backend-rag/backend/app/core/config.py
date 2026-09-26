@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
     # Zantara/Bali Zero WhatsApp Business number, Meta-verified (verified_name
-    # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
+    # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Zero's)
     # no longer exists — replaced fleet-wide 2026-06-18.
     SUPPORT_WHATSAPP: str = "+62 821 3465 159"
     # The number a CLIENT is invited to write to — NOT the same thing as

@@ -53,7 +53,7 @@ S7.5 will install:
 
 ## Audio architecture
 
-> **Decision 2026-05-22 (Antonello, verbatim):**
+> **Decision 2026-05-22 (Zero, verbatim):**
 > _"usiamo audio nativo, chatterbox come fallback. facciamo tante prove per la
 > voce. /Users/nuzantara/Desktop/logo/pilot-A-veo-zantara-lipsync.mp4 in questo
 > video e' perfetta. perche se abbiamo poi tanto audio, potremo clonare la voce
@@ -124,8 +124,8 @@ When the WR2 carousel pipeline successfully publishes an episode (Canva apply + 
 | Sub-mode              | Activation                                                               | Output                                      | Duration                     | Clips   | Cost ceiling                        | Critic lanes                             |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------------------- | ---------------------------- | ------- | ----------------------------------- | ---------------------------------------- |
 | `episode`             | **automatic** (every publish, unless `companion_skip=true` in WR2 brief) | IG Reel / TikTok / Shorts, EN + ID cuts     | 60s default, 60–150s allowed | 8–19×8s | 80 cr @60s … 190 cr (~$0.475) @150s | Full 4-lane                              |
-| `story_15s`           | opt-in via WR2 brief `companion_story=true` (Antonello `--story`)        | IG Story 9:16                               | 15s (16s trimmed)            | 2×8s    | 20 cr Flow Pro (~$0.05)             | Lane 1 (Identity) + Lane 3 (Brand voice) |
-| `comment_interactive` | opt-in via WR2 brief `companion_engage=true` (Antonello `--engage`)      | text-only (IG comment + DM reply templates) | 0s                           | 0       | $0.05 (Sonnet text-only)            | Lane 3 only + manual review              |
+| `story_15s`           | opt-in via WR2 brief `companion_story=true` (Zero `--story`)             | IG Story 9:16                               | 15s (16s trimmed)            | 2×8s    | 20 cr Flow Pro (~$0.05)             | Lane 1 (Identity) + Lane 3 (Brand voice) |
+| `comment_interactive` | opt-in via WR2 brief `companion_engage=true` (Zero `--engage`)           | text-only (IG comment + DM reply templates) | 0s                           | 0       | $0.05 (Sonnet text-only)            | Lane 3 only + manual review              |
 
 Opt-in sub-modes are additive: `--story` and `--engage` ride alongside the automatic `episode`, one companion event emitted per sub-mode.
 

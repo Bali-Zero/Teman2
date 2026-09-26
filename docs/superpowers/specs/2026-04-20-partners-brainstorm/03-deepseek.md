@@ -49,7 +49,7 @@ Single `assigned_to` owner (one-to-one). This matches the informal current proce
 
 ## Q8
 
-Manual workflow: When a team member's account is deactivated (`is_active=False`), their partners' `assigned_to` field is set to `NULL`. An EventBus notification (`partner_unassigned`) alerts admins (Zero, Asya, Antonello). An admin must manually reassign via the UI, which sends a reassignment notification email to the partner and new owner. No batch operations.
+Manual workflow: When a team member's account is deactivated (`is_active=False`), their partners' `assigned_to` field is set to `NULL`. An EventBus notification (`partner_unassigned`) alerts admins (Zero, Asya, Zero). An admin must manually reassign via the UI, which sends a reassignment notification email to the partner and new owner. No batch operations.
 **Recommendation:** Deactivation sets owner to `NULL`, triggering an admin alert for manual reassignment via UI.
 
 ## Q9

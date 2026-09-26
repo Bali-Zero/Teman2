@@ -200,9 +200,9 @@ v1 shouldn't.
 - Partner sees only own referrals + commissions
   (via API query scoping).
 - Team member sees only partners where `partners.assigned_to = self`.
-- Zero, Antonello, Asya (role `admin`) see all.
+- Zero, Asya (role `admin`) see all.
 - **New permission bit:** `finance.approve_commission` and
-  `finance.mark_paid` — granted to Zero, Antonello, Asya only.
+  `finance.mark_paid` — granted to Zero, Asya only.
   Team members CANNOT approve/pay even for their own partners.
 - **Hard constraint:** `partners.email` must not match any
   `users.email` where `users.role IN ('team','admin')`. Enforced by
@@ -264,12 +264,12 @@ memory). Orphan state + admin UI.
 
 ## Q9 — Clawback
 
-| LLM      | Position                                                                                      |
+| LLM | Position |
 | -------- | --------------------------------------------------------------------------------------------- | -------------- | ------ | ----------------------------------------- |
-| Gemini   | Negative `partner_commissions` row, `type='CLAWBACK'`, auto-deduct from next payout.          |
-| Codex    | **Append-only ledger**. Negative adjustment linked to original row. States: `clawback_pending | offset_applied | waived | repaid`. Default = offset against future. |
-| DeepSeek | `reversed` status + negative entry. Offset against future, write-off < 2M IDR.                |
-| NB-2     | N/A.                                                                                          |
+| Gemini | Negative `partner_commissions` row, `type='CLAWBACK'`, auto-deduct from next payout. |
+| Codex | **Append-only ledger**. Negative adjustment linked to original row. States: `clawback_pending | offset_applied | waived | repaid`. Default = offset against future. |
+| DeepSeek | `reversed` status + negative entry. Offset against future, write-off < 2M IDR. |
+| NB-2 | N/A. |
 
 **Overlap:** ✅ on append-only + negative adjustment + offset-first. 🟡
 on threshold for auto-writeoff.
@@ -374,7 +374,7 @@ From NB-2:
 
 ---
 
-## Open items — resolved by Antonello (2026-04-20)
+## Open items — resolved by Zero (2026-04-20)
 
 1. **Commission default rate.** 10% placeholder
    (`partners.default_commission_value = 10.0`).

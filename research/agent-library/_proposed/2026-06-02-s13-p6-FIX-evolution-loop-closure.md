@@ -1,6 +1,6 @@
 # S13-P6 — FIX-evolution-loop-closure
 
-> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Antonello approves graduation.
+> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Zero approves graduation.
 > **Kind**: infra-fix · **Priority**: P1
 > **Adversarial verdict**: ✅ KEEP — graduate as drafted
 
@@ -10,7 +10,7 @@ THE central finding: the entire autonomous evolution loop has NEVER closed. (a) 
 
 ## Proposal (as originally drafted)
 
-NOT a new skill — an infra-fix proposal (for Antonello): (1) evolver: restore DEEPSEEK_API_KEY export in secrets.env + decouple from nuzantara-deploy worktree (cicatrix program/base family); (2) reflexion-synth: lower the synthesis threshold OR seed it from the cicatrix/memory corpus (which IS rich) instead of waiting on starved metrics; (3) regenerate 01-inventory.md (drifted 16->34 agents). This S13 FROZEN IS the manual substitute for the closure that never happened.
+NOT a new skill — an infra-fix proposal (for Zero): (1) evolver: restore DEEPSEEK_API_KEY export in secrets.env + decouple from nuzantara-deploy worktree (cicatrix program/base family); (2) reflexion-synth: lower the synthesis threshold OR seed it from the cicatrix/memory corpus (which IS rich) instead of waiting on starved metrics; (3) regenerate 01-inventory.md (drifted 16->34 agents). This S13 FROZEN IS the manual substitute for the closure that never happened.
 
 ## Agents served
 

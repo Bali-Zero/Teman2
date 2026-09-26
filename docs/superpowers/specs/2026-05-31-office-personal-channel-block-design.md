@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:writing-plans to turn this design into a task-by-task implementation plan.
 
 **Date:** 2026-05-31
-**Owner:** Antonello (Zero)
+**Owner:** Zero
 **Status:** Design approved by operator — pending spec review → implementation plan
 **Origin:** Started on "corporate Mac config" (`scripts/profile-monitor/`). Refocused twice through brainstorming. Final target, in operator's words: _"arginare nelle ore di ufficio computer e un potenziale numero personale"_ — block, on the corporate computer, the personal WhatsApp/Telegram **web** channels an employee would use to run business off-books.
 
@@ -64,10 +64,10 @@ NextDNS profile "BaliZero-Office" (free tier)
 
 - Account `zero@balizero.com`, profile `BaliZero-Office`, free tier (300k queries/month).
 - Denylist initial set:
-  | Channel | Domains |
-  |---|---|
-  | WhatsApp Web | `web.whatsapp.com` |
-  | Telegram Web | `web.telegram.org`, `webk.telegram.org`, `webz.telegram.org` |
+  | Channel      | Domains                                                        |
+  | ------------ | -------------------------------------------------------------- |
+  | WhatsApp Web | `web.whatsapp.com`                                             |
+  | Telegram Web | `web.telegram.org`, `webk.telegram.org`, `webz.telegram.org`   |
   | (extensible) | add a line per channel as needed (Signal web, Messenger, etc.) |
 - Logs ON, retention 30 days (feeds the required tamper-detection digest, C4).
 

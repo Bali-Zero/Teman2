@@ -2,19 +2,20 @@
 
 **Date:** 2026-05-02 · **Author:** Sprint 0 Air session (Claude Opus 4.7 1M)
 **Reference:** brainstorm 2026-05-02 round 2 § "Upgrade OpenClaw v2026.3.31 → v2026.4.29"
-**Owner human:** Antonello Siano · **Status:** **plan only — NOT executed**
+**Owner human:** Zero · **Status:** **plan only — NOT executed**
 
 ## Why upgrade
 
-| Driver | Source | Severity |
-|---|---|---|
-| **Scheduler frozen since 2026-04-30** | `~/.openclaw/cron/jobs.json` — 24 jobs `status:null, lastRun:null, nextRun:null` | P1 |
-| **Knowledge Agents v12.1.0 unused** | `claude-mem` v12.1.0 ships 6 MCP tools (`build_corpus`, `prime_corpus`, `query_corpus`, `list_corpora`, `rebuild_corpus`, `reprime_corpus`) — needed for Sprint 1 HGT coordinator | P2 |
-| **Provider enum expansion** | v2026.4.29 supports OpenAI-compatible generic provider (currently we have to fake DeepSeek via openrouter) | P2 |
-| **Auth profile system** | v2026.3.31 introduced; not yet enabled — multi-profile failover for cost/quota gating | P3 |
-| **Auto-update** | Not configurable below v2026.3.31; manual upgrade is the only mechanism | n/a |
+| Driver                                | Source                                                                                                                                                                            | Severity |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **Scheduler frozen since 2026-04-30** | `~/.openclaw/cron/jobs.json` — 24 jobs `status:null, lastRun:null, nextRun:null`                                                                                                  | P1       |
+| **Knowledge Agents v12.1.0 unused**   | `claude-mem` v12.1.0 ships 6 MCP tools (`build_corpus`, `prime_corpus`, `query_corpus`, `list_corpora`, `rebuild_corpus`, `reprime_corpus`) — needed for Sprint 1 HGT coordinator | P2       |
+| **Provider enum expansion**           | v2026.4.29 supports OpenAI-compatible generic provider (currently we have to fake DeepSeek via openrouter)                                                                        | P2       |
+| **Auth profile system**               | v2026.3.31 introduced; not yet enabled — multi-profile failover for cost/quota gating                                                                                             | P3       |
+| **Auto-update**                       | Not configurable below v2026.3.31; manual upgrade is the only mechanism                                                                                                           | n/a      |
 
 **Non-drivers (NOT a reason to upgrade now):**
+
 - Telegram timeout hardening — already in v2026.3.31, working as expected
 - DM pairing security default — already configured (`dmPolicy=open + allowFrom=["*"]`)
 
@@ -41,7 +42,7 @@
 
 ## Phased rollout — sandbox first
 
-### Phase 0 — pre-flight (Antonello, ~15 min)
+### Phase 0 — pre-flight (Zero, ~15 min)
 
 ```bash
 # 1. Quiesce gateway (avoid mid-upgrade Telegram spam):
@@ -65,7 +66,7 @@ ssh pro 'cat /Users/nuzantara/.openclaw/lib/node_modules/openclaw/package.json |
 
 Expected: `2026.3.31`.
 
-### Phase 1 — install v2026.4.29 in isolated dir (Antonello, ~10 min)
+### Phase 1 — install v2026.4.29 in isolated dir (Zero, ~10 min)
 
 The strategy is to install the new binary to a **side-by-side path** so a
 plist swap restores the old in <2 minutes.
@@ -85,7 +86,7 @@ ssh pro 'ls ~/.openclaw-v2026.4.29/lib/node_modules/openclaw/skills/ | wc -l'
 If install fails (npm registry offline, network error), STOP and revert to
 running on v2026.3.31. There's no need to roll forward in a single session.
 
-### Phase 2 — sandbox test against current config (Antonello, ~30 min)
+### Phase 2 — sandbox test against current config (Zero, ~30 min)
 
 ```bash
 # 1. Run the new binary against a copy of openclaw.json in a temp HOME:
@@ -114,6 +115,7 @@ ssh pro 'rm -rf "$OC_TEST_HOME"'
 ```
 
 Promotion criteria (ALL must pass):
+
 - `openclaw doctor` exits 0
 - All 4 Lobster workflows compile without "unknown opcode" errors
 - `mcp call claude-mem.list_corpora` returns `[]` (or any non-error JSON)
@@ -121,7 +123,7 @@ Promotion criteria (ALL must pass):
 If any criterion fails, revert: keep `~/.openclaw-v2026.4.29/` for diagnostics
 (don't `rm -rf` it), file an issue, postpone upgrade.
 
-### Phase 3 — flip to new binary (Antonello, ~5 min)
+### Phase 3 — flip to new binary (Zero, ~5 min)
 
 ```bash
 # 1. Backup the old install:
@@ -175,7 +177,7 @@ HOME and the launchd plist points at `/usr/local/bin/openclaw` (or wherever
 the OS-level symlink resolves) — atomic mv at the `~/.openclaw` level is
 sufficient because the binary uses `__dirname`-relative paths.
 
-### Phase 5 — post-upgrade verification (Antonello, ~30 min, monitor 24h)
+### Phase 5 — post-upgrade verification (Zero, ~30 min, monitor 24h)
 
 ```bash
 # 1. Telegram menu count check:
@@ -221,16 +223,16 @@ sandbox.
 - Migrating Lobster DSL to a newer OpenClaw plugin layer (no urgency,
   current 4 workflows are stable).
 
-## Application order summary (post-merge by Antonello)
+## Application order summary (post-merge by Zero)
 
-| Step | Owner | When |
-|---|---|---|
-| 1. Apply Track A2 (Telegram skill disable) | Antonello | Day 0 |
-| 2. Apply Track A5 (24 frozen jobs disable + claude-code review) | Antonello | Day 0 |
-| 3. Apply Track A3 (mcporter idle disable) | Antonello | Day 1 |
-| 4. **Run Phase 0+1+2 (sandbox upgrade test)** | Antonello | Day 2 |
-| 5. **Run Phase 3 (atomic flip)** | Antonello | Day 2 (off-peak, ~22:00 WITA) |
-| 6. **Run Phase 5 (24h soak)** | Antonello | Day 2-3 |
+| Step                                                            | Owner | When                          |
+| --------------------------------------------------------------- | ----- | ----------------------------- |
+| 1. Apply Track A2 (Telegram skill disable)                      | Zero  | Day 0                         |
+| 2. Apply Track A5 (24 frozen jobs disable + claude-code review) | Zero  | Day 0                         |
+| 3. Apply Track A3 (mcporter idle disable)                       | Zero  | Day 1                         |
+| 4. **Run Phase 0+1+2 (sandbox upgrade test)**                   | Zero  | Day 2                         |
+| 5. **Run Phase 3 (atomic flip)**                                | Zero  | Day 2 (off-peak, ~22:00 WITA) |
+| 6. **Run Phase 5 (24h soak)**                                   | Zero  | Day 2-3                       |
 
 Total elapsed: 2-3 days from PR merge to verified upgrade live.
 

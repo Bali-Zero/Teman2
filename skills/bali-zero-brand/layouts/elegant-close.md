@@ -36,7 +36,7 @@ qr_caption:
 
 The QR PNG itself is generated server-side by the renderer using `qrencode` or `segno` (Python: `pip install segno` → `segno.make(url).save('qr.png', scale=8, dark='#C8102E', light='#FFFFFF')`). The CSS class `.qr-closing` in `_base.css` defines the 120×120 box with red border.
 
-> Trust marker line REMOVED 2026-05-09 (Antonello: "non serve"). Email + WhatsApp now both shown — Article 6.6.1 "ONE channel" rule revised to allow both contact channels since both ARE the same Bali Zero unified front-desk (zantara@balizero.com is alias of zero@balizero.com per CLAUDE.md email rule, and the WhatsApp number is the same Zantara persona).
+> Trust marker line REMOVED 2026-05-09 (Zero: "non serve"). Email + WhatsApp now both shown — Article 6.6.1 "ONE channel" rule revised to allow both contact channels since both ARE the same Bali Zero unified front-desk (zantara@balizero.com is alias of zero@balizero.com per CLAUDE.md email rule, and the WhatsApp number is the same Zantara persona).
 
 ## HTML/CSS skeleton
 

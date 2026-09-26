@@ -4,7 +4,7 @@
 >
 > **Stima**: 10-14 giorni solo-dev (B2 è il dominio più complesso — Coretax instability + PJAP partner contract).
 >
-> **Pre-azione richiesta a te (Antonello)**: contratto Pajakku PJAP (~€85/mese) o PajakExpress. Senza, il dominio funziona solo in dry-run mode.
+> **Pre-azione richiesta a te (Zero)**: contratto Pajakku PJAP (~€85/mese) o PajakExpress. Senza, il dominio funziona solo in dry-run mode.
 
 ---
 
@@ -19,7 +19,7 @@ Prima di tutto, leggi:
 3. `docs/superpowers/plans/2026-05-08-domain-mesh-phase1-setup-team.md` (pattern Phase 1)
 4. `apps/mata-garuda/mata_garuda/domains/setup_team/` (template completo da imitare)
 
-Verifica anche se Antonello ha già firmato il contratto Pajakku (PJAP). Cerca:
+Verifica anche se Zero ha già firmato il contratto Pajakku (PJAP). Cerca:
 
 ```bash
 grep -ri "PAJAKKU_API_TOKEN\|PJAP" ~/.nuzantara-secrets.env ~/.nuzantara-backend-secrets.env 2>/dev/null
@@ -108,7 +108,7 @@ Dopo l'implementazione, lancia 3-LLM wave (Codex + DeepSeek + NotebookLM NB-1) *
 - Veronika consultata su workflow L1-L6 (non implementare quello che lei rifiuta)
 - `~/logs/tax-engine/tax-engine-daily-YYYYMMDD.log` mostra summary pulito
 
-### Pre-azione richiesta a Antonello
+### Pre-azione richiesta a Zero
 
 **PRIMA di partire questa fase**:
 

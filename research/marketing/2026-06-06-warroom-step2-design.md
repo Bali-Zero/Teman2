@@ -11,7 +11,7 @@ sources:
 
 # War Room — Step 2: shortlist → draft briefato (B-FUSIONE)
 
-> Decisione Antonello: **B-fusione** — il brief fonde la NEWS FRESCA (item shortlist, fatti
+> Decisione Zero: **B-fusione** — il brief fonde la NEWS FRESCA (item shortlist, fatti
 > aggiornati es. PP 20/2026) col GROUNDING NB VERBATIM (brief-interpreter: citazioni, numeri,
 > taboo). Risolve la discrepanza stale-vs-fresco vista sul dato reale.
 > **Stato: DESIGN (no codice). Gate: panel 4-LLM prima dell'implementazione.**
@@ -147,7 +147,7 @@ Lo Step 2 è ~collante: invoca brief-interpreter + fonde via LLM + INSERT. Poco 
 - **Claude quota MAX via SDK `auth_token`** (mai `api_key`) per la fusione. Token dal Keychain CLI
   (`Claude Code-credentials`, `claudeAiOauth.accessToken`, auto-refresh) — fallback env
   `CLAUDE_CODE_OAUTH_TOKEN`. ⚠️ **CONFLITTO DA RICONCILIARE**: il `CLAUDE.md` di progetto §5 dice
-  ancora «Anthropic SDK BANNED. Never `from anthropic import Anthropic`». Antonello ha corretto la
+  ancora «Anthropic SDK BANNED. Never `from anthropic import Anthropic`». Zero ha corretto la
   regola in questa sessione (2026-06-06): l'SDK con `auth_token` consuma la quota MAX (HTTP
   `Authorization: Bearer`, verificato in `_client.py` `auth_headers()`), distinto dal path
   `api_key`/`ANTHROPIC_API_KEY` = pay-as-you-go, **quello sì bandito**. Il global `~/.claude/CLAUDE.md`
@@ -188,7 +188,7 @@ ricchi che il drafter non legge né aggiorna. Il "dual-rail per il futuro" non p
 
 ---
 
-## 8. Decisioni chiuse (panel + Antonello 2026-06-06)
+## 8. Decisioni chiuse (panel + Zero 2026-06-06)
 
 7 decisioni, design v2:
 
@@ -206,11 +206,11 @@ ricchi che il drafter non legge né aggiorna. Il "dual-rail per il futuro" non p
 5. **Idempotenza con re-brief (Q5)**: skip se `canonical_url` già briefato in **qualsiasi** data,
    MA se ricompare con `content_hash`/`published_at` cambiato → re-brief UPSERT sulla stessa riga
    (bump `revision`). Risolve PP 20/2026.
-6. **Step 2 applica i rail (Antonello)**: oltre a persistere i campi ricchi, lo Step 2 **inietta**
+6. **Step 2 applica i rail (Zero)**: oltre a persistere i campi ricchi, lo Step 2 **inietta**
    taboo/citazioni/numeri DENTRO `enrichment` (il canale che il drafter già legge): `the_facts`
    incorpora le citazioni verbatim, una riga esplicita `NON usare: <taboo>`, i numeri chiave nel
    testo. **Zero modifiche al drafter** — la sicurezza arriva sul binario esistente (retrocompat).
-7. **Gate umano PRIMA dello Step 2 (Antonello)**: la fusione costosa gira solo su shortlist
+7. **Gate umano PRIMA dello Step 2 (Zero)**: la fusione costosa gira solo su shortlist
    **approvata**. Step 2 = on-demand su selezione umana, non automatico su tutta la shortlist.
    Protegge la quota fusione + drafter, non solo il publish (Legge 5 resta a valle).
 

@@ -112,7 +112,7 @@ export default async function HomePage() {
         <HeroBlueprint variant="r19" />
         {/* MYTHOS B2R2: four persona doors (IA-1) are the navigation layer;
             each door carries its tool identity (ex-FunnelChips, strip
-            removed per Antonello 2026-06-11). */}
+            removed per Zero 2026-06-11). */}
         <PersonaDoors />
         {/* W2 (SHWEB-20260911): the home shows the founder band — the two
             founders in the R19 band rhythm — while /v2 keeps SocialProof's

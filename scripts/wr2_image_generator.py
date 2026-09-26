@@ -90,7 +90,7 @@ TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 #
 # FlowKit is the empirically-faster path (5-15s/image vs 30-90s for
 # Playwright on the same Nano Banana Pro model, GEM_PIX_2 — verified
-# 2026-05-03 on Antonello's Ultra account, FREE for PAYGATE_TIER_TWO).
+# 2026-05-03 on Zero's Ultra account, FREE for PAYGATE_TIER_TWO).
 # It requires the FlowKit local agent at http://127.0.0.1:8100 + Chrome
 # extension loaded + bearer token captured. When any of those is missing
 # we silently fall back to the existing Playwright path so the cron stays
@@ -249,7 +249,7 @@ ANTI_CLICHE_SUFFIX = (
     "NO infinity pools, NO neon lights. NO Balinese temples, religious offerings, "
     "or traditional dancers. NO AI-art fingerprints: no hyperrealistic faces, "
     "no glowing edges, no fantasy elements. "
-    # 2026-06-13 (Antonello): the document/deed/contract-on-a-desk-with-a-pen
+    # 2026-06-13 (Zero): the document/deed/contract-on-a-desk-with-a-pen
     # still life is the single most off-brand cliché WR2 keeps rendering — it
     # was reaching the image model because the draft-generator's NEGATIVE_PROMPT
     # only steers the LLM that writes the prompt, never the image backend. Ban

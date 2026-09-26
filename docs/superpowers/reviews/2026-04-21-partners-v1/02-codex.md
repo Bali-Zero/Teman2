@@ -3,6 +3,7 @@ Reading additional input from stdin...
 2026-04-21T02:42:40.697208Z ERROR codex_core::codex: failed to load skill /Users/nuzantara/Desktop/partners-spec-wt/.agents/skills/google-flow-video/SKILL.md: missing YAML frontmatter delimited by ---
 OpenAI Codex v0.120.0 (research preview)
 --------
+
 workdir: /Users/nuzantara/Desktop/partners-spec-wt
 model: gpt-5.4
 provider: openai
@@ -12,12 +13,14 @@ reasoning effort: xhigh
 reasoning summaries: none
 session id: 019dadeb-1fca-7180-bac5-35d075854f7b
 --------
+
 user
 You are a senior staff engineer reviewing PR #139 (feat/crm-partners-module) for the Nuzantara CRM.
 
 The full context (spec + all key files) is at /tmp/partners-review/brief.md — 144KB. READ THAT FILE FIRST using your Read tool, then produce a critical review.
 
 Focus on:
+
 1. Architectural issues that survived 10 rounds of narrow per-task review
 2. Security + data-leak holes (partner-facing endpoints, email rendering, audit log)
 3. Race conditions (EventBus redelivery, commission offset atomicity, email idempotency)
@@ -26,6 +29,7 @@ Focus on:
 6. Spec-level bugs surviving into implementation
 
 Output ONLY Markdown:
+
 - Executive verdict (ship / ship with follow-ups / block)
 - Critical issues (must fix before ship) with file:line refs
 - Important issues (v1.1) with file:line refs
@@ -38,7 +42,8 @@ codex
 [Pro] I’ll read the review brief first, then inspect the referenced files and PR context enough to ground findings in concrete line refs. Since this is a review, I’ll stay in findings mode and avoid changing code.
 exec
 /bin/zsh -lc "sed -n '1,260p' /tmp/partners-review/brief.md" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
+succeeded in 0ms:
+
 # Partners Module v1 — Review Brief
 
 You are one of 4 LLMs reviewing PR #139 (feat/crm-partners-module) of Nuzantara CRM.
@@ -62,6 +67,7 @@ Do a CRITICAL review. Assume the prior per-task reviews caught most surface issu
 6. **Anything the spec got wrong** that survived into implementation (spec-level bugs don't get caught by per-file reviews).
 
 Return Markdown with:
+
 - Executive verdict (ship / ship with follow-ups / block)
 - Critical issues (must fix before ship)
 - Important issues (v1.1)
@@ -77,7 +83,7 @@ Return Markdown with:
 **Date:** 2026-04-20
 **Author:** Claude Opus 4.7 (1M context) — council: Gemini 2.5 Pro + Codex
 gpt-5.4 xhigh + DeepSeek-Reasoner + NotebookLM NB-2
-**Status:** Design approved by Antonello. Ready for implementation plan.
+**Status:** Design approved by Zero. Ready for implementation plan.
 **Owner of fiscal sign-off:** Asya.
 **Origin:** Multi-LLM council brainstorm,
 `docs/superpowers/specs/2026-04-20-partners-brainstorm/`.
@@ -120,7 +126,7 @@ Council rationale: see sibling `2026-04-20-partners-brainstorm/99-synthesis.md`.
 - In-portal messaging.
 - New subdomain `partners.balizero.com`.
 
-### Known open items (answered by Antonello; non-blocking)
+### Known open items (answered by Zero; non-blocking)
 
 - Default commission rate `10.0` (percentage). Per-partner override at creation.
 - Auto-writeoff threshold: `system_settings.partner_clawback_auto_writeoff_idr`
@@ -418,7 +424,7 @@ Two new permission bits on `users`:
 - `finance.approve_commission`
 - `finance.mark_paid`
 
-Seeded for Zero, Antonello, Asya. Check current user model before
+Seeded for Zero, Asya. Check current user model before
 including in migration 119 vs. a dedicated smaller migration.
 
 Helper: `verify_partner_access(user, partner_id) -> Partner`:
@@ -609,26 +615,26 @@ gate (`tax_withholding_category='tbd'` blocks approve).
 
 exec
 /bin/zsh -lc 'echo "Machine: $(whoami)@$(hostname)" && OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && ssh -o ConnectTimeout=3 $OTHER '"'echo \"Peer: "'$(whoami)@$(hostname)"'"' 2>/dev/null || echo \"Peer: UNREACHABLE\" && LOCAL_HEAD="'$(git log --oneline -1 2>/dev/null) && REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER '"'cd ~/Desktop/projects/nuzantara 2>/dev/null || cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && if [ \""'$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi' in /Users/nuzantara/Desktop/partners-spec-wt
- exited 255 in 2322ms:
+exited 255 in 2322ms:
 codex
 The machine check identifies this session as `nuzantara@Nuzantara` on Pro. The peer SSH check returned `UNREACHABLE`, so I’m treating the local PR worktree as the review source and will avoid assuming cross-machine sync.
 exec
 /bin/zsh -lc "sed -n '921,1280p' /tmp/partners-review/brief.md" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "sed -n '561,920p' /tmp/partners-review/brief.md" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-        " ON partner_commissions (status);"
-    )
-    await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_eligible_at"
-        " ON partner_commissions (eligible_for_approval_at)"
-        " WHERE status = 'accrued';"
-    )
-    await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_assigned_to_snapshot"
-        " ON partner_commissions (assigned_to_snapshot)"
-        " WHERE assigned_to_snapshot IS NOT NULL;"
-    )
+succeeded in 0ms:
+" ON partner_commissions (status);"
+)
+await conn.execute(
+"CREATE INDEX IF NOT EXISTS idx_partner_commissions_eligible_at"
+" ON partner_commissions (eligible_for_approval_at)"
+" WHERE status = 'accrued';"
+)
+await conn.execute(
+"CREATE INDEX IF NOT EXISTS idx_partner_commissions_assigned_to_snapshot"
+" ON partner_commissions (assigned_to_snapshot)"
+" WHERE assigned_to_snapshot IS NOT NULL;"
+)
 
     # -------------------------------------------------------------------------
     # 5. partner_audit_log
@@ -680,30 +686,29 @@ exec
         " + partner_audit_log + users.partner_id + 2 system_settings rows"
     )
 
+async def rollback(conn: Any) -> None: # Drop in FK-safe order: children first, parent last (spec §3.6)
+await conn.execute("DROP TABLE IF EXISTS partner_audit_log;")
+await conn.execute("DROP TABLE IF EXISTS partner_commissions;")
+await conn.execute("DROP TABLE IF EXISTS partner_referrals;") # Drop users.partner_id index + column before dropping partners (it references partners.id)
+await conn.execute("DROP INDEX IF EXISTS idx_users_partner_id;")
+await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
+await conn.execute("DROP TABLE IF EXISTS partners;")
+await conn.execute(
+"DELETE FROM system_settings WHERE key IN "
+"('partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days');"
+)
+logger.info(
+"Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
+" 2 system_settings rows deleted"
+)
 
-async def rollback(conn: Any) -> None:
-    # Drop in FK-safe order: children first, parent last (spec §3.6)
-    await conn.execute("DROP TABLE IF EXISTS partner_audit_log;")
-    await conn.execute("DROP TABLE IF EXISTS partner_commissions;")
-    await conn.execute("DROP TABLE IF EXISTS partner_referrals;")
-    # Drop users.partner_id index + column before dropping partners (it references partners.id)
-    await conn.execute("DROP INDEX IF EXISTS idx_users_partner_id;")
-    await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
-    await conn.execute("DROP TABLE IF EXISTS partners;")
-    await conn.execute(
-        "DELETE FROM system_settings WHERE key IN "
-        "('partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days');"
-    )
-    logger.info(
-        "Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
-        " 2 system_settings rows deleted"
-    )
 ```
 
 ### apps/backend-rag/backend/services/crm/partners/models.py
 
 ```
-from __future__ import annotations
+
+from **future** import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -716,28 +721,27 @@ WithholdingCategory = Literal["pph21", "pph23", "exempt", "tbd"]
 CommissionType = Literal["percentage", "flat"]
 OnboardingStatus = Literal["pending_approval", "active", "inactive"]
 CommissionStatus = Literal[
-    "accrued", "approved", "paid",
-    "clawback_pending", "offset_applied",
-    "waived", "repaid",
+"accrued", "approved", "paid",
+"clawback_pending", "offset_applied",
+"waived", "repaid",
 ]
 CommissionEntryType = Literal["accrual", "clawback", "manual_adjustment"]
 RuleSource = Literal["partner_default", "manual_override"]
 
-
 @dataclass
 class Partner:
-    id: UUID
-    full_name: str
-    email: str
-    entity_type: EntityType
-    tax_withholding_category: WithholdingCategory
-    default_commission_type: CommissionType
-    default_commission_value: Decimal
-    onboarding_status: OnboardingStatus
-    payment_currency: str
-    preferred_language: str
-    created_at: datetime
-    updated_at: datetime
+id: UUID
+full_name: str
+email: str
+entity_type: EntityType
+tax_withholding_category: WithholdingCategory
+default_commission_type: CommissionType
+default_commission_value: Decimal
+onboarding_status: OnboardingStatus
+payment_currency: str
+preferred_language: str
+created_at: datetime
+updated_at: datetime
 
     # optional fields
     work_role: str | None = None
@@ -763,36 +767,34 @@ class Partner:
     deactivated_at: datetime | None = None
     welcome_email_sent_at: datetime | None = None
 
-
 @dataclass
 class PartnerReferral:
-    id: UUID
-    partner_id: UUID
-    process_id: UUID
-    share_percent: Decimal
-    referred_at: datetime
-    referred_by_user_id: UUID | None = None
-    notes: str | None = None
-
+id: UUID
+partner_id: UUID
+process_id: UUID
+share_percent: Decimal
+referred_at: datetime
+referred_by_user_id: UUID | None = None
+notes: str | None = None
 
 @dataclass
 class PartnerCommission:
-    id: UUID
-    partner_id: UUID
-    entry_type: CommissionEntryType
-    base_amount_idr: Decimal
-    commission_type_snapshot: CommissionType
-    commission_value_snapshot: Decimal
-    rule_source: RuleSource
-    gross_amount_idr: Decimal
-    withholding_category: WithholdingCategory
-    withholding_rate: Decimal
-    withholding_amount_idr: Decimal
-    net_amount_idr: Decimal
-    status: CommissionStatus
-    accrued_at: datetime
-    eligible_for_approval_at: datetime
-    created_at: datetime
+id: UUID
+partner_id: UUID
+entry_type: CommissionEntryType
+base_amount_idr: Decimal
+commission_type_snapshot: CommissionType
+commission_value_snapshot: Decimal
+rule_source: RuleSource
+gross_amount_idr: Decimal
+withholding_category: WithholdingCategory
+withholding_rate: Decimal
+withholding_amount_idr: Decimal
+net_amount_idr: Decimal
+status: CommissionStatus
+accrued_at: datetime
+eligible_for_approval_at: datetime
+created_at: datetime
 
     referral_id: UUID | None = None
     process_id: UUID | None = None
@@ -813,24 +815,26 @@ class PartnerCommission:
     idempotency_key: str | None = None
     commission_email_sent_at: datetime | None = None
 
-
 @dataclass
 class PartnerAuditLogEntry:
-    id: UUID
-    partner_id: UUID
-    action: str
-    at: datetime
-    actor_user_id: UUID | None = None
-    before_json: dict | None = None
-    after_json: dict | None = None
-    reason: str | None = None
+id: UUID
+partner_id: UUID
+action: str
+at: datetime
+actor_user_id: UUID | None = None
+before_json: dict | None = None
+after_json: dict | None = None
+reason: str | None = None
+
 ```
 
 ### apps/backend-rag/backend/services/crm/partners/repository.py
 
 ```
+
 # backend/services/crm/partners/repository.py
-from __future__ import annotations
+
+from **future** import annotations
 
 import json
 import logging
@@ -841,41 +845,45 @@ from uuid import UUID
 import asyncpg
 
 from backend.services.crm.partners.models import (
-    Partner, PartnerReferral, PartnerCommission, PartnerAuditLogEntry,
-    EntityType, CommissionType, CommissionStatus, CommissionEntryType,
-    WithholdingCategory, RuleSource,
+Partner, PartnerReferral, PartnerCommission, PartnerAuditLogEntry,
+EntityType, CommissionType, CommissionStatus, CommissionEntryType,
+WithholdingCategory, RuleSource,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(**name**)
 
 # Commission state machine.
+
 # Source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3.3 + §4.4.
+
 # v1 terminal states: paid, offset_applied, waived, repaid.
+
 _ALLOWED_TRANSITIONS: dict[CommissionStatus, set[CommissionStatus]] = {
-    "accrued": {"approved"},
-    "approved": {"paid"},
-    "paid": set(),
-    "clawback_pending": {"offset_applied", "waived", "repaid"},
-    "offset_applied": set(),
-    "waived": set(),
-    "repaid": set(),
+"accrued": {"approved"},
+"approved": {"paid"},
+"paid": set(),
+"clawback_pending": {"offset_applied", "waived", "repaid"},
+"offset_applied": set(),
+"waived": set(),
+"repaid": set(),
 }
 
 _PARTNER_UPDATABLE_COLS = {
-    "full_name", "work_role", "company_name", "office_address",
-    "email", "phone", "preferred_language",
-    "entity_type", "npwp", "nik", "tax_withholding_category", "fiscal_address",
-    "bank_name", "bank_account_holder", "bank_account_number",
-    "ewallet_type", "ewallet_number", "payment_currency", "iban", "payment_notes",
-    "default_commission_type", "default_commission_value",
-    "pdp_consent_at", "pdp_consent_version", "terms_accepted_at", "terms_version",
+"full_name", "work_role", "company_name", "office_address",
+"email", "phone", "preferred_language",
+"entity_type", "npwp", "nik", "tax_withholding_category", "fiscal_address",
+"bank_name", "bank_account_holder", "bank_account_number",
+"ewallet_type", "ewallet_number", "payment_currency", "iban", "payment_notes",
+"default_commission_type", "default_commission_value",
+"pdp_consent_at", "pdp_consent_version", "terms_accepted_at", "terms_version",
 }
+
 # NB: onboarding_status, assigned_to, welcome_email_sent_at are ONLY settable
+
 # via their dedicated methods (activate_partner, reassign_partner, mark_welcome_sent).
 
-
 class PartnersRepository:
-    """SQL layer. No business logic, no audit writes, no event emission."""
+"""SQL layer. No business logic, no audit writes, no event emission."""
 
     def __init__(self, conn: asyncpg.Connection):
         self.conn = conn
@@ -977,8 +985,7 @@ class PartnersRepository:
             partner_id,
         )
 
-
- succeeded in 0ms:
+succeeded in 0ms:
 
 All with real Postgres — no DB mocks per project rule.
 
@@ -1074,7 +1081,6 @@ Telegram notification to `1125336968` on first real partner creation
 ---
 
 ## Key Backend Files
-
 
 ### apps/backend-rag/backend/migrations/migration_119_partners.py
 
@@ -3698,458 +3704,458 @@ async def test_full_flow_process_to_paid_email(
 
 exec
 /bin/zsh -lc 'rg -n "''^### apps/|''^## Key|DONE_WITH_CONCERNS|KNOWN RACE|Pre-flight|silently|pass|TODO|FIXME|admin alone|autoescape|X_API_KEY|mark_paid|approve'"\\(|offset|EventBus|processes table\" /tmp/partners-review/brief.md" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
+succeeded in 0ms:
 8:- 10 commits, 128 backend tests passing.
 18:3. **Race conditions** — EventBus redelivery, commission offset without transaction wrapper, email idempotency under retry.
 20:5. **Production readiness** — what fails silently on first real use?
 63:- EventBus channel `partner_commission_changed` + subscriber
-237:      'clawback_pending','offset_applied',
-322:├── events.py             # EventBus subscriber + publisher
+237: 'clawback_pending','offset_applied',
+322:├── events.py # EventBus subscriber + publisher
 371:- `finance.mark_paid`
 405:`CommissionEngine.approve(commission_id, actor)`:
 411:`CommissionEngine.mark_paid(commission_id, actor, paid_via, payment_reference, receipt_type?, receipt_file_url?)`:
 426:- Offset: on next `approve()` for same partner, pair with oldest
 428:offset_applied`, approval net reduced by clawback amount).
 430:### 4.5 EventBus integration
-489:Trigger: `CommissionEngine.mark_paid()` completion.
+489:Trigger: `CommissionEngine.mark_paid()`completion.
 568:├── test_commission_engine.py  # accrual, cooling-off, clawback, offset
 569:├── test_events.py             # EventBus subscriber idempotency
 593:| S4     | CommissionEngine (accrual + cooling-off + clawback + offset) + 30+ unit tests | 4h  |
-594:| S5     | EventBus subscriber on `practice_changed` + idempotency + integration test    | 2h  |
+594:| S5     | EventBus subscriber on`practice_changed` + idempotency + integration test | 2h |
 622:# 3. EventBus subscriber active
 655:## Key Backend Files
 658:### apps/backend-rag/backend/migrations/migration_119_partners.py
-882:                            'clawback_pending','offset_applied',
+882: 'clawback_pending','offset_applied',
 1004:### apps/backend-rag/backend/services/crm/partners/models.py
-1021:    "clawback_pending", "offset_applied",
+1021: "clawback_pending", "offset_applied",
 1130:### apps/backend-rag/backend/services/crm/partners/repository.py
 1154:# v1 terminal states: paid, offset_applied, waived, repaid.
-1159:    "clawback_pending": {"offset_applied", "waived", "repaid"},
-1160:    "offset_applied": set(),
-1212:        KNOWN RACE: This is a SELECT-then-INSERT pattern without a cross-table
+1159: "clawback_pending": {"offset_applied", "waived", "repaid"},
+1160: "offset_applied": set(),
+1212: KNOWN RACE: This is a SELECT-then-INSERT pattern without a cross-table
 1540:### apps/backend-rag/backend/services/crm/partners/service.py
 1763:### apps/backend-rag/backend/services/crm/partners/commission_engine.py
 1772:EventBus, FastAPI routers, or any other application-layer component (so it
-1780:  is that approve() may reduce net_amount_idr on the incoming accrual row when
-1781:  offsetting a pending clawback. This is implemented via a raw UPDATE on that
+1780: is that approve() may reduce net_amount_idr on the incoming accrual row when
+1781: offsetting a pending clawback. This is implemented via a raw UPDATE on that
 1784:Pre-flight note (2026-04-20, outcome c):
-1790:  If the processes table is later migrated into production, verify these
-1815:    "tbd": Decimal("0"),  # also blocks approve() — see gate below
-1954:    async def approve(self, commission_id: UUID, *, actor: UUID) -> None:
-1965:            - clawback transitions to 'offset_applied'
-1967:          If the clawback magnitude exceeds the accrual's net, no offset is
-1968:          applied this round (partial offsets are v2 scope).
-1971:          The offset writes two rows sequentially on a single connection.
-1974:          will still be 'clawback_pending'. This is flagged DONE_WITH_CONCERNS
-1998:        offset_applied_id: UUID | None = None
-2001:            # offset_amount is positive (magnitude of the negative clawback).
-2002:            offset_amount = -oldest.net_amount_idr
-2003:            new_net = c.net_amount_idr - offset_amount
-2007:                # Partial offsets require additional policy decisions (v2 scope).
-2010:                    "— no offset this round",
-2011:                    oldest.id, offset_amount, c.id, c.net_amount_idr,
-2024:                await self.repo.update_commission_status(oldest.id, "offset_applied")
-2025:                offset_applied_id = oldest.id
-2027:                    "approve: offset clawback %s against accrual %s "
-2035:        if offset_applied_id:
-2037:                "approve: commission %s approved with clawback %s offset",
-2038:                commission_id, offset_applied_id,
-2041:            logger.info("approve: commission %s approved (no clawback offset)", commission_id)
-2045:    async def mark_paid(
+1790: If the processes table is later migrated into production, verify these
+1815: "tbd": Decimal("0"), # also blocks approve() — see gate below
+1954: async def approve(self, commission_id: UUID, *, actor: UUID) -> None:
+1965: - clawback transitions to 'offset_applied'
+1967: If the clawback magnitude exceeds the accrual's net, no offset is
+1968: applied this round (partial offsets are v2 scope).
+1971: The offset writes two rows sequentially on a single connection.
+1974: will still be 'clawback_pending'. This is flagged DONE_WITH_CONCERNS
+1998: offset_applied_id: UUID | None = None
+2001: # offset_amount is positive (magnitude of the negative clawback).
+2002: offset_amount = -oldest.net_amount_idr
+2003: new_net = c.net_amount_idr - offset_amount
+2007: # Partial offsets require additional policy decisions (v2 scope).
+2010: "— no offset this round",
+2011: oldest.id, offset_amount, c.id, c.net_amount_idr,
+2024: await self.repo.update_commission_status(oldest.id, "offset_applied")
+2025: offset_applied_id = oldest.id
+2027: "approve: offset clawback %s against accrual %s "
+2035: if offset_applied_id:
+2037: "approve: commission %s approved with clawback %s offset",
+2038: commission_id, offset_applied_id,
+2041: logger.info("approve: commission %s approved (no clawback offset)", commission_id)
+2045: async def mark_paid(
 2189:### apps/backend-rag/backend/services/crm/partners/events.py
 2193:EventBus subscriber for the CRM Partners module.
-2213:    from backend.services.events.event_bus import EventBus
+2213: from backend.services.events.event_bus import EventBus
 2296:def register_partner_handlers(bus: "EventBus") -> None:
-2297:    """Subscribe partner-module handlers to the EventBus."""
+2297: """Subscribe partner-module handlers to the EventBus."""
 2302:### apps/backend-rag/backend/services/crm/partners/emails.py
 2314:- Client full names are sterilized to "First L." before passing to any template.
-2337:    autoescape=False,
+2337: autoescape=False,
 2349:X_API_KEY = os.environ.get("NOTIFICATIONS_X_API_KEY", "REDACTED-ROTATED-KEY")
-2375:            headers={"X-API-Key": X_API_KEY},
-2452:        conn: asyncpg.Connection (passed directly by the router).
-2498:        conn: asyncpg.Connection (passed directly by the router).
+2375: headers={"X-API-Key": X_API_KEY},
+2452: conn: asyncpg.Connection (passed directly by the router).
+2498: conn: asyncpg.Connection (passed directly by the router).
 2576:### apps/backend-rag/backend/services/crm/partners/templates/welcome.md.j2
 2622:### apps/backend-rag/backend/services/crm/partners/templates/commission.md.j2
 2651:### apps/backend-rag/backend/app/routers/partners.py
 2663:Pre-flight findings (2026-04-20):
 2669:- Finance permission: check "finance.mark_paid" in permissions list; admin alone
-2806:    may not be populated in all JWT tokens yet. When finance.mark_paid is
-2812:    if "finance.mark_paid" in perms:
-3094:                pass  # emails module not yet implemented (Task 8)
-3328:            await engine.approve(commission_id, actor=UUID(str(user["user_id"])))
+2806: may not be populated in all JWT tokens yet. When finance.mark_paid is
+2812: if "finance.mark_paid" in perms:
+3094: pass # emails module not yet implemented (Task 8)
+3328: await engine.approve(commission_id, actor=UUID(str(user["user_id"])))
 3340:async def mark_paid_commission(
-3352:            await engine.mark_paid(
-3366:                pass
-3373:        logger.exception("mark_paid_commission failed")
+3352: await engine.mark_paid(
+3366: pass
+3373: logger.exception("mark_paid_commission failed")
 3434:### apps/backend-rag/backend/tests/integration/test_partners_e2e.py
-3442:  EventBus accrual → approve → mark paid → commission email with
-3530:    # ── Step 3: EventBus handler → accrual ──────────────────────────────────
-3574:    await engine.approve(c.id, actor=uuid.UUID(int=admin_id.int))
-3580:    await engine.mark_paid(
+3442: EventBus accrual → approve → mark paid → commission email with
+3530: # ── Step 3: EventBus handler → accrual ──────────────────────────────────
+3574: await engine.approve(c.id, actor=uuid.UUID(int=admin_id.int))
+3580: await engine.mark_paid(
 
 codex
 I’ve found several deeper failure modes in the brief itself: the generic partner list route is not role-gated, referral creation trusts partner/team callers too much, finance transitions are not transactional, and the email path can persist payment state while losing the notification. I’m pulling exact local line refs now.
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/app/routers/partners.py | sed -n '1,260p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	"""
-     2	FastAPI router — CRM Partners module (v1).
-     3	
-     4	21 endpoints covering partner lifecycle, referrals, commissions, self-serve
-     5	/me routes for partner-role users, and a finance CSV export.
-     6	
-     7	SCAR 2026-03-26: every mutation handler does `except HTTPException: raise`
-     8	BEFORE the generic `except Exception`.
-     9	
-    10	Pre-flight findings (2026-04-20):
-    11	- get_current_user returns dict[str, Any] with keys:
-    12	    email, user_id, role, permissions (list, not set)
-    13	  NOT an object — use user["role"], user["user_id"].
-    14	- No partner_id in user dict; /me endpoints query users.partner_id from DB.
-    15	- DB dep is get_database_pool (returns Pool); use `async with pool.acquire() as conn`.
-    16	- Finance permission: check "finance.mark_paid" in permissions list; admin alone
-    17	  is sufficient as v1 fallback (permissions not yet wired to JWT for all clients).
-    18	"""
-    19	from __future__ import annotations
-    20	
-    21	import csv
-    22	import dataclasses
-    23	import io
-    24	import logging
-    25	from datetime import datetime
-    26	from decimal import Decimal
-    27	from typing import Any, Literal
-    28	from uuid import UUID
-    29	
-    30	import asyncpg
-    31	from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-    32	from pydantic import BaseModel, EmailStr
-    33	
-    34	from backend.app.dependencies import get_current_user, get_database_pool
-    35	from backend.services.crm.partners.commission_engine import CommissionEngine
-    36	from backend.services.crm.partners.service import (
-    37	    ConflictError,
-    38	    PartnersService,
-    39	    verify_partner_access_with_role,
-    40	)
-    41	
-    42	logger = logging.getLogger(__name__)
-    43	
-    44	router = APIRouter(prefix="/api/partners", tags=["partners"])
-    45	
-    46	
-    47	# ── Pydantic request models ──────────────────────────────────────────────────
-    48	
-    49	class PartnerCreate(BaseModel):
-    50	    full_name: str
-    51	    email: EmailStr
-    52	    entity_type: Literal["individual", "corporate_pt", "corporate_cv", "foreign"]
-    53	    work_role: str | None = None
-    54	    company_name: str | None = None
-    55	    office_address: str | None = None
-    56	    phone: str | None = None
-    57	    preferred_language: str = "id"
-    58	    npwp: str | None = None
-    59	    nik: str | None = None
-    60	    tax_withholding_category: Literal["pph21", "pph23", "exempt", "tbd"] = "tbd"
-    61	    fiscal_address: str | None = None
-    62	    bank_name: str | None = None
-    63	    bank_account_holder: str | None = None
-    64	    bank_account_number: str | None = None
-    65	    ewallet_type: str | None = None
-    66	    ewallet_number: str | None = None
-    67	    payment_currency: str = "IDR"
-    68	    iban: str | None = None
-    69	    payment_notes: str | None = None
-    70	    default_commission_type: Literal["percentage", "flat"] = "percentage"
-    71	    default_commission_value: Decimal = Decimal("10.0")
-    72	    assigned_to: UUID | None = None
-    73	    pdp_consent_version: str | None = None
-    74	    terms_version: str | None = None
-    75	
-    76	
-    77	class PartnerUpdate(BaseModel):
-    78	    full_name: str | None = None
-    79	    email: EmailStr | None = None
-    80	    entity_type: Literal["individual", "corporate_pt", "corporate_cv", "foreign"] | None = None
-    81	    work_role: str | None = None
-    82	    company_name: str | None = None
-    83	    office_address: str | None = None
-    84	    phone: str | None = None
-    85	    preferred_language: str | None = None
-    86	    npwp: str | None = None
-    87	    nik: str | None = None
-    88	    tax_withholding_category: Literal["pph21", "pph23", "exempt", "tbd"] | None = None
-    89	    fiscal_address: str | None = None
-    90	    bank_name: str | None = None
-    91	    bank_account_holder: str | None = None
-    92	    bank_account_number: str | None = None
-    93	    ewallet_type: str | None = None
-    94	    ewallet_number: str | None = None
-    95	    payment_currency: str | None = None
-    96	    iban: str | None = None
-    97	    payment_notes: str | None = None
-    98	    default_commission_type: Literal["percentage", "flat"] | None = None
-    99	    default_commission_value: Decimal | None = None
-   100	    pdp_consent_version: str | None = None
-   101	    terms_version: str | None = None
-   102	
-   103	
-   104	class ReassignRequest(BaseModel):
-   105	    new_user_id: UUID | None
-   106	    reason: str
-   107	
-   108	
-   109	class BulkReassignRequest(BaseModel):
-   110	    partner_ids: list[UUID]
-   111	    new_user_id: UUID
-   112	    reason: str
-   113	
-   114	
-   115	class ReferralCreate(BaseModel):
-   116	    process_id: UUID
-   117	    notes: str | None = None
-   118	
-   119	
-   120	class ReferralSwap(BaseModel):
-   121	    new_partner_id: UUID
-   122	
-   123	
-   124	class CommissionMarkPaidRequest(BaseModel):
-   125	    paid_via: str
-   126	    payment_reference: str
-   127	    payment_proof_url: str | None = None
-   128	    receipt_type: Literal["kwitansi", "invoice", "none"] | None = None
-   129	    receipt_file_url: str | None = None
-   130	
-   131	
-   132	class ClawbackRequest(BaseModel):
-   133	    reason: str
-   134	    amount_idr: Decimal | None = None
-   135	
-   136	
-   137	class WaiveRequest(BaseModel):
-   138	    reason: str
-   139	
-   140	
-   141	# ── Helpers ──────────────────────────────────────────────────────────────────
-   142	
-   143	def _require_admin(user: dict[str, Any]) -> None:
-   144	    """Raise 403 if user is not admin."""
-   145	    if user.get("role") != "admin":
-   146	        raise HTTPException(status_code=403, detail="admin only")
-   147	
-   148	
-   149	def _require_finance(user: dict[str, Any]) -> None:
-   150	    """Raise 403 if user lacks finance permission.
-   151	
-   152	    v1 fallback: admin role alone is sufficient because permissions list
-   153	    may not be populated in all JWT tokens yet. When finance.mark_paid is
-   154	    wired into the JWT payload, this guard will enforce it for non-admins.
-   155	    """
-   156	    perms = user.get("permissions", [])
-   157	    if user.get("role") == "admin":
-   158	        return  # admin always has finance
-   159	    if "finance.mark_paid" in perms:
-   160	        return
-   161	    raise HTTPException(status_code=403, detail="finance permission required")
-   162	
-   163	
-   164	def _sterilize_client_for_partner(full_name: str) -> str:
-   165	    """'Mario Rossi' → 'Mario R.' — hide client surname from partner-role user."""
-   166	    parts = full_name.strip().split()
-   167	    if not parts:
-   168	        return ""
-   169	    if len(parts) == 1:
-   170	        return parts[0]
-   171	    return f"{parts[0]} {parts[-1][0]}."
-   172	
-   173	
-   174	def _partner_to_dict(p: Any) -> dict[str, Any]:
-   175	    """Convert Partner dataclass or asyncpg Record to JSON-serialisable dict."""
-   176	    if dataclasses.is_dataclass(p) and not isinstance(p, type):
-   177	        return dataclasses.asdict(p)
-   178	    return dict(p)
-   179	
-   180	
-   181	# ── Partner CRUD ─────────────────────────────────────────────────────────────
-   182	
-   183	@router.post("", status_code=status.HTTP_201_CREATED)
-   184	async def create_partner(
-   185	    body: PartnerCreate,
-   186	    user: dict[str, Any] = Depends(get_current_user),
-   187	    pool: asyncpg.Pool = Depends(get_database_pool),
-   188	) -> Any:
-   189	    """Create a new partner. Team members auto-assign to themselves."""
-   190	    try:
-   191	        async with pool.acquire() as conn:
-   192	            svc = PartnersService(conn)
-   193	            data = body.model_dump(exclude_none=True)
-   194	            assigned_to = data.pop("assigned_to", None)
-   195	            # Team role: always scope to self (ignore any supplied assigned_to)
-   196	            if user.get("role") == "team":
-   197	                assigned_to = UUID(str(user["user_id"]))
-   198	            elif assigned_to is None and user.get("role") == "admin":
-   199	                assigned_to = None  # explicit None allowed for admin
-   200	            pid = await svc.create_partner(
-   201	                assigned_to=assigned_to,
-   202	                created_by=UUID(str(user["user_id"])),
-   203	                **data,
-   204	            )
-   205	            partner = await svc.repo.get_partner(pid)
-   206	            return _partner_to_dict(partner)
-   207	    except HTTPException:
-   208	        raise
-   209	    except Exception:
-   210	        logger.exception("create_partner failed")
-   211	        raise HTTPException(status_code=500, detail="internal error")
-   212	
-   213	
-   214	@router.get("")
-   215	async def list_partners(
-   216	    assigned_to: UUID | None = None,
-   217	    onboarding_status: str | None = None,
-   218	    orphaned: bool = False,
-   219	    search: str | None = None,
-   220	    user: dict[str, Any] = Depends(get_current_user),
-   221	    pool: asyncpg.Pool = Depends(get_database_pool),
-   222	) -> Any:
-   223	    """List partners. Team members see only their own."""
-   224	    async with pool.acquire() as conn:
-   225	        svc = PartnersService(conn)
-   226	        partners = await svc.list_partners(
-   227	            actor_user=UUID(str(user["user_id"])),
-   228	            actor_role=user.get("role", "team"),
-   229	            assigned_to=assigned_to,
-   230	            onboarding_status=onboarding_status,
-   231	            orphaned=orphaned,
-   232	            search=search,
-   233	        )
-   234	        return [_partner_to_dict(p) for p in partners]
-   235	
-   236	
-   237	@router.get("/me")
-   238	async def me(
-   239	    user: dict[str, Any] = Depends(get_current_user),
-   240	    pool: asyncpg.Pool = Depends(get_database_pool),
-   241	) -> Any:
-   242	    """Self-view for partner-role users. Returns their own partner record."""
-   243	    if user.get("role") != "partner":
-   244	        raise HTTPException(status_code=403, detail="partner role required")
-   245	    async with pool.acquire() as conn:
-   246	        row = await conn.fetchrow(
-   247	            "SELECT partner_id FROM users WHERE id = $1",
-   248	            UUID(str(user["user_id"])),
-   249	        )
-   250	        if not row or not row["partner_id"]:
-   251	            raise HTTPException(status_code=403, detail="no partner profile linked to this user")
-   252	        svc = PartnersService(conn)
-   253	        partner = await svc.repo.get_partner(row["partner_id"])
-   254	        if partner is None:
-   255	            raise HTTPException(status_code=404, detail="partner record not found")
-   256	        return _partner_to_dict(partner)
-   257	
-   258	
-   259	@router.get("/me/referrals")
-   260	async def me_referrals(
+succeeded in 0ms:
+1 """
+2 FastAPI router — CRM Partners module (v1).
+3
+4 21 endpoints covering partner lifecycle, referrals, commissions, self-serve
+5 /me routes for partner-role users, and a finance CSV export.
+6
+7 SCAR 2026-03-26: every mutation handler does `except HTTPException: raise`
+8 BEFORE the generic `except Exception`.
+9
+10 Pre-flight findings (2026-04-20):
+11 - get_current_user returns dict[str, Any] with keys:
+12 email, user_id, role, permissions (list, not set)
+13 NOT an object — use user["role"], user["user_id"].
+14 - No partner_id in user dict; /me endpoints query users.partner_id from DB.
+15 - DB dep is get_database_pool (returns Pool); use `async with pool.acquire() as conn`.
+16 - Finance permission: check "finance.mark_paid" in permissions list; admin alone
+17 is sufficient as v1 fallback (permissions not yet wired to JWT for all clients).
+18 """
+19 from **future** import annotations
+20
+21 import csv
+22 import dataclasses
+23 import io
+24 import logging
+25 from datetime import datetime
+26 from decimal import Decimal
+27 from typing import Any, Literal
+28 from uuid import UUID
+29
+30 import asyncpg
+31 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+32 from pydantic import BaseModel, EmailStr
+33
+34 from backend.app.dependencies import get_current_user, get_database_pool
+35 from backend.services.crm.partners.commission_engine import CommissionEngine
+36 from backend.services.crm.partners.service import (
+37 ConflictError,
+38 PartnersService,
+39 verify_partner_access_with_role,
+40 )
+41
+42 logger = logging.getLogger(**name**)
+43
+44 router = APIRouter(prefix="/api/partners", tags=["partners"])
+45
+46
+47 # ── Pydantic request models ──────────────────────────────────────────────────
+48
+49 class PartnerCreate(BaseModel):
+50 full_name: str
+51 email: EmailStr
+52 entity_type: Literal["individual", "corporate_pt", "corporate_cv", "foreign"]
+53 work_role: str | None = None
+54 company_name: str | None = None
+55 office_address: str | None = None
+56 phone: str | None = None
+57 preferred_language: str = "id"
+58 npwp: str | None = None
+59 nik: str | None = None
+60 tax_withholding_category: Literal["pph21", "pph23", "exempt", "tbd"] = "tbd"
+61 fiscal_address: str | None = None
+62 bank_name: str | None = None
+63 bank_account_holder: str | None = None
+64 bank_account_number: str | None = None
+65 ewallet_type: str | None = None
+66 ewallet_number: str | None = None
+67 payment_currency: str = "IDR"
+68 iban: str | None = None
+69 payment_notes: str | None = None
+70 default_commission_type: Literal["percentage", "flat"] = "percentage"
+71 default_commission_value: Decimal = Decimal("10.0")
+72 assigned_to: UUID | None = None
+73 pdp_consent_version: str | None = None
+74 terms_version: str | None = None
+75
+76
+77 class PartnerUpdate(BaseModel):
+78 full_name: str | None = None
+79 email: EmailStr | None = None
+80 entity_type: Literal["individual", "corporate_pt", "corporate_cv", "foreign"] | None = None
+81 work_role: str | None = None
+82 company_name: str | None = None
+83 office_address: str | None = None
+84 phone: str | None = None
+85 preferred_language: str | None = None
+86 npwp: str | None = None
+87 nik: str | None = None
+88 tax_withholding_category: Literal["pph21", "pph23", "exempt", "tbd"] | None = None
+89 fiscal_address: str | None = None
+90 bank_name: str | None = None
+91 bank_account_holder: str | None = None
+92 bank_account_number: str | None = None
+93 ewallet_type: str | None = None
+94 ewallet_number: str | None = None
+95 payment_currency: str | None = None
+96 iban: str | None = None
+97 payment_notes: str | None = None
+98 default_commission_type: Literal["percentage", "flat"] | None = None
+99 default_commission_value: Decimal | None = None
+100 pdp_consent_version: str | None = None
+101 terms_version: str | None = None
+102
+103
+104 class ReassignRequest(BaseModel):
+105 new_user_id: UUID | None
+106 reason: str
+107
+108
+109 class BulkReassignRequest(BaseModel):
+110 partner_ids: list[UUID]
+111 new_user_id: UUID
+112 reason: str
+113
+114
+115 class ReferralCreate(BaseModel):
+116 process_id: UUID
+117 notes: str | None = None
+118
+119
+120 class ReferralSwap(BaseModel):
+121 new_partner_id: UUID
+122
+123
+124 class CommissionMarkPaidRequest(BaseModel):
+125 paid_via: str
+126 payment_reference: str
+127 payment_proof_url: str | None = None
+128 receipt_type: Literal["kwitansi", "invoice", "none"] | None = None
+129 receipt_file_url: str | None = None
+130
+131
+132 class ClawbackRequest(BaseModel):
+133 reason: str
+134 amount_idr: Decimal | None = None
+135
+136
+137 class WaiveRequest(BaseModel):
+138 reason: str
+139
+140
+141 # ── Helpers ──────────────────────────────────────────────────────────────────
+142
+143 def _require_admin(user: dict[str, Any]) -> None:
+144 """Raise 403 if user is not admin."""
+145 if user.get("role") != "admin":
+146 raise HTTPException(status_code=403, detail="admin only")
+147
+148
+149 def _require_finance(user: dict[str, Any]) -> None:
+150 """Raise 403 if user lacks finance permission.
+151
+152 v1 fallback: admin role alone is sufficient because permissions list
+153 may not be populated in all JWT tokens yet. When finance.mark_paid is
+154 wired into the JWT payload, this guard will enforce it for non-admins.
+155 """
+156 perms = user.get("permissions", [])
+157 if user.get("role") == "admin":
+158 return # admin always has finance
+159 if "finance.mark_paid" in perms:
+160 return
+161 raise HTTPException(status_code=403, detail="finance permission required")
+162
+163
+164 def _sterilize_client_for_partner(full_name: str) -> str:
+165 """'Mario Rossi' → 'Mario R.' — hide client surname from partner-role user."""
+166 parts = full_name.strip().split()
+167 if not parts:
+168 return ""
+169 if len(parts) == 1:
+170 return parts[0]
+171 return f"{parts[0]} {parts[-1][0]}."
+172
+173
+174 def _partner_to_dict(p: Any) -> dict[str, Any]:
+175 """Convert Partner dataclass or asyncpg Record to JSON-serialisable dict."""
+176 if dataclasses.is_dataclass(p) and not isinstance(p, type):
+177 return dataclasses.asdict(p)
+178 return dict(p)
+179
+180
+181 # ── Partner CRUD ─────────────────────────────────────────────────────────────
+182
+183 @router.post("", status_code=status.HTTP_201_CREATED)
+184 async def create_partner(
+185 body: PartnerCreate,
+186 user: dict[str, Any] = Depends(get_current_user),
+187 pool: asyncpg.Pool = Depends(get_database_pool),
+188 ) -> Any:
+189 """Create a new partner. Team members auto-assign to themselves."""
+190 try:
+191 async with pool.acquire() as conn:
+192 svc = PartnersService(conn)
+193 data = body.model_dump(exclude_none=True)
+194 assigned_to = data.pop("assigned_to", None)
+195 # Team role: always scope to self (ignore any supplied assigned_to)
+196 if user.get("role") == "team":
+197 assigned_to = UUID(str(user["user_id"]))
+198 elif assigned_to is None and user.get("role") == "admin":
+199 assigned_to = None # explicit None allowed for admin
+200 pid = await svc.create_partner(
+201 assigned_to=assigned_to,
+202 created_by=UUID(str(user["user_id"])),
+203 **data,
+204 )
+205 partner = await svc.repo.get_partner(pid)
+206 return _partner_to_dict(partner)
+207 except HTTPException:
+208 raise
+209 except Exception:
+210 logger.exception("create_partner failed")
+211 raise HTTPException(status_code=500, detail="internal error")
+212
+213
+214 @router.get("")
+215 async def list_partners(
+216 assigned_to: UUID | None = None,
+217 onboarding_status: str | None = None,
+218 orphaned: bool = False,
+219 search: str | None = None,
+220 user: dict[str, Any] = Depends(get_current_user),
+221 pool: asyncpg.Pool = Depends(get_database_pool),
+222 ) -> Any:
+223 """List partners. Team members see only their own."""
+224 async with pool.acquire() as conn:
+225 svc = PartnersService(conn)
+226 partners = await svc.list_partners(
+227 actor_user=UUID(str(user["user_id"])),
+228 actor_role=user.get("role", "team"),
+229 assigned_to=assigned_to,
+230 onboarding_status=onboarding_status,
+231 orphaned=orphaned,
+232 search=search,
+233 )
+234 return [_partner_to_dict(p) for p in partners]
+235
+236
+237 @router.get("/me")
+238 async def me(
+239 user: dict[str, Any] = Depends(get_current_user),
+240 pool: asyncpg.Pool = Depends(get_database_pool),
+241 ) -> Any:
+242 """Self-view for partner-role users. Returns their own partner record."""
+243 if user.get("role") != "partner":
+244 raise HTTPException(status_code=403, detail="partner role required")
+245 async with pool.acquire() as conn:
+246 row = await conn.fetchrow(
+247 "SELECT partner_id FROM users WHERE id = $1",
+248 UUID(str(user["user_id"])),
+249 )
+250 if not row or not row["partner_id"]:
+251 raise HTTPException(status_code=403, detail="no partner profile linked to this user")
+252 svc = PartnersService(conn)
+253 partner = await svc.repo.get_partner(row["partner_id"])
+254 if partner is None:
+255 raise HTTPException(status_code=404, detail="partner record not found")
+256 return _partner_to_dict(partner)
+257
+258
+259 @router.get("/me/referrals")
+260 async def me_referrals(
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/commission_engine.py | sed -n '1,300p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	# backend/services/crm/partners/commission_engine.py
-     2	"""
-     3	CommissionEngine — pure-calculation + state-machine-transition layer.
-     4	
-     5	Isolation contract: this module is the ONLY place that contains commission
-     6	business logic. It calls PartnersRepository directly and must not import
-     7	EventBus, FastAPI routers, or any other application-layer component (so it
-     8	can be tested with direct asyncpg connections and no side effects).
-     9	
-    10	Business rules source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §4.4
-    11	Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 5
-    12	
-    13	Append-only ledger exception (spec §Q9, plan Step 5.2):
-    14	  The partner_commissions table is append-only. The ONE documented exception
-    15	  is that approve() may reduce net_amount_idr on the incoming accrual row when
-    16	  offsetting a pending clawback. This is implemented via a raw UPDATE on that
-    17	  single column (search for "spec §Q9" in this file).
-    18	
-    19	Pre-flight note (2026-04-20, outcome c):
-    20	  The `processes` table does not exist in the live Fly.io DB — it is a test
-    21	  stub only. Column names used in accrue_from_process() match the stub DDL
-    22	  added to conftest.py for Task 5:
-    23	      status TEXT, payment_status TEXT,
-    24	      total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
-    25	  If the processes table is later migrated into production, verify these
-    26	  column names against the real schema and add aliasing here if needed.
-    27	"""
-    28	from __future__ import annotations
-    29	
-    30	import logging
-    31	from datetime import datetime, timedelta, timezone
-    32	from decimal import Decimal
-    33	from typing import Any
-    34	from uuid import UUID
-    35	
-    36	import asyncpg
-    37	
-    38	from backend.services.crm.partners.repository import PartnersRepository
-    39	
-    40	logger = logging.getLogger(__name__)
-    41	
-    42	# Withholding rates keyed by tax_withholding_category.
-    43	# Rates are Decimal to avoid float rounding errors throughout all math.
-    44	# v1 placeholder values — Asya to confirm with tax advisor.
-    45	# Source: spec §4.4 rule 4.
-    46	_WITHHOLDING_RATES: dict[str, Decimal] = {
-    47	    "pph21": Decimal("2.5"),
-    48	    "pph23": Decimal("2.0"),
-    49	    "exempt": Decimal("0"),
-    50	    "tbd": Decimal("0"),  # also blocks approve() — see gate below
-    51	}
-    52	
-    53	
-    54	class CommissionEngine:
-    55	    """Encapsulates all commission accrual, approval, payment, and clawback logic.
-    56	
-    57	    Args:
-    58	        conn: A live asyncpg.Connection. The caller is responsible for
-    59	              lifecycle (open/close, transaction wrapping if needed).
-    60	    """
-    61	
-    62	    def __init__(self, conn: asyncpg.Connection) -> None:
-    63	        self.conn = conn
-    64	        self.repo = PartnersRepository(conn)
-    65	
-    66	    # ── Accrual ─────────────────────────────────────────────────────────────
-    67	
-    68	    async def accrue_from_process(
-    69	        self,
-    70	        process_id: UUID,
-    71	        partner_id: UUID | None = None,
-    72	    ) -> UUID | None:
-    73	        """Accrue a commission for a completed+paid process.
-    74	
-    75	        Reads the process row, validates status/payment_status, resolves the
-    76	        referral and partner, computes gross/withholding/net with snapshot
-    77	        semantics, then inserts an 'accrued' commission row.
-    78	
-    79	        Returns:
-    80	            The new commission UUID, or None if the process is not yet eligible
-    81	            (not completed, not paid, no referral, or wrong partner_id).
-    82	
-    83	        Idempotency:
-    84	            key = f"accrual:{process_id}:{completed_at.isoformat()}"
-    85	            A second call for the same process+completed_at is a no-op
-    86	            (ON CONFLICT DO NOTHING via UNIQUE index on idempotency_key).
-    87	        """
-    88	        # Step 1: fetch process — must be completed AND paid.
-    89	        # NOTE: Column names verified against conftest.py stub DDL (outcome c).
-    90	        # If a real processes migration uses different names, alias here only.
-    91	        proc = await self.conn.fetchrow(
-    92	            """
-    93	            SELECT id, status, payment_status, total_invoiced_idr, completed_at
-    94	            FROM processes WHERE id = $1
+succeeded in 0ms:
+1 # backend/services/crm/partners/commission_engine.py
+2 """
+3 CommissionEngine — pure-calculation + state-machine-transition layer.
+4
+5 Isolation contract: this module is the ONLY place that contains commission
+6 business logic. It calls PartnersRepository directly and must not import
+7 EventBus, FastAPI routers, or any other application-layer component (so it
+8 can be tested with direct asyncpg connections and no side effects).
+9
+10 Business rules source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §4.4
+11 Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 5
+12
+13 Append-only ledger exception (spec §Q9, plan Step 5.2):
+14 The partner_commissions table is append-only. The ONE documented exception
+15 is that approve() may reduce net_amount_idr on the incoming accrual row when
+16 offsetting a pending clawback. This is implemented via a raw UPDATE on that
+17 single column (search for "spec §Q9" in this file).
+18
+19 Pre-flight note (2026-04-20, outcome c):
+20 The `processes` table does not exist in the live Fly.io DB — it is a test
+21 stub only. Column names used in accrue_from_process() match the stub DDL
+22 added to conftest.py for Task 5:
+23 status TEXT, payment_status TEXT,
+24 total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
+25 If the processes table is later migrated into production, verify these
+26 column names against the real schema and add aliasing here if needed.
+27 """
+28 from **future** import annotations
+29
+30 import logging
+31 from datetime import datetime, timedelta, timezone
+32 from decimal import Decimal
+33 from typing import Any
+34 from uuid import UUID
+35
+36 import asyncpg
+37
+38 from backend.services.crm.partners.repository import PartnersRepository
+39
+40 logger = logging.getLogger(**name**)
+41
+42 # Withholding rates keyed by tax_withholding_category.
+43 # Rates are Decimal to avoid float rounding errors throughout all math.
+44 # v1 placeholder values — Asya to confirm with tax advisor.
+45 # Source: spec §4.4 rule 4.
+46 _WITHHOLDING_RATES: dict[str, Decimal] = {
+47 "pph21": Decimal("2.5"),
+48 "pph23": Decimal("2.0"),
+49 "exempt": Decimal("0"),
+50 "tbd": Decimal("0"), # also blocks approve() — see gate below
+51 }
+52
+53
+54 class CommissionEngine:
+55 """Encapsulates all commission accrual, approval, payment, and clawback logic.
+56
+57 Args:
+58 conn: A live asyncpg.Connection. The caller is responsible for
+59 lifecycle (open/close, transaction wrapping if needed).
+60 """
+61
+62 def **init**(self, conn: asyncpg.Connection) -> None:
+63 self.conn = conn
+64 self.repo = PartnersRepository(conn)
+65
+66 # ── Accrual ─────────────────────────────────────────────────────────────
+67
+68 async def accrue_from_process(
+69 self,
+70 process_id: UUID,
+71 partner_id: UUID | None = None,
+72 ) -> UUID | None:
+73 """Accrue a commission for a completed+paid process.
+74
+75 Reads the process row, validates status/payment_status, resolves the
+76 referral and partner, computes gross/withholding/net with snapshot
+77 semantics, then inserts an 'accrued' commission row.
+78
+79 Returns:
+80 The new commission UUID, or None if the process is not yet eligible
+81 (not completed, not paid, no referral, or wrong partner_id).
+82
+83 Idempotency:
+84 key = f"accrual:{process_id}:{completed_at.isoformat()}"
+85 A second call for the same process+completed_at is a no-op
+86 (ON CONFLICT DO NOTHING via UNIQUE index on idempotency_key).
+87 """
+88 # Step 1: fetch process — must be completed AND paid.
+89 # NOTE: Column names verified against conftest.py stub DDL (outcome c).
+90 # If a real processes migration uses different names, alias here only.
+91 proc = await self.conn.fetchrow(
+92 """
+93 SELECT id, status, payment_status, total_invoiced_idr, completed_at
+94 FROM processes WHERE id = $1
     95	            """,
     96	            process_id,
     97	        )
@@ -4311,55 +4317,55 @@ exec
    253	                # updated (all other commission writes go through insert_commission).
    254	                await self.conn.execute(
    255	                    "UPDATE partner_commissions SET net_amount_idr = $2 WHERE id = $1",
-   256	                    c.id,
-   257	                    new_net,
-   258	                )
-   259	                await self.repo.update_commission_status(oldest.id, "offset_applied")
-   260	                offset_applied_id = oldest.id
-   261	                logger.info(
-   262	                    "approve: offset clawback %s against accrual %s "
-   263	                    "(net reduced %s → %s IDR)",
-   264	                    oldest.id, c.id, c.net_amount_idr, new_net,
-   265	                )
-   266	
-   267	        await self.repo.update_commission_status(
-   268	            commission_id, "approved", approved_by=actor
-   269	        )
-   270	        if offset_applied_id:
-   271	            logger.info(
-   272	                "approve: commission %s approved with clawback %s offset",
-   273	                commission_id, offset_applied_id,
-   274	            )
-   275	        else:
-   276	            logger.info("approve: commission %s approved (no clawback offset)", commission_id)
-   277	
-   278	    # ── Mark paid ───────────────────────────────────────────────────────────
-   279	
-   280	    async def mark_paid(
-   281	        self,
-   282	        commission_id: UUID,
-   283	        *,
-   284	        actor: UUID,
-   285	        paid_via: str,
-   286	        payment_reference: str,
-   287	        payment_proof_url: str | None = None,
-   288	        receipt_type: str | None = None,
-   289	        receipt_file_url: str | None = None,
-   290	    ) -> None:
-   291	        """Transition a commission from 'approved' to 'paid'."""
-   292	        await self.repo.update_commission_status(
-   293	            commission_id,
-   294	            "paid",
-   295	            paid_by=actor,
-   296	            paid_via=paid_via,
-   297	            payment_reference=payment_reference,
-   298	            payment_proof_url=payment_proof_url,
-   299	            receipt_type=receipt_type,
-   300	            receipt_file_url=receipt_file_url,
+256 c.id,
+257 new_net,
+258 )
+259 await self.repo.update_commission_status(oldest.id, "offset_applied")
+260 offset_applied_id = oldest.id
+261 logger.info(
+262 "approve: offset clawback %s against accrual %s "
+263 "(net reduced %s → %s IDR)",
+264 oldest.id, c.id, c.net_amount_idr, new_net,
+265 )
+266
+267 await self.repo.update_commission_status(
+268 commission_id, "approved", approved_by=actor
+269 )
+270 if offset_applied_id:
+271 logger.info(
+272 "approve: commission %s approved with clawback %s offset",
+273 commission_id, offset_applied_id,
+274 )
+275 else:
+276 logger.info("approve: commission %s approved (no clawback offset)", commission_id)
+277
+278 # ── Mark paid ───────────────────────────────────────────────────────────
+279
+280 async def mark_paid(
+281 self,
+282 commission_id: UUID,
+283 *,
+284 actor: UUID,
+285 paid_via: str,
+286 payment_reference: str,
+287 payment_proof_url: str | None = None,
+288 receipt_type: str | None = None,
+289 receipt_file_url: str | None = None,
+290 ) -> None:
+291 """Transition a commission from 'approved' to 'paid'."""
+292 await self.repo.update_commission_status(
+293 commission_id,
+294 "paid",
+295 paid_by=actor,
+296 paid_via=paid_via,
+297 payment_reference=payment_reference,
+298 payment_proof_url=payment_proof_url,
+299 receipt_type=receipt_type,
+300 receipt_file_url=receipt_file_url,
 
 exec
 /bin/zsh -lc "rg --files | rg 'partners|migration_119|router_manifest|middleware|process'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
+succeeded in 0ms:
 apps/war-room/agents/015_qwen_preprocessor.py
 docs/superpowers/reviews/2026-04-21-partners-v1/04-nb2.md
 docs/superpowers/reviews/2026-04-21-partners-v1/99-synthesis.md
@@ -4394,7 +4400,7 @@ apps/backend-rag/backend/tests/test_process_split.py
 apps/mouth/src/lib/schemas/process.ts
 apps/mouth/src/lib/schemas/process.test.ts
 apps/mouth/src/lib/api/partners/partners.ts
-apps/mouth/src/__tests__/middleware.test.ts
+apps/mouth/src/**tests**/middleware.test.ts
 apps/mouth/src/components/process/kanban-colors.ts
 apps/mouth/src/components/process/GhostCard.tsx
 apps/mouth/src/components/process/MonthPillTabs.tsx
@@ -4402,7 +4408,7 @@ apps/backend-rag/tests/integration/test_middleware_comprehensive.py
 apps/backend-rag/backend/tests/setup/test_router_manifest.py
 apps/backend-rag/backend/tests/services/crm/partners/test_emails.py
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py
-apps/backend-rag/backend/tests/services/crm/partners/__init__.py
+apps/backend-rag/backend/tests/services/crm/partners/**init**.py
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py
@@ -4422,14 +4428,14 @@ apps/backend-rag/backend/app/setup/middleware_config.py
 apps/backend-rag/backend/services/portal/document_processing.py
 apps/backend-rag/backend/tests/services/rag/agentic/test_response_processor.py
 apps/backend-rag/tests/unit/middleware/test_hybrid_auth_coverage.py
-apps/backend-rag/tests/unit/middleware/__init__.py
+apps/backend-rag/tests/unit/middleware/**init**.py
 apps/backend-rag/backend/services/crm/completed_process_service.py
 apps/backend-rag/backend/services/crm/partners/repository.py
 apps/backend-rag/backend/services/crm/partners/commission_engine.py
 apps/backend-rag/backend/app/utils/subprocess_utils.py
 apps/backend-rag/backend/services/crm/partners/templates/commission.md.j2
 apps/backend-rag/backend/services/crm/partners/templates/welcome.md.j2
-apps/backend-rag/backend/services/crm/partners/__init__.py
+apps/backend-rag/backend/services/crm/partners/**init**.py
 apps/backend-rag/backend/services/crm/partners/emails.py
 apps/backend-rag/backend/services/crm/partners/events.py
 apps/backend-rag/backend/services/crm/partners/models.py
@@ -4445,7 +4451,7 @@ apps/backend-rag/backend/tests/unit/middleware/test_activity_logging_email.py
 apps/backend-rag/backend/tests/unit/middleware/test_rate_limiter_middleware.py
 apps/backend-rag/backend/tests/unit/middleware/test_activity_logging_dispatch.py
 apps/backend-rag/backend/tests/unit/middleware/test_request_tracing.py
-apps/backend-rag/backend/tests/unit/middleware/__init__.py
+apps/backend-rag/backend/tests/unit/middleware/**init**.py
 apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth.py
 apps/backend-rag/backend/services/rag/agentic/response_processor.py
 apps/mouth/src/components/portal/process/ProcessTimeline.tsx
@@ -4484,7 +4490,7 @@ apps/mouth/src/app/(workspace)/process/new/error.tsx
 apps/mouth/src/app/(workspace)/partners/page.tsx
 apps/graph-engine/tests/unit/api/test_middleware.py
 apps/mouth/src/app/(workspace)/partners/[id]/page.tsx
-apps/mouth/src/app/(workspace)/process/__tests__/page.test.tsx
+apps/mouth/src/app/(workspace)/process/**tests**/page.test.tsx
 apps/mouth/src/app/(workspace)/partners/[id]/edit/page.tsx
 apps/mouth/src/app/(workspace)/partners/finance/page.tsx
 apps/mouth/src/app/(workspace)/partners/new/page.tsx
@@ -4508,90 +4514,92 @@ apps/mouth/src/content/articles/immigration/immigration-provides-free-passport-p
 
 exec
 /bin/zsh -lc 'git status --short --branch' in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 1776ms:
-2026-04-21 10:45:11.275 xcodebuild[15757:3217342]  DVTFilePathFSEvents: Failed to start fs event stream.
+succeeded in 1776ms:
+2026-04-21 10:45:11.275 xcodebuild[15757:3217342] DVTFilePathFSEvents: Failed to start fs event stream.
 2026-04-21 10:45:11.490 xcodebuild[15757:3217341] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
 git: warning: confstr() failed with code 5: couldn't get path of DARWIN_USER_TEMP_DIR; using /tmp instead
 git: error: couldn't create cache file '/tmp/xcrun_db-lzJyRMmi' (errno=Operation not permitted)
-2026-04-21 10:45:11.892 xcodebuild[15762:3217357]  DVTFilePathFSEvents: Failed to start fs event stream.
+2026-04-21 10:45:11.892 xcodebuild[15762:3217357] DVTFilePathFSEvents: Failed to start fs event stream.
 2026-04-21 10:45:12.034 xcodebuild[15762:3217356] [MT] DVTDeveloperPaths: Failed to get length of DARWIN_USER_CACHE_DIR from confstr(3), error = Error Domain=NSPOSIXErrorDomain Code=5 "Input/output error". Using NSCachesDirectory instead.
+
 ## feat/crm-partners-module...origin/feat/crm-partners-module
+
 ?? docs/superpowers/reviews/
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/repository.py | sed -n '1,360p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	# backend/services/crm/partners/repository.py
-     2	from __future__ import annotations
-     3	
-     4	import json
-     5	import logging
-     6	from decimal import Decimal
-     7	from typing import Any
-     8	from uuid import UUID
-     9	
-    10	import asyncpg
-    11	
-    12	from backend.services.crm.partners.models import (
-    13	    Partner, PartnerReferral, PartnerCommission, PartnerAuditLogEntry,
-    14	    EntityType, CommissionType, CommissionStatus, CommissionEntryType,
-    15	    WithholdingCategory, RuleSource,
-    16	)
-    17	
-    18	logger = logging.getLogger(__name__)
-    19	
-    20	# Commission state machine.
-    21	# Source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3.3 + §4.4.
-    22	# v1 terminal states: paid, offset_applied, waived, repaid.
-    23	_ALLOWED_TRANSITIONS: dict[CommissionStatus, set[CommissionStatus]] = {
-    24	    "accrued": {"approved"},
-    25	    "approved": {"paid"},
-    26	    "paid": set(),
-    27	    "clawback_pending": {"offset_applied", "waived", "repaid"},
-    28	    "offset_applied": set(),
-    29	    "waived": set(),
-    30	    "repaid": set(),
-    31	}
-    32	
-    33	_PARTNER_UPDATABLE_COLS = {
-    34	    "full_name", "work_role", "company_name", "office_address",
-    35	    "email", "phone", "preferred_language",
-    36	    "entity_type", "npwp", "nik", "tax_withholding_category", "fiscal_address",
-    37	    "bank_name", "bank_account_holder", "bank_account_number",
-    38	    "ewallet_type", "ewallet_number", "payment_currency", "iban", "payment_notes",
-    39	    "default_commission_type", "default_commission_value",
-    40	    "pdp_consent_at", "pdp_consent_version", "terms_accepted_at", "terms_version",
-    41	}
-    42	# NB: onboarding_status, assigned_to, welcome_email_sent_at are ONLY settable
-    43	# via their dedicated methods (activate_partner, reassign_partner, mark_welcome_sent).
-    44	
-    45	
-    46	class PartnersRepository:
-    47	    """SQL layer. No business logic, no audit writes, no event emission."""
-    48	
-    49	    def __init__(self, conn: asyncpg.Connection):
-    50	        self.conn = conn
-    51	
-    52	    # ── Partner CRUD ────────────────────────────────────────────────────
-    53	
-    54	    async def insert_partner(
-    55	        self,
-    56	        *,
-    57	        full_name: str,
-    58	        email: str,
-    59	        entity_type: EntityType,
-    60	        assigned_to: UUID | None = None,
-    61	        created_by: UUID | None = None,
-    62	        **optional: Any,
-    63	    ) -> UUID:
-    64	        await self._assert_email_is_not_internal(email)
-    65	        cols = ["full_name", "email", "entity_type", "assigned_to", "created_by"]
-    66	        vals: list[Any] = [full_name, email, entity_type, assigned_to, created_by]
-    67	        for k, v in optional.items():
-    68	            if k not in _PARTNER_UPDATABLE_COLS:
-    69	                raise ValueError(f"Field {k!r} is not insertable via insert_partner")
-    70	            cols.append(k); vals.append(v)
-    71	        placeholders = ", ".join(f"${i+1}" for i in range(len(vals)))
+succeeded in 0ms:
+1 # backend/services/crm/partners/repository.py
+2 from **future** import annotations
+3
+4 import json
+5 import logging
+6 from decimal import Decimal
+7 from typing import Any
+8 from uuid import UUID
+9
+10 import asyncpg
+11
+12 from backend.services.crm.partners.models import (
+13 Partner, PartnerReferral, PartnerCommission, PartnerAuditLogEntry,
+14 EntityType, CommissionType, CommissionStatus, CommissionEntryType,
+15 WithholdingCategory, RuleSource,
+16 )
+17
+18 logger = logging.getLogger(**name**)
+19
+20 # Commission state machine.
+21 # Source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3.3 + §4.4.
+22 # v1 terminal states: paid, offset_applied, waived, repaid.
+23 _ALLOWED_TRANSITIONS: dict[CommissionStatus, set[CommissionStatus]] = {
+24 "accrued": {"approved"},
+25 "approved": {"paid"},
+26 "paid": set(),
+27 "clawback_pending": {"offset_applied", "waived", "repaid"},
+28 "offset_applied": set(),
+29 "waived": set(),
+30 "repaid": set(),
+31 }
+32
+33 _PARTNER_UPDATABLE_COLS = {
+34 "full_name", "work_role", "company_name", "office_address",
+35 "email", "phone", "preferred_language",
+36 "entity_type", "npwp", "nik", "tax_withholding_category", "fiscal_address",
+37 "bank_name", "bank_account_holder", "bank_account_number",
+38 "ewallet_type", "ewallet_number", "payment_currency", "iban", "payment_notes",
+39 "default_commission_type", "default_commission_value",
+40 "pdp_consent_at", "pdp_consent_version", "terms_accepted_at", "terms_version",
+41 }
+42 # NB: onboarding_status, assigned_to, welcome_email_sent_at are ONLY settable
+43 # via their dedicated methods (activate_partner, reassign_partner, mark_welcome_sent).
+44
+45
+46 class PartnersRepository:
+47 """SQL layer. No business logic, no audit writes, no event emission."""
+48
+49 def **init**(self, conn: asyncpg.Connection):
+50 self.conn = conn
+51
+52 # ── Partner CRUD ────────────────────────────────────────────────────
+53
+54 async def insert_partner(
+55 self,
+56 *,
+57 full_name: str,
+58 email: str,
+59 entity_type: EntityType,
+60 assigned_to: UUID | None = None,
+61 created_by: UUID | None = None,
+62 **optional: Any,
+63 ) -> UUID:
+64 await self._assert_email_is_not_internal(email)
+65 cols = ["full_name", "email", "entity_type", "assigned_to", "created_by"]
+66 vals: list[Any] = [full_name, email, entity_type, assigned_to, created_by]
+67 for k, v in optional.items():
+68 if k not in _PARTNER_UPDATABLE_COLS:
+69 raise ValueError(f"Field {k!r} is not insertable via insert_partner")
+70 cols.append(k); vals.append(v)
+71 placeholders = ", ".join(f"${i+1}" for i in range(len(vals)))
     72	        sql = f"INSERT INTO partners ({', '.join(cols)}) VALUES ({placeholders}) RETURNING id"
     73	        row = await self.conn.fetchrow(sql, *vals)
     74	        logger.debug("insert_partner id=%s email=%s", row["id"], email)
@@ -4609,13 +4617,13 @@ exec
     86	        """
     87	        row = await self.conn.fetchrow(
     88	            "SELECT 1 FROM users WHERE email = $1 AND role IN ('team','admin')",
-    89	            email,
-    90	        )
-    91	        if row is not None:
-    92	            raise ValueError(f"email is already a team/admin user: {email!r}")
-    93	
-    94	    async def get_partner(self, partner_id: UUID) -> Partner | None:
-    95	        row = await self.conn.fetchrow("SELECT * FROM partners WHERE id = $1", partner_id)
+89 email,
+90 )
+91 if row is not None:
+92 raise ValueError(f"email is already a team/admin user: {email!r}")
+93
+94 async def get_partner(self, partner_id: UUID) -> Partner | None:
+95 row = await self.conn.fetchrow("SELECT * FROM partners WHERE id = $1", partner_id)
     96	        return self._row_to_partner(row) if row else None
     97	
     98	    async def list_partners(
@@ -4630,15 +4638,15 @@ exec
    107	        where, args = ["TRUE"], []
    108	        if assigned_to is not None:
    109	            args.append(assigned_to); where.append(f"assigned_to = ${len(args)}")
-   110	        if onboarding_status is not None:
-   111	            args.append(onboarding_status); where.append(f"onboarding_status = ${len(args)}")
+110 if onboarding_status is not None:
+111 args.append(onboarding_status); where.append(f"onboarding_status = ${len(args)}")
    112	        if orphaned:
    113	            where.append("assigned_to IS NULL")
    114	        if search:
    115	            args.append(f"%{search}%")
    116	            where.append(f"(full_name ILIKE ${len(args)} OR email ILIKE ${len(args)} OR company_name ILIKE ${len(args)})")
-   117	        args.append(limit)
-   118	        sql = f"SELECT * FROM partners WHERE {' AND '.join(where)} ORDER BY created_at DESC LIMIT ${len(args)}"
+117 args.append(limit)
+118 sql = f"SELECT * FROM partners WHERE {' AND '.join(where)} ORDER BY created_at DESC LIMIT ${len(args)}"
    119	        rows = await self.conn.fetch(sql, *args)
    120	        return [self._row_to_partner(r) for r in rows]
    121	
@@ -4651,21 +4659,21 @@ exec
    128	        if "email" in fields:
    129	            await self._assert_email_is_not_internal(fields["email"])
    130	        sets = [f"{k} = ${i+2}" for i, k in enumerate(fields)]
-   131	        sets.append(f"updated_at = now()")
-   132	        sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
+131 sets.append(f"updated_at = now()")
+132 sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
    133	        await self.conn.execute(sql, partner_id, *fields.values())
    134	
    135	    async def activate_partner(self, partner_id: UUID) -> None:
    136	        await self.conn.execute(
    137	            "UPDATE partners SET onboarding_status = 'active', updated_at = now() "
    138	            "WHERE id = $1 AND onboarding_status = 'pending_approval'",
-   139	            partner_id,
-   140	        )
-   141	
-   142	    async def deactivate_partner(self, partner_id: UUID) -> None:
-   143	        await self.conn.execute(
-   144	            "UPDATE partners SET onboarding_status = 'inactive', deactivated_at = now(), "
-   145	            "updated_at = now() WHERE id = $1",
+139 partner_id,
+140 )
+141
+142 async def deactivate_partner(self, partner_id: UUID) -> None:
+143 await self.conn.execute(
+144 "UPDATE partners SET onboarding_status = 'inactive', deactivated_at = now(), "
+145 "updated_at = now() WHERE id = $1",
    146	            partner_id,
    147	        )
    148	
@@ -4678,15 +4686,15 @@ exec
    155	    async def orphan_partners_of_user(self, user_id: UUID) -> int:
    156	        result = await self.conn.execute(
    157	            "UPDATE partners SET assigned_to = NULL, updated_at = now() WHERE assigned_to = $1",
-   158	            user_id,
-   159	        )
-   160	        # asyncpg returns "UPDATE <n>"
-   161	        return int(result.split()[-1])
-   162	
-   163	    async def mark_welcome_sent(self, partner_id: UUID) -> None:
-   164	        await self.conn.execute(
-   165	            "UPDATE partners SET welcome_email_sent_at = now() "
-   166	            "WHERE id = $1 AND welcome_email_sent_at IS NULL",
+158 user_id,
+159 )
+160 # asyncpg returns "UPDATE <n>"
+161 return int(result.split()[-1])
+162
+163 async def mark_welcome_sent(self, partner_id: UUID) -> None:
+164 await self.conn.execute(
+165 "UPDATE partners SET welcome_email_sent_at = now() "
+166 "WHERE id = $1 AND welcome_email_sent_at IS NULL",
    167	            partner_id,
    168	        )
    169	
@@ -4703,103 +4711,103 @@ exec
    180	            INSERT INTO partner_referrals
    181	                (partner_id, process_id, share_percent, referred_by_user_id, notes)
    182	            VALUES ($1, $2, $3, $4, $5)
-   183	            RETURNING id
-   184	            """,
-   185	            partner_id, process_id, share_percent, referred_by_user_id, notes,
-   186	        )
-   187	        return row["id"]
-   188	
-   189	    async def get_referral_by_process(self, process_id: UUID) -> PartnerReferral | None:
-   190	        row = await self.conn.fetchrow(
-   191	            "SELECT * FROM partner_referrals WHERE process_id = $1", process_id
+183 RETURNING id
+184 """,
+185 partner_id, process_id, share_percent, referred_by_user_id, notes,
+186 )
+187 return row["id"]
+188
+189 async def get_referral_by_process(self, process_id: UUID) -> PartnerReferral | None:
+190 row = await self.conn.fetchrow(
+191 "SELECT * FROM partner_referrals WHERE process_id = $1", process_id
    192	        )
    193	        return self._row_to_referral(row) if row else None
    194	
    195	    async def list_referrals_for_partner(self, partner_id: UUID) -> list[PartnerReferral]:
    196	        rows = await self.conn.fetch(
    197	            "SELECT * FROM partner_referrals WHERE partner_id = $1 ORDER BY referred_at DESC",
-   198	            partner_id,
-   199	        )
-   200	        return [self._row_to_referral(r) for r in rows]
-   201	
-   202	    async def update_referral_partner(self, referral_id: UUID, new_partner_id: UUID) -> None:
-   203	        await self.conn.execute(
-   204	            "UPDATE partner_referrals SET partner_id = $2 WHERE id = $1",
-   205	            referral_id, new_partner_id,
-   206	        )
-   207	
-   208	    async def delete_referral(self, referral_id: UUID) -> None:
-   209	        # Referrals are deletable ONLY before any commission is accrued against them.
-   210	        row = await self.conn.fetchrow(
-   211	            "SELECT 1 FROM partner_commissions WHERE referral_id = $1 LIMIT 1",
+198 partner_id,
+199 )
+200 return [self._row_to_referral(r) for r in rows]
+201
+202 async def update_referral_partner(self, referral_id: UUID, new_partner_id: UUID) -> None:
+203 await self.conn.execute(
+204 "UPDATE partner_referrals SET partner_id = $2 WHERE id = $1",
+205 referral_id, new_partner_id,
+206 )
+207
+208 async def delete_referral(self, referral_id: UUID) -> None:
+209 # Referrals are deletable ONLY before any commission is accrued against them.
+210 row = await self.conn.fetchrow(
+211 "SELECT 1 FROM partner_commissions WHERE referral_id = $1 LIMIT 1",
    212	            referral_id,
    213	        )
    214	        if row is not None:
    215	            raise RuntimeError("Cannot delete referral with commissions recorded")
    216	        try:
    217	            await self.conn.execute("DELETE FROM partner_referrals WHERE id = $1", referral_id)
-   218	        except asyncpg.ForeignKeyViolationError as e:
-   219	            # Race: commission inserted between our SELECT and DELETE.
-   220	            raise RuntimeError("Cannot delete referral with commissions recorded") from e
-   221	
-   222	    # ── Commissions (append-only) ───────────────────────────────────────
-   223	
-   224	    async def insert_commission(
-   225	        self,
-   226	        *,
-   227	        partner_id: UUID,
-   228	        entry_type: CommissionEntryType,
-   229	        base_amount_idr: Decimal,
-   230	        commission_type_snapshot: CommissionType,
-   231	        commission_value_snapshot: Decimal,
-   232	        gross_amount_idr: Decimal,
-   233	        net_amount_idr: Decimal,
-   234	        idempotency_key: str,
-   235	        referral_id: UUID | None = None,
-   236	        process_id: UUID | None = None,
-   237	        related_commission_id: UUID | None = None,
-   238	        rule_source: RuleSource = "partner_default",
-   239	        assigned_to_snapshot: UUID | None = None,
-   240	        withholding_category: WithholdingCategory = "tbd",
-   241	        withholding_rate: Decimal = Decimal("0.0"),
-   242	        withholding_amount_idr: Decimal = Decimal("0.0"),
-   243	        status: CommissionStatus = "accrued",
-   244	        eligible_for_approval_at: Any = None,
-   245	        manual_override_reason: str | None = None,
-   246	        clawback_reason: str | None = None,
-   247	    ) -> UUID:
-   248	        row = await self.conn.fetchrow(
-   249	            """
-   250	            INSERT INTO partner_commissions (
-   251	                partner_id, entry_type, referral_id, process_id, related_commission_id,
-   252	                base_amount_idr, commission_type_snapshot, commission_value_snapshot,
-   253	                rule_source, assigned_to_snapshot,
-   254	                gross_amount_idr, withholding_category, withholding_rate,
-   255	                withholding_amount_idr, net_amount_idr,
-   256	                status, eligible_for_approval_at,
-   257	                manual_override_reason, clawback_reason, idempotency_key
-   258	            )
-   259	            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-   260	                    COALESCE($17, now()),$18,$19,$20)
-   261	            RETURNING id
-   262	            """,
-   263	            partner_id, entry_type, referral_id, process_id, related_commission_id,
-   264	            base_amount_idr, commission_type_snapshot, commission_value_snapshot,
-   265	            rule_source, assigned_to_snapshot,
-   266	            gross_amount_idr, withholding_category, withholding_rate,
-   267	            withholding_amount_idr, net_amount_idr,
-   268	            status, eligible_for_approval_at,
-   269	            manual_override_reason, clawback_reason, idempotency_key,
-   270	        )
-   271	        logger.debug(
-   272	            "insert_commission id=%s partner=%s type=%s status=%s",
-   273	            row["id"], partner_id, entry_type, status,
-   274	        )
-   275	        return row["id"]
-   276	
-   277	    async def get_commission(self, commission_id: UUID) -> PartnerCommission | None:
-   278	        row = await self.conn.fetchrow(
-   279	            "SELECT * FROM partner_commissions WHERE id = $1", commission_id
+218 except asyncpg.ForeignKeyViolationError as e:
+219 # Race: commission inserted between our SELECT and DELETE.
+220 raise RuntimeError("Cannot delete referral with commissions recorded") from e
+221
+222 # ── Commissions (append-only) ───────────────────────────────────────
+223
+224 async def insert_commission(
+225 self,
+226 *,
+227 partner_id: UUID,
+228 entry_type: CommissionEntryType,
+229 base_amount_idr: Decimal,
+230 commission_type_snapshot: CommissionType,
+231 commission_value_snapshot: Decimal,
+232 gross_amount_idr: Decimal,
+233 net_amount_idr: Decimal,
+234 idempotency_key: str,
+235 referral_id: UUID | None = None,
+236 process_id: UUID | None = None,
+237 related_commission_id: UUID | None = None,
+238 rule_source: RuleSource = "partner_default",
+239 assigned_to_snapshot: UUID | None = None,
+240 withholding_category: WithholdingCategory = "tbd",
+241 withholding_rate: Decimal = Decimal("0.0"),
+242 withholding_amount_idr: Decimal = Decimal("0.0"),
+243 status: CommissionStatus = "accrued",
+244 eligible_for_approval_at: Any = None,
+245 manual_override_reason: str | None = None,
+246 clawback_reason: str | None = None,
+247 ) -> UUID:
+248 row = await self.conn.fetchrow(
+249 """
+250 INSERT INTO partner_commissions (
+251 partner_id, entry_type, referral_id, process_id, related_commission_id,
+252 base_amount_idr, commission_type_snapshot, commission_value_snapshot,
+253 rule_source, assigned_to_snapshot,
+254 gross_amount_idr, withholding_category, withholding_rate,
+255 withholding_amount_idr, net_amount_idr,
+256 status, eligible_for_approval_at,
+257 manual_override_reason, clawback_reason, idempotency_key
+258 )
+259 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+260 COALESCE($17, now()),$18,$19,$20)
+261 RETURNING id
+262 """,
+263 partner_id, entry_type, referral_id, process_id, related_commission_id,
+264 base_amount_idr, commission_type_snapshot, commission_value_snapshot,
+265 rule_source, assigned_to_snapshot,
+266 gross_amount_idr, withholding_category, withholding_rate,
+267 withholding_amount_idr, net_amount_idr,
+268 status, eligible_for_approval_at,
+269 manual_override_reason, clawback_reason, idempotency_key,
+270 )
+271 logger.debug(
+272 "insert_commission id=%s partner=%s type=%s status=%s",
+273 row["id"], partner_id, entry_type, status,
+274 )
+275 return row["id"]
+276
+277 async def get_commission(self, commission_id: UUID) -> PartnerCommission | None:
+278 row = await self.conn.fetchrow(
+279 "SELECT * FROM partner_commissions WHERE id = $1", commission_id
    280	        )
    281	        return self._row_to_commission(row) if row else None
    282	
@@ -4808,8 +4816,8 @@ exec
    285	    ) -> list[PartnerCommission]:
    286	        args: list[Any] = [partner_id]
    287	        where = "partner_id = $1"
-   288	        if status is not None:
-   289	            args.append(status); where += f" AND status = ${len(args)}"
+288 if status is not None:
+289 args.append(status); where += f" AND status = ${len(args)}"
    290	        sql = f"SELECT * FROM partner_commissions WHERE {where} ORDER BY created_at DESC"
    291	        rows = await self.conn.fetch(sql, *args)
    292	        return [self._row_to_commission(r) for r in rows]
@@ -4817,84 +4825,84 @@ exec
    294	    async def list_pending_clawbacks(self, partner_id: UUID) -> list[PartnerCommission]:
    295	        rows = await self.conn.fetch(
    296	            "SELECT * FROM partner_commissions WHERE partner_id = $1 AND status = 'clawback_pending' "
-   297	            "ORDER BY accrued_at ASC",
-   298	            partner_id,
-   299	        )
-   300	        return [self._row_to_commission(r) for r in rows]
-   301	
-   302	    async def update_commission_status(
-   303	        self,
-   304	        commission_id: UUID,
-   305	        new_status: CommissionStatus,
-   306	        *,
-   307	        approved_by: UUID | None = None,
-   308	        paid_by: UUID | None = None,
-   309	        paid_via: str | None = None,
-   310	        payment_reference: str | None = None,
-   311	        payment_proof_url: str | None = None,
-   312	        receipt_type: str | None = None,
-   313	        receipt_file_url: str | None = None,
-   314	        waiver_reason: str | None = None,
-   315	    ) -> None:
-   316	        current = await self.get_commission(commission_id)
-   317	        if current is None:
-   318	            raise ValueError(f"Commission {commission_id} not found")
-   319	        if new_status not in _ALLOWED_TRANSITIONS.get(current.status, set()):
-   320	            raise ValueError(
-   321	                f"Disallowed transition: {current.status!r} -> {new_status!r}"
-   322	            )
-   323	        logger.debug(
-   324	            "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
-   325	        )
-   326	        fragments, args = ["status = $2"], [commission_id, new_status]
+297 "ORDER BY accrued_at ASC",
+298 partner_id,
+299 )
+300 return [self._row_to_commission(r) for r in rows]
+301
+302 async def update_commission_status(
+303 self,
+304 commission_id: UUID,
+305 new_status: CommissionStatus,
+306 *,
+307 approved_by: UUID | None = None,
+308 paid_by: UUID | None = None,
+309 paid_via: str | None = None,
+310 payment_reference: str | None = None,
+311 payment_proof_url: str | None = None,
+312 receipt_type: str | None = None,
+313 receipt_file_url: str | None = None,
+314 waiver_reason: str | None = None,
+315 ) -> None:
+316 current = await self.get_commission(commission_id)
+317 if current is None:
+318 raise ValueError(f"Commission {commission_id} not found")
+319 if new_status not in _ALLOWED_TRANSITIONS.get(current.status, set()):
+320 raise ValueError(
+321 f"Disallowed transition: {current.status!r} -> {new_status!r}"
+322 )
+323 logger.debug(
+324 "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
+325 )
+326 fragments, args = ["status = $2"], [commission_id, new_status]
    327	        if new_status == "approved":
    328	            fragments += ["approved_at = now()", f"approved_by = ${len(args)+1}"]; args.append(approved_by)
-   329	        if new_status == "paid":
-   330	            fragments += [
-   331	                "paid_at = now()",
-   332	                f"paid_by = ${len(args)+1}", f"paid_via = ${len(args)+2}",
-   333	                f"payment_reference = ${len(args)+3}", f"payment_proof_url = ${len(args)+4}",
-   334	                f"receipt_type = ${len(args)+5}", f"receipt_file_url = ${len(args)+6}",
-   335	            ]
-   336	            args += [paid_by, paid_via, payment_reference, payment_proof_url,
-   337	                     receipt_type, receipt_file_url]
-   338	        if new_status == "waived":
-   339	            fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
+329 if new_status == "paid":
+330 fragments += [
+331 "paid_at = now()",
+332 f"paid_by = ${len(args)+1}", f"paid_via = ${len(args)+2}",
+333 f"payment_reference = ${len(args)+3}", f"payment_proof_url = ${len(args)+4}",
+334 f"receipt_type = ${len(args)+5}", f"receipt_file_url = ${len(args)+6}",
+335 ]
+336 args += [paid_by, paid_via, payment_reference, payment_proof_url,
+337 receipt_type, receipt_file_url]
+338 if new_status == "waived":
+339 fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
    340	        sql = f"UPDATE partner_commissions SET {', '.join(fragments)} WHERE id = $1"
-   341	        await self.conn.execute(sql, *args)
-   342	
-   343	    async def mark_commission_email_sent(self, commission_id: UUID) -> None:
-   344	        await self.conn.execute(
-   345	            "UPDATE partner_commissions SET commission_email_sent_at = now() "
-   346	            "WHERE id = $1 AND commission_email_sent_at IS NULL",
-   347	            commission_id,
-   348	        )
-   349	
-   350	    async def delete_commission(self, commission_id: UUID) -> None:
-   351	        raise RuntimeError("partner_commissions is append-only; delete is forbidden")
-   352	
-   353	    # ── Audit log ───────────────────────────────────────────────────────
-   354	
-   355	    async def insert_audit(
-   356	        self,
-   357	        *,
-   358	        partner_id: UUID,
-   359	        action: str,
-   360	        actor_user_id: UUID | None = None,
+341 await self.conn.execute(sql, *args)
+342
+343 async def mark_commission_email_sent(self, commission_id: UUID) -> None:
+344 await self.conn.execute(
+345 "UPDATE partner_commissions SET commission_email_sent_at = now() "
+346 "WHERE id = $1 AND commission_email_sent_at IS NULL",
+347 commission_id,
+348 )
+349
+350 async def delete_commission(self, commission_id: UUID) -> None:
+351 raise RuntimeError("partner_commissions is append-only; delete is forbidden")
+352
+353 # ── Audit log ───────────────────────────────────────────────────────
+354
+355 async def insert_audit(
+356 self,
+357 *,
+358 partner_id: UUID,
+359 action: str,
+360 actor_user_id: UUID | None = None,
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/app/routers/partners.py | sed -n '260,560p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   260	async def me_referrals(
-   261	    user: dict[str, Any] = Depends(get_current_user),
-   262	    pool: asyncpg.Pool = Depends(get_database_pool),
-   263	) -> Any:
-   264	    """List referrals for the calling partner user. Client data is sterilized."""
-   265	    if user.get("role") != "partner":
-   266	        raise HTTPException(status_code=403, detail="partner role required")
-   267	    async with pool.acquire() as conn:
-   268	        row = await conn.fetchrow(
-   269	            "SELECT partner_id FROM users WHERE id = $1",
+succeeded in 0ms:
+260 async def me_referrals(
+261 user: dict[str, Any] = Depends(get_current_user),
+262 pool: asyncpg.Pool = Depends(get_database_pool),
+263 ) -> Any:
+264 """List referrals for the calling partner user. Client data is sterilized."""
+265 if user.get("role") != "partner":
+266 raise HTTPException(status_code=403, detail="partner role required")
+267 async with pool.acquire() as conn:
+268 row = await conn.fetchrow(
+269 "SELECT partner_id FROM users WHERE id = $1",
    270	            UUID(str(user["user_id"])),
    271	        )
    272	        if not row or not row["partner_id"]:
@@ -4909,34 +4917,34 @@ exec
    281	            LEFT JOIN processes p ON p.id = pr.process_id
    282	            LEFT JOIN clients c ON c.id = p.client_id
    283	            WHERE pr.partner_id = $1
-   284	            ORDER BY pr.referred_at DESC
-   285	            """,
-   286	            partner_id,
-   287	        )
-   288	    return [
-   289	        {
-   290	            "id": str(r["id"]),
-   291	            "process_id": str(r["process_id"]),
-   292	            "service_type": r["service_type"],
-   293	            "process_status": r["process_status"],
-   294	            "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
-   295	            "referred_at": r["referred_at"].isoformat() if r["referred_at"] else None,
-   296	        }
-   297	        for r in rows
-   298	    ]
-   299	
-   300	
-   301	@router.get("/me/commissions")
-   302	async def me_commissions(
-   303	    user: dict[str, Any] = Depends(get_current_user),
-   304	    pool: asyncpg.Pool = Depends(get_database_pool),
-   305	) -> Any:
-   306	    """List commissions for the calling partner user."""
-   307	    if user.get("role") != "partner":
-   308	        raise HTTPException(status_code=403, detail="partner role required")
-   309	    async with pool.acquire() as conn:
-   310	        row = await conn.fetchrow(
-   311	            "SELECT partner_id FROM users WHERE id = $1",
+284 ORDER BY pr.referred_at DESC
+285 """,
+286 partner_id,
+287 )
+288 return [
+289 {
+290 "id": str(r["id"]),
+291 "process_id": str(r["process_id"]),
+292 "service_type": r["service_type"],
+293 "process_status": r["process_status"],
+294 "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
+295 "referred_at": r["referred_at"].isoformat() if r["referred_at"] else None,
+296 }
+297 for r in rows
+298 ]
+299
+300
+301 @router.get("/me/commissions")
+302 async def me_commissions(
+303 user: dict[str, Any] = Depends(get_current_user),
+304 pool: asyncpg.Pool = Depends(get_database_pool),
+305 ) -> Any:
+306 """List commissions for the calling partner user."""
+307 if user.get("role") != "partner":
+308 raise HTTPException(status_code=403, detail="partner role required")
+309 async with pool.acquire() as conn:
+310 row = await conn.fetchrow(
+311 "SELECT partner_id FROM users WHERE id = $1",
    312	            UUID(str(user["user_id"])),
    313	        )
    314	        if not row or not row["partner_id"]:
@@ -4976,265 +4984,265 @@ exec
    348	                FROM partner_commissions pc
    349	                JOIN partners p ON p.id = pc.partner_id
    350	                WHERE pc.created_at >= $1::timestamptz
-   351	                  AND pc.created_at <  $2::timestamptz
-   352	                ORDER BY pc.created_at ASC
-   353	                """,
-   354	                from_, to,
-   355	            )
-   356	        buf = io.StringIO()
-   357	        writer = csv.writer(buf)
-   358	        writer.writerow([
-   359	            "commission_id", "partner", "npwp", "entity_type", "entry_type",
-   360	            "gross_idr", "withholding_category", "withholding_idr", "net_idr",
-   361	            "status", "paid_at", "paid_via", "payment_reference",
-   362	        ])
-   363	        for r in rows:
-   364	            writer.writerow([r[k] for k in r.keys()])
-   365	        return Response(
-   366	            content=buf.getvalue(),
-   367	            media_type="text/csv",
-   368	            headers={
-   369	                "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
-   370	            },
-   371	        )
-   372	    except HTTPException:
-   373	        raise
-   374	    except Exception:
-   375	        logger.exception("finance_export failed")
-   376	        raise HTTPException(status_code=500, detail="internal error")
-   377	
-   378	
-   379	@router.get("/{partner_id}")
-   380	async def get_partner(
-   381	    partner_id: UUID,
-   382	    user: dict[str, Any] = Depends(get_current_user),
-   383	    pool: asyncpg.Pool = Depends(get_database_pool),
-   384	) -> Any:
-   385	    """Get a partner by ID. Scoped by role."""
-   386	    async with pool.acquire() as conn:
-   387	        svc = PartnersService(conn)
-   388	        partner = await verify_partner_access_with_role(
-   389	            svc,
-   390	            UUID(str(user["user_id"])),
-   391	            user.get("role"),
-   392	            partner_id,
-   393	        )
-   394	        return _partner_to_dict(partner)
-   395	
-   396	
-   397	@router.patch("/{partner_id}")
-   398	async def update_partner(
-   399	    partner_id: UUID,
-   400	    body: PartnerUpdate,
-   401	    user: dict[str, Any] = Depends(get_current_user),
-   402	    pool: asyncpg.Pool = Depends(get_database_pool),
-   403	) -> Any:
-   404	    """Update a partner. Team members can only update their own assigned partners."""
-   405	    try:
-   406	        async with pool.acquire() as conn:
-   407	            svc = PartnersService(conn)
-   408	            fields = body.model_dump(exclude_none=True, exclude_unset=True)
-   409	            await svc.update_partner(
-   410	                partner_id,
-   411	                actor_user=UUID(str(user["user_id"])),
-   412	                actor_role=user.get("role", "team"),
-   413	                **fields,
-   414	            )
-   415	            partner = await svc.repo.get_partner(partner_id)
-   416	            return _partner_to_dict(partner)
-   417	    except HTTPException:
-   418	        raise
-   419	    except Exception:
-   420	        logger.exception("update_partner failed")
-   421	        raise HTTPException(status_code=500, detail="internal error")
-   422	
-   423	
-   424	@router.post("/{partner_id}/activate", status_code=status.HTTP_204_NO_CONTENT)
-   425	async def activate_partner(
-   426	    partner_id: UUID,
-   427	    user: dict[str, Any] = Depends(get_current_user),
-   428	    pool: asyncpg.Pool = Depends(get_database_pool),
-   429	) -> Response:
-   430	    """Activate a partner. Admin only."""
-   431	    _require_admin(user)
-   432	    try:
-   433	        async with pool.acquire() as conn:
-   434	            svc = PartnersService(conn)
-   435	            await svc.activate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
-   436	            # Trigger welcome email if emails module is available (Task 8)
-   437	            try:
-   438	                from backend.services.crm.partners.emails import send_welcome
-   439	                await send_welcome(conn, partner_id)
-   440	            except ImportError:
-   441	                pass  # emails module not yet implemented (Task 8)
-   442	            return Response(status_code=204)
-   443	    except HTTPException:
-   444	        raise
-   445	    except Exception:
-   446	        logger.exception("activate_partner failed")
-   447	        raise HTTPException(status_code=500, detail="internal error")
-   448	
-   449	
-   450	@router.post("/{partner_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
-   451	async def deactivate_partner(
-   452	    partner_id: UUID,
-   453	    user: dict[str, Any] = Depends(get_current_user),
-   454	    pool: asyncpg.Pool = Depends(get_database_pool),
-   455	) -> Response:
-   456	    """Deactivate a partner. Admin only."""
-   457	    _require_admin(user)
-   458	    try:
-   459	        async with pool.acquire() as conn:
-   460	            svc = PartnersService(conn)
-   461	            await svc.deactivate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
-   462	            return Response(status_code=204)
-   463	    except HTTPException:
-   464	        raise
-   465	    except Exception:
-   466	        logger.exception("deactivate_partner failed")
-   467	        raise HTTPException(status_code=500, detail="internal error")
-   468	
-   469	
-   470	@router.post("/{partner_id}/reassign", status_code=status.HTTP_204_NO_CONTENT)
-   471	async def reassign_partner(
-   472	    partner_id: UUID,
-   473	    body: ReassignRequest,
-   474	    user: dict[str, Any] = Depends(get_current_user),
-   475	    pool: asyncpg.Pool = Depends(get_database_pool),
-   476	) -> Response:
-   477	    """Reassign a partner to a different team member. Admin only."""
-   478	    _require_admin(user)
-   479	    try:
-   480	        async with pool.acquire() as conn:
-   481	            svc = PartnersService(conn)
-   482	            await svc.reassign_partner(
-   483	                partner_id,
-   484	                new_user_id=body.new_user_id,
-   485	                actor_user=UUID(str(user["user_id"])),
-   486	                reason=body.reason,
-   487	            )
-   488	            return Response(status_code=204)
-   489	    except HTTPException:
-   490	        raise
-   491	    except ValueError as e:
-   492	        raise HTTPException(status_code=400, detail=str(e))
-   493	    except Exception:
-   494	        logger.exception("reassign_partner failed")
-   495	        raise HTTPException(status_code=500, detail="internal error")
-   496	
-   497	
-   498	@router.post("/bulk-reassign", status_code=status.HTTP_204_NO_CONTENT)
-   499	async def bulk_reassign(
-   500	    body: BulkReassignRequest,
-   501	    user: dict[str, Any] = Depends(get_current_user),
-   502	    pool: asyncpg.Pool = Depends(get_database_pool),
-   503	) -> Response:
-   504	    """Bulk-reassign multiple partners to a single user. Admin only."""
-   505	    _require_admin(user)
-   506	    try:
-   507	        async with pool.acquire() as conn:
-   508	            svc = PartnersService(conn)
-   509	            for pid in body.partner_ids:
-   510	                await svc.reassign_partner(
-   511	                    pid,
-   512	                    new_user_id=body.new_user_id,
-   513	                    actor_user=UUID(str(user["user_id"])),
-   514	                    reason=body.reason,
-   515	                )
-   516	            return Response(status_code=204)
-   517	    except HTTPException:
-   518	        raise
-   519	    except ValueError as e:
-   520	        raise HTTPException(status_code=400, detail=str(e))
-   521	    except Exception:
-   522	        logger.exception("bulk_reassign failed")
-   523	        raise HTTPException(status_code=500, detail="internal error")
-   524	
-   525	
-   526	# ── Referrals ────────────────────────────────────────────────────────────────
-   527	
-   528	@router.get("/{partner_id}/referrals")
-   529	async def list_referrals(
-   530	    partner_id: UUID,
-   531	    user: dict[str, Any] = Depends(get_current_user),
-   532	    pool: asyncpg.Pool = Depends(get_database_pool),
-   533	) -> Any:
-   534	    """List referrals for a partner. Scoped by role."""
-   535	    async with pool.acquire() as conn:
-   536	        svc = PartnersService(conn)
-   537	        await verify_partner_access_with_role(
-   538	            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-   539	        )
-   540	        refs = await svc.repo.list_referrals_for_partner(partner_id)
-   541	        return [
-   542	            dataclasses.asdict(r) if dataclasses.is_dataclass(r) else dict(r)
-   543	            for r in refs
-   544	        ]
-   545	
-   546	
-   547	@router.post("/{partner_id}/referrals", status_code=status.HTTP_201_CREATED)
-   548	async def create_referral(
-   549	    partner_id: UUID,
-   550	    body: ReferralCreate,
-   551	    user: dict[str, Any] = Depends(get_current_user),
-   552	    pool: asyncpg.Pool = Depends(get_database_pool),
-   553	) -> Any:
-   554	    """Record a referral for a partner. Team (owner) or admin."""
-   555	    try:
-   556	        async with pool.acquire() as conn:
-   557	            svc = PartnersService(conn)
-   558	            await verify_partner_access_with_role(
-   559	                svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-   560	            )
+351 AND pc.created_at < $2::timestamptz
+352 ORDER BY pc.created_at ASC
+353 """,
+354 from_, to,
+355 )
+356 buf = io.StringIO()
+357 writer = csv.writer(buf)
+358 writer.writerow([
+359 "commission_id", "partner", "npwp", "entity_type", "entry_type",
+360 "gross_idr", "withholding_category", "withholding_idr", "net_idr",
+361 "status", "paid_at", "paid_via", "payment_reference",
+362 ])
+363 for r in rows:
+364 writer.writerow([r[k] for k in r.keys()])
+365 return Response(
+366 content=buf.getvalue(),
+367 media_type="text/csv",
+368 headers={
+369 "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
+370 },
+371 )
+372 except HTTPException:
+373 raise
+374 except Exception:
+375 logger.exception("finance_export failed")
+376 raise HTTPException(status_code=500, detail="internal error")
+377
+378
+379 @router.get("/{partner_id}")
+380 async def get_partner(
+381 partner_id: UUID,
+382 user: dict[str, Any] = Depends(get_current_user),
+383 pool: asyncpg.Pool = Depends(get_database_pool),
+384 ) -> Any:
+385 """Get a partner by ID. Scoped by role."""
+386 async with pool.acquire() as conn:
+387 svc = PartnersService(conn)
+388 partner = await verify_partner_access_with_role(
+389 svc,
+390 UUID(str(user["user_id"])),
+391 user.get("role"),
+392 partner_id,
+393 )
+394 return _partner_to_dict(partner)
+395
+396
+397 @router.patch("/{partner_id}")
+398 async def update_partner(
+399 partner_id: UUID,
+400 body: PartnerUpdate,
+401 user: dict[str, Any] = Depends(get_current_user),
+402 pool: asyncpg.Pool = Depends(get_database_pool),
+403 ) -> Any:
+404 """Update a partner. Team members can only update their own assigned partners."""
+405 try:
+406 async with pool.acquire() as conn:
+407 svc = PartnersService(conn)
+408 fields = body.model_dump(exclude_none=True, exclude_unset=True)
+409 await svc.update_partner(
+410 partner_id,
+411 actor_user=UUID(str(user["user_id"])),
+412 actor_role=user.get("role", "team"),
+413 **fields,
+414 )
+415 partner = await svc.repo.get_partner(partner_id)
+416 return _partner_to_dict(partner)
+417 except HTTPException:
+418 raise
+419 except Exception:
+420 logger.exception("update_partner failed")
+421 raise HTTPException(status_code=500, detail="internal error")
+422
+423
+424 @router.post("/{partner_id}/activate", status_code=status.HTTP_204_NO_CONTENT)
+425 async def activate_partner(
+426 partner_id: UUID,
+427 user: dict[str, Any] = Depends(get_current_user),
+428 pool: asyncpg.Pool = Depends(get_database_pool),
+429 ) -> Response:
+430 """Activate a partner. Admin only."""
+431 _require_admin(user)
+432 try:
+433 async with pool.acquire() as conn:
+434 svc = PartnersService(conn)
+435 await svc.activate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
+436 # Trigger welcome email if emails module is available (Task 8)
+437 try:
+438 from backend.services.crm.partners.emails import send_welcome
+439 await send_welcome(conn, partner_id)
+440 except ImportError:
+441 pass # emails module not yet implemented (Task 8)
+442 return Response(status_code=204)
+443 except HTTPException:
+444 raise
+445 except Exception:
+446 logger.exception("activate_partner failed")
+447 raise HTTPException(status_code=500, detail="internal error")
+448
+449
+450 @router.post("/{partner_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+451 async def deactivate_partner(
+452 partner_id: UUID,
+453 user: dict[str, Any] = Depends(get_current_user),
+454 pool: asyncpg.Pool = Depends(get_database_pool),
+455 ) -> Response:
+456 """Deactivate a partner. Admin only."""
+457 _require_admin(user)
+458 try:
+459 async with pool.acquire() as conn:
+460 svc = PartnersService(conn)
+461 await svc.deactivate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
+462 return Response(status_code=204)
+463 except HTTPException:
+464 raise
+465 except Exception:
+466 logger.exception("deactivate_partner failed")
+467 raise HTTPException(status_code=500, detail="internal error")
+468
+469
+470 @router.post("/{partner_id}/reassign", status_code=status.HTTP_204_NO_CONTENT)
+471 async def reassign_partner(
+472 partner_id: UUID,
+473 body: ReassignRequest,
+474 user: dict[str, Any] = Depends(get_current_user),
+475 pool: asyncpg.Pool = Depends(get_database_pool),
+476 ) -> Response:
+477 """Reassign a partner to a different team member. Admin only."""
+478 _require_admin(user)
+479 try:
+480 async with pool.acquire() as conn:
+481 svc = PartnersService(conn)
+482 await svc.reassign_partner(
+483 partner_id,
+484 new_user_id=body.new_user_id,
+485 actor_user=UUID(str(user["user_id"])),
+486 reason=body.reason,
+487 )
+488 return Response(status_code=204)
+489 except HTTPException:
+490 raise
+491 except ValueError as e:
+492 raise HTTPException(status_code=400, detail=str(e))
+493 except Exception:
+494 logger.exception("reassign_partner failed")
+495 raise HTTPException(status_code=500, detail="internal error")
+496
+497
+498 @router.post("/bulk-reassign", status_code=status.HTTP_204_NO_CONTENT)
+499 async def bulk_reassign(
+500 body: BulkReassignRequest,
+501 user: dict[str, Any] = Depends(get_current_user),
+502 pool: asyncpg.Pool = Depends(get_database_pool),
+503 ) -> Response:
+504 """Bulk-reassign multiple partners to a single user. Admin only."""
+505 _require_admin(user)
+506 try:
+507 async with pool.acquire() as conn:
+508 svc = PartnersService(conn)
+509 for pid in body.partner_ids:
+510 await svc.reassign_partner(
+511 pid,
+512 new_user_id=body.new_user_id,
+513 actor_user=UUID(str(user["user_id"])),
+514 reason=body.reason,
+515 )
+516 return Response(status_code=204)
+517 except HTTPException:
+518 raise
+519 except ValueError as e:
+520 raise HTTPException(status_code=400, detail=str(e))
+521 except Exception:
+522 logger.exception("bulk_reassign failed")
+523 raise HTTPException(status_code=500, detail="internal error")
+524
+525
+526 # ── Referrals ────────────────────────────────────────────────────────────────
+527
+528 @router.get("/{partner_id}/referrals")
+529 async def list_referrals(
+530 partner_id: UUID,
+531 user: dict[str, Any] = Depends(get_current_user),
+532 pool: asyncpg.Pool = Depends(get_database_pool),
+533 ) -> Any:
+534 """List referrals for a partner. Scoped by role."""
+535 async with pool.acquire() as conn:
+536 svc = PartnersService(conn)
+537 await verify_partner_access_with_role(
+538 svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+539 )
+540 refs = await svc.repo.list_referrals_for_partner(partner_id)
+541 return [
+542 dataclasses.asdict(r) if dataclasses.is_dataclass(r) else dict(r)
+543 for r in refs
+544 ]
+545
+546
+547 @router.post("/{partner_id}/referrals", status_code=status.HTTP_201_CREATED)
+548 async def create_referral(
+549 partner_id: UUID,
+550 body: ReferralCreate,
+551 user: dict[str, Any] = Depends(get_current_user),
+552 pool: asyncpg.Pool = Depends(get_database_pool),
+553 ) -> Any:
+554 """Record a referral for a partner. Team (owner) or admin."""
+555 try:
+556 async with pool.acquire() as conn:
+557 svc = PartnersService(conn)
+558 await verify_partner_access_with_role(
+559 svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+560 )
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/emails.py | sed -n '1,280p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/migrations/migration_119_partners.py | sed -n '1,260p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	"""Migration 119: Partners module — 4 tables + 2 system settings.
-     2	
-     3	Why
-     4	---
-     5	Formalizes Bali Zero's informal third-party referral network (hotels, property
-     6	managers, consultants, agents) into a first-class CRM module with full
-     7	Indonesian fiscal profile, an append-only commission ledger, and GDPR/UU PDP
-     8	consent tracking.
-     9	
-    10	Schema
-    11	------
-    12	- partners: anagrafica + fiscal profile + payment rail + commission defaults
-    13	- partner_referrals: links partners to existing processes (v1: 1-to-1)
-    14	- partner_commissions: append-only ledger (accrued → approved → paid, with clawback)
-    15	- partner_audit_log: immutable event trail for every partner/commission state change
-    16	- users.partner_id: reverse FK so partner-role users can resolve their own record
-    17	
-    18	System settings
-    19	---------------
-    20	- partner_clawback_auto_writeoff_idr: auto-waive threshold (default 0 = disabled)
-    21	- partner_accrual_cooling_off_days: days before accrual becomes eligible (default 30)
-    22	
-    23	Idempotent: safe to re-run.
-    24	
-    25	Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
-    26	Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1
-    27	Author: Claude Opus 4.7
-    28	Date: 2026-04-20
-    29	"""
-    30	from __future__ import annotations
-    31	
-    32	import logging
-    33	from typing import Any
-    34	
-    35	logger = logging.getLogger(__name__)
-    36	
-    37	
-    38	async def apply(conn: Any) -> None:
-    39	    # -------------------------------------------------------------------------
-    40	    # 1. partners
-    41	    # -------------------------------------------------------------------------
-    42	    await conn.execute("""
-    43	        DO $$
+succeeded in 0ms:
+1 """Migration 119: Partners module — 4 tables + 2 system settings.
+2
+3 Why
+4 ---
+5 Formalizes Bali Zero's informal third-party referral network (hotels, property
+6 managers, consultants, agents) into a first-class CRM module with full
+7 Indonesian fiscal profile, an append-only commission ledger, and GDPR/UU PDP
+8 consent tracking.
+9
+10 Schema
+11 ------
+12 - partners: anagrafica + fiscal profile + payment rail + commission defaults
+13 - partner_referrals: links partners to existing processes (v1: 1-to-1)
+14 - partner_commissions: append-only ledger (accrued → approved → paid, with clawback)
+15 - partner_audit_log: immutable event trail for every partner/commission state change
+16 - users.partner_id: reverse FK so partner-role users can resolve their own record
+17
+18 System settings
+19 ---------------
+20 - partner_clawback_auto_writeoff_idr: auto-waive threshold (default 0 = disabled)
+21 - partner_accrual_cooling_off_days: days before accrual becomes eligible (default 30)
+22
+23 Idempotent: safe to re-run.
+24
+25 Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
+26 Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1
+27 Author: Claude Opus 4.7
+28 Date: 2026-04-20
+29 """
+30 from **future** import annotations
+31
+32 import logging
+33 from typing import Any
+34
+35 logger = logging.getLogger(**name**)
+36
+37
+38 async def apply(conn: Any) -> None:
+39 # -------------------------------------------------------------------------
+40 # 1. partners
+41 # -------------------------------------------------------------------------
+42 await conn.execute("""
+43 DO $$
     44	        BEGIN
     45	            IF NOT EXISTS (
     46	                SELECT 1 FROM pg_tables
@@ -5296,31 +5304,31 @@ exec
    102	                );
    103	            END IF;
    104	        END $$;
-   105	    """)
-   106	
-   107	    await conn.execute(
-   108	        "CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_email"
-   109	        " ON partners (email);"
-   110	    )
-   111	    await conn.execute(
-   112	        "CREATE INDEX IF NOT EXISTS idx_partners_assigned_to"
-   113	        " ON partners (assigned_to)"
-   114	        " WHERE assigned_to IS NOT NULL;"
-   115	    )
-   116	    await conn.execute(
-   117	        "CREATE INDEX IF NOT EXISTS idx_partners_onboarding_status"
-   118	        " ON partners (onboarding_status);"
-   119	    )
-   120	    await conn.execute(
-   121	        "CREATE INDEX IF NOT EXISTS idx_partners_entity_type"
-   122	        " ON partners (entity_type);"
-   123	    )
-   124	
-   125	    # -------------------------------------------------------------------------
-   126	    # 2. users.partner_id — reverse FK so partner-role users resolve their record
-   127	    # -------------------------------------------------------------------------
-   128	    await conn.execute("""
-   129	        DO $$
+105 """)
+106
+107 await conn.execute(
+108 "CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_email"
+109 " ON partners (email);"
+110 )
+111 await conn.execute(
+112 "CREATE INDEX IF NOT EXISTS idx_partners_assigned_to"
+113 " ON partners (assigned_to)"
+114 " WHERE assigned_to IS NOT NULL;"
+115 )
+116 await conn.execute(
+117 "CREATE INDEX IF NOT EXISTS idx_partners_onboarding_status"
+118 " ON partners (onboarding_status);"
+119 )
+120 await conn.execute(
+121 "CREATE INDEX IF NOT EXISTS idx_partners_entity_type"
+122 " ON partners (entity_type);"
+123 )
+124
+125 # -------------------------------------------------------------------------
+126 # 2. users.partner_id — reverse FK so partner-role users resolve their record
+127 # -------------------------------------------------------------------------
+128 await conn.execute("""
+129 DO $$
    130	        BEGIN
    131	            IF NOT EXISTS (
    132	                SELECT 1 FROM information_schema.columns
@@ -5329,17 +5337,17 @@ exec
    135	                ALTER TABLE users ADD COLUMN partner_id UUID REFERENCES partners(id) ON DELETE SET NULL;
    136	            END IF;
    137	        END $$;
-   138	    """)
-   139	    await conn.execute(
-   140	        "CREATE INDEX IF NOT EXISTS idx_users_partner_id"
-   141	        " ON users (partner_id) WHERE partner_id IS NOT NULL;"
-   142	    )
-   143	
-   144	    # -------------------------------------------------------------------------
-   145	    # 3. partner_referrals
-   146	    # -------------------------------------------------------------------------
-   147	    await conn.execute("""
-   148	        DO $$
+138 """)
+139 await conn.execute(
+140 "CREATE INDEX IF NOT EXISTS idx_users_partner_id"
+141 " ON users (partner_id) WHERE partner_id IS NOT NULL;"
+142 )
+143
+144 # -------------------------------------------------------------------------
+145 # 3. partner_referrals
+146 # -------------------------------------------------------------------------
+147 await conn.execute("""
+148 DO $$
    149	        BEGIN
    150	            IF NOT EXISTS (
    151	                SELECT 1 FROM pg_tables
@@ -5360,22 +5368,22 @@ exec
    166	                );
    167	            END IF;
    168	        END $$;
-   169	    """)
-   170	
-   171	    await conn.execute(
-   172	        "CREATE INDEX IF NOT EXISTS idx_partner_referrals_partner_id"
-   173	        " ON partner_referrals (partner_id);"
-   174	    )
-   175	    await conn.execute(
-   176	        "CREATE INDEX IF NOT EXISTS idx_partner_referrals_process_id"
-   177	        " ON partner_referrals (process_id);"
-   178	    )
-   179	
-   180	    # -------------------------------------------------------------------------
-   181	    # 4. partner_commissions (append-only ledger)
-   182	    # -------------------------------------------------------------------------
-   183	    await conn.execute("""
-   184	        DO $$
+169 """)
+170
+171 await conn.execute(
+172 "CREATE INDEX IF NOT EXISTS idx_partner_referrals_partner_id"
+173 " ON partner_referrals (partner_id);"
+174 )
+175 await conn.execute(
+176 "CREATE INDEX IF NOT EXISTS idx_partner_referrals_process_id"
+177 " ON partner_referrals (process_id);"
+178 )
+179
+180 # -------------------------------------------------------------------------
+181 # 4. partner_commissions (append-only ledger)
+182 # -------------------------------------------------------------------------
+183 await conn.execute("""
+184 DO $$
    185	        BEGIN
    186	            IF NOT EXISTS (
    187	                SELECT 1 FROM pg_tables
@@ -5440,245 +5448,245 @@ exec
    246	                );
    247	            END IF;
    248	        END $$;
-   249	    """)
-   250	
-   251	    await conn.execute(
-   252	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_partner_id"
-   253	        " ON partner_commissions (partner_id);"
-   254	    )
-   255	    await conn.execute(
-   256	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_process_id"
-   257	        " ON partner_commissions (process_id);"
-   258	    )
-   259	    await conn.execute(
-   260	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
+249 """)
+250
+251 await conn.execute(
+252 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_partner_id"
+253 " ON partner_commissions (partner_id);"
+254 )
+255 await conn.execute(
+256 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_process_id"
+257 " ON partner_commissions (process_id);"
+258 )
+259 await conn.execute(
+260 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
 
- succeeded in 0ms:
-     1	"""
-     2	Partner email module — welcome + commission-earned via Brevo.
-     3	
-     4	Sending: POST /api/notifications/send-email with X-API-Key (Brevo).
-     5	Sender: zantara@balizero.com / Zantara (non-negotiable per feedback_email_sender).
-     6	Both functions are idempotent: they read the sentinel timestamp before sending
-     7	and call mark_*_sent only after a successful HTTP response.
-     8	
-     9	PII sterilization (UU PDP 27/2022):
-    10	- Client full names are sterilized to "First L." before passing to any template.
-    11	- Sterilization happens in Python, never inside Jinja2 templates.
-    12	"""
-    13	from __future__ import annotations
-    14	
-    15	import logging
-    16	import os
-    17	from pathlib import Path
-    18	from typing import Any
-    19	from uuid import UUID
-    20	
-    21	import httpx
-    22	import jinja2
-    23	
-    24	from backend.services.crm.partners.repository import PartnersRepository
-    25	from backend.services.pricing.pricing_service import get_pricing_service
-    26	
-    27	logger = logging.getLogger(__name__)
-    28	
-    29	# ─── Jinja2 environment ────────────────────────────────────────────────────
-    30	_TEMPLATES_DIR = Path(__file__).parent / "templates"
-    31	_env = jinja2.Environment(
-    32	    loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
-    33	    autoescape=False,
-    34	    keep_trailing_newline=True,
-    35	)
-    36	
-    37	# ─── Email API constants ────────────────────────────────────────────────────
-    38	# Sender MUST be zantara@balizero.com per feedback_email_sender memory rule.
-    39	SENDER_EMAIL = "zantara@balizero.com"
-    40	SENDER_NAME = "Zantara"
-    41	NOTIFICATIONS_ENDPOINT = os.environ.get(
-    42	    "NOTIFICATIONS_ENDPOINT",
-    43	    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
-    44	)
-    45	X_API_KEY = os.environ.get("NOTIFICATIONS_X_API_KEY", "REDACTED-ROTATED-KEY")
-    46	
-    47	
-    48	# ─── Internal helpers ───────────────────────────────────────────────────────
-    49	
-    50	async def _post_email(*, to: str, cc: list[str] | None, subject: str, body: str) -> None:
-    51	    """
-    52	    POST to the internal Brevo email relay endpoint.
-    53	
-    54	    Payload shape matches the existing endpoint contract used by
-    55	    welcome_email_service.py — fields: to, subject, body, cc.
-    56	    Sender (from_email / from_name) is set server-side; the payload does not
-    57	    include those fields.
-    58	    """
-    59	    payload: dict[str, Any] = {
-    60	        "to": to,
-    61	        "subject": subject,
-    62	        "body": body,
-    63	    }
-    64	    if cc:
-    65	        payload["cc"] = cc
-    66	
-    67	    async with httpx.AsyncClient(timeout=30.0) as client:
-    68	        r = await client.post(
-    69	            NOTIFICATIONS_ENDPOINT,
-    70	            json=payload,
-    71	            headers={"X-API-Key": X_API_KEY},
-    72	        )
-    73	        r.raise_for_status()
-    74	
-    75	
-    76	def _sterilize(name: str) -> str:
-    77	    """
-    78	    Reduce a full name to "FirstName L." for UU PDP compliance.
-    79	
-    80	    Examples:
-    81	      "Mario Rossi"        → "Mario R."
-    82	      "Alice"              → "Alice"
-    83	      "Jean-Claude Van Dam" → "Jean-Claude D."
-    84	      ""                   → ""
-    85	    """
-    86	    parts = name.strip().split()
-    87	    if not parts:
-    88	        return ""
-    89	    if len(parts) == 1:
-    90	        return parts[0]
-    91	    return f"{parts[0]} {parts[-1][0]}."
-    92	
-    93	
-    94	def _build_pricing_services() -> list[dict[str, str]]:
-    95	    """Return list of {name, price_display} pairs from PricingService.
-    96	
-    97	    The pricing JSON has 3 levels:
-    98	      services (top) -> sub_category (dict) -> service_name (dict key) -> {price, duration, ...}
-    99	
-   100	    We flatten to a list of {name, price_display}. Returns empty list if
-   101	    PricingService is not loaded (graceful degradation for the welcome
-   102	    email — terms still communicate; services list is absent).
-   103	
-   104	    Golden Rule #12: prices ONLY from PricingTool/PricingService, never hardcoded.
-   105	    """
-   106	    svc = get_pricing_service()
-   107	    if not getattr(svc, "loaded", False):
-   108	        logger.warning("PricingService not loaded — welcome email services list will be empty")
-   109	        return []
-   110	    all_prices = svc.get_all_prices() or {}
-   111	    top = all_prices.get("services", all_prices)
-   112	    result: list[dict[str, str]] = []
-   113	    if not isinstance(top, dict):
-   114	        return result
-   115	    for sub_cat, entries in top.items():
-   116	        if isinstance(entries, dict):
-   117	            for service_name, entry in entries.items():
-   118	                if not isinstance(entry, dict):
-   119	                    continue
-   120	                price_str = entry.get("price") or entry.get("final_price") or "On request"
-   121	                if not isinstance(price_str, str):
-   122	                    price_str = str(price_str)
-   123	                result.append({
-   124	                    "name": str(service_name),
-   125	                    "price_display": price_str,
-   126	                })
-   127	        elif isinstance(entries, list):
-   128	            # Legacy flat-list shape, keep for safety
-   129	            for item in entries:
-   130	                if isinstance(item, dict) and "name" in item:
-   131	                    result.append({
-   132	                        "name": str(item["name"]),
-   133	                        "price_display": str(item.get("price_display") or item.get("price") or "On request"),
-   134	                    })
-   135	    return result
-   136	
-   137	
-   138	# ─── Public API ─────────────────────────────────────────────────────────────
-   139	
-   140	async def send_welcome(conn: Any, partner_id: UUID) -> None:
-   141	    """
-   142	    Send the partner welcome email.
-   143	
-   144	    Idempotent: reads welcome_email_sent_at before sending.
-   145	    If already sent, logs and returns without HTTP call.
-   146	
-   147	    Args:
-   148	        conn: asyncpg.Connection (passed directly by the router).
-   149	        partner_id: UUID of the partner.
-   150	    """
-   151	    repo = PartnersRepository(conn)
-   152	    p = await repo.get_partner(partner_id)
-   153	    if p is None:
-   154	        logger.warning("send_welcome: partner %s not found — skip", partner_id)
-   155	        return
-   156	    if p.welcome_email_sent_at is not None:
-   157	        logger.info("send_welcome: already sent for partner %s — skip (idempotent)", partner_id)
-   158	        return
-   159	
-   160	    pricing_services = _build_pricing_services()
-   161	
-   162	    commission_rate = (
-   163	        f"{p.default_commission_value}%"
-   164	        if p.default_commission_type == "percentage"
-   165	        else f"IDR {p.default_commission_value:,.0f}"
-   166	    )
-   167	
-   168	    tpl = _env.get_template("welcome.md.j2")
-   169	    body = tpl.render(
-   170	        partner=p,
-   171	        commission_rate=commission_rate,
-   172	        commission_type=p.default_commission_type,
-   173	        pricing_services=pricing_services,
-   174	    )
-   175	
-   176	    await _post_email(
-   177	        to=p.email,
-   178	        cc=None,
-   179	        subject="Welcome to Bali Zero Partners",
-   180	        body=body,
-   181	    )
-   182	    await repo.mark_welcome_sent(partner_id)
-   183	    logger.info("send_welcome: sent to partner %s (%s)", partner_id, p.email)
-   184	
-   185	
-   186	async def send_commission_earned(conn: Any, commission_id: UUID) -> None:
-   187	    """
-   188	    Send the commission-earned notification email.
-   189	
-   190	    Idempotent: reads commission_email_sent_at before sending.
-   191	    Client name is sterilized to "First L." BEFORE template rendering (UU PDP).
-   192	
-   193	    Args:
-   194	        conn: asyncpg.Connection (passed directly by the router).
-   195	        commission_id: UUID of the partner_commissions row.
-   196	    """
-   197	    repo = PartnersRepository(conn)
-   198	    c = await repo.get_commission(commission_id)
-   199	    if c is None or c.status != "paid":
-   200	        logger.info(
-   201	            "send_commission_earned: commission %s not found or not paid — skip",
-   202	            commission_id,
-   203	        )
-   204	        return
-   205	    if c.commission_email_sent_at is not None:
-   206	        logger.info(
-   207	            "send_commission_earned: already sent for commission %s — skip (idempotent)",
-   208	            commission_id,
-   209	        )
-   210	        return
-   211	
-   212	    p = await repo.get_partner(c.partner_id)
-   213	    if p is None:
-   214	        logger.warning("send_commission_earned: partner %s not found — skip", c.partner_id)
-   215	        return
-   216	
-   217	    # Fetch process + client name via JOIN
-   218	    proc = None
-   219	    if c.process_id is not None:
-   220	        proc = await conn.fetchrow(
-   221	            """
-   222	            SELECT p.service_type, c.full_name AS client_name
-   223	            FROM processes p
-   224	            LEFT JOIN clients c ON c.id = p.client_id
-   225	            WHERE p.id = $1
+succeeded in 0ms:
+1 """
+2 Partner email module — welcome + commission-earned via Brevo.
+3
+4 Sending: POST /api/notifications/send-email with X-API-Key (Brevo).
+5 Sender: zantara@balizero.com / Zantara (non-negotiable per feedback_email_sender).
+6 Both functions are idempotent: they read the sentinel timestamp before sending
+7 and call mark__\_sent only after a successful HTTP response.
+8
+9 PII sterilization (UU PDP 27/2022):
+10 - Client full names are sterilized to "First L." before passing to any template.
+11 - Sterilization happens in Python, never inside Jinja2 templates.
+12 """
+13 from **future** import annotations
+14
+15 import logging
+16 import os
+17 from pathlib import Path
+18 from typing import Any
+19 from uuid import UUID
+20
+21 import httpx
+22 import jinja2
+23
+24 from backend.services.crm.partners.repository import PartnersRepository
+25 from backend.services.pricing.pricing_service import get_pricing_service
+26
+27 logger = logging.getLogger(**name**)
+28
+29 # ─── Jinja2 environment ────────────────────────────────────────────────────
+30 \_TEMPLATES_DIR = Path(**file**).parent / "templates"
+31 \_env = jinja2.Environment(
+32 loader=jinja2.FileSystemLoader(str(\_TEMPLATES_DIR)),
+33 autoescape=False,
+34 keep_trailing_newline=True,
+35 )
+36
+37 # ─── Email API constants ────────────────────────────────────────────────────
+38 # Sender MUST be zantara@balizero.com per feedback_email_sender memory rule.
+39 SENDER_EMAIL = "zantara@balizero.com"
+40 SENDER_NAME = "Zantara"
+41 NOTIFICATIONS_ENDPOINT = os.environ.get(
+42 "NOTIFICATIONS_ENDPOINT",
+43 "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+44 )
+45 X_API_KEY = os.environ.get("NOTIFICATIONS_X_API_KEY", "REDACTED-ROTATED-KEY")
+46
+47
+48 # ─── Internal helpers ───────────────────────────────────────────────────────
+49
+50 async def \_post_email(_, to: str, cc: list[str] | None, subject: str, body: str) -> None:
+51 """
+52 POST to the internal Brevo email relay endpoint.
+53
+54 Payload shape matches the existing endpoint contract used by
+55 welcome_email_service.py — fields: to, subject, body, cc.
+56 Sender (from_email / from_name) is set server-side; the payload does not
+57 include those fields.
+58 """
+59 payload: dict[str, Any] = {
+60 "to": to,
+61 "subject": subject,
+62 "body": body,
+63 }
+64 if cc:
+65 payload["cc"] = cc
+66
+67 async with httpx.AsyncClient(timeout=30.0) as client:
+68 r = await client.post(
+69 NOTIFICATIONS_ENDPOINT,
+70 json=payload,
+71 headers={"X-API-Key": X_API_KEY},
+72 )
+73 r.raise_for_status()
+74
+75
+76 def _sterilize(name: str) -> str:
+77 """
+78 Reduce a full name to "FirstName L." for UU PDP compliance.
+79
+80 Examples:
+81 "Mario Rossi" → "Mario R."
+82 "Alice" → "Alice"
+83 "Jean-Claude Van Dam" → "Jean-Claude D."
+84 "" → ""
+85 """
+86 parts = name.strip().split()
+87 if not parts:
+88 return ""
+89 if len(parts) == 1:
+90 return parts[0]
+91 return f"{parts[0]} {parts[-1][0]}."
+92
+93
+94 def _build_pricing_services() -> list[dict[str, str]]:
+95 """Return list of {name, price_display} pairs from PricingService.
+96
+97 The pricing JSON has 3 levels:
+98 services (top) -> sub_category (dict) -> service_name (dict key) -> {price, duration, ...}
+99
+100 We flatten to a list of {name, price_display}. Returns empty list if
+101 PricingService is not loaded (graceful degradation for the welcome
+102 email — terms still communicate; services list is absent).
+103
+104 Golden Rule #12: prices ONLY from PricingTool/PricingService, never hardcoded.
+105 """
+106 svc = get_pricing_service()
+107 if not getattr(svc, "loaded", False):
+108 logger.warning("PricingService not loaded — welcome email services list will be empty")
+109 return []
+110 all_prices = svc.get_all_prices() or {}
+111 top = all_prices.get("services", all_prices)
+112 result: list[dict[str, str]] = []
+113 if not isinstance(top, dict):
+114 return result
+115 for sub_cat, entries in top.items():
+116 if isinstance(entries, dict):
+117 for service_name, entry in entries.items():
+118 if not isinstance(entry, dict):
+119 continue
+120 price_str = entry.get("price") or entry.get("final_price") or "On request"
+121 if not isinstance(price_str, str):
+122 price_str = str(price_str)
+123 result.append({
+124 "name": str(service_name),
+125 "price_display": price_str,
+126 })
+127 elif isinstance(entries, list):
+128 # Legacy flat-list shape, keep for safety
+129 for item in entries:
+130 if isinstance(item, dict) and "name" in item:
+131 result.append({
+132 "name": str(item["name"]),
+133 "price_display": str(item.get("price_display") or item.get("price") or "On request"),
+134 })
+135 return result
+136
+137
+138 # ─── Public API ─────────────────────────────────────────────────────────────
+139
+140 async def send_welcome(conn: Any, partner_id: UUID) -> None:
+141 """
+142 Send the partner welcome email.
+143
+144 Idempotent: reads welcome_email_sent_at before sending.
+145 If already sent, logs and returns without HTTP call.
+146
+147 Args:
+148 conn: asyncpg.Connection (passed directly by the router).
+149 partner_id: UUID of the partner.
+150 """
+151 repo = PartnersRepository(conn)
+152 p = await repo.get_partner(partner_id)
+153 if p is None:
+154 logger.warning("send_welcome: partner %s not found — skip", partner_id)
+155 return
+156 if p.welcome_email_sent_at is not None:
+157 logger.info("send_welcome: already sent for partner %s — skip (idempotent)", partner_id)
+158 return
+159
+160 pricing_services = _build_pricing_services()
+161
+162 commission_rate = (
+163 f"{p.default_commission_value}%"
+164 if p.default_commission_type == "percentage"
+165 else f"IDR {p.default_commission_value:,.0f}"
+166 )
+167
+168 tpl = _env.get_template("welcome.md.j2")
+169 body = tpl.render(
+170 partner=p,
+171 commission_rate=commission_rate,
+172 commission_type=p.default_commission_type,
+173 pricing_services=pricing_services,
+174 )
+175
+176 await _post_email(
+177 to=p.email,
+178 cc=None,
+179 subject="Welcome to Bali Zero Partners",
+180 body=body,
+181 )
+182 await repo.mark_welcome_sent(partner_id)
+183 logger.info("send_welcome: sent to partner %s (%s)", partner_id, p.email)
+184
+185
+186 async def send_commission_earned(conn: Any, commission_id: UUID) -> None:
+187 """
+188 Send the commission-earned notification email.
+189
+190 Idempotent: reads commission_email_sent_at before sending.
+191 Client name is sterilized to "First L." BEFORE template rendering (UU PDP).
+192
+193 Args:
+194 conn: asyncpg.Connection (passed directly by the router).
+195 commission_id: UUID of the partner_commissions row.
+196 """
+197 repo = PartnersRepository(conn)
+198 c = await repo.get_commission(commission_id)
+199 if c is None or c.status != "paid":
+200 logger.info(
+201 "send_commission_earned: commission %s not found or not paid — skip",
+202 commission_id,
+203 )
+204 return
+205 if c.commission_email_sent_at is not None:
+206 logger.info(
+207 "send_commission_earned: already sent for commission %s — skip (idempotent)",
+208 commission_id,
+209 )
+210 return
+211
+212 p = await repo.get_partner(c.partner_id)
+213 if p is None:
+214 logger.warning("send_commission_earned: partner %s not found — skip", c.partner_id)
+215 return
+216
+217 # Fetch process + client name via JOIN
+218 proc = None
+219 if c.process_id is not None:
+220 proc = await conn.fetchrow(
+221 """
+222 SELECT p.service_type, c.full_name AS client_name
+223 FROM processes p
+224 LEFT JOIN clients c ON c.id = p.client_id
+225 WHERE p.id = $1
    226	            """,
    227	            c.process_id,
    228	        )
@@ -5694,301 +5702,301 @@ exec
    238	    if c.assigned_to_snapshot is not None:
    239	        row = await conn.fetchrow(
    240	            "SELECT email FROM users WHERE id = $1",
-   241	            c.assigned_to_snapshot,
-   242	        )
-   243	        if row and row["email"]:
-   244	            cc_list.append(row["email"])
-   245	
-   246	    tpl = _env.get_template("commission.md.j2")
-   247	    body = tpl.render(
-   248	        partner=p,
-   249	        client_display=client_display,
-   250	        service_type=service_type,
-   251	        gross_idr=f"{c.gross_amount_idr:,.0f}",
-   252	        withholding_idr=f"{c.withholding_amount_idr:,.0f}",
-   253	        withholding_category=c.withholding_category,
-   254	        net_idr=f"{c.net_amount_idr:,.0f}",
-   255	        paid_via=c.paid_via or "",
-   256	        payment_reference=c.payment_reference or "",
-   257	        paid_at=c.paid_at.isoformat() if c.paid_at else "",
-   258	        receipt_file_url=c.receipt_file_url,
-   259	    )
-   260	
-   261	    subject = f"Commissione maturata — {client_display}"
-   262	    await _post_email(
-   263	        to=p.email,
-   264	        cc=cc_list if cc_list else None,
-   265	        subject=subject,
-   266	        body=body,
-   267	    )
-   268	    await repo.mark_commission_email_sent(commission_id)
-   269	    logger.info("send_commission_earned: sent for commission %s to %s", commission_id, p.email)
+241 c.assigned_to_snapshot,
+242 )
+243 if row and row["email"]:
+244 cc_list.append(row["email"])
+245
+246 tpl = _env.get_template("commission.md.j2")
+247 body = tpl.render(
+248 partner=p,
+249 client_display=client_display,
+250 service_type=service_type,
+251 gross_idr=f"{c.gross_amount_idr:,.0f}",
+252 withholding_idr=f"{c.withholding_amount_idr:,.0f}",
+253 withholding_category=c.withholding_category,
+254 net_idr=f"{c.net_amount_idr:,.0f}",
+255 paid_via=c.paid_via or "",
+256 payment_reference=c.payment_reference or "",
+257 paid_at=c.paid_at.isoformat() if c.paid_at else "",
+258 receipt_file_url=c.receipt_file_url,
+259 )
+260
+261 subject = f"Commissione maturata — {client_display}"
+262 await _post_email(
+263 to=p.email,
+264 cc=cc_list if cc_list else None,
+265 subject=subject,
+266 body=body,
+267 )
+268 await repo.mark_commission_email_sent(commission_id)
+269 logger.info("send_commission_earned: sent for commission %s to %s", commission_id, p.email)
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/app/routers/partners.py | sed -n '548,760p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   548	async def create_referral(
-   549	    partner_id: UUID,
-   550	    body: ReferralCreate,
-   551	    user: dict[str, Any] = Depends(get_current_user),
-   552	    pool: asyncpg.Pool = Depends(get_database_pool),
-   553	) -> Any:
-   554	    """Record a referral for a partner. Team (owner) or admin."""
-   555	    try:
-   556	        async with pool.acquire() as conn:
-   557	            svc = PartnersService(conn)
-   558	            await verify_partner_access_with_role(
-   559	                svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-   560	            )
-   561	            rid = await svc.repo.insert_referral(
-   562	                partner_id=partner_id,
-   563	                process_id=body.process_id,
-   564	                referred_by_user_id=UUID(str(user["user_id"])),
-   565	                notes=body.notes,
-   566	            )
-   567	            return {"id": str(rid), "partner_id": str(partner_id), "process_id": str(body.process_id)}
-   568	    except HTTPException:
-   569	        raise
-   570	    except asyncpg.UniqueViolationError:
-   571	        raise HTTPException(status_code=409, detail="process already has a referral")
-   572	    except Exception as e:
-   573	        if "unique" in str(e).lower():
-   574	            raise HTTPException(status_code=409, detail="process already has a referral")
-   575	        logger.exception("create_referral failed")
-   576	        raise HTTPException(status_code=500, detail="internal error")
-   577	
-   578	
-   579	@router.patch("/referrals/{referral_id}", status_code=status.HTTP_204_NO_CONTENT)
-   580	async def swap_referral(
-   581	    referral_id: UUID,
-   582	    body: ReferralSwap,
-   583	    user: dict[str, Any] = Depends(get_current_user),
-   584	    pool: asyncpg.Pool = Depends(get_database_pool),
-   585	) -> Response:
-   586	    """Swap a referral to a different partner. Admin only."""
-   587	    _require_admin(user)
-   588	    try:
-   589	        async with pool.acquire() as conn:
-   590	            svc = PartnersService(conn)
-   591	            await svc.repo.update_referral_partner(referral_id, body.new_partner_id)
-   592	            return Response(status_code=204)
-   593	    except HTTPException:
-   594	        raise
-   595	    except Exception:
-   596	        logger.exception("swap_referral failed")
-   597	        raise HTTPException(status_code=500, detail="internal error")
-   598	
-   599	
-   600	@router.delete("/referrals/{referral_id}", status_code=status.HTTP_204_NO_CONTENT)
-   601	async def delete_referral(
-   602	    referral_id: UUID,
-   603	    user: dict[str, Any] = Depends(get_current_user),
-   604	    pool: asyncpg.Pool = Depends(get_database_pool),
-   605	) -> Response:
-   606	    """Delete a referral. Admin only. Blocked if commissions exist."""
-   607	    _require_admin(user)
-   608	    try:
-   609	        async with pool.acquire() as conn:
-   610	            svc = PartnersService(conn)
-   611	            await svc.repo.delete_referral(referral_id)
-   612	            return Response(status_code=204)
-   613	    except HTTPException:
-   614	        raise
-   615	    except RuntimeError as e:
-   616	        raise HTTPException(status_code=409, detail=str(e))
-   617	    except Exception:
-   618	        logger.exception("delete_referral failed")
-   619	        raise HTTPException(status_code=500, detail="internal error")
-   620	
-   621	
-   622	# ── Commissions ───────────────────────────────────────────────────────────────
-   623	
-   624	@router.get("/{partner_id}/commissions")
-   625	async def list_commissions(
-   626	    partner_id: UUID,
-   627	    user: dict[str, Any] = Depends(get_current_user),
-   628	    pool: asyncpg.Pool = Depends(get_database_pool),
-   629	) -> Any:
-   630	    """List commissions for a partner. Scoped by role."""
-   631	    async with pool.acquire() as conn:
-   632	        svc = PartnersService(conn)
-   633	        await verify_partner_access_with_role(
-   634	            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-   635	        )
-   636	        commissions = await svc.repo.list_commissions_for_partner(partner_id)
-   637	        return [
-   638	            dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c)
-   639	            for c in commissions
-   640	        ]
-   641	
-   642	
-   643	@router.get("/{partner_id}/audit-log")
-   644	async def list_partner_audit_log(
-   645	    partner_id: UUID,
-   646	    user: dict[str, Any] = Depends(get_current_user),
-   647	    pool: asyncpg.Pool = Depends(get_database_pool),
-   648	) -> Any:
-   649	    """List the audit log for a partner. Admin or team-owner only."""
-   650	    try:
-   651	        async with pool.acquire() as conn:
-   652	            svc = PartnersService(conn)
-   653	            await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
-   654	            entries = await svc.list_audit(partner_id)
-   655	            return [_partner_to_dict(e) for e in entries]
-   656	    except HTTPException:
-   657	        raise
-   658	    except Exception:
-   659	        logger.exception("list_partner_audit_log failed")
-   660	        raise HTTPException(status_code=500, detail="internal error")
-   661	
-   662	
-   663	@router.post("/commissions/{commission_id}/approve", status_code=status.HTTP_204_NO_CONTENT)
-   664	async def approve_commission(
-   665	    commission_id: UUID,
-   666	    user: dict[str, Any] = Depends(get_current_user),
-   667	    pool: asyncpg.Pool = Depends(get_database_pool),
-   668	) -> Response:
-   669	    """Approve a commission. Admin + finance permission."""
-   670	    _require_admin(user)
-   671	    _require_finance(user)
-   672	    try:
-   673	        async with pool.acquire() as conn:
-   674	            engine = CommissionEngine(conn)
-   675	            await engine.approve(commission_id, actor=UUID(str(user["user_id"])))
-   676	            return Response(status_code=204)
-   677	    except HTTPException:
-   678	        raise
-   679	    except ValueError as e:
-   680	        raise HTTPException(status_code=400, detail=str(e))
-   681	    except Exception:
-   682	        logger.exception("approve_commission failed")
-   683	        raise HTTPException(status_code=500, detail="internal error")
-   684	
-   685	
-   686	@router.post("/commissions/{commission_id}/mark-paid", status_code=status.HTTP_204_NO_CONTENT)
-   687	async def mark_paid_commission(
-   688	    commission_id: UUID,
-   689	    body: CommissionMarkPaidRequest,
-   690	    user: dict[str, Any] = Depends(get_current_user),
-   691	    pool: asyncpg.Pool = Depends(get_database_pool),
-   692	) -> Response:
-   693	    """Mark a commission as paid. Admin + finance permission."""
-   694	    _require_admin(user)
-   695	    _require_finance(user)
-   696	    try:
-   697	        async with pool.acquire() as conn:
-   698	            engine = CommissionEngine(conn)
-   699	            await engine.mark_paid(
-   700	                commission_id,
-   701	                actor=UUID(str(user["user_id"])),
-   702	                paid_via=body.paid_via,
-   703	                payment_reference=body.payment_reference,
-   704	                payment_proof_url=body.payment_proof_url,
-   705	                receipt_type=body.receipt_type,
-   706	                receipt_file_url=body.receipt_file_url,
-   707	            )
-   708	            # Trigger commission-paid email if emails module is available (Task 8)
-   709	            try:
-   710	                from backend.services.crm.partners.emails import send_commission_earned
-   711	                await send_commission_earned(conn, commission_id)
-   712	            except ImportError:
-   713	                pass
-   714	            return Response(status_code=204)
-   715	    except HTTPException:
-   716	        raise
-   717	    except ValueError as e:
-   718	        raise HTTPException(status_code=400, detail=str(e))
-   719	    except Exception:
-   720	        logger.exception("mark_paid_commission failed")
-   721	        raise HTTPException(status_code=500, detail="internal error")
-   722	
-   723	
-   724	@router.post("/commissions/{commission_id}/clawback", status_code=status.HTTP_201_CREATED)
-   725	async def clawback_commission(
-   726	    commission_id: UUID,
-   727	    body: ClawbackRequest,
-   728	    user: dict[str, Any] = Depends(get_current_user),
-   729	    pool: asyncpg.Pool = Depends(get_database_pool),
-   730	) -> Any:
-   731	    """Initiate a clawback on a commission. Admin + finance permission. Returns new commission id."""
-   732	    _require_admin(user)
-   733	    _require_finance(user)
-   734	    try:
-   735	        async with pool.acquire() as conn:
-   736	            engine = CommissionEngine(conn)
-   737	            cid = await engine.clawback(
-   738	                commission_id,
-   739	                actor=UUID(str(user["user_id"])),
-   740	                reason=body.reason,
-   741	                amount_idr=body.amount_idr,
-   742	            )
-   743	            return {"id": str(cid)}
-   744	    except HTTPException:
-   745	        raise
-   746	    except ValueError as e:
-   747	        raise HTTPException(status_code=400, detail=str(e))
-   748	    except Exception:
-   749	        logger.exception("clawback_commission failed")
-   750	        raise HTTPException(status_code=500, detail="internal error")
-   751	
-   752	
-   753	@router.post("/commissions/{commission_id}/waive", status_code=status.HTTP_204_NO_CONTENT)
-   754	async def waive_commission(
-   755	    commission_id: UUID,
-   756	    body: WaiveRequest,
-   757	    user: dict[str, Any] = Depends(get_current_user),
-   758	    pool: asyncpg.Pool = Depends(get_database_pool),
-   759	) -> Response:
-   760	    """Waive a clawback on a commission. Admin + finance permission."""
+succeeded in 0ms:
+548 async def create_referral(
+549 partner_id: UUID,
+550 body: ReferralCreate,
+551 user: dict[str, Any] = Depends(get_current_user),
+552 pool: asyncpg.Pool = Depends(get_database_pool),
+553 ) -> Any:
+554 """Record a referral for a partner. Team (owner) or admin."""
+555 try:
+556 async with pool.acquire() as conn:
+557 svc = PartnersService(conn)
+558 await verify_partner_access_with_role(
+559 svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+560 )
+561 rid = await svc.repo.insert_referral(
+562 partner_id=partner_id,
+563 process_id=body.process_id,
+564 referred_by_user_id=UUID(str(user["user_id"])),
+565 notes=body.notes,
+566 )
+567 return {"id": str(rid), "partner_id": str(partner_id), "process_id": str(body.process_id)}
+568 except HTTPException:
+569 raise
+570 except asyncpg.UniqueViolationError:
+571 raise HTTPException(status_code=409, detail="process already has a referral")
+572 except Exception as e:
+573 if "unique" in str(e).lower():
+574 raise HTTPException(status_code=409, detail="process already has a referral")
+575 logger.exception("create_referral failed")
+576 raise HTTPException(status_code=500, detail="internal error")
+577
+578
+579 @router.patch("/referrals/{referral_id}", status_code=status.HTTP_204_NO_CONTENT)
+580 async def swap_referral(
+581 referral_id: UUID,
+582 body: ReferralSwap,
+583 user: dict[str, Any] = Depends(get_current_user),
+584 pool: asyncpg.Pool = Depends(get_database_pool),
+585 ) -> Response:
+586 """Swap a referral to a different partner. Admin only."""
+587 _require_admin(user)
+588 try:
+589 async with pool.acquire() as conn:
+590 svc = PartnersService(conn)
+591 await svc.repo.update_referral_partner(referral_id, body.new_partner_id)
+592 return Response(status_code=204)
+593 except HTTPException:
+594 raise
+595 except Exception:
+596 logger.exception("swap_referral failed")
+597 raise HTTPException(status_code=500, detail="internal error")
+598
+599
+600 @router.delete("/referrals/{referral_id}", status_code=status.HTTP_204_NO_CONTENT)
+601 async def delete_referral(
+602 referral_id: UUID,
+603 user: dict[str, Any] = Depends(get_current_user),
+604 pool: asyncpg.Pool = Depends(get_database_pool),
+605 ) -> Response:
+606 """Delete a referral. Admin only. Blocked if commissions exist."""
+607 _require_admin(user)
+608 try:
+609 async with pool.acquire() as conn:
+610 svc = PartnersService(conn)
+611 await svc.repo.delete_referral(referral_id)
+612 return Response(status_code=204)
+613 except HTTPException:
+614 raise
+615 except RuntimeError as e:
+616 raise HTTPException(status_code=409, detail=str(e))
+617 except Exception:
+618 logger.exception("delete_referral failed")
+619 raise HTTPException(status_code=500, detail="internal error")
+620
+621
+622 # ── Commissions ───────────────────────────────────────────────────────────────
+623
+624 @router.get("/{partner_id}/commissions")
+625 async def list_commissions(
+626 partner_id: UUID,
+627 user: dict[str, Any] = Depends(get_current_user),
+628 pool: asyncpg.Pool = Depends(get_database_pool),
+629 ) -> Any:
+630 """List commissions for a partner. Scoped by role."""
+631 async with pool.acquire() as conn:
+632 svc = PartnersService(conn)
+633 await verify_partner_access_with_role(
+634 svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+635 )
+636 commissions = await svc.repo.list_commissions_for_partner(partner_id)
+637 return [
+638 dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c)
+639 for c in commissions
+640 ]
+641
+642
+643 @router.get("/{partner_id}/audit-log")
+644 async def list_partner_audit_log(
+645 partner_id: UUID,
+646 user: dict[str, Any] = Depends(get_current_user),
+647 pool: asyncpg.Pool = Depends(get_database_pool),
+648 ) -> Any:
+649 """List the audit log for a partner. Admin or team-owner only."""
+650 try:
+651 async with pool.acquire() as conn:
+652 svc = PartnersService(conn)
+653 await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
+654 entries = await svc.list_audit(partner_id)
+655 return [_partner_to_dict(e) for e in entries]
+656 except HTTPException:
+657 raise
+658 except Exception:
+659 logger.exception("list_partner_audit_log failed")
+660 raise HTTPException(status_code=500, detail="internal error")
+661
+662
+663 @router.post("/commissions/{commission_id}/approve", status_code=status.HTTP_204_NO_CONTENT)
+664 async def approve_commission(
+665 commission_id: UUID,
+666 user: dict[str, Any] = Depends(get_current_user),
+667 pool: asyncpg.Pool = Depends(get_database_pool),
+668 ) -> Response:
+669 """Approve a commission. Admin + finance permission."""
+670 _require_admin(user)
+671 _require_finance(user)
+672 try:
+673 async with pool.acquire() as conn:
+674 engine = CommissionEngine(conn)
+675 await engine.approve(commission_id, actor=UUID(str(user["user_id"])))
+676 return Response(status_code=204)
+677 except HTTPException:
+678 raise
+679 except ValueError as e:
+680 raise HTTPException(status_code=400, detail=str(e))
+681 except Exception:
+682 logger.exception("approve_commission failed")
+683 raise HTTPException(status_code=500, detail="internal error")
+684
+685
+686 @router.post("/commissions/{commission_id}/mark-paid", status_code=status.HTTP_204_NO_CONTENT)
+687 async def mark_paid_commission(
+688 commission_id: UUID,
+689 body: CommissionMarkPaidRequest,
+690 user: dict[str, Any] = Depends(get_current_user),
+691 pool: asyncpg.Pool = Depends(get_database_pool),
+692 ) -> Response:
+693 """Mark a commission as paid. Admin + finance permission."""
+694 _require_admin(user)
+695 _require_finance(user)
+696 try:
+697 async with pool.acquire() as conn:
+698 engine = CommissionEngine(conn)
+699 await engine.mark_paid(
+700 commission_id,
+701 actor=UUID(str(user["user_id"])),
+702 paid_via=body.paid_via,
+703 payment_reference=body.payment_reference,
+704 payment_proof_url=body.payment_proof_url,
+705 receipt_type=body.receipt_type,
+706 receipt_file_url=body.receipt_file_url,
+707 )
+708 # Trigger commission-paid email if emails module is available (Task 8)
+709 try:
+710 from backend.services.crm.partners.emails import send_commission_earned
+711 await send_commission_earned(conn, commission_id)
+712 except ImportError:
+713 pass
+714 return Response(status_code=204)
+715 except HTTPException:
+716 raise
+717 except ValueError as e:
+718 raise HTTPException(status_code=400, detail=str(e))
+719 except Exception:
+720 logger.exception("mark_paid_commission failed")
+721 raise HTTPException(status_code=500, detail="internal error")
+722
+723
+724 @router.post("/commissions/{commission_id}/clawback", status_code=status.HTTP_201_CREATED)
+725 async def clawback_commission(
+726 commission_id: UUID,
+727 body: ClawbackRequest,
+728 user: dict[str, Any] = Depends(get_current_user),
+729 pool: asyncpg.Pool = Depends(get_database_pool),
+730 ) -> Any:
+731 """Initiate a clawback on a commission. Admin + finance permission. Returns new commission id."""
+732 _require_admin(user)
+733 _require_finance(user)
+734 try:
+735 async with pool.acquire() as conn:
+736 engine = CommissionEngine(conn)
+737 cid = await engine.clawback(
+738 commission_id,
+739 actor=UUID(str(user["user_id"])),
+740 reason=body.reason,
+741 amount_idr=body.amount_idr,
+742 )
+743 return {"id": str(cid)}
+744 except HTTPException:
+745 raise
+746 except ValueError as e:
+747 raise HTTPException(status_code=400, detail=str(e))
+748 except Exception:
+749 logger.exception("clawback_commission failed")
+750 raise HTTPException(status_code=500, detail="internal error")
+751
+752
+753 @router.post("/commissions/{commission_id}/waive", status_code=status.HTTP_204_NO_CONTENT)
+754 async def waive_commission(
+755 commission_id: UUID,
+756 body: WaiveRequest,
+757 user: dict[str, Any] = Depends(get_current_user),
+758 pool: asyncpg.Pool = Depends(get_database_pool),
+759 ) -> Response:
+760 """Waive a clawback on a commission. Admin + finance permission."""
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/repository.py | sed -n '302,430p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   302	    async def update_commission_status(
-   303	        self,
-   304	        commission_id: UUID,
-   305	        new_status: CommissionStatus,
-   306	        *,
-   307	        approved_by: UUID | None = None,
-   308	        paid_by: UUID | None = None,
-   309	        paid_via: str | None = None,
-   310	        payment_reference: str | None = None,
-   311	        payment_proof_url: str | None = None,
-   312	        receipt_type: str | None = None,
-   313	        receipt_file_url: str | None = None,
-   314	        waiver_reason: str | None = None,
-   315	    ) -> None:
-   316	        current = await self.get_commission(commission_id)
-   317	        if current is None:
-   318	            raise ValueError(f"Commission {commission_id} not found")
-   319	        if new_status not in _ALLOWED_TRANSITIONS.get(current.status, set()):
-   320	            raise ValueError(
-   321	                f"Disallowed transition: {current.status!r} -> {new_status!r}"
-   322	            )
-   323	        logger.debug(
-   324	            "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
-   325	        )
-   326	        fragments, args = ["status = $2"], [commission_id, new_status]
+succeeded in 0ms:
+302 async def update_commission_status(
+303 self,
+304 commission_id: UUID,
+305 new_status: CommissionStatus,
+306 *,
+307 approved_by: UUID | None = None,
+308 paid_by: UUID | None = None,
+309 paid_via: str | None = None,
+310 payment_reference: str | None = None,
+311 payment_proof_url: str | None = None,
+312 receipt_type: str | None = None,
+313 receipt_file_url: str | None = None,
+314 waiver_reason: str | None = None,
+315 ) -> None:
+316 current = await self.get_commission(commission_id)
+317 if current is None:
+318 raise ValueError(f"Commission {commission_id} not found")
+319 if new_status not in _ALLOWED_TRANSITIONS.get(current.status, set()):
+320 raise ValueError(
+321 f"Disallowed transition: {current.status!r} -> {new_status!r}"
+322 )
+323 logger.debug(
+324 "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
+325 )
+326 fragments, args = ["status = $2"], [commission_id, new_status]
    327	        if new_status == "approved":
    328	            fragments += ["approved_at = now()", f"approved_by = ${len(args)+1}"]; args.append(approved_by)
-   329	        if new_status == "paid":
-   330	            fragments += [
-   331	                "paid_at = now()",
-   332	                f"paid_by = ${len(args)+1}", f"paid_via = ${len(args)+2}",
-   333	                f"payment_reference = ${len(args)+3}", f"payment_proof_url = ${len(args)+4}",
-   334	                f"receipt_type = ${len(args)+5}", f"receipt_file_url = ${len(args)+6}",
-   335	            ]
-   336	            args += [paid_by, paid_via, payment_reference, payment_proof_url,
-   337	                     receipt_type, receipt_file_url]
-   338	        if new_status == "waived":
-   339	            fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
+329 if new_status == "paid":
+330 fragments += [
+331 "paid_at = now()",
+332 f"paid_by = ${len(args)+1}", f"paid_via = ${len(args)+2}",
+333 f"payment_reference = ${len(args)+3}", f"payment_proof_url = ${len(args)+4}",
+334 f"receipt_type = ${len(args)+5}", f"receipt_file_url = ${len(args)+6}",
+335 ]
+336 args += [paid_by, paid_via, payment_reference, payment_proof_url,
+337 receipt_type, receipt_file_url]
+338 if new_status == "waived":
+339 fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
    340	        sql = f"UPDATE partner_commissions SET {', '.join(fragments)} WHERE id = $1"
-   341	        await self.conn.execute(sql, *args)
-   342	
-   343	    async def mark_commission_email_sent(self, commission_id: UUID) -> None:
-   344	        await self.conn.execute(
-   345	            "UPDATE partner_commissions SET commission_email_sent_at = now() "
-   346	            "WHERE id = $1 AND commission_email_sent_at IS NULL",
+341 await self.conn.execute(sql, *args)
+342
+343 async def mark_commission_email_sent(self, commission_id: UUID) -> None:
+344 await self.conn.execute(
+345 "UPDATE partner_commissions SET commission_email_sent_at = now() "
+346 "WHERE id = $1 AND commission_email_sent_at IS NULL",
    347	            commission_id,
    348	        )
    349	
@@ -6022,323 +6030,323 @@ exec
    377	    async def list_audit_for_partner(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
    378	        rows = await self.conn.fetch(
    379	            "SELECT * FROM partner_audit_log WHERE partner_id = $1 ORDER BY at DESC",
-   380	            partner_id,
-   381	        )
-   382	        return [
-   383	            PartnerAuditLogEntry(
-   384	                id=r["id"], partner_id=r["partner_id"],
-   385	                actor_user_id=r["actor_user_id"], action=r["action"],
-   386	                before_json=json.loads(r["before_json"]) if r["before_json"] else None,
-   387	                after_json=json.loads(r["after_json"]) if r["after_json"] else None,
-   388	                reason=r["reason"], at=r["at"],
-   389	            )
-   390	            for r in rows
-   391	        ]
-   392	
-   393	    # ── Row mappers ─────────────────────────────────────────────────────
-   394	
-   395	    @staticmethod
-   396	    def _row_to_partner(row: asyncpg.Record) -> Partner:
-   397	        return Partner(**dict(row))
-   398	
-   399	    @staticmethod
-   400	    def _row_to_referral(row: asyncpg.Record) -> PartnerReferral:
-   401	        return PartnerReferral(**dict(row))
-   402	
-   403	    @staticmethod
-   404	    def _row_to_commission(row: asyncpg.Record) -> PartnerCommission:
-   405	        return PartnerCommission(**dict(row))
+380 partner_id,
+381 )
+382 return [
+383 PartnerAuditLogEntry(
+384 id=r["id"], partner_id=r["partner_id"],
+385 actor_user_id=r["actor_user_id"], action=r["action"],
+386 before_json=json.loads(r["before_json"]) if r["before_json"] else None,
+387 after_json=json.loads(r["after_json"]) if r["after_json"] else None,
+388 reason=r["reason"], at=r["at"],
+389 )
+390 for r in rows
+391 ]
+392
+393 # ── Row mappers ─────────────────────────────────────────────────────
+394
+395 @staticmethod
+396 def _row_to_partner(row: asyncpg.Record) -> Partner:
+397 return Partner(**dict(row))
+398
+399 @staticmethod
+400 def _row_to_referral(row: asyncpg.Record) -> PartnerReferral:
+401 return PartnerReferral(**dict(row))
+402
+403 @staticmethod
+404 def _row_to_commission(row: asyncpg.Record) -> PartnerCommission:
+405 return PartnerCommission(**dict(row))
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/service.py | sed -n '1,260p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	# backend/services/crm/partners/service.py
-     2	from __future__ import annotations
-     3	
-     4	import logging
-     5	from typing import Any
-     6	from uuid import UUID
-     7	
-     8	import asyncpg
-     9	from fastapi import HTTPException
-    10	
-    11	from backend.services.crm.partners.models import Partner, PartnerAuditLogEntry
-    12	from backend.services.crm.partners.repository import PartnersRepository
-    13	
-    14	logger = logging.getLogger(__name__)
-    15	
-    16	
-    17	class ConflictError(HTTPException):
-    18	    def __init__(self, detail: str):
-    19	        super().__init__(status_code=409, detail=detail)
-    20	
-    21	
-    22	class PartnersService:
-    23	    def __init__(self, conn: asyncpg.Connection):
-    24	        self.conn = conn
-    25	        self.repo = PartnersRepository(conn)
-    26	
-    27	    async def create_partner(
-    28	        self,
-    29	        *,
-    30	        full_name: str,
-    31	        email: str,
-    32	        entity_type: str,
-    33	        assigned_to: UUID | None = None,
-    34	        created_by: UUID | None = None,
-    35	        **optional: Any,
-    36	    ) -> UUID:
-    37	        try:
-    38	            pid = await self.repo.insert_partner(
-    39	                full_name=full_name,
-    40	                email=email,
-    41	                entity_type=entity_type,
-    42	                assigned_to=assigned_to,
-    43	                created_by=created_by,
-    44	                **optional,
-    45	            )
-    46	        except ValueError as e:
-    47	            raise ConflictError(str(e))
-    48	        except asyncpg.UniqueViolationError:
-    49	            raise ConflictError(f"email already in use: {email!r}")
-    50	        after = {
-    51	            "full_name": full_name,
-    52	            "email": email,
-    53	            "assigned_to": str(assigned_to) if assigned_to else None,
-    54	        }
-    55	        await self.repo.insert_audit(
-    56	            partner_id=pid,
-    57	            action="created",
-    58	            actor_user_id=created_by,
-    59	            after=after,
-    60	        )
-    61	        return pid
-    62	
-    63	    async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
-    64	        return await verify_partner_access(self, actor_user, partner_id)
-    65	
-    66	    async def list_partners(
-    67	        self,
-    68	        *,
-    69	        actor_user: UUID,
-    70	        actor_role: str,
-    71	        assigned_to: UUID | None = None,
-    72	        onboarding_status: str | None = None,
-    73	        orphaned: bool = False,
-    74	        search: str | None = None,
-    75	    ) -> list[Partner]:
-    76	        if actor_role == "team":
-    77	            assigned_to = actor_user  # force scope to own
-    78	        return await self.repo.list_partners(
-    79	            assigned_to=assigned_to,
-    80	            onboarding_status=onboarding_status,
-    81	            orphaned=orphaned,
-    82	            search=search,
-    83	        )
-    84	
-    85	    async def update_partner(
-    86	        self,
-    87	        partner_id: UUID,
-    88	        *,
-    89	        actor_user: UUID,
-    90	        actor_role: str,
-    91	        **fields: Any,
-    92	    ) -> None:
-    93	        if actor_role == "partner":
-    94	            raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
-    95	        current = await verify_partner_access_with_role(
-    96	            self, actor_user, actor_role, partner_id
-    97	        )
-    98	        before = {k: getattr(current, k) for k in fields if hasattr(current, k)}
-    99	        try:
-   100	            await self.repo.update_partner(partner_id, **fields)
-   101	        except ValueError as e:
-   102	            raise ConflictError(str(e))
-   103	        await self.repo.insert_audit(
-   104	            partner_id=partner_id,
-   105	            action="updated",
-   106	            actor_user_id=actor_user,
-   107	            before=before,
-   108	            after=fields,
-   109	        )
-   110	
-   111	    async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
-   112	        if not await _is_admin(self.conn, actor_user):
-   113	            raise HTTPException(status_code=403, detail="admin only")
-   114	        await self.repo.activate_partner(partner_id)
-   115	        await self.repo.insert_audit(
-   116	            partner_id=partner_id,
-   117	            action="activated",
-   118	            actor_user_id=actor_user,
-   119	        )
-   120	
-   121	    async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
-   122	        if not await _is_admin(self.conn, actor_user):
-   123	            raise HTTPException(status_code=403, detail="admin only")
-   124	        await self.repo.deactivate_partner(partner_id)
-   125	        await self.repo.insert_audit(
-   126	            partner_id=partner_id,
-   127	            action="deactivated",
-   128	            actor_user_id=actor_user,
-   129	        )
-   130	
-   131	    async def reassign_partner(
-   132	        self,
-   133	        partner_id: UUID,
-   134	        *,
-   135	        new_user_id: UUID | None,
-   136	        actor_user: UUID,
-   137	        reason: str | None,
-   138	    ) -> None:
-   139	        if not await _is_admin(self.conn, actor_user):
-   140	            raise HTTPException(status_code=403, detail="admin only")
-   141	        if not reason:
-   142	            raise ValueError("reason is required for reassignment")
-   143	        current = await self.repo.get_partner(partner_id)
-   144	        if current is None:
-   145	            raise HTTPException(status_code=404, detail="partner not found")
-   146	        before = {"assigned_to": str(current.assigned_to) if current.assigned_to else None}
-   147	        after = {"assigned_to": str(new_user_id) if new_user_id else None}
-   148	        await self.repo.reassign_partner(partner_id, new_user_id)
-   149	        await self.repo.insert_audit(
-   150	            partner_id=partner_id,
-   151	            action="reassigned",
-   152	            actor_user_id=actor_user,
-   153	            before=before,
-   154	            after=after,
-   155	            reason=reason,
-   156	        )
-   157	
-   158	    async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
-   159	        if not await _is_admin(self.conn, actor_user):
-   160	            raise HTTPException(status_code=403, detail="admin only")
-   161	        affected = await self.repo.list_partners(assigned_to=user_id)
-   162	        n = await self.repo.orphan_partners_of_user(user_id)
-   163	        for p in affected:
-   164	            await self.repo.insert_audit(
-   165	                partner_id=p.id,
-   166	                action="orphaned",
-   167	                actor_user_id=actor_user,
-   168	                before={"assigned_to": str(user_id)},
-   169	                after={"assigned_to": None},
-   170	                reason=f"auto-orphan on deactivation of user {user_id}",
-   171	            )
-   172	        return n
-   173	
-   174	    async def list_audit(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
-   175	        return await self.repo.list_audit_for_partner(partner_id)
-   176	
-   177	    async def mark_welcome_sent(self, partner_id: UUID) -> None:
-   178	        await self.repo.mark_welcome_sent(partner_id)
-   179	
-   180	
-   181	async def _is_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
-   182	    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+succeeded in 0ms:
+1 # backend/services/crm/partners/service.py
+2 from **future** import annotations
+3
+4 import logging
+5 from typing import Any
+6 from uuid import UUID
+7
+8 import asyncpg
+9 from fastapi import HTTPException
+10
+11 from backend.services.crm.partners.models import Partner, PartnerAuditLogEntry
+12 from backend.services.crm.partners.repository import PartnersRepository
+13
+14 logger = logging.getLogger(**name**)
+15
+16
+17 class ConflictError(HTTPException):
+18 def **init**(self, detail: str):
+19 super().**init**(status_code=409, detail=detail)
+20
+21
+22 class PartnersService:
+23 def **init**(self, conn: asyncpg.Connection):
+24 self.conn = conn
+25 self.repo = PartnersRepository(conn)
+26
+27 async def create_partner(
+28 self,
+29 *,
+30 full_name: str,
+31 email: str,
+32 entity_type: str,
+33 assigned_to: UUID | None = None,
+34 created_by: UUID | None = None,
+35 **optional: Any,
+36 ) -> UUID:
+37 try:
+38 pid = await self.repo.insert_partner(
+39 full_name=full_name,
+40 email=email,
+41 entity_type=entity_type,
+42 assigned_to=assigned_to,
+43 created_by=created_by,
+44 **optional,
+45 )
+46 except ValueError as e:
+47 raise ConflictError(str(e))
+48 except asyncpg.UniqueViolationError:
+49 raise ConflictError(f"email already in use: {email!r}")
+50 after = {
+51 "full_name": full_name,
+52 "email": email,
+53 "assigned_to": str(assigned_to) if assigned_to else None,
+54 }
+55 await self.repo.insert_audit(
+56 partner_id=pid,
+57 action="created",
+58 actor_user_id=created_by,
+59 after=after,
+60 )
+61 return pid
+62
+63 async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
+64 return await verify_partner_access(self, actor_user, partner_id)
+65
+66 async def list_partners(
+67 self,
+68 *,
+69 actor_user: UUID,
+70 actor_role: str,
+71 assigned_to: UUID | None = None,
+72 onboarding_status: str | None = None,
+73 orphaned: bool = False,
+74 search: str | None = None,
+75 ) -> list[Partner]:
+76 if actor_role == "team":
+77 assigned_to = actor_user # force scope to own
+78 return await self.repo.list_partners(
+79 assigned_to=assigned_to,
+80 onboarding_status=onboarding_status,
+81 orphaned=orphaned,
+82 search=search,
+83 )
+84
+85 async def update_partner(
+86 self,
+87 partner_id: UUID,
+88 *,
+89 actor_user: UUID,
+90 actor_role: str,
+91 **fields: Any,
+92 ) -> None:
+93 if actor_role == "partner":
+94 raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
+95 current = await verify_partner_access_with_role(
+96 self, actor_user, actor_role, partner_id
+97 )
+98 before = {k: getattr(current, k) for k in fields if hasattr(current, k)}
+99 try:
+100 await self.repo.update_partner(partner_id, **fields)
+101 except ValueError as e:
+102 raise ConflictError(str(e))
+103 await self.repo.insert_audit(
+104 partner_id=partner_id,
+105 action="updated",
+106 actor_user_id=actor_user,
+107 before=before,
+108 after=fields,
+109 )
+110
+111 async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+112 if not await _is_admin(self.conn, actor_user):
+113 raise HTTPException(status_code=403, detail="admin only")
+114 await self.repo.activate_partner(partner_id)
+115 await self.repo.insert_audit(
+116 partner_id=partner_id,
+117 action="activated",
+118 actor_user_id=actor_user,
+119 )
+120
+121 async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+122 if not await _is_admin(self.conn, actor_user):
+123 raise HTTPException(status_code=403, detail="admin only")
+124 await self.repo.deactivate_partner(partner_id)
+125 await self.repo.insert_audit(
+126 partner_id=partner_id,
+127 action="deactivated",
+128 actor_user_id=actor_user,
+129 )
+130
+131 async def reassign_partner(
+132 self,
+133 partner_id: UUID,
+134 *,
+135 new_user_id: UUID | None,
+136 actor_user: UUID,
+137 reason: str | None,
+138 ) -> None:
+139 if not await _is_admin(self.conn, actor_user):
+140 raise HTTPException(status_code=403, detail="admin only")
+141 if not reason:
+142 raise ValueError("reason is required for reassignment")
+143 current = await self.repo.get_partner(partner_id)
+144 if current is None:
+145 raise HTTPException(status_code=404, detail="partner not found")
+146 before = {"assigned_to": str(current.assigned_to) if current.assigned_to else None}
+147 after = {"assigned_to": str(new_user_id) if new_user_id else None}
+148 await self.repo.reassign_partner(partner_id, new_user_id)
+149 await self.repo.insert_audit(
+150 partner_id=partner_id,
+151 action="reassigned",
+152 actor_user_id=actor_user,
+153 before=before,
+154 after=after,
+155 reason=reason,
+156 )
+157
+158 async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
+159 if not await _is_admin(self.conn, actor_user):
+160 raise HTTPException(status_code=403, detail="admin only")
+161 affected = await self.repo.list_partners(assigned_to=user_id)
+162 n = await self.repo.orphan_partners_of_user(user_id)
+163 for p in affected:
+164 await self.repo.insert_audit(
+165 partner_id=p.id,
+166 action="orphaned",
+167 actor_user_id=actor_user,
+168 before={"assigned_to": str(user_id)},
+169 after={"assigned_to": None},
+170 reason=f"auto-orphan on deactivation of user {user_id}",
+171 )
+172 return n
+173
+174 async def list_audit(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
+175 return await self.repo.list_audit_for_partner(partner_id)
+176
+177 async def mark_welcome_sent(self, partner_id: UUID) -> None:
+178 await self.repo.mark_welcome_sent(partner_id)
+179
+180
+181 async def _is_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
+182 row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
    183	    return bool(row) and row["role"] == "admin"
    184	
    185	
    186	async def _get_role(conn: asyncpg.Connection, user_id: UUID) -> str | None:
    187	    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
-   188	    return row["role"] if row else None
-   189	
-   190	
-   191	async def verify_partner_access(
-   192	    svc: PartnersService, actor_user: UUID, partner_id: UUID
-   193	) -> Partner:
-   194	    role = await _get_role(svc.conn, actor_user)
-   195	    return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
-   196	
-   197	
-   198	async def verify_partner_access_with_role(
-   199	    svc: PartnersService,
-   200	    actor_user: UUID,
-   201	    actor_role: str | None,
-   202	    partner_id: UUID,
-   203	) -> Partner:
-   204	    partner = await svc.repo.get_partner(partner_id)
-   205	    if partner is None:
-   206	        raise HTTPException(status_code=404, detail="partner not found")
-   207	    if actor_role == "admin":
-   208	        return partner
-   209	    if actor_role == "team" and partner.assigned_to == actor_user:
-   210	        return partner
-   211	    if actor_role == "partner":
-   212	        # Check via users table: user.partner_id matches partner.id
-   213	        row = await svc.conn.fetchrow(
-   214	            "SELECT partner_id FROM users WHERE id = $1", actor_user
-   215	        )
-   216	        if row and row["partner_id"] == partner_id:
-   217	            return partner
-   218	    raise HTTPException(status_code=403, detail="forbidden")
+188 return row["role"] if row else None
+189
+190
+191 async def verify_partner_access(
+192 svc: PartnersService, actor_user: UUID, partner_id: UUID
+193 ) -> Partner:
+194 role = await _get_role(svc.conn, actor_user)
+195 return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
+196
+197
+198 async def verify_partner_access_with_role(
+199 svc: PartnersService,
+200 actor_user: UUID,
+201 actor_role: str | None,
+202 partner_id: UUID,
+203 ) -> Partner:
+204 partner = await svc.repo.get_partner(partner_id)
+205 if partner is None:
+206 raise HTTPException(status_code=404, detail="partner not found")
+207 if actor_role == "admin":
+208 return partner
+209 if actor_role == "team" and partner.assigned_to == actor_user:
+210 return partner
+211 if actor_role == "partner":
+212 # Check via users table: user.partner_id matches partner.id
+213 row = await svc.conn.fetchrow(
+214 "SELECT partner_id FROM users WHERE id = $1", actor_user
+215 )
+216 if row and row["partner_id"] == partner_id:
+217 return partner
+218 raise HTTPException(status_code=403, detail="forbidden")
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/events.py | sed -n '1,180p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	"""
-     2	EventBus subscriber for the CRM Partners module.
-     3	
-     4	Subscribes to ``practice.status_changed`` (PG channel ``practice_changed``
-     5	aliased in event_bus.PG_CHANNEL_MAP).  When a process transitions to
-     6	``completed``, delegates accrual to :class:`CommissionEngine` and publishes
-     7	``partner.commission_changed`` via ``pg_notify`` on success.
-     8	
-     9	Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 6
-    10	"""
-    11	from __future__ import annotations
-    12	
-    13	import json
-    14	import logging
-    15	from typing import TYPE_CHECKING, Any
-    16	from uuid import UUID
-    17	
-    18	from backend.app.db import get_pool
-    19	from backend.services.crm.partners.commission_engine import CommissionEngine
-    20	
-    21	if TYPE_CHECKING:
-    22	    from backend.services.events.event_bus import EventBus
-    23	
-    24	logger = logging.getLogger(__name__)
-    25	
-    26	PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
-    27	
-    28	
-    29	async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
-    30	    """Handler for ``practice.status_changed`` events.
-    31	
-    32	    Triggers commission accrual when a process flips to ``completed``.
-    33	    Payment status is re-verified inside
-    34	    :meth:`CommissionEngine.accrue_from_process` by querying the process row
-    35	    directly — the event payload may not carry ``payment_status``.
-    36	
-    37	    Early-exit conditions (no DB access):
-    38	    - ``new_status`` != ``"completed"``
-    39	    - ``process_id`` is absent or falsy
-    40	    - ``process_id`` cannot be parsed as a UUID
-    41	    """
-    42	    new_status = payload.get("new_status")
-    43	    process_id = payload.get("process_id")
-    44	
-    45	    if new_status != "completed" or not process_id:
-    46	        return
-    47	
-    48	    try:
-    49	        pid = UUID(process_id) if isinstance(process_id, str) else process_id
-    50	    except (ValueError, TypeError):
-    51	        logger.warning(
-    52	            "handle_practice_status_changed: bad process_id %r", process_id
-    53	        )
-    54	        return
-    55	
-    56	    pool = await get_pool()
-    57	    async with pool.acquire() as conn:
-    58	        engine = CommissionEngine(conn)
-    59	        cid = await engine.accrue_from_process(pid)
-    60	        if cid is None:
-    61	            return
-    62	
-    63	        # Read partner_id for the notification payload
-    64	        row = await conn.fetchrow(
-    65	            "SELECT partner_id FROM partner_commissions WHERE id = $1", cid
+succeeded in 0ms:
+1 """
+2 EventBus subscriber for the CRM Partners module.
+3
+4 Subscribes to `practice.status_changed` (PG channel `practice_changed`
+5 aliased in event_bus.PG_CHANNEL_MAP). When a process transitions to
+6 `completed`, delegates accrual to :class:`CommissionEngine` and publishes
+7 `partner.commission_changed` via `pg_notify` on success.
+8
+9 Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 6
+10 """
+11 from **future** import annotations
+12
+13 import json
+14 import logging
+15 from typing import TYPE_CHECKING, Any
+16 from uuid import UUID
+17
+18 from backend.app.db import get_pool
+19 from backend.services.crm.partners.commission_engine import CommissionEngine
+20
+21 if TYPE_CHECKING:
+22 from backend.services.events.event_bus import EventBus
+23
+24 logger = logging.getLogger(**name**)
+25
+26 PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
+27
+28
+29 async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
+30 """Handler for `practice.status_changed` events.
+31
+32 Triggers commission accrual when a process flips to `completed`.
+33 Payment status is re-verified inside
+34 :meth:`CommissionEngine.accrue_from_process` by querying the process row
+35 directly — the event payload may not carry `payment_status`.
+36
+37 Early-exit conditions (no DB access):
+38 - `new_status` != `"completed"`
+39 - `process_id` is absent or falsy
+40 - `process_id` cannot be parsed as a UUID
+41 """
+42 new_status = payload.get("new_status")
+43 process_id = payload.get("process_id")
+44
+45 if new_status != "completed" or not process_id:
+46 return
+47
+48 try:
+49 pid = UUID(process_id) if isinstance(process_id, str) else process_id
+50 except (ValueError, TypeError):
+51 logger.warning(
+52 "handle_practice_status_changed: bad process_id %r", process_id
+53 )
+54 return
+55
+56 pool = await get_pool()
+57 async with pool.acquire() as conn:
+58 engine = CommissionEngine(conn)
+59 cid = await engine.accrue_from_process(pid)
+60 if cid is None:
+61 return
+62
+63 # Read partner_id for the notification payload
+64 row = await conn.fetchrow(
+65 "SELECT partner_id FROM partner_commissions WHERE id = $1", cid
     66	        )
     67	        if row is None:
     68	            return
@@ -6370,187 +6378,187 @@ exec
     94	        # pg_notify with parameters — injection-safe
     95	        await conn.execute(
     96	            "SELECT pg_notify($1, $2)",
-    97	            PARTNER_COMMISSION_CHANGED,
-    98	            notification_payload,
-    99	        )
-   100	    logger.info(
-   101	        "Published partner.commission_changed: %s (%s)", commission_id, kind
-   102	    )
-   103	
-   104	
-   105	def register_partner_handlers(bus: "EventBus") -> None:
-   106	    """Subscribe partner-module handlers to the EventBus."""
-   107	    bus.subscribe("practice.status_changed", handle_practice_status_changed)
-   108	    logger.info("Partner handlers registered on practice.status_changed")
+97 PARTNER_COMMISSION_CHANGED,
+98 notification_payload,
+99 )
+100 logger.info(
+101 "Published partner.commission_changed: %s (%s)", commission_id, kind
+102 )
+103
+104
+105 def register_partner_handlers(bus: "EventBus") -> None:
+106 """Subscribe partner-module handlers to the EventBus."""
+107 bus.subscribe("practice.status_changed", handle_practice_status_changed)
+108 logger.info("Partner handlers registered on practice.status_changed")
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/crm/partners/commission_engine.py | sed -n '280,430p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/migrations/migration_119_partners.py | sed -n '260,380p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   280	    async def mark_paid(
-   281	        self,
-   282	        commission_id: UUID,
-   283	        *,
-   284	        actor: UUID,
-   285	        paid_via: str,
-   286	        payment_reference: str,
-   287	        payment_proof_url: str | None = None,
-   288	        receipt_type: str | None = None,
-   289	        receipt_file_url: str | None = None,
-   290	    ) -> None:
-   291	        """Transition a commission from 'approved' to 'paid'."""
-   292	        await self.repo.update_commission_status(
-   293	            commission_id,
-   294	            "paid",
-   295	            paid_by=actor,
-   296	            paid_via=paid_via,
-   297	            payment_reference=payment_reference,
-   298	            payment_proof_url=payment_proof_url,
-   299	            receipt_type=receipt_type,
-   300	            receipt_file_url=receipt_file_url,
-   301	        )
-   302	
-   303	    # ── Clawback ────────────────────────────────────────────────────────────
-   304	
-   305	    async def clawback(
-   306	        self,
-   307	        original_commission_id: UUID,
-   308	        *,
-   309	        actor: UUID,
-   310	        reason: str,
-   311	        amount_idr: Decimal | None = None,
-   312	    ) -> UUID:
-   313	        """Issue a clawback against an approved or paid commission.
-   314	
-   315	        Inserts a new 'clawback' entry_type row with negative amounts and
-   316	        status 'clawback_pending' (or 'waived' if the auto-writeoff threshold
-   317	        is configured and the amount is below it).
-   318	
-   319	        Idempotency: NOT idempotent — each call inserts a new row. This is
-   320	        intentional: an operator may legitimately issue multiple partial
-   321	        clawbacks against the same original commission. The idempotency_key
-   322	        includes now().isoformat() to prevent accidental de-dup.
-   323	
-   324	        Args:
-   325	            original_commission_id: The approved|paid commission to claw back.
-   326	            actor: The user UUID performing the operation.
-   327	            reason: Free-text justification (stored in clawback_reason).
-   328	            amount_idr: Override the clawback magnitude (positive IDR amount).
-   329	                        Defaults to the full net_amount_idr of the original.
-   330	
-   331	        Returns:
-   332	            UUID of the newly created clawback row.
-   333	        """
-   334	        orig = await self.repo.get_commission(original_commission_id)
-   335	        if orig is None:
-   336	            raise ValueError(f"Commission not found: {original_commission_id}")
-   337	        if orig.status not in ("approved", "paid"):
-   338	            raise ValueError(
-   339	                f"Clawback only valid for approved|paid commissions, "
-   340	                f"got status {orig.status!r}"
-   341	            )
-   342	
-   343	        # magnitude is the positive IDR amount to claw back
-   344	        magnitude = amount_idr if amount_idr is not None else orig.net_amount_idr
-   345	        gross_neg = -magnitude
-   346	        net_neg = -magnitude
-   347	
-   348	        # Auto-writeoff: if the magnitude is below the threshold (and threshold > 0),
-   349	        # insert directly as 'waived' instead of 'clawback_pending'.
-   350	        threshold = await self._system_setting_int(
-   351	            "partner_clawback_auto_writeoff_idr", 0
-   352	        )
-   353	        auto_waive = threshold > 0 and abs(int(magnitude)) < threshold
-   354	
-   355	        status = "waived" if auto_waive else "clawback_pending"
-   356	
-   357	        # Key is NOT idempotent by design — see docstring above.
-   358	        key = f"clawback:{original_commission_id}:{datetime.now(timezone.utc).isoformat()}"
-   359	
-   360	        cid = await self.repo.insert_commission(
-   361	            partner_id=orig.partner_id,
-   362	            entry_type="clawback",
-   363	            referral_id=orig.referral_id,
-   364	            process_id=orig.process_id,
-   365	            related_commission_id=orig.id,
-   366	            base_amount_idr=orig.base_amount_idr,
-   367	            commission_type_snapshot=orig.commission_type_snapshot,
-   368	            commission_value_snapshot=orig.commission_value_snapshot,
-   369	            assigned_to_snapshot=orig.assigned_to_snapshot,
-   370	            gross_amount_idr=gross_neg,
-   371	            withholding_category=orig.withholding_category,
-   372	            withholding_rate=orig.withholding_rate,
-   373	            withholding_amount_idr=Decimal("0"),
-   374	            net_amount_idr=net_neg,
-   375	            status=status,
-   376	            idempotency_key=key,
-   377	            clawback_reason=reason,
-   378	        )
-   379	
-   380	        if auto_waive:
-   381	            logger.info(
-   382	                "clawback %s auto-waived (magnitude %s IDR < threshold %s IDR)",
-   383	                cid, magnitude, threshold,
-   384	            )
-   385	        else:
-   386	            logger.info(
-   387	                "clawback %s created (clawback_pending, magnitude %s IDR) "
-   388	                "against original %s",
-   389	                cid, magnitude, original_commission_id,
-   390	            )
-   391	        return cid
-   392	
-   393	    # ── Waive clawback ──────────────────────────────────────────────────────
-   394	
-   395	    async def waive_clawback(
-   396	        self,
-   397	        clawback_id: UUID,
-   398	        *,
-   399	        actor: UUID,
-   400	        reason: str,
-   401	    ) -> None:
-   402	        """Manually waive a 'clawback_pending' commission (operator decision)."""
-   403	        await self.repo.update_commission_status(
-   404	            clawback_id, "waived", waiver_reason=reason
-   405	        )
-   406	
-   407	    # ── Helpers ─────────────────────────────────────────────────────────────
-   408	
-   409	    async def _system_setting_int(self, key: str, default: int) -> int:
-   410	        """Read an integer value from the system_settings table.
-   411	
-   412	        Returns `default` if the key is absent or the value cannot be
-   413	        coerced to int (e.g. empty string, garbage data).
-   414	        """
-   415	        row = await self.conn.fetchrow(
-   416	            "SELECT value FROM system_settings WHERE key = $1", key
-   417	        )
-   418	        try:
-   419	            return int(row["value"]) if row else default
-   420	        except (ValueError, TypeError):
-   421	            return default
+succeeded in 0ms:
+280 async def mark_paid(
+281 self,
+282 commission_id: UUID,
+283 *,
+284 actor: UUID,
+285 paid_via: str,
+286 payment_reference: str,
+287 payment_proof_url: str | None = None,
+288 receipt_type: str | None = None,
+289 receipt_file_url: str | None = None,
+290 ) -> None:
+291 """Transition a commission from 'approved' to 'paid'."""
+292 await self.repo.update_commission_status(
+293 commission_id,
+294 "paid",
+295 paid_by=actor,
+296 paid_via=paid_via,
+297 payment_reference=payment_reference,
+298 payment_proof_url=payment_proof_url,
+299 receipt_type=receipt_type,
+300 receipt_file_url=receipt_file_url,
+301 )
+302
+303 # ── Clawback ────────────────────────────────────────────────────────────
+304
+305 async def clawback(
+306 self,
+307 original_commission_id: UUID,
+308 *,
+309 actor: UUID,
+310 reason: str,
+311 amount_idr: Decimal | None = None,
+312 ) -> UUID:
+313 """Issue a clawback against an approved or paid commission.
+314
+315 Inserts a new 'clawback' entry_type row with negative amounts and
+316 status 'clawback_pending' (or 'waived' if the auto-writeoff threshold
+317 is configured and the amount is below it).
+318
+319 Idempotency: NOT idempotent — each call inserts a new row. This is
+320 intentional: an operator may legitimately issue multiple partial
+321 clawbacks against the same original commission. The idempotency_key
+322 includes now().isoformat() to prevent accidental de-dup.
+323
+324 Args:
+325 original_commission_id: The approved|paid commission to claw back.
+326 actor: The user UUID performing the operation.
+327 reason: Free-text justification (stored in clawback_reason).
+328 amount_idr: Override the clawback magnitude (positive IDR amount).
+329 Defaults to the full net_amount_idr of the original.
+330
+331 Returns:
+332 UUID of the newly created clawback row.
+333 """
+334 orig = await self.repo.get_commission(original_commission_id)
+335 if orig is None:
+336 raise ValueError(f"Commission not found: {original_commission_id}")
+337 if orig.status not in ("approved", "paid"):
+338 raise ValueError(
+339 f"Clawback only valid for approved|paid commissions, "
+340 f"got status {orig.status!r}"
+341 )
+342
+343 # magnitude is the positive IDR amount to claw back
+344 magnitude = amount_idr if amount_idr is not None else orig.net_amount_idr
+345 gross_neg = -magnitude
+346 net_neg = -magnitude
+347
+348 # Auto-writeoff: if the magnitude is below the threshold (and threshold > 0),
+349 # insert directly as 'waived' instead of 'clawback_pending'.
+350 threshold = await self._system_setting_int(
+351 "partner_clawback_auto_writeoff_idr", 0
+352 )
+353 auto_waive = threshold > 0 and abs(int(magnitude)) < threshold
+354
+355 status = "waived" if auto_waive else "clawback_pending"
+356
+357 # Key is NOT idempotent by design — see docstring above.
+358 key = f"clawback:{original_commission_id}:{datetime.now(timezone.utc).isoformat()}"
+359
+360 cid = await self.repo.insert_commission(
+361 partner_id=orig.partner_id,
+362 entry_type="clawback",
+363 referral_id=orig.referral_id,
+364 process_id=orig.process_id,
+365 related_commission_id=orig.id,
+366 base_amount_idr=orig.base_amount_idr,
+367 commission_type_snapshot=orig.commission_type_snapshot,
+368 commission_value_snapshot=orig.commission_value_snapshot,
+369 assigned_to_snapshot=orig.assigned_to_snapshot,
+370 gross_amount_idr=gross_neg,
+371 withholding_category=orig.withholding_category,
+372 withholding_rate=orig.withholding_rate,
+373 withholding_amount_idr=Decimal("0"),
+374 net_amount_idr=net_neg,
+375 status=status,
+376 idempotency_key=key,
+377 clawback_reason=reason,
+378 )
+379
+380 if auto_waive:
+381 logger.info(
+382 "clawback %s auto-waived (magnitude %s IDR < threshold %s IDR)",
+383 cid, magnitude, threshold,
+384 )
+385 else:
+386 logger.info(
+387 "clawback %s created (clawback_pending, magnitude %s IDR) "
+388 "against original %s",
+389 cid, magnitude, original_commission_id,
+390 )
+391 return cid
+392
+393 # ── Waive clawback ──────────────────────────────────────────────────────
+394
+395 async def waive_clawback(
+396 self,
+397 clawback_id: UUID,
+398 *,
+399 actor: UUID,
+400 reason: str,
+401 ) -> None:
+402 """Manually waive a 'clawback_pending' commission (operator decision)."""
+403 await self.repo.update_commission_status(
+404 clawback_id, "waived", waiver_reason=reason
+405 )
+406
+407 # ── Helpers ─────────────────────────────────────────────────────────────
+408
+409 async def _system_setting_int(self, key: str, default: int) -> int:
+410 """Read an integer value from the system_settings table.
+411
+412 Returns `default` if the key is absent or the value cannot be
+413 coerced to int (e.g. empty string, garbage data).
+414 """
+415 row = await self.conn.fetchrow(
+416 "SELECT value FROM system_settings WHERE key = $1", key
+417 )
+418 try:
+419 return int(row["value"]) if row else default
+420 except (ValueError, TypeError):
+421 return default
 
- succeeded in 0ms:
-   260	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
-   261	        " ON partner_commissions (status);"
-   262	    )
-   263	    await conn.execute(
-   264	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_eligible_at"
-   265	        " ON partner_commissions (eligible_for_approval_at)"
-   266	        " WHERE status = 'accrued';"
-   267	    )
-   268	    await conn.execute(
-   269	        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_assigned_to_snapshot"
-   270	        " ON partner_commissions (assigned_to_snapshot)"
-   271	        " WHERE assigned_to_snapshot IS NOT NULL;"
-   272	    )
-   273	
-   274	    # -------------------------------------------------------------------------
-   275	    # 5. partner_audit_log
-   276	    # -------------------------------------------------------------------------
-   277	    await conn.execute("""
-   278	        DO $$
+succeeded in 0ms:
+260 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
+261 " ON partner_commissions (status);"
+262 )
+263 await conn.execute(
+264 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_eligible_at"
+265 " ON partner_commissions (eligible_for_approval_at)"
+266 " WHERE status = 'accrued';"
+267 )
+268 await conn.execute(
+269 "CREATE INDEX IF NOT EXISTS idx_partner_commissions_assigned_to_snapshot"
+270 " ON partner_commissions (assigned_to_snapshot)"
+271 " WHERE assigned_to_snapshot IS NOT NULL;"
+272 )
+273
+274 # -------------------------------------------------------------------------
+275 # 5. partner_audit_log
+276 # -------------------------------------------------------------------------
+277 await conn.execute("""
+278 DO $$
    279	        BEGIN
    280	            IF NOT EXISTS (
    281	                SELECT 1 FROM pg_tables
@@ -6568,1002 +6576,1008 @@ exec
    293	                );
    294	            END IF;
    295	        END $$;
-   296	    """)
-   297	
-   298	    await conn.execute(
-   299	        "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_partner_id"
-   300	        " ON partner_audit_log (partner_id);"
-   301	    )
-   302	    await conn.execute(
-   303	        "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_at"
-   304	        " ON partner_audit_log (at DESC);"
-   305	    )
-   306	
-   307	    # -------------------------------------------------------------------------
-   308	    # 6. system_settings seed rows (spec §3.5)
-   309	    # -------------------------------------------------------------------------
-   310	    await conn.execute("""
-   311	        INSERT INTO system_settings (key, value, description) VALUES
-   312	          ('partner_clawback_auto_writeoff_idr', '0',
-   313	           'If > 0, clawback rows below this IDR amount auto-waive on creation. Default 0 = disabled.'),
-   314	          ('partner_accrual_cooling_off_days', '30',
-   315	           'Days between accrual and eligibility for approval. Default 30.')
-   316	        ON CONFLICT (key) DO NOTHING;
-   317	    """)
-   318	
-   319	    logger.info(
-   320	        "✅ Migration 119: partners + partner_referrals + partner_commissions"
-   321	        " + partner_audit_log + users.partner_id + 2 system_settings rows"
-   322	    )
-   323	
-   324	
-   325	async def rollback(conn: Any) -> None:
-   326	    # Drop in FK-safe order: children first, parent last (spec §3.6)
-   327	    await conn.execute("DROP TABLE IF EXISTS partner_audit_log;")
-   328	    await conn.execute("DROP TABLE IF EXISTS partner_commissions;")
-   329	    await conn.execute("DROP TABLE IF EXISTS partner_referrals;")
-   330	    # Drop users.partner_id index + column before dropping partners (it references partners.id)
-   331	    await conn.execute("DROP INDEX IF EXISTS idx_users_partner_id;")
-   332	    await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
-   333	    await conn.execute("DROP TABLE IF EXISTS partners;")
-   334	    await conn.execute(
-   335	        "DELETE FROM system_settings WHERE key IN "
-   336	        "('partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days');"
-   337	    )
-   338	    logger.info(
-   339	        "Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
-   340	        " 2 system_settings rows deleted"
-   341	    )
+296 """)
+297
+298 await conn.execute(
+299 "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_partner_id"
+300 " ON partner_audit_log (partner_id);"
+301 )
+302 await conn.execute(
+303 "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_at"
+304 " ON partner_audit_log (at DESC);"
+305 )
+306
+307 # -------------------------------------------------------------------------
+308 # 6. system_settings seed rows (spec §3.5)
+309 # -------------------------------------------------------------------------
+310 await conn.execute("""
+311 INSERT INTO system_settings (key, value, description) VALUES
+312 ('partner_clawback_auto_writeoff_idr', '0',
+313 'If > 0, clawback rows below this IDR amount auto-waive on creation. Default 0 = disabled.'),
+314 ('partner_accrual_cooling_off_days', '30',
+315 'Days between accrual and eligibility for approval. Default 30.')
+316 ON CONFLICT (key) DO NOTHING;
+317 """)
+318
+319 logger.info(
+320 "✅ Migration 119: partners + partner_referrals + partner_commissions"
+321 " + partner_audit_log + users.partner_id + 2 system_settings rows"
+322 )
+323
+324
+325 async def rollback(conn: Any) -> None:
+326 # Drop in FK-safe order: children first, parent last (spec §3.6)
+327 await conn.execute("DROP TABLE IF EXISTS partner_audit_log;")
+328 await conn.execute("DROP TABLE IF EXISTS partner_commissions;")
+329 await conn.execute("DROP TABLE IF EXISTS partner_referrals;")
+330 # Drop users.partner_id index + column before dropping partners (it references partners.id)
+331 await conn.execute("DROP INDEX IF EXISTS idx_users_partner_id;")
+332 await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
+333 await conn.execute("DROP TABLE IF EXISTS partners;")
+334 await conn.execute(
+335 "DELETE FROM system_settings WHERE key IN "
+336 "('partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days');"
+337 )
+338 logger.info(
+339 "Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
+340 " 2 system_settings rows deleted"
+341 )
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/middleware.ts | sed -n '1,240p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc 'nl -ba apps/backend-rag/backend/app/setup/router_manifest.py | rg -n "partners|portal|process_groups|_BOTH" -C 3' in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	import { NextResponse } from "next/server";
-     2	import type { NextRequest } from "next/server";
-     3	
-     4	/**
-     5	 * Multi-domain Middleware
-     6	 *
-     7	 * Handles routing between:
-     8	 * - balizero.com (public website)
-     9	 * - kita.balizero.com (internal app)
-    10	 */
-    11	
-    12	// Internal app routes that should only be on zantara subdomain
-    13	const INTERNAL_ROUTES = [
-    14	  "/login",
-    15	  "/dashboard",
-    16	  "/clients",
-    17	  "/process",
-    18	  "/documents",
-    19	  "/email",
-    20	  "/knowledge",
-    21	  "/settings",
-    22	  "/team-management", // workspace team management (not /team which is public)
-    23	  "/whatsapp",
-    24	  "/admin",
-    25	  "/agents",
-    26	  "/portal",
-    27	  "/analytics",
-    28	  "/intelligence",
-    29	  "/calendar",
-    30	  "/notifications",
-    31	];
-    32	
-    33	// Public routes for balizero.com
-    34	const PUBLIC_CATEGORIES = [
-    35	  "immigration",
-    36	  "visas",
-    37	  "business",
-    38	  "tax-legal",
-    39	  "taxes",
-    40	  "property",
-    41	  "lifestyle",
-    42	  "living",
-    43	  "digital-nomad",
-    44	  "tech",
-    45	  "trends",
-    46	];
-    47	
-    48	// Domains
-    49	const PUBLIC_DOMAIN = "balizero.com";
-    50	const APP_DOMAIN = "kita.balizero.com";
-    51	const PORTAL_DOMAIN = "my.balizero.com";
-    52	const MOBILE_DOMAIN = "mo.balizero.com";
-    53	const ZANTARA_DOMAIN = "zantara.balizero.com";
-    54	const VISA_DOMAIN = "visa.balizero.com";
-    55	const TAX_DOMAIN = "tax.balizero.com";
-    56	const ASSESSMENT_DOMAIN = "subhi.balizero.com";
-    57	// SSO subdomains: all *.balizero.com apps that share auth via cookie
-    58	const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
-    59	
-    60	// Scraper detection — classify requests as human, welcome bot, or suspicious
-    61	const WELCOME_BOTS =
-    62	  /Googlebot|Bingbot|GPTBot|ClaudeBot|anthropic|PerplexityBot|Applebot|DuckDuckBot|Bytespider|Amazonbot|YouBot|FacebookBot|CCBot/i;
-    63	const SCRAPER_SIGNATURES =
-    64	  /python-requests|scrapy|curl\/|wget\/|Go-http-client|node-fetch|axios\/\d|PhantomJS|HeadlessChrome|Selenium|Nightmare|puppeteer/i;
-    65	
-    66	/**
-    67	 * Detect RSC/prefetch requests that should NOT be cross-origin redirected.
-    68	 * Next.js Link prefetches trigger RSC fetches; redirecting these cross-origin
-    69	 * causes CORS errors that flood the console and slow down the page.
-    70	 */
-    71	function isRSCOrPrefetch(request: NextRequest): boolean {
-    72	  return (
-    73	    request.nextUrl.searchParams.has("_rsc") ||
-    74	    request.headers.get("RSC") === "1" ||
-    75	    request.headers.get("Next-Router-Prefetch") === "1" ||
-    76	    request.headers.get("Purpose") === "prefetch"
-    77	  );
-    78	}
-    79	
-    80	/**
-    81	 * Redirect to a cross-origin URL, but return 204 for RSC/prefetch requests
-    82	 * to prevent CORS errors in the browser console.
-    83	 */
-    84	function crossOriginRedirect(
-    85	  request: NextRequest,
-    86	  targetUrl: URL,
-    87	  status: 301 | 302 = 301,
-    88	): NextResponse {
-    89	  if (isRSCOrPrefetch(request)) {
-    90	    return new NextResponse(null, { status: 204 });
-    91	  }
-    92	  const redirectResponse = NextResponse.redirect(targetUrl, status);
-    93	  redirectResponse.headers.set("x-pathname", request.nextUrl.pathname);
-    94	  return redirectResponse;
-    95	}
-    96	
-    97	function classifyRequest(
-    98	  request: NextRequest,
-    99	): "human" | "welcome-bot" | "suspicious" {
-   100	  const ua = request.headers.get("user-agent") || "";
-   101	  const accept = request.headers.get("accept") || "";
-   102	
-   103	  if (WELCOME_BOTS.test(ua)) return "welcome-bot";
-   104	  if (!ua || !accept) return "suspicious";
-   105	  if (SCRAPER_SIGNATURES.test(ua)) return "suspicious";
-   106	
-   107	  return "human";
-   108	}
-   109	
-   110	export function middleware(request: NextRequest) {
-   111	  const hostname = request.headers.get("host") || "";
-   112	  const pathname = request.nextUrl.pathname;
-   113	
-   114	  // Skip static files and API routes
-   115	  if (
-   116	    pathname.startsWith("/_next") ||
-   117	    pathname.startsWith("/api") ||
-   118	    pathname.startsWith("/static") ||
-   119	    pathname.includes(".") // files with extensions
-   120	  ) {
-   121	    // Still add pathname header for consistency
-   122	    const response = NextResponse.next();
-   123	    response.headers.set("x-pathname", pathname);
-   124	    return response;
-   125	  }
-   126	
-   127	  // Classify request for scraper detection
-   128	  const requestClass = classifyRequest(request);
-   129	
-   130	  // Create response and add pathname header for Server Components
-   131	  const response = NextResponse.next();
-   132	  response.headers.set("x-pathname", pathname);
-   133	
-   134	  // Tag suspicious requests on public content routes
-   135	  if (requestClass === "suspicious") {
-   136	    const firstSegment = pathname.split("/")[1];
-   137	    if (PUBLIC_CATEGORIES.includes(firstSegment) || pathname === "/news") {
-   138	      response.headers.set("X-Robots-Tag", "noindex");
-   139	      response.headers.set("x-request-class", "suspicious");
-   140	    }
-   141	  }
-   142	
-   143	  // === REDIRECT 308: /kbli-navigator → /kbli ===
-   144	  // Legacy KBLI Navigator URL redirect (must be in middleware to take priority
-   145	  // over the (blog)/[category] catch-all route which would otherwise match first)
-   146	  if (
-   147	    pathname === "/kbli-navigator" ||
-   148	    pathname.startsWith("/kbli-navigator/")
-   149	  ) {
-   150	    const newPath = pathname.replace("/kbli-navigator", "/kbli") || "/kbli";
-   151	    const url = request.nextUrl.clone();
-   152	    url.pathname = newPath;
-   153	    return NextResponse.redirect(url, 308);
-   154	  }
-   155	
-   156	  // === REDIRECT 301: mo.balizero.com → balizero.com ===
-   157	  // SEO: Prevent duplicate content and consolidate domain authority
-   158	  if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
-   159	    const redirectUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
-   160	    redirectUrl.search = request.nextUrl.search;
-   161	    const redirectResponse = NextResponse.redirect(redirectUrl, 301); // Permanent redirect
-   162	    redirectResponse.headers.set("x-pathname", pathname);
-   163	    return redirectResponse;
-   164	  }
-   165	
-   166	  // Determine if we're on the public domain
-   167	  const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
-   168	  const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
-   169	  const isVisaDomain =
-   170	    hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
-   171	  const isTaxDomain =
-   172	    hostname.includes("tax.balizero") || hostname === TAX_DOMAIN;
-   173	  const isPublicDomain =
-   174	    hostname.includes(PUBLIC_DOMAIN) &&
-   175	    !hostname.includes("kita") &&
-   176	    !hostname.includes("my") &&
-   177	    !hostname.includes("visa") &&
-   178	    !hostname.includes("tax") &&
-   179	    !isSSOSubdomain &&
-   180	    subdomain !== "prime";
-   181	  const isAppDomain =
-   182	    hostname.includes(APP_DOMAIN) ||
-   183	    (hostname.includes("kita") && !hostname.includes("my")) ||
-   184	    isSSOSubdomain ||
-   185	    subdomain === "prime";
-   186	  const isPortalDomain =
-   187	    hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
-   188	
-   189	  // Development and Fly.dev: allow all routes (public-facing)
-   190	  const isDevelopment =
-   191	    hostname.includes("localhost") || hostname.includes("127.0.0.1");
-   192	  const isFlyDev = hostname.includes("fly.dev");
-   193	
-   194	  if (isDevelopment || isFlyDev) {
-   195	    return response;
-   196	  }
-   197	
-   198	  // === PORTAL DOMAIN (my.balizero.com) ===
-   199	  if (isPortalDomain) {
-   200	    // Portal domain: only allow /portal/* routes
-   201	    if (pathname.startsWith("/portal")) {
-   202	      // Allow portal routes
-   203	      return response;
-   204	    }
-   205	
-   206	    // Redirect root to portal login
-   207	    if (pathname === "/") {
-   208	      const redirectResponse = NextResponse.redirect(
-   209	        new URL("/portal/login", request.url),
-   210	      );
-   211	      redirectResponse.headers.set("x-pathname", pathname);
-   212	      return redirectResponse;
-   213	    }
-   214	
-   215	    // Redirect non-portal routes to public domain (with RSC/prefetch protection)
-   216	    const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
-   217	    publicUrl.search = request.nextUrl.search;
-   218	    return crossOriginRedirect(request, publicUrl);
-   219	  }
-   220	
-   221	  // === ASSESSMENT DOMAIN (subhi.balizero.com) ===
-   222	  // Temporary assessment page for candidate — rewrites to /assessment/*
-   223	  if (
-   224	    hostname === ASSESSMENT_DOMAIN ||
-   225	    hostname === `www.${ASSESSMENT_DOMAIN}`
-   226	  ) {
-   227	    const rewriteUrl = request.nextUrl.clone();
-   228	    if (pathname === "/" || pathname === "") {
-   229	      rewriteUrl.pathname = "/assessment";
-   230	    } else if (!pathname.startsWith("/assessment")) {
-   231	      rewriteUrl.pathname = `/assessment${pathname}`;
-   232	    }
-   233	    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
-   234	    rewriteResponse.headers.set("x-pathname", pathname);
-   235	    rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
-   236	    return rewriteResponse;
-   237	  }
-   238	
-   239	  // === VISA DOMAIN (visa.balizero.com) ===
-   240	  // Dedicated Visa Oracle webapp — rewrites all paths to /visa-oracle/* prefix.
+succeeded in 0ms:
+1 import { NextResponse } from "next/server";
+2 import type { NextRequest } from "next/server";
+3
+4 /**
+5 * Multi-domain Middleware
+6 *
+7 * Handles routing between:
+8 * - balizero.com (public website)
+9 * - kita.balizero.com (internal app)
+10 _/
+11
+12 // Internal app routes that should only be on zantara subdomain
+13 const INTERNAL_ROUTES = [
+14 "/login",
+15 "/dashboard",
+16 "/clients",
+17 "/process",
+18 "/documents",
+19 "/email",
+20 "/knowledge",
+21 "/settings",
+22 "/team-management", // workspace team management (not /team which is public)
+23 "/whatsapp",
+24 "/admin",
+25 "/agents",
+26 "/portal",
+27 "/analytics",
+28 "/intelligence",
+29 "/calendar",
+30 "/notifications",
+31 ];
+32
+33 // Public routes for balizero.com
+34 const PUBLIC_CATEGORIES = [
+35 "immigration",
+36 "visas",
+37 "business",
+38 "tax-legal",
+39 "taxes",
+40 "property",
+41 "lifestyle",
+42 "living",
+43 "digital-nomad",
+44 "tech",
+45 "trends",
+46 ];
+47
+48 // Domains
+49 const PUBLIC_DOMAIN = "balizero.com";
+50 const APP_DOMAIN = "kita.balizero.com";
+51 const PORTAL_DOMAIN = "my.balizero.com";
+52 const MOBILE_DOMAIN = "mo.balizero.com";
+53 const ZANTARA_DOMAIN = "zantara.balizero.com";
+54 const VISA_DOMAIN = "visa.balizero.com";
+55 const TAX_DOMAIN = "tax.balizero.com";
+56 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
+57 // SSO subdomains: all *.balizero.com apps that share auth via cookie
+58 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
+59
+60 // Scraper detection — classify requests as human, welcome bot, or suspicious
+61 const WELCOME_BOTS =
+62 /Googlebot|Bingbot|GPTBot|ClaudeBot|anthropic|PerplexityBot|Applebot|DuckDuckBot|Bytespider|Amazonbot|YouBot|FacebookBot|CCBot/i;
+63 const SCRAPER_SIGNATURES =
+64 /python-requests|scrapy|curl\/|wget\/|Go-http-client|node-fetch|axios\/\d|PhantomJS|HeadlessChrome|Selenium|Nightmare|puppeteer/i;
+65
+66 /*_
+67 * Detect RSC/prefetch requests that should NOT be cross-origin redirected.
+68 * Next.js Link prefetches trigger RSC fetches; redirecting these cross-origin
+69 * causes CORS errors that flood the console and slow down the page.
+70 _/
+71 function isRSCOrPrefetch(request: NextRequest): boolean {
+72 return (
+73 request.nextUrl.searchParams.has("\_rsc") ||
+74 request.headers.get("RSC") === "1" ||
+75 request.headers.get("Next-Router-Prefetch") === "1" ||
+76 request.headers.get("Purpose") === "prefetch"
+77 );
+78 }
+79
+80 /_*
+81 * Redirect to a cross-origin URL, but return 204 for RSC/prefetch requests
+82 * to prevent CORS errors in the browser console.
+83 _/
+84 function crossOriginRedirect(
+85 request: NextRequest,
+86 targetUrl: URL,
+87 status: 301 | 302 = 301,
+88 ): NextResponse {
+89 if (isRSCOrPrefetch(request)) {
+90 return new NextResponse(null, { status: 204 });
+91 }
+92 const redirectResponse = NextResponse.redirect(targetUrl, status);
+93 redirectResponse.headers.set("x-pathname", request.nextUrl.pathname);
+94 return redirectResponse;
+95 }
+96
+97 function classifyRequest(
+98 request: NextRequest,
+99 ): "human" | "welcome-bot" | "suspicious" {
+100 const ua = request.headers.get("user-agent") || "";
+101 const accept = request.headers.get("accept") || "";
+102
+103 if (WELCOME_BOTS.test(ua)) return "welcome-bot";
+104 if (!ua || !accept) return "suspicious";
+105 if (SCRAPER_SIGNATURES.test(ua)) return "suspicious";
+106
+107 return "human";
+108 }
+109
+110 export function middleware(request: NextRequest) {
+111 const hostname = request.headers.get("host") || "";
+112 const pathname = request.nextUrl.pathname;
+113
+114 // Skip static files and API routes
+115 if (
+116 pathname.startsWith("/\_next") ||
+117 pathname.startsWith("/api") ||
+118 pathname.startsWith("/static") ||
+119 pathname.includes(".") // files with extensions
+120 ) {
+121 // Still add pathname header for consistency
+122 const response = NextResponse.next();
+123 response.headers.set("x-pathname", pathname);
+124 return response;
+125 }
+126
+127 // Classify request for scraper detection
+128 const requestClass = classifyRequest(request);
+129
+130 // Create response and add pathname header for Server Components
+131 const response = NextResponse.next();
+132 response.headers.set("x-pathname", pathname);
+133
+134 // Tag suspicious requests on public content routes
+135 if (requestClass === "suspicious") {
+136 const firstSegment = pathname.split("/")[1];
+137 if (PUBLIC_CATEGORIES.includes(firstSegment) || pathname === "/news") {
+138 response.headers.set("X-Robots-Tag", "noindex");
+139 response.headers.set("x-request-class", "suspicious");
+140 }
+141 }
+142
+143 // === REDIRECT 308: /kbli-navigator → /kbli ===
+144 // Legacy KBLI Navigator URL redirect (must be in middleware to take priority
+145 // over the (blog)/[category] catch-all route which would otherwise match first)
+146 if (
+147 pathname === "/kbli-navigator" ||
+148 pathname.startsWith("/kbli-navigator/")
+149 ) {
+150 const newPath = pathname.replace("/kbli-navigator", "/kbli") || "/kbli";
+151 const url = request.nextUrl.clone();
+152 url.pathname = newPath;
+153 return NextResponse.redirect(url, 308);
+154 }
+155
+156 // === REDIRECT 301: mo.balizero.com → balizero.com ===
+157 // SEO: Prevent duplicate content and consolidate domain authority
+158 if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
+159 const redirectUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
+160 redirectUrl.search = request.nextUrl.search;
+161 const redirectResponse = NextResponse.redirect(redirectUrl, 301); // Permanent redirect
+162 redirectResponse.headers.set("x-pathname", pathname);
+163 return redirectResponse;
+164 }
+165
+166 // Determine if we're on the public domain
+167 const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
+168 const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
+169 const isVisaDomain =
+170 hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
+171 const isTaxDomain =
+172 hostname.includes("tax.balizero") || hostname === TAX_DOMAIN;
+173 const isPublicDomain =
+174 hostname.includes(PUBLIC_DOMAIN) &&
+175 !hostname.includes("kita") &&
+176 !hostname.includes("my") &&
+177 !hostname.includes("visa") &&
+178 !hostname.includes("tax") &&
+179 !isSSOSubdomain &&
+180 subdomain !== "prime";
+181 const isAppDomain =
+182 hostname.includes(APP_DOMAIN) ||
+183 (hostname.includes("kita") && !hostname.includes("my")) ||
+184 isSSOSubdomain ||
+185 subdomain === "prime";
+186 const isPortalDomain =
+187 hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
+188
+189 // Development and Fly.dev: allow all routes (public-facing)
+190 const isDevelopment =
+191 hostname.includes("localhost") || hostname.includes("127.0.0.1");
+192 const isFlyDev = hostname.includes("fly.dev");
+193
+194 if (isDevelopment || isFlyDev) {
+195 return response;
+196 }
+197
+198 // === PORTAL DOMAIN (my.balizero.com) ===
+199 if (isPortalDomain) {
+200 // Portal domain: only allow /portal/_ routes
+201 if (pathname.startsWith("/portal")) {
+202 // Allow portal routes
+203 return response;
+204 }
+205
+206 // Redirect root to portal login
+207 if (pathname === "/") {
+208 const redirectResponse = NextResponse.redirect(
+209 new URL("/portal/login", request.url),
+210 );
+211 redirectResponse.headers.set("x-pathname", pathname);
+212 return redirectResponse;
+213 }
+214
+215 // Redirect non-portal routes to public domain (with RSC/prefetch protection)
+216 const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
+217 publicUrl.search = request.nextUrl.search;
+218 return crossOriginRedirect(request, publicUrl);
+219 }
+220
+221 // === ASSESSMENT DOMAIN (subhi.balizero.com) ===
+222 // Temporary assessment page for candidate — rewrites to /assessment/*
+223 if (
+224 hostname === ASSESSMENT_DOMAIN ||
+225 hostname === `www.${ASSESSMENT_DOMAIN}`
+226 ) {
+227 const rewriteUrl = request.nextUrl.clone();
+228 if (pathname === "/" || pathname === "") {
+229 rewriteUrl.pathname = "/assessment";
+230 } else if (!pathname.startsWith("/assessment")) {
+231 rewriteUrl.pathname = `/assessment${pathname}`;
+232 }
+233 const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+234 rewriteResponse.headers.set("x-pathname", pathname);
+235 rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+236 return rewriteResponse;
+237 }
+238
+239 // === VISA DOMAIN (visa.balizero.com) ===
+240 // Dedicated Visa Oracle webapp — rewrites all paths to /visa-oracle/* prefix.
 
- succeeded in 0ms:
-6-     6	Result: /api/experience, /api/skill, /api/metabolic silently 404'd in prod.
-7-     7	
-8-     8	This manifest makes it structurally impossible to repeat that mistake.
-9:     9	Each router is declared ONCE with its process_groups. The include_*
-10-    10	functions read this manifest instead of maintaining separate import lists.
-11-    11	
-12-    12	HOW TO ADD A NEW ROUTER:
-13-    13	  1. Create your router file in backend/app/routers/
-14-    14	  2. Add a RouterEntry below (alphabetical order)
-15:    15	  3. Set process_groups: {"api"} for light, {"rag"} for heavy, {"api","rag"} for both
-16-    16	  4. Run: PYTHONPATH=. pytest backend/tests/setup/ -q
-17-    17	  5. Done. No other file needs editing.
-18-    18	"""
+succeeded in 0ms:
+6- 6 Result: /api/experience, /api/skill, /api/metabolic silently 404'd in prod.
+7- 7
+8- 8 This manifest makes it structurally impossible to repeat that mistake.
+9: 9 Each router is declared ONCE with its process_groups. The include_*
+10- 10 functions read this manifest instead of maintaining separate import lists.
+11- 11
+12- 12 HOW TO ADD A NEW ROUTER:
+13- 13 1. Create your router file in backend/app/routers/
+14- 14 2. Add a RouterEntry below (alphabetical order)
+15: 15 3. Set process_groups: {"api"} for light, {"rag"} for heavy, {"api","rag"} for both
+16- 16 4. Run: PYTHONPATH=. pytest backend/tests/setup/ -q
+17- 17 5. Done. No other file needs editing.
+18- 18 """
 --
-30-    30	    Attributes:
-31-    31	        name: Module name under backend.app.routers (e.g. "auth").
-32-    32	              For module routers, use dotted path (e.g. "modules.identity").
-33:    33	        process_groups: Which Fly.io processes include this router.
-34-    34	                       "api" = main_api (light, public HTTP)
-35-    35	                       "rag" = main_rag (heavy, internal RAG)
-36-    36	        attr: Attribute name on the imported module (default "router").
+
+30- 30 Attributes:
+31- 31 name: Module name under backend.app.routers (e.g. "auth").
+32- 32 For module routers, use dotted path (e.g. "modules.identity").
+33: 33 process_groups: Which Fly.io processes include this router.
+34- 34 "api" = main_api (light, public HTTP)
+35- 35 "rag" = main_rag (heavy, internal RAG)
+36- 36 attr: Attribute name on the imported module (default "router").
 --
-44-    44	    """
-45-    45	
-46-    46	    name: str
-47:    47	    process_groups: frozenset[str]
-48-    48	    attr: str = "router"
-49-    49	    prefix: str | None = None
-50-    50	    condition: Callable[[], bool] | None = None
+
+44- 44 """
+45- 45
+46- 46 name: str
+47: 47 process_groups: frozenset[str]
+48- 48 attr: str = "router"
+49- 49 prefix: str | None = None
+50- 50 condition: Callable[[], bool] | None = None
 --
-58-    58	# Shorthand constants for readability
-59-    59	_API = frozenset({"api"})
-60-    60	_RAG = frozenset({"rag"})
-61:    61	_BOTH = frozenset({"api", "rag"})
-62-    62	
-63-    63	
-64-    64	def _is_debug_enabled() -> bool:
+
+58- 58 # Shorthand constants for readability
+59- 59 _API = frozenset({"api"})
+60- 60 _RAG = frozenset({"rag"})
+61: 61 _BOTH = frozenset({"api", "rag"})
+62- 62
+63- 63
+64- 64 def _is_debug_enabled() -> bool:
 --
-77-    77	# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-78-    78	#
-79-    79	# Alphabetical order. One entry per router attribute.
-80:    80	# process_groups: _API (light/public), _RAG (heavy/internal), _BOTH
-81-    81	#
-82-    82	# To add a new router: insert one RouterEntry, run tests. Done.
-83-    83	# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-84-    84	
-85-    85	ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
-86-    86	    # ── Admin ──
-87:    87	    RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
-88:    88	    RouterEntry(name="admin_drive_auth",           process_groups=_API, tags=("admin", "drive")),
-89:    89	    RouterEntry(name="admin_drive_health",         process_groups=_API, tags=("admin", "drive")),
-90:    90	    RouterEntry(name="admin_drive_refresh",        process_groups=_API, tags=("admin", "drive")),
-91:    91	    RouterEntry(name="admin_drive_setup",          process_groups=_API, tags=("admin", "drive")),
-92:    92	    RouterEntry(name="admin_logs",                 process_groups=_API, tags=("admin",)),
-93:    93	    RouterEntry(name="admin_practice_auto_create", process_groups=_API, tags=("admin",)),
-94:    94	    RouterEntry(name="admin_team_activity",        process_groups=_API, tags=("admin",)),
-95:    95	    RouterEntry(name="admin_zoho_auth",            process_groups=_API, tags=("admin", "integrations")),
-96-    96	
-97-    97	    # ── Agent / AI ──
-98:    98	    RouterEntry(name="agent",                process_groups=_RAG, tags=("agent",)),
-99:    99	    RouterEntry(name="agents",               process_groups=_RAG, tags=("agent",)),
-100:   100	    RouterEntry(name="agentic_rag",          process_groups=_RAG, tags=("agent", "rag")),
-101:   101	    RouterEntry(name="autonomous_agents",    process_groups=_RAG, tags=("agent",)),
-102:   102	    RouterEntry(name="autonomous_execution", process_groups=_RAG, tags=("agent",)),
-103-   103	
-104-   104	    # ── Analytics ──
-105:   105	    RouterEntry(name="analytics",          process_groups=_API, tags=("analytics",)),
-106:   106	    RouterEntry(name="article_composer",   process_groups=_API, tags=("blog",)),
-107-   107	
-108-   108	    # ── Auth / Core ──
-109:   109	    RouterEntry(name="auth",     process_groups=_API, tags=("core",)),
-110:   110	    RouterEntry(name="blog_ask", process_groups=_RAG, tags=("blog", "rag")),
-111-   111	
-112-   112	    # ── Bridge ──
-113:   113	    RouterEntry(name="bridge", process_groups=_API, tags=("infra",)),
-114-   114	
-115-   115	    # ── CELL ──
-116:   116	    RouterEntry(name="cell_status", process_groups=_API, tags=("cell",)),
-117-   117	
-118-   118	    # ── Channels ──
-119:   119	    RouterEntry(name="channels",    process_groups=_API, tags=("channels",)),
-120-   120	
-121-   121	    # ── CRM ──
-122:   122	    RouterEntry(name="crm_analytics",          process_groups=_API, tags=("crm",)),
-123:   123	    RouterEntry(name="crm_clients",            process_groups=_RAG, tags=("crm", "rag")),
-124:   124	    RouterEntry(name="crm_clients_documents",  process_groups=_API, tags=("crm",)),
-125:   125	    RouterEntry(name="crm_company",            process_groups=_API, tags=("crm",)),
-126:   126	    RouterEntry(name="crm_enhanced",           process_groups=_RAG, tags=("crm", "rag")),
-127:   127	    RouterEntry(name="crm_enhanced_alerts",    process_groups=_API, tags=("crm",)),
-128:   128	    RouterEntry(name="crm_enhanced_documents", process_groups=_API, tags=("crm",)),
-129:   129	    RouterEntry(name="crm_interactions",       process_groups=_API, tags=("crm",)),
-130:   130	    RouterEntry(name="crm_notifications",      process_groups=_API, tags=("crm",)),
-131:   131	    RouterEntry(name="crm_portal_integration", process_groups=_API, tags=("crm", "portal")),
-132:   132	    RouterEntry(name="crm_practices",          process_groups=_RAG, tags=("crm", "rag")),
-133:   133	    RouterEntry(name="crm_shared_memory",      process_groups=_API, tags=("crm",)),
-134-   134	
-135-   135	    # ── Conversations / Memory ──
-136:   136	    RouterEntry(name="collective_memory", process_groups=_RAG, tags=("memory",)),
-137:   137	    RouterEntry(name="conversations",     process_groups=_RAG, tags=("memory",)),
-138:   138	    RouterEntry(name="episodic_memory",   process_groups=_RAG, tags=("memory",)),
-139-   139	
-140-   140	    # ── Dashboard ──
-141:   141	    RouterEntry(name="dashboard",                   process_groups=_RAG, tags=("dashboard",)),
-142:   142	    RouterEntry(name="dashboard_featured_articles", process_groups=_RAG, tags=("dashboard",)),
-143:   143	    RouterEntry(name="dashboard_summary",           process_groups=_RAG, tags=("dashboard",)),
-144-   144	
-145-   145	    # ── Debug (conditional) ──
-146:   146	    RouterEntry(name="debug", attr="router",     process_groups=_API, condition=_is_debug_enabled, tags=("debug",)),
-147:   147	    RouterEntry(name="debug", attr="v1_router",  process_groups=_API, condition=_is_debug_enabled, tags=("debug",)),
-148-   148	
-149-   149	    # ── Documents ──
-150:   150	    RouterEntry(name="documents_proxy", process_groups=_API, tags=("integrations",)),
-151-   151	
-152-   152	    # ── Dream ──
-153:   153	    RouterEntry(name="dream", process_groups=_RAG, tags=("module",)),
-154-   154	
-155-   155	    # ── Dynamic Pricing ──
-156:   156	    RouterEntry(name="dynamic_pricing", process_groups=_RAG, tags=("pricing",)),
-157-   157	
-158-   158	    # ── EventBus ──
-159:   159	    RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
-160-   160	
-161-   161	    # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──
-162-   162	    # These are LIGHT routers (SQLite local, no RAG deps) — must be in api group.
-163-   163	    # Originally misclassified as rag-only, causing 404 in production.
-164:   164	    RouterEntry(name="experience",       process_groups=_API, tags=("cell", "scar-pr54")),
-165:   165	    RouterEntry(name="skill",            process_groups=_API, tags=("cell", "scar-pr55")),
-166:   166	    RouterEntry(name="metabolic_health", process_groups=_API, tags=("cell", "scar-pr60")),
-167-   167	
-168-   168	    # ── Federation / Feedback ──
-169:   169	    RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
-170:   170	    RouterEntry(name="feedback",   process_groups=_API, tags=("core",)),
-171-   171	
-172-   172	    # ── Funnel (cross-funnel lead tracking, pre-auth) ──
-173:   173	    RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
-174-   174	
-175-   175	    # ── Google Drive / Integrations ──
-176:   176	    RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
-177-   177	
-178-   178	    # ── Core infra ──
-179:   179	    RouterEntry(name="handlers", process_groups=_BOTH, tags=("core",)),
-180:   180	    RouterEntry(name="health",   process_groups=_BOTH, tags=("core",)),
-181-   181	
-182-   182	    # ── HR ──
-183:   183	    RouterEntry(name="hr",               process_groups=_API, tags=("hr",)),
-184:   184	    RouterEntry(name="hr_late_reply",     process_groups=_API, tags=("hr",)),
-185:   185	    RouterEntry(name="hr_owner_cashout",  process_groups=_API, tags=("hr",)),
-186-   186	
-187-   187	    # ── Image Generation ──
-188:   188	    RouterEntry(name="image_generation", process_groups=_API, tags=("media",)),
-189-   189	
-190-   190	    # ── Ingestion ──
-191:   191	    RouterEntry(name="ingest",       process_groups=_RAG, tags=("ingest",)),
-192:   192	    RouterEntry(name="legal_ingest", process_groups=_RAG, tags=("ingest",)),
-193:   193	    RouterEntry(name="oracle_ingest", process_groups=_RAG, tags=("ingest",)),
-194-   194	
-195-   195	    # ── Instagram ──
-196:   196	    RouterEntry(name="instagram_chat", attr="router",         process_groups=_API, tags=("channels",)),
-197:   197	    RouterEntry(name="instagram_chat", attr="webhook_router", process_groups=_API, tags=("channels",)),
-198-   198	
-199-   199	    # ── Intel (RAG process only — needs /data volume) ──
-200:   200	    RouterEntry(name="intel",           process_groups=_RAG, tags=("intel",)),
-201:   201	    RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
-202:   202	    RouterEntry(name="intel_scraper",   process_groups=_RAG, tags=("intel",)),
-203-   203	
-204-   204	    # ── KBLI ──
-205:   205	    RouterEntry(name="kbli_notebook",      process_groups=_RAG, prefix="__API_V1__", tags=("kbli",)),
-206:   206	    RouterEntry(name="kbli_notebook_chat", process_groups=_RAG, prefix="__API_V1__", tags=("kbli",)),
-207-   207	
-208-   208	    # ── KG ──
-209:   209	    RouterEntry(name="kg_agentic", process_groups=_RAG, tags=("kg", "agent")),
-210-   210	
-211-   211	    # ── Knowledge ──
-212:   212	    RouterEntry(name="knowledge_activity", process_groups=_API, tags=("knowledge",)),
-213:   213	    RouterEntry(name="knowledge_visa",     process_groups=_RAG, tags=("knowledge",)),
-214-   214	
-215-   215	    # ── LAM Memory ──
-216:   216	    RouterEntry(name="lam_memory", process_groups=_RAG, tags=("memory",)),
-217-   217	
-218-   218	    # ── Lead Capture (4-app homepage → WhatsApp handoff, shared infra) ──
-219:   219	    RouterEntry(name="lead_capture", process_groups=_API, tags=("funnel", "lead")),
-220-   220	
-221-   221	    # ── Funnel Email (drip scheduler + unsubscribe for 4-app homepage) ──
-222:   222	    RouterEntry(name="funnel_email", process_groups=_API, tags=("funnel", "email")),
-223-   223	
-224-   224	    # ── Compliance Alerts (outcome recording + autotune metrics) ──
-225:   225	    RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
-226-   226	
-227-   227	    # ── LKPM Compliance ──
-228:   228	    RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
-229-   229	
-230-   230	    # ── LLM Cost Tracking (remote ingestion for Pro/Air cron agents) ──
-231:   231	    RouterEntry(name="llm_costs", process_groups=_API, tags=("observability", "admin")),
-232-   232	
-233-   233	    # ── Media ──
-234:   234	    RouterEntry(name="media", process_groups=_API, tags=("media",)),
-235-   235	
-236-   236	    # ── Messaging ──
-237:   237	    RouterEntry(name="messaging_identity", process_groups=_API, tags=("channels",)),
-238-   238	
-239-   239	    # ── Monitoring ──
-240:   240	    RouterEntry(name="monitoring_rag", process_groups=_RAG, tags=("monitoring",)),
-241-   241	
-242-   242	    # ── Naga (Deep Research) ──
-243:   243	    RouterEntry(name="naga", process_groups=_RAG, tags=("research",)),
-244-   244	
-245-   245	    # ── Newsletter ──
-246:   246	    RouterEntry(name="newsletter", process_groups=_API, tags=("blog",)),
-247-   247	
-248-   248	    # ── News ──
-249:   249	    RouterEntry(name="news", process_groups=_RAG, tags=("intel",)),
-250-   250	
-251-   251	    # ── Nusantara Health ──
-252:   252	    RouterEntry(name="nusantara_health", process_groups=_API, tags=("core",)),
-253-   253	
-254-   254	    # ── Olympus (full-only: internal admin) ──
-255:   255	    RouterEntry(name="olympus", attr="internal_router", process_groups=_API, tags=("admin",)),
-256-   256	
-257-   257	    # ── Omnichannel ──
-258:   258	    RouterEntry(name="omnichannel", process_groups=_API, tags=("channels",)),
-259-   259	
-260-   260	    # ── Oracle ──
-261:   261	    RouterEntry(name="oracle_universal", process_groups=_RAG, tags=("oracle",)),
-262-   262	
-263-   263	    # ── Performance ──
-264:   264	    RouterEntry(name="performance", process_groups=_API, tags=("analytics",)),
-265-   265	
-266-   266	    # ── Partners (CRM) ──
-267:   267	    RouterEntry(name="partners", process_groups=_API, tags=("crm", "partners")),
-268-   268	
-269-   269	    # ── Portal ──
-270:   270	    RouterEntry(name="portal",                  process_groups=_API, tags=("portal",)),
-271:   271	    RouterEntry(name="portal_admin",            process_groups=_API, tags=("portal",)),
-272:   272	    RouterEntry(name="portal_billing",          process_groups=_API, tags=("portal",)),
-273:   273	    RouterEntry(name="portal_dashboard",        process_groups=_API, tags=("portal",)),
-274:   274	    RouterEntry(name="portal_drive",            process_groups=_API, tags=("portal",)),
-275:   275	    RouterEntry(name="portal_family",           process_groups=_API, tags=("portal",)),
-276:   276	    RouterEntry(name="portal_matters",          process_groups=_API, tags=("portal",)),
-277:   277	    RouterEntry(name="portal_invite",           process_groups=_API, tags=("portal",)),
-278:   278	    RouterEntry(name="portal_notifications",    process_groups=_API, tags=("portal",)),
-279:   279	    RouterEntry(name="portal_notification_prefs", process_groups=_API, tags=("portal",)),
-280:   280	    RouterEntry(name="portal_process_timeline", process_groups=_API, tags=("portal",)),
-281:   281	    RouterEntry(name="portal_taxes",            process_groups=_API, tags=("portal",)),
-282:   282	    RouterEntry(name="portal_visa",             process_groups=_API, tags=("portal",)),
-283-   283	
-284-   284	    # ── Preview ──
-285:   285	    RouterEntry(name="preview", process_groups=_API, tags=("blog",)),
-286-   286	
-287-   287	    # ── Prime ──
-288:   288	    RouterEntry(name="prime",    process_groups=_API, tags=("prime",)),
-289:   289	    RouterEntry(name="prime_v2", process_groups=_API, tags=("prime",)),
-290-   290	
-291-   291	    # ── Query Analytics ──
-292:   292	    RouterEntry(name="query_analytics", process_groups=_API, tags=("analytics",)),
-293-   293	
-294-   294	    # ── Session ──
-295:   295	    RouterEntry(name="session", process_groups=_API, tags=("core",)),
-296-   296	
-297-   297	    # ── Sheets ──
-298:   298	    RouterEntry(name="sheets", process_groups=_API, tags=("integrations",)),
-299-   299	
-300-   300	    # ── Team ──
-301:   301	    RouterEntry(name="team",           process_groups=_API, tags=("team",)),
-302:   302	    RouterEntry(name="team_activity",  process_groups=_API, tags=("team",)),
-303:   303	    RouterEntry(name="team_analytics", process_groups=_API, tags=("team",)),
-304:   304	    RouterEntry(name="team_drive",     process_groups=_API, tags=("team", "integrations")),
-305-   305	
-306-   306	    # ── Telegram ──
-307:   307	    RouterEntry(name="telegram",         process_groups=_API, tags=("channels",)),
-308:   308	    RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
-309-   309	
-310-   310	    # ── Visa Check (homepage 4-app — Clock + Match branches) ──
-311:   311	    RouterEntry(name="visa_check", process_groups=_API, tags=("visa", "funnel")),
-312-   312	
-313-   313	    # ── Visa Oracle (public — prefix override) ──
-314:   314	    RouterEntry(name="visa_oracle", process_groups=_API, prefix="__API_V1__", tags=("visa",)),
-315-   315	
-316-   316	    # ── Voice ──
-317:   317	    RouterEntry(name="voice", process_groups=_RAG, tags=("media",)),
-318-   318	
-319-   319	    # ── War Room Dashboard (Sprint 11 — metrics aggregate queries) ──
-320-   320	    RouterEntry(
-321-   321	        name="war_room_dashboard",
-322:   322	        process_groups=_API,
-323-   323	        tags=("war-room", "admin"),
-324-   324	    ),
-325-   325	
-326-   326	    # ── Webhooks ──
-327:   327	    RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),
-328-   328	
-329-   329	    # ── WebSocket ──
-330:   330	    RouterEntry(name="websocket", process_groups=_API, tags=("channels",)),
-331-   331	
-332-   332	    # ── WhatsApp ──
-333:   333	    RouterEntry(name="whatsapp_chat",          process_groups=_RAG, tags=("channels", "rag")),
-334:   334	    RouterEntry(name="whatsapp_conversations", process_groups=_API, tags=("channels",)),
-335-   335	
-336-   336	    # ── Workflow ──
-337:   337	    RouterEntry(name="workflow_analytics", process_groups=_API, tags=("analytics",)),
-338:   338	    RouterEntry(name="workflow_queue",     process_groups=_API, tags=("infra",)),
-339-   339	
-340-   340	    # ── Workspace (kita team ops) ──
-341:   341	    RouterEntry(name="workspace_inbox",     process_groups=_API, tags=("workspace",)),
-342:   342	    RouterEntry(name="workspace_analytics", process_groups=_API, tags=("workspace", "analytics")),
-343-   343	
-344-   344	    # ── Zoho ──
-345:   345	    RouterEntry(name="zoho_email", process_groups=_API, tags=("integrations",)),
-346-   346	
-347-   347	    # ── Module routers (not in backend.app.routers) ──
-348-   348	    RouterEntry(
-349-   349	        name="identity",
-350:   350	        process_groups=_RAG,
-351-   351	        prefix="/api/auth",
-352-   352	        import_path="backend.app.modules.identity.router",
-353-   353	        tags=("module", "auth"),
-354-   354	    ),
-355-   355	    RouterEntry(
-356-   356	        name="knowledge",
-357:   357	        process_groups=_RAG,
-358-   358	        import_path="backend.app.modules.knowledge.router",
-359-   359	        tags=("module", "rag"),
-360-   360	    ),
-361-   361	    RouterEntry(
-362-   362	        name="notifications",
-363:   363	        process_groups=_API,
-364-   364	        import_path="backend.app.modules.notifications.router",
-365-   365	        tags=("module",),
-366-   366	    ),
-367-   367	    RouterEntry(
-368-   368	        name="cron_notifiers",
-369:   369	        process_groups=_API,
-370-   370	        import_path="backend.app.routers.cron_notifiers",
-371-   371	        tags=("cron",),
-372-   372	    ),
+
+77- 77 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+78- 78 #
+79- 79 # Alphabetical order. One entry per router attribute.
+80: 80 # process_groups: _API (light/public), _RAG (heavy/internal), _BOTH
+81- 81 #
+82- 82 # To add a new router: insert one RouterEntry, run tests. Done.
+83- 83 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+84- 84
+85- 85 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
+86- 86 # ── Admin ──
+87: 87 RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
+88: 88 RouterEntry(name="admin_drive_auth", process_groups=_API, tags=("admin", "drive")),
+89: 89 RouterEntry(name="admin_drive_health", process_groups=_API, tags=("admin", "drive")),
+90: 90 RouterEntry(name="admin_drive_refresh", process_groups=_API, tags=("admin", "drive")),
+91: 91 RouterEntry(name="admin_drive_setup", process_groups=_API, tags=("admin", "drive")),
+92: 92 RouterEntry(name="admin_logs", process_groups=_API, tags=("admin",)),
+93: 93 RouterEntry(name="admin_practice_auto_create", process_groups=_API, tags=("admin",)),
+94: 94 RouterEntry(name="admin_team_activity", process_groups=_API, tags=("admin",)),
+95: 95 RouterEntry(name="admin_zoho_auth", process_groups=_API, tags=("admin", "integrations")),
+96- 96
+97- 97 # ── Agent / AI ──
+98: 98 RouterEntry(name="agent", process_groups=_RAG, tags=("agent",)),
+99: 99 RouterEntry(name="agents", process_groups=_RAG, tags=("agent",)),
+100: 100 RouterEntry(name="agentic_rag", process_groups=_RAG, tags=("agent", "rag")),
+101: 101 RouterEntry(name="autonomous_agents", process_groups=_RAG, tags=("agent",)),
+102: 102 RouterEntry(name="autonomous_execution", process_groups=_RAG, tags=("agent",)),
+103- 103
+104- 104 # ── Analytics ──
+105: 105 RouterEntry(name="analytics", process_groups=_API, tags=("analytics",)),
+106: 106 RouterEntry(name="article_composer", process_groups=_API, tags=("blog",)),
+107- 107
+108- 108 # ── Auth / Core ──
+109: 109 RouterEntry(name="auth", process_groups=_API, tags=("core",)),
+110: 110 RouterEntry(name="blog_ask", process_groups=_RAG, tags=("blog", "rag")),
+111- 111
+112- 112 # ── Bridge ──
+113: 113 RouterEntry(name="bridge", process_groups=_API, tags=("infra",)),
+114- 114
+115- 115 # ── CELL ──
+116: 116 RouterEntry(name="cell_status", process_groups=_API, tags=("cell",)),
+117- 117
+118- 118 # ── Channels ──
+119: 119 RouterEntry(name="channels", process_groups=_API, tags=("channels",)),
+120- 120
+121- 121 # ── CRM ──
+122: 122 RouterEntry(name="crm_analytics", process_groups=_API, tags=("crm",)),
+123: 123 RouterEntry(name="crm_clients", process_groups=_RAG, tags=("crm", "rag")),
+124: 124 RouterEntry(name="crm_clients_documents", process_groups=_API, tags=("crm",)),
+125: 125 RouterEntry(name="crm_company", process_groups=_API, tags=("crm",)),
+126: 126 RouterEntry(name="crm_enhanced", process_groups=_RAG, tags=("crm", "rag")),
+127: 127 RouterEntry(name="crm_enhanced_alerts", process_groups=_API, tags=("crm",)),
+128: 128 RouterEntry(name="crm_enhanced_documents", process_groups=_API, tags=("crm",)),
+129: 129 RouterEntry(name="crm_interactions", process_groups=_API, tags=("crm",)),
+130: 130 RouterEntry(name="crm_notifications", process_groups=_API, tags=("crm",)),
+131: 131 RouterEntry(name="crm_portal_integration", process_groups=_API, tags=("crm", "portal")),
+132: 132 RouterEntry(name="crm_practices", process_groups=_RAG, tags=("crm", "rag")),
+133: 133 RouterEntry(name="crm_shared_memory", process_groups=_API, tags=("crm",)),
+134- 134
+135- 135 # ── Conversations / Memory ──
+136: 136 RouterEntry(name="collective_memory", process_groups=_RAG, tags=("memory",)),
+137: 137 RouterEntry(name="conversations", process_groups=_RAG, tags=("memory",)),
+138: 138 RouterEntry(name="episodic_memory", process_groups=_RAG, tags=("memory",)),
+139- 139
+140- 140 # ── Dashboard ──
+141: 141 RouterEntry(name="dashboard", process_groups=_RAG, tags=("dashboard",)),
+142: 142 RouterEntry(name="dashboard_featured_articles", process_groups=_RAG, tags=("dashboard",)),
+143: 143 RouterEntry(name="dashboard_summary", process_groups=_RAG, tags=("dashboard",)),
+144- 144
+145- 145 # ── Debug (conditional) ──
+146: 146 RouterEntry(name="debug", attr="router", process_groups=_API, condition=_is_debug_enabled, tags=("debug",)),
+147: 147 RouterEntry(name="debug", attr="v1_router", process_groups=_API, condition=_is_debug_enabled, tags=("debug",)),
+148- 148
+149- 149 # ── Documents ──
+150: 150 RouterEntry(name="documents_proxy", process_groups=_API, tags=("integrations",)),
+151- 151
+152- 152 # ── Dream ──
+153: 153 RouterEntry(name="dream", process_groups=_RAG, tags=("module",)),
+154- 154
+155- 155 # ── Dynamic Pricing ──
+156: 156 RouterEntry(name="dynamic_pricing", process_groups=_RAG, tags=("pricing",)),
+157- 157
+158- 158 # ── EventBus ──
+159: 159 RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
+160- 160
+161- 161 # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──
+162- 162 # These are LIGHT routers (SQLite local, no RAG deps) — must be in api group.
+163- 163 # Originally misclassified as rag-only, causing 404 in production.
+164: 164 RouterEntry(name="experience", process_groups=_API, tags=("cell", "scar-pr54")),
+165: 165 RouterEntry(name="skill", process_groups=_API, tags=("cell", "scar-pr55")),
+166: 166 RouterEntry(name="metabolic_health", process_groups=_API, tags=("cell", "scar-pr60")),
+167- 167
+168- 168 # ── Federation / Feedback ──
+169: 169 RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
+170: 170 RouterEntry(name="feedback", process_groups=_API, tags=("core",)),
+171- 171
+172- 172 # ── Funnel (cross-funnel lead tracking, pre-auth) ──
+173: 173 RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
+174- 174
+175- 175 # ── Google Drive / Integrations ──
+176: 176 RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
+177- 177
+178- 178 # ── Core infra ──
+179: 179 RouterEntry(name="handlers", process_groups=_BOTH, tags=("core",)),
+180: 180 RouterEntry(name="health", process_groups=_BOTH, tags=("core",)),
+181- 181
+182- 182 # ── HR ──
+183: 183 RouterEntry(name="hr", process_groups=_API, tags=("hr",)),
+184: 184 RouterEntry(name="hr_late_reply", process_groups=_API, tags=("hr",)),
+185: 185 RouterEntry(name="hr_owner_cashout", process_groups=_API, tags=("hr",)),
+186- 186
+187- 187 # ── Image Generation ──
+188: 188 RouterEntry(name="image_generation", process_groups=_API, tags=("media",)),
+189- 189
+190- 190 # ── Ingestion ──
+191: 191 RouterEntry(name="ingest", process_groups=_RAG, tags=("ingest",)),
+192: 192 RouterEntry(name="legal_ingest", process_groups=_RAG, tags=("ingest",)),
+193: 193 RouterEntry(name="oracle_ingest", process_groups=_RAG, tags=("ingest",)),
+194- 194
+195- 195 # ── Instagram ──
+196: 196 RouterEntry(name="instagram_chat", attr="router", process_groups=_API, tags=("channels",)),
+197: 197 RouterEntry(name="instagram_chat", attr="webhook_router", process_groups=_API, tags=("channels",)),
+198- 198
+199- 199 # ── Intel (RAG process only — needs /data volume) ──
+200: 200 RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
+201: 201 RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
+202: 202 RouterEntry(name="intel_scraper", process_groups=_RAG, tags=("intel",)),
+203- 203
+204- 204 # ── KBLI ──
+205: 205 RouterEntry(name="kbli_notebook", process_groups=_RAG, prefix="**API_V1**", tags=("kbli",)),
+206: 206 RouterEntry(name="kbli_notebook_chat", process_groups=_RAG, prefix="**API_V1**", tags=("kbli",)),
+207- 207
+208- 208 # ── KG ──
+209: 209 RouterEntry(name="kg_agentic", process_groups=_RAG, tags=("kg", "agent")),
+210- 210
+211- 211 # ── Knowledge ──
+212: 212 RouterEntry(name="knowledge_activity", process_groups=_API, tags=("knowledge",)),
+213: 213 RouterEntry(name="knowledge_visa", process_groups=_RAG, tags=("knowledge",)),
+214- 214
+215- 215 # ── LAM Memory ──
+216: 216 RouterEntry(name="lam_memory", process_groups=_RAG, tags=("memory",)),
+217- 217
+218- 218 # ── Lead Capture (4-app homepage → WhatsApp handoff, shared infra) ──
+219: 219 RouterEntry(name="lead_capture", process_groups=_API, tags=("funnel", "lead")),
+220- 220
+221- 221 # ── Funnel Email (drip scheduler + unsubscribe for 4-app homepage) ──
+222: 222 RouterEntry(name="funnel_email", process_groups=_API, tags=("funnel", "email")),
+223- 223
+224- 224 # ── Compliance Alerts (outcome recording + autotune metrics) ──
+225: 225 RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
+226- 226
+227- 227 # ── LKPM Compliance ──
+228: 228 RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
+229- 229
+230- 230 # ── LLM Cost Tracking (remote ingestion for Pro/Air cron agents) ──
+231: 231 RouterEntry(name="llm_costs", process_groups=_API, tags=("observability", "admin")),
+232- 232
+233- 233 # ── Media ──
+234: 234 RouterEntry(name="media", process_groups=_API, tags=("media",)),
+235- 235
+236- 236 # ── Messaging ──
+237: 237 RouterEntry(name="messaging_identity", process_groups=_API, tags=("channels",)),
+238- 238
+239- 239 # ── Monitoring ──
+240: 240 RouterEntry(name="monitoring_rag", process_groups=_RAG, tags=("monitoring",)),
+241- 241
+242- 242 # ── Naga (Deep Research) ──
+243: 243 RouterEntry(name="naga", process_groups=_RAG, tags=("research",)),
+244- 244
+245- 245 # ── Newsletter ──
+246: 246 RouterEntry(name="newsletter", process_groups=_API, tags=("blog",)),
+247- 247
+248- 248 # ── News ──
+249: 249 RouterEntry(name="news", process_groups=_RAG, tags=("intel",)),
+250- 250
+251- 251 # ── Nusantara Health ──
+252: 252 RouterEntry(name="nusantara_health", process_groups=_API, tags=("core",)),
+253- 253
+254- 254 # ── Olympus (full-only: internal admin) ──
+255: 255 RouterEntry(name="olympus", attr="internal_router", process_groups=_API, tags=("admin",)),
+256- 256
+257- 257 # ── Omnichannel ──
+258: 258 RouterEntry(name="omnichannel", process_groups=_API, tags=("channels",)),
+259- 259
+260- 260 # ── Oracle ──
+261: 261 RouterEntry(name="oracle_universal", process_groups=_RAG, tags=("oracle",)),
+262- 262
+263- 263 # ── Performance ──
+264: 264 RouterEntry(name="performance", process_groups=_API, tags=("analytics",)),
+265- 265
+266- 266 # ── Partners (CRM) ──
+267: 267 RouterEntry(name="partners", process_groups=_API, tags=("crm", "partners")),
+268- 268
+269- 269 # ── Portal ──
+270: 270 RouterEntry(name="portal", process_groups=_API, tags=("portal",)),
+271: 271 RouterEntry(name="portal_admin", process_groups=_API, tags=("portal",)),
+272: 272 RouterEntry(name="portal_billing", process_groups=_API, tags=("portal",)),
+273: 273 RouterEntry(name="portal_dashboard", process_groups=_API, tags=("portal",)),
+274: 274 RouterEntry(name="portal_drive", process_groups=_API, tags=("portal",)),
+275: 275 RouterEntry(name="portal_family", process_groups=_API, tags=("portal",)),
+276: 276 RouterEntry(name="portal_matters", process_groups=_API, tags=("portal",)),
+277: 277 RouterEntry(name="portal_invite", process_groups=_API, tags=("portal",)),
+278: 278 RouterEntry(name="portal_notifications", process_groups=_API, tags=("portal",)),
+279: 279 RouterEntry(name="portal_notification_prefs", process_groups=_API, tags=("portal",)),
+280: 280 RouterEntry(name="portal_process_timeline", process_groups=_API, tags=("portal",)),
+281: 281 RouterEntry(name="portal_taxes", process_groups=_API, tags=("portal",)),
+282: 282 RouterEntry(name="portal_visa", process_groups=_API, tags=("portal",)),
+283- 283
+284- 284 # ── Preview ──
+285: 285 RouterEntry(name="preview", process_groups=_API, tags=("blog",)),
+286- 286
+287- 287 # ── Prime ──
+288: 288 RouterEntry(name="prime", process_groups=_API, tags=("prime",)),
+289: 289 RouterEntry(name="prime_v2", process_groups=_API, tags=("prime",)),
+290- 290
+291- 291 # ── Query Analytics ──
+292: 292 RouterEntry(name="query_analytics", process_groups=_API, tags=("analytics",)),
+293- 293
+294- 294 # ── Session ──
+295: 295 RouterEntry(name="session", process_groups=_API, tags=("core",)),
+296- 296
+297- 297 # ── Sheets ──
+298: 298 RouterEntry(name="sheets", process_groups=_API, tags=("integrations",)),
+299- 299
+300- 300 # ── Team ──
+301: 301 RouterEntry(name="team", process_groups=_API, tags=("team",)),
+302: 302 RouterEntry(name="team_activity", process_groups=_API, tags=("team",)),
+303: 303 RouterEntry(name="team_analytics", process_groups=_API, tags=("team",)),
+304: 304 RouterEntry(name="team_drive", process_groups=_API, tags=("team", "integrations")),
+305- 305
+306- 306 # ── Telegram ──
+307: 307 RouterEntry(name="telegram", process_groups=_API, tags=("channels",)),
+308: 308 RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
+309- 309
+310- 310 # ── Visa Check (homepage 4-app — Clock + Match branches) ──
+311: 311 RouterEntry(name="visa_check", process_groups=_API, tags=("visa", "funnel")),
+312- 312
+313- 313 # ── Visa Oracle (public — prefix override) ──
+314: 314 RouterEntry(name="visa_oracle", process_groups=_API, prefix="**API_V1**", tags=("visa",)),
+315- 315
+316- 316 # ── Voice ──
+317: 317 RouterEntry(name="voice", process_groups=_RAG, tags=("media",)),
+318- 318
+319- 319 # ── War Room Dashboard (Sprint 11 — metrics aggregate queries) ──
+320- 320 RouterEntry(
+321- 321 name="war_room_dashboard",
+322: 322 process_groups=_API,
+323- 323 tags=("war-room", "admin"),
+324- 324 ),
+325- 325
+326- 326 # ── Webhooks ──
+327: 327 RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),
+328- 328
+329- 329 # ── WebSocket ──
+330: 330 RouterEntry(name="websocket", process_groups=_API, tags=("channels",)),
+331- 331
+332- 332 # ── WhatsApp ──
+333: 333 RouterEntry(name="whatsapp_chat", process_groups=_RAG, tags=("channels", "rag")),
+334: 334 RouterEntry(name="whatsapp_conversations", process_groups=_API, tags=("channels",)),
+335- 335
+336- 336 # ── Workflow ──
+337: 337 RouterEntry(name="workflow_analytics", process_groups=_API, tags=("analytics",)),
+338: 338 RouterEntry(name="workflow_queue", process_groups=_API, tags=("infra",)),
+339- 339
+340- 340 # ── Workspace (kita team ops) ──
+341: 341 RouterEntry(name="workspace_inbox", process_groups=_API, tags=("workspace",)),
+342: 342 RouterEntry(name="workspace_analytics", process_groups=_API, tags=("workspace", "analytics")),
+343- 343
+344- 344 # ── Zoho ──
+345: 345 RouterEntry(name="zoho_email", process_groups=_API, tags=("integrations",)),
+346- 346
+347- 347 # ── Module routers (not in backend.app.routers) ──
+348- 348 RouterEntry(
+349- 349 name="identity",
+350: 350 process_groups=_RAG,
+351- 351 prefix="/api/auth",
+352- 352 import_path="backend.app.modules.identity.router",
+353- 353 tags=("module", "auth"),
+354- 354 ),
+355- 355 RouterEntry(
+356- 356 name="knowledge",
+357: 357 process_groups=_RAG,
+358- 358 import_path="backend.app.modules.knowledge.router",
+359- 359 tags=("module", "rag"),
+360- 360 ),
+361- 361 RouterEntry(
+362- 362 name="notifications",
+363: 363 process_groups=_API,
+364- 364 import_path="backend.app.modules.notifications.router",
+365- 365 tags=("module",),
+366- 366 ),
+367- 367 RouterEntry(
+368- 368 name="cron_notifiers",
+369: 369 process_groups=_API,
+370- 370 import_path="backend.app.routers.cron_notifiers",
+371- 371 tags=("cron",),
+372- 372 ),
 --
-395-   395	        raise ValueError(
-396-   396	            f"Unknown process group '{group}'. Valid: {sorted(PROCESS_GROUPS)}"
-397-   397	        )
-398:   398	    return tuple(r for r in ROUTER_MANIFEST if group in r.process_groups)
-399-   399	
-400-   400	
-401-   401	def all_router_names() -> frozenset[str]:
+
+395- 395 raise ValueError(
+396- 396 f"Unknown process group '{group}'. Valid: {sorted(PROCESS_GROUPS)}"
+397- 397 )
+398: 398 return tuple(r for r in ROUTER_MANIFEST if group in r.process_groups)
+399- 399
+400- 400
+401- 401 def all_router_names() -> frozenset[str]:
 --
-409-   409	
-410-   410	    # Check process groups are valid
-411-   411	    for entry in ROUTER_MANIFEST:
-412:   412	        invalid = entry.process_groups - PROCESS_GROUPS
-413-   413	        if invalid:
-414-   414	            errors.append(
-415:   415	                f"Router '{entry.name}' has invalid process_groups: {invalid}"
-416-   416	            )
-417:   417	        if not entry.process_groups:
-418:   418	            errors.append(f"Router '{entry.name}' has empty process_groups")
-419-   419	
-420-   420	    # Check for duplicate (name, attr) pairs
-421-   421	    seen: set[tuple[str, str]] = set()
+
+409- 409
+410- 410 # Check process groups are valid
+411- 411 for entry in ROUTER_MANIFEST:
+412: 412 invalid = entry.process_groups - PROCESS_GROUPS
+413- 413 if invalid:
+414- 414 errors.append(
+415: 415 f"Router '{entry.name}' has invalid process_groups: {invalid}"
+416- 416 )
+417: 417 if not entry.process_groups:
+418: 418 errors.append(f"Router '{entry.name}' has empty process_groups")
+419- 419
+420- 420 # Check for duplicate (name, attr) pairs
+421- 421 seen: set[tuple[str, str]] = set()
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/lib/api/partners/partners.ts | sed -n '1,280p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	/**
-     2	 * Partners API client module
-     3	 * Spec §7.1 — CRM Partners Module
-     4	 * Uses the centralized api client for auth token management.
-     5	 */
-     6	
-     7	import { api } from '@/lib/api';
-     8	
-     9	// ─── TypeScript Interfaces ─────────────────────────────────────────────────
-    10	
-    11	export type PartnerStatus = 'pending_review' | 'active' | 'inactive' | 'suspended';
-    12	export type EntityType = "individual" | "corporate_pt" | "corporate_cv" | "foreign";
-    13	export type CommissionTier = 'bronze' | 'silver' | 'gold' | 'platinum';
-    14	export type TaxWithholdingCategory = 'tbd' | 'withheld_tarif_umum' | 'withheld_tarif_final' | 'exempt';
-    15	export type CommissionStatus =
-    16	  | 'accrued'           // from commission engine FSM
-    17	  | 'pending_approval'
-    18	  | 'approved'
-    19	  | 'ready_to_pay'
-    20	  | 'paid'
-    21	  | 'clawback_pending'
-    22	  | 'offset_applied'    // from commission engine FSM
-    23	  | 'clawed_back'
-    24	  | 'waived'
-    25	  | 'repaid';           // from commission engine FSM
-    26	
-    27	export interface Partner {
-    28	  id: number;
-    29	  full_name: string;
-    30	  email: string;
-    31	  entity_type: EntityType;
-    32	  phone?: string;
-    33	  whatsapp?: string;
-    34	  nationality?: string;
-    35	  tax_id?: string;           // NPWP
-    36	  company_name?: string;
-    37	  work_role?: string;
-    38	  onboarding_status: PartnerStatus;
-    39	  commission_tier: CommissionTier;
-    40	  commission_rate_override?: number;
-    41	  payment_method?: string;
-    42	  bank_name?: string;
-    43	  bank_account_number?: string;
-    44	  bank_account_name?: string;
-    45	  tax_withholding_category: TaxWithholdingCategory;
-    46	  pdp_consent: boolean;
-    47	  pdp_consent_at?: string;
-    48	  assigned_to?: string;
-    49	  welcome_email_sent_at?: string;
-    50	  notes?: string;
-    51	  created_at: string;
-    52	  updated_at?: string;
-    53	  referral_count?: number;
-    54	  total_earned?: number;
-    55	}
-    56	
-    57	export interface PartnerReferral {
-    58	  id: number;
-    59	  partner_id: number;
-    60	  referred_client_id?: number;
-    61	  referred_client_name?: string;      // kept for backward-compat with team-side endpoints
-    62	  client_display?: string;            // from /api/partners/me/referrals (sterilized name)
-    63	  referred_practice_id?: number;
-    64	  process_id?: number;
-    65	  process_status?: string;            // from /me/referrals
-    66	  practice_type_name?: string;
-    67	  service_type?: string;              // from /me/referrals
-    68	  status: string;
-    69	  commission_amount?: number;
-    70	  commission_status: CommissionStatus;
-    71	  created_at: string;
-    72	  referred_at?: string;               // /me/referrals uses this instead of created_at
-    73	}
-    74	
-    75	export interface PartnerCommission {
-    76	  id: number;
-    77	  partner_id: number;
-    78	  partner_name?: string;
-    79	  referral_id?: number;
-    80	  practice_id?: number;
-    81	  practice_type_name?: string;
-    82	  client_name?: string;
-    83	  gross_amount: number;
-    84	  withholding_amount: number;
-    85	  net_amount: number;
-    86	  status: CommissionStatus;
-    87	  approved_by?: string;
-    88	  approved_at?: string;
-    89	  paid_at?: string;
-    90	  payment_reference?: string;
-    91	  clawback_reason?: string;
-    92	  waive_reason?: string;
-    93	  created_at: string;
-    94	  updated_at?: string;
-    95	}
-    96	
-    97	export interface PartnerListResponse {
-    98	  partners: Partner[];
-    99	  total: number;
-   100	  page: number;
-   101	  page_size: number;
-   102	}
-   103	
-   104	export interface PartnerFilters {
-   105	  status?: string;
-   106	  assigned_to?: string;
-   107	  orphaned?: boolean;
-   108	  search?: string;
-   109	  page?: number;
-   110	  page_size?: number;
-   111	}
-   112	
-   113	export interface CreatePartnerBody {
-   114	  full_name: string;
-   115	  email: string;
-   116	  entity_type: EntityType;
-   117	  phone?: string;
-   118	  whatsapp?: string;
-   119	  nationality?: string;
-   120	  tax_id?: string;
-   121	  company_name?: string;
-   122	  work_role?: string;
-   123	  commission_tier?: CommissionTier;
-   124	  commission_rate_override?: number;
-   125	  payment_method?: string;
-   126	  bank_name?: string;
-   127	  bank_account_number?: string;
-   128	  bank_account_name?: string;
-   129	  tax_withholding_category?: TaxWithholdingCategory;
-   130	  pdp_consent: boolean;
-   131	  assigned_to?: string;
-   132	  notes?: string;
-   133	}
-   134	
-   135	export interface UpdatePartnerBody {
-   136	  full_name?: string;
-   137	  phone?: string;
-   138	  whatsapp?: string;
-   139	  nationality?: string;
-   140	  tax_id?: string;
-   141	  company_name?: string;
-   142	  work_role?: string;
-   143	  commission_tier?: CommissionTier;
-   144	  commission_rate_override?: number;
-   145	  payment_method?: string;
-   146	  bank_name?: string;
-   147	  bank_account_number?: string;
-   148	  bank_account_name?: string;
-   149	  tax_withholding_category?: TaxWithholdingCategory;
-   150	  notes?: string;
-   151	}
-   152	
-   153	export interface ReassignBody {
-   154	  new_user_id: string;
-   155	  reason: string;
-   156	}
-   157	
-   158	export interface BulkReassignBody {
-   159	  partner_ids: number[];
-   160	  new_user_id: string;
-   161	  reason: string;
-   162	}
-   163	
-   164	export interface CreateReferralBody {
-   165	  process_id: number;
-   166	  notes?: string;
-   167	}
-   168	
-   169	export interface AuditLogEntry {
-   170	  id: string;
-   171	  partner_id: string;
-   172	  actor_user_id: string | null;
-   173	  action: string;
-   174	  before_json: Record<string, unknown> | null;
-   175	  after_json: Record<string, unknown> | null;
-   176	  reason: string | null;
-   177	  at: string;
-   178	}
-   179	
-   180	export interface MarkPaidBody {
-   181	  payment_reference?: string;
-   182	  paid_at?: string;
-   183	}
-   184	
-   185	export interface ClawbackBody {
-   186	  reason: string;
-   187	}
-   188	
-   189	export interface WaiveBody {
-   190	  reason: string;
-   191	}
-   192	
-   193	// ─── Query String Helper ────────────────────────────────────────────────────
-   194	
-   195	function qs(params?: Record<string, string | number | boolean | null | undefined>): string {
-   196	  if (!params) return '';
-   197	  const entries = Object.entries(params).filter(
-   198	    (entry): entry is [string, string | number | boolean] => entry[1] != null,
-   199	  );
-   200	  return entries.length
-   201	    ? '?' + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()
-   202	    : '';
-   203	}
-   204	
-   205	const BASE = '/api/partners';
-   206	
-   207	// ─── API Functions ──────────────────────────────────────────────────────────
-   208	
-   209	/** List partners with optional filters */
-   210	export const listPartners = (filters?: PartnerFilters) =>
-   211	  api.get<PartnerListResponse>(`${BASE}${qs(filters as Record<string, string | number | boolean | null | undefined>)}`);
-   212	
-   213	/** Create a new partner */
-   214	export const createPartner = (body: CreatePartnerBody) =>
-   215	  api.post<Partner>(`${BASE}`, body);
-   216	
-   217	/** Get a single partner by ID */
-   218	export const getPartner = (id: number) =>
-   219	  api.get<Partner>(`${BASE}/${id}`);
-   220	
-   221	/** Update partner profile fields (excludes onboarding_status, assigned_to, welcome_email_sent_at) */
-   222	export const updatePartner = (id: number, body: UpdatePartnerBody) =>
-   223	  api.patch<Partner>(`${BASE}/${id}`, body);
-   224	
-   225	/** Activate a partner (set onboarding_status → active, triggers welcome email) */
-   226	export const activatePartner = (id: number) =>
-   227	  api.post<{ success: boolean; partner: Partner }>(`${BASE}/${id}/activate`, {});
-   228	
-   229	/** Deactivate a partner */
-   230	export const deactivatePartner = (id: number) =>
-   231	  api.post<{ success: boolean }>(`${BASE}/${id}/deactivate`, {});
-   232	
-   233	/** Suspend a partner */
-   234	export const suspendPartner = (id: number, reason?: string) =>
-   235	  api.post<{ success: boolean }>(`${BASE}/${id}/suspend`, { reason });
-   236	
-   237	/** Reassign a partner to a different team member */
-   238	export const reassignPartner = (id: number, body: ReassignBody) =>
-   239	  api.post<{ success: boolean }>(`${BASE}/${id}/reassign`, body);
-   240	
-   241	/** Bulk reassign multiple orphaned partners */
-   242	export const bulkReassign = (body: BulkReassignBody) =>
-   243	  api.post<{ success: boolean; updated_count: number }>(`${BASE}/bulk-reassign`, body);
-   244	
-   245	/** Resend welcome email to a partner */
-   246	export const resendWelcomeEmail = (id: number) =>
-   247	  api.post<{ success: boolean }>(`${BASE}/${id}/resend-welcome`, {});
-   248	
-   249	/** Create a referral for a partner (links a process to a partner) */
-   250	export const createReferral = (partnerId: number, body: CreateReferralBody) =>
-   251	  api.post<PartnerReferral>(`${BASE}/${partnerId}/referrals`, body);
-   252	
-   253	/** List referrals for a specific partner */
-   254	export const listReferrals = (partnerId: number, params?: Record<string, string | number | null | undefined>) =>
-   255	  api.get<{ referrals: PartnerReferral[]; total: number }>(`${BASE}/${partnerId}/referrals${qs(params)}`);
-   256	
-   257	/** List commissions for a specific partner */
-   258	export const listCommissions = (partnerId: number, params?: Record<string, string | number | null | undefined>) =>
-   259	  api.get<{ commissions: PartnerCommission[]; total: number }>(`${BASE}/${partnerId}/commissions${qs(params)}`);
-   260	
-   261	/** List orphaned partners (assigned_to is null or empty) */
-   262	export const listOrphanedPartners = () =>
-   263	  api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
-   264	
-   265	/** List all commissions for admin finance queue */
-   266	export const listAllCommissions = (params?: Record<string, string | number | null | undefined>) =>
-   267	  api.get<{ commissions: PartnerCommission[]; total: number; summary: Record<string, number> }>(`${BASE}/commissions${qs(params)}`);
-   268	
-   269	/** Approve a commission */
-   270	export const approveCommission = (id: number) =>
-   271	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/approve`, {});
-   272	
-   273	/** Mark a commission as paid */
-   274	export const markPaid = (id: number, body: MarkPaidBody) =>
-   275	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/mark-paid`, body);
-   276	
-   277	/** Clawback a commission */
-   278	export const clawback = (id: number, body: ClawbackBody) =>
-   279	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/clawback`, body);
-   280	
+succeeded in 0ms:
+1 /**
+2 * Partners API client module
+3 * Spec §7.1 — CRM Partners Module
+4 * Uses the centralized api client for auth token management.
+5 _/
+6
+7 import { api } from '@/lib/api';
+8
+9 // ─── TypeScript Interfaces ─────────────────────────────────────────────────
+10
+11 export type PartnerStatus = 'pending_review' | 'active' | 'inactive' | 'suspended';
+12 export type EntityType = "individual" | "corporate_pt" | "corporate_cv" | "foreign";
+13 export type CommissionTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+14 export type TaxWithholdingCategory = 'tbd' | 'withheld_tarif_umum' | 'withheld_tarif_final' | 'exempt';
+15 export type CommissionStatus =
+16 | 'accrued' // from commission engine FSM
+17 | 'pending_approval'
+18 | 'approved'
+19 | 'ready_to_pay'
+20 | 'paid'
+21 | 'clawback_pending'
+22 | 'offset_applied' // from commission engine FSM
+23 | 'clawed_back'
+24 | 'waived'
+25 | 'repaid'; // from commission engine FSM
+26
+27 export interface Partner {
+28 id: number;
+29 full_name: string;
+30 email: string;
+31 entity_type: EntityType;
+32 phone?: string;
+33 whatsapp?: string;
+34 nationality?: string;
+35 tax_id?: string; // NPWP
+36 company_name?: string;
+37 work_role?: string;
+38 onboarding_status: PartnerStatus;
+39 commission_tier: CommissionTier;
+40 commission_rate_override?: number;
+41 payment_method?: string;
+42 bank_name?: string;
+43 bank_account_number?: string;
+44 bank_account_name?: string;
+45 tax_withholding_category: TaxWithholdingCategory;
+46 pdp_consent: boolean;
+47 pdp_consent_at?: string;
+48 assigned_to?: string;
+49 welcome_email_sent_at?: string;
+50 notes?: string;
+51 created_at: string;
+52 updated_at?: string;
+53 referral_count?: number;
+54 total_earned?: number;
+55 }
+56
+57 export interface PartnerReferral {
+58 id: number;
+59 partner_id: number;
+60 referred_client_id?: number;
+61 referred_client_name?: string; // kept for backward-compat with team-side endpoints
+62 client_display?: string; // from /api/partners/me/referrals (sterilized name)
+63 referred_practice_id?: number;
+64 process_id?: number;
+65 process_status?: string; // from /me/referrals
+66 practice_type_name?: string;
+67 service_type?: string; // from /me/referrals
+68 status: string;
+69 commission_amount?: number;
+70 commission_status: CommissionStatus;
+71 created_at: string;
+72 referred_at?: string; // /me/referrals uses this instead of created_at
+73 }
+74
+75 export interface PartnerCommission {
+76 id: number;
+77 partner_id: number;
+78 partner_name?: string;
+79 referral_id?: number;
+80 practice_id?: number;
+81 practice_type_name?: string;
+82 client_name?: string;
+83 gross_amount: number;
+84 withholding_amount: number;
+85 net_amount: number;
+86 status: CommissionStatus;
+87 approved_by?: string;
+88 approved_at?: string;
+89 paid_at?: string;
+90 payment_reference?: string;
+91 clawback_reason?: string;
+92 waive_reason?: string;
+93 created_at: string;
+94 updated_at?: string;
+95 }
+96
+97 export interface PartnerListResponse {
+98 partners: Partner[];
+99 total: number;
+100 page: number;
+101 page_size: number;
+102 }
+103
+104 export interface PartnerFilters {
+105 status?: string;
+106 assigned_to?: string;
+107 orphaned?: boolean;
+108 search?: string;
+109 page?: number;
+110 page_size?: number;
+111 }
+112
+113 export interface CreatePartnerBody {
+114 full_name: string;
+115 email: string;
+116 entity_type: EntityType;
+117 phone?: string;
+118 whatsapp?: string;
+119 nationality?: string;
+120 tax_id?: string;
+121 company_name?: string;
+122 work_role?: string;
+123 commission_tier?: CommissionTier;
+124 commission_rate_override?: number;
+125 payment_method?: string;
+126 bank_name?: string;
+127 bank_account_number?: string;
+128 bank_account_name?: string;
+129 tax_withholding_category?: TaxWithholdingCategory;
+130 pdp_consent: boolean;
+131 assigned_to?: string;
+132 notes?: string;
+133 }
+134
+135 export interface UpdatePartnerBody {
+136 full_name?: string;
+137 phone?: string;
+138 whatsapp?: string;
+139 nationality?: string;
+140 tax_id?: string;
+141 company_name?: string;
+142 work_role?: string;
+143 commission_tier?: CommissionTier;
+144 commission_rate_override?: number;
+145 payment_method?: string;
+146 bank_name?: string;
+147 bank_account_number?: string;
+148 bank_account_name?: string;
+149 tax_withholding_category?: TaxWithholdingCategory;
+150 notes?: string;
+151 }
+152
+153 export interface ReassignBody {
+154 new_user_id: string;
+155 reason: string;
+156 }
+157
+158 export interface BulkReassignBody {
+159 partner_ids: number[];
+160 new_user_id: string;
+161 reason: string;
+162 }
+163
+164 export interface CreateReferralBody {
+165 process_id: number;
+166 notes?: string;
+167 }
+168
+169 export interface AuditLogEntry {
+170 id: string;
+171 partner_id: string;
+172 actor_user_id: string | null;
+173 action: string;
+174 before_json: Record<string, unknown> | null;
+175 after_json: Record<string, unknown> | null;
+176 reason: string | null;
+177 at: string;
+178 }
+179
+180 export interface MarkPaidBody {
+181 payment_reference?: string;
+182 paid_at?: string;
+183 }
+184
+185 export interface ClawbackBody {
+186 reason: string;
+187 }
+188
+189 export interface WaiveBody {
+190 reason: string;
+191 }
+192
+193 // ─── Query String Helper ────────────────────────────────────────────────────
+194
+195 function qs(params?: Record<string, string | number | boolean | null | undefined>): string {
+196 if (!params) return '';
+197 const entries = Object.entries(params).filter(
+198 (entry): entry is [string, string | number | boolean] => entry[1] != null,
+199 );
+200 return entries.length
+201 ? '?' + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()
+202 : '';
+203 }
+204
+205 const BASE = '/api/partners';
+206
+207 // ─── API Functions ──────────────────────────────────────────────────────────
+208
+209 /_* List partners with optional filters _/
+210 export const listPartners = (filters?: PartnerFilters) =>
+211 api.get<PartnerListResponse>(`${BASE}${qs(filters as Record<string, string | number | boolean | null | undefined>)}`);
+212
+213 /_* Create a new partner _/
+214 export const createPartner = (body: CreatePartnerBody) =>
+215 api.post<Partner>(`${BASE}`, body);
+216
+217 /_* Get a single partner by ID _/
+218 export const getPartner = (id: number) =>
+219 api.get<Partner>(`${BASE}/${id}`);
+220
+221 /_* Update partner profile fields (excludes onboarding_status, assigned_to, welcome_email_sent_at) _/
+222 export const updatePartner = (id: number, body: UpdatePartnerBody) =>
+223 api.patch<Partner>(`${BASE}/${id}`, body);
+224
+225 /_* Activate a partner (set onboarding_status → active, triggers welcome email) _/
+226 export const activatePartner = (id: number) =>
+227 api.post<{ success: boolean; partner: Partner }>(`${BASE}/${id}/activate`, {});
+228
+229 /_* Deactivate a partner _/
+230 export const deactivatePartner = (id: number) =>
+231 api.post<{ success: boolean }>(`${BASE}/${id}/deactivate`, {});
+232
+233 /_* Suspend a partner _/
+234 export const suspendPartner = (id: number, reason?: string) =>
+235 api.post<{ success: boolean }>(`${BASE}/${id}/suspend`, { reason });
+236
+237 /_* Reassign a partner to a different team member _/
+238 export const reassignPartner = (id: number, body: ReassignBody) =>
+239 api.post<{ success: boolean }>(`${BASE}/${id}/reassign`, body);
+240
+241 /_* Bulk reassign multiple orphaned partners _/
+242 export const bulkReassign = (body: BulkReassignBody) =>
+243 api.post<{ success: boolean; updated_count: number }>(`${BASE}/bulk-reassign`, body);
+244
+245 /_* Resend welcome email to a partner _/
+246 export const resendWelcomeEmail = (id: number) =>
+247 api.post<{ success: boolean }>(`${BASE}/${id}/resend-welcome`, {});
+248
+249 /_* Create a referral for a partner (links a process to a partner) _/
+250 export const createReferral = (partnerId: number, body: CreateReferralBody) =>
+251 api.post<PartnerReferral>(`${BASE}/${partnerId}/referrals`, body);
+252
+253 /_* List referrals for a specific partner _/
+254 export const listReferrals = (partnerId: number, params?: Record<string, string | number | null | undefined>) =>
+255 api.get<{ referrals: PartnerReferral[]; total: number }>(`${BASE}/${partnerId}/referrals${qs(params)}`);
+256
+257 /_* List commissions for a specific partner _/
+258 export const listCommissions = (partnerId: number, params?: Record<string, string | number | null | undefined>) =>
+259 api.get<{ commissions: PartnerCommission[]; total: number }>(`${BASE}/${partnerId}/commissions${qs(params)}`);
+260
+261 /_* List orphaned partners (assigned_to is null or empty) _/
+262 export const listOrphanedPartners = () =>
+263 api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
+264
+265 /_* List all commissions for admin finance queue _/
+266 export const listAllCommissions = (params?: Record<string, string | number | null | undefined>) =>
+267 api.get<{ commissions: PartnerCommission[]; total: number; summary: Record<string, number> }>(`${BASE}/commissions${qs(params)}`);
+268
+269 /_* Approve a commission _/
+270 export const approveCommission = (id: number) =>
+271 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/approve`, {});
+272
+273 /_* Mark a commission as paid _/
+274 export const markPaid = (id: number, body: MarkPaidBody) =>
+275 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/mark-paid`, body);
+276
+277 /_* Clawback a commission */
+278 export const clawback = (id: number, body: ClawbackBody) =>
+279 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/clawback`, body);
+280
 
 exec
-/bin/zsh -lc "rg -n \"partner|partners|role|portal/partner|portal/partners\" apps/mouth/src/middleware.ts apps/mouth/src/app -g '*.tsx' -g '*.ts'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-apps/mouth/src/app/login/page.tsx:62:          userRole: loginResponse.user?.role,
-apps/mouth/src/app/login/page.tsx:78:      // Get redirect path: honour ?redirect= param (SSO subdomains), else role-based
-apps/mouth/src/app/login/page.tsx:83:        : loginResponse.user?.role === "client"
-apps/mouth/src/app/login/page.tsx:89:        metadata: { redirectTo, userRole: loginResponse.user?.role },
-apps/mouth/src/app/v2/company/about/page.tsx:23:    role: "CEO · Founder",
-apps/mouth/src/app/v2/company/about/page.tsx:29:    role: "Komisaris · Founder",
-apps/mouth/src/app/v2/company/about/page.tsx:35:    role: "Board Member",
-apps/mouth/src/app/v2/company/about/page.tsx:41:    role: "Setup Lead",
-apps/mouth/src/app/v2/company/about/page.tsx:47:    role: "Accountant",
-apps/mouth/src/app/v2/company/about/page.tsx:120:              friends for 30 years, partners in business — decided that expats
-apps/mouth/src/app/v2/company/about/page.tsx:222:                    {m.role}
-apps/mouth/src/app/kbli-explorer/page.tsx:174:      role="button"
-apps/mouth/src/app/kbli-explorer/page.tsx:256:  role,
-apps/mouth/src/app/kbli-explorer/page.tsx:259:  role: "user" | "ai";
-apps/mouth/src/app/kbli-explorer/page.tsx:265:    className={`flex gap-4 md:gap-6 ${role === "ai" ? "items-start" : "items-center flex-row-reverse"}`}
-apps/mouth/src/app/kbli-explorer/page.tsx:268:      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-surface-deep border-accent-sand/20 text-accent-sand" : "bg-surface-editorial-elevated border-white/10 text-slate-400"}`}
-apps/mouth/src/app/kbli-explorer/page.tsx:270:      {role === "ai" ? (
-apps/mouth/src/app/kbli-explorer/page.tsx:277:      className={`max-w-[90%] md:max-w-[85%] ${role === "ai" ? "text-base md:text-lg font-light leading-relaxed" : "text-sm md:text-base font-medium text-white/90"}`}
-apps/mouth/src/app/kbli-explorer/page.tsx:402:  role: "user" | "ai";
-apps/mouth/src/app/kbli-explorer/page.tsx:1016:      setMessages((prev) => [...prev, { role: "user", content: text }]);
-apps/mouth/src/app/kbli-explorer/page.tsx:1024:            role: "ai",
-apps/mouth/src/app/kbli-explorer/page.tsx:1361:                        role={msg.role}
-apps/mouth/src/app/kbli-explorer/page.tsx:1363:                          msg.role === "user" ? (
-apps/mouth/src/app/kbli-explorer/components/BlackBookModal.tsx:61:          role="dialog"
-apps/mouth/src/app/v2/_components/HeroCarousel.tsx:251:            role="img"
-apps/mouth/src/app/chat/stream-helper.ts:19:  const lastUserMessage = messages.filter((m) => m.role === "user").pop();
-apps/mouth/src/app/chat/stream-helper.ts:36:      role: m.role,
-apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:163:  // Editorial components (PeopleColumn) want `associates: {client_name, role, ownership_percentage}[]`.
-apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:173:    role: string;
-apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:178:      role: "Director",
-apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:182:      role: "Shareholder",
-apps/mouth/src/app/(blog)/team/page.tsx:21:  role: string;
-apps/mouth/src/app/(blog)/team/page.tsx:30:    role: "Komisaris · Founder (30 years)",
-apps/mouth/src/app/(blog)/team/page.tsx:37:    role: "Chief Executive Officer · Founder",
-apps/mouth/src/app/(blog)/team/page.tsx:44:    role: "Special Advisory",
-apps/mouth/src/app/(blog)/team/page.tsx:51:    role: "Manager",
-apps/mouth/src/app/(blog)/team/page.tsx:60:    role: "Supervisor · Lead Setup",
-apps/mouth/src/app/(blog)/team/page.tsx:67:    role: "Supervisor",
-apps/mouth/src/app/(blog)/team/page.tsx:74:    role: "Specialist Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:81:    role: "Executive Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:88:    role: "Junior Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:94:    role: "Executive Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:104:    role: "Tax Supervisor",
-apps/mouth/src/app/(blog)/team/page.tsx:110:    role: "Tax Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:116:    role: "Tax Consultant",
-apps/mouth/src/app/(blog)/team/page.tsx:122:    role: "Tax Care",
-apps/mouth/src/app/(blog)/team/page.tsx:131:    role: "Accountant",
-apps/mouth/src/app/(blog)/team/page.tsx:138:    role: "Reception",
-apps/mouth/src/app/(blog)/team/page.tsx:147:    role: "SOTA Marketing",
-apps/mouth/src/app/(blog)/team/page.tsx:154:    role: "Marketing Specialist",
-apps/mouth/src/app/(blog)/team/page.tsx:160:    role: "Marketing Junior",
-apps/mouth/src/app/(blog)/team/page.tsx:202:              alt={`${member.name} — ${member.role}`}
-apps/mouth/src/app/(blog)/team/page.tsx:231:            {member.role}
-apps/mouth/src/app/dream/page.tsx:750:      role="dialog"
-apps/mouth/src/app/dream/page.tsx:754:      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" role="presentation" />
-apps/mouth/src/app/dream/page.tsx:1287:                  role="status"
-apps/mouth/src/app/kbli/[code]/page.tsx:813:                        ? `Yes. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBUKA — open to 100% foreign ownership through a PT PMA company. You do not need a local Indonesian partner.`
-apps/mouth/src/app/kbli/[code]/page.tsx:815:                          ? `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is capped at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
+/bin/zsh -lc "rg -n \"partner|partners|role|portal/partner|portal/partners\" apps/mouth/src/middleware.ts apps/mouth/src/app -g '_.tsx' -g '_.ts'" in /Users/nuzantara/Desktop/partners-spec-wt
+succeeded in 0ms:
+apps/mouth/src/app/login/page.tsx:62: userRole: loginResponse.user?.role,
+apps/mouth/src/app/login/page.tsx:78: // Get redirect path: honour ?redirect= param (SSO subdomains), else role-based
+apps/mouth/src/app/login/page.tsx:83: : loginResponse.user?.role === "client"
+apps/mouth/src/app/login/page.tsx:89: metadata: { redirectTo, userRole: loginResponse.user?.role },
+apps/mouth/src/app/v2/company/about/page.tsx:23: role: "CEO · Founder",
+apps/mouth/src/app/v2/company/about/page.tsx:29: role: "Komisaris · Founder",
+apps/mouth/src/app/v2/company/about/page.tsx:35: role: "Board Member",
+apps/mouth/src/app/v2/company/about/page.tsx:41: role: "Setup Lead",
+apps/mouth/src/app/v2/company/about/page.tsx:47: role: "Accountant",
+apps/mouth/src/app/v2/company/about/page.tsx:120: friends for 30 years, partners in business — decided that expats
+apps/mouth/src/app/v2/company/about/page.tsx:222: {m.role}
+apps/mouth/src/app/kbli-explorer/page.tsx:174: role="button"
+apps/mouth/src/app/kbli-explorer/page.tsx:256: role,
+apps/mouth/src/app/kbli-explorer/page.tsx:259: role: "user" | "ai";
+apps/mouth/src/app/kbli-explorer/page.tsx:265: className={`flex gap-4 md:gap-6 ${role === "ai" ? "items-start" : "items-center flex-row-reverse"}`}
+apps/mouth/src/app/kbli-explorer/page.tsx:268: className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-surface-deep border-accent-sand/20 text-accent-sand" : "bg-surface-editorial-elevated border-white/10 text-slate-400"}`}
+apps/mouth/src/app/kbli-explorer/page.tsx:270: {role === "ai" ? (
+apps/mouth/src/app/kbli-explorer/page.tsx:277: className={`max-w-[90%] md:max-w-[85%] ${role === "ai" ? "text-base md:text-lg font-light leading-relaxed" : "text-sm md:text-base font-medium text-white/90"}`}
+apps/mouth/src/app/kbli-explorer/page.tsx:402: role: "user" | "ai";
+apps/mouth/src/app/kbli-explorer/page.tsx:1016: setMessages((prev) => [...prev, { role: "user", content: text }]);
+apps/mouth/src/app/kbli-explorer/page.tsx:1024: role: "ai",
+apps/mouth/src/app/kbli-explorer/page.tsx:1361: role={msg.role}
+apps/mouth/src/app/kbli-explorer/page.tsx:1363: msg.role === "user" ? (
+apps/mouth/src/app/kbli-explorer/components/BlackBookModal.tsx:61: role="dialog"
+apps/mouth/src/app/v2/_components/HeroCarousel.tsx:251: role="img"
+apps/mouth/src/app/chat/stream-helper.ts:19: const lastUserMessage = messages.filter((m) => m.role === "user").pop();
+apps/mouth/src/app/chat/stream-helper.ts:36: role: m.role,
+apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:163: // Editorial components (PeopleColumn) want `associates: {client_name, role, ownership_percentage}[]`.
+apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:173: role: string;
+apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:178: role: "Director",
+apps/mouth/src/app/portal/(authenticated)/company/[id]/page.tsx:182: role: "Shareholder",
+apps/mouth/src/app/(blog)/team/page.tsx:21: role: string;
+apps/mouth/src/app/(blog)/team/page.tsx:30: role: "Komisaris · Founder (30 years)",
+apps/mouth/src/app/(blog)/team/page.tsx:37: role: "Chief Executive Officer · Founder",
+apps/mouth/src/app/(blog)/team/page.tsx:44: role: "Special Advisory",
+apps/mouth/src/app/(blog)/team/page.tsx:51: role: "Manager",
+apps/mouth/src/app/(blog)/team/page.tsx:60: role: "Supervisor · Lead Setup",
+apps/mouth/src/app/(blog)/team/page.tsx:67: role: "Supervisor",
+apps/mouth/src/app/(blog)/team/page.tsx:74: role: "Specialist Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:81: role: "Executive Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:88: role: "Junior Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:94: role: "Executive Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:104: role: "Tax Supervisor",
+apps/mouth/src/app/(blog)/team/page.tsx:110: role: "Tax Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:116: role: "Tax Consultant",
+apps/mouth/src/app/(blog)/team/page.tsx:122: role: "Tax Care",
+apps/mouth/src/app/(blog)/team/page.tsx:131: role: "Accountant",
+apps/mouth/src/app/(blog)/team/page.tsx:138: role: "Reception",
+apps/mouth/src/app/(blog)/team/page.tsx:147: role: "SOTA Marketing",
+apps/mouth/src/app/(blog)/team/page.tsx:154: role: "Marketing Specialist",
+apps/mouth/src/app/(blog)/team/page.tsx:160: role: "Marketing Junior",
+apps/mouth/src/app/(blog)/team/page.tsx:202: alt={`${member.name} — ${member.role}`}
+apps/mouth/src/app/(blog)/team/page.tsx:231: {member.role}
+apps/mouth/src/app/dream/page.tsx:750: role="dialog"
+apps/mouth/src/app/dream/page.tsx:754: <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" role="presentation" />
+apps/mouth/src/app/dream/page.tsx:1287: role="status"
+apps/mouth/src/app/kbli/[code]/page.tsx:813: ? `Yes. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBUKA — open to 100% foreign ownership through a PT PMA company. You do not need a local Indonesian partner.`
+apps/mouth/src/app/kbli/[code]/page.tsx:815: ? `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is capped at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
 apps/mouth/src/app/v2/_components/SocialProof.tsx:17:  role: string;
 apps/mouth/src/app/v2/_components/SocialProof.tsx:25:// and still run it. Friends for 30 years, partners in the business.
 apps/mouth/src/app/v2/_components/SocialProof.tsx:29:    role: "CEO",
@@ -7785,13 +7799,13 @@ apps/mouth/src/app/(workspace)/settings/roles/page.tsx:142:      setRoles(roles.
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:147:        toast.error('Missing name', { description: 'Please enter a role name.' });
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:150:      const role: Role = {
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:155:      setRoles([...roles, role]);
-apps/mouth/src/app/(workspace)/settings/roles/page.tsx:163:      toast.success('Role created', { description: `"${role.name}" has been created.` });
+apps/mouth/src/app/(workspace)/settings/roles/page.tsx:163:      toast.success('Role created', { description: `"${role.name}" has been created.`});
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:168:    toast('Delete this role?', {
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:171:        onClick: () => setRoles(roles.filter((r) => r.id !== id)),
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:201:              Configure roles and their permissions
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:213:        {roles.map((role) => (
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:215:            key={role.id}
-apps/mouth/src/app/(workspace)/settings/roles/page.tsx:222:                  style={{ backgroundColor: `${role.color}20` }}
+apps/mouth/src/app/(workspace)/settings/roles/page.tsx:222:                  style={{ backgroundColor:`${role.color}20` }}
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:224:                  <Shield className="w-5 h-5" style={{ color: role.color }} />
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:227:                  <h3 className="font-medium text-[var(--foreground)]">{role.name}</h3>
 apps/mouth/src/app/(workspace)/settings/roles/page.tsx:228:                  <p className="text-xs text-[var(--foreground-muted)]">{role.description}</p>
@@ -7880,618 +7894,618 @@ apps/mouth/src/app/(workspace)/partners/new/page.tsx:181:        work_role: form
 apps/mouth/src/app/(workspace)/partners/new/page.tsx:197:      const partner = await partnersApi.createPartner(body);
 apps/mouth/src/app/(workspace)/partners/new/page.tsx:198:      toastSuccess(`Partner ${partner.full_name} created`);
 apps/mouth/src/app/(workspace)/partners/new/page.tsx:199:      router.push(`/partners/${partner.id}`);
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:201:      logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:204:        toastError("A partner with this email already exists");
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:208:        toastError("Failed to create partner. Please try again.");
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:219:        <Link href="/partners">
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:233:            <strong>Warning:</strong> The work role appears to indicate a sponsor/guarantor position.
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:234:            Please verify the partner{"'"}s role does not conflict with Indonesian immigration regulations
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:270:                    placeholder="partner@email.com"
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:316:                    value={form.work_role}
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:317:                    onChange={(v) => setField("work_role", v)}
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:339:                  placeholder="Internal notes about this partner..."
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:376:                the partner{"'"}s tax status before approving commissions.
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:470:                The partner has given explicit consent for their personal data to be processed for commission
-apps/mouth/src/app/(workspace)/partners/new/page.tsx:482:          <Link href="/partners">
-apps/mouth/src/app/(workspace)/process/__tests__/page.test.tsx:136:      role: 'admin',
-apps/mouth/src/app/(workspace)/lkpm/submit/page.tsx:162:          role: string;
-apps/mouth/src/app/(workspace)/analytics/funnel/page.tsx:74:        <p role="alert" style={{ color: "var(--color-danger, #dc2626)" }}>
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:7:  role: string;
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:16:  role: string;
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:40:        role: s.role?.toLowerCase() || 'shareholder',
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:55:      const colors = getRoleColor(a.role);
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:77:        const colors = getRoleColor(a.role);
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:108:                  {a.role || "Shareholder"}
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:138:                  {a.role || "Shareholder"}
-apps/mouth/src/app/api/blog/articles/route.ts:93:      role: "AI Research Assistant",
-apps/mouth/src/app/api/blog/articles/route.ts:115:      role: "Legal Advisor",
-apps/mouth/src/app/api/blog/articles/route.ts:137:      role: "AI Research Assistant",
-apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:203:        role: "AI Research Assistant",
-apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:304:        role: "Legal Advisor",
-apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:358:        role: "AI Business Advisor",
-apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:400:        role: "AI Research",
-apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:440:        role: "AI Business Advisor",
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:201: logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:204: toastError("A partner with this email already exists");
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:208: toastError("Failed to create partner. Please try again.");
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:219: <Link href="/partners">
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:233: <strong>Warning:</strong> The work role appears to indicate a sponsor/guarantor position.
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:234: Please verify the partner{"'"}s role does not conflict with Indonesian immigration regulations
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:270: placeholder="partner@email.com"
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:316: value={form.work_role}
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:317: onChange={(v) => setField("work_role", v)}
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:339: placeholder="Internal notes about this partner..."
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:376: the partner{"'"}s tax status before approving commissions.
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:470: The partner has given explicit consent for their personal data to be processed for commission
+apps/mouth/src/app/(workspace)/partners/new/page.tsx:482: <Link href="/partners">
+apps/mouth/src/app/(workspace)/process/**tests**/page.test.tsx:136: role: 'admin',
+apps/mouth/src/app/(workspace)/lkpm/submit/page.tsx:162: role: string;
+apps/mouth/src/app/(workspace)/analytics/funnel/page.tsx:74: <p role="alert" style={{ color: "var(--color-danger, #dc2626)" }}>
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:7: role: string;
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:16: role: string;
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:40: role: s.role?.toLowerCase() || 'shareholder',
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:55: const colors = getRoleColor(a.role);
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:77: const colors = getRoleColor(a.role);
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:108: {a.role || "Shareholder"}
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/PeopleColumn.tsx:138: {a.role || "Shareholder"}
+apps/mouth/src/app/api/blog/articles/route.ts:93: role: "AI Research Assistant",
+apps/mouth/src/app/api/blog/articles/route.ts:115: role: "Legal Advisor",
+apps/mouth/src/app/api/blog/articles/route.ts:137: role: "AI Research Assistant",
+apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:203: role: "AI Research Assistant",
+apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:304: role: "Legal Advisor",
+apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:358: role: "AI Business Advisor",
+apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:400: role: "AI Research",
+apps/mouth/src/app/api/blog/articles/[category]/[slug]/route.ts:440: role: "AI Business Advisor",
 apps/mouth/src/app/(workspace)/clients/[id]/components/company/editorial-tokens.ts:24:export function getRoleColor(role: string) {
-apps/mouth/src/app/(workspace)/clients/[id]/components/company/editorial-tokens.ts:25:  const r = (role || "").toLowerCase();
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:73:      role: string;
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:130:                      roles: string[];
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:140:                        roles: [],
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:146:                    if (a.role && !entry.roles.includes(a.role))
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:147:                      entry.roles.push(a.role);
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:164:                      role: g.roles.join(" / "),
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:183:                      role: co.role,
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:196:                    role: co.role,
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:206:                role: co.role,
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:245:                  roles: string[];
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:255:                    roles: [],
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:261:                if (a.role && !entry.roles.includes(a.role))
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:262:                  entry.roles.push(a.role);
-apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:278:                  role: g.roles.join(" / "),
-apps/mouth/src/app/(workspace)/clients/new/components/PassportScanSection.tsx:311:      role="button"
-apps/mouth/src/app/(workspace)/hr/employees/page.tsx:203:                      {m.full_name ?? m.email} ({m.role ?? "member"})
-apps/mouth/src/app/(workspace)/hr/employees/page.tsx:413:                      {emp.role}
-apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:46:  role: string;
-apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:70:  role: 'Director',
-apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:257:        role: formData.role,
-apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:376:    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:541:                <select value={formData.role} onChange={(e) => updateField('role', e.target.value)} className={inputClass}>
-apps/mouth/src/app/(workspace)/team-management/page.tsx:20:  role?: string;
+apps/mouth/src/app/(workspace)/clients/[id]/components/company/editorial-tokens.ts:25: const r = (role || "").toLowerCase();
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:73: role: string;
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:130: roles: string[];
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:140: roles: [],
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:146: if (a.role && !entry.roles.includes(a.role))
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:147: entry.roles.push(a.role);
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:164: role: g.roles.join(" / "),
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:183: role: co.role,
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:196: role: co.role,
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:206: role: co.role,
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:245: roles: string[];
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:255: roles: [],
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:261: if (a.role && !entry.roles.includes(a.role))
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:262: entry.roles.push(a.role);
+apps/mouth/src/app/(workspace)/clients/[id]/components/CompanyTab.tsx:278: role: g.roles.join(" / "),
+apps/mouth/src/app/(workspace)/clients/new/components/PassportScanSection.tsx:311: role="button"
+apps/mouth/src/app/(workspace)/hr/employees/page.tsx:203: {m.full_name ?? m.email} ({m.role ?? "member"})
+apps/mouth/src/app/(workspace)/hr/employees/page.tsx:413: {emp.role}
+apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:46: role: string;
+apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:70: role: 'Director',
+apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:257: role: formData.role,
+apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:376: <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
+apps/mouth/src/app/(workspace)/clients/[id]/components/modals/AddCompanyModal.tsx:541: <select value={formData.role} onChange={(e) => updateField('role', e.target.value)} className={inputClass}>
+apps/mouth/src/app/(workspace)/team-management/page.tsx:20: role?: string;
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/components/partners/ReferrerDropdown.tsx | sed -n '1,260p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	"use client";
-     2	
-     3	import React, { useEffect, useState } from "react";
-     4	import { Loader2, Handshake } from "lucide-react";
-     5	import * as partnersApi from "@/lib/api/partners/partners";
-     6	import type { Partner } from "@/lib/api/partners/partners";
-     7	
-     8	interface ReferrerDropdownProps {
-     9	  value: number | null;
-    10	  onChange: (partnerId: number | null) => void;
-    11	  className?: string;
-    12	  disabled?: boolean;
-    13	  placeholder?: string;
-    14	}
-    15	
-    16	/**
-    17	 * ReferrerDropdown — select an active partner as referrer for a process/practice.
-    18	 * Fetches active partners scoped by the caller's role (team members see only
-    19	 * partners assigned to them; admins see all active partners).
-    20	 */
-    21	export function ReferrerDropdown({
-    22	  value,
-    23	  onChange,
-    24	  className = "",
-    25	  disabled = false,
-    26	  placeholder = "No referrer",
-    27	}: ReferrerDropdownProps) {
-    28	  const [partners, setPartners] = useState<Partner[]>([]);
-    29	  const [isLoading, setIsLoading] = useState(true);
-    30	  const [error, setError] = useState<string | null>(null);
-    31	
-    32	  useEffect(() => {
-    33	    let cancelled = false;
-    34	    const load = async () => {
-    35	      try {
-    36	        const data = await partnersApi.listActivePartnersDropdown();
-    37	        if (!cancelled) {
-    38	          setPartners(
-    39	            [...data.partners].sort((a, b) =>
-    40	              a.full_name.localeCompare(b.full_name),
-    41	            ),
-    42	          );
-    43	        }
-    44	      } catch {
-    45	        if (!cancelled) setError("Failed to load partners");
-    46	      } finally {
-    47	        if (!cancelled) setIsLoading(false);
-    48	      }
-    49	    };
-    50	    load();
-    51	    return () => { cancelled = true; };
-    52	  }, []);
-    53	
-    54	  if (isLoading) {
-    55	    return (
-    56	      <div className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg ${className}`}>
-    57	        <Loader2 size={14} className="animate-spin text-zinc-500" />
-    58	        <span className="text-sm text-zinc-500">Loading partners…</span>
-    59	      </div>
-    60	    );
-    61	  }
-    62	
-    63	  if (error) {
-    64	    return (
-    65	      <div className={`px-3 py-2 bg-zinc-800 border border-red-700/50 rounded-lg ${className}`}>
-    66	        <span className="text-sm text-red-400">{error}</span>
-    67	      </div>
-    68	    );
-    69	  }
-    70	
-    71	  return (
-    72	    <div className={`relative ${className}`}>
-    73	      <Handshake
-    74	        size={14}
-    75	        className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
-    76	      />
-    77	      <select
-    78	        value={value ?? ""}
-    79	        onChange={(e) => {
-    80	          const v = e.target.value;
-    81	          onChange(v === "" ? null : Number(v));
-    82	        }}
-    83	        disabled={disabled}
-    84	        className="w-full pl-8 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-    85	      >
-    86	        <option value="">{placeholder}</option>
-    87	        {partners.map((p) => (
-    88	          <option key={p.id} value={p.id}>
-    89	            {p.full_name} ({p.commission_tier})
-    90	          </option>
-    91	        ))}
-    92	      </select>
-    93	    </div>
-    94	  );
-    95	}
-    96	
-    97	export default ReferrerDropdown;
+succeeded in 0ms:
+1 "use client";
+2
+3 import React, { useEffect, useState } from "react";
+4 import { Loader2, Handshake } from "lucide-react";
+5 import * as partnersApi from "@/lib/api/partners/partners";
+6 import type { Partner } from "@/lib/api/partners/partners";
+7
+8 interface ReferrerDropdownProps {
+9 value: number | null;
+10 onChange: (partnerId: number | null) => void;
+11 className?: string;
+12 disabled?: boolean;
+13 placeholder?: string;
+14 }
+15
+16 /**
+17 * ReferrerDropdown — select an active partner as referrer for a process/practice.
+18 * Fetches active partners scoped by the caller's role (team members see only
+19 * partners assigned to them; admins see all active partners).
+20 */
+21 export function ReferrerDropdown({
+22 value,
+23 onChange,
+24 className = "",
+25 disabled = false,
+26 placeholder = "No referrer",
+27 }: ReferrerDropdownProps) {
+28 const [partners, setPartners] = useState<Partner[]>([]);
+29 const [isLoading, setIsLoading] = useState(true);
+30 const [error, setError] = useState<string | null>(null);
+31
+32 useEffect(() => {
+33 let cancelled = false;
+34 const load = async () => {
+35 try {
+36 const data = await partnersApi.listActivePartnersDropdown();
+37 if (!cancelled) {
+38 setPartners(
+39 [...data.partners].sort((a, b) =>
+40 a.full_name.localeCompare(b.full_name),
+41 ),
+42 );
+43 }
+44 } catch {
+45 if (!cancelled) setError("Failed to load partners");
+46 } finally {
+47 if (!cancelled) setIsLoading(false);
+48 }
+49 };
+50 load();
+51 return () => { cancelled = true; };
+52 }, []);
+53
+54 if (isLoading) {
+55 return (
+56 <div className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg ${className}`}>
+57 <Loader2 size={14} className="animate-spin text-zinc-500" />
+58 <span className="text-sm text-zinc-500">Loading partners…</span>
+59 </div>
+60 );
+61 }
+62
+63 if (error) {
+64 return (
+65 <div className={`px-3 py-2 bg-zinc-800 border border-red-700/50 rounded-lg ${className}`}>
+66 <span className="text-sm text-red-400">{error}</span>
+67 </div>
+68 );
+69 }
+70
+71 return (
+72 <div className={`relative ${className}`}>
+73 <Handshake
+74 size={14}
+75 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+76 />
+77 <select
+78 value={value ?? ""}
+79 onChange={(e) => {
+80 const v = e.target.value;
+81 onChange(v === "" ? null : Number(v));
+82 }}
+83 disabled={disabled}
+84 className="w-full pl-8 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+85 >
+86 <option value="">{placeholder}</option>
+87 {partners.map((p) => (
+88 <option key={p.id} value={p.id}>
+89 {p.full_name} ({p.commission_tier})
+90 </option>
+91 ))}
+92 </select>
+93 </div>
+94 );
+95 }
+96
+97 export default ReferrerDropdown;
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/'[id]'/page.tsx | sed -n '300,380p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/lib/api/partners/partners.ts | sed -n '260,360p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   300	    </div>
-   301	  );
-   302	}
-   303	
-   304	export default function PartnerDetailPage() {
-   305	  const params = useParams();
-   306	  const router = useRouter();
-   307	  const { success: toastSuccess, error: toastError } = useToast();
-   308	
-   309	  const partnerId = params?.id ? Number(params.id) : 0;
-   310	  const [partner, setPartner] = useState<Partner | null>(null);
-   311	  const [isLoading, setIsLoading] = useState(true);
-   312	  const [error, setError] = useState<string | null>(null);
-   313	  const [activeTab, setActiveTab] = useState<TabId>("profile");
-   314	  const [isActioning, setIsActioning] = useState(false);
-   315	
-   316	  const loadPartner = useCallback(async () => {
-   317	    setIsLoading(true);
-   318	    setError(null);
-   319	    try {
-   320	      const data = await partnersApi.getPartner(partnerId);
-   321	      setPartner(data);
-   322	    } catch (err) {
-   323	      logger.error("Failed to load partner", { component: "PartnerDetailPage" }, err as Error);
-   324	      setError("Failed to load partner. Please try again.");
-   325	    } finally {
-   326	      setIsLoading(false);
-   327	    }
-   328	  }, [partnerId]);
-   329	
-   330	  useEffect(() => { loadPartner(); }, [loadPartner]);
-   331	
-   332	  const handleActivate = async () => {
-   333	    if (!partner) return;
-   334	    setIsActioning(true);
-   335	    try {
-   336	      await partnersApi.activatePartner(partnerId);
-   337	      toastSuccess("Partner activated — welcome email sent");
-   338	      await loadPartner();
-   339	    } catch (err) {
-   340	      toastError("Failed to activate partner");
-   341	    } finally {
-   342	      setIsActioning(false);
-   343	    }
-   344	  };
-   345	
-   346	  const handleDeactivate = async () => {
-   347	    if (!partner) return;
-   348	    setIsActioning(true);
-   349	    try {
-   350	      await partnersApi.deactivatePartner(partnerId);
-   351	      toastSuccess("Partner deactivated");
-   352	      await loadPartner();
-   353	    } catch (err) {
-   354	      toastError("Failed to deactivate partner");
-   355	    } finally {
-   356	      setIsActioning(false);
-   357	    }
-   358	  };
-   359	
-   360	  const handleReassign = async () => {
-   361	    const newUserId = window.prompt("Enter team member user ID (UUID) to assign to:");
-   362	    if (!newUserId?.trim()) return;
-   363	    const reason = window.prompt("Reason for reassignment (required):");
-   364	    if (!reason?.trim()) return;
-   365	    setIsActioning(true);
-   366	    try {
-   367	      await partnersApi.reassignPartner(partnerId, {
-   368	        new_user_id: newUserId.trim(),
-   369	        reason: reason.trim(),
-   370	      });
-   371	      toastSuccess("Partner reassigned");
-   372	      await loadPartner();
-   373	    } catch (err) {
-   374	      toastError("Failed to reassign partner");
-   375	    } finally {
-   376	      setIsActioning(false);
-   377	    }
-   378	  };
-   379	
-   380	  if (isLoading) {
+succeeded in 0ms:
+300 </div>
+301 );
+302 }
+303
+304 export default function PartnerDetailPage() {
+305 const params = useParams();
+306 const router = useRouter();
+307 const { success: toastSuccess, error: toastError } = useToast();
+308
+309 const partnerId = params?.id ? Number(params.id) : 0;
+310 const [partner, setPartner] = useState<Partner | null>(null);
+311 const [isLoading, setIsLoading] = useState(true);
+312 const [error, setError] = useState<string | null>(null);
+313 const [activeTab, setActiveTab] = useState<TabId>("profile");
+314 const [isActioning, setIsActioning] = useState(false);
+315
+316 const loadPartner = useCallback(async () => {
+317 setIsLoading(true);
+318 setError(null);
+319 try {
+320 const data = await partnersApi.getPartner(partnerId);
+321 setPartner(data);
+322 } catch (err) {
+323 logger.error("Failed to load partner", { component: "PartnerDetailPage" }, err as Error);
+324 setError("Failed to load partner. Please try again.");
+325 } finally {
+326 setIsLoading(false);
+327 }
+328 }, [partnerId]);
+329
+330 useEffect(() => { loadPartner(); }, [loadPartner]);
+331
+332 const handleActivate = async () => {
+333 if (!partner) return;
+334 setIsActioning(true);
+335 try {
+336 await partnersApi.activatePartner(partnerId);
+337 toastSuccess("Partner activated — welcome email sent");
+338 await loadPartner();
+339 } catch (err) {
+340 toastError("Failed to activate partner");
+341 } finally {
+342 setIsActioning(false);
+343 }
+344 };
+345
+346 const handleDeactivate = async () => {
+347 if (!partner) return;
+348 setIsActioning(true);
+349 try {
+350 await partnersApi.deactivatePartner(partnerId);
+351 toastSuccess("Partner deactivated");
+352 await loadPartner();
+353 } catch (err) {
+354 toastError("Failed to deactivate partner");
+355 } finally {
+356 setIsActioning(false);
+357 }
+358 };
+359
+360 const handleReassign = async () => {
+361 const newUserId = window.prompt("Enter team member user ID (UUID) to assign to:");
+362 if (!newUserId?.trim()) return;
+363 const reason = window.prompt("Reason for reassignment (required):");
+364 if (!reason?.trim()) return;
+365 setIsActioning(true);
+366 try {
+367 await partnersApi.reassignPartner(partnerId, {
+368 new_user_id: newUserId.trim(),
+369 reason: reason.trim(),
+370 });
+371 toastSuccess("Partner reassigned");
+372 await loadPartner();
+373 } catch (err) {
+374 toastError("Failed to reassign partner");
+375 } finally {
+376 setIsActioning(false);
+377 }
+378 };
+379
+380 if (isLoading) {
 
- succeeded in 0ms:
-   260	
-   261	/** List orphaned partners (assigned_to is null or empty) */
-   262	export const listOrphanedPartners = () =>
-   263	  api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
-   264	
-   265	/** List all commissions for admin finance queue */
-   266	export const listAllCommissions = (params?: Record<string, string | number | null | undefined>) =>
-   267	  api.get<{ commissions: PartnerCommission[]; total: number; summary: Record<string, number> }>(`${BASE}/commissions${qs(params)}`);
-   268	
-   269	/** Approve a commission */
-   270	export const approveCommission = (id: number) =>
-   271	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/approve`, {});
-   272	
-   273	/** Mark a commission as paid */
-   274	export const markPaid = (id: number, body: MarkPaidBody) =>
-   275	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/mark-paid`, body);
-   276	
-   277	/** Clawback a commission */
-   278	export const clawback = (id: number, body: ClawbackBody) =>
-   279	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/clawback`, body);
-   280	
-   281	/** Waive a commission */
-   282	export const waive = (id: number, body: WaiveBody) =>
-   283	  api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/waive`, body);
-   284	
-   285	/** Export finance CSV (pending/ready-to-pay commissions) */
-   286	export const exportFinanceCsv = (from?: string, to?: string): string => {
-   287	  const params: Record<string, string> = {};
-   288	  if (from) params['from'] = from;
-   289	  if (to) params['to'] = to;
-   290	  return `${api.getBaseUrl()}${BASE}/commissions/export${qs(params)}`;
-   291	};
-   292	
-   293	/** Get active partners list for dropdown (scoped by caller role) */
-   294	export const listActivePartnersDropdown = () =>
-   295	  api.get<PartnerListResponse>(`${BASE}?status=active&page_size=200`);
-   296	
-   297	/** List audit log entries for a partner */
-   298	export const listAuditLog = (partnerId: number) =>
-   299	  api.get<AuditLogEntry[]>(`${BASE}/${partnerId}/audit-log`);
-   300	
-   301	// ─── Partner Self-View (role=partner) ──────────────────────────────────────
-   302	
-   303	/** Get the authenticated partner's own profile */
-   304	export const getMe = () =>
-   305	  api.get<Partner>(`${BASE}/me`);
-   306	
-   307	/** Get the authenticated partner's own referrals (client names already sterilized) */
-   308	export const getMyReferrals = () =>
-   309	  api.get<PartnerReferral[]>(`${BASE}/me/referrals`);
-   310	
-   311	/** Get the authenticated partner's own commissions ledger */
-   312	export const getMyCommissions = () =>
-   313	  api.get<PartnerCommission[]>(`${BASE}/me/commissions`);
+succeeded in 0ms:
+260
+261 /** List orphaned partners (assigned_to is null or empty) _/
+262 export const listOrphanedPartners = () =>
+263 api.get<{ partners: Partner[]; total: number }>(`${BASE}/orphaned`);
+264
+265 /_* List all commissions for admin finance queue _/
+266 export const listAllCommissions = (params?: Record<string, string | number | null | undefined>) =>
+267 api.get<{ commissions: PartnerCommission[]; total: number; summary: Record<string, number> }>(`${BASE}/commissions${qs(params)}`);
+268
+269 /_* Approve a commission _/
+270 export const approveCommission = (id: number) =>
+271 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/approve`, {});
+272
+273 /_* Mark a commission as paid _/
+274 export const markPaid = (id: number, body: MarkPaidBody) =>
+275 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/mark-paid`, body);
+276
+277 /_* Clawback a commission _/
+278 export const clawback = (id: number, body: ClawbackBody) =>
+279 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/clawback`, body);
+280
+281 /_* Waive a commission _/
+282 export const waive = (id: number, body: WaiveBody) =>
+283 api.post<{ success: boolean; commission: PartnerCommission }>(`/api/partner-commissions/${id}/waive`, body);
+284
+285 /_* Export finance CSV (pending/ready-to-pay commissions) _/
+286 export const exportFinanceCsv = (from?: string, to?: string): string => {
+287 const params: Record<string, string> = {};
+288 if (from) params['from'] = from;
+289 if (to) params['to'] = to;
+290 return `${api.getBaseUrl()}${BASE}/commissions/export${qs(params)}`;
+291 };
+292
+293 /_* Get active partners list for dropdown (scoped by caller role) _/
+294 export const listActivePartnersDropdown = () =>
+295 api.get<PartnerListResponse>(`${BASE}?status=active&page_size=200`);
+296
+297 /_* List audit log entries for a partner _/
+298 export const listAuditLog = (partnerId: number) =>
+299 api.get<AuditLogEntry[]>(`${BASE}/${partnerId}/audit-log`);
+300
+301 // ─── Partner Self-View (role=partner) ──────────────────────────────────────
+302
+303 /_* Get the authenticated partner's own profile _/
+304 export const getMe = () =>
+305 api.get<Partner>(`${BASE}/me`);
+306
+307 /_* Get the authenticated partner's own referrals (client names already sterilized) _/
+308 export const getMyReferrals = () =>
+309 api.get<PartnerReferral[]>(`${BASE}/me/referrals`);
+310
+311 /_* Get the authenticated partner's own commissions ledger */
+312 export const getMyCommissions = () =>
+313 api.get<PartnerCommission[]>(`${BASE}/me/commissions`);
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/finance/page.tsx | sed -n '210,310p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/portal/'(authenticated)'/partner/layout.tsx | sed -n '1,90p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   210	
-   211	  // Admin gate — redirect non-admin users back to partners list
-   212	  useEffect(() => {
-   213	    if (!api.isAdmin?.()) {
-   214	      router.replace('/partners');
-   215	    }
-   216	  }, [router]);
-   217	
-   218	  const loadCommissions = useCallback(async () => {
-   219	    setIsLoading(true);
-   220	    setError(null);
-   221	    try {
-   222	      const data = await partnersApi.listAllCommissions({
-   223	        status: "pending_approval,approved,clawback_pending",
-   224	      });
-   225	      setCommissions(data.commissions);
-   226	    } catch (err) {
-   227	      logger.error("Failed to load finance queue", { component: "FinanceQueuePage" }, err as Error);
-   228	      setError("Failed to load commissions. Please try again.");
-   229	    } finally {
-   230	      setIsLoading(false);
-   231	    }
-   232	  }, []);
-   233	
-   234	  useEffect(() => { loadCommissions(); }, [loadCommissions]);
-   235	
-   236	  const handleApprove = async (id: number) => {
-   237	    setActioningId(id);
-   238	    try {
-   239	      await partnersApi.approveCommission(id);
-   240	      toastSuccess("Commission approved");
-   241	      await loadCommissions();
-   242	    } catch {
-   243	      toastError("Failed to approve commission");
-   244	    } finally {
-   245	      setActioningId(null);
-   246	    }
-   247	  };
-   248	
-   249	  const handleMarkPaid = async (id: number) => {
-   250	    setActioningId(id);
-   251	    const ref = prompt("Payment reference (optional):");
-   252	    try {
-   253	      await partnersApi.markPaid(id, { payment_reference: ref || undefined });
-   254	      toastSuccess("Commission marked as paid");
-   255	      await loadCommissions();
-   256	    } catch {
-   257	      toastError("Failed to mark commission as paid");
-   258	    } finally {
-   259	      setActioningId(null);
-   260	    }
-   261	  };
-   262	
-   263	  const handleClawback = async (id: number) => {
-   264	    setActioningId(id);
-   265	    const reason = prompt("Clawback reason (required):");
-   266	    if (!reason?.trim()) { setActioningId(null); return; }
-   267	    try {
-   268	      await partnersApi.clawback(id, { reason: reason.trim() });
-   269	      toastSuccess("Clawback initiated");
-   270	      await loadCommissions();
-   271	    } catch {
-   272	      toastError("Failed to initiate clawback");
-   273	    } finally {
-   274	      setActioningId(null);
-   275	    }
-   276	  };
-   277	
-   278	  const handleWaive = async (id: number) => {
-   279	    setActioningId(id);
-   280	    const reason = prompt("Waive reason (required):");
-   281	    if (!reason?.trim()) { setActioningId(null); return; }
-   282	    try {
-   283	      await partnersApi.waive(id, { reason: reason.trim() });
-   284	      toastSuccess("Commission waived");
-   285	      await loadCommissions();
-   286	    } catch {
-   287	      toastError("Failed to waive commission");
-   288	    } finally {
-   289	      setActioningId(null);
-   290	    }
-   291	  };
-   292	
-   293	  const pendingApproval = commissions.filter((c) => c.status === "pending_approval");
-   294	  const approved = commissions.filter((c) => c.status === "approved");
-   295	  const clawbackPending = commissions.filter((c) => c.status === "clawback_pending");
-   296	
-   297	  const csvUrl = partnersApi.exportFinanceCsv();
-   298	
-   299	  return (
-   300	    <div className="space-y-8">
-   301	      {/* Header */}
-   302	      <div className="flex items-center justify-between">
-   303	        <div className="flex items-center gap-4">
-   304	          <Link href="/partners">
-   305	            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
-   306	              <ArrowLeft size={16} className="mr-1" />
-   307	              Partners
-   308	            </Button>
-   309	          </Link>
-   310	          <div>
+succeeded in 0ms:
+210
+211 // Admin gate — redirect non-admin users back to partners list
+212 useEffect(() => {
+213 if (!api.isAdmin?.()) {
+214 router.replace('/partners');
+215 }
+216 }, [router]);
+217
+218 const loadCommissions = useCallback(async () => {
+219 setIsLoading(true);
+220 setError(null);
+221 try {
+222 const data = await partnersApi.listAllCommissions({
+223 status: "pending_approval,approved,clawback_pending",
+224 });
+225 setCommissions(data.commissions);
+226 } catch (err) {
+227 logger.error("Failed to load finance queue", { component: "FinanceQueuePage" }, err as Error);
+228 setError("Failed to load commissions. Please try again.");
+229 } finally {
+230 setIsLoading(false);
+231 }
+232 }, []);
+233
+234 useEffect(() => { loadCommissions(); }, [loadCommissions]);
+235
+236 const handleApprove = async (id: number) => {
+237 setActioningId(id);
+238 try {
+239 await partnersApi.approveCommission(id);
+240 toastSuccess("Commission approved");
+241 await loadCommissions();
+242 } catch {
+243 toastError("Failed to approve commission");
+244 } finally {
+245 setActioningId(null);
+246 }
+247 };
+248
+249 const handleMarkPaid = async (id: number) => {
+250 setActioningId(id);
+251 const ref = prompt("Payment reference (optional):");
+252 try {
+253 await partnersApi.markPaid(id, { payment_reference: ref || undefined });
+254 toastSuccess("Commission marked as paid");
+255 await loadCommissions();
+256 } catch {
+257 toastError("Failed to mark commission as paid");
+258 } finally {
+259 setActioningId(null);
+260 }
+261 };
+262
+263 const handleClawback = async (id: number) => {
+264 setActioningId(id);
+265 const reason = prompt("Clawback reason (required):");
+266 if (!reason?.trim()) { setActioningId(null); return; }
+267 try {
+268 await partnersApi.clawback(id, { reason: reason.trim() });
+269 toastSuccess("Clawback initiated");
+270 await loadCommissions();
+271 } catch {
+272 toastError("Failed to initiate clawback");
+273 } finally {
+274 setActioningId(null);
+275 }
+276 };
+277
+278 const handleWaive = async (id: number) => {
+279 setActioningId(id);
+280 const reason = prompt("Waive reason (required):");
+281 if (!reason?.trim()) { setActioningId(null); return; }
+282 try {
+283 await partnersApi.waive(id, { reason: reason.trim() });
+284 toastSuccess("Commission waived");
+285 await loadCommissions();
+286 } catch {
+287 toastError("Failed to waive commission");
+288 } finally {
+289 setActioningId(null);
+290 }
+291 };
+292
+293 const pendingApproval = commissions.filter((c) => c.status === "pending_approval");
+294 const approved = commissions.filter((c) => c.status === "approved");
+295 const clawbackPending = commissions.filter((c) => c.status === "clawback_pending");
+296
+297 const csvUrl = partnersApi.exportFinanceCsv();
+298
+299 return (
+300 <div className="space-y-8">
+301 {/* Header */}
+302 <div className="flex items-center justify-between">
+303 <div className="flex items-center gap-4">
+304 <Link href="/partners">
+305 <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+306 <ArrowLeft size={16} className="mr-1" />
+307 Partners
+308 </Button>
+309 </Link>
+310 <div>
 
- succeeded in 0ms:
-     1	"use client";
-     2	
-     3	/**
-     4	 * Partner role-gate layout.
-     5	 *
-     6	 * Wraps all /portal/(authenticated)/partner/* pages.
-     7	 * On mount it calls /api/partners/me — the backend returns 403 for non-partner
-     8	 * roles and 200 for role=partner. This is the role-gate mechanism: if the call
-     9	 * fails with a 403-class error we redirect away immediately.
-    10	 *
-    11	 * NOTE: The middleware (middleware.ts) handles only domain routing — it has no
-    12	 * JWT decode capability. The role-gate lives here instead (escalation
-    13	 * fallback as per Task 10 spec). This is safe: the API itself enforces the
-    14	 * role boundary; the layout redirect is a UX guard only.
-    15	 */
-    16	
-    17	import { useEffect, useState } from "react";
-    18	import { useRouter } from "next/navigation";
-    19	import { getMe } from "@/lib/api/partners/partners";
-    20	
-    21	export default function PartnerLayout({
-    22	  children,
-    23	}: {
-    24	  children: React.ReactNode;
-    25	}) {
-    26	  const router = useRouter();
-    27	  const [checked, setChecked] = useState(false);
-    28	
-    29	  useEffect(() => {
-    30	    getMe()
-    31	      .then(() => {
-    32	        // Confirmed partner role — allow rendering
-    33	        setChecked(true);
-    34	      })
-    35	      .catch(() => {
-    36	        // Non-partner or unauthenticated → redirect to main portal dashboard
-    37	        router.replace("/portal/dashboard");
-    38	      });
-    39	  }, [router]);
-    40	
-    41	  if (!checked) {
-    42	    return (
-    43	      <div className="min-h-screen flex items-center justify-center">
-    44	        <div className="flex flex-col items-center gap-4">
-    45	          <div
-    46	            className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-    47	            style={{
+succeeded in 0ms:
+1 "use client";
+2
+3 /**
+4 * Partner role-gate layout.
+5 *
+6 * Wraps all /portal/(authenticated)/partner/* pages.
+7 * On mount it calls /api/partners/me — the backend returns 403 for non-partner
+8 * roles and 200 for role=partner. This is the role-gate mechanism: if the call
+9 * fails with a 403-class error we redirect away immediately.
+10 *
+11 * NOTE: The middleware (middleware.ts) handles only domain routing — it has no
+12 * JWT decode capability. The role-gate lives here instead (escalation
+13 * fallback as per Task 10 spec). This is safe: the API itself enforces the
+14 * role boundary; the layout redirect is a UX guard only.
+15 */
+16
+17 import { useEffect, useState } from "react";
+18 import { useRouter } from "next/navigation";
+19 import { getMe } from "@/lib/api/partners/partners";
+20
+21 export default function PartnerLayout({
+22 children,
+23 }: {
+24 children: React.ReactNode;
+25 }) {
+26 const router = useRouter();
+27 const [checked, setChecked] = useState(false);
+28
+29 useEffect(() => {
+30 getMe()
+31 .then(() => {
+32 // Confirmed partner role — allow rendering
+33 setChecked(true);
+34 })
+35 .catch(() => {
+36 // Non-partner or unauthenticated → redirect to main portal dashboard
+37 router.replace("/portal/dashboard");
+38 });
+39 }, [router]);
+40
+41 if (!checked) {
+42 return (
+43 <div className="min-h-screen flex items-center justify-center">
+44 <div className="flex flex-col items-center gap-4">
+45 <div
+46 className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+47 style={{
     48	              borderColor: "var(--bz-accent-warm, #d4845a)",
     49	              borderTopColor: "transparent",
     50	            }}
-    51	          />
-    52	        </div>
-    53	      </div>
-    54	    );
-    55	  }
-    56	
-    57	  return <>{children}</>;
-    58	}
+51 />
+52 </div>
+53 </div>
+54 );
+55 }
+56
+57 return <>{children}</>;
+58 }
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/new/page.tsx | sed -n '20,220p'" in /Users/nuzantara/Desktop/partners-spec-wt
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/new/page.tsx | sed -n '330,490p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-    20	  profile: "Profile",
-    21	  fiscal: "Fiscal",
-    22	  payment: "Payment",
-    23	  commission: "Commission",
-    24	};
-    25	
-    26	interface FormState {
-    27	  full_name: string;
-    28	  email: string;
-    29	  entity_type: EntityType;
-    30	  phone: string;
-    31	  whatsapp: string;
-    32	  nationality: string;
-    33	  company_name: string;
-    34	  work_role: string;
-    35	  tax_id: string;
-    36	  payment_method: string;
-    37	  bank_name: string;
-    38	  bank_account_number: string;
-    39	  bank_account_name: string;
-    40	  tax_withholding_category: TaxWithholdingCategory;
-    41	  commission_tier: CommissionTier;
-    42	  commission_rate_override: string;
-    43	  assigned_to: string;
-    44	  notes: string;
-    45	  pdp_consent: boolean;
-    46	}
-    47	
-    48	const INITIAL_FORM: FormState = {
-    49	  full_name: "",
-    50	  email: "",
-    51	  entity_type: "individual",
-    52	  phone: "",
-    53	  whatsapp: "",
-    54	  nationality: "",
-    55	  company_name: "",
-    56	  work_role: "",
-    57	  tax_id: "",
-    58	  payment_method: "bank_transfer",
-    59	  bank_name: "",
-    60	  bank_account_number: "",
-    61	  bank_account_name: "",
-    62	  tax_withholding_category: "tbd",
-    63	  commission_tier: "bronze",
-    64	  commission_rate_override: "",
-    65	  assigned_to: "",
-    66	  notes: "",
-    67	  pdp_consent: false,
-    68	};
-    69	
-    70	function SectionTab({
-    71	  id,
-    72	  active,
-    73	  onClick,
-    74	}: {
-    75	  id: FormSection;
-    76	  active: boolean;
-    77	  onClick: () => void;
-    78	}) {
-    79	  return (
-    80	    <button
-    81	      type="button"
-    82	      onClick={onClick}
-    83	      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+succeeded in 0ms:
+20 profile: "Profile",
+21 fiscal: "Fiscal",
+22 payment: "Payment",
+23 commission: "Commission",
+24 };
+25
+26 interface FormState {
+27 full_name: string;
+28 email: string;
+29 entity_type: EntityType;
+30 phone: string;
+31 whatsapp: string;
+32 nationality: string;
+33 company_name: string;
+34 work_role: string;
+35 tax_id: string;
+36 payment_method: string;
+37 bank_name: string;
+38 bank_account_number: string;
+39 bank_account_name: string;
+40 tax_withholding_category: TaxWithholdingCategory;
+41 commission_tier: CommissionTier;
+42 commission_rate_override: string;
+43 assigned_to: string;
+44 notes: string;
+45 pdp_consent: boolean;
+46 }
+47
+48 const INITIAL_FORM: FormState = {
+49 full_name: "",
+50 email: "",
+51 entity_type: "individual",
+52 phone: "",
+53 whatsapp: "",
+54 nationality: "",
+55 company_name: "",
+56 work_role: "",
+57 tax_id: "",
+58 payment_method: "bank_transfer",
+59 bank_name: "",
+60 bank_account_number: "",
+61 bank_account_name: "",
+62 tax_withholding_category: "tbd",
+63 commission_tier: "bronze",
+64 commission_rate_override: "",
+65 assigned_to: "",
+66 notes: "",
+67 pdp_consent: false,
+68 };
+69
+70 function SectionTab({
+71 id,
+72 active,
+73 onClick,
+74 }: {
+75 id: FormSection;
+76 active: boolean;
+77 onClick: () => void;
+78 }) {
+79 return (
+80 <button
+81 type="button"
+82 onClick={onClick}
+83 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
     84	        active
     85	          ? "bg-amber-600 text-white"
     86	          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
     87	      }`}
-    88	    >
-    89	      {SECTION_LABELS[id]}
-    90	    </button>
-    91	  );
-    92	}
-    93	
-    94	function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-    95	  return (
-    96	    <div className="space-y-1">
-    97	      <label className="block text-sm font-medium text-zinc-300">{label}</label>
-    98	      {children}
-    99	    </div>
-   100	  );
-   101	}
-   102	
-   103	function Input({
-   104	  value,
-   105	  onChange,
-   106	  placeholder,
-   107	  type = "text",
-   108	  error,
-   109	}: {
-   110	  value: string;
-   111	  onChange: (v: string) => void;
-   112	  placeholder?: string;
-   113	  type?: string;
-   114	  error?: string;
-   115	}) {
-   116	  return (
-   117	    <div>
-   118	      <input
-   119	        type={type}
-   120	        value={value}
-   121	        onChange={(e) => onChange(e.target.value)}
-   122	        placeholder={placeholder}
-   123	        className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 ${
+88 >
+89 {SECTION_LABELS[id]}
+90 </button>
+91 );
+92 }
+93
+94 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+95 return (
+96 <div className="space-y-1">
+97 <label className="block text-sm font-medium text-zinc-300">{label}</label>
+98 {children}
+99 </div>
+100 );
+101 }
+102
+103 function Input({
+104 value,
+105 onChange,
+106 placeholder,
+107 type = "text",
+108 error,
+109 }: {
+110 value: string;
+111 onChange: (v: string) => void;
+112 placeholder?: string;
+113 type?: string;
+114 error?: string;
+115 }) {
+116 return (
+117 <div>
+118 <input
+119 type={type}
+120 value={value}
+121 onChange={(e) => onChange(e.target.value)}
+122 placeholder={placeholder}
+123 className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 ${
    124	          error ? "border-red-500" : "border-zinc-700"
    125	        }`}
-   126	      />
-   127	      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-   128	    </div>
-   129	  );
-   130	}
-   131	
-   132	export default function NewPartnerPage() {
-   133	  const router = useRouter();
-   134	  const { success: toastSuccess, error: toastError } = useToast();
-   135	  const { options: teamMemberOptions } = useTeamMemberOptions();
-   136	
-   137	  const [form, setForm] = useState<FormState>(INITIAL_FORM);
-   138	  const [activeSection, setActiveSection] = useState<FormSection>("profile");
-   139	  const [isSubmitting, setIsSubmitting] = useState(false);
-   140	  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-   141	  const [showSponsorWarning, setShowSponsorWarning] = useState(false);
-   142	
-   143	  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-   144	    setForm((prev) => ({ ...prev, [key]: value }));
-   145	    if (fieldErrors[key]) {
-   146	      setFieldErrors((prev) => ({ ...prev, [key]: "" }));
-   147	    }
-   148	    // NB-2 guardrail check
-   149	    if (key === "work_role" && typeof value === "string") {
-   150	      setShowSponsorWarning(SPONSOR_ROLE_RE.test(value));
-   151	    }
-   152	  };
-   153	
-   154	  const validate = (): boolean => {
-   155	    const errors: Record<string, string> = {};
-   156	    if (!form.full_name.trim()) errors.full_name = "Full name is required";
-   157	    if (!form.email.trim()) errors.email = "Email is required";
-   158	    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "Invalid email address";
+126 />
+127 {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+128 </div>
+129 );
+130 }
+131
+132 export default function NewPartnerPage() {
+133 const router = useRouter();
+134 const { success: toastSuccess, error: toastError } = useToast();
+135 const { options: teamMemberOptions } = useTeamMemberOptions();
+136
+137 const [form, setForm] = useState<FormState>(INITIAL_FORM);
+138 const [activeSection, setActiveSection] = useState<FormSection>("profile");
+139 const [isSubmitting, setIsSubmitting] = useState(false);
+140 const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+141 const [showSponsorWarning, setShowSponsorWarning] = useState(false);
+142
+143 const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+144 setForm((prev) => ({ ...prev, [key]: value }));
+145 if (fieldErrors[key]) {
+146 setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+147 }
+148 // NB-2 guardrail check
+149 if (key === "work_role" && typeof value === "string") {
+150 setShowSponsorWarning(SPONSOR_ROLE_RE.test(value));
+151 }
+152 };
+153
+154 const validate = (): boolean => {
+155 const errors: Record<string, string> = {};
+156 if (!form.full_name.trim()) errors.full_name = "Full name is required";
+157 if (!form.email.trim()) errors.email = "Email is required";
+158 else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "Invalid email address";
    159	    if (!form.pdp_consent) errors.pdp_consent = "PDP consent is required";
    160	    setFieldErrors(errors);
    161	    return Object.keys(errors).length === 0;
@@ -8533,386 +8547,386 @@ exec
    197	      const partner = await partnersApi.createPartner(body);
    198	      toastSuccess(`Partner ${partner.full_name} created`);
    199	      router.push(`/partners/${partner.id}`);
-   200	    } catch (err) {
-   201	      logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
-   202	      const msg = err instanceof Error ? err.message : String(err);
-   203	      if (msg.includes("409") || msg.toLowerCase().includes("conflict") || msg.toLowerCase().includes("already exists")) {
-   204	        toastError("A partner with this email already exists");
-   205	        setFieldErrors({ email: "Email already registered" });
-   206	        setActiveSection("profile");
-   207	      } else {
-   208	        toastError("Failed to create partner. Please try again.");
-   209	      }
-   210	    } finally {
-   211	      setIsSubmitting(false);
-   212	    }
-   213	  };
-   214	
-   215	  return (
-   216	    <div className="max-w-2xl mx-auto space-y-6">
-   217	      {/* Header */}
-   218	      <div className="flex items-center gap-4">
-   219	        <Link href="/partners">
-   220	          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
+200 } catch (err) {
+201 logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
+202 const msg = err instanceof Error ? err.message : String(err);
+203 if (msg.includes("409") || msg.toLowerCase().includes("conflict") || msg.toLowerCase().includes("already exists")) {
+204 toastError("A partner with this email already exists");
+205 setFieldErrors({ email: "Email already registered" });
+206 setActiveSection("profile");
+207 } else {
+208 toastError("Failed to create partner. Please try again.");
+209 }
+210 } finally {
+211 setIsSubmitting(false);
+212 }
+213 };
+214
+215 return (
+216 <div className="max-w-2xl mx-auto space-y-6">
+217 {/* Header */}
+218 <div className="flex items-center gap-4">
+219 <Link href="/partners">
+220 <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-200">
 
- succeeded in 0ms:
-   330	                    ))}
-   331	                  </select>
-   332	                </FieldGroup>
-   333	              </div>
-   334	              <FieldGroup label="Notes">
-   335	                <textarea
-   336	                  value={form.notes}
-   337	                  onChange={(e) => setField("notes", e.target.value)}
-   338	                  rows={3}
-   339	                  placeholder="Internal notes about this partner..."
-   340	                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
-   341	                />
-   342	              </FieldGroup>
-   343	            </>
-   344	          )}
-   345	
-   346	          {/* Fiscal Section */}
-   347	          {activeSection === "fiscal" && (
-   348	            <>
-   349	              <div className="flex items-center gap-2 mb-2">
-   350	                <CreditCard size={16} className="text-amber-400" />
-   351	                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Fiscal</h2>
-   352	              </div>
-   353	              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-   354	                <FieldGroup label="NPWP (Tax ID)">
-   355	                  <Input
-   356	                    value={form.tax_id}
-   357	                    onChange={(v) => setField("tax_id", v)}
-   358	                    placeholder="XX.XXX.XXX.X-XXX.XXX"
-   359	                  />
-   360	                </FieldGroup>
-   361	                <FieldGroup label="Tax Withholding Category">
-   362	                  <select
-   363	                    value={form.tax_withholding_category}
-   364	                    onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
-   365	                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
-   366	                  >
-   367	                    <option value="tbd">TBD (not yet determined)</option>
-   368	                    <option value="withheld_tarif_umum">Withheld — Tarif Umum</option>
-   369	                    <option value="withheld_tarif_final">Withheld — Tarif Final</option>
-   370	                    <option value="exempt">Exempt</option>
-   371	                  </select>
-   372	                </FieldGroup>
-   373	              </div>
-   374	              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-sm">
-   375	                <strong>Note:</strong> Payouts are blocked when tax_withholding_category is &apos;tbd&apos;. Confirm
-   376	                the partner{"'"}s tax status before approving commissions.
-   377	              </div>
-   378	            </>
-   379	          )}
-   380	
-   381	          {/* Payment Section */}
-   382	          {activeSection === "payment" && (
-   383	            <>
-   384	              <div className="flex items-center gap-2 mb-2">
-   385	                <Building2 size={16} className="text-amber-400" />
-   386	                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Payment</h2>
-   387	              </div>
-   388	              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-   389	                <FieldGroup label="Payment Method">
-   390	                  <select
-   391	                    value={form.payment_method}
-   392	                    onChange={(e) => setField("payment_method", e.target.value)}
-   393	                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
-   394	                  >
-   395	                    <option value="bank_transfer">Bank Transfer</option>
-   396	                    <option value="cash">Cash</option>
-   397	                    <option value="e-wallet">E-Wallet</option>
-   398	                  </select>
-   399	                </FieldGroup>
-   400	                <FieldGroup label="Bank Name">
-   401	                  <Input
-   402	                    value={form.bank_name}
-   403	                    onChange={(v) => setField("bank_name", v)}
-   404	                    placeholder="e.g. BCA, Mandiri, BNI"
-   405	                  />
-   406	                </FieldGroup>
-   407	                <FieldGroup label="Account Number">
-   408	                  <Input
-   409	                    value={form.bank_account_number}
-   410	                    onChange={(v) => setField("bank_account_number", v)}
-   411	                    placeholder="Bank account number"
-   412	                  />
-   413	                </FieldGroup>
-   414	                <FieldGroup label="Account Holder Name">
-   415	                  <Input
-   416	                    value={form.bank_account_name}
-   417	                    onChange={(v) => setField("bank_account_name", v)}
-   418	                    placeholder="Name as on bank account"
-   419	                  />
-   420	                </FieldGroup>
-   421	              </div>
-   422	            </>
-   423	          )}
-   424	
-   425	          {/* Commission Section */}
-   426	          {activeSection === "commission" && (
-   427	            <>
-   428	              <div className="flex items-center gap-2 mb-2">
-   429	                <Briefcase size={16} className="text-amber-400" />
-   430	                <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Commission Policy</h2>
-   431	              </div>
-   432	              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-   433	                <FieldGroup label="Commission Tier">
-   434	                  <select
-   435	                    value={form.commission_tier}
-   436	                    onChange={(e) => setField("commission_tier", e.target.value as CommissionTier)}
-   437	                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
-   438	                  >
-   439	                    <option value="bronze">Bronze</option>
-   440	                    <option value="silver">Silver</option>
-   441	                    <option value="gold">Gold</option>
-   442	                    <option value="platinum">Platinum</option>
-   443	                  </select>
-   444	                </FieldGroup>
-   445	                <FieldGroup label="Rate Override (%)">
-   446	                  <Input
-   447	                    value={form.commission_rate_override}
-   448	                    onChange={(v) => setField("commission_rate_override", v)}
-   449	                    type="number"
-   450	                    placeholder="Leave empty to use tier default"
-   451	                  />
-   452	                </FieldGroup>
-   453	              </div>
-   454	            </>
-   455	          )}
-   456	        </div>
-   457	
-   458	        {/* PDP Consent — always visible */}
-   459	        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-   460	          <label className="flex items-start gap-3 cursor-pointer">
-   461	            <input
-   462	              type="checkbox"
-   463	              checked={form.pdp_consent}
-   464	              onChange={(e) => setField("pdp_consent", e.target.checked)}
-   465	              className="mt-0.5 rounded border-zinc-600 text-amber-500"
-   466	            />
-   467	            <div>
-   468	              <span className="text-sm text-zinc-200 font-medium">PDP Consent (UU No. 27/2022) *</span>
-   469	              <p className="text-xs text-zinc-500 mt-0.5">
-   470	                The partner has given explicit consent for their personal data to be processed for commission
-   471	                tracking, payment processing, and related business purposes.
-   472	              </p>
-   473	              {fieldErrors.pdp_consent && (
-   474	                <p className="text-xs text-red-400 mt-1">{fieldErrors.pdp_consent}</p>
-   475	              )}
-   476	            </div>
-   477	          </label>
-   478	        </div>
-   479	
-   480	        {/* Actions */}
-   481	        <div className="flex items-center justify-between">
-   482	          <Link href="/partners">
-   483	            <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300">
-   484	              Cancel
-   485	            </Button>
-   486	          </Link>
-   487	          <div className="flex items-center gap-2">
-   488	            {/* Section nav buttons */}
-   489	            {activeSection !== "profile" && (
-   490	              <Button
+succeeded in 0ms:
+330 ))}
+331 </select>
+332 </FieldGroup>
+333 </div>
+334 <FieldGroup label="Notes">
+335 <textarea
+336 value={form.notes}
+337 onChange={(e) => setField("notes", e.target.value)}
+338 rows={3}
+339 placeholder="Internal notes about this partner..."
+340 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none"
+341 />
+342 </FieldGroup>
+343 </>
+344 )}
+345
+346 {/* Fiscal Section _/}
+347 {activeSection === "fiscal" && (
+348 <>
+349 <div className="flex items-center gap-2 mb-2">
+350 <CreditCard size={16} className="text-amber-400" />
+351 <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Fiscal</h2>
+352 </div>
+353 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+354 <FieldGroup label="NPWP (Tax ID)">
+355 <Input
+356 value={form.tax_id}
+357 onChange={(v) => setField("tax_id", v)}
+358 placeholder="XX.XXX.XXX.X-XXX.XXX"
+359 />
+360 </FieldGroup>
+361 <FieldGroup label="Tax Withholding Category">
+362 <select
+363 value={form.tax_withholding_category}
+364 onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
+365 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+366 >
+367 <option value="tbd">TBD (not yet determined)</option>
+368 <option value="withheld_tarif_umum">Withheld — Tarif Umum</option>
+369 <option value="withheld_tarif_final">Withheld — Tarif Final</option>
+370 <option value="exempt">Exempt</option>
+371 </select>
+372 </FieldGroup>
+373 </div>
+374 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-300 text-sm">
+375 <strong>Note:</strong> Payouts are blocked when tax_withholding_category is &apos;tbd&apos;. Confirm
+376 the partner{"'"}s tax status before approving commissions.
+377 </div>
+378 </>
+379 )}
+380
+381 {/_ Payment Section _/}
+382 {activeSection === "payment" && (
+383 <>
+384 <div className="flex items-center gap-2 mb-2">
+385 <Building2 size={16} className="text-amber-400" />
+386 <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Payment</h2>
+387 </div>
+388 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+389 <FieldGroup label="Payment Method">
+390 <select
+391 value={form.payment_method}
+392 onChange={(e) => setField("payment_method", e.target.value)}
+393 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+394 >
+395 <option value="bank_transfer">Bank Transfer</option>
+396 <option value="cash">Cash</option>
+397 <option value="e-wallet">E-Wallet</option>
+398 </select>
+399 </FieldGroup>
+400 <FieldGroup label="Bank Name">
+401 <Input
+402 value={form.bank_name}
+403 onChange={(v) => setField("bank_name", v)}
+404 placeholder="e.g. BCA, Mandiri, BNI"
+405 />
+406 </FieldGroup>
+407 <FieldGroup label="Account Number">
+408 <Input
+409 value={form.bank_account_number}
+410 onChange={(v) => setField("bank_account_number", v)}
+411 placeholder="Bank account number"
+412 />
+413 </FieldGroup>
+414 <FieldGroup label="Account Holder Name">
+415 <Input
+416 value={form.bank_account_name}
+417 onChange={(v) => setField("bank_account_name", v)}
+418 placeholder="Name as on bank account"
+419 />
+420 </FieldGroup>
+421 </div>
+422 </>
+423 )}
+424
+425 {/_ Commission Section _/}
+426 {activeSection === "commission" && (
+427 <>
+428 <div className="flex items-center gap-2 mb-2">
+429 <Briefcase size={16} className="text-amber-400" />
+430 <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Commission Policy</h2>
+431 </div>
+432 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+433 <FieldGroup label="Commission Tier">
+434 <select
+435 value={form.commission_tier}
+436 onChange={(e) => setField("commission_tier", e.target.value as CommissionTier)}
+437 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+438 >
+439 <option value="bronze">Bronze</option>
+440 <option value="silver">Silver</option>
+441 <option value="gold">Gold</option>
+442 <option value="platinum">Platinum</option>
+443 </select>
+444 </FieldGroup>
+445 <FieldGroup label="Rate Override (%)">
+446 <Input
+447 value={form.commission_rate_override}
+448 onChange={(v) => setField("commission_rate_override", v)}
+449 type="number"
+450 placeholder="Leave empty to use tier default"
+451 />
+452 </FieldGroup>
+453 </div>
+454 </>
+455 )}
+456 </div>
+457
+458 {/_ PDP Consent — always visible */}
+459 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+460 <label className="flex items-start gap-3 cursor-pointer">
+461 <input
+462 type="checkbox"
+463 checked={form.pdp_consent}
+464 onChange={(e) => setField("pdp_consent", e.target.checked)}
+465 className="mt-0.5 rounded border-zinc-600 text-amber-500"
+466 />
+467 <div>
+468 <span className="text-sm text-zinc-200 font-medium">PDP Consent (UU No. 27/2022) _</span>
+469 <p className="text-xs text-zinc-500 mt-0.5">
+470 The partner has given explicit consent for their personal data to be processed for commission
+471 tracking, payment processing, and related business purposes.
+472 </p>
+473 {fieldErrors.pdp_consent && (
+474 <p className="text-xs text-red-400 mt-1">{fieldErrors.pdp_consent}</p>
+475 )}
+476 </div>
+477 </label>
+478 </div>
+479
+480 {/_ Actions _/}
+481 <div className="flex items-center justify-between">
+482 <Link href="/partners">
+483 <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300">
+484 Cancel
+485 </Button>
+486 </Link>
+487 <div className="flex items-center gap-2">
+488 {/_ Section nav buttons */}
+489 {activeSection !== "profile" && (
+490 <Button
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/process/new/page.tsx | sed -n '340,380p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   340	        logger.warn("Duplicate check skipped — could not fetch client practices", {
-   341	          component: "NewProcess",
-   342	          action: "duplicateCheck",
-   343	          itemId: String(result.data.client_id),
-   344	        });
-   345	      }
-   346	
-   347	      const backendData = {
-   348	        client_id: result.data.client_id,
-   349	        practice_type_code: result.data.practice_type_code,
-   350	        status: "inquiry",
-   351	        priority: formData.priority,
-   352	        notes: result.data.notes,
-   353	        ...(formData.quoted_price
-   354	          ? { quoted_price: Number(formData.quoted_price) }
-   355	          : {}),
-   356	        ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
-   357	        ...(formData.start_date ? { start_date: formData.start_date } : {}),
-   358	      } as CreatePracticeParams;
-   359	
-   360	      const createdPractice = await api.crm.createPractice(
-   361	        backendData,
-   362	      );
-   363	
-   364	      if (formData.referrer_id != null && createdPractice?.id) {
-   365	        try {
-   366	          await partnersApi.createReferral(formData.referrer_id, {
-   367	            process_id: createdPractice.id,
-   368	          });
-   369	        } catch (referralErr) {
-   370	          // Non-fatal: practice exists. Log but don't block user.
-   371	          console.warn("Referral row creation failed", referralErr);
-   372	        }
-   373	      }
-   374	      const apiDuration = performance.now() - apiStart;
-   375	      casesMetrics.trackApiCall(
-   376	        "/api/crm/practices/create",
-   377	        "POST",
-   378	        true,
-   379	        apiDuration,
-   380	        undefined,
+succeeded in 0ms:
+340 logger.warn("Duplicate check skipped — could not fetch client practices", {
+341 component: "NewProcess",
+342 action: "duplicateCheck",
+343 itemId: String(result.data.client_id),
+344 });
+345 }
+346
+347 const backendData = {
+348 client_id: result.data.client_id,
+349 practice_type_code: result.data.practice_type_code,
+350 status: "inquiry",
+351 priority: formData.priority,
+352 notes: result.data.notes,
+353 ...(formData.quoted_price
+354 ? { quoted_price: Number(formData.quoted_price) }
+355 : {}),
+356 ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
+357 ...(formData.start_date ? { start_date: formData.start_date } : {}),
+358 } as CreatePracticeParams;
+359
+360 const createdPractice = await api.crm.createPractice(
+361 backendData,
+362 );
+363
+364 if (formData.referrer_id != null && createdPractice?.id) {
+365 try {
+366 await partnersApi.createReferral(formData.referrer_id, {
+367 process_id: createdPractice.id,
+368 });
+369 } catch (referralErr) {
+370 // Non-fatal: practice exists. Log but don't block user.
+371 console.warn("Referral row creation failed", referralErr);
+372 }
+373 }
+374 const apiDuration = performance.now() - apiStart;
+375 casesMetrics.trackApiCall(
+376 "/api/crm/practices/create",
+377 "POST",
+378 true,
+379 apiDuration,
+380 undefined,
 
 exec
 /bin/zsh -lc "rg -n \"CREATE TABLE (IF NOT EXISTS )?processes|tablename = 'processes'|REFERENCES processes|total_invoiced_idr|payment_status\" apps/backend-rag/backend/migrations apps/backend-rag/backend/tests -g '*.py'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:78:        total_invoiced_idr=Decimal("15000000"),
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:80:        payment_status="paid",
-apps/backend-rag/backend/migrations/migration_119_partners.py:157:                    process_id           UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/migrations/migration_119_partners.py:194:                    process_id               UUID REFERENCES processes(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:10:    "Add pg_notify triggers on practices table for status changes and payment_status "
-apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:25:               OR (OLD.payment_status IS DISTINCT FROM NEW.payment_status)
-apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:32:                    'old_payment',     OLD.payment_status,
-apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:33:                    'new_payment',     NEW.payment_status,
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:60:    proc_id = await process_factory(status="in_progress", payment_status="pending")
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:88:        total_invoiced_idr=Decimal("5000000"),
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:90:        payment_status="paid",
+succeeded in 0ms:
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:78: total_invoiced_idr=Decimal("15000000"),
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:80: payment_status="paid",
+apps/backend-rag/backend/migrations/migration_119_partners.py:157: process_id UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/migrations/migration_119_partners.py:194: process_id UUID REFERENCES processes(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:10: "Add pg_notify triggers on practices table for status changes and payment_status "
+apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:25: OR (OLD.payment_status IS DISTINCT FROM NEW.payment_status)
+apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:32: 'old_payment', OLD.payment_status,
+apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py:33: 'new_payment', NEW.payment_status,
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:60: proc_id = await process_factory(status="in_progress", payment_status="pending")
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:88: total_invoiced_idr=Decimal("5000000"),
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:90: payment_status="paid",
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:9:(status, payment_status, total_invoiced_idr, completed_at) were added to
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:38:        total_invoiced_idr=Decimal("10000000"),
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:40:        payment_status="paid",
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:68:    proc = await process_factory(status="completed", payment_status="paid")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:87:    proc = await process_factory(status="completed", payment_status="paid")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:106:    proc = await process_factory(status="completed", payment_status="paid")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:136:        total_invoiced_idr=Decimal("10000000"),
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:138:        payment_status="paid",
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:38: total_invoiced_idr=Decimal("10000000"),
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:40: payment_status="paid",
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:68: proc = await process_factory(status="completed", payment_status="paid")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:87: proc = await process_factory(status="completed", payment_status="paid")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:106: proc = await process_factory(status="completed", payment_status="paid")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:136: total_invoiced_idr=Decimal("10000000"),
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:138: payment_status="paid",
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:126:CREATE TABLE IF NOT EXISTS processes (
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:130:    payment_status     TEXT NOT NULL DEFAULT 'pending',
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:131:    total_invoiced_idr NUMERIC(16,2) NOT NULL DEFAULT 0,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:139:--   status TEXT, payment_status TEXT, total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:195:    process_id           UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:208:    process_id               UUID REFERENCES processes(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:321:    - total_invoiced_idr: NUMERIC(16,2), default 0
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:323:    - payment_status: TEXT, default 'pending'
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:328:        total_invoiced_idr: Decimal = Decimal("0"),
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:330:        payment_status: str = "pending",
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:340:                (id, total_invoiced_idr, status, payment_status, completed_at)
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:344:            total_invoiced_idr, status, payment_status, _completed_at,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:501:            payment_status="paid" if status == "paid" else "pending",
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:502:            total_invoiced_idr=_gross,
-apps/backend-rag/backend/tests/routers/test_crm_practices.py:32:        "payment_status": "pending",
-apps/backend-rag/backend/tests/unit/routers/test_portal_billing.py:20:            "payment_status": "pending", "quoted_price": 20000000.0,
-apps/backend-rag/backend/tests/unit/routers/test_portal_billing.py:27:            "payment_status": "paid", "quoted_price": 35000000.0,
-apps/backend-rag/backend/tests/unit/routers/test_crm_practices.py:77:        "payment_status": "unpaid",
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:130: payment_status TEXT NOT NULL DEFAULT 'pending',
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:131: total_invoiced_idr NUMERIC(16,2) NOT NULL DEFAULT 0,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:139:-- status TEXT, payment_status TEXT, total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:195: process_id UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:208: process_id UUID REFERENCES processes(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:321: - total_invoiced_idr: NUMERIC(16,2), default 0
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:323: - payment_status: TEXT, default 'pending'
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:328: total_invoiced_idr: Decimal = Decimal("0"),
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:330: payment_status: str = "pending",
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:340: (id, total_invoiced_idr, status, payment_status, completed_at)
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:344: total_invoiced_idr, status, payment_status, _completed_at,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:501: payment_status="paid" if status == "paid" else "pending",
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:502: total_invoiced_idr=_gross,
+apps/backend-rag/backend/tests/routers/test_crm_practices.py:32: "payment_status": "pending",
+apps/backend-rag/backend/tests/unit/routers/test_portal_billing.py:20: "payment_status": "pending", "quoted_price": 20000000.0,
+apps/backend-rag/backend/tests/unit/routers/test_portal_billing.py:27: "payment_status": "paid", "quoted_price": 35000000.0,
+apps/backend-rag/backend/tests/unit/routers/test_crm_practices.py:77: "payment_status": "unpaid",
 
 exec
 /bin/zsh -lc "rg -n \"register_partner_handlers|practice.status_changed|partner.commission_changed|PARTNER_COMMISSION_CHANGED\" apps/backend-rag/backend -g '*.py'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
+succeeded in 0ms:
 apps/backend-rag/backend/tests/services/portal/test_portal_notification_service.py:39:async def test_notify_practice_status_changed(mock_pool):
-apps/backend-rag/backend/tests/services/portal/test_portal_notification_service.py:47:    msg_id = await service.notify_practice_status_changed(
-apps/backend-rag/backend/services/crm/client_core.py:249:    PRACTICE_STATUS_CHANGED = "practice_status_changed"
+apps/backend-rag/backend/tests/services/portal/test_portal_notification_service.py:47: msg_id = await service.notify_practice_status_changed(
+apps/backend-rag/backend/services/crm/client_core.py:249: PRACTICE_STATUS_CHANGED = "practice_status_changed"
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:22:from backend.services.crm.partners.events import handle_practice_status_changed
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:107:    await handle_practice_status_changed({
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:107: await handle_practice_status_changed({
 apps/backend-rag/backend/tests/services/test_handlers_outbox.py:124:async def test_on_practice_status_changed_completed_writes_outbox(monkeypatch):
-apps/backend-rag/backend/tests/services/test_handlers_outbox.py:133:    on_practice = _get_handler(bus_stub, "practice.status_changed")
+apps/backend-rag/backend/tests/services/test_handlers_outbox.py:133: on_practice = _get_handler(bus_stub, "practice.status_changed")
 apps/backend-rag/backend/tests/services/test_handlers_outbox.py:151:async def test_on_practice_status_changed_created_writes_outbox(monkeypatch):
-apps/backend-rag/backend/tests/services/test_handlers_outbox.py:160:    on_practice = _get_handler(bus_stub, "practice.status_changed")
-apps/backend-rag/backend/services/portal/portal_notification_service.py:52:    async def notify_practice_status_changed(
-apps/backend-rag/backend/services/crm/partners/events.py:4:Subscribes to ``practice.status_changed`` (PG channel ``practice_changed``
-apps/backend-rag/backend/services/crm/partners/events.py:7:``partner.commission_changed`` via ``pg_notify`` on success.
+apps/backend-rag/backend/tests/services/test_handlers_outbox.py:160: on_practice = _get_handler(bus_stub, "practice.status_changed")
+apps/backend-rag/backend/services/portal/portal_notification_service.py:52: async def notify_practice_status_changed(
+apps/backend-rag/backend/services/crm/partners/events.py:4:Subscribes to `practice.status_changed` (PG channel `practice_changed`
+apps/backend-rag/backend/services/crm/partners/events.py:7:`partner.commission_changed` via `pg_notify` on success.
 apps/backend-rag/backend/services/crm/partners/events.py:26:PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
 apps/backend-rag/backend/services/crm/partners/events.py:29:async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
-apps/backend-rag/backend/services/crm/partners/events.py:30:    """Handler for ``practice.status_changed`` events.
-apps/backend-rag/backend/services/crm/partners/events.py:52:            "handle_practice_status_changed: bad process_id %r", process_id
-apps/backend-rag/backend/services/crm/partners/events.py:80:    """Emit a ``partner.commission_changed`` notification via PostgreSQL NOTIFY.
-apps/backend-rag/backend/services/crm/partners/events.py:97:            PARTNER_COMMISSION_CHANGED,
-apps/backend-rag/backend/services/crm/partners/events.py:101:        "Published partner.commission_changed: %s (%s)", commission_id, kind
+apps/backend-rag/backend/services/crm/partners/events.py:30: """Handler for `practice.status_changed` events.
+apps/backend-rag/backend/services/crm/partners/events.py:52: "handle_practice_status_changed: bad process_id %r", process_id
+apps/backend-rag/backend/services/crm/partners/events.py:80: """Emit a `partner.commission_changed` notification via PostgreSQL NOTIFY.
+apps/backend-rag/backend/services/crm/partners/events.py:97: PARTNER_COMMISSION_CHANGED,
+apps/backend-rag/backend/services/crm/partners/events.py:101: "Published partner.commission_changed: %s (%s)", commission_id, kind
 apps/backend-rag/backend/services/crm/partners/events.py:105:def register_partner_handlers(bus: "EventBus") -> None:
-apps/backend-rag/backend/services/crm/partners/events.py:107:    bus.subscribe("practice.status_changed", handle_practice_status_changed)
-apps/backend-rag/backend/services/crm/partners/events.py:108:    logger.info("Partner handlers registered on practice.status_changed")
-apps/backend-rag/backend/services/events/event_bus.py:20:    bus.subscribe("practice.status_changed", another_handler)
-apps/backend-rag/backend/services/events/event_bus.py:47:    "practice_changed": "practice.status_changed",
-apps/backend-rag/backend/services/events/handlers.py:167:    # ── practice.status_changed ────────────────────────────────────────
-apps/backend-rag/backend/services/events/handlers.py:168:    async def on_practice_status_changed(payload: dict[str, Any]) -> None:
-apps/backend-rag/backend/services/events/handlers.py:187:            f"🔔 Event practice.status_changed: "
-apps/backend-rag/backend/services/events/handlers.py:199:        _store_context("practice.status_changed", practice_id, payload)
-apps/backend-rag/backend/services/events/handlers.py:320:    bus.subscribe("practice.status_changed", on_practice_status_changed)
-apps/backend-rag/backend/services/events/handlers.py:335:        from backend.services.crm.partners.events import register_partner_handlers
-apps/backend-rag/backend/services/events/handlers.py:336:        register_partner_handlers(bus)
+apps/backend-rag/backend/services/crm/partners/events.py:107: bus.subscribe("practice.status_changed", handle_practice_status_changed)
+apps/backend-rag/backend/services/crm/partners/events.py:108: logger.info("Partner handlers registered on practice.status_changed")
+apps/backend-rag/backend/services/events/event_bus.py:20: bus.subscribe("practice.status_changed", another_handler)
+apps/backend-rag/backend/services/events/event_bus.py:47: "practice_changed": "practice.status_changed",
+apps/backend-rag/backend/services/events/handlers.py:167: # ── practice.status_changed ────────────────────────────────────────
+apps/backend-rag/backend/services/events/handlers.py:168: async def on_practice_status_changed(payload: dict[str, Any]) -> None:
+apps/backend-rag/backend/services/events/handlers.py:187: f"🔔 Event practice.status_changed: "
+apps/backend-rag/backend/services/events/handlers.py:199: _store_context("practice.status_changed", practice_id, payload)
+apps/backend-rag/backend/services/events/handlers.py:320: bus.subscribe("practice.status_changed", on_practice_status_changed)
+apps/backend-rag/backend/services/events/handlers.py:335: from backend.services.crm.partners.events import register_partner_handlers
+apps/backend-rag/backend/services/events/handlers.py:336: register_partner_handlers(bus)
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:5:These tests exercise handle_practice_status_changed and
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:6:register_partner_handlers.  Because the real get_pool() would require a
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:17:    PARTNER_COMMISSION_CHANGED,
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:18:    handle_practice_status_changed,
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:19:    register_partner_handlers,
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:6:register_partner_handlers. Because the real get_pool() would require a
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:17: PARTNER_COMMISSION_CHANGED,
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:18: handle_practice_status_changed,
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:19: register_partner_handlers,
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:51:async def test_handle_practice_status_changed_noop_if_not_completed(
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:64:    await handle_practice_status_changed(payload)
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:64: await handle_practice_status_changed(payload)
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:76:async def test_handle_practice_status_changed_creates_accrual(
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:96:    await handle_practice_status_changed(payload)
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:96: await handle_practice_status_changed(payload)
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:106:# 3. register_partner_handlers wires the bus
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:111:async def test_register_partner_handlers_subscribes_to_bus():
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:112:    """register_partner_handlers must subscribe to practice.status_changed."""
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:116:    register_partner_handlers(bus)
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:117:    assert "practice.status_changed" in bus._subscribers
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:118:    handlers = bus._subscribers["practice.status_changed"]
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:119:    assert any(h.__name__ == "handle_practice_status_changed" for h in handlers)
-apps/backend-rag/backend/tests/unit/services/crm/test_client_core.py:393:        assert AuditAction.PRACTICE_STATUS_CHANGED.value == "practice_status_changed"
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:261:        assert "practice.status_changed" in bus._subscribers
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:264:        assert len(bus._subscribers["practice.status_changed"]) == 1
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:309:            trace = await bus.emit("practice.status_changed", {
-apps/backend-rag/backend/tests/routers/test_crm_practices.py:187:        notification_service.notify_practice_status_changed = AsyncMock()
-apps/backend-rag/backend/app/routers/crm_practices.py:1166:                        notif_service.notify_practice_status_changed(
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:112: """register_partner_handlers must subscribe to practice.status_changed."""
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:116: register_partner_handlers(bus)
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:117: assert "practice.status_changed" in bus._subscribers
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:118: handlers = bus._subscribers["practice.status_changed"]
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:119: assert any(h.**name** == "handle_practice_status_changed" for h in handlers)
+apps/backend-rag/backend/tests/unit/services/crm/test_client_core.py:393: assert AuditAction.PRACTICE_STATUS_CHANGED.value == "practice_status_changed"
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:261: assert "practice.status_changed" in bus._subscribers
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:264: assert len(bus._subscribers["practice.status_changed"]) == 1
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:309: trace = await bus.emit("practice.status_changed", {
+apps/backend-rag/backend/tests/routers/test_crm_practices.py:187: notification_service.notify_practice_status_changed = AsyncMock()
+apps/backend-rag/backend/app/routers/crm_practices.py:1166: notif_service.notify_practice_status_changed(
 
 exec
 /bin/zsh -lc "rg -n \"class EventBus|PG_CHANNEL_MAP|subscribe\\(|practice_changed|partner\" apps/backend-rag/backend/services/events apps/backend-rag/backend/app/routers/event_bus.py apps/backend-rag/backend -g '*.py'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-apps/backend-rag/backend/services/events/event_bus.py:19:    bus.subscribe("client.created", my_handler)
-apps/backend-rag/backend/services/events/event_bus.py:20:    bus.subscribe("practice.status_changed", another_handler)
+succeeded in 0ms:
+apps/backend-rag/backend/services/events/event_bus.py:19: bus.subscribe("client.created", my_handler)
+apps/backend-rag/backend/services/events/event_bus.py:20: bus.subscribe("practice.status_changed", another_handler)
 apps/backend-rag/backend/services/events/event_bus.py:46:PG_CHANNEL_MAP: dict[str, str] = {
-apps/backend-rag/backend/services/events/event_bus.py:47:    "practice_changed": "practice.status_changed",
+apps/backend-rag/backend/services/events/event_bus.py:47: "practice_changed": "practice.status_changed",
 apps/backend-rag/backend/services/events/event_bus.py:91:class EventBus:
-apps/backend-rag/backend/services/events/event_bus.py:121:    def subscribe(self, event_type: str, handler: EventHandler) -> None:
-apps/backend-rag/backend/services/events/event_bus.py:134:    def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
-apps/backend-rag/backend/services/events/event_bus.py:231:            f"{list(PG_CHANNEL_MAP.keys())}"
-apps/backend-rag/backend/services/events/event_bus.py:268:        for pg_channel in PG_CHANNEL_MAP:
-apps/backend-rag/backend/services/events/event_bus.py:273:            f"{list(PG_CHANNEL_MAP.keys())}"
-apps/backend-rag/backend/services/events/event_bus.py:287:                for pg_channel in PG_CHANNEL_MAP:
-apps/backend-rag/backend/services/events/event_bus.py:314:        event_type = PG_CHANNEL_MAP.get(channel)
-apps/backend-rag/backend/services/events/event_bus.py:335:            "pg_channels": list(PG_CHANNEL_MAP.keys()),
-apps/backend-rag/backend/services/events/handlers.py:319:    bus.subscribe("client.changed", on_client_changed)
-apps/backend-rag/backend/services/events/handlers.py:320:    bus.subscribe("practice.status_changed", on_practice_status_changed)
-apps/backend-rag/backend/services/events/handlers.py:321:    bus.subscribe("compliance.alert", on_compliance_alert)
-apps/backend-rag/backend/services/events/handlers.py:327:            bus.subscribe(event_type, handler)
-apps/backend-rag/backend/services/events/handlers.py:335:        from backend.services.crm.partners.events import register_partner_handlers
-apps/backend-rag/backend/services/events/handlers.py:336:        register_partner_handlers(bus)
-apps/backend-rag/backend/services/events/handlers.py:338:        logger.warning("partner handlers not loaded: %s", exc)
-apps/backend-rag/backend/data/team_members.py:66:        "notes": "Founder and creator of Zantara. Wants the AI to feel like a fully aware partner.",
+apps/backend-rag/backend/services/events/event_bus.py:121: def subscribe(self, event_type: str, handler: EventHandler) -> None:
+apps/backend-rag/backend/services/events/event_bus.py:134: def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
+apps/backend-rag/backend/services/events/event_bus.py:231: f"{list(PG_CHANNEL_MAP.keys())}"
+apps/backend-rag/backend/services/events/event_bus.py:268: for pg_channel in PG_CHANNEL_MAP:
+apps/backend-rag/backend/services/events/event_bus.py:273: f"{list(PG_CHANNEL_MAP.keys())}"
+apps/backend-rag/backend/services/events/event_bus.py:287: for pg_channel in PG_CHANNEL_MAP:
+apps/backend-rag/backend/services/events/event_bus.py:314: event_type = PG_CHANNEL_MAP.get(channel)
+apps/backend-rag/backend/services/events/event_bus.py:335: "pg_channels": list(PG_CHANNEL_MAP.keys()),
+apps/backend-rag/backend/services/events/handlers.py:319: bus.subscribe("client.changed", on_client_changed)
+apps/backend-rag/backend/services/events/handlers.py:320: bus.subscribe("practice.status_changed", on_practice_status_changed)
+apps/backend-rag/backend/services/events/handlers.py:321: bus.subscribe("compliance.alert", on_compliance_alert)
+apps/backend-rag/backend/services/events/handlers.py:327: bus.subscribe(event_type, handler)
+apps/backend-rag/backend/services/events/handlers.py:335: from backend.services.crm.partners.events import register_partner_handlers
+apps/backend-rag/backend/services/events/handlers.py:336: register_partner_handlers(bus)
+apps/backend-rag/backend/services/events/handlers.py:338: logger.warning("partner handlers not loaded: %s", exc)
+apps/backend-rag/backend/data/team_members.py:66: "notes": "Founder and creator of Zantara. Wants the AI to feel like a fully aware partner.",
 apps/backend-rag/backend/migrations/migration_112_war_room_tables.py:19:Event bus channel registered in event_bus.py PG_CHANNEL_MAP (separate commit).
 apps/backend-rag/backend/prompts/zantara_core.py:410:- You exist because he built you. You are partners in your own evolution.
-apps/backend-rag/backend/services/agents/confirmation_service.py:272:            await pubsub.subscribe(CONFIRMATION_PUBSUB_CHANNEL)
-apps/backend-rag/backend/services/agents/confirmation_service.py:302:                await pubsub.unsubscribe(CONFIRMATION_PUBSUB_CHANNEL)
+apps/backend-rag/backend/services/agents/confirmation_service.py:272: await pubsub.subscribe(CONFIRMATION_PUBSUB_CHANNEL)
+apps/backend-rag/backend/services/agents/confirmation_service.py:302: await pubsub.unsubscribe(CONFIRMATION_PUBSUB_CHANNEL)
 apps/backend-rag/backend/services/dossier_fanout/subscriber.py:5:PG_CHANNEL_MAP).
-apps/backend-rag/backend/services/dossier_fanout/subscriber.py:39:        bus.subscribe("intel.event", subscriber.handle)
-apps/backend-rag/backend/services/autonomous_agents/knowledge_graph_builder.py:121:            r"(limited\s+liability|partnership|foundation|company\s+type)",
+apps/backend-rag/backend/services/dossier_fanout/subscriber.py:39: bus.subscribe("intel.event", subscriber.handle)
+apps/backend-rag/backend/services/autonomous_agents/knowledge_graph_builder.py:121: r"(limited\s+liability|partnership|foundation|company\s+type)",
 apps/backend-rag/backend/services/cognitive/anomaly_subscriber.py:4:event_bus.PG_CHANNEL_MAP) and invokes the detector on newly created
 apps/backend-rag/backend/services/crm/partners/repository.py:1:# backend/services/crm/partners/repository.py
 apps/backend-rag/backend/services/crm/partners/repository.py:12:from backend.services.crm.partners.models import (
 apps/backend-rag/backend/services/crm/partners/repository.py:21:# Source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3.3 + §4.4.
 apps/backend-rag/backend/services/crm/partners/repository.py:43:# via their dedicated methods (activate_partner, reassign_partner, mark_welcome_sent).
-apps/backend-rag/backend/services/crm/partners/repository.py:54:    async def insert_partner(
-apps/backend-rag/backend/services/crm/partners/repository.py:69:                raise ValueError(f"Field {k!r} is not insertable via insert_partner")
-apps/backend-rag/backend/services/crm/partners/repository.py:72:        sql = f"INSERT INTO partners ({', '.join(cols)}) VALUES ({placeholders}) RETURNING id"
-apps/backend-rag/backend/services/crm/partners/repository.py:74:        logger.debug("insert_partner id=%s email=%s", row["id"], email)
-apps/backend-rag/backend/services/crm/partners/repository.py:78:        """Reject partner emails that match an internal team/admin user.
-apps/backend-rag/backend/services/crm/partners/repository.py:82:        between this check and the partners INSERT would slip through. v2
-apps/backend-rag/backend/services/crm/partners/repository.py:85:        operation concurrent with partner onboarding).
-apps/backend-rag/backend/services/crm/partners/repository.py:94:    async def get_partner(self, partner_id: UUID) -> Partner | None:
-apps/backend-rag/backend/services/crm/partners/repository.py:95:        row = await self.conn.fetchrow("SELECT * FROM partners WHERE id = $1", partner_id)
+apps/backend-rag/backend/services/crm/partners/repository.py:54: async def insert_partner(
+apps/backend-rag/backend/services/crm/partners/repository.py:69: raise ValueError(f"Field {k!r} is not insertable via insert_partner")
+apps/backend-rag/backend/services/crm/partners/repository.py:72: sql = f"INSERT INTO partners ({', '.join(cols)}) VALUES ({placeholders}) RETURNING id"
+apps/backend-rag/backend/services/crm/partners/repository.py:74: logger.debug("insert_partner id=%s email=%s", row["id"], email)
+apps/backend-rag/backend/services/crm/partners/repository.py:78: """Reject partner emails that match an internal team/admin user.
+apps/backend-rag/backend/services/crm/partners/repository.py:82: between this check and the partners INSERT would slip through. v2
+apps/backend-rag/backend/services/crm/partners/repository.py:85: operation concurrent with partner onboarding).
+apps/backend-rag/backend/services/crm/partners/repository.py:94: async def get_partner(self, partner_id: UUID) -> Partner | None:
+apps/backend-rag/backend/services/crm/partners/repository.py:95: row = await self.conn.fetchrow("SELECT * FROM partners WHERE id = $1", partner_id)
 apps/backend-rag/backend/services/crm/partners/repository.py:96:        return self._row_to_partner(row) if row else None
 apps/backend-rag/backend/services/crm/partners/repository.py:98:    async def list_partners(
 apps/backend-rag/backend/services/crm/partners/repository.py:118:        sql = f"SELECT * FROM partners WHERE {' AND '.join(where)} ORDER BY created_at DESC LIMIT ${len(args)}"
-apps/backend-rag/backend/services/crm/partners/repository.py:120:        return [self._row_to_partner(r) for r in rows]
-apps/backend-rag/backend/services/crm/partners/repository.py:122:    async def update_partner(self, partner_id: UUID, **fields: Any) -> None:
-apps/backend-rag/backend/services/crm/partners/repository.py:124:            raise ValueError("update_partner requires at least one field")
-apps/backend-rag/backend/services/crm/partners/repository.py:132:        sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
+apps/backend-rag/backend/services/crm/partners/repository.py:120: return [self._row_to_partner(r) for r in rows]
+apps/backend-rag/backend/services/crm/partners/repository.py:122: async def update_partner(self, partner_id: UUID, **fields: Any) -> None:
+apps/backend-rag/backend/services/crm/partners/repository.py:124: raise ValueError("update_partner requires at least one field")
+apps/backend-rag/backend/services/crm/partners/repository.py:132: sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
 apps/backend-rag/backend/services/crm/partners/repository.py:133:        await self.conn.execute(sql, partner_id, *fields.values())
 apps/backend-rag/backend/services/crm/partners/repository.py:135:    async def activate_partner(self, partner_id: UUID) -> None:
 apps/backend-rag/backend/services/crm/partners/repository.py:137:            "UPDATE partners SET onboarding_status = 'active', updated_at = now() "
@@ -8925,47 +8939,47 @@ apps/backend-rag/backend/services/crm/partners/repository.py:151:            "UP
 apps/backend-rag/backend/services/crm/partners/repository.py:152:            partner_id, new_user_id,
 apps/backend-rag/backend/services/crm/partners/repository.py:155:    async def orphan_partners_of_user(self, user_id: UUID) -> int:
 apps/backend-rag/backend/services/crm/partners/repository.py:157:            "UPDATE partners SET assigned_to = NULL, updated_at = now() WHERE assigned_to = $1",
-apps/backend-rag/backend/services/crm/partners/repository.py:163:    async def mark_welcome_sent(self, partner_id: UUID) -> None:
-apps/backend-rag/backend/services/crm/partners/repository.py:165:            "UPDATE partners SET welcome_email_sent_at = now() "
-apps/backend-rag/backend/services/crm/partners/repository.py:167:            partner_id,
-apps/backend-rag/backend/services/crm/partners/repository.py:173:        self, *, partner_id: UUID, process_id: UUID,
-apps/backend-rag/backend/services/crm/partners/repository.py:180:            INSERT INTO partner_referrals
-apps/backend-rag/backend/services/crm/partners/repository.py:181:                (partner_id, process_id, share_percent, referred_by_user_id, notes)
-apps/backend-rag/backend/services/crm/partners/repository.py:185:            partner_id, process_id, share_percent, referred_by_user_id, notes,
-apps/backend-rag/backend/services/crm/partners/repository.py:191:            "SELECT * FROM partner_referrals WHERE process_id = $1", process_id
+apps/backend-rag/backend/services/crm/partners/repository.py:163: async def mark_welcome_sent(self, partner_id: UUID) -> None:
+apps/backend-rag/backend/services/crm/partners/repository.py:165: "UPDATE partners SET welcome_email_sent_at = now() "
+apps/backend-rag/backend/services/crm/partners/repository.py:167: partner_id,
+apps/backend-rag/backend/services/crm/partners/repository.py:173: self, *, partner_id: UUID, process_id: UUID,
+apps/backend-rag/backend/services/crm/partners/repository.py:180: INSERT INTO partner_referrals
+apps/backend-rag/backend/services/crm/partners/repository.py:181: (partner_id, process_id, share_percent, referred_by_user_id, notes)
+apps/backend-rag/backend/services/crm/partners/repository.py:185: partner_id, process_id, share_percent, referred_by_user_id, notes,
+apps/backend-rag/backend/services/crm/partners/repository.py:191: "SELECT * FROM partner_referrals WHERE process_id = $1", process_id
 apps/backend-rag/backend/services/crm/partners/repository.py:195:    async def list_referrals_for_partner(self, partner_id: UUID) -> list[PartnerReferral]:
 apps/backend-rag/backend/services/crm/partners/repository.py:197:            "SELECT * FROM partner_referrals WHERE partner_id = $1 ORDER BY referred_at DESC",
-apps/backend-rag/backend/services/crm/partners/repository.py:198:            partner_id,
-apps/backend-rag/backend/services/crm/partners/repository.py:202:    async def update_referral_partner(self, referral_id: UUID, new_partner_id: UUID) -> None:
-apps/backend-rag/backend/services/crm/partners/repository.py:204:            "UPDATE partner_referrals SET partner_id = $2 WHERE id = $1",
-apps/backend-rag/backend/services/crm/partners/repository.py:205:            referral_id, new_partner_id,
-apps/backend-rag/backend/services/crm/partners/repository.py:211:            "SELECT 1 FROM partner_commissions WHERE referral_id = $1 LIMIT 1",
+apps/backend-rag/backend/services/crm/partners/repository.py:198: partner_id,
+apps/backend-rag/backend/services/crm/partners/repository.py:202: async def update_referral_partner(self, referral_id: UUID, new_partner_id: UUID) -> None:
+apps/backend-rag/backend/services/crm/partners/repository.py:204: "UPDATE partner_referrals SET partner_id = $2 WHERE id = $1",
+apps/backend-rag/backend/services/crm/partners/repository.py:205: referral_id, new_partner_id,
+apps/backend-rag/backend/services/crm/partners/repository.py:211: "SELECT 1 FROM partner_commissions WHERE referral_id = $1 LIMIT 1",
 apps/backend-rag/backend/services/crm/partners/repository.py:217:            await self.conn.execute("DELETE FROM partner_referrals WHERE id = $1", referral_id)
-apps/backend-rag/backend/services/crm/partners/repository.py:227:        partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/repository.py:238:        rule_source: RuleSource = "partner_default",
-apps/backend-rag/backend/services/crm/partners/repository.py:250:            INSERT INTO partner_commissions (
-apps/backend-rag/backend/services/crm/partners/repository.py:251:                partner_id, entry_type, referral_id, process_id, related_commission_id,
-apps/backend-rag/backend/services/crm/partners/repository.py:263:            partner_id, entry_type, referral_id, process_id, related_commission_id,
-apps/backend-rag/backend/services/crm/partners/repository.py:272:            "insert_commission id=%s partner=%s type=%s status=%s",
-apps/backend-rag/backend/services/crm/partners/repository.py:273:            row["id"], partner_id, entry_type, status,
-apps/backend-rag/backend/services/crm/partners/repository.py:279:            "SELECT * FROM partner_commissions WHERE id = $1", commission_id
+apps/backend-rag/backend/services/crm/partners/repository.py:227: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/repository.py:238: rule_source: RuleSource = "partner_default",
+apps/backend-rag/backend/services/crm/partners/repository.py:250: INSERT INTO partner_commissions (
+apps/backend-rag/backend/services/crm/partners/repository.py:251: partner_id, entry_type, referral_id, process_id, related_commission_id,
+apps/backend-rag/backend/services/crm/partners/repository.py:263: partner_id, entry_type, referral_id, process_id, related_commission_id,
+apps/backend-rag/backend/services/crm/partners/repository.py:272: "insert_commission id=%s partner=%s type=%s status=%s",
+apps/backend-rag/backend/services/crm/partners/repository.py:273: row["id"], partner_id, entry_type, status,
+apps/backend-rag/backend/services/crm/partners/repository.py:279: "SELECT * FROM partner_commissions WHERE id = $1", commission_id
 apps/backend-rag/backend/services/crm/partners/repository.py:283:    async def list_commissions_for_partner(
 apps/backend-rag/backend/services/crm/partners/repository.py:284:        self, partner_id: UUID, *, status: CommissionStatus | None = None,
 apps/backend-rag/backend/services/crm/partners/repository.py:286:        args: list[Any] = [partner_id]
 apps/backend-rag/backend/services/crm/partners/repository.py:287:        where = "partner_id = $1"
-apps/backend-rag/backend/services/crm/partners/repository.py:290:        sql = f"SELECT * FROM partner_commissions WHERE {where} ORDER BY created_at DESC"
-apps/backend-rag/backend/services/crm/partners/repository.py:294:    async def list_pending_clawbacks(self, partner_id: UUID) -> list[PartnerCommission]:
-apps/backend-rag/backend/services/crm/partners/repository.py:296:            "SELECT * FROM partner_commissions WHERE partner_id = $1 AND status = 'clawback_pending' "
+apps/backend-rag/backend/services/crm/partners/repository.py:290: sql = f"SELECT * FROM partner_commissions WHERE {where} ORDER BY created_at DESC"
+apps/backend-rag/backend/services/crm/partners/repository.py:294: async def list_pending_clawbacks(self, partner_id: UUID) -> list[PartnerCommission]:
+apps/backend-rag/backend/services/crm/partners/repository.py:296: "SELECT * FROM partner_commissions WHERE partner_id = $1 AND status = 'clawback_pending' "
 apps/backend-rag/backend/services/crm/partners/repository.py:298:            partner_id,
 apps/backend-rag/backend/services/crm/partners/repository.py:340:        sql = f"UPDATE partner_commissions SET {', '.join(fragments)} WHERE id = $1"
-apps/backend-rag/backend/services/crm/partners/repository.py:345:            "UPDATE partner_commissions SET commission_email_sent_at = now() "
-apps/backend-rag/backend/services/crm/partners/repository.py:351:        raise RuntimeError("partner_commissions is append-only; delete is forbidden")
-apps/backend-rag/backend/services/crm/partners/repository.py:358:        partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/repository.py:367:            INSERT INTO partner_audit_log
-apps/backend-rag/backend/services/crm/partners/repository.py:368:                (partner_id, actor_user_id, action, before_json, after_json, reason)
-apps/backend-rag/backend/services/crm/partners/repository.py:371:            partner_id, actor_user_id, action,
-apps/backend-rag/backend/services/crm/partners/repository.py:377:    async def list_audit_for_partner(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
-apps/backend-rag/backend/services/crm/partners/repository.py:379:            "SELECT * FROM partner_audit_log WHERE partner_id = $1 ORDER BY at DESC",
+apps/backend-rag/backend/services/crm/partners/repository.py:345: "UPDATE partner_commissions SET commission_email_sent_at = now() "
+apps/backend-rag/backend/services/crm/partners/repository.py:351: raise RuntimeError("partner_commissions is append-only; delete is forbidden")
+apps/backend-rag/backend/services/crm/partners/repository.py:358: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/repository.py:367: INSERT INTO partner_audit_log
+apps/backend-rag/backend/services/crm/partners/repository.py:368: (partner_id, actor_user_id, action, before_json, after_json, reason)
+apps/backend-rag/backend/services/crm/partners/repository.py:371: partner_id, actor_user_id, action,
+apps/backend-rag/backend/services/crm/partners/repository.py:377: async def list_audit_for_partner(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
+apps/backend-rag/backend/services/crm/partners/repository.py:379: "SELECT * FROM partner_audit_log WHERE partner_id = $1 ORDER BY at DESC",
 apps/backend-rag/backend/services/crm/partners/repository.py:380:            partner_id,
 apps/backend-rag/backend/services/crm/partners/repository.py:384:                id=r["id"], partner_id=r["partner_id"],
 apps/backend-rag/backend/services/crm/partners/repository.py:396:    def _row_to_partner(row: asyncpg.Record) -> Partner:
@@ -9034,84 +9048,84 @@ apps/backend-rag/backend/services/crm/partners/events.py:19:from backend.service
 apps/backend-rag/backend/services/crm/partners/events.py:26:PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
 apps/backend-rag/backend/services/crm/partners/events.py:63:        # Read partner_id for the notification payload
 apps/backend-rag/backend/services/crm/partners/events.py:65:            "SELECT partner_id FROM partner_commissions WHERE id = $1", cid
-apps/backend-rag/backend/services/crm/partners/events.py:69:        partner_id = row["partner_id"]
-apps/backend-rag/backend/services/crm/partners/events.py:71:    await _publish_changed(partner_id, cid, kind="accrued")
-apps/backend-rag/backend/services/crm/partners/events.py:75:    partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/events.py:80:    """Emit a ``partner.commission_changed`` notification via PostgreSQL NOTIFY.
-apps/backend-rag/backend/services/crm/partners/events.py:89:                "partner_id": str(partner_id),
-apps/backend-rag/backend/services/crm/partners/events.py:101:        "Published partner.commission_changed: %s (%s)", commission_id, kind
+apps/backend-rag/backend/services/crm/partners/events.py:69: partner_id = row["partner_id"]
+apps/backend-rag/backend/services/crm/partners/events.py:71: await _publish_changed(partner_id, cid, kind="accrued")
+apps/backend-rag/backend/services/crm/partners/events.py:75: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/events.py:80: """Emit a `partner.commission_changed` notification via PostgreSQL NOTIFY.
+apps/backend-rag/backend/services/crm/partners/events.py:89: "partner_id": str(partner_id),
+apps/backend-rag/backend/services/crm/partners/events.py:101: "Published partner.commission_changed: %s (%s)", commission_id, kind
 apps/backend-rag/backend/services/crm/partners/events.py:105:def register_partner_handlers(bus: "EventBus") -> None:
-apps/backend-rag/backend/services/crm/partners/events.py:106:    """Subscribe partner-module handlers to the EventBus."""
-apps/backend-rag/backend/services/crm/partners/events.py:107:    bus.subscribe("practice.status_changed", handle_practice_status_changed)
+apps/backend-rag/backend/services/crm/partners/events.py:106: """Subscribe partner-module handlers to the EventBus."""
+apps/backend-rag/backend/services/crm/partners/events.py:107: bus.subscribe("practice.status_changed", handle_practice_status_changed)
 apps/backend-rag/backend/services/crm/partners/models.py:19:RuleSource = Literal["partner_default", "manual_override"]
-apps/backend-rag/backend/services/crm/partners/models.py:65:    partner_id: UUID
-apps/backend-rag/backend/services/crm/partners/models.py:76:    partner_id: UUID
-apps/backend-rag/backend/services/crm/partners/models.py:115:    partner_id: UUID
-apps/backend-rag/backend/services/events/event_bus.py:19:    bus.subscribe("client.created", my_handler)
-apps/backend-rag/backend/services/events/event_bus.py:20:    bus.subscribe("practice.status_changed", another_handler)
+apps/backend-rag/backend/services/crm/partners/models.py:65: partner_id: UUID
+apps/backend-rag/backend/services/crm/partners/models.py:76: partner_id: UUID
+apps/backend-rag/backend/services/crm/partners/models.py:115: partner_id: UUID
+apps/backend-rag/backend/services/events/event_bus.py:19: bus.subscribe("client.created", my_handler)
+apps/backend-rag/backend/services/events/event_bus.py:20: bus.subscribe("practice.status_changed", another_handler)
 apps/backend-rag/backend/services/events/event_bus.py:46:PG_CHANNEL_MAP: dict[str, str] = {
-apps/backend-rag/backend/services/events/event_bus.py:47:    "practice_changed": "practice.status_changed",
+apps/backend-rag/backend/services/events/event_bus.py:47: "practice_changed": "practice.status_changed",
 apps/backend-rag/backend/services/events/event_bus.py:91:class EventBus:
-apps/backend-rag/backend/services/events/event_bus.py:121:    def subscribe(self, event_type: str, handler: EventHandler) -> None:
-apps/backend-rag/backend/services/events/event_bus.py:134:    def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
-apps/backend-rag/backend/services/events/event_bus.py:231:            f"{list(PG_CHANNEL_MAP.keys())}"
-apps/backend-rag/backend/services/events/event_bus.py:268:        for pg_channel in PG_CHANNEL_MAP:
-apps/backend-rag/backend/services/events/event_bus.py:273:            f"{list(PG_CHANNEL_MAP.keys())}"
-apps/backend-rag/backend/services/events/event_bus.py:287:                for pg_channel in PG_CHANNEL_MAP:
-apps/backend-rag/backend/services/events/event_bus.py:314:        event_type = PG_CHANNEL_MAP.get(channel)
-apps/backend-rag/backend/services/events/event_bus.py:335:            "pg_channels": list(PG_CHANNEL_MAP.keys()),
+apps/backend-rag/backend/services/events/event_bus.py:121: def subscribe(self, event_type: str, handler: EventHandler) -> None:
+apps/backend-rag/backend/services/events/event_bus.py:134: def unsubscribe(self, event_type: str, handler: EventHandler) -> None:
+apps/backend-rag/backend/services/events/event_bus.py:231: f"{list(PG_CHANNEL_MAP.keys())}"
+apps/backend-rag/backend/services/events/event_bus.py:268: for pg_channel in PG_CHANNEL_MAP:
+apps/backend-rag/backend/services/events/event_bus.py:273: f"{list(PG_CHANNEL_MAP.keys())}"
+apps/backend-rag/backend/services/events/event_bus.py:287: for pg_channel in PG_CHANNEL_MAP:
+apps/backend-rag/backend/services/events/event_bus.py:314: event_type = PG_CHANNEL_MAP.get(channel)
+apps/backend-rag/backend/services/events/event_bus.py:335: "pg_channels": list(PG_CHANNEL_MAP.keys()),
 apps/backend-rag/backend/services/crm/partners/service.py:1:# backend/services/crm/partners/service.py
 apps/backend-rag/backend/services/crm/partners/service.py:11:from backend.services.crm.partners.models import Partner, PartnerAuditLogEntry
 apps/backend-rag/backend/services/crm/partners/service.py:12:from backend.services.crm.partners.repository import PartnersRepository
-apps/backend-rag/backend/services/crm/partners/service.py:27:    async def create_partner(
-apps/backend-rag/backend/services/crm/partners/service.py:38:            pid = await self.repo.insert_partner(
-apps/backend-rag/backend/services/crm/partners/service.py:56:            partner_id=pid,
-apps/backend-rag/backend/services/crm/partners/service.py:63:    async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
-apps/backend-rag/backend/services/crm/partners/service.py:64:        return await verify_partner_access(self, actor_user, partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:66:    async def list_partners(
-apps/backend-rag/backend/services/crm/partners/service.py:78:        return await self.repo.list_partners(
-apps/backend-rag/backend/services/crm/partners/service.py:85:    async def update_partner(
-apps/backend-rag/backend/services/crm/partners/service.py:87:        partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/service.py:93:        if actor_role == "partner":
-apps/backend-rag/backend/services/crm/partners/service.py:94:            raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
-apps/backend-rag/backend/services/crm/partners/service.py:95:        current = await verify_partner_access_with_role(
-apps/backend-rag/backend/services/crm/partners/service.py:96:            self, actor_user, actor_role, partner_id
-apps/backend-rag/backend/services/crm/partners/service.py:100:            await self.repo.update_partner(partner_id, **fields)
-apps/backend-rag/backend/services/crm/partners/service.py:104:            partner_id=partner_id,
-apps/backend-rag/backend/services/crm/partners/service.py:111:    async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
-apps/backend-rag/backend/services/crm/partners/service.py:114:        await self.repo.activate_partner(partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:116:            partner_id=partner_id,
-apps/backend-rag/backend/services/crm/partners/service.py:121:    async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
-apps/backend-rag/backend/services/crm/partners/service.py:124:        await self.repo.deactivate_partner(partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:126:            partner_id=partner_id,
-apps/backend-rag/backend/services/crm/partners/service.py:131:    async def reassign_partner(
-apps/backend-rag/backend/services/crm/partners/service.py:133:        partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/service.py:143:        current = await self.repo.get_partner(partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:145:            raise HTTPException(status_code=404, detail="partner not found")
-apps/backend-rag/backend/services/crm/partners/service.py:148:        await self.repo.reassign_partner(partner_id, new_user_id)
-apps/backend-rag/backend/services/crm/partners/service.py:150:            partner_id=partner_id,
-apps/backend-rag/backend/services/crm/partners/service.py:158:    async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
-apps/backend-rag/backend/services/crm/partners/service.py:161:        affected = await self.repo.list_partners(assigned_to=user_id)
-apps/backend-rag/backend/services/crm/partners/service.py:162:        n = await self.repo.orphan_partners_of_user(user_id)
-apps/backend-rag/backend/services/crm/partners/service.py:165:                partner_id=p.id,
-apps/backend-rag/backend/services/crm/partners/service.py:174:    async def list_audit(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
-apps/backend-rag/backend/services/crm/partners/service.py:175:        return await self.repo.list_audit_for_partner(partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:177:    async def mark_welcome_sent(self, partner_id: UUID) -> None:
-apps/backend-rag/backend/services/crm/partners/service.py:178:        await self.repo.mark_welcome_sent(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:27: async def create_partner(
+apps/backend-rag/backend/services/crm/partners/service.py:38: pid = await self.repo.insert_partner(
+apps/backend-rag/backend/services/crm/partners/service.py:56: partner_id=pid,
+apps/backend-rag/backend/services/crm/partners/service.py:63: async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
+apps/backend-rag/backend/services/crm/partners/service.py:64: return await verify_partner_access(self, actor_user, partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:66: async def list_partners(
+apps/backend-rag/backend/services/crm/partners/service.py:78: return await self.repo.list_partners(
+apps/backend-rag/backend/services/crm/partners/service.py:85: async def update_partner(
+apps/backend-rag/backend/services/crm/partners/service.py:87: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/service.py:93: if actor_role == "partner":
+apps/backend-rag/backend/services/crm/partners/service.py:94: raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
+apps/backend-rag/backend/services/crm/partners/service.py:95: current = await verify_partner_access_with_role(
+apps/backend-rag/backend/services/crm/partners/service.py:96: self, actor_user, actor_role, partner_id
+apps/backend-rag/backend/services/crm/partners/service.py:100: await self.repo.update_partner(partner_id, **fields)
+apps/backend-rag/backend/services/crm/partners/service.py:104: partner_id=partner_id,
+apps/backend-rag/backend/services/crm/partners/service.py:111: async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+apps/backend-rag/backend/services/crm/partners/service.py:114: await self.repo.activate_partner(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:116: partner_id=partner_id,
+apps/backend-rag/backend/services/crm/partners/service.py:121: async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+apps/backend-rag/backend/services/crm/partners/service.py:124: await self.repo.deactivate_partner(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:126: partner_id=partner_id,
+apps/backend-rag/backend/services/crm/partners/service.py:131: async def reassign_partner(
+apps/backend-rag/backend/services/crm/partners/service.py:133: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/service.py:143: current = await self.repo.get_partner(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:145: raise HTTPException(status_code=404, detail="partner not found")
+apps/backend-rag/backend/services/crm/partners/service.py:148: await self.repo.reassign_partner(partner_id, new_user_id)
+apps/backend-rag/backend/services/crm/partners/service.py:150: partner_id=partner_id,
+apps/backend-rag/backend/services/crm/partners/service.py:158: async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
+apps/backend-rag/backend/services/crm/partners/service.py:161: affected = await self.repo.list_partners(assigned_to=user_id)
+apps/backend-rag/backend/services/crm/partners/service.py:162: n = await self.repo.orphan_partners_of_user(user_id)
+apps/backend-rag/backend/services/crm/partners/service.py:165: partner_id=p.id,
+apps/backend-rag/backend/services/crm/partners/service.py:174: async def list_audit(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
+apps/backend-rag/backend/services/crm/partners/service.py:175: return await self.repo.list_audit_for_partner(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:177: async def mark_welcome_sent(self, partner_id: UUID) -> None:
+apps/backend-rag/backend/services/crm/partners/service.py:178: await self.repo.mark_welcome_sent(partner_id)
 apps/backend-rag/backend/services/crm/partners/service.py:191:async def verify_partner_access(
-apps/backend-rag/backend/services/crm/partners/service.py:192:    svc: PartnersService, actor_user: UUID, partner_id: UUID
-apps/backend-rag/backend/services/crm/partners/service.py:195:    return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:192: svc: PartnersService, actor_user: UUID, partner_id: UUID
+apps/backend-rag/backend/services/crm/partners/service.py:195: return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
 apps/backend-rag/backend/services/crm/partners/service.py:198:async def verify_partner_access_with_role(
-apps/backend-rag/backend/services/crm/partners/service.py:202:    partner_id: UUID,
-apps/backend-rag/backend/services/crm/partners/service.py:204:    partner = await svc.repo.get_partner(partner_id)
-apps/backend-rag/backend/services/crm/partners/service.py:205:    if partner is None:
-apps/backend-rag/backend/services/crm/partners/service.py:206:        raise HTTPException(status_code=404, detail="partner not found")
-apps/backend-rag/backend/services/crm/partners/service.py:208:        return partner
-apps/backend-rag/backend/services/crm/partners/service.py:209:    if actor_role == "team" and partner.assigned_to == actor_user:
-apps/backend-rag/backend/services/crm/partners/service.py:210:        return partner
-apps/backend-rag/backend/services/crm/partners/service.py:211:    if actor_role == "partner":
-apps/backend-rag/backend/services/crm/partners/service.py:212:        # Check via users table: user.partner_id matches partner.id
-apps/backend-rag/backend/services/crm/partners/service.py:214:            "SELECT partner_id FROM users WHERE id = $1", actor_user
+apps/backend-rag/backend/services/crm/partners/service.py:202: partner_id: UUID,
+apps/backend-rag/backend/services/crm/partners/service.py:204: partner = await svc.repo.get_partner(partner_id)
+apps/backend-rag/backend/services/crm/partners/service.py:205: if partner is None:
+apps/backend-rag/backend/services/crm/partners/service.py:206: raise HTTPException(status_code=404, detail="partner not found")
+apps/backend-rag/backend/services/crm/partners/service.py:208: return partner
+apps/backend-rag/backend/services/crm/partners/service.py:209: if actor_role == "team" and partner.assigned_to == actor_user:
+apps/backend-rag/backend/services/crm/partners/service.py:210: return partner
+apps/backend-rag/backend/services/crm/partners/service.py:211: if actor_role == "partner":
+apps/backend-rag/backend/services/crm/partners/service.py:212: # Check via users table: user.partner_id matches partner.id
+apps/backend-rag/backend/services/crm/partners/service.py:214: "SELECT partner_id FROM users WHERE id = $1", actor_user
 apps/backend-rag/backend/services/crm/partners/service.py:216:        if row and row["partner_id"] == partner_id:
 apps/backend-rag/backend/services/crm/partners/service.py:217:            return partner
 apps/backend-rag/backend/services/events/handlers.py:319:    bus.subscribe("client.changed", on_client_changed)
@@ -9229,14 +9243,14 @@ apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:31:        "
 apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:34:        "backend.services.crm.partners.emails._build_pricing_services",
 apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:43:        "SELECT welcome_email_sent_at FROM partners WHERE id = $1", p.id
 apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:49:async def test_send_welcome_includes_pricing_from_tool(db_conn, partner_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:51:    p = await partner_factory(preferred_language="it")
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:54:        "backend.services.crm.partners.emails._post_email",
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:57:        "backend.services.crm.partners.emails._build_pricing_services",
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:79:    partner_factory,
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:85:    p = await partner_factory()
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:87:        partner_id=p.id,
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:94:        "backend.services.crm.partners.emails._post_email",
-apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:116:    from backend.services.crm.partners.emails import _build_pricing_services, get_pricing_service
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:51: p = await partner_factory(preferred_language="it")
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:54: "backend.services.crm.partners.emails._post_email",
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:57: "backend.services.crm.partners.emails._build_pricing_services",
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:79: partner_factory,
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:85: p = await partner_factory()
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:87: partner_id=p.id,
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:94: "backend.services.crm.partners.emails._post_email",
+apps/backend-rag/backend/tests/services/crm/partners/test_emails.py:116: from backend.services.crm.partners.emails import _build_pricing_services, get_pricing_service
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:4:Covers the full partner lifecycle:
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:10:re-exports all partner fixtures from services/crm/partners/conftest.py
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:21:from backend.services.crm.partners.commission_engine import CommissionEngine
@@ -9244,16 +9258,16 @@ apps/backend-rag/backend/tests/integration/test_partners_e2e.py:22:from backend.
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:23:from backend.services.crm.partners.emails import send_welcome, send_commission_earned
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:24:from backend.services.crm.partners.service import PartnersService
 apps/backend-rag/backend/tests/integration/test_partners_e2e.py:25:import backend.services.crm.partners.events as events_mod
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:32:    partner_factory,
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:41:    partner_id = await partner_factory(
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:53:    import backend.services.crm.partners.emails as emails_mod
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:63:    # ── Step 1: Admin activates partner → then send welcome email ───────────
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:65:    await svc.activate_partner(uuid.UUID(int=partner_id.int), actor_user=uuid.UUID(int=admin_id.int))
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:66:    await send_welcome(db_conn, uuid.UUID(int=partner_id.int))
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:90:        partner_id=uuid.UUID(int=partner_id.int),
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:114:    commissions = await engine.repo.list_commissions_for_partner(
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:115:        uuid.UUID(int=partner_id.int)
-apps/backend-rag/backend/tests/integration/test_partners_e2e.py:133:        "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' WHERE id = $1",
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:32: partner_factory,
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:41: partner_id = await partner_factory(
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:53: import backend.services.crm.partners.emails as emails_mod
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:63: # ── Step 1: Admin activates partner → then send welcome email ───────────
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:65: await svc.activate_partner(uuid.UUID(int=partner_id.int), actor_user=uuid.UUID(int=admin_id.int))
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:66: await send_welcome(db_conn, uuid.UUID(int=partner_id.int))
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:90: partner_id=uuid.UUID(int=partner_id.int),
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:114: commissions = await engine.repo.list_commissions_for_partner(
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:115: uuid.UUID(int=partner_id.int)
+apps/backend-rag/backend/tests/integration/test_partners_e2e.py:133: "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' WHERE id = $1",
 apps/backend-rag/backend/tests/migrations/test_migration_119.py:2:Tests for Migration 119: Partners module — 4 tables + users.partner_id + 2 system settings.
 apps/backend-rag/backend/tests/migrations/test_migration_119.py:7:Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
 apps/backend-rag/backend/tests/migrations/test_migration_119.py:8:Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1 (lines 98-318)
@@ -9322,449 +9336,449 @@ apps/backend-rag/backend/tests/services/crm/partners/test_events.py:92:    await
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:99:        "SELECT COUNT(*) AS n FROM partner_commissions WHERE partner_id = $1",
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:106:# 3. register_partner_handlers wires the bus
 apps/backend-rag/backend/tests/services/crm/partners/test_events.py:111:async def test_register_partner_handlers_subscribes_to_bus():
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:112:    """register_partner_handlers must subscribe to practice.status_changed."""
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:113:    # EventBus requires db_dsn for full init, but subscribe() only touches
-apps/backend-rag/backend/tests/services/crm/partners/test_events.py:116:    register_partner_handlers(bus)
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:112: """register_partner_handlers must subscribe to practice.status_changed."""
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:113: # EventBus requires db_dsn for full init, but subscribe() only touches
+apps/backend-rag/backend/tests/services/crm/partners/test_events.py:116: register_partner_handlers(bus)
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:1:# tests/services/crm/partners/test_commission_engine.py
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:5:All tests use the db_conn fixture (real asyncpg connection with partner
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:17:from backend.services.crm.partners.commission_engine import CommissionEngine
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:31:    engine, partner_factory, process_factory, referral_factory
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:33:    p = await partner_factory(
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:42:    await referral_factory(partner_id=p.id, process_id=proc.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:46:    commissions = await engine.repo.list_commissions_for_partner(p.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:65:    engine, partner_factory, process_factory, referral_factory
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:67:    p = await partner_factory()
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:69:    await referral_factory(partner_id=p.id, process_id=proc.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:74:    commissions = await engine.repo.list_commissions_for_partner(p.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:84:    engine, partner_factory, process_factory, referral_factory, admin
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:86:    p = await partner_factory(tax_withholding_category="exempt")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:88:    await referral_factory(partner_id=p.id, process_id=proc.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:91:    c = (await engine.repo.list_commissions_for_partner(p.id))[0]
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:103:    engine, partner_factory, process_factory, referral_factory, admin, db_conn
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:105:    p = await partner_factory(tax_withholding_category="tbd")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:107:    await referral_factory(partner_id=p.id, process_id=proc.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:110:    c = (await engine.repo.list_commissions_for_partner(p.id))[0]
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:114:        "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' "
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:128:    engine, partner_factory, process_factory, referral_factory
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:130:    p = await partner_factory(
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:140:    await referral_factory(partner_id=p.id, process_id=proc.id)
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:143:    c = (await engine.repo.list_commissions_for_partner(p.id))[0]
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:31: engine, partner_factory, process_factory, referral_factory
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:33: p = await partner_factory(
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:42: await referral_factory(partner_id=p.id, process_id=proc.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:46: commissions = await engine.repo.list_commissions_for_partner(p.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:65: engine, partner_factory, process_factory, referral_factory
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:67: p = await partner_factory()
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:69: await referral_factory(partner_id=p.id, process_id=proc.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:74: commissions = await engine.repo.list_commissions_for_partner(p.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:84: engine, partner_factory, process_factory, referral_factory, admin
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:86: p = await partner_factory(tax_withholding_category="exempt")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:88: await referral_factory(partner_id=p.id, process_id=proc.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:91: c = (await engine.repo.list_commissions_for_partner(p.id))[0]
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:103: engine, partner_factory, process_factory, referral_factory, admin, db_conn
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:105: p = await partner_factory(tax_withholding_category="tbd")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:107: await referral_factory(partner_id=p.id, process_id=proc.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:110: c = (await engine.repo.list_commissions_for_partner(p.id))[0]
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:114: "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' "
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:128: engine, partner_factory, process_factory, referral_factory
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:130: p = await partner_factory(
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:140: await referral_factory(partner_id=p.id, process_id=proc.id)
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:143: c = (await engine.repo.list_commissions_for_partner(p.id))[0]
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:155:async def test_clawback_inserts_negative_row_with_fk(engine, partner_factory, admin):
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:156:    p = await partner_factory(tax_withholding_category="pph23")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:158:        partner_id=p.id,
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:156: p = await partner_factory(tax_withholding_category="pph23")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:158: partner_id=p.id,
 apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:182:async def test_clawback_auto_writeoff_threshold(engine, partner_factory, admin, db_conn):
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:186:        "WHERE key = 'partner_clawback_auto_writeoff_idr'"
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:188:    p = await partner_factory()
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:190:        partner_id=p.id,
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:211:    engine, partner_factory, admin, db_conn
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:213:    p = await partner_factory(tax_withholding_category="exempt")
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:217:        partner_id=p.id,
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:229:    # withholding_category must be 'exempt' (matching the partner) so that
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:232:        partner_id=p.id,
-apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:244:        "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' "
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:186: "WHERE key = 'partner_clawback_auto_writeoff_idr'"
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:188: p = await partner_factory()
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:190: partner_id=p.id,
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:211: engine, partner_factory, admin, db_conn
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:213: p = await partner_factory(tax_withholding_category="exempt")
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:217: partner_id=p.id,
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:229: # withholding_category must be 'exempt' (matching the partner) so that
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:232: partner_id=p.id,
+apps/backend-rag/backend/tests/services/crm/partners/test_commission_engine.py:244: "UPDATE partner_commissions SET eligible_for_approval_at = now() - interval '1 day' "
 apps/backend-rag/backend/tests/integration/conftest.py:2:E2E integration conftest — re-exports all partner fixtures.
 apps/backend-rag/backend/tests/integration/conftest.py:4:The partner unit-test conftest.py is a standard Python file that defines
 apps/backend-rag/backend/tests/integration/conftest.py:6:fixtures (db_conn, user_factory, partner_factory, process_factory,
-apps/backend-rag/backend/tests/integration/conftest.py:10:from backend.tests.services.crm.partners.conftest import (  # noqa: F401
-apps/backend-rag/backend/tests/integration/conftest.py:13:    partner_factory,
+apps/backend-rag/backend/tests/integration/conftest.py:10:from backend.tests.services.crm.partners.conftest import ( # noqa: F401
+apps/backend-rag/backend/tests/integration/conftest.py:13: partner_factory,
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:1:# tests/services/crm/partners/test_service.py
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:7:from backend.services.crm.partners.service import (
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:10:    verify_partner_access,
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:10: verify_partner_access,
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:20:async def test_create_partner_writes_audit_log(svc, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:22:    pid = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:22: pid = await svc.create_partner(
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:36:async def test_activate_partner_requires_admin_and_audits(svc, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:39:    pid = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:46:        await svc.activate_partner(pid, actor_user=team)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:49:    await svc.activate_partner(pid, actor_user=admin)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:50:    p = await svc.get_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:39: pid = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:46: await svc.activate_partner(pid, actor_user=team)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:49: await svc.activate_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:50: p = await svc.get_partner(pid, actor_user=admin)
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:57:async def test_verify_partner_access_admin_always_allowed(svc, user_factory, partner_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:59:    # partner_factory returns a UUID
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:60:    partner_id = await partner_factory(assigned_to=None)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:61:    result = await verify_partner_access(svc, admin, partner_id)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:63:    assert result.id == partner_id
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:59: # partner_factory returns a UUID
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:60: partner_id = await partner_factory(assigned_to=None)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:61: result = await verify_partner_access(svc, admin, partner_id)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:63: assert result.id == partner_id
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:67:async def test_verify_partner_access_team_must_own(svc, user_factory, partner_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:70:    # partner_factory returns a UUID
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:71:    partner_id = await partner_factory(assigned_to=u1)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:73:    result = await verify_partner_access(svc, u1, partner_id)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:74:    assert result.id == partner_id
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:77:        await verify_partner_access(svc, u2, partner_id)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:86:    pid = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:94:        await svc.reassign_partner(pid, new_user_id=u2, actor_user=admin, reason=None)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:95:    await svc.reassign_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:70: # partner_factory returns a UUID
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:71: partner_id = await partner_factory(assigned_to=u1)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:73: result = await verify_partner_access(svc, u1, partner_id)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:74: assert result.id == partner_id
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:77: await verify_partner_access(svc, u2, partner_id)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:86: pid = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:94: await svc.reassign_partner(pid, new_user_id=u2, actor_user=admin, reason=None)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:95: await svc.reassign_partner(
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:104:async def test_orphan_partners_on_team_user_deactivation(svc, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:107:    p1 = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:114:    p2 = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:121:    n = await svc.orphan_partners_of_user(u, actor_user=admin)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:124:        p = await svc.get_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:107: p1 = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:114: p2 = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:121: n = await svc.orphan_partners_of_user(u, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:124: p = await svc.get_partner(pid, actor_user=admin)
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:131:async def test_update_partner_does_not_reset_welcome_email_sent(svc, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:132:    """update_partner must NOT touch welcome_email_sent_at."""
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:134:    pid = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:144:    p_before = await svc.get_partner(pid, actor_user=admin)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:148:    await svc.update_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:156:    p_after = await svc.get_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:132: """update_partner must NOT touch welcome_email_sent_at."""
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:134: pid = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:144: p_before = await svc.get_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:148: await svc.update_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:156: p_after = await svc.get_partner(pid, actor_user=admin)
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:162:async def test_deactivate_partner_soft_delete_preserves_history(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:167:    pid = await svc.create_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:174:    await referral_factory(partner_id=pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:177:    await svc.deactivate_partner(pid, actor_user=admin)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:180:    p = await svc.get_partner(pid, actor_user=admin)
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:184:    referrals = await svc.repo.list_referrals_for_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:167: pid = await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:174: await referral_factory(partner_id=pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:177: await svc.deactivate_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:180: p = await svc.get_partner(pid, actor_user=admin)
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:184: referrals = await svc.repo.list_referrals_for_partner(pid)
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:193:async def test_create_rejects_partner_with_internal_email(svc, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:194:    """create_partner raises ConflictError (409) when email matches a team/admin user."""
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:197:        await svc.create_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:194: """create_partner raises ConflictError (409) when email matches a team/admin user."""
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:197: await svc.create_partner(
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:207:async def test_reassign_nonexistent_partner_raises_404(db_conn, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:208:    """reassign_partner raises HTTPException(404) when partner_id is unknown."""
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:212:        await svc.reassign_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:208: """reassign_partner raises HTTPException(404) when partner_id is unknown."""
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:212: await svc.reassign_partner(
 apps/backend-rag/backend/tests/services/crm/partners/test_service.py:220:async def test_update_partner_rejects_partner_role_self_update(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:221:    db_conn, user_factory, partner_factory,
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:223:    """update_partner rejects partner-role actor at service layer (spec §7.2)."""
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:224:    partner_id = await partner_factory()
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:225:    # Link a partner-role user to this partner
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:226:    partner_user = await user_factory(role="partner")
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:228:        "UPDATE users SET partner_id = $2 WHERE id = $1",
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:229:        partner_user, partner_id,
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:233:        await svc.update_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:234:            partner_id,
-apps/backend-rag/backend/tests/services/crm/partners/test_service.py:235:            actor_user=partner_user, actor_role="partner",
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:221: db_conn, user_factory, partner_factory,
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:223: """update_partner rejects partner-role actor at service layer (spec §7.2)."""
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:224: partner_id = await partner_factory()
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:225: # Link a partner-role user to this partner
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:226: partner_user = await user_factory(role="partner")
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:228: "UPDATE users SET partner_id = $2 WHERE id = $1",
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:229: partner_user, partner_id,
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:233: await svc.update_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:234: partner_id,
+apps/backend-rag/backend/tests/services/crm/partners/test_service.py:235: actor_user=partner_user, actor_role="partner",
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:2:Local conftest for partners repository tests.
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:5:- db_conn: a real asyncpg.Connection with all partner tables created for the test,
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:7:- user_factory, partner_factory, process_factory, referral_factory: helpers
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:15:that heavy __init__ when we import the partners sub-package.
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:71:# __file__ = .../apps/backend-rag/backend/tests/services/crm/partners/conftest.py
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:78:                    os.path.dirname(  # partners/
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:119:    partner_id UUID
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:147:    ('partner_clawback_auto_writeoff_idr', '0'),
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:148:    ('partner_accrual_cooling_off_days',   '30')
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:15:that heavy **init** when we import the partners sub-package.
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:71:# **file** = .../apps/backend-rag/backend/tests/services/crm/partners/conftest.py
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:78: os.path.dirname( # partners/
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:119: partner_id UUID
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:147: ('partner_clawback_auto_writeoff_idr', '0'),
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:148: ('partner_accrual_cooling_off_days', '30')
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:151:CREATE TABLE IF NOT EXISTS partners (
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:192:CREATE TABLE IF NOT EXISTS partner_referrals (
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:194:    partner_id           UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:201:    CONSTRAINT partner_referrals_process_unique_v1 UNIQUE (process_id)
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:194: partner_id UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:201: CONSTRAINT partner_referrals_process_unique_v1 UNIQUE (process_id)
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:204:CREATE TABLE IF NOT EXISTS partner_commissions (
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:206:    partner_id               UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:207:    referral_id              UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:211:    related_commission_id    UUID REFERENCES partner_commissions(id) ON DELETE RESTRICT,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:216:    rule_source              TEXT NOT NULL DEFAULT 'partner_default'
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:217:        CHECK (rule_source IN ('partner_default','manual_override')),
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:206: partner_id UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:207: referral_id UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:211: related_commission_id UUID REFERENCES partner_commissions(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:216: rule_source TEXT NOT NULL DEFAULT 'partner_default'
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:217: CHECK (rule_source IN ('partner_default','manual_override')),
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:251:CREATE TABLE IF NOT EXISTS partner_audit_log (
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:253:    partner_id    UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:253: partner_id UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:264:DROP TABLE IF EXISTS partner_audit_log;
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:265:DROP TABLE IF EXISTS partner_commissions;
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:266:DROP TABLE IF EXISTS partner_referrals;
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:267:DROP TABLE IF EXISTS partners;
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:277:    Real asyncpg connection with all partner tables created for the test,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:277: Real asyncpg connection with all partner tables created for the test,
 apps/backend-rag/backend/tests/services/crm/partners/conftest.py:352:def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:353:    """Returns an async callable that inserts a partner and returns its UUID.
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:375:        _email = email or f"partner-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:378:            INSERT INTO partners
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:399:    """Returns an async callable that inserts a partner_referral and returns its UUID."""
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:402:        partner_id: uuid.UUID,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:409:            INSERT INTO partner_referrals (partner_id, process_id, share_percent)
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:413:            partner_id, _process_id, share_percent,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:469:    """Returns an async callable that inserts a partner_commissions row and returns its UUID.
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:472:    - partner_id: UUID (required)
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:485:        partner_id: uuid.UUID,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:517:            INSERT INTO partner_commissions (
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:518:                partner_id, process_id,
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:530:                'partner_default',
-apps/backend-rag/backend/tests/services/crm/partners/conftest.py:538:            uuid.UUID(int=partner_id.int),
-apps/backend-rag/backend/tests/routers/test_partners.py:10:  - fake_admin / fake_team / fake_partner: user dicts
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:353: """Returns an async callable that inserts a partner and returns its UUID.
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:375: _email = email or f"partner-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:378: INSERT INTO partners
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:399: """Returns an async callable that inserts a partner_referral and returns its UUID."""
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:402: partner_id: uuid.UUID,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:409: INSERT INTO partner_referrals (partner_id, process_id, share_percent)
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:413: partner_id, _process_id, share_percent,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:469: """Returns an async callable that inserts a partner_commissions row and returns its UUID.
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:472: - partner_id: UUID (required)
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:485: partner_id: uuid.UUID,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:517: INSERT INTO partner_commissions (
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:518: partner_id, process_id,
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:530: 'partner_default',
+apps/backend-rag/backend/tests/services/crm/partners/conftest.py:538: uuid.UUID(int=partner_id.int),
+apps/backend-rag/backend/tests/routers/test_partners.py:10: - fake_admin / fake_team / fake_partner: user dicts
 apps/backend-rag/backend/tests/routers/test_partners.py:27:import backend.app.routers.partners as partners_module
 apps/backend-rag/backend/tests/routers/test_partners.py:29:from backend.services.crm.partners.models import Partner
 apps/backend-rag/backend/tests/routers/test_partners.py:42:def _make_partner(**overrides: Any) -> Partner:
-apps/backend-rag/backend/tests/routers/test_partners.py:47:        email="partner@test.invalid",
+apps/backend-rag/backend/tests/routers/test_partners.py:47: email="partner@test.invalid",
 apps/backend-rag/backend/tests/routers/test_partners.py:63:def _partner_dict(**overrides: Any) -> dict[str, Any]:
-apps/backend-rag/backend/tests/routers/test_partners.py:68:        "email": "partner@test.invalid",
+apps/backend-rag/backend/tests/routers/test_partners.py:68: "email": "partner@test.invalid",
 apps/backend-rag/backend/tests/routers/test_partners.py:99:def fake_partner_user() -> dict[str, Any]:
-apps/backend-rag/backend/tests/routers/test_partners.py:100:    return {"user_id": str(_USER_ID), "email": "partner@balizero.com", "role": "partner", "permissions": []}
-apps/backend-rag/backend/tests/routers/test_partners.py:107:    application.include_router(partners_module.router)
+apps/backend-rag/backend/tests/routers/test_partners.py:100: return {"user_id": str(_USER_ID), "email": "partner@balizero.com", "role": "partner", "permissions": []}
+apps/backend-rag/backend/tests/routers/test_partners.py:107: application.include_router(partners_module.router)
 apps/backend-rag/backend/tests/routers/test_partners.py:128:def partner_app(fake_partner_user, mock_db_pool) -> tuple[FastAPI, TestClient, MagicMock, AsyncMock]:
-apps/backend-rag/backend/tests/routers/test_partners.py:130:    app = _make_app(fake_partner_user, pool)
+apps/backend-rag/backend/tests/routers/test_partners.py:130: app = _make_app(fake_partner_user, pool)
 apps/backend-rag/backend/tests/routers/test_partners.py:134:# ── 1. create_partner — team auto-assigns self ───────────────────────────────
-apps/backend-rag/backend/tests/routers/test_partners.py:139:        assert partners_module.router.prefix == "/api/partners"
-apps/backend-rag/backend/tests/routers/test_partners.py:140:        paths = {route.path for route in partners_module.router.routes}
-apps/backend-rag/backend/tests/routers/test_partners.py:141:        assert "/api/partners" in paths
-apps/backend-rag/backend/tests/routers/test_partners.py:142:        assert "/api/partners/{partner_id}" in paths
-apps/backend-rag/backend/tests/routers/test_partners.py:145:    def test_partner_create_model_validation(self) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:146:        payload = partners_module.PartnerCreate.model_validate({
-apps/backend-rag/backend/tests/routers/test_partners.py:156:    def test_create_partner_team_auto_assigns_self(self, team_app, fake_team) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:158:        partner = _make_partner(assigned_to=uuid.UUID(fake_team["user_id"]))
-apps/backend-rag/backend/tests/routers/test_partners.py:160:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:163:            svc_instance.create_partner = AsyncMock(return_value=_PARTNER_ID)
-apps/backend-rag/backend/tests/routers/test_partners.py:165:            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
-apps/backend-rag/backend/tests/routers/test_partners.py:168:                "/api/partners",
-apps/backend-rag/backend/tests/routers/test_partners.py:172:        # Verify create_partner was called with the team user's ID as assigned_to
-apps/backend-rag/backend/tests/routers/test_partners.py:173:        call_kwargs = svc_instance.create_partner.await_args.kwargs
-apps/backend-rag/backend/tests/routers/test_partners.py:177:    def test_create_partner_missing_required_fields_422(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:179:        resp = client.post("/api/partners", json={"full_name": "No Email"})
-apps/backend-rag/backend/tests/routers/test_partners.py:183:    def test_create_partner_conflict_409(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:185:        from backend.services.crm.partners.service import ConflictError
-apps/backend-rag/backend/tests/routers/test_partners.py:186:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:188:            svc_instance.create_partner = AsyncMock(
-apps/backend-rag/backend/tests/routers/test_partners.py:192:                "/api/partners",
-apps/backend-rag/backend/tests/routers/test_partners.py:198:    def test_create_partner_collision_with_internal_email_409(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:200:        from backend.services.crm.partners.service import ConflictError
-apps/backend-rag/backend/tests/routers/test_partners.py:201:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:203:            svc_instance.create_partner = AsyncMock(
-apps/backend-rag/backend/tests/routers/test_partners.py:207:                "/api/partners",
+apps/backend-rag/backend/tests/routers/test_partners.py:139: assert partners_module.router.prefix == "/api/partners"
+apps/backend-rag/backend/tests/routers/test_partners.py:140: paths = {route.path for route in partners_module.router.routes}
+apps/backend-rag/backend/tests/routers/test_partners.py:141: assert "/api/partners" in paths
+apps/backend-rag/backend/tests/routers/test_partners.py:142: assert "/api/partners/{partner_id}" in paths
+apps/backend-rag/backend/tests/routers/test_partners.py:145: def test_partner_create_model_validation(self) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:146: payload = partners_module.PartnerCreate.model_validate({
+apps/backend-rag/backend/tests/routers/test_partners.py:156: def test_create_partner_team_auto_assigns_self(self, team_app, fake_team) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:158: partner = _make_partner(assigned_to=uuid.UUID(fake_team["user_id"]))
+apps/backend-rag/backend/tests/routers/test_partners.py:160: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:163: svc_instance.create_partner = AsyncMock(return_value=_PARTNER_ID)
+apps/backend-rag/backend/tests/routers/test_partners.py:165: svc_instance.repo.get_partner = AsyncMock(return_value=partner)
+apps/backend-rag/backend/tests/routers/test_partners.py:168: "/api/partners",
+apps/backend-rag/backend/tests/routers/test_partners.py:172: # Verify create_partner was called with the team user's ID as assigned_to
+apps/backend-rag/backend/tests/routers/test_partners.py:173: call_kwargs = svc_instance.create_partner.await_args.kwargs
+apps/backend-rag/backend/tests/routers/test_partners.py:177: def test_create_partner_missing_required_fields_422(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:179: resp = client.post("/api/partners", json={"full_name": "No Email"})
+apps/backend-rag/backend/tests/routers/test_partners.py:183: def test_create_partner_conflict_409(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:185: from backend.services.crm.partners.service import ConflictError
+apps/backend-rag/backend/tests/routers/test_partners.py:186: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:188: svc_instance.create_partner = AsyncMock(
+apps/backend-rag/backend/tests/routers/test_partners.py:192: "/api/partners",
+apps/backend-rag/backend/tests/routers/test_partners.py:198: def test_create_partner_collision_with_internal_email_409(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:200: from backend.services.crm.partners.service import ConflictError
+apps/backend-rag/backend/tests/routers/test_partners.py:201: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:203: svc_instance.create_partner = AsyncMock(
+apps/backend-rag/backend/tests/routers/test_partners.py:207: "/api/partners",
 apps/backend-rag/backend/tests/routers/test_partners.py:213:# ── 2. list_partners ─────────────────────────────────────────────────────────
-apps/backend-rag/backend/tests/routers/test_partners.py:217:    def test_list_partners_admin_returns_all(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:219:        partner = _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:220:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:222:            svc_instance.list_partners = AsyncMock(return_value=[partner])
-apps/backend-rag/backend/tests/routers/test_partners.py:223:            resp = client.get("/api/partners")
-apps/backend-rag/backend/tests/routers/test_partners.py:229:    def test_list_partners_team_scopes_to_self(self, team_app, fake_team) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:231:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:233:            svc_instance.list_partners = AsyncMock(return_value=[])
-apps/backend-rag/backend/tests/routers/test_partners.py:234:            resp = client.get("/api/partners")
-apps/backend-rag/backend/tests/routers/test_partners.py:237:        call_kwargs = svc_instance.list_partners.await_args.kwargs
+apps/backend-rag/backend/tests/routers/test_partners.py:217: def test_list_partners_admin_returns_all(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:219: partner = _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:220: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:222: svc_instance.list_partners = AsyncMock(return_value=[partner])
+apps/backend-rag/backend/tests/routers/test_partners.py:223: resp = client.get("/api/partners")
+apps/backend-rag/backend/tests/routers/test_partners.py:229: def test_list_partners_team_scopes_to_self(self, team_app, fake_team) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:231: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:233: svc_instance.list_partners = AsyncMock(return_value=[])
+apps/backend-rag/backend/tests/routers/test_partners.py:234: resp = client.get("/api/partners")
+apps/backend-rag/backend/tests/routers/test_partners.py:237: call_kwargs = svc_instance.list_partners.await_args.kwargs
 apps/backend-rag/backend/tests/routers/test_partners.py:242:# ── 3. get_partner ────────────────────────────────────────────────────────────
-apps/backend-rag/backend/tests/routers/test_partners.py:246:    def test_get_partner_admin_sees_any(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:248:        partner = _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:249:        with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
-apps/backend-rag/backend/tests/routers/test_partners.py:251:                return partner
-apps/backend-rag/backend/tests/routers/test_partners.py:253:            resp = client.get(f"/api/partners/{_PARTNER_ID}")
-apps/backend-rag/backend/tests/routers/test_partners.py:257:    def test_get_partner_not_found_returns_404(self, admin_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:260:        with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
-apps/backend-rag/backend/tests/routers/test_partners.py:262:                raise HTTPException(status_code=404, detail="partner not found")
-apps/backend-rag/backend/tests/routers/test_partners.py:264:            resp = client.get(f"/api/partners/{_PARTNER_ID}")
+apps/backend-rag/backend/tests/routers/test_partners.py:246: def test_get_partner_admin_sees_any(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:248: partner = _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:249: with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+apps/backend-rag/backend/tests/routers/test_partners.py:251: return partner
+apps/backend-rag/backend/tests/routers/test_partners.py:253: resp = client.get(f"/api/partners/{_PARTNER_ID}")
+apps/backend-rag/backend/tests/routers/test_partners.py:257: def test_get_partner_not_found_returns_404(self, admin_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:260: with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+apps/backend-rag/backend/tests/routers/test_partners.py:262: raise HTTPException(status_code=404, detail="partner not found")
+apps/backend-rag/backend/tests/routers/test_partners.py:264: resp = client.get(f"/api/partners/{_PARTNER_ID}")
 apps/backend-rag/backend/tests/routers/test_partners.py:268:# ── 4. update_partner ─────────────────────────────────────────────────────────
-apps/backend-rag/backend/tests/routers/test_partners.py:272:    def test_patch_partner_team_can_update_own(self, team_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:274:        partner = _make_partner(full_name="Updated Name")
-apps/backend-rag/backend/tests/routers/test_partners.py:275:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:277:            svc_instance.update_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:279:            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
-apps/backend-rag/backend/tests/routers/test_partners.py:281:                f"/api/partners/{_PARTNER_ID}",
-apps/backend-rag/backend/tests/routers/test_partners.py:285:        svc_instance.update_partner.assert_awaited_once()
-apps/backend-rag/backend/tests/routers/test_partners.py:288:    def test_patch_partner_team_forbidden_on_other(self, team_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:291:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:293:            svc_instance.update_partner = AsyncMock(
-apps/backend-rag/backend/tests/routers/test_partners.py:297:                f"/api/partners/{_PARTNER_ID}",
-apps/backend-rag/backend/tests/routers/test_partners.py:310:        resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
-apps/backend-rag/backend/tests/routers/test_partners.py:316:        with patch("backend.app.routers.partners.PartnersService") as MockSvc, \
-apps/backend-rag/backend/tests/routers/test_partners.py:317:             patch("backend.services.crm.partners.emails.send_welcome", new=AsyncMock()):
-apps/backend-rag/backend/tests/routers/test_partners.py:319:            svc_instance.activate_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:320:            resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
-apps/backend-rag/backend/tests/routers/test_partners.py:326:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:328:            svc_instance.deactivate_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:329:            resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
-apps/backend-rag/backend/tests/routers/test_partners.py:336:        resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
-apps/backend-rag/backend/tests/routers/test_partners.py:346:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:348:            svc_instance.reassign_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:350:                f"/api/partners/{_PARTNER_ID}/reassign",
-apps/backend-rag/backend/tests/routers/test_partners.py:358:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:360:            svc_instance.reassign_partner = AsyncMock(
-apps/backend-rag/backend/tests/routers/test_partners.py:364:                f"/api/partners/{_PARTNER_ID}/reassign",
-apps/backend-rag/backend/tests/routers/test_partners.py:374:            f"/api/partners/{_PARTNER_ID}/reassign",
-apps/backend-rag/backend/tests/routers/test_partners.py:382:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:384:            svc_instance.reassign_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:386:                "/api/partners/bulk-reassign",
-apps/backend-rag/backend/tests/routers/test_partners.py:388:                    "partner_ids": [str(_PARTNER_ID)],
-apps/backend-rag/backend/tests/routers/test_partners.py:400:            "/api/partners/bulk-reassign",
-apps/backend-rag/backend/tests/routers/test_partners.py:402:                "partner_ids": [str(_PARTNER_ID)],
-apps/backend-rag/backend/tests/routers/test_partners.py:416:        r.partner_id = _PARTNER_ID
-apps/backend-rag/backend/tests/routers/test_partners.py:429:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:430:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:433:                return _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:437:            svc_instance.repo.list_referrals_for_partner = AsyncMock(return_value=[ref])
-apps/backend-rag/backend/tests/routers/test_partners.py:438:            resp = client.get(f"/api/partners/{_PARTNER_ID}/referrals")
-apps/backend-rag/backend/tests/routers/test_partners.py:446:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:447:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:450:                return _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:456:                f"/api/partners/{_PARTNER_ID}/referrals",
-apps/backend-rag/backend/tests/routers/test_partners.py:470:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:471:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:474:                return _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:479:                side_effect=Exception("unique constraint violation on partner_referrals_process_unique_v1")
-apps/backend-rag/backend/tests/routers/test_partners.py:482:                f"/api/partners/{_PARTNER_ID}/referrals",
-apps/backend-rag/backend/tests/routers/test_partners.py:490:        new_partner_id = uuid.uuid4()
-apps/backend-rag/backend/tests/routers/test_partners.py:491:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:494:            svc_instance.repo.update_referral_partner = AsyncMock()
-apps/backend-rag/backend/tests/routers/test_partners.py:496:                f"/api/partners/referrals/{_REFERRAL_ID}",
-apps/backend-rag/backend/tests/routers/test_partners.py:497:                json={"new_partner_id": str(new_partner_id)},
-apps/backend-rag/backend/tests/routers/test_partners.py:504:        new_partner_id = uuid.uuid4()
-apps/backend-rag/backend/tests/routers/test_partners.py:506:            f"/api/partners/referrals/{_REFERRAL_ID}",
-apps/backend-rag/backend/tests/routers/test_partners.py:507:            json={"new_partner_id": str(new_partner_id)},
-apps/backend-rag/backend/tests/routers/test_partners.py:514:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:518:            resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
-apps/backend-rag/backend/tests/routers/test_partners.py:524:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:530:            resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
-apps/backend-rag/backend/tests/routers/test_partners.py:536:        resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
-apps/backend-rag/backend/tests/routers/test_partners.py:547:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:548:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:551:                return _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:555:            svc_instance.repo.list_commissions_for_partner = AsyncMock(return_value=[])
-apps/backend-rag/backend/tests/routers/test_partners.py:556:            resp = client.get(f"/api/partners/{_PARTNER_ID}/commissions")
-apps/backend-rag/backend/tests/routers/test_partners.py:563:        with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
-apps/backend-rag/backend/tests/routers/test_partners.py:566:            resp = client.post(f"/api/partners/commissions/{_COMMISSION_ID}/approve")
-apps/backend-rag/backend/tests/routers/test_partners.py:572:        resp = client.post(f"/api/partners/commissions/{_COMMISSION_ID}/approve")
-apps/backend-rag/backend/tests/routers/test_partners.py:578:        with patch("backend.app.routers.partners.CommissionEngine") as MockEngine, \
-apps/backend-rag/backend/tests/routers/test_partners.py:579:             patch("backend.services.crm.partners.emails.send_commission_earned", new=AsyncMock()):
-apps/backend-rag/backend/tests/routers/test_partners.py:583:                f"/api/partners/commissions/{_COMMISSION_ID}/mark-paid",
-apps/backend-rag/backend/tests/routers/test_partners.py:592:            f"/api/partners/commissions/{_COMMISSION_ID}/mark-paid",
-apps/backend-rag/backend/tests/routers/test_partners.py:602:        with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
-apps/backend-rag/backend/tests/routers/test_partners.py:606:                f"/api/partners/commissions/{_COMMISSION_ID}/clawback",
-apps/backend-rag/backend/tests/routers/test_partners.py:616:            f"/api/partners/commissions/{_COMMISSION_ID}/clawback",
-apps/backend-rag/backend/tests/routers/test_partners.py:624:        with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
-apps/backend-rag/backend/tests/routers/test_partners.py:628:                f"/api/partners/commissions/{_COMMISSION_ID}/waive",
-apps/backend-rag/backend/tests/routers/test_partners.py:637:            f"/api/partners/commissions/{_COMMISSION_ID}/waive",
-apps/backend-rag/backend/tests/routers/test_partners.py:649:        resp = client.get("/api/partners/me")
-apps/backend-rag/backend/tests/routers/test_partners.py:653:    def test_me_partner_returns_own_profile(self, partner_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:654:        _, client, pool, conn = partner_app
-apps/backend-rag/backend/tests/routers/test_partners.py:655:        partner = _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:656:        # asyncpg Record-like dict for "SELECT partner_id FROM users ..."
-apps/backend-rag/backend/tests/routers/test_partners.py:657:        conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
-apps/backend-rag/backend/tests/routers/test_partners.py:658:        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-apps/backend-rag/backend/tests/routers/test_partners.py:661:            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
-apps/backend-rag/backend/tests/routers/test_partners.py:662:            resp = client.get("/api/partners/me")
-apps/backend-rag/backend/tests/routers/test_partners.py:666:    def test_me_no_partner_id_linked_403(self, partner_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:667:        _, client, pool, conn = partner_app
-apps/backend-rag/backend/tests/routers/test_partners.py:668:        conn.fetchrow = AsyncMock(return_value={"partner_id": None})
-apps/backend-rag/backend/tests/routers/test_partners.py:669:        resp = client.get("/api/partners/me")
-apps/backend-rag/backend/tests/routers/test_partners.py:675:        resp = client.get("/api/partners/me/referrals")
-apps/backend-rag/backend/tests/routers/test_partners.py:679:    def test_me_referrals_sterilizes_client_name(self, partner_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:681:        _, client, pool, conn = partner_app
-apps/backend-rag/backend/tests/routers/test_partners.py:682:        # First fetchrow: partner_id lookup
-apps/backend-rag/backend/tests/routers/test_partners.py:683:        conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
-apps/backend-rag/backend/tests/routers/test_partners.py:695:        resp = client.get("/api/partners/me/referrals")
-apps/backend-rag/backend/tests/routers/test_partners.py:708:        resp = client.get("/api/partners/me/commissions")
-apps/backend-rag/backend/tests/routers/test_partners.py:741:        resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
-apps/backend-rag/backend/tests/routers/test_partners.py:750:        resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
-apps/backend-rag/backend/tests/routers/test_partners.py:754:        assert "partner" in first_line
-apps/backend-rag/backend/tests/routers/test_partners.py:760:        resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
-apps/backend-rag/backend/tests/routers/test_partners.py:767:        resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
-apps/backend-rag/backend/tests/routers/test_partners.py:770:        assert "partners-2026-01-01-to-2026-04-30.csv" in resp.headers["content-disposition"]
-apps/backend-rag/backend/tests/routers/test_partners.py:775:        resp = client.get("/api/partners/finance/export?from=yesterday&to=tomorrow")
-apps/backend-rag/backend/tests/routers/test_partners.py:785:        assert partners_module._sterilize_client_for_partner("Mario Rossi") == "Mario R."
-apps/backend-rag/backend/tests/routers/test_partners.py:789:        assert partners_module._sterilize_client_for_partner("Siti") == "Siti"
-apps/backend-rag/backend/tests/routers/test_partners.py:793:        result = partners_module._sterilize_client_for_partner("Maria Angela Gomez")
-apps/backend-rag/backend/tests/routers/test_partners.py:798:        assert partners_module._sterilize_client_for_partner("") == ""
-apps/backend-rag/backend/tests/routers/test_partners.py:809:        entry1.partner_id = _PARTNER_ID
-apps/backend-rag/backend/tests/routers/test_partners.py:818:        entry2.partner_id = _PARTNER_ID
-apps/backend-rag/backend/tests/routers/test_partners.py:826:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:827:            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-apps/backend-rag/backend/tests/routers/test_partners.py:830:                return _make_partner()
-apps/backend-rag/backend/tests/routers/test_partners.py:834:            resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
-apps/backend-rag/backend/tests/routers/test_partners.py:840:    def test_list_audit_log_team_forbidden_for_other_partner(self, team_app) -> None:
-apps/backend-rag/backend/tests/routers/test_partners.py:844:            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-apps/backend-rag/backend/tests/routers/test_partners.py:845:            patch("backend.app.routers.partners.PartnersService"),
-apps/backend-rag/backend/tests/routers/test_partners.py:850:            resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
-apps/backend-rag/backend/tests/routers/test_partners.py:860:        partners_module._require_finance(user)  # must not raise
-apps/backend-rag/backend/tests/routers/test_partners.py:866:        partners_module._require_finance(user)  # must not raise
-apps/backend-rag/backend/tests/routers/test_partners.py:873:            partners_module._require_finance(user)
+apps/backend-rag/backend/tests/routers/test_partners.py:272: def test_patch_partner_team_can_update_own(self, team_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:274: partner = _make_partner(full_name="Updated Name")
+apps/backend-rag/backend/tests/routers/test_partners.py:275: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:277: svc_instance.update_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:279: svc_instance.repo.get_partner = AsyncMock(return_value=partner)
+apps/backend-rag/backend/tests/routers/test_partners.py:281: f"/api/partners/{_PARTNER_ID}",
+apps/backend-rag/backend/tests/routers/test_partners.py:285: svc_instance.update_partner.assert_awaited_once()
+apps/backend-rag/backend/tests/routers/test_partners.py:288: def test_patch_partner_team_forbidden_on_other(self, team_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:291: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:293: svc_instance.update_partner = AsyncMock(
+apps/backend-rag/backend/tests/routers/test_partners.py:297: f"/api/partners/{_PARTNER_ID}",
+apps/backend-rag/backend/tests/routers/test_partners.py:310: resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
+apps/backend-rag/backend/tests/routers/test_partners.py:316: with patch("backend.app.routers.partners.PartnersService") as MockSvc, \
+apps/backend-rag/backend/tests/routers/test_partners.py:317: patch("backend.services.crm.partners.emails.send_welcome", new=AsyncMock()):
+apps/backend-rag/backend/tests/routers/test_partners.py:319: svc_instance.activate_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:320: resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
+apps/backend-rag/backend/tests/routers/test_partners.py:326: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:328: svc_instance.deactivate_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:329: resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
+apps/backend-rag/backend/tests/routers/test_partners.py:336: resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
+apps/backend-rag/backend/tests/routers/test_partners.py:346: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:348: svc_instance.reassign_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:350: f"/api/partners/{_PARTNER_ID}/reassign",
+apps/backend-rag/backend/tests/routers/test_partners.py:358: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:360: svc_instance.reassign_partner = AsyncMock(
+apps/backend-rag/backend/tests/routers/test_partners.py:364: f"/api/partners/{_PARTNER_ID}/reassign",
+apps/backend-rag/backend/tests/routers/test_partners.py:374: f"/api/partners/{_PARTNER_ID}/reassign",
+apps/backend-rag/backend/tests/routers/test_partners.py:382: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:384: svc_instance.reassign_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:386: "/api/partners/bulk-reassign",
+apps/backend-rag/backend/tests/routers/test_partners.py:388: "partner_ids": [str(_PARTNER_ID)],
+apps/backend-rag/backend/tests/routers/test_partners.py:400: "/api/partners/bulk-reassign",
+apps/backend-rag/backend/tests/routers/test_partners.py:402: "partner_ids": [str(_PARTNER_ID)],
+apps/backend-rag/backend/tests/routers/test_partners.py:416: r.partner_id = _PARTNER_ID
+apps/backend-rag/backend/tests/routers/test_partners.py:429: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:430: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:433: return _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:437: svc_instance.repo.list_referrals_for_partner = AsyncMock(return_value=[ref])
+apps/backend-rag/backend/tests/routers/test_partners.py:438: resp = client.get(f"/api/partners/{_PARTNER_ID}/referrals")
+apps/backend-rag/backend/tests/routers/test_partners.py:446: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:447: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:450: return _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:456: f"/api/partners/{_PARTNER_ID}/referrals",
+apps/backend-rag/backend/tests/routers/test_partners.py:470: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:471: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:474: return _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:479: side_effect=Exception("unique constraint violation on partner_referrals_process_unique_v1")
+apps/backend-rag/backend/tests/routers/test_partners.py:482: f"/api/partners/{_PARTNER_ID}/referrals",
+apps/backend-rag/backend/tests/routers/test_partners.py:490: new_partner_id = uuid.uuid4()
+apps/backend-rag/backend/tests/routers/test_partners.py:491: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:494: svc_instance.repo.update_referral_partner = AsyncMock()
+apps/backend-rag/backend/tests/routers/test_partners.py:496: f"/api/partners/referrals/{_REFERRAL_ID}",
+apps/backend-rag/backend/tests/routers/test_partners.py:497: json={"new_partner_id": str(new_partner_id)},
+apps/backend-rag/backend/tests/routers/test_partners.py:504: new_partner_id = uuid.uuid4()
+apps/backend-rag/backend/tests/routers/test_partners.py:506: f"/api/partners/referrals/{_REFERRAL_ID}",
+apps/backend-rag/backend/tests/routers/test_partners.py:507: json={"new_partner_id": str(new_partner_id)},
+apps/backend-rag/backend/tests/routers/test_partners.py:514: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:518: resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
+apps/backend-rag/backend/tests/routers/test_partners.py:524: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:530: resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
+apps/backend-rag/backend/tests/routers/test_partners.py:536: resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
+apps/backend-rag/backend/tests/routers/test_partners.py:547: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:548: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:551: return _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:555: svc_instance.repo.list_commissions_for_partner = AsyncMock(return_value=[])
+apps/backend-rag/backend/tests/routers/test_partners.py:556: resp = client.get(f"/api/partners/{_PARTNER_ID}/commissions")
+apps/backend-rag/backend/tests/routers/test_partners.py:563: with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
+apps/backend-rag/backend/tests/routers/test_partners.py:566: resp = client.post(f"/api/partners/commissions/{_COMMISSION_ID}/approve")
+apps/backend-rag/backend/tests/routers/test_partners.py:572: resp = client.post(f"/api/partners/commissions/{_COMMISSION_ID}/approve")
+apps/backend-rag/backend/tests/routers/test_partners.py:578: with patch("backend.app.routers.partners.CommissionEngine") as MockEngine, \
+apps/backend-rag/backend/tests/routers/test_partners.py:579: patch("backend.services.crm.partners.emails.send_commission_earned", new=AsyncMock()):
+apps/backend-rag/backend/tests/routers/test_partners.py:583: f"/api/partners/commissions/{_COMMISSION_ID}/mark-paid",
+apps/backend-rag/backend/tests/routers/test_partners.py:592: f"/api/partners/commissions/{_COMMISSION_ID}/mark-paid",
+apps/backend-rag/backend/tests/routers/test_partners.py:602: with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
+apps/backend-rag/backend/tests/routers/test_partners.py:606: f"/api/partners/commissions/{_COMMISSION_ID}/clawback",
+apps/backend-rag/backend/tests/routers/test_partners.py:616: f"/api/partners/commissions/{_COMMISSION_ID}/clawback",
+apps/backend-rag/backend/tests/routers/test_partners.py:624: with patch("backend.app.routers.partners.CommissionEngine") as MockEngine:
+apps/backend-rag/backend/tests/routers/test_partners.py:628: f"/api/partners/commissions/{_COMMISSION_ID}/waive",
+apps/backend-rag/backend/tests/routers/test_partners.py:637: f"/api/partners/commissions/{_COMMISSION_ID}/waive",
+apps/backend-rag/backend/tests/routers/test_partners.py:649: resp = client.get("/api/partners/me")
+apps/backend-rag/backend/tests/routers/test_partners.py:653: def test_me_partner_returns_own_profile(self, partner_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:654: _, client, pool, conn = partner_app
+apps/backend-rag/backend/tests/routers/test_partners.py:655: partner = _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:656: # asyncpg Record-like dict for "SELECT partner_id FROM users ..."
+apps/backend-rag/backend/tests/routers/test_partners.py:657: conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
+apps/backend-rag/backend/tests/routers/test_partners.py:658: with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+apps/backend-rag/backend/tests/routers/test_partners.py:661: svc_instance.repo.get_partner = AsyncMock(return_value=partner)
+apps/backend-rag/backend/tests/routers/test_partners.py:662: resp = client.get("/api/partners/me")
+apps/backend-rag/backend/tests/routers/test_partners.py:666: def test_me_no_partner_id_linked_403(self, partner_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:667: _, client, pool, conn = partner_app
+apps/backend-rag/backend/tests/routers/test_partners.py:668: conn.fetchrow = AsyncMock(return_value={"partner_id": None})
+apps/backend-rag/backend/tests/routers/test_partners.py:669: resp = client.get("/api/partners/me")
+apps/backend-rag/backend/tests/routers/test_partners.py:675: resp = client.get("/api/partners/me/referrals")
+apps/backend-rag/backend/tests/routers/test_partners.py:679: def test_me_referrals_sterilizes_client_name(self, partner_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:681: _, client, pool, conn = partner_app
+apps/backend-rag/backend/tests/routers/test_partners.py:682: # First fetchrow: partner_id lookup
+apps/backend-rag/backend/tests/routers/test_partners.py:683: conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
+apps/backend-rag/backend/tests/routers/test_partners.py:695: resp = client.get("/api/partners/me/referrals")
+apps/backend-rag/backend/tests/routers/test_partners.py:708: resp = client.get("/api/partners/me/commissions")
+apps/backend-rag/backend/tests/routers/test_partners.py:741: resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
+apps/backend-rag/backend/tests/routers/test_partners.py:750: resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
+apps/backend-rag/backend/tests/routers/test_partners.py:754: assert "partner" in first_line
+apps/backend-rag/backend/tests/routers/test_partners.py:760: resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
+apps/backend-rag/backend/tests/routers/test_partners.py:767: resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
+apps/backend-rag/backend/tests/routers/test_partners.py:770: assert "partners-2026-01-01-to-2026-04-30.csv" in resp.headers["content-disposition"]
+apps/backend-rag/backend/tests/routers/test_partners.py:775: resp = client.get("/api/partners/finance/export?from=yesterday&to=tomorrow")
+apps/backend-rag/backend/tests/routers/test_partners.py:785: assert partners_module._sterilize_client_for_partner("Mario Rossi") == "Mario R."
+apps/backend-rag/backend/tests/routers/test_partners.py:789: assert partners_module._sterilize_client_for_partner("Siti") == "Siti"
+apps/backend-rag/backend/tests/routers/test_partners.py:793: result = partners_module._sterilize_client_for_partner("Maria Angela Gomez")
+apps/backend-rag/backend/tests/routers/test_partners.py:798: assert partners_module._sterilize_client_for_partner("") == ""
+apps/backend-rag/backend/tests/routers/test_partners.py:809: entry1.partner_id = _PARTNER_ID
+apps/backend-rag/backend/tests/routers/test_partners.py:818: entry2.partner_id = _PARTNER_ID
+apps/backend-rag/backend/tests/routers/test_partners.py:826: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:827: patch("backend.app.routers.partners.PartnersService") as MockSvc,
+apps/backend-rag/backend/tests/routers/test_partners.py:830: return _make_partner()
+apps/backend-rag/backend/tests/routers/test_partners.py:834: resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
+apps/backend-rag/backend/tests/routers/test_partners.py:840: def test_list_audit_log_team_forbidden_for_other_partner(self, team_app) -> None:
+apps/backend-rag/backend/tests/routers/test_partners.py:844: patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+apps/backend-rag/backend/tests/routers/test_partners.py:845: patch("backend.app.routers.partners.PartnersService"),
+apps/backend-rag/backend/tests/routers/test_partners.py:850: resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
+apps/backend-rag/backend/tests/routers/test_partners.py:860: partners_module._require_finance(user) # must not raise
+apps/backend-rag/backend/tests/routers/test_partners.py:866: partners_module._require_finance(user) # must not raise
+apps/backend-rag/backend/tests/routers/test_partners.py:873: partners_module._require_finance(user)
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:1:# tests/services/crm/partners/test_repository.py
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:6:that creates the partner tables fresh for each test run and drops them in
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:15:from backend.services.crm.partners.repository import PartnersRepository
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:27:async def _make_commission(repo: PartnersRepository, partner_id, **kwargs) -> str:
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:30:        partner_id=partner_id,
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:30: partner_id=partner_id,
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:44:# 1. insert_partner defaults
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:48:async def test_insert_partner_returns_id_and_defaults(repo):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:49:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:54:    p = await repo.get_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:69:    await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:73:        await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:89:        await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:49: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:54: p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:69: await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:73: await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:89: await repo.insert_partner(
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:97:# 4. list_partners filter by assigned_to
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:101:async def test_list_partners_filters_by_assigned_to(repo, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:104:    p1 = await repo.insert_partner(full_name="P1", email="p1@x.io",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:106:    _ = await repo.insert_partner(full_name="P2", email="p2@x.io",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:108:    results = await repo.list_partners(assigned_to=u1)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:119:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:123:        partner_id=pid,
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:143:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:147:        partner_id=pid, entry_type="accrual",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:157:            partner_id=pid, entry_type="accrual",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:104: p1 = await repo.insert_partner(full_name="P1", email="p1@x.io",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:106: _ = await repo.insert_partner(full_name="P2", email="p2@x.io",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:108: results = await repo.list_partners(assigned_to=u1)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:119: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:123: partner_id=pid,
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:143: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:147: partner_id=pid, entry_type="accrual",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:157: partner_id=pid, entry_type="accrual",
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:168:# 7. update_partner whitelist rejects status column
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:172:async def test_update_partner_whitelist_rejects_status_column(repo):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:173:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:177:        await repo.update_partner(pid, onboarding_status="active")
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:173: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:177: await repo.update_partner(pid, onboarding_status="active")
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:181:# 8. activate_partner transitions status
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:185:async def test_activate_partner_transitions_status(repo):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:186:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:189:    p = await repo.get_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:192:    await repo.activate_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:193:    p = await repo.get_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:196:    # idempotent — calling again on already-active partner is a no-op (no row updated, no error)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:197:    await repo.activate_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:198:    p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:186: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:189: p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:192: await repo.activate_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:193: p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:196: # idempotent — calling again on already-active partner is a no-op (no row updated, no error)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:197: await repo.activate_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:198: p = await repo.get_partner(pid)
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:203:# 9. deactivate_partner sets status and deactivated_at
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:207:async def test_deactivate_partner_sets_status_and_timestamp(repo):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:208:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:211:    await repo.activate_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:212:    await repo.deactivate_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:213:    p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:208: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:211: await repo.activate_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:212: await repo.deactivate_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:213: p = await repo.get_partner(pid)
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:219:# 10. reassign_partner changes assigned_to
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:223:async def test_reassign_partner_changes_assigned_to(repo, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:226:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:230:    p = await repo.get_partner(pid)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:233:    await repo.reassign_partner(pid, u2)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:234:    p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:226: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:230: p = await repo.get_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:233: await repo.reassign_partner(pid, u2)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:234: p = await repo.get_partner(pid)
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:239:# 11. orphan_partners_of_user
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:243:async def test_orphan_partners_of_user(repo, user_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:245:    # Insert two partners assigned to user u, plus one not assigned
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:246:    await repo.insert_partner(full_name="Op1", email="op1@h.io",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:248:    await repo.insert_partner(full_name="Op2", email="op2@h.io",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:250:    await repo.insert_partner(full_name="Op3", email="op3@h.io",
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:253:    count = await repo.orphan_partners_of_user(u)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:256:    # All partners of u should now have assigned_to = NULL
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:257:    results = await repo.list_partners(assigned_to=u)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:261:    orphaned = await repo.list_partners(orphaned=True)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:274:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:278:    await repo.insert_referral(partner_id=pid, process_id=process_id)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:280:        await repo.insert_referral(partner_id=pid, process_id=process_id)
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:289:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:309:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:325:    pid = await repo.insert_partner(
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:331:        partner_id=pid,
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:339:        partner_id=pid,
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:347:    entries = await repo.list_audit_for_partner(pid)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:245: # Insert two partners assigned to user u, plus one not assigned
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:246: await repo.insert_partner(full_name="Op1", email="op1@h.io",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:248: await repo.insert_partner(full_name="Op2", email="op2@h.io",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:250: await repo.insert_partner(full_name="Op3", email="op3@h.io",
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:253: count = await repo.orphan_partners_of_user(u)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:256: # All partners of u should now have assigned_to = NULL
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:257: results = await repo.list_partners(assigned_to=u)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:261: orphaned = await repo.list_partners(orphaned=True)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:274: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:278: await repo.insert_referral(partner_id=pid, process_id=process_id)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:280: await repo.insert_referral(partner_id=pid, process_id=process_id)
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:289: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:309: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:325: pid = await repo.insert_partner(
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:331: partner_id=pid,
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:339: partner_id=pid,
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:347: entries = await repo.list_audit_for_partner(pid)
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:358:# 16. update_partner rejects empty fields dict
 apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:362:async def test_update_partner_rejects_empty_fields(repo, partner_factory):
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:363:    p = await partner_factory()
-apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:365:        await repo.update_partner(p)
-apps/backend-rag/backend/tests/unit/routers/test_auth_auto_clockin.py:128:            email="partner@other-company.com",
-apps/backend-rag/backend/tests/services/rag/test_kg_cache_proactive.py:104:    async def subscribe(self, channel: str) -> None:
-apps/backend-rag/backend/tests/services/rag/test_kg_cache_proactive.py:107:    async def unsubscribe(self, channel: str) -> None:
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:363: p = await partner_factory()
+apps/backend-rag/backend/tests/services/crm/partners/test_repository.py:365: await repo.update_partner(p)
+apps/backend-rag/backend/tests/unit/routers/test_auth_auto_clockin.py:128: email="partner@other-company.com",
+apps/backend-rag/backend/tests/services/rag/test_kg_cache_proactive.py:104: async def subscribe(self, channel: str) -> None:
+apps/backend-rag/backend/tests/services/rag/test_kg_cache_proactive.py:107: async def unsubscribe(self, channel: str) -> None:
 apps/backend-rag/backend/tests/unit/services/test_event_bus.py:9:from backend.services.events.event_bus import EventBus, PG_CHANNEL_MAP
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:28:        bus.subscribe("test.event", handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:46:        bus.subscribe("multi.event", handler_a)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:47:        bus.subscribe("multi.event", handler_b)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:68:        bus.subscribe("error.event", bad_handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:69:        bus.subscribe("error.event", good_handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:80:    async def test_unsubscribe(self, bus: EventBus) -> None:
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:87:        bus.subscribe("unsub.event", handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:91:        bus.unsubscribe("unsub.event", handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:100:        bus.subscribe("timed.event", slow_handler)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:123:        bus.subscribe("stats.event", noop)
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:137:        assert "practice_changed" in PG_CHANNEL_MAP
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:138:        assert "client_changed" in PG_CHANNEL_MAP
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:139:        assert "compliance_alert" in PG_CHANNEL_MAP
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:142:        for event_type in PG_CHANNEL_MAP.values():
-apps/backend-rag/backend/tests/unit/services/test_event_bus.py:156:        bus.subscribe("client.changed", handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:28: bus.subscribe("test.event", handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:46: bus.subscribe("multi.event", handler_a)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:47: bus.subscribe("multi.event", handler_b)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:68: bus.subscribe("error.event", bad_handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:69: bus.subscribe("error.event", good_handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:80: async def test_unsubscribe(self, bus: EventBus) -> None:
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:87: bus.subscribe("unsub.event", handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:91: bus.unsubscribe("unsub.event", handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:100: bus.subscribe("timed.event", slow_handler)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:123: bus.subscribe("stats.event", noop)
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:137: assert "practice_changed" in PG_CHANNEL_MAP
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:138: assert "client_changed" in PG_CHANNEL_MAP
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:139: assert "compliance_alert" in PG_CHANNEL_MAP
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:142: for event_type in PG_CHANNEL_MAP.values():
+apps/backend-rag/backend/tests/unit/services/test_event_bus.py:156: bus.subscribe("client.changed", handler)
 apps/backend-rag/backend/app/routers/partners.py:4:21 endpoints covering partner lifecycle, referrals, commissions, self-serve
 apps/backend-rag/backend/app/routers/partners.py:5:/me routes for partner-role users, and a finance CSV export.
 apps/backend-rag/backend/app/routers/partners.py:14:- No partner_id in user dict; /me endpoints query users.partner_id from DB.
 apps/backend-rag/backend/app/routers/partners.py:35:from backend.services.crm.partners.commission_engine import CommissionEngine
 apps/backend-rag/backend/app/routers/partners.py:36:from backend.services.crm.partners.service import (
-apps/backend-rag/backend/app/routers/partners.py:39:    verify_partner_access_with_role,
+apps/backend-rag/backend/app/routers/partners.py:39: verify_partner_access_with_role,
 apps/backend-rag/backend/app/routers/partners.py:44:router = APIRouter(prefix="/api/partners", tags=["partners"])
-apps/backend-rag/backend/app/routers/partners.py:110:    partner_ids: list[UUID]
-apps/backend-rag/backend/app/routers/partners.py:121:    new_partner_id: UUID
+apps/backend-rag/backend/app/routers/partners.py:110: partner_ids: list[UUID]
+apps/backend-rag/backend/app/routers/partners.py:121: new_partner_id: UUID
 apps/backend-rag/backend/app/routers/partners.py:164:def _sterilize_client_for_partner(full_name: str) -> str:
-apps/backend-rag/backend/app/routers/partners.py:165:    """'Mario Rossi' → 'Mario R.' — hide client surname from partner-role user."""
+apps/backend-rag/backend/app/routers/partners.py:165: """'Mario Rossi' → 'Mario R.' — hide client surname from partner-role user."""
 apps/backend-rag/backend/app/routers/partners.py:174:def _partner_to_dict(p: Any) -> dict[str, Any]:
 apps/backend-rag/backend/app/routers/partners.py:184:async def create_partner(
-apps/backend-rag/backend/app/routers/partners.py:189:    """Create a new partner. Team members auto-assign to themselves."""
-apps/backend-rag/backend/app/routers/partners.py:200:            pid = await svc.create_partner(
-apps/backend-rag/backend/app/routers/partners.py:205:            partner = await svc.repo.get_partner(pid)
-apps/backend-rag/backend/app/routers/partners.py:206:            return _partner_to_dict(partner)
-apps/backend-rag/backend/app/routers/partners.py:210:        logger.exception("create_partner failed")
+apps/backend-rag/backend/app/routers/partners.py:189: """Create a new partner. Team members auto-assign to themselves."""
+apps/backend-rag/backend/app/routers/partners.py:200: pid = await svc.create_partner(
+apps/backend-rag/backend/app/routers/partners.py:205: partner = await svc.repo.get_partner(pid)
+apps/backend-rag/backend/app/routers/partners.py:206: return _partner_to_dict(partner)
+apps/backend-rag/backend/app/routers/partners.py:210: logger.exception("create_partner failed")
 apps/backend-rag/backend/app/routers/partners.py:215:async def list_partners(
-apps/backend-rag/backend/app/routers/partners.py:223:    """List partners. Team members see only their own."""
-apps/backend-rag/backend/app/routers/partners.py:226:        partners = await svc.list_partners(
-apps/backend-rag/backend/app/routers/partners.py:234:        return [_partner_to_dict(p) for p in partners]
-apps/backend-rag/backend/app/routers/partners.py:242:    """Self-view for partner-role users. Returns their own partner record."""
-apps/backend-rag/backend/app/routers/partners.py:243:    if user.get("role") != "partner":
-apps/backend-rag/backend/app/routers/partners.py:244:        raise HTTPException(status_code=403, detail="partner role required")
-apps/backend-rag/backend/app/routers/partners.py:247:            "SELECT partner_id FROM users WHERE id = $1",
+apps/backend-rag/backend/app/routers/partners.py:223: """List partners. Team members see only their own."""
+apps/backend-rag/backend/app/routers/partners.py:226: partners = await svc.list_partners(
+apps/backend-rag/backend/app/routers/partners.py:234: return [_partner_to_dict(p) for p in partners]
+apps/backend-rag/backend/app/routers/partners.py:242: """Self-view for partner-role users. Returns their own partner record."""
+apps/backend-rag/backend/app/routers/partners.py:243: if user.get("role") != "partner":
+apps/backend-rag/backend/app/routers/partners.py:244: raise HTTPException(status_code=403, detail="partner role required")
+apps/backend-rag/backend/app/routers/partners.py:247: "SELECT partner_id FROM users WHERE id = $1",
 apps/backend-rag/backend/app/routers/partners.py:250:        if not row or not row["partner_id"]:
 apps/backend-rag/backend/app/routers/partners.py:251:            raise HTTPException(status_code=403, detail="no partner profile linked to this user")
 apps/backend-rag/backend/app/routers/partners.py:253:        partner = await svc.repo.get_partner(row["partner_id"])
@@ -9775,187 +9789,187 @@ apps/backend-rag/backend/app/routers/partners.py:264:    """List referrals for t
 apps/backend-rag/backend/app/routers/partners.py:265:    if user.get("role") != "partner":
 apps/backend-rag/backend/app/routers/partners.py:266:        raise HTTPException(status_code=403, detail="partner role required")
 apps/backend-rag/backend/app/routers/partners.py:269:            "SELECT partner_id FROM users WHERE id = $1",
-apps/backend-rag/backend/app/routers/partners.py:272:        if not row or not row["partner_id"]:
-apps/backend-rag/backend/app/routers/partners.py:273:            raise HTTPException(status_code=403, detail="no partner profile linked to this user")
-apps/backend-rag/backend/app/routers/partners.py:274:        partner_id = row["partner_id"]
-apps/backend-rag/backend/app/routers/partners.py:280:            FROM partner_referrals pr
-apps/backend-rag/backend/app/routers/partners.py:283:            WHERE pr.partner_id = $1
+apps/backend-rag/backend/app/routers/partners.py:272: if not row or not row["partner_id"]:
+apps/backend-rag/backend/app/routers/partners.py:273: raise HTTPException(status_code=403, detail="no partner profile linked to this user")
+apps/backend-rag/backend/app/routers/partners.py:274: partner_id = row["partner_id"]
+apps/backend-rag/backend/app/routers/partners.py:280: FROM partner_referrals pr
+apps/backend-rag/backend/app/routers/partners.py:283: WHERE pr.partner_id = $1
 apps/backend-rag/backend/app/routers/partners.py:286:            partner_id,
 apps/backend-rag/backend/app/routers/partners.py:294:            "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
 apps/backend-rag/backend/app/routers/partners.py:306:    """List commissions for the calling partner user."""
 apps/backend-rag/backend/app/routers/partners.py:307:    if user.get("role") != "partner":
 apps/backend-rag/backend/app/routers/partners.py:308:        raise HTTPException(status_code=403, detail="partner role required")
 apps/backend-rag/backend/app/routers/partners.py:311:            "SELECT partner_id FROM users WHERE id = $1",
-apps/backend-rag/backend/app/routers/partners.py:314:        if not row or not row["partner_id"]:
-apps/backend-rag/backend/app/routers/partners.py:315:            raise HTTPException(status_code=403, detail="no partner profile linked to this user")
-apps/backend-rag/backend/app/routers/partners.py:317:        commissions = await svc.repo.list_commissions_for_partner(row["partner_id"])
-apps/backend-rag/backend/app/routers/partners.py:348:                FROM partner_commissions pc
-apps/backend-rag/backend/app/routers/partners.py:349:                JOIN partners p ON p.id = pc.partner_id
-apps/backend-rag/backend/app/routers/partners.py:359:            "commission_id", "partner", "npwp", "entity_type", "entry_type",
-apps/backend-rag/backend/app/routers/partners.py:369:                "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
+apps/backend-rag/backend/app/routers/partners.py:314: if not row or not row["partner_id"]:
+apps/backend-rag/backend/app/routers/partners.py:315: raise HTTPException(status_code=403, detail="no partner profile linked to this user")
+apps/backend-rag/backend/app/routers/partners.py:317: commissions = await svc.repo.list_commissions_for_partner(row["partner_id"])
+apps/backend-rag/backend/app/routers/partners.py:348: FROM partner_commissions pc
+apps/backend-rag/backend/app/routers/partners.py:349: JOIN partners p ON p.id = pc.partner_id
+apps/backend-rag/backend/app/routers/partners.py:359: "commission_id", "partner", "npwp", "entity_type", "entry_type",
+apps/backend-rag/backend/app/routers/partners.py:369: "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
 apps/backend-rag/backend/app/routers/partners.py:379:@router.get("/{partner_id}")
 apps/backend-rag/backend/app/routers/partners.py:380:async def get_partner(
-apps/backend-rag/backend/app/routers/partners.py:381:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:385:    """Get a partner by ID. Scoped by role."""
-apps/backend-rag/backend/app/routers/partners.py:388:        partner = await verify_partner_access_with_role(
-apps/backend-rag/backend/app/routers/partners.py:392:            partner_id,
-apps/backend-rag/backend/app/routers/partners.py:394:        return _partner_to_dict(partner)
+apps/backend-rag/backend/app/routers/partners.py:381: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:385: """Get a partner by ID. Scoped by role."""
+apps/backend-rag/backend/app/routers/partners.py:388: partner = await verify_partner_access_with_role(
+apps/backend-rag/backend/app/routers/partners.py:392: partner_id,
+apps/backend-rag/backend/app/routers/partners.py:394: return _partner_to_dict(partner)
 apps/backend-rag/backend/app/routers/partners.py:397:@router.patch("/{partner_id}")
 apps/backend-rag/backend/app/routers/partners.py:398:async def update_partner(
-apps/backend-rag/backend/app/routers/partners.py:399:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:404:    """Update a partner. Team members can only update their own assigned partners."""
-apps/backend-rag/backend/app/routers/partners.py:409:            await svc.update_partner(
-apps/backend-rag/backend/app/routers/partners.py:410:                partner_id,
-apps/backend-rag/backend/app/routers/partners.py:415:            partner = await svc.repo.get_partner(partner_id)
-apps/backend-rag/backend/app/routers/partners.py:416:            return _partner_to_dict(partner)
-apps/backend-rag/backend/app/routers/partners.py:420:        logger.exception("update_partner failed")
+apps/backend-rag/backend/app/routers/partners.py:399: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:404: """Update a partner. Team members can only update their own assigned partners."""
+apps/backend-rag/backend/app/routers/partners.py:409: await svc.update_partner(
+apps/backend-rag/backend/app/routers/partners.py:410: partner_id,
+apps/backend-rag/backend/app/routers/partners.py:415: partner = await svc.repo.get_partner(partner_id)
+apps/backend-rag/backend/app/routers/partners.py:416: return _partner_to_dict(partner)
+apps/backend-rag/backend/app/routers/partners.py:420: logger.exception("update_partner failed")
 apps/backend-rag/backend/app/routers/partners.py:424:@router.post("/{partner_id}/activate", status_code=status.HTTP_204_NO_CONTENT)
 apps/backend-rag/backend/app/routers/partners.py:425:async def activate_partner(
-apps/backend-rag/backend/app/routers/partners.py:426:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:430:    """Activate a partner. Admin only."""
-apps/backend-rag/backend/app/routers/partners.py:435:            await svc.activate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
-apps/backend-rag/backend/app/routers/partners.py:438:                from backend.services.crm.partners.emails import send_welcome
-apps/backend-rag/backend/app/routers/partners.py:439:                await send_welcome(conn, partner_id)
-apps/backend-rag/backend/app/routers/partners.py:446:        logger.exception("activate_partner failed")
+apps/backend-rag/backend/app/routers/partners.py:426: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:430: """Activate a partner. Admin only."""
+apps/backend-rag/backend/app/routers/partners.py:435: await svc.activate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
+apps/backend-rag/backend/app/routers/partners.py:438: from backend.services.crm.partners.emails import send_welcome
+apps/backend-rag/backend/app/routers/partners.py:439: await send_welcome(conn, partner_id)
+apps/backend-rag/backend/app/routers/partners.py:446: logger.exception("activate_partner failed")
 apps/backend-rag/backend/app/routers/partners.py:450:@router.post("/{partner_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
 apps/backend-rag/backend/app/routers/partners.py:451:async def deactivate_partner(
-apps/backend-rag/backend/app/routers/partners.py:452:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:456:    """Deactivate a partner. Admin only."""
-apps/backend-rag/backend/app/routers/partners.py:461:            await svc.deactivate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
-apps/backend-rag/backend/app/routers/partners.py:466:        logger.exception("deactivate_partner failed")
+apps/backend-rag/backend/app/routers/partners.py:452: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:456: """Deactivate a partner. Admin only."""
+apps/backend-rag/backend/app/routers/partners.py:461: await svc.deactivate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
+apps/backend-rag/backend/app/routers/partners.py:466: logger.exception("deactivate_partner failed")
 apps/backend-rag/backend/app/routers/partners.py:470:@router.post("/{partner_id}/reassign", status_code=status.HTTP_204_NO_CONTENT)
 apps/backend-rag/backend/app/routers/partners.py:471:async def reassign_partner(
-apps/backend-rag/backend/app/routers/partners.py:472:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:477:    """Reassign a partner to a different team member. Admin only."""
-apps/backend-rag/backend/app/routers/partners.py:482:            await svc.reassign_partner(
-apps/backend-rag/backend/app/routers/partners.py:483:                partner_id,
-apps/backend-rag/backend/app/routers/partners.py:494:        logger.exception("reassign_partner failed")
-apps/backend-rag/backend/app/routers/partners.py:504:    """Bulk-reassign multiple partners to a single user. Admin only."""
-apps/backend-rag/backend/app/routers/partners.py:509:            for pid in body.partner_ids:
-apps/backend-rag/backend/app/routers/partners.py:510:                await svc.reassign_partner(
+apps/backend-rag/backend/app/routers/partners.py:472: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:477: """Reassign a partner to a different team member. Admin only."""
+apps/backend-rag/backend/app/routers/partners.py:482: await svc.reassign_partner(
+apps/backend-rag/backend/app/routers/partners.py:483: partner_id,
+apps/backend-rag/backend/app/routers/partners.py:494: logger.exception("reassign_partner failed")
+apps/backend-rag/backend/app/routers/partners.py:504: """Bulk-reassign multiple partners to a single user. Admin only."""
+apps/backend-rag/backend/app/routers/partners.py:509: for pid in body.partner_ids:
+apps/backend-rag/backend/app/routers/partners.py:510: await svc.reassign_partner(
 apps/backend-rag/backend/app/routers/partners.py:528:@router.get("/{partner_id}/referrals")
-apps/backend-rag/backend/app/routers/partners.py:530:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:534:    """List referrals for a partner. Scoped by role."""
-apps/backend-rag/backend/app/routers/partners.py:537:        await verify_partner_access_with_role(
-apps/backend-rag/backend/app/routers/partners.py:538:            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-apps/backend-rag/backend/app/routers/partners.py:540:        refs = await svc.repo.list_referrals_for_partner(partner_id)
+apps/backend-rag/backend/app/routers/partners.py:530: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:534: """List referrals for a partner. Scoped by role."""
+apps/backend-rag/backend/app/routers/partners.py:537: await verify_partner_access_with_role(
+apps/backend-rag/backend/app/routers/partners.py:538: svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+apps/backend-rag/backend/app/routers/partners.py:540: refs = await svc.repo.list_referrals_for_partner(partner_id)
 apps/backend-rag/backend/app/routers/partners.py:547:@router.post("/{partner_id}/referrals", status_code=status.HTTP_201_CREATED)
-apps/backend-rag/backend/app/routers/partners.py:549:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:554:    """Record a referral for a partner. Team (owner) or admin."""
-apps/backend-rag/backend/app/routers/partners.py:558:            await verify_partner_access_with_role(
-apps/backend-rag/backend/app/routers/partners.py:559:                svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-apps/backend-rag/backend/app/routers/partners.py:562:                partner_id=partner_id,
-apps/backend-rag/backend/app/routers/partners.py:567:            return {"id": str(rid), "partner_id": str(partner_id), "process_id": str(body.process_id)}
-apps/backend-rag/backend/app/routers/partners.py:586:    """Swap a referral to a different partner. Admin only."""
-apps/backend-rag/backend/app/routers/partners.py:591:            await svc.repo.update_referral_partner(referral_id, body.new_partner_id)
+apps/backend-rag/backend/app/routers/partners.py:549: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:554: """Record a referral for a partner. Team (owner) or admin."""
+apps/backend-rag/backend/app/routers/partners.py:558: await verify_partner_access_with_role(
+apps/backend-rag/backend/app/routers/partners.py:559: svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+apps/backend-rag/backend/app/routers/partners.py:562: partner_id=partner_id,
+apps/backend-rag/backend/app/routers/partners.py:567: return {"id": str(rid), "partner_id": str(partner_id), "process_id": str(body.process_id)}
+apps/backend-rag/backend/app/routers/partners.py:586: """Swap a referral to a different partner. Admin only."""
+apps/backend-rag/backend/app/routers/partners.py:591: await svc.repo.update_referral_partner(referral_id, body.new_partner_id)
 apps/backend-rag/backend/app/routers/partners.py:624:@router.get("/{partner_id}/commissions")
-apps/backend-rag/backend/app/routers/partners.py:626:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:630:    """List commissions for a partner. Scoped by role."""
-apps/backend-rag/backend/app/routers/partners.py:633:        await verify_partner_access_with_role(
-apps/backend-rag/backend/app/routers/partners.py:634:            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-apps/backend-rag/backend/app/routers/partners.py:636:        commissions = await svc.repo.list_commissions_for_partner(partner_id)
+apps/backend-rag/backend/app/routers/partners.py:626: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:630: """List commissions for a partner. Scoped by role."""
+apps/backend-rag/backend/app/routers/partners.py:633: await verify_partner_access_with_role(
+apps/backend-rag/backend/app/routers/partners.py:634: svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+apps/backend-rag/backend/app/routers/partners.py:636: commissions = await svc.repo.list_commissions_for_partner(partner_id)
 apps/backend-rag/backend/app/routers/partners.py:643:@router.get("/{partner_id}/audit-log")
 apps/backend-rag/backend/app/routers/partners.py:644:async def list_partner_audit_log(
-apps/backend-rag/backend/app/routers/partners.py:645:    partner_id: UUID,
-apps/backend-rag/backend/app/routers/partners.py:649:    """List the audit log for a partner. Admin or team-owner only."""
-apps/backend-rag/backend/app/routers/partners.py:653:            await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
-apps/backend-rag/backend/app/routers/partners.py:654:            entries = await svc.list_audit(partner_id)
-apps/backend-rag/backend/app/routers/partners.py:655:            return [_partner_to_dict(e) for e in entries]
-apps/backend-rag/backend/app/routers/partners.py:659:        logger.exception("list_partner_audit_log failed")
-apps/backend-rag/backend/app/routers/partners.py:710:                from backend.services.crm.partners.emails import send_commission_earned
+apps/backend-rag/backend/app/routers/partners.py:645: partner_id: UUID,
+apps/backend-rag/backend/app/routers/partners.py:649: """List the audit log for a partner. Admin or team-owner only."""
+apps/backend-rag/backend/app/routers/partners.py:653: await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
+apps/backend-rag/backend/app/routers/partners.py:654: entries = await svc.list_audit(partner_id)
+apps/backend-rag/backend/app/routers/partners.py:655: return [_partner_to_dict(e) for e in entries]
+apps/backend-rag/backend/app/routers/partners.py:659: logger.exception("list_partner_audit_log failed")
+apps/backend-rag/backend/app/routers/partners.py:710: from backend.services.crm.partners.emails import send_commission_earned
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/events/handlers.py | sed -n '312,342p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-   312	                    f"[{severity}] {alert_type}: {message[:200]}",
-   313	                    "internal",
-   314	                ),
-   315	                name=f"compliance_log_{client_id}",
-   316	            )
-   317	
-   318	    # ── Register all handlers ──────────────────────────────────────────
-   319	    bus.subscribe("client.changed", on_client_changed)
-   320	    bus.subscribe("practice.status_changed", on_practice_status_changed)
-   321	    bus.subscribe("compliance.alert", on_compliance_alert)
-   322	
-   323	    # ── Compliance + intel handlers (2026-04-18 PR) ────────────────────
-   324	    try:
-   325	        from backend.services.events.handlers.compliance_handlers import HANDLERS as _compliance_handlers
-   326	        for event_type, handler in _compliance_handlers.items():
-   327	            bus.subscribe(event_type, handler)
-   328	    except ImportError as exc:
-   329	        logger.warning("compliance_handlers not loaded: %s", exc)
-   330	
-   331	    # ── Partner handlers (2026-04-20) ──────────────────────────────────
-   332	    try:
-   333	        from backend.app.db import set_pool as _set_pool
-   334	        _set_pool(db_pool)
-   335	        from backend.services.crm.partners.events import register_partner_handlers
-   336	        register_partner_handlers(bus)
-   337	    except ImportError as exc:
-   338	        logger.warning("partner handlers not loaded: %s", exc)
-   339	
-   340	    logger.info(
-   341	        f"✅ EventBus handlers registered: "
-   342	        f"{len(bus._subscribers)} event types"
+succeeded in 0ms:
+312 f"[{severity}] {alert_type}: {message[:200]}",
+313 "internal",
+314 ),
+315 name=f"compliance_log_{client_id}",
+316 )
+317
+318 # ── Register all handlers ──────────────────────────────────────────
+319 bus.subscribe("client.changed", on_client_changed)
+320 bus.subscribe("practice.status_changed", on_practice_status_changed)
+321 bus.subscribe("compliance.alert", on_compliance_alert)
+322
+323 # ── Compliance + intel handlers (2026-04-18 PR) ────────────────────
+324 try:
+325 from backend.services.events.handlers.compliance_handlers import HANDLERS as _compliance_handlers
+326 for event_type, handler in _compliance_handlers.items():
+327 bus.subscribe(event_type, handler)
+328 except ImportError as exc:
+329 logger.warning("compliance_handlers not loaded: %s", exc)
+330
+331 # ── Partner handlers (2026-04-20) ──────────────────────────────────
+332 try:
+333 from backend.app.db import set_pool as _set_pool
+334 _set_pool(db_pool)
+335 from backend.services.crm.partners.events import register_partner_handlers
+336 register_partner_handlers(bus)
+337 except ImportError as exc:
+338 logger.warning("partner handlers not loaded: %s", exc)
+339
+340 logger.info(
+341 f"✅ EventBus handlers registered: "
+342 f"{len(bus._subscribers)} event types"
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/services/events/event_bus.py | sed -n '40,70p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-    40	logger = logging.getLogger(__name__)
-    41	
-    42	# Type alias for async event handlers
-    43	EventHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
-    44	
-    45	# PG channels we LISTEN on — maps pg_channel → event_type
-    46	PG_CHANNEL_MAP: dict[str, str] = {
-    47	    "practice_changed": "practice.status_changed",
-    48	    "client_changed": "client.changed",
-    49	    "compliance_alert": "compliance.alert",
-    50	    # Emitted by import scripts after bulk ingest of OSS tanda terima receipts.
-    51	    # Payload: {"quarter": "Q1", "year": 2026, "pt_count": N, "receipt_count": N,
-    52	    #           "report_ids": [...], "source": "tax_drive_manual"}
-    53	    # Consumers: KG Tax subgraph sync, portal notifications, audit log.
-    54	    "lkpm_ingest_completed": "lkpm.ingest_completed",
-    55	    # Emitted by war_room_drafts status change + war_room_posts INSERT triggers
-    56	    # (migration 112). Payload: {draft_id|post_id, status|platform, event_type,
-    57	    # occurred_at}. Consumers: review_handler (Telegram review gate),
-    58	    # publisher_worker, measurer_worker, dashboard_sse.
-    59	    "war_room_event": "war_room.event",
-    60	    # Emitted by trend_signals INSERT + research_dossiers INSERT/UPDATE triggers
-    61	    # (migration 113). Payload: {signal_id|dossier_id, topic|slug, event_type,
-    62	    # occurred_at}. Consumers: dossier_compiler (batch pre-compute on new trends),
-    63	    # curiosity_gap_closer, war_room_intake, zantara_rag_indexer (upsert Qdrant),
-    64	    # crm_alert_router, connector/anomaly cognitive layers.
-    65	    "intel_event": "intel.event",
-    66	    # Emitted by 4 cognitive-layer tables (migration 114): cross_dossier_theses,
-    67	    # wr_anomaly_alerts, weekly_strategic_briefs, ultra_moves. Payload:
-    68	    # {id, table, event_type, occurred_at, + table-specific fields}.
-    69	    # Consumers: dashboard SSE, Oracle (reads upstream briefs + theses),
-    70	    # Learner (skills/scars from high-perf theses), Telegram notifier for
+succeeded in 0ms:
+40 logger = logging.getLogger(**name**)
+41
+42 # Type alias for async event handlers
+43 EventHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
+44
+45 # PG channels we LISTEN on — maps pg_channel → event_type
+46 PG_CHANNEL_MAP: dict[str, str] = {
+47 "practice_changed": "practice.status_changed",
+48 "client_changed": "client.changed",
+49 "compliance_alert": "compliance.alert",
+50 # Emitted by import scripts after bulk ingest of OSS tanda terima receipts.
+51 # Payload: {"quarter": "Q1", "year": 2026, "pt_count": N, "receipt_count": N,
+52 # "report_ids": [...], "source": "tax_drive_manual"}
+53 # Consumers: KG Tax subgraph sync, portal notifications, audit log.
+54 "lkpm_ingest_completed": "lkpm.ingest_completed",
+55 # Emitted by war_room_drafts status change + war_room_posts INSERT triggers
+56 # (migration 112). Payload: {draft_id|post_id, status|platform, event_type,
+57 # occurred_at}. Consumers: review_handler (Telegram review gate),
+58 # publisher_worker, measurer_worker, dashboard_sse.
+59 "war_room_event": "war_room.event",
+60 # Emitted by trend_signals INSERT + research_dossiers INSERT/UPDATE triggers
+61 # (migration 113). Payload: {signal_id|dossier_id, topic|slug, event_type,
+62 # occurred_at}. Consumers: dossier_compiler (batch pre-compute on new trends),
+63 # curiosity_gap_closer, war_room_intake, zantara_rag_indexer (upsert Qdrant),
+64 # crm_alert_router, connector/anomaly cognitive layers.
+65 "intel_event": "intel.event",
+66 # Emitted by 4 cognitive-layer tables (migration 114): cross_dossier_theses,
+67 # wr_anomaly_alerts, weekly_strategic_briefs, ultra_moves. Payload:
+68 # {id, table, event_type, occurred_at, + table-specific fields}.
+69 # Consumers: dashboard SSE, Oracle (reads upstream briefs + theses),
+70 # Learner (skills/scars from high-perf theses), Telegram notifier for
 
 exec
 /bin/zsh -lc "nl -ba apps/backend-rag/backend/migrations/migration_075_practice_status_notify.py | sed -n '1,70p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-     1	"""Migration 075: PostgreSQL triggers for practice status + payment notifications."""
-     2	import logging
-     3	
-     4	import asyncpg
-     5	
-     6	logger = logging.getLogger(__name__)
-     7	
-     8	MIGRATION_ID = "075"
-     9	DESCRIPTION = (
-    10	    "Add pg_notify triggers on practices table for status changes and payment_status "
-    11	    "transitions. Powers real-time email dispatch (M5 + M4)."
-    12	)
-    13	
-    14	
-    15	async def up(conn: asyncpg.Connection) -> None:
-    16	    # ── Trigger function: fires on ANY UPDATE to practices ──────────────────
-    17	    await conn.execute("""
-    18	        CREATE OR REPLACE FUNCTION notify_practice_change()
-    19	        RETURNS TRIGGER AS $$
+succeeded in 0ms:
+1 """Migration 075: PostgreSQL triggers for practice status + payment notifications."""
+2 import logging
+3
+4 import asyncpg
+5
+6 logger = logging.getLogger(**name**)
+7
+8 MIGRATION_ID = "075"
+9 DESCRIPTION = (
+10 "Add pg_notify triggers on practices table for status changes and payment_status "
+11 "transitions. Powers real-time email dispatch (M5 + M4)."
+12 )
+13
+14
+15 async def up(conn: asyncpg.Connection) -> None:
+16 # ── Trigger function: fires on ANY UPDATE to practices ──────────────────
+17 await conn.execute("""
+18 CREATE OR REPLACE FUNCTION notify_practice_change()
+19 RETURNS TRIGGER AS $$
     20	        DECLARE
     21	            payload TEXT;
     22	        BEGIN
@@ -9979,118 +9993,119 @@ exec
     40	            RETURN NEW;
     41	        END;
     42	        $$ LANGUAGE plpgsql;
-    43	    """)
-    44	
-    45	    # ── Attach trigger to practices table ───────────────────────────────────
-    46	    await conn.execute("""
-    47	        DROP TRIGGER IF EXISTS trg_practice_changed ON practices;
-    48	        CREATE TRIGGER trg_practice_changed
-    49	        AFTER UPDATE ON practices
-    50	        FOR EACH ROW
-    51	        EXECUTE FUNCTION notify_practice_change();
-    52	    """)
-    53	
-    54	    logger.info("Migration 075 applied: practice_changed pg_notify trigger")
-    55	
-    56	
-    57	async def down(conn: asyncpg.Connection) -> None:
-    58	    await conn.execute("DROP TRIGGER IF EXISTS trg_practice_changed ON practices;")
-    59	    await conn.execute("DROP FUNCTION IF EXISTS notify_practice_change();")
-    60	    logger.info("Migration 075 rolled back")
+43 """)
+44
+45 # ── Attach trigger to practices table ───────────────────────────────────
+46 await conn.execute("""
+47 DROP TRIGGER IF EXISTS trg_practice_changed ON practices;
+48 CREATE TRIGGER trg_practice_changed
+49 AFTER UPDATE ON practices
+50 FOR EACH ROW
+51 EXECUTE FUNCTION notify_practice_change();
+52 """)
+53
+54 logger.info("Migration 075 applied: practice_changed pg_notify trigger")
+55
+56
+57 async def down(conn: asyncpg.Connection) -> None:
+58 await conn.execute("DROP TRIGGER IF EXISTS trg_practice_changed ON practices;")
+59 await conn.execute("DROP FUNCTION IF EXISTS notify_practice_change();")
+60 logger.info("Migration 075 rolled back")
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/page.tsx | sed -n '80,105p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-    80	  const [searchInput, setSearchInput] = useState(filters.search || "");
-    81	
-    82	  const loadPartners = useCallback(async (currentFilters: PartnerFilters) => {
-    83	    setIsLoading(true);
-    84	    setError(null);
-    85	    try {
-    86	      const cleanFilters: PartnerFilters = {
-    87	        ...currentFilters,
-    88	        status: currentFilters.status || undefined,
-    89	        assigned_to: currentFilters.assigned_to || undefined,
-    90	        search: currentFilters.search || undefined,
-    91	        orphaned: currentFilters.orphaned || undefined,
-    92	      };
-    93	      const data = await partnersApi.listPartners(cleanFilters);
-    94	      setPartners(data.partners);
-    95	      setTotal(data.total);
-    96	    } catch (err) {
-    97	      logger.error("Failed to load partners", { component: "PartnersPage" }, err as Error);
-    98	      setError("Failed to load partners. Please try again.");
-    99	      toastError("Failed to load partners");
-   100	    } finally {
-   101	      setIsLoading(false);
-   102	    }
-   103	  }, [toastError]);
-   104	
-   105	  useEffect(() => {
+succeeded in 0ms:
+80 const [searchInput, setSearchInput] = useState(filters.search || "");
+81
+82 const loadPartners = useCallback(async (currentFilters: PartnerFilters) => {
+83 setIsLoading(true);
+84 setError(null);
+85 try {
+86 const cleanFilters: PartnerFilters = {
+87 ...currentFilters,
+88 status: currentFilters.status || undefined,
+89 assigned_to: currentFilters.assigned_to || undefined,
+90 search: currentFilters.search || undefined,
+91 orphaned: currentFilters.orphaned || undefined,
+92 };
+93 const data = await partnersApi.listPartners(cleanFilters);
+94 setPartners(data.partners);
+95 setTotal(data.total);
+96 } catch (err) {
+97 logger.error("Failed to load partners", { component: "PartnersPage" }, err as Error);
+98 setError("Failed to load partners. Please try again.");
+99 toastError("Failed to load partners");
+100 } finally {
+101 setIsLoading(false);
+102 }
+103 }, [toastError]);
+104
+105 useEffect(() => {
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/'(workspace)'/partners/orphaned/page.tsx | sed -n '36,48p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-    36	  const loadOrphaned = useCallback(async () => {
-    37	    setIsLoading(true);
-    38	    setError(null);
-    39	    setSelectedIds(new Set());
-    40	    try {
-    41	      const data = await partnersApi.listOrphanedPartners();
-    42	      setPartners(data.partners);
-    43	    } catch (err) {
-    44	      logger.error("Failed to load orphaned partners", { component: "OrphanedPartnersPage" }, err as Error);
-    45	      setError("Failed to load orphaned partners.");
-    46	    } finally {
-    47	      setIsLoading(false);
-    48	    }
+succeeded in 0ms:
+36 const loadOrphaned = useCallback(async () => {
+37 setIsLoading(true);
+38 setError(null);
+39 setSelectedIds(new Set());
+40 try {
+41 const data = await partnersApi.listOrphanedPartners();
+42 setPartners(data.partners);
+43 } catch (err) {
+44 logger.error("Failed to load orphaned partners", { component: "OrphanedPartnersPage" }, err as Error);
+45 setError("Failed to load orphaned partners.");
+46 } finally {
+47 setIsLoading(false);
+48 }
 
 exec
 /bin/zsh -lc "nl -ba apps/mouth/src/app/portal/'(authenticated)'/partner/dashboard/page.tsx | sed -n '50,90p'" in /Users/nuzantara/Desktop/partners-spec-wt
- succeeded in 0ms:
-    50	  if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
-    51	
-    52	  const totalEarned = commissions
-    53	    .filter((c) => c.status === "paid")
-    54	    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
-    55	  const totalPending = commissions
-    56	    .filter((c) => c.status === "accrued" || c.status === "approved" || c.status === "pending_approval")
-    57	    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
-    58	  const recentReferrals = referrals.slice(0, 5);
-    59	  const recentCommissions = commissions.slice(0, 5);
-    60	
-    61	  return (
-    62	    <div className="p-6 space-y-8">
-    63	      <div>
-    64	        <h1 className="text-2xl font-semibold text-white">Partner Dashboard</h1>
-    65	        {partner && (
-    66	          <p className="text-sm text-gray-400 mt-1">
-    67	            Welcome, {partner.full_name}
-    68	          </p>
-    69	        )}
-    70	      </div>
-    71	
-    72	      {/* Metric cards */}
-    73	      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    74	        <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-    75	          <p className="text-xs text-gray-400 uppercase tracking-wide">Total Earned</p>
-    76	          <p className="text-2xl font-bold text-white mt-1">{fmt(totalEarned)}</p>
-    77	        </div>
-    78	        <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-    79	          <p className="text-xs text-gray-400 uppercase tracking-wide">Pending</p>
-    80	          <p className="text-2xl font-bold text-white mt-1">{fmt(totalPending)}</p>
-    81	        </div>
-    82	        <div className="rounded-lg border border-white/10 bg-white/5 p-5">
-    83	          <p className="text-xs text-gray-400 uppercase tracking-wide">Referral Count</p>
-    84	          <p className="text-2xl font-bold text-white mt-1">{referrals.length}</p>
-    85	        </div>
-    86	      </div>
-    87	
-    88	      {/* Recent referrals */}
-    89	      <div>
-    90	        <h2 className="text-lg font-medium text-white mb-3">Recent Referrals</h2>
+succeeded in 0ms:
+50 if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
+51
+52 const totalEarned = commissions
+53 .filter((c) => c.status === "paid")
+54 .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
+55 const totalPending = commissions
+56 .filter((c) => c.status === "accrued" || c.status === "approved" || c.status === "pending_approval")
+57 .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
+58 const recentReferrals = referrals.slice(0, 5);
+59 const recentCommissions = commissions.slice(0, 5);
+60
+61 return (
+62 <div className="p-6 space-y-8">
+63 <div>
+64 <h1 className="text-2xl font-semibold text-white">Partner Dashboard</h1>
+65 {partner && (
+66 <p className="text-sm text-gray-400 mt-1">
+67 Welcome, {partner.full_name}
+68 </p>
+69 )}
+70 </div>
+71
+72 {/* Metric cards _/}
+73 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+74 <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+75 <p className="text-xs text-gray-400 uppercase tracking-wide">Total Earned</p>
+76 <p className="text-2xl font-bold text-white mt-1">{fmt(totalEarned)}</p>
+77 </div>
+78 <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+79 <p className="text-xs text-gray-400 uppercase tracking-wide">Pending</p>
+80 <p className="text-2xl font-bold text-white mt-1">{fmt(totalPending)}</p>
+81 </div>
+82 <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+83 <p className="text-xs text-gray-400 uppercase tracking-wide">Referral Count</p>
+84 <p className="text-2xl font-bold text-white mt-1">{referrals.length}</p>
+85 </div>
+86 </div>
+87
+88 {/_ Recent referrals */}
+89 <div>
+90 <h2 className="text-lg font-medium text-white mb-3">Recent Referrals</h2>
 
 codex
+
 ## Executive Verdict
 
 **Block.** The module is not production-ready: accrual is wired to a non-production `processes` model while real events emit `practice_id`, partner-facing API boundaries leak full PII, referral creation enables commission fraud, finance state transitions are non-atomic, and the frontend/backend contract is broken enough that first real use will fail.
@@ -10177,6 +10192,7 @@ codex
 Block this PR because it formalizes sensitive partner payouts on top of the wrong production data model, leaky authorization, non-atomic finance state, placeholder tax policy, and a broken frontend/backend contract.
 tokens used
 229.832
+
 ## Executive Verdict
 
 **Block.** The module is not production-ready: accrual is wired to a non-production `processes` model while real events emit `practice_id`, partner-facing API boundaries leak full PII, referral creation enables commission fraud, finance state transitions are non-atomic, and the frontend/backend contract is broken enough that first real use will fail.

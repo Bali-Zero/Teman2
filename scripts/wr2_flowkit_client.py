@@ -4,7 +4,7 @@ FlowKit is a Python+Chrome-extension bridge that proxies image/video gen
 calls through the user's logged-in `labs.google/fx/tools/flow` session. The
 local agent serves on `http://127.0.0.1:8100` by default.
 
-Empirically verified 2026-05-03 on Antonello's Ultra account:
+Empirically verified 2026-05-03 on Zero's Ultra account:
 - `GEM_PIX_2` (Nano Banana Pro) image generation is FREE for AI Ultra
   (`PAYGATE_TIER_TWO`) — 0 credit consumed across two consecutive images.
 - Latency ~5-15s per image (vs ~30-90s through the WR2 Playwright path).

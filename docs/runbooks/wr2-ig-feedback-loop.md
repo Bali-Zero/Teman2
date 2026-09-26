@@ -147,7 +147,7 @@ apps/backend-rag/.venv/bin/python scripts/wr2_ig_profile_harvester.py harvest --
 
 ## Automatic operation (STRATO 2 — requires activation)
 
-### One-time activation (operator — Antonello)
+### One-time activation (operator — Zero)
 
 STRATO 2 is **dormant** until these manual steps (each touches an off-limits /
 hot-zone surface, deliberately left to the operator):

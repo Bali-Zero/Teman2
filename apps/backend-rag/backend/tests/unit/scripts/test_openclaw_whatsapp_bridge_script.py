@@ -796,7 +796,7 @@ def test_normalize_whatsapp_format_preserves_bullet_indent() -> None:
 
 def test_identity_rules_owner() -> None:
     rules = "\n".join(bridge._identity_rules({"sender_identity": {"role": "owner"}}))
-    assert "Zero (Antonello)" in rules
+    assert "The sender is Zero," in rules
     assert "internal conversation" in rules
     assert "never say 'the team will contact" in rules
 
@@ -844,7 +844,7 @@ def test_build_prompt_injects_identity_rules_for_owner_only() -> None:
         context={"detected_language": "it", "sender_identity": {"role": "owner"}},
     )
     prompt = json.loads(bridge._build_prompt(owner_body))
-    assert any("Zero (Antonello)" in rule for rule in prompt["sender_identity_rules"])
+    assert any("The sender is Zero," in rule for rule in prompt["sender_identity_rules"])
 
     anon_body = bridge.BridgeRequest(
         phone="+62 813-555-0009",

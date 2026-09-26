@@ -115,4 +115,4 @@ Solo Codex e NB-1 hanno prodotto verdict utile. **Codex BLOCK è authoritative**
 
 **v4 plan** con 4 fix Codex KILLER + 2 regression + 2 NB-1 non-blocking integrati. Stima: 30 min lavoro (small targeted edits, NON refactor strutturale).
 
-Oppure: **execute v3 PRO-only fases low-risk** (F4 + F5 + F2.1 + F2.2 read-only) e differire F1+F2.3+F6 al v4 fix. AIL Antonello decision.
+Oppure: **execute v3 PRO-only fases low-risk** (F4 + F5 + F2.1 + F2.2 read-only) e differire F1+F2.3+F6 al v4 fix. AIL Zero decision.

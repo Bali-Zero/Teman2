@@ -1,7 +1,7 @@
 # Canva Apply — Image Residue Cleanup (Phase 0 extension)
 
 **Date**: 2026-05-08
-**Author**: Antonello + Claude Opus 4.7
+**Author**: Zero + Claude Opus 4.7
 **Sub-project**: SP-1 of "Canva apply quality fixes (Badung Horeka run 2026-05-08)"
 **Sibling SPs**: SP-2 (body-text resolution diagnosis), SP-3 (TEMPLATE_SLOTS deprecation) — separate specs.
 
@@ -87,14 +87,14 @@ The full sequence per run:
 
 ## Error handling
 
-| Scenario                                                    | Behavior                                                                                                                                                               |
+| Scenario | Behavior |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Transparent PNG upload fails in Phase 0                     | Log `⚠️ image-wipe upload failed: <reason>`. Proceed with richtext-only wipe. Image bleed persists for this run, but text content is correct. Telegram notify warning. |
-| `update_fill` fails on a single image_frame                 | Log `🪂 image-wipe skip page {N} elem {id[:12]}: {err}`. Continue with remaining image_frames.                                                                         |
-| `>50%` of image_frame `update_fill` fail                    | Abort Phase 0 with `ERROR phase0_image_wipe_failed: {n_failed}/{n_total}`. Do NOT proceed to Phase A on a partially-wiped master.                                      |
-| Canva MCP doesn't expose `image_frame` type as expected     | Skill falls back to a name-based regex on element type (`image                                                                                                         | frame | placeholder`). If still nothing matches, log `⚠️ no image_frame elements found — skipping image wipe` and proceed (degrades to current behavior). |
-| Hero slide's image_frame doesn't get overwritten in Phase A | Frame stays transparent → slide hero appears without image. Operator-visible but non-catastrophic. Fix is in the existing role_index resolution code, not this SP.     |
-| Phase C image wipe fails (after Phase A/B succeed)          | Log warning, do NOT abort run. Master template ends with hero image of current run still on its frame → next run's Phase 0 cleans it (auto-healing).                   |
+| Transparent PNG upload fails in Phase 0 | Log `⚠️ image-wipe upload failed: <reason>`. Proceed with richtext-only wipe. Image bleed persists for this run, but text content is correct. Telegram notify warning. |
+| `update_fill` fails on a single image_frame | Log `🪂 image-wipe skip page {N} elem {id[:12]}: {err}`. Continue with remaining image_frames. |
+| `>50%` of image_frame `update_fill` fail | Abort Phase 0 with `ERROR phase0_image_wipe_failed: {n_failed}/{n_total}`. Do NOT proceed to Phase A on a partially-wiped master. |
+| Canva MCP doesn't expose `image_frame` type as expected | Skill falls back to a name-based regex on element type (`image                                                                                                         | frame | placeholder`). If still nothing matches, log `⚠️ no image_frame elements found — skipping image wipe` and proceed (degrades to current behavior). |
+| Hero slide's image_frame doesn't get overwritten in Phase A | Frame stays transparent → slide hero appears without image. Operator-visible but non-catastrophic. Fix is in the existing role_index resolution code, not this SP. |
+| Phase C image wipe fails (after Phase A/B succeed) | Log warning, do NOT abort run. Master template ends with hero image of current run still on its frame → next run's Phase 0 cleans it (auto-healing). |
 
 **Threshold note**: the `>50%` abort threshold counts the TOTAL Phase 0 ops failed (richtext + image combined). If richtext wipe succeeds 100/100 but image wipe fails 0/30, total fail rate is 23% → continue.
 

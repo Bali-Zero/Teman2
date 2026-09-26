@@ -1,6 +1,6 @@
 # Surface: email-template (Brevo HTML)
 
-**Status**: spec drafted 2026-05-09 by `email-template-builder` agent. Pending first production email + Antonello sign-off.
+**Status**: spec drafted 2026-05-09 by `email-template-builder` agent. Pending first production email + Zero sign-off.
 
 ## Purpose
 
@@ -106,7 +106,7 @@ curl -X POST "https://api.balizero.com/api/notifications/send-email" \
   }'
 ```
 
-The agent does NOT send. Antonello or ops sends manually after review.
+The agent does NOT send. Zero or ops sends manually after review.
 
 ## QA checklist (mandatory before send)
 
@@ -120,4 +120,4 @@ The agent does NOT send. Antonello or ops sends manually after review.
 - [ ] CTA button (if any) with non-banned action verb
 - [ ] Inline CSS (no `<style>` blocks)
 - [ ] Footer with physical address + unsubscribe
-- [ ] Test render in Litmus or Email on Acid (out of scope today; email-template-builder agent will not auto-render — Antonello tests manually first time)
+- [ ] Test render in Litmus or Email on Acid (out of scope today; email-template-builder agent will not auto-render — Zero tests manually first time)

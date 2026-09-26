@@ -1,8 +1,8 @@
 # MERGE-TRAIN — serialized merge coordinator + self-healing main (spec v2)
 
-**Date**: 2026-06-12 · **Author**: Claude (Fable 5) session filo1-lead-funnel · **Status**: PANEL-REVIEWED (v2) — pending Antonello GO
+**Date**: 2026-06-12 · **Author**: Claude (Fable 5) session filo1-lead-funnel · **Status**: PANEL-REVIEWED (v2) — pending Zero GO
 **Panel 2026-06-12**: Codex GPT-5.5 (28 findings) + DeepSeek V4 Pro (12 findings) + Claude internal review → 5 real defects incorporated in §10 (which OVERRIDES conflicting text in §3-§6); 4 false positives dismissed with live verification (gh auth valid; `require_last_push_approval=false`; `dismiss_stale_reviews=false`; SPOF-on-Pro is graceful degradation by design, Law 4/6).
-**Design directive (Antonello 2026-06-12, memory `decision` imp.9)**: *no human-first alerts* — alarms feed the SYSTEM, which intervenes and repairs; Zero is notified ONLY when self-repair fails (SYMBIOSIS Law 5, "Zero come ultima istanza").
+**Design directive (Zero 2026-06-12, memory `decision` imp.9)**: *no human-first alerts* — alarms feed the SYSTEM, which intervenes and repairs; Zero is notified ONLY when self-repair fails (SYMBIOSIS Law 5, "Zero come ultima istanza").
 
 ---
 

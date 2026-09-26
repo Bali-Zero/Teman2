@@ -226,7 +226,7 @@ Gemini: "Belum ada Peraturan Menteri Keuangan (PMK) baru yang merilis tarif spes
 
 ### DeepSeek V4 Pro panelista — NON DISPONIBILE
 
-API key in `/Users/nuzantara/.openclaw/workspace/.env.master` ritorna 401 Unauthorized. Stato: BLOCKED. Da segnalare a Antonello per rotation. Compensato con Sonnet 4.6 panel-substitute (stesso prompt legal reasoning, output 160 righe analiticamente rigorose). **Convergenza ridotta da 3/3 nominale a 3/3 effettiva** ma con architettura sub-ottimale (2x Claude family + 1x Gemini, mancanza di un third opinion non-Anthropic non-Google).
+API key in `/Users/nuzantara/.openclaw/workspace/.env.master` ritorna 401 Unauthorized. Stato: BLOCKED. Da segnalare a Zero per rotation. Compensato con Sonnet 4.6 panel-substitute (stesso prompt legal reasoning, output 160 righe analiticamente rigorose). **Convergenza ridotta da 3/3 nominale a 3/3 effettiva** ma con architettura sub-ottimale (2x Claude family + 1x Gemini, mancanza di un third opinion non-Anthropic non-Google).
 
 ### Panel convergence
 
@@ -334,7 +334,7 @@ C5A è 3x più lento del PEGGIORE precedente verificato. Probabilità statistica
 
 - **Permenkumham 11/2024 testo integrale**: 403 sui WebFetch peraturan.bpk.go.id. Lasciamo OPEN se esiste clausola delega aperta che giustifica gerarchicamente la creazione di C5A via Kepmen M.IP-08 senza Permen amendment. Sonnet panel: MEDIUM-HIGH probabilità che esista; non verificabile via tooling in-session.
 - **PP 45/2024 lista C5A vs no**: TBN Solution (consultant) afferma SÌ; verifica primaria al BPK 403; cronologicamente sospetto (PP precede Kepmen di 7 mesi). Lasciamo OPEN — la priorità è la PMK/Simponi mapping, non il PP framework.
-- **DeepSeek V4 Pro API key revoked**: `/Users/nuzantara/.openclaw/workspace/.env.master` ritorna 401. Da segnalare ad Antonello: rotation o re-issue da DeepSeek dashboard. Impact: futuri tri-LLM panel devono fallback su Sonnet 4.6 finché key non riprestinata. Costo previsto re-issue: $0 (DeepSeek free key rotation).
+- **DeepSeek V4 Pro API key revoked**: `/Users/nuzantara/.openclaw/workspace/.env.master` ritorna 401. Da segnalare ad Zero: rotation o re-issue da DeepSeek dashboard. Impact: futuri tri-LLM panel devono fallback su Sonnet 4.6 finché key non riprestinata. Costo previsto re-issue: $0 (DeepSeek free key rotation).
 - **molina.imigrasi.go.id deprecation date**: nessuna fonte ufficiale Ditjen Imigrasi data esatta (BaliEasy article nov 2025 è il riferimento più recente). Lasciamo OPEN.
 - **Yuldi Yusman position permanenza**: "Plt." (Pelaksana Tugas / Acting) — è ancora interim a maggio 2026 o è stato confermato definitivo? Acting status often correlates con regulatory caution.
 - **Probabilità che C5A venga riassorbito in E33G o nuova categoria post-Permenimipas**: 25% per Sonnet panel. Speculative ma rilevante per pricing strategy.

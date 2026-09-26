@@ -7,7 +7,7 @@ sources: 9 spec (research/operations/specs/P1-P9) + report madre (2026-06-06-sot
 
 # Verdetto finale — i 9 pezzi del workflow agentico, controllati a eserciti
 
-> **Cos'è questo documento.** Chiude il ciclo richiesto da Antonello: studiare il workflow agentico
+> **Cos'è questo documento.** Chiude il ciclo richiesto da Zero: studiare il workflow agentico
 > più avanzato, scomporlo nei 9 pezzi mancanti, e per ognuno fare deep-research + panel 4-LLM +
 > reuse-first → spec. «Alla fine, con gli agenti ad eserciti, controllate logica e coerenza e potenza».
 > Questo è quel controllo finale, + il giudizio onesto sull'insieme.

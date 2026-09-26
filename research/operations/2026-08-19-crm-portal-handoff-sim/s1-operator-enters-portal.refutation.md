@@ -53,7 +53,7 @@ in this worktree, so the review can be replayed against a healthier seat later.
   reading both ranges, nothing elides it.
 - Independently re-ran the Postgres check (not copied from the analyst's transcript):
   `SELECT id, LOWER(email), full_name FROM clients WHERE LOWER(email) IN (3 admin emails)` →
-  exactly one row, `id=68, email=zero@balizero.com, full_name=Antonello Siano` — the other two
+  exactly one row, `id=68, email=zero@balizero.com, full_name=Zero` — the other two
   admin addresses have no matching row. `practices`/`documents`/`portal_messages` counts for
   `client_id=68` are independently confirmed `0/0/0` (using the real table names — the analyst's
   evidence line names them generically as "practices_n/documents_n/messages_n"; the underlying

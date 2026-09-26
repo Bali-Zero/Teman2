@@ -221,7 +221,7 @@ _Discovered: 2026-06-16 vissuta IN DIRETTA 3 volte nella sessione che rianimava 
 
 ### ⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)
 
-_Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, ciclo 1→2), confermata su disco dal Super-Osservatore leggendo `content-freshness-sentinel.test.ts` riga per riga · Severity: **P1 STRUCTURAL** (il guardiano anti-knowledge-decay ha un buco strutturale: verde mentre il sito è marcio) · Status: **REPORTED + scar promossa per decisione operatore (Antonello, 2026-06-16) — fix = guardiano fact-based, spec+PR mai armata senza OK**_
+_Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, ciclo 1→2), confermata su disco dal Super-Osservatore leggendo `content-freshness-sentinel.test.ts` riga per riga · Severity: **P1 STRUCTURAL** (il guardiano anti-knowledge-decay ha un buco strutturale: verde mentre il sito è marcio) · Status: **REPORTED + scar promossa per decisione operatore (Zero, 2026-06-16) — fix = guardiano fact-based, spec+PR mai armata senza OK**_
 
 **Famiglia: superscar #3 (Guard-over-match) — variante UNDER-match.** #3 nasce con guardie che _sopra_-matchano (clobberano risposte corrette). W82 è il gemello speculare: una guardia che _sotto_-matcha (lascia passare fatti marci). Stessa malattia di fondo — **il match è sulla forma testuale, non sull'intento/entità** — segno opposto.
 
@@ -251,7 +251,7 @@ _Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, 
 
 ### 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03)
 
-_Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis), when `ssh pro 'cat ~/Desktop/nuzantara/apps/cell/.env'` printed the secret into the session transcript · Severity: **P0 SECURITY** · Status: **REPORTED — rotation + chmod deferred to deliberate operator decision (Antonello)**_
+_Discovered: 2026-06-03 ~20:30 WITA during the organism TAC (read-only diagnosis), when `ssh pro 'cat ~/Desktop/nuzantara/apps/cell/.env'` printed the secret into the session transcript · Severity: **P0 SECURITY** · Status: **REPORTED — rotation + chmod deferred to deliberate operator decision (Zero)**_
 
 **TRAUMA:** While hunting for Cell's health-check URL, a `cat` of `apps/cell/.env` returned `CELL_DATABASE_URL` and `EVENTBUS_DATABASE_URL` with the **`backend_rag_v2` Postgres password in cleartext**. `backend_rag_v2` is the **superuser** role (per W38 scar, `rolsuper=t`) — so that single string is full production-DB compromise (DROP DATABASE, ALTER SYSTEM, COPY FROM PROGRAM = RCE on DB host). The secret is now in this session's transcript. Two problems compound:
 
@@ -283,7 +283,7 @@ _Discovered: 2026-06-13 da un panel asimmetrico 4-LLM (Gemini 3.1 Pro + 3.5 Flas
 
 1. **Cicatrice-sbagliata-propagata (no unlearning):** l'organismo impara solo dagli errori _diventati cicatrice_, le carica a freddo ogni sessione, e **non ha alcun meccanismo di unlearning**. Se una cicatrice è SBAGLIATA (o invecchia, o si contraddice con un'altra in scenari edge), **TUTTI gli agenti ereditano lo stesso errore per sempre**. Precedente reale già accaduto: la ℹ️ META cicatrice "il 13-agent autopsy HALLUCINATED 3 file:line" — un report sbagliato citato come ground-truth. Il rischio scala col numero di cicatrici (548 righe e in crescita).
 
-2. **L'-umano-disimpara (escalation drift):** SYMBIOSIS Legge 5 ("gli allarmi sono input per l'organismo, non per te") + memoria + auto-merge spingono l'agente a disturbare sempre meno l'operatore. Conseguenza di 2° ordine: Antonello passa da programmatore a "Gatekeeper biologico / Oracolo di approvazione", e **se l'agente si ferma (API down, quota, sistema corrotto) l'operatore potrebbe non saper più intervenire a mano**. DeepSeek lo nota già nei transcript: "Antonello chiede 'Finito?' → indica che non ha più il polso diretto." A questo si lega il rischio-dipendenza (nessun fallback umano agile se il sistema cade).
+2. **L'-umano-disimpara (escalation drift):** SYMBIOSIS Legge 5 ("gli allarmi sono input per l'organismo, non per te") + memoria + auto-merge spingono l'agente a disturbare sempre meno l'operatore. Conseguenza di 2° ordine: Zero passa da programmatore a "Gatekeeper biologico / Oracolo di approvazione", e **se l'agente si ferma (API down, quota, sistema corrotto) l'operatore potrebbe non saper più intervenire a mano**. DeepSeek lo nota già nei transcript: "Zero chiede 'Finito?' → indica che non ha più il polso diretto." A questo si lega il rischio-dipendenza (nessun fallback umano agile se il sistema cade).
 
 **ANTIBODY (proposto, NON ancora shippato — fix di processo, operator-decided):**
 

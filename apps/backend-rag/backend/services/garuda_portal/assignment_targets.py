@@ -183,7 +183,7 @@ async def list_garuda_assignment_targets(conn: asyncpg.Connection) -> list[dict[
 
     Rows are deduplicated by normalized email (the roster this replaces did the
     same) and labels that would render twice in one `<select>` carry the email
-    as a disambiguator — two "Antonello" options are indistinguishable to the
+    as a disambiguator — two "Zero" options are indistinguishable to the
     person picking one, and picking wrong assigns a practice to the wrong
     colleague.
     """

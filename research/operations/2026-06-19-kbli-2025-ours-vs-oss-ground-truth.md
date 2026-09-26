@@ -10,7 +10,7 @@ sources:
 
 # KBLI 2025 - Nostro JSON vs OSS ground-truth: quanto ci siamo avvicinati al vero
 
-**Domanda (Antonello):** "in primis si parte da quello che OSS dice, perche noi abbiamo presunto
+**Domanda (Zero):** "in primis si parte da quello che OSS dice, perche noi abbiamo presunto
 in molti casi. Quindi la mia curiosita e quanto ci siamo avvicinati al vero."
 
 OSS = verita. Noi = KBLI_2025_FINAL_CLEAN.json (presunto/arricchito). Confronto sui SOLI campi

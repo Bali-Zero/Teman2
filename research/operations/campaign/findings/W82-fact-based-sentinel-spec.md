@@ -13,7 +13,7 @@ author: Connectome Campaign / Super-Observer
 > (`apps/mouth/src/content/content-freshness-sentinel.test.ts`) with a guard that
 > watches the **normative entity** (KBLI code / visa sigla / regulation number),
 > not the **literal sentence**. Deterministic, no-AI, runs in CI for free.
-> Operator (Antonello) chose the per-ENTITY approach over AI/embedding.
+> Operator (Zero) chose the per-ENTITY approach over AI/embedding.
 
 ---
 

@@ -9,7 +9,7 @@ sources:
   - ~/scripts/wa-mirror-auto-promote-leads.py (INSERT clients L691, UPDATE clients L652)
   - ~/scripts/wa-mirror-strategic-recap-updater.py (UPDATE clients.strategic_recap L203)
   - mem decision_wa_mirror_local_only_cutover_2026_05_24
-status: DRAFT — pending 4-LLM panel + Antonello deploy approval
+status: DRAFT — pending 4-LLM panel + Zero deploy approval
 ---
 
 # Spec: wa-mirror CRM writes via backend API (read-local / write-Fly)
@@ -30,7 +30,7 @@ But the CRM of record is **Fly** (`clients` 11,720 rows; `kita.balizero.com` + t
 Local `clients` (11,470) is a read-mostly mirror with 0 wa-promoted leads. So post-fix the
 promoted leads + recaps land local-only, invisible to the team.
 
-**Antonello decision 2026-06-06: option B — writes must reach the Fly CRM.**
+**Zero decision 2026-06-06: option B — writes must reach the Fly CRM.**
 "senza oscurare nulla, tanto kita.balizero è internal" → CRM-derived records (lead record,
 strategic_recap summary) MAY go to Fly. Raw wa-corpus stays local (Law 2).
 
@@ -113,7 +113,7 @@ against stale local). Resolve by sourcing CRM STATE from Fly:
 
 - **Auth surface**: internal key can now create/modify any client. Bounded: server-side Fly secret,
   internal CRM, audit actor tagged, flag-gated. If key leaks → mass client mutation (same leak
-  surface as today, larger blast radius). Accept per Antonello (internal tool).
+  surface as today, larger blast radius). Accept per Zero (internal tool).
 - **Duplicate leads** if dedup reads stale state — mitigated by reading Fly state for phone-match.
 - **Overwriting human recaps** — mitigated by backend human-precedence guard (Part 1.4).
 - **Cache staleness** — solved by using API path (invalidate_cache fires).

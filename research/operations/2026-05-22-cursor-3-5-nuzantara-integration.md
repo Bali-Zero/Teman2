@@ -374,9 +374,9 @@ Cursor è **drop-in fit** per Subhi (Growth Systems Owner, probation 2026-04-30 
 - Composer in linguaggio naturale (BI default)
 - Perimetro: `apps/mouth/(blog|marketing|kbli|visa|property|tax-calendar)/**` — tutto editabile via Cursor
 - @Codebase rispetta `.cursorignore` (no backend RAG, no Genoma, no secrets)
-- Bugbot su PR Subhi = primo gate prima review umana Antonello
+- Bugbot su PR Subhi = primo gate prima review umana Zero
 
-**Subhi Cursor setup** (separato da Antonello):
+**Subhi Cursor setup** (separato da Zero):
 
 - Piano Pro $20/mo (no Background Agents heavy)
 - `.cursor/rules/11-mouth.mdc` con tone Bali Zero brand
@@ -400,7 +400,7 @@ Cursor è **drop-in fit** per Subhi (Growth Systems Owner, probation 2026-04-30 
 
 ---
 
-## 9. Verdetto operativo per Antonello
+## 9. Verdetto operativo per Zero
 
 ### Setup raccomandato
 
@@ -415,7 +415,7 @@ Cursor è **drop-in fit** per Subhi (Growth Systems Owner, probation 2026-04-30 
 
 ### Stack target Nuzantara
 
-- **Cursor** (Antonello daily) = IDE primario editing + visual review + Bugbot PR
+- **Cursor** (Zero daily) = IDE primario editing + visual review + Bugbot PR
 - **Claude Code CLI** (sempre) = autonomous L2, cron, deploy, multi-LLM panel, OSINT, wave orchestration
 - **Cursor Background Agents** = refactor multi-app overnight su branch dedicato
 - **Subhi Cursor** = Growth Systems editing `apps/mouth/`
@@ -426,7 +426,7 @@ Cursor è **drop-in fit** per Subhi (Growth Systems Owner, probation 2026-04-30 
 - ❌ Non portare TUTTI gli MCP in Cursor. Solo nuzantara-mcp + notebooklm + context7. Resto resta in CC.
 - ❌ Non lanciare Cursor Auto Mode + Claude Code subagent fan-out sullo stesso file simultaneamente.
 - ❌ Non saltare `.cursorignore` (indexing su 24 apps = lento + costoso + hallucination amplified).
-- ❌ Non upgradare Ultra "preventivamente" — Pro è sufficiente per Antonello workflow attuale (CC fa il pesante).
+- ❌ Non upgradare Ultra "preventivamente" — Pro è sufficiente per Zero workflow attuale (CC fa il pesante).
 
 ---
 

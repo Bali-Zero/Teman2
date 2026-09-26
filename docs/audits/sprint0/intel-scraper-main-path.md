@@ -47,8 +47,8 @@ runs and was previously sized assuming drive-poll consumed N reads/min.
 - **Last successful run:** UNVERIFIED at audit time. Pro is SSH-unreachable
   during this Sprint 0 session (`Host is down`). Per audit transcript
   04_automation_inventory_complete.md: "Sentinel/Arch ... Active; daemons
-  + hourly Intel Radar" → that means as of round 1 audit (a few hours
-  before this Sprint 0 session) the path was alive.
+  - hourly Intel Radar" → that means as of round 1 audit (a few hours
+    before this Sprint 0 session) the path was alive.
 
 ### `cron-agent-python intel-radar` — hourly multi-source aggregator
 
@@ -94,13 +94,14 @@ Round 2 final cell list (99b_synthesis_v2.md):
 
 Mapping the real production runners to this cell:
 
-| Production runner | Cell role |
-|---|---|
-| `apps/bali-intel-scraper/` (03:00 WITA daily) | Cell **body** — bulk scrape + enrich + publish |
-| `cron-agent-python intel-radar` (hourly) | Cell **HGT publisher** — emits trend signals to `trend_signals` table → `intel_event` channel |
-| `cron-agent-python intel-feed-processor` (2h) | Cell **light sensor** — feeds Intel Scraper's enricher with new feeds |
+| Production runner                             | Cell role                                                                                     |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `apps/bali-intel-scraper/` (03:00 WITA daily) | Cell **body** — bulk scrape + enrich + publish                                                |
+| `cron-agent-python intel-radar` (hourly)      | Cell **HGT publisher** — emits trend signals to `trend_signals` table → `intel_event` channel |
+| `cron-agent-python intel-feed-processor` (2h) | Cell **light sensor** — feeds Intel Scraper's enricher with new feeds                         |
 
 The cell-leggera Sprint 1 work is to formalize this:
+
 - **Genome scar registry** entry for the cell (`apps/organism/organism/organs_registry.yaml`,
   renamed 2026-05-08 IG-3 from `genome.yaml`)
 - **HGT publisher** wrapper around the existing `trend_signals` insert path
@@ -113,19 +114,19 @@ documentation + observability instrumentation.
 
 ## Verdict
 
-| Question | Answer |
-|---|---|
-| Is Intel Scraper main path alive? | **Yes** — round-1 audit confirmed runs at 14:00 today (Pro), pre-Sprint 0 |
-| Is drive-poll disable affecting Intel Scraper? | **No** — drive-poll was for CRM Drive folder watching, not Intel Scraper |
-| Is the 03:00 WITA cron still authoritative? | **Yes** — `apps/bali-intel-scraper/CLAUDE.md` confirms; sentinel bridge polls every 5min |
+| Question                                                       | Answer                                                                                                                                                           |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is Intel Scraper main path alive?                              | **Yes** — round-1 audit confirmed runs at 14:00 today (Pro), pre-Sprint 0                                                                                        |
+| Is drive-poll disable affecting Intel Scraper?                 | **No** — drive-poll was for CRM Drive folder watching, not Intel Scraper                                                                                         |
+| Is the 03:00 WITA cron still authoritative?                    | **Yes** — `apps/bali-intel-scraper/CLAUDE.md` confirms; sentinel bridge polls every 5min                                                                         |
 | Is `intel-scraper-cell` light promotion a no-op or a refactor? | **Mostly no-op** — just declare the cell in `organs_registry.yaml` (renamed from `genome.yaml`), instrument observability emit, formalize HGT publisher contract |
-| Re-livening required for Sprint 1? | **No** — already alive |
+| Re-livening required for Sprint 1?                             | **No** — already alive                                                                                                                                           |
 
 ## Action items
 
 ### Sprint 0 follow-up (now Pro reaches a healthy state)
 
-1. **Antonello: verify state file timestamps** to confirm last successful runs:
+1. **Zero: verify state file timestamps** to confirm last successful runs:
 
    ```bash
    ssh pro 'for f in ~/.agent/decisions/state/intel_*.last.json; do
@@ -137,7 +138,7 @@ documentation + observability instrumentation.
 
    Expected: timestamps within last 4 hours. If older than 24h, escalate.
 
-2. **Antonello: Qdrant `balizero_news` recent uploads** (count last 7 days):
+2. **Zero: Qdrant `balizero_news` recent uploads** (count last 7 days):
 
    ```bash
    ssh pro 'cd ~/Desktop/nuzantara/apps/bali-intel-scraper && \
@@ -160,7 +161,7 @@ documentation + observability instrumentation.
    (renamed 2026-05-08 IG-3 from `genome.yaml`; per brainstorm Genome scar
    registry pattern).
 4. Add observability emit in the publisher step (one-liner: `await
-   ObservedShellBus.emit("intel-scraper.publish", "ok", {count, slug})`
+ObservedShellBus.emit("intel-scraper.publish", "ok", {count, slug})`
    — uses Track C2 framework).
 5. Document cell contract in `docs/cell-core/intel-scraper-cell.md`
    (Sprint 1, NOT Sprint 0).

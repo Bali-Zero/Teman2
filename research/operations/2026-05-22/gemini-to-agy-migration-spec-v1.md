@@ -10,7 +10,7 @@ status: DRAFT v1 — awaiting 4-LLM panel review
 
 ## Context
 
-Antonello 2026-05-22: "gemini cli e' deprecato per agy cli". Inventario completo: `2026-05-22/gemini-to-agy-migration-inventory.md` — 51 call-site identificati su Pro + Mini-Pro2, 1 LaunchAgent cron attivo.
+Zero 2026-05-22: "gemini cli e' deprecato per agy cli". Inventario completo: `2026-05-22/gemini-to-agy-migration-inventory.md` — 51 call-site identificati su Pro + Mini-Pro2, 1 LaunchAgent cron attivo.
 
 `agy` (Antigravity CLI) v1.0.0 vs `gemini` v0.42.0: surface NON drop-in compatibile. Differenze critiche:
 
@@ -128,7 +128,7 @@ Acceptance:
 | `agy` cron silently failing su Pro (no Telegram)                         | P0       | T1.5 alzheimer-hook pattern: ogni script swap deve avere Sentry capture o Telegram on fail |
 | Model mismatch settings.json globale vs script che si aspetta fast model | P1       | Strategia C: lasciare gemini legacy per 2.5-flash/2.5-pro                                  |
 | zantara-gateway SSE break                                                | P0       | OUT of scope — gateway resta su gemini                                                     |
-| Antigravity CLI binary distribution non documentata                      | P1       | Wave 3 TBD: chiedere Antonello URL ufficiale                                               |
+| Antigravity CLI binary distribution non documentata                      | P1       | Wave 3 TBD: chiedere Zero URL ufficiale                                               |
 | Quota Google AI Ultra esaurita (10k Flow cr/mese)                        | P2       | Cascade tier-3 codex GPT-5.5 già documentato CLAUDE.md                                     |
 | `~/.gemini/settings.json` race condition tra agy e gemini paralleli      | P2       | Documentare: nessun script paralelo deve cambiare settings.json                            |
 

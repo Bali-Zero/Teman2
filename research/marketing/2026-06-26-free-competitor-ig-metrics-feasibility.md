@@ -2,7 +2,7 @@
 date: 2026-06-26
 domain: marketing
 client_case: Bali Zero external-bench — measuring engagement (saves, shares, reach) of competitor IG profiles we don't own (Lets Move Indonesia, Emerhub, Flado + ~12 editorial reference brands), free-first, no account-ban risk
-author: deep-researcher (Antonello/Bali Zero)
+author: deep-researcher (Zero/Bali Zero)
 status: draft
 partial: false
 sources:

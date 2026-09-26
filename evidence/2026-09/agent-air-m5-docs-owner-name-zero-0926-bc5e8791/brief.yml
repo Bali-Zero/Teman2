@@ -1,0 +1,100 @@
+task_id: owner-name-zero-0926
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on the staged diff returns `3`,
+# by the SIZE term (S1) — 523 files, +1469/-1469 (2938 net lines), well past the ~400-net-line
+# PR-contract target and past the Gear-3 size threshold team-lead named at mandate time (1828).
+# No hot-zone path is touched (migrations_v2/** and .github/workflows/** are explicitly
+# excluded from the sweep, listed under `constraints` below), so the floor is size-only, not
+# hot-zone.
+objective: >-
+  Replace the owner's first name ("Antonello"/"antonello") with his codename "Zero" across
+  prose, comments, docstrings, markdown, and display-text YAML/JSON string values repo-wide
+  (Bali-Zero/Teman2), per Zero's explicit privacy directive relayed by the coordinating
+  session — while leaving every identifier, email address, file path, redaction-rule
+  definition, and functional code/data value that happens to contain the literal string
+  untouched, since renaming those breaks matching against real-world data (emails, WhatsApp
+  display names) or the PII-leak-detection machinery that protects the same name.
+constraints:
+  - >-
+    KEEP unchanged (verified file-by-file, see pack.yml `diff.shape` and `dissent`): every
+    email address and anything containing `@`; `antonellosiano`/`sianoantonello` handles and
+    hostnames; file-system paths and URLs; kebab/snake/camelCase compound tokens containing
+    the name (`needs-antonello`, `needs-antonello-on-pro`, `action_needs_antonello`,
+    `Antonello-decision`, `antonello_lab`, `SKIP_ANTONELLO`, etc. — enum/status values
+    persisted in DBs and ledgers); git/CODEOWNERS/GitHub logins; redaction-rule definitions
+    (`agent-library/config/redaction-rules.yaml`) and the PII-leak-detector regex in
+    `scripts/whatsapp_corpus/audit_privacy_outputs.py` + its test; the NER known-names
+    dictionary entry in `apps/backend-rag/backend/services/memory/collective_memory_workflow.py`
+    + its test; every string literal used for case-sensitive substring/dict-key matching
+    against real data (`prompt_builder.py`'s `is_creator` email check, `identity_resolver.py`'s
+    `_OPERATOR_PREFIXES`, `staging_promoter.py`'s `TEAM_NAME_TOKENS`,
+    `scripts/profile-monitor/wrapper.py`'s `EMPLOYEE_EMAILS` key); applied migrations under
+    `**/migrations_v2/**` (checksum-pinned by the PROD ledger); `.github/workflows/**`
+    (hot zone, listed for a follow-up, not edited here); the explicitly off-limits
+    `apps/backend-rag/backend/prompts/zantara_core.py` (CLAUDE.md / docs/rules/RULINGS.md);
+    `tests/wa_corpus/test_db_names.py` (the word "Zero" is ALSO the stopword-filtered business
+    term "Bali Zero" in that file's own fixture, so substituting the owner's name there
+    collides with the thing the test filters and breaks its own premise — kept as
+    "Antonello" instead); `shared/*.jsonl` runtime ledgers; `.secrets.baseline`; `*.lock`;
+    two research docs (`research/operations/2026-05-23-wa-mirror-dashboard-discovery.md`,
+    `research/tax/2026-05-09-pph21-q3-deadlines-livetest.md`) reverted at commit time because
+    the repo's `.husky/pre-commit` Law-2 PII gate flags their PRE-EXISTING content (an
+    NPWP-shaped UI-mockup placeholder string and an explicitly-labeled illustrative
+    NPWP format sample, neither real client data, both unrelated to this sweep's own edit) —
+    left out of this PR rather than bypassing the gate; a follow-up can pick up the one-line
+    rename in each once the gate's pre-existing false positive is handled separately.
+  - >-
+    No client PII anywhere in the diff or this pack. No secrets echoed. No edit outside the
+    dedicated worktree (`agent/air-m5/docs/owner-name-zero-0926`).
+acceptance:
+  - text: >-
+      A1: WHEN a case-insensitive, word-boundary scan of tracked files for "antonello" is run
+      on origin/main (excluding migrations_v2 and .github), THE count SHALL be materially
+      higher than the same scan on the working tree after this sweep.
+    probe: >-
+      git grep -c -w "Antonello" <ref> -- ':!**/migrations_v2/**' ':!.github/**' (see pack.yml
+      receipts: 1521 on origin/main -> 67 on the committed tree, all 67 individually reviewed
+      and justified as KEEP classes above; excludes evidence/**, which legitimately quotes the
+      literal word to document this sweep)
+  - text: >-
+      A2: WHEN every touched .py/.json/.yaml/.yml/.sh file is parsed, THE parse SHALL succeed
+      with zero errors.
+    probe: >-
+      py_compile + json.load + yaml.safe_load + bash -n over the full touched-file list
+  - text: >-
+      A3: WHEN the test suites that reference a touched module are run individually, THEY
+      SHALL pass at the same rate as on origin/main.
+    probe: >-
+      pytest per-file (backend-rag unit tests, scripts/tests, tests/wa_corpus) + vitest for
+      the one touched apps/mouth test file — see pack.yml receipts
+  - text: >-
+      A4: WHERE a touched file is a functional PII-leak detector, a name-extraction NER
+      dictionary, or an email/identity substring-match list, THE literal identifier value
+      SHALL be reverted to its original form even if prose elsewhere in the same repo was
+      renamed.
+    probe: >-
+      manual file-by-file review this session, listed in pack.yml dissent (self-caught,
+      CONFIRMED, reverted)
+assumptions:
+  - text: >-
+      "Zero" is the owner's standing codename per CLAUDE.md ("Owner codename: Zero (nome reale
+      PRIVATO)"), already used identically elsewhere in this repo, so replacing the first name
+      with it is consistent with existing convention rather than introducing a new one.
+    status: verified
+    probe: >-
+      grep CLAUDE.md for the codename line; cross-referenced against ~40 pre-existing
+      "Antonello/Zero" and "Zero/Antonello" redundant-pair mentions found and deduped this
+      session (see pack.yml dissent)
+  - text: >-
+      The full name "Antonello Siano" always collapses to bare "Zero" (not "Zero Siano"),
+      matching the coordinating session's instruction; a bare trailing "Siano" (surname alone)
+      is never touched.
+    status: verified
+    probe: >-
+      7 surname-alone hits found, none preceded by "Antonello ", none renamed (listed in the
+      sweep report)
+appetite:
+  wall_clock_hours: 3

@@ -7,7 +7,7 @@
 > follows the same plan. The actual code/cron/SQL changes remain **operator-
 > gated** — each is tagged "operator-decided, NOT executed by this doc".
 >
-> Date: 2026-06-12 · Decider: Antonello ("WR3 scegli tu per la qualità più
+> Date: 2026-06-12 · Decider: Zero ("WR3 scegli tu per la qualità più
 > alta") · Author of record: Claude (Opus 4.8), L2 docs authority ·
 > Specs: [`WR3-DEBT-INDEX.md`](WR3-DEBT-INDEX.md),
 > [`WR3-F18-evoskill-zero-pressure.md`](WR3-F18-evoskill-zero-pressure.md),
@@ -287,11 +287,11 @@ with each spec's `NOT EXECUTED` guardrail.
 > ordering (STEP 0 supervisor, STEP 3 F20, STEP 4 F21-Phase-2, STEP 5 F18-Phase-2)
 > stays **deferred / operator-gated** as decided above.
 >
-> Date: 2026-06-12 · Operator: Antonello ("WR3 = EXPLICIT PAUSE") · Executor:
+> Date: 2026-06-12 · Operator: Zero ("WR3 = EXPLICIT PAUSE") · Executor:
 > Claude (Opus 4.8), L2 authority · Machine: Pro (`nuzantara@Nuzantara`) via `ssh
 > pro`.
 
-**Operator decision.** Antonello confirmed a **WR3 explicit pause** — suspend
+**Operator decision.** Zero confirmed a **WR3 explicit pause** — suspend
 the green-theater self-improvement crons; produce no new episodes for now. This
 is the §0 quality principle applied: *off-honestly beats green-theater (C1)*.
 

@@ -19,25 +19,25 @@ Bali Zero is structurally well-placed: the locked palette/single-family typograp
 
 ## Source roll-call
 
-| # | Source | Tier | Status | Sample basis |
-|---|---|---|---|---|
-| 1 | @nytimes | 1 | ingested | recent-post conventions (type system, kicker, progress bar, close) |
-| 2 | @ft | 1 | ingested | data-punch format, FT-pink discipline, chart palette |
-| 3 | @reutersphotos | 1 | ingested | photo-essay mechanics, caption pill, numbering, credits |
-| 4 | @wired | 1 | ingested | AI-disclosure label, mono counter, neon-on-dark |
-| 5 | @bloomberg | 1 | ingested | data-hero, source credits, yellow-accent close |
-| 6 | @qz | 1 | ingested | progress line, exec-summary slide 2 |
-| 7 | @pudding.cool | 1 | ingested | annotation arrows, methodology slide |
-| 8 | @restofworld | 1 | ingested | geographic kicker, contrast progress bar |
-| 9 | @propublica | 1 | ingested | 2026 redesign, evidence annotation, red kicker |
-| 10 | @themarkup | 1 | ingested | OS-window/terminal aesthetic, screenshot-as-evidence |
-| 11 | @drift_official | 1 | ingested | B2B massive type, chat bubbles, conversational CTA |
-| 12 | @pentagram | 1 | ingested | zero-device minimalism, white space |
-| 13 | @letsmoveindonesia | 2 | ingested | split-screen template, contact-heavy close |
-| 14 | @emerhub_official | 2 | ingested | process step map, flat illustration |
-| 15 | @flado.bali | 2 | ingested | beach register (BZ-banned), serif frames |
-| 16 | Later/Metricool 2026 trends | 3 | ingested | engagement quant, slide mechanics, max-20 slides |
-| 17 | Sprout Social 2026 | 3 | ingested | AI-disclosure demand, DM-share weighting 3-5x |
+| #   | Source                      | Tier | Status   | Sample basis                                                       |
+| --- | --------------------------- | ---- | -------- | ------------------------------------------------------------------ |
+| 1   | @nytimes                    | 1    | ingested | recent-post conventions (type system, kicker, progress bar, close) |
+| 2   | @ft                         | 1    | ingested | data-punch format, FT-pink discipline, chart palette               |
+| 3   | @reutersphotos              | 1    | ingested | photo-essay mechanics, caption pill, numbering, credits            |
+| 4   | @wired                      | 1    | ingested | AI-disclosure label, mono counter, neon-on-dark                    |
+| 5   | @bloomberg                  | 1    | ingested | data-hero, source credits, yellow-accent close                     |
+| 6   | @qz                         | 1    | ingested | progress line, exec-summary slide 2                                |
+| 7   | @pudding.cool               | 1    | ingested | annotation arrows, methodology slide                               |
+| 8   | @restofworld                | 1    | ingested | geographic kicker, contrast progress bar                           |
+| 9   | @propublica                 | 1    | ingested | 2026 redesign, evidence annotation, red kicker                     |
+| 10  | @themarkup                  | 1    | ingested | OS-window/terminal aesthetic, screenshot-as-evidence               |
+| 11  | @drift_official             | 1    | ingested | B2B massive type, chat bubbles, conversational CTA                 |
+| 12  | @pentagram                  | 1    | ingested | zero-device minimalism, white space                                |
+| 13  | @letsmoveindonesia          | 2    | ingested | split-screen template, contact-heavy close                         |
+| 14  | @emerhub_official           | 2    | ingested | process step map, flat illustration                                |
+| 15  | @flado.bali                 | 2    | ingested | beach register (BZ-banned), serif frames                           |
+| 16  | Later/Metricool 2026 trends | 3    | ingested | engagement quant, slide mechanics, max-20 slides                   |
+| 17  | Sprout Social 2026          | 3    | ingested | AI-disclosure demand, DM-share weighting 3-5x                      |
 
 Trend-report quant retained for downstream agents: carousel avg engagement 1.92% (vs Reels 0.50%, static 0.45%); +114% conversion vs single image; 1.4x reach; DM shares weighted 3-5x likes; sweet spot 8-10 slides with engagement dip after slide 3 and recovery slide 8+; 1080x1350 portrait; max 20 slides.
 
@@ -49,48 +49,48 @@ Decision summary: **8 ADOPT · 7 PARTIAL · 3 OBSERVE · 7 REJECT** — 19 patte
 
 ### ADOPT (compatible + likely improves Save/Share)
 
-| # | Pattern | Novel | Brands using | When | Where to wire it in |
-|---|---|---|---|---|---|
-| 1 | **ai-disclosure-label** ⭐ | YES | Wired (+ Meta/EU AI Act pressure) | Any carousel with AI-generated hero | NEW constitution article (propose Art 14.7): low-contrast corner label "AI-assisted image", 7-8pt Montserrat white ~40% on dark. Constitution currently silent (Art 5.4 covers faces only). Brand-coherent: a compliance brand discloses. |
-| 2 | **data-annotation-callouts** | YES | Pudding, The Markup, ProPublica | Data/chart inner slides (tax rates, deadlines, fines) | layout-composer chart slides: yellow/red restrained pointers to the load-bearing data point. Extends May's data-embed-minimal PARTIAL. No naked charts. |
-| 3 | **process-step-map** ⭐ | YES | Emerhub | Regulatory how-to (KITAS flow, PT PMA setup, LKPM filing) | NEW inner-slide layout family: numbered step progression, yellow/red on dark, Montserrat. Direct S-pattern (rule→consequence→action) amplifier — the Save/Like engine per `_empirical-metrics`. Competitor's best device; take it. |
-| 4 | **translucent-caption-pill** ⭐ | YES | Reuters Photos | Caption text over full-bleed photo | `_base.css`: antracite ~75% translucent rounded rect behind captions. Closes May anti-pattern #4 ("poor contrast text-over-image", PARTIAL). NOT an Art 15 violation: the ban targets color-coded kicker/label pills, not legibility scrims — document the distinction for wr2-critic to avoid a false hard-fail. |
-| 5 | **slide-2-framing** | carryover | NYT, FT, Quartz, Drift | All | SHIPPED (Art 14.2) — confirmed still SOTA-dominant. Defend. |
-| 6 | **regulation-badge-top-right** | carryover | FT-class + regional | Policy/legal stories | SHIPPED (Art 14.4, WCAG AAA revision 2026-05-13) — confirmed. Defend. |
-| 7 | **swipe-indicator-dot** | carryover | FT, Quartz | All | SHIPPED (Art 14.1) — confirmed, but see progress-bar PARTIAL below: 2026 trend is bars over dots; A/B before replacing. |
-| 8 | **brand-mark-corner** | carryover | NYT, Reuters, Rest of World | All | Already aligned (Art 4). Confirmed. |
+| #   | Pattern                         | Novel     | Brands using                      | When                                                      | Where to wire it in                                                                                                                                                                                                                                                                                               |
+| --- | ------------------------------- | --------- | --------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **ai-disclosure-label** ⭐      | YES       | Wired (+ Meta/EU AI Act pressure) | Any carousel with AI-generated hero                       | NEW constitution article (propose Art 14.7): low-contrast corner label "AI-assisted image", 7-8pt Montserrat white ~40% on dark. Constitution currently silent (Art 5.4 covers faces only). Brand-coherent: a compliance brand discloses.                                                                         |
+| 2   | **data-annotation-callouts**    | YES       | Pudding, The Markup, ProPublica   | Data/chart inner slides (tax rates, deadlines, fines)     | layout-composer chart slides: yellow/red restrained pointers to the load-bearing data point. Extends May's data-embed-minimal PARTIAL. No naked charts.                                                                                                                                                           |
+| 3   | **process-step-map** ⭐         | YES       | Emerhub                           | Regulatory how-to (KITAS flow, PT PMA setup, LKPM filing) | NEW inner-slide layout family: numbered step progression, yellow/red on dark, Montserrat. Direct S-pattern (rule→consequence→action) amplifier — the Save/Like engine per `_empirical-metrics`. Competitor's best device; take it.                                                                                |
+| 4   | **translucent-caption-pill** ⭐ | YES       | Reuters Photos                    | Caption text over full-bleed photo                        | `_base.css`: antracite ~75% translucent rounded rect behind captions. Closes May anti-pattern #4 ("poor contrast text-over-image", PARTIAL). NOT an Art 15 violation: the ban targets color-coded kicker/label pills, not legibility scrims — document the distinction for wr2-critic to avoid a false hard-fail. |
+| 5   | **slide-2-framing**             | carryover | NYT, FT, Quartz, Drift            | All                                                       | SHIPPED (Art 14.2) — confirmed still SOTA-dominant. Defend.                                                                                                                                                                                                                                                       |
+| 6   | **regulation-badge-top-right**  | carryover | FT-class + regional               | Policy/legal stories                                      | SHIPPED (Art 14.4, WCAG AAA revision 2026-05-13) — confirmed. Defend.                                                                                                                                                                                                                                             |
+| 7   | **swipe-indicator-dot**         | carryover | FT, Quartz                        | All                                                       | SHIPPED (Art 14.1) — confirmed, but see progress-bar PARTIAL below: 2026 trend is bars over dots; A/B before replacing.                                                                                                                                                                                           |
+| 8   | **brand-mark-corner**           | carryover | NYT, Reuters, Rest of World       | All                                                       | Already aligned (Art 4). Confirmed.                                                                                                                                                                                                                                                                               |
 
 ### PARTIAL ADOPT (compatible but needs adaptation)
 
-| # | Pattern | Novel | Why partial |
-|---|---|---|---|
-| 9 | **progress-bar** | YES | 2026 convention: thin custom bar (top/bottom) replacing dots (@qz, @restofworld, NYT). Compatible (thin yellow bar on black) but OVERLAPS shipped Art 14.1 dot. Wire as `_base.css` variant and A/B vs the dot — do not silently replace a shipped, empirically-grounded device. |
-| 10 | **carousel-length-polarization** | YES | FT 4-5 punch vs Reuters 12-15 essay; 7-middle fading. Adopt as storyboarder PRINCIPLE: single-regulation-change → 4-5 slide punch; process deep-dive → 8-12 (trend sweet spot 8-10, recovery after slide 8). Small internal sample (n=8) — validate against incoming metrics before hard rule. |
-| 11 | **alt-text-accessibility-note** | YES | BZ design side is already WCAG AAA (brand pillar). The 2026 lever is alt-text as discoverability. Adopt at PUBLISHING checklist level (per-slide alt text in the Damar handoff), not as a slide-design change. |
-| 12 | **split-image-across-slide** | YES | Seamless image continuation across slide 1→2 border (replaces cartoon hand-swipe). Strong with Tier 1 aerial-drone heroes (panoramic). Needs layout-composer 2160px split-canvas support AND must coexist with Art 14.2 slide-2 framing text. Photo-led covers only. |
-| 13 | **per-slide-photo-credit** | YES | Reuters/NYT device, but BZ heroes are mostly AI-generated — "photo credit" is wrong for them. Adapt as a UNIFIED image-attribution corner slot: carries "AI-assisted image" (pattern #1) OR "Photo: X" depending on source type. One slot, two payloads. |
-| 14 | **slide-numbering** | YES | Reuters "1/8". Montserrat numerals fine. Adopt ONLY for deep-dive carousels (8+ slides) where position clarity matters; redundant on 4-5 punches. Coordinate with progress-device family (dot vs bar vs numbering — pick ONE per carousel). |
-| 15 | **full-bleed-photo-cover** | carryover | May classification retained: only when photo is dark enough to carry yellow/red overlay text (existing `cover-photo` constraint). Pairs with #4 translucent-caption-pill for the caption layer. |
+| #   | Pattern                          | Novel     | Why partial                                                                                                                                                                                                                                                                                    |
+| --- | -------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 9   | **progress-bar**                 | YES       | 2026 convention: thin custom bar (top/bottom) replacing dots (@qz, @restofworld, NYT). Compatible (thin yellow bar on black) but OVERLAPS shipped Art 14.1 dot. Wire as `_base.css` variant and A/B vs the dot — do not silently replace a shipped, empirically-grounded device.               |
+| 10  | **carousel-length-polarization** | YES       | FT 4-5 punch vs Reuters 12-15 essay; 7-middle fading. Adopt as storyboarder PRINCIPLE: single-regulation-change → 4-5 slide punch; process deep-dive → 8-12 (trend sweet spot 8-10, recovery after slide 8). Small internal sample (n=8) — validate against incoming metrics before hard rule. |
+| 11  | **alt-text-accessibility-note**  | YES       | BZ design side is already WCAG AAA (brand pillar). The 2026 lever is alt-text as discoverability. Adopt at PUBLISHING checklist level (per-slide alt text in the Damar handoff), not as a slide-design change.                                                                                 |
+| 12  | **split-image-across-slide**     | YES       | Seamless image continuation across slide 1→2 border (replaces cartoon hand-swipe). Strong with Tier 1 aerial-drone heroes (panoramic). Needs layout-composer 2160px split-canvas support AND must coexist with Art 14.2 slide-2 framing text. Photo-led covers only.                           |
+| 13  | **per-slide-photo-credit**       | YES       | Reuters/NYT device, but BZ heroes are mostly AI-generated — "photo credit" is wrong for them. Adapt as a UNIFIED image-attribution corner slot: carries "AI-assisted image" (pattern #1) OR "Photo: X" depending on source type. One slot, two payloads.                                       |
+| 14  | **slide-numbering**              | YES       | Reuters "1/8". Montserrat numerals fine. Adopt ONLY for deep-dive carousels (8+ slides) where position clarity matters; redundant on 4-5 punches. Coordinate with progress-device family (dot vs bar vs numbering — pick ONE per carousel).                                                    |
+| 15  | **full-bleed-photo-cover**       | carryover | May classification retained: only when photo is dark enough to carry yellow/red overlay text (existing `cover-photo` constraint). Pairs with #4 translucent-caption-pill for the caption layer.                                                                                                |
 
 ### OBSERVE (not clear it benefits BZ — log for A/B)
 
-| # | Pattern | Novel | Watch for |
-|---|---|---|---|
-| 16 | **feed-grid-coherence** | YES | Profile-level 3-column panorama/gradient interlock. Locked palette already gives BZ soft grid coherence for free; FULL interlocking would constrain every cover design and requires profile-level planning the WR2 pipeline doesn't do. Revisit if/when a feed-planning step exists. (Downgraded from DeepSeek ADOPT — ops cost, not design incompatibility.) |
-| 17 | **os-window-borders** | YES | The Markup terminal/OS-window aesthetic. Register clash with BZ documentary-photographic gravitas (Tier 1 empirical). The legitimate kernel is **screenshot-as-evidence** — OSS/Coretax portal screenshots framed minimally for process walkthroughs. Observe that kernel only; never the whole retro-tech skin. (Downgraded from DeepSeek ADOPT — palette-renderable ≠ brand-compatible.) |
-| 18 | **source-citation-tiny** | carryover | Art 14.3 DEFERRED status unchanged — layout exists, critic check 5.5 soft-fail-advisory, A/B still pending per 14.6. |
+| #   | Pattern                  | Novel     | Watch for                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | ------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 16  | **feed-grid-coherence**  | YES       | Profile-level 3-column panorama/gradient interlock. Locked palette already gives BZ soft grid coherence for free; FULL interlocking would constrain every cover design and requires profile-level planning the WR2 pipeline doesn't do. Revisit if/when a feed-planning step exists. (Downgraded from DeepSeek ADOPT — ops cost, not design incompatibility.)                              |
+| 17  | **os-window-borders**    | YES       | The Markup terminal/OS-window aesthetic. Register clash with BZ documentary-photographic gravitas (Tier 1 empirical). The legitimate kernel is **screenshot-as-evidence** — OSS/Coretax portal screenshots framed minimally for process walkthroughs. Observe that kernel only; never the whole retro-tech skin. (Downgraded from DeepSeek ADOPT — palette-renderable ≠ brand-compatible.) |
+| 18  | **source-citation-tiny** | carryover | Art 14.3 DEFERRED status unchanged — layout exists, critic check 5.5 soft-fail-advisory, A/B still pending per 14.6.                                                                                                                                                                                                                                                                       |
 
 ### REJECT (incompatible with brand or empirical data)
 
-| # | Pattern | Novel | Why reject |
-|---|---|---|---|
-| 19 | **editorial-kicker-label** | YES | NYT/FT/Bloomberg/ProPublica uppercase kicker (INVESTIGATION/OPINION). Art 15 HARD-FAIL: color-coded pill/kicker labels banned. The SOTA does it; we structurally cannot — institutional memory, do not re-propose. |
-| 20 | **geographic-kicker-label** | YES | Rest of World "JAKARTA, INDONESIA" kicker. Same Art 15 ban. The legitimate location-signal need is already served by May's ADOPT location-header-subtitle (subhead, not kicker). |
-| 21 | **monospace-progress-counter** | YES | DA-corrected: duplicate of slide-numbering with a typography violation on top (mono restricted to IBM Plex source footers, Art 3.2). |
-| 22 | **chat-bubble-graphics** | YES | Drift B2B SaaS conversational device, adjacent to "DM us" hard-sell culture (empirically penalized register). Palette-renderable but brand-register incompatible with documentary gravitas. (Overrides DeepSeek ADOPT.) |
-| 23 | **thin-serif-frames** | YES | Flado lifestyle device. Serif banned (Art 3.2); beach/luxury register is the exact BZ REJECT register. |
-| 24 | **bold-swipe-arrows** | YES | DA-corrected: oversized swipe arrows are listicle-pap engagement gimmick; also LetsMoveIndonesia's clutter device (yellow arrows everywhere). Art 14.1 dot already covers the affordance with restraint. |
-| 25 | **no-social-graphics-minimalism** | YES | Pentagram zero-device purity. Directly contradicts SHIPPED Art 14.1 (swipe dot) + 14.4 (regulation badge), both empirically grounded. Pentagram's portfolio context ≠ regulatory editorial utility. (Overrides DeepSeek ADOPT.) |
+| #   | Pattern                           | Novel | Why reject                                                                                                                                                                                                                      |
+| --- | --------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 19  | **editorial-kicker-label**        | YES   | NYT/FT/Bloomberg/ProPublica uppercase kicker (INVESTIGATION/OPINION). Art 15 HARD-FAIL: color-coded pill/kicker labels banned. The SOTA does it; we structurally cannot — institutional memory, do not re-propose.              |
+| 20  | **geographic-kicker-label**       | YES   | Rest of World "JAKARTA, INDONESIA" kicker. Same Art 15 ban. The legitimate location-signal need is already served by May's ADOPT location-header-subtitle (subhead, not kicker).                                                |
+| 21  | **monospace-progress-counter**    | YES   | DA-corrected: duplicate of slide-numbering with a typography violation on top (mono restricted to IBM Plex source footers, Art 3.2).                                                                                            |
+| 22  | **chat-bubble-graphics**          | YES   | Drift B2B SaaS conversational device, adjacent to "DM us" hard-sell culture (empirically penalized register). Palette-renderable but brand-register incompatible with documentary gravitas. (Overrides DeepSeek ADOPT.)         |
+| 23  | **thin-serif-frames**             | YES   | Flado lifestyle device. Serif banned (Art 3.2); beach/luxury register is the exact BZ REJECT register.                                                                                                                          |
+| 24  | **bold-swipe-arrows**             | YES   | DA-corrected: oversized swipe arrows are listicle-pap engagement gimmick; also LetsMoveIndonesia's clutter device (yellow arrows everywhere). Art 14.1 dot already covers the affordance with restraint.                        |
+| 25  | **no-social-graphics-minimalism** | YES   | Pentagram zero-device purity. Directly contradicts SHIPPED Art 14.1 (swipe dot) + 14.4 (regulation badge), both empirically grounded. Pentagram's portfolio context ≠ regulatory editorial utility. (Overrides DeepSeek ADOPT.) |
 
 ---
 
@@ -122,13 +122,13 @@ Decision summary: **8 ADOPT · 7 PARTIAL · 3 OBSERVE · 7 REJECT** — 19 patte
 
 May seed (first run) proposed 5 priority moves. Status verified on disk 2026-06-11:
 
-| May recommendation | Status June |
-|---|---|
-| Swipe-indicator dot (P1.1) | ✅ SHIPPED — Art 14.1 approved |
-| Slide-2 framing question (P1.2) | ✅ SHIPPED — Art 14.2 approved (frame-list moved to slide 3) |
-| Source-citation slide (P1.3) | 🟡 DEFERRED — Art 14.3, layout exists, critic 5.5 soft-advisory, A/B pending |
-| Regulation-badge top-right (P2.4) | ✅ SHIPPED — Art 14.4 approved, WCAG AAA revision 2026-05-13 |
-| QR code in closing (P2.5) | 🟡 DEFERRED — Art 14.5, CSS ready, needs server-side QR generator + A/B |
+| May recommendation                | Status June                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| Swipe-indicator dot (P1.1)        | ✅ SHIPPED — Art 14.1 approved                                               |
+| Slide-2 framing question (P1.2)   | ✅ SHIPPED — Art 14.2 approved (frame-list moved to slide 3)                 |
+| Source-citation slide (P1.3)      | 🟡 DEFERRED — Art 14.3, layout exists, critic 5.5 soft-advisory, A/B pending |
+| Regulation-badge top-right (P2.4) | ✅ SHIPPED — Art 14.4 approved, WCAG AAA revision 2026-05-13                 |
+| QR code in closing (P2.5)         | 🟡 DEFERRED — Art 14.5, CSS ready, needs server-side QR generator + A/B      |
 
 3 of 5 shipped within one cycle; the 2 deferred items remain valid (June evidence does not contradict them — re-confirmed source-citation-tiny as OBSERVE pending the Art 14.3 A/B). May's single REJECT (rotated-text-accent) stands — now reinforced by the Art 15 diagonal/rotated ban. No May ADOPT was falsified by June evidence.
 
@@ -141,10 +141,10 @@ May seed (first run) proposed 5 priority moves. Status verified on disk 2026-06-
 ## Open questions / verification needed
 
 - [ ] A/B: progress-bar variant vs Art 14.1 dot (14-day Save/Like + completion delta)
-- [ ] Antonello veto/approval on Art 14.7 AI-disclosure draft (NO auto-merge — propose only)
+- [ ] Zero veto/approval on Art 14.7 AI-disclosure draft (NO auto-merge — propose only)
 - [ ] Validate length-polarization against next 8+ published carousels (internal n=8 too small for a hard rule)
 - [ ] Per-slide insight analytics (IG rollout pending): when available, wire top-slide → standalone-post repurposing into wr2-ig-metrics-analyst
-- [ ] Music-on-carousel (pushes into Reels feed): OBSERVE-class, publishing-side decision, out of WR2 design scope — flag to Antonello
+- [ ] Music-on-carousel (pushes into Reels feed): OBSERVE-class, publishing-side decision, out of WR2 design scope — flag to Zero
 
 ---
 
@@ -153,5 +153,5 @@ May seed (first run) proposed 5 priority moves. Status verified on disk 2026-06-
 - This file is **read by every WR2 carousel run** (via `wr2-design-architect` skill load of `bali-zero-brand`) and by `wr2-ig-metrics-analyst` (weekly) + `wr2-critic`
 - Updated MONTHLY by `wr2-external-bench` agent (1st Monday 07:00 WITA); this edition completed manually 2026-06-11 after the cron run died post-DeepSeek-launch
 - DUAL-BASELINE companion to `_empirical-metrics-2026-05-12.md` (internal evidence + external SOTA)
-- Antonello has VETO on all ADOPT promotions to constitution Art 14
+- Zero has VETO on all ADOPT promotions to constitution Art 14
 - Intermediates for audit: `/tmp/wr2-external-bench-raw-2026-06.json`, `/tmp/deepseek-bench-patterns-2026-06.json`, `/tmp/deepseek-bench-da-2026-06.json`

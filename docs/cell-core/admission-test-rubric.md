@@ -3,7 +3,7 @@
 Each cell candidate is evaluated against the 7 immutable Symbiosis laws
 before being promoted from "automation" to "cell". The runtime check lives
 in `packages/cell-core/cell_core/admission_test.py`; this doc is the
-*human* rubric — pass and fail examples per Legge — that the runtime check
+_human_ rubric — pass and fail examples per Legge — that the runtime check
 codifies.
 
 A cell PASSES iff zero blocker violations across all 7 laws.
@@ -13,21 +13,21 @@ A cell PASSES iff zero blocker violations across all 7 laws.
 A cell candidate is a plain dict (or YAML doc) with the following fields:
 
 ```yaml
-name: system-doctor-cell        # short slug, kebab-case
-level: L1                       # cognitive level: L0, L1, L2, L3, L4, L4.5
-exposes_gui: false              # Law 1
-llm_invocation: ollama          # Law 1: cli | oauth_cli | ollama | deepseek_api | none
-external_sources:               # Law 2: list of upstream feed names
+name: system-doctor-cell # short slug, kebab-case
+level: L1 # cognitive level: L0, L1, L2, L3, L4, L4.5
+exposes_gui: false # Law 1
+llm_invocation: ollama # Law 1: cli | oauth_cli | ollama | deepseek_api | none
+external_sources: # Law 2: list of upstream feed names
   - fly-api
-client_data_access: false       # Law 2: does the cell read client PII?
-publishes_via: pg_notify        # Law 3: pg_notify | pg_trigger | consumer_only | none
-fallback_modes:                 # Law 4: ≥1 declared
+client_data_access: false # Law 2: does the cell read client PII?
+publishes_via: pg_notify # Law 3: pg_notify | pg_trigger | consumer_only | none
+fallback_modes: # Law 4: ≥1 declared
   - redis_down
   - llm_provider_down
-kill_switch: true               # Law 5
-auto_publishes: false           # Law 5: never auto-publish externally without human
-depends_on_other_cell_decisions: false  # Law 6
-metrics:                        # Law 7: ≥3 metrics
+kill_switch: true # Law 5
+auto_publishes: false # Law 5: never auto-publish externally without human
+depends_on_other_cell_decisions: false # Law 6
+metrics: # Law 7: ≥3 metrics
   - ttr
   - error_rate
   - throughput
@@ -42,17 +42,19 @@ consumes Max-plan OAuth quota), or local Ollama, or DeepSeek API
 (documented exception). The Anthropic Python SDK is forbidden.
 
 **PASS example:**
+
 ```yaml
 exposes_gui: false
-llm_invocation: cli   # claude --print, gemini --print, codex exec, etc.
+llm_invocation: cli # claude --print, gemini --print, codex exec, etc.
 ```
 
 **FAIL example:**
+
 ```yaml
-exposes_gui: true     # ← cell exposes UI; Law 1 is headless-only
+exposes_gui: true # ← cell exposes UI; Law 1 is headless-only
 ```
 
-**Why:** Antonello holds 3 Claude Max plans. Paying per-token via
+**Why:** Zero holds 3 Claude Max plans. Paying per-token via
 `ANTHROPIC_API_KEY` doubles a flat sub he already pays. The CLI path
 sidesteps this. GUI exposure also tends to drag in client SDKs.
 
@@ -62,21 +64,24 @@ Intelligence-source data does NOT leave Pro. A cell must NOT mix
 external (OSINT) sources with client PII access.
 
 **PASS example:**
+
 ```yaml
-external_sources: [fly-api]      # infra metric, not OSINT
-client_data_access: true         # OK — no OSINT mixing
+external_sources: [fly-api] # infra metric, not OSINT
+client_data_access: true # OK — no OSINT mixing
 ```
 
 **PASS example 2:**
+
 ```yaml
-external_sources: [intel-scraper]  # OSINT
-client_data_access: false          # OK — no client mixing
+external_sources: [intel-scraper] # OSINT
+client_data_access: false # OK — no client mixing
 ```
 
 **FAIL example:**
+
 ```yaml
-external_sources: [intel-scraper, exa-research]  # OSINT
-client_data_access: true                          # ← client PII present
+external_sources: [intel-scraper, exa-research] # OSINT
+client_data_access: true # ← client PII present
 # → blocker: contamination of client facts with unverified intelligence
 ```
 
@@ -91,23 +96,27 @@ events_outbox durability layer). No filesystem polling, no Redis Streams,
 no in-memory queues.
 
 **PASS example:**
+
 ```yaml
-publishes_via: pg_notify     # explicit, e.g. via outbox.publish()
+publishes_via: pg_notify # explicit, e.g. via outbox.publish()
 ```
 
 **PASS example 2:**
+
 ```yaml
-publishes_via: pg_trigger    # writes to a table whose AFTER trigger emits NOTIFY
+publishes_via: pg_trigger # writes to a table whose AFTER trigger emits NOTIFY
 ```
 
 **PASS example 3:**
+
 ```yaml
 publishes_via: consumer_only # cell only LISTENs, doesn't produce
 ```
 
 **FAIL example:**
+
 ```yaml
-publishes_via: filesystem    # ← downstream consumer must poll. Bad.
+publishes_via: filesystem # ← downstream consumer must poll. Bad.
 # → blocker: violates Law 3
 ```
 
@@ -121,16 +130,18 @@ When a dependency fails, the cell must continue operating in a
 documented degraded mode. Empty `fallback_modes` blocks promotion.
 
 **PASS example:**
+
 ```yaml
 fallback_modes:
-  - llm_provider_down   # falls back to deterministic heuristic
-  - redis_down          # in-memory cache is fine for an hour
-  - postgres_down       # cell rolls back the transaction and emits an alert
+  - llm_provider_down # falls back to deterministic heuristic
+  - redis_down # in-memory cache is fine for an hour
+  - postgres_down # cell rolls back the transaction and emits an alert
 ```
 
 **FAIL example:**
+
 ```yaml
-fallback_modes: []       # ← no degradation paths declared
+fallback_modes: [] # ← no degradation paths declared
 # → blocker: Law 4 requires resilience by design
 ```
 
@@ -143,20 +154,23 @@ that means: (a) every cell has a kill switch the operator can flip, and
 (b) no externally-visible publish happens without human review.
 
 **PASS example:**
+
 ```yaml
 kill_switch: true
-auto_publishes: false   # Telegram review gate or Lobster approval
+auto_publishes: false # Telegram review gate or Lobster approval
 ```
 
 **FAIL example A — no kill switch:**
+
 ```yaml
-kill_switch: false      # ← operator can't stop a misbehaving cell mid-flight
+kill_switch: false # ← operator can't stop a misbehaving cell mid-flight
 ```
 
 **FAIL example B — auto-publishes:**
+
 ```yaml
 kill_switch: true
-auto_publishes: true    # ← ships content to clients without a human review
+auto_publishes: true # ← ships content to clients without a human review
 ```
 
 **Why:** Cell propose; Zero (or human delegate via Telegram) decides.
@@ -170,12 +184,14 @@ data is fine; depending on its REASONING is not — that turns the
 "dependent" cell into an organelle of the "decisional" one.
 
 **PASS example:**
+
 ```yaml
 depends_on_other_cell_decisions: false
 # Cell may read intel_event payloads but its own logic decides outcomes
 ```
 
 **FAIL example:**
+
 ```yaml
 name: oracle-bypass-attempt
 depends_on_other_cell_decisions: true
@@ -193,14 +209,16 @@ Every cell must declare ≥3 metrics so its before/after performance can
 be measured. "If it has no metric, it's not an improvement."
 
 **PASS example:**
+
 ```yaml
 metrics:
-  - ttr             # time to resolution
+  - ttr # time to resolution
   - error_rate
   - throughput
 ```
 
 **PASS example 2 (also fine):**
+
 ```yaml
 metrics:
   - confidence_self
@@ -210,8 +228,9 @@ metrics:
 ```
 
 **FAIL example:**
+
 ```yaml
-metrics: [ttr]      # ← only 1 metric
+metrics: [ttr] # ← only 1 metric
 # → blocker: Law 7 requires ≥3 measurable signals
 ```
 
@@ -227,15 +246,15 @@ name: hgt-coordinator
 level: L2
 exposes_gui: false
 llm_invocation: cli
-external_sources: []           # operates on internal Genome, not OSINT
+external_sources: [] # operates on internal Genome, not OSINT
 client_data_access: false
-publishes_via: pg_notify       # emits propose-only events
+publishes_via: pg_notify # emits propose-only events
 fallback_modes:
   - llm_provider_down
   - redis_down
   - cell_observatory_down
 kill_switch: true
-auto_publishes: false           # propose-only; humans/cells review before merge
+auto_publishes: false # propose-only; humans/cells review before merge
 depends_on_other_cell_decisions: false
 metrics:
   - propose_count
@@ -249,7 +268,7 @@ uses gate is enforced inside the cell, not at admission time.
 
 ### Failing — naive "oracle L4 cell" (DeepSeek round-2 example)
 
-```yaml
+````yaml
 name: oracle-l4-standalone
 level: L4
 exposes_gui: false
@@ -291,7 +310,7 @@ cell = {  # load from YAML or define inline
 
 result = AdmissionTest().run_all(cell)
 print(result.summary())
-```
+````
 
 Output:
 

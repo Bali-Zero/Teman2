@@ -20,12 +20,12 @@ several days. Anything you tag is saved immediately.
 
 Just type a few words. Lower-case. Use dashes between words.
 
-| Carousel is about... | Type |
-|---|---|
+| Carousel is about...           | Type                  |
+| ------------------------------ | --------------------- |
 | KITAS rules for digital nomads | `digital-nomad-kitas` |
-| Tax deadline May 31 | `spt-extension-may` |
-| Marina Tuka shutdown | `marina-tuka` |
-| New visa codes 2026 | `new-visa-codes-2026` |
+| Tax deadline May 31            | `spt-extension-may`   |
+| Marina Tuka shutdown           | `marina-tuka`         |
+| New visa codes 2026            | `new-visa-codes-2026` |
 
 If you really can't remember what it was about → **click SKIP** (no problem).
 
@@ -65,10 +65,10 @@ Most carousels are **founder** or **investor**. Don't overthink it.
 
 This is the hardest one. The agent has 7 ways of writing. Pick the closest:
 
-- **rituale** — sounds solemn, like a ritual phrase. Example: *"EVERY QUARTER, THE PERIMETER TIGHTENS."*
+- **rituale** — sounds solemn, like a ritual phrase. Example: _"EVERY QUARTER, THE PERIMETER TIGHTENS."_
 - **analitico** — many facts and numbers. Like a news report.
-- **ironico** — calls out something silly without being mean. Example: *"B211A AND C312 ARE STILL ON YOUR AGENT'S BROCHURE. THEY HAVEN'T EXISTED SINCE 2023."*
-- **militante** — strong, short, punchy statements. Example: *"INVESTMENT IS NOT IMMIGRATION."*
+- **ironico** — calls out something silly without being mean. Example: _"B211A AND C312 ARE STILL ON YOUR AGENT'S BROCHURE. THEY HAVEN'T EXISTED SINCE 2023."_
+- **militante** — strong, short, punchy statements. Example: _"INVESTMENT IS NOT IMMIGRATION."_
 - **pedagogico** — explainer mode, step-by-step.
 - **poetico** — slow, reflective, emotional. Rare.
 - **tecnico** — full of acronyms (KITAS, PT PMA, hak pakai). Reader must know jargon.
@@ -108,6 +108,7 @@ skipped, you don't see them again.
 ## What happens with your tags?
 
 The agent uses your tags 2 ways:
+
 1. When designing a NEW carousel, it looks at past ones with the same domain/register and
    uses them as a style reference. Better tags = better future carousels.
 2. The weekly Voyager check looks at coverage — "we did 5 visa carousels but 0 tax this
@@ -129,10 +130,10 @@ You can do it in one session OR a few each day. The page remembers your progress
 
 ## If something breaks
 
-Page won't load → text Antonello, ask him to start the server.
-A dropdown is missing options → text Antonello, send screenshot.
+Page won't load → text Zero, ask him to start the server.
+A dropdown is missing options → text Zero, send screenshot.
 You made a mistake on one → not a problem, the agent re-learns over time. Just keep going.
 
 ---
 
-*Bali Zero — WR2 Editorial. Last updated 2026-05-08.*
+_Bali Zero — WR2 Editorial. Last updated 2026-05-08._

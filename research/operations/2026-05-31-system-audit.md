@@ -172,7 +172,7 @@ never rotated — the documented "weekly digest / pruning" gap. **See finding F-
 
 These were deliberately **not** auto-shipped: each either mutates prod/shared
 state, has unverified blast radius, or could not be cleanly re-verified in-turn.
-Per the hard rules they belong to "Fix che aspettano Antonello".
+Per the hard rules they belong to "Fix che aspettano Zero".
 
 - **F-1 — `escalations_pro.jsonl` bloat (1.17 MB, git-tracked, dead since
   2026-05-24).** Recommend: add a rotation/prune step (e.g. archive entries

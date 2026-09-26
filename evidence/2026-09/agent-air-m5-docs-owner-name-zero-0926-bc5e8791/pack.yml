@@ -1,0 +1,327 @@
+# Gear-3 evidence pack — owner-name privacy sweep (Antonello -> Zero), Bali-Zero/Teman2,
+# branch agent/air-m5/docs/owner-name-zero-0926. Floor is 3 by SIZE (523 files, +1841/-1466,
+# 2938 net lines — measured, not the diff's own claim), not by hot-zone: migrations_v2 and
+# .github/workflows are explicitly excluded from the sweep and untouched.
+task_id: owner-name-zero-0926
+gear: 3
+gate_class: sonnet
+brief_ref: evidence/brief.yml
+date: 2026-09-26
+machine: M5
+lanes:
+  - lane: repo-wide owner-name prose sweep (Antonello -> Zero) + functional-collision revert pass
+    role: build
+    seat: claude-sonnet-5 (this worktree session, agent/air-m5/docs/owner-name-zero-0926)
+    note: >-
+      Wrote a boundary-aware regex sweep (word-boundary both sides; refuses any match adjacent
+      to -_/@:\ or a trailing "." before a letter/digit, so kebab/snake/camelCase tokens, emails,
+      paths and URLs are left alone) over `git ls-files`, applied it, then did a second and
+      third targeted pass for two residual-but-safe prose shapes the boundary rule was too
+      conservative on ("Name:" dialogue-speaker labels, "Name1/Name2" author/reviewer pairs,
+      including deduping the ~40 pre-existing redundant "Antonello/Zero" pairs into bare
+      "Zero"). Then did a full adversarial self-review of every match against a code file
+      (.py/.ts/.sql/.yaml/.json/.sh), file by file, and found + reverted 10 real functional
+      collisions the boundary rule could not see (see dissent). Re-measured after every revert.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane; D3's seat-diversity requirement does not attach (binds packs with >= 2
+  build lanes).
+
+seat_override: >-
+  R9 council_run: no council convened. This is a mechanical, reviewable text substitution
+  with an explicit, auditable rule set (see brief.yml `constraints` and this pack's `dissent`)
+  — it touches no GROUND_TRUTH_PATH_PATTERNS entry (no visa rule, no KBLI code, no price, no
+  tax rate is asserted or changed), so R8 does not attach either. In place of a second seat,
+  this pack documents its own adversarial re-review pass against the sweep's own output,
+  file-by-file, which is where every dissent entry below comes from — self-caught, not
+  claimed clean by construction.
+
+outcome: >-
+  521 non-evidence tracked files touched (+2 new evidence files, 523 total in the commit),
+  +1841/-1466 (word-for-word substitutions, the two new evidence files, plus a handful of
+  hand-cleaned duplication artifacts — see dissent). A case-insensitive, word-boundary count
+  of "Antonello" (excluding migrations_v2, .github and this pack's own evidence/** directory,
+  which legitimately quotes the literal word to document the sweep) drops from 1521 on
+  origin/main to 67 on the committed tree; every one of the 67 remaining hits was individually
+  read and falls into a KEEP class named in brief.yml `constraints` (kebab/snake compound
+  token, redaction-rule definition, functional identifier, off-limits file, a real
+  file-system path, or one of two files excluded at commit time by a pre-existing PII-gate
+  false positive unrelated to this diff) — none is an accidental miss.
+  py_compile/json.load/yaml.safe_load/bash -n
+  are clean on every touched file of that type. Every test file that references a touched
+  module passes individually at the same rate as on origin/main (one pre-existing
+  cross-file test-isolation failure was reproduced byte-identically on unmodified origin/main
+  and is therefore not a regression this PR introduces — see receipts).
+
+diff:
+  shape: >-
+    Mechanical text substitution across markdown, YAML/JSON string values, code comments and
+    docstrings, plus a handful of files where a first-pass substitution was caught by self-review and
+    reverted because the literal string was functional (a dict key, a substring-match list, a
+    regex pattern, or an off-limits file) rather than prose — see dissent for the full list.
+    No production code path changed behavior: every functional revert restores the ORIGINAL
+    identifier, and every kept prose change is either a comment, a docstring, a markdown file,
+    or a display-text JSON/YAML string value never read back by code for matching.
+  measured: >-
+    see the receipts entry for the exact `evidence_pack_lint.py --print-measured` invocation
+    and its output at pack-authoring time; committing this pack changes its own diff size by
+    construction, so no fixed file/line count is asserted here.
+
+dissent:
+  - seat: self-review (same build lane, adversarial second pass over its own diff)
+    objection: >-
+      `apps/backend-rag/backend/services/rag/agentic/prompt_builder.py:674` — the sweep changed
+      `if "antonello" in email_lower or "siano" in email_lower:` to `if "Zero" in email_lower`,
+      which silently stops recognizing the owner's real email address as the creator persona
+      trigger (`is_creator`) — the check is a substring match against a real inbox address, not
+      prose.
+    status: CONFIRMED
+    disposition: reverted this file to the original literal `"antonello"` before commit.
+  - seat: self-review
+    objection: >-
+      `apps/backend-rag/backend/services/wa_copilot/identity_resolver.py`'s `_OPERATOR_PREFIXES`
+      tuple and `staging_promoter.py`'s `TEAM_NAME_TOKENS` tuple both had their lowercase
+      `"antonello"` entry capitalized to `"Zero"` — both lists are matched against
+      `.lower()`-normalized real WhatsApp display-name text, so a capitalized entry can never
+      match again (silent, no exception raised).
+    status: CONFIRMED
+    disposition: reverted both entries to lowercase `"antonello"`.
+  - seat: self-review
+    objection: >-
+      `scripts/profile-monitor/wrapper.py`'s `EMPLOYEE_EMAILS` dict had its `"antonello"` key
+      capitalized to `"Zero"`; the lookup path lowercases the incoming `employee` field first,
+      so the capitalized key becomes permanently unreachable (`unknown_employee` error on every
+      real checkout event for the owner).
+    status: CONFIRMED
+    disposition: reverted the key to lowercase `"antonello"`.
+  - seat: self-review
+    objection: >-
+      `apps/backend-rag/backend/services/memory/collective_memory_workflow.py`'s
+      `_ITALIAN_NAMES` known-name-dictionary entry `"antonello"` was capitalized to `"Zero"`;
+      the lookup strategy searches this set against pre-lowercased text, so the entry goes
+      dead. Its paired test (`test_collective_memory_workflow.py`) was also rewritten to use
+      "Zero" as the example name and started failing at sentence-start position (verified live:
+      `extract_person_names("Zero conosce Maria")` returns only `["Maria"]`, because "Zero"
+      falls through to the sentence-start-excluded title-case strategy once it is no longer a
+      dictionary hit) — an entirely different, weaker code path than the dictionary-lookup
+      strategy the test was written to exercise.
+    status: CONFIRMED
+    disposition:
+      reverted both files to original content; "Antonello" here is a generic
+      example Italian first name for testing NER extraction, not operationally meaningful
+      prose about the owner.
+  - seat: self-review
+    objection: >-
+      `scripts/whatsapp_corpus/audit_privacy_outputs.py`'s `LeakPattern("name_antonello", ...)`
+      regex — the very leak-detector that scans WhatsApp-corpus exports for the owner's real
+      name leaking into a de-identified output — had its pattern rewritten from
+      `r"...Antonello..."` to `r"...Zero..."`. This inverts the control: it would stop
+      detecting real "Antonello" leaks and start false-positiving on every legitimate "Bali
+      Zero" mention. Its paired test (`test_whatsapp_corpus_privacy_audit.py`) was rewritten
+      in lockstep, which would have hidden the regression from CI.
+    status: CONFIRMED
+    disposition: reverted both files to original content in full.
+  - seat: self-review
+    objection: >-
+      `tests/wa_corpus/test_db_names.py`'s `test_stopwords_do_not_count_as_names` uses
+      "Antonello" specifically because it is NOT the word "Zero" (which the same fixture
+      also uses, filtered as a stopword, as part of "Bali Zero"). Renaming the real-name
+      fixture to "Zero" makes the test assert that the same literal word is simultaneously
+      filtered (stopword, from "Bali Zero") and counted (a real name) — a self-contradicting
+      fixture; verified live that the underlying premise breaks.
+    status: CONFIRMED
+    disposition:
+      reverted this file to original content ("Antonello" kept as the fixture's
+      real-name example).
+  - seat: self-review
+    objection: >-
+      `apps/backend-rag/backend/prompts/zantara_core.py` was touched (CREATOR_PERSONA section
+      comment + prompt body) — this file is explicitly off-limits per CLAUDE.md / docs/rules/
+      RULINGS.md ("Off-limits: zantara_core.py, fly.toml, .env*, ..."), independent of what the
+      edit was.
+    status: CONFIRMED
+    disposition:
+      reverted this file to origin/main content in full; off-limits files are never
+      in scope for this sweep regardless of content.
+  - seat: self-review
+    objection: >-
+      Two structurally-identical duplication artifacts where prose already paired "Antonello"
+      with the codename "Zero" (`Antonello "Zero" Siano` in a byline;
+      `"The sender is Zero (Antonello), the owner..."` in the live WhatsApp-bridge system
+      prompt at `scripts/openclaw_whatsapp_bridge.py:364`) became literal `Zero "Zero" Siano`
+      / `Zero (Zero)` after a naive substitution — nonsensical and, in the bridge case, shipped
+      into a live LLM prompt.
+    status: CONFIRMED
+    disposition:
+      hand-collapsed both to a single "Zero" (dropped the now-redundant
+      parenthetical/quoted nickname); the bridge's paired test assertions were updated to
+      match the new prompt text so the test still exercises the real string.
+  - seat: self-review
+    objection: >-
+      ~24 files carried the pre-existing documentation convention "Zero (Antonello)" /
+      "Zero, Antonello, Asya" (codename + real name, or a 3-name admin list where the same
+      person is listed under both names) which the sweep correctly turned into "Zero (Zero)" /
+      "Zero, Zero, Asya" — correct as a literal substitution, but unreadable.
+    status: CONFIRMED
+    disposition:
+      collapsed the duplicate-person patterns to a single "Zero" with a small
+      regex pass (`Zero (Zero)` -> `Zero`, `Zero, Zero[, and] Asya` -> `Zero[, and] Asya`,
+      `Zero / Zero` -> `Zero`), spot-checked all 24 files after the fix.
+  - seat: self-review
+    objection: >-
+      The word-boundary substitution rule's conservative adjacency guard (refuses a match
+      touching `-_/@:` on either side) also silently skipped two large, entirely-safe prose
+      classes: "Antonello:" as a dialogue/checklist speaker label (45 lines across 34 files —
+      runbooks, decision logs, design specs) and "Name/Antonello" or "Antonello/Name"
+      author-pair notation (48 lines across 40 files — dozens of research-doc bylines and
+      team-pairing notes). Left as coverage gaps (not a functional bug — the owner's real name
+      simply remained un-swept in these spots) after the first pass.
+    status: PLAUSIBLE
+    disposition:
+      read every one of the 93 lines by eye before applying a second, narrowly-
+      scoped regex pass restricted to those two exact shapes (excluding the two lines that are
+      real on-disk file-path descriptions, which must stay literal); re-validated JSON/YAML/
+      py syntax on every file touched by this second pass.
+  - seat: .husky/pre-commit's Law-2 PII gate (repo tooling, run at `git commit` time)
+    objection: >-
+      `git commit` was BLOCKED: staged content in
+      `research/operations/2026-05-23-wa-mirror-dashboard-discovery.md` and
+      `research/tax/2026-05-09-pph21-q3-deadlines-livetest.md` matches the gate's NPWP/
+      passport-number heuristic.
+    status: PLAUSIBLE
+    disposition: >-
+      read both flagged spots — one is UI-mockup copy (an NPWP-badge placeholder example),
+      the other an explicitly-labeled illustrative NPWP format sample (an old-format-to-new-
+      format conversion example) — neither is real client data and neither line is part of
+      this sweep's own edit (both files' only change
+      was the unrelated one-word "Antonello"->"Zero" rename elsewhere in the file). Rather
+      than override the gate (`PII_GATE_ENFORCEMENT=false` is reserved for a "sanitized/
+      published artifact ONLY" call this task was not authorized to make), reverted the
+      one-line rename in both files so they carry NO diff and left this commit's gate green;
+      the two files are named in brief.yml `constraints` as a follow-up.
+  - seat: self-review
+    objection: >-
+      A sibling task's own evidence pack
+      (`evidence/2026-09/agent-nuzantara-backend-phone-core-indexes-a007f7e5/pack.yml`) quotes
+      a LITERAL git author string as audit evidence ("it leaned on the git author string
+      `Antonello Siano`, which is only this machine's identity") — the sweep rewrote the
+      quoted string itself, which would make the pack misquote its own `git log` receipt.
+    status: CONFIRMED
+    disposition: >-
+      reverted that one literal back to `Antonello Siano` (verified live:
+      `git log -1 --format="%an <%ae>" 3f7906cc06` still reads `Antonello Siano
+      <noreply@anthropic.com>` on this machine, matching the quote); left the other touched
+      evidence file (`fix-crm-company-typed-models-08e94277/brief.yml`, an "Antonello 2026-09-21,
+      Communication Log: ..." attribution quote, not a git-metadata quote) as swept.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Baseline case-insensitive, word-boundary "Antonello" count on origin/main (excluding
+      migrations_v2/.github) is 1521.
+    cmd: >-
+      git grep -c -w "Antonello" origin/main -- ':!**/migrations_v2/**' ':!.github/**' | \
+      python3 -c "import sys; print(sum(int(l.rsplit(':',1)[1]) for l in sys.stdin))"
+    exit: 0
+    ts: 2026-09-26T16:00:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Same count on the committed tree (excluding this pack's own evidence/** directory,
+      which legitimately quotes "Antonello" to document the sweep) after the full sweep
+      (including the two targeted follow-up passes, all functional reverts, and the two
+      files excluded by the pre-existing PII-gate false positive) is 67, and every one of
+      the 67 was read and falls into a documented KEEP class.
+    cmd: >-
+      git grep -n -w "Antonello" -- ':!**/migrations_v2/**' ':!.github/**' ':!evidence/**'
+    exit: 0
+    ts: 2026-09-26T16:10:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Every touched .py file compiles.
+    cmd: >-
+      for f in $(git diff --name-only -- '*.py'); do python3 -m py_compile "$f"; done
+    exit: 0
+    ts: 2026-09-26T15:40:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Every touched .json file parses.
+    cmd: >-
+      for f in $(git diff --name-only -- '*.json'); do python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; done
+    exit: 0
+    ts: 2026-09-26T15:41:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Every touched .yaml/.yml file parses.
+    cmd: >-
+      for f in $(git diff --name-only -- '*.yaml' '*.yml'); do python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" "$f"; done
+    exit: 0
+    ts: 2026-09-26T15:42:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Every touched .sh file parses.
+    cmd: >-
+      for f in $(git diff --name-only -- '*.sh'); do bash -n "$f"; done
+    exit: 0
+    ts: 2026-09-26T15:43:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      backend-rag unit test files referencing touched modules pass individually, at the same
+      rate as origin/main: test_voice_legacy.py (35 passed), test_openclaw_whatsapp_bridge_
+      script.py (161 passed), test_prompt_builder_exponential_coverage.py (146 passed),
+      test_collective_memory_workflow.py (63 passed), test_sentry_pii_redaction.py
+      (47 passed), test_send_email_chain.py (31 passed), test_openclaw_whatsapp_bridge.py
+      (2 passed), test_deleted_at_guard_registry.py (19 passed), test_orchestrator_gemini.py
+      (6 passed, 4 pre-existing skips).
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python3 -m pytest <each file individually>
+    exit: 0
+    ts: 2026-09-27T00:14:00+08:00
+    seat: claude-sonnet-5
+  - claim: >-
+      Running test_prompt_builder_exponential_coverage.py and test_voice_legacy.py TOGETHER
+      (not individually) reproduces 30 identical failures (env-var leakage between the two
+      files, unrelated to this diff) on UNMODIFIED origin/main too — confirmed a pre-existing
+      test-isolation bug, not a regression introduced by this sweep.
+    cmd: >-
+      cd apps/backend-rag && .venv/bin/python3 -m pytest \
+      backend/tests/unit/services/rag/agentic/test_prompt_builder_exponential_coverage.py \
+      backend/tests/unit/app/routers/test_voice_legacy.py   # run once in the worktree, once
+      on the unmodified main checkout — 30 failed / 151 passed, byte-identical, both times
+    exit: 1
+    ts: 2026-09-27T00:14:30+08:00
+    seat: claude-sonnet-5
+  - claim: >-
+      scripts/tests and tests/wa_corpus files referencing touched modules pass: test_
+      whatsapp_corpus_privacy_audit.py (32 passed), test_hero_visible_family.py (7 passed),
+      test_wr2_image_generator_backend.py (19 passed), test_wr2_smart_hero.py (31 passed),
+      test_db_names.py (2 passed), test_prompt_master.py (5 passed).
+    cmd: >-
+      python3 -m pytest <each file individually> (repo root)
+    exit: 0
+    ts: 2026-09-27T00:15:00+08:00
+    seat: claude-sonnet-5
+  - claim: >-
+      The one touched apps/mouth vitest file passes.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run src/lib/blog/homepage-layout-guard.test.ts
+    exit: 0
+    ts: 2026-09-27T00:14:06+08:00
+    seat: claude-sonnet-5
+  - claim: >-
+      Measured diff size for the gear-floor computation: 523 files, +1841/-1466.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-measured --numstat-file <numstat>
+      --changed-files-file <changed>
+    exit: 0
+    ts: 2026-09-26T16:12:00Z
+    seat: claude-sonnet-5
+  - claim: >-
+      Gear floor for this diff is 3 (by size, not hot-zone).
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --numstat-file <numstat>
+      --changed-files-file <changed>
+    exit: 0
+    ts: 2026-09-26T16:12:30Z
+    seat: claude-sonnet-5

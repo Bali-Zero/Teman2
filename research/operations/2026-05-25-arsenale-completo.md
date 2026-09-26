@@ -435,7 +435,7 @@ Mai in nessun env (local, Fly secrets, CI, cron wrapper, Docker):
 
 ### 7.3 NON banned (other paid APIs OK)
 
-La regola applica **solo** ad Anthropic paid endpoint perché Antonello ha 2 Claude MAX x20 = pagare per token duplicherebbe una flat subscription.
+La regola applica **solo** ad Anthropic paid endpoint perché Zero ha 2 Claude MAX x20 = pagare per token duplicherebbe una flat subscription.
 
 - **DeepSeek V4 Pro API** (~$0.01/query) → article_composer + tri-LLM panel gate-6
 - **ChatGPT Pro $200/mo** → Codex CLI illimitato + `$imagegen`
@@ -451,7 +451,7 @@ La regola applica **solo** ad Anthropic paid endpoint perché Antonello ha 2 Cla
 
 ### 8.1 RESOLVED 2026-05-24 — Arsenale audit fixes
 
-- **Codex token revoked**: re-login da terminale (Antonello fatto)
+- **Codex token revoked**: re-login da terminale (Zero fatto)
 - **Ollama empty su Pro**: re-pulled qwen3.5:9b + qwen2.5vl:7b + bge-m3
 - **notebooklm-mcp + nlm CLI symlinks cancellati**: ricreati in `~/.local/bin/`
 - **NB-INTEL "mass purge" 2026-05-18**: era UUID switch, NON destructive event
@@ -459,7 +459,7 @@ La regola applica **solo** ad Anthropic paid endpoint perché Antonello ha 2 Cla
 - **CLAUDE.md global** aggiornata (slot 1 kaiser, agy v1.0.2, codex v0.133, Ollama VERIFY PER MACHINE, cascade health-check warning)
 - **Memory `reference_notebooklm_arsenal_full.md`** aggiornata con UUID mapping post-switch
 
-### 8.2 OPEN — pending Antonello decisions
+### 8.2 OPEN — pending Zero decisions
 
 - **Claude slot 2** re-OAuth da terminale: `CLAUDE_CONFIG_DIR=$HOME/.claude-acct2 claude /login`
 - **MATA GARUDA Indonesia Gov Data Sources (313 src)** rebuild

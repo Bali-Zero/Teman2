@@ -20,7 +20,7 @@ high-leverage / low-risk subset (P-2b, P-5, P-3 grammar, P-6 honesty) shipped in
 this PR and on the HOME constitution fork. The four items below were **deliberately
 NOT auto-merged** because each is either an architectural change to a pipeline that
 publishes live to Instagram, a manual asset-production task, a production DDL, or a
-schema change — all of which warrant an explicit operator decision (Antonello).
+schema change — all of which warrant an explicit operator decision (Zero).
 
 This is the executable plan for each, so they can be picked up without re-deriving.
 
@@ -148,7 +148,7 @@ example.
    service CTA + link-in-bio is permitted (Art 6.6/6.7) and it is currently never built;
    its publish function is uncalled.
 3. Add validators (regenerate, not silent-truncate): 25-50-word bodies, **3-5-word covers**
-   (per Antonello's hard rule + `feedback_balizero_voice_editorial_but_popular`), and a
+   (per Zero's hard rule + `feedback_balizero_voice_editorial_but_popular`), and a
    readability ceiling for the "popular in voice" register.
 4. Instrument saves/shares/lead attribution in daily metrics (the constitution declares
    Saves+Shares the KPI; today only pipeline throughput is tracked).

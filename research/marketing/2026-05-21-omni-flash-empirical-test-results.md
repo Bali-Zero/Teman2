@@ -144,6 +144,6 @@ Files committed yesterday (5 hours ago):
 
 **Empirical-first beats web-research-first.** I spent ~3 hours yesterday doing deep web research + multi-LLM red-team building elaborate Path A/B/C/D/E recommendations, when 5 minutes of probing the local FlowKit gateway revealed all the capability was already there + unused.
 
-Antonello's challenge ("ma hai fatto deep research su flow e veo dopo importante convention google 19 maggio") was correct to push deeper, BUT the deeper deep-research wasn't needed — empirical local probe was.
+Zero's challenge ("ma hai fatto deep research su flow e veo dopo importante convention google 19 maggio") was correct to push deeper, BUT the deeper deep-research wasn't needed — empirical local probe was.
 
 **Heuristic**: when investigating tool capability, probe the tool first (5 min), do web research second (3 hours).

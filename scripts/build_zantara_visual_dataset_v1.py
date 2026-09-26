@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the official Zantara v1 visual identity seed dataset.
 
-The source images live outside the repo on Antonello's Desktop. This script
+The source images live outside the repo on Zero's Desktop. This script
 keeps the repo artifact reproducible: raw references are copied, collages are
 split into single-image crops, rejected images are separated, and metadata is
 written next to the assets.

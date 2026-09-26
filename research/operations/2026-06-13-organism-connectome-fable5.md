@@ -11,7 +11,7 @@ author: Claude Fable 5 (autonomous background session, Pro)
 
 # Il Connettoma di Nuzantara — TAC completa dell'organismo + Antibody Debt ledger
 
-> Topic eseguito in autonomia su richiesta di Antonello ("un topic che solo tu puoi fare
+> Topic eseguito in autonomia su richiesta di Zero ("un topic che solo tu puoi fare
 > qualitativamente e profondamente"): tenere in un solo contesto l'intero organismo —
 > sistema nervoso, arterie, fleet, sistema immunitario, cervello, corpus di cicatrici —
 > e trasformare la diagnosi in terapia shippata. Snapshot: 2026-06-13 00:30-00:45 WITA.

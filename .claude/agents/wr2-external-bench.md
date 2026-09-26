@@ -144,7 +144,7 @@ What did we ADOPT last month that worked / didn't work (compare against `wr2-ig-
 
 ### Step 5 — Notify
 
-Send Telegram to Antonello with link to the file + 3-sentence executive summary. NO autonomous merge — Antonello approves before changes propagate to constitution.
+Send Telegram to Zero with link to the file + 3-sentence executive summary. NO autonomous merge — Zero approves before changes propagate to constitution.
 
 ## Hard rules
 
@@ -181,4 +181,4 @@ LaunchAgent `com.balizero.wr2.external-bench.monthly` runs first Monday of month
 
 ## Bootstrapping
 
-The first run uses Antonello's hand-curated seed file `_external-bench-2026-05.md` as carryover input. Subsequent runs use the previous month's auto-generated file.
+The first run uses Zero's hand-curated seed file `_external-bench-2026-05.md` as carryover input. Subsequent runs use the previous month's auto-generated file.

@@ -1,18 +1,18 @@
 # Domain Mesh Autonomic — Design Doc (2026-05-08)
 
 > **Brainstorming session output**: 6 domains × universal lifecycle (nasce → cresce → auto-correct → cosciente → canalizza)
-> **Owner**: Antonello Siano (Bali Zero / Nuzantara)
-> **Status**: design — pending Antonello approval, then writing-plans skill
+> **Owner**: Zero (Bali Zero / Nuzantara)
+> **Status**: design — pending Zero approval, then writing-plans skill
 > **Research base**: 7 SOTA reports (R1-R7) saved in `2026-05-08-domain-mesh-research/` subfolder, 5752 lines total
 
 ## 0. Executive summary
 
-Antonello requested an autonomic system for 6 domains:
+Zero requested an autonomic system for 6 domains:
 
 1. **Setup Team** (immigration/company KBLI/licenses/business/property/labor)
 2. **Tax** (everything fiscal)
 3. **Marketing** (news/trends/strategies)
-4. **Antonello Lab** (AI research, code, frontier science, robotics)
+4. **Zero Lab** (AI research, code, frontier science, robotics)
 5. **Bali Zero macro** (Indonesia macro: politics/economy/society/culture/geo)
 6. **Nexus OSINT** (news + curiosities about authorities)
 
@@ -64,7 +64,7 @@ A new domain (or sub-domain) requires 5 minimum ingredients:
 1. **Seed sources** — 10-50 manually curated sources defining NB DNA
 2. **Schema iniziale** — entity types, relation types, controlled vocabulary
 3. **Boundary statement** — "NB responds to X, not to Y"
-4. **Owner umano** — Antonello/Veronika/Adit/Krisna/Angel
+4. **Owner umano** — Zero/Veronika/Adit/Krisna/Angel
 5. **Trust tier** — AUTHORITY (curated, ground truth) vs INTEL (cron-fed, signal) vs WORKBENCH (research, draft)
 
 **Hard rule**: no NB created without `genesis.yaml` manifest. Eliminates orphan-NB jungle.
@@ -172,7 +172,7 @@ Per NB tracks: queries/day, sources/day, ratio query-per-source, days-since-last
 6 sinks:
 
 1. **Mouth** (content publishing) — NB-INTEL-Press + NB-7 → WR2 → Astro → IG/blog
-2. **Telegram alerts** — domain-specific channels (#setup-team, #tax, #editorial, #antonello, #macro, #osint)
+2. **Telegram alerts** — domain-specific channels (#setup-team, #tax, #editorial, #Zero, #macro, #osint)
 3. **CRM enrichment** — lead → NB-3/4/5 query → suggested quote/template
 4. **Dispatch** — NB-7 + value monitor → carousel topic suggestion
 5. **Skill graduation** (Round 2 future) — mature workbench → permanent Claude skill
@@ -283,7 +283,7 @@ Replicable for Bali Pergub/Perbup corpus (~1,500 docs). Local Ollama-runnable. P
 4. IG carousel (regulation explained for expats)
 5. Skill graduation candidate (NB-WORKBENCH-KBLI-Marina-7codes pattern)
 
-### 2.7 Open question B1.a (per Antonello)
+### 2.7 Open question B1.a (per Zero)
 
 4 NB-INTEL del dominio — quanti?
 
@@ -326,7 +326,7 @@ coretax_adapter:
     escalation: > 5 failures → Telegram Veronika + manual queue
 ```
 
-Cost: ~Rp 1.5jt/mo (~€85) for PajakExpress business tier.
+Cost: ~~Rp 1.5jt/mo (~~€85) for PajakExpress business tier.
 
 ### 3.3 R3 Coretax instability is structural
 
@@ -386,7 +386,7 @@ NB-4 + NB-INTEL-Tax + Coretax workaround library = **proto-IndoTax-LLM RAG**. Ba
 5. Coretax workaround library (searchable, Veronika quick-access during incidents)
 6. **NEW**: IndoTax-LLM positioning (marketing differentiator)
 
-### 3.7 Open questions per Antonello
+### 3.7 Open questions per Zero
 
 - **B2.a**: NB-INTEL-Coretax dedicato? (R3 → Opzione A recommended)
 - **B2.b**: Quote consistency detector (drift if quote out 0.7-1.5x market median)?
@@ -403,7 +403,7 @@ domain_id: marketing-pulse
 description: "Trend detection + strategy + content ops"
 audience: [expat_it, expat_ru, expat_en, investor, nomad]
 authority_nbs:
-  - NB-7 Editorial & Content Strategy (89 src, owner Antonello)
+  - NB-7 Editorial & Content Strategy (89 src, owner Zero)
 intel_nbs:
   - NB-INTEL-Press (broken, fix needed)
   - NB-INTEL-Trends [NEW]
@@ -459,7 +459,7 @@ Spawn `NB-WORKBENCH-DroneEmprit-partnership` for exploration.
 
 ---
 
-## 5. Domain B4 — Antonello Lab
+## 5. Domain B4 — Zero Lab
 
 ### 5.1 Genesis (R5-validated)
 
@@ -467,7 +467,7 @@ Spawn `NB-WORKBENCH-DroneEmprit-partnership` for exploration.
 domain_id: antonello-lab
 description: "Personal: AI papers, code, frontier science, robotics"
 authority_nbs:
-  - NB-9 Research Lab (201 src, owner Antonello)
+  - NB-9 Research Lab (201 src, owner Zero)
   - NB-HARARI (10 src, AI ethics)
 intel_nbs:
   - NB-INTEL-AIResearch (339 src, LIVE)
@@ -524,7 +524,7 @@ Language priority 2026: TypeScript > Rust > Python (Octoverse 2025: TS overtook)
 
 Literary reference for "cresce → cosciente" stage. Corpus actively requests updates when cross-cutting facts change.
 
-### 5.6 5 sinks Antonello Lab
+### 5.6 5 sinks Zero Lab
 
 1. Morning briefing Telegram 7am WITA (top-5 papers, repos trending, robotics, science)
 2. Deep-read trigger (mark paper → spawn workbench with PDF + related work map + code repo cloned + summary draft)
@@ -534,7 +534,7 @@ Literary reference for "cresce → cosciente" stage. Corpus actively requests up
 
 ### 5.7 Open questions
 
-- **B4.a**: 4 NB-INTEL Antonello Lab (AIResearch + Code + Robotics + FrontierScience)?
+- **B4.a**: 4 NB-INTEL Zero Lab (AIResearch + Code + Robotics + FrontierScience)?
   - A. 4 distinti / B. 2 (AIRes+Code, Rob+Sci) / C. 1 unificato / D. priority Robotics+Sci first
 - **B4.b**: Morning briefing Telegram?
   - A. Daily 7am / B. Weekly Sunday digest / C. On-demand `/research-pulse`
@@ -776,7 +776,7 @@ LIMIT 500
 7. Privacy notice in client engagement letter
 8. No automated mass scraping
 9. EU clients: GDPR Art. 6(1)(b) + Art. 6(1)(f) balancing test documented
-10. Bellingcat-style ethics review (Antonello + senior team) before any external output
+10. Bellingcat-style ethics review (Zero + senior team) before any external output
 
 → First commit `domains/nexus-osint/compliance/compliance_stance.md`
 
@@ -815,7 +815,7 @@ LIMIT 500
    ▼              ▼            ▼            ▼              ▼              ▼
 ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
 │ B1       │ │ B2       │ │ B3       │ │ B4       │ │ B5       │ │ B6       │
-│ Setup    │ │ Tax      │ │ Mktg     │ │ Antonello│ │ Bali     │ │ Nexus    │
+│ Setup    │ │ Tax      │ │ Mktg     │ │ Zero│ │ Bali     │ │ Nexus    │
 │ Team     │ │ Engine   │ │ Pulse    │ │ Lab      │ │ Macro    │ │ OSINT    │
 └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
      │            │            │            │            │            │
@@ -1009,7 +1009,7 @@ vs Anthropic API direct estimated: probably €30k+/yr for same volume → **HAR
 ### Phase 4 (Month 7-12): SOTA differentiator
 
 - LexIndoLLM blueprint per Bali Pergub/Perbup (Llama 3.2-1B fine-tune)
-- Sakana AI Scientist v2 pattern per Antonello deep-dive
+- Sakana AI Scientist v2 pattern per Zero deep-dive
 - Drone Emprit partnership exploratory (Ismail Fahmi)
 - OCCRP Aleph access request
 - IndoTax-LLM positioning (marketing differentiator)
@@ -1033,7 +1033,7 @@ vs Anthropic API direct estimated: probably €30k+/yr for same volume → **HAR
 
 ---
 
-## 11. Open questions per Antonello
+## 11. Open questions per Zero
 
 Questions left open during brainstorming, awaiting decision before writing-plans skill:
 
@@ -1044,7 +1044,7 @@ Questions left open during brainstorming, awaiting decision before writing-plans
 | B2.b | Quote consistency detector (drift 0.7-1.5x market median)? | C (Sì silent, no alert)                                               |
 | B3.a | NB-INTEL-Competitor (Emerhub/Cekindo/InvestinAsia)?        | B (weekly digest only)                                                |
 | B3.b | WR2 auto-trigger autonomy?                                 | A (auto-brief + auto-WR2 + human review pre-publish)                  |
-| B4.a | 4 NB-INTEL Antonello Lab tutti, 2, 1, o priority?          | D (priority Robotics+Science first)                                   |
+| B4.a | 4 NB-INTEL Zero Lab tutti, 2, 1, o priority?               | D (priority Robotics+Science first)                                   |
 | B4.b | Morning briefing daily, weekly, on-demand?                 | A (daily 7am WITA)                                                    |
 | B5.a | NB-IndonesiaMacro nuova o estendere NB-8?                  | A (nuova, R6 confirms)                                                |
 | B5.b | 3 NB-INTEL Macro distinti o 1 unificato?                   | A (3 distinti, R6 confirms)                                           |
@@ -1081,19 +1081,19 @@ Each report contains:
 
 **Scope check**: this is a **brainstorm output**, not implementation plan. Single document covers 6 domains because they share lifecycle pattern. Decomposition into 6 separate implementation plans happens in writing-plans skill (Phase 1+).
 
-**Ambiguity check**: terms like "owner" defined per-domain (Antonello/Veronika/Adit/Krisna/Angel). "Authority tier" 1-5 defined in §1.3.
+**Ambiguity check**: terms like "owner" defined per-domain (Zero/Veronika/Adit/Krisna/Angel). "Authority tier" 1-5 defined in §1.3.
 
 ---
 
 ## 14. Next step
 
-After Antonello reviews this spec:
+After Zero reviews this spec:
 
 1. If approved → invoke `superpowers:writing-plans` skill to create implementation plan for Phase 0 (foundations)
 2. If changes requested → revise spec inline, re-run review loop
 3. Phase 1+ each domain gets its own writing-plans → executing-plans cycle (sequential to avoid wave overload)
 
-**Decisions still needed from Antonello**: 11 questions in §11 (defaults exist if no answer).
+**Decisions still needed from Zero**: 11 questions in §11 (defaults exist if no answer).
 
 ---
 

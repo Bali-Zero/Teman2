@@ -146,7 +146,7 @@ echo "✅ Sufficient disk space"
 #   pkill -f "claude"   and   pgrep -f "claude"
 # which matches BOTH slot-1 (`~/.local/bin/claude`) AND slot-2
 # (`~/.claude-acct2/.local/bin/claude`, the dual-MAX-plan wrapper).
-# Running this iteration-1 body on Antonello's dual-MAX-slot setup
+# Running this iteration-1 body on Zero's dual-MAX-slot setup
 # silently terminates slot-2 sessions and corrupts the slot-2 SQLite WAL
 # on `~/.claude-acct2/memory.db`.
 #
@@ -566,7 +566,7 @@ alongside the live DB and are tiny on average (≤15MB each).
 no live claude process holds a WAL lock on memory.db while the snapshot is
 being restored — necessary per Gemini B1.
 
-The realistic invocation path for G3 is: Antonello says "rollback" inside an
+The realistic invocation path for G3 is: Zero says "rollback" inside an
 active claude session → orchestrator dispatches G3 → G3 runs `pkill -f
 "claude"`. The `-f` flag matches the FULL command line, so it kills:
 
@@ -757,7 +757,7 @@ are scoped, atomic, and do not regress the WAVE -1 fixes above.
 
 **Symptom (empirical):** §Phase "Claude Code process termination" + the
 WAVE -1 Layer A canary both call/reference `pkill -KILL -f "claude"`. The
-`-f` flag matches the full command-line. In Antonello's dual-MAX-slot
+`-f` flag matches the full command-line. In Zero's dual-MAX-slot
 configuration (documented in
 `reference_dual_max_slots_2026_05_19.md`), this substring matches:
 
@@ -1754,7 +1754,7 @@ ls -la ~/.claude/settings.json    # should exist after extract
 ## Open questions
 
 1. **Memory.db rollback safety**: ~~SQLite file in active use during rollback may corrupt.~~ ADDRESSED by WAVE -1 Fix 1 (snapshot restore w/ integrity check, exit 99 on corruption) + WAVE -1 Fix 2 Layer A (canary refuses inside-session execution where a live claude process would hold the WAL lock).
-2. **Git tag missing case**: if Antonello renamed/deleted tag, what fallback? Default = tarball only, no git reset.
+2. **Git tag missing case**: if Zero renamed/deleted tag, what fallback? Default = tarball only, no git reset.
 3. **Partial rollback**: support `--wave <N>` to rollback only specific wave? Default = no (KISS, global is safer).
 4. **Forensic cleanup window**: `memory.db.pre-rollback-${BACKUP_ID}` AND `settings.json.pre-rollback-${BACKUP_ID}` files (the latter created by iter-5 DS-BL1 fix and intentionally retained for forensic preservation after Phase 3 success) accumulate one per rollback. How long to retain? Default = manual cleanup at next monthly housekeeping; never auto-delete (forensic evidence may be needed weeks later if rollback unmasks a different bug).
 5. **Dual-MAX-slot collateral**: ~~`pkill -f "claude"` matches BOTH slot 1 and slot 2 binaries.~~ ADDRESSED by Iteration-2 Fix 1 (exact-binary `^/Users/$(whoami)/.local/bin/claude\b` regex, scope-guard exit 4, symmetric canary PPID detection for slot 1 vs slot 2 with distinguishing detect_reason messages).

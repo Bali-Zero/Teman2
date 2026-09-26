@@ -1,10 +1,10 @@
 # Surface: fb-community-post (Facebook Page)
 
-**Status**: spec drafted 2026-05-11, verified + corrected 2026-05-18 (NB-4 query removed wrong KEP-71 citation). Pending first production post + health-check audit of facebook.com/balizero0 (admin: Antonello). Subhi D4 Minggu 3+ deliverable. **W1 Post 1 publish target: 2026-05-19**.
+**Status**: spec drafted 2026-05-11, verified + corrected 2026-05-18 (NB-4 query removed wrong KEP-71 citation). Pending first production post + health-check audit of facebook.com/balizero0 (admin: Zero). Subhi D4 Minggu 3+ deliverable. **W1 Post 1 publish target: 2026-05-19**.
 
 ## Purpose
 
-Brand-compliant short-form posts published to **facebook.com/balizero0** (existing Page, admin: Antonello). Distinct from Instagram carousel surface — FB is **single post + one image** (or one short video, no carousel logic). Audience skew: older WNA + Indonesian community + retiree segment. Less editorial-design heavy, more conversational + practical.
+Brand-compliant short-form posts published to **facebook.com/balizero0** (existing Page, admin: Zero). Distinct from Instagram carousel surface — FB is **single post + one image** (or one short video, no carousel logic). Audience skew: older WNA + Indonesian community + retiree segment. Less editorial-design heavy, more conversational + practical.
 
 Access via Business Manager (`business.facebook.com`) → Subhi role = **Content Creator** (can post + schedule, cannot delete Page or alter admins).
 
@@ -156,7 +156,7 @@ In addition to the 7 voice registers in `voice/register-examples.md`, FB surface
 5. **First-comment link**: identify the canonical Bali Zero blog article OR official source URL.
 6. **QA checklist** (below).
 7. **Schedule** via Meta Business Suite for next available slot per "Time of day" + "Day of week" rules.
-8. **Antonello review**: posts touching regulation, fee changes, or government policy → Antonello approves before publish. Civic/pedagogical/concrete-data posts → Subhi publishes directly, weekly review.
+8. **Zero review**: posts touching regulation, fee changes, or government policy → Zero approves before publish. Civic/pedagogical/concrete-data posts → Subhi publishes directly, weekly review.
 9. **Telemetry**: 7 days post-publish, log reach + engagement to `~/nuzantara/research/marketing/fb-metrics/YYYY-MM-DD.json` for trend analysis.
 
 ## QA checklist (mandatory before schedule)
@@ -175,7 +175,7 @@ In addition to the 7 voice registers in `voice/register-examples.md`, FB surface
 - [ ] Hard-sell CTA absent
 - [ ] No "Hi Bali friends" or generic greeter
 - [ ] Time-of-day scheduled within window 07:30-08:30 OR 19:00-21:00 WITA
-- [ ] Antonello approval obtained IF post touches regulation/fee/policy
+- [ ] Zero approval obtained IF post touches regulation/fee/policy
 - [ ] First-comment text drafted (if applicable) with link
 
 ## Files in this surface
@@ -187,11 +187,11 @@ In addition to the 7 voice registers in `voice/register-examples.md`, FB surface
 - `surfaces/fb-community-post/example-type4-community.md` — example community/civic (TODO).
 - `surfaces/fb-community-post/example-type5-newsflash.md` — example news-flash (TODO).
 
-Examples authored on first real publish. Subhi authors example #1 (Type 1 or 2 — most common) under Antonello review; subsequent examples accumulate organically.
+Examples authored on first real publish. Subhi authors example #1 (Type 1 or 2 — most common) under Zero review; subsequent examples accumulate organically.
 
 ## Health-check (one-time, before first publish)
 
-Required from Antonello before Subhi schedules first post:
+Required from Zero before Subhi schedules first post:
 
 - [ ] Pagina balizero0 last-post date noted (Last-post >6 months ago → first post is Type 4 "we're back" soft re-entry, NOT Type 1/2 launch)
 - [ ] Follower count noted (sets reach expectation baseline)

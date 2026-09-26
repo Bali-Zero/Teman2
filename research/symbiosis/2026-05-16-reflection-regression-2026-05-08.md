@@ -152,7 +152,7 @@ Triggera prossimo gap-detector run alle 07:00/18:00 WITA next.
 
 ### Fix 2 (MEDIUM, 1-2h) — Riallineare envelope OSINT-Nexus → mata-garuda
 
-Due scelte mutuamente esclusive (decisione Antonello):
+Due scelte mutuamente esclusive (decisione Zero):
 
 **Opzione A (preferibile)**: aggiungere alias mapping in `gap_consumer.py:GAP_DISPATCH` per i tipi che effettivamente arrivano:
 
@@ -205,7 +205,7 @@ fi
 
 ## Refusals enforced by Autonomous Ops L2
 
-- **NO autonomous restart Docker Desktop** — `open -a` non distruttivo ma è azione operatore-side e potrebbe far partire workflow non desiderati (Subhi container, ecc.). Antonello deve approvare timing.
+- **NO autonomous restart Docker Desktop** — `open -a` non distruttivo ma è azione operatore-side e potrebbe far partire workflow non desiderati (Subhi container, ecc.). Zero deve approvare timing.
 - **NO autonomous fix opzione A senza brainstorm 4-LLM** (CLAUDE.md feedback 2026-05-13 review spec rule). Layer 2 fix è cambiamento di schema dispatch, non trivial.
 - **NO edit `~/scripts/garuda-gap-detector.sh`** senza approval — è script operator-side fuori repo (stesso pattern Tier A doc-only 2026-05-12).
 - **NO touch OSINT-Nexus repo** — repo separato, fuori scope Nuzantara.

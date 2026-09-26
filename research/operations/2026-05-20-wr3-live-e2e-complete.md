@@ -76,7 +76,7 @@ Following 2026-05-20 morning panel synthesis (DeepSeek + Codex + empirical discr
 - 06:30 WITA: Veo rejected `passport pages flipping` (sensitive content)
 - 08:27 WITA: Veo PASS on empirical discriminator (medium prompt no style no location)
 - 09:30-11:00 WITA: FlowKit CAPTCHA_FAILED (Flow tab inactive in Chrome)
-- 11:06 WITA: Flow tab re-opened by Antonello (screenshot confirm 25 RECENT REQUESTS)
+- 11:06 WITA: Flow tab re-opened by Zero (screenshot confirm 25 RECENT REQUESTS)
 - 11:10-11:18 WITA: 6/6 shots normalized rendered LIVE in 5min
 - 11:21 WITA: master + 4 variants assembled
 

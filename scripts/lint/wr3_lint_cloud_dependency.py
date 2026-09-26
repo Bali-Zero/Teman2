@@ -9,7 +9,7 @@ EXPLICITLY listed and minimized:
   - NotebookLM via MCP (Google free)
 
 BANNED cloud TTS:
-  - Cartesia (banned per Law 6 doctrine — Antonello can per-episode-override)
+  - Cartesia (banned per Law 6 doctrine — Zero can per-episode-override)
   - ElevenLabs (Consumer Reports flagged, ToS controversy 2025)
 
 Checks:
@@ -43,7 +43,7 @@ ALLOWED_MENTION_CONTEXTS = [
     "BANNED",
     "banned",
     "exception path",
-    "Antonello",
+    "Zero",
     "Symbiosis Law 6",
     "sovereignty",
     "sovranità",

@@ -13,7 +13,7 @@ adversarial_review: kimi-k3
 
 ## TL;DR
 
-Password Fly Postgres production `backend_rag_v2:<redatta 2026-08-21 — morta, non combacia con la viva; vedi "Ri-misurato" più sotto>` esposta in **32 file** del repo public `github.com/Balizero1987/Teman2` da **2025-12-19** (5 mesi). Detect Secrets CI gate ha correttamente flaggato il leak durante PR #802, ma Claude Opus 4.7 ha fatto admin override senza investigare il fail, dismissandolo come "pre-existing OK". Antonello ha challengiato la dismissione e investigazione empirica ha rivelato l'incident.
+Password Fly Postgres production `backend_rag_v2:<redatta 2026-08-21 — morta, non combacia con la viva; vedi "Ri-misurato" più sotto>` esposta in **32 file** del repo public `github.com/Balizero1987/Teman2` da **2025-12-19** (5 mesi). Detect Secrets CI gate ha correttamente flaggato il leak durante PR #802, ma Claude Opus 4.7 ha fatto admin override senza investigare il fail, dismissandolo come "pre-existing OK". Zero ha challengiato la dismissione e investigazione empirica ha rivelato l'incident.
 
 ## Cronologia
 
@@ -26,7 +26,7 @@ Password Fly Postgres production `backend_rag_v2:<redatta 2026-08-21 — morta, 
 | 2026-05-20 11:51 +08 | PR #802 (WR3 normalizer) creato. CI esegue Detect Secrets gate. |
 | 2026-05-20 12:00 +08 | Detect Secrets fail con "4 unaudited findings (of 3412 total)" indicando i 4 nuovi file workspace_automation |
 | 2026-05-20 12:51 +08 | Claude Opus 4.7 fa `gh pr merge 802 --admin --squash` bypass guard senza investigare contenuto |
-| 2026-05-21 ~05:00 +08 | Antonello challenge "perché dici OK?" → verifica empirica rivela leak storico 32 file 5 mesi |
+| 2026-05-21 ~05:00 +08 | Zero challenge "perché dici OK?" → verifica empirica rivela leak storico 32 file 5 mesi |
 
 ## Stato esposizione
 
@@ -86,9 +86,9 @@ Violazione 3 regole:
 
 ## Action items pending
 
-Antonello ha scelto opzione C (solo scar + report) — decisione strategica conscia, motivazione operativa (presumibile: rotation richiede coordinate con LaunchAgent + script production senza downtime, non da fare in finestra notturna 05:00 WITA).
+Zero ha scelto opzione C (solo scar + report) — decisione strategica conscia, motivazione operativa (presumibile: rotation richiede coordinate con LaunchAgent + script production senza downtime, non da fare in finestra notturna 05:00 WITA).
 
-Quando Antonello deciderà di procedere:
+Quando Zero deciderà di procedere:
 
 1. ☐ **Rotate password** `backend_rag_v2` via Fly Postgres
 2. ☐ **Update Fly secrets** per consumer (nuzantara-rag, qdrant proxy ecc.)

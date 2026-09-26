@@ -31,7 +31,7 @@ const HOST = process.env.HOST || "127.0.0.1";
 if (HOST === "0.0.0.0" || HOST === "*" || HOST === "::") {
   console.warn(
     `[wa-dashboard-m1] WARNING: HOST=${HOST} binds the mirrored-chat cockpit to every ` +
-      "interface, unauthenticated. Use tailscale serve for remote access instead."
+      "interface, unauthenticated. Use tailscale serve for remote access instead.",
   );
 }
 
@@ -136,7 +136,8 @@ function stripOperatorSuffix(name) {
   const base = m[1].trim();
   const inside = m[2].trim().toLowerCase();
   // only strip if the WHOLE parenthetical is a single known operator name
-  if (base && /^[a-z]+$/.test(inside) && OPERATOR_NAMES.has(inside)) return base;
+  if (base && /^[a-z]+$/.test(inside) && OPERATOR_NAMES.has(inside))
+    return base;
   return name;
 }
 
@@ -151,7 +152,7 @@ function readQwenGateSnapshot() {
 // === Contact kind/color taxonomy (2026-05-26 naming + color coding) ===
 // 5 categories with WCAG AA+ contrast on both light (#ffffff/#efeae2) and dark backgrounds.
 const KIND_COLORS = {
-  zero: "#fbbf24", // gold        — Antonello (board)
+  zero: "#fbbf24", // gold        — Zero (board)
   team_balizero: "#06b6d4", // cyan        — Bali Zero staff
   team_bayu: "#3b82f6", // vivid blue  — Bayu Santera partner staff
   client: "#10b981", // green       — in CRM clients table

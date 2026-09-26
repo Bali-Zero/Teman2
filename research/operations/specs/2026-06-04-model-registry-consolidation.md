@@ -2,7 +2,7 @@
 date: 2026-06-04
 domain: operations
 client_case: none
-status: DRAFT — pending 4-LLM panel review + Antonello approval
+status: DRAFT — pending 4-LLM panel review + Zero approval
 author: Claude Opus 4.8 (Air-M5 session)
 sources:
   - census subagent 2026-06-04 (empirical grep Pro/Mini, ~90 hardcode sites)

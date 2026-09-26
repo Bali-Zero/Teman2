@@ -110,7 +110,7 @@ precedente di ogni hit (non il contenuto, la provenienza):
   interrogano il bot con scenari) — un membro del team ha posto una domanda ipotetica su un cliente che
   vuole aprire un cafe a Ubud; la risposta del bot menziona permessi obbligatori. È un test interno, non un
   cliente reale.
-- **24 luglio 2026**: un thread dove il bot risponde direttamente ad "Antonello" con domande formattate
+- **24 luglio 2026**: un thread dove il bot risponde direttamente ad "Zero" con domande formattate
   come script di test (box-drawing characters, stile red-team) su un ristorante ipotetico a Canggu — è
   Zero stesso che sonda il bot, non un cliente.
 

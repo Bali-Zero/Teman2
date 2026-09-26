@@ -8,7 +8,7 @@ sources: 36
 # Indonesia Visa C5A "Visa Kunjungan Konten Kreator" — dossier completo (genesi, realtà, soluzioni)
 
 > Finestra: 1 novembre 2025 → 26 maggio 2026, con back-context Permenkumham 22/2023 e UU 6/2011.
-> Audience: Antonello + ops Bali Zero. Output Step 1 di workflow 2-step. Step 2 = media communication production (sessione separata).
+> Audience: Zero + ops Bali Zero. Output Step 1 di workflow 2-step. Step 2 = media communication production (sessione separata).
 > Lingua: italiano descrittivo; **citazioni regolatorie Bahasa Indonesia verbatim, mai parafrasate**; quote stampa estere in inglese verbatim.
 > Disciplina di etichetta: ogni claim sostantivo è marcato [FATTO] / [OPINIONE] / [GOSSIP-UNVERIFIED-PLAUSIBLE] / [GOSSIP-UNVERIFIED-SPECULATIVE] / [UNVERIFIED].
 
@@ -24,7 +24,7 @@ sources: 36
 
 > ⚠️ **Caveat metodologico load-bearing** (post-devils-advocate 2026-05-26): il **PDF Kepmen M.IP-08.GR.01.01/2025 NON è stato letto direttamente** (Cloudflare protected). Tutta la caratterizzazione di C5A (scope, sponsor, durata, fee) deriva da: (a) URL slug `imigrasi.go.id/wna/daftar-visa-indonesia/C5A` empiricamente verificato HTTP 200, (b) press releases Ditjen Imigrasi + Kemenimipas, (c) coverage stampa Bahasa convergente. Se lo scope ufficiale del Kepmen differisce da quanto inferito (es. ristretto a "creator legacy media" anziché social), il framing operativo cambia. **Pre-Step 2 publishing**: ottenere PDF Kepmen via PPID request a kemenimipas.go.id o chiamata Kantor Imigrasi Denpasar (vedi §11 OQ-7, OQ-10).
 
-**Buzz attuale [OPINIONE]**: Antonello segnala chiacchiericcio web significativo. La triangolazione tre angoli — (a) Kepmen luglio 2025, (b) caso Bonnie Blue dicembre 2025 (4 cittadini UK/AU deportati con 10-year ban per produzione contenuti dewasa con visa turistico, base legale Pasal 75 ayat (1) jo. Pasal 122 huruf a UU 6/2011), (c) Dharma Dewata da aprile 2026 — sta convergendo nella stagione 2026 in una narrativa "Bali non è più per influencer con visa turistico". Il chiacchiericcio amplifica il rischio percepito; pochi attori lo collegano correttamente alla soluzione strutturale (C5A o E33G o KITAS).
+**Buzz attuale [OPINIONE]**: Zero segnala chiacchiericcio web significativo. La triangolazione tre angoli — (a) Kepmen luglio 2025, (b) caso Bonnie Blue dicembre 2025 (4 cittadini UK/AU deportati con 10-year ban per produzione contenuti dewasa con visa turistico, base legale Pasal 75 ayat (1) jo. Pasal 122 huruf a UU 6/2011), (c) Dharma Dewata da aprile 2026 — sta convergendo nella stagione 2026 in una narrativa "Bali non è più per influencer con visa turistico". Il chiacchiericcio amplifica il rischio percepito; pochi attori lo collegano correttamente alla soluzione strutturale (C5A o E33G o KITAS).
 
 **Implicazioni operative per Bali Zero**: la pagina servizi corrente `balizero.com/services/visa` già elenca "C5/C5A - Content Creator" con caveat "No monetization in Indonesia" — coerente con la lettera della Kepmen. La domanda è se la conoscenza tecnica si trasformi in **menu di servizio articolato** (compliance pathway, alternative visa, KITAS bridge) prima che la concorrenza colmi il gap. Sezione 9 propone 7 offerte concrete.
 
@@ -296,8 +296,8 @@ L'opzione (I) è più plausibile data l'assenza di marketing governativo + pagin
 - [FATTO] **Visa Kunjungan Paling Lama 60 Hari per orang: IDR 1.000.000** — fonte verbatim: PP 45/2024 Lampiran A.II.1.d (via NB-2 source `33f96d5a` + cross-verified `imigrasi.go.id/biaya_imigrasi` Visit Permit 60 days IDR 1.000.000)
 - [FATTO] Single-entry default. **Visa Kunjungan Beberapa Kali Perjalanan (multiple-entry) 60 Hari**: IDR 1.500.000 (PP 45/2024 Lampiran A.II.2.a) — alternativa se cliente entra-esce Bali multiple times
 - [FATTO] **PP 45/2024 NON elenca tariffa per indeks codice C5A specifically** — il PNBP base è per _durata_ (60/90/180 hari), uniforme cross-indeks per la categoria Visa Kunjungan. C2, C5, C5A, C7, C9 a 60 hari pagano tutti **IDR 1.000.000** PNBP base
-- [UNVERIFIED — Kantor call pending Antonello] Surcharge specifico C5A (se esiste, es. "biaya layanan content creator endorsement") — richiede telefonata Kantor Imigrasi Kelas I Denpasar (`(0361) 751038`)
-- [UNVERIFIED — PPID Kemenimipas pending Antonello firma fisica] Salinan Kepmen M.IP-08.GR.01.01/2025 verbatim per conferma pricing model esatto
+- [UNVERIFIED — Kantor call pending Zero] Surcharge specifico C5A (se esiste, es. "biaya layanan content creator endorsement") — richiede telefonata Kantor Imigrasi Kelas I Denpasar (`(0361) 751038`)
+- [UNVERIFIED — PPID Kemenimipas pending Zero firma fisica] Salinan Kepmen M.IP-08.GR.01.01/2025 verbatim per conferma pricing model esatto
 
 **Sister-visa cluster cross-check (PP 45/2024 Lampiran A.II)**:
 
@@ -387,7 +387,7 @@ Verbatim NB-2 [1]: _"60 days (extendable to 180)"_ + deep-research §2: _"diperp
 Verbatim Pasal 19 ayat (1) huruf b Permenkumham 11/2024: _"bukti penjaminan dari Penjamin, kecuali untuk kegiatan wisata, keluarga, meneruskan perjalanan ke negara lain, bisnis, mengikuti rapat, pembelian barang, melakukan kunjungan jurnalistik, dan prainvestasi"_. → C5A potrebbe rientrare in "kunjungan jurnalistik" (esonero da Penjamin) MA NB-2 deep-research §2 dice esplicito "C5A tidak mensyaratkan sponsor perusahaan Indonesia" — quindi Bali Zero come Penjamin è OPZIONALE (value-add commercial, non requisito legale). OQ-3 PARTIAL CLOSED.
 
 **Q-4 Pasal 122 huruf a UU 6/2011 verbatim** — Status: **NO-DATA**.
-Verbatim NB-2: _"dokumen sumber yang saya miliki saat ini tidak memuat teks LENGKAP dan VERBATIM beserta ancaman pidana penjara dan denda maksimum untuk Pasal 119, Pasal 121, Pasal 122 huruf a, maupun Pasal 123. ... Di dalam sistem sumber juga secara spesifik dicatat bahwa teks lengkap (full gazette text) belum sepenuhnya terintegrasi ke dalam basis data"_. → UU 63/2024 in NB-2 solo come exec summary (MERP integration, OSS-RBA, digitalizzazione). Source `adc39025`+`7cc4d462`. Action: Antonello scarica manualmente da `peraturan.bpk.go.id/Details/273550` + push come NB-2 text source per future grounding. OQ-4 deferred.
+Verbatim NB-2: _"dokumen sumber yang saya miliki saat ini tidak memuat teks LENGKAP dan VERBATIM beserta ancaman pidana penjara dan denda maksimum untuk Pasal 119, Pasal 121, Pasal 122 huruf a, maupun Pasal 123. ... Di dalam sistem sumber juga secara spesifik dicatat bahwa teks lengkap (full gazette text) belum sepenuhnya terintegrasi ke dalam basis data"_. → UU 63/2024 in NB-2 solo come exec summary (MERP integration, OSS-RBA, digitalizzazione). Source `adc39025`+`7cc4d462`. Action: Zero scarica manualmente da `peraturan.bpk.go.id/Details/273550` + push come NB-2 text source per future grounding. OQ-4 deferred.
 
 **Q-5 eVisa portal C5A** — Status: **PARTIAL** (legal yes, operational no-data).
 Verbatim Pasal 19 ayat (1) Permenkumham 11/2024: _"Permohonan Visa kunjungan 1 (satu) kali perjalanan diajukan melalui aplikasi"_. → C5A è statutorily applicable via portal. Status uptime/UX 2026-05 evisa.imigrasi.go.id NB-2 declines to speculate. OQ-5 PARTIAL.

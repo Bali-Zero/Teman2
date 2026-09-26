@@ -3,7 +3,7 @@
 **Owner:** Subhi (Growth / SEO / CRO)
 **Version:** 1.0 — 27 Jul 2026
 **Scope:** Distribusi ulang artikel `kita.balizero.com` ke 5 channel sosial untuk memperluas audiens tanpa merusak SEO canonical.
-**Golden rule:** Canonical selalu menunjuk balik ke `kita.balizero.com`. Setiap link keluar wajib pakai UTM. Tidak ada klaim yang belum diverifikasi tim (Surya/Angel untuk tax, Antonello untuk angka bisnis).
+**Golden rule:** Canonical selalu menunjuk balik ke `kita.balizero.com`. Setiap link keluar wajib pakai UTM. Tidak ada klaim yang belum diverifikasi tim (Surya/Angel untuk tax, Zero untuk angka bisnis).
 
 ---
 

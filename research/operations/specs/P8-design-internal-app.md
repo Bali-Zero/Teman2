@@ -86,7 +86,7 @@ reale = 12 + 11 test — sostanza confermata, numero corretto).
 | 1 | brand-api.json God-object → deriva (=decadimento-spec P5) | **CRITICA** | §3.1: la fonte unificata è un **BUILD-ARTIFACT GENERATO** dai 7 sorgenti (come OpenAPI da FastAPI), NON un file scritto-a-mano. Non può divergere: si rigenera a ogni build. Codex+DeepSeek convergono. |
 | 2 | component-registry ≠ design-capability (Frankenstein-UI) | ALTA | §3.3: discovery (registry) + **reference-pattern** (le app esistenti come esempi di composizione) + **critic-di-design** (modello critic-WR2) che valuta gerarchia/allineamento prima del deploy. Discovery è necessaria non sufficiente. |
 | 3 | scaffold-trap (3ª variante, mediocrità) | MEDIA | §0.2: NON nuova app → **route in admin-dashboard** + 4 moduli-template che importano (non copiano). |
-| 4 | cecità-interattiva (PNG = polaroid → verde-ma-rotto) | **CRITICA** | §3.4: Playwright produce **stati multipli** (loading/empty/overdue/filtered/detail-open) + **trace/video del click-flow** + report HTML. Antonello valuta il *comportamento*, non solo l'estetica. + lint/test/build devono passare (non solo lo screenshot). |
+| 4 | cecità-interattiva (PNG = polaroid → verde-ma-rotto) | **CRITICA** | §3.4: Playwright produce **stati multipli** (loading/empty/overdue/filtered/detail-open) + **trace/video del click-flow** + report HTML. Zero valuta il *comportamento*, non solo l'estetica. + lint/test/build devono passare (non solo lo screenshot). |
 | 5 | paradosso-PII-runtime ("porta blindata, muri dimenticati") | **BLOCCANTE** | §3.5: separare **generazione** (sandbox P3, fixture REDATTE, zero righe-clienti) da **runtime** (dentro admin-dashboard, auth/RBAC esistenti, dati server-side, localhost-Pro o Tailscale-only). L'app generata eredita il confine P2. |
 | 6 | cimitero-codice-generato (asfissia manutenzione) | **FATALE** | §0.1: criterio **app-vs-vista** (default=vista, zero manutenzione). + moduli che importano (cambio-brand si propaga). + ogni tool ha `tool.manifest.json` per tracciabilità. |
 
@@ -150,7 +150,7 @@ Playwright nella sandbox produce, contro un dev-server effimero:
 - **trace + video** del click-flow,
 - report HTML in `artifacts/previews/<tool>/index.html`.
 
-+ `lint && test && build` devono passare. Così Antonello valuta il *comportamento* (l'app funziona),
++ `lint && test && build` devono passare. Così Zero valuta il *comportamento* (l'app funziona),
 non solo l'estetica (lo screenshot è bello). Chiude il "verde-ma-rotto".
 
 ### 3.5 PII: generazione vs runtime separati (difetto #5 BLOCCANTE)
@@ -223,7 +223,7 @@ coerenza+accessibilità senza imporre rigidità ingiustificata.
    critica andrebbe su Fly con auth (costo+superficie maggiori) — decisione caso-per-caso.
 4. **Critic-di-design eredita il verifier imperfetto (P1/P7)**: il critic-UI è un LLM → fallibile. È
    pipeline-giudizio (consultiva, P7), il gate finale resta lo screenshot+comportamento giudicato da
-   Antonello. Non auto-approva.
+   Zero. Non auto-approva.
 
 ---
 

@@ -379,14 +379,14 @@ async def test_stream_query_recall_gate(orchestrator, mock_llm_gateway):
     """Test conversation recall gate."""
     # Setup history and query triggering recall
     history = [
-        {"role": "user", "content": "My name is Antonello"},
-        {"role": "assistant", "content": "Hi Antonello"},
+        {"role": "user", "content": "My name is Zero"},
+        {"role": "assistant", "content": "Hi Zero"},
     ]
     query = "Do you remember my name?"  # Trigger phrase
 
     # Mock LLM response for recall
     mock_llm_gateway.send_message.return_value = (
-        "Yes, your name is Antonello",
+        "Yes, your name is Zero",
         "gemini-flash",
         MagicMock(),
         TokenUsage(),

@@ -110,7 +110,7 @@ Antibody documentata in cicatrix-scars.md scar 2026-05-25 con 3 opzioni:
 | WR2 deploy-puller              | ✅ RECOVERED             | `runs=62 exit 0` post-fix, worktree at `f6ba657f1`              |
 | Cicatrix scars                 | ✅ UPDATED               | +49 lines (scar 2026-05-25 + P0 status correction)              |
 
-## Aperti per operatore Antonello
+## Aperti per operatore Zero
 
 1. **mouth.balizero.com DNS** — Cloudflare CNAME → Vercel project mouth
 2. **agent-library-evolver worktree isolation** — design decision A/B/C

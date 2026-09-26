@@ -3,7 +3,7 @@
 Discovered in R5 SOTA 2026-05-08. Karpathy's pattern: zero LLM cost,
 self-host. Port of arxiv-sanity-lite core algorithm.
 
-Train on Antonello's tagged papers, score new candidates by per-tag SVM.
+Train on Zero's tagged papers, score new candidates by per-tag SVM.
 """
 from __future__ import annotations
 

@@ -9,12 +9,12 @@
 
 **Four reviewers, four BLOCK verdicts. Codex found 3 catastrophic bugs that survived the 10 per-task reviews because they cross file boundaries in ways a per-file reviewer cannot see.**
 
-| LLM | Verdict | Crit | Imp |
-|---|---|---|---|
-| Gemini 2.5 Pro | BLOCK | 3 legit + 1 hallucination | 2 |
-| Codex gpt-5.4 xhigh | **BLOCK** | **8 (3 catastrophic)** | 8 |
-| DeepSeek-Reasoner | BLOCK | 6 | 4 |
-| NB-2 (immigration) | Ship with 2 fixes | 2 (immigration) | 0 |
+| LLM                 | Verdict           | Crit                      | Imp |
+| ------------------- | ----------------- | ------------------------- | --- |
+| Gemini 2.5 Pro      | BLOCK             | 3 legit + 1 hallucination | 2   |
+| Codex gpt-5.4 xhigh | **BLOCK**         | **8 (3 catastrophic)**    | 8   |
+| DeepSeek-Reasoner   | BLOCK             | 6                         | 4   |
+| NB-2 (immigration)  | Ship with 2 fixes | 2 (immigration)           | 0   |
 
 ---
 
@@ -26,6 +26,7 @@
 **Files:** `services/crm/partners/events.py:42` vs `migrations/migration_075_practice_status_notify.py:27`.
 
 Migration 075 (existing, in production) installs a Postgres trigger on the `practices` table that emits:
+
 ```json
 {"practice_id": ..., "new_status": "completed", "new_payment": "paid", ...}
 ```
@@ -35,6 +36,7 @@ Our `handle_practice_status_changed()` handler reads `payload.get("process_id")`
 Migration 119's `partner_referrals.process_id` and `partner_commissions.process_id` FK-reference `processes(id)` — if `processes` doesn't exist in the live DB, the migration itself fails. If a stub exists, the FKs are wrong.
 
 **Fix:**
+
 1. Rename `process_id` → `practice_id` across migration 119 + models + repository + service + engine + events.
 2. Update events.py to read `payload["practice_id"]` and handle the existing `practice_changed` channel (already aliased — event_bus.py:47 maps `practice_changed` → `practice.status_changed`).
 3. Update FK targets to `practices(id)` (or whatever the actual table is — verify against live schema).
@@ -56,6 +58,7 @@ The router has NO role gate on `GET /api/partners`. `service.list_partners()` on
 **A partner user hitting `/api/partners` (not `/api/partners/me`) enumerates every other partner's banking details and national IDs.** UU PDP violation at its purest.
 
 **Fix:**
+
 1. Add `_require_team_or_admin(user)` at router top — partner role gets 403.
 2. Add response DTO that strips internal fields for team-role users (they shouldn't see assigned_to for partners they don't own).
 3. Introduce separate `PartnerAdminView` vs `PartnerTeamView` vs `PartnerSelfView` DTOs.
@@ -72,11 +75,13 @@ The `POST /api/partners/{partner_id}/referrals` route docstring says "Team (owne
 **Therefore: a partner-role user can POST to their own `/referrals` endpoint with ANY `process_id` value.** If the accrual path (CATA-1) is fixed, this would trigger automatic accrual + approval + payout to the partner for a process they never referred.
 
 No verification that:
+
 - the process exists,
 - the process is actually completed+paid yet (timing attack possible),
 - the partner has any connection to the client on that process.
 
 **Fix:**
+
 1. Change `verify_partner_access_with_role` call to a team-or-admin check (use `_require_team_or_admin`).
 2. Remove the partner-role branch entirely from the referral creation path (partners don't self-refer — the team does).
 3. Add a process-access check: verify the `referred_by_user_id` (i.e., the acting team member) has `verify_client_access` on the process's client.
@@ -105,6 +110,7 @@ Failure mode: Brevo 500 between (a) and (c). Commission is `paid` in DB, no emai
 Second failure mode: concurrent retry between (b) and (c) → double-send because idempotency flag not set yet.
 
 **Fix:**
+
 1. Introduce outbox table: `partner_email_outbox` with columns `{commission_id, type, to, cc, subject, body, status, attempts, next_retry_at}`.
 2. `mark_paid` writes the outbox row INSIDE the transaction that transitions status.
 3. Background worker (or cron) polls and sends; updates outbox row `status=sent` + `commission_email_sent_at`.
@@ -119,7 +125,7 @@ Second failure mode: concurrent retry between (b) and (c) → double-send becaus
 
 Current: `if "finance.mark_paid" not in perms AND user.role != "admin": 403`. Fallback means any admin has full finance power — spec said separate perm. Removes 3-person control.
 
-**Fix:** drop the `or admin` fallback; require explicit `finance.mark_paid` permission bit. Seed that permission for Zero, Antonello, Asya as part of migration 119. **~15 min.**
+**Fix:** drop the `or admin` fallback; require explicit `finance.mark_paid` permission bit. Seed that permission for Zero, Asya as part of migration 119. **~15 min.**
 
 ### CRIT-4 — Hardcoded production secret in email module
 
@@ -131,6 +137,7 @@ Current: `if "finance.mark_paid" not in perms AND user.role != "admin": 403`. Fa
 Golden Rule #6 ("No hardcoded secrets") violation. Worse: a staging/dev/CI misconfiguration (env var not set) silently falls through to PRODUCTION endpoint + PRODUCTION API key. Test environments WILL send real emails to real customer addresses.
 
 **Fix:**
+
 1. Remove the hardcoded fallbacks. Raise at import time if env vars unset.
 2. Document required env vars in the module docstring.
 3. Add `.env.example` entries.
@@ -168,6 +175,7 @@ Rates 2.5%/2.0% are placeholders. PPh21 is progressive. No-NPWP partner needs +2
 
 **Discovered by:** Codex.
 **Files:** Multiple mismatches:
+
 - Backend `GET /api/partners` returns `list[Partner]`. Frontend expects `{partners, total, page, page_size}`.
 - Frontend types IDs as `number`. Backend uses UUID. Detail page calls `Number(params.id)` on a UUID.
 - Frontend calls `/api/partner-commissions/*` (doesn't exist) and `/api/partners/commissions/export` (backend exposes `/api/partners/commissions/{id}/*` and `/api/partners/finance/export`).
@@ -198,6 +206,7 @@ Rates 2.5%/2.0% are placeholders. PPh21 is progressive. No-NPWP partner needs +2
 ## Recommended course of action
 
 The council finds the module is **NOT production-ready**. The 3 catastrophic issues (CATA-1, CATA-2, CATA-3) mean:
+
 - No commission will ever accrue against real practices (**feature broken**).
 - Any partner can read every other partner's banking/tax IDs (**PII breach**).
 - Any partner can self-assign to arbitrary practices and collect commissions (**fraud vector**).
@@ -207,6 +216,7 @@ These were invisible to per-file reviews because they require cross-reference be
 **Path forward:**
 
 **Option A (recommended): close PR #139, start v1.1 branch.**
+
 - Revert nothing — the code is a good starting point with important surface-level polish already done.
 - Create `feat/crm-partners-v1.1` branch from current head.
 - Fix CATA-1 (practices rename, ~6h) + CATA-2 (role gate + DTOs, ~2h) + CATA-3 (tight access check, ~1h) + CRIT-4 (hardcoded secret, ~15min) as P0 = **~10 hours**.
@@ -214,10 +224,12 @@ These were invisible to per-file reviews because they require cross-reference be
 - Full v1 re-ship: **~20-25 hours focused work**.
 
 **Option B: patch in place + new integration test against live schema.**
+
 - Riskier: the test infrastructure built in Task 3 uses a `processes` stub table. Switching to `practices` invalidates most fixtures.
 - Not recommended.
 
 **Option C: ship with feature-flag OFF for accrual path, merge UI work only.**
+
 - The partner anagrafica + team portal work is genuinely useful and safe if no accrual/payout flows run.
 - Add a `PARTNERS_ACCRUAL_ENABLED = False` env flag.
 - Merge, then do v1.1 work on the finance side behind the flag.

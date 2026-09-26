@@ -21,12 +21,13 @@ The Pro↔Fly skills bridge (`cell:skills` Redis stream pull) authenticates with
 dedicated `BRIDGE_SKILLS_API_KEY`. The old value had been world-readable in a
 plist backup → treated as compromised. Rotated **bilaterally and atomically**.
 
-| Side | What | Verified |
-|---|---|---|
-| Consumer (Pro) | `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist` → `EnvironmentVariables:BRIDGE_SKILLS_API_KEY` = new 64-hex; plist re-locked `0400`; bootout+bootstrap | `launchctl print` state=active, last exit 0 |
-| Validator (Fly) | `fly secrets set BRIDGE_SKILLS_API_KEY -a nuzantara-rag` → machine `7847d95ce257d8` restarted to release v3431 | secret digest `2eff2df2a270f60b` |
+| Side            | What                                                                                                                                                                       | Verified                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Consumer (Pro)  | `~/Library/LaunchAgents/com.nuzantara.skills-bridge-consumer.plist` → `EnvironmentVariables:BRIDGE_SKILLS_API_KEY` = new 64-hex; plist re-locked `0400`; bootout+bootstrap | `launchctl print` state=active, last exit 0 |
+| Validator (Fly) | `fly secrets set BRIDGE_SKILLS_API_KEY -a nuzantara-rag` → machine `7847d95ce257d8` restarted to release v3431                                                             | secret digest `2eff2df2a270f60b`            |
 
 **Live functional proof:** `GET https://nuzantara-rag.fly.dev/api/bridge/skills?count=1`
+
 - with NEW key → **HTTP 200** + real payload (a CRM skill event)
 - with arbitrary/invalid key → **HTTP 401**
 
@@ -61,11 +62,11 @@ update both the consumer env and any Fly/GitHub secret.
 
 - **Value:** `postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev`
 - **Why deterministic:** consumer `scripts/wa-mirror-attention-classifier.py:46`
-  comments *"writes to 127.0.0.1:5432/nuzantara_dev (Postgres local)"*; local PG
+  comments _"writes to 127.0.0.1:5432/nuzantara_dev (Postgres local)"_; local PG
   login role is `nuzantara` with peer auth (no password). The WA-mirror cutover
   (2026-05-24, Symbiosis Law 2) made WhatsApp data local-only — this DB holds all
   `whatsapp_*` tables incl. `whatsapp_message_context` (23,763 rows verified).
-- **What was actually missing:** the *entire URL* was absent from
+- **What was actually missing:** the _entire URL_ was absent from
   `~/.nuzantara-secrets.env`, not a password. Now appended (backup `.bak-wamirror-*`).
 - **Verify:** `psql "$WA_MIRROR_DATABASE_URL" -c "SELECT count(*) FROM whatsapp_message_context;"`
   then `WA_ATTENTION_DRY_RUN=1 .venv/bin/python scripts/wa-mirror-attention-classifier.py` → exit 0.
@@ -75,7 +76,7 @@ update both the consumer env and any Fly/GitHub secret.
 ### 2.2 HEALTHCHECK_EMAIL / HEALTHCHECK_PIN — ⛔ NEEDS-ANTONELLO
 
 Login credentials for the real account `healthcheck@balizero.com` (role=client).
-**Not reconstructable** — a real login only Antonello holds. Consumer
+**Not reconstructable** — a real login only Zero holds. Consumer
 `login-healthcheck` (every 5 min) stays exit78 until provided (it only logs, no
 spam). Add both to `~/.nuzantara-secrets.env`, then `launchctl kickstart` the agent.
 
@@ -97,7 +98,7 @@ Set as alias of `DATABASE_URL` in `~/.nuzantara-secrets.env`. Fixed
 ### 3.1 W38 — backend_rag_v2 SUPERUSER demotion — ✅ EXECUTED & SMOKE-TESTED (2026-06-03)
 
 - **Action:** `ALTER ROLE backend_rag_v2 NOSUPERUSER;` on prod Postgres.
-- **Why safe (pre-checked):** `backend_rag_v2` *owns* its objects + has explicit
+- **Why safe (pre-checked):** `backend_rag_v2` _owns_ its objects + has explicit
   grants + no RLS policy depends on superuser + required extensions already
   installed. Demotion does not remove ownership or grants.
 - **Smoke (PASS):** `SELECT` 77,025 rows · `CREATE TEMP TABLE`+`INSERT` (write
@@ -113,15 +114,15 @@ Set as alias of `DATABASE_URL` in `~/.nuzantara-secrets.env`. Fixed
 
 Backups: `~/Library/LaunchAgents-backup-20260603.tar.gz`, `~/.nuzantara-secrets.env.bak-20260603`.
 
-| Agent | Was | Action | State |
-|---|---|---|---|
-| `outbox-prune.weekly` | exit2 (EVENTBUS_DATABASE_URL unset) | alias env + plist `set -a;source;set +a` | ✅ exit0 |
-| `translate.hourly` | exit1 (pyenv, no httpx; then gemma4 missing) | repoint to `.venv/bin/python`; `OLLAMA_MODEL=gemma3:27b` (gemma4 was a custom model lost in the ~/.ollama wipe) | ✅ exit0 |
-| `wr2.canva-renderer` | exit78 (wrapper absent) | bootout+disable (wrapper gone, killswitch off) | ℹ️ retired |
-| `workspace-event-bridge-sheets-import` | exit127 (worktree deleted) | bootout+disable | ℹ️ retired |
-| `wr3.editorial-bench.monthly`, `wr3.yt-metrics.weekly` | exit127 (.openclaw/bin/wr3 absent) | bootout+disable | ℹ️ retired |
-| `intel-lake.outbox-drain.minute`, `e2e-probe.6h` | spam (token missing) | bootout (recoverable) | ⛔ awaits token §2.3 |
-| `cell-observatory` (+selfcheck,prune) | crash (OPENROUTER/MINIMAX_API_KEY) | bootout+disable — deprecated, replaced by `com.balizero.observatory` + `observatory-server` (both running) | ℹ️ retired |
+| Agent                                                  | Was                                          | Action                                                                                                          | State                |
+| ------------------------------------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `outbox-prune.weekly`                                  | exit2 (EVENTBUS_DATABASE_URL unset)          | alias env + plist `set -a;source;set +a`                                                                        | ✅ exit0             |
+| `translate.hourly`                                     | exit1 (pyenv, no httpx; then gemma4 missing) | repoint to `.venv/bin/python`; `OLLAMA_MODEL=gemma3:27b` (gemma4 was a custom model lost in the ~/.ollama wipe) | ✅ exit0             |
+| `wr2.canva-renderer`                                   | exit78 (wrapper absent)                      | bootout+disable (wrapper gone, killswitch off)                                                                  | ℹ️ retired           |
+| `workspace-event-bridge-sheets-import`                 | exit127 (worktree deleted)                   | bootout+disable                                                                                                 | ℹ️ retired           |
+| `wr3.editorial-bench.monthly`, `wr3.yt-metrics.weekly` | exit127 (.openclaw/bin/wr3 absent)           | bootout+disable                                                                                                 | ℹ️ retired           |
+| `intel-lake.outbox-drain.minute`, `e2e-probe.6h`       | spam (token missing)                         | bootout (recoverable)                                                                                           | ⛔ awaits token §2.3 |
+| `cell-observatory` (+selfcheck,prune)                  | crash (OPENROUTER/MINIMAX_API_KEY)           | bootout+disable — deprecated, replaced by `com.balizero.observatory` + `observatory-server` (both running)      | ℹ️ retired           |
 
 S4 worktree-cleanup cron installed: `com.nuzantara.agent-worktree-cleanup.daily`
 (00:15) — worktrees 23→7, WIP preserved. W64 (`asyncpg.InterfaceError`) merged
@@ -131,11 +132,11 @@ S4 worktree-cleanup cron installed: `com.nuzantara.agent-worktree-cleanup.daily`
 
 ## 5. The 3 waves — final state
 
-| Wave | Sessions | State |
-|---|---|---|
-| ONDA 1 | S1,S4,S5,S6,S15,S16 | ✅ merged (PR #1020–#1025) |
-| ONDA 2 | S2,S3,S7,S10,S13,S14 | ✅ merged (PR #1028–#1032) — S7 had failed, recovered |
-| ONDA 3 | S8,S9,S11,S12,S17,S18 | ✅ merged (PR #1052–#1057) |
+| Wave   | Sessions              | State                                                 |
+| ------ | --------------------- | ----------------------------------------------------- |
+| ONDA 1 | S1,S4,S5,S6,S15,S16   | ✅ merged (PR #1020–#1025)                            |
+| ONDA 2 | S2,S3,S7,S10,S13,S14  | ✅ merged (PR #1028–#1032) — S7 had failed, recovered |
+| ONDA 3 | S8,S9,S11,S12,S17,S18 | ✅ merged (PR #1052–#1057)                            |
 
 ### 5.1 P0 production bug found + fixed (S11 → PR #1072) — ✅ LIVE
 
@@ -166,7 +167,7 @@ Family, Settings→Notifiche, dashboard summary + iCal export. Fixed in both
 ## 6. Open decisions (NEEDS-ANTONELLO — not blockers)
 
 1. **S18 prod-arm:** generate a short-lived service-role JWT to arm rag-eval
-   against prod (harness already runs `--offline` exit 0). *Authorized — generating.*
+   against prod (harness already runs `--offline` exit 0). _Authorized — generating._
 2. **S17 agents:** install the 5 proposed agents into `~/.claude/agents/`? (review first)
 3. **S8 carousel:** complete the WR2 render, then the Telegram review gate.
 4. **§1.2 / §2.2 / §2.3:** rotate S5 external secrets; provide the 2 unrecoverable
@@ -174,6 +175,6 @@ Family, Settings→Notifiche, dashboard summary + iCal export. Fixed in both
 
 ---
 
-*Maintained by the autonomous ops loop. The mirror in Claude memory is
+_Maintained by the autonomous ops loop. The mirror in Claude memory is
 `audit_3_ondate_automazioni_2026_06_03.md` (not team-reachable — this file is the
-shared source of truth).*
+shared source of truth)._

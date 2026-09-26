@@ -60,7 +60,7 @@ law_compliance:
   law_2_osint_blindato: "Reads public metrics only (no NB)"
   law_3_event_driven: "Cron Mon 06:00 WITA AFTER Reflexion (Sun 02:30) — same review week"
   law_4_graceful_degradation: "Partial metrics degrade-loud, never silent"
-  law_5_zero_authority: "Amendments require Antonello review before applied"
+  law_5_zero_authority: "Amendments require Zero review before applied"
   law_6_local_sovereignty: "Local scrape Pro/Mini"
   law_7_numbers_first: "Every amendment cites engagement metric (views, retention, CTR)"
   law_8_past_present_future: "30-90 day correlation window"

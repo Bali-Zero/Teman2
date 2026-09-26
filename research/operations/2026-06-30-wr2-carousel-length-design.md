@@ -23,7 +23,7 @@ sources:
 
 # WR2 Variable-Length Carousel: The Number, The Criterion, and Length x Design
 
-**Date**: 2026-06-30 · **Domain**: operations · **Author**: deep-researcher (Antonello/Bali Zero) · **Status**: draft · **Client case**: WR2-pipeline
+**Date**: 2026-06-30 · **Domain**: operations · **Author**: deep-researcher (Zero/Bali Zero) · **Status**: draft · **Client case**: WR2-pipeline
 
 ## Question
 

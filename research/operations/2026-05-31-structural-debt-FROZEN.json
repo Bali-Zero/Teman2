@@ -26,8 +26,8 @@
       "id": "W38-rolsuper",
       "title": "backend_rag_v2 Postgres role has rolsuper=t (PENDING P1 SECURITY)",
       "verdict": "still_armed",
-      "evidence": "postgres-nuzantara MCP read-only (verified TWICE this turn): SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true. Spec research/operations/specs/W38-backend-rag-v2-nosuperuser.md EXISTS (18420 bytes), frontmatter 'status: DRAFT — awaiting Antonello approval', 'status_detail: NOT EXECUTED — Stage C (ALTER ROLE NOSUPERUSER) requires explicit operator sign-off'. Audit snapshot 2026-05-23-w38-backend-rag-v2-rolsuper-audit.json EXISTS (15123 bytes). grep migrations_v2 for NOSUPERUSER = NONE (demotion never applied). Bomb is LIVE. Correctly NEEDS-ANTONELLO; NOT demoted by this audit.",
-      "fix_owner": "ANTONELLO (sign-off required; do NOT ALTER ROLE autonomously)"
+      "evidence": "postgres-nuzantara MCP read-only (verified TWICE this turn): SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true. Spec research/operations/specs/W38-backend-rag-v2-nosuperuser.md EXISTS (18420 bytes), frontmatter 'status: DRAFT — awaiting Zero approval', 'status_detail: NOT EXECUTED — Stage C (ALTER ROLE NOSUPERUSER) requires explicit operator sign-off'. Audit snapshot 2026-05-23-w38-backend-rag-v2-rolsuper-audit.json EXISTS (15123 bytes). grep migrations_v2 for NOSUPERUSER = NONE (demotion never applied). Bomb is LIVE. Correctly NEEDS-ANTONELLO; NOT demoted by this audit.",
+      "fix_owner": "ZERO (sign-off required; do NOT ALTER ROLE autonomously)"
     },
     {
       "id": "mata-garuda-active-active",
@@ -76,7 +76,7 @@
       "title": "Unknown agent overwrites loaded plist with JSON dump + leaks secrets in 0644 plist",
       "verdict": "still_armed",
       "evidence": "2 plists carry REAL secret VALUES at mode 644 (world-readable) RIGHT NOW: com.balizero.wa-dashboard-m1 (WA_DASHBOARD_DATABASE_URL, 1 postgres conn string, mode 644) + com.nuzantara.skills-bridge-consumer (BRIDGE_SKILLS_API_KEY, 1 api-key string, mode 644). NOTE drift: S1 FROZEN at 00:37 recorded skills-bridge-consumer as 0o444; live stat now = 644 — perms CHANGED in ~7min, consistent with ongoing plist rewrite/churn (the exact scar mechanism). Recovery tool ~/p0-3-recovery/reconstruct_plist.py EXISTS. com.balizero.wr2.plist-watchdog INSTALLED but launchctl status '-'/0 (not actively guarding). World-readable-secret leak surface is LIVE; root-cause producer still unidentified.",
-      "fix_owner": "SHIPPED chmod 0400 on the 2 secret plists this audit (Phase B); secret rotation + producer ID = ANTONELLO"
+      "fix_owner": "SHIPPED chmod 0400 on the 2 secret plists this audit (Phase B); secret rotation + producer ID = ZERO"
     }
   ],
 
@@ -131,7 +131,7 @@
 
   "rolsuper_still_armed": true,
   "w38_spec_exists": true,
-  "w38_status": "DRAFT — awaiting Antonello approval; NOT EXECUTED",
+  "w38_status": "DRAFT — awaiting Zero approval; NOT EXECUTED",
 
   "top3_armed_bombs_by_blast_radius": [
     {

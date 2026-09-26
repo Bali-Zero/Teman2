@@ -2,7 +2,7 @@
 date: 2026-05-28
 domain: visa
 client_case: bali-zero-internal-e33g-kbli-content-creator
-author: deep-researcher (Antonello/Bali Zero)
+author: deep-researcher (Zero/Bali Zero)
 status: draft
 sources:
   - NB-2 Immigration & Visa Indonesia 2025 (UUID cff93ab0-813a-42f2-a8de-36987e724271) — verbatim regulatory citations
@@ -14,7 +14,7 @@ sources:
 
 # E33G + KBLI Content Creator — Pillars per pivot carosello (da C5A dormiente a strade VERE)
 
-## Question (verbatim Antonello)
+## Question (verbatim Zero)
 
 Deep research su due pilastri legali per content creator in Indonesia, in sostituzione del focus sul C5A "Konten Kreator" (classificato ma NON operativo): (A) il visto E33G Remote Worker, (B) la struttura PT PMA con KBLI per content creation. Output per carosello editoriale Bali Zero + base di consulenza. Due domande operative chiave: (B.2) director di PT PMA con KBLI content creation cosa può fare; (B.3) assumere un content creator WNA sotto quale jabatan Kemnaker.
 
@@ -81,7 +81,7 @@ Procedura (NB-2 source_id 09d6e396): STEP 1 domanda su `evisa.imigrasi.go.id`; S
 
 ### B.1 KBLI content creation [DOCUMENTED — Peraturan BPS 7/2025 letto direttamente, cross-ref `2026-05-28-kbli-2025-bps-december-verify.md`]
 
-> **⚠️ AGGIORNATO 2026-05-28 dopo verifica fonte primaria** (Antonello: "hanno cercato nel KBLI 2025? e la legge BPS di dicembre 2025?"). Il PDF reale di **Peraturan BPS No. 7 Tahun 2025** (623 pp, ditetapkan 17 dic 2025 / diundangkan 18 dic 2025) è stato letto direttamente. Due correzioni alla versione precedente di questa sezione + 1 conferma. Dettaglio completo: `research/company/2026-05-28-kbli-2025-bps-december-verify.md`.
+> **⚠️ AGGIORNATO 2026-05-28 dopo verifica fonte primaria** (Zero: "hanno cercato nel KBLI 2025? e la legge BPS di dicembre 2025?"). Il PDF reale di **Peraturan BPS No. 7 Tahun 2025** (623 pp, ditetapkan 17 dic 2025 / diundangkan 18 dic 2025) è stato letto direttamente. Due correzioni alla versione precedente di questa sezione + 1 conferma. Dettaglio completo: `research/company/2026-05-28-kbli-2025-bps-december-verify.md`.
 
 Indonesia **NON** ha un singolo codice "content creator". Si combinano codici 5-cifre in base all'attività reale. **KBLI 2025 = Peraturan BPS No. 7 Tahun 2025, firmato 17 dicembre 2025, promulgato 18 dicembre 2025, base ISIC Rev. 5** (abroga Peraturan BPS 2/2020). In vigore dalla promulgazione MA con **transizione di 6 mesi fino al 18 giugno 2026** (Pasal 5). Il testo 2025 nomina esplicitamente vlog, video podcast, streaming.
 

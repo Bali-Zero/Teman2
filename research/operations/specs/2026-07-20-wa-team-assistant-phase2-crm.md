@@ -206,7 +206,7 @@ security-fix's own coverage).
 3. **Prove-live** (flag still OFF): confirm the WA bot answers exactly as
    before for Zero's own number and a client-role sender (regression check,
    not a new-feature check).
-4. **Arm** (operator step — Zero/Antonello only, credential-adjacent):
+4. **Arm** (operator step — Zero only, credential-adjacent):
    `fly secrets set WA_TEAM_CRM_TOOLS_ENABLED=true -a nuzantara-rag`. This
    is the ONE step this PR does not self-execute — flipping a Fly secret is
    an operator action per CLAUDE.md §13 (credential/infra, not a

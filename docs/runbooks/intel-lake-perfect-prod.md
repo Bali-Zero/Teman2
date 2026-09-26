@@ -37,13 +37,13 @@ tail -50 ~/logs/intel-lake-probe-cron.log
 grep "hop[1-5]" ~/logs/intel-lake-probe-cron.log | tail -10
 ```
 
-| Hop fallito  | Causa probabile                               | Azione                                                                                                |
-| ------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| hop1 POST    | Fly down / token rotato / proxy giù           | `curl -sf https://nuzantara-rag.fly.dev/health` — se 503 → Antonello                                  |
-| hop2 outbox  | Trigger PG `notify_intel_lake_event` rotta    | Migration 146 controllo; chiedi ad Antonello                                                          |
-| hop3 routing | Router Pro-local non gira                     | `launchctl print gui/$(id -u)/com.balizero.intel-lake-router.5min` — se `state ≠ running` → Antonello |
-| hop4 nb-push | NB UUID `7e6ae978-...` cancellato dal sandbox | Ricrea via Antonello                                                                                  |
-| hop5 cleanup | Probe rimosso a metà                          | Cleanup manuale: vedi `docs/runbooks/synthetic-probe-cleanup.md`                                      |
+| Hop fallito  | Causa probabile                               | Azione                                                                                           |
+| ------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| hop1 POST    | Fly down / token rotato / proxy giù           | `curl -sf https://nuzantara-rag.fly.dev/health` — se 503 → Zero                                  |
+| hop2 outbox  | Trigger PG `notify_intel_lake_event` rotta    | Migration 146 controllo; chiedi ad Zero                                                          |
+| hop3 routing | Router Pro-local non gira                     | `launchctl print gui/$(id -u)/com.balizero.intel-lake-router.5min` — se `state ≠ running` → Zero |
+| hop4 nb-push | NB UUID `7e6ae978-...` cancellato dal sandbox | Ricrea via Zero                                                                                  |
+| hop5 cleanup | Probe rimosso a metà                          | Cleanup manuale: vedi `docs/runbooks/synthetic-probe-cleanup.md`                                 |
 
 ## 4. Router fail (3 crashi in 30min)
 

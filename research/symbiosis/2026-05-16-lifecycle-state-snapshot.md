@@ -224,7 +224,7 @@ Sequenza suggerita:
 3. **B (4-6h)** — HGT activate 3+ cellule (ora prerequisiti veri)
 4. **C (6-10h)** — cross-cell reflection (Pilastro 1 evoluzione)
 
-Salta **D** se Antonello considera la reflection regression "ok per ora" (es. lhkpn_harvester deprecato di proposito).
+Salta **D** se Zero considera la reflection regression "ok per ora" (es. lhkpn_harvester deprecato di proposito).
 
 ## Sources
 

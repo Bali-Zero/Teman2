@@ -1,6 +1,6 @@
 # SYMBIOSIS — Turn-On Plan (2026-05-06)
 
-**Owner**: Zero (Antonello Siano)  
+**Owner**: Zero  
 **Branch**: feat/symbiosis-turnon-2026-05  
 **Premise**: 70% del sistema simbiotico è già scritto in 6+ mesi di lavoro
 (cell-core, organism, HGT, Innervation Genoma). Solo il 10% è acceso.

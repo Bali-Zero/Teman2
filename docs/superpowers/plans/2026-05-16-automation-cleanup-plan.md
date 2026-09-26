@@ -80,7 +80,7 @@ ssh mini 'find ~/Library/LaunchAgents -name "com.matagaruda.*.plist" -perm +044 
 
 **Rollback**: `ssh mini 'chmod 0644 ...'` (NON consigliato — cicatrix). Vero rollback: rotation **prima** di restore mode.
 
-**Decision gate**: F1.2 procede SOLO se Antonello conferma di aver avviato la rotazione (anche se non completata) — chmod 0400 da solo è valore zero se token già leakati.
+**Decision gate**: F1.2 procede SOLO se Zero conferma di aver avviato la rotazione (anche se non completata) — chmod 0400 da solo è valore zero se token già leakati.
 
 ### F1.2 — Audit completo Mini per altri plist 0644+secrets
 
@@ -438,7 +438,7 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 
 **Trauma**: producer attivo (mig 146), 0 consumers cablati. Eventi accumulano in `events_outbox` senza ack.
 
-**Decisione richiesta** (Antonello):
+**Decisione richiesta** (Zero):
 
 - Opzione A: cablare consumer in `apps/backend-rag/backend/services/events/handlers/_core.py` (registra handler)
 - Opzione B: ritirare producer (drop trigger mig 146 con nuova migration)
@@ -495,7 +495,7 @@ gh workflow disable fly-restart-detector.yml
 
 | Agent                         | Decisione raccomandata                                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Antonello                                                |
+| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Zero                                                     |
 | `email-template-builder`      | Wire-in: utile per Brevo template generation                                                                                  |
 | `wr2-external-bench`          | Wire-in cron mensile (1st Monday) — già spec'd nel system prompt agent                                                        |
 | `wr2-image-prompt-author`     | Wire-in pipeline WR2 Step 4.5 (tra storyboarder e layout-composer) — spec dice "Used by wr2-design-architect" ma non chiamato |
@@ -590,7 +590,7 @@ F9 (verify) ── tutto, dopo
 
 ## Approvazione
 
-Questo piano **richiede approval Antonello** prima esecuzione (autonomous-ops L2 non copre rotation token o modifiche estese organs_registry).
+Questo piano **richiede approval Zero** prima esecuzione (autonomous-ops L2 non copre rotation token o modifiche estese organs_registry).
 
 Prossimo step: **review 4-LLM panel** (Gemini + Codex + DeepSeek + NotebookLM NB-1) per:
 

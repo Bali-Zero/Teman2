@@ -55,7 +55,7 @@ filtered view.
   warm-depth design tokens `packages/core/styles/bz-tokens.css`).
 - RBAC: existing pattern `verify_client_access` with
   `except HTTPException: raise` before generic except (SCAR 2026-03-26).
-- Admin: Zero (`zero@`), Antonello (`antonellosiano@`), Asya (`asya@`) see all.
+- Admin: Zero (`zero@`), Zero (`antonellosiano@`), Asya (`asya@`) see all.
 - Indonesian regulatory context: UU PDP (personal data), PPh 21/23 (witholding
   tax on professional services), kwitansi/invoice standard.
 
@@ -207,7 +207,7 @@ Use the existing role-gated portal, not a separate Vercel app. For 20-100 partne
 
 ## Q6
 
-The stated RBAC is correct. Partner sees only their own referrals/commissions. Team member sees partners where `assigned_to = self`. Zero, Antonello, and Asya see all. Edge cases: no partner self-registration in v1, no partner editing commission rates, no multi-level partner trees, and if a team member is also a partner, use a separate partner identity to avoid privilege bleed.
+The stated RBAC is correct. Partner sees only their own referrals/commissions. Team member sees partners where `assigned_to = self`. Zero and Asya see all. Edge cases: no partner self-registration in v1, no partner editing commission rates, no multi-level partner trees, and if a team member is also a partner, use a separate partner identity to avoid privilege bleed.
 
 **Recommendation:** Enforce strict owner/admin/partner scopes and keep internal staff-as-partner as a separate account case.
 
@@ -276,7 +276,7 @@ Use the existing role-gated portal, not a separate Vercel app. For 20-100 partne
 
 ## Q6
 
-The stated RBAC is correct. Partner sees only their own referrals/commissions. Team member sees partners where `assigned_to = self`. Zero, Antonello, and Asya see all. Edge cases: no partner self-registration in v1, no partner editing commission rates, no multi-level partner trees, and if a team member is also a partner, use a separate partner identity to avoid privilege bleed.
+The stated RBAC is correct. Partner sees only their own referrals/commissions. Team member sees partners where `assigned_to = self`. Zero and Asya see all. Edge cases: no partner self-registration in v1, no partner editing commission rates, no multi-level partner trees, and if a team member is also a partner, use a separate partner identity to avoid privilege bleed.
 
 **Recommendation:** Enforce strict owner/admin/partner scopes and keep internal staff-as-partner as a separate account case.
 
