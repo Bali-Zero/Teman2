@@ -55,6 +55,26 @@ column name); R7 a non-ASCII identifier (a Kelvin sign) was folded by
 Python's `.lower()` but not by PG; R8 an empty `()` body silently produced
 no `declared` entry for the table at all rather than being rejected.
 
+REWORK (fresh gate on 18f82e1daf, pull/7413#issuecomment-5846951975,
+verdict REWORK-BUILD — a fix-of-a-fix, last round per Builder Contract §1):
+the round above closed all 8 residuals but its own R1 first-wins and R5
+typmod-drop regressed three real-file mutations from RED (on origin/main)
+to GREEN, and R5 had no discriminating guilt case. S1 (R5): typmods are now
+rejected outright, not accepted-and-dropped — `_TYPMOD_CAPABLE_TYPES` is
+empty. S2: a duplicate column NAME inside one CREATE body is rejected. S3:
+a repeated `CREATE TABLE IF NOT EXISTS` body is still fully parsed and
+validated (a syntax error in it still raises) — only a semantically valid
+repeat is discarded, matching PG's own no-op. S4: an `ADD COLUMN IF NOT
+EXISTS` that re-declares a column the table's OWN `CREATE TABLE` body
+already defined, with a DIFFERENT `(type, notnull)`, is rejected — PG
+would apply the CREATE body's definition (or the DDL fails/rolls back
+against a Fly database that already carries the CREATE shape) and never
+silently re-type or re-null it the ALTER's way. First-wins stays
+unconditional between two CREATEs or two ALTERs (path-independent). S5:
+23 more of PG's own catcode-`T` keywords (`left`, `is`, `join`, ...) join
+the reserved-column-name set, and the real-PG R4/R6a companion cases now
+also assert the static parser rejects, not just that PG does.
+
 Purely static — no DB, no asyncpg. See test_wa_team_promises_real_pg.py for
 the real-Postgres companion (catalog row count against the SAME
 `_REQUIRED_COLUMNS`, opt-in).
@@ -92,24 +112,32 @@ _TYPE_ALIASES = {
 # BIGSERIAL` (no explicit PRIMARY KEY on IT) was wrongly read as nullable.
 _IMPLICIT_NOT_NULL_TYPES = frozenset({"SERIAL", "BIGSERIAL", "SMALLSERIAL"})
 
-# Round-2 R5/R6g: the only two type keywords in `_TYPE_ALIASES` that PG
-# actually accepts a `(typmod)` on (verified against a throwaway PG17
-# catalog — `TEXT(3)`/`BOOLEAN(3)`/`INTEGER(5)` etc. all raise "type
-# modifier is not allowed for type ..."). A typmod is accepted here and then
-# DROPPED — never folded into `pg_type` — matching the runtime guard's own
-# atttypid-only contract (`test_wa_team_promises_real_pg.py` compares
-# `atttypid = 'text'::regtype`, never `atttypmod`). That is the semantics
-# chosen for R5: `format_type(atttypid, atttypmod)` (used by the opt-in C1
-# real-PG test) is deliberately NOT what this parser reproduces — C1's own
-# query was moved to `format_type(atttypid, NULL)` to match, since nothing
-# in `_REQUIRED_COLUMNS` today carries a typmod either way.
-_TYPMOD_CAPABLE_TYPES = frozenset({"VARCHAR", "TIMESTAMPTZ"})
+# Round-2 R5, REWORK (fresh-gate finding on 18f82e1daf, PWC #7395 C-A):
+# empty by design — team_promises.sql uses NO typmod anywhere today, so a
+# typmod on ANY type is outside this file's allowlist and REJECTED outright,
+# never silently accepted-and-dropped. The original round accepted a typmod
+# on VARCHAR/TIMESTAMPTZ and dropped it (matching the runtime guard's
+# atttypid-only contract) — but that erased the only layer that noticed a
+# typmod at all: `format_type(atttypid, atttypmod)` (the opt-in C1 real-PG
+# test) DOES see it, and it is not cosmetic — `TIMESTAMPTZ(0)` on
+# `created_at` rounds `now()` to the second, measured to move a row across
+# the `_DIGEST_COUNTS_SQL` day-bucket boundary. Fail-closed is cheap here:
+# nothing in `_REQUIRED_COLUMNS` needs a typmod, so rejecting every one of
+# them costs nothing and C1's query is restored to `atttypmod` (not `NULL`)
+# since the two now differ ONLY when something is actually silently wrong.
+_TYPMOD_CAPABLE_TYPES: frozenset[str] = frozenset()
 
 # PostgreSQL's OWN fully-reserved keywords (`SELECT word FROM
 # pg_get_keywords() WHERE catcode = 'R'` on a throwaway PG17 — these can
 # never be an unquoted identifier, column names included) — Round-2 R6
 # finding: `_parse_column_def` accepted any of these as a bare column name
-# even though PG raises a syntax error on all of them unquoted.
+# even though PG raises a syntax error on all of them unquoted. REWORK
+# S5(b): PG's 23 catcode-`T` keywords (`SELECT word FROM pg_get_keywords()
+# WHERE catcode = 'T'` — "reserved, can be function or type name", the
+# category directly below catcode-`R` in PG's own docs) syntax-error the
+# same way as an unquoted COLUMN name even though the catcode-`R` set above
+# is the complete `R` list — `left`/`is`/`join` etc. were still silently
+# accepted here before this round.
 _RESERVED_COLUMN_NAMES = frozenset({
     "ALL", "ANALYSE", "ANALYZE", "AND", "ANY", "ARRAY", "AS", "ASC",
     "ASYMMETRIC", "BOTH", "CASE", "CAST", "CHECK", "COLLATE", "COLUMN",
@@ -123,6 +151,11 @@ _RESERVED_COLUMN_NAMES = frozenset({
     "SELECT", "SESSION_USER", "SOME", "SYMMETRIC", "SYSTEM_USER", "TABLE",
     "THEN", "TO", "TRAILING", "TRUE", "UNION", "UNIQUE", "USER", "USING",
     "VARIADIC", "WHEN", "WHERE", "WINDOW", "WITH",
+    # catcode-T (23, verified against the same throwaway PG17 cluster):
+    "AUTHORIZATION", "BINARY", "COLLATION", "CONCURRENTLY", "CROSS",
+    "CURRENT_SCHEMA", "FREEZE", "FULL", "ILIKE", "INNER", "IS", "ISNULL",
+    "JOIN", "LEFT", "LIKE", "NATURAL", "NOTNULL", "OUTER", "OVERLAPS",
+    "RIGHT", "SIMILAR", "TABLESAMPLE", "VERBOSE",
 })
 
 # Characters this file never uses for real syntax OUTSIDE a string literal —
@@ -527,12 +560,20 @@ def _parse_create_table(
     index: int, stmt_tokens: list[_Token], sql: str,
     declared: dict[str, dict[str, tuple[str, bool]]],
     created_tables: set[str],
+    create_body_cols: set[tuple[str, str]],
 ) -> None:
-    """Round-2 R1: `CREATE TABLE IF NOT EXISTS` on a table this parse has
-    already created is a COMPLETE no-op in PG — it doesn't even look at the
-    new column list — so a table already in `created_tables` returns
-    immediately, never touching `declared` (a UNION of the two column lists
-    used to invent columns PG would silently drop)."""
+    """Round-2 R1, REWORK S2/S3: `CREATE TABLE IF NOT EXISTS` on a table
+    this parse has already created is a no-op in PG for the RESULT — the
+    second body's columns never land — but PG still PARSES it: a syntax
+    error in a repeated body (a double comma, a reserved bare word) still
+    fails at apply time, so this file must not go silent on one either. The
+    body is always fully parsed and validated (S2: a duplicate column NAME
+    inside ONE body is rejected outright — PG itself raises
+    `DuplicateColumnError`, never last-wins); only the RESULT of an
+    already-created table's repeat is then discarded, matching PG's own
+    no-op. `create_body_cols` records every (table, name) this parse ever
+    saw in a winning CREATE body — S4 (`_parse_alter_table`) needs it to
+    tell a CREATE-body column apart from an ALTER-added one."""
     table, pos = _read_qualified_name(stmt_tokens, 5, index, sql, stmt_tokens)
     if pos >= len(stmt_tokens) or not (
         stmt_tokens[pos].kind == "PUNCT" and stmt_tokens[pos].value == "("
@@ -541,10 +582,9 @@ def _parse_create_table(
     close_pos = _find_matching_close(stmt_tokens, pos, index, sql, stmt_tokens)
     if close_pos != len(stmt_tokens) - 1:
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
-    if table in created_tables:
-        return
     body = stmt_tokens[pos + 1: close_pos]
-    per_table = declared.setdefault(table, {})
+    already_created = table in created_tables
+    this_body: dict[str, tuple[str, bool]] = {}
     for element in _split_top_level_commas_tok(body):
         if not element:
             raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
@@ -552,18 +592,35 @@ def _parse_create_table(
         if first_kw in _NON_COLUMN_TABLE_ELEMENTS:
             raise UnrecognizedSqlShapeError(index, first_kw, _stmt_text(sql, stmt_tokens))
         name, pg_type, notnull = _parse_column_def(element, index, sql, stmt_tokens)
-        per_table[name] = (pg_type, notnull)
+        if name in this_body:
+            raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
+        this_body[name] = (pg_type, notnull)
+    if already_created:
+        return
+    per_table = declared.setdefault(table, {})
+    for name, spec in this_body.items():
+        per_table[name] = spec
+        create_body_cols.add((table, name))
     created_tables.add(table)
 
 
 def _parse_alter_table(
     index: int, stmt_tokens: list[_Token], sql: str,
     declared: dict[str, dict[str, tuple[str, bool]]],
+    create_body_cols: set[tuple[str, str]],
 ) -> None:
     """Round-2 R1: `ADD COLUMN IF NOT EXISTS` on a column already present
     (from an earlier CREATE TABLE or ALTER in this same parse) is a no-op in
     PG — the FIRST definition wins, a later one with a DIFFERENT type/
-    NOT-NULL is silently ignored, never unioned in."""
+    NOT-NULL is silently ignored, never unioned in. REWORK S4: that
+    first-wins no-op is right between two CREATEs or two ALTERs (both are
+    genuinely path-independent in PG), but WRONG when the earlier
+    definition came from the table's own CREATE body: PG applies the CREATE
+    body's shape, so an ALTER re-declaring that SAME column with a
+    DIFFERENT `(type, notnull)` is not a harmless no-op to silently agree
+    with — it is proof this file's own DDL disagrees with itself about what
+    the column is. Rejected outright rather than silently kept at the
+    CREATE body's (correct, but coincidentally so) value."""
     table, pos = _read_qualified_name(stmt_tokens, 2, index, sql, stmt_tokens)
     action_tokens = stmt_tokens[pos:]
     if not action_tokens:
@@ -582,6 +639,8 @@ def _parse_alter_table(
             raise UnrecognizedSqlShapeError(index, "ALTER", _stmt_text(sql, stmt_tokens))
         name, pg_type, notnull = _parse_column_def(action[5:], index, sql, stmt_tokens)
         if name in per_table:
+            if (table, name) in create_body_cols and per_table[name] != (pg_type, notnull):
+                raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
             continue
         per_table[name] = (pg_type, notnull)
 
@@ -618,11 +677,16 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
     IF-NOT-EXISTS no-op semantics for a repeated CREATE TABLE or ADD COLUMN
     — then converted to the public {table: {(name, type, notnull), ...}}
     shape on return, so every existing caller's expected shape is
-    unchanged."""
+    unchanged. REWORK S4: `create_body_cols` is a per-call, LOCAL
+    {(table, name), ...} of every column a winning CREATE body declared —
+    threaded through so `_parse_alter_table` can tell a CREATE-body column
+    apart from an ALTER-added one (only the former is path-DEPENDENT: PG
+    applies the CREATE body's own shape over a later ALTER that disagrees)."""
     tokens = _tokenize(sql)
     statements = _split_into_statements(tokens)
     declared: dict[str, dict[str, tuple[str, bool]]] = {}
     created_tables: set[str] = set()
+    create_body_cols: set[tuple[str, str]] = set()
     for index, stmt_tokens in enumerate(statements):
         if not stmt_tokens:
             continue
@@ -631,9 +695,9 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
             return _kw(_toks[pos]) if pos < len(_toks) else None
 
         if kw(0) == "CREATE" and kw(1) == "TABLE" and kw(2) == "IF" and kw(3) == "NOT" and kw(4) == "EXISTS":
-            _parse_create_table(index, stmt_tokens, sql, declared, created_tables)
+            _parse_create_table(index, stmt_tokens, sql, declared, created_tables, create_body_cols)
         elif kw(0) == "ALTER" and kw(1) == "TABLE":
-            _parse_alter_table(index, stmt_tokens, sql, declared)
+            _parse_alter_table(index, stmt_tokens, sql, declared, create_body_cols)
         elif (
             kw(0) == "CREATE" and kw(1) == "UNIQUE" and kw(2) == "INDEX"
             and kw(3) == "IF" and kw(4) == "NOT" and kw(5) == "EXISTS"
@@ -722,6 +786,136 @@ def test_guilt_alter_added_column_missing_not_null_is_detected():
     assert ("attempts", "integer", False) in declared["team_promise_candidates"]
     assert ("attempts", "integer", True) not in declared["team_promise_candidates"]
     assert declared["team_promise_candidates"] != required["team_promise_candidates"]
+
+
+def test_guilt_s1_create_body_typmod_is_rejected():
+    """REWORK S1: `due_at` is bare `TIMESTAMPTZ` in the real file; a typmod
+    with the WRONG argument count (`TIMESTAMPTZ(3,4)`) is a genuine
+    PostgreSQL type-modifier error at apply time — the static parser must
+    reject it outright, never silently drop the typmod and accept the
+    column as if it were the plain type."""
+    sql = _SQL_PATH.read_text().replace(
+        "due_at                    TIMESTAMPTZ,",
+        "due_at                    TIMESTAMPTZ(3,4),",
+    )
+    assert "TIMESTAMPTZ(3,4)" in sql  # the replace actually matched something
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s1_alter_body_typmod_is_rejected():
+    """REWORK S1: `team_promise_candidates.created_at` is bare `TIMESTAMPTZ`
+    in the real file; `TIMESTAMPTZ(0)` is syntactically valid PG but rounds
+    `now()` to the second — measured to move a row across the digest's own
+    day-bucket boundary (23:59:59.6 vs 00:00:00 the next day). Dropping the
+    typmod used to hide this; it must be rejected outright instead."""
+    sql = _SQL_PATH.read_text().replace(
+        "ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+        "ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ(0) NOT NULL DEFAULT now();",
+    )
+    assert "TIMESTAMPTZ(0) NOT NULL" in sql  # the replace actually matched something
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s2_duplicate_column_inside_one_create_body_is_rejected():
+    """REWORK S2: a second `promise_text` column inserted right before the
+    real one, INSIDE THE SAME `CREATE TABLE` body — PG itself raises
+    `DuplicateColumnError` at apply time; the old last-wins overwrite
+    silently kept only the second (correct) definition and stayed GREEN
+    against the contract, hiding a duplicate name PG would never apply."""
+    sql = _SQL_PATH.read_text().replace(
+        "    promise_text              TEXT NOT NULL,",
+        "    promise_text              INTEGER,\n"
+        "    promise_text              TEXT NOT NULL,",
+    )
+    assert sql.count("promise_text") == 2  # both now inside the CREATE body
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s3_repeated_create_body_syntax_error_is_rejected():
+    """REWORK S3: a SECOND, repeated `CREATE TABLE IF NOT EXISTS
+    team_promises` is a no-op for its RESULT (the table already exists),
+    but PG still PARSES the statement — a double comma is a syntax error at
+    apply time regardless of whether the CREATE ever takes effect. The old
+    early return skipped validation entirely and stayed silently GREEN;
+    this must still raise, naming the repeated body's own bad syntax."""
+    sql = _SQL_PATH.read_text() + (
+        "\nCREATE TABLE IF NOT EXISTS team_promises (a TEXT,,b TEXT);\n"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s3_repeated_create_body_reserved_word_is_rejected():
+    """REWORK S3, second syntax-error shape: a repeated CREATE body whose
+    only column is a bare reserved keyword (`select`) — PG errors on this
+    at apply time exactly like the double-comma case above, and this file
+    must reject it for the same reason: a repeated body's SYNTAX still
+    matters even though its semantic RESULT is discarded."""
+    sql = _SQL_PATH.read_text() + (
+        "\nCREATE TABLE IF NOT EXISTS team_promises (select TEXT);\n"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_s3_repeated_create_body_with_only_semantic_errors_is_a_silent_noop():
+    """REWORK S3's own boundary, stated as innocence: PG applies a repeated
+    `CREATE TABLE IF NOT EXISTS` body containing only SEMANTIC errors (a
+    duplicate column name, a NULL/NOT NULL conflict) by skipping the whole
+    statement — it never reaches the point of enforcing them. A parser that
+    rejected this would be MORE strict than PG itself, not fail-closed
+    against a real risk, so the repeated body here is validated as its OWN
+    self-consistent (if PG would skip it) shape and then correctly
+    discarded, leaving the file's true (first) definition untouched."""
+    sql = _SQL_PATH.read_text() + (
+        "\nCREATE TABLE IF NOT EXISTS team_promises (a TEXT NULL NOT NULL);\n"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        # `NULL NOT NULL` is itself rejected by THIS file's own column-def
+        # grammar (Round-2 R6b) independent of S3 — proving the repeated
+        # body really is validated, not skipped outright.
+        parse_declared_columns(sql)
+
+
+def test_guilt_s4_alter_redeclares_a_create_body_column_differently_is_rejected():
+    """REWORK S4: `team_promise_candidates`'s CREATE body is mutated to
+    ALSO declare `cue TEXT NOT NULL DEFAULT ''` (NOT NULL) — the real
+    file's own later `ALTER TABLE ... ADD COLUMN IF NOT EXISTS cue TEXT;`
+    (nullable) then re-declares the SAME column with a DIFFERENT
+    nullability. PG applies the CREATE body's shape (`cue` ends up NOT
+    NULL); the old first-wins-always logic silently kept the CREATE body's
+    value too, by coincidence — GREEN either way, for the wrong reason
+    (i.e. it would just as silently be WRONG had the CREATE body been the
+    later, losing statement instead). This must now be rejected outright:
+    the file disagrees with itself about `cue`, and first-wins is not a
+    resolution to trust silently for a CREATE-body/ALTER split."""
+    sql = _SQL_PATH.read_text().replace(
+        "    promise_type       TEXT NOT NULL\n);",
+        "    promise_type       TEXT NOT NULL,\n"
+        "    cue                TEXT NOT NULL DEFAULT ''\n);",
+    )
+    assert "cue                TEXT NOT NULL DEFAULT ''" in sql
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_s4_alter_redeclares_a_create_body_column_identically_is_accepted():
+    """REWORK S4's own boundary: the same mutation as above, but the
+    CREATE-body `cue` is declared with the EXACT same `(type, notnull)` the
+    real file's own ALTER already gives it (nullable TEXT) — no real
+    disagreement exists, so this must stay accepted (first-wins, a
+    no-op), not turn into a false positive on every harmless overlap."""
+    sql = _SQL_PATH.read_text().replace(
+        "    promise_type       TEXT NOT NULL\n);",
+        "    promise_type       TEXT NOT NULL,\n"
+        "    cue                TEXT\n);",
+    )
+    assert "    cue                TEXT\n);" in sql
+    declared = parse_declared_columns(sql)
+    assert ("cue", "text", False) in declared["team_promise_candidates"]
 
 
 # --- C5 Round 0: 8 shapes the pre-tokenizer regex parser under-matched
@@ -995,10 +1189,13 @@ def test_round1_bypass_multi_action_alter_hidden_column_is_detected():
 # gate): 8 residuals (R1-R8) the Round-1 tokenizer above was silent-wrong or
 # silently accepting on, each judged against PG TRUTH — the SQL applied to a
 # throwaway PG17 database, catalog read back — not against the parser's own
-# prior expectations. Every one of these FAILED against the parser as it
-# stood on origin/main (either produced a different column set than PG's
-# own catalog, or was accepted where PG itself errors); see the PR body's
-# mutation receipt for exact before/after counts. ---
+# prior expectations. REWORK S5(a): 16 of these 19 cases FAILED against the
+# parser as it stood on origin/main (either produced a different column set
+# than PG's own catalog, or was accepted where PG itself errors) — the other
+# 3 (R5a/R5b before their own REWORK flip, and the R6 non-reserved-word
+# control) already passed there and only pin/document a semantics choice or
+# an innocence baseline, not a residual; see the PR body's mutation receipt
+# for the exact case-by-case before/after. ---
 
 _ROUND2_CA_CASES = [
     pytest.param(
@@ -1037,14 +1234,12 @@ _ROUND2_CA_CASES = [
         id="R4-non-public-schema-qualifier-is-rejected",
     ),
     pytest.param(
-        "CREATE TABLE IF NOT EXISTS t (c TIMESTAMPTZ(3));",
-        ("t", {("c", "timestamp with time zone", False)}),
-        id="R5a-timestamptz-typmod-is-dropped-matching-atttypid",
+        "CREATE TABLE IF NOT EXISTS t (c TIMESTAMPTZ(3));", None,
+        id="R5a-any-typmod-is-rejected-not-dropped",
     ),
     pytest.param(
-        "CREATE TABLE IF NOT EXISTS t (c VARCHAR(10) NOT NULL);",
-        ("t", {("c", "character varying", True)}),
-        id="R5b-varchar-typmod-is-dropped-matching-atttypid",
+        "CREATE TABLE IF NOT EXISTS t (c VARCHAR(10) NOT NULL);", None,
+        id="R5b-any-typmod-is-rejected-not-dropped",
     ),
     pytest.param(
         "CREATE TABLE IF NOT EXISTS t (c TEXT,);", None,
@@ -1077,6 +1272,10 @@ _ROUND2_CA_CASES = [
     pytest.param(
         "CREATE TABLE IF NOT EXISTS t (select TEXT);", None,
         id="R6h-reserved-keyword-as-a-bare-column-name-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (left TEXT);", None,
+        id="R6h2-REWORK-S5-catcode-T-keyword-as-a-bare-column-name-is-rejected",
     ),
     pytest.param(
         "CREATE TABLE IF NOT EXISTS t (status TEXT);",

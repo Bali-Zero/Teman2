@@ -7,77 +7,114 @@ lanes:
     seat: claude-sonnet-5
     note: >-
       Solo lane: closed condition C-A of PR #7395's PASS-WITH-CONDITIONS
-      gate. Read the gate's own probe (probe7395.py/.log under the M5
-      scratchpad) to get the exact R1-R8 residual definitions, re-verified
-      every one of them by hand against a fresh throwaway PG17 17.10
-      cluster (own scratch databases, dropped after each check — never
-      nuzantara_test or any pre-existing DB), fixed each in the test-only
-      parser (scripts/wa_team_promises.py untouched), added 19 new
-      parametrized unit guilt cases plus 5 real-PG companion cases, and
-      ran the mutation receipt (16/19 new cases FAIL against the parser as
-      it stood on origin/main, 19/19 PASS against the fix). No second seat
-      reviewed this before the coordinator's own gate — the mandate itself
-      says "the coordinator runs the gate", so no build-side dissent round
-      was convened for a Gear-2, test-only, single-owner follow-up.
+      gate, then reworked it on the same branch per the fresh gate's own
+      REWORK-BUILD verdict (pull/7413#issuecomment-5846951975, spec S1-S5,
+      last round per Builder Contract §1 — a fix-of-a-fix). Read the
+      gate's scratchpad prototype (test_spec_prototype.py, probe_spec.py/
+      .log, probe7413.py, probe_codex.py, probe_r5_r1.py/.log) to get the
+      exact mutations and code shape it already verified, applied S1-S5 in
+      this worktree, and independently re-verified the load-bearing claims
+      (the 23 catcode-T reserved keywords, the 3 named regressions'
+      red-green transition, the 79-input PG-truth corpus) against a
+      SEPARATE throwaway PG17 cluster this session started, rather than
+      trusting the gate's own log. No second seat reviewed this before the
+      re-gate — the mandate says "the coordinator runs the gate", so no
+      build-side dissent round was convened for a Gear-2, test-only,
+      single-owner follow-up.
 receipts:
   - claim: >-
-      All 55 tests in the crosscheck unit file pass (36 pre-existing + 19
-      new Round-2 C-A parametrized cases).
+      All 64 tests in the crosscheck unit file pass (55 from the prior
+      round + 9 new REWORK cases: 2 S1 real-file typmod guilt, 4 S2/S3
+      guilt + 1 S3 innocence, 1 S4 guilt + 1 S4 innocence, 1 S5 catcode-T
+      keyword guilt).
     cmd: >-
       apps/backend-rag/.venv/bin/python -m pytest
       scripts/tests/test_wa_team_promises_sql_crosscheck.py -q
     exit: 0
-    ts: "2026-09-26T13:34:00Z"
+    ts: "2026-09-26T14:36:10Z"
     seat: claude-sonnet-5
   - claim: >-
       The full wa_team_promises test surface (unit + opt-in real-PG) stays
-      green: 113 passed / 21 skipped without WA_TEAM_PROMISES_REAL_PG=1,
-      134 passed / 0 skipped with it — including the real SQL file
+      green: 122 passed / 21 skipped without WA_TEAM_PROMISES_REAL_PG=1,
+      143 passed / 0 skipped with it — including the real SQL file
       (scripts/sql/pro_local/team_promises.sql) still parsing to its exact
       _REQUIRED_COLUMNS contract, both statically and against a real PG17
-      catalog (test_c1_real_pg_catalog_matches_required_columns_exactly).
+      catalog (test_c1_real_pg_catalog_matches_required_columns_exactly,
+      now back on the atttypmod-carrying query).
     cmd: >-
       apps/backend-rag/.venv/bin/python -m pytest
       scripts/tests/test_wa_team_promises*.py -q &&
       WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
       pytest scripts/tests/test_wa_team_promises*.py -q
     exit: 0
-    ts: "2026-09-26T13:34:20Z"
+    ts: "2026-09-26T14:36:40Z"
     seat: claude-sonnet-5
   - claim: >-
-      Mutation receipt: the 19 new Round-2 C-A guilt cases, run against
-      the parser exactly as it stood on origin/main (50ac8f0b8f, same
-      parser as gate-referenced c2045e12b1) before this PR — 16 FAIL there
-      (the R1-R8 residuals) and 3 PASS unchanged (R5a/R5b, whose typmod-
-      dropping the static parser already did; the R6 non-reserved-word
-      control). All 19 PASS against the fixed parser in this PR.
+      Red-green receipt: the gate's own 3 named regressions — a duplicate
+      `promise_text` column inside one CREATE body, a repeated CREATE with
+      a double-comma syntax error, and `cue` re-declared by ALTER with a
+      different nullability than the CREATE body — are each GREEN
+      (silently accepted) against the parser exactly as it stood at
+      18f82e1daf (`git show 18f82e1daf:scripts/tests/
+      test_wa_team_promises_sql_crosscheck.py`) and RED
+      (UnrecognizedSqlShapeError) against this reworked head.
     cmd: >-
-      apps/backend-rag/.venv/bin/python scratchpad/mutation_receipt.py (old
-      module loaded from `git show origin/main:scripts/tests/
-      test_wa_team_promises_sql_crosscheck.py`, new module from this
-      worktree's fixed file — see the PR body for the full script and the
-      case-by-case table)
+      apps/backend-rag/.venv/bin/python
+      scratchpad/rework7413/redgreen_receipt.py (see the PR body for the
+      full script and output)
     exit: 0
-    ts: "2026-09-26T13:35:10Z"
+    ts: "2026-09-26T14:37:10Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      An 80-input PG-truth corpus (20 PR cases — the gate's original 19
+      plus this round's new S5b catcode-T guilt case — plus the gate's own
+      48 adversarial and 12 Codex-derived cases), independently re-run
+      against this head on a throwaway PG17 cluster this session started
+      (not the gate's own cluster/log), shows 0 NEW silent-wrong beyond the
+      4 pre-existing, S6-deferred ones (index/table namespace sharing,
+      64-byte identifier truncation, SMALLSERIAL and FLOAT type-alias
+      fallback).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python
+      scratchpad/rework7413/corpus79.py (see the PR body for the full
+      script and output)
+    exit: 0
+    ts: "2026-09-26T14:37:20Z"
     seat: claude-sonnet-5
   - claim: >-
       5 of the 8 residuals (R1, R4, R5, R6a, R7) are re-proven directly
       against a real throwaway PG17 cluster, each isolated in its own
-      scratch database.
+      scratch database; R4/R6a and R5 now also assert the STATIC parser
+      itself rejects (REWORK S1/S5c), not only that PG does or accepts.
     cmd: >-
       WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
       pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -q
     exit: 0
-    ts: "2026-09-26T13:35:40Z"
+    ts: "2026-09-26T14:36:55Z"
     seat: claude-sonnet-5
   - claim: >-
-      The deterministic floor for this diff is 2, source `size` (churn 441
-      across 3 test files, no hot-zone path match).
+      The deterministic floor for this diff is 2, source `size` (churn 850
+      across 3 test files + 2 evidence files against the post-REWORK
+      merge-base d2fd26086f; 650 test-files-only, still floor 2 either
+      way), no hot-zone path match.
     cmd: >-
       python3 scripts/evidence_pack_lint.py --numstat-file <numstat>
       --changed-files-file <changed> --print-floor &&
       python3 scripts/evidence_pack_lint.py --numstat-file <numstat>
       --changed-files-file <changed> --print-floor-source
     exit: 0
-    ts: "2026-09-26T13:36:00Z"
+    ts: "2026-09-26T14:33:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The 23 catcode-T reserved keywords added in REWORK S5(b) were
+      independently re-verified (not copied from the gate's log
+      unchecked): `SELECT count(*), string_agg(word, ',') FROM
+      pg_get_keywords() WHERE catcode = 'T'` on a separate throwaway PG17
+      cluster returns exactly the same 23 words.
+    cmd: >-
+      psql -h 127.0.0.1 -p 55491 -U postgres -d postgres -Atc "SELECT
+      count(*), string_agg(word, ',' ORDER BY word) FROM pg_get_keywords()
+      WHERE catcode = 'T'"
+    exit: 0
+    ts: "2026-09-26T14:20:00Z"
     seat: claude-sonnet-5

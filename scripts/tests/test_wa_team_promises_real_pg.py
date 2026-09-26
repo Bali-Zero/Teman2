@@ -102,8 +102,8 @@ async def test_real_pg_init_schema_complete_idempotent_domain_then_index_guilt(p
 
 async def _fresh_scratch_db(sockdir, name: str, sql: str):
     """Runs `sql` against a brand-new, empty scratch database, returns the
-    pg_attribute catalog (atttypid-only, matching R5's chosen semantics —
-    see test_wa_team_promises_gate_conditions_real_pg.py's C1 comment) for
+    pg_attribute catalog (atttypid-only — this reads PG's OWN acceptance,
+    independent of whichever normalization the static parser chooses) for
     every user table, or the exception PG raised. Drops the database either
     way."""
     admin = await asyncpg.connect(host=str(sockdir), user="postgres", database="postgres")
@@ -154,7 +154,7 @@ _ROUND2_CA_REAL_PG_CASES = [
     pytest.param(
         "CREATE TABLE IF NOT EXISTS t (c TIMESTAMPTZ(3), d VARCHAR(10) NOT NULL);",
         {"t": {("c", "timestamp with time zone", False), ("d", "character varying", True)}},
-        id="R5-typmods-vanish-from-an-atttypid-only-catalog-read",
+        id="R5-PG-accepts-a-typmod-the-static-parser-must-still-reject",
     ),
     pytest.param(
         "CREATE TABLE IF NOT EXISTS t (c TEXT,);",
@@ -177,14 +177,21 @@ async def test_round2_ca_residual_matches_real_pg_catalog(pg_socket_dir, sql, ex
     truth = await _fresh_scratch_db(pg_socket_dir, db, sql)
     if isinstance(expected, str):
         assert isinstance(truth, str) and truth.startswith(expected)
+        # REWORK S5(c): this branch used to return here, never calling the
+        # static parser at all — R4/R6a proved only that PG errors, not
+        # that OUR parser also does. Both are cases the static parser must
+        # reject too (a non-`public` schema qualifier, a trailing comma).
+        with pytest.raises(UnrecognizedSqlShapeError):
+            parse_declared_columns(sql)
         return
     assert truth == expected
-    if case_id.startswith("R7"):
-        # R7's own residual is that the STATIC parser must reject this
-        # identifier outright rather than fold it to something PG would
-        # never produce — proven directly here; PG's own truth above (the
-        # non-ASCII byte surviving) is the half this real-PG test exists
-        # to prove.
+    if case_id.startswith(("R5", "R7")):
+        # R5's own residual (REWORK S1) and R7's are the same shape: PG
+        # accepts and stores this SQL (truth above), but the static parser
+        # must reject it outright rather than silently normalize it to
+        # something PG's own catalog would never produce for the same
+        # input (R5: a dropped typmod; R7: a non-ASCII identifier folded
+        # by Python but not by PG).
         with pytest.raises(UnrecognizedSqlShapeError):
             parse_declared_columns(sql)
         return
