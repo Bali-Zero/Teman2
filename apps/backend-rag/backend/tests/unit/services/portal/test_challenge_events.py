@@ -135,6 +135,53 @@ async def test_idle_stream_rotation_replays_a_goal_during_the_reconnect_gap():
     await stream.aclose()
 
 
+class PagedStream(FakeStream):
+    """XRANGE with Redis semantics: exclusive `(id` lower bound and a page `count`."""
+
+    def __init__(self, entries, now_ms):
+        super().__init__()
+        self.entries = entries
+        self.now_ms = now_ms
+        self.pages = 0
+
+    async def xrange(self, name, min, max, count):
+        self.pages += 1
+        after = tuple(map(int, min.lstrip("(").split("-")))
+        newer = [e for e in self.entries if tuple(map(int, e[0].split("-"))) > after]
+        return newer[:count]
+
+    async def time(self):
+        return self.now_ms // 1000, (self.now_ms % 1000) * 1000
+
+
+async def _replayed_ids(stream, expected):
+    await anext(stream)
+    try:
+        return [
+            (await asyncio.wait_for(anext(stream), timeout=1)).split("\n")[1].removeprefix("id: ")
+            for _ in range(expected)
+        ]
+    finally:
+        await stream.aclose()
+
+
+@pytest.mark.asyncio
+async def test_reconnect_replays_every_page_of_a_backlog():
+    now_ms = int(time.time() * 1000)
+    backlog = [(f"{now_ms - 60_000 + i}-0", {"goal": '{"member":"contender"}'}) for i in range(250)]
+    redis = PagedStream(backlog, now_ms)
+    ids = await _replayed_ids(events.GoalFanout().events(redis, f"{now_ms - 70_000}-0"), 250)
+    assert ids == [event_id for event_id, _ in backlog]
+    assert redis.pages == 3
+
+
+@pytest.mark.asyncio
+async def test_fresh_subscriber_gets_a_goal_added_in_the_same_millisecond():
+    now_ms = int(time.time() * 1000)
+    redis = PagedStream([(f"{now_ms}-0", {"goal": '{"member":"contender"}'})], now_ms)
+    assert await _replayed_ids(events.GoalFanout().events(redis, None), 1) == [f"{now_ms}-0"]
+
+
 def test_portraits_allow_only_local_team_assets():
     assert events.portrait_url("/static/team/sample.jpg")
     for value in [None, "https://external.invalid/photo.jpg", "/static/team/../secret.jpg", {}]:
@@ -142,7 +189,9 @@ def test_portraits_allow_only_local_team_assets():
 
 
 @pytest.mark.asyncio
-async def test_registration_schedules_delivery_only_after_commit(monkeypatch):
+async def test_registration_schedules_delivery_only_after_commit(monkeypatch, caplog):
+    import logging
+
     from fastapi import BackgroundTasks
 
     from backend.app.routers.portal_invite import CompleteRegistrationRequest, complete_registration
@@ -154,10 +203,13 @@ async def test_registration_schedules_delivery_only_after_commit(monkeypatch):
     publisher = AsyncMock()
     monkeypatch.setattr(events, "publish_registration_goal", publisher)
     background = BackgroundTasks()
-    result = await complete_registration(
-        CompleteRegistrationRequest(token="fixture", pin="1234"), background, service
-    )
+    with caplog.at_level(logging.INFO):
+        result = await complete_registration(
+            CompleteRegistrationRequest(token="fixture", pin="1234"), background, service
+        )
     assert result.success
+    assert "client_id=999999" in caplog.text
+    assert "fixture@example.test" not in caplog.text
     publisher.assert_not_awaited()
     assert len(background.tasks) == 1
     await background()

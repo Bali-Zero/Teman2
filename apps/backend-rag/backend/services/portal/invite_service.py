@@ -423,7 +423,7 @@ class InviteService:
                 )
 
                 logger.info(
-                    f"Client registration completed: {invitation['email']} (client_id={invitation['client_id']})",
+                    f"Client registration completed (client_id={invitation['client_id']})",
                 )
 
                 return {
