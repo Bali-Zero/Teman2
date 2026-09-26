@@ -43,8 +43,14 @@ acceptance:
       write status=disabled and never run the payload; WHEN the payload exits
       0 it SHALL write ok; WHEN the payload exits N>0 it SHALL write error and
       exit N; WHEN the payload script is missing it SHALL write error and exit
-      1; WHEN the heartbeat library is absent the exit code SHALL be unchanged.
-      Six of the seven cases SHALL fail against origin/main's wrapper.
+      1; WHEN the heartbeat library is absent the exit code SHALL be unchanged
+      and the log SHALL say which status was lost; WHEN a live previous run
+      holds the pidfile the run SHALL be skipped with a warning heartbeat and
+      the payload SHALL NOT run; a stale pidfile SHALL be reclaimed and
+      released; WHEN the wrapper receives SIGTERM it SHALL stop the payload,
+      write error "signal TERM" and exit 143. All ten cases SHALL fail against
+      origin/main's wrapper, and the four council-driven cases SHALL fail
+      against the first genes wrapper.
     probe: python3 -m pytest -q scripts/tests/test_s7_yield_run_wrapper.py
   - text: >-
       organs_registry.yaml SHALL validate, checksum included, with the new
