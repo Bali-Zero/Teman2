@@ -6,68 +6,79 @@ branch: agent/air-m5/wa-team/t3-scanner
 gate_class: none
 l_level: L2
 objective: >-
-  PR-2 of the #7316 re-spec (spec_T3_split_v2.md): the scanner that turns
-  whatsapp_message_context outbound rows into unjudged team_promise_candidates
-  rows. PR-1 (#7342) shipped schema + connection guard only; this PR adds
-  `--scan [--dry-run] [--batch-size N]` to scripts/wa_team_promises.py,
-  reusing PR-1's guard/kwargs/_fail_line unchanged. Floor is 2 on SIZE alone
-  (704 net lines across 4 files) — the diff's first draft also touched
-  infra/launchagents/wrappers/ (hot-zone by path, floor 3, needing a full
-  council-reviewed Evidence Pack — PR #7315 hit the same trap), fixed by
-  moving the cron wrapper to scripts/wa_team_promises_scan_cron.sh, following
-  scripts/queue_stall_notify_cron.sh's precedent (a plain cron-runner.sh
-  payload with no LaunchAgent plist, crontab line documented in its own
-  header comment, never installed by the PR).
-  Reads whatsapp_message_context (Pro's live Node-runtime mirror, never
-  ALTERed, never written to) filtered to direction='outbound' with text,
-  created_at within the last 30 days on EVERY query including the seed (the
-  v1 predecessor only floored the seed, then paged the rest with a bare
-  OFFSET/LIMIT with no date filter at all — an empty recent window turned
-  into an unbounded archive scan). Clause splitter on ./!/?/;/newline plus an
-  EN/ID/IT conjunction boundary; every clause is matched independently
-  against the unchanged v1 regex catalog (backend.services.wa_copilot.
-  team_promises._PROMISE_PATTERNS_RE/_TEMPORAL_CUES) — no dedup, no
-  past-tense discard at this stage (PR-3's judge owns both). Id-cursor
-  batching (id > $1 ORDER BY id LIMIT $2, never OFFSET — the predecessor's
-  OFFSET pager against a live-growing table is how it refetched the same 200
-  rows for 81 minutes), watermark persisted after EVERY batch rather than
-  once at tick end, with a regression test pinning the cursor-advance
-  behavior down. Inserts unjudged team_promise_candidates rows, ON CONFLICT
-  (message_id, clause_idx) DO NOTHING — the only table this file writes to,
-  plus local lock/watermark/metrics files under ~/.cell-bridge-state/ (same
-  convention as scripts/wa_mirror_intake_sweeper.py). --dry-run computes
-  counts only: no insert, no watermark read/write, no digest — verified
-  read-only against Pro's live nuzantara_dev from a git-archive scratch copy
-  in /tmp (never the live checkout): scanned=10303 clauses=361
-  candidates_new=361, in line with the T37 draft spec's 2026-09-25 dry-run
-  measurement (10,719 outbound-with-text, 372 matched over 30 days);
-  confirmed after that team_promise_candidates count stayed 0 on Pro and no
-  watermark file was created. Digest via scripts/tg_notify.py --tier digest:
-  `promises: candidates new N, unjudged N`, counts only — enforced, not just
-  by convention: `_digest_line` raises TypeError on a non-int argument, and a
-  structural test asserts every ScanMetrics dataclass field stays a bare
-  int, so a clause/name/phone/client id has no code path into the message.
+  REWORK of PR-2 (spec_T3_split_v2.md) after the fresh-Opus gate's REWORK-DESIGN verdict on
+  3adc6c0e89 — builds the spec addendum (A1-A8) verbatim, which overrides
+  spec_T3_split_v2.md's PR-2 section where they differ.
+  A1 (the HIGH): removes the persisted id watermark entirely — it permanently missed a row that
+  commits out of id order, or whose body/message_text is filled in LATER than its own commit
+  (apps/wa-mirror/bridge/message_capture.ts upserts on baileys_message_id, same id). Every tick
+  now reads `hi = max(id)` of the eligible window ONCE at tick start and rescans the FULL 30-day
+  window from 0 to that `hi`, so a late/out-of-order row is inside SOME future tick's range by
+  construction, and `hi` fixed at tick start still makes the tick terminate against a
+  live-growing table.
+  A2: a message whose body CHANGES after its first scan now revises its `unjudged` candidate row
+  in place (`ON CONFLICT ... DO UPDATE`, guarded to unjudged rows whose clause_hash actually
+  changed — a judged/quarantined row is never rewritten), counting inserted vs revised
+  separately via `RETURNING (xmax = 0) AS inserted`.
+  A3: adds whole-word `and|dan|serta|e` to the clause splitter (case-insensitive, never splitting
+  inside `candidate`/`Android`/`che`/`sede`), landed before the scanner's first activation.
+  A4: the digest line is now `promises: candidates today N (revised R), unjudged U`, computed
+  fresh from Postgres at send time (a new `revised_at` column on `team_promise_candidates`,
+  alongside `created_at`, both filtered `>= local midnight Asia/Makassar`) instead of carried
+  over from a single tick's own counters, and its `tg_notify` dedup key is now
+  `wa-team-promises:<YYYY-MM-DD>` instead of a constant key whose mute window grows from 6h to
+  168h.
+  A5: count, metrics write and digest enqueue all now happen BEFORE the scan lock is released.
+  A6: the digest gateway's failure path routes through `_fail_line` instead of printing
+  `str(exc)` directly.
+  A7: the fake-SQL batch/cursor/insert tests are replaced by a new opt-in real-Postgres file
+  (`test_wa_team_promises_scan_real_pg.py`, same `WA_TEAM_PROMISES_REAL_PG=1` gate and
+  throwaway-cluster pattern as PR #7366) covering out-of-order commit, late body fill, revision
+  (unjudged updated, judged untouched), two-tick idempotency, mid-batch rollback + next-tick
+  recovery, and lock-held-through-digest; the poisoned-exception-text test needs no DB and stays
+  in the unit file.
+  A8: drops the unrelated `scripts/ci/change_map.py` regen from this PR (pre-existing drift, its
+  own PR if still needed — confirmed advisory-only via `scripts/quickcheck.sh`) and recomputes
+  this brief's size/floor against the reworked diff: floor stays 2 (measured `+1149/-65` across 6
+  files via `scripts/evidence_pack_lint.py --print-floor`, below `SIZE_GEAR3_THRESHOLD`, no
+  hot-zone path). Fresh Pro dry-run of THIS head (4baedd6866), READ-ONLY, from a `git archive`
+  scratch copy in `/tmp` (never the live checkout, removed after):
+  `~/nuzantara/apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --scan --dry-run` ->
+  `wa_team_promises: scan OK scanned=10162 clauses=359 candidates_new=359 candidates_revised=0`.
+  Confirmed after: `select count(*) from team_promise_candidates` on Pro stayed **0**, and
+  `~/.cell-bridge-state/` gained no `wa_team_promises_scan_*` file — `--dry-run` wrote nothing,
+  same contract as the original PR-2 head.
 scope:
   - >-
-    scripts/wa_team_promises.py — adds `--scan`/`--dry-run`/`--batch-size`;
-    `_split_clauses`, `_match_clause`, `_hash_clause`, `ScanMetrics`,
-    `run_scan_batch`, `run_scan`, `_count_unjudged`, `_digest_line`,
-    `_send_scan_digest`, lock/watermark/metrics helpers. `--init-schema`
-    (PR-1) is unchanged; its 20 existing tests pass unmodified.
+    scripts/wa_team_promises.py — REWORK: drops `_load_scan_watermark`/`_save_scan_watermark`
+    and `_SCAN_WATERMARK_FILE`; `run_scan`/`run_scan_batch` take a tick-local `hi` ceiling instead
+    of a persisted watermark; `_CANDIDATE_INSERT_SQL` becomes `_CANDIDATE_UPSERT_SQL` (`DO UPDATE`
+    guarded to unjudged+changed-hash rows, `RETURNING (xmax = 0) AS inserted`); `ScanMetrics`
+    gains `candidates_revised`; new `_wita_today`/`_fetch_digest_counts` feed a 3-count
+    `_digest_line`/`_send_scan_digest` (per-day dedup key, sanitized failure path); `cli_main`
+    holds the scan lock through metrics+digest; `_CLAUSE_SPLIT_RE` gains `and|dan|serta|e`.
+    `--init-schema` (PR-1) is unchanged.
   - >-
-    scripts/tests/test_wa_team_promises_scan.py — new file, 24 tests: clause
-    splitter (punctuation/`;`/newline/conjunction), matcher (past-tense IS
-    proposed, cue is always catalog vocabulary — never a name/phone/client
-    id), the OFFSET-elimination regression (cursor strictly advances,
-    persisted per batch), ON CONFLICT idempotency, the exclusive/releasable
-    lock, and the digest's int-only enforcement (structural + runtime).
-    Does not touch test_wa_team_promises.py, test_wa_team_promises_real_pg.py
-    or team_promises.sql — left for the parallel builder working those
-    files on the same branch family.
+    scripts/sql/pro_local/team_promises.sql — adds `team_promise_candidates.revised_at
+    TIMESTAMPTZ` (nullable, `ALTER ... ADD COLUMN IF NOT EXISTS`, same incremental pattern as
+    every other non-core column in this file). `_REQUIRED_COLUMNS` picks it up automatically —
+    `test_required_columns_matches_every_column_declared_in_the_sql_file` cross-checks the two
+    stay in sync, and stayed green unmodified.
   - >-
-    scripts/wa_team_promises_scan_cron.sh — new tracked cron-runner.sh
-    payload (crontab line `*/15` in its own header comment); not installed.
+    scripts/tests/test_wa_team_promises_scan.py — REWORK: drops the fake pool/conn batch/cursor/
+    insert fixtures (moved to the real-PG file below); keeps and extends the pure-unit splitter
+    (A3's new conjunction rows + innocence cases), matcher, hash, static-SQL-text, lock and digest
+    tests (3-count signature, per-day dedup key, a new poisoned-exception-text test for A6). 29
+    tests, 0 DB.
   - >-
-    scripts/ci/change_map.py — mechanical `scripts_coupling_census.py
-    --write` regen (pre-existing drift unrelated to this feature, bundled
-    because the pre-push quickcheck refuses a stale census on any push).
+    scripts/tests/test_wa_team_promises_scan_real_pg.py — new, opt-in
+    (`WA_TEAM_PROMISES_REAL_PG=1`, same throwaway-cluster pattern as #7366's real-PG tests), 6
+    tests: out-of-order commit, late body fill, revision (unjudged vs judged untouched), two-tick
+    idempotency, mid-batch rollback + next-tick recovery, and lock-held-through-digest (A5). The
+    first two are the addendum's required guilt tests for A1 — both FAIL against 3adc6c0e89
+    (verified this turn with `$HOME` redirected to a scratch dir so the old code's real watermark
+    file never touched the live machine — see the PR body's Rework section).
+  - >-
+    scripts/ci/change_map.py — REVERTED to origin/main (A8): the prior regen only added
+    `test_lint_home_fork.py`, unrelated to this feature, and the check it satisfies is advisory
+    (`scripts/quickcheck.sh::run_scripts_coupling_census_check` always returns 0).
