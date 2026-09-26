@@ -1,0 +1,44 @@
+task: >-
+  Follow-up to #7398, which removed a CRM export CSV from research/operations/. Drop the 2612
+  now-stale .secrets.baseline findings recorded for that deleted file, and the auto-triage rule
+  in scripts/detect_secrets_auto_triage.py that existed only to excuse it. Pure deletion: no
+  other baseline entry, key or metadata changes, and no triage rule other than that one.
+lane: research/pii-reports
+machine: m5
+date: 2026-09-26
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source `size`: 20908 deleted lines (20898 in .secrets.baseline, 10 in
+  the triage script), above SIZE_GEAR3_THRESHOLD (1828). No hot-zone path. The size is
+  bookkeeping, since each removed baseline line belongs to the one results key of a file that
+  no longer exists, but the floor is deterministic and this brief declares it as measured.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The baseline stays valid JSON with 584 result files (585 on origin/main minus the removed
+    one), every remaining results entry and every top-level key byte-equal to origin/main,
+    and the repo's unaudited-residue gate still exits 0 on it.
+    probe: >-
+      python3 scripts/detect_secrets_check_unaudited.py --baseline .secrets.baseline
+  A2: >-
+    No tracked code or config still references the removed CSV (one dated research note
+    mentions it in prose and is left alone).
+    probe: >-
+      git grep -l crm-workspace-ai-snapshots -- '*.py' '*.sh' '*.yml' '*.yaml' '*.json' .secrets.baseline
+  A3: >-
+    The auto-triage tests stay green.
+    probe: >-
+      python3 -m pytest -q scripts/tests/test_detect_secrets_auto_triage.py
+
+out_of_scope: >-
+  Any other baseline refresh (a full `detect-secrets scan --baseline` would rewrite thousands
+  of unrelated lines). Git-history rewrite for the removed CSV (operator decision).
+
+assumptions: >-
+  detect-secrets drops entries for missing files on its next full rescan anyway; removing them
+  now keeps the baseline from naming a file that is gone and keeps the triage table honest.
