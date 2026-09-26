@@ -1,4 +1,4 @@
-GUILT CASE 1 — new served_by test fails against origin/main's worker
+GUILT CASE — new served_by test fails against origin/main's worker
 Procedure: cp wa_outbox_worker.py aside; git show origin/main:<path> > <path>; run the
 new test; restore with cp (git stash never used, per repo convention).
 
@@ -7,20 +7,18 @@ backend/tests/unit/services/test_wa_outbox_worker_carrier.py F [100%]
 FAILED ... test_served_by_persists_support_abstain
     assert carrier["served_by"] == "support_abstain"
 AssertionError: assert None == 'support_abstain'
-1 failed in 2.73s
+1 failed in 4.35s
 
 Cause: origin/main's wa_outbox worker has no served_by column reference and no bind —
 the fenced UPDATE never writes it, so it reads back NULL. Proves the test actually
 exercises the new code path, not a tautology.
 
 After `cp` restoring this PR's worker: same test passes (see receipts/pytest-final.txt,
-46/46 carrier+mocked tests green, this test included).
+69/69 carrier+mocked+migration-lint tests green, this test included).
 
-GUILT CASE 2 — deploy-window fallback: same origin/main worker vs. dropped column
-Also ran test_served_by_column_missing_mid_deploy_still_finalizes against origin/main's
-worker in the same swap: PASSES trivially there too (that old code never references
-served_by at all, so dropping the column is a no-op for it) — expected, not a defect;
-this test's real guilt is proven by the `_finalize` fallback branch's own coverage
-against THIS PR's worker (see pytest-final.txt): outcome == "sent", exactly one Graph
-send, row lands 'done' with the column absent, restored via ALTER TABLE ... ADD COLUMN
-in the test's own `finally` before the next test in the module runs.
+CORRECTION-ROUND NOTE: the earlier version of this pack also carried a second guilt case
+for a deploy-window fallback (a dropped-column test on `_finalize()`). That fallback and
+its test are REMOVED in this pack's current head — the premise (a real deploy-window gap)
+was refuted (see pack.yml's dissent, first entry): `fly.toml`'s release_command +
+schema_audit.py already guarantee the column exists before the worker is ever live, so no
+fallback or guilt case for it is needed, same as migration 314 never needed one.
