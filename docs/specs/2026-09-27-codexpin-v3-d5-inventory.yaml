@@ -7,9 +7,9 @@
 #
 # Derived line by line from the wrapper at PR #7420 head 04dd6b51e4 (blob 4143a795d9f2,
 # sha256 9fb2268887392b6e...), plus the D5 heartbeat fix that PR-1 lands (lines 72 and 74 call
-# /bin/mkdir and /bin/date). That PR-1 target is the blob named in derived_from; G9b, G9j and G9k
-# anchor its lines 72 and 74, which exist only there. The fix adds two abspath sites (130 -> 132
-# at the base, 134 on the target) and shifts no line. The row comments name line numbers; the
+# /bin/mkdir and /bin/date). That PR-1 target is the blob named in derived_from; G9b, G9j, G9k
+# and G9l anchor its lines 72 and 74, which exist only there. The fix adds two abspath sites (134
+# at the base, 136 on the target) and shifts no line. The row comments name line numbers; the
 # checker never uses them: it locates every mutant by the exact text of its anchor line.
 #
 # Row grammar (spec §5bis.2):
@@ -43,7 +43,7 @@ derived_from:
   base_commit: 04dd6b51e4
   base_blob: 4143a795d9 # 10-hex prefix of the wrapper's git blob id at base_commit
   blob: 78236b6070 # 10-hex prefix of the PR-1 target: base_blob plus the D5 heartbeat fix
-  sites: 134
+  sites: 136
 
 rows:
   # ------------------------------------ G0: constants before the source (l.49-64, l.140-141)
@@ -1033,6 +1033,21 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_innocence_missing_pin_is_legacy
+  - id: G7i
+    was: [lead 2026-09-27]
+    expr: "date -u (proof line)"
+    anchor: |2-
+          echo "$TAG: $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) pin applied: codex $1 at $2" >&2
+    covers: [dateopt]
+    disposition: MUST
+    mutants:
+      - id: G7i/-u
+        op: sub
+        to: |2-
+              echo "$TAG: $(/bin/date +%Y-%m-%dT%H:%M:%SZ) pin applied: codex $1 at $2" >&2
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_stamps_are_utc_under_a_non_utc_tz
 
   # ------------------------------------------ G8: post-source re-asserts (N1, l.231-264)
   - id: G8a
@@ -1244,6 +1259,21 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - "[nonexistent]"
+  - id: G9l
+    was: [lead 2026-09-27]
+    expr: "date -u (heartbeat)"
+    anchor: |2-
+              "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+    covers: [dateopt]
+    disposition: MUST
+    mutants:
+      - id: G9l/-u
+        op: sub
+        to: |2-
+                  "$(/bin/date +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_stamps_are_utc_under_a_non_utc_tz
   - id: G9c
     was: [P1]
     anchor: |2-

@@ -41,9 +41,9 @@ acceptance:
   - text: >-
       The inventory SHALL be closed against the PR-1 target (04dd6b51e4 plus
       the heartbeat fix) and against 04dd6b51e4 itself: every site of the
-      16-kind grammar (§5bis.3) is claimed by exactly one row, every anchor
-      resolves, and a planted guard is reported UNCLAIMED. Expected: 134/134
-      on the target, 132/132 on 04dd6b51e4, 17 UNCLAIMED for nine planted
+      17-kind grammar (§5bis.3) is claimed by exactly one row, every anchor
+      resolves, and a planted guard is reported UNCLAIMED. Expected: 136/136
+      on the target, 134/134 on 04dd6b51e4, 18 UNCLAIMED for ten planted
       constructs.
     probe: quick_proof.sh step closure_target_final
   - text: >-
@@ -55,12 +55,12 @@ acceptance:
       The fixture contract SHALL be satisfiable: a suite applying §5bis.4
       and §5bis.7 to the PR-1 target kills every MUST mutant, each by a test
       in its killed_by list, while the EQUIVALENT mutants survive. Expected:
-      126/126 MUST killed with killer hit, every killed_by matching exactly
+      128/128 MUST killed with killer hit, every killed_by matching exactly
       one node, 4 EQUIVALENT surviving, 0 sh -n failures, 0 mode mismatches.
     probe: feasibility_test.py --json feasibility.json
   - text: >-
       The rendered table in §5bis.6 SHALL equal the YAML, cell by cell.
-      Expected: 70 rows equal (header plus 69).
+      Expected: 72 rows equal (header plus 71).
     probe: quick_proof.sh step parity_final
   - text: >-
       Both files SHALL be prettier-clean, and the YAML SHALL parse.
@@ -84,7 +84,7 @@ consumer_map:
 risks:
   - >-
     The site grammar is lexical, not a shell parser. A guard written in a
-    construct outside the 16 kinds would escape closure. Mitigation: the
+    construct outside the 17 kinds would escape closure. Mitigation: the
     kinds cover every control construct the wrapper uses, the selftest
     pins the grammar with planted guilt cases, and PR-2 must extend the
     grammar before its installer uses new constructs (§5ter).

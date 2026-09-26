@@ -319,13 +319,21 @@ then exec.
   env is read. `WA_CODEX_BROKER_ENABLED=false` therefore cannot stop the relaunch loop that a
   broken root-owned pin causes. To stop it, repair or remove the pin as root, or run
   `launchctl bootout system/com.balizero.wa-codex-broker`.
-- **Heartbeat without PATH (added 2026-09-27, council round 1).** `heartbeat()` calls
-  `/bin/mkdir` and `/bin/date` by absolute path, as the proof line already calls `/bin/date`.
-  At `04dd6b51e4` it resolved `mkdir` and `date` through `PATH`, which the sourced env sets.
-  Under `PATH=/does-not-exist` the `starting` heartbeat was silently skipped (§8 item 6). The
-  fix is the one change PR-1 makes to the wrapper's text beyond `04dd6b51e4`: lines 72 and 74,
-  nothing else. It also makes G9b (§5bis.5) genuinely equivalent, and rows G9j and G9k pin
-  the two absolute paths (`abspath` sites, §5bis.3).
+- **Heartbeat without PATH (added 2026-09-27, council round 1; ruled by the coordinator the
+  same day).** The resumed PR-1 modifies exactly two wrapper lines beyond `04dd6b51e4`, and
+  nothing else:
+  - line 72, `mkdir -p "$SIDECAR_DIR" …` becomes `/bin/mkdir -p "$SIDECAR_DIR" …`;
+  - line 74, `"$(date -u …)"` becomes `"$(/bin/date -u …)"`.
+
+  **Why: G9b's equivalence.** At `04dd6b51e4`, `heartbeat()` resolved `mkdir` and `date`
+  through the `PATH` that the sourced env sets. Under `PATH=/does-not-exist` the shipped
+  wrapper silently skipped the `starting` heartbeat, while G9b's mutant (the `|| return 0`
+  dropped) wrote one with an empty timestamp. That observable difference made G9b's EQUIVALENT
+  claim false (5bis.5), and without the fix the row would have to become MUST, pinning a
+  broken heartbeat as contract. With absolute paths the two behave identically, so G9b is
+  equivalent, and §8 item 6 closes. Rows G9j and G9k pin the two absolute paths (`abspath`
+  sites, §5bis.3), and G9l pins line 74's `-u` (`dateopt`).
+
 - **Protocol line** (for D8), exactly as a whole line: `# pin-protocol: wa-codex-pin/1`.
 - The pin file format changes from v2's two keys to ONE key. #7340 never reached main or Pro,
   so nothing migrates.
@@ -598,7 +606,7 @@ The `was` field maps every earlier label: builder `G*`, gate `C*`/`N*`/`R*`, and
 
 ### 5bis.3 Site grammar: what "every guard" means, mechanically
 
-A site is one occurrence, on a code line of the target, of one of the 16 kinds below. Comment
+A site is one occurrence, on a code line of the target, of one of the 17 kinds below. Comment
 lines and blank lines have no sites. Before matching, the line is masked: the contents of
 `'…'` and `"…"` are blanked, so words inside messages never count, and a `#` that follows
 whitespace outside quotes starts a comment.
@@ -621,14 +629,16 @@ whitespace outside quotes starts a comment.
 | `neg`      | each `!` negation: a `!` preceded by line start or one of `\s ; & \| (` and followed by whitespace, as in `if ! …` and `[ ! -f … ]`                       | 8                   |
 | `redir`    | each input redirection `<`, but not `<<`, `<(`, `<&` or a numbered `N<`                                                                                   | 2                   |
 | `abspath`  | on the raw line, comment removed: each command word that is an absolute path under `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin`, including right after `$(` | 4                   |
-| **total**  |                                                                                                                                                           | **134**             |
+| `dateopt`  | on the raw line, comment removed: each option word of a `date` command (`date` or `/bin/date`, including right after `$(`)                                | 2                   |
+| **total**  |                                                                                                                                                           | **136**             |
 
 The first 12 kinds are the scratch grammar. `const`, `neg` and `redir` were added after council
 round 1, which showed a fail-open deletion in each class that no site claimed. `abspath` was
 added after council round 2, which showed that nothing pinned the heartbeat's `/bin/date`
-(§10). The PR-1 target is `04dd6b51e4` plus the D5 heartbeat fix. The fix adds the two
-`abspath` sites on lines 72 and 74, so the target has 134 sites and `04dd6b51e4` has 132.
-The other kinds count the same on both blobs.
+(§10). `dateopt` was added on the coordinator's ruling that `date -u` is MUST (§8 item 9).
+The PR-1 target is `04dd6b51e4` plus the D5 heartbeat fix. The fix adds the two `abspath`
+sites on lines 72 and 74, so the target has 136 sites and `04dd6b51e4` has 134. The other
+kinds count the same on both blobs.
 
 The grammar may over-match: an arithmetic `<` would count as a `redir`, and a column-0
 `IFS= read` before the source as a `const`. The wrapper has neither. An over-matched site
@@ -644,18 +654,19 @@ These are deliberately not sites:
 - **Indented working assignments** (`_pin_lines=0`, `_pin_line=""`, the loop's counter and
   copy, the prefix strip `${_pin_line#…}` and the derivation
   `_wcbw_pin_bin="$PINNED_CODEX_ROOT/…"`). They are data flow, not guards. Measured on
-  line 176: deleting `_pin_lines=0`, or setting it to `1` or `-1`, failed 29 to 33 tests,
+  line 176: deleting `_pin_lines=0`, or setting it to `1` or `-1`, failed 30 to 34 of the 50
+  tests,
   because a valid single-line pin no longer counts as one line. Deleting line 177,
   `_pin_line=""`, is inert and failed none: every accepted input overwrites it at line 180,
   and an empty file exits on the line count before it is read.
 - **Output redirections** (`> "$SIDECAR_DIR/…"`, `2>/dev/null`). The heartbeat write is
   asserted by N.2 and P.4. `2>/dev/null` only silences an untagged line, and untagged lines are
   not the contract (5bis.4).
-- **Command options other than `read`'s** (`grep -q`, `mkdir -p`, `date -u`). Measured one by
-  one. Dropping `-q` prints the placeholder line to stdout, and N.4's empty-stdout clause
+- **Command options other than `read`'s and `date`'s** (`grep -q`, `mkdir -p`). Measured one
+  by one. Dropping `-q` prints the placeholder line to stdout, and N.4's empty-stdout clause
   fails the placeholder test. Dropping `-p` makes `mkdir` fail on the existing sidecar
-  directory, so the heartbeat is never written and 43 tests fail. Dropping `-u` from either
-  `date` failed no test: the stamp would be local time labelled `Z`. That gap is §8 item 9.
+  directory, so the heartbeat is never written and 44 tests fail. `date`'s options ARE sites
+  (`dateopt`): dropping `-u` failed no test until the TZ fixture existed (§8 item 9).
 - **The rest:** `. "$ENV_FILE"`, `cd` on its own, and the `printf` that writes the heartbeat
   file.
 
@@ -663,18 +674,20 @@ These are deliberately not sites:
 may be claimed twice. A row claims the sites in its `covers` list, on its anchor line, plus the
 site on each line that its `stmt` mutants resolve to. Anything new in the wrapper that matches
 a kind (a new `[ … ]`, `&&`, `!`, `<`, case alternative, read flag, `${…:-…}`, `exit`,
-heartbeat, diagnostic, constant, re-assert or absolute command path) is an UNCLAIMED site. CI fails until a row claims it. That is what
+heartbeat, diagnostic, constant, re-assert, absolute command path or `date` option) is an
+UNCLAIMED site. CI fails until a row claims it. That is what
 "closed" means here: a guard added later without a row is a spec violation, and the check
 itself reports it.
 
 Measured with a scratch prototype of the extractor:
 
-- it found exactly 134 sites on the PR-1 target and 132 on `04dd6b51e4`, and every one was
-  claimed. The `04dd6b51e4` inventory is the target's minus rows G9j and G9k, with G9b
-  anchored on the PATH-resolved `mkdir` (5bis.8);
-- planting nine constructs into the PR-1 target produced 17 UNCLAIMED sites, one per planted
+- it found exactly 136 sites on the PR-1 target and 134 on `04dd6b51e4`, and every one was
+  claimed. The `04dd6b51e4` inventory is the target's minus rows G9j and G9k, with G9b and
+  G9l anchored on the PATH-resolved `mkdir` and `date` (5bis.8);
+- planting ten constructs into the PR-1 target produced 18 UNCLAIMED sites, one per planted
   site. The constructs were a pre-source `NEW_CONST="x"`, a pre-source
-  `export NEW_EXPORT=1`, a bare `/usr/bin/true`, an `if [ -s ] && [ -O ]` guard with
+  `export NEW_EXPORT=1`, a bare `/usr/bin/true`, a `: "$(date -u +%s)"`, an
+  `if [ -s ] && [ -O ]` guard with
   `exit 3`, a `read -r -n 1 _z < "$ENV_FILE"`, a `${_z:=q}`, a two-alternative `case`, an
   `if ! true`, and a post-source `FOO_EXTRA=1`.
 
@@ -695,6 +708,7 @@ Measured with a scratch prototype of the extractor:
 | `neg`                                               | drop the `!`                                                                                                                                  |
 | `redir`                                             | drop the redirection. The command then reads the wrapper's stdin, which launchd and the harness both bind to `/dev/null`                      |
 | `abspath`                                           | strip the directory (`/bin/date` → `date`), so the command resolves through the env's `PATH`                                                  |
+| `dateopt`                                           | drop the option (`/bin/date -u` → `/bin/date`)                                                                                                |
 | the pinned `exec`                                   | plain `exec "$VENV_PY" …`, and separately `/usr/bin/env` → a PATH-resolved `env`                                                              |
 
 A `stmt` mutant writes `:` instead of deleting the line, so a block never becomes empty. Re-gate
@@ -758,7 +772,7 @@ from the wrapper at `04dd6b51e4`:
 The `cd` refusal has no tagged line of its own. Its fixture asserts the legacy line plus the
 heartbeat note `cd failed`.
 
-Fixture rules, one carried over and four new:
+Fixture rules, one carried over and five new:
 
 - **Plant what the fault would otherwise resolve to** (r0 C1). A negative fixture plants the
   binary tree its version would resolve to, unless the missing tree IS the fault
@@ -771,6 +785,9 @@ Fixture rules, one carried over and four new:
   `fail-open` with real ones.
 - **The stub reports `PYTHONPATH`** (new). `_DUMP_ENV_STUB` prints it alongside the two pin
   values.
+- **Stamps are checked against a non-UTC zone** (new, coordinator ruling 2026-09-27). One
+  positive fixture runs with `TZ=Asia/Makassar` in the env file and asserts that both stamps
+  are within 120 s of UTC. Without it, a dropped `date -u` passes every contract.
 - **The wrapper's stdin is `/dev/null`** (new, council round 1). `_run` passes
   `stdin=subprocess.DEVNULL`, as launchd does by default. Without it, a `redir` mutant reads
   whatever stdin pytest inherited, and its verdict depends on the terminal.
@@ -904,6 +921,7 @@ Mutant suffixes: `c` condition, `d` diagnostic, `h` heartbeat, `x` exit, `!` neg
 | G7f | D19, D20             | 270     | `exec /usr/bin/env WA_CODEX_CLI_VERSION_PIN="$1" WA_CODEX_…`   | exec, abspath        | plain FO, path-env FC        | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_env_path_cannot_disable_the_pin[nonexistent]`      |
 | G7g | new                  | 273     | `exec "$VENV_PY" -m backend.services.integrations.wa_codex…`   | exec                 | stmt FC                      | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
 | G7h | D23                  | 212     | `echo "$TAG: no pin file at $CODEX_PIN_FILE — codex from t…`   | diag                 | stmt DX                      | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
+| G7i | lead 2026-09-27      | 269     | `date -u (proof line)`                                         | dateopt              | -u DX                        | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                                 |
 | G8a | N1, D17a             | 231     | `HOME_DIR="/Users/zantara-codex"`                              | reassert             | stmt DX, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
 | G8b | N1, D17b             | 232     | `RUNTIME_DIR="/usr/local/lib/wa-codex-broker"`                 | reassert             | stmt FO, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
 | G8c | N1, D17c             | 233     | `VENV_PY="$RUNTIME_DIR/.venv/bin/python3"`                     | reassert             | stmt FO, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
@@ -915,6 +933,7 @@ Mutant suffixes: `c` condition, `d` diagnostic, `h` heartbeat, `x` exit, `!` neg
 | G9b | new                  | 72      | `/bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null \|\| return 0`       | andor, exit          | limb EQ                      | EQUIVALENT  | — (none, see reason)                                                                                     |
 | G9j | council r2           | 72      | `/bin/mkdir (heartbeat)`                                       | abspath              | path DX                      | MUST        | `[nonexistent]`                                                                                          |
 | G9k | council r2           | 74      | `/bin/date (heartbeat)`                                        | abspath              | path DX                      | MUST        | `[nonexistent]`                                                                                          |
+| G9l | lead 2026-09-27      | 74      | `date -u (heartbeat)`                                          | dateopt              | -u DX                        | MUST        | `test_stamps_are_utc_under_a_non_utc_tz`                                                                 |
 | G9c | P1                   | 91–94   | `if [ ! -f "$ENV_FILE" ]; then`                                | cond, test, neg      | c FC, d DX, h DX, x FC, ! FC | MUST        | `test_guilt_env_file_missing_refuses`, `test_innocence_valid_pin_overrides_env`                          |
 | G9d | P2                   | 96–99   | `if grep -q "__FILL_ME__" "$ENV_FILE"; then`                   | cond                 | c FO, d DX, h DX, x FO       | MUST        | `test_guilt_env_placeholders_refuse`                                                                     |
 | G9e | P3                   | 251–254 | `whole guard: kill switch … exit 0`                            | cond, test           | c FO, d DX, h DX, x FO       | MUST        | `test_kill_switch_stops_without_exec`                                                                    |
@@ -925,8 +944,8 @@ Mutant suffixes: `c` condition, `d` diagnostic, `h` heartbeat, `x` exit, `!` neg
 
 <!-- d5-inventory:end -->
 
-Totals: 69 rows (65 MUST, 4 EQUIVALENT), 134 sites, 130 mutants (126 MUST, 4 EQUIVALENT).
-Declared modes: 45 FO, 22 FC, 51 DX, 8 ST, 4 EQ.
+Totals: 71 rows (67 MUST, 4 EQUIVALENT), 136 sites, 132 mutants (128 MUST, 4 EQUIVALENT).
+Declared modes: 45 FO, 22 FC, 53 DX, 8 ST, 4 EQ.
 
 ### 5bis.7 Fixtures that PR-1 adds or changes
 
@@ -951,6 +970,7 @@ New. N and P refer to the contracts in 5bis.4:
 | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                       | G6a, G9h                         | `RUNTIME_DIR` patched to a path that does not exist; no pin; the stub `VENV_PY` lives outside it | rc 78, heartbeat `refused`/`cd failed`, exactly one tagged line (the legacy line), the stub did not run                                       |
 | `test_wrapper_ships_production_constants`                                                                                                                 | G0a, G0b, G0d, G0h, G0i, G8a–G8c | static: every `^KEY=` line of the five `_PATCHABLE_KEYS`, re-asserts included                    | each equals its production value; the pinned key set equals `_PATCHABLE_KEYS`                                                                 |
 | `test_refusal_reasons_are_pairwise_non_containing`                                                                                                        | (5bis.4)                         | static: the 13 reason texts                                                                      | 13 distinct texts, none a substring of another                                                                                                |
+| `test_stamps_are_utc_under_a_non_utc_tz`                                                                                                                  | G7i, G9l                         | env `TZ=Asia/Makassar`; valid pin                                                                | P, and both the heartbeat `ts` and the proof line's stamp lie within 120 s of the test's own UTC clock                                        |
 
 Changed:
 
@@ -973,21 +993,21 @@ Changed:
 Setup: a scratch prototype of §5ter (not the implementation), on M5 with bash 3.2.57,
 against the 28-test suite and the wrapper at `04dd6b51e4`. The inventory was the committed
 YAML adapted to that blob: rows G9j and G9k removed (their `abspath` sites exist only on the
-PR-1 target), and G9b anchored on the PATH-resolved `mkdir`. That leaves 67 rows and 128
-mutants.
+PR-1 target), and G9b and G9l anchored on the PATH-resolved `mkdir` and `date`. That leaves
+69 rows and 130 mutants.
 
 Results:
 
-- closure held: 132 sites extracted, 132 claimed;
+- closure held: 134 sites extracted, 134 claimed;
 - the baseline passed 28 of 28;
-- of the 128 mutants, 71 were killed and 57 survived: 53 MUST plus the 4 EQUIVALENT;
+- of the 130 mutants, 71 were killed and 59 survived: 55 MUST plus the 4 EQUIVALENT;
 - the 99 mutants of round 1 gave the same verdicts as in round 1, and each killed one was
   killed by a test in its `killed_by` list;
 - five round-2 mutants (G0f/val, G0g/val and G8d/val–G8f/val) were killed by other tests.
   At `04dd6b51e4` their declared killers either do not exist yet or do not yet assert
   contracts N and P.
 
-Surviving MUST mutants, 53 in 36 rows. **Named by re-gate #2:**
+Surviving MUST mutants, 55 in 38 rows. **Named by re-gate #2:**
 
 - G2a (D10), G2b (D25), G2c (D26) and G6a (D02);
 - G3a–G3e (S1–S5);
@@ -1010,23 +1030,24 @@ Surviving MUST mutants, 53 in 36 rows. **Named by re-gate #2:**
 - G0e (`TAG` before the source; no test asserts a refusal's tag).
 
 **Found by council round 2:** G7e/path (the proof line's `/bin/date`; no test asserts its
-stamp).
+stamp). **Added on the coordinator's ruling:** G7i/-u and G9l/-u (a dropped `date -u`; no test
+runs under a non-UTC zone).
 
 The other round-2 mutants (the eight `!` drops, both `redir` drops, G0c, G0f, G0g, G0j and the
 `val` mutants of G8d–G8f) were already killed by the `04dd6b51e4` suite.
 
-**Feasibility.** A scratch suite of 49 tests applied 5bis.4 and 5bis.7 to the PR-1 target
+**Feasibility.** A scratch suite of 50 tests applied 5bis.4 and 5bis.7 to the PR-1 target
 (`04dd6b51e4` plus the D5 heartbeat fix):
 
-- closure held: 134 of 134 sites claimed;
-- the baseline passed 49 of 49;
-- all 126 MUST mutants were killed, each by a test in its `killed_by` list, and every
+- closure held: 136 of 136 sites claimed;
+- the baseline passed 50 of 50;
+- all 128 MUST mutants were killed, each by a test in its `killed_by` list, and every
   `killed_by` entry matched exactly one collected test;
-- the 4 EQUIVALENT mutants survived, and left identical run records in all 46 tests that
+- the 4 EQUIVALENT mutants survived, and left identical run records in all 47 tests that
   run the wrapper;
 - no mutant failed `sh -n`;
-- wall time: about 5.5 minutes for 127 mutants on an idle M5, and 17 minutes for the final
-  130 under a load average near 35.
+- wall time: about 5 minutes for the final 132 mutants on M5 at a load average near 7, and
+  17 minutes for 130 in an earlier run under a load average near 35.
 
 **Modes: measured, not predicted.** After the corrections below, every declared mode equals
 the measured one. The declarations were not independent predictions, and S3 does not claim
@@ -1038,8 +1059,8 @@ later. The corrections:
 - Round 2, one mutant. G6b/! was declared FO and measured FC: with the `!` dropped, an
   unsearchable `RUNTIME_DIR` falls through to legacy, and the later `cd` refuses it.
 
-The three council-round-2 mutants (G7e/path, G9j/path, G9k/path) were declared DX before any
-run and measured DX.
+The three council-round-2 mutants (G7e/path, G9j/path, G9k/path) and the two added on the
+coordinator's ruling (G7i/-u, G9l/-u) were declared DX before any run and measured DX.
 
 In every case the YAML carries the measured value. Killer choice matters too. G5a/! and G5b/!
 measured FC while their only killer was the valid-pin innocence test. With their isolating
@@ -1089,9 +1110,10 @@ python scripts/ci/wa_codex_wrapper_mutants.py [--inventory PATH] [--spec PATH]
   (5bis.4).
 - **Run-log hook.** When `$WCBW_RUN_LOG` is set, the test file's `_run` helper appends one
   JSON line per wrapper run: `{test, rc, stdout, heartbeat: [ts, status, note], tagged: […]}`.
-  The test's tmp root is replaced by `<T>`, and every well-formed UTC stamp, in the heartbeat
-  `ts` and in the tagged lines, by `<TS>`. A malformed or empty stamp is kept as it is, so it
-  shows up as a difference.
+  The test's tmp root is replaced by `<T>`. Every well-formed stamp, in the heartbeat `ts`
+  and in the tagged lines, becomes `<TS>` when it lies within 120 s of the hook's own UTC
+  clock and `<TS-SKEW>` when it does not. A malformed or empty stamp is kept as it is. Both
+  cases therefore show up as a difference (G9k, G9l, G7i).
   The hook lives in the TEST file only, so D6's "no test mode in the shipped script" still
   holds.
 
@@ -1166,9 +1188,9 @@ Each step fails with a named error.
    `MODE-MISMATCH`: an equivalence claim is about the observations, not about today's
    assertions.
 
-   Validated in scratch on the PR-1 target: all 130 declared modes equal the measured ones.
+   Validated in scratch on the PR-1 target: all 132 declared modes equal the measured ones.
    Seven of them were corrected from a measurement first, and 5bis.8 names them. The four
-   EQUIVALENT mutants left identical records in all 46 tests that run the wrapper.
+   EQUIVALENT mutants left identical records in all 47 tests that run the wrapper.
 
 9. **Parity.** The `--render-table` output must equal the spec block between
    `<!-- d5-inventory:begin -->` and `<!-- d5-inventory:end -->`. The comparison is cell by
@@ -1217,7 +1239,7 @@ Guilt cases. Each one must be detected, or the selftest fails:
   the second only a run-based one.
 
 Innocence: the PR-1 target and the committed inventory pass closure with exactly
-`derived_from.sites` sites (134) and zero schema errors.
+`derived_from.sites` sites (136) and zero schema errors.
 
 ### 5ter.5 CI wiring
 
@@ -1389,12 +1411,12 @@ the same script (§5ter).
    mutate the VALUES of the pre-source constants (5bis.3). Deleting one is different: it
    crashes under `set -u` on every run unless launchd injects that name, and the plist is
    root-owned (§1).
-9. **`date -u` is pinned by no test** (added 2026-09-27, council round 2). Dropping `-u`
-   from the heartbeat's or the proof line's `/bin/date` failed no test in the feasibility
-   suite: the stamp would be local time labelled `Z`, off by the host's UTC offset. §6 reads
-   the proof line's stamp to show the start is fresh. Recommended for PR-1, not a site: run
-   `test_pin_applied_log_line` under `TZ=Asia/Makassar` and assert that the stamp is within
-   two minutes of the test's own UTC clock.
+9. **`date -u`** (added 2026-09-27, council round 2; **closed**). Dropping `-u` from the
+   heartbeat's or the proof line's `/bin/date` failed no test in the round-2 feasibility
+   suite. The stamp would have been local time labelled `Z`, off by the host's UTC offset, and
+   §6 reads the proof line's stamp to show that the start is fresh. The coordinator ruled it
+   MUST. It is now the `dateopt` kind, rows G7i and G9l, and the fixture
+   `test_stamps_are_utc_under_a_non_utc_tz` (5bis.7).
 
 Adjacent, out of scope, noted: the daemon's venv python is Homebrew `python@3.14` (the `ps`
 `comm` on Pro shows `/opt/homebrew/Cellar/python@3.14/…`). A Homebrew python upgrade is the
@@ -1424,15 +1446,15 @@ wrapper at `04dd6b51e4` (blob `4143a795d9`, sha256 prefix `9fb2268887392b6e`), a
 target, which is that blob plus the D5 heartbeat fix (blob `78236b6070`, sha256 prefix
 `022c86115eff1eda`).
 
-- **Site extractor (5bis.3).** It found 134 sites on the PR-1 target, all claimed by the 69
-  rows, and 132 on `04dd6b51e4`, all claimed by the 67 rows that apply there. Nine planted
-  constructs produced 17 UNCLAIMED sites. In round 1, one changed guard line produced
+- **Site extractor (5bis.3).** It found 136 sites on the PR-1 target, all claimed by the 71
+  rows, and 134 on `04dd6b51e4`, all claimed by the 69 rows that apply there. Ten planted
+  constructs produced 18 UNCLAIMED sites. In round 1, one changed guard line produced
   `STALE-ANCHOR` before any mutant ran.
-- **Current suite (28 tests, `04dd6b51e4`).** 128 mutants: 71 killed, 57 survived (53 MUST
+- **Current suite (28 tests, `04dd6b51e4`).** 130 mutants: 71 killed, 59 survived (55 MUST
   plus the 4 EQUIVALENT), no `sh -n` failure (5bis.8).
-- **Feasibility suite (49 tests, contracts N and P, PR-1 target).** 126 of 126 MUST mutants
+- **Feasibility suite (50 tests, contracts N and P, PR-1 target).** 128 of 128 MUST mutants
   killed, each by a declared killer. The 4 EQUIVALENT mutants survived with identical run
-  records. All 130 declared modes equal the measured ones, after the seven corrections that
+  records. All 132 declared modes equal the measured ones, after the seven corrections that
   5bis.8 names.
 - **Council round 1 (codex-gpt-5.6-sol, read-only), by execution.** Dropping the NUL probe's
   `< "$CODEX_PIN_FILE"` let a NUL-bearing pin through, and it was applied. Dropping the `!`
@@ -1461,38 +1483,39 @@ BLOCK, or to council rounds 1 and 2 on this spec (codex-gpt-5.6-sol and kimi-cod
 PR's evidence pack). D1–D4, D6's proof design, D8, D9, §1, §2, §4, §6 and the installer and sentinel test
 tables are unchanged, except where listed.
 
-| §           | Change                                                                                                                                               | Proved by                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| header, §0  | Commit note; scratch inputs marked ephemeral                                                                                                         | S2 (the spec lived only in `/private/tmp`)                               |
-| D5          | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused       | re-gate #2 D10, D25, D26                                                 |
-| D5          | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                                 | spalla review 2026-09-26; r0 C1, N2                                      |
-| D5          | Implemented check order; one tagged diagnostic line per refusal is contract                                                                          | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                    |
-| D5          | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                                    | r0 C3, N4                                                                |
-| D5          | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                             | r0 spec-owner note; re-gate #2 S1–S5                                     |
-| D5          | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                              | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound |
-| D5          | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                              | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)     |
-| D5          | Kill-switch precedence stated                                                                                                                        | r0 N3; re-gate #1                                                        |
-| D5, §8.2    | Scope narrowed to the named DATA                                                                                                                     | r0 spec-owner note                                                       |
-| D6          | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                          | re-gate #1 R1; r0 N7; S3                                                 |
-| D7          | Sentinel uses the exact same line grammar                                                                                                            | follows from the D10 decision                                            |
-| §5          | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                        | re-gate #2 §2                                                            |
-| §5          | Wrapper table marked superseded by §5bis                                                                                                             | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                   |
-| §5bis       | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                         | S2                                                                       |
-| §5ter       | S3 mutation check specified                                                                                                                          | S3                                                                       |
-| §5quater    | S4 evidence-text fixes                                                                                                                               | S4, re-gate #2 §4                                                        |
-| §7          | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                                  | S2–S4                                                                    |
-| §8          | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                             | re-gate #1 §2 and §5; this inventory                                     |
-| §9          | 2026-09-27 measurements                                                                                                                              | this spec                                                                |
-| D5, §8.6    | Heartbeat calls `/bin/mkdir` and `/bin/date`: the one wrapper change beyond `04dd6b51e4`, moved into PR-1                                            | council r1: sol raised G9b, the author reproduced it; re-gate #1 §5      |
-| §5bis.3     | Kinds `const`, `neg`, `redir` (130 sites, 67 rows); value substitution on `const` and `reassert`; the not-sites list restated                        | council r1: kimi findings 1–2; sol executed the `<` and `!` drops        |
-| §5bis.4     | Wrapper stdin is `/dev/null`; patched constants pinned statically; reasons pairwise non-containing; P.4 exemption removed                            | council r1: kimi findings 1 and 6                                        |
-| §5bis.5     | G0k is EQUIVALENT; G9b holds only on the PR-1 target                                                                                                 | council r1: sol                                                          |
-| §5bis.8     | Round-2 measurements; the seven mode corrections disclosed; the killer-choice rule                                                                   | council r1: kimi finding 3                                               |
-| §5ter       | `killed_by` matches exactly one node id; severity order; `static` mode; EQUIVALENT compared over every test; selftest (e) reworded; stdin            | council r1: kimi findings 4, 5 and 7                                     |
-| §7, §8      | PR-1 lands the heartbeat fix and re-arms `SITE-COUNT`; §8 items 6 and 8 restated                                                                     | council r1                                                               |
-| §5bis.3, D5 | Kind `abspath` (134 sites on the target, 132 at `04dd6b51e4`); rows G9j and G9k; mutant G7e/path                                                     | council r2: kimi finding 14 (nothing pinned the heartbeat's `/bin/date`) |
-| §5bis.4     | N.2, P.3 and P.4 assert well-formed UTC stamps; the scratch suite's N.4 aligned to empty stdout                                                      | council r2: kimi finding 14; the `grep -q` probe                         |
-| §5bis.3     | The not-sites rationale corrected and measured: line 177 inert, `-p` and `-q` killed, `-u` unpinned                                                  | council r2: sol findings 4–5, kimi finding 16                            |
-| §5ter       | FO rule kept and justified (a narrower one misclassified G8c/stmt, measured); selftest cases f–i; the review-only residue of killer causality stated | council r2: sol findings 1, 2 and 6, kimi finding 7                      |
-| YAML, §7    | `derived_from` names the PR-1 target blob, with `base_commit` and `base_blob`                                                                        | council r2: kimi finding 15                                              |
-| §8          | Item 9: `date -u` is pinned by no test; recommended fixture                                                                                          | council r2 probe                                                         |
+| §             | Change                                                                                                                                                        | Proved by                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| header, §0    | Commit note; scratch inputs marked ephemeral                                                                                                                  | S2 (the spec lived only in `/private/tmp`)                               |
+| D5            | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused                | re-gate #2 D10, D25, D26                                                 |
+| D5            | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                                          | spalla review 2026-09-26; r0 C1, N2                                      |
+| D5            | Implemented check order; one tagged diagnostic line per refusal is contract                                                                                   | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                    |
+| D5            | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                                             | r0 C3, N4                                                                |
+| D5            | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                                      | r0 spec-owner note; re-gate #2 S1–S5                                     |
+| D5            | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                                       | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound |
+| D5            | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                                       | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)     |
+| D5            | Kill-switch precedence stated                                                                                                                                 | r0 N3; re-gate #1                                                        |
+| D5, §8.2      | Scope narrowed to the named DATA                                                                                                                              | r0 spec-owner note                                                       |
+| D6            | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                                   | re-gate #1 R1; r0 N7; S3                                                 |
+| D7            | Sentinel uses the exact same line grammar                                                                                                                     | follows from the D10 decision                                            |
+| §5            | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                                 | re-gate #2 §2                                                            |
+| §5            | Wrapper table marked superseded by §5bis                                                                                                                      | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                   |
+| §5bis         | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                                  | S2                                                                       |
+| §5ter         | S3 mutation check specified                                                                                                                                   | S3                                                                       |
+| §5quater      | S4 evidence-text fixes                                                                                                                                        | S4, re-gate #2 §4                                                        |
+| §7            | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                                           | S2–S4                                                                    |
+| §8            | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                                      | re-gate #1 §2 and §5; this inventory                                     |
+| §9            | 2026-09-27 measurements                                                                                                                                       | this spec                                                                |
+| D5, §8.6      | Heartbeat calls `/bin/mkdir` and `/bin/date`: the one wrapper change beyond `04dd6b51e4`, moved into PR-1                                                     | council r1: sol raised G9b, the author reproduced it; re-gate #1 §5      |
+| §5bis.3       | Kinds `const`, `neg`, `redir` (130 sites, 67 rows); value substitution on `const` and `reassert`; the not-sites list restated                                 | council r1: kimi findings 1–2; sol executed the `<` and `!` drops        |
+| §5bis.4       | Wrapper stdin is `/dev/null`; patched constants pinned statically; reasons pairwise non-containing; P.4 exemption removed                                     | council r1: kimi findings 1 and 6                                        |
+| §5bis.5       | G0k is EQUIVALENT; G9b holds only on the PR-1 target                                                                                                          | council r1: sol                                                          |
+| §5bis.8       | Round-2 measurements; the seven mode corrections disclosed; the killer-choice rule                                                                            | council r1: kimi finding 3                                               |
+| §5ter         | `killed_by` matches exactly one node id; severity order; `static` mode; EQUIVALENT compared over every test; selftest (e) reworded; stdin                     | council r1: kimi findings 4, 5 and 7                                     |
+| §7, §8        | PR-1 lands the heartbeat fix and re-arms `SITE-COUNT`; §8 items 6 and 8 restated                                                                              | council r1                                                               |
+| §5bis.3, D5   | Kind `abspath` (134 sites on the target, 132 at `04dd6b51e4`); rows G9j and G9k; mutant G7e/path                                                              | council r2: kimi finding 14 (nothing pinned the heartbeat's `/bin/date`) |
+| §5bis.4       | N.2, P.3 and P.4 assert well-formed UTC stamps; the scratch suite's N.4 aligned to empty stdout                                                               | council r2: kimi finding 14; the `grep -q` probe                         |
+| §5bis.3       | The not-sites rationale corrected and measured: line 177 inert, `-p` and `-q` killed, `-u` unpinned                                                           | council r2: sol findings 4–5, kimi finding 16                            |
+| §5ter         | FO rule kept and justified (a narrower one misclassified G8c/stmt, measured); selftest cases f–i; the review-only residue of killer causality stated          | council r2: sol findings 1, 2 and 6, kimi finding 7                      |
+| YAML, §7      | `derived_from` names the PR-1 target blob, with `base_commit` and `base_blob`                                                                                 | council r2: kimi finding 15                                              |
+| §8            | Item 9: `date -u` is pinned by no test; recommended fixture                                                                                                   | council r2 probe                                                         |
+| D5, §5bis, §8 | PR-1's two wrapper lines and their reason (G9b) stated explicitly; `date -u` made MUST: kind `dateopt`, rows G7i and G9l, the TZ fixture, the skew-aware hook | coordinator ruling 2026-09-27 on the two open questions                  |

@@ -21,7 +21,7 @@ lanes:
 what_changed: |
   docs/specs/2026-09-27-codexpin-v3-spec.md: the codexpin v3 spec, until now
   session scratch only, committed with D1-D9, their amendments and the 3-PR
-  plan. New: §5bis, the closed D5 inventory (15-kind lexical site grammar,
+  plan. New: §5bis, the closed D5 inventory (17-kind lexical site grammar,
   closure rule, mutation operators, fixture contracts N and P,
   dispositions, the decisions re-gate #2 asked for, the rendered table, the
   new fixtures, what the 04dd6b51e4 suite kills today); §5ter, the S3
@@ -29,8 +29,8 @@ what_changed: |
   §5quater, S4; D5 gains the heartbeat fix that PR-1 lands (/bin/mkdir and
   /bin/date); §10 changelog.
   docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml: the normative
-  inventory S3 reads: 69 rows (65 MUST, 4 EQUIVALENT, 0 deferred), 134
-  sites on the PR-1 target, 130 mutants.
+  inventory S3 reads: 71 rows (67 MUST, 4 EQUIVALENT, 0 deferred), 136
+  sites on the PR-1 target, 132 mutants.
   After council round 1: kinds const, neg and redir; the static mode; the
   heartbeat fix moved into PR-1; stdin bound to /dev/null; the killed_by
   exactly-one-node rule; EQUIVALENT compared over every test; selftest (e)
@@ -39,6 +39,10 @@ what_changed: |
   G7e/path; well-formed UTC stamps in contracts N and P; derived_from names
   the target blob; selftest cases f-i; the not-sites rationale re-measured;
   §8 item 9 (date -u unpinned).
+  After the coordinator's ruling on the two open questions: D5 states that
+  PR-1 modifies wrapper lines 72 and 74 and why (G9b's equivalence); `date
+  -u` is MUST, with kind dateopt, rows G7i and G9l, the TZ fixture
+  test_stamps_are_utc_under_a_non_utc_tz and a skew-aware run-log hook.
 
 proof: |
   See receipts. Every number in the spec's §5bis.8 and §9 comes from the
@@ -54,14 +58,24 @@ pii_scan_note: >-
   scrubbed env (env -i), a read-only sandbox for codex and a no-tools
   child for kimi.
 
+post_council_note: >-
+  The last commit, on the coordinator's ruling, changed the reviewed spec
+  and inventory only for two points. D5 now states that PR-1 modifies
+  wrapper lines 72 and 74, and why (G9b's equivalence). `date -u` became a
+  MUST row pair (G7i, G9l) with its fixture. No council round was run on
+  it, by the coordinator's instruction, and the journal carries an
+  author-note line saying so.
+
 spend:
-  wall_clock_hours: 3.8
+  wall_clock_hours: 4.5
   adversarial_rounds: 2
-spend_note: >-
-  Wall clock measured from the task's start (17:29Z) to the writing of this
-  pack (21:19Z). Commit, push and PR-open follow and are not
-  counted; they add minutes, and the total may end just past the 4 h
-  appetite. Two adversarial rounds, as declared.
+appetite_exceeded: >-
+  Wall clock went past the 4 h appetite. Council round 2 found two MAJOR
+  gaps (the unpinned /bin/date, the base-blob derived_from). They needed a
+  new site kind and a full re-run of the mutant proof, which took 17 min
+  under a load average near 35. The coordinator's ruling then added the
+  dateopt rows and a third full re-run. Adversarial rounds stayed at the
+  2 declared.
 
 diff:
   net_lines: "measured by CI from git numstat at merge-base..HEAD"
@@ -136,7 +150,7 @@ dissent:
       Reproduced by the author (both hostile-PATH tests fail on the shipped
       04dd6b51e4 wrapper and pass on its G9b mutant). PR-1 now lands
       /bin/mkdir and /bin/date (D5, §8 item 6); on that target G9b leaves
-      identical records in all 46 run tests, and the P.4 exemption is gone.
+      identical records in all 47 run tests, and the P.4 exemption is gone.
   - seat: kimi-code/k3
     objection: >-
       R2-14 MAJOR: the /bin/date half of the heartbeat fix is pinned by
@@ -227,87 +241,87 @@ dissent:
       mode, never understate it.
 
 receipts:
-  - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k, G9b anchored on the PATH-resolved mkdir)"
+  - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k; G9b and G9l anchored on the PATH-resolved mkdir and date)"
     cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --closure-only"
-    result: "sites extracted=132 claimed=132 rows=67 mutants=128; UNCLAIMED/PHANTOM/ERR lines: 0"
+    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
     exit: 0
-    ts: "2026-09-26T20:52:23Z"
+    ts: "2026-09-26T21:45:29Z"
     seat: claude-opus-5-5
   - claim: "the inventory is closed against the PR-1 target (04dd6b51e4 plus the D5 heartbeat fix)"
     cmd: "scratch proto_s3.py docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml wrapper_fixed.sh feasibility_test.py --closure-only"
-    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
+    result: "sites extracted=136 claimed=136 rows=71 mutants=132; UNCLAIMED/PHANTOM/ERR lines: 0"
     exit: 0
-    ts: "2026-09-26T20:52:23Z"
+    ts: "2026-09-26T21:45:29Z"
     seat: claude-opus-5-5
-  - claim: "nine planted constructs are each reported UNCLAIMED, site by site"
+  - claim: "ten planted constructs are each reported UNCLAIMED, site by site"
     cmd: "scratch proto_s3.py <inventory> wrapper_planted_r2.sh feasibility_test.py --closure-only"
-    result: "sites extracted=151 claimed=134 rows=69 mutants=130; UNCLAIMED lines: 17"
+    result: "sites extracted=154 claimed=136 rows=71 mutants=132; UNCLAIMED lines: 18"
     exit: 0
-    ts: "2026-09-26T20:52:24Z"
+    ts: "2026-09-26T21:45:29Z"
     seat: claude-opus-5-5
   - claim: "the §5bis.6 table equals the YAML rendering, cell by cell"
     cmd: "scratch parity.py docs/specs/2026-09-27-codexpin-v3-spec.md docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml"
-    result: "rows 70 70 equal True"
+    result: "rows 72 72 equal True"
     exit: 0
-    ts: "2026-09-26T20:52:24Z"
+    ts: "2026-09-26T21:45:30Z"
     seat: claude-opus-5-5
   - claim: "a suite applying §5bis.4/§5bis.7 kills every MUST mutant by a declared killer on the PR-1 target"
     cmd: "scratch proto_s3.py <inventory> wrapper_fixed.sh feasibility_test.py --json feasibility.json"
-    result: "BASELINE 0 49 passed in 6.39s collected 49; KILLED with killer hit 126; SURVIVED MUST 0; SURVIVED EQUIVALENT 4; killer=n on a MUST 0; sh -n failures 0; SCHEMA lines 0"
+    result: "BASELINE 0 50 passed in 1.36s collected 50; KILLED with killer hit 128; SURVIVED MUST 0; SURVIVED EQUIVALENT 4; killer=n on a MUST 0; sh -n failures 0; SCHEMA lines 0"
     exit: 0
-    ts: "2026-09-26T21:09:06Z"
+    ts: "2026-09-26T21:50:30Z"
     seat: claude-opus-5-5
   - claim: "every declared mode equals the measured one on the killer tests"
     cmd: "scratch modes.py <inventory> wrapper_fixed.sh"
-    result: "130 mutants measured; DIFF lines 0"
+    result: "132 mutants measured; DIFF lines 0"
     exit: 0
-    ts: "2026-09-26T21:17:46Z"
+    ts: "2026-09-26T21:59:43Z"
     seat: claude-opus-5-5
   - claim: "what the 28-test suite at 04dd6b51e4 kills today (§5bis.8)"
     cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --json suite_04dd.json"
-    result: "BASELINE 0 28 passed; mutants 128; killed 71; survived 57 (MUST 53 in 36 rows, EQUIVALENT 4); killed MUST without killer hit 5"
+    result: "BASELINE 0 28 passed; mutants 130; killed 71; survived 59 (MUST 55 in 38 rows, EQUIVALENT 4); killed MUST without killer hit 5"
     exit: 0
-    ts: "2026-09-26T21:15:12Z"
+    ts: "2026-09-26T21:55:35Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: closure_target_final"
     cmd: "scratch quick_proof.sh step closure_target_final (inputs hashed in inputs_final.sha256)"
-    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
+    result: "sites extracted=136 claimed=136 rows=71 mutants=132; UNCLAIMED/PHANTOM/ERR lines: 0"
     exit: 0
-    ts: "2026-09-26T21:17:47Z"
+    ts: "2026-09-26T21:59:44Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: closure_04dd_final"
     cmd: "scratch quick_proof.sh step closure_04dd_final (inputs hashed in inputs_final.sha256)"
-    result: "sites extracted=132 claimed=132 rows=67 mutants=128; UNCLAIMED/PHANTOM/ERR lines: 0"
+    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
     exit: 0
-    ts: "2026-09-26T21:17:47Z"
+    ts: "2026-09-26T21:59:44Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: closure_planted_final"
     cmd: "scratch quick_proof.sh step closure_planted_final (inputs hashed in inputs_final.sha256)"
-    result: "sites extracted=151 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 17"
+    result: "sites extracted=154 claimed=136 rows=71 mutants=132; UNCLAIMED/PHANTOM/ERR lines: 18"
     exit: 0
-    ts: "2026-09-26T21:17:47Z"
+    ts: "2026-09-26T21:59:44Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: parity_final"
     cmd: "scratch quick_proof.sh step parity_final (inputs hashed in inputs_final.sha256)"
-    result: "rows 70 70 equal True"
+    result: "rows 72 72 equal True"
     exit: 0
-    ts: "2026-09-26T21:17:47Z"
+    ts: "2026-09-26T21:59:44Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: modes_equivalent_final"
     cmd: "scratch quick_proof.sh step modes_equivalent_final (inputs hashed in inputs_final.sha256)"
     result: "G0k/val measured=equivalent; G1c/IFS measured=equivalent; G7c/stmt measured=equivalent; G9b/limb measured=equivalent; DIFF lines: 0"
     exit: 0
-    ts: "2026-09-26T21:18:10Z"
+    ts: "2026-09-26T21:59:58Z"
     seat: claude-opus-5-5
   - claim: "final re-check on the committed bytes: workvars_final"
     cmd: "scratch quick_proof.sh step workvars_final (inputs hashed in inputs_final.sha256)"
-    result: "l176 _pin_lines=-1 failed=31; l176 _pin_lines=1 failed=29; l176 deleted failed=33; l177 deleted failed=0; l72 drop -p failed=43; l74 drop -u failed=0; l269 drop -u failed=0; l96 drop -q failed=1"
+    result: "l176 _pin_lines=-1 failed=32; l176 _pin_lines=1 failed=30; l176 deleted failed=34; l177 deleted failed=0; l72 drop -p failed=44; l74 drop -u failed=1; l269 drop -u failed=1; l96 drop -q failed=1"
     exit: 0
-    ts: "2026-09-26T21:18:38Z"
+    ts: "2026-09-26T22:00:11Z"
     seat: claude-opus-5-5
   - claim: "G9b is not equivalent at 04dd6b51e4 under a hostile PATH, and is on the PR-1 target"
     cmd: "scratch g9b_repro.sh (feasibility hostile-PATH tests on shipped/mutant x 04dd/target; direct heartbeat() probe under PATH=/does-not-exist)"
-    result: 'shipped_04dd 2 failed; mutant_04dd 2 passed; shipped_target 2 passed; mutant_target 2 passed; direct probe: shipped NO-HEARTBEAT, mutant {"ts":"","status":"starting"}'
+    result: 'shipped_04dd 2 failed; mutant_04dd 2 passed; shipped_target 2 passed; mutant_target 2 passed; direct probe: shipped NO-HEARTBEAT, mutant {"ts":"","status":"starting"} (suite as it stood before the ts check)'
     exit: 0
     ts: "2026-09-26T20:17:02Z"
     seat: claude-opus-5-5
@@ -317,21 +331,21 @@ receipts:
     exit: 0
     ts: "2026-09-26T20:42:11Z"
     seat: claude-opus-5-5
-  - claim: "both spec files and the brief are prettier-clean; the YAML parses; no PII shape in the committed files or in any council prompt"
-    cmd: "prettier --check <spec> <inventory> <brief>; python3 -c yaml.safe_load(<inventory>); scratch pii_scan.py <spec> <inventory> <brief> reviews/*.md council-journal.jsonl <3 council prompts>"
-    result: "All matched files use Prettier code style!; yaml ok wa-codex-wrapper-inventory/1 69; pii_scan hits=0 files=11"
-    exit: 0
-    ts: "2026-09-26T21:19:07Z"
-    seat: claude-opus-5-5
-  - claim: "this diff's deterministic Gear floor is 3, sourced from SIZE"
-    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base..index name-only> --numstat-file <same numstat>; ... --print-floor-source"
-    result: "floor=3 source=size (staged diff before this receipt was appended: 10 files, 3,510 insertions, 0 deletions)"
-    exit: 0
-    ts: "2026-09-26T21:22:39Z"
-    seat: claude-opus-5-5
   - claim: "the inventory names every decision re-gate #2 asked for"
     cmd: "grep -nE 'D10|D25|D26|D02|S1|S5' docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml"
     result: "6 lines: was [D10] (G2a), [D25] (G2b), [D26] (G2c), [S1] (G3a), [S5] (G3e), [D02] (G6a); S2-S4 are G3b-G3d, P1-P6 are the G9 rows (§5bis.5)"
     exit: 0
-    ts: "2026-09-26T21:24:44Z"
+    ts: "2026-09-26T22:00:22Z"
+    seat: claude-opus-5-5
+  - claim: "both spec files and the brief are prettier-clean; the YAML parses; no PII shape in the committed files or in any council prompt"
+    cmd: "prettier --check <spec> <inventory> <brief>; python3 -c yaml.safe_load(<inventory>); scratch pii_scan.py <spec> <inventory> <brief> reviews/*.md council-journal.jsonl <3 council prompts>"
+    result: "All matched files use Prettier code style!; yaml ok wa-codex-wrapper-inventory/1 71; pii_scan hits=0 files=11"
+    exit: 0
+    ts: "2026-09-26T22:00:23Z"
+    seat: claude-opus-5-5
+  - claim: "this diff's deterministic Gear floor is 3, sourced from SIZE"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base..index name-only> --numstat-file <same numstat>; ... --print-floor-source"
+    result: "floor=3 source=size (staged diff before this receipt was appended: 10 files, 3,575 insertions, 0 deletions)"
+    exit: 0
+    ts: "2026-09-26T22:02:54Z"
     seat: claude-opus-5-5
