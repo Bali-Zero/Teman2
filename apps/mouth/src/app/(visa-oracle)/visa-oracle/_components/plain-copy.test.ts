@@ -46,10 +46,14 @@ describe("PLAIN_COPY — plain wording over the frozen dictionary", () => {
   }
 
   it("never carries engine vocabulary (guilt samples fire)", () => {
+    // A company's "branch office" is the legal term, not the engine's tree.
     const all = [
-      ...Object.values(PLAIN_COPY.en),
-      ...Object.values(PLAIN_COPY.id),
-    ].join("\n");
+      ...Object.entries(PLAIN_COPY.en),
+      ...Object.entries(PLAIN_COPY.id),
+    ]
+      .filter(([key]) => !(key in PLAIN_COPY_EXEMPT))
+      .map(([, value]) => value)
+      .join("\n");
     for (const [pattern, guilt] of BANNED) {
       expect(guilt).toMatch(pattern);
       expect(all).not.toMatch(pattern);
@@ -57,11 +61,10 @@ describe("PLAIN_COPY — plain wording over the frozen dictionary", () => {
   });
 
   it("covers every customer-facing frozen string that still speaks the engine's language", () => {
-    // `why.*` (the collapsed "Why we ask" disclosure) and the retired
-    // `process.decides_*` / `process.candidates_title` rail blocks are out:
-    // the first is a seam for its own PR, the second no longer renders.
+    // The retired `process.decides_*` / `process.candidates_title` rail
+    // blocks are out: they no longer render.
     const rendered =
-      /^(paths|confirmation|tree|verdict|outcome|assumption|process)\.|^q\.[\w.]+\.hint$/;
+      /^(paths|confirmation|tree|verdict|outcome|assumption|process|why)\.|^q\.[\w.]+\.hint$/;
     const retired = /^process\.(decides_|candidates_title$)/;
     const uncovered: string[] = [];
     for (const language of ["en", "id"] as const) {

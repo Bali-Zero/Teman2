@@ -1,5 +1,6 @@
 import type { Language } from "../_lib/flow";
 import { translate, type I18nKey } from "../_lib/i18n";
+import { PLAIN_WHY } from "./plain-why";
 import { roadCopy } from "./road-copy";
 
 /**
@@ -13,13 +14,14 @@ import { roadCopy } from "./road-copy";
  * placeholders a call site passes keep working. Parity, placeholder
  * agreement and the vocabulary guard live in plain-copy.test.ts.
  *
- * Deliberately NOT overridden: the `why.*` explanations behind "Why we ask"
- * (a collapsed disclosure, 100+ strings of regulatory wording — a seam for
- * its own PR), internal-preview strings, and "branch" where it names a
- * company's branch office.
+ * The "Why we ask" lines (`why.*`, printed inline under every question) live
+ * in plain-why.ts and are merged here. Deliberately NOT overridden:
+ * internal-preview strings, and "branch" where it names a company's branch
+ * office.
  */
 export const PLAIN_COPY = {
   en: {
+    ...PLAIN_WHY.en,
     "paths.counter.label":
       "{{count}} {{plural:purpose — the one you chose|purposes still possible}}",
     "paths.counter.aria":
@@ -80,6 +82,7 @@ export const PLAIN_COPY = {
       "This is context for a person to read; it is not turned into an answer about employment.",
   },
   id: {
+    ...PLAIN_WHY.id,
     "paths.counter.label":
       "{{count}} {{plural:tujuan — yang Anda pilih|tujuan masih mungkin}}",
     "paths.counter.aria":
@@ -189,6 +192,8 @@ export function answeredOf(
  * match the vocabulary guard — each with its reason. */
 export const PLAIN_COPY_EXEMPT: Record<string, string> = {
   "q.investment_foreign_branch": "a company's branch office, not a tree branch",
+  "why.investment_foreign_branch":
+    "a company's branch office, not a tree branch",
   "tree.investment_foreign_branch":
     "a company's branch office, not a tree branch",
   "q.stay_permit_code.opt.E28D": "official permit name",
