@@ -38,17 +38,18 @@ seat_override: >-
   claimed clean by construction.
 
 outcome: >-
-  521 non-evidence tracked files touched (+2 new evidence files, 523 total in the commit),
-  +1841/-1466 (word-for-word substitutions, the two new evidence files, plus a handful of
-  hand-cleaned duplication artifacts — see dissent). A case-insensitive, word-boundary count
-  of "Antonello" (excluding migrations_v2, .github and this pack's own evidence/** directory,
-  which legitimately quotes the literal word to document the sweep) drops from 1521 on
-  origin/main to 67 on the committed tree; every one of the 67 remaining hits was individually
-  read and falls into a KEEP class named in brief.yml `constraints` (kebab/snake compound
-  token, redaction-rule definition, functional identifier, off-limits file, a real
-  file-system path, or one of two files excluded at commit time by a pre-existing PII-gate
-  false positive unrelated to this diff) — none is an accidental miss.
-  py_compile/json.load/yaml.safe_load/bash -n
+  357 non-evidence tracked files touched (+2 new evidence files, 359 total in the commit). A
+  case-insensitive, word-boundary count of "Antonello" (excluding migrations_v2, .github and
+  this pack's own evidence/** directory, which legitimately quotes the literal word to
+  document the sweep) drops from 1521 on origin/main to 498 on the committed tree — a smaller
+  drop than the sweep's own first-pass result (which reached 67) because 162 of the 203
+  touched research/**/*.md files were reverted wholesale at push time (see dissent: R1
+  "generator != grader" gate) rather than left with their word-substitution kept; every one of
+  the remaining hits was individually read and falls into a KEEP class named in brief.yml
+  `constraints` (kebab/snake compound token, redaction-rule definition, functional identifier,
+  off-limits file, a real file-system path, a file excluded by a pre-existing PII-gate false
+  positive, or a file excluded by the R1 adversarial-review gate) — none is an accidental
+  miss. py_compile/json.load/yaml.safe_load/bash -n
   are clean on every touched file of that type. Every test file that references a touched
   module passes individually at the same rate as on origin/main (one pre-existing
   cross-file test-isolation failure was reproduced byte-identically on unmodified origin/main
@@ -59,10 +60,13 @@ diff:
     Mechanical text substitution across markdown, YAML/JSON string values, code comments and
     docstrings, plus a handful of files where a first-pass substitution was caught by self-review and
     reverted because the literal string was functional (a dict key, a substring-match list, a
-    regex pattern, or an off-limits file) rather than prose — see dissent for the full list.
-    No production code path changed behavior: every functional revert restores the ORIGINAL
-    identifier, and every kept prose change is either a comment, a docstring, a markdown file,
-    or a display-text JSON/YAML string value never read back by code for matching.
+    regex pattern, or an off-limits file) rather than prose, plus 162 research/**/*.md files
+    reverted wholesale because they lack the `adversarial_review:` frontmatter the R1 CI gate
+    requires of any touched research file (a pre-existing gap unrelated to this sweep) — see
+    dissent for the full list. No production code path changed behavior: every functional
+    revert restores the ORIGINAL identifier, and every kept prose change is either a comment,
+    a docstring, a markdown file, or a display-text JSON/YAML string value never read back by
+    code for matching.
   measured: >-
     see the receipts entry for the exact `evidence_pack_lint.py --print-measured` invocation
     and its output at pack-authoring time; committing this pack changes its own diff size by
@@ -213,7 +217,33 @@ dissent:
       `git log -1 --format="%an <%ae>" 3f7906cc06` still reads `Antonello Siano
       <noreply@anthropic.com>` on this machine, matching the quote); left the other touched
       evidence file (`fix-crm-company-typed-models-08e94277/brief.yml`, an "Antonello 2026-09-21,
-      Communication Log: ..." attribution quote, not a git-metadata quote) as swept.
+      Communication Log: ..." attribution quote, not a git-metadata quote) as swept — but a
+      SECOND commit later reverted that file too (see the next dissent entry: two brief.yml
+      files in one PR broke evidence-path resolution structurally, independent of content).
+  - seat: .husky/pre-push's Harness-floor-recompute checks (repo CI, run at `git push` time)
+    objection: >-
+      `git push` was BLOCKED twice, by two different deterministic pre-push checks: (1)
+      `scripts/ci/evidence_paths.py --resolve brief` refused to resolve because the PR diff
+      contained TWO `evidence/**/brief.yml` files (this task's own, plus the sibling
+      `fix-crm-company-typed-models-08e94277/brief.yml` touched by the sweep) — ambiguous, by
+      design, since CI cannot guess which is "this PR's own" brief. (2)
+      `scripts/check_adversarial_review.py` (the R1 "generator != grader" gate) FAILED 162 of
+      205 touched `research/**/*.md` files for missing the mandatory `adversarial_review:`
+      frontmatter key — a pre-existing gap on origin/main for every one of those 162 files,
+      exposed only because this sweep's word-substitution put them in the PR's changed-file
+      set (`--diff-filter=AM` scope, no size threshold).
+    status: CONFIRMED
+    disposition: >-
+      (1) reverted the sibling brief.yml a second time, in full, via a dedicated fix commit.
+      (2) reverted all 162 failing research/**/*.md files to their exact origin/main content
+      (verified: `git diff origin/main --stat` on that file list shows zero lines), leaving
+      only the 43 research files that already carried a valid `adversarial_review:` (or a
+      documented `exempt-*` reason) swept. `check_adversarial_review.py --files <the 43>`
+      re-run locally: `PASS — 43 research file(s) carry a valid adversarial review`. Adding the
+      missing frontmatter to 162 files, with a truthful reviewer name, is not something this
+      task is positioned to fabricate — left as a separate, explicit follow-up (not silently
+      dropped: the file list is this dissent entry itself, reproducible via
+      `check_adversarial_review.py --diff origin/main`).
 
 pii_scan: clean
 
@@ -229,10 +259,11 @@ receipts:
     seat: claude-sonnet-5
   - claim: >-
       Same count on the committed tree (excluding this pack's own evidence/** directory,
-      which legitimately quotes "Antonello" to document the sweep) after the full sweep
-      (including the two targeted follow-up passes, all functional reverts, and the two
-      files excluded by the pre-existing PII-gate false positive) is 67, and every one of
-      the 67 was read and falls into a documented KEEP class.
+      which legitimately quotes "Antonello" to document the sweep) after the full sweep,
+      all functional reverts, the two PII-gate-excluded files, AND the 162 files reverted for
+      the R1 adversarial-review gate is 498; every remaining hit falls into a documented KEEP
+      class (the 162 R1-excluded research files account for most of the count vs. the sweep's
+      own first-pass result of 67).
     cmd: >-
       git grep -n -w "Antonello" -- ':!**/migrations_v2/**' ':!.github/**' ':!evidence/**'
     exit: 0

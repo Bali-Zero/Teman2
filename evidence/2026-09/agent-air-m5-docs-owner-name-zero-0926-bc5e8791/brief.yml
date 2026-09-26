@@ -56,9 +56,12 @@ acceptance:
       higher than the same scan on the working tree after this sweep.
     probe: >-
       git grep -c -w "Antonello" <ref> -- ':!**/migrations_v2/**' ':!.github/**' (see pack.yml
-      receipts: 1521 on origin/main -> 67 on the committed tree, all 67 individually reviewed
-      and justified as KEEP classes above; excludes evidence/**, which legitimately quotes the
-      literal word to document this sweep)
+      receipts: 1521 on origin/main -> 498 on the committed tree; every remaining hit falls into
+      a documented KEEP class, the largest being the 162 research/**/*.md files reverted
+      wholesale at push time because they lack the R1 gate's adversarial_review frontmatter
+      (a pre-existing gap, unrelated to this sweep) — the sweep's own first pass, before that
+      revert, had reached 67; excludes evidence/**, which legitimately quotes the literal word
+      to document this sweep)
   - text: >-
       A2: WHEN every touched .py/.json/.yaml/.yml/.sh file is parsed, THE parse SHALL succeed
       with zero errors.
