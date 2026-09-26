@@ -1,0 +1,58 @@
+task: >-
+  Supersedes #7447 (gate verdict REWORK-BUILD, two defects). The same commit (bdc62bbf59, PR #258,
+  2026-04-25) that added the three jsonl removed in #7447 also added three xlsx files under
+  research/compliance/ that #7447 left on public main: 2026-04-24_clients_missing_passport_expiry.xlsx,
+  2026-04-24_drive_dedup_plan.xlsx, crm_guardian_plan.xlsx — all carrying full_name, email, phone,
+  nationality and passport-expiry columns in cleartext. This PR removes all six files (3 jsonl + 3
+  xlsx) in one commit from a fresh origin/main, quarantining every blob off-repo on Pro first
+  (0700/0600, git-hash-object-verified against the origin/main blob ids), and extends the .gitignore
+  coverage to research/compliance/*.xlsx (scripts/crm_guardian_apply.py's EXCEL_OUT constant writes
+  crm_guardian_plan.xlsx into the tracked tree today) alongside the jsonl pattern from #7447.
+lane: research/pii-deep-audit-0424-v2
+machine: m5
+date: 2026-09-27
+
+gear: 3
+gear_reason: >-
+  CI Harness floor run 36266387502 on #7447's head measured `declared gear 2 — deterministic floor 3`,
+  source `size`: net churn 1858 (6 jsonl+gitignore lines from that PR's brief, plus 1382+112+307 jsonl
+  deletions) already exceeded SIZE_GEAR3_THRESHOLD (1828) even before the three (binary, PII-carrying)
+  xlsx are counted. This PR's own diff (3 jsonl deletions + xlsx deletions, binary, 0 line-counted +
+  .gitignore additions) stays above the same floor. No hot-zone path (research/ + .gitignore only),
+  but the size floor alone forces gear 3.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    None of the six files (3 jsonl + 3 xlsx) is tracked on origin/main after merge.
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance | grep -c -E '\.xlsx$|deep_audit_2026-04-24'
+  A2: >-
+    A file matching each producer's output pattern is ignored in research/compliance/.
+    probe: >-
+      git check-ignore -q research/compliance/deep_audit_2026-04-24/plan.jsonl && git check-ignore -q research/compliance/crm_guardian_plan.xlsx
+  A3: >-
+    The canonical detector (clients.full_name + companies.company_name loaded read-only from PROD,
+    same alternation logic as scripts/_redact_pii.py pass4_dynamic) reports 0 hits on whatever remains
+    tracked under research/compliance/deep_audit_2026-04-24/ (expected empty) and the three xlsx names
+    no longer resolve on origin/main.
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance/deep_audit_2026-04-24
+
+out_of_scope: >-
+  scripts/crm_guardian_apply.py and scripts/crm_guardian_deep_audit.py hardcode these exact repo paths
+  as their I/O contract — a real, Pro-local, manual, kill-switch-gated CRM/Drive-consolidation tool,
+  not a dead artifact (same disclosed deviation as #7447). Both already degrade gracefully on absence.
+  Restoring a local, gitignored copy at that path (from the Pro quarantine, or by re-running
+  scripts/crm_guardian_deep_audit.py) for a future local --apply run is an operator decision. Git
+  history still holds the bytes; a rewrite is a separate operator decision (§Solo-operatore).
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/deep-audit-0424/ (0700/0600, all six files
+  hash-object-verified against the origin/main blob ids) are the audit trail and the restore path if
+  scripts/crm_guardian_apply.py needs to resume the I1/I3 consolidation. A dictionary-word name that is
+  neither a CRM token nor non-English would pass the detector; #7447's gate read the residual hits by
+  hand and found none.

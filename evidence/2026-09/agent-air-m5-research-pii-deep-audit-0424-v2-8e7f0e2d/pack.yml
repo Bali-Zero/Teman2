@@ -1,0 +1,92 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+seat_override: >-
+  R9 council quorum (2 distinct COUNCIL_REVIEW_SEATS in a journal.jsonl) not convened. Per
+  modus SKILL.md's anti-sperpero rule, council is not automatic at Gear 3 — only when divergent
+  priors can change the answer AND error costs exceed 15x tokens AND the work has genuine
+  parallel breadth. This PR is a mechanical, well-specified data removal (delete 6 already-
+  identified PII files, extend one .gitignore pattern) reaching Gear 3 purely on the CI size
+  floor (net churn 1871 lines, almost all jsonl deletions), not on architectural ambiguity. One
+  independent cross-family reviewer (Codex CLI, role: review below) ran its own read-only
+  verification against the actual staged diff and returned LGTM with three LOW findings,
+  recorded under `dissent:`, matching the Gear-2 "1 red-team spalla" convention instead of a
+  full council.
+
+lanes:
+  - lane: pii-deep-audit-0424-v2-build
+    role: build
+    seat: claude-sonnet-5 (authoring session — quarantine, deletion, .gitignore, brief/pack)
+  - lane: pii-deep-audit-0424-v2-review
+    role: review
+    seat:
+      codex-gpt-5.6-sol (dispatched via .claude/scripts/codex-spalla.sh; transcript banner
+      reported model gpt-6-astra, provider openai — same Codex CLI seat, current backend)
+
+diff:
+  behaviour_change: >-
+    Deletes six client-PII data files from research/compliance/ on a public repo (3 jsonl under
+    deep_audit_2026-04-24/, 3 xlsx at the directory root), all six added by the same commit
+    bdc62bbf59 (PR #258, 2026-04-25). No code behaviour changes: the two consumer scripts that
+    reference these exact paths (scripts/crm_guardian_apply.py's PLAN_FILE,
+    scripts/crm_guardian_deep_audit.py's PARTIAL_FILE/SKIPPED_FILE) are untouched — both already
+    degrade gracefully on a missing file, verified below. Extends .gitignore with three patterns
+    covering the two producers' output shapes (research/compliance/deep_audit_*/*.jsonl,
+    research/compliance/deep_audit_*/run.log, research/compliance/*.xlsx) so neither can be
+    re-promoted by a future run.
+  surface: >-
+    research/compliance/ data files + .gitignore + this evidence pack. No backend, no frontend,
+    no migration, no credential. Supersedes PR #7447 (gate verdict REWORK-BUILD: left the three
+    xlsx on main, and declared gear 2 against a measured floor of 3).
+
+receipts:
+  - claim: all six PII files quarantined on Pro before deletion, git hash-object on Pro equals the origin/main blob id for every one
+    cmd: "git cat-file -p <blob> | ssh pro-lan 'cat > ~/.agent/pii-quarantine/deep-audit-0424/<file> && chmod 600 ...' ; ssh pro-lan 'git hash-object <file>' for all 6"
+    result: "6/6 match: 62f4066c5c03.../716afe89f5cb.../b269fdc2b4ea... (jsonl) and f0b48d7dbb63.../9b0d38c4442.../3bdc4aef031b... (xlsx), all vs git rev-parse origin/main:<path>"
+    exit: 0
+    ts: "2026-09-27T04:52:00Z"
+    seat: claude-sonnet-5
+  - claim: "canonical PROD-name detector (clients.full_name + companies.company_name, same alternation logic as scripts/_redact_pii.py pass4_dynamic) reports nonzero PII on all six removed files, corroborating the fresh gate's own PR #7447 counts"
+    cmd: python3 pii_detector.py (3 jsonl) and pii_detector_xlsx.py (3 xlsx), scratch scripts, names held in memory only
+    result: "jsonl: plan.jsonl 6296/0/3161, plan.pre-batch03.jsonl 500/0/264, skipped.jsonl 300/0/1 (name/phone/email hits); xlsx: clients_missing_passport_expiry 761/118/403, drive_dedup_plan 3285/2415/441, crm_guardian_plan 1488/0/264 — same order of magnitude as #7447 gate's independently-derived counts"
+    exit: 0
+    ts: "2026-09-27T05:10:00Z"
+    seat: claude-sonnet-5
+  - claim: .gitignore covers every producer output shape without sweeping up legitimate research/compliance/ content
+    cmd: "git check-ignore -q research/compliance/deep_audit_2026-04-24/plan.jsonl && git check-ignore -q research/compliance/crm_guardian_plan.xlsx; git check-ignore -q research/compliance/README.md (expect rc=1); git check-ignore -q research/compliance/2026-06-09-bali-pma-kbli-moratorium-low-risk-block.md (expect rc=1)"
+    result: "plan.jsonl rc=0, crm_guardian_plan.xlsx rc=0, README.md rc=1 (correctly not ignored), the sampled .md report rc=1 (correctly not ignored)"
+    exit: 0
+    ts: "2026-09-27T05:15:00Z"
+    seat: claude-sonnet-5
+  - claim: independent cross-family review (Codex CLI) of the actual staged diff, including its own read-only executed verification, returns LGTM
+    cmd: '.claude/scripts/codex-spalla.sh "review" "main" "<brief - review the 6-file PII deletion + gitignore diff>"'
+    result: 'LGTM. Codex ran its own sandboxed checks: (1) the 6 files added by bdc62bbf59 under research/ equal the 6 staged deletions, none exist on disk, exit 0; (2) all 3 new .gitignore patterns present verbatim in the staged file, and check-ignore holds for every added path plus 2 synthetic sibling paths (deep_audit_synthetic/plan.jsonl, deep_audit_2026-04-24/run.log) while 3 control paths (README.md, a sibling report.md, an unrelated research/other/report.xlsx) are correctly NOT ignored, exit 0; (3) AST-extracted load_plan()/main_async() from crm_guardian_apply.py and _load_processed_ids() from crm_guardian_deep_audit.py, run against the now-absent files with DB access stubbed to raise on any call: every apply mode raises SystemExit("...not found...") before touching the DB, and _load_processed_ids() returns an empty set, exit 0'
+    exit: 0
+    ts: "2026-09-27T04:58:01Z"
+    seat: codex-gpt-5.6-sol (gpt-6-astra)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (gpt-6-astra)
+    objection: >-
+      LOW — scripts/crm_guardian_apply.py:69 stops cleanly (SystemExit, no DB access) when the
+      plan file is missing, but this means a Pro operator who forgets to regenerate/restore the
+      plan before running --apply gets an error instead of a working tool, not silent data loss.
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol (gpt-6-astra)
+    objection: >-
+      LOW — scripts/crm_guardian_deep_audit.py:197 restarts the whole client scan from zero once
+      the deleted checkpoints (plan.jsonl/skipped.jsonl) are gone — resumability is lost for the
+      April run specifically, though the tool remains correct (idempotent, no duplicate writes).
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol (gpt-6-astra)
+    objection: >-
+      LOW — coverage confirmed rather than refuted: .gitignore:950/:951/:957 cover exactly the
+      shapes the two producer scripts write, and all six of bdc62bbf59's original additions are
+      staged for deletion with none left on disk — no gap found in the diff's own stated scope.
+    status: CONFIRMED
+
+unresolved: >-
+  Restoring a local, gitignored copy of plan.jsonl at its old repo path (from the Pro quarantine,
+  or by re-running scripts/crm_guardian_deep_audit.py) before any future scripts/crm_guardian_apply.py
+  --apply run is an operator decision, not automated by this PR (dissent #1). Git history on
+  origin/main still holds all six blobs; a rewrite is a separate operator decision
+  (§Solo-operatore), same posture as #7398/#7411/#7447.
