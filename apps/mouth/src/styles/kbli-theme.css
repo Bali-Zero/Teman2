@@ -404,3 +404,39 @@
   background-size: 16px 8px;
   background-repeat: repeat-x;
 }
+
+/* Specimen card (KBLISearch results): the shared Bali status pill keeps ONE
+   line inside a listbox row. On the detail page the same badge still wraps
+   freely; here a row must not grow to three lines at 390px. The ellipsis is
+   visual only — the full label stays in the DOM and in the option's name. */
+.kbli-specimen-bali {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+.kbli-specimen-bali > span {
+  display: block;
+  max-width: 100%;
+}
+.kbli-specimen-bali > span > span:first-child {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.kbli-specimen-bali > span > span:first-child > span {
+  display: inline;
+}
+.kbli-specimen-bali > span > span:first-child > span + span {
+  margin-left: 0.3em;
+}
+@media (max-width: 479px) {
+  /* the decorative island glyph (aria-hidden) gives its width to the words */
+  .kbli-specimen-bali > span > span:first-child > span:first-child {
+    display: none;
+  }
+  .kbli-specimen-bali > span > span:first-child > span:first-child + span {
+    margin-left: 0;
+  }
+}
