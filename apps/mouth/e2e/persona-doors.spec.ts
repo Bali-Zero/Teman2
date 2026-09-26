@@ -1,64 +1,78 @@
 import { test, expect } from "@playwright/test";
+import { contrast, over, parseColor, type Rgba } from "./support/contrast";
 
 /**
- * Persona doors + single-primary discipline — MYTHOS B2R2 (IA-1 + P2).
+ * Home doors + single-primary discipline (MYTHOS B2R2 IA-1 + P2), on the R19 home.
  *
- * Pins the FOUR "Start where you are." doors (B2R2: tax added as the THIRD
- * door), their targets + copy + order, and the load-bearing brand rule:
- * exactly ONE primary CTA on the page (`.cta-primary`), with zero primary
- * CTAs inside the doors band (rule: no competing peak in that section).
+ * The pre-R19 home carried four "Start where you are." persona-door cards
+ * (data-testid="persona-doors", data-door, "See how it works"). R19 replaced
+ * that band with the hero's "Choose where to start" doors, which link the
+ * existing service pages, and the #tools band, whose ids keep the in-page
+ * anchors the navigation and external links resolve (#visa #kbli #tax
+ * #property). What these tests pin is the contract those cards carried, not
+ * their markup:
+ *   - a door for each of visa, company, tax and property, in that order
+ *   - the four nav anchors resolve to exactly one element each, in #tools
+ *   - exactly ONE primary CTA on the page, and it is the WhatsApp hero
+ *   - the doors band has no competing primary styling
+ *   - the fold's supporting text and the header CTA stay readable
  *
  * Describe title contains "page Page" — required by the CI grep
- * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page"`).
+ * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page|@offline"`).
  */
+const COPPER = "rgb(164, 75, 54)"; // R19 primary, #A44B36
+
+const DOORS = [
+  { door: "visa", label: "Visas & residence", href: "/services/visa" },
+  { door: "company", label: "Business & company", href: "/services/company" },
+  { door: "tax", label: "Tax", href: "/services/tax" },
+  { door: "property", label: "Property", href: "/services/property" },
+  { door: "compliance", label: "Compliance", href: "/services/compliance" },
+] as const;
+
 test.describe("persona doors homepage page Page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
   });
 
-  test("renders the four persona doors with correct targets", async ({
-    page,
-  }) => {
-    const doors = page.getByTestId("persona-doors");
+  test("renders the doors with correct targets", async ({ page }) => {
+    // Old: four cards, /visa /kbli /taxes/gap /property, with the
+    // "I'm moving to Bali" copy. New: the hero doors to the existing service
+    // pages (the four funnels stay reachable through the tool links pinned in
+    // funnel-ctas.spec.ts).
+    const doors = page.locator(".entry-hero .entry-categories");
     await expect(doors).toBeVisible();
-    await expect(doors.getByText("Start where you are.")).toBeVisible();
-
-    const visa = doors.locator('a[data-door="visa"]');
-    const company = doors.locator('a[data-door="company"]');
-    const tax = doors.locator('a[data-door="tax"]');
-    const property = doors.locator('a[data-door="property"]');
-
-    await expect(visa).toHaveAttribute("href", "/visa");
-    await expect(company).toHaveAttribute("href", "/kbli");
-    await expect(tax).toHaveAttribute("href", "/taxes/gap");
-    await expect(property).toHaveAttribute("href", "/property");
-
-    await expect(doors.getByText("I'm moving to Bali")).toBeVisible();
-    await expect(doors.getByText("I'm starting a business")).toBeVisible();
-    await expect(
-      doors.getByText("I'm already here — taxes confuse me"),
-    ).toBeVisible();
-    await expect(doors.getByText("I'm buying property")).toBeVisible();
+    await expect(page.getByText("Choose where to start")).toBeVisible();
+    const links = doors.locator("a");
+    await expect(links).toHaveCount(DOORS.length);
+    for (const [index, { label, href }] of DOORS.entries()) {
+      const link = links.nth(index);
+      await expect(link).toBeVisible();
+      await expect(link).toContainText(label);
+      await expect(link).toHaveAttribute("href", href);
+    }
   });
 
   test("doors are ordered visa · company · tax · property (tax third)", async ({
     page,
   }) => {
     const order = await page
-      .getByTestId("persona-doors")
-      .locator("article a[data-door]")
-      .evaluateAll((els) => els.map((el) => el.getAttribute("data-door")));
-    expect(order).toEqual(["visa", "company", "tax", "property"]);
+      .locator(".entry-hero .entry-categories a")
+      .evaluateAll((els) => els.map((el) => el.getAttribute("href")));
+    expect(order.slice(0, 4)).toEqual(DOORS.slice(0, 4).map((d) => d.href));
   });
 
-  test("door cards carry the #visa/#kbli/#tax/#property nav anchors", async ({
+  test("the #visa/#kbli/#tax/#property nav anchors resolve", async ({
     page,
   }) => {
-    // B2R2: the chips strip is gone — the navbar in-page anchors must
-    // resolve to the door cards. Zero dead anchors.
-    const doors = page.getByTestId("persona-doors");
+    // Old: an <article id> inside the persona-doors band. New: the heading of
+    // each service in #tools carries the id; the header's Explore link points
+    // at #tools itself. Zero dead anchors.
+    await expect(page.locator("#tools")).toHaveCount(1);
+    await expect(page.locator('header a[href="/#tools"]')).toHaveCount(1);
     for (const anchor of ["visa", "kbli", "tax", "property"]) {
-      await expect(doors.locator(`article#${anchor}`)).toHaveCount(1);
+      await expect(page.locator(`#${anchor}`)).toHaveCount(1);
+      await expect(page.locator(`#tools #${anchor}`)).toHaveCount(1);
     }
   });
 
@@ -66,12 +80,8 @@ test.describe("persona doors homepage page Page", () => {
     const primaries = page.locator(".cta-primary");
     await expect(primaries).toHaveCount(1);
 
-    // Structure, not prose. This test used to pin the button's sentence too
-    // ("... avg reply: 2 min"), which made the test the OWNER of that claim:
-    // deleting an unmeasured reply-time promise from the page then read as
-    // breaking CI. Wording is deliberately NOT frozen here. What is
-    // load-bearing is that the one primary is the WhatsApp hero.
-    //
+    // Structure, not prose. What is load-bearing is that the one primary is
+    // the WhatsApp hero: the header's WhatsApp action is the outline variant.
     // R19 copper is #A44B36 = rgb(164,75,54). The href pattern avoids
     // pinning the business number.
     const primary = primaries.first();
@@ -79,27 +89,53 @@ test.describe("persona doors homepage page Page", () => {
       "href",
       /(?:wa\.me|api\.whatsapp\.com)\//,
     );
+    await expect(primary).toBeVisible();
+    await expect(page.locator(".entry-hero .cta-primary")).toHaveCount(1);
     const bg = await primary.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(bg).toBe("rgb(164, 75, 54)");
-    const minHeight = await primary.evaluate(
-      (el) => getComputedStyle(el).minHeight,
+    expect(bg).toBe(COPPER);
+    // Old: exactly 48px. R19's hero action is 52px; the contract is the
+    // touch-target floor.
+    const minHeight = await primary.evaluate((el) =>
+      parseFloat(getComputedStyle(el).minHeight),
     );
-    expect(minHeight).toBe("48px");
+    expect(minHeight).toBeGreaterThanOrEqual(48);
+
+    const header = page.locator(".site-header a[href*='wa.me']");
+    await expect(header).toHaveCount(1);
+    await expect(header).not.toHaveClass(/cta-primary/);
+    expect(
+      await header.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ).not.toBe(COPPER);
   });
 
   test("R19 fold keeps its supporting text and nav CTA readable", async ({
     page,
   }) => {
-    await expect(
-      page.getByText(
-        "Start with visa and residence, company setup, tax, or property.",
-      ),
-    ).not.toHaveCSS("text-shadow", "none");
+    // Old: the hero's supporting sentence carried a text-shadow to stay legible
+    // over the photograph. R19's supporting text sits on its own paper panel;
+    // the panel has to stay opaque enough to hold 4.5:1 over a neutral ground.
+    const neutral: Rgba = [128, 128, 128, 1];
+    for (const selector of [".entry-category-label", ".hero-caption"]) {
+      const { color, background } = await page
+        .locator(selector)
+        .evaluate((el) => {
+          const style = getComputedStyle(el);
+          return {
+            color: style.color,
+            background: style.backgroundColor,
+          };
+        });
+      const panel = over(parseColor(background), neutral);
+      expect(
+        contrast(over(parseColor(color), panel), panel),
+        selector,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
 
     const navCta = page
-      .locator("nav")
+      .locator(".site-header")
       .getByRole("link", { name: /Get Started.*via WhatsApp/i });
     await navCta.hover();
     await expect(navCta).toHaveCSS("background-color", "rgb(234, 227, 216)");
@@ -107,14 +143,21 @@ test.describe("persona doors homepage page Page", () => {
   });
 
   test("doors band contains no red primary styling", async ({ page }) => {
-    const doors = page.getByTestId("persona-doors");
+    // Old: every "See how it works" link was brand navy, no .cta-primary.
+    // New: the doors and the tool links are soft links on paper; none carries
+    // the primary class or the copper fill.
+    const doors = page.locator(".entry-hero .entry-categories");
     await expect(doors.locator(".cta-primary")).toHaveCount(0);
-    // Every door CTA is a soft navy link.
-    for (const door of ["visa", "company", "tax", "property"]) {
-      const link = doors.locator(`a[data-door="${door}"]`);
-      await expect(link).toContainText("See how it works");
-      const color = await link.evaluate((el) => getComputedStyle(el).color);
-      expect(color).toBe("rgb(30, 56, 99)"); // brand navy #1e3863
+    await expect(page.locator("#tools .cta-primary")).toHaveCount(0);
+    for (const { href } of DOORS) {
+      const link = doors.locator(`a[href="${href}"]`);
+      await expect(link).toHaveCount(1);
+      const { color, background } = await link.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return { color: style.color, background: style.backgroundColor };
+      });
+      expect(background).not.toBe(COPPER);
+      expect(color).not.toBe(COPPER);
     }
   });
 });

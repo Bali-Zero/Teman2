@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { NavWhatsAppCTA } from "@/app/v2/_components/NavWhatsAppCTA";
+import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 
 const navigation = [
   { label: "Explore", href: "/#tools" },
@@ -95,6 +98,9 @@ export function SiteHeader() {
           </span>
         </a>
       </nav>
+      <div className="entry-header-cta">
+        <NavWhatsAppCTA variant="whatsapp" />
+      </div>
     </header>
   );
 }
@@ -139,6 +145,18 @@ export function Hero() {
               </li>
             ))}
           </ul>
+          <div className="entry-whatsapp">
+            <WhatsAppLeadButton
+              source="homepage_hero"
+              context={{ section: "hero", page: "home" }}
+              whatsappContext={[{ label: "Source", value: "Homepage Hero" }]}
+              utm={{ page: "/" }}
+              fallbackHref={buildWhatsAppLink("home")}
+              className="cta-primary"
+            >
+              Start on WhatsApp <span aria-hidden="true">↗</span>
+            </WhatsAppLeadButton>
+          </div>
         </div>
       </div>
       <span className="hero-caption">TRADITION, TOMORROW</span>

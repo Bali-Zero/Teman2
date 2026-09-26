@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useR19 } from "@/components/r19/R19Presentation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Search, Newspaper } from "lucide-react";
@@ -19,37 +20,37 @@ const SECTIONS = [
     title: "Visas",
     description: "KITAS, Golden Visa, Digital Nomad, E33G.",
     href: "/visa",
-    accent: "#c8102e",
+    accent: "var(--r19-slate, #c8102e)",
   },
   {
     title: "Business",
     description: "PT PMA, KBLI 2025, licensing, compliance.",
     href: "/kbli",
-    accent: "#d4a017",
+    accent: "var(--r19-slate, #d4a017)",
   },
   {
     title: "Taxes",
     description: "CoreTax, SPT, deadlines per regency.",
     href: "/tax-calendar",
-    accent: "#3a6dff",
+    accent: "var(--r19-slate, #3a6dff)",
   },
   {
     title: "Property",
     description: "Zoning, PT PMA property, eligibility.",
     href: "/property/eligibility",
-    accent: "#22c55e",
+    accent: "var(--r19-slate, #22c55e)",
   },
   {
     title: "Living",
     description: "Digital nomads, daily life, costs, Bali ground truth.",
     href: "/living",
-    accent: "#ec4899",
+    accent: "var(--r19-slate, #ec4899)",
   },
   {
     title: "Tech & Trends",
     description: "AI, SaaS, startup stories from Indonesia.",
     href: "/tech",
-    accent: "#a78bfa",
+    accent: "var(--r19-slate, #a78bfa)",
   },
 ];
 
@@ -102,6 +103,7 @@ export default function NewsPageClient({
   articles: serverArticles,
   initialQuery,
 }: NewsPageClientProps) {
+  const isR19 = useR19();
   const [query, setQuery] = useState(initialQuery ?? "");
   const [visibleCount, setVisibleCount] = useState(12);
   const isSearching = query.trim().length > 0;
@@ -142,7 +144,17 @@ export default function NewsPageClient({
         color: "var(--text-primary)",
       }}
     >
-      <h1 className="sr-only">Bali Zero News</h1>
+      {isR19 ? (
+        <header className="r19-news-masthead">
+          <p className="text-xs uppercase tracking-[0.18em]">
+            Bali Zero · Journal
+          </p>
+          <h1>Bali Zero News</h1>
+          <p>Visas, business, tax and life in Indonesia.</p>
+        </header>
+      ) : (
+        <h1 className="sr-only">Bali Zero News</h1>
+      )}
       {/* Search bar strip */}
       <section
         style={{
@@ -151,7 +163,7 @@ export default function NewsPageClient({
       >
         <div className="max-w-[1400px] mx-auto">
           <label
-            className="flex items-center gap-3 rounded-full pl-4 pr-2 py-2 max-w-[720px] mx-auto"
+            className={`r19-search flex items-center gap-3 rounded-full pl-4 pr-2 py-2 max-w-[720px] ${isR19 ? "" : "mx-auto"}`}
             style={{
               background:
                 "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
@@ -393,7 +405,7 @@ export default function NewsPageClient({
                   <div
                     className="text-[10px] font-semibold uppercase tracking-[0.2em]"
                     style={{
-                      color: CATEGORY_ACCENT[a.category] || "#d4a017",
+                      color: `var(--r19-slate, ${CATEGORY_ACCENT[a.category] || "#d4a017"})`,
                     }}
                   >
                     {formatCategory(a.category)}

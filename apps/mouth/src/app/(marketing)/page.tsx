@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
-import { NavShell } from "@balizero/core/components/NavShell";
-import { BZLogo } from "@balizero/core/components/BZLogo";
+import { Suspense } from "react";
 import { SessionInit } from "@/components/funnel/SessionInit";
-import { MobileNav } from "../v2/_components/MobileNav";
-import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
-import { PersonaDoors } from "../v2/_components/PersonaDoors";
-import { NavWhatsAppCTA } from "../v2/_components/NavWhatsAppCTA";
-import { SocialProof } from "../v2/_components/SocialProof";
-import { socialProofRoster } from "../v2/_components/socialProofRoster";
-import { TopicPills } from "../v2/_components/TopicPills";
-import { NewsHero } from "../v2/_components/NewsHero";
-import { LatestNews } from "../v2/_components/LatestNews";
-import { Footer } from "../v2/_components/Footer";
+import { R19HomeProvider } from "@/components/r19/R19Presentation";
+import { R19_VARS } from "@/components/r19/presentation";
+import { SiteHeader, Hero } from "@/components/r19/home/Entry";
+import { Services } from "@/components/r19/home/Services";
+import { Reviews } from "@/components/r19/home/Reviews";
+import { Evoa } from "@/components/r19/home/Evoa";
+import { SecondHome } from "@/components/r19/home/SecondHome";
+import { Portal } from "@/components/r19/home/Portal";
+import { HomeJournal, JournalPending } from "@/components/r19/home/HomeJournal";
+import { Team } from "@/components/r19/home/Team";
+import { Contact } from "@/components/r19/home/Contact";
+import { Footer } from "@/components/r19/home/Footer";
 import { ZantaraFAB } from "../v2/_components/ZantaraFAB";
-import { getAllArticles } from "@/lib/blog/articles";
-import homepageLayout from "@/content/homepage-layout.json";
-import { RUMAH_VARS, MASTHEAD_VARS } from "@/lib/theme/rumahVars";
+import "@/components/r19/home/home.css";
 
 export const dynamic = "force-dynamic";
 
@@ -36,95 +35,40 @@ export const metadata: Metadata = {
   },
 };
 
-const LATEST_NEWS_COUNT = 5;
-
-// In-page anchors preserved: #visa/#kbli/#tax/#property now resolve to the
-// persona-door cards (B2R2 — the chips strip is gone, tool identities live
-// inside the doors); #news to NewsHero.
-const NAV_ITEMS = [
-  { label: "Visa", href: "/services/visa" },
-  { label: "Business", href: "/services/company" },
-  { label: "Tax", href: "/services/tax" },
-  { label: "Property", href: "/services/property" },
-  { label: "News", href: "/news" },
-];
-
-export default async function HomePage() {
-  const { articles } = await getAllArticles({});
-  const layout = homepageLayout as Record<string, string>;
-  const heroSlugs = new Set(
-    ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
-      .map((k) => layout[k])
-      .filter(Boolean),
-  );
-  const heroArticles = ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
-    .map((k) => articles.find((a) => a.slug === layout[k]))
-    .filter(Boolean) as typeof articles;
-  const preferred = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
-    .map((k) => articles.find((a) => a.slug === layout[k]))
-    .filter(Boolean) as typeof articles;
-  const fallback = articles.filter((a) => !heroSlugs.has(a.slug));
-  const latest = (
-    preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback
-  ).slice(0, LATEST_NEWS_COUNT);
-
+export default function HomePage() {
   return (
-    <div
-      id="top"
-      style={{
-        // Page canvas is Rumah Putih paper — sections paint their own
-        // backgrounds; this guards against dark flashes between them.
-        background: "#f7f6f2",
-        color: "var(--text-primary)",
-        minHeight: "100vh",
-        ...MASTHEAD_VARS,
-      }}
-    >
-      <SessionInit funnel="home" />
-      <NavShell
-        logo={<BZLogo variant="full" size={36} priority />}
-        items={NAV_ITEMS}
-        slotAfter={<MobileNav items={NAV_ITEMS} funnel="home" />}
-        actions={
-          <>
-            <a
-              href="https://kita.balizero.com/"
-              className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
-              style={{
-                background: "transparent",
-                color: "var(--text-secondary)",
-                textDecoration: "none",
-              }}
-            >
-              Login
-            </a>
-            {/* Subhi's WhatsApp CTA — #1216 tracking island
-                (home_whatsapp_cta, trigger: nav). The previous inline copy
-                of this anchor had no onClick (server component); routing it
-                through the island restores the #1216 instrumentation.
-                R19: copper outline keeps the action visible without competing
-                with the hero primary. */}
-            <NavWhatsAppCTA variant="whatsapp" />
-          </>
+    <R19HomeProvider>
+      <div
+        id="top"
+        data-presentation="r19"
+        style={
+          {
+            ...R19_VARS,
+            "--font-sans": '"R19 Home Manrope", Arial, sans-serif',
+            "--font-serif": '"R19 Home Fraunces", Georgia, serif',
+          } as React.CSSProperties
         }
-      />
-      <main id="main-content" style={RUMAH_VARS}>
-        <HeroBlueprint variant="r19" />
-        {/* MYTHOS B2R2: four persona doors (IA-1) are the navigation layer;
-            each door carries its tool identity (ex-FunnelChips, strip
-            removed per Antonello 2026-06-11). */}
-        <PersonaDoors />
-        {/* W2 (SHWEB-20260911): the home shows the founder band — the two
-            founders in the R19 band rhythm — while /v2 keeps SocialProof's
-            default render. Opt-in, so the default is unchanged for everyone
-            else. */}
-        <SocialProof variant="founder-band" {...socialProofRoster()} />
-        <NewsHero articles={heroArticles} />
-        <TopicPills />
-        <LatestNews articles={latest} />
-      </main>
-      <Footer />
-      <ZantaraFAB />
-    </div>
+      >
+        <SessionInit funnel="home" />
+        <div data-r19-home>
+          <SiteHeader />
+          <main id="main-content" tabIndex={-1}>
+            <Hero />
+            <Services />
+            <Reviews />
+            <Evoa />
+            <SecondHome />
+            <Portal />
+            <Suspense fallback={<JournalPending />}>
+              <HomeJournal />
+            </Suspense>
+            <Team />
+            <Contact />
+          </main>
+          <Footer />
+        </div>
+        <ZantaraFAB />
+      </div>
+    </R19HomeProvider>
   );
 }
