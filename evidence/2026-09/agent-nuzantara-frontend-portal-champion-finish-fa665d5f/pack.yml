@@ -47,6 +47,17 @@ dissent:
       15 s keepalives. Not the case: get_proxy_client sets
       httpx.Timeout(300.0, connect=10.0); idle-stream survival through both
       proxies re-proven locally with the production middleware stack.
+  - seat: claude-opus-5-5 xhigh (fresh final gate, round 1)
+    status: CONFIRMED
+    objection: >-
+      Every open Kita tab pinned one connection of the single 50-connection
+      API-to-RAG pool that also carries CRM, dashboard and chat; with 50
+      open streams a heavy GET timed out (gate pool probe). FIXED in
+      85a9783cf1 (the events path gets its own client with a fail-fast pool
+      timeout, closed on shutdown; a Redis preflight returns 503 before
+      streaming) and 4a7dada708 (a hidden tab closes its stream and resumes
+      from its cursor when visible). The same probe with 100 and with 200
+      open streams returns the heavy GET 200 in at most 0.01 s.
 lanes:
   - lane: build
     role: build
@@ -72,6 +83,9 @@ lanes:
   - lane: verify-e2e
     role: review
     seat: claude-opus-5-5
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
 receipts:
   - claim: >-
       Backend targeted suite (portal challenge events/leaderboard,
@@ -181,4 +195,24 @@ receipts:
       cd apps/mouth && ../../node_modules/.bin/vitest run <6 files>
     exit: 0
     ts: "2026-09-26T16:19:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Final-gate condition fix: the gate's own probe through the real
+      create_proxy_router with 100 and with 200 open event streams returns
+      the heavy GET 200 in at most 0.01 s (previous code: ReadTimeout at 50
+      streams), and close_proxy_client closes both clients. New tests are
+      red on 26162e7963 and green now: exact-path stream-pool selection and
+      lifecycle, 503 before streaming when Redis is down, hidden tab closes
+      the EventSource and the visible tab reconnects with ?last_event_id=.
+      Affected backend files 457 passed / 8 skipped (unchanged PG cases);
+      celebration vitest 10/10; tsc clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python pool_probe_fix.py 100
+      (and 200); PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/app/test_rag_proxy_stream.py backend/tests/unit/app/test_rag_proxy_intake_split.py
+      backend/tests/unit/routers/test_dashboard_summary.py backend/tests/unit/services/portal/test_challenge_events.py
+      backend/tests/setup/test_router_manifest.py backend/tests/setup/test_manifest_registration_parity.py;
+      cd apps/mouth && npx vitest run src/components/workspace/PortalChampionCelebration.test.tsx
+    exit: 0
+    ts: "2026-09-26T16:58:26Z"
     seat: claude-opus-5-5
