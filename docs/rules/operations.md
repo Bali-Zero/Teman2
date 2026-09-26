@@ -152,7 +152,7 @@ Read `AUTONOMOUS_OPS.md` (L2 active 2026-04-21) before: `git push`, PR ops, depl
 
 ## 6. Anti-Hallucination
 
-> Errare è umano, allucinare è diabolico. (Antonello, 2026-05-13)
+> Errare è umano, allucinare è diabolico. (Zero, 2026-05-13)
 
 **Mai citare output di un tool senza averlo eseguito in QUESTO turn.** Full discipline in `~/.claude/CLAUDE.md §Anti-hallucination` (5 rules). Load-bearing on every tool call. When in doubt "ho letto X o lo sto inventando?" → tool call adesso.
 

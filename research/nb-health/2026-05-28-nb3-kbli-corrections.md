@@ -6,7 +6,7 @@ notebook_uuid: 933509f9-1561-403d-bd44-4a7a67a36df2
 type: correction-report
 severity: P2
 discovered_by: deep-researcher (primary-source verification, Peraturan BPS 7/2025 PDF 623pp letto direttamente)
-trigger: Antonello challenge "hanno cercato nel KBLI 2025? e la legge BPS di dicembre 2025?"
+trigger: Zero challenge "hanno cercato nel KBLI 2025? e la legge BPS di dicembre 2025?"
 adversarial_review: codex
 sources:
   - research/company/2026-05-28-kbli-2025-bps-december-verify.md
@@ -26,7 +26,7 @@ sources:
 
 Discovered durante verifica fonte primaria del KBLI 2025 per il pivot carosello content creator. NB-3 (Company Setup Indonesia) ground-truth ha 2 imprecisioni materiali + 1 nota di contesto. Nessuna è "bugia": NB-3 cita documenti reali, ma datati/versionati male.
 
-**Decisione su correzione → operatore (Antonello). Questa è una segnalazione, non un auto-edit di NB.** Symbiosis Law 2 (OSINT/NB curati) + Law 5 (Zero decide su strutturale).
+**Decisione su correzione → operatore (Zero). Questa è una segnalazione, non un auto-edit di NB.** Symbiosis Law 2 (OSINT/NB curati) + Law 5 (Zero decide su strutturale).
 
 ---
 

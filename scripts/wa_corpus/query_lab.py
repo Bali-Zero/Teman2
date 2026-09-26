@@ -2,7 +2,7 @@
 
 Reuses sources already loaded in an NB (no re-render/re-add cost) so we can run
 MANY prompt variants quickly and score the answers. Used to perfect the
-prompt-master (Antonello: "fai tanti test per arrivare alla perfezione").
+prompt-master (Zero: "fai tanti test per arrivare alla perfezione").
 
 Scoring (per answer, all source-grounded):
   - n_citations: how many verbatim cited_text references NLM returned

@@ -50,7 +50,7 @@ async def test_ask_openclaw_whatsapp_returns_reply(monkeypatch) -> None:
     reply = await bridge.ask_openclaw_whatsapp(
         phone="628123",
         message_text="ciao",
-        sender_name="Antonello",
+        sender_name="Zero",
         message_id="wamid.1",
         context={"detected_language": "it"},
     )

@@ -1,6 +1,6 @@
 # Ghostty — Nuzantara fleet profile
 
-The terminal Antonello actually works in, on Pro / M5 / Mini, kept in one place
+The terminal Zero actually works in, on Pro / M5 / Mini, kept in one place
 and under review instead of drifting per machine.
 
 ## Why this exists

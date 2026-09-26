@@ -416,7 +416,7 @@ run_evoskill() {
     #
     # We ALSO set GIT_AUTHOR_* + GIT_COMMITTER_* so EvoSkill's
     # internal commits carry a clear "agent-library-evolver" identity
-    # rather than inheriting Antonello's git config — keeps the
+    # rather than inheriting Zero's git config — keeps the
     # audit trail clean if anyone greps the program/* refs.
     if ! (
         cd "${EVOSKILL_DIR}" && \

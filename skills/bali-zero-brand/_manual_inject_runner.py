@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """WR2 Manual Topic Injection Runner.
 
-Entry point per Antonello/Damar che salta selezione topic autonoma e
+Entry point per Zero/Damar che salta selezione topic autonoma e
 invia direttamente topic+report al wr2-design-architect via Claude CLI.
 
 Workflow:
@@ -53,7 +53,7 @@ def build_prompt(topic: str, report: str, archetype: str | None,
     topic+report (skipping autonomous topic selection)."""
     parts = [
         "You are wr2-design-architect. Skip the topic-selection step.",
-        "A human (Antonello / Damar) has already chosen the topic and",
+        "A human (Zero / Damar) has already chosen the topic and",
         "provided a research report. Your job: produce a complete carousel",
         "package using your standard pipeline, starting from Step 2 (brief",
         "interpretation), all the way through Step 7 (queue handoff).",

@@ -3770,7 +3770,7 @@ Write to `docs/adr/ADR-012-nb-mitochondrial-monitor-bootstrap-json.md`:
 # ADR-012: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
 
 **Status:** Accepted (2026-05-07)
-**Authors:** Antonello Siano (Zero), Claude Opus 4.7
+**Authors:** Zero (Zero), Claude Opus 4.7
 **Related:** spec `2026-05-07-nb-mitochondrial-monitor-design.md`
 
 ## Context

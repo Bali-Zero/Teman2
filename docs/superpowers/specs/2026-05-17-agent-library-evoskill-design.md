@@ -51,7 +51,7 @@ Panel artifacts (ephemeral, not git-tracked — recreate via `scripts/agent-libr
 
 PR #700 ha mergiato 2 file markdown statici (`02-patterns.md`, `03-lessons.md`)
 nella `agent-library/`. Già al merge avevano numeri stale (60 NB scritti,
-50 reali). Antonello chiede una versione **auto-evolving**:
+50 reali). Zero chiede una versione **auto-evolving**:
 auto-rifornimento, auto-pensiero, auto-miglioramento.
 
 Research SOTA (3-LLM panel: Gemini killed by 429, DeepSeek + Codex + WebSearch)
@@ -236,12 +236,12 @@ docs/superpowers/specs/
 │     - mv passed-lint/* → agent-library/proposals/YYYY-MM-DD/        │
 │     - git add + commit on branch auto/agent-library-YYYY-MM-DD      │
 │     - gh pr create --draft with synthesis of proposals               │
-│     - Telegram alert to Antonello                                    │
+│     - Telegram alert to Zero                                    │
 └──────────────────────────────┬──────────────────────────────────────┘
                                 │
                                 ▼ (HUMAN GATE)
                               ┌──────────────────┐
-                              │ Antonello review │
+                              │ Zero review │
                               │ Merge or close   │
                               └──────────────────┘
 ```
@@ -339,7 +339,7 @@ done
 
 **Historical note — why we ruled out Codex CLI**: v1 spec considered Codex CLI
 (ChatGPT Pro $0 marginal). v1 panel finding #2 HIGH ruled it out: autonomous
-loops trigger Cloudflare protections + 500-msg/3h quota risk locks Antonello's
+loops trigger Cloudflare protections + 500-msg/3h quota risk locks Zero's
 daily Pro access. v3 chose DeepSeek API ($0.10-0.20/run) as cheap insurance.
 This is design decision rationale, NOT active config — Codex is fully removed
 from pipeline (no `provider=codex` anywhere; src/harness/codex/ DELETED in
@@ -355,7 +355,7 @@ A proposal in `proposals/YYYY-MM-DD/` is **eligible for merge** if ALL gates pas
 2. **Entailment check PASS** (step 3b, v3 MANDATORY): Gemini "claim supported by cited content?" → YES
 3. **NOT duplicate** (v4 unified): FTS5 BM25 score vs all current `02-patterns.md` + `03-lessons.md` entries — top match score ≥ 1.5 (lower = more similar = reject). NO cosine/embedding (deterministic, no embedding model needed).
 4. **Not deprecated topic**: scope not in `agent-library/deprecated.yaml` (v2)
-5. **Antonello manual approval**: PR draft must be marked `ready-for-review` then merged
+5. **Zero manual approval**: PR draft must be marked `ready-for-review` then merged
 
 Any gate FAIL → proposal moved to `agent-library/proposals/YYYY-MM-DD/rejected/` with rationale logged.
 
@@ -460,7 +460,7 @@ raise ImportError(...)` happens BEFORE `ensure_provider_api_key(...)`
 - Write `~/Library/LaunchAgents/...` plist bootstrapping the wrapper
   Sunday 03:00 WITA.
 - Manual trigger first run via `launchctl start ...`, observe Telegram
-  alert + PR draft, Antonello reviews proposal quality.
+  alert + PR draft, Zero reviews proposal quality.
 
 ### Phase 2 — 4 weekly runs auto
 

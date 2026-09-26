@@ -69,7 +69,7 @@ def main() -> int:
         f"Regola R1: i tool pesanti vivono sul Pro, NON su M5 (blast-radius minimo, telecomando leggero).\n"
         f"Usa il Pro via SSH invece di installare localmente:\n"
         f"  ssh pro '{hit[0]} ...'        # il tool gira sul Pro, l'output torna qui\n"
-        f"Se serve VERAMENTE in locale (caso eccezionale, chiedi ad Antonello): M5_HEAVY_BREW_GUARD=off.\n"
+        f"Se serve VERAMENTE in locale (caso eccezionale, chiedi ad Zero): M5_HEAVY_BREW_GUARD=off.\n"
     )
     return 2  # exit 2 = blocca il tool call
 

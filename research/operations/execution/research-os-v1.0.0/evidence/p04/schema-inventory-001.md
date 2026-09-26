@@ -416,7 +416,7 @@ by-gate.
 
 **Versioning/supersession**: none. `episode_id` is the sole identity key. `contract_versions` versions
 the agents that ran, not the episode. `post-assembler.yaml:79` calls the manifest "the immutable artifact
-Antonello reviews pre-publish" — that is doc prose, not an enforced write-once guard.
+Zero reviews pre-publish" — that is doc prose, not an enforced write-once guard.
 
 ---
 

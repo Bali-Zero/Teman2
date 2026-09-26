@@ -7,7 +7,7 @@ that silence reads as "nobody is there". This module sends ONE short
 "got it, checking" message right after triage, before the slow path —
 only when the question looks non-trivial, throttled per phone.
 
-Decision requested by Antonello 2026-06-11 (lever C of
+Decision requested by Zero 2026-06-11 (lever C of
 research/operations/2026-06-08-zantara-wa-latency-routing-spec.md).
 
 Kill-switch: WHATSAPP_ACK_ENABLED=false (default enabled).

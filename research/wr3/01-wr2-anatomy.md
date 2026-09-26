@@ -3,14 +3,14 @@ date: 2026-05-18
 domain: wr3-design
 client_case: WR3 Video Production Room — Step 1 anatomy WR2 predecessor + agent-craft patterns NB-AGENTS + 4-LLM panel synthesis
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + NB-AGENTS query + my own codebase reading) + WR2 source files
-status: draft pending Antonello decision gate
+status: draft pending Zero decision gate
 adversarial_review: codex
 adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retraction annotations ONLY. Two claims, both RETRACTED, DO NOT RESTORE either: (1) the Kim et al. 17.2x citation — it measures Independent (no coordination), not peer-to-peer, and Table 4 gives p=0.658; (2) the 'Centralized best' ranking written while correcting (1) — Table 5 reads Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370, and the paper states no single architecture dominates. The dated body below was NOT re-reviewed and is not certified by this key." RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule]
 ---
 
 # WR3 Step 1 — Anatomy WR2 + Agent-craft Pattern Library
 
-**Date**: 2026-05-18 00:15 WITA · **Author**: WR3 design phase, Step 1 of 6 · **Step process**: my draft → NB-AGENTS query → 4-LLM panel → synthesis (this doc) → Antonello decision gate
+**Date**: 2026-05-18 00:15 WITA · **Author**: WR3 design phase, Step 1 of 6 · **Step process**: my draft → NB-AGENTS query → 4-LLM panel → synthesis (this doc) → Zero decision gate
 
 ## TL;DR — what we learned about WR2 + what to carry into WR3
 
@@ -62,7 +62,7 @@ Output: structured KEY=value lines, parseable via `grep '^KEY='`. Exit 0 = PASS.
 
 - **Voyager curriculum**: weekly inspect last 30 carousels. If topic-type underrepresented (e.g. "0 tax carousels last 14 days"), generate 1 exploratory variant for next cycle, tag `exploration:true`.
 
-- **Skill graduation**: `_proposed/` skill → `/layouts` after **3 successful uses** (critic ≥ threshold + Antonello approval). Unused 60 days → `_archived/`.
+- **Skill graduation**: `_proposed/` skill → `/layouts` after **3 successful uses** (critic ≥ threshold + Zero approval). Unused 60 days → `_archived/`.
 
 ### A.5 Centralized state + anti-pattern enforcement
 
@@ -92,7 +92,7 @@ Output: structured KEY=value lines, parseable via `grep '^KEY='`. Exit 0 = PASS.
 - **Dual brief propagation (R3a)**: brief.json travels verbatim with every subagent call (storyboarder + layout-composer). Previous bug: orchestrator's prose synthesis lost voice_register + bilingual_lexicon + taboo_check → S6 mappazza + bilingual untranslated terms.
 - **Vision pre-pass (R3b)**: before invoking expensive Opus critic, run Haiku 4.5 binary vision check on every hero PNG ("does image semantically match brief topic+hook? PASS/FAIL"). Catches hallucination snowballing (arXiv 2509.21789) at $0.20 per slide.
 
-### A.6 Hard rules constitution (cannot override without Antonello approval)
+### A.6 Hard rules constitution (cannot override without Zero approval)
 
 14 articles: aspect ratio 1080×1350 portrait, palette closed token namespace (antracite + black + white + yellow + red, NEVER green/blue/purple), logo `3 ALI ZERO` bottom every slide, single bold geometric sans-serif UPPERCASE, editorial 35mm photo style with teal-amber, regulatory citations verbatim (`PP 18/2021` NOT "the 2021 regulation"), bilingual lexicon never translated (KITAS/PT PMA/KBLI/SHGB), body 25-50 words/slide, closing statement-bomb single-line NO CTA hard-sell, forbidden phrases list closed, anti-cliché images (no palms/beaches/sunsets/handshakes), spell-check verbatim, slide count 7-10 hero 4-6, no hallucinated brand attributes (always token names not hex).
 
@@ -280,7 +280,7 @@ The convergent findings let us write the verb-list more precisely. **Patterns to
 
 5. **DeepSeek 4-LLM panel completion**: Step 1 dossier closes with 3-LLM convergent (Gemini + Codex + NB-AGENTS). DeepSeek as 4th member not yet delivered — will add as addendum if/when it arrives. Pattern emerged is solid without it.
 
-## Decision gate (Antonello)
+## Decision gate (Zero)
 
 **Per the locked process**: this dossier is the Step 1 output. Decisions to take before Step 2:
 

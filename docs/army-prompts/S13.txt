@@ -20,7 +20,7 @@ TOPOLOGIA:
 - MECCANICO (1, serial): research/agent-library/S13-evolution-FROZEN.json + N skill draft
   in _proposed/ + overlap matrix. commit → push → PR draft → STOP.
 
-VINCOLI: NON modificare agenti in produzione. Proposte in _proposed/, Antonello approva
+VINCOLI: NON modificare agenti in produzione. Proposte in _proposed/, Zero approva
 append a lessons.md. OUTPUT: FROZEN + draft + matrix. --release.
 
 Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:

@@ -27,7 +27,7 @@ SESSION="${1:?manca tmux-session}"
 ARMY="${2:?manca army-name}"
 LOG_FILE="${3:?manca log-file}"
 
-# Chat Telegram destinatario degli alert armata (Antonello, @Balizerobot).
+# Chat Telegram destinatario degli alert armata (Zero, @Balizerobot).
 TG_CHAT_ID="${WA_ARMY_TG_CHAT_ID:-8865544795}"
 # Timeout massimo di sorveglianza (default 6h). Oltre, smette di seguire.
 MAX_WATCH_S="${WA_ARMY_MAX_WATCH_S:-21600}"

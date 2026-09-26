@@ -28,7 +28,7 @@ Una volta orientato, chiedimi quale fase devo avanzare. Le fasi pendenti sono:
 - **Phase 2**: Setup Team estensione (NB-INTEL-Property + NB-INTEL-Labor) — vedi `docs/superpowers/prompts/domain-mesh/01-phase2-setup-team-extend.md`
 - **Phase 3 / B2**: Tax Engine — vedi `docs/superpowers/prompts/domain-mesh/02-phase3-tax-engine.md`
 - **Phase 4 / B3**: Marketing Pulse — vedi `docs/superpowers/prompts/domain-mesh/03-phase4-marketing.md`
-- **Phase 5 / B4**: Antonello Lab — vedi `docs/superpowers/prompts/domain-mesh/04-phase5-antonello-lab.md`
+- **Phase 5 / B4**: Zero Lab — vedi `docs/superpowers/prompts/domain-mesh/04-phase5-antonello-lab.md`
 - **Phase 6 / B5**: Bali Macro — vedi `docs/superpowers/prompts/domain-mesh/05-phase6-bali-macro.md`
 - **Phase 7 / B6**: Nexus OSINT — vedi `docs/superpowers/prompts/domain-mesh/06-phase7-nexus-osint.md`
 - **Phase 8**: Cross-domain layer (federation graph + alert dispatcher + skill graduation)

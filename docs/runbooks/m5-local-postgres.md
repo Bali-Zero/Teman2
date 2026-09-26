@@ -71,7 +71,7 @@ bash scripts/nuz_db_refresh.sh
   migration trips "relation … does not exist", make it self-contained (`CREATE TABLE IF NOT EXISTS`),
   the pattern proven on PR #1111.
 - **Pull-only**: `nuz_db_refresh.sh` never writes to Fly; if the readonly role hits a permission
-  error mid-dump, the script STOPS — surface to Antonello, do NOT escalate the role (W38 spirit).
+  error mid-dump, the script STOPS — surface to Zero, do NOT escalate the role (W38 spirit).
 - **PII**: prod dumps contain client PII (UU PDP). They stay on M5 (Law 6), dir 700 / files 600,
   never synced out. The Pro's own local PG is never touched (Law 2).
 

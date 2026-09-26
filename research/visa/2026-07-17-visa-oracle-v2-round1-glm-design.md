@@ -9,7 +9,7 @@ adversarial_review: codex
 
 # Visa Oracle — Design-Language Proposal
 
-Ciao Antonello. Prima di entrare nel dettaglio: la mia raccomandazione di testa è **"albero decisionale vivo" come metafora primaria**, **costellazione/oracolo come sola atmosfera**, e come vero *moat* del prodotto non il quiz ma la **onestà radicale e citabile** (separazione ufficiale vs agenzia, assunzioni dichiarate, fonti Datjen verificate). Sotto il corpo tecnico in inglese (è un design doc, va a designer/dev e pullula di termini tecnici EN) — la riga finale in italiano con i prossimi passi.
+Ciao Zero. Prima di entrare nel dettaglio: la mia raccomandazione di testa è **"albero decisionale vivo" come metafora primaria**, **costellazione/oracolo come sola atmosfera**, e come vero *moat* del prodotto non il quiz ma la **onestà radicale e citabile** (separazione ufficiale vs agenzia, assunzioni dichiarate, fonti Datjen verificate). Sotto il corpo tecnico in inglese (è un design doc, va a designer/dev e pullula di termini tecnici EN) — la riga finale in italiano con i prossimi passi.
 
 ---
 

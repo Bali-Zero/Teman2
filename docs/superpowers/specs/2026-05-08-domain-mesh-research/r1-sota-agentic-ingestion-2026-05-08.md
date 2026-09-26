@@ -1,6 +1,6 @@
 # R1 — SOTA Agentic Ingestion, Knowledge Graphs, RAG, Memory, Self-Improvement, Multi-Agent Orchestration & Observability (2026-05-08)
 
-**Mission**: research report for Antonello Siano (Bali Zero / Nuzantara), designing a multi-domain autonomic system on top of NotebookLM + cron + LLM stack (Claude OAuth MAX, Gemini, Codex, DeepSeek, Ollama). Six knowledge domains: immigration/company, tax, marketing, AI/research, Indonesia macro, OSINT. Universal lifecycle: birth → growth → self-correction → self-aware → fruits-to-system. Constraint: zero paid Anthropic tokens, OSS-first, self-hostable, free-tier or local where possible.
+**Mission**: research report for Zero (Bali Zero / Nuzantara), designing a multi-domain autonomic system on top of NotebookLM + cron + LLM stack (Claude OAuth MAX, Gemini, Codex, DeepSeek, Ollama). Six knowledge domains: immigration/company, tax, marketing, AI/research, Indonesia macro, OSINT. Universal lifecycle: birth → growth → self-correction → self-aware → fruits-to-system. Constraint: zero paid Anthropic tokens, OSS-first, self-hostable, free-tier or local where possible.
 
 **Method**: 7 sections, primary sources cited verbatim with full URLs, "useful for Bali Zero" line per item. No extrapolation beyond what sources state.
 
@@ -116,7 +116,7 @@ The pipeline pattern Bali Zero's `NB-INTEL` already executes (cron-fed scraper �
 
 **Pattern key**: Leiden community detection over the entity graph → per-community LLM-summarized "report" → "global" queries hit reports first, "local" queries hit raw entities. Cost: O(N) LLM calls at index time; queryside can be one-shot.
 
-**Useful for Bali Zero**: HIGH — exactly what's missing today. Bali Zero's NB-INTEL surfaces _items_, but doesn't yet auto-summarize per-domain "themes of the week / month". GraphRAG community-summary layer would let an Antonello query like "What are the recurring property compliance themes across all client cases this quarter?" return a coherent meta-answer.
+**Useful for Bali Zero**: HIGH — exactly what's missing today. Bali Zero's NB-INTEL surfaces _items_, but doesn't yet auto-summarize per-domain "themes of the week / month". GraphRAG community-summary layer would let an Zero query like "What are the recurring property compliance themes across all client cases this quarter?" return a coherent meta-answer.
 
 ### 1.6 LightRAG (HKU, EMNLP 2025) — Simple, fast, dual-level
 
@@ -401,7 +401,7 @@ Beyond memory, Cognee explicitly supports **ontology grounding** — you supply 
 
 **Mechanism**: 3-tier strategy — (A) no retrieval (LLM answers from parametric knowledge), (B) single-hop retrieval, (C) iterative multi-hop retrieval. A small classifier picks the tier per query.
 
-**Useful for Bali Zero**: HIGH — drop-in optimization for any of Bali Zero's RAG queries. Trivial questions ("when is the SPT deadline?") don't need to hit Qdrant at all; complex ones ("what changed in 2026 KBLI 79902 vs 2024?") need iterative retrieval. Saves token cost and latency, especially relevant since DeepSeek charges per-token (Antonello does pay there).
+**Useful for Bali Zero**: HIGH — drop-in optimization for any of Bali Zero's RAG queries. Trivial questions ("when is the SPT deadline?") don't need to hit Qdrant at all; complex ones ("what changed in 2026 KBLI 79902 vs 2024?") need iterative retrieval. Saves token cost and latency, especially relevant since DeepSeek charges per-token (Zero does pay there).
 
 ### 3.4 RAG-Fusion
 
@@ -429,7 +429,7 @@ Beyond memory, Cognee explicitly supports **ontology grounding** — you supply 
 
 **Mechanism**: query → LLM generates a _hypothetical answer document_ → embed _that document_ (not the query) → retrieve real docs by similarity. The hypothetical doc is closer to real docs in embedding space than a question is.
 
-**Useful for Bali Zero**: HIGH for cross-language searches (Italian Antonello question → English/Bahasa documents). HyDE in Italian/EN/Bahasa dramatically improves cross-language recall.
+**Useful for Bali Zero**: HIGH for cross-language searches (Italian Zero question → English/Bahasa documents). HyDE in Italian/EN/Bahasa dramatically improves cross-language recall.
 
 ### 3.6 Anthropic Contextual Retrieval (2024)
 
@@ -473,7 +473,7 @@ Beyond memory, Cognee explicitly supports **ontology grounding** — you supply 
 
 **Pattern**: production systems combine Self-RAG's reflection tokens with CRAG's evaluator-driven fallback (web search) in a LangGraph state machine. The state machine handles: retrieve → evaluate → IF poor → web fallback → re-evaluate → generate → self-critique → answer.
 
-**Useful for Bali Zero**: HIGH — operational reference. Antonello's autonomic system architecture should explicitly have _both_ an evaluator (CRAG-style) and a reflection step (Self-RAG-style); they solve different failure modes.
+**Useful for Bali Zero**: HIGH — operational reference. Zero's autonomic system architecture should explicitly have _both_ an evaluator (CRAG-style) and a reflection step (Self-RAG-style); they solve different failure modes.
 
 ---
 
@@ -524,7 +524,7 @@ Beyond memory, Cognee explicitly supports **ontology grounding** — you supply 
 
 **Save/forget logic**: each new memory becomes a Zettelkasten "note" — auto-tagged, auto-linked to similar existing notes, and _historical notes can be updated when new ones land_. This is the strongest version of "memory evolution" in the published literature.
 
-**Useful for Bali Zero**: HIGH — closest match to "the system is conscious of its own choices" requirement. The Zettelkasten model is also already the discipline Antonello uses (memory MD files in `~/.claude/projects/...`). A-MEM is essentially the formalization of that pattern.
+**Useful for Bali Zero**: HIGH — closest match to "the system is conscious of its own choices" requirement. The Zettelkasten model is also already the discipline Zero uses (memory MD files in `~/.claude/projects/...`). A-MEM is essentially the formalization of that pattern.
 
 ### 4.5 MemoryBank (Zhong et al., 2023, AAAI 2024)
 
@@ -740,7 +740,7 @@ Per Sakana AI Scientist v2 + Auto-Dream: at-night compute is the right architect
 
 **Pattern**: orchestrator-worker. Lead = Opus, workers = Sonnet, parallel execution, results aggregated by lead.
 
-**Useful for Bali Zero**: VERY HIGH — Antonello already runs this pattern (wave-orchestrator with parallel agents on independent tasks per CLAUDE.md). The 15x token cost note is _not_ a constraint with OAuth MAX (3 plans). The "less effective for tightly interdependent tasks like coding" caveat is also accurate — already learned from `wave2-pro` discoveries (CLAUDE.md mentions cap 4 sessions parallel).
+**Useful for Bali Zero**: VERY HIGH — Zero already runs this pattern (wave-orchestrator with parallel agents on independent tasks per CLAUDE.md). The 15x token cost note is _not_ a constraint with OAuth MAX (3 plans). The "less effective for tightly interdependent tasks like coding" caveat is also accurate — already learned from `wave2-pro` discoveries (CLAUDE.md mentions cap 4 sessions parallel).
 
 ### 6.2 AutoGen v0.4 (Microsoft)
 
@@ -803,7 +803,7 @@ Per Sakana AI Scientist v2 + Auto-Dream: at-night compute is the right architect
 
 **Pattern**: handoffs — explicit "transfer the conversation to AgentX". Different from orchestrator-worker (which is delegate-and-collect).
 
-**Useful for Bali Zero**: REFERENCE — handoffs pattern is useful for _single-thread_ multi-agent (e.g. Triage agent → routes to Visa specialist OR Tax specialist OR Property specialist). But OpenAI-stack only — duplicative given Antonello's Codex CLI access.
+**Useful for Bali Zero**: REFERENCE — handoffs pattern is useful for _single-thread_ multi-agent (e.g. Triage agent → routes to Visa specialist OR Tax specialist OR Property specialist). But OpenAI-stack only — duplicative given Zero's Codex CLI access.
 
 ### 6.6 Google Agent Development Kit (ADK) — 2025
 
@@ -864,7 +864,7 @@ Already runs on AutoGen v0.4 and supports any LLM via LiteLLM. Self-hostable, no
 
 **Pattern Blackboard**: shared workspace where any agent can post insights; opportunistic execution as their preconditions become satisfied.
 
-**Useful for Bali Zero**: HIGH — Antonello's existing _bipolar verifier_ (1 LLM main + 1 NB ground truth) is a 2-agent debate degenerate. Could expand to a 3-agent "Claude + Gemini + DeepSeek + NB-X" mini-debate per critical decision. Already documented as ad-hoc pattern in CLAUDE.md.
+**Useful for Bali Zero**: HIGH — Zero's existing _bipolar verifier_ (1 LLM main + 1 NB ground truth) is a 2-agent debate degenerate. Could expand to a 3-agent "Claude + Gemini + DeepSeek + NB-X" mini-debate per critical decision. Already documented as ad-hoc pattern in CLAUDE.md.
 
 ### 6.9 MetaGPT (covered §1.7 / extended below)
 
@@ -922,7 +922,7 @@ Already runs on AutoGen v0.4 and supports any LLM via LiteLLM. Self-hostable, no
 
 **Features**: traces, sessions, prompt management, evals (LLM-as-judge), user feedback collection, datasets, experiments. Integrates with OpenTelemetry, LangChain, OpenAI SDK, LiteLLM.
 
-**Useful for Bali Zero**: VERY HIGH — Antonello's stack already has `~/.langfuse-secrets.env` per ls of root. Self-hosted on Mini-Pro2 (Postgres + ClickHouse + Node frontend), gives full observability across Claude/Gemini/Codex/DeepSeek/Ollama. Single pane of glass. **Top recommendation**.
+**Useful for Bali Zero**: VERY HIGH — Zero's stack already has `~/.langfuse-secrets.env` per ls of root. Self-hosted on Mini-Pro2 (Postgres + ClickHouse + Node frontend), gives full observability across Claude/Gemini/Codex/DeepSeek/Ollama. Single pane of glass. **Top recommendation**.
 
 ### 7.2 LangSmith (LangChain SaaS, not self-hostable)
 
@@ -1027,7 +1027,7 @@ Already runs on AutoGen v0.4 and supports any LLM via LiteLLM. Self-hostable, no
 - Anthropic prompt caching (1h TTL): cuts cost ~90% on repeated context. Works automatically on `claude` CLI per Anthropic docs.
 - Helicone offers cache-on-proxy across providers (useful for non-Anthropic).
 
-**Useful for Bali Zero**: VERY HIGH — set up Langfuse on Mini, OpenLLMetry SDK in every Python entry point, route OTel to Langfuse + Phoenix. Cost dashboards + rage-flag alerts when DeepSeek run >$0.05 (Antonello's only paid endpoint).
+**Useful for Bali Zero**: VERY HIGH — set up Langfuse on Mini, OpenLLMetry SDK in every Python entry point, route OTel to Langfuse + Phoenix. Cost dashboards + rage-flag alerts when DeepSeek run >$0.05 (Zero's only paid endpoint).
 
 ---
 

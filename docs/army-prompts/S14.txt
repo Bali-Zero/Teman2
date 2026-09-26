@@ -21,7 +21,7 @@ TOPOLOGIA (nb-curator agent Mode C + agy ingestion):
 - MECCANICO (1, serial): research/nb-health/S14-curation-FROZEN.json (64 NB × salute) +
   proposte curation prioritizzate. commit → push → PR draft → STOP.
 
-VINCOLI: NB curati (NB-0..14) — proposte dedup/summarize, Antonello approva delete. Mai
+VINCOLI: NB curati (NB-0..14) — proposte dedup/summarize, Zero approva delete. Mai
 delete autonomo di source. OUTPUT: FROZEN + proposte. --release.
 
 Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:

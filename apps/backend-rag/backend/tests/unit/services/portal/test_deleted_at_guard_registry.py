@@ -256,7 +256,7 @@ def test_deleted_at_guard_registry_matches_disk() -> None:
     If this fails because a method GAINED a `deleted_at` filter: that
     progressively locks archived (soft-deleted) clients out of more of the
     portal. Whether that's correct is a business decision reserved to the
-    owner (Antonello) — it has been explicitly deferred, not decided. Do
+    owner (Zero) — it has been explicitly deferred, not decided. Do
     NOT just update this registry to match; get the decision made first,
     then update DELETED_AT_GUARD_REGISTRY in the same PR as a deliberate,
     reviewable act.

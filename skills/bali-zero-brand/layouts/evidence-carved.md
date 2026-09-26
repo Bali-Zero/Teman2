@@ -2,7 +2,7 @@
 
 > Frame slide replacement. Replaces the older `dark-status-list` "FACTS (SOURCED) VS OUR TAKE" pattern. Uses Hammurabi cuneiform stele as background — historical, authoritative, evokes "law carved into stone". Title focus shifts from "FACTS / OUR TAKE" to "THE EVIDENCE" (or domain-specific: THE RECORD / THE CODE / THE LEDGER / WHAT THE LAW SAYS), bullets are pure facts verbatim, single closing line is small Bali Zero comment.
 
-> Added 2026-05-09 after Antonello feedback: previous frame slide titled "FACTS (SOURCED) VS OUR TAKE" gave equal weight to facts and opinion. New design subordinates the comment to the facts.
+> Added 2026-05-09 after Zero feedback: previous frame slide titled "FACTS (SOURCED) VS OUR TAKE" gave equal weight to facts and opinion. New design subordinates the comment to the facts.
 
 ## When to use
 
