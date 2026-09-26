@@ -15,14 +15,20 @@ Logic:
   3. If now < work-end → ALERT (entro finestra lavoro)
   4. If now >= work-end → silence (fine giornata)
   5. Dedup: max 1 alert per employee per 30 min
+
+Bind: defaults to Pro's Tailscale IP (100.107.22.111), never 0.0.0.0 — this
+handler has no auth/TLS. Override with PROFILE_MONITOR_LISTEN_HOST; an
+explicit "0.0.0.0"/"" is refused unless PROFILE_MONITOR_ALLOW_OPEN_BIND=1.
 """
 
+import errno
 import json
 import logging
 import os
 import re
 import signal
 import sys
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -40,10 +46,16 @@ logging.basicConfig(
 logger = logging.getLogger("profile-monitor")
 
 WITA = timezone(timedelta(hours=8))
-LISTEN_HOST = "0.0.0.0"
+# Pro's Tailscale address (mac-client/profile-monitor.swift's only documented
+# client targets this IP). Override with PROFILE_MONITOR_LISTEN_HOST; 0.0.0.0/""
+# is refused (see _resolve_listen_host) — this wrapper has no auth and no TLS,
+# so an all-interfaces bind exposes checkout events to the whole Pro LAN.
+DEFAULT_LISTEN_HOST = "100.107.22.111"
 LISTEN_PORT = 9099
 WORK_DURATION_HOURS = 9  # 8h lavoro + 1h pranzo
 DEDUP_WINDOW_MINUTES = 30
+BIND_RETRY_INITIAL_SECONDS = 1
+BIND_RETRY_MAX_SECONDS = 60
 
 # Dedup state in-memory: {employee: last_alert_dt}
 _last_alert: dict[str, datetime] = {}
@@ -255,11 +267,74 @@ def _shutdown(signum, frame) -> None:
     sys.exit(0)
 
 
+def _resolve_listen_host(env: dict | None = None) -> str:
+    """Resolve the bind host, refusing an all-interfaces bind.
+
+    Reads PROFILE_MONITOR_LISTEN_HOST, defaulting to Pro's Tailscale IP. This
+    handler has no auth and no TLS, so binding 0.0.0.0 (or "") exposes
+    checkout events — which name an employee, a hostname and a timestamp — to
+    the whole Pro office LAN. Refused unless PROFILE_MONITOR_ALLOW_OPEN_BIND=1
+    is set explicitly, which is the deliberate one-line opt-in for whoever
+    later decides that's actually wanted.
+    """
+    env = os.environ if env is None else env
+    host = env.get("PROFILE_MONITOR_LISTEN_HOST", DEFAULT_LISTEN_HOST)
+    allow_open = env.get("PROFILE_MONITOR_ALLOW_OPEN_BIND") == "1"
+    if host in ("0.0.0.0", "") and not allow_open:
+        logger.error(
+            "Refusing PROFILE_MONITOR_LISTEN_HOST=%r (all-interfaces bind) — "
+            "this wrapper is Pro-tailnet-only. Set "
+            "PROFILE_MONITOR_ALLOW_OPEN_BIND=1 to override explicitly.",
+            host,
+        )
+        raise SystemExit(1)
+    return host
+
+
+def _serve_with_bind_retry(
+    host: str,
+    port: int,
+    handler_cls,
+    *,
+    server_cls=ThreadingHTTPServer,
+    sleep=time.sleep,
+) -> ThreadingHTTPServer:
+    """Bind, retrying with capped backoff on EADDRNOTAVAIL.
+
+    launchd starts this process at boot with RunAtLoad+KeepAlive=true; if
+    tailscaled has not yet brought the tailnet interface up, binding
+    100.107.22.111 raises EADDRNOTAVAIL. Without this retry, KeepAlive would
+    read that exit as a crash and relaunch immediately into a tight loop
+    (cicatrix #7/#8) instead of just waiting a few seconds for the interface.
+    Any other OSError is a real failure and propagates.
+    """
+    delay = BIND_RETRY_INITIAL_SECONDS
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            return server_cls((host, port), handler_cls)
+        except OSError as e:
+            if e.errno != errno.EADDRNOTAVAIL:
+                raise
+            logger.error(
+                "Bind %s:%d failed (attempt %d, EADDRNOTAVAIL — interface not "
+                "up yet), retrying in %ds",
+                host,
+                port,
+                attempt,
+                delay,
+            )
+            sleep(delay)
+            delay = min(delay * 2, BIND_RETRY_MAX_SECONDS)
+
+
 def main() -> None:
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
-    server = ThreadingHTTPServer((LISTEN_HOST, LISTEN_PORT), CheckoutHandler)
-    logger.info("profile-monitor wrapper listening on %s:%d", LISTEN_HOST, LISTEN_PORT)
+    host = _resolve_listen_host()
+    server = _serve_with_bind_retry(host, LISTEN_PORT, CheckoutHandler)
+    logger.info("profile-monitor wrapper listening on %s:%d", host, LISTEN_PORT)
     server.serve_forever()
 
 
