@@ -11,6 +11,7 @@ different failure, not a fix).
 from __future__ import annotations
 
 import hashlib
+import hmac
 from pathlib import Path
 
 import pytest
@@ -395,3 +396,29 @@ class TestRedactIdentifierForLogGenericChannelIdentifiers:
         digest = redact_identifier_for_log("user2026@example.com")
         digit_only_digest = redact_identifier_for_log("2026")
         assert digest != digit_only_digest
+
+
+class TestRedactIdentifierForLogSurrogateInput:
+    """R4 (PR #7385 round 1, Codex FIX-FIRST on 9666233cff): a redaction
+    helper sitting inside a logger call on a send path must never raise —
+    doing so would change control flow on the send path itself. An
+    email-shaped string carrying a lone (unpaired) surrogate code point
+    used to hit ``UnicodeEncodeError`` inside the strict ``"utf-8"`` encode
+    that keys the HMAC."""
+
+    def test_lone_surrogate_email_shaped_input_does_not_raise(self) -> None:
+        digest = redact_identifier_for_log("broken\ud800name@example.com")
+        assert digest.startswith("id:")
+
+    def test_normal_email_digest_unchanged_by_surrogatepass_switch(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Guilt/innocence together: switching the encode's `errors=` mode
+        to tolerate surrogates must not change the digest for input that
+        was already valid UTF-8 — verified against the exact HMAC origin/
+        main computed (strict `"utf-8"`, no `errors=` kwarg at all)."""
+        monkeypatch.setenv("LOG_PII_HMAC_SALT", "a-test-salt")
+        expected = hmac.new(
+            b"a-test-salt", b"client@example.com", hashlib.sha256
+        ).hexdigest()[:12]
+        assert redact_identifier_for_log("client@example.com") == f"id:{expected}"

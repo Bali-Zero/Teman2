@@ -217,10 +217,16 @@ async def send_internal_email(
         return True
     except Exception as e:
         err_msg = format_send_error(e)
+        # Type only in the log line, never `err_msg`: it relays the
+        # provider's own text (see the `raise` above and
+        # `format_send_error`'s HTTPStatusError branch), which can name the
+        # rejected recipient. `err_msg` still feeds the audit row and the
+        # critical-failure Telegram page below — both are diagnostic
+        # surfaces that need the detail this log line does not.
         logger.warning(
             "Internal email failed (context=%s): %s",
             log_context or "",
-            err_msg,
+            type(e).__name__,
         )
         if audit_enabled:
             await record_email_result(

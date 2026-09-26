@@ -7,9 +7,12 @@ Covers: sanitize_filename, ZohoEmailService (list_folders, list_emails, get_emai
         _get_account_id, _log_activity, close)
 """
 
+import json
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 # Patch heavy imports before importing the module
@@ -280,6 +283,37 @@ class TestRequest:
 
         with pytest.raises(ValueError, match="Unexpected response format"):
             await service._request("user1", "GET", "/folders")
+
+    @pytest.mark.asyncio
+    async def test_error_response_never_logs_provider_body_or_address(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Guilt (R1, PR #7385 round 1): exercises the REAL `_request` — only
+        the transport is mocked, same seam as `test_error_response` above, so
+        this does not hide behind mocking `_request` itself. FAILS on
+        9666233cff, whose `_request` logged the fully decoded error body
+        (address included) in the warning line."""
+        body = {
+            "data": {"errorCode": "INVALID_INPUT"},
+            "moreInfo": "recipient leak.probe@example.com is invalid",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.content = json.dumps(body).encode()
+        mock_response.json.return_value = body
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="API error"):
+                await service._request("user1", "POST", "/messages")
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "400" in caplog.text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -557,6 +591,131 @@ class TestForwardEmail:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# send_email / reply_email / forward_email — recipients never reach the log
+# in cleartext (sender-PII split of PR #7308; the raw `to`/`to_address` here
+# was the same shape as birthday_notifier_service.py's leak).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_LOGGER_NAME = "backend.services.integrations.zoho_email_service"
+_LEAK = "leak.probe@example.com"
+
+
+class TestSendReplyForwardNeverLogRawRecipients:
+    @pytest.mark.asyncio
+    async def test_send_email_logs_redacted_recipients_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "sent1"}})
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+                await service.send_email(
+                    user_id="user1",
+                    to=[_LEAK],
+                    subject="Test",
+                    content="<p>Hello</p>",
+                    cc=["cc.leak@example.com"],
+                    bcc=["bcc.leak@example.com"],
+                )
+
+        # The payload sent to Zoho is untouched — only the log is redacted.
+        payload = service._request.call_args[1]["json_data"]
+        assert payload["toAddress"] == _LEAK
+        assert payload["ccAddress"] == "cc.leak@example.com"
+        assert payload["bccAddress"] == "bcc.leak@example.com"
+
+        assert _LEAK not in caplog.text
+        assert "cc.leak@example.com" not in caplog.text
+        assert "bcc.leak@example.com" not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
+        assert redact_identifier_for_log("cc.leak@example.com") in caplog.text
+        assert redact_identifier_for_log("bcc.leak@example.com") in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_reply_email_logs_redacted_recipient_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "reply1"}})
+        service._log_activity = AsyncMock()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.reply_email(
+                user_id="user1",
+                message_id="m1",
+                content="Thanks!",
+                to_address=_LEAK,
+            )
+
+        assert _LEAK not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_forward_email_logs_redacted_recipients_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "fwd1"}})
+        service._log_activity = AsyncMock()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.forward_email(
+                user_id="user1",
+                message_id="m1",
+                to=[_LEAK],
+                content="<p>FYI</p>",
+            )
+
+        assert _LEAK not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_send_email_subject_with_address_never_in_caplog(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """R1.2 (PR #7385 round 1): the subject itself can carry an address —
+        `subject=%r` used to log up to 50 characters of the raw subject."""
+        service._request = AsyncMock(return_value={"data": {"messageId": "sent1"}})
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+                await service.send_email(
+                    user_id="user1",
+                    to=["ok@example.com"],
+                    subject=f"Re: invoice for {_LEAK}",
+                    content="<p>Hello</p>",
+                )
+
+        assert "@" not in caplog.text
+        assert "invoice" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_send_email_to_none_fails_at_the_join_not_the_log_line(
+        self, service: ZohoEmailService
+    ) -> None:
+        """R1.2: `to=None` must fail at the SAME site as origin/main
+        (`",".join(to)` inside the payload build) — not earlier, inside the
+        log line's redaction comprehension, which would turn a TypeError
+        with a different message into a different bug report."""
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with pytest.raises(TypeError, match="can only join an iterable"):
+                await service.send_email(
+                    user_id="user1",
+                    to=None,  # type: ignore[arg-type]
+                    subject="Test",
+                    content="<p>Hi</p>",
+                )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ZohoEmailService.mark_read / toggle_flag / move_to_folder
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -688,3 +847,199 @@ class TestLogActivity:
             mock_logger.warning.call_args.args[0]
             == "[Email Activity] Failed to log activity: %s"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.upload_attachment — never logs the filename or provider
+# free text at ANY log level (PR #7385 round 1 R1.3, hardened round 2 M3/M6:
+# the round-1 tests only asserted at ERROR, which let the pre-validation and
+# success-path INFO logs keep leaking the raw filename undetected).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _mock_success_client() -> AsyncMock:
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": {"attachmentId": "att1", "storeName": "s", "attachmentPath": "p"},
+    }
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+    mock_client.is_closed = False
+    return mock_client
+
+
+class TestUploadAttachmentNeverLogsFilenameOrProviderText:
+    @pytest.mark.asyncio
+    async def test_error_response_logs_no_filename_or_address(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        body = {
+            "data": {
+                "errorCode": "INVALID_INPUT",
+                "message": f"recipient {_LEAK} rejected",
+            },
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.content = json.dumps(body).encode()
+        mock_response.json.return_value = body
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="Upload failed"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename=f"Passport_{_LEAK}.pdf",
+                    content=b"hello",
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "Passport" not in caplog.text
+        # Positive: the safe metadata this log line is FOR is actually there.
+        assert "user=user1" in caplog.text
+        assert "filename_ext=pdf" in caplog.text
+        assert "status=400" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_http_error_logs_no_traceback_filename_or_message(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=httpx.ConnectError(f"boom talking to {_LEAK}"),
+        )
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="Network error"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename="report.pdf",
+                    content=b"hello",
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "boom" not in caplog.text
+        assert "user=user1" in caplog.text
+        assert "filename_ext=pdf" in caplog.text
+        assert "ConnectError" in caplog.text
+        for record in caplog.records:
+            assert record.exc_info is None
+
+    @pytest.mark.asyncio
+    async def test_file_too_large_logs_no_filename(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="File too large"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename=f"Contract_{_LEAK}.pdf",
+                    content=b"x" * (26 * 1024 * 1024),
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "Contract" not in caplog.text
+        assert "filename_ext=pdf" in caplog.text
+        assert "user=user1" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_filename_too_long_logs_no_filename(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        long_name = "a" * 250 + f"_{_LEAK}.pdf"
+        assert len(long_name) > 255
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="Filename too long"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename=long_name,
+                    content=b"hello",
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert long_name not in caplog.text
+        assert f"filename_len={len(long_name)}" in caplog.text
+        assert "filename_ext=pdf" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_filename_sanitized_logs_no_filename(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        service._client = _mock_success_client()
+        original = f"My File {_LEAK}.pdf"
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.upload_attachment(
+                user_id="user1",
+                filename=original,
+                content=b"hello",
+                content_type="application/pdf",
+            )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert original not in caplog.text
+        assert "My_File" not in caplog.text
+        assert "original_ext=pdf" in caplog.text
+        assert "sanitized_ext=pdf" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_upload_request_and_success_info_logs_no_filename(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        service._client = _mock_success_client()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.upload_attachment(
+                user_id="user1",
+                filename=f"Passport_{_LEAK}.pdf",
+                content=b"hello",
+                content_type="application/pdf",
+            )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "Passport" not in caplog.text
+        # The two INFO logs (request-received, success) both carry the safe
+        # metadata this class exists to allow through.
+        assert caplog.text.count("filename_ext=pdf") >= 2
+        assert "attachment_id=att1" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_extension_whitelist_rejects_non_alnum_shapes(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """M3: the whitelisted-extension log must never expose the FULL
+        filename for the shapes the review flagged — `First.Lastname` (a
+        name, not a real extension) and `scan.a@b` (an address-shaped
+        non-extension)."""
+        for filename in ("First.Lastname", "scan.a@b"):
+            caplog.clear()
+            service._client = AsyncMock()
+            service._client.post = AsyncMock(side_effect=httpx.ConnectError("boom"))
+            service._client.is_closed = False
+
+            with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+                with pytest.raises(ValueError, match="Network error"):
+                    await service.upload_attachment(
+                        user_id="user1",
+                        filename=filename,
+                        content=b"hello",
+                        content_type="application/octet-stream",
+                    )
+            assert filename not in caplog.text
