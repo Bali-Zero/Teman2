@@ -148,10 +148,6 @@ html[data-oracle-theme-bootstrap="dark"]
   .oracle-road {
     --road-gutter: 30px;
   }
-  .oracle-road__stage {
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-  }
 }
 .oracle-road__canvas {
   position: absolute;
@@ -581,5 +577,19 @@ html[data-oracle-theme-bootstrap="dark"]
 @media print {
   .oracle-road__canvas {
     display: none;
+  }
+}
+
+/* One line at 390px: sentence case and tight tracking keep the longest EN
+   stage («Stage 5 of 5 · Safety check and your answers») on one line;
+   overflow is clipped, never scrolled. Declared after the base rule so it
+   wins the cascade. */
+@media (max-width: 39.99rem) {
+  .oracle-road__stage {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: nowrap;
+    overflow: hidden;
   }
 }

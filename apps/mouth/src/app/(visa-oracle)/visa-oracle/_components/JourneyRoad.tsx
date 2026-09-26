@@ -207,6 +207,15 @@ export function JourneyRoad({
       ? roadCopy(language, "prunedOne")
       : roadCopy(language, "prunedMany", { count: model.prunedCount });
 
+  // The stage is shown ONCE: a visible hairline only where the stage
+  // changes. When the open question stays in the stage of the last answer,
+  // the head's legend keeps naming it for assistive tech only.
+  const lastRecordGroup = records[records.length - 1]?.group ?? null;
+  const headStageClass =
+    headGroup !== null && headGroup !== lastRecordGroup
+      ? "oracle-road__stage oracle-roadhead__stage"
+      : "oracle-sr-only";
+
   let lastGroup: ProcessPhaseKey | null = null;
   const head =
     current.kind === "question" ? (
@@ -218,7 +227,7 @@ export function JourneyRoad({
         data-road-head={current.kind}
       >
         {headGroup && (
-          <legend className="oracle-road__stage oracle-roadhead__stage">
+          <legend className={headStageClass}>
             {stageLine(language, headGroup)}
           </legend>
         )}
@@ -233,9 +242,7 @@ export function JourneyRoad({
         data-road-head={current.kind}
       >
         {headGroup && (
-          <p className="oracle-road__stage oracle-roadhead__stage">
-            {stageLine(language, headGroup)}
-          </p>
+          <p className={headStageClass}>{stageLine(language, headGroup)}</p>
         )}
         {children}
       </div>

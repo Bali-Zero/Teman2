@@ -45,6 +45,17 @@ describe("JourneyRoad — the list is the truth, the drawing is decoration", () 
     expect(within(road).queryByText("Head question")).toBeNull();
   });
 
+  it("shows the stage once: same stage as the last answer → the legend is for AT only", () => {
+    renderRoad();
+    // in_indonesia and holds_stay_permit share the "location" stage: the
+    // record's hairline shows it, the head's legend must not repeat it.
+    const legend = screen.getByRole("group").querySelector("legend");
+    expect(legend).toHaveClass("oracle-sr-only");
+    expect(
+      document.querySelectorAll(".oracle-road__stage:not(.oracle-sr-only)"),
+    ).toHaveLength(1);
+  });
+
   it("Change re-opens exactly that question", async () => {
     const onEdit = renderRoad();
     await userEvent.click(
