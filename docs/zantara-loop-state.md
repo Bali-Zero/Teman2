@@ -30,9 +30,13 @@ bodies — this makes it a plain `GROUP BY`:
 SELECT served_by, count(*) FROM wa_outbox WHERE created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
 ```
 
-`NULL` means no completion (failed generation, or a route — human send — that never called the
-codex leg); the closed vocabulary otherwise is `codex`, `support_abstain`,
-`scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`, `scripted_identity`.
+`NULL` means the route was not recorded — a failed generation, a route (human send) that never
+called the codex leg, a row from before this column existed, or a completion that landed in the
+migration's own deploy window (fly-deploy.yml applies `migrations_v2` on the previous image, then
+again after `deploy` rolls the new worker onto live traffic — a send finalizing in that gap
+persists without `served_by`, self-healing on the next completion). The closed vocabulary
+otherwise is `codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`,
+`scripted_human_handoff`, `scripted_identity`.
 
 ## Iteration 1 — 2026-09-25 (M5)
 

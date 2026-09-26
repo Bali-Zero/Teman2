@@ -21,9 +21,15 @@
 -- make that UPDATE fail the day a new `served_by` value ships before this
 -- column's vocabulary is widened — turning a bookkeeping miss into a
 -- transaction abort on a message that was already delivered. Nullable, no
--- default: NULL means the row never carried a completion (failed
--- generation, or a route — human-send, non-generation — that never called
--- the codex leg), same meaning NULL already has for `evidence_score`.
+-- default: NULL means the route was not recorded — a failed generation, a
+-- route (human-send, non-generation) that never called the codex leg, a
+-- historical row from before this column existed, or (Gear-3 council
+-- finding) a completion whose fenced write fell inside this migration's
+-- own deploy window and finalized before the column existed, per the
+-- `_finalize()` fallback in `wa_outbox_worker.py`. NOT the same narrower
+-- meaning NULL has for `evidence_score` (which really does mean "no
+-- completion this attempt") — do not conflate the two when reading either
+-- column.
 --
 -- LOCKS: ADD COLUMN with neither a type needing a rewrite nor a default is
 -- a catalog-only change on Postgres >= 11 — no table rewrite, no row
@@ -49,8 +55,11 @@ ALTER TABLE public.wa_outbox ADD COLUMN IF NOT EXISTS served_by TEXT NULL;
 COMMENT ON COLUMN public.wa_outbox.served_by IS
     'CodexLegResult.served_by verbatim (wa_codex_leg.py): codex (default), '
     'support_abstain, scripted_media_ack, scripted_greeting, '
-    'scripted_human_handoff, scripted_identity. NULL = no completion (failed '
-    'generation, or a route that never called the codex leg). No CHECK: '
+    'scripted_human_handoff, scripted_identity. NULL = route not recorded: '
+    'a failed generation, a route (human send) that never called the codex '
+    'leg, a historical row from before this column existed, or a '
+    'completion that landed in the migration-322 deploy window and '
+    'finalized before this column was applied. No CHECK: '
     'written after the irreversible send, must never abort the bookkeeping '
     'UPDATE on an unrecognized value.';
 
