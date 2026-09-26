@@ -272,7 +272,10 @@ export function MemoPreview({
       style={{
         background: "var(--surface-raised)",
         border: "1px solid var(--color-border-subtle)",
-        borderRadius: 16,
+        // R19 ledger (R-1): a structure-slate head band and the flatter
+        // Direction A card radius; the fallbacks are the pre-R19 values.
+        borderTop: "3px solid var(--r19-structure, var(--color-border-subtle))",
+        borderRadius: "var(--r19-radius-card, 16px)",
         padding: "20px 20px 18px",
       }}
     >
@@ -347,7 +350,7 @@ export function MemoPreview({
               top: 19,
               bottom: 19,
               width: 1,
-              background: "var(--accent-funnel)",
+              background: "var(--r19-structure, var(--accent-funnel))",
             }}
           />
           <dl
@@ -393,7 +396,7 @@ export function MemoPreview({
           width: 7px;
           height: 7px;
           border-radius: 50%;
-          background: var(--accent-funnel);
+          background: var(--r19-structure, var(--accent-funnel));
           box-shadow: 0 0 0 2px var(--surface-raised);
         }
         .bz-shs-memo-row:last-child {

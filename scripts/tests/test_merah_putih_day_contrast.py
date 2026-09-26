@@ -389,17 +389,85 @@ def test_every_consumed_root_alias_is_restated_in_the_day_set() -> None:
     )
 
 
+R19_TOKENS = REPO / "apps/mouth/src/lib/theme/r19Vars.ts"
+BAND_TONES = REPO / "apps/mouth/src/app/visa/second-home/studio/room/bandTones.ts"
+
+
+def read_r19_tokens() -> dict[str, str]:
+    """Custom properties declared in R19_DIRECTION_A_VARS (value literal as written)."""
+    src = R19_TOKENS.read_text(encoding="utf-8")
+    return dict(re.findall(r'^\s*"(--[a-z0-9-]+)":\s*([^,]+),', src, re.M))
+
+
 def test_both_public_wrappers_actually_apply_the_day_set() -> None:
-    """The set is inert unless it is spread on the two route wrappers."""
-    for rel in (
-        "apps/mouth/src/app/visa/second-home/SecondHomeLanding.tsx",
-        "apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx",
-    ):
-        src = (REPO / rel).read_text(encoding="utf-8")
-        assert "MERAH_PUTIH_DAY_VARS" in src, f"{rel} does not apply the day set"
-        assert "...MERAH_PUTIH_DAY_VARS" in src, (
-            f"{rel} imports the day set but never spreads it into a style"
-        )
+    """Each set is inert unless it is spread on its route wrapper.
+
+    RE-PINNED 2026-09-26 with BRIEF-v2 R-1/R-6 (Zero's 2026-09-24 ruling: the
+    four funnels adopt R19 Direction A): the landing keeps the Merah Putih day
+    set (R-6 seam, out of this run's scope), the Studio now spreads
+    R19_DIRECTION_A_VARS with its class and font marker — and must NOT also
+    spread the day set, or the two systems would stack on one wrapper.
+    """
+    landing = (
+        REPO / "apps/mouth/src/app/visa/second-home/SecondHomeLanding.tsx"
+    ).read_text(encoding="utf-8")
+    assert "...MERAH_PUTIH_DAY_VARS" in landing, (
+        "SecondHomeLanding.tsx no longer spreads the day set"
+    )
+
+    studio = (
+        REPO / "apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx"
+    ).read_text(encoding="utf-8")
+    assert "...R19_DIRECTION_A_VARS" in studio, (
+        "StudioApp.tsx does not spread the R19 Direction A set (R-1)"
+    )
+    assert "R19_CLASS" in studio and "r19FontClassName" in studio, (
+        "StudioApp.tsx spreads the R19 vars without the class/font marker that "
+        "hooks r19-direction-a.css and resolves --font-r19-*"
+    )
+    assert "...MERAH_PUTIH_DAY_VARS" not in strip_comments(studio), (
+        "StudioApp.tsx spreads BOTH sets — one wrapper, one system"
+    )
+
+
+def test_every_root_alias_the_studio_consumes_is_restated_in_the_r19_set() -> None:
+    """The alias trap, for the Studio's own set (added with the R-1 re-pin).
+
+    Same mechanism as the day-set test above: a :root alias does not follow a
+    wrapper override, so every alias the Studio subtree reads must be restated
+    in R19_DIRECTION_A_VARS itself.
+    """
+    aliases = {}
+    for line in SEMANTIC_CSS.read_text(encoding="utf-8").splitlines():
+        m = _ALIAS.match(line)
+        if m:
+            aliases.setdefault(m.group(1), m.group(2))
+    studio_root = PERIMETER / "studio"
+    studio_text = "\n".join(
+        strip_comments(p.read_text(encoding="utf-8"))
+        for p in _perimeter_sources()
+        if studio_root in p.parents or p.name == "ConsentBanner.tsx"
+    )
+    r19 = read_r19_tokens()
+    # The room wrapper also spreads ROOM_STATE_VARS (studio/room/bandTones.ts).
+    room_state = re.search(
+        r"ROOM_STATE_VARS = \{(.*?)\}", BAND_TONES.read_text(encoding="utf-8"), re.S
+    )
+    assert room_state, "ROOM_STATE_VARS not found in bandTones.ts"
+    r19.update(dict.fromkeys(re.findall(r'"(--[a-z0-9-]+)":', room_state.group(1)), "room"))
+    assert "--surface-base" in r19 and "--r19-control-border" in r19, (
+        "could not parse r19Vars.ts — the guard would pass vacuously"
+    )
+    missing = [
+        f"{alias} (alias of {src})"
+        for alias, src in aliases.items()
+        if re.search(re.escape(alias) + r"(?![a-z0-9-])", studio_text)
+        and alias not in r19
+    ]
+    assert not missing, (
+        "these :root aliases are consumed in the Studio but NOT restated in "
+        f"R19_DIRECTION_A_VARS, so they keep the shared theme's value: {missing}"
+    )
 
 
 # ── The derived-colour class ────────────────────────────────────────────────
@@ -574,7 +642,7 @@ def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
         rx.match("packages/core/tokens/themes/editorial.css") for rx in patterns
     ), "the glob matcher matches everything — it is not measuring the filter"
 
-    read_set = {TOKENS, SEMANTIC_CSS, Path(__file__).resolve(), WORKFLOW}
+    read_set = {TOKENS, SEMANTIC_CSS, R19_TOKENS, BAND_TONES, Path(__file__).resolve(), WORKFLOW}
     read_set.update(_perimeter_sources())
 
     uncovered = sorted(

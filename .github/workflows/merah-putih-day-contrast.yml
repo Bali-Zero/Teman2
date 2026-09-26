@@ -115,6 +115,7 @@ on:
     # hand is exactly what this avoids.
     paths:
       - "apps/mouth/src/lib/theme/merahPutihDayVars.ts"
+      - "apps/mouth/src/lib/theme/r19Vars.ts"
       - "apps/mouth/src/app/visa/second-home/**"
       - "apps/mouth/src/components/**"
       - "packages/core/tokens/semantic.css"

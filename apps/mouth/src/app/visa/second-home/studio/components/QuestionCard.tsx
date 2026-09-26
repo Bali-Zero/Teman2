@@ -178,7 +178,7 @@ export function QuestionCard({
           padding: 20px var(--bz-shs-card-pad) 0;
           background: var(--surface-raised);
           border: 1px solid var(--color-border-subtle);
-          border-radius: 16px;
+          border-radius: var(--r19-radius-card, 16px);
           box-shadow:
             0 1px 2px color-mix(in srgb, var(--text-primary) 6%, transparent),
             0 18px 40px -24px color-mix(in srgb, var(--text-primary) 22%, transparent);
@@ -203,7 +203,8 @@ export function QuestionCard({
             calc(14px + env(safe-area-inset-bottom, 0px));
           background: var(--surface-raised);
           border-top: 1px solid var(--color-border-subtle);
-          border-radius: 0 0 16px 16px;
+          border-radius: 0 0 var(--r19-radius-card, 16px)
+            var(--r19-radius-card, 16px);
         }
         .bz-shs-why-summary {
           display: inline-flex;
@@ -223,7 +224,7 @@ export function QuestionCard({
           text-decoration-style: solid;
         }
         .bz-shs-why-summary:focus-visible {
-          outline: 3px solid var(--text-primary);
+          outline: 3px solid var(--r19-copper, var(--text-primary));
           outline-offset: 2px;
           border-radius: 4px;
         }
@@ -291,7 +292,7 @@ export function QuestionCard({
           background: color-mix(in srgb, var(--text-primary) 8%, transparent);
         }
         .bz-shs-option:focus-visible {
-          outline: 3px solid var(--text-primary);
+          outline: 3px solid var(--r19-copper, var(--text-primary));
           outline-offset: 3px;
         }
         @media (prefers-reduced-motion: reduce) {
@@ -434,7 +435,7 @@ export function OptionButton({
         alignItems: "center",
         gap: 14,
         padding: "16px 20px",
-        borderRadius: 12,
+        borderRadius: "var(--r19-radius-control, 12px)",
         color: "var(--text-primary)",
         textAlign: "left",
         cursor: "pointer",

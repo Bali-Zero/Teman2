@@ -491,6 +491,124 @@ export const COPY = {
     clearArmedStatus:
       "Ready to clear — press again to confirm, or Escape to cancel.",
   },
+
+  // «Lo studiolo di Ari» (BRIEF-v2 §3.2, 2026-09-26): the room around the
+  // wizard — the wall, the shelf and its five drawers. The file carries one
+  // language (English), so every new string lives here once; the claims
+  // sweep in __tests__/forbidden-claims.test.ts walks all of it.
+  room: {
+    lockup: {
+      wordmark: "Bali Zero",
+      product: "Second Home Studio",
+    },
+    wall: {
+      label: "On the wall",
+      chartTitle: "Where we are",
+      mapTitle: "Where your deposit is held",
+      deskLine: "This is Ari's desk.",
+      deskSub:
+        "Answer at your own pace. Your plan stays on this device unless you share it.",
+    },
+    desk: {
+      label: "Ari's desk",
+      ledgerLabel: "The plan so far",
+      secondChair: "The second chair",
+      secondChairNote: "Try another route without changing your plan.",
+    },
+    shelf: {
+      label: "On the shelf",
+      intro: "Open a drawer to read. Nothing in a drawer changes your answers.",
+      close: "Close",
+      drawers: {
+        facts: {
+          title: "Facts",
+          blurb: "What the rules say, and what is still open",
+        },
+        checklist: {
+          title: "Checklist",
+          blurb: "The documents your route calls for",
+        },
+        tariff: {
+          title: "Tariff",
+          blurb: "Our fee for each E33 route",
+        },
+        compare: {
+          title: "Compare",
+          blurb: "Malaysia and Portugal, side by side",
+        },
+        notes: {
+          title: "Notes",
+          blurb: "The questions we are asked most",
+        },
+      },
+    },
+    facts: {
+      intro:
+        "From the Bali Zero E33 fact registry. Confirmed facts are stated as facts. Open questions stay labelled until Imigrasi answers them in writing.",
+      statusConfirmed: "Confirmed",
+      statusPending: "Not yet confirmed",
+      checked: "Checked",
+      registry: "Registry version",
+      groups: {
+        basis: "The qualifying basis",
+        senior: "The senior route",
+        family: "Family members",
+        bank: "The bank and the deposit",
+        stay: "Entry and long stay",
+      },
+      confidence: {
+        JELAS: "Clear",
+        BERSYARAT: "Conditional",
+        BELUM_DIATUR_PUBLIK: "Not yet publicly regulated",
+      },
+      caveats: {
+        e33e_requirements:
+          "The 55–59 age band is read differently in two articles of the same regulation.",
+      },
+    },
+    checklistDrawer: {
+      intro:
+        "Sorted against your answers so far. You can tick items off on your fit-check result.",
+      applies: "Applies to you",
+      mayApply: "May apply",
+    },
+    tariff: {
+      intro: "Bali Zero service fees, read from our live price list.",
+      service: "Service",
+      fee: "Fee",
+      unavailable: "Not on the price list right now",
+      rows: {
+        e33: "E33 · 5 years",
+        e33e: "E33E senior · 5 years",
+        e33eExtend: "E33E senior · extension",
+        e33fOffshore: "E33F senior · 1 year, applying from abroad",
+        e33fOnshore: "E33F senior · 1 year, applying in Indonesia",
+        e33fExtend: "E33F senior · extension",
+      },
+    },
+    compare: {
+      intro:
+        "Each figure comes from the government's own page, with the date we read it.",
+      attribute: "Figure",
+      firstGrantValidity: "First grant",
+      cumulativeCap: "Cumulative stay",
+      incomeRequirement: "Income requirement",
+      workRights: "Work status",
+      notRecorded: "Not recorded",
+      source: "Source",
+      read: "read",
+      registrySource: "E33 fact registry",
+      tiersTitle: "Malaysia MM2H tiers",
+      tier: "Tier",
+      depositUsd: "Deposit (USD)",
+      validityYears: "Validity (years)",
+    },
+    notes: {
+      intro:
+        "The questions people ask us most, answered on our Second Home page.",
+      articleLink: "Read the full guide (Bahasa Indonesia)",
+    },
+  },
 } as const;
 
 /**

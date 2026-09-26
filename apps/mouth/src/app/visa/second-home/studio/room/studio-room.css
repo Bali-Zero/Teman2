@@ -1,0 +1,842 @@
+/*
+ * «Lo studiolo di Ari» — the room (BRIEF-v2 §3.2, 2026-09-26).
+ * Every rule is scoped under .bz-shs-room (the Studio's own wrapper, which
+ * also carries R19_DIRECTION_A_VARS + .r19-direction-a). Tokens only; the
+ * two literal rgb() values are shadows of the R19 ink #1D2C3B.
+ *
+ * Zones: WALL (portrait, chart, map) · DESK (the sheet + the ledger, or the
+ * verdict window) · SHELF (five drawers). Mobile is one column in reading
+ * order: door, title, portrait, chart, desk, map, shelf. From 64rem the room
+ * is three columns: wall | desk | shelf.
+ */
+
+.bz-shs-room .bz-shs-room-grid {
+  --bz-shs-gutter: 16px;
+  /* the site nav above this route is a fixed 56px bar (h-14) that sits in a
+   * higher stacking context than anything inside the page: drawers open
+   * BELOW it instead of under it. */
+  --bz-shs-chrome-top: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 4px var(--bz-shs-gutter) 40px;
+}
+
+/* Copper is the ACTION colour only (R-1/Q4). Inside the wall, the ledger and
+ * the verdict stack, the older components' accent reads structure slate; the
+ * primary buttons keep copper because they paint --cta-bg, not this token. */
+.bz-shs-room
+  :is(.bz-shs-wall, .bz-shs-ledger, .bz-shs-verdict-stack, .bz-shs-frame) {
+  --accent-funnel: var(--r19-structure);
+  --accent-funnel-text: var(--r19-structure);
+}
+
+/* Family layer §2.2 — one focus language: 3px copper, offset 3px. */
+.bz-shs-room.bz-shs-room :is(button, a, summary, [role="radio"]):focus-visible {
+  outline: 3px solid var(--r19-copper);
+  outline-offset: 3px;
+}
+
+/* ── door (lockup) ───────────────────────────────────────────────────── */
+.bz-shs-room .bz-shs-door {
+  order: 0;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  border-bottom: 1px solid var(--r19-line);
+}
+.bz-shs-room .bz-shs-lockup {
+  margin: 0;
+}
+.bz-shs-room .bz-shs-lockup-rule {
+  width: 1px;
+  height: 18px;
+  background: var(--r19-line-strong);
+}
+
+/* ── desk head (the one h1) ──────────────────────────────────────────── */
+.bz-shs-room .bz-shs-desk-head {
+  order: 1;
+  display: grid;
+  gap: 6px;
+}
+.bz-shs-room .bz-shs-masthead {
+  font-weight: 450;
+  font-variation-settings: "SOFT" 30;
+}
+
+/* ── wall ────────────────────────────────────────────────────────────── */
+.bz-shs-room .bz-shs-wall {
+  display: contents;
+}
+.bz-shs-room .bz-shs-frame {
+  margin: 5px;
+  padding: 10px 14px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--r19-line-strong);
+  border-radius: 2px;
+  /* the picture-frame: a paper mat and a hairline moulding */
+  box-shadow:
+    0 0 0 4px var(--surface-raised),
+    0 0 0 5px var(--r19-line),
+    0 10px 22px -18px rgb(29 44 59 / 45%);
+}
+.bz-shs-room .bz-shs-frame--ari {
+  order: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.bz-shs-room .bz-shs-frame--chart {
+  order: 3;
+}
+.bz-shs-room .bz-shs-frame--map {
+  order: 5;
+  padding: 14px 8px 8px;
+}
+.bz-shs-room .bz-shs-frame-title {
+  margin: 0 0 6px;
+  padding: 0 8px 0 0;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-frame--map .bz-shs-frame-title {
+  padding-left: 8px;
+}
+.bz-shs-room .bz-shs-ari-photo {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--r19-line-strong);
+}
+.bz-shs-room .bz-shs-ari-caption {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.bz-shs-room .bz-shs-ari-name {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+.bz-shs-room .bz-shs-ari-line {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 450;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+/* the rail on the wall: progress marks in structure slate, not copper */
+.bz-shs-room .bz-shs-frame--chart .bz-shs-progress-rail {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.bz-shs-room .bz-shs-progress-sounding[data-state="current"]::before,
+.bz-shs-room .bz-shs-progress-sounding[data-state="current"]::after {
+  background: var(--r19-structure);
+}
+
+/* ── desk ────────────────────────────────────────────────────────────── */
+.bz-shs-room .bz-shs-desk {
+  order: 4;
+  min-width: 0;
+  container: bz-shs-desk / inline-size;
+  margin: 0;
+  padding: 12px;
+  background: var(--r19-wash);
+  border-radius: 4px;
+  display: grid;
+  align-content: start;
+}
+.bz-shs-room .bz-shs-sheet {
+  min-width: 0;
+  container: bz-shs-sheet / inline-size;
+}
+/* On a narrow sheet the "choose an answer" hint would squeeze between Back
+ * and Continue; the disabled Continue already says "not yet". */
+@container bz-shs-sheet (max-width: 32rem) {
+  .bz-shs-room .bz-shs-nav .bz-shs-nav-hint {
+    display: none;
+  }
+  .bz-shs-room .bz-shs-nav .bz-shs-cta {
+    margin-left: auto !important;
+  }
+}
+/* The ledger sits BESIDE the sheet only when the desk itself is wide enough
+ * for both — measured on the desk (container query), not the viewport,
+ * because the wall and the shelf take their share first. Below that it
+ * follows the sheet. */
+@container bz-shs-desk (min-width: 42rem) {
+  .bz-shs-room .bz-shs-layout {
+    grid-template-columns: minmax(0, 1fr) 16.5rem;
+  }
+  .bz-shs-room .bz-shs-layout > aside {
+    position: sticky;
+    top: 88px;
+  }
+}
+.bz-shs-room .bz-shs-card {
+  border-color: var(--r19-line);
+  box-shadow:
+    0 1px 0 var(--r19-line),
+    0 16px 30px -22px rgb(29 44 59 / 50%);
+}
+.bz-shs-room .bz-shs-second-chair {
+  display: grid;
+  gap: 10px;
+}
+.bz-shs-room .bz-shs-second-chair-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* the verdict window */
+.bz-shs-room .bz-shs-window {
+  margin: 7px;
+  background-color: var(--surface-raised);
+  box-shadow:
+    0 0 0 6px var(--surface-raised),
+    0 0 0 7px var(--r19-line-strong),
+    0 22px 44px -30px rgb(29 44 59 / 55%);
+}
+.bz-shs-window-panes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  height: 44px;
+}
+.bz-shs-window-panes span {
+  display: block;
+  border-radius: 1px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, currentColor 22%, transparent),
+    color-mix(in srgb, currentColor 6%, transparent)
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent);
+}
+.bz-shs-room .bz-shs-window-title {
+  font-weight: 450;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+/* the price slip — the fee on paper, figures in Fraunces tabular */
+.bz-shs-room .bz-shs-price-slip {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+  padding: 20px;
+  background: var(--surface-raised);
+  border: 1px solid var(--r19-line-strong);
+  border-top: 3px solid var(--r19-structure);
+  border-radius: 2px;
+}
+.bz-shs-room .bz-shs-price-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-price-figure {
+  font-size: clamp(28px, 4.5vw, 38px);
+  text-align: center;
+  color: var(--text-primary);
+}
+.bz-shs-room .bz-shs-price-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ── shelf ───────────────────────────────────────────────────────────── */
+.bz-shs-room .bz-shs-shelf {
+  order: 6;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.bz-shs-room .bz-shs-shelf-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-shelf-intro {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-drawers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+/* A sticky shelf is its own stacking context: while a drawer is open the
+ * shelf rises above the site chrome so the panel and scrim can cover it. */
+.bz-shs-room .bz-shs-shelf[data-drawer-open="true"] {
+  position: relative;
+  z-index: 100;
+}
+.bz-shs-room .bz-shs-drawer-front {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--r19-control-border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+.bz-shs-room .bz-shs-drawer-front:hover {
+  background: var(--surface-base);
+  border-color: var(--text-primary);
+}
+.bz-shs-room .bz-shs-drawer-front-blurb {
+  display: none;
+}
+
+/* ── drawer (bottom sheet; side panel from 64rem) ────────────────────── */
+.bz-shs-room .bz-shs-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.bz-shs-room .bz-shs-drawer-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(29 44 59 / 34%);
+}
+.bz-shs-room .bz-shs-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--bz-shs-chrome-top) - 24px);
+  max-height: calc(100dvh - var(--bz-shs-chrome-top) - 24px);
+  background: var(--surface-base);
+  color: var(--text-primary);
+  border-top: 1px solid var(--r19-line-strong);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -14px 36px rgb(29 44 59 / 20%);
+  animation: bz-shs-sheet-up 220ms ease-out;
+}
+.bz-shs-room .bz-shs-drawer::before {
+  content: "";
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--r19-line-strong);
+}
+.bz-shs-room .bz-shs-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px 12px;
+  border-bottom: 1px solid var(--r19-line);
+}
+.bz-shs-room .bz-shs-drawer-heading {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 450;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.bz-shs-room .bz-shs-drawer-close {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--r19-control-border);
+  border-radius: var(--r19-radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bz-shs-room .bz-shs-drawer-body {
+  display: grid;
+  /* rows keep their content height: a scroll container inside (the atlas)
+   * would otherwise shrink to nothing in a height-bound grid */
+  grid-auto-rows: max-content;
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 20px;
+  padding: 16px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bz-shs-room .bz-shs-drawer-intro {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-drawer-group {
+  display: grid;
+}
+.bz-shs-room .bz-shs-drawer-subhead {
+  margin: 0 0 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--r19-structure);
+}
+.bz-shs-room :is(.bz-shs-facts, .bz-shs-drawer-list) {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bz-shs-room :is(.bz-shs-fact, .bz-shs-drawer-list > li) {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--r19-line);
+}
+.bz-shs-room .bz-shs-fact-topic {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.bz-shs-room .bz-shs-fact-value {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.bz-shs-room .bz-shs-fact[data-status="pending"] .bz-shs-fact-value {
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-fact-caveat {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--r19-line-strong);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-fact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-fact-status {
+  font-weight: 700;
+  color: var(--r19-structure);
+}
+.bz-shs-room .bz-shs-fact-status::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+.bz-shs-room .bz-shs-fact[data-status="pending"] .bz-shs-fact-status {
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-fact[data-status="pending"] .bz-shs-fact-status::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+.bz-shs-room .bz-shs-drawer-foot {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* tables: the tariff ledger and the atlas */
+.bz-shs-room :is(.bz-shs-ledger-table, .bz-shs-atlas) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.bz-shs-room :is(.bz-shs-ledger-table, .bz-shs-atlas) :is(th, td) {
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--r19-line);
+}
+.bz-shs-room :is(.bz-shs-ledger-table, .bz-shs-atlas) thead th {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--r19-line-strong);
+}
+.bz-shs-room :is(.bz-shs-ledger-table, .bz-shs-atlas) tbody th {
+  font-weight: 600;
+}
+.bz-shs-room .bz-shs-ledger-table :is(th, td):first-child {
+  padding-left: 0;
+}
+.bz-shs-room .bz-shs-ledger-table :is(th, td):last-child {
+  padding-right: 0;
+  text-align: right;
+}
+.bz-shs-room .bz-shs-figure {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.bz-shs-room .bz-shs-tariff-missing {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  white-space: normal;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-atlas-scroll {
+  overflow-x: auto;
+}
+.bz-shs-room .bz-shs-atlas {
+  min-width: 34rem;
+}
+.bz-shs-room .bz-shs-atlas-country {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.bz-shs-room .bz-shs-atlas-programme {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-atlas-value {
+  display: block;
+  font-weight: 500;
+}
+.bz-shs-room :is(.bz-shs-atlas-caveat, .bz-shs-source) {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.bz-shs-room .bz-shs-source a {
+  color: var(--r19-copper);
+  text-underline-offset: 3px;
+}
+.bz-shs-room .bz-shs-atlas-empty {
+  color: var(--text-secondary);
+}
+
+/* notes */
+.bz-shs-room .bz-shs-notes {
+  display: grid;
+}
+.bz-shs-room .bz-shs-note {
+  border-top: 1px solid var(--r19-line);
+}
+.bz-shs-room .bz-shs-note summary {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 10px 0;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+}
+.bz-shs-room .bz-shs-note summary::-webkit-details-marker {
+  display: none;
+}
+.bz-shs-room .bz-shs-note p {
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+
+@keyframes bz-shs-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@keyframes bz-shs-panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+/* ── the room at 64rem: wall | desk | shelf ──────────────────────────── */
+@media (min-width: 64rem) {
+  .bz-shs-room .bz-shs-room-grid {
+    --bz-shs-gutter: 32px;
+    display: grid;
+    /* The /visa layout boxes its children at max-w-6xl; the room is a
+     * room, so from 64rem it takes the viewport (minus a margin) and
+     * centres itself on the layout column. */
+    width: min(1440px, calc(100vw - 48px));
+    max-width: none;
+    margin-left: calc((100% - min(1440px, calc(100vw - 48px))) / 2);
+    grid-template-columns: minmax(14rem, 18%) minmax(0, 1fr) minmax(14rem, 18%);
+    grid-template-areas:
+      "door door door"
+      "wall head shelf"
+      "wall desk shelf";
+    grid-template-rows: auto auto 1fr;
+    column-gap: 28px;
+    row-gap: 18px;
+  }
+  .bz-shs-room .bz-shs-door {
+    grid-area: door;
+  }
+  .bz-shs-room .bz-shs-desk-head {
+    grid-area: head;
+    padding-top: 8px;
+  }
+  .bz-shs-room .bz-shs-wall {
+    grid-area: wall;
+    display: grid;
+    gap: 22px;
+    align-content: start;
+    align-self: start;
+    position: sticky;
+    top: 88px;
+  }
+  .bz-shs-room .bz-shs-desk {
+    grid-area: desk;
+    padding: 24px;
+  }
+  /* a wall carrying the custody map is taller than the viewport: it scrolls
+   * with the page instead of sticking with its foot out of reach */
+  .bz-shs-room .bz-shs-wall:has(.bz-shs-frame--map) {
+    position: static;
+  }
+  /* the custody map hung in the narrow wall: its own stacked (≤1024px)
+   * arrangement, restated for the frame because its rules are viewport-bound */
+  .bz-shs-room .bz-shs-frame--map :is(.custody-layout, .custody-flow) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .bz-shs-room .bz-shs-frame--map .custody-layout {
+    gap: 1.5rem;
+  }
+  .bz-shs-room .bz-shs-frame--map .custody-flow {
+    gap: 2.25rem;
+  }
+  .bz-shs-room .bz-shs-frame--map .custody-arrow {
+    top: calc(100% + 0.55rem);
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+  }
+  .bz-shs-room .bz-shs-frame--map .custody-outside {
+    width: 100%;
+    margin-left: 0;
+  }
+  .bz-shs-room .bz-shs-frame--map .custody-icon {
+    display: none;
+  }
+  .bz-shs-room .bz-shs-frame--map button {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    padding: 0.85rem 0.65rem;
+  }
+  .bz-shs-room .bz-shs-frame--map :is(h2, h3) {
+    font-size: 1.5rem !important;
+  }
+  .bz-shs-room .bz-shs-shelf,
+  .bz-shs-room .bz-shs-shelf[data-drawer-open="true"] {
+    position: sticky;
+  }
+  .bz-shs-room .bz-shs-shelf {
+    grid-area: shelf;
+    align-self: start;
+    position: sticky;
+    top: 88px;
+    gap: 10px;
+    padding-top: 8px;
+  }
+  .bz-shs-room .bz-shs-frame {
+    padding: 14px 16px 16px;
+  }
+  .bz-shs-room .bz-shs-frame-title {
+    margin-bottom: 10px;
+  }
+  .bz-shs-room .bz-shs-frame--ari {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .bz-shs-room .bz-shs-ari-photo {
+    width: 56px;
+    height: 56px;
+  }
+  .bz-shs-room .bz-shs-ari-line {
+    font-size: 21px;
+  }
+  /* the chart on the wall reads top to bottom */
+  .bz-shs-room .bz-shs-frame--chart .bz-shs-progress-scale {
+    grid-template-columns: 1fr !important;
+    gap: 0;
+  }
+  .bz-shs-room .bz-shs-frame--chart .bz-shs-progress-sounding {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    padding-left: 24px;
+  }
+  .bz-shs-room .bz-shs-frame--chart .bz-shs-progress-sounding::before {
+    left: 5px;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    height: auto;
+    border-radius: 0;
+  }
+  .bz-shs-room
+    .bz-shs-frame--chart
+    .bz-shs-progress-sounding[data-state="current"]::after {
+    left: 1px;
+    right: auto;
+    top: calc(50% - 5px);
+  }
+  .bz-shs-room .bz-shs-frame--chart .bz-shs-progress-name {
+    display: block;
+    padding-top: 0;
+    font-size: 14px;
+    white-space: normal;
+  }
+  .bz-shs-room .bz-shs-frame--chart .bz-shs-progress-meta {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--r19-line);
+  }
+  /* shelf: drawer fronts in a bookcase column */
+  .bz-shs-room .bz-shs-drawers {
+    display: grid;
+    gap: 8px;
+  }
+  .bz-shs-room .bz-shs-drawer-front {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    min-height: 68px;
+    padding: 12px 40px 12px 16px;
+    border-radius: var(--r19-radius-control);
+    border-left: 4px solid var(--r19-structure);
+  }
+  .bz-shs-room .bz-shs-drawer-front::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: calc(50% - 2px);
+    width: 14px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--r19-control-border);
+  }
+  .bz-shs-room .bz-shs-drawer-front-title {
+    font-family: var(--font-serif);
+    font-size: 21px;
+    font-weight: 450;
+    line-height: 1.15;
+  }
+  .bz-shs-room .bz-shs-drawer-front-blurb {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-secondary);
+  }
+  .bz-shs-room .bz-shs-drawer {
+    top: var(--bz-shs-chrome-top);
+    left: auto;
+    width: min(34rem, 44vw);
+    max-height: none;
+    border-top: 0;
+    border-left: 1px solid var(--r19-line-strong);
+    border-radius: 0;
+    box-shadow: -18px 0 40px rgb(29 44 59 / 18%);
+    animation-name: bz-shs-panel-in;
+  }
+  .bz-shs-room .bz-shs-drawer::before {
+    display: none;
+  }
+  .bz-shs-room .bz-shs-drawer[data-drawer="compare"] {
+    width: min(52rem, 66vw);
+  }
+  .bz-shs-room .bz-shs-drawer-head {
+    padding: 22px 28px 16px;
+  }
+  .bz-shs-room .bz-shs-drawer-body {
+    padding: 20px 28px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bz-shs-room .bz-shs-drawer,
+  .bz-shs-room .bz-shs-drawer-front {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media print {
+  .bz-shs-room :is(.bz-shs-shelf, .bz-shs-frame--ari, .bz-shs-frame--chart) {
+    display: none !important;
+  }
+}

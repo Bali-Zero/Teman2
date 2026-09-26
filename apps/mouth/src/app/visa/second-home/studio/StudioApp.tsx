@@ -10,11 +10,11 @@ import {
   computeSequence,
   type QuestionId,
 } from "@/lib/secondhome-studio/sequence";
-import {
-  MERAH_PUTIH_DAY_BODY_CSS,
-  MERAH_PUTIH_DAY_CLASS,
-  MERAH_PUTIH_DAY_VARS,
-} from "@/lib/theme/merahPutihDayVars";
+import { BZLogo } from "@balizero/core/components/BZLogo";
+import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
+import { r19FontClassName } from "@/lib/theme/r19Fonts";
+import "@/styles/r19-direction-a.css";
+import "./room/studio-room.css";
 import {
   E33_LIVE_PRICE_CATEGORY,
   resolveSecondHomePriceKey,
@@ -49,6 +49,9 @@ import { WhatsAppHandoff } from "./components/WhatsAppHandoff";
 import { SavePlanBar } from "./components/SavePlanBar";
 import { ScenarioToggle } from "./components/ScenarioToggle";
 import { StudioAtmosphere } from "./components/StudioAtmosphere";
+import { Wall } from "./room/Wall";
+import { Shelf } from "./room/Shelf";
+import { ROOM_STATE_VARS } from "./room/bandTones";
 
 /**
  * Second Home Studio — the wizard state machine (spec §4).
@@ -118,48 +121,38 @@ const STEP_LABELS: Record<QuestionId, string> = {
   location: "Location",
 };
 
-/** Identity lockup (2026-09-24 design pass): the Bali Zero wordmark in merah
- *  (R4 §4 restraint budget: "wordmark in merah" is one of red's allowed
- *  STRUCTURE duties) + the product name, replacing a lone muted eyebrow that
- *  never said whose studio this is. */
-const lockupStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  margin: 0,
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-  color: "var(--text-secondary)",
-};
-
-const lockupMarkStyle: React.CSSProperties = {
-  width: 14,
-  height: 10,
-  borderRadius: 2,
-  flexShrink: 0,
-  background:
-    "linear-gradient(var(--accent-funnel) 50%, var(--surface-raised) 50%)",
-  boxShadow: "0 0 0 1px var(--border-default)",
-};
-
-const lockupRuleStyle: React.CSSProperties = {
-  width: 1,
-  height: 12,
-  background: "var(--border-strong)",
-};
-
+/** Identity lockup — family layer §2.1 (BRIEF-v2, R-1): the BZLogo MARK
+ *  beside the wordmark (never set as a letter, design SKILL §3.6), "BALI
+ *  ZERO" in Manrope 750 and the product name in Fraunces 450, via the
+ *  foundation's `.r19-lockup` roles. Replaces the 2026-09-24 merah flag. */
 function Lockup() {
   return (
-    <p style={lockupStyle}>
-      <span aria-hidden="true" style={lockupMarkStyle} />
-      <span style={{ color: "var(--accent-funnel-text)" }}>Bali Zero</span>
-      <span aria-hidden="true" style={lockupRuleStyle} />
-      <span>Second Home Studio</span>
+    <p className="r19-lockup bz-shs-lockup">
+      <BZLogo variant="mark" size={28} className="r19-lockup__mark" />
+      <span className="r19-lockup__wordmark">
+        {getCopy("room.lockup.wordmark")}
+      </span>
+      <span aria-hidden="true" className="bz-shs-lockup-rule" />
+      <span className="r19-lockup__product">
+        {getCopy("room.lockup.product")}
+      </span>
     </p>
   );
 }
+
+/** R19 paper under the whole route: <body> is an ancestor of the wrapper and
+ *  keeps the editorial ground otherwise (measured 88px of it on the day set). */
+const R19_BODY_CSS = `
+body:has(.bz-shs-room) {
+  background: ${(R19_DIRECTION_A_VARS as Record<string, string>)["--surface-base"]};
+  color: ${(R19_DIRECTION_A_VARS as Record<string, string>)["--text-primary"]};
+}
+@media print {
+  body:has(.bz-shs-room) {
+    background: #ffffff;
+  }
+}
+`;
 
 const mastheadHeadingStyle: React.CSSProperties = {
   margin: 0,
@@ -168,8 +161,7 @@ const mastheadHeadingStyle: React.CSSProperties = {
   // the first question below the fold at 390x844. The question is the peak
   // of this viewport (R3); the masthead names the page and gets out of the way.
   fontSize: "clamp(2rem, 4.2vw, 3.25rem)",
-  fontWeight: 500,
-  letterSpacing: "-0.02em",
+  letterSpacing: "-0.03em",
   lineHeight: 1.02,
   textWrap: "balance",
   color: "var(--text-primary)",
@@ -229,7 +221,7 @@ const navButtonStyle: React.CSSProperties = {
   justifyContent: "center",
   gap: 8,
   padding: "0 18px",
-  borderRadius: 12,
+  borderRadius: "var(--r19-radius-control, 3px)",
   border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
@@ -752,87 +744,80 @@ export function StudioApp() {
     verdict !== null &&
     (verdict.product === "E33" || verdict.product === "E33E");
 
+  const railChart = !isVerdictStage ? (
+    <ProgressRail
+      step={stepIndex + 1}
+      total={railSequence.length}
+      labels={railSequence.map((q) => STEP_LABELS[q])}
+    />
+  ) : null;
+
   return (
     <div
-      // data-funnel="visa" (2026-08-20 design pass): without this attribute
-      // --accent-funnel falls through to the site's default `editorial`
-      // theme value (#3a6dff, McKinsey blue — packages/core/tokens/themes/
-      // editorial.css) instead of the visa funnel's own red identity
-      // (semantic.css [data-theme="editorial"] [data-funnel="visa"]). Every
-      // accent in this tree already reads var(--accent-funnel) correctly —
-      // the token was never hardcoded, it was just never scoped. Matches
-      // the other /visa funnel pages, which get this via AppFrame's
-      // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
-      // this route has no AppFrame ancestor, so it sets the attribute here.
+      // «Lo studiolo di Ari» (BRIEF-v2 §3.2, 2026-09-26). The ROOM is this
+      // wrapper: R19 Direction A (R-1) replaces the Merah Putih day set on
+      // this route only — the /visa/second-home landing keeps Merah Putih
+      // (R-6 seam). data-funnel="visa" stays so nothing falls through to the
+      // editorial theme's McKinsey blue (2026-08-20 design pass).
       data-funnel="visa"
-      className={`bz-shs-studio ${MERAH_PUTIH_DAY_CLASS}`}
-      style={{
-        // MERAH PUTIH DAY (R4 identity law) — see merahPutihDayVars.ts for the
-        // scoping contract and every computed ratio. Inline HERE so it beats the
-        // editorial theme's navy ground and the retired #ff3344 on this route
-        // only, and so /visa/layout.tsx's forced Montserrat stops here.
-        ...MERAH_PUTIH_DAY_VARS,
-        // Read by QuestionCard's sticky action row so it rides above the
-        // fixed consent banner instead of under it.
-        ...({
-          "--bz-shs-consent-h": `${consentHeight}px`,
-        } as React.CSSProperties),
-        background: "var(--surface-base)",
-        color: "var(--text-primary)",
-        minHeight: "100vh",
-        // The site root declares a dark color-scheme for the editorial theme;
-        // on this paper ground it painted every native checkbox (the readiness
-        // checklist) as a solid black square that read as "already ticked".
-        colorScheme: "light",
-        accentColor: "var(--text-primary)",
-      }}
+      className={`bz-shs-studio bz-shs-room ${R19_CLASS} ${r19FontClassName}`}
+      style={
+        {
+          ...R19_DIRECTION_A_VARS,
+          ...ROOM_STATE_VARS,
+          // Inside the Studio every existing `--border-strong` consumer is an
+          // interactive boundary (options, Back, checklist, save bar, WhatsApp);
+          // R19's #A8ACA9 is 2.09:1 there, so the room restates it to R19's own
+          // control border (#7B817F, 3.62:1 on paper — r19Vars.ts FLAG 1).
+          "--border-strong": (R19_DIRECTION_A_VARS as Record<string, string>)[
+            "--r19-control-border"
+          ],
+          // Read by QuestionCard's sticky action row so it rides above the
+          // fixed consent banner instead of under it.
+          ...({
+            "--bz-shs-consent-h": `${consentHeight}px`,
+          } as React.CSSProperties),
+          background: "var(--surface-base)",
+          color: "var(--text-primary)",
+          minHeight: "100vh",
+          // The site root declares a dark color-scheme for the editorial theme;
+          // on this paper ground it painted every native checkbox (the readiness
+          // checklist) as a solid black square that read as "already ticked".
+          colorScheme: "light",
+          accentColor: "var(--text-primary)",
+        } as React.CSSProperties
+      }
     >
-      {/* See SecondHomeLanding: <body> is an ancestor and keeps the editorial
-          navy otherwise — measured 88px of it below this wrapper. */}
-      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
+      <style>{R19_BODY_CSS}</style>
       <StudioAtmosphere />
-      <div
-        className="bz-shs-content"
-        style={{
-          display: "grid",
-          gap: isVerdictStage ? "var(--space-5, 2rem)" : 24,
-          maxWidth: "1120px",
-          margin: "0 auto",
-        }}
-      >
-        <header
-          style={{
-            display: "grid",
-            gap: isVerdictStage ? 6 : 8,
-            padding: isVerdictStage
-              ? "clamp(1rem, 3vw, 1.75rem) 0 0"
-              : "clamp(0.75rem, 3vw, 2.5rem) 0 0",
-          }}
-        >
+      <div className="bz-shs-content bz-shs-room-grid">
+        <header className="bz-shs-door">
           <Lockup />
+        </header>
+
+        <div
+          className="bz-shs-desk-head"
+          data-stage={isVerdictStage ? "verdict" : "question"}
+        >
           {isVerdictStage ? (
             <p style={mastheadLabelStyle}>Check your fit</p>
           ) : (
             <>
-              <h1 style={mastheadHeadingStyle}>Check your fit</h1>
+              <h1 className="bz-shs-masthead" style={mastheadHeadingStyle}>
+                Check your fit
+              </h1>
               <p style={mastheadLedeStyle}>
                 See which Second Home route fits you.
               </p>
             </>
           )}
-        </header>
+        </div>
 
-        {!isVerdictStage ? (
-          <ProgressRail
-            step={stepIndex + 1}
-            total={railSequence.length}
-            labels={railSequence.map((q) => STEP_LABELS[q])}
-          />
-        ) : null}
+        <Wall chart={railChart} map={showCustodyMap ? <CustodyMap /> : null} />
 
         {isVerdictStage && verdict ? (
           <div
-            className="bz-shs-verdict-stack"
+            className="bz-shs-desk bz-shs-verdict-stack"
             style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}
           >
             <div className="bz-shs-back-to-answers">
@@ -846,99 +831,69 @@ export function StudioApp() {
               </button>
             </div>
             <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
-            {showCustodyMap ? <CustodyMap /> : null}
-            <RouteComparator highlight={plan.route === "unsure"} />
-            <ScenarioToggle plan={plan} />
+            {price ? (
+              <section className="bz-shs-price-slip">
+                <p className="bz-shs-price-label">{getCopy("price.label")}</p>
+                <div className="bz-shs-figure bz-shs-price-figure">{price}</div>
+                <p className="bz-shs-price-note">{getCopy("price.note")}</p>
+                <p className="bz-shs-price-note">
+                  {getCopy("price.dependentsNote")}
+                </p>
+              </section>
+            ) : null}
+            <WhatsAppHandoff plan={plan} verdict={verdict} />
+            <ReadinessChecklist
+              plan={plan}
+              verdict={verdict}
+              onToggle={toggleChecklistItem}
+            />
             <TimelineView
               horizon={plan.horizon ?? "exploring"}
               location={plan.location ?? "in_indonesia"}
               route={plan.route}
               product={verdict.product}
             />
-            <ReadinessChecklist
-              plan={plan}
-              verdict={verdict}
-              onToggle={toggleChecklistItem}
-            />
-            {price ? (
-              <section
-                style={{
-                  display: "grid",
-                  gap: "var(--space-1, 0.3rem)",
-                  background: "var(--surface-raised)",
-                  border: "1px solid var(--accent-funnel)",
-                  borderRadius: 12,
-                  padding: "var(--space-4, 1.5rem)",
-                  textAlign: "center",
-                  justifyItems: "center",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.7rem",
-                    letterSpacing: "0.15em",
-                    textTransform: "uppercase",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {getCopy("price.label")}
-                </p>
-                <div
-                  style={{
-                    fontFamily: "var(--font-serif, Georgia, serif)",
-                    fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--accent-funnel-text, var(--accent-funnel))",
-                  }}
-                >
-                  {price}
-                </div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "var(--text-sm, 0.88rem)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {getCopy("price.note")}
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "var(--text-sm, 0.85rem)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {getCopy("price.dependentsNote")}
-                </p>
-              </section>
-            ) : null}
-            <WhatsAppHandoff plan={plan} verdict={verdict} />
+            <RouteComparator highlight={plan.route === "unsure"} />
+            <section
+              className="bz-shs-second-chair"
+              aria-label={getCopy("room.desk.secondChair")}
+            >
+              <p className="bz-shs-second-chair-label">
+                {getCopy("room.desk.secondChair")}
+              </p>
+              <ScenarioToggle plan={plan} />
+            </section>
             <SavePlanBar plan={plan} onClear={handleClear} />
           </div>
         ) : currentQuestion ? (
-          <div className="bz-shs-layout">
-            <main>
-              <QuestionStage
-                question={currentQuestion}
-                plan={plan}
-                onSelect={selectAnswer}
-                onBack={goBack}
-                onContinue={continueStep}
-                canGoBack={stepIndex > 0}
-                headingRef={stageHeadingRef}
-              />
-            </main>
-            <aside>
-              <MemoPreview
-                plan={plan}
-                total={railSequence.length}
-                familyAnswered={familyPassed}
-              />
-            </aside>
-          </div>
+          <main className="bz-shs-desk" aria-label={getCopy("room.desk.label")}>
+            <div className="bz-shs-layout">
+              <div className="bz-shs-sheet">
+                <QuestionStage
+                  question={currentQuestion}
+                  plan={plan}
+                  onSelect={selectAnswer}
+                  onBack={goBack}
+                  onContinue={continueStep}
+                  canGoBack={stepIndex > 0}
+                  headingRef={stageHeadingRef}
+                />
+              </div>
+              <aside
+                className="bz-shs-ledger"
+                aria-label={getCopy("room.desk.ledgerLabel")}
+              >
+                <MemoPreview
+                  plan={plan}
+                  total={railSequence.length}
+                  familyAnswered={familyPassed}
+                />
+              </aside>
+            </div>
+          </main>
         ) : null}
+
+        <Shelf plan={plan} verdict={verdict} />
 
         <div
           ref={consentSpaceRef}
@@ -946,13 +901,10 @@ export function StudioApp() {
           style={{
             height: consentHeight,
             display: consentHeight > 0 ? "block" : "contents",
-            // Red hierarchy (2026-09-24): the banner's dismiss button painted
-            // the only full-strength red on screen while Continue waited in
-            // its "not yet" state. R4's red budget on a funnel is the wordmark,
-            // the progress mark and ONE primary action — so inside this
-            // wrapper only, the banner's own accent token turns ink (white on
-            // #16213a = 16:1, links stay underlined). ConsentBanner itself and
-            // every other route are untouched.
+            // Red hierarchy (2026-09-24), kept under R19: inside this wrapper
+            // the banner's own accent token turns ink, so Continue owns the
+            // only copper on screen. ConsentBanner itself and every other
+            // route are untouched.
             ...({
               "--bz-accent": "var(--text-primary)",
             } as React.CSSProperties),
@@ -1016,9 +968,10 @@ export function StudioApp() {
         .bz-shs-cta:not(:disabled):hover {
           background: var(--cta-bg-hover) !important;
         }
+        /* Family layer §2.2: a 3px copper focus ring, offset 3px. */
         .bz-shs-nav button:focus-visible,
         .bz-shs-back-to-answers button:focus-visible {
-          outline: 3px solid var(--text-primary);
+          outline: 3px solid var(--r19-copper, var(--text-primary));
           outline-offset: 3px;
         }
         .bz-shs-layout {
@@ -1027,21 +980,8 @@ export function StudioApp() {
           grid-template-columns: 1fr;
           align-items: start;
         }
-        @media (min-width: 900px) {
-          .bz-shs-layout {
-            grid-template-columns: minmax(0, 1fr) 320px;
-          }
-          /* Desktop layout balance (2026-08-20 design pass): the memo rail
-           * used to sit static at the top of its column and scroll away as
-           * a tall question card grew below it, leaving a "dead" empty
-           * column on wide viewports. align-items:start above already
-           * keeps the rail from stretching to the main column's height —
-           * required for sticky to have room to move within. */
-          .bz-shs-layout > aside {
-            position: sticky;
-            top: var(--space-5, 2rem);
-          }
-        }
+        /* Side-by-side sheet + ledger is decided by the desk's own width:
+         * see the container query in room/studio-room.css. */
         @media (prefers-reduced-motion: reduce) {
           .bz-shs-layout * {
             transition: none !important;
