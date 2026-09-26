@@ -1,12 +1,13 @@
 "use client";
 
-import { AppFrame } from "@balizero/core";
+import { useEffect } from "react";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { humanizePracticeKey } from "./messages";
 import { useOrderTracking } from "./useOrderTracking";
 import type { OrderView, PracticeState } from "./types";
 import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
+import { useVoaCounter } from "../VoaCounter";
 
 /**
  * GARUDA VOA — order tracker + visa delivery view (`/visa/voa/orders/{orderId}`).
@@ -30,20 +31,18 @@ export function OrderTracker({ orderId }: { orderId: string }) {
 
   if (state.step === "loading") {
     return (
-      <AppFrame
-        funnel="visa"
+      <TrackerSheet
         title="Your Visa on Arrival"
         subtitle="Checking your order…"
       >
         <p style={{ color: "var(--color-text-muted)" }}>One moment.</p>
-      </AppFrame>
+      </TrackerSheet>
     );
   }
 
   if (state.step === "error") {
     return (
-      <AppFrame
-        funnel="visa"
+      <TrackerSheet
         title="Your Visa on Arrival"
         subtitle="We couldn't load your order."
       >
@@ -76,7 +75,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
           </button>
         ) : null}
         <WhatsAppHelp />
-      </AppFrame>
+      </TrackerSheet>
     );
   }
 
@@ -85,24 +84,29 @@ export function OrderTracker({ orderId }: { orderId: string }) {
 
 function OrderTrackerReady({ order }: { order: OrderView }) {
   const subtitle = subtitleFor(order);
+  const { report } = useVoaCounter();
+  const practiceState = order.practice?.state ?? null;
+  // The counter's strip says the same state word and the same figure as
+  // this sheet — never a case code (none has shipped; nothing is invented).
+  useEffect(() => {
+    report({
+      orderState: order.order_state,
+      practiceState,
+      priceIdr: order.price_idr,
+    });
+  }, [order.order_state, practiceState, order.price_idr, report]);
 
   return (
-    <AppFrame
-      funnel="visa"
+    <TrackerSheet
       title="Your Visa on Arrival"
       subtitle={subtitle}
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."
     >
-      <div
-        style={{
-          display: "grid",
-          gap: "var(--space-2, 0.5rem)",
-        }}
-      >
+      <div className="voa-tracker__total">
         <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
           {order.order_state === "paid" ? "Total paid" : "Order total"}
         </span>
-        <span style={{ fontSize: "1.6rem", fontWeight: 600 }}>
+        <span className="voa-tracker__amount">
           {formatIDR(order.price_idr)}
         </span>
       </div>
@@ -155,7 +159,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
           Payment confirmed — setting up your application now.
         </p>
       ) : null}
-    </AppFrame>
+    </TrackerSheet>
   );
 }
 
@@ -235,6 +239,7 @@ function ParcelSteps({ order }: { order: OrderView }) {
   return (
     <ol
       aria-label="Application progress"
+      className="voa-timeline"
       style={{
         display: "grid",
         gap: "var(--space-2, 0.5rem)",
@@ -280,39 +285,23 @@ function stepStyle(step: {
   done: boolean;
   current: boolean;
 }): React.CSSProperties {
+  // The filed line itself (hairline, slate on the current row) lives in
+  // voa-r19.css's `.voa-timeline`; the three tiers stay inline and distinct.
   const base: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: "0.6rem",
-    padding: "0.3rem 0.5rem",
-    borderLeft: "3px solid transparent",
-    borderRadius: "0 4px 4px 0",
+    padding: "0.3rem 0.75rem",
   };
   if (step.current) {
-    return {
-      ...base,
-      color: "var(--bz-data)",
-      fontWeight: 600,
-      borderLeftColor: "var(--bz-data)",
-      background: "var(--surface-raised)",
-    };
+    return { ...base, color: "var(--text-primary)", fontWeight: 650 };
   }
   if (step.done) {
-    return { ...base, color: "var(--tx-tertiary)", fontWeight: 400 };
+    return { ...base, color: "var(--r19-structure)", fontWeight: 400 };
   }
   return { ...base, color: "var(--color-text-muted)", fontWeight: 400 };
 }
 
-/**
- * `getOrderAndPractice`'s `OrderView` (unlike `createOrderFromCheck`'s `OrderCheckout`)
- * carries no `checkout_url` — the contract never lets this read-only view hand back a
- * live provider capability. A customer who lands here still `awaiting_payment` (e.g.
- * they closed the payment tab and came back later) — or still `created`, meaning
- * checkout has not even started yet (e.g. a provider-call failure before the first
- * redirect) — therefore has no self-service resume button this page can honestly
- * render; a consultant reopening checkout for them is the real path, not a link this
- * component would have to invent.
- */
 function AwaitingPaymentPanel() {
   return (
     <p style={{ margin: 0, color: "var(--color-text-muted)" }}>
@@ -485,6 +474,38 @@ function ExceptionPanel({
       <p style={{ margin: 0, fontWeight: 600 }}>{heading}</p>
       <p style={{ margin: 0, lineHeight: 1.6 }}>{body}</p>
       <WhatsAppHelp />
+    </section>
+  );
+}
+
+/**
+ * The tracker's sheet — the same filed paper as every other VOA screen,
+ * under the same counter, instead of core's AppFrame.
+ */
+function TrackerSheet({
+  title,
+  subtitle,
+  footer,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  footer?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      role="region"
+      aria-label={title}
+      data-funnel="visa"
+      className="voa-sheet voa-sheet--flow"
+    >
+      <header className="voa-flow__head">
+        <h1 className="voa-flow__title">{title}</h1>
+        <p className="voa-flow__lede">{subtitle}</p>
+      </header>
+      {children}
+      {footer ? <p className="voa-flow__foot">{footer}</p> : null}
     </section>
   );
 }

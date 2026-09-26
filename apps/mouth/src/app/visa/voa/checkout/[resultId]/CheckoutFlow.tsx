@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppFrame, AppWhatsAppCTA, useFunnelApp } from "@balizero/core";
+import { AppWhatsAppCTA, useFunnelApp } from "@balizero/core";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { readCheckoutHandoff } from "../../checkoutHandoff";
 import { VOA_PRIMARY_ACTION_STYLE } from "../../voa-action-style";
+import { useVoaPayWording } from "../../VoaCounter";
 import { useCheckout } from "./useCheckout";
 import type { Applicant } from "../../orders/types";
 
@@ -37,6 +38,9 @@ export function CheckoutFlow({
   const router = useRouter();
   const tracker = useFunnelApp("visa_voa");
   const { state, submit } = useCheckout(resultId);
+  // The exact price, from the counter (hand-off, else the check itself) —
+  // null until it is known, and then the review line and the action say it.
+  const pay = useVoaPayWording();
   const [fullName, setFullName] = useState("");
   const [passportNumber, setPassportNumber] = useState("");
   const [email, setEmail] = useState("");
@@ -59,6 +63,9 @@ export function CheckoutFlow({
       setPassportNumber(handoff.passport_number);
       setHandoffPresent(true);
     }
+    // The address the visitor gave the magic-link form in this tab — asked
+    // once on the verdict screen, never twice. Still an editable field.
+    if (handoff.email) setEmail(handoff.email);
   }, [resultId]);
 
   // A created order never stays on this page — awaiting_payment hands off to the
@@ -94,18 +101,14 @@ export function CheckoutFlow({
     state.step !== "created";
 
   return (
-    <AppFrame
-      funnel="visa"
+    <FlowSheet
       title="Checkout"
       subtitle="A few details and you're set."
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."
     >
+      {pay ? <p className="voa-flow__review">{pay.review}</p> : null}
       <form
-        style={{
-          display: "grid",
-          gap: "var(--space-3, 0.9rem)",
-          maxWidth: 420,
-        }}
+        className="voa-flow__form"
         onSubmit={(e) => {
           e.preventDefault();
           if (canSubmit) {
@@ -215,22 +218,15 @@ export function CheckoutFlow({
         <button
           type="submit"
           disabled={!canSubmit}
-          style={{
-            padding: "0.9rem 1.4rem",
-            borderRadius: 8,
-            border: "none",
-            ...VOA_PRIMARY_ACTION_STYLE,
-            fontWeight: 600,
-            cursor: canSubmit ? "pointer" : "default",
-            opacity: canSubmit ? 1 : 0.5,
-          }}
+          className="voa-flow__action"
+          style={VOA_PRIMARY_ACTION_STYLE}
         >
           {state.step === "submitting" || state.step === "created"
             ? "Preparing checkout…"
-            : "Continue to payment →"}
+            : (pay?.action ?? "Continue to payment →")}
         </button>
       </form>
-    </AppFrame>
+    </FlowSheet>
   );
 }
 
@@ -287,8 +283,7 @@ function PaymentActivatingPanel({
   );
 
   return (
-    <AppFrame
-      funnel="visa"
+    <FlowSheet
       title="Payment"
       subtitle="You're ready — card payment is being switched on."
       footer="One all-inclusive price. Government fees, where they apply, are never billed separately from this figure."
@@ -338,7 +333,40 @@ function PaymentActivatingPanel({
           <a href={whatsappHref}>Continue on WhatsApp →</a>
         </noscript>
       </div>
-    </AppFrame>
+    </FlowSheet>
+  );
+}
+
+/**
+ * The checkout's sheet — the same filed paper as every other VOA screen,
+ * under the same counter, instead of core's AppFrame (whose inline chrome the
+ * funnel's stylesheet cannot reach). Same title, subtitle and footer as before.
+ */
+function FlowSheet({
+  title,
+  subtitle,
+  footer,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  footer: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      role="region"
+      aria-label={title}
+      data-funnel="visa"
+      className="voa-sheet voa-sheet--flow"
+    >
+      <header className="voa-flow__head">
+        <h1 className="voa-flow__title">{title}</h1>
+        <p className="voa-flow__lede">{subtitle}</p>
+      </header>
+      {children}
+      <p className="voa-flow__foot">{footer}</p>
+    </section>
   );
 }
 
@@ -375,8 +403,9 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
  * than its neighbours reads as disabled.
  */
 const inputStyle: React.CSSProperties = {
+  minHeight: 48,
   padding: "0.6rem 0.7rem",
-  borderRadius: 4,
+  borderRadius: 3,
   border: "1px solid var(--tx-tertiary)",
   background: "var(--surface-raised)",
   color: "var(--text-primary)",

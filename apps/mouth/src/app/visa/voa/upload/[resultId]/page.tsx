@@ -32,13 +32,20 @@ export default function UploadPage() {
     );
   }
 
+  // The same sheet as every other VOA screen; `voa-upload` scopes the skin
+  // in voa-r19.css to UploadFlow's own elements — no logic moves.
   return (
-    <UploadFlow
-      resultId={resultId}
-      onConfirmed={(values) => {
-        writeCheckoutHandoff(resultId, values);
-        router.push(`/visa/voa/checkout/${resultId}`);
-      }}
-    />
+    <section
+      data-funnel="visa"
+      className="voa-sheet voa-sheet--flow voa-upload"
+    >
+      <UploadFlow
+        resultId={resultId}
+        onConfirmed={(values) => {
+          writeCheckoutHandoff(resultId, values);
+          router.push(`/visa/voa/checkout/${resultId}`);
+        }}
+      />
+    </section>
   );
 }

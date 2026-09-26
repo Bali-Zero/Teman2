@@ -74,8 +74,9 @@ export interface UploadFlowProps {
  * was already correct. The failing nodes were the ordinary ones.
  */
 const PRIMARY: React.CSSProperties = {
-  background: "var(--tx-pure)",
-  color: "var(--bz-base)",
+  // R-1/Q4 (2026-09-26): copper is the funnel's single primary action.
+  background: "var(--r19-copper)",
+  color: "var(--text-on-accent)",
 };
 
 /**

@@ -61,7 +61,9 @@ const SCREENS: Array<{ name: string; file: string; bound: boolean }> = [
   {
     name: "verdict (ACCEPT + DECLINE)",
     file: "[hash]/page.tsx",
-    bound: false, // residual: WhatsApp #25D366/#0a0a0a pair, out of scope here
+    // Bound 2026-09-26: the counter sheet drew the DECLINE routes from
+    // voa-r19.css (.voa-route), and the WhatsApp literal pair left with them.
+    bound: true,
   },
   {
     name: "upload",
@@ -76,7 +78,9 @@ const SCREENS: Array<{ name: string; file: string; bound: boolean }> = [
   {
     name: "tracker",
     file: "orders/OrderTracker.tsx",
-    bound: false, // residual: WhatsApp pair + rgba(255,255,255,0.96) marker
+    // Bound 2026-09-26: no literal is left on the tracker (the WhatsApp pair
+    // and the rgba marker were gone before the counter sheet replaced AppFrame).
+    bound: true,
   },
 ];
 
