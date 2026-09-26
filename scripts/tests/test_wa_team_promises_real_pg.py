@@ -24,6 +24,10 @@ if _PG_CTL and _INITDB:
     import asyncpg
 
     from scripts.wa_team_promises import SchemaMismatchError, run_init_schema
+    from scripts.tests.test_wa_team_promises_sql_crosscheck import (
+        UnrecognizedSqlShapeError,
+        parse_declared_columns,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -84,3 +88,106 @@ async def test_real_pg_init_schema_complete_idempotent_domain_then_index_guilt(p
         assert exc_info.value.identifier == "uix_team_promise_candidates_msg_clause"
     finally:
         await pool.close()
+
+
+# --- Round 2 (condition C-A, PR #7395's PASS-WITH-CONDITIONS gate): a
+# subset of the R1-R8 residuals re-proven directly against a REAL cluster
+# (not just PG-truth captured by hand into the static unit test above) —
+# picked because PG truth is cheap to assert here: a SchemaMismatchError-
+# style catalog read, or PG refusing the DDL outright. Each is its own
+# scratch database inside the SAME cluster (never the module's own
+# `postgres` database, which the sibling test above owns) so a bad DDL can
+# never touch that test's tables. ---
+
+
+async def _fresh_scratch_db(sockdir, name: str, sql: str):
+    """Runs `sql` against a brand-new, empty scratch database, returns the
+    pg_attribute catalog (atttypid-only, matching R5's chosen semantics —
+    see test_wa_team_promises_gate_conditions_real_pg.py's C1 comment) for
+    every user table, or the exception PG raised. Drops the database either
+    way."""
+    admin = await asyncpg.connect(host=str(sockdir), user="postgres", database="postgres")
+    try:
+        await admin.execute(f'DROP DATABASE IF EXISTS "{name}"')
+        await admin.execute(f'CREATE DATABASE "{name}"')
+    finally:
+        await admin.close()
+    conn = await asyncpg.connect(host=str(sockdir), user="postgres", database=name)
+    try:
+        try:
+            async with conn.transaction():
+                await conn.execute(sql)
+        except Exception as e:  # PG refused the DDL outright
+            return f"PG-ERROR {type(e).__name__}"
+        rows = await conn.fetch(
+            "SELECT c.relname AS t, a.attname AS n, format_type(a.atttypid, NULL) AS ty, "
+            "a.attnotnull AS nn FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
+            "JOIN pg_namespace s ON s.oid = c.relnamespace WHERE s.nspname = 'public' "
+            "AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped"
+        )
+        out: dict[str, set[tuple[str, str, bool]]] = {}
+        for r in rows:
+            out.setdefault(r["t"], set()).add((r["n"], r["ty"], r["nn"]))
+        return out
+    finally:
+        await conn.close()
+        admin2 = await asyncpg.connect(host=str(sockdir), user="postgres", database="postgres")
+        try:
+            await admin2.execute(f'DROP DATABASE IF EXISTS "{name}"')
+        finally:
+            await admin2.close()
+
+
+_ROUND2_CA_REAL_PG_CASES = [
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT NOT NULL);\n"
+        "CREATE TABLE IF NOT EXISTS t (a TEXT NOT NULL, b TEXT);",
+        {"t": {("a", "text", True)}},
+        id="R1-repeated-create-table-if-not-exists-is-a-no-op-in-PG",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "ALTER TABLE other.t ADD COLUMN IF NOT EXISTS b TEXT NOT NULL;",
+        "PG-ERROR InvalidSchemaNameError",  # schema "other" does not exist
+        id="R4-non-public-schema-qualifier-errors-in-PG-on-a-fresh-db",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TIMESTAMPTZ(3), d VARCHAR(10) NOT NULL);",
+        {"t": {("c", "timestamp with time zone", False), ("d", "character varying", True)}},
+        id="R5-typmods-vanish-from-an-atttypid-only-catalog-read",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT,);",
+        "PG-ERROR PostgresSyntaxError",
+        id="R6a-trailing-comma-is-a-real-PG-syntax-error",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (thread_Key TEXT);",
+        {"t": {("thread_Key", "text", False)}},
+        id="R7-PG-keeps-a-non-ascii-identifier-byte-for-byte",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql, expected", _ROUND2_CA_REAL_PG_CASES)
+async def test_round2_ca_residual_matches_real_pg_catalog(pg_socket_dir, sql, expected, request):
+    case_id = request.node.callspec.id
+    db = f"ca_{case_id[:2].lower()}_{id(sql) % 100000}"
+    truth = await _fresh_scratch_db(pg_socket_dir, db, sql)
+    if isinstance(expected, str):
+        assert isinstance(truth, str) and truth.startswith(expected)
+        return
+    assert truth == expected
+    if case_id.startswith("R7"):
+        # R7's own residual is that the STATIC parser must reject this
+        # identifier outright rather than fold it to something PG would
+        # never produce — proven directly here; PG's own truth above (the
+        # non-ASCII byte surviving) is the half this real-PG test exists
+        # to prove.
+        with pytest.raises(UnrecognizedSqlShapeError):
+            parse_declared_columns(sql)
+        return
+    # Everywhere else, the static parser (no DB at all) must land on the
+    # SAME column set PG itself produced.
+    assert parse_declared_columns(sql) == expected

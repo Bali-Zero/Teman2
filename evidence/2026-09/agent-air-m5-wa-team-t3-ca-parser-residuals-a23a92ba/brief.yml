@@ -1,0 +1,117 @@
+task: >-
+  Closes condition C-A of PR #7395's PASS-WITH-CONDITIONS gate
+  (pull/7395#issuecomment-5846140618, merged e16314b4f2 / parser at
+  c2045e12b1). That gate's own PG-truth probe (a throwaway PG17 database,
+  catalog read back — not the parser's own expectations) found 8 residuals
+  where the Round-1 tokenizer in test_wa_team_promises_sql_crosscheck.py
+  was silent-wrong or silently accepted SQL PostgreSQL itself rejects: R1
+  repeated CREATE TABLE/ADD COLUMN statements were UNIONED where PG keeps
+  only the first and no-ops the rest; R2 a bare `\r` ends PG's `--` comment
+  where `_tokenize` only ended one at `\n`; R3 an `E'...\''` escape-string
+  desync (this tokenizer understands only doubled-quote escaping, not
+  E-string backslash escaping) resynced by a `--` comment and hid a NOT
+  NULL column; R4 any schema qualifier was discarded, not only `public.`;
+  R5 typmods (`VARCHAR(n)`, `TIMESTAMPTZ(p)`) were dropped, matching the
+  runtime guard's atttypid-only contract but not the opt-in C1 real-PG
+  test's `format_type(atttypid, atttypmod)` query; R6 SQL PG rejects was
+  silently accepted (trailing comma, conflicting NULL/NOT NULL, duplicate
+  DEFAULT/PRIMARY KEY, a non-boolean bare-literal CHECK, a typmod on a type
+  that doesn't take one, a reserved keyword as an unquoted column name); R7
+  a non-ASCII identifier (Kelvin sign) was folded by Python's `.lower()`
+  but not by PG; R8 an empty `()` body silently produced no `declared`
+  entry for the table. Each is closed with a guilt case judged against a
+  throwaway PG17 catalog, not against the parser's own prior expectations.
+  R5's chosen semantics (drop the typmod, matching the runtime guard) is
+  applied to BOTH files: the static parser already dropped it; the opt-in
+  C1 real-PG test's query was changed from `atttypmod` to a literal NULL to
+  match. Test-only — scripts/wa_team_promises.py is untouched, per the
+  gate condition's own instruction.
+lane: wa-team/t3-ca-parser-residuals
+machine: M5
+date: "2026-09-26"
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat`
+  against the merge-base with origin/main (50ac8f0b8f) measures churn 441
+  (11+1 in test_wa_team_promises_gate_conditions_real_pg.py — the C1
+  atttypmod->NULL query swap; 107+0 in test_wa_team_promises_real_pg.py —
+  a new opt-in real-PG companion test for 5 of the 8 residuals; 302+20 in
+  test_wa_team_promises_sql_crosscheck.py — the R1-R8 parser fixes plus 19
+  new parametrized guilt cases) — above SIZE_GEAR2_THRESHOLD (400) and
+  below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (scripts/tests/ is
+  not a HOTZONE_PATTERNS match). Confirmed locally via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`
+  against this diff's numstat. Test-only in substance — no application/
+  runtime code changed.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Each of R1-R8 is closed in parse_declared_columns/_parse_create_table/
+    _parse_alter_table/_parse_column_def/_read_qualified_name/_tokenize/
+    _split_top_level_commas_tok: repeated CREATE TABLE/ADD COLUMN are
+    first-wins (not unioned); a bare `\r` ends a `--` comment; an `E'`
+    prefix is rejected outright; a non-`public` schema qualifier is
+    rejected; a typmod is dropped (never folded into pg_type) and only
+    accepted on VARCHAR/TIMESTAMPTZ; a trailing top-level comma or an empty
+    `()` body is rejected; conflicting NULL/NOT NULL, a second DEFAULT or
+    PRIMARY KEY, a bare-numeric CHECK, and a PG-reserved bare column name
+    are each rejected; a non-ASCII WORD token is rejected.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k round2_ca -v
+  A2: >-
+    Mutation receipt: all 19 new Round-2 C-A parametrized cases, run
+    against the parser AS IT STOOD on origin/main (50ac8f0b8f, same parser
+    as c2045e12b1) before this PR — 16 FAIL there (the residuals) and 3
+    PASS there unchanged (R5a/R5b, whose parser output was already
+    typmod-dropped, and the R6 non-reserved-word control); all 19 PASS
+    against the fixed parser in this PR. See the PR body's table for the
+    full case-by-case receipt.
+    probe: >-
+      (embedded receipt script, run once by hand — see PR body; the
+      assertions themselves are the 19 parametrized pytest cases in A1)
+  A3: >-
+    The real SQL file (scripts/sql/pro_local/team_promises.sql) still
+    parses to the exact _REQUIRED_COLUMNS contract, both statically and
+    against a real PG17 catalog; the full existing unit + opt-in real-PG
+    suite for wa_team_promises stays green, unmodified in expectation.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises*.py -q &&
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises*.py -q
+  A4: >-
+    5 of the 8 residuals (R1, R4, R5, R6a, R7 — picked because PG truth is
+    cheap to assert directly) are re-proven against a REAL throwaway PG17
+    cluster, each in its own scratch database, never touching the sibling
+    test's own `postgres` database or any pre-existing DB.
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -v
+
+out_of_scope: >-
+  scripts/wa_team_promises.py's own logic (the gate condition explicitly
+  scopes this PR to test files; a runtime change was not required for any
+  of R1-R8, including R5). A full SQL grammar or the complete PostgreSQL
+  reserved-keyword list (a representative, PG-verified subset closes R6h;
+  see `_RESERVED_COLUMN_NAMES`'s docstring for the exact query it was
+  pulled from). Condition C-B (the #7395/#7367 rebase addendum) — separate
+  owner, separate deadline, untouched here.
+
+assumptions:
+  - text: >-
+      Every PG-truth claim above (which SQL PG accepts/rejects, and what
+      it puts in pg_attribute) was measured once against a throwaway PG17
+      17.10 (Homebrew) cluster on this machine — a fresh scratch database
+      per case, dropped after — not reasoned about by inspection.
+    status: verified
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k round2_ca -v
+      && WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -v

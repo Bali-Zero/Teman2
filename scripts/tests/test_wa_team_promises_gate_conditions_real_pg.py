@@ -179,8 +179,18 @@ async def test_c1_real_pg_catalog_matches_required_columns_exactly(pg_socket_dir
         await run_init_schema(pool)
         async with pool.acquire() as conn:
             rows = await conn.fetch(
+                # PR #7395 gate condition C-A / R5: `atttypmod` swapped for a
+                # literal NULL — atttypid-ONLY, matching the semantics both
+                # the runtime guard (`verify_required_columns` compares
+                # `atttypid` alone, never `atttypmod`) and the static parser
+                # in test_wa_team_promises_sql_crosscheck.py (`_parse_column_
+                # def` drops every typmod) already use. Nothing in
+                # `_REQUIRED_COLUMNS` carries a typmod today, so this changes
+                # no row here — it only stops this query from silently
+                # drifting to a THIRD, incompatible semantics the moment a
+                # typmod'd column is ever added without updating all three.
                 "SELECT c.relname AS table_name, a.attname, "
-                "format_type(a.atttypid, a.atttypmod) AS pg_type, a.attnotnull "
+                "format_type(a.atttypid, NULL) AS pg_type, a.attnotnull "
                 "FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
                 "WHERE c.relname IN ('team_promises', 'team_promise_candidates') "
                 "AND a.attnum > 0 AND NOT a.attisdropped"

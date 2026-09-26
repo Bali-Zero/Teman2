@@ -1,0 +1,83 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+dissent: []
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Solo lane: closed condition C-A of PR #7395's PASS-WITH-CONDITIONS
+      gate. Read the gate's own probe (probe7395.py/.log under the M5
+      scratchpad) to get the exact R1-R8 residual definitions, re-verified
+      every one of them by hand against a fresh throwaway PG17 17.10
+      cluster (own scratch databases, dropped after each check — never
+      nuzantara_test or any pre-existing DB), fixed each in the test-only
+      parser (scripts/wa_team_promises.py untouched), added 19 new
+      parametrized unit guilt cases plus 5 real-PG companion cases, and
+      ran the mutation receipt (16/19 new cases FAIL against the parser as
+      it stood on origin/main, 19/19 PASS against the fix). No second seat
+      reviewed this before the coordinator's own gate — the mandate itself
+      says "the coordinator runs the gate", so no build-side dissent round
+      was convened for a Gear-2, test-only, single-owner follow-up.
+receipts:
+  - claim: >-
+      All 55 tests in the crosscheck unit file pass (36 pre-existing + 19
+      new Round-2 C-A parametrized cases).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -q
+    exit: 0
+    ts: "2026-09-26T13:34:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The full wa_team_promises test surface (unit + opt-in real-PG) stays
+      green: 113 passed / 21 skipped without WA_TEAM_PROMISES_REAL_PG=1,
+      134 passed / 0 skipped with it — including the real SQL file
+      (scripts/sql/pro_local/team_promises.sql) still parsing to its exact
+      _REQUIRED_COLUMNS contract, both statically and against a real PG17
+      catalog (test_c1_real_pg_catalog_matches_required_columns_exactly).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises*.py -q &&
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises*.py -q
+    exit: 0
+    ts: "2026-09-26T13:34:20Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Mutation receipt: the 19 new Round-2 C-A guilt cases, run against
+      the parser exactly as it stood on origin/main (50ac8f0b8f, same
+      parser as gate-referenced c2045e12b1) before this PR — 16 FAIL there
+      (the R1-R8 residuals) and 3 PASS unchanged (R5a/R5b, whose typmod-
+      dropping the static parser already did; the R6 non-reserved-word
+      control). All 19 PASS against the fixed parser in this PR.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python scratchpad/mutation_receipt.py (old
+      module loaded from `git show origin/main:scripts/tests/
+      test_wa_team_promises_sql_crosscheck.py`, new module from this
+      worktree's fixed file — see the PR body for the full script and the
+      case-by-case table)
+    exit: 0
+    ts: "2026-09-26T13:35:10Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      5 of the 8 residuals (R1, R4, R5, R6a, R7) are re-proven directly
+      against a real throwaway PG17 cluster, each isolated in its own
+      scratch database.
+    cmd: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -q
+    exit: 0
+    ts: "2026-09-26T13:35:40Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The deterministic floor for this diff is 2, source `size` (churn 441
+      across 3 test files, no hot-zone path match).
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --numstat-file <numstat>
+      --changed-files-file <changed> --print-floor &&
+      python3 scripts/evidence_pack_lint.py --numstat-file <numstat>
+      --changed-files-file <changed> --print-floor-source
+    exit: 0
+    ts: "2026-09-26T13:36:00Z"
+    seat: claude-sonnet-5

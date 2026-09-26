@@ -36,6 +36,25 @@ fake NOT NULL (or hide a real one) into the column's own nullability. See
 `test_round1_column_body_is_parsed_or_rejected_never_silently_passed` for
 the 16 shapes this closes.
 
+ROUND 2 (condition C-A, PASS-WITH-CONDITIONS follow-up on PR #7395's own
+gate, pull/7395#issuecomment-5846140618): the Round-1 tokenizer was itself
+fail-closed but had eight residuals where it was silent-wrong or accepted
+SQL PG rejects, each judged against a throwaway PG17 catalog, not against
+the parser's own expectations — R1 repeated CREATE TABLE/ADD COLUMN are
+UNIONED here but PG keeps the first and no-ops the rest; R2 a bare `\\r`
+ends PG's `--` comment where `_tokenize` only ended one at `\\n`; R3 an
+`E'...\\''` escape string desyncs the tokenizer's doubled-quote-only string
+scan, resynced by a `--` comment, hiding a column; R4 any schema qualifier
+was discarded, not only `public.`; R5 typmods (`VARCHAR(n)`,
+`TIMESTAMPTZ(p)`) are dropped — chosen to match the runtime guard's
+atttypid-only contract (see `_TYPMOD_CAPABLE_TYPES`'s docstring); R6 SQL PG
+rejects was silently accepted (trailing comma, conflicting NULL/NOT NULL,
+duplicate DEFAULT/PRIMARY KEY, a non-boolean bare-literal CHECK, a typmod on
+a type that doesn't support one, a reserved keyword used as an unquoted
+column name); R7 a non-ASCII identifier (a Kelvin sign) was folded by
+Python's `.lower()` but not by PG; R8 an empty `()` body silently produced
+no `declared` entry for the table at all rather than being rejected.
+
 Purely static — no DB, no asyncpg. See test_wa_team_promises_real_pg.py for
 the real-Postgres companion (catalog row count against the SAME
 `_REQUIRED_COLUMNS`, opt-in).
@@ -72,6 +91,39 @@ _TYPE_ALIASES = {
 # nextval(...)) regardless of PRIMARY KEY — Round-1 finding: a bare `id
 # BIGSERIAL` (no explicit PRIMARY KEY on IT) was wrongly read as nullable.
 _IMPLICIT_NOT_NULL_TYPES = frozenset({"SERIAL", "BIGSERIAL", "SMALLSERIAL"})
+
+# Round-2 R5/R6g: the only two type keywords in `_TYPE_ALIASES` that PG
+# actually accepts a `(typmod)` on (verified against a throwaway PG17
+# catalog — `TEXT(3)`/`BOOLEAN(3)`/`INTEGER(5)` etc. all raise "type
+# modifier is not allowed for type ..."). A typmod is accepted here and then
+# DROPPED — never folded into `pg_type` — matching the runtime guard's own
+# atttypid-only contract (`test_wa_team_promises_real_pg.py` compares
+# `atttypid = 'text'::regtype`, never `atttypmod`). That is the semantics
+# chosen for R5: `format_type(atttypid, atttypmod)` (used by the opt-in C1
+# real-PG test) is deliberately NOT what this parser reproduces — C1's own
+# query was moved to `format_type(atttypid, NULL)` to match, since nothing
+# in `_REQUIRED_COLUMNS` today carries a typmod either way.
+_TYPMOD_CAPABLE_TYPES = frozenset({"VARCHAR", "TIMESTAMPTZ"})
+
+# PostgreSQL's OWN fully-reserved keywords (`SELECT word FROM
+# pg_get_keywords() WHERE catcode = 'R'` on a throwaway PG17 — these can
+# never be an unquoted identifier, column names included) — Round-2 R6
+# finding: `_parse_column_def` accepted any of these as a bare column name
+# even though PG raises a syntax error on all of them unquoted.
+_RESERVED_COLUMN_NAMES = frozenset({
+    "ALL", "ANALYSE", "ANALYZE", "AND", "ANY", "ARRAY", "AS", "ASC",
+    "ASYMMETRIC", "BOTH", "CASE", "CAST", "CHECK", "COLLATE", "COLUMN",
+    "CONSTRAINT", "CREATE", "CURRENT_CATALOG", "CURRENT_DATE",
+    "CURRENT_ROLE", "CURRENT_TIME", "CURRENT_TIMESTAMP", "CURRENT_USER",
+    "DEFAULT", "DEFERRABLE", "DESC", "DISTINCT", "DO", "ELSE", "END",
+    "EXCEPT", "FALSE", "FETCH", "FOR", "FOREIGN", "FROM", "GRANT", "GROUP",
+    "HAVING", "IN", "INITIALLY", "INTERSECT", "INTO", "LATERAL", "LEADING",
+    "LIMIT", "LOCALTIME", "LOCALTIMESTAMP", "NOT", "NULL", "OFFSET", "ON",
+    "ONLY", "OR", "ORDER", "PLACING", "PRIMARY", "REFERENCES", "RETURNING",
+    "SELECT", "SESSION_USER", "SOME", "SYMMETRIC", "SYSTEM_USER", "TABLE",
+    "THEN", "TO", "TRAILING", "TRUE", "UNION", "UNIQUE", "USER", "USING",
+    "VARIADIC", "WHEN", "WHERE", "WINDOW", "WITH",
+})
 
 # Characters this file never uses for real syntax OUTSIDE a string literal —
 # Round-1 finding: round-0's regex-over-text let a `/* ... */` block
@@ -135,10 +187,34 @@ def _tokenize(sql: str) -> list[_Token]:
             i += 1
             continue
         if sql.startswith("--", i):
-            j = sql.find("\n", i)
-            i = n if j == -1 else j + 1
+            # Round-2 R2: PG's scanner ends a `--` comment at a bare `\r`
+            # too, not only `\n` — a text-only newline search let a `\r`
+            # (no `\n` following) hide real tokens (a column, a NOT NULL)
+            # inside what this tokenizer used to still call comment text.
+            j = i + 2
+            while j < n and sql[j] not in "\r\n":
+                j += 1
+            i = j
             continue
         if c == "'":
+            # Round-2 R3: an `E'...'` escape string uses BACKSLASH escaping
+            # (`\'` is an escaped quote), which this tokenizer's plain
+            # doubled-quote (`''`) scan below does not understand — it can
+            # desync onto a much later quote (one inside a `--` comment,
+            # say) and silently swallow real statements as "string content".
+            # Never supported: rejected outright the instant an `E`/`e` word
+            # sits immediately before the opening quote, before the (wrong)
+            # scan below ever starts.
+            if (
+                tokens and tokens[-1].kind == "WORD"
+                and tokens[-1].value.upper() == "E" and tokens[-1].end == i
+            ):
+                raise UnrecognizedSqlShapeError(
+                    stmt_index, "E'",
+                    f"E-string (escape string) literal at offset {i - 1} is "
+                    "outside today's allowlist — backslash escaping inside "
+                    "a string is not supported by this tokenizer",
+                )
             j = i + 1
             buf: list[str] = []
             while True:
@@ -188,7 +264,21 @@ def _tokenize(sql: str) -> list[_Token]:
             j = i
             while j < n and (sql[j].isalnum() or sql[j] == "_"):
                 j += 1
-            tokens.append(_Token("WORD", sql[i:j], i, j))
+            word = sql[i:j]
+            if not word.isascii():
+                # Round-2 R7: Python's `str.isalpha()`/`.lower()` fold
+                # non-ASCII letters PG's own unquoted-identifier downcasing
+                # never touches (a Kelvin sign `K` lowercases to plain
+                # ASCII `k` in Python, staying itself in PG) — rejected
+                # outright rather than silently folded to a name PG would
+                # never produce for the same input.
+                raise UnrecognizedSqlShapeError(
+                    stmt_index, word,
+                    f"non-ASCII unquoted identifier {word!r} at offset {i} "
+                    "is outside today's allowlist — this tokenizer's "
+                    "lowercasing does not match PG's for non-ASCII letters",
+                )
+            tokens.append(_Token("WORD", word, i, j))
             pending = True
             i = j
             continue
@@ -254,7 +344,13 @@ def _split_top_level_commas_tok(tokens: list[_Token]) -> list[list[_Token]]:
     `(`/`)` tokens only, so a comma INSIDE a STRING token (the whole literal
     is already one opaque token — Round-1 finding: `DEFAULT 'x, ghost
     INTEGER'` must never fracture into two columns) or inside a CHECK/args
-    parenthesis never counts as a separator."""
+    parenthesis never counts as a separator. Round-2 R6a/R8: the final
+    `current` is appended UNCONDITIONALLY, even when empty — a trailing
+    top-level comma (`(c TEXT,)`, a PG syntax error) or a wholly empty body
+    (`()`, R8 — never given even one entry in `declared`) used to leave
+    nothing after the last real element for a caller's `if not element:
+    raise` to ever see; now both surface as an empty trailing part, exactly
+    like a double comma mid-list already did."""
     parts: list[list[_Token]] = []
     current: list[_Token] = []
     depth = 0
@@ -268,23 +364,32 @@ def _split_top_level_commas_tok(tokens: list[_Token]) -> list[list[_Token]]:
             current = []
         else:
             current.append(tok)
-    if current:
-        parts.append(current)
+    parts.append(current)
     return parts
 
 
 def _read_qualified_name(
     tokens: list[_Token], pos: int, index: int, sql: str, stmt_tokens: list[_Token]
 ) -> tuple[str, int]:
-    """A bare or `public.`-qualified identifier — the schema prefix (any
-    case) is discarded, keeping only the bare name, lowercased (unquoted
-    Postgres identifiers fold to lowercase; quoted ones are rejected
-    outright at the tokenizer, so lowercasing here is always correct)."""
+    """A bare or `public.`-qualified identifier — the `public` schema prefix
+    (any case) is discarded, keeping only the bare name, lowercased
+    (unquoted Postgres identifiers fold to lowercase; quoted ones are
+    rejected outright at the tokenizer, so lowercasing here is always
+    correct). Round-2 R4: ANY OTHER schema qualifier used to be discarded
+    the same way — `other.team_promises` silently read as plain
+    `team_promises` — but on a fresh DB that statement errors in PG
+    (undefined table `other.team_promises`), and on a DB where `other.t`
+    happens to exist it would silently cross-check the WRONG table's
+    columns. A non-`public` qualifier is now rejected outright."""
     if pos >= len(tokens) or tokens[pos].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, "?", _stmt_text(sql, stmt_tokens))
     name = tokens[pos].value
     pos += 1
     if pos < len(tokens) and tokens[pos].kind == "PUNCT" and tokens[pos].value == ".":
+        if name.lower() != "public":
+            raise UnrecognizedSqlShapeError(
+                index, name, _stmt_text(sql, stmt_tokens)
+            )
         pos += 1
         if pos >= len(tokens) or tokens[pos].kind != "WORD":
             raise UnrecognizedSqlShapeError(index, "?", _stmt_text(sql, stmt_tokens))
@@ -343,32 +448,53 @@ def _parse_column_def(
     OPAQUE parens — their contents are never scanned for keywords, which is
     exactly what stops `CHECK (c IS NOT NULL OR true)` from leaking a fake
     NOT NULL into this column's own nullability (Round-1 finding: round-0's
-    NOT-NULL check scanned the whole clause tail as one string)."""
+    NOT-NULL check scanned the whole clause tail as one string). Round-2 R6
+    findings: PG rejects a handful of shapes this used to accept silently —
+    conflicting NULL/NOT NULL, more than one DEFAULT or PRIMARY KEY, a
+    non-boolean bare-literal CHECK, and a typmod on a type that doesn't take
+    one — each now REJECTED to match. R6/reserved-word: a column named
+    after one of PG's own fully-reserved keywords is rejected the same way."""
     if not tokens or tokens[0].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, "?", _stmt_text(sql, stmt_tokens))
     name = tokens[0].value.lower()
+    if tokens[0].value.upper() in _RESERVED_COLUMN_NAMES:
+        raise UnrecognizedSqlShapeError(index, tokens[0].value, _stmt_text(sql, stmt_tokens))
     if len(tokens) < 2 or tokens[1].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
     raw_type = tokens[1].value.upper()
     pos = 2
     if pos < len(tokens) and tokens[pos].kind == "PUNCT" and tokens[pos].value == "(":
+        if raw_type not in _TYPMOD_CAPABLE_TYPES:
+            raise UnrecognizedSqlShapeError(index, raw_type, _stmt_text(sql, stmt_tokens))
         pos = _find_matching_close(tokens, pos, index, sql, stmt_tokens) + 1
     notnull_explicit = False
+    saw_null_bare = False
     primary_key = False
+    saw_default = False
     while pos < len(tokens):
         w = _kw(tokens[pos])
         nxt = _kw(tokens[pos + 1]) if pos + 1 < len(tokens) else None
         if w == "NOT" and nxt == "NULL":
+            if saw_null_bare:
+                raise UnrecognizedSqlShapeError(index, "NOT", _stmt_text(sql, stmt_tokens))
             notnull_explicit = True
             pos += 2
             continue
         if w == "NULL":
+            if notnull_explicit:
+                raise UnrecognizedSqlShapeError(index, "NULL", _stmt_text(sql, stmt_tokens))
+            saw_null_bare = True
             pos += 1
             continue
         if w == "DEFAULT":
+            if saw_default:
+                raise UnrecognizedSqlShapeError(index, "DEFAULT", _stmt_text(sql, stmt_tokens))
+            saw_default = True
             pos = _parse_default_value(tokens, pos + 1, index, sql, stmt_tokens)
             continue
         if w == "PRIMARY" and nxt == "KEY":
+            if primary_key:
+                raise UnrecognizedSqlShapeError(index, "PRIMARY", _stmt_text(sql, stmt_tokens))
             primary_key = True
             pos += 2
             continue
@@ -377,7 +503,17 @@ def _parse_column_def(
                 tokens[pos + 1].kind == "PUNCT" and tokens[pos + 1].value == "("
             ):
                 raise UnrecognizedSqlShapeError(index, "CHECK", _stmt_text(sql, stmt_tokens))
-            pos = _find_matching_close(tokens, pos + 1, index, sql, stmt_tokens) + 1
+            check_open = pos + 1
+            check_close = _find_matching_close(tokens, check_open, index, sql, stmt_tokens)
+            check_body = tokens[check_open + 1: check_close]
+            if len(check_body) == 1 and check_body[0].kind == "NUMBER":
+                # R6f: `CHECK (1)` — PG requires a boolean expression and
+                # errors on a bare numeric literal ("argument of CHECK must
+                # be type boolean, not type integer"); a bare TRUE/FALSE
+                # keyword or string ('t') is fine (PG casts it), so only a
+                # lone NUMBER token is rejected here.
+                raise UnrecognizedSqlShapeError(index, "CHECK", _stmt_text(sql, stmt_tokens))
+            pos = check_close + 1
             continue
         raise UnrecognizedSqlShapeError(
             index, w or tokens[pos].value, _stmt_text(sql, stmt_tokens)
@@ -389,8 +525,14 @@ def _parse_column_def(
 
 def _parse_create_table(
     index: int, stmt_tokens: list[_Token], sql: str,
-    declared: dict[str, set[tuple[str, str, bool]]],
+    declared: dict[str, dict[str, tuple[str, bool]]],
+    created_tables: set[str],
 ) -> None:
+    """Round-2 R1: `CREATE TABLE IF NOT EXISTS` on a table this parse has
+    already created is a COMPLETE no-op in PG — it doesn't even look at the
+    new column list — so a table already in `created_tables` returns
+    immediately, never touching `declared` (a UNION of the two column lists
+    used to invent columns PG would silently drop)."""
     table, pos = _read_qualified_name(stmt_tokens, 5, index, sql, stmt_tokens)
     if pos >= len(stmt_tokens) or not (
         stmt_tokens[pos].kind == "PUNCT" and stmt_tokens[pos].value == "("
@@ -399,7 +541,10 @@ def _parse_create_table(
     close_pos = _find_matching_close(stmt_tokens, pos, index, sql, stmt_tokens)
     if close_pos != len(stmt_tokens) - 1:
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
+    if table in created_tables:
+        return
     body = stmt_tokens[pos + 1: close_pos]
+    per_table = declared.setdefault(table, {})
     for element in _split_top_level_commas_tok(body):
         if not element:
             raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
@@ -407,17 +552,23 @@ def _parse_create_table(
         if first_kw in _NON_COLUMN_TABLE_ELEMENTS:
             raise UnrecognizedSqlShapeError(index, first_kw, _stmt_text(sql, stmt_tokens))
         name, pg_type, notnull = _parse_column_def(element, index, sql, stmt_tokens)
-        declared.setdefault(table, set()).add((name, pg_type, notnull))
+        per_table[name] = (pg_type, notnull)
+    created_tables.add(table)
 
 
 def _parse_alter_table(
     index: int, stmt_tokens: list[_Token], sql: str,
-    declared: dict[str, set[tuple[str, str, bool]]],
+    declared: dict[str, dict[str, tuple[str, bool]]],
 ) -> None:
+    """Round-2 R1: `ADD COLUMN IF NOT EXISTS` on a column already present
+    (from an earlier CREATE TABLE or ALTER in this same parse) is a no-op in
+    PG — the FIRST definition wins, a later one with a DIFFERENT type/
+    NOT-NULL is silently ignored, never unioned in."""
     table, pos = _read_qualified_name(stmt_tokens, 2, index, sql, stmt_tokens)
     action_tokens = stmt_tokens[pos:]
     if not action_tokens:
         raise UnrecognizedSqlShapeError(index, "ALTER", _stmt_text(sql, stmt_tokens))
+    per_table = declared.setdefault(table, {})
     for action in _split_top_level_commas_tok(action_tokens):
         ok = (
             len(action) >= 5
@@ -430,7 +581,9 @@ def _parse_alter_table(
         if not ok:
             raise UnrecognizedSqlShapeError(index, "ALTER", _stmt_text(sql, stmt_tokens))
         name, pg_type, notnull = _parse_column_def(action[5:], index, sql, stmt_tokens)
-        declared.setdefault(table, set()).add((name, pg_type, notnull))
+        if name in per_table:
+            continue
+        per_table[name] = (pg_type, notnull)
 
 
 def _parse_create_unique_index(index: int, stmt_tokens: list[_Token], sql: str) -> None:
@@ -460,10 +613,16 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
     FAIL-CLOSED: any statement — or column/DEFAULT/top-level table element
     inside one — outside the allowlist raises `UnrecognizedSqlShapeError`
     naming its statement index and first keyword, never silently skipping
-    it."""
+    it. Round-2 R1: `declared` is built as {table: {name: (type, notnull)}}
+    internally — FIRST-WINS per column name, matching PG's own
+    IF-NOT-EXISTS no-op semantics for a repeated CREATE TABLE or ADD COLUMN
+    — then converted to the public {table: {(name, type, notnull), ...}}
+    shape on return, so every existing caller's expected shape is
+    unchanged."""
     tokens = _tokenize(sql)
     statements = _split_into_statements(tokens)
-    declared: dict[str, set[tuple[str, str, bool]]] = {}
+    declared: dict[str, dict[str, tuple[str, bool]]] = {}
+    created_tables: set[str] = set()
     for index, stmt_tokens in enumerate(statements):
         if not stmt_tokens:
             continue
@@ -472,7 +631,7 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
             return _kw(_toks[pos]) if pos < len(_toks) else None
 
         if kw(0) == "CREATE" and kw(1) == "TABLE" and kw(2) == "IF" and kw(3) == "NOT" and kw(4) == "EXISTS":
-            _parse_create_table(index, stmt_tokens, sql, declared)
+            _parse_create_table(index, stmt_tokens, sql, declared, created_tables)
         elif kw(0) == "ALTER" and kw(1) == "TABLE":
             _parse_alter_table(index, stmt_tokens, sql, declared)
         elif (
@@ -484,7 +643,10 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
             raise UnrecognizedSqlShapeError(
                 index, kw(0) or stmt_tokens[0].value, _stmt_text(sql, stmt_tokens)
             )
-    return declared
+    return {
+        table: {(name, pg_type, notnull) for name, (pg_type, notnull) in cols.items()}
+        for table, cols in declared.items()
+    }
 
 
 def _required_as_tuples() -> dict[str, set[tuple[str, str, bool]]]:
@@ -827,3 +989,123 @@ def test_round1_bypass_multi_action_alter_hidden_column_is_detected():
     assert ("hidden", "text", False) in declared["team_promise_candidates"]
     required = _required_as_tuples()
     assert declared["team_promise_candidates"] != required["team_promise_candidates"]
+
+
+# --- Round 2 (condition C-A, PASS-WITH-CONDITIONS follow-up on PR #7395's
+# gate): 8 residuals (R1-R8) the Round-1 tokenizer above was silent-wrong or
+# silently accepting on, each judged against PG TRUTH — the SQL applied to a
+# throwaway PG17 database, catalog read back — not against the parser's own
+# prior expectations. Every one of these FAILED against the parser as it
+# stood on origin/main (either produced a different column set than PG's
+# own catalog, or was accepted where PG itself errors); see the PR body's
+# mutation receipt for exact before/after counts. ---
+
+_ROUND2_CA_CASES = [
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT NOT NULL);\n"
+        "CREATE TABLE IF NOT EXISTS t (a TEXT NOT NULL, b TEXT);",
+        ("t", {("a", "text", True)}),
+        id="R1a-repeated-create-table-if-not-exists-is-a-no-op",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS b TEXT;\n"
+        "ALTER TABLE t ADD COLUMN IF NOT EXISTS b INTEGER NOT NULL DEFAULT 0;",
+        ("t", {("a", "text", False), ("b", "text", False)}),
+        id="R1b-repeated-add-column-if-not-exists-keeps-the-first",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT, -- note\rhidden INTEGER NOT NULL,\n d TEXT);",
+        ("t", {("c", "text", False), ("d", "text", False), ("hidden", "integer", True)}),
+        id="R2a-a-bare-CR-ends-a-dash-dash-comment-like-PG-does",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT -- note\rNOT NULL\n, d TEXT);",
+        ("t", {("c", "text", True), ("d", "text", False)}),
+        id="R2b-a-bare-CR-ends-a-comment-hiding-not-null",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (\n  c TEXT CHECK (c IN (E'x\\'')),\n"
+        "  hidden INTEGER NOT NULL, -- ')),\n  d TEXT\n);",
+        None,
+        id="R3-e-string-escape-desync-is-rejected-not-silently-hidden",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "ALTER TABLE other.t ADD COLUMN IF NOT EXISTS b TEXT NOT NULL;",
+        None,
+        id="R4-non-public-schema-qualifier-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TIMESTAMPTZ(3));",
+        ("t", {("c", "timestamp with time zone", False)}),
+        id="R5a-timestamptz-typmod-is-dropped-matching-atttypid",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c VARCHAR(10) NOT NULL);",
+        ("t", {("c", "character varying", True)}),
+        id="R5b-varchar-typmod-is-dropped-matching-atttypid",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT,);", None,
+        id="R6a-trailing-comma-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT NULL NOT NULL);", None,
+        id="R6b-null-then-not-null-conflict-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT NOT NULL NULL);", None,
+        id="R6c-not-null-then-null-conflict-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c INTEGER DEFAULT 1 DEFAULT 2);", None,
+        id="R6d-duplicate-default-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c INTEGER PRIMARY KEY PRIMARY KEY);", None,
+        id="R6e-duplicate-primary-key-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT CHECK (1));", None,
+        id="R6f-non-boolean-bare-literal-check-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (c TEXT(3));", None,
+        id="R6g-typmod-on-a-type-that-does-not-take-one-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (select TEXT);", None,
+        id="R6h-reserved-keyword-as-a-bare-column-name-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (status TEXT);",
+        ("t", {("status", "text", False)}),
+        id="R6-control-a-non-reserved-word-is-still-a-valid-column-name",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (thread_Key TEXT);", None,
+        id="R7-non-ascii-identifier-kelvin-sign-is-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t ();", None,
+        id="R8-empty-parenthesised-body-is-rejected",
+    ),
+]
+
+
+@pytest.mark.parametrize("sql, expected", _ROUND2_CA_CASES)
+def test_round2_ca_residual_is_parsed_to_pg_truth_or_rejected(sql, expected):
+    """Condition C-A: each of these R1-R8 residuals (see this file's module
+    docstring) is judged against PG TRUTH — the SQL applied to a throwaway
+    PG17 database, catalog read back — never against the parser's own
+    prior expectations. See `test_wa_team_promises_real_pg.py` for a subset
+    of these re-proven directly against a real cluster, and the PR body for
+    the full probe and the before/after mutation receipt."""
+    if expected is None:
+        with pytest.raises(UnrecognizedSqlShapeError):
+            parse_declared_columns(sql)
+    else:
+        table, columns = expected
+        declared = parse_declared_columns(sql)
+        assert declared[table] == columns
