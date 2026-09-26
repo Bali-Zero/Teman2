@@ -23,7 +23,6 @@ export interface WhyWeAskProps {
 export function WhyWeAsk({
   language,
   i18nKey,
-  decisionMapping,
   variant = "disclosure",
 }: WhyWeAskProps) {
   const [open, setOpen] = useState(false);
@@ -50,17 +49,6 @@ export function WhyWeAsk({
       {variant === "inline" ? (
         <div className="oracle-whyweask__panel">
           <p style={{ margin: 0 }}>{translate(language, i18nKey)}</p>
-          <span className="oracle-whyweask__regulation">
-            {decisionMapping.kind === "FACT"
-              ? translate(language, "whyweask.fact_prefix", {
-                  facts: decisionMapping.factPaths.join(", "),
-                })
-              : decisionMapping.kind === "REVIEW_ONLY"
-                ? translate(language, "whyweask.review_only", {
-                    facts: decisionMapping.factPaths.join(", "),
-                  })
-                : translate(language, "whyweask.human_context")}
-          </span>
         </div>
       ) : (
         <AnimatePresence initial={false}>
@@ -79,17 +67,6 @@ export function WhyWeAsk({
               }}
             >
               <p style={{ margin: 0 }}>{translate(language, i18nKey)}</p>
-              <span className="oracle-whyweask__regulation">
-                {decisionMapping.kind === "FACT"
-                  ? translate(language, "whyweask.fact_prefix", {
-                      facts: decisionMapping.factPaths.join(", "),
-                    })
-                  : decisionMapping.kind === "REVIEW_ONLY"
-                    ? translate(language, "whyweask.review_only", {
-                        facts: decisionMapping.factPaths.join(", "),
-                      })
-                    : translate(language, "whyweask.human_context")}
-              </span>
             </motion.div>
           )}
         </AnimatePresence>

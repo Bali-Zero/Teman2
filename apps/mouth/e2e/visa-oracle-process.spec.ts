@@ -176,7 +176,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     mkdirSync(RENDER_DIR, { recursive: true });
   });
 
-  test("the rail names the stage, the fact in play and the branches an answer closed", async ({
+  test("the rail names the stage and the branches an answer closed, never the fact in play", async ({
     page,
   }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
@@ -186,7 +186,9 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
 
     const progress = rail(page, "progress", false);
     await expect(progress).toContainText(/12 of \d+ answered/);
-    await expect(progress).toContainText("What this question decides");
+    // Re-pinned: "What this question decides" was rejected by Zero
+    // 2026-09-22 (MV:2167) as engine vocabulary; its absence is the pin now.
+    await expect(progress).not.toContainText("What this question decides");
     // The purpose branch is chosen: ten of the eleven are closed, and the
     // rail says WHY — the visitor's own answer, named.
     const branches = rail(page, "branches", false);

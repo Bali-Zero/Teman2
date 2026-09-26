@@ -111,7 +111,7 @@ function rail(part: "progress" | "branches" | "outcome"): HTMLElement {
 }
 
 describe("ProcessProgress — where the visitor is", () => {
-  it("names the answers on record, the open stage and the fact the open question decides", () => {
+  it("names the answers on record and the open stage — never an engine fact id", () => {
     render(
       <ProcessProgress
         language="en"
@@ -133,8 +133,8 @@ describe("ProcessProgress — where the visitor is", () => {
     expect(
       panel.querySelector('[data-process-phase="outcome"]'),
     ).toHaveAttribute("data-status", "pending");
-    // The engine's own vocabulary, not a paraphrase.
-    expect(within(panel).getByText("person.nationalities")).toBeInTheDocument();
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7). The fact id this line once required is now a GUILT.
+    expect(panel.textContent).not.toContain("person.nationalities");
   });
 
   // WCAG 1.4.1: the meter's segments differ by colour and shape, and the
@@ -171,7 +171,8 @@ describe("ProcessProgress — where the visitor is", () => {
       />,
     );
     const text = rail("progress").textContent ?? "";
-    expect(text).toContain("No engine fact is attached to this question");
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7) — the rail says nothing about engine facts at all.
+    expect(text).not.toContain("engine fact");
     // The refuted copy: `holds_stay_permit` carries no FactPath of its own
     // and STILL resolves `immigration.current_status_code` to
     // NO_STAY_PERMIT through the mapper — pinned by fact-mapper.test.ts's
@@ -180,7 +181,7 @@ describe("ProcessProgress — where the visitor is", () => {
     expect(text).not.toContain("never sent to the engine");
   });
 
-  it("marks the safety check as a review signal, not an eligibility fact", () => {
+  it("at the safety check names the stage, never an eligibility fact", () => {
     render(
       <ProcessProgress
         language="en"
@@ -188,9 +189,10 @@ describe("ProcessProgress — where the visitor is", () => {
         variant="desktop"
       />,
     );
-    expect(rail("progress").textContent).toContain(
-      "it can send this case to a person",
-    );
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7).
+    const text = rail("progress").textContent ?? "";
+    expect(text).toContain(translate("en", "process.phase.review"));
+    expect(text).not.toContain("eligibility");
   });
 
   it("at the terminal node no question is open and the stage is the outcome", () => {
@@ -208,7 +210,10 @@ describe("ProcessProgress — where the visitor is", () => {
     );
     const panel = rail("progress");
     expect(panel.textContent).toContain("The engine’s answer");
-    expect(panel.textContent).toContain("No question is open");
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7) — the "no question is open" sentence left with it.
+    expect(panel.textContent).not.toContain(
+      translate("en", "process.decides_title"),
+    );
   });
 
   it("does not say the engine HAS the answers while its reply is not on screen", () => {
@@ -223,27 +228,19 @@ describe("ProcessProgress — where the visitor is", () => {
       />,
     );
     const text = rail("progress").textContent ?? "";
-    expect(text).toContain("the engine’s reply is not on screen yet");
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7); the false claim stays a GUILT.
     expect(text).not.toContain("The engine has the answers");
   });
 
+  // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7). The three per-node "what this question decides"
+  // sentences are gone; no node may bring the heading back.
   it.each([
-    ["framing", { kind: "framing" as const }, {}, "Nothing is answered yet"],
-    [
-      "confirmation",
-      { kind: "confirmation" as const },
-      WORK_BRANCH,
-      "Confirming these answers is what asks the engine",
-    ],
-    [
-      "verdict",
-      { kind: "verdict" as const },
-      WORK_BRANCH,
-      "Your answers are confirmed",
-    ],
+    ["framing", { kind: "framing" as const }, {}],
+    ["confirmation", { kind: "confirmation" as const }, WORK_BRANCH],
+    ["verdict", { kind: "verdict" as const }, WORK_BRANCH],
   ])(
-    "the %s node says what is true at that node and not at the other two",
-    (_name, current, facts, expected) => {
+    "the %s node carries no 'what this question decides' copy",
+    (_name, current, facts) => {
       render(
         <ProcessProgress
           language="en"
@@ -251,7 +248,9 @@ describe("ProcessProgress — where the visitor is", () => {
           variant="desktop"
         />,
       );
-      expect(rail("progress").textContent).toContain(expected);
+      const text = rail("progress").textContent ?? "";
+      expect(text).not.toContain(translate("en", "process.decides_title"));
+      expect(text).not.toContain("read by the engine");
     },
   );
 });
@@ -560,8 +559,9 @@ describe("a non-ENGINE outcome is not an engine answer (council round 4)", () =>
           }}
         />,
       );
-      expect(rail("progress").textContent).toContain(
-        "the engine’s reply is not on screen yet",
+      // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7); the false claim stays a GUILT.
+      expect(rail("progress").textContent).not.toContain(
+        "The engine has the answers",
       );
 
       render(
@@ -766,8 +766,8 @@ describe("the confirmation node's copy (council round 7)", () => {
       />,
     );
     const text = rail("progress").textContent ?? "";
+    // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7); the false denial stays a GUILT.
     expect(text).not.toContain("Nothing has been sent yet");
-    expect(text).toContain("asks it again if you have already been here");
   });
 });
 

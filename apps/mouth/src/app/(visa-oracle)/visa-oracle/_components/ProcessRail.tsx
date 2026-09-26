@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { PROCESS_PHASES, type Language, type ProcessModel } from "../_lib/flow";
 import type { LocalizedText, OutcomeState } from "../_lib/outcome-view-model";
 import { localized } from "../_lib/outcome-view-model";
+import { roadCopy } from "./road-copy";
 import { translate, type I18nKey } from "../_lib/i18n";
 
 /** The engine's own answer, passed down ONLY at the terminal node. The rail
@@ -57,12 +58,10 @@ const S = {
 } as const;
 
 /**
- * The top of the rail: how far along this interview is, which stage is
- * open, and what the question on screen decides — in the engine's own
- * fact vocabulary, because "we ask this to set THIS fact" is the honest
- * answer to "why am I being asked that". `children` (the route) renders
- * between the meter and that decision, so the DOM reads in the order the
- * eye does.
+ * The top of the rail: how far along this interview is and which stage is
+ * open, then `children` (the route). The "what this question decides"
+ * block with its engine fact ids was removed — Zero rejected engine
+ * vocabulary on this surface (2026-09-22, MV:2167; BRIEF-v2 R-3).
  */
 export function ProcessProgress({
   language,
@@ -144,55 +143,6 @@ export function ProcessProgress({
       </p>
 
       {children}
-
-      <div className="oracle-rail-decides">
-        <p className="oracle-rail-label">
-          {translate(language, "process.decides_title")}
-        </p>
-        {model.decision === null ? (
-          // Four truths, not one sentence: at the door nothing is
-          // answered; at the confirmation card the request has NOT been
-          // made; at the verdict node the reply may still be in flight,
-          // failed or disabled — `outcome` is the only evidence the engine
-          // actually answered, so the "the engine has your answers" line is
-          // spoken only when that evidence is on screen.
-          <p className="oracle-rail-body">
-            {translate(
-              language,
-              model.node === "framing"
-                ? "process.decides_framing"
-                : model.node === "confirmation"
-                  ? "process.decides_confirmation"
-                  : outcome?.provenance === "ENGINE"
-                    ? "process.decides_none"
-                    : "process.decides_awaiting",
-            )}
-          </p>
-        ) : model.decision.mapping === "HUMAN_CONTEXT" ? (
-          <p className="oracle-rail-body">
-            {translate(language, "process.decides_context")}
-          </p>
-        ) : (
-          <>
-            <p className="oracle-rail-body">
-              {translate(
-                language,
-                model.decision.mapping === "REVIEW_ONLY"
-                  ? "process.decides_review"
-                  : "process.decides_fact",
-                { count: model.decision.factPaths.length },
-              )}
-            </p>
-            <ul className="oracle-rail-list" role="list">
-              {model.decision.factPaths.map((path) => (
-                <li key={path} className="oracle-rail-fact">
-                  <code>{path}</code>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
     </div>
   );
 }
@@ -369,7 +319,7 @@ export function ProcessOutcome({
       className="oracle-rail-section"
     >
       <p className="oracle-rail-label">
-        {translate(language, "process.candidates_title")}
+        {roadCopy(language, "railOutcomeTitle")}
       </p>
       {!decided ? (
         <p className="oracle-rail-body">

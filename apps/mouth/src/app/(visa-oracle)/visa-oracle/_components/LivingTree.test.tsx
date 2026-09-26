@@ -274,7 +274,9 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
   // Screen-reader order must be the visual order: the rail once rendered
   // "what this question decides" before the route and moved it below with
   // CSS `order`, so assistive tech heard it first.
-  it("reads the route before what the open question decides, in DOM order", () => {
+  // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7) — the "decides" block is gone, the order of what
+  // remains is still the visual order.
+  it("reads the meter, the route, the branches and the outcome in DOM order", () => {
     const { container } = render(
       <LivingTree
         language="en"
@@ -300,7 +302,7 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
             ? "decides"
             : node.getAttribute("data-process-part"),
     );
-    expect(parts).toEqual(["meter", "route", "decides", "branches", "outcome"]);
+    expect(parts).toEqual(["meter", "route", "branches", "outcome"]);
   });
 
   it("the mobile progress line carries the step count and the open category", () => {
