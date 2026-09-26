@@ -1127,6 +1127,35 @@ class ChangeMapTests(unittest.TestCase):
             )
         self.assertIn(runner, (repo_root / rel).read_text(encoding="utf-8"))
 
+    def test_guilt_bridge_watchdog_script_runs_the_backend_suite_that_reads_it(
+        self,
+    ) -> None:
+        script = "infra/scripts/pg-organism-bridge-watchdog.sh"
+        result = cm.classify([script])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+        rel = Path(
+            "apps/backend-rag/backend/tests/services/events/"
+            "test_bridge_heartbeat_polling_grandfathered.py"
+        )
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "the coupled backend test is not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the coupling is asserted where the checkout is present"
+            )
+        self.assertIn(script, (repo_root / rel).read_text(encoding="utf-8"))
+
+    def test_innocence_a_sibling_infra_script_stays_on_the_catch_all(self) -> None:
+        result = cm.classify(["infra/scripts/some-other-fleet-wrapper.sh"])
+        self.assertFalse(result["run_all"])
+        self.assertFalse(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertNotIn("backend-tests", result["suggested_jobs"])
+
     def test_guilt_infra_does_not_suppress_a_real_backend_change(self) -> None:
         # fleet_ops maps to zero jobs, so a co-changed product path must keep
         # every job it earns on its own — the union, never the minimum.
@@ -1215,6 +1244,7 @@ class ChangeMapTests(unittest.TestCase):
             "apps/backend-rag/backend/services/sota_loop/_promote.py": {"infra/launchagents": 1},
             "apps/backend-rag/backend/services/sota_loop/m13_weekly.py": {"infra/claude-hooks": 1},
             "apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/services/events/test_bridge_heartbeat_polling_grandfathered.py": {"infra/scripts": 3},
             "apps/backend-rag/backend/tests/unit/response/test_w119c_outbound_marker_newline_bleed.py": {"infra/claude-hooks": 1},
             "apps/backend-rag/backend/tests/unit/routers/test_ingest_path_confinement.py": {"infra/eventbus": 1},
             "apps/backend-rag/backend/tests/unit/scripts/test_codex_tri_llm_review_script.py": {"infra/y": 1},
