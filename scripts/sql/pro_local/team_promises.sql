@@ -58,6 +58,11 @@ ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS status TEXT NOT NUL
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMPTZ;
 ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+-- Set only when an already-unjudged row's clause text is revised by a later
+-- scan tick (never on first insert) — lets the digest count "revised since
+-- local midnight" straight from Postgres instead of a per-tick counter that
+-- tg_notify's dedup window could swallow for hours (PR #7367 REWORK A4).
+ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS revised_at TIMESTAMPTZ;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uix_team_promise_candidates_msg_clause
     ON team_promise_candidates (message_id, clause_idx);

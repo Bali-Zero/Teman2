@@ -1,103 +1,37 @@
-"""T3 promise gate tests — PR-2 (scanner -> team_promise_candidates). No real
-DB: a fake pool/conn simulates whatsapp_message_context as an ordered,
-already-eligible row set (direction/created_at filtering is the SQL's job,
-asserted separately as static text below) and team_promise_candidates as an
-in-memory conflict set. See test_wa_team_promises.py for the PR-1 fakes this
-file deliberately does NOT import (parallel builder owns that file).
+"""T3 promise gate tests — PR-2 (scanner -> team_promise_candidates), pure
+unit half. No real DB here: batch/cursor/upsert semantics moved to
+test_wa_team_promises_scan_real_pg.py (opt-in, WA_TEAM_PROMISES_REAL_PG=1) —
+REWORK per the spec addendum's A7, since the fake pool/conn fixtures that
+used to live here re-implemented the cursor and ON CONFLICT logic in Python
+instead of exercising the real SQL. This file keeps the splitter/catalog/
+digest/lock tests, which need no DB. See test_wa_team_promises.py for the
+PR-1 fakes this file deliberately does NOT import (parallel builder owns
+that file).
 """
 from __future__ import annotations
 
 import dataclasses
-import math
+import logging
 
 import pytest
 
 import scripts.wa_team_promises as wtp
 from scripts.wa_team_promises import (
     ScanMetrics,
-    _CANDIDATE_INSERT_SQL,
+    _CANDIDATE_UPSERT_SQL,
     _digest_line,
+    _fail_line,
     _hash_clause,
     _match_clause,
+    _SCAN_HI_SQL,
     _SCAN_SELECT_SQL,
     _split_clauses,
-    run_scan,
-    run_scan_batch,
 )
 
 
-class _FakeTxn:
-    def __init__(self, log):
-        self._log = log
-
-    async def __aenter__(self):
-        self._log.append("BEGIN")
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        self._log.append("ROLLBACK" if exc_type is not None else "COMMIT")
-        return False
-
-
-class _FakeConn:
-    """`rows` is the FULL ordered dataset (id, body); fetch() applies the
-    id-cursor + LIMIT itself so tests can drive multi-batch runs exactly as
-    Postgres would, without re-implementing direction/created_at filtering
-    (that half of the contract is asserted as static SQL text, not fakeable
-    meaningfully)."""
-
-    def __init__(self, rows, log, unjudged_count=0):
-        self._rows = rows
-        self._log = log
-        self._inserted: set[tuple[int, int]] = set()
-        self._unjudged_count = unjudged_count
-
-    def transaction(self):
-        return _FakeTxn(self._log)
-
-    async def fetch(self, sql, watermark, batch_size):
-        self._log.append(("fetch", sql, watermark, batch_size))
-        eligible = [r for r in self._rows if r["id"] > watermark]
-        return eligible[:batch_size]
-
-    async def execute(self, sql, message_id, clause_idx, clause_hash, promise_type, cue, due_at_hint):
-        self._log.append(("execute", sql, message_id, clause_idx, promise_type))
-        key = (message_id, clause_idx)
-        if key in self._inserted:
-            return "INSERT 0 0"
-        self._inserted.add(key)
-        return "INSERT 0 1"
-
-    async def fetchval(self, sql):
-        self._log.append(("fetchval", sql))
-        return self._unjudged_count
-
-
-class _FakeAcquire:
-    def __init__(self, conn):
-        self._conn = conn
-
-    async def __aenter__(self):
-        return self._conn
-
-    async def __aexit__(self, *_exc):
-        return False
-
-
-class _FakePool:
-    def __init__(self, conn):
-        self._conn = conn
-
-    def acquire(self):
-        return _FakeAcquire(self._conn)
-
-
-def _rows(n, body_fn=lambda i: f"i will send it tomorrow (msg {i})"):
-    return [{"id": i, "body": body_fn(i)} for i in range(1, n + 1)]
-
-
 # A — clause splitter: `.`, `!`, `?`, `;`, newline (round-2 review's HIGH —
-# the predecessor dropped `;`/newline), plus a conjunction boundary.
+# the predecessor dropped `;`/newline), plus a conjunction boundary
+# (EN/ID/IT: but/tapi/ma..., and — REWORK A3 — and/dan/serta/e).
 
 
 @pytest.mark.parametrize("body,expected", [
@@ -108,9 +42,32 @@ def _rows(n, body_fn=lambda i: f"i will send it tomorrow (msg {i})"):
      ["sudah saya cek,", "tapi akan saya submit besok"]),
     ("I'll check it but I will send it later",
      ["I'll check it", "but I will send it later"]),
+    # REWORK A3 — conjunction split fixed BEFORE first activation.
+    ("I will send tomorrow and I will check today",
+     ["I will send tomorrow", "and I will check today"]),
+    ("akan saya kirim besok dan saya akan cek hari ini",
+     ["akan saya kirim besok", "dan saya akan cek hari ini"]),
+    ("akan saya kirim besok serta saya akan cek hari ini",
+     ["akan saya kirim besok", "serta saya akan cek hari ini"]),
+    ("controllo oggi e ti aggiorno domani",
+     ["controllo oggi", "e ti aggiorno domani"]),
+    ("Controllo oggi E ti aggiorno domani",  # case-insensitive
+     ["Controllo oggi", "E ti aggiorno domani"]),
 ])
 def test_split_clauses_covers_punctuation_semicolon_newline_and_conjunction(body, expected):
     assert _split_clauses(body) == expected
+
+
+@pytest.mark.parametrize("body", [
+    "the candidate will send it tomorrow",  # "and" inside "candidate"
+    "my Android will send it tomorrow",  # "and" inside "Android"
+    "che cosa mi manda domani",  # "e" inside "che"
+    "vado in sede domani",  # "e" inside "sede"
+])
+def test_split_clauses_conjunction_boundary_is_whole_word_only(body):
+    """A bare substring match ("and" inside "candidate"/"Android", "e" inside
+    "che"/"sede") must never split — the addendum's innocence case for A3."""
+    assert _split_clauses(body) == [body]
 
 
 def test_split_clauses_never_produces_empty_or_whitespace_only_entries():
@@ -157,123 +114,27 @@ def test_hash_clause_is_stable_and_case_whitespace_insensitive():
     assert _hash_clause("i will send tomorrow") != _hash_clause("i will check tomorrow")
 
 
-# C — batch/cursor: id-based, never OFFSET (the predecessor's 81-minute
-# same-200-rows bug). Watermark advances, and the 30-day floor rides every
-# query including the seed (asserted as static SQL text — no OFFSET path
-# exists in this file to regress into).
+# C — SQL text: static assertions only (the real cursor/upsert behavior is
+# proven against real Postgres in test_wa_team_promises_scan_real_pg.py).
 
 
-def test_scan_select_sql_has_no_offset_and_carries_the_30_day_floor_on_every_call():
-    assert "OFFSET" not in wtp.__dict__["_SCAN_SELECT_SQL"].upper()
-    assert "id > $1" in _SCAN_SELECT_SQL
-    assert "interval '30 days'" in _SCAN_SELECT_SQL
-    assert "direction = 'outbound'" in _SCAN_SELECT_SQL
+def test_scan_queries_have_no_offset_and_carry_the_30_day_floor_on_every_call():
+    for sql in (_SCAN_HI_SQL, _SCAN_SELECT_SQL):
+        assert "OFFSET" not in sql.upper()
+        assert "interval '30 days'" in sql
+        assert "direction = 'outbound'" in sql
+    assert "id > $1" in _SCAN_SELECT_SQL and "id <= $2" in _SCAN_SELECT_SQL
 
 
-@pytest.mark.asyncio
-async def test_run_scan_batch_advances_watermark_by_max_row_id_seen():
-    log: list = []
-    conn = _FakeConn(_rows(5), log)
-    pool = _FakePool(conn)
-    metrics = ScanMetrics()
-
-    new_watermark = await run_scan_batch(
-        pool, watermark=0, batch_size=200, dry_run=False, metrics=metrics,
-    )
-
-    assert new_watermark == 5
-    assert metrics.scanned == 5
-    assert metrics.candidates_new == 5  # every synthetic row matches "send"
-
-
-@pytest.mark.asyncio
-async def test_run_scan_batch_empty_result_returns_the_same_watermark():
-    log: list = []
-    conn = _FakeConn(_rows(3), log)
-    pool = _FakePool(conn)
-    metrics = ScanMetrics()
-
-    new_watermark = await run_scan_batch(
-        pool, watermark=999, batch_size=200, dry_run=False, metrics=metrics,
-    )
-
-    assert new_watermark == 999
-    assert metrics.scanned == 0
-
-
-@pytest.mark.asyncio
-async def test_run_scan_drains_multiple_batches_with_a_strictly_advancing_cursor(monkeypatch):
-    """Regression for the v1 predecessor's 81-minute same-200-rows bug: the
-    watermark argument passed to fetch() on batch N+1 must be STRICTLY
-    greater than on batch N — an OFFSET-shaped pager (or one that forgot to
-    persist between batches) would replay the same `$1` forever."""
-    saved: list[int] = []
-    monkeypatch.setattr(wtp, "_save_scan_watermark", lambda v: saved.append(v))
-    monkeypatch.setattr(wtp, "_load_scan_watermark", lambda: 0)
-
-    log: list = []
-    total = 450
-    conn = _FakeConn(_rows(total), log)
-    pool = _FakePool(conn)
-
-    metrics = await run_scan(pool, batch_size=200, dry_run=False)
-
-    assert metrics.scanned == total
-    fetch_watermarks = [call[2] for call in log if call[0] == "fetch"]
-    assert fetch_watermarks == sorted(set(fetch_watermarks)), "watermark must strictly advance"
-    assert fetch_watermarks[0] == 0
-    assert len(fetch_watermarks) == math.ceil(total / 200) + 1  # last call empty, ends the loop
-    # the cursor is saved per batch, not once at the very end — a crash
-    # mid-tick after batch 1 must not lose batch 1's progress.
-    assert saved == [200, 400, 450]
-
-
-@pytest.mark.asyncio
-async def test_run_scan_dry_run_writes_nothing_no_candidates_no_watermark(monkeypatch):
-    save_calls: list[int] = []
-    monkeypatch.setattr(wtp, "_save_scan_watermark", lambda v: save_calls.append(v))
-    load_calls = {"n": 0}
-
-    def _spy_load():
-        load_calls["n"] += 1
-        return 0
-
-    monkeypatch.setattr(wtp, "_load_scan_watermark", _spy_load)
-
-    log: list = []
-    conn = _FakeConn(_rows(5), log)
-    pool = _FakePool(conn)
-
-    metrics = await run_scan(pool, batch_size=200, dry_run=True)
-
-    assert metrics.scanned == 5
-    assert metrics.candidates_new == 5  # counted, never persisted
-    assert save_calls == []
-    assert load_calls["n"] == 0  # dry-run never even reads the real watermark
-    assert not any(call[0] == "execute" for call in log)  # no INSERT attempted
-
-
-@pytest.mark.asyncio
-async def test_run_scan_batch_on_conflict_do_nothing_is_idempotent_on_replay():
-    log: list = []
-    conn = _FakeConn(_rows(4), log)
-    pool = _FakePool(conn)
-
-    m1 = ScanMetrics()
-    await run_scan_batch(pool, watermark=0, batch_size=200, dry_run=False, metrics=m1)
-    assert m1.candidates_new == 4
-
-    # same rows again (simulating a watermark that was NOT advanced by the
-    # caller) — ON CONFLICT DO NOTHING means zero NEW candidates, not an error.
-    m2 = ScanMetrics()
-    await run_scan_batch(pool, watermark=0, batch_size=200, dry_run=False, metrics=m2)
-    assert m2.candidates_new == 0
-    assert m2.scanned == 4
-
-
-@pytest.mark.asyncio
-async def test_candidate_insert_uses_on_conflict_do_nothing_on_message_clause():
-    assert "ON CONFLICT (message_id, clause_idx) DO NOTHING" in _CANDIDATE_INSERT_SQL
+def test_candidate_upsert_revises_only_unjudged_rows_with_changed_text():
+    """REWORK A2: the DO UPDATE is guarded to unjudged rows whose clause
+    text actually changed — a judged/quarantined row, or an unchanged
+    resubmit, must be untouched (asserted for real in
+    test_wa_team_promises_scan_real_pg.py)."""
+    assert "ON CONFLICT (message_id, clause_idx) DO UPDATE SET" in _CANDIDATE_UPSERT_SQL
+    assert "status = 'unjudged'" in _CANDIDATE_UPSERT_SQL
+    assert "clause_hash IS DISTINCT FROM EXCLUDED.clause_hash" in _CANDIDATE_UPSERT_SQL
+    assert "RETURNING (xmax = 0) AS inserted" in _CANDIDATE_UPSERT_SQL
 
 
 # D — lock: exclusive, non-blocking, releasable (scar #5 sibling-race).
@@ -295,28 +156,29 @@ def test_scan_lock_is_exclusive_then_releasable(tmp_path, monkeypatch):
 
 
 # E — digest: counts only. A clause, name, phone or client id must have NO
-# path into the line the gateway sends.
+# path into the line the gateway sends. REWORK A4: three counts now
+# (today/revised/unjudged); REWORK A6: the gateway-failure path is sanitized.
 
 
-def test_digest_line_is_exactly_the_two_counts():
-    assert _digest_line(3, 7) == "promises: candidates new 3, unjudged 7"
+def test_digest_line_is_exactly_the_three_counts():
+    assert _digest_line(3, 1, 7) == "promises: candidates today 3 (revised 1), unjudged 7"
 
 
-def test_digest_line_only_ever_accepts_the_two_int_counts():
+def test_digest_line_only_ever_accepts_int_counts():
     with pytest.raises(TypeError):
-        _digest_line("3 (client 42, +628123456789)", 7)  # type: ignore[arg-type]
+        _digest_line("3 (client 42, +628123456789)", 0, 7)  # type: ignore[arg-type]
 
 
 def test_scan_metrics_every_field_is_a_bare_int():
-    """Structural guard: the digest is built ONLY from ScanMetrics fields —
-    if a future edit ever added a str field (e.g. a body/clause snippet
-    "for debugging"), this test fails before that field could reach a
-    Telegram message."""
+    """Structural guard: the digest is built ONLY from ScanMetrics-shaped
+    counts — if a future edit ever added a str field (e.g. a body/clause
+    snippet "for debugging"), this test fails before that field could reach
+    a Telegram message."""
     for f in dataclasses.fields(ScanMetrics):
         assert f.type == "int", f"{f.name} is {f.type}, not int"
 
 
-def test_send_scan_digest_message_carries_only_the_two_counts(monkeypatch):
+def test_send_scan_digest_message_carries_only_the_three_counts_and_day_key(monkeypatch):
     captured = {}
 
     class _FakeResult:
@@ -328,12 +190,15 @@ def test_send_scan_digest_message_carries_only_the_two_counts(monkeypatch):
         return _FakeResult()
 
     monkeypatch.setattr(wtp.subprocess, "run", _fake_run)
-    wtp._send_scan_digest(5, 12)
+    wtp._send_scan_digest(5, 2, 12, day_label="2026-09-26")
 
-    text = captured["argv"][-1]
-    assert text == "promises: candidates new 5, unjudged 12"
+    argv = captured["argv"]
+    text = argv[-1]
+    assert text == "promises: candidates today 5 (revised 2), unjudged 12"
     poison = ["client_id", "phone", "+62", "clause", "message_id"]
     assert not any(p in text for p in poison)
+    dedup_idx = argv.index("--dedup-key")
+    assert argv[dedup_idx + 1] == "wa-team-promises:2026-09-26"
 
 
 def test_send_scan_digest_never_raises_on_gateway_failure(monkeypatch):
@@ -341,5 +206,25 @@ def test_send_scan_digest_never_raises_on_gateway_failure(monkeypatch):
         raise OSError("gateway unreachable")
 
     monkeypatch.setattr(wtp.subprocess, "run", _boom)
-    result = wtp._send_scan_digest(1, 2)  # must not raise
+    result = wtp._send_scan_digest(1, 0, 2, day_label="2026-09-26")  # must not raise
     assert result is None
+
+
+def test_send_scan_digest_sanitizes_a_poisoned_exception_text(monkeypatch, caplog):
+    """REWORK A6: the gateway-failure warning used to print str(exc)
+    directly — this proves a poisoned exception message never reaches the
+    log line, only the sanitized _fail_line() form does."""
+    poison = "SYNTHETIC_CLIENT_PII +6281234567890 client_id=424242"
+
+    def _boom(*_a, **_kw):
+        raise RuntimeError(poison)
+
+    monkeypatch.setattr(wtp.subprocess, "run", _boom)
+    with caplog.at_level(logging.WARNING, logger="wa_team_promises"):
+        wtp._send_scan_digest(1, 0, 2, day_label="2026-09-26")
+
+    full_log = "\n".join(r.message for r in caplog.records)
+    assert poison not in full_log
+    assert "+6281234567890" not in full_log
+    assert "client_id=424242" not in full_log
+    assert full_log == _fail_line(RuntimeError(poison), "digest")

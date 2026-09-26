@@ -1,10 +1,24 @@
 """T3 promise gate — PRO-LOCAL (owner ruling 2026-09-25, Symbiosis Law 2:
 data never leaves Pro). PR-1 of the #7316 re-spec shipped schema + connection
 guard only; this file now also carries PR-2, the scanner: `--scan` reads
-`whatsapp_message_context` (outbound, last 30 days) and inserts `unjudged`
+`whatsapp_message_context` (outbound, last 30 days) and inserts/revises
 `team_promise_candidates` rows. The judge (PR-3) reads those separately and
 is not this file's job — it never dedups and never discards a past-tense
 clause; that's the judge's call, not the regex's.
+
+REWORK (post gate REWORK-DESIGN on the original PR-2 head, spec addendum
+A1-A8): no persisted watermark. `hi = max(id)` of the eligible window is
+read ONCE at tick start; the tick then walks an IN-TICK cursor over the
+FULL 30-day window from 0 to that `hi`, every time. A monotonic watermark
+permanently missed a row that commits out of id order, or whose body is
+filled in later than its own commit (`apps/wa-mirror/bridge/
+message_capture.ts` upserts on `baileys_message_id`, same id) — rescanning
+the whole window every tick means a late/out-of-order row is inside SOME
+future tick's range, by construction, and `hi` fixed at tick start is what
+makes each tick still terminate against a live-growing table. A message
+whose body CHANGED between ticks revises its candidate row in place
+(`ON CONFLICT ... DO UPDATE`, guarded to unjudged rows only, never a judged
+or quarantined one) rather than being silently skipped by `DO NOTHING`.
 
 CLI:
   apps/backend-rag/.venv/bin/python scripts/wa_team_promises.py --init-schema
@@ -34,7 +48,9 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import asyncpg
 
@@ -108,6 +124,7 @@ _REQUIRED_COLUMNS: dict[str, list[tuple[str, str, bool]]] = {
         ("due_at_hint", "text", False), ("status", "text", True),
         ("attempts", "integer", True), ("last_attempt_at", "timestamp with time zone", False),
         ("created_at", "timestamp with time zone", True),
+        ("revised_at", "timestamp with time zone", False),
     ],
 }
 
@@ -213,48 +230,86 @@ async def run_init_schema(pool: asyncpg.Pool) -> None:
 
 # D — PR-2: scanner. Reads whatsapp_message_context (Node-runtime-maintained
 # mirror, never ALTERed here, never written to), proposes candidates.
+#
+# No persisted watermark (REWORK — see module docstring). Every tick reads
+# `hi = max(id)` of the eligible window ONCE, then walks an IN-TICK cursor
+# from 0 to that `hi` — the FULL 30-day window, every time. `hi` fixed at
+# tick start (never re-read mid-tick) is what makes the tick terminate
+# against a live-growing table.
 
 STATE_DIR = Path.home() / ".cell-bridge-state"
 _SCAN_LOCK_FILE = STATE_DIR / "wa_team_promises_scan.lock"
-_SCAN_WATERMARK_FILE = STATE_DIR / "wa_team_promises_scan_last_id.txt"
 _SCAN_METRICS_FILE = STATE_DIR / "wa_team_promises_scan_metrics.json"
 _SCAN_BATCH_SIZE_DEFAULT = 200
 _SCAN_LOOKBACK_DAYS = 30
 
-# The 30-day floor rides on EVERY select, seed included — the v1 predecessor
-# only applied it to the first-run seed, then paged the rest with a bare
-# OFFSET/LIMIT and no date filter, so an empty recent window scanned the
-# whole archive. One query for seed and steady state removes that split.
+_WITA = ZoneInfo("Asia/Makassar")
+
+# Shared by both queries below so the 30-day floor and eligibility rule can
+# never drift between the ceiling read and the batch read.
+_SCAN_ELIGIBLE_WHERE = f"""
+    direction = 'outbound'
+    AND created_at > now() - interval '{_SCAN_LOOKBACK_DAYS} days'
+    AND COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) IS NOT NULL
+"""
+
+_SCAN_HI_SQL = f"SELECT max(id) FROM whatsapp_message_context WHERE {_SCAN_ELIGIBLE_WHERE}"
+
 _SCAN_SELECT_SQL = f"""
 SELECT id, COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) AS body
   FROM whatsapp_message_context
- WHERE direction = 'outbound'
-   AND created_at > now() - interval '{_SCAN_LOOKBACK_DAYS} days'
+ WHERE {_SCAN_ELIGIBLE_WHERE}
    AND id > $1
-   AND COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) IS NOT NULL
+   AND id <= $2
  ORDER BY id ASC
- LIMIT $2
+ LIMIT $3
 """
 
-_CANDIDATE_INSERT_SQL = """
+# Revises an existing UNJUDGED row in place when its clause text actually
+# changed (`clause_hash IS DISTINCT FROM`); a judged_true/judged_false/
+# quarantined row is NEVER rewritten — the WHERE guards that. `attempts`/
+# `last_attempt_at` reset because the judge has not yet seen this new text.
+# `RETURNING (xmax = 0) AS inserted` (no row at all when the WHERE excludes
+# the conflict) lets the caller count inserted vs revised separately.
+_CANDIDATE_UPSERT_SQL = """
 INSERT INTO team_promise_candidates
   (message_id, clause_idx, clause_hash, promise_type, cue, due_at_hint)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (message_id, clause_idx) DO NOTHING
+ON CONFLICT (message_id, clause_idx) DO UPDATE SET
+  clause_hash = EXCLUDED.clause_hash,
+  promise_type = EXCLUDED.promise_type,
+  cue = EXCLUDED.cue,
+  due_at_hint = EXCLUDED.due_at_hint,
+  attempts = 0,
+  last_attempt_at = NULL,
+  revised_at = now()
+ WHERE team_promise_candidates.status = 'unjudged'
+   AND team_promise_candidates.clause_hash IS DISTINCT FROM EXCLUDED.clause_hash
+RETURNING (xmax = 0) AS inserted
 """
 
-_UNJUDGED_COUNT_SQL = "SELECT count(*) FROM team_promise_candidates WHERE status = 'unjudged'"
+# Digest counts, read fresh from Postgres at send time (see _send_scan_digest).
+_DIGEST_COUNTS_SQL = """
+SELECT
+  count(*) FILTER (WHERE created_at >= $1) AS created_today,
+  count(*) FILTER (WHERE revised_at >= $1) AS revised_today,
+  count(*) FILTER (WHERE status = 'unjudged') AS unjudged
+FROM team_promise_candidates
+"""
 
 # Clause boundaries: sentence punctuation, `;` and newline (discarded — the
 # predecessor's round-2 review flagged both as missing), plus a conjunction
-# boundary per language (EN/ID/IT). The conjunction stays attached to the
-# clause it introduces — catalog patterns aren't string-anchored, so a
-# leading "but"/"tapi"/"ma" never blocks a match. Over-splitting is safe here:
+# boundary per language (EN/ID/IT: but/however/tapi/tetapi/namun/ma/pero/però,
+# and — REWORK A3 — and/dan/serta/e, whole-word so "candidate"/"Android"/
+# "che"/"sede" never split). The conjunction stays attached to the clause it
+# introduces — catalog patterns aren't string-anchored, so a leading
+# "but"/"tapi"/"and"/"e" never blocks a match. Over-splitting is safe here:
 # this is a PROPOSER only (no dedup, no past-tense discard — the judge in
 # PR-3 decides both), so an extra clause just gives it one more thing to rule
 # on, never a lost one.
 _CLAUSE_SPLIT_RE = re.compile(
-    r"[.!?;\n]+|\s+(?=(?:but|however|tapi|tetapi|namun|ma|per[oò])\b)",
+    r"[.!?;\n]+|\s+(?=\b(?:but|however|tapi|tetapi|namun|ma|per[oò]"
+    r"|and|dan|serta|e)\b)",
     re.IGNORECASE,
 )
 
@@ -299,24 +354,8 @@ class ScanMetrics:
     scanned: int = 0
     clauses: int = 0
     candidates_new: int = 0
+    candidates_revised: int = 0
     wall_ms: int = 0
-
-
-def _load_scan_watermark() -> int:
-    if not _SCAN_WATERMARK_FILE.exists():
-        return 0
-    try:
-        return int(_SCAN_WATERMARK_FILE.read_text().strip() or "0")
-    except (ValueError, OSError):
-        logger.warning("wa_team_promises: scan watermark unreadable, restarting from 0")
-        return 0
-
-
-def _save_scan_watermark(value: int) -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = _SCAN_WATERMARK_FILE.with_suffix(".tmp")
-    tmp.write_text(str(int(value)))
-    tmp.replace(_SCAN_WATERMARK_FILE)
 
 
 def _save_scan_metrics(metrics: ScanMetrics) -> None:
@@ -354,20 +393,20 @@ def _release_scan_lock(fd: int) -> None:
 
 
 async def run_scan_batch(
-    pool: asyncpg.Pool, *, watermark: int, batch_size: int, dry_run: bool, metrics: ScanMetrics,
+    pool: asyncpg.Pool, *, cursor: int, hi: int, batch_size: int, dry_run: bool, metrics: ScanMetrics,
 ) -> int:
-    """One batch: id-cursor SELECT (never OFFSET — the predecessor paged by
+    """One batch of the full `(0, hi]` rescan, `hi` fixed by the caller at
+    tick start (id-cursor SELECT, never OFFSET — the predecessor paged by
     OFFSET against a table new rows keep arriving into, which is how it
-    refetched the same 200 rows for 81 minutes; a regression test in
-    test_wa_team_promises_scan.py pins the id-cursor down). Returns the new
-    watermark, equal to `watermark` itself when the batch is empty — that
-    equality is the caller's loop-exit signal, and per spec this file saves
-    the watermark after EVERY batch, not once at the end of the tick, so a
-    crash mid-tick can never lose progress already committed to Postgres."""
+    refetched the same 200 rows for 81 minutes). Returns the new cursor:
+    either the max id actually fetched (strictly > `cursor`, since every row
+    satisfies `id > cursor`), or `hi` itself when nothing eligible remains in
+    `(cursor, hi]` — both are strictly forward, so the caller's
+    `while cursor < hi` loop always terminates."""
     async with pool.acquire() as conn:
-        rows = await conn.fetch(_SCAN_SELECT_SQL, watermark, batch_size)
+        rows = await conn.fetch(_SCAN_SELECT_SQL, cursor, hi, batch_size)
     if not rows:
-        return watermark
+        return hi
     metrics.scanned += len(rows)
 
     candidates: list[tuple[int, int, str, str, str, str | None]] = []
@@ -383,54 +422,76 @@ async def run_scan_batch(
                 (int(row["id"]), idx, _hash_clause(clause), promise_type, cue, due_at_hint)
             )
 
-    new_watermark = max(int(r["id"]) for r in rows)
+    new_cursor = max(int(r["id"]) for r in rows)
     if candidates and not dry_run:
         async with pool.acquire() as conn:
             async with conn.transaction():
                 for c in candidates:
-                    result = await conn.execute(_CANDIDATE_INSERT_SQL, *c)
-                    if result.endswith(" 1"):
+                    result = await conn.fetchrow(_CANDIDATE_UPSERT_SQL, *c)
+                    if result is None:
+                        continue  # unchanged text on an unjudged row, or a judged/quarantined row
+                    if result["inserted"]:
                         metrics.candidates_new += 1
+                    else:
+                        metrics.candidates_revised += 1
     elif candidates:
-        # dry-run: nothing is inserted, so ON CONFLICT can't tell new from
-        # already-present — report every match found, the verification
-        # instructions only need scanned/clauses/candidates counts.
+        # dry-run: nothing is written, so insert-vs-revise can't be told
+        # apart without touching the DB — report every match found as a bare
+        # would-be-candidate count; verification only needs scanned/clauses.
         metrics.candidates_new += len(candidates)
-    return new_watermark
+    return new_cursor
 
 
 async def run_scan(pool: asyncpg.Pool, *, batch_size: int, dry_run: bool) -> ScanMetrics:
-    """`--dry-run` always starts from watermark=0 — ignoring any persisted
-    file — so a verification run is deterministic and reads nothing but
-    Postgres; it never advances or even opens the real watermark file."""
+    """Every tick rescans the FULL 30-day window, `cursor` from 0 up to a
+    `hi` read ONCE here (never inside the loop, or a live-growing table would
+    never let the tick end). `--dry-run` walks the identical read-only path
+    and differs only in run_scan_batch's own write guard — there is no
+    separate watermark state to keep in sync with it anymore."""
     t0 = time.monotonic()
     metrics = ScanMetrics()
-    watermark = 0 if dry_run else _load_scan_watermark()
-    while True:
-        new_watermark = await run_scan_batch(
-            pool, watermark=watermark, batch_size=batch_size, dry_run=dry_run, metrics=metrics,
-        )
-        if new_watermark == watermark:
-            break
-        watermark = new_watermark
-        if not dry_run:
-            _save_scan_watermark(watermark)
+    async with pool.acquire() as conn:
+        hi = await conn.fetchval(_SCAN_HI_SQL)
+    if hi is not None:
+        cursor = 0
+        while cursor < hi:
+            cursor = await run_scan_batch(
+                pool, cursor=cursor, hi=hi, batch_size=batch_size, dry_run=dry_run, metrics=metrics,
+            )
     metrics.wall_ms = int((time.monotonic() - t0) * 1000)
     return metrics
 
 
-async def _count_unjudged(pool: asyncpg.Pool) -> int:
+def _wita_today() -> tuple[datetime, str]:
+    """Local midnight (Asia/Makassar/WITA) as a UTC-aware timestamp, plus its
+    `YYYY-MM-DD` label — ONE time source for both the digest's 'since local
+    midnight' window and its per-day dedup key, so the two can never observe
+    different 'today's around a UTC-vs-WITA day-boundary race."""
+    now_wita = datetime.now(_WITA)
+    midnight_wita = now_wita.replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight_wita.astimezone(timezone.utc), midnight_wita.strftime("%Y-%m-%d")
+
+
+async def _fetch_digest_counts(pool: asyncpg.Pool, since_utc: datetime) -> tuple[int, int, int]:
+    """Candidates created/revised since local midnight, plus the current
+    unjudged total — read fresh from Postgres at SEND time, never carried
+    over from this tick's own (possibly tiny, possibly deduped-away)
+    counters. See _send_scan_digest's REWORK note."""
     async with pool.acquire() as conn:
-        return int(await conn.fetchval(_UNJUDGED_COUNT_SQL))
+        row = await conn.fetchrow(_DIGEST_COUNTS_SQL, since_utc)
+    return int(row["created_today"]), int(row["revised_today"]), int(row["unjudged"])
 
 
-def _digest_line(candidates_new: int, unjudged_total: int) -> str:
+def _digest_line(candidates_today: int, revised_today: int, unjudged_total: int) -> str:
     """Counts only, enforced — not just by convention. A caller that ever
     tried to pass a clause, name, phone or client id here (even embedded in
     a string) gets a TypeError before it can reach the gateway."""
-    if not isinstance(candidates_new, int) or not isinstance(unjudged_total, int):
+    if not all(isinstance(x, int) for x in (candidates_today, revised_today, unjudged_total)):
         raise TypeError("wa_team_promises: _digest_line accepts int counts only")
-    return f"promises: candidates new {candidates_new}, unjudged {unjudged_total}"
+    return (
+        f"promises: candidates today {candidates_today} "
+        f"(revised {revised_today}), unjudged {unjudged_total}"
+    )
 
 
 # Absolute python3 candidates the gateway is spawned with (W108 — the alarm
@@ -450,26 +511,40 @@ def _resolve_py3() -> str:
     return sys.executable
 
 
-def _send_scan_digest(candidates_new: int, unjudged_total: int) -> None:
+def _send_scan_digest(
+    candidates_today: int, revised_today: int, unjudged_total: int, *, day_label: str,
+) -> None:
     """Best-effort, never raises — same contract as
     wa_mirror_intake_sweeper.py::_tg_notify. The message is built ONLY from
-    the two int counts passed in; nothing else reaches this call."""
+    the three int counts passed in; nothing else reaches this call.
+
+    REWORK A4: the dedup key used to be the CONSTANT `wa-team-promises-scan`
+    — tg_notify's mute window grows from 6h to 168h with every repeat of the
+    same key, so a chatty tick schedule could leave Zero looking at a count
+    up to a week stale. Keying by WITA day (`wa-team-promises:<YYYY-MM-DD>`)
+    caps that staleness at one day, and because the counts themselves are
+    always read fresh from Postgres (_fetch_digest_counts), whichever call
+    actually gets through for the day is always the correct running total as
+    of that moment — never a single tick's own partial delta."""
     try:
         gateway = Path(__file__).resolve().parent / "tg_notify.py"
         if not gateway.is_file():
             logger.warning("wa_team_promises: tg_notify.py missing at %s", gateway)
             return
-        text = _digest_line(candidates_new, unjudged_total)
+        text = _digest_line(candidates_today, revised_today, unjudged_total)
         res = subprocess.run(
             [_resolve_py3(), str(gateway), "--tier", "digest",
-             "--source", "wa-team-promises-scan", "--dedup-key", "wa-team-promises-scan",
+             "--source", "wa-team-promises-scan",
+             "--dedup-key", f"wa-team-promises:{day_label}",
              "--", text],
             capture_output=True, text=True, timeout=30,
         )
         verdict = extract_gateway_verdict(res.stderr)
         logger.info("wa_team_promises: tg_notify verdict=%s rc=%s", verdict, res.returncode)
     except Exception as exc:  # never raises
-        logger.warning("wa_team_promises: tg_notify failed: %s", exc)
+        # REWORK A6: str(exc) could carry gateway stderr/argv text — route it
+        # through the same sanitizer every other error path in this file uses.
+        logger.warning(_fail_line(exc, "digest"))
 
 
 # C — errors never carry data, and neither does argument/log-level parsing
@@ -549,19 +624,30 @@ async def cli_main(argv: list[str] | None = None) -> int:
                 if not args.dry_run and lock_fd is None:
                     sys.stdout.write("wa_team_promises: scan SKIPPED another instance holds the lock\n")
                     return 0
+                # REWORK A5: count, metrics write and digest enqueue all
+                # happen BEFORE the unlock (moved inside this try/finally) —
+                # they used to run after the lock was already released, so
+                # two overlapping ticks could race each other's metrics.tmp
+                # rename and interleave their digest counts.
                 try:
                     metrics = await run_scan(pool, batch_size=args.batch_size, dry_run=args.dry_run)
+                    if not args.dry_run:
+                        stage = "digest"
+                        midnight_utc, day_label = _wita_today()
+                        candidates_today, revised_today, unjudged_total = await _fetch_digest_counts(
+                            pool, midnight_utc,
+                        )
+                        _save_scan_metrics(metrics)
+                        _send_scan_digest(
+                            candidates_today, revised_today, unjudged_total, day_label=day_label,
+                        )
                 finally:
                     if lock_fd is not None:
                         _release_scan_lock(lock_fd)
-                if not args.dry_run:
-                    stage = "digest"
-                    unjudged_total = await _count_unjudged(pool)
-                    _save_scan_metrics(metrics)
-                    _send_scan_digest(metrics.candidates_new, unjudged_total)
                 sys.stdout.write(
                     f"wa_team_promises: scan OK scanned={metrics.scanned} "
-                    f"clauses={metrics.clauses} candidates_new={metrics.candidates_new}\n"
+                    f"clauses={metrics.clauses} candidates_new={metrics.candidates_new} "
+                    f"candidates_revised={metrics.candidates_revised}\n"
                 )
         finally:
             await pool.close()
