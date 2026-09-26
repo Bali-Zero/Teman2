@@ -677,58 +677,6 @@ async def test_served_by_persists_support_abstain(
     assert carrier["served_by"] != "codex"
 
 
-async def test_served_by_column_missing_mid_deploy_still_finalizes(
-    db_pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Guilt+innocence for the deploy-window gap the Gear-3 council raised
-    (see wa_outbox_worker.py's `_finalize` docstring): fly-deploy.yml's
-    pre-deploy `run-migrations` job applies pending SQL against the
-    PREVIOUS image, before `deploy` rolls this worker's new served_by
-    write onto live traffic — migration 322 itself only lands afterwards,
-    in `run-sql-v2-migrations-post-deploy`. Simulates that exact window by
-    dropping the column mid-test: the worker must still finalize the row
-    to 'done' (no residual double-send) with served_by simply unset,
-    never crash the whole tick."""
-    row = await _seed_row(db_pool)
-    monkeypatch.setattr(
-        wa_codex_leg,
-        "attempt",
-        _codex_leg_stub(
-            [
-                wa_codex_leg.CodexLegResult(
-                    text="Generato durante la finestra di deploy.",
-                    reason="completed",
-                    served_by="codex",
-                    evidence_abstain_label=False,
-                    evidence_score=0.44,
-                    package_ref="pkg-hash-deploy-window",
-                )
-            ]
-        ),
-    )
-    async with db_pool.acquire() as conn:
-        await conn.execute("ALTER TABLE wa_outbox DROP COLUMN served_by")
-    try:
-        whatsapp = _StubWhatsApp()
-        outcome = await process_outbox_once(db_pool, whatsapp, _never_bot_gen)
-        assert outcome == "sent"
-        # Guilt: exactly ONE send — the fallback must not re-invoke the
-        # Graph API (the send already happened irreversibly before the
-        # column-missing terminal write is even attempted).
-        assert len(whatsapp.calls) == 1
-        async with db_pool.acquire() as conn:
-            carrier = await conn.fetchrow(
-                "SELECT status, abstained_at, evidence_score FROM wa_outbox WHERE id = $1",
-                row["outbox_id"],
-            )
-        assert carrier["status"] == "done"
-        assert carrier["abstained_at"] is None
-        assert float(carrier["evidence_score"]) == 0.44
-    finally:
-        async with db_pool.acquire() as conn:
-            await conn.execute("ALTER TABLE wa_outbox ADD COLUMN served_by TEXT NULL")
-
-
 # ── 10. reattached completion — served_by="codex", all three carrier
 #        fields None (F1/I83: a REATTACHED completion's rebuilt sealed wire
 #        does not describe the package that generated the text) ───────────

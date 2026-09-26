@@ -21,15 +21,22 @@
 -- make that UPDATE fail the day a new `served_by` value ships before this
 -- column's vocabulary is widened — turning a bookkeeping miss into a
 -- transaction abort on a message that was already delivered. Nullable, no
--- default: NULL means the route was not recorded — a failed generation, a
--- route (human-send, non-generation) that never called the codex leg, a
--- historical row from before this column existed, or (Gear-3 council
--- finding) a completion whose fenced write fell inside this migration's
--- own deploy window and finalized before the column existed, per the
--- `_finalize()` fallback in `wa_outbox_worker.py`. NOT the same narrower
--- meaning NULL has for `evidence_score` (which really does mean "no
--- completion this attempt") — do not conflate the two when reading either
--- column.
+-- default: NULL means the route was not recorded — a failed generation, or
+-- a route (human-send, non-generation) that never called the codex leg.
+-- There is no deploy-window case: `apps/backend-rag/fly.toml`'s
+-- `release_command` (`migrate apply-all && schema_audit`) runs on the NEW
+-- image before Fly replaces a single machine, and `schema_audit.py`'s
+-- `_check_pending_migrations` fails the release outright on a pending
+-- migration — the same guarantee migration 314's `abstained_at`/
+-- `evidence_score` already relies on (Gear-3 council review 2026-09-26,
+-- verified against real deploy run logs 34937690207/35440961020/
+-- 36072036287 for migrations 318/320/321: each shows
+-- `release_command ... completed successfully` before the rolling update,
+-- and the SEPARATE `run-sql-v2-migrations-post-deploy` GH Actions job —
+-- belt-and-suspenders, not the actual gate — prints "0 migrations applied
+-- on fresh image" every time). NOT the same narrower meaning NULL has for
+-- `evidence_score` (which really does mean "no completion this attempt")
+-- — do not conflate the two when reading either column.
 --
 -- LOCKS: ADD COLUMN with neither a type needing a rewrite nor a default is
 -- a catalog-only change on Postgres >= 11 — no table rewrite, no row
@@ -56,12 +63,9 @@ COMMENT ON COLUMN public.wa_outbox.served_by IS
     'CodexLegResult.served_by verbatim (wa_codex_leg.py): codex (default), '
     'support_abstain, scripted_media_ack, scripted_greeting, '
     'scripted_human_handoff, scripted_identity. NULL = route not recorded: '
-    'a failed generation, a route (human send) that never called the codex '
-    'leg, a historical row from before this column existed, or a '
-    'completion that landed in the migration-322 deploy window and '
-    'finalized before this column was applied. No CHECK: '
-    'written after the irreversible send, must never abort the bookkeeping '
-    'UPDATE on an unrecognized value.';
+    'a failed generation, or a route (human send) that never called the '
+    'codex leg. No CHECK: written after the irreversible send, must never '
+    'abort the bookkeeping UPDATE on an unrecognized value.';
 
 -- === ROLLBACK ===
 -- Additive and nullable: dropping it loses no other invariant, but the

@@ -24,19 +24,21 @@
 `served_by` is `CodexLegResult.served_by` verbatim, persisted in the SAME fenced terminal write
 as `abstained_at`/`evidence_score` (`wa_outbox_worker.py`). Before this column, the
 `support_abstain` rate (Iteration 2 "Measured, not fixed") was only visible by hashing message
-bodies — this makes it a plain `GROUP BY`:
+bodies — this makes it a plain `GROUP BY`. Scoped to `needs_generation` rows only (a human send
+never calls the codex leg, so it correctly stays NULL — including it in the denominator would
+undercount the real support_abstain rate):
 
 ```sql
-SELECT served_by, count(*) FROM wa_outbox WHERE created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
+SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
 ```
 
-`NULL` means the route was not recorded — a failed generation, a route (human send) that never
-called the codex leg, a row from before this column existed, or a completion that landed in the
-migration's own deploy window (fly-deploy.yml applies `migrations_v2` on the previous image, then
-again after `deploy` rolls the new worker onto live traffic — a send finalizing in that gap
-persists without `served_by`, self-healing on the next completion). The closed vocabulary
-otherwise is `codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`,
-`scripted_human_handoff`, `scripted_identity`.
+`NULL` (within that scope) means a failed generation — the row never reached a served completion.
+`apps/backend-rag/fly.toml`'s `release_command` (`migrate apply-all && schema_audit`) runs on the
+NEW image before Fly replaces any machine and fails the release outright on a pending migration,
+so there is no deploy-window gap: the column exists before this worker code is ever live (verified
+against real deploy run logs for migrations 318/320/321). The closed vocabulary otherwise is
+`codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`,
+`scripted_identity`.
 
 ## Iteration 1 — 2026-09-25 (M5)
 
