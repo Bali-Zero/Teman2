@@ -20,7 +20,8 @@ Postgres's own per-statement guarantee, not run_init_schema's wrapping
 transaction) run_init_schema leaves the catalog byte-for-byte where it
 started — proven by a snapshot of pg_attribute + pg_index (+ each index's
 own `pg_get_indexdef`) + pg_constraint + each table's BIGSERIAL sequence
-existence before and after, not just "an exception was raised". The
+DEFINITION (name + `pg_sequences` row, Round-1: not just an existence
+boolean) before and after, not just "an exception was raised". The
 candidates-index guilt case's pre-existing table now omits `cue` so
 run_init_schema's own ADD COLUMN IF NOT EXISTS is a genuine mutation there
 too, not a no-op the rollback never has to undo. A mutation-proof test then
@@ -114,29 +115,35 @@ async def _fresh_database(sockdir, name: str):
             await admin2.close()
 
 
-async def _sequence_exists(conn, table_oid, table: str, serial_column: str) -> bool:
-    """Whether `table`'s `serial_column` still owns a live sequence — asked
-    only if the table itself exists (`pg_get_serial_sequence` errors on a
-    relation that doesn't). C2 fix (c): a BIGSERIAL PRIMARY KEY's sequence
-    is catalog surface run_init_schema's DDL could touch (CREATE TABLE
-    creates it) just as much as a column or index, so it belongs in the
-    before/after snapshot too."""
+async def _sequence_snapshot(conn, table_oid, table: str, serial_column: str):
+    """`table`'s `serial_column` sequence — its OWN NAME plus its full
+    `pg_sequences` definition row, not just an existence boolean (Round-1
+    Codex nit: a boolean can't tell a live sequence apart from one that got
+    renamed, retyped, or silently orphaned by a bad rollback — only a
+    definition can). `None` if the table doesn't exist or the column has no
+    owned sequence (`pg_get_serial_sequence` errors on a relation that
+    doesn't exist, hence the early return)."""
     if table_oid is None:
-        return False
-    seq = await conn.fetchval(
+        return None
+    seq_name = await conn.fetchval(
         "SELECT pg_get_serial_sequence($1, $2)", f"public.{table}", serial_column
     )
-    if seq is None:
-        return False
-    return bool(await conn.fetchval("SELECT to_regclass($1) IS NOT NULL", seq))
+    if seq_name is None:
+        return None
+    row = await conn.fetchrow(
+        "SELECT schemaname, sequencename, data_type, start_value, min_value, "
+        "max_value, increment_by, cycle FROM pg_sequences "
+        "WHERE schemaname || '.' || sequencename = $1", seq_name,
+    )
+    return (seq_name,) + (tuple(row.values()) if row is not None else (None,))
 
 
 async def _catalog_snapshot(conn) -> dict:
     """pg_attribute + pg_index (+ each index's pg_get_indexdef) +
     pg_constraint for whichever of the two tables currently exist, plus each
     table's existence flag and its BIGSERIAL PRIMARY KEY's sequence
-    existence (C2 fix (c)) — the whole catalog surface run_init_schema's DDL
-    could possibly touch."""
+    DEFINITION (C2 fix (c), Round-1: definitions, not existence booleans) —
+    the whole catalog surface run_init_schema's DDL could possibly touch."""
     tp_oid = await conn.fetchval("SELECT to_regclass('public.team_promises')::oid")
     tpc_oid = await conn.fetchval("SELECT to_regclass('public.team_promise_candidates')::oid")
     oids = [oid for oid in (tp_oid, tpc_oid) if oid is not None] or [0]
@@ -154,8 +161,8 @@ async def _catalog_snapshot(conn) -> dict:
     return {
         "tp_exists": tp_oid is not None,
         "tpc_exists": tpc_oid is not None,
-        "tp_seq_exists": await _sequence_exists(conn, tp_oid, "team_promises", "promise_id"),
-        "tpc_seq_exists": await _sequence_exists(conn, tpc_oid, "team_promise_candidates", "id"),
+        "tp_seq": await _sequence_snapshot(conn, tp_oid, "team_promises", "promise_id"),
+        "tpc_seq": await _sequence_snapshot(conn, tpc_oid, "team_promise_candidates", "id"),
         "attrs": tuple(tuple(r.values()) for r in attrs),
         "idx": tuple(tuple(r.values()) for r in idx),
         "cons": tuple(tuple(r.values()) for r in cons),
