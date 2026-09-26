@@ -239,6 +239,29 @@ def _ready_news_item() -> dict[str, object]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("cover_field", ["cover_image", "image_drive_file_id"])
+async def test_article_preflight_matches_publish_without_leaking_cover_reference(
+    monkeypatch: pytest.MonkeyPatch, cover_field: str,
+) -> None:
+    item = _ready_news_item()
+    item.pop("cover_image")
+    monkeypatch.setattr(intel.staging_service, "load_staging_item", lambda *_args: item)
+
+    missing = await intel.workspace_marketing_news_article("news_1")
+    assert missing["cover_status"] == "missing"
+    assert missing["publication_preflight"]["missing"] == ["cover_image"]
+    assert missing["publication_preflight"]["missing"] == intel._workspace_publish_blockers(item)
+
+    item[cover_field] = "private-cover-reference"
+    attached = await intel.workspace_marketing_news_article("news_1")
+    assert attached["cover_status"] == "attached"
+    assert attached["publication_preflight"]["missing"] == []
+    assert "private-cover-reference" not in json.dumps(attached)
+    assert "cover_image" not in attached
+    assert "image_drive_file_id" not in attached
+
+
+@pytest.mark.asyncio
 async def test_capabilities_fail_closed_when_github_publisher_is_unconfigured(
     monkeypatch,
 ) -> None:
@@ -702,7 +725,7 @@ def test_http_boundary_requires_exact_dedicated_key(monkeypatch) -> None:
         "next_offset": None,
         "complete": True,
         "latest_item_at": None,
-        "items": [{"id": "news_1", "status": "pending"}],
+        "items": [{"id": "news_1", "status": "pending", "cover_status": "unknown"}],
     }
 
     publish_path = "/api/workspace-marketing/news/news_1/publish"
