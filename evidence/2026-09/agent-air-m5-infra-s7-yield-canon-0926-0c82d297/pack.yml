@@ -39,8 +39,8 @@ lanes:
     seat: kimi-code/k3
     note: >-
       Refuter, VERDICT PASS. Confirmed by execution: exit-code propagation,
-      kill switch, checksum validity, 6/7 tests failing on the pre-genes
-      wrapper. Two MINOR (silent heartbeat waiver when the library is absent;
+      kill switch, checksum validity, and the round-1 tests failing on the
+      pre-genes wrapper except the one designed to pass on both. Two MINOR (silent heartbeat waiver when the library is absent;
       plist identity unverifiable from its seat) and two NIT (no signal trap,
       no pidfile).
   - lane: review-round1
