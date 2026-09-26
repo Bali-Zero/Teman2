@@ -1,0 +1,87 @@
+task: >-
+  v4, supersedes #7462 (v3 of this lane; fresh Gear-3 gate found the content correct — 7
+  deletions, .gitignore, corpus-miner redaction, quarantine 7/7 hash-verified — but REWORK-BUILD
+  on the evidence: F1 blocking, brief.yml listed the four redacted client first names in clear,
+  in the same order as the md's [CLIENT-A..D] placeholders, a de-anonymisation key; F2 minor,
+  brief/pack undercounted the md's team-line phone numbers as two when it has three). Both cured
+  in this pack (see below); the deletions, .gitignore and md redaction are byte-identical to
+  #7462's head. #7462 itself superseded #7453 (gate verdict REWORK-BUILD, three defects). (1)
+  Residual client PII on main
+  outside this lane's original scope: research/wa-copilot/2026-05-25-eval-set-v1.jsonl (50
+  client_full_name values + 49 client WhatsApp message bodies, added by commit 9ee0ca260f) — now
+  quarantined and removed alongside the six files from #7453. Two adjacent research/operations/
+  docs were also triaged for client-row CRM phone numbers per the gate's flag:
+  2026-06-04-wa-corpus-miner-session-report.md carried four client first names ([CLIENT-A], [CLIENT-B],
+  [CLIENT-C], [CLIENT-D]) and four client-associated phone numbers in prose — redacted to placeholders,
+  frontmatter `adversarial_review: exempt-redaction-edit` added (same convention as #7411); the three
+  distinct team-line numbers in the same prose (2 E.164 + 1 without a leading '+' embedded in a Doc
+  title) are left untouched — verified against PROD `whatsapp_contacts`: Adit's trap-number line and
+  the Doc-title number both carry `contact_type='team'`; Surya's own line (confirmed by the
+  document's own screenshot evidence) carries `contact_type='client'` in `whatsapp_contacts`, a
+  pre-existing data-quality mistag on that one row, not a client-PII exposure introduced here — and
+  the two numeric client_ids (5730, 6087) stay per Builder Contract §4's pseudonym allowance.
+  2026-08-15-adr-wa-runtime-openai-provider.md's phone-shaped tokens are
+  verified synthetic regex-test examples (a sequential placeholder "+62.812.345.678" demonstrating a
+  detector bug, and "KTPnya/KTPpun <token>" NIK-detector test cases) — left unredacted, not client PII.
+  (2) A PII output-boundary breach during #7453's review: `.claude/scripts/codex-spalla.sh:277`
+  embeds a raw `git diff HEAD | head -1000` into the prompt sent to a cloud LLM (OpenAI), and the
+  #7453 review sent 959 deleted plan.jsonl lines (969 full_name records) in cleartext. The two M5
+  transcripts are quarantined by the gate session. This PR does NOT dispatch codex-spalla.sh or any
+  external seat against this diff — disclosed as a withdrawn review in pack.yml's dissent, with R9
+  quorum skipped via seat_override. A separate lane fixes the script itself.
+  (3) pack.yml's `seat_override` in #7453 understated net churn (1871 vs the CI-measured 1963,
+  missing pack.yml's own 92 lines) — this pack's churn is computed on the FINAL commit, after every
+  file (including this brief and pack) is staged, not before.
+lane: research/pii-deep-audit-0424-v4
+machine: m5
+date: 2026-09-27
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source size, computed on the FINAL commit (all 11 changed paths, including
+  this brief and pack): `evidence_pack_lint._size_term_net_lines` on the `git diff --numstat` of the
+  merge-base to this exact commit = 2126 (261 insertions + 1865 deletions across 11 files, 3 of them
+  binary xlsx contributing 0 line-counted churn) — above SIZE_GEAR3_THRESHOLD (1828), same order of
+  magnitude as #7462's own 2086 and #7453's own 1963 (both smaller evidence packs). `--print-floor`
+  on this numstat/changed-files pair independently returns 3. No hot-zone path (research/ +
+  .gitignore only).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    None of the seven files (3 jsonl + 3 xlsx + 1 wa-copilot jsonl) is tracked on origin/main after
+    merge.
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance | grep -c -E '\.xlsx$|deep_audit_2026-04-24'; git ls-tree -r --name-only origin/main research/wa-copilot | grep -c eval-set
+  A2: >-
+    A file matching each producer's output pattern is ignored, and the two legitimate sibling files
+    (research/wa-copilot's baseline-snapshot.md, research/compliance's tracked .md reports) are not.
+    probe: >-
+      git check-ignore -q research/compliance/deep_audit_2026-04-24/plan.jsonl && git check-ignore -q research/compliance/crm_guardian_plan.xlsx && git check-ignore -q research/wa-copilot/2026-05-25-eval-set-v1.jsonl && ! git check-ignore -q research/wa-copilot/2026-05-25-baseline-snapshot.md
+  A3: >-
+    The redacted corpus-miner report carries zero residual client-name or client-phone tokens, and
+    passes the R1 adversarial-review gate.
+    probe: >-
+      python3 scripts/check_adversarial_review.py --files research/operations/2026-06-04-wa-corpus-miner-session-report.md
+
+out_of_scope: >-
+  scripts/crm_guardian_apply.py and scripts/crm_guardian_deep_audit.py hardcode the deep-audit repo
+  paths as their I/O contract (disclosed deviation, unchanged from #7447/#7453). Fixing
+  codex-spalla.sh's raw-diff-to-cloud exposure (Builder Contract §4) is a separate lane's mandate,
+  not this one's. research/operations/2026-08-15-adr-wa-runtime-openai-provider.md's synthetic
+  phone-shaped examples are left as-is (verified not client PII). Git history on origin/main still
+  holds all seven original blobs plus the four now-redacted tokens in the corpus-miner report's prior
+  revisions; a rewrite is a separate operator decision (§Solo-operatore).
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/deep-audit-0424/ (0700/0600, hash-verified)
+  are the audit trail for all seven removed files. The corpus-miner triage classified team-vs-client
+  by the report's OWN stated contact_type/team-roster context (Adit's trap-number line, the
+  Doc-title number, Surya's own line, Lia team=True-in-CRM) rather than re-querying
+  whatsapp_contacts alone, since the report already names each number's classification inline;
+  this pack additionally cross-checked all three team-line numbers against PROD `whatsapp_contacts`
+  directly (two return `contact_type='team'`, one — Surya's own line — returns the pre-existing
+  `contact_type='client'` mistag noted above).
