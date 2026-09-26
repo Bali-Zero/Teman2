@@ -440,6 +440,15 @@ from conductor.review_eligibility import (  # noqa: E402
     evaluate as _evaluate_reviewer_eligibility,
 )
 
+# bites-observable (S5, 2026-09-27) — an `observe:` line may point at this
+# script. Every argument either reads a file it only reports on
+# (--changed-files-file, --numstat-file, --patch-file, the pack_path
+# positional) or is a plain int/flag; the one subprocess call in this file
+# (repo_root_default()) runs the fixed literal `git rev-parse
+# --show-toplevel`, never an argument-controlled binary. Nothing here writes,
+# execs a named program, or reaches a database. Keep it that way, or drop
+# this marker.
+
 # ---------------------------------------------------------------------------
 # Hot-zone floor (rule 6) — DELIBERATE, DECLARED duplication of the case-block
 # in .github/workflows/hot-zone-pr-gate.yml. Keep the two lists in sync by

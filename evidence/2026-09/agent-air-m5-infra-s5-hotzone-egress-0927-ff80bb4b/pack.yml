@@ -150,12 +150,8 @@ bites:
     .claude/scripts/codex-spalla.sh, scripts/lib/spalla_redact.sh,
     .claude/hooks/codex-spalla-trigger.sh or .codex/hooks/*
   where: ci
-  observe: >-
-    on origin/main post-merge, `printf '.claude/scripts/codex-spalla.sh\n'
-    > /tmp/x.txt && python3 scripts/evidence_pack_lint.py --print-floor
-    --changed-files-file /tmp/x.txt` prints 3, and
-    `python3 -m pytest scripts/tests/test_hotzone_lists_sync.py` passes
-  expect: exit0
+  observe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file scripts/tests/fixtures/s5_hotzone_probe_changed_files.txt
+  expect: "contains:3"
 dissent:
   - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
     objection: >-
