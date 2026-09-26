@@ -1,0 +1,81 @@
+task_id: spalla-pii-guard-v2-0927
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Close the hole in .claude/scripts/codex-spalla.sh that sent a PII-removal PR's own 959
+  deleted client full_name lines to the Codex CLI (OpenAI cloud) in cleartext (cicatrix
+  W140). Rework of PR #7466 after an independent gate verdict of REWORK-BUILD naming five
+  blockers: (1) the wrapper's new source line regressed scripts/tests/test_codex_spalla.py
+  from 11/11 to 1/11; (2) the PII-classed-path list was a hand-typed subset missing several
+  real .gitignore-declared PII paths; (3) `--name-only` alone under-matched a rename out of
+  a PII-classed path; (4) transcripts/telemetry were created 0644, not 0600; (5) the
+  redactor's CLI mode silently skipped PROD CRM name coverage whenever DATABASE_URL was
+  unset, so full_name (the incident's own data class) could still ship in cleartext.
+constraints:
+  - Only .claude/scripts/codex-spalla.sh, scripts/lib/spalla_redact.sh, scripts/_redact_pii.py
+    (one CLI flag), scripts/tests/test_codex_spalla.py, scripts/tests/test_codex_spalla_diff_redaction.sh
+    and docs/scars/cicatrix-scars.md (W140) changed.
+  - No real client name/phone/email anywhere in the diff, tests, commit or scar — every
+    fixture is invented, several reused verbatim from scripts/test_redact_pii.py and
+    scripts/tests/test_nb_title_redaction.py's own established safe fixtures.
+  - Neither test file invokes the real codex CLI or a real Postgres connection; both use a
+    fake `codex`/`psql` on PATH, never the real network.
+acceptance:
+  - text: >-
+      WHEN a diff touches research/crm/ (or any path matched by the union of the static
+      list and the live PII_PATH_FRAGMENTS tuple in scripts/async_review_supervisor.py),
+      on EITHER side of a rename, the wrapper SHALL exit 7 before invoking `codex exec`,
+      UNLESS --allow-pii-paths is passed (itself logged to telemetry).
+    probe:
+      scripts/tests/test_codex_spalla.py::test_pii_classed_path_refused_before_dispatch,
+      test_rename_out_of_pii_path_is_still_refused, test_allow_pii_paths_override_permits_dispatch
+  - text: >-
+      WHEN scripts/_redact_pii.py cannot load a non-empty PROD CRM name list (no
+      DATABASE_URL/psql reachable), the wrapper SHALL refuse (exit 8, "PII name list
+      unavailable") before invoking `codex exec`; WHEN a reachable list contains a fixture
+      name present in the diff, that name SHALL reach the prompt only as
+      [CLIENT-NAME-REDACTED].
+    probe:
+      scripts/tests/test_codex_spalla.py::test_missing_crm_names_fails_closed_before_dispatch,
+      test_crm_name_in_diff_is_redacted_before_dispatch
+  - text:
+      Every artefact the wrapper writes (transcript, .last.md, telemetry) SHALL be 0600,
+      and its log directory 0700, on a normal successful dispatch.
+    probe: scripts/tests/test_codex_spalla.py::test_dispatch_artifacts_are_0600
+  - text:
+      The pre-existing 11 guilt/innocence tests for codex-cli argv/exit-code/verdict
+      behavior SHALL still pass unchanged.
+    probe:
+      "pytest scripts/tests/test_codex_spalla.py -k 'not pii and not crm and not
+      rename and not 0600'"
+consumer_map:
+  - Every codex-spalla.sh dispatch (any future council/codex-second-opinion invocation)
+    consumes scripts/lib/spalla_redact.sh's three guards directly.
+risks:
+  - scripts/codex_tri_llm_review.py has the same raw-diff-forwarding defect against
+    Codex+Kimi and does not use these guards; found by the gate, confirmed not wired live
+    via any M5/Mini cron or LaunchAgent as of this writing (Pro unreachable, unverified).
+    Tracked in the W140 scar, not closed by this PR — separate fix, separate PR.
+  - '"Wire the bash test into a required PR-blocking workflow" and "register the guard
+    in infra/guard-conformance/registry.json" (should-fix items from the gate) are
+    deliberately deferred: infra/guard-conformance''s own conformance checker fails a
+    registered guard whose test no CI workflow runs, and scripts/tests/*.py|*.sh currently
+    run only in the nightly (non-PR-blocking) scripts-tests-sweep.yml — closing that gap
+    safely is a structural CI change bigger than this PR''s mandate, not a same-diff patch.'
+  - The operator-typed FOCUS brief and the untracked-file PATH list are not passed through
+    the redactor (documented in the wrapper's own header as a known, lower-risk gap).
+  - Every redact_for_external call now shells out to psql up to twice; a wrapper run can
+    make up to 6 PG round-trips (3 embedded bodies x 2 queries) — a latency/DB-load
+    cost accepted here, not optimized (no caching added) to keep this PR's scope to the
+    five blockers plus the should-fix items bundled with them.
+grader: >-
+  Independent gate review (REWORK-BUILD verdict on PR #7466, reworked here); a fresh gate
+  on this head SHA is expected per the coordinating session.
+budget: >-
+  Existing subscription only; no paid API calls; no external-seat dispatch used for this
+  PR's own review.
+pii:
+  none — every name/phone/email in this diff, its tests and its scar is an invented
+  fixture (see constraints above); the change's SUBJECT is a PII-egress boundary, its
+  CONTENT carries none.
