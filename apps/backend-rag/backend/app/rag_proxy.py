@@ -25,6 +25,7 @@ import os
 import httpx
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 logger = logging.getLogger("zantara.backend")
 
@@ -276,13 +277,38 @@ async def proxy_request(request: Request) -> Response:
 
     body = await request.body()
 
+    resp = None
+    streaming = False
     try:
-        resp = await client.request(
-            method=request.method,
-            url=url,
-            headers=headers,
-            content=body,
-            follow_redirects=True,
+        upstream_request = client.build_request(
+            method=request.method, url=url, headers=headers, content=body
+        )
+        resp = await client.send(upstream_request, stream=True, follow_redirects=True)
+        content_type = resp.headers.get("content-type", "")
+        if "text/event-stream" in content_type:
+            streaming = True
+
+            async def stream_body():
+                try:
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+                finally:
+                    await resp.aclose()
+
+            return StreamingResponse(
+                stream_body(),
+                status_code=resp.status_code,
+                headers=_filter_response_headers(resp.headers),
+                media_type="text/event-stream",
+                background=BackgroundTask(resp.aclose),
+            )
+
+        content = await resp.aread()
+        return Response(
+            content=content,
+            status_code=resp.status_code,
+            headers=_filter_response_headers(resp.headers),
+            media_type=content_type or None,
         )
     except httpx.ConnectError as e:
         logger.error(f"RAG proxy connect error for {request.method} {url}: {e}")
@@ -298,23 +324,9 @@ async def proxy_request(request: Request) -> Response:
             status_code=504,
             media_type="application/json",
         )
-
-    # Return response — handle streaming for SSE/chunked responses
-    content_type = resp.headers.get("content-type", "")
-    if "text/event-stream" in content_type:
-        return StreamingResponse(
-            resp.aiter_bytes(),
-            status_code=resp.status_code,
-            headers=_filter_response_headers(resp.headers),
-            media_type="text/event-stream",
-        )
-
-    return Response(
-        content=resp.content,
-        status_code=resp.status_code,
-        headers=_filter_response_headers(resp.headers),
-        media_type=content_type or None,
-    )
+    finally:
+        if resp is not None and not streaming:
+            await resp.aclose()
 
 
 def create_proxy_router() -> APIRouter:
