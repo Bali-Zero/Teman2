@@ -59,3 +59,38 @@ against every mid-cleanup ADB failure. Use the reviewed runbook for future work.
 - `device-receipt.json` SHA-256: `52f3f87bf3bc42a9476bb6b386d7b353c676e5feb5594979af1390f8eaa8d525`
 - `device-test.py` SHA-256: `981833834b476e089280f80b9e595a90fe43cb7a7b06ec02121f85d59d45dfc4`
 - `device-test.mjs` SHA-256: `2d5d8d2d0867d31268577c5f1a31fa7926f5e50ca4021354764a17938f0e7276`
+
+## Wireless follow-up: independent PASS
+
+Mandate: `IQOO-WIRELESS-20260926`. Post-run observation:
+`2026-09-26T18:21:36.234172+00:00`. Driver: Pro. Authenticated ADB TLS over
+Tailscale; wall AC power; USB absent; owner performed the initial local unlock.
+
+| Check                  | Observed result                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| Idle and panel         | 41,226 ms idle, 41 timer ticks; internal panel off at all recorded samples                         |
+| Native action          | One injected tap; navigation to `#step-two`; panel still off                                       |
+| Browser ownership      | Four original targets retained; owned target closed                                                |
+| Process cleanup        | Three owned Android processes; remaining counts `[1, 0]`; settled in 445 ms                        |
+| Settings               | Original mask 0 / timeout 600,000 ms restored; three spaced samples plus post-lock readback        |
+| Finalization           | Inner PASS, final receipt PASS, closure PASS; no outer corrective writes or errors                 |
+| Subsequent state       | Asleep, locked, settings unchanged; no scrcpy/controller processes or device lease                 |
+| Independent final gate | Fresh Claude Opus 5.5 xhigh verifier: PASS for supervised, powered, initially unlocked wireless QA |
+
+Preserved evidence on Pro:
+`~/.local/share/nuzantara/iqoo/evidence/20260926-wireless-v9-verified/`.
+It includes `wireless-receipt.json`, `session-final.json`, `final-gate.json`,
+the controller and browser inputs, and `manifest.json`. All 11 manifest entries
+were rechecked on 2026-09-27 before this shared documentation update.
+
+Controller SHA-256:
+`6f144f79e58d930524466c4029714a11f71732be381e35e00646f01aefb701e6`.
+The browser template hash remains the `device-test.mjs` hash listed above.
+Preserve these receipts and check the pinned inputs before reuse; the controller
+uses a fixed output directory and must not overwrite completed evidence.
+
+Earlier wireless v6/v7 cleanup failures remain archived as FAIL. Waiting for
+owned Android cleanup processes before restoring settings resolved the observed
+race in v9. This is one clean integrated run, not a claim of overnight, reboot,
+SIGKILL, unattended unlock, native-app journey or notification/email coverage.
+Each approved product/client journey requires its own acceptance test.

@@ -1,29 +1,32 @@
 # iQOO physical client QA
 
-Status: **Display-off device lifecycle verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
-Owner mandate: `IQOO-LIVE-QA-20260926` (BLUE). This runbook is a shared capability
+Status: **Wireless, USB-free display-off QA verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
+Owner mandates: `IQOO-LIVE-QA-20260926`, `IQOO-WIRELESS-20260926`,
+`IQOO-SHARED-CAPABILITY-20260927` (BLUE). This runbook is a shared capability
 for Claude, Codex, Gemini and Qwen; it does not grant release authority.
 
 ## Purpose and current availability
 
 Use the owner's iQOO for physical Android client-journey checks: navigation,
 touch, keyboard, responsive layout, message indicators and approved live flows.
+**This is a priority shared QA resource for all Bali Zero/Nuzantara mobile
+surfaces: portal, public sites, product funnels and authorized application flows.**
 For changes to a client-facing mobile journey, include a physical iQOO check
 when the device is available and the flow is authorized. Record the tested
 scope or the concrete availability blocker in the normal QA evidence.
 Check current connectivity before claiming availability. A reachable Tailscale
 peer alone does not mean ADB or browser control is available.
 
-On 2026-09-26, the owner moved the USB cable to Pro. Its USB registry identifies
-vivo I2508. Android platform-tools 37.0.1 and scrcpy 4.1 are now installed there;
-ADB is authorized after the owner accepted Pro's key. The physical panel can be
-turned off while Chrome remains interactive. Availability still requires a
-connected, powered, authorized and initially unlocked phone; it is not an
-unattended service that survives reboot, re-lock or USB removal.
+The vivo iQOO I2508 has an authenticated **wireless ADB TLS connection through
+Tailscale**, driven by **Pro**. **USB is optional.** The full wireless test passed
+with the phone on an AC wall charger, USB absent, and the physical display off
+while Chrome remained interactive. Android platform-tools 37.0.1 and scrcpy 4.1
+are installed on Pro. Wireless availability requires connectivity, authorization,
+AC power and an initial local unlock by the owner. It is a supervised, bounded
+session; reboot, host crash, SIGKILL and unattended unlock recovery are not proved.
 
-The current USB driver host is **Pro**. M5/Mini agents use `ssh pro`; they do not
-assume the phone is attached locally. If the owner moves the cable, rediscover
-the driver host before use. Keep heavy browser builds/test runners on Pro. The
+M5/Mini agents use `ssh pro`; they do not assume the phone is attached locally.
+Keep heavy browser builds/test runners on Pro. The
 RADAR Termux identity is restricted to incident receipts and is not a QA shell.
 
 On Pro, include `/opt/homebrew/bin` and `$HOME/.local/bin` in the SSH command's
@@ -39,6 +42,24 @@ The [physical verification receipt](iqoo-live-qa-evidence-20260926.md) records a
 touch/navigation, retained owner tabs and restored power/lock state. It is not
 an overnight test or an authenticated live-client/backend test.
 
+### Current wireless status and evidence (on Pro)
+
+Read these under `~/.local/share/nuzantara/iqoo/` before wireless QA:
+
+- `wireless-qa-status.json`: latest recorded verdict and observation time;
+  historical PASS is not a live readiness check.
+- `wireless-qa-operations.md`: wireless lifecycle and reuse requirements.
+- `wireless-transport.json`: private authenticated transport/identity record;
+  consume it locally without printing values. Ports can change after reboot or
+  network/debugging changes. Recheck identity and authenticated connectivity.
+- `evidence/20260926-wireless-v9-verified/`: preserved controller, generated runner,
+  source template, receipts, independent final gate and SHA-256 manifest.
+
+The archived controller is a completed synthetic smoke test, not a general
+product runner. It writes to a fixed evidence directory. Do not run it over the
+archived receipts: use new evidence, validate the pinned controller/template/
+runner hashes, and apply the verified lifecycle to the approved product flow.
+
 ## One device, one session
 
 - Acquire an exclusive device session on the driver host before changing tabs,
@@ -52,13 +73,14 @@ an overnight test or an authenticated live-client/backend test.
 - Confirm `adb get-state` returns `device`. With multiple devices, explicitly
   select this phone for every ADB and scrcpy invocation. Never kill the shared
   ADB server to solve a routine connection issue.
-- If absent: the owner reconnects USB. If `unauthorized`: the owner checks the
+- If absent: check the recorded wireless endpoint and Pro/Tailscale connectivity;
+  USB remains an optional recovery path. If `unauthorized`: the owner checks the
   driver host's ADB key fingerprint and accepts the phone's RSA prompt locally.
   If genuinely locked or freshly rebooted: the owner unlocks locally once. Never put the
   PIN/password in commands, logs, prompts, screenshots, repo files or memory.
-- Prefer USB. Do not enable broad TCP ADB or change tailnet/network policy as
-  part of a browser test. Wireless ADB requires its own authenticated setup and
-  live connection check; Tailscale does not supply that setup automatically.
+- Use the already authenticated wireless setup when it passes readiness checks.
+  Do not enable legacy/broad TCP ADB or change tailnet/network policy as part of
+  a browser test. Tailscale alone does not provide ADB authentication.
 
 ## Display-off control
 
@@ -68,53 +90,41 @@ use this mode only in a physically controlled workspace. A locked/sleeping
 Android session is a different state. Do not
 remove the lock screen, change the PIN or disable security to obtain this mode.
 
-After acquiring the device lease, USB authorization and initial unlock, keep
-the phone powered and run on the driver host. Select the device explicitly if
-more than one is attached. The following shell example temporarily keeps the
-device awake while powered and restores the original value on normal exit or a handled
-signal. An abrupt host failure still requires recovery and a restoration check.
+The verified lifecycle uses the installed scrcpy with explicit device selection,
+no audio/video capture or clipboard synchronization, and a bounded lifetime
+(120 seconds in the wireless smoke test). Apply these steps after taking the lease:
 
-```sh
-export PATH="/opt/homebrew/bin:$HOME/.local/bin:$PATH"
-export ADB="/opt/homebrew/bin/adb"
-(
-  previous_stay_awake="$(adb shell settings get global stay_on_while_plugged_in | tr -d '\r')"
-  case "$previous_stay_awake" in ''|*[!0-9]*) exit 1 ;; esac
-  restore_iqoo() {
-    adb shell settings put global stay_on_while_plugged_in "$previous_stay_awake"
-    adb shell input keyevent KEYCODE_SLEEP
-  }
-  trap restore_iqoo EXIT
-  trap 'exit 130' INT TERM HUP
-  adb shell settings put global stay_on_while_plugged_in 7
-  test "$(adb shell settings get global stay_on_while_plugged_in | tr -d '\r')" = 7 || exit 1
-  scrcpy --no-video --no-audio --no-window --no-clipboard-autosync \
-    --turn-screen-off --stay-awake --time-limit=1800
-)
-```
+1. Verify the authenticated transport, physical identity, AC power and initial
+   unlock. Save the original power settings. Refuse an existing Android scrcpy
+   session rather than interfering with another owner.
+2. Set the temporary powered keep-awake mask to 7 and verify `mStayOn=true`.
+   Use scrcpy `--turn-screen-off`; do not assume `--stay-awake` changed settings.
+   Normal product testing does not need to shorten the screen timeout.
+3. Record the owned host process and new Android scrcpy process IDs. Verify the
+   internal HWC display 0 section in `dumpsys SurfaceFlinger` reports
+   `powerMode=Off`, while Android is Awake and keyguard `showing=false`.
+   Logical display ON alone does not identify the physical panel state.
+4. Run the scoped test, preserving owner tabs and checking focus before native
+   input. The screen is physically off; Android remains awake and unlocked.
+5. Stop only the owned host process. **Wait for its owned Android cleanup
+   processes to disappear before restoring settings.** Host scrcpy exit alone
+   is insufficient: wireless diagnostics observed a remaining cleanup process.
+   Use bounded waits; timeout is a failed run requiring supervised recovery.
+6. Restore the saved settings, verify multiple spaced readbacks, then send
+   `KEYCODE_SLEEP`. Verify the phone is asleep and locked, and read the settings
+   again. Screen-off alone is not lock confirmation. Never use a power toggle
+   as a substitute for this verification.
+7. Close only the owned tab/forward and release only the owned lease. Preserve
+   cleanup errors and corrective writes in the receipt. An outer cleanup pass
+   must never conceal an inner failure. For the v9 smoke protocol, both
+   `receipt.verdict` and closure `session_verdict` must equal `PASS`; missing/null
+   verdicts and a zero process exit code alone do not mean success.
 
-This uses installed scrcpy rather than a new daemon or APK. It requests no audio,
-video recording or clipboard synchronization. The session is bounded to 30
-minutes. On this phone, `--stay-awake` and `--screen-off-timeout` alone left the
-Android settings unchanged during the test. Explicit ADB settings writes worked;
-check their actual values instead of assuming a flag took effect. The phone
-reported charging type AC (`mPlugType=1`) despite the USB cable; mask 7 covers
-AC, USB and wireless power, whereas USB-only mask 2 left `mStayOn=false`. Verify
-`mStayOn=true` during the session. The temporary
-keep-awake setting is not a permanent unlock or a guarantee against vendor
-battery management. Normal testing does not need to change the screen timeout.
-
-Verify physical power with the internal display's `powerMode` in
-`adb shell dumpsys SurfaceFlinger`, together with `mWakefulness=Awake` and
-keyguard `showing=false`. Android's logical display can report ON while the
-physical panel is Off, so `dumpsys display` alone is insufficient here.
-
-For initial visual diagnosis, run scrcpy with its normal mirror window and
-`--turn-screen-off --stay-awake --no-audio --no-clipboard-autosync` instead.
-Stop the owned scrcpy process at the end and verify restoration. Then send
-`adb shell input keyevent KEYCODE_SLEEP` and verify the phone sleeps and locks;
-screen-off alone is not lock confirmation. Do not use the physical power button
-or the `KEYCODE_POWER` toggle as a substitute for display-off mode or cleanup.
+This replaces the earlier shell cleanup example. If the Android side does not
+settle, automatic restoration is deferred and the run fails; supervise recovery
+instead of racing its cleanup process. Abrupt host failures still require a
+restoration check. The keep-awake setting is not a permanent unlock or a
+guarantee against vendor battery management.
 
 Upstream also documents Android 15+ `adb shell cmd display power-off 0` and
 `power-on 0`. Confirm device/version support before using these; do not substitute
