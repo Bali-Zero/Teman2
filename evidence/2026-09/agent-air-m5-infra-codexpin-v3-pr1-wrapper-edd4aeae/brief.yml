@@ -1,0 +1,143 @@
+task_id: codexpin-v3-pr1-wrapper
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+objective: >-
+  PR-1 of spec_codexpin_v3.md's 3-PR rework of the WA broker's dedicated
+  codex pin (supersedes the wrapper portion of the SUSPENDED PR #7340,
+  which took three cross-family BLOCK rounds: #7313 r0, #7313 r1, #7340
+  r0). This PR is ONLY D5: the wrapper parses a codex-version pin file
+  using shell builtins alone (`read`/`case`/`[`/parameter expansion — no
+  `expr`, no PATH lookup) BEFORE the daemon's own env file is sourced, so a
+  stale or wrong env value (a redirected PATH, a leftover legacy
+  WA_CODEX_BIN) cannot disable or redirect the pin. A present-but-invalid
+  pin fails closed (exit 78 + heartbeat refused/"pin invalid"); legacy
+  behaviour applies ONLY when the pin file is absent entirely. Ships with
+  its own guilt/innocence pytest file and a new macOS CI executor
+  (wa-codex-pin.yml) — today nothing runs the family's existing test files
+  except the nightly, continue-on-error, ubuntu-only scripts-tests-sweep.
+constraints:
+  - >-
+    Wrapper-only. The installer (D1-D4, D8, D9) and the sentinel (D7) are
+    PR-2 and PR-3 of the same spec; this PR does not touch
+    scripts/install_wa_codex_pinned.sh or scripts/wa_codex_seat_sentinel.py.
+  - >-
+    No env/flag test-mode branch in the shipped wrapper (D6): every test
+    copies the SHIPPED file and sed-patches its plain path constants
+    (HOME_DIR, RUNTIME_DIR, VENV_PY, CODEX_PIN_FILE, PINNED_CODEX_ROOT),
+    exercising the real predicate text, not a re-typed copy.
+  - >-
+    The pin file format changes from v2/#7340's two keys
+    (WA_CODEX_CLI_VERSION_PIN + WA_CODEX_BIN) to ONE
+    (WA_CODEX_CLI_VERSION_PIN); the binary path is DERIVED from a literal
+    PINNED_CODEX_ROOT constant, never read from the pin file. #7340 never
+    reached main or Pro, so nothing migrates.
+  - >-
+    Do NOT arm, do NOT merge, do NOT deploy. The coordinating session
+    gates PR-1/2/3 and runs the operator proof on Pro (spec §6) after PR-1
+    and PR-2 land.
+acceptance:
+  - text: >-
+      Every row of spec_codexpin_v3.md §5's wrapper test table SHALL pass
+      against the SHIPPED wrapper: env PATH cannot disable the pin
+      (nonexistent, homebrew_usr_bin), a present-but-invalid pin refuses
+      (bad_semver, unknown_key, two_lines, empty, bin_missing,
+      symlink_pin), a valid pin overrides the env, a missing pin is legacy,
+      the exact "pin applied: codex <v> at <bin>" line appears, and the
+      wrapper declares exactly one `# pin-protocol: wa-codex-pin/1` line.
+    probe: python3 -m pytest scripts/tests/test_wa_codex_broker_wrapper.py -q
+  - text: >-
+      The same guilt scenarios SHALL reproduce as RED (or as
+      feature-entirely-absent) against origin/main's current wrapper and
+      against PR #7340's head wrapper — never merely against a synthetic
+      test-only copy.
+    probe: >-
+      ad hoc harness against `git show origin/main:...` and `git show
+      origin/agent/air-m5/ops/wa-codex-pinned-installer:...` (see PR body's
+      guilt-receipt table; not a repo fixture, since main's own wrapper
+      becomes this v3 wrapper the moment this PR merges)
+  - text: >-
+      The wrapper SHALL still be valid POSIX sh and bash.
+    probe: >-
+      sh -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh &&
+      bash -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+  - text: >-
+      The new workflow SHALL be syntactically valid and SHALL run the
+      pytest file on macos-latest, NOT continue-on-error, gated on a path
+      filter naming the wrapper, its test file and the workflow itself.
+    probe: actionlint .github/workflows/wa-codex-pin.yml
+  - text: >-
+      scripts_coupling_census and change_map SHALL need no update for the
+      new test file or workflow (both fall under existing prefix rules).
+    probe: >-
+      python3 scripts/ci/scripts_coupling_census.py --check; python3
+      scripts/ci/change_map.py infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+      scripts/tests/test_wa_codex_broker_wrapper.py .github/workflows/wa-codex-pin.yml
+consumer_map:
+  - >-
+    .github/workflows/wa-codex-pin.yml: the macOS CI run on this PR itself
+    is the first-ever executor of this test family (today: nightly,
+    continue-on-error, ubuntu-only sweep that cannot even run bsdtar/stat
+    -f/find -acl for PR-2's future installer tests).
+  - >-
+    infra/home-fork/declared-pairs.json's existing wa-codex-broker-wrapper
+    entry: `lint_home_fork.py --check` compares the live Pro copy against
+    this repo file. Until the operator run (spec §6, after PR-1+PR-2 land),
+    that pair reads DRIFT — the pending-arm marker for this change.
+  - >-
+    The Pro daemon itself, once the operator runs
+    `scripts/install_wa_codex_pinned.sh` (PR-2) and this wrapper is live:
+    spec §6's O3/O4 observations are the actual "in force" proof.
+risks:
+  - >-
+    An embedded NUL byte in the pin file can still, in principle, smuggle
+    content a byte-level tool would show as two lines past the
+    exactly-one-line check on some non-macOS shell where `read -d ''` is
+    unavailable — mitigated here with a dedicated NUL probe using that
+    same builtin, verified on macOS bash/sh (the only deployment target);
+    not testable in a POSIX-strict dash the way this repo does not ship
+    or run this wrapper under.
+  - >-
+    A daemon env file that deliberately targets the wrapper's own
+    positional-parameter carrier ($1/$2) or private variable names is
+    still full code execution as zantara-codex (spec §8 #2, explicitly
+    out of scope) — D5 closes the stale-or-wrong-DATA class, not a
+    malicious env file.
+assumptions:
+  - text: >-
+      /usr/bin/env execing an ABSOLUTE $VENV_PY path never needs a PATH
+      lookup for that exec itself, so a hostile PATH in the sourced daemon
+      env cannot break the handoff the way it broke #7340's `expr`-based
+      validators.
+    status: verified
+    probe: >-
+      manual sh reproduction with PATH=/does-not-exist and
+      PATH=/opt/homebrew/bin:/usr/bin in the daemon env, valid pin present
+      (see PR body guilt-receipt table)
+  - text: >-
+      Sourcing (`. "$ENV_FILE"`) never resets positional parameters unless
+      the sourced file itself calls `set --`, which no KEY=value env file
+      in this wrapper's format does.
+    status: verified
+    probe: >-
+      manual sh/bash reproduction: `set -- a b; . env-with-only-assignments.sh;
+      echo "$1 $2"` prints "a b" unchanged
+grader: >-
+  Solo build (Claude Sonnet 5, lane infra/codexpin-v3-pr1-wrapper) against
+  an already 3-times-reviewed spec, plus a genuine 2-round adversarial pass
+  from a Codex CLI spalla (codex-second-opinion skill, read-only sandbox):
+  round 1 found 2 BLOCKER (non-regular pin path falling through to legacy;
+  daemon env clobbering the resolved pin by name collision) + 1 MEDIUM
+  (embedded NUL byte); both BLOCKERs and the MEDIUM were reproduced, fixed,
+  and re-verified in round 2 (verdict MEDIUM, zero BLOCKER remaining, one
+  residual MEDIUM explicitly accepted — see risks:). No formal 2-seat
+  council_run quorum was convened for this builder-only dispatch; see
+  pack.yml's seat_override. The coordinating session runs the fleet gate
+  before arming (Builder Contract §5 exception: this pack is prepare-only
+  evidence, not the merge-time gate).
+budget: Existing subscription seats only (Claude Sonnet 5 + Codex CLI OAuth); no paid per-token API calls.
+pii: none

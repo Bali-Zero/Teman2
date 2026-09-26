@@ -1,0 +1,217 @@
+brief_ref: evidence/brief.yml
+council_run: null
+pii_scan: clean
+seat_override: >-
+  Builder-only dispatch (Claude Sonnet 5, lane
+  infra/codexpin-v3-pr1-wrapper) implementing PR-1 of an already-scoped,
+  already-3-times-reviewed spec (spec_codexpin_v3.md, itself written
+  against three prior cross-family BLOCK rounds: #7313 r0, #7313 r1, #7340
+  r0). No formal 2-seat COUNCIL_REVIEW_SEATS quorum was convened; instead a
+  genuine 2-round adversarial pass ran via the codex-second-opinion skill
+  (read-only sandbox, Codex CLI OAuth seat), which found and disposed 2
+  BLOCKER + 1 MEDIUM (see dissent: below) — real, reproduced findings, not
+  a self-review. The task's own mandate is explicit: "Do NOT arm, do NOT
+  merge. The coordinator gates it." — the coordinating session runs the
+  fleet's own council/harness-fable-gate before arming PR-1/2/3. This pack
+  documents the build + the adversarial pass + the guilt/innocence
+  receipt, not a merge-time gate signature.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Implemented D5 in infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+      (pin parse before the env source, builtins only, fail-closed exit 78,
+      positional-parameter handoff, /usr/bin/env exec), wrote
+      scripts/tests/test_wa_codex_broker_wrapper.py (17 cases covering
+      every row of spec §5's wrapper table plus 4 spalla-driven additions),
+      added .github/workflows/wa-codex-pin.yml (macos-latest, path-filtered,
+      not continue-on-error), and produced the guilt-receipt table against
+      origin/main and PR #7340's head.
+  - lane: review-round1
+    role: review
+    seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
+    note: >-
+      Round 1 verdict BLOCKER. Found: (1) a pin path that exists but is
+      not a symlink and not a regular file (directory, /dev/null, FIFO)
+      fell through the -L/-f/else branch straight into legacy instead of
+      failing closed; (2) the resolved pin (PIN_VER/PIN_BIN, named shell
+      variables) could be clobbered by an ordinary KEY=value line in the
+      daemon env across the `. "$ENV_FILE"` source, no alias or function
+      needed; (3) MEDIUM, an embedded NUL byte could smuggle content past
+      the exactly-one-line check.
+  - lane: review-round2
+    role: review
+    seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
+    note: >-
+      Round 2 verdict MEDIUM (down from BLOCKER). Confirmed both BLOCKERs
+      closed (non-regular-path check now distinguishes -e from -f before
+      opening the file; the resolved pin now travels as positional
+      parameters $1/$2, immune to any KEY=value env-file assignment) and
+      found no new regression from the positional-parameter approach
+      (launchd's plist passes the wrapper no argv; the only other $1/$2
+      users are function-local). The embedded-NUL MEDIUM was independently
+      re-verified as still present at the time of round 2's report; it was
+      fixed immediately after with a `read -r -d ''` builtin probe and is
+      covered by the `embedded_nul` pytest case.
+dissent:
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      BLOCKER: a pin path that exists but is neither a symlink nor a
+      regular file (directory, /dev/null, FIFO) reached the wrapper's
+      legacy `else` branch (exit 0, daemon env's WA_CODEX_BIN used)
+      instead of failing closed, because the original check was only
+      `[ -L ]` then `[ -f ]` then `else`, with nothing testing existence
+      independently of regularity.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: `[ -e "$CODEX_PIN_FILE" ]` is now checked before `[ -f ]`,
+      and a present-but-not-regular path exits 78 with "pin file is not a
+      regular file". Covered by test_guilt_present_but_invalid_pin_refuses
+      [directory,dev_null,fifo] — verified rc=78 on all three, exit 0
+      reproduced on the pre-fix copy.
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      BLOCKER: the resolved pin version/binary path lived in ordinary
+      named shell variables (PIN_VER/PIN_BIN); `set -a; . "$ENV_FILE"`
+      exports whatever the daemon env assigns by the same name, so a
+      plain `PIN_VER=`/`PIN_BIN=/opt/homebrew/bin/codex` line in that file
+      — DATA, no alias or function — silently overrode the validated
+      values after the fact.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the resolved pin now travels as positional parameters ($1/
+      $2), set via `set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"` immediately
+      before the env source. A `KEY=value` env-file line cannot touch $1/
+      $2 at all. Covered by
+      test_guilt_daemon_env_cannot_clobber_the_resolved_pin, which tries
+      the collision on both the retired names and the current private
+      ones and confirms the pinned values still reach the daemon.
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      MEDIUM: a shell variable cannot represent an embedded NUL byte, so
+      `WA_CODEX_CLI_VERSION_PIN=9.9.9\n\0JUNK\n` is read as a single valid
+      line ("9.9.9") by `read -r`, silently discarding whatever followed
+      the NUL instead of rejecting the file.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: a dedicated NUL probe (`IFS= read -r -d '' _pin_nul_probe <
+      "$CODEX_PIN_FILE"`, builtin `-d` — a bash/dash extension available
+      on macOS's own /bin/sh and on macos-latest CI, the only two shells
+      this wrapper ever actually runs under) returns 0 only when it found
+      a NUL delimiter before EOF, which a clean file never does. Covered
+      by test_guilt_present_but_invalid_pin_refuses[embedded_nul].
+receipts:
+  - claim: >-
+      All 17 wrapper pytest cases pass on the final shipped wrapper.
+    cmd: python3 -m pytest scripts/tests/test_wa_codex_broker_wrapper.py -q
+    exit: 0
+    ts: "2026-09-26T14:18:43Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The wrapper is valid POSIX sh and bash after every edit.
+    cmd: >-
+      sh -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh &&
+      bash -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+    exit: 0
+    ts: "2026-09-26T14:18:46Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The new workflow file is actionlint-clean.
+    cmd: actionlint .github/workflows/wa-codex-pin.yml
+    exit: 0
+    ts: "2026-09-26T14:18:46Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      scripts_coupling_census needs no update for the new test file.
+    cmd: python3 scripts/ci/scripts_coupling_census.py --check
+    exit: 0
+    ts: "2026-09-26T14:18:47Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      change_map.py classifies the three changed files without an
+      unclassified/unknown-path fallback (fleet_ops + infra_workflows +
+      security_sensitive, reason=classified, no change_map.py edit
+      needed).
+    cmd: >-
+      python3 scripts/ci/change_map.py
+      infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+      scripts/tests/test_wa_codex_broker_wrapper.py
+      .github/workflows/wa-codex-pin.yml
+    exit: 0
+    ts: "2026-09-26T13:00:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The gear-3 floor is hot-zone-sourced (infra/launchagents/* and
+      .github/workflows/* both match HOTZONE_PATTERNS), independent of the
+      diff's line count.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --changed-files-file
+      changed_files.txt --numstat-file numstat.txt --print-floor-source
+    exit: 0
+    ts: "2026-09-26T14:19:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Guilt receipt: all 7 comparable rows (2 env-PATH scenarios + 5
+      invalid-pin variants) reproduce as RED on origin/main's current
+      wrapper — it has no CODEX_PIN_FILE/PINNED_CODEX_ROOT concept at all,
+      so ANY pin file present is silently ignored and the daemon env's
+      WA_CODEX_BIN always wins, rc 0, in every one of the 7 cases.
+    cmd: >-
+      python3 run_guilt2.py wrapper_main.sh "main current wrapper"
+      (scratchpad harness, ad hoc sed-patch of a copy of
+      `git show origin/main:infra/launchagents/wrappers/wa-codex-broker-wrapper.sh`)
+    exit: 0
+    ts: "2026-09-26T14:23:58Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Guilt receipt: all 7 comparable rows reproduce as RED on PR #7340's
+      head (3d04590c99) too — its `expr`-based validators are silently
+      skipped under a hostile PATH (both variants) and its pin parse
+      silently ignores 4 of 5 invalid-value faults (rc 0, env's
+      WA_CODEX_BIN wins); the remaining 2 (two_lines, bin_missing) are
+      accepted with WRONG values instead of refused (partial acceptance,
+      no existence check on the binary path at all).
+    cmd: >-
+      python3 run_guilt2.py wrapper_7340.sh "PR #7340 head" (scratchpad
+      harness, ad hoc sed-patch of a copy of
+      `git show origin/agent/air-m5/ops/wa-codex-pinned-installer:infra/launchagents/wrappers/wa-codex-broker-wrapper.sh`)
+    exit: 0
+    ts: "2026-09-26T14:23:59Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Round 1 codex-second-opinion dispatch found 2 BLOCKER + 1 MEDIUM
+      against the pre-fix wrapper.
+    cmd: >-
+      .claude/scripts/codex-spalla.sh review main "PR-1 of
+      spec_codexpin_v3.md D5 ..." (transcript:
+      ~/logs/codex-spalla/20260926T135934Z-13fd5-review-PR-1-of-spec-codexpin-v3-md-D5-a-dedicat.md)
+    exit: 0
+    ts: "2026-09-26T13:59:34Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Round 2 codex-second-opinion dispatch confirmed both BLOCKERs closed
+      and the embedded-NUL MEDIUM still open at that point (fixed
+      immediately after, in the same PR).
+    cmd: >-
+      .claude/scripts/codex-spalla.sh review main "Re-review after fixing
+      two BLOCKERs ..." (transcript:
+      ~/logs/codex-spalla/20260926T141012Z-4bf6-review-Re-review-after-fixing-two-BLOCKERs-from.md)
+    exit: 0
+    ts: "2026-09-26T14:10:12Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The declared home-fork pair for the wrapper already exists (added
+      2026-08-25, world-readable, machines: pro) — this PR's diff will
+      make lint_home_fork --check on Pro read DRIFT until the operator
+      installs this wrapper (spec §6), which is the pending-arm marker
+      named in the PR body's Bites: line.
+    cmd: >-
+      git grep -n wa-codex-broker-wrapper -- scripts/lint_home_fork.py
+      infra/home-fork/declared-pairs.json
+    exit: 0
+    ts: "2026-09-26T12:40:00Z"
+    seat: claude-sonnet-5

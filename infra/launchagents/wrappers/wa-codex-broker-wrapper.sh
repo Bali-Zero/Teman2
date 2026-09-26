@@ -24,6 +24,25 @@
 #   mode the daemon would then have to report on).
 # - The env file carries WA_BROKER_KEY: 0600, never echoed, never on argv
 #   (family #4 / W115).
+# - Dedicated-binary pin (scripts/install_wa_codex_pinned.sh, spec v3, D5):
+#   parsed BEFORE the daemon env is sourced, using ONLY shell builtins
+#   (`read`, `case`, `[`, parameter expansion — no `expr`, no PATH lookup),
+#   so nothing the env file could set (a redirected PATH, a shadowed
+#   `expr`, an alias) can reach the pin validators. #7340's wrapper parsed
+#   the pin AFTER sourcing and validated with `expr`, which is itself
+#   PATH-resolved (F5, SUSPENDED PR #7340: `PATH=/opt/homebrew/bin:/usr/bin`
+#   in the env makes macOS resolve `expr` to `/bin/expr` — verified, not
+#   the bug — but any env-supplied PATH is untrusted input to a validator
+#   that runs pre-privilege-boundary). The pinned binary PATH is DERIVED
+#   from a literal root constant (PINNED_CODEX_ROOT), never read from the
+#   pin file itself, so there is no path string to validate and so no path
+#   validator to get wrong. A present-but-invalid pin fails closed (exit
+#   78); legacy (env-supplied WA_CODEX_BIN) applies ONLY when the pin file
+#   is absent. This closes the stale-or-wrong-DATA class, not a hostile
+#   zantara-codex sourcing its own env (spec §8 #2) — that boundary is the
+#   root-owned, non-writable pinned tree (installer, D1/D3), not this file.
+#
+# pin-protocol: wa-codex-pin/1
 
 set -u
 
@@ -34,6 +53,15 @@ VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
 TAG="wa-codex-broker-wrapper"
 ORGAN_ID="pro.wa_codex_broker"
 SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
+
+# Dedicated codex pin (D5). Both literals, never built from $RUNTIME_DIR or
+# any other name the sourced daemon env could reassign — the pin parse
+# below runs BEFORE that source point, but keeping these as their own
+# top-level constants (rather than string-concatenated from RUNTIME_DIR)
+# keeps the two independently patchable in tests and independently
+# reviewable on disk.
+CODEX_PIN_FILE="/usr/local/lib/wa-codex-broker/codex-pin.env"
+PINNED_CODEX_ROOT="/usr/local/lib/wa-codex-broker/codex"
 
 # G2_heartbeat — sidecar at start and on every refusal exit. The RUNNING
 # daemon's liveness ground truth is the SERVER-side claim-poll gauge
@@ -46,6 +74,15 @@ heartbeat() { # $1 status, $2 note
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
 }
 
+# --- pin-file version validator (builtins only — no `expr`, no PATH lookup) ---
+_is_semver() {
+    case $1 in
+        *[!0-9.]*|.*|*.|*..*|*.*.*.*) return 1 ;;
+        *.*.*) return 0 ;;
+    esac
+    return 1
+}
+
 if [ ! -f "$ENV_FILE" ]; then
     echo "$TAG: env file missing: $ENV_FILE - refusing to start (run provisioning)" >&2
     heartbeat "refused" "env file missing"
@@ -56,6 +93,95 @@ if grep -q "__FILL_ME__" "$ENV_FILE"; then
     heartbeat "refused" "env placeholders unfilled"
     exit 78
 fi
+
+# Pin parse — BEFORE the daemon env exists in this shell (D5). A symlinked
+# or otherwise non-regular pin file (directory, device, FIFO) is PRESENT-
+# BUT-INVALID, never treated as absent: `[ -L ]` (lstat) is checked ahead
+# of `[ -e ]` (stat, follows symlinks) so a symlink can never pass as a
+# plain file, and `[ -e ]` (path exists at all) is checked separately from
+# `[ -f ]` (regular file) so a directory or /dev/null at this path fails
+# closed instead of silently reading as "no pin here" (spalla review
+# 2026-09-26: the original `-L`/`-f`/else fell through non-regular,
+# non-symlink paths straight into the legacy `else` branch). Fail-closed on
+# any violation; legacy applies ONLY when nothing exists at this path.
+#
+# The two resolved values are carried across the `. "$ENV_FILE"` below as
+# POSITIONAL PARAMETERS ($1/$2, set via `set --` right before the source),
+# never as named shell variables — a `KEY=value` line in the daemon env
+# file (spalla review 2026-09-26: reproduced with a plain assignment, no
+# alias or function needed) can redefine ANY named variable once `set -a`
+# exports it, but it cannot touch $1/$2 without the env file literally
+# invoking the `set --` command, which no env file in this wrapper's actual
+# `KEY=value` format ever does. A daemon env file deliberately rewritten to
+# run shell commands is full code execution as zantara-codex regardless
+# (spec §8 #2, out of scope by design) — this closes the DATA-only,
+# accidental-or-stale-value class, which is F5's actual scope.
+_wcbw_pin_ver=""
+_wcbw_pin_bin=""
+if [ -L "$CODEX_PIN_FILE" ]; then
+    echo "$TAG: pin file is a symlink, refusing: $CODEX_PIN_FILE" >&2
+    heartbeat "refused" "pin invalid"
+    exit 78
+elif [ -e "$CODEX_PIN_FILE" ]; then
+    if [ ! -f "$CODEX_PIN_FILE" ]; then
+        echo "$TAG: pin file is not a regular file: $CODEX_PIN_FILE" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
+    # NUL-byte guard (spalla review 2026-09-26): a shell variable cannot
+    # represent a NUL byte at all, so `read -r` alone silently truncates a
+    # line AT its first NUL and the truncated remainder can slip past the
+    # "exactly one line" count below as if it were never there. `read -d
+    # ''` (NUL as the delimiter, a bash/dash builtin extension — not an
+    # external tool, so still "builtins only") returns 0 when it DID find a
+    # delimiter before EOF and non-zero when it read to EOF with none: a
+    # clean file always hits EOF first (rc != 0), so rc == 0 here can only
+    # mean the file contains at least one NUL.
+    if IFS= read -r -d '' _pin_nul_probe < "$CODEX_PIN_FILE"; then
+        echo "$TAG: pin file contains a NUL byte: $CODEX_PIN_FILE" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
+    _pin_lines=0
+    _pin_line=""
+    while IFS= read -r _pin_row || [ -n "$_pin_row" ]; do
+        _pin_lines=$((_pin_lines + 1))
+        _pin_line="$_pin_row"
+    done < "$CODEX_PIN_FILE"
+    if [ "$_pin_lines" -ne 1 ]; then
+        echo "$TAG: pin file must carry exactly one line: $CODEX_PIN_FILE" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
+    case "$_pin_line" in
+        WA_CODEX_CLI_VERSION_PIN=*)
+            _wcbw_pin_ver="${_pin_line#WA_CODEX_CLI_VERSION_PIN=}"
+            ;;
+        *)
+            echo "$TAG: pin file has an unrecognized line: $CODEX_PIN_FILE" >&2
+            heartbeat "refused" "pin invalid"
+            exit 78
+            ;;
+    esac
+    if ! _is_semver "$_wcbw_pin_ver"; then
+        echo "$TAG: pin version is not exact semver: $_wcbw_pin_ver" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
+    _wcbw_pin_bin="$PINNED_CODEX_ROOT/$_wcbw_pin_ver/bin/codex"
+    if [ ! -x "$_wcbw_pin_bin" ]; then
+        echo "$TAG: pinned binary missing or not executable: $_wcbw_pin_bin" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
+else
+    echo "$TAG: no pin file at $CODEX_PIN_FILE — codex from the daemon env (legacy)" >&2
+fi
+
+# Positional-parameter handoff (see the comment above the pin parse): the
+# script itself takes no argv from launchd, so $1/$2 are free to carry the
+# resolved pin, immune to whatever the sourced env assigns by name.
+set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"
 
 set -a
 . "$ENV_FILE"
@@ -81,4 +207,10 @@ cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; exit 78; }
 export PYTHONPATH="$RUNTIME_DIR"
 
 heartbeat "starting" "exec daemon"
+
+if [ -n "$1" ]; then
+    echo "$TAG: $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) pin applied: codex $1 at $2" >&2
+    exec /usr/bin/env WA_CODEX_CLI_VERSION_PIN="$1" WA_CODEX_BIN="$2" "$VENV_PY" -m backend.services.integrations.wa_codex_daemon
+fi
+
 exec "$VENV_PY" -m backend.services.integrations.wa_codex_daemon
