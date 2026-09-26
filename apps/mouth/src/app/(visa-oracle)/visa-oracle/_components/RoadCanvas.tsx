@@ -173,8 +173,10 @@ export function RoadCanvas({
       viewBox={`0 0 ${geo.w} ${geo.h}`}
       data-road-head-status={headStatus}
     >
-      {/* the trailhead cap */}
-      {spine.length > 0 && (
+      {/* the trailhead cap — only once a record exists. With the head alone
+          the cap sat 6px above its ring and the pair read as a "♂" glyph
+          (council CRITIQUE-v2 Oracle #5, confirmed on the 01 render). */}
+      {records.length > 0 && (
         <line
           className="oracle-road__cap"
           x1={x - 7}
@@ -183,7 +185,7 @@ export function RoadCanvas({
           y2={spine[0].y - 14}
         />
       )}
-      {spine.length > 0 && (
+      {records.length > 0 && (
         <line
           className="oracle-road__seg"
           x1={x}
