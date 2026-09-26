@@ -190,3 +190,13 @@ apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_
 # unterminated strikethrough delimiter on render. Same failure class as the W104
 # corruption documented at the cicatrix-superscar.md entry below, different token.
 evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/reviews/**
+
+# PR #7420 R2 (fresh re-gate, 2026-09-27): the r0 council's two raw reviews
+# (codex-gpt-5.6-sol, kimi-code/k3), committed verbatim from the gate's own
+# M5 scratch copy after this PR shipped without them. The re-gate's own
+# comment records the exact sha256 prefixes it computed against those
+# scratch files (a8283fcbdc916829 / 34fad07a33c5d30e) as the observation
+# that this commit matches — same discipline, same failure class, as the
+# dynamic-workflow-3c2 entry above.
+evidence/2026-09/agent-air-m5-infra-codexpin-v3-pr1-wrapper-edd4aeae/reviews/codex-gpt-5.6-sol-r1.md
+evidence/2026-09/agent-air-m5-infra-codexpin-v3-pr1-wrapper-edd4aeae/reviews/kimi-code-k3-r1.md

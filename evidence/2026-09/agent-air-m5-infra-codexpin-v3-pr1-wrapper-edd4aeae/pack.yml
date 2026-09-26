@@ -1,0 +1,502 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+pii_scan: clean
+appetite_exceeded: >-
+  Brief declared 2h/2 adversarial rounds; the REWORK-BUILD response ran 3
+  more delta-council rounds (5 total) plus a FRESH independent re-gate that
+  returned REWORK-BUILD (narrow: R1 watcher coverage, R2 uncommitted r0
+  reviews, R3 a second occurrence of the fixture-masking class on 2 guards)
+  and one more response round to close it, ~5.5h wall clock total — every
+  extra round was driven by an external gate or council finding, never
+  self-inflicted rework of the same defect twice. The fresh re-gate's own
+  finding was a genuinely NEW defect class instance (2 guards this PR's own
+  C1 fix had not yet isolated), not a repeat of C1 itself.
+spend:
+  wall_clock_hours: 5.5
+  adversarial_rounds: 6
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      LANES CONSOLIDATED (builder note addressed to the gate, 2026-09-27 —
+      relabelled from "fresh-gate note" after the fresh re-gate correctly
+      pointed out that phrasing reads as if a gate wrote it, when this is
+      the builder's own account for the gate to weigh): this pack previously
+      declared this note as lane 0 (`build`) and a SEPARATE lane 4
+      (`rework-c1-c4`), both seat claude-sonnet-5. That was a lint artifact,
+      not two builders — the REWORK-BUILD response was the SAME builder
+      seat continuing the SAME lane in the SAME worktree after the gate's
+      REWORK-BUILD verdict, not a second, independent build. Recording it as
+      one lane makes the pack say what actually happened; it does not
+      invent a non-Anthropic seat that never built anything (D3's
+      seat-diversity floor only bites at >=2 build lanes, so this is not a
+      workaround for that floor — it is the true lane count). A fresh gate
+      should still form its own view of whether one continuous
+      claude-sonnet-5 lane, self-correcting under an independent council's
+      review, is sufficient without a second builder identity.
+
+      Initial build: implemented D5 in
+      infra/launchagents/wrappers/wa-codex-broker-wrapper.sh (pin parse
+      before the env source, builtins only, fail-closed exit 78,
+      positional-parameter handoff, /usr/bin/env exec), wrote
+      scripts/tests/test_wa_codex_broker_wrapper.py (17 cases covering
+      every row of spec §5's wrapper table plus 4 spalla-driven additions),
+      added .github/workflows/wa-codex-pin.yml (macos-latest, path-filtered,
+      not continue-on-error), and produced the guilt-receipt table against
+      origin/main and PR #7340's head.
+
+      REWORK-BUILD response (same builder, same lane, after the gate's
+      REWORK-BUILD verdict on PR #7420 @ 08a5d93537): C1: 4 new
+      discriminating fixtures planting the binary/tree the fault would
+      otherwise resolve to (nul_same_line_planted,
+      two_lines_diff_versions_planted, bad_semver_planted,
+      traversal_escape_planted); all 5 guards proven via real subprocess
+      mutation (mutant-table.md). C2: derived binary check is now
+      `[ -f ] && [ -x ]`, with a dedicated bin_is_directory test. C3: an
+      EACCES pin directory now exits 78 "pin invalid" before the legacy
+      fallback, with a dedicated chmod-000 test (pin file placed INSIDE
+      the unreadable dir per delta round 1's correction). C4: this pack
+      drops `seat_override`, wires `council_run`, and gets 3 delta
+      re-reviews from the gate's own codex-gpt-5.6-sol seat (see the
+      delta-review lanes below). N1-N7 cheap items implemented; N1's
+      regression extended per delta round 2, then confirmed by delta round
+      3 (below).
+
+      R1-R3 response (same builder, same lane, after the FRESH re-gate on
+      PR #7420 @ 737d16224a returned REWORK-BUILD narrow): R1 added
+      `"wa-codex-pin: dedicated broker pin (wrapper + installer +
+      sentinel)"` to `.github/workflows/main-push-failure-watch.yml`'s
+      `workflows:` list (`check_watcher_coverage.py` rc 1 -> rc 0). R2
+      committed `reviews/codex-gpt-5.6-sol-r1.md` and
+      `reviews/kimi-code-k3-r1.md` verbatim from the gate's own M5 scratch
+      (sha256 prefixes verified to match exactly: a8283fcbdc916829 /
+      34fad07a33c5d30e; scanned for secrets/PII before commit, 0 hits).
+      R3 added `bare_version_planted` and `bin_not_executable_planted` to
+      `test_guilt_present_but_invalid_pin_refuses`, isolating the pin
+      format's key `case` guard and the `-x` half of `[ -f ] && [ -x ]`
+      respectively — both had survived deletion with the suite green
+      (second occurrence of the fixture-masking class the gate's own C1
+      finding named). Per the depth rule this is the EXHAUSTIVE table
+      now (mutant-table.md): every guard and every conjunct, deleted
+      alone, turns >=1 test red — re-run by the builder itself with a
+      real subprocess mutation harness, not merely asserted. Also fixed
+      the cheap items the re-gate named: the kill-switch precedence
+      comment (N3), the two vacuous asserts in the N1 test, the 4 pack
+      dissent-text defects (§3 of the re-gate comment), the lane label,
+      and the PR body's D8→D7 misattribution (N8).
+  - lane: review-round1
+    role: review
+    seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
+    note: >-
+      Round 1 verdict BLOCKER. Found: (1) a pin path that exists but is
+      not a symlink and not a regular file (directory, /dev/null, FIFO)
+      fell through the -L/-f/else branch straight into legacy instead of
+      failing closed; (2) the resolved pin (PIN_VER/PIN_BIN, named shell
+      variables) could be clobbered by an ordinary KEY=value line in the
+      daemon env across the `. "$ENV_FILE"` source, no alias or function
+      needed; (3) MEDIUM, an embedded NUL byte could smuggle content past
+      the exactly-one-line check.
+  - lane: review-round2
+    role: review
+    seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
+    note: >-
+      Round 2 verdict MEDIUM (down from BLOCKER). Confirmed both BLOCKERs
+      closed (non-regular-path check now distinguishes -e from -f before
+      opening the file; the resolved pin now travels as positional
+      parameters $1/$2, immune to any KEY=value env-file assignment) and
+      found no new regression from the positional-parameter approach
+      (launchd's plist passes the wrapper no argv; the only other $1/$2
+      users are function-local). The embedded-NUL MEDIUM was independently
+      re-verified as still present at the time of round 2's report; it was
+      fixed immediately after with a `read -r -d ''` builtin probe and is
+      covered by the `embedded_nul` pytest case.
+  - lane: gate-r0
+    role: review
+    seat: fresh-opus-5.5-gate + council (codex-gpt-5.6-sol, kimi-code/k3)
+    note: >-
+      Gear-3 gate on PR #7420 @ 08a5d93537 returned REWORK-BUILD: the
+      5-guard mutants stayed green (tests non-discriminating), the
+      derived-binary check accepted a directory, an EACCES pin path fell
+      through to legacy instead of failing closed, and this pack's own
+      `seat_override` masked the R9 council-quorum requirement. Council
+      convened BY THE GATE: codex-gpt-5.6-sol REWORK, kimi-code/k3
+      ACCEPT-WITH-NOTES. See council-journal.jsonl lines 1-2 (copied
+      verbatim from the gate's own draft) and reviews/codex-gpt-5.6-sol-r1.md
+      / reviews/kimi-code-k3-r1.md.
+  - lane: delta-review-round1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (gate's own dispatch mechanism: env -i,
+      --sandbox read-only, model_reasoning_effort=high)
+    note: >-
+      VERDICT: REWORK. C1 closed. C2 open: the mandatory
+      bin/codex-as-0755-directory fixture was missing (the existing
+      `directory` case made the PIN FILE a directory, not the binary).
+      C3 partially closed: the fixture placed the pin file as a SIBLING of
+      the broken-permission directory, not inside it, so the real
+      fallback-to-legacy defect was never reproduced. N1/N4 flagged as
+      lacking dedicated regressions. Could not independently re-run
+      pytest/mutations (read-only sandbox, no writable tmp). See
+      reviews/codex-gpt-5.6-sol-delta1-prompt.txt and
+      council-journal.jsonl line 3.
+  - lane: delta-review-round2
+    role: review
+    seat: codex-gpt-5.6-sol (gate's own dispatch mechanism)
+    note: >-
+      VERDICT: REWORK, one remaining gap. C2/C3/N4 all independently
+      CONFIRMED fixed by the seat's own live shell mutation. N1's
+      regression (test_guilt_env_cannot_clobber_post_source_literals)
+      clobbered only 3 of the 6 protected wrapper-private literals
+      (RUNTIME_DIR/VENV_PY/TAG, not HOME_DIR/ORGAN_ID/SIDECAR_DIR) and
+      never checked the heartbeat file, proven by the seat's own mutation.
+      Fixed afterward (see dissent below) but NOT re-reviewed by this
+      seat within the coordinator's time-box — see council-journal.jsonl
+      line 4 and reviews/codex-gpt-5.6-sol-delta2-prompt.txt.
+  - lane: delta-review-round3
+    role: review
+    seat: codex-gpt-5.6-sol (gate's own dispatch mechanism)
+    note: >-
+      VERDICT: ACCEPT. Scope narrowed to round 2's single remaining gap
+      only (N1's six-name/heartbeat regression). Confirms the test now
+      clobbers all 6 protected literals (HOME_DIR/RUNTIME_DIR/VENV_PY/TAG/
+      ORGAN_ID/SIDECAR_DIR) and asserts the heartbeat JSON lands at the
+      wrapper's own HOME_DIR/ORGAN_ID path with status=starting/note=exec
+      daemon; a static two-file contract check passed in its read-only
+      sandbox (pytest itself could not run there, no writable tmp). No
+      residual finding within the narrow scope. This is the seat's first
+      ACCEPT across 3 delta rounds on this PR. See council-journal.jsonl
+      line 5 and reviews/codex-gpt-5.6-sol-delta3-prompt.txt /
+      reviews/codex-gpt-5.6-sol-delta3.md.
+dissent:
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      BLOCKER: a pin path that exists but is neither a symlink nor a
+      regular file (directory, /dev/null, FIFO) reached the wrapper's
+      legacy `else` branch (exit 0, daemon env's WA_CODEX_BIN used)
+      instead of failing closed, because the original check was only
+      `[ -L ]` then `[ -f ]` then `else`, with nothing testing existence
+      independently of regularity.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: `[ -e "$CODEX_PIN_FILE" ]` is now checked before `[ -f ]`,
+      and a present-but-not-regular path exits 78 with "pin file is not a
+      regular file". Covered by test_guilt_present_but_invalid_pin_refuses
+      [directory,dev_null,fifo] — verified rc=78 on all three, exit 0
+      reproduced on the pre-fix copy.
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      BLOCKER: the resolved pin version/binary path lived in ordinary
+      named shell variables (PIN_VER/PIN_BIN); `set -a; . "$ENV_FILE"`
+      exports whatever the daemon env assigns by the same name, so a
+      plain `PIN_VER=`/`PIN_BIN=/opt/homebrew/bin/codex` line in that file
+      — DATA, no alias or function — silently overrode the validated
+      values after the fact.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the resolved pin now travels as positional parameters ($1/
+      $2), set via `set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"` immediately
+      before the env source. A `KEY=value` env-file line cannot touch $1/
+      $2 at all. Covered by
+      test_guilt_daemon_env_cannot_clobber_the_resolved_pin, which tries
+      the collision on both the retired names and the current private
+      ones and confirms the pinned values still reach the daemon.
+  - seat: codex-gpt-5.6-spalla
+    objection: >-
+      MEDIUM: a shell variable cannot represent an embedded NUL byte, so
+      `WA_CODEX_CLI_VERSION_PIN=9.9.9\n\0JUNK\n` is read as a single valid
+      line ("9.9.9") by `read -r`, silently discarding whatever followed
+      the NUL instead of rejecting the file.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: a dedicated NUL probe (`IFS= read -r -d '' _pin_nul_probe <
+      "$CODEX_PIN_FILE"`, builtin `-d`) returns 0 only when it found a NUL
+      delimiter before EOF, which a clean file never does. CORRECTED
+      (fresh re-gate, 2026-09-27, R3 cheap-text pass): this line
+      previously called `read -d` "a bash/dash extension available on
+      macOS's own /bin/sh and on macos-latest CI" — that is false. Both
+      codex-gpt-5.6-sol and kimi-code/k3 independently ran `read -d ''`
+      under real `/bin/dash` and got `read: Illegal option -d`; dash does
+      NOT support it. It is a BASH extension only, and this wrapper's two
+      actual runtimes (macOS's own `/bin/sh`, which IS bash 3.2 in
+      POSIX-ish mode, and macos-latest CI's bash) both happen to be bash,
+      which is why the probe works where this file ever really runs — the
+      wrapper's own comment above the probe already states this
+      correctly; only this pack's prose repeated the earlier wrong claim.
+      CORRECTED (gate 2026-09-26 REWORK-BUILD, C1): the pre-existing
+      `embedded_nul` case put the NUL on its OWN line, which the
+      exactly-one-line check alone already rejected regardless of the NUL
+      probe — it never isolated the guard it claimed to cover, so
+      deleting the NUL probe left the suite green. The real covering case
+      is the new `nul_same_line_planted` fixture (NUL genuinely mid-line,
+      single trailing newline, binary planted so the fault resolves
+      instead of being masked by a later guard) — mutation-verified:
+      removing the NUL probe now turns exactly that case red.
+  - seat: fresh-opus-5.5-gate + council (codex-gpt-5.6-sol, kimi-code/k3)
+    objection: >-
+      REWORK-BUILD (the GATE's own verdict, informed by the convened
+      council, 2026-09-26, PR #7420 @ 08a5d93537 — CORRECTED, fresh
+      re-gate 2026-09-27 R3 cheap-text pass: this line previously
+      attributed the REWORK-BUILD verdict itself to the seat
+      "codex-gpt-5.6-sol (gate-convened, delta rounds)"; the verdict was
+      the gate's own, codex-gpt-5.6-sol's role was one of the two
+      convened council reviewers feeding it, not the decider): the
+      5-guard mutants stayed green against the then-current 17-test file
+      (NUL probe, one-line check, `_is_semver`, derived-binary check all
+      non-discriminating), the derived binary check accepted a 0755
+      directory at bin/codex, an EACCES pin path fell through to legacy
+      instead of failing closed, and this pack's `seat_override` masked
+      the R9 council-quorum requirement.
+    status: CONFIRMED
+    disposition: >-
+      Fixed in this rework: C1 (4 new discriminating fixtures, all 5
+      guards mutation-verified — mutant-table.md), C2 (`[ -f ] && [ -x ]`
+      + dedicated bin_is_directory test), C3 (EACCES on the pin's
+      directory now exits 78 "pin invalid" before legacy, with a
+      dedicated test), C4 (`seat_override` dropped, `council_run` wired
+      to this journal). Delta re-review by the gate's own
+      codex-gpt-5.6-sol seat: round 1 REWORK (C2 fixture missing, C3
+      fixture not isolating), round 2 REWORK (C2/C3/N4 confirmed fixed;
+      one remaining gap in N1's regression, see next entry), round 3
+      ACCEPT (scope narrowed to that one gap — see council-journal.jsonl
+      line 5 and reviews/codex-gpt-5.6-sol-delta3.md). CORRECTED (fresh
+      re-gate, 2026-09-27): this disposition previously said "No round-3
+      accept was obtained ... the fresh re-gate decides whether the
+      council ... is sufficient" — that was true when written but is
+      stale now; round 3's ACCEPT landed before that re-gate ran, and a
+      SECOND, fresh re-gate (2026-09-27, this R3 response) found the
+      wrapper logic correct and asked only for R1 (watcher coverage),
+      R2 (commit the two r0 council reviews verbatim), and R3 (two
+      isolating fixtures for the key `case` guard and the `-x` half of
+      `-f && -x`) — see this pack's `lanes:` and the R3 rows in
+      `receipts/mutant-table.md`.
+  - seat: codex-gpt-5.6-sol (delta round 2)
+    objection: >-
+      N1's regression (test_guilt_env_cannot_clobber_post_source_literals)
+      clobbered only 3 of the 6 protected wrapper-private literals
+      (RUNTIME_DIR/VENV_PY/TAG, not HOME_DIR/ORGAN_ID/SIDECAR_DIR) and
+      never checked the heartbeat file at all; proven by the seat's own
+      live mutation (removing just the HOME_DIR/ORGAN_ID/SIDECAR_DIR
+      re-asserts left the test green).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the test now sets hostile values for all 6 names and asserts
+      the heartbeat JSON (`$SIDECAR_DIR/$ORGAN_ID.json`) lands at the
+      wrapper's OWN (test-patched) HOME_DIR/ORGAN_ID path with
+      `"status":"starting"`/`"note":"exec daemon"`, never the hostile
+      destination. Mutation-verified: removing the HOME_DIR/ORGAN_ID/
+      SIDECAR_DIR re-asserts from the wrapper's N1 block now turns this
+      test red. Re-reviewed by codex-gpt-5.6-sol in delta round 3 (scope
+      narrowed to this gap only): VERDICT ACCEPT — see
+      council-journal.jsonl line 5 and reviews/codex-gpt-5.6-sol-delta3.md.
+  - seat: fresh-opus-5.5-gate (independent, worked in .worktrees/infra-gate-7420, wrote nothing on this branch)
+    objection: >-
+      REWORK-BUILD, narrow (2026-09-27, PR #7420 @ 737d16224a): the
+      wrapper logic itself is correct (C2/C3 confirmed fixed and
+      discriminating, C4's `seat_override` gone, the council journal
+      honest, C1 as originally written met). Three conditions still block
+      the head: R1 — the PR adds wa-codex-pin.yml without listing it in
+      `main-push-failure-watch.yml`, so the `check` context is red and
+      merging would turn `Watcher coverage` red on main (missed at r0
+      too). R2 — the pack cites `reviews/codex-gpt-5.6-sol-r1.md` and
+      `reviews/kimi-code-k3-r1.md`, but `git ls-tree` of the evidence dir
+      had neither committed; the R9 quorum's kimi ok:true was backed only
+      by an M5 `/private/tmp` file. R3 — re-running C1's own mutation
+      table found the pin-format key `case` guard and the `-x` half of
+      C2's `[ -f ] && [ -x ]` both still survived deletion with 26/26
+      green (second occurrence of the fixture-masking class C1 itself
+      was built to close).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: R1 — added the workflow's exact `name:` string to
+      `main-push-failure-watch.yml`'s `workflows:` list;
+      `check_watcher_coverage.py` now rc 0. R2 — committed both r0
+      reviews verbatim (sha256 prefixes match the re-gate's own
+      verification exactly: a8283fcbdc916829 / 34fad07a33c5d30e; scanned
+      for secrets/PII first, 0 hits). R3 — added `bare_version_planted`
+      (a bare, keyless, already-valid-semver pin line with the tree
+      planted — isolates the `case` guard, since `unknown_key` fails
+      `_is_semver` regardless of that guard) and
+      `bin_not_executable_planted` (a regular, 0644, non-executable file
+      at the derived binary path — isolates the `-x` half, since
+      `bin_missing` fails both `-f` and `-x` at once). Re-ran the FULL
+      exhaustive mutation table myself (not merely the two new rows) with
+      a real subprocess harness against the actual worktree wrapper,
+      restored byte-for-byte after each mutant (`git hash-object` before
+      and after match, `git status --short` shows no residue): every
+      guard and every conjunct, deleted alone, now turns >=1 test red —
+      see the rebuilt `mutant-table.md`. Also fixed, in the same commit,
+      the four pack-text defects and the lane-label wording this seat's
+      own review named (§3 of its comment), the N3 kill-switch precedence
+      comment, N8 in the PR body (D8→D7), and the two vacuous asserts in
+      the N1 test.
+receipts:
+  - claim: >-
+      All 28 wrapper pytest cases pass on the final shipped wrapper, up
+      from 17 at the gated head (08a5d93537): +7 new
+      test_guilt_present_but_invalid_pin_refuses parametrize IDs (C1's 4
+      discriminating fixtures, C2's bin_is_directory, and R3's
+      bare_version_planted + bin_not_executable_planted) and +4 new
+      standalone tests (C3's test_guilt_unsearchable_runtime_dir_refuses_
+      not_legacy, N3's test_guilt_invalid_pin_beats_the_kill_switch,
+      N1's test_guilt_env_cannot_clobber_post_source_literals, N4's
+      test_guilt_mode_000_pin_reports_unreadable_not_line_count); N1's
+      own test was later extended in place (round 2 fix, then had two
+      vacuous asserts removed in R3), not re-added as a new test — see
+      mutant-table.md for the per-guard mapping.
+    cmd: python3 -m pytest scripts/tests/test_wa_codex_broker_wrapper.py -q
+    exit: 0
+    ts: "2026-09-27T18:30:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Fresh re-gate on PR #7420 @ 737d16224a found the wrapper logic
+      correct (no wrapper code change required) and named 3 conditions:
+      R1 (wa-codex-pin.yml missing from main-push-failure-watch.yml's
+      watch list — `check` context red), R2 (the two r0 council reviews
+      cited by this pack were never committed under reviews/), R3 (two
+      guards still survived deletion with the suite green: the pin-format
+      `case` guard and the `-x` half of C2's `[ -f ] && [ -x ]` — same
+      fixture-masking class as C1, second occurrence). All three closed
+      in this commit: R1 via the watcher-list entry above (`python3
+      scripts/check_watcher_coverage.py` rc 0), R2 via
+      reviews/codex-gpt-5.6-sol-r1.md + reviews/kimi-code-k3-r1.md
+      (sha256 prefixes a8283fcbdc916829 / 34fad07a33c5d30e, matching the
+      re-gate's own verification exactly), R3 via bare_version_planted +
+      bin_not_executable_planted (mutant-table.md, exhaustive re-run,
+      every guard and every conjunct RED alone).
+    cmd: >-
+      python3 scripts/check_watcher_coverage.py; python3 -m pytest
+      scripts/tests/test_wa_codex_broker_wrapper.py -q; the mutation
+      harness re-run recorded in mutant-table.md (scratch script, not
+      committed, same convention as the gate's own regate7420/mutants.py)
+    exit: 0
+    ts: "2026-09-27T18:30:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The wrapper is valid POSIX sh and bash after every edit (rework-
+      build re-run).
+    cmd: >-
+      sh -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh &&
+      bash -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+    exit: 0
+    ts: "2026-09-26T17:08:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Mutation harness (5 core guards + C2 bin-is-directory + N1
+      6-name/heartbeat + N4 mode-000): deleting any guard from a real
+      subprocess-run copy of the wrapper turns exactly the expected
+      test(s) red, never fewer. See receipts/mutant-table.md for the
+      per-guard mapping.
+    cmd: >-
+      real subprocess mutation harness (scratch script, not committed):
+      copy wrapper -> delete one guard block -> repoint a copy of
+      test_wa_codex_broker_wrapper.py's _WRAPPER at it -> python3 -m
+      pytest as a real subprocess -> confirm exactly the expected red(s)
+    exit: 0
+    ts: "2026-09-26T17:08:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      actionlint and scripts_coupling_census stay clean after the
+      rework-build changes.
+    cmd: >-
+      actionlint .github/workflows/wa-codex-pin.yml && python3
+      scripts/ci/scripts_coupling_census.py --check
+    exit: 0
+    ts: "2026-09-26T17:08:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The new workflow file is actionlint-clean.
+    cmd: actionlint .github/workflows/wa-codex-pin.yml
+    exit: 0
+    ts: "2026-09-26T14:18:46Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      scripts_coupling_census needs no update for the new test file.
+    cmd: python3 scripts/ci/scripts_coupling_census.py --check
+    exit: 0
+    ts: "2026-09-26T14:18:47Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      change_map.py classifies the three changed files without an
+      unclassified/unknown-path fallback (fleet_ops + infra_workflows +
+      security_sensitive, reason=classified, no change_map.py edit
+      needed).
+    cmd: >-
+      python3 scripts/ci/change_map.py
+      infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+      scripts/tests/test_wa_codex_broker_wrapper.py
+      .github/workflows/wa-codex-pin.yml
+    exit: 0
+    ts: "2026-09-26T13:00:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The gear-3 floor is hot-zone-sourced (infra/launchagents/* and
+      .github/workflows/* both match HOTZONE_PATTERNS), independent of the
+      diff's line count.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --changed-files-file
+      changed_files.txt --numstat-file numstat.txt --print-floor-source
+    exit: 0
+    ts: "2026-09-26T14:19:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Guilt receipt: all 7 comparable rows (2 env-PATH scenarios + 5
+      invalid-pin variants) reproduce as RED on origin/main's current
+      wrapper — it has no CODEX_PIN_FILE/PINNED_CODEX_ROOT concept at all,
+      so ANY pin file present is silently ignored and the daemon env's
+      WA_CODEX_BIN always wins, rc 0, in every one of the 7 cases.
+    cmd: >-
+      python3 run_guilt2.py wrapper_main.sh "main current wrapper"
+      (scratchpad harness, ad hoc sed-patch of a copy of
+      `git show origin/main:infra/launchagents/wrappers/wa-codex-broker-wrapper.sh`)
+    exit: 0
+    ts: "2026-09-26T14:23:58Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Guilt receipt: all 7 comparable rows reproduce as RED on PR #7340's
+      head (3d04590c99) too — its `expr`-based validators are silently
+      skipped under a hostile PATH (both variants) and its pin parse
+      silently ignores 4 of 5 invalid-value faults (rc 0, env's
+      WA_CODEX_BIN wins); the remaining 2 (two_lines, bin_missing) are
+      accepted with WRONG values instead of refused (partial acceptance,
+      no existence check on the binary path at all).
+    cmd: >-
+      python3 run_guilt2.py wrapper_7340.sh "PR #7340 head" (scratchpad
+      harness, ad hoc sed-patch of a copy of
+      `git show origin/agent/air-m5/ops/wa-codex-pinned-installer:infra/launchagents/wrappers/wa-codex-broker-wrapper.sh`)
+    exit: 0
+    ts: "2026-09-26T14:23:59Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Round 1 codex-second-opinion dispatch found 2 BLOCKER + 1 MEDIUM
+      against the pre-fix wrapper.
+    cmd: >-
+      .claude/scripts/codex-spalla.sh review main "PR-1 of
+      spec_codexpin_v3.md D5 ..." (transcript:
+      ~/logs/codex-spalla/20260926T135934Z-13fd5-review-PR-1-of-spec-codexpin-v3-md-D5-a-dedicat.md)
+    exit: 0
+    ts: "2026-09-26T13:59:34Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Round 2 codex-second-opinion dispatch confirmed both BLOCKERs closed
+      and the embedded-NUL MEDIUM still open at that point (fixed
+      immediately after, in the same PR).
+    cmd: >-
+      .claude/scripts/codex-spalla.sh review main "Re-review after fixing
+      two BLOCKERs ..." (transcript:
+      ~/logs/codex-spalla/20260926T141012Z-4bf6-review-Re-review-after-fixing-two-BLOCKERs-from.md)
+    exit: 0
+    ts: "2026-09-26T14:10:12Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The declared home-fork pair for the wrapper already exists (added
+      2026-08-25, world-readable, machines: pro) — this PR's diff will
+      make lint_home_fork --check on Pro read DRIFT until the operator
+      installs this wrapper (spec §6), which is the pending-arm marker
+      named in the PR body's Bites: line.
+    cmd: >-
+      git grep -n wa-codex-broker-wrapper -- scripts/lint_home_fork.py
+      infra/home-fork/declared-pairs.json
+    exit: 0
+    ts: "2026-09-26T12:40:00Z"
+    seat: claude-sonnet-5

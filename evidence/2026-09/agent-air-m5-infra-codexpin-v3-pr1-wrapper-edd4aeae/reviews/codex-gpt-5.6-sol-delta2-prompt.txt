@@ -1,0 +1,406 @@
+Second delta re-review, same PR (#7420 wa-codex-broker-wrapper.sh, spec D5). Your PREVIOUS round
+(round 1, this same session's history if you have it — otherwise treat this as fresh) found the
+diff incomplete and returned VERDICT: REWORK, citing exactly three gaps:
+
+1. C2: "the mandatory fixture with .../bin/codex as a 0755 directory is missing; the existing
+   `directory` case makes the PIN FILE a directory, not the binary; mutating only the new `-f`
+   term back to the old `-x`-only check would leave the suite green."
+2. C3: "the fixture does not reproduce the stated defect: the pin is tmp_path/codex-pin.env while
+   the directory made 0644 is tmp_path/runtime — siblings, not container/contents. Without the new
+   guard the test would still reach 78 via a DIFFERENT downstream guard (cd failure); it goes red
+   only on the message assertion. The pin must live inside world['runtime']."
+3. N1/N4 lack dedicated regressions (six-name collision; mode-000 file).
+
+ALL THREE are now fixed in this round, on top of the SAME diff you reviewed:
+- Added `bin_is_directory` case (world["pinned_root"]/"9.9.9"/"bin"/"codex" created as a 0755
+  DIRECTORY, valid pin/version otherwise) + mutation-verified: reverting only the `-f` conjunct
+  (back to `-x`-only) turns exactly this one case red, nothing else.
+- C3's pin file now lives at `world["runtime"] / "codex-pin.env"` (INSIDE the directory whose mode
+  gets broken), created BEFORE the chmod. Mutation-verified: removing the new RUNTIME_DIR-
+  searchability guard now makes the test fail with the WRAPPER'S OWN legacy message ("no pin file
+  at ... (legacy)") plus a real `cd: ... Permission denied` — the exact original defect, not a
+  generic crash.
+- Added `test_guilt_env_cannot_clobber_post_source_literals` (env sets RUNTIME_DIR/VENV_PY/TAG to
+  bogus values; asserts the daemon still execs the CORRECT venv/runtime and the proof line still
+  carries the real TAG) — mutation-verified: removing the N1 re-assert block turns exactly this
+  test red, with stderr literally showing "stale-tag: venv python missing... /nonexistent-evil-venv".
+- Added `test_guilt_mode_000_pin_reports_unreadable_not_line_count` (pin file chmod 0o000) —
+  mutation-verified: removing the `[ ! -r ]` check turns exactly this test red.
+
+Full suite: 26/26 pass on the shipped (unmutated) wrapper. All 5 required guards (NUL probe,
+one-line check, _is_semver, -L symlink, -f/-x binary) PLUS N1 and N4 are now independently
+mutation-verified discriminating — 10 total guard-deletion mutants, 10/10 turn exactly the
+expected test(s) red, 0 false negatives.
+
+===== FULL CURRENT DIFF (git diff against the head you reviewed before, i.e. the delta you saw
+plus this round's additions) =====
+diff --git a/.github/workflows/wa-codex-pin.yml b/.github/workflows/wa-codex-pin.yml
+index b21429d3da..908ff0981d 100644
+--- a/.github/workflows/wa-codex-pin.yml
++++ b/.github/workflows/wa-codex-pin.yml
+@@ -47,6 +47,8 @@ jobs:
+     timeout-minutes: 10
+     steps:
+       - uses: actions/checkout@v7
++        with:
++          filter: blob:none
+ 
+       - uses: actions/setup-python@v7
+         with:
+diff --git a/infra/launchagents/wrappers/wa-codex-broker-wrapper.sh b/infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+index 98efcc872a..b8ffa26131 100644
+--- a/infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
++++ b/infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+@@ -75,6 +75,10 @@ heartbeat() { # $1 status, $2 note
+ }
+ 
+ # --- pin-file version validator (builtins only — no `expr`, no PATH lookup) ---
++# Marker-wrapped (N6, gate 2026-09-26) so PR-2's installer test
++# (test_semver_validators_agree) can extract this exact predicate text
++# instead of re-typing a copy.
++# >>> _is_semver
+ _is_semver() {
+     case $1 in
+         *[!0-9.]*|.*|*.|*..*|*.*.*.*) return 1 ;;
+@@ -82,6 +86,7 @@ _is_semver() {
+     esac
+     return 1
+ }
++# <<< _is_semver
+ 
+ if [ ! -f "$ENV_FILE" ]; then
+     echo "$TAG: env file missing: $ENV_FILE - refusing to start (run provisioning)" >&2
+@@ -116,6 +121,22 @@ fi
+ # run shell commands is full code execution as zantara-codex regardless
+ # (spec §8 #2, out of scope by design) — this closes the DATA-only,
+ # accidental-or-stale-value class, which is F5's actual scope.
++# RUNTIME_DIR not searchable (gate 2026-09-26): `[ -e "$CODEX_PIN_FILE" ]`
++# cannot traverse an unsearchable ancestor, so a pin file that genuinely
++# exists behind a broken directory mode is indistinguishable, at that test
++# alone, from a pin file that was never installed — and the latter is the
++# ONLY case legacy is allowed to cover. RUNTIME_DIR existing-but-not-
++# searchable is a broken/obstructed state, never legitimate absence, so it
++# fails closed here, BEFORE the daemon env (which could itself claim a
++# different RUNTIME_DIR) is ever sourced. A RUNTIME_DIR that does not exist
++# at all is the genuine "nothing installed yet" case and falls through to
++# legacy exactly as before.
++if [ -d "$RUNTIME_DIR" ] && [ ! -x "$RUNTIME_DIR" ]; then
++    echo "$TAG: pin directory not searchable: $RUNTIME_DIR - refusing (cannot verify pin absence)" >&2
++    heartbeat "refused" "pin invalid"
++    exit 78
++fi
++
+ _wcbw_pin_ver=""
+ _wcbw_pin_bin=""
+ if [ -L "$CODEX_PIN_FILE" ]; then
+@@ -128,15 +149,25 @@ elif [ -e "$CODEX_PIN_FILE" ]; then
+         heartbeat "refused" "pin invalid"
+         exit 78
+     fi
++    if [ ! -r "$CODEX_PIN_FILE" ]; then
++        echo "$TAG: pin file is not readable: $CODEX_PIN_FILE" >&2
++        heartbeat "refused" "pin invalid"
++        exit 78
++    fi
+     # NUL-byte guard (spalla review 2026-09-26): a shell variable cannot
+     # represent a NUL byte at all, so `read -r` alone silently truncates a
+     # line AT its first NUL and the truncated remainder can slip past the
+     # "exactly one line" count below as if it were never there. `read -d
+-    # ''` (NUL as the delimiter, a bash/dash builtin extension — not an
+-    # external tool, so still "builtins only") returns 0 when it DID find a
+-    # delimiter before EOF and non-zero when it read to EOF with none: a
+-    # clean file always hits EOF first (rc != 0), so rc == 0 here can only
+-    # mean the file contains at least one NUL.
++    # ''` (NUL as the delimiter) is a BASH extension — dash rejects it
++    # outright (`read: Illegal option -d`, gate 2026-09-26 correction of
++    # this comment's prior claim that dash also supports it) — still a
++    # shell BUILTIN, not an external tool, so "builtins only" still holds;
++    # this wrapper's only two actual runtimes are macOS's own `/bin/sh`
++    # (itself bash 3.2 in a POSIX-ish mode) and macos-latest CI's bash, so
++    # the extension is always available where this file ever really runs.
++    # Returns 0 when it DID find a delimiter before EOF and non-zero when
++    # it read to EOF with none: a clean file always hits EOF first (rc !=
++    # 0), so rc == 0 here can only mean the file contains at least one NUL.
+     if IFS= read -r -d '' _pin_nul_probe < "$CODEX_PIN_FILE"; then
+         echo "$TAG: pin file contains a NUL byte: $CODEX_PIN_FILE" >&2
+         heartbeat "refused" "pin invalid"
+@@ -169,8 +200,11 @@ elif [ -e "$CODEX_PIN_FILE" ]; then
+         exit 78
+     fi
+     _wcbw_pin_bin="$PINNED_CODEX_ROOT/$_wcbw_pin_ver/bin/codex"
+-    if [ ! -x "$_wcbw_pin_bin" ]; then
+-        echo "$TAG: pinned binary missing or not executable: $_wcbw_pin_bin" >&2
++    # `-x` alone is true for a directory too (a 0755 dir is "executable" in
++    # the traverse sense) — gate 2026-09-26, reproduced: a directory planted
++    # at this path was silently APPLIED. Require a regular file first.
++    if [ ! -f "$_wcbw_pin_bin" ] || [ ! -x "$_wcbw_pin_bin" ]; then
++        echo "$TAG: pinned binary missing, not a regular file, or not executable: $_wcbw_pin_bin" >&2
+         heartbeat "refused" "pin invalid"
+         exit 78
+     fi
+@@ -187,6 +221,20 @@ set -a
+ . "$ENV_FILE"
+ set +a
+ 
++# N1 (gate 2026-09-26): re-assert every wrapper-private literal a `set -a`
++# export could have let the daemon env clobber by plain DATA (no alias, no
++# function — reproduced with RUNTIME_DIR/VENV_PY, and TAG governs the §6
++# proof line below). These six names are NEVER meant to be env-
++# configurable; ENV_FILE itself was already resolved from HOME_DIR's
++# ORIGINAL value before the source above, so redefining HOME_DIR here does
++# not retroactively change where the env file was read from.
++HOME_DIR="/Users/zantara-codex"
++RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
++VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
++TAG="wa-codex-broker-wrapper"
++ORGAN_ID="pro.wa_codex_broker"
++SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
++
+ # G5_kill_switch — operator stop without uninstall (set in the env file or
+ # the plist). Clean exit 0 stays DOWN under KeepAlive.SuccessfulExit=false;
+ # the disabled heartbeat keeps a healer from resurrecting an intentional
+diff --git a/scripts/tests/test_wa_codex_broker_wrapper.py b/scripts/tests/test_wa_codex_broker_wrapper.py
+index e9b4ae1941..ff90d0f4ef 100644
+--- a/scripts/tests/test_wa_codex_broker_wrapper.py
++++ b/scripts/tests/test_wa_codex_broker_wrapper.py
+@@ -68,8 +68,12 @@ def _patched_wrapper(tmp_path: Path, name: str = "wrapper-copy.sh", **overrides:
+         assert key in _PATCHABLE_KEYS, f"{key} is not a declared patchable constant"
+         pattern = rf"^{key}=.*$"
+         replacement = f'{key}="{value}"'
+-        text, n = re.subn(pattern, replacement, text, count=1, flags=re.M)
+-        assert n == 1, f"could not patch {key}= in a copy of {_WRAPPER}"
++        # count=0 (all occurrences): N1 (gate 2026-09-26) re-asserts
++        # HOME_DIR/RUNTIME_DIR/VENV_PY a second time after `set +a`, so a
++        # patched copy must rewrite BOTH declarations or the test would
++        # silently exercise the wrapper's real production paths post-source.
++        text, n = re.subn(pattern, replacement, text, count=0, flags=re.M)
++        assert n >= 1, f"could not patch {key}= in a copy of {_WRAPPER}"
+     dst.write_text(text)
+     dst.chmod(dst.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+     return dst
+@@ -101,8 +105,13 @@ def _plant_pinned_codex(world: dict, version: str) -> Path:
+ 
+ 
+ def _run(wrapper: Path) -> subprocess.CompletedProcess[str]:
++    # N2 (gate 2026-09-26): explicit `/bin/sh`, never a PATH-resolved `sh`
++    # — the NUL-probe's `read -d ''` is a bash extension dash rejects, and
++    # macOS's own `/bin/sh` IS bash 3.2 (the wrapper's only two real
++    # runtimes: this, and macos-latest CI's bash), so this must never
++    # silently resolve to a dash on some other PATH.
+     return subprocess.run(
+-        ["sh", str(wrapper)], capture_output=True, text=True, timeout=15, check=False,
++        ["/bin/sh", str(wrapper)], capture_output=True, text=True, timeout=15, check=False,
+     )
+ 
+ 
+@@ -180,6 +189,56 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
+         os.mkfifo(pin_file)
+     elif kind == "embedded_nul":
+         pin_file.write_bytes(b"WA_CODEX_CLI_VERSION_PIN=9.9.9\n\x00JUNK\n")
++    elif kind == "nul_same_line_planted":
++        # C1 (gate 2026-09-26): the existing `embedded_nul` case puts the
++        # NUL on its OWN line (a `\n` before it), so the exactly-one-line
++        # check alone already rejects it — non-discriminating for the NUL
++        # probe specifically. This one is genuinely ONE line (a single
++        # trailing newline, NUL mid-content) WITH the binary planted, so
++        # removing only the NUL probe is provably what flips the verdict
++        # (mutation-verified below, not merely asserted).
++        pin_file.write_bytes(b"WA_CODEX_CLI_VERSION_PIN=9.9.9\x00JUNK\n")
++        _plant_pinned_codex(world, "9.9.9")
++    elif kind == "two_lines_diff_versions_planted":
++        # The existing `two_lines` case repeats the SAME version on both
++        # lines, so removing the line-count guard cannot be told apart
++        # from keeping it (either way the resolved version is 9.9.9).
++        # Different versions, BOTH planted, make the guard's effect
++        # observable: with it, exit 78; without it, the read loop's last
++        # line wins and 9.9.9 gets silently applied.
++        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=1.1.1\nWA_CODEX_CLI_VERSION_PIN=9.9.9\n")
++        _plant_pinned_codex(world, "1.1.1")
++        _plant_pinned_codex(world, "9.9.9")
++    elif kind == "bad_semver_planted":
++        # The existing `bad_semver` case never plants a binary, so
++        # removing `_is_semver` alone would still fail closed at the
++        # binary-existence check instead — masking the guard under test.
++        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9\n")
++        _plant_pinned_codex(world, "9.9")
++    elif kind == "traversal_escape_planted":
++        # `_is_semver` is the ONLY guard keeping the derived binary path
++        # under PINNED_CODEX_ROOT at all — nothing canonicalizes
++        # `$PINNED_CODEX_ROOT/$ver/bin/codex` before the `-f`/`-x` check.
++        # Planted one level ABOVE pinned_root (a sibling "escape" dir) so
++        # that, without the semver guard, the derived path would resolve
++        # there and be accepted.
++        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=../escape\n")
++        # `codex/..` only resolves through a REAL `codex` directory — the
++        # kernel cannot walk `..` past a path component that does not
++        # exist on disk, even though the final target one level up does.
++        world["pinned_root"].mkdir(parents=True, exist_ok=True)
++        escape_bin = world["pinned_root"].parent / "escape" / "bin" / "codex"
++        escape_bin.parent.mkdir(parents=True, exist_ok=True)
++        _make_executable(escape_bin, _FAKE_CODEX_STUB.format(version="../escape"))
++    elif kind == "bin_is_directory":
++        # C2 (gate 2026-09-26): a directory at the derived binary path is
++        # traversable (`-x` on a 0755 dir is true), so the OLD `-x`-only
++        # check silently APPLIED it. A valid pin, a valid version — only
++        # the binary itself is wrong.
++        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
++        bin_path = world["pinned_root"] / "9.9.9" / "bin" / "codex"
++        bin_path.mkdir(parents=True)
++        bin_path.chmod(0o755)
+     else:
+         raise AssertionError(f"unknown case {kind!r}")
+     return pin_file
+@@ -190,6 +249,8 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
+     [
+         "bad_semver", "unknown_key", "two_lines", "empty", "bin_missing", "symlink_pin",
+         "directory", "dev_null", "fifo", "embedded_nul",
++        "nul_same_line_planted", "two_lines_diff_versions_planted", "bad_semver_planted",
++        "traversal_escape_planted", "bin_is_directory",
+     ],
+ )
+ def test_guilt_present_but_invalid_pin_refuses(tmp_path: Path, world: dict, kind: str) -> None:
+@@ -255,6 +316,123 @@ def test_guilt_daemon_env_cannot_clobber_the_resolved_pin(tmp_path: Path, world:
+     assert f"WA_CODEX_BIN={pinned_bin}" in result.stdout
+ 
+ 
++def test_guilt_unsearchable_runtime_dir_refuses_not_legacy(tmp_path: Path, world: dict) -> None:
++    """C3 (gate 2026-09-26, corrected per the delta-council catch: the
++    first version of this test broke RUNTIME_DIR's mode while the pin file
++    lived OUTSIDE it — siblings, not container/contents — so `[ -e
++    "$CODEX_PIN_FILE" ]` was never actually blocked by the broken mode; the
++    test only proved the new top-level guard fires, not the real defect).
++    The pin file now lives INSIDE RUNTIME_DIR: `[ -e "$CODEX_PIN_FILE" ]`
++    cannot traverse an unsearchable RUNTIME_DIR to even STAT it, so a pin
++    file that genuinely exists behind a broken directory mode used to read
++    as "no pin file here" and fall into legacy (rc 0, whatever the env's
++    WA_CODEX_BIN says) — reproduced live on Pro's own layout (gate's
++    eacces.py E1/E2). RUNTIME_DIR EXISTS here (unlike a fresh,
++    never-provisioned machine) but is not other-traversable, which is a
++    broken/obstructed state, never legitimate absence."""
++    _write_daemon_env(
++        world,
++        WA_CODEX_CLI_VERSION_PIN="0.0.1",
++        WA_CODEX_BIN="/opt/homebrew/bin/codex",
++        WA_CODEX_BROKER_ENABLED="true",
++    )
++    pin_file = world["runtime"] / "codex-pin.env"
++    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
++    _plant_pinned_codex(world, "9.9.9")
++    wrapper = _base_wrapper(tmp_path, world, pin_file)
++    world["runtime"].chmod(0o644)
++    try:
++        result = _run(wrapper)
++    finally:
++        world["runtime"].chmod(0o755)
++    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
++    assert "not searchable" in result.stderr, result.stderr
++    heartbeat_file = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
++    hb = heartbeat_file.read_text()
++    assert '"status":"refused"' in hb, hb
++    assert '"note":"pin invalid"' in hb, hb
++
++
++def test_guilt_invalid_pin_beats_the_kill_switch(tmp_path: Path, world: dict) -> None:
++    """N3 (gate 2026-09-26): pin validation happens strictly BEFORE the
++    daemon env is even sourced, so an invalid pin must refuse (exit 78)
++    even when that same env also sets the kill switch — the kill switch
++    is checked only after `set +a`, which an invalid pin never reaches."""
++    _write_daemon_env(
++        world,
++        WA_CODEX_CLI_VERSION_PIN="0.0.1",
++        WA_CODEX_BIN="/opt/homebrew/bin/codex",
++        WA_CODEX_BROKER_ENABLED="false",
++    )
++    pin_file = tmp_path / "codex-pin.env"
++    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9\n")  # bad_semver, no binary planted
++    wrapper = _base_wrapper(tmp_path, world, pin_file)
++    result = _run(wrapper)
++    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
++    heartbeat_file = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
++    hb = heartbeat_file.read_text()
++    assert '"status":"refused"' in hb, hb
++    assert '"note":"pin invalid"' in hb, hb
++
++
++def test_guilt_env_cannot_clobber_post_source_literals(tmp_path: Path, world: dict) -> None:
++    """N1 (gate 2026-09-26, dedicated regression requested by the delta
++    council — the existing clobber test only tries the pin's OWN
++    variables). A plain DATA assignment in the daemon env, exported by
++    `set -a`, would otherwise redefine RUNTIME_DIR/VENV_PY/TAG for the
++    REST of the script (the cd target, the exec target, and the §6
++    proof-line prefix) after the source. The re-assert right after
++    `set +a` must win: the daemon still execs the wrapper's OWN (here,
++    test-patched) VENV_PY/RUNTIME_DIR, and the proof line still carries
++    the real TAG, never the env's."""
++    _write_daemon_env(
++        world,
++        WA_CODEX_CLI_VERSION_PIN="0.0.1",
++        WA_CODEX_BIN="/opt/homebrew/bin/codex",
++        WA_CODEX_BROKER_ENABLED="true",
++        RUNTIME_DIR="/nonexistent-evil-runtime",
++        VENV_PY="/nonexistent-evil-venv",
++        TAG="stale-tag",
++    )
++    pin_file = tmp_path / "codex-pin.env"
++    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
++    pinned_bin = _plant_pinned_codex(world, "9.9.9")
++
++    wrapper = _base_wrapper(tmp_path, world, pin_file)
++    result = _run(wrapper)
++    assert result.returncode == 0, result.stderr
++    assert "WA_CODEX_CLI_VERSION_PIN=9.9.9" in result.stdout
++    assert f"WA_CODEX_BIN={pinned_bin}" in result.stdout
++    assert "wa-codex-broker-wrapper: " in result.stderr
++    assert "stale-tag:" not in result.stderr
++    assert "evil" not in result.stderr
++
++
++def test_guilt_mode_000_pin_reports_unreadable_not_line_count(tmp_path: Path, world: dict) -> None:
++    """N4 (gate 2026-09-26): before this fix, a pin file with permission
++    bits 0000 misreported "must carry exactly one line" — the read loop
++    silently sees zero lines under EACCES, which happens to also be a
++    truthy `_pin_lines -ne 1`, but the wrong DIAGNOSIS. A dedicated
++    `[ -r ]` check names the real cause."""
++    _write_daemon_env(
++        world,
++        WA_CODEX_CLI_VERSION_PIN="0.0.1",
++        WA_CODEX_BIN="/opt/homebrew/bin/codex",
++        WA_CODEX_BROKER_ENABLED="true",
++    )
++    pin_file = tmp_path / "codex-pin.env"
++    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
++    pin_file.chmod(0o000)
++    try:
++        wrapper = _base_wrapper(tmp_path, world, pin_file)
++        result = _run(wrapper)
++    finally:
++        pin_file.chmod(0o644)
++    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
++    assert "not readable" in result.stderr, result.stderr
++    assert "must carry exactly one line" not in result.stderr
++
++
+ # --- innocence ---------------------------------------------------------------
+ 
+ def test_innocence_valid_pin_overrides_env(tmp_path: Path, world: dict) -> None:
+@@ -308,7 +486,13 @@ def test_pin_applied_log_line(tmp_path: Path, world: dict) -> None:
+     wrapper = _base_wrapper(tmp_path, world, pin_file)
+     result = _run(wrapper)
+     assert result.returncode == 0, result.stderr
+-    pattern = r"wa-codex-broker-wrapper: \S+ pin applied: codex 9\.9\.9 at " + re.escape(str(pinned_bin))
++    # N5 (gate 2026-09-26): `\S+` accepted anything for the timestamp;
++    # tightened to the `date -u +%Y-%m-%dT%H:%M:%SZ` shape the wrapper
++    # actually emits.
++    pattern = (
++        r"wa-codex-broker-wrapper: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z pin applied: codex 9\.9\.9 at "
++        + re.escape(str(pinned_bin))
++    )
+     assert re.search(pattern, result.stderr), result.stderr
+ 
+ 
+
+CODEX SEAT NOTE: your cwd is read-only at
+/Users/balizero/nuzantara/.worktrees/infra-codexpin-v3-pr1-wrapper — the diff above matches what
+is on disk there right now (uncommitted). You MAY read files and run read-only shell experiments.
+Verify the three corrections above by execution where you can. End your answer with exactly one
+line: `VERDICT: ACCEPT` or `VERDICT: REWORK`, followed by reasoning and any remaining findings.

@@ -359,6 +359,16 @@ on:
       #     worse than no instrument.
       - Craft instruments (advisory)
       - mq state oracle tests
+      # Added with the workflow itself (wa-codex-pin.yml, PR-1 of
+      # spec_codexpin_v3.md, 2026-09-27): triggers on pull_request with a
+      # `paths:` filter only — same non-reachable-but-still-required-for-
+      # coverage shape as actionlint / hot-zone-enforcement / Prettier
+      # (changed files) / Harness floor recompute above. check_watcher_
+      # coverage.py's contract is name-set membership against this file's
+      # declared `name:`, not alert-path reachability (see its own
+      # docstring); caught by the fresh re-gate on this PR's own head,
+      # missed at r0.
+      - "wa-codex-pin: dedicated broker pin (wrapper + installer + sentinel)"
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
