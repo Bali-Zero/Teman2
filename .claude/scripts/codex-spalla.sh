@@ -2,16 +2,28 @@
 # codex-spalla.sh — dispatch Codex CLI as "spalla" (adversarial second opinion)
 #
 # Usage:
-#   .claude/scripts/codex-spalla.sh <mode> <base_branch> [focus_brief]
+#   .claude/scripts/codex-spalla.sh <mode> <base_branch> [focus_brief] [--allow-pii-paths]
 #   .claude/scripts/codex-spalla.sh --self-test
 #
 # Args:
 #   mode:        "review" (default) | "exec"
 #   base_branch: base for diff comparison (default: main)
 #   focus_brief: optional free-text focus area passed to Codex
+#   --allow-pii-paths: overrides the PII-classed-path refusal below. Logged
+#                to telemetry (`allow_pii_paths`); does NOT skip redaction.
 #   --self-test: liveness probe, no diff needed — dispatches a trivial prompt
 #                through the real `codex exec` path and requires a verdict line
 #                back. Exit 0 proves flags, seat and auth are all live.
+#
+# PII (cicatrix W140, 2026-09-26): everything embedded in the prompt below
+# leaves this machine for OpenAI's cloud. Before that happens the diff/
+# uncommitted/untracked bodies are (a) refused outright if they touch a
+# PII-classed path (research/crm|crm-exports|compliance|wa-copilot|hr,
+# research/*/clients) unless --allow-pii-paths is passed, and (b) piped
+# through the canonical `scripts/_redact_pii.py` (fail-closed on error).
+# Deleted lines of .jsonl/.csv/.xlsx files are never embedded at all — a
+# PII-REMOVAL diff is the most PII-dense diff there is: the deleted lines
+# ARE the data.
 #
 # Behavior contract: see docs/superpowers/specs/2026-05-03-codex-spalla-design.md §4.3.
 # Hard rules: see docs/decisions/2026-05-03-codex-spalla-architecture.md.
@@ -31,9 +43,24 @@
 #   4  = codex CLI not installed
 #   5  = codex CLI not logged in
 #   6  = codex returned 0 but produced no verdict line — never judged
-#   >6 = codex non-zero exit propagated (2/6 by value may also be codex's own)
+#   7  = refused: diff touches a PII-classed path without --allow-pii-paths
+#   8  = redaction pipeline failed closed (scripts/_redact_pii.py errored)
+#   >8 = codex non-zero exit propagated (may also collide with codex's own)
 
 set -euo pipefail
+
+# --allow-pii-paths can appear anywhere in argv; strip it before positional
+# parsing so it doesn't shift MODE/BASE/FOCUS.
+ALLOW_PII_PATHS="false"
+declare -a _POSITIONAL_ARGS=()
+for _arg in "$@"; do
+    if [[ "$_arg" == "--allow-pii-paths" ]]; then
+        ALLOW_PII_PATHS="true"
+    else
+        _POSITIONAL_ARGS+=("$_arg")
+    fi
+done
+set -- "${_POSITIONAL_ARGS[@]}"
 
 MODE="${1:-review}"
 BASE="${2:-main}"
@@ -75,6 +102,15 @@ if [[ -z "$REPO_ROOT" ]]; then
     exit 1
 fi
 cd "$REPO_ROOT"
+
+# strip_data_file_deletes / redact_for_external / pii_path_hit (Builder
+# Contract rule 4 / cicatrix W140): shared with any sibling external-seat
+# wrapper, so they live in scripts/lib/spalla_redact.sh, not here. Sourced
+# before the codex-login check below so the PII-path guard further down
+# never depends on the seat being logged in (only on `codex` existing at
+# all, checked above — no dispatch to protect against otherwise).
+# shellcheck disable=SC1091
+. "$REPO_ROOT/scripts/lib/spalla_redact.sh"
 
 # Pick a seat that is actually logged in, alternating between the two ChatGPT
 # Pro subscriptions, BEFORE asking codex whether it is logged in — the question
@@ -194,13 +230,33 @@ record_telemetry() {
     local blocker="${2:-false}"
     local focus_json
     focus_json="$(printf '%s' "${FOCUS:-}" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || echo '""')"
-    printf '{"ts":"%s","mode":"%s","base":"%s","focus":%s,"diff_lines":%s,"files_changed":%s,"untracked_files":%s,"warned":%s,"cancelled":%s,"exit_code":%s,"blocker":%s,"transcript":"%s"}\n' \
+    printf '{"ts":"%s","mode":"%s","base":"%s","focus":%s,"diff_lines":%s,"files_changed":%s,"untracked_files":%s,"warned":%s,"cancelled":%s,"exit_code":%s,"blocker":%s,"allow_pii_paths":%s,"transcript":"%s"}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         "$MODE" "$BASE" "$focus_json" \
         "$DIFF_LINES" "$FILES_CHANGED" "$UNTRACKED_FILES" \
-        "$WARNED" "$CANCELLED" "$exit_code" "$blocker" \
+        "$WARNED" "$CANCELLED" "$exit_code" "$blocker" "$ALLOW_PII_PATHS" \
         "$TRANSCRIPT" >> "$TELEMETRY_FILE"
 }
+
+# ─── PII-classed path guard (Builder Contract rule 4 / cicatrix W140) ───
+# PII_PATH_PATTERNS / pii_path_hit live in scripts/lib/spalla_redact.sh
+# (sourced above) — the CONTENTS never leave this refusal, only the
+# matched paths are printed.
+if [[ "$SELF_TEST" != "true" ]]; then
+    PII_HITS=()
+    while IFS= read -r _tf; do
+        [[ -z "$_tf" ]] && continue
+        pii_path_hit "$_tf" && PII_HITS+=("$_tf")
+    done < <({ git "${DIFF_ARGS[@]}" --name-only 2>/dev/null; git diff HEAD --name-only 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u)
+    if [[ "${#PII_HITS[@]}" -gt 0 ]] && [[ "$ALLOW_PII_PATHS" != "true" ]]; then
+        echo "REFUSED: diff touches PII-classed path(s) — refusing to send to an external seat without --allow-pii-paths:" >&2
+        printf '  %s\n' "${PII_HITS[@]}" >&2
+        echo "(paths only shown above; file CONTENTS never left this refusal — Builder Contract rule 4)" >&2
+        record_telemetry 7 false
+        echo "RESULT_PATH=$TRANSCRIPT"
+        exit 7
+    fi
+fi
 
 # A dispatch only counts as a review when a verdict line landed in the
 # assistant's FINAL message. codex-cli has shipped two "never ran" shapes that
@@ -272,9 +328,19 @@ if [[ "$TOTAL_DIFF_LINES" -lt 10 ]] || [[ "$TOTAL_FILES" -lt 3 ]]; then
     sleep 5
 fi
 
+# strip_data_file_deletes / redact_for_external already sourced above.
+_fail_closed_redaction() {
+    echo "ERROR: redaction FAILED-CLOSED — refusing to send this content to codex." >&2
+    record_telemetry 8 false
+    echo "RESULT_PATH=$TRANSCRIPT"
+    exit 8
+}
+
 # Capture diff bodies once for embedding in the prompt.
-DIFF_BODY="$(git "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 || echo '<diff capture failed>')"
-UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 || true)"
+DIFF_BODY="$(git "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 | strip_data_file_deletes || echo '<diff capture failed>')"
+UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 | strip_data_file_deletes || true)"
+DIFF_BODY="$(redact_for_external "$DIFF_BODY")" || _fail_closed_redaction
+UNCOMMITTED_BODY="$(redact_for_external "$UNCOMMITTED_BODY")" || _fail_closed_redaction
 
 # Codex spalla self-review #1: embed full content of each untracked file
 # (with per-file line cap) so reviewers can actually inspect new files.
@@ -304,6 +370,7 @@ if [[ -n "$UNTRACKED_FILES_FOR_DUMP" ]]; then
         UNTRACKED_BODIES+=$'\n----- END UNTRACKED FILE: '"$ufile"$' -----\n'
     done <<< "$UNTRACKED_FILES_FOR_DUMP"
 fi
+UNTRACKED_BODIES="$(redact_for_external "$UNTRACKED_BODIES")" || _fail_closed_redaction
 
 PROMPT="[SPALLA]
 
