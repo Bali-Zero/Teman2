@@ -1,14 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Tool links inside the persona doors — MYTHOS B2R2.
+ * Tool links on the home — MYTHOS B2R2, on the R19 home.
  *
- * B2 demoted the four FunnelFeature blocks to a ghost-chip strip
- * (FunnelChips). B2R2 (Antonello 2026-06-11) kills the strip: the tool
- * identities move INTO the persona doors as bold tool-title links. These
- * tests pin that reality: the chips strip is GONE, and each door carries
- * its tool link with the href byte-identical to the old chip
- * (= FunnelFeature.FUNNEL_HREF; D10 deliberately not resolved here).
+ * B2R2 (Antonello 2026-06-11) moved the tool identities into the persona
+ * doors as tool links with the href byte-identical to the old chip
+ * (= FunnelFeature.FUNNEL_HREF; D10 deliberately not resolved here). The R19
+ * home has no persona-door cards: each of the four tools now sits in its
+ * service article of the #tools band, as a `data-tool` link. The destinations
+ * are the contract, and they are unchanged.
  *
  * History: the previous version of this spec asserted the FunnelChips
  * strip (4 chips + "when you already know what you need" header). Before
@@ -16,8 +16,35 @@ import { test, expect } from "@playwright/test";
  * `/contact?service=tax` target.
  *
  * Describe title contains "page Page" — required by the CI grep
- * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page"`).
+ * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page|@offline"`).
  */
+const TOOLS = [
+  {
+    tool: "visa",
+    article: "visa-tool",
+    name: "Visa Oracle",
+    href: "https://visa.balizero.com/",
+  },
+  {
+    tool: "kbli",
+    article: "business-tool",
+    name: "KBLI Navigator",
+    href: "/kbli",
+  },
+  {
+    tool: "tax",
+    article: "tax-tool",
+    name: "Tax Compliance Calendar",
+    href: "https://tax.balizero.com/",
+  },
+  {
+    tool: "property",
+    article: "property-tool",
+    name: "Property Check",
+    href: "/property/eligibility",
+  },
+] as const;
+
 test.describe("door tool links page Page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -30,55 +57,26 @@ test.describe("door tool links page Page", () => {
     ).toHaveCount(0);
   });
 
-  test("each door carries exactly one tool link (4 total)", async ({
+  test("each tool has exactly one link on the home (4 total)", async ({
     page,
   }) => {
-    const doors = page.getByTestId("persona-doors");
-    await expect(doors.locator("a[data-tool]")).toHaveCount(4);
-    for (const funnel of ["visa", "kbli", "tax", "property"]) {
-      await expect(doors.locator(`a[data-tool="${funnel}"]`)).toHaveCount(1);
+    const tools = page.locator("#tools");
+    await expect(tools.locator("a[data-tool]")).toHaveCount(4);
+    for (const { tool, article } of TOOLS) {
+      await expect(tools.locator(`a[data-tool="${tool}"]`)).toHaveCount(1);
+      await expect(
+        tools.locator(`#${article} a[data-tool="${tool}"]`),
+      ).toHaveCount(1);
     }
   });
 
-  test("Visa Oracle tool link points at visa.balizero.com", async ({
-    page,
-  }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="visa"]');
-    await expect(link).toContainText("Visa Oracle");
-    await expect(link).toContainText("check your visa");
-    await expect(link).toHaveAttribute("href", "https://visa.balizero.com/");
-  });
-
-  test("KBLI Navigator tool link points at /kbli", async ({ page }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="kbli"]');
-    await expect(link).toContainText("KBLI Navigator");
-    await expect(link).toContainText("find your code");
-    await expect(link).toHaveAttribute("href", "/kbli");
-  });
-
-  test("Tax Intelligence tool link points at tax.balizero.com", async ({
-    page,
-  }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="tax"]');
-    await expect(link).toContainText("Tax Intelligence");
-    await expect(link).toContainText("deadlines");
-    await expect(link).toHaveAttribute("href", "https://tax.balizero.com/");
-  });
-
-  test("Property Map tool link points at /property/eligibility", async ({
-    page,
-  }) => {
-    const link = page
-      .getByTestId("persona-doors")
-      .locator('a[data-tool="property"]');
-    await expect(link).toContainText("Property Map");
-    await expect(link).toContainText("zoning");
-    await expect(link).toHaveAttribute("href", "/property/eligibility");
-  });
+  for (const { tool, article, name, href } of TOOLS) {
+    test(`${name} tool link points at ${href}`, async ({ page }) => {
+      const link = page.locator(`#tools a[data-tool="${tool}"]`);
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", href);
+      // The link sits under its tool's own heading.
+      await expect(page.locator(`#${article} h3`)).toContainText(name);
+    });
+  }
 });
