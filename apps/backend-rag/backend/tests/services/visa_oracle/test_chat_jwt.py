@@ -217,3 +217,63 @@ async def test_chat_augments_system_prompt_when_jwt_valid(monkeypatch):
     assert "E33G" in captured["contents"]
     assert "13,000,000" in captured["contents"] or "13000000" in captured["contents"]
     assert resp.session_id == "sess-1"
+
+
+@pytest.mark.asyncio
+async def test_chat_augments_system_prompt_for_clock_context(monkeypatch):
+    """Visa Clock link: the chat answers (no 410) and the prompt carries the clock's visa type."""
+    from backend.app.routers import visa_oracle as mod
+    from backend.services.visa_unified.bridge import FunnelContext
+
+    today = datetime.now(timezone.utc).date()
+    ctx = FunnelContext(
+        check_hash="clock11111111111",
+        nationality="",
+        purpose="",
+        duration_months=0,
+        budget_band="",
+        recommended_visa=None,
+        estimated_cost_idr=None,
+        alternatives=[],
+        referral_mode=False,
+        branch="clock",
+        visa_type="VOA",
+        entry_date=today - timedelta(days=10),
+        expiry_date=today + timedelta(days=20),
+        extensions_possible=1,
+        extension_days=30,
+    )
+
+    async def _ctx(*_a, **_kw):
+        return ctx
+
+    monkeypatch.setattr("backend.services.visa_unified.bridge.get_funnel_context", _ctx)
+
+    class _FakeSearch:
+        async def search_hybrid(self, **_kw):
+            return {"results": [{"content": "VOA basics", "score": 0.8, "source": "imigrasi"}]}
+
+    monkeypatch.setattr("backend.services.rag.hybrid_search.HybridSearchService", _FakeSearch)
+
+    captured: dict = {}
+
+    class _FakeGemini:
+        async def generate_content(self, *, contents, **kw):
+            captured["contents"] = contents
+            return {"text": "clock answer"}
+
+    monkeypatch.setattr("backend.llm.genai_client.get_genai_client", lambda: _FakeGemini())
+
+    token = _make_jwt("clock11111111111")
+    req = _build_request(f"Bearer {token}")
+    body = mod.ChatRequest(
+        session_id="sess-clock",
+        message="posso estendere?",
+        check_hash="clock11111111111",
+        language="it",
+    )
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert "VOA" in captured["contents"]
+    assert (today + timedelta(days=20)).isoformat() in captured["contents"]
+    assert resp.session_id == "sess-clock"
