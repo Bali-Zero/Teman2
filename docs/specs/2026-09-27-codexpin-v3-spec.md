@@ -6,7 +6,8 @@ everything v2 says that is not contradicted here still holds.
 
 Committed 2026-09-27. Before that it existed only as a session scratch file, which a reboot
 would have deleted. This copy keeps the scratch text for D1–D9, their amendments and the 3-PR
-plan. It changes only what the three gates on PR #7420 (PR-1) proved wrong, and it adds:
+plan. It changes only what the three gates on PR #7420 (PR-1), or council rounds 1 and 2 on
+this spec, proved wrong, and it adds:
 
 - §5bis, the closed D5 inventory (condition S2 of the #7420 BLOCK);
 - §5ter, the mutation check CI runs against it (S3);
@@ -14,6 +15,10 @@ plan. It changes only what the three gates on PR #7420 (PR-1) proved wrong, and 
 
 §10 lists every change against the scratch text, each with the gate that proved it. The
 normative inventory is the sidecar `docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml`.
+
+Dates in this spec are calendar dates in Asia/Makassar (UTC+8). The measurements marked
+2026-09-27 ran on 2026-09-26 UTC, from 19:00Z on, and the evidence pack gives each one's UTC
+start and end. Every timestamp in the evidence pack is UTC, as §5quater requires.
 
 Why v3: three BLOCKs for the same cause (privileged-installer hardening: #7313 r0, #7313 r1,
 #7340 r0). Builder Contract §1 stops patch rounds. Every open finding below gets a design that
@@ -314,6 +319,13 @@ then exec.
   env is read. `WA_CODEX_BROKER_ENABLED=false` therefore cannot stop the relaunch loop that a
   broken root-owned pin causes. To stop it, repair or remove the pin as root, or run
   `launchctl bootout system/com.balizero.wa-codex-broker`.
+- **Heartbeat without PATH (added 2026-09-27, council round 1).** `heartbeat()` calls
+  `/bin/mkdir` and `/bin/date` by absolute path, as the proof line already calls `/bin/date`.
+  At `04dd6b51e4` it resolved `mkdir` and `date` through `PATH`, which the sourced env sets.
+  Under `PATH=/does-not-exist` the `starting` heartbeat was silently skipped (§8 item 6). The
+  fix is the one change PR-1 makes to the wrapper's text beyond `04dd6b51e4`: lines 72 and 74,
+  nothing else. It also makes G9b (§5bis.5) genuinely equivalent, and rows G9j and G9k pin
+  the two absolute paths (`abspath` sites, §5bis.3).
 - **Protocol line** (for D8), exactly as a whole line: `# pin-protocol: wa-codex-pin/1`.
 - The pin file format changes from v2's two keys to ONE key. #7340 never reached main or Pro,
   so nothing migrates.
@@ -574,6 +586,7 @@ The table in 5bis.6 is a rendering of the YAML, and S3 checks that the two agree
 step 9). The YAML header documents the row fields. Row ids in families 1–5 keep the builder's
 labels, so the #7420 pack stays readable:
 
+- G0 = the constants before the source (added in council round 1, 5bis.3);
 - G1 = NUL probe;
 - G2 = exactly one line;
 - G3 = semver;
@@ -585,26 +598,42 @@ The `was` field maps every earlier label: builder `G*`, gate `C*`/`N*`/`R*`, and
 
 ### 5bis.3 Site grammar: what "every guard" means, mechanically
 
-A site is one occurrence, on a code line of the target, of one of the 12 kinds below. Comment
+A site is one occurrence, on a code line of the target, of one of the 16 kinds below. Comment
 lines and blank lines have no sites. Before matching, the line is masked: the contents of
 `'…'` and `"…"` are blanked, so words inside messages never count, and a `#` that follows
 whitespace outside quotes starts a comment.
 
-| Kind       | Matches (on the masked line unless stated)                                                                                                              | Sites at `04dd6b51e4` |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `cond`     | each `if`, `elif`, `while` or `until` keyword in command position                                                                                       | 15                    |
-| `test`     | each `[` test command: a `[` preceded by line start or one of `\s ; & \| ! (` and followed by whitespace. Glob brackets such as `*[!0-9.]*` never match | 14                    |
-| `andor`    | each `&&` and each `\|\|`                                                                                                                               | 5                     |
-| `alt`      | inside `case … esac`, each `\|`-separated alternative of an arm's pattern (`pattern)` at line start)                                                    | 8                     |
-| `readopt`  | per `read` command: the `IFS=…` prefix if present, plus each option word (`-d ''` counts as one)                                                        | 5                     |
-| `default`  | on the raw line: each `${NAME:-…}`, `${NAME-…}`, `${NAME:=…}`, `${NAME=…}`, `${NAME:?…}`, `${NAME?…}`, `${NAME:+…}` or `${NAME+…}`                      | 1                     |
-| `exit`     | each `exit` or `return` in command position                                                                                                             | 18                    |
-| `hb`       | each `heartbeat` call (not its definition)                                                                                                              | 15                    |
-| `diag`     | each `echo` or `printf` on a line that redirects `>&2`                                                                                                  | 15                    |
-| `exec`     | each `exec`                                                                                                                                             | 2                     |
-| `setopt`   | each line that is `set -…` or `set +…`, including `set --`                                                                                              | 4                     |
-| `reassert` | each top-level `NAME=` or `export NAME=` after the `. "$ENV_FILE"` line                                                                                 | 7                     |
-| **total**  |                                                                                                                                                         | **109**               |
+| Kind       | Matches (on the masked line unless stated)                                                                                                                | Sites (PR-1 target) |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `cond`     | each `if`, `elif`, `while` or `until` keyword in command position                                                                                         | 15                  |
+| `test`     | each `[` test command: a `[` preceded by line start or one of `\s ; & \| ! (` and followed by whitespace. Glob brackets such as `*[!0-9.]*` never match   | 14                  |
+| `andor`    | each `&&` and each `\|\|`                                                                                                                                 | 5                   |
+| `alt`      | inside `case … esac`, each `\|`-separated alternative of an arm's pattern (`pattern)` at line start)                                                      | 8                   |
+| `readopt`  | per `read` command: the `IFS=…` prefix if present, plus each option word (`-d ''` counts as one)                                                          | 5                   |
+| `default`  | on the raw line: each `${NAME:-…}`, `${NAME-…}`, `${NAME:=…}`, `${NAME=…}`, `${NAME:?…}`, `${NAME?…}`, `${NAME:+…}` or `${NAME+…}`                        | 1                   |
+| `exit`     | each `exit` or `return` in command position                                                                                                               | 18                  |
+| `hb`       | each `heartbeat` call (not its definition)                                                                                                                | 15                  |
+| `diag`     | each `echo` or `printf` on a line that redirects `>&2`                                                                                                    | 15                  |
+| `exec`     | each `exec`                                                                                                                                               | 2                   |
+| `setopt`   | each line that is `set -…` or `set +…`, including `set --`                                                                                                | 4                   |
+| `reassert` | each top-level `NAME=` or `export NAME=` after the `. "$ENV_FILE"` line                                                                                   | 7                   |
+| `const`    | each top-level `NAME=` or `export NAME=` before the `. "$ENV_FILE"` line                                                                                  | 11                  |
+| `neg`      | each `!` negation: a `!` preceded by line start or one of `\s ; & \| (` and followed by whitespace, as in `if ! …` and `[ ! -f … ]`                       | 8                   |
+| `redir`    | each input redirection `<`, but not `<<`, `<(`, `<&` or a numbered `N<`                                                                                   | 2                   |
+| `abspath`  | on the raw line, comment removed: each command word that is an absolute path under `/bin`, `/sbin`, `/usr/bin` or `/usr/sbin`, including right after `$(` | 4                   |
+| **total**  |                                                                                                                                                           | **134**             |
+
+The first 12 kinds are the scratch grammar. `const`, `neg` and `redir` were added after council
+round 1, which showed a fail-open deletion in each class that no site claimed. `abspath` was
+added after council round 2, which showed that nothing pinned the heartbeat's `/bin/date`
+(§10). The PR-1 target is `04dd6b51e4` plus the D5 heartbeat fix. The fix adds the two
+`abspath` sites on lines 72 and 74, so the target has 134 sites and `04dd6b51e4` has 132.
+The other kinds count the same on both blobs.
+
+The grammar may over-match: an arithmetic `<` would count as a `redir`, and a column-0
+`IFS= read` before the source as a `const`. The wrapper has neither. An over-matched site
+fails closed, because it is UNCLAIMED until a row claims it or the grammar is narrowed in a
+reviewed change.
 
 A site's key is `(line, kind)`. When one line carries several sites of the same kind, they
 are keyed `kind#1`, `kind#2`, … in textual order. For example, line 134 has `test#1`
@@ -612,29 +641,42 @@ are keyed `kind#1`, `kind#2`, … in textual order. For example, line 134 has `t
 
 These are deliberately not sites:
 
-- **Constants and initialisations before the source** (`HOME_DIR=…`, `_wcbw_pin_ver=""`,
-  `_pin_lines=0`). Deleting one either crashes under `set -u` on every run, which any
-  innocence test catches, or matters only when launchd hands the process a hostile
-  environment. The plist is root-owned, and root is trusted (§1).
-- **The derivation and the prefix strip** (`_wcbw_pin_bin="$PINNED_CODEX_ROOT/…"` and
-  `${_pin_line#…}`). Deleting either breaks every valid pin. They are data flow, not guards.
+- **Indented working assignments** (`_pin_lines=0`, `_pin_line=""`, the loop's counter and
+  copy, the prefix strip `${_pin_line#…}` and the derivation
+  `_wcbw_pin_bin="$PINNED_CODEX_ROOT/…"`). They are data flow, not guards. Measured on
+  line 176: deleting `_pin_lines=0`, or setting it to `1` or `-1`, failed 29 to 33 tests,
+  because a valid single-line pin no longer counts as one line. Deleting line 177,
+  `_pin_line=""`, is inert and failed none: every accepted input overwrites it at line 180,
+  and an empty file exits on the line count before it is read.
+- **Output redirections** (`> "$SIDECAR_DIR/…"`, `2>/dev/null`). The heartbeat write is
+  asserted by N.2 and P.4. `2>/dev/null` only silences an untagged line, and untagged lines are
+  not the contract (5bis.4).
+- **Command options other than `read`'s** (`grep -q`, `mkdir -p`, `date -u`). Measured one by
+  one. Dropping `-q` prints the placeholder line to stdout, and N.4's empty-stdout clause
+  fails the placeholder test. Dropping `-p` makes `mkdir` fail on the existing sidecar
+  directory, so the heartbeat is never written and 43 tests fail. Dropping `-u` from either
+  `date` failed no test: the stamp would be local time labelled `Z`. That gap is §8 item 9.
 - **The rest:** `. "$ENV_FILE"`, `cd` on its own, and the `printf` that writes the heartbeat
   file.
 
 **Closure rule.** The set of extracted sites must equal the set of claimed sites, and no site
 may be claimed twice. A row claims the sites in its `covers` list, on its anchor line, plus the
 site on each line that its `stmt` mutants resolve to. Anything new in the wrapper that matches
-a kind (a new `[ … ]`, `&&`, case alternative, read flag, `${…:-…}`, `exit`, heartbeat,
-diagnostic or re-assert) is an UNCLAIMED site. CI fails until a row claims it. That is what
+a kind (a new `[ … ]`, `&&`, `!`, `<`, case alternative, read flag, `${…:-…}`, `exit`,
+heartbeat, diagnostic, constant, re-assert or absolute command path) is an UNCLAIMED site. CI fails until a row claims it. That is what
 "closed" means here: a guard added later without a row is a spec violation, and the check
 itself reports it.
 
-Measured on the `04dd6b51e4` wrapper with a scratch prototype of the extractor:
+Measured with a scratch prototype of the extractor:
 
-- it found exactly 109 sites, and every one was claimed;
-- planting five constructs produced 11 UNCLAIMED sites, one per planted site. The constructs
-  were an `if [ -s ] && [ -O ]` guard with `exit 3`, a `read -r -n 1`, a `${_z:=q}`, a
-  two-alternative `case`, and a post-source `FOO_EXTRA=1`.
+- it found exactly 134 sites on the PR-1 target and 132 on `04dd6b51e4`, and every one was
+  claimed. The `04dd6b51e4` inventory is the target's minus rows G9j and G9k, with G9b
+  anchored on the PATH-resolved `mkdir` (5bis.8);
+- planting nine constructs into the PR-1 target produced 17 UNCLAIMED sites, one per planted
+  site. The constructs were a pre-source `NEW_CONST="x"`, a pre-source
+  `export NEW_EXPORT=1`, a bare `/usr/bin/true`, an `if [ -s ] && [ -O ]` guard with
+  `exit 3`, a `read -r -n 1 _z < "$ENV_FILE"`, a `${_z:=q}`, a two-alternative `case`, an
+  `if ! true`, and a post-source `FOO_EXTRA=1`.
 
 **Mutation operators.** Each site kind has a fixed operator, so no one invents mutants per row:
 
@@ -649,6 +691,10 @@ Measured on the `04dd6b51e4` wrapper with a scratch prototype of the extractor:
 | `readopt`                                           | drop the flag                                                                                                                                 |
 | `default`                                           | drop the default (`${X:-true}` → `${X}`)                                                                                                      |
 | `setopt`, `reassert`, a lone `hb`, `diag` or `exec` | the statement becomes `:`                                                                                                                     |
+| `const`, and again each `reassert`                  | value substitution: `-mutant` inserted before the closing quote (`TAG="wa-codex-broker-wrapper-mutant"`)                                      |
+| `neg`                                               | drop the `!`                                                                                                                                  |
+| `redir`                                             | drop the redirection. The command then reads the wrapper's stdin, which launchd and the harness both bind to `/dev/null`                      |
+| `abspath`                                           | strip the directory (`/bin/date` → `date`), so the command resolves through the env's `PATH`                                                  |
 | the pinned `exec`                                   | plain `exec "$VENV_PY" …`, and separately `/usr/bin/env` → a PATH-resolved `env`                                                              |
 
 A `stmt` mutant writes `:` instead of deleting the line, so a block never becomes empty. Re-gate
@@ -661,7 +707,9 @@ Every test that runs the wrapper asserts one of these two contracts, never less.
 **Contract N (refusal).**
 
 1. `rc` equals the row's code: `78`, or `0` for the kill switch.
-2. The heartbeat file carries the expected `status` and `note`.
+2. The heartbeat file carries the expected `status` and `note`, and its `ts` is a well-formed
+   UTC stamp (`YYYY-MM-DDTHH:MM:SSZ`). An empty `ts` is what a PATH-resolved `date` writes
+   under a hostile `PATH` (G9k).
 3. Exactly ONE stderr line starts with `wa-codex-broker-wrapper: `, and it contains the
    guard's reason text.
 4. The stub did not run (stdout is empty).
@@ -671,11 +719,12 @@ Every test that runs the wrapper asserts one of these two contracts, never less.
 1. `rc == 0`.
 2. The stub reports exactly the expected `WA_CODEX_CLI_VERSION_PIN`, `WA_CODEX_BIN` and
    `PYTHONPATH`.
-3. Exactly one tagged stderr line: `pin applied: codex <v> at <bin>`, or
-   `no pin file at <path> — … (legacy)`.
-4. The heartbeat reads `starting` / `exec daemon`. The exception is the two hostile-PATH tests,
-   where the PATH-resolved `mkdir`/`date` inside `heartbeat()` is a known pre-existing gap
-   (§8 item 6).
+3. Exactly one tagged stderr line: `<UTC stamp> pin applied: codex <v> at <bin>`, matched in
+   full with the stamp's format, or `no pin file at <path> — … (legacy)`.
+4. The heartbeat reads `starting` / `exec daemon` with a well-formed `ts`, the two
+   hostile-PATH tests included. The
+   scratch contract exempted those two, because `heartbeat()` resolved `mkdir`/`date` through
+   `PATH`. The D5 heartbeat fix removes the gap, and with it the exemption.
 
 N.3 is the clause that kills masking:
 
@@ -687,7 +736,10 @@ N.3 is the clause that kills masking:
 Only tagged lines are asserted. Shell error text such as `cd: …` varies with the bash version
 and is not the wrapper's contract.
 
-Reason texts are asserted as substrings. They come from the wrapper at `04dd6b51e4`:
+Reason texts are asserted as substrings, so no reason may contain another: if one did, a
+fixture for the longer reason would also pass on the shorter one, and masking would be back.
+They are pairwise non-containing today, and a static test keeps them so (5bis.7). They come
+from the wrapper at `04dd6b51e4`:
 
 - `env file missing`
 - `__FILL_ME__ placeholders`
@@ -706,7 +758,7 @@ Reason texts are asserted as substrings. They come from the wrapper at `04dd6b51
 The `cd` refusal has no tagged line of its own. Its fixture asserts the legacy line plus the
 heartbeat note `cd failed`.
 
-Fixture rules, one carried over and two new:
+Fixture rules, one carried over and four new:
 
 - **Plant what the fault would otherwise resolve to** (r0 C1). A negative fixture plants the
   binary tree its version would resolve to, unless the missing tree IS the fault
@@ -719,6 +771,14 @@ Fixture rules, one carried over and two new:
   `fail-open` with real ones.
 - **The stub reports `PYTHONPATH`** (new). `_DUMP_ENV_STUB` prints it alongside the two pin
   values.
+- **The wrapper's stdin is `/dev/null`** (new, council round 1). `_run` passes
+  `stdin=subprocess.DEVNULL`, as launchd does by default. Without it, a `redir` mutant reads
+  whatever stdin pytest inherited, and its verdict depends on the terminal.
+- **Every patched constant is pinned statically** (new, council round 1). `_patched_wrapper`
+  rewrites every line `^KEY=` for the five `_PATCHABLE_KEYS`, re-asserts included, so a changed
+  value on those lines is invisible to every run. `test_wrapper_ships_production_constants`
+  asserts the production value of each such line in the blob. Its key set must equal
+  `_PATCHABLE_KEYS`, so a sixth patchable key cannot be added without a pinned value.
 
 ### 5bis.5 Dispositions, and the decisions re-gate #2 asked for
 
@@ -752,16 +812,24 @@ PR-2's `test_semver_validators_agree` still asserts the same corpus for the inst
 | S1–S5                         | MUST in PR-1 (reasons above)                                                                                                                                    | G3a–G3e                      | `[semver_alpha_planted]`, `[semver_leading_dot_planted]`, `[semver_trailing_dot_planted]`, `[semver_empty_field_planted]`, `[semver_four_fields_planted]`            |
 | P1–P6                         | MUST in PR-1                                                                                                                                                    | G9c, G9d, G9e, G9g, G9h, G9i | 5bis.7                                                                                                                                                               |
 
-There are three EQUIVALENT rows:
+There are four EQUIVALENT rows:
 
+- **G0k** (`_wcbw_pin_bin=""`, value changed). `$2` is read only when `$1` is non-empty.
+  `$1` is non-empty only on the pin path, where line 202 reassigns `_wcbw_pin_bin` before
+  the handoff.
 - **G1c** (`IFS=` in the NUL probe). `read`'s status depends only on whether the delimiter
   comes before EOF. IFS shapes only the stored value, and that value is never read.
 - **G7c** (`set +a`). Its only effect is that the six re-asserted names are exported to the
   daemon too. `wa_codex_daemon.py` reads only `WA_*` and `CODEX_HOME`.
-- **G9b** (`mkdir … || return 0` in `heartbeat`). There is no errexit, and every caller
+- **G9b** (`/bin/mkdir … || return 0` in `heartbeat`). There is no errexit, and every caller
   ignores the status, so rc and control flow are identical. The only difference is one extra
   shell error line when the sidecar directory cannot be created, and no contract pins that
-  line's absence.
+  line's absence. This holds only on the PR-1 target. At `04dd6b51e4`, `mkdir` and `date`
+  came from `PATH`. There the claim is false. Council round 1 (codex-gpt-5.6-sol) raised it,
+  and its session ended before it could execute the check; the author then reproduced it.
+  Under `PATH=/does-not-exist`, with the sidecar directory present, the shipped wrapper wrote
+  no heartbeat, while the mutant wrote `starting` with an empty timestamp. The D5 heartbeat
+  fix is what makes the row equivalent.
 
 ### 5bis.6 The inventory (rendered from the YAML)
 
@@ -771,96 +839,118 @@ Mode codes (the exact classification rule is §5ter.3 step 8):
   different binary, version or `PYTHONPATH`.
 - **FC**, fail-closed-other-rc: a legitimate start is blocked, or the refusal's rc changes.
 - **DX**, same-rc-other-diagnosis: same rc, but a different heartbeat or tagged line.
+- **ST**, static: every killer is a test that reads the blob and never runs it. Used only for
+  values the harness overwrites (5bis.4). What such a change does in production is not
+  measured. A wrong `CODEX_PIN_FILE` would read as "no pin" and fall back to legacy, so treat
+  ST as FO when weighing a survivor.
 - **EQ**, equivalent.
 
-Mutant suffixes: `c` condition, `d` diagnostic, `h` heartbeat, `x` exit. Line numbers are
-those of blob `4143a795d9`.
+Mutant suffixes: `c` condition, `d` diagnostic, `h` heartbeat, `x` exit, `!` negation dropped,
+`val` value changed, `redir` input redirection dropped. Line numbers are those of blob
+`4143a795d9`, and they are the same on the PR-1 target.
 
 <!-- d5-inventory:begin -->
 
-| ID  | was                  | line    | expression                                                     | covers          | mutants (mode)         | disposition | killed by                                                                                                |
-| --- | -------------------- | ------- | -------------------------------------------------------------- | --------------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
-| G1  | builder G1, D09      | 171–174 | `whole guard: if <NUL probe>; then … exit 78`                  | cond            | c FO, d DX, h DX, x FO | MUST        | `[nul_same_line_planted]`                                                                                |
-| G1a | new                  | 171     | `-d ''`                                                        | readopt#3       | -d FC                  | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
-| G1b | new                  | 171     | `-r (probe)`                                                   | readopt#2       | -r DX                  | MUST        | `[nul_after_backslash_planted]`                                                                          |
-| G1c | new                  | 171     | `IFS= (probe)`                                                 | readopt#1       | IFS EQ                 | EQUIVALENT  | — (none, see reason)                                                                                     |
-| G2  | builder G2, D11      | 182–185 | `if [ "$_pin_lines" -ne 1 ]; then`                             | cond, test      | c FO, d DX, h DX, x FO | MUST        | `[two_lines_diff_versions_planted]`                                                                      |
-| G2a | D10                  | 178     | `\|\| [ -n "$_pin_row" ]`                                      | andor, test     | limb FO                | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies`   |
-| G2b | D25                  | 178     | `IFS= (loop)`                                                  | readopt#1       | IFS FO                 | MUST        | `[trailing_space_planted]`, `[leading_tab_planted]`                                                      |
-| G2c | D26                  | 178     | `-r (loop)`                                                    | readopt#2       | -r FO                  | MUST        | `[backslash_in_version_planted]`                                                                         |
-| G2d | new                  | 178     | `while <read loop>`                                            | cond            | c FC                   | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
-| G3  | builder G3, D13      | 197–200 | `if ! _is_semver "$_wcbw_pin_ver"; then`                       | cond            | c FO, d DX, h DX, x FO | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`                                                     |
-| G3a | S1                   | 84      | `*[!0-9.]*`                                                    | alt#1           | alt FO                 | MUST        | `[semver_alpha_planted]`                                                                                 |
-| G3b | S2                   | 84      | `.*`                                                           | alt#2           | alt FO                 | MUST        | `[semver_leading_dot_planted]`                                                                           |
-| G3c | S3                   | 84      | `*.`                                                           | alt#3           | alt FO                 | MUST        | `[semver_trailing_dot_planted]`                                                                          |
-| G3d | S4                   | 84      | `*..*`                                                         | alt#4           | alt FO                 | MUST        | `[semver_empty_field_planted]`                                                                           |
-| G3e | S5                   | 84      | `*.*.*.*`                                                      | alt#5           | alt FO                 | MUST        | `[semver_four_fields_planted]`                                                                           |
-| G3f | new                  | 84      | `return 1 (reject arm)`                                        | exit            | flip FO                | MUST        | `[traversal_escape_planted]`, `[semver_alpha_planted]`                                                   |
-| G3g | S6                   | 85      | `*.*.*) return 0 ;;`                                           | alt, exit       | widen FO, flip FC      | MUST        | `[bad_semver_planted]`, `test_innocence_valid_pin_overrides_env`                                         |
-| G3h | S7                   | 87      | `return 1`                                                     | exit            | flip FO                | MUST        | `[bad_semver_planted]`                                                                                   |
-| G4a | builder G4a, D04     | 142–145 | `if [ -L "$CODEX_PIN_FILE" ]; then`                            | cond, test      | c FO, d DX, h DX, x FO | MUST        | `[symlink_pin]`                                                                                          |
-| G4b | builder G4b, D12     | 188     | `WA_CODEX_CLI_VERSION_PIN=*)`                                  | alt             | widen FO               | MUST        | `[bare_version_planted]`                                                                                 |
-| G4c | new                  | 191–194 | `*)`                                                           | alt             | c DX, d DX, h DX, x DX | MUST        | `[bare_version_planted]`, `[unknown_key]`                                                                |
-| G4d | D05                  | 146     | `elif [ -e "$CODEX_PIN_FILE" ]; then`                          | cond, test      | true FC, false FO      | MUST        | `test_innocence_missing_pin_is_legacy`, `test_innocence_valid_pin_overrides_env`, `[bad_semver_planted]` |
-| G4e | D06                  | 147–150 | `if [ ! -f "$CODEX_PIN_FILE" ]; then`                          | cond, test      | c FC, d DX, h DX, x FC | MUST        | `[directory]`, `[dev_null]`                                                                              |
-| G4f | N4, D08              | 152–155 | `if [ ! -r "$CODEX_PIN_FILE" ]; then`                          | cond, test      | c DX, d DX, h DX, x DX | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`                                              |
-| G5  | builder G5, D14      | 206–209 | `whole guard: if ! -f \|\| ! -x; then … exit 78`               | cond            | c FO, d DX, h DX, x FO | MUST        | `[bin_missing]`                                                                                          |
-| G5a | builder G5a, C2, D15 | 206     | `[ ! -f "$_wcbw_pin_bin" ]`                                    | test#1          | -f FO                  | MUST        | `[bin_is_directory]`                                                                                     |
-| G5b | builder G5b, R3, D16 | 206     | `\|\| [ ! -x "$_wcbw_pin_bin" ]`                               | test#2, andor   | -x FO                  | MUST        | `[bin_not_executable_planted]`                                                                           |
-| G6  | C3, D01              | 134–137 | `whole guard: if -d && ! -x; then … exit 78`                   | cond            | c DX, d DX, h DX, x DX | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                 |
-| G6a | D02                  | 134     | `[ -d "$RUNTIME_DIR" ] &&`                                     | test#1          | -d DX                  | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                      |
-| G6b | D03                  | 134     | `&& [ ! -x "$RUNTIME_DIR" ]`                                   | test#2, andor   | -x FC                  | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
-| G7a | D21                  | 218     | `set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"`                     | setopt          | stmt FC                | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
-| G7b | new                  | 220     | `set -a`                                                       | setopt          | stmt FO                | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
-| G7c | new                  | 222     | `set +a`                                                       | setopt          | stmt EQ                | EQUIVALENT  | — (none, see reason)                                                                                     |
-| G7d | D22                  | 268     | `if [ -n "$1" ]; then`                                         | cond, test      | false FO, true FO      | MUST        | `test_innocence_valid_pin_overrides_env`, `test_innocence_missing_pin_is_legacy`                         |
-| G7e | D24                  | 269     | `echo "$TAG: $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) pin appli…`   | diag            | stmt DX                | MUST        | `test_pin_applied_log_line`                                                                              |
-| G7f | D19, D20             | 270     | `exec /usr/bin/env WA_CODEX_CLI_VERSION_PIN="$1" WA_CODEX_…`   | exec            | plain FO, path-env FC  | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_env_path_cannot_disable_the_pin[nonexistent]`      |
-| G7g | new                  | 273     | `exec "$VENV_PY" -m backend.services.integrations.wa_codex…`   | exec            | stmt FC                | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
-| G7h | D23                  | 212     | `echo "$TAG: no pin file at $CODEX_PIN_FILE — codex from t…`   | diag            | stmt DX                | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
-| G8a | N1, D17a             | 231     | `HOME_DIR="/Users/zantara-codex"`                              | reassert        | stmt DX                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8b | N1, D17b             | 232     | `RUNTIME_DIR="/usr/local/lib/wa-codex-broker"`                 | reassert        | stmt FO                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8c | N1, D17c             | 233     | `VENV_PY="$RUNTIME_DIR/.venv/bin/python3"`                     | reassert        | stmt FO                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8d | N1, D17d             | 234     | `TAG="wa-codex-broker-wrapper"`                                | reassert        | stmt DX                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8e | N1, D17e             | 235     | `ORGAN_ID="pro.wa_codex_broker"`                               | reassert        | stmt DX                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8f | N1, D17f             | 236     | `SIDECAR_DIR="$HOME_DIR/.organism/last_seen"`                  | reassert        | stmt DX                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
-| G8g | new                  | 264     | `export PYTHONPATH="$RUNTIME_DIR"`                             | reassert        | stmt FO                | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                               |
-| G9a | new                  | 47      | `set -u`                                                       | setopt          | stmt FO                | MUST        | `test_guilt_env_undefined_name_never_execs`                                                              |
-| G9b | new                  | 72      | `mkdir -p "$SIDECAR_DIR" 2>/dev/null \|\| return 0`            | andor, exit     | limb EQ                | EQUIVALENT  | — (none, see reason)                                                                                     |
-| G9c | P1                   | 91–94   | `if [ ! -f "$ENV_FILE" ]; then`                                | cond, test      | c FC, d DX, h DX, x FC | MUST        | `test_guilt_env_file_missing_refuses`                                                                    |
-| G9d | P2                   | 96–99   | `if grep -q "__FILL_ME__" "$ENV_FILE"; then`                   | cond            | c FO, d DX, h DX, x FO | MUST        | `test_guilt_env_placeholders_refuse`                                                                     |
-| G9e | P3                   | 251–254 | `whole guard: kill switch … exit 0`                            | cond, test      | c FO, d DX, h DX, x FO | MUST        | `test_kill_switch_stops_without_exec`                                                                    |
-| G9f | new                  | 251     | `${WA_CODEX_BROKER_ENABLED:-true}`                             | default         | default FC             | MUST        | `test_innocence_env_without_kill_switch_key_applies`                                                     |
-| G9g | P4                   | 257–260 | `if [ ! -x "$VENV_PY" ]; then`                                 | cond, test      | c FC, d DX, h DX, x FC | MUST        | `test_guilt_venv_missing_refuses`                                                                        |
-| G9h | P5                   | 263     | `cd "$RUNTIME_DIR" \|\| { heartbeat "refused" "cd failed"; e…` | andor, hb, exit | limb FO, h DX, x FO    | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                      |
-| G9i | P6                   | 266     | `heartbeat "starting" "exec daemon"`                           | hb              | stmt DX                | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
+| ID  | was                  | line    | expression                                                     | covers               | mutants (mode)               | disposition | killed by                                                                                                |
+| --- | -------------------- | ------- | -------------------------------------------------------------- | -------------------- | ---------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| G0a | council r1           | 49      | `HOME_DIR="/Users/zantara-codex"`                              | const                | val ST                       | MUST        | `test_wrapper_ships_production_constants`                                                                |
+| G0b | council r1           | 50      | `RUNTIME_DIR="/usr/local/lib/wa-codex-broker"`                 | const                | val ST                       | MUST        | `test_wrapper_ships_production_constants`                                                                |
+| G0c | council r1           | 51      | `ENV_FILE="$HOME_DIR/.wa-codex-broker.env"`                    | const                | val FC                       | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
+| G0d | council r1           | 52      | `VENV_PY="$RUNTIME_DIR/.venv/bin/python3"`                     | const                | val ST                       | MUST        | `test_wrapper_ships_production_constants`                                                                |
+| G0e | council r1           | 53      | `TAG="wa-codex-broker-wrapper"`                                | const                | val DX                       | MUST        | `test_guilt_env_file_missing_refuses`                                                                    |
+| G0f | council r1           | 54      | `ORGAN_ID="pro.wa_codex_broker"`                               | const                | val DX                       | MUST        | `test_guilt_env_file_missing_refuses`                                                                    |
+| G0g | council r1           | 55      | `SIDECAR_DIR="$HOME_DIR/.organism/last_seen"`                  | const                | val DX                       | MUST        | `test_guilt_env_file_missing_refuses`                                                                    |
+| G0h | council r1           | 63      | `CODEX_PIN_FILE="/usr/local/lib/wa-codex-broker/codex-pin.…`   | const                | val ST                       | MUST        | `test_wrapper_ships_production_constants`                                                                |
+| G0i | council r1           | 64      | `PINNED_CODEX_ROOT="/usr/local/lib/wa-codex-broker/codex"`     | const                | val ST                       | MUST        | `test_wrapper_ships_production_constants`                                                                |
+| G0j | council r1           | 140     | `_wcbw_pin_ver=""`                                             | const                | val FO                       | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
+| G0k | council r1           | 141     | `_wcbw_pin_bin=""`                                             | const                | val EQ                       | EQUIVALENT  | — (none, see reason)                                                                                     |
+| G1  | builder G1, D09      | 171–174 | `whole guard: if <NUL probe>; then … exit 78`                  | cond                 | c FO, d DX, h DX, x FO       | MUST        | `[nul_same_line_planted]`                                                                                |
+| G1a | new                  | 171     | `-d ''`                                                        | readopt#3            | -d FC                        | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
+| G1b | new                  | 171     | `-r (probe)`                                                   | readopt#2            | -r DX                        | MUST        | `[nul_after_backslash_planted]`                                                                          |
+| G1c | new                  | 171     | `IFS= (probe)`                                                 | readopt#1            | IFS EQ                       | EQUIVALENT  | — (none, see reason)                                                                                     |
+| G1d | council r1           | 171     | `< "$CODEX_PIN_FILE" (probe input)`                            | redir                | redir FO                     | MUST        | `[nul_same_line_planted]`, `[embedded_nul]`                                                              |
+| G2  | builder G2, D11      | 182–185 | `if [ "$_pin_lines" -ne 1 ]; then`                             | cond, test           | c FO, d DX, h DX, x FO       | MUST        | `[two_lines_diff_versions_planted]`                                                                      |
+| G2a | D10                  | 178     | `\|\| [ -n "$_pin_row" ]`                                      | andor, test          | limb FO                      | MUST        | `[two_lines_last_unterminated_planted]`, `test_innocence_single_line_without_trailing_newline_applies`   |
+| G2b | D25                  | 178     | `IFS= (loop)`                                                  | readopt#1            | IFS FO                       | MUST        | `[trailing_space_planted]`, `[leading_tab_planted]`                                                      |
+| G2c | D26                  | 178     | `-r (loop)`                                                    | readopt#2            | -r FO                        | MUST        | `[backslash_in_version_planted]`                                                                         |
+| G2d | new                  | 178     | `while <read loop>`                                            | cond                 | c FC                         | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
+| G2e | council r1           | 181     | `< "$CODEX_PIN_FILE" (loop input)`                             | redir                | redir FC                     | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
+| G3  | builder G3, D13      | 197–200 | `if ! _is_semver "$_wcbw_pin_ver"; then`                       | cond, neg            | c FO, d DX, h DX, x FO, ! FO | MUST        | `[bad_semver_planted]`, `[traversal_escape_planted]`, `test_innocence_valid_pin_overrides_env`           |
+| G3a | S1                   | 84      | `*[!0-9.]*`                                                    | alt#1                | alt FO                       | MUST        | `[semver_alpha_planted]`                                                                                 |
+| G3b | S2                   | 84      | `.*`                                                           | alt#2                | alt FO                       | MUST        | `[semver_leading_dot_planted]`                                                                           |
+| G3c | S3                   | 84      | `*.`                                                           | alt#3                | alt FO                       | MUST        | `[semver_trailing_dot_planted]`                                                                          |
+| G3d | S4                   | 84      | `*..*`                                                         | alt#4                | alt FO                       | MUST        | `[semver_empty_field_planted]`                                                                           |
+| G3e | S5                   | 84      | `*.*.*.*`                                                      | alt#5                | alt FO                       | MUST        | `[semver_four_fields_planted]`                                                                           |
+| G3f | new                  | 84      | `return 1 (reject arm)`                                        | exit                 | flip FO                      | MUST        | `[traversal_escape_planted]`, `[semver_alpha_planted]`                                                   |
+| G3g | S6                   | 85      | `*.*.*) return 0 ;;`                                           | alt, exit            | widen FO, flip FC            | MUST        | `[bad_semver_planted]`, `test_innocence_valid_pin_overrides_env`                                         |
+| G3h | S7                   | 87      | `return 1`                                                     | exit                 | flip FO                      | MUST        | `[bad_semver_planted]`                                                                                   |
+| G4a | builder G4a, D04     | 142–145 | `if [ -L "$CODEX_PIN_FILE" ]; then`                            | cond, test           | c FO, d DX, h DX, x FO       | MUST        | `[symlink_pin]`                                                                                          |
+| G4b | builder G4b, D12     | 188     | `WA_CODEX_CLI_VERSION_PIN=*)`                                  | alt                  | widen FO                     | MUST        | `[bare_version_planted]`                                                                                 |
+| G4c | new                  | 191–194 | `*)`                                                           | alt                  | c DX, d DX, h DX, x DX       | MUST        | `[bare_version_planted]`, `[unknown_key]`                                                                |
+| G4d | D05                  | 146     | `elif [ -e "$CODEX_PIN_FILE" ]; then`                          | cond, test           | true FC, false FO            | MUST        | `test_innocence_missing_pin_is_legacy`, `test_innocence_valid_pin_overrides_env`, `[bad_semver_planted]` |
+| G4e | D06                  | 147–150 | `if [ ! -f "$CODEX_PIN_FILE" ]; then`                          | cond, test, neg      | c FC, d DX, h DX, x FC, ! FC | MUST        | `[directory]`, `[dev_null]`, `test_innocence_valid_pin_overrides_env`                                    |
+| G4f | N4, D08              | 152–155 | `if [ ! -r "$CODEX_PIN_FILE" ]; then`                          | cond, test, neg      | c DX, d DX, h DX, x DX, ! FC | MUST        | `test_guilt_mode_000_pin_reports_unreadable_not_line_count`, `test_innocence_valid_pin_overrides_env`    |
+| G5  | builder G5, D14      | 206–209 | `whole guard: if ! -f \|\| ! -x; then … exit 78`               | cond                 | c FO, d DX, h DX, x FO       | MUST        | `[bin_missing]`                                                                                          |
+| G5a | builder G5a, C2, D15 | 206     | `[ ! -f "$_wcbw_pin_bin" ]`                                    | test#1, neg#1        | -f FO, ! FO                  | MUST        | `[bin_is_directory]`, `test_innocence_valid_pin_overrides_env`                                           |
+| G5b | builder G5b, R3, D16 | 206     | `\|\| [ ! -x "$_wcbw_pin_bin" ]`                               | test#2, andor, neg#2 | -x FO, ! FO                  | MUST        | `[bin_not_executable_planted]`, `test_innocence_valid_pin_overrides_env`                                 |
+| G6  | C3, D01              | 134–137 | `whole guard: if -d && ! -x; then … exit 78`                   | cond                 | c DX, d DX, h DX, x DX       | MUST        | `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`                                                 |
+| G6a | D02                  | 134     | `[ -d "$RUNTIME_DIR" ] &&`                                     | test#1               | -d DX                        | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                      |
+| G6b | D03                  | 134     | `&& [ ! -x "$RUNTIME_DIR" ]`                                   | test#2, andor, neg   | -x FC, ! FC                  | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_unsearchable_runtime_dir_refuses_not_legacy`       |
+| G7a | D21                  | 218     | `set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"`                     | setopt               | stmt FC                      | MUST        | `test_innocence_valid_pin_overrides_env`                                                                 |
+| G7b | new                  | 220     | `set -a`                                                       | setopt               | stmt FO                      | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
+| G7c | new                  | 222     | `set +a`                                                       | setopt               | stmt EQ                      | EQUIVALENT  | — (none, see reason)                                                                                     |
+| G7d | D22                  | 268     | `if [ -n "$1" ]; then`                                         | cond, test           | false FO, true FO            | MUST        | `test_innocence_valid_pin_overrides_env`, `test_innocence_missing_pin_is_legacy`                         |
+| G7e | D24                  | 269     | `echo "$TAG: $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) pin appli…`   | diag, abspath        | stmt DX, path DX             | MUST        | `test_pin_applied_log_line`, `[nonexistent]`                                                             |
+| G7f | D19, D20             | 270     | `exec /usr/bin/env WA_CODEX_CLI_VERSION_PIN="$1" WA_CODEX_…`   | exec, abspath        | plain FO, path-env FC        | MUST        | `test_innocence_valid_pin_overrides_env`, `test_guilt_env_path_cannot_disable_the_pin[nonexistent]`      |
+| G7g | new                  | 273     | `exec "$VENV_PY" -m backend.services.integrations.wa_codex…`   | exec                 | stmt FC                      | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
+| G7h | D23                  | 212     | `echo "$TAG: no pin file at $CODEX_PIN_FILE — codex from t…`   | diag                 | stmt DX                      | MUST        | `test_innocence_missing_pin_is_legacy`                                                                   |
+| G8a | N1, D17a             | 231     | `HOME_DIR="/Users/zantara-codex"`                              | reassert             | stmt DX, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
+| G8b | N1, D17b             | 232     | `RUNTIME_DIR="/usr/local/lib/wa-codex-broker"`                 | reassert             | stmt FO, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
+| G8c | N1, D17c             | 233     | `VENV_PY="$RUNTIME_DIR/.venv/bin/python3"`                     | reassert             | stmt FO, val ST              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_wrapper_ships_production_constants`          |
+| G8d | N1, D17d             | 234     | `TAG="wa-codex-broker-wrapper"`                                | reassert             | stmt DX, val DX              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_innocence_valid_pin_overrides_env`           |
+| G8e | N1, D17e             | 235     | `ORGAN_ID="pro.wa_codex_broker"`                               | reassert             | stmt DX, val DX              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_innocence_valid_pin_overrides_env`           |
+| G8f | N1, D17f             | 236     | `SIDECAR_DIR="$HOME_DIR/.organism/last_seen"`                  | reassert             | stmt DX, val DX              | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`, `test_innocence_valid_pin_overrides_env`           |
+| G8g | new                  | 264     | `export PYTHONPATH="$RUNTIME_DIR"`                             | reassert             | stmt FO, val FO              | MUST        | `test_guilt_env_cannot_clobber_pythonpath`                                                               |
+| G9a | new                  | 47      | `set -u`                                                       | setopt               | stmt FO                      | MUST        | `test_guilt_env_undefined_name_never_execs`                                                              |
+| G9b | new                  | 72      | `/bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null \|\| return 0`       | andor, exit          | limb EQ                      | EQUIVALENT  | — (none, see reason)                                                                                     |
+| G9j | council r2           | 72      | `/bin/mkdir (heartbeat)`                                       | abspath              | path DX                      | MUST        | `[nonexistent]`                                                                                          |
+| G9k | council r2           | 74      | `/bin/date (heartbeat)`                                        | abspath              | path DX                      | MUST        | `[nonexistent]`                                                                                          |
+| G9c | P1                   | 91–94   | `if [ ! -f "$ENV_FILE" ]; then`                                | cond, test, neg      | c FC, d DX, h DX, x FC, ! FC | MUST        | `test_guilt_env_file_missing_refuses`, `test_innocence_valid_pin_overrides_env`                          |
+| G9d | P2                   | 96–99   | `if grep -q "__FILL_ME__" "$ENV_FILE"; then`                   | cond                 | c FO, d DX, h DX, x FO       | MUST        | `test_guilt_env_placeholders_refuse`                                                                     |
+| G9e | P3                   | 251–254 | `whole guard: kill switch … exit 0`                            | cond, test           | c FO, d DX, h DX, x FO       | MUST        | `test_kill_switch_stops_without_exec`                                                                    |
+| G9f | new                  | 251     | `${WA_CODEX_BROKER_ENABLED:-true}`                             | default              | default FC                   | MUST        | `test_innocence_env_without_kill_switch_key_applies`                                                     |
+| G9g | P4                   | 257–260 | `if [ ! -x "$VENV_PY" ]; then`                                 | cond, test, neg      | c FC, d DX, h DX, x FC, ! FC | MUST        | `test_guilt_venv_missing_refuses`, `test_innocence_valid_pin_overrides_env`                              |
+| G9h | P5                   | 263     | `cd "$RUNTIME_DIR" \|\| { heartbeat "refused" "cd failed"; e…` | andor, hb, exit      | limb FO, h DX, x FO          | MUST        | `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                      |
+| G9i | P6                   | 266     | `heartbeat "starting" "exec daemon"`                           | hb                   | stmt DX                      | MUST        | `test_guilt_env_cannot_clobber_post_source_literals`                                                     |
 
 <!-- d5-inventory:end -->
 
-Totals: 54 rows (51 MUST, 3 EQUIVALENT), 109 sites, 99 mutants (96 MUST, 3 EQUIVALENT).
-Declared modes: 39 FO, 15 FC, 42 DX, 3 EQ.
+Totals: 69 rows (65 MUST, 4 EQUIVALENT), 134 sites, 130 mutants (126 MUST, 4 EQUIVALENT).
+Declared modes: 45 FO, 22 FC, 51 DX, 8 ST, 4 EQ.
 
 ### 5bis.7 Fixtures that PR-1 adds or changes
 
 New. N and P refer to the contracts in 5bis.4:
 
-| Test or param id                                                                                                                                          | Row(s)   | Shape                                                                                            | Expected                                                                                                                                      |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[nul_after_backslash_planted]`                                                                                                                           | G1b      | bytes `WA_CODEX_CLI_VERSION_PIN=9.9.9\`, NUL, `JUNK`, LF; `9.9.9` planted                        | N: `pin file contains a NUL byte`                                                                                                             |
-| `[two_lines_last_unterminated_planted]`                                                                                                                   | G2a      | `…=1.1.1` LF `…=9.9.9`, no final LF; both planted                                                | N: `must carry exactly one line`                                                                                                              |
-| `[trailing_space_planted]`                                                                                                                                | G2b      | `…=9.9.9 ` LF; planted                                                                           | N: `not exact semver`                                                                                                                         |
-| `[leading_tab_planted]`                                                                                                                                   | G2b      | TAB `…=9.9.9` LF; planted                                                                        | N: `unrecognized line`                                                                                                                        |
-| `[backslash_in_version_planted]`                                                                                                                          | G2c      | `…=9.9.\9` LF; `9.9.9` planted                                                                   | N: `not exact semver`                                                                                                                         |
-| `[semver_alpha_planted]`, `[semver_leading_dot_planted]`, `[semver_trailing_dot_planted]`, `[semver_empty_field_planted]`, `[semver_four_fields_planted]` | G3a–G3e  | `a.b.c`, `.1.2`, `1.2.`, `1..2`, `1.2.3.4`, each planted at its own derived path                 | N: `not exact semver`                                                                                                                         |
-| `test_innocence_single_line_without_trailing_newline_applies`                                                                                             | G2a      | `…=9.9.9` with no LF; planted                                                                    | P: applied `9.9.9`                                                                                                                            |
-| `test_guilt_env_cannot_clobber_pythonpath`                                                                                                                | G8g      | env `PYTHONPATH=/nonexistent-evil-pythonpath`; valid pin                                         | P, and the stub's `PYTHONPATH` equals the wrapper's `RUNTIME_DIR`                                                                             |
-| `test_guilt_env_undefined_name_never_execs`                                                                                                               | G9a      | env line `WA_CODEX_MODEL=$WA_CODEX_UNDEFINED_FOR_TEST`; valid pin                                | `rc != 0`, the stub did not run, no `starting` heartbeat. This pins today's `set -u` stop; a later 78-plus-heartbeat refusal would still pass |
-| `test_guilt_env_file_missing_refuses`                                                                                                                     | G9c      | no env file, no pin                                                                              | N: heartbeat note `env file missing`, reason `env file missing`                                                                               |
-| `test_guilt_env_placeholders_refuse`                                                                                                                      | G9d      | env `WA_BROKER_KEY=__FILL_ME__`                                                                  | N: heartbeat note `env placeholders unfilled`, reason `__FILL_ME__ placeholders`                                                              |
-| `test_kill_switch_stops_without_exec`                                                                                                                     | G9e      | env `WA_CODEX_BROKER_ENABLED=false`; valid pin planted                                           | N with rc 0: heartbeat `disabled`/`kill switch`, reason `kill switch active`                                                                  |
-| `test_innocence_env_without_kill_switch_key_applies`                                                                                                      | G9f      | env without `WA_CODEX_BROKER_ENABLED`; valid pin                                                 | P                                                                                                                                             |
-| `test_guilt_venv_missing_refuses`                                                                                                                         | G9g      | `VENV_PY` patched to a missing path; valid pin                                                   | N: heartbeat note `venv python missing`, reason `venv python missing or not executable`                                                       |
-| `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                       | G6a, G9h | `RUNTIME_DIR` patched to a path that does not exist; no pin; the stub `VENV_PY` lives outside it | rc 78, heartbeat `refused`/`cd failed`, exactly one tagged line (the legacy line), the stub did not run                                       |
+| Test or param id                                                                                                                                          | Row(s)                           | Shape                                                                                            | Expected                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[nul_after_backslash_planted]`                                                                                                                           | G1b                              | bytes `WA_CODEX_CLI_VERSION_PIN=9.9.9\`, NUL, `JUNK`, LF; `9.9.9` planted                        | N: `pin file contains a NUL byte`                                                                                                             |
+| `[two_lines_last_unterminated_planted]`                                                                                                                   | G2a                              | `…=1.1.1` LF `…=9.9.9`, no final LF; both planted                                                | N: `must carry exactly one line`                                                                                                              |
+| `[trailing_space_planted]`                                                                                                                                | G2b                              | `…=9.9.9 ` LF; planted                                                                           | N: `not exact semver`                                                                                                                         |
+| `[leading_tab_planted]`                                                                                                                                   | G2b                              | TAB `…=9.9.9` LF; planted                                                                        | N: `unrecognized line`                                                                                                                        |
+| `[backslash_in_version_planted]`                                                                                                                          | G2c                              | `…=9.9.\9` LF; `9.9.9` planted                                                                   | N: `not exact semver`                                                                                                                         |
+| `[semver_alpha_planted]`, `[semver_leading_dot_planted]`, `[semver_trailing_dot_planted]`, `[semver_empty_field_planted]`, `[semver_four_fields_planted]` | G3a–G3e                          | `a.b.c`, `.1.2`, `1.2.`, `1..2`, `1.2.3.4`, each planted at its own derived path                 | N: `not exact semver`                                                                                                                         |
+| `test_innocence_single_line_without_trailing_newline_applies`                                                                                             | G2a                              | `…=9.9.9` with no LF; planted                                                                    | P: applied `9.9.9`                                                                                                                            |
+| `test_guilt_env_cannot_clobber_pythonpath`                                                                                                                | G8g                              | env `PYTHONPATH=/nonexistent-evil-pythonpath`; valid pin                                         | P, and the stub's `PYTHONPATH` equals the wrapper's `RUNTIME_DIR`                                                                             |
+| `test_guilt_env_undefined_name_never_execs`                                                                                                               | G9a                              | env line `WA_CODEX_MODEL=$WA_CODEX_UNDEFINED_FOR_TEST`; valid pin                                | `rc != 0`, the stub did not run, no `starting` heartbeat. This pins today's `set -u` stop; a later 78-plus-heartbeat refusal would still pass |
+| `test_guilt_env_file_missing_refuses`                                                                                                                     | G9c                              | no env file, no pin                                                                              | N: heartbeat note `env file missing`, reason `env file missing`                                                                               |
+| `test_guilt_env_placeholders_refuse`                                                                                                                      | G9d                              | env `WA_BROKER_KEY=__FILL_ME__`                                                                  | N: heartbeat note `env placeholders unfilled`, reason `__FILL_ME__ placeholders`                                                              |
+| `test_kill_switch_stops_without_exec`                                                                                                                     | G9e                              | env `WA_CODEX_BROKER_ENABLED=false`; valid pin planted                                           | N with rc 0: heartbeat `disabled`/`kill switch`, reason `kill switch active`                                                                  |
+| `test_innocence_env_without_kill_switch_key_applies`                                                                                                      | G9f                              | env without `WA_CODEX_BROKER_ENABLED`; valid pin                                                 | P                                                                                                                                             |
+| `test_guilt_venv_missing_refuses`                                                                                                                         | G9g                              | `VENV_PY` patched to a missing path; valid pin                                                   | N: heartbeat note `venv python missing`, reason `venv python missing or not executable`                                                       |
+| `test_runtime_dir_absent_is_legacy_then_cd_refuses`                                                                                                       | G6a, G9h                         | `RUNTIME_DIR` patched to a path that does not exist; no pin; the stub `VENV_PY` lives outside it | rc 78, heartbeat `refused`/`cd failed`, exactly one tagged line (the legacy line), the stub did not run                                       |
+| `test_wrapper_ships_production_constants`                                                                                                                 | G0a, G0b, G0d, G0h, G0i, G8a–G8c | static: every `^KEY=` line of the five `_PATCHABLE_KEYS`, re-asserts included                    | each equals its production value; the pinned key set equals `_PATCHABLE_KEYS`                                                                 |
+| `test_refusal_reasons_are_pairwise_non_containing`                                                                                                        | (5bis.4)                         | static: the 13 reason texts                                                                      | 13 distinct texts, none a substring of another                                                                                                |
 
 Changed:
 
@@ -873,45 +963,88 @@ Changed:
 - `test_guilt_env_cannot_clobber_post_source_literals` uses existing hostile values (5bis.4).
   It asserts that the decoy did not run, that `PYTHONPATH` is the wrapper's own, and that
   nothing landed in the decoy sidecar.
-- Every positive test asserts contract P.
-- `_DUMP_ENV_STUB` prints `PYTHONPATH`, and `_run` gains the `WCBW_RUN_LOG` hook (5ter.2).
+- Every positive test asserts contract P, the two hostile-PATH tests included (their
+  heartbeat exemption is gone with the D5 heartbeat fix).
+- `_DUMP_ENV_STUB` prints `PYTHONPATH`. `_run` passes `stdin=subprocess.DEVNULL` and gains the
+  `WCBW_RUN_LOG` hook (5ter.2).
 
 ### 5bis.8 What the `04dd6b51e4` suite kills today (measured 2026-09-27)
 
 Setup: a scratch prototype of §5ter (not the implementation), on M5 with bash 3.2.57,
-against the 28-test suite at `04dd6b51e4`.
+against the 28-test suite and the wrapper at `04dd6b51e4`. The inventory was the committed
+YAML adapted to that blob: rows G9j and G9k removed (their `abspath` sites exist only on the
+PR-1 target), and G9b anchored on the PATH-resolved `mkdir`. That leaves 67 rows and 128
+mutants.
 
 Results:
 
+- closure held: 132 sites extracted, 132 claimed;
 - the baseline passed 28 of 28;
-- of the 99 mutants, 54 were killed and 45 survived: 42 MUST plus the 3 EQUIVALENT;
-- every killed MUST mutant was killed by a test in its `killed_by` list.
+- of the 128 mutants, 71 were killed and 57 survived: 53 MUST plus the 4 EQUIVALENT;
+- the 99 mutants of round 1 gave the same verdicts as in round 1, and each killed one was
+  killed by a test in its `killed_by` list;
+- five round-2 mutants (G0f/val, G0g/val and G8d/val–G8f/val) were killed by other tests.
+  At `04dd6b51e4` their declared killers either do not exist yet or do not yet assert
+  contracts N and P.
 
-Surviving MUST mutants, by row. **Named by re-gate #2:**
+Surviving MUST mutants, 53 in 36 rows. **Named by re-gate #2:**
 
 - G2a (D10), G2b (D25), G2c (D26) and G6a (D02);
 - G3a–G3e (S1–S5);
-- G9c, G9d, G9e, G9g and G9h (P1–P5), every mutant of each.
+- G9c, G9d, G9e, G9g and G9h (P1–P5), every original mutant of each.
 
-**In no earlier table:**
+**In no earlier table (round 1):**
 
 - G1b (the probe's `-r`);
 - the diagnostic-drop mutants of G1, G2, G3, G4a, G4e and G5 (no test asserts a reason);
 - G4c, the key case's catch-all arm (its neutralised, diagnostic and exit mutants);
 - G4f/h (the mode-000 test never reads the heartbeat);
-- G8g (`export PYTHONPATH`);
+- G8g (`export PYTHONPATH`), both mutants;
 - G9a (`set -u`);
 - G9f (the kill switch's `:-true` default; every test sets the key).
 
-**Feasibility.** A scratch suite of 47 tests applied 5bis.4 and 5bis.7 to the unchanged
-wrapper:
+**Found by council round 1:**
 
-- the baseline passed 47 of 47;
-- all 96 MUST mutants were killed, each by a test in its `killed_by` list;
-- the 3 EQUIVALENT mutants survived;
+- G0a, G0b, G0d, G0h, G0i and the `val` mutants of G8a–G8c. These are the five constants the
+  harness patches, so a changed value is invisible to every run (ST);
+- G0e (`TAG` before the source; no test asserts a refusal's tag).
+
+**Found by council round 2:** G7e/path (the proof line's `/bin/date`; no test asserts its
+stamp).
+
+The other round-2 mutants (the eight `!` drops, both `redir` drops, G0c, G0f, G0g, G0j and the
+`val` mutants of G8d–G8f) were already killed by the `04dd6b51e4` suite.
+
+**Feasibility.** A scratch suite of 49 tests applied 5bis.4 and 5bis.7 to the PR-1 target
+(`04dd6b51e4` plus the D5 heartbeat fix):
+
+- closure held: 134 of 134 sites claimed;
+- the baseline passed 49 of 49;
+- all 126 MUST mutants were killed, each by a test in its `killed_by` list, and every
+  `killed_by` entry matched exactly one collected test;
+- the 4 EQUIVALENT mutants survived, and left identical run records in all 46 tests that
+  run the wrapper;
 - no mutant failed `sh -n`;
-- every declared mode equalled the measured one;
-- the 99 mutants took about 3 minutes of wall time on M5.
+- wall time: about 5.5 minutes for 127 mutants on an idle M5, and 17 minutes for the final
+  130 under a load average near 35.
+
+**Modes: measured, not predicted.** After the corrections below, every declared mode equals
+the measured one. The declarations were not independent predictions, and S3 does not claim
+they were. What S3 guarantees is that a declared mode can never drift from the measured one
+later. The corrections:
+
+- Round 1, six mutants. G4e/c and G4e/x were declared DX and measured FC. G7b/stmt, G7d/true
+  and G8b/stmt were declared FC and measured FO. G8g/stmt was declared DX and measured FO.
+- Round 2, one mutant. G6b/! was declared FO and measured FC: with the `!` dropped, an
+  unsearchable `RUNTIME_DIR` falls through to legacy, and the later `cd` refuses it.
+
+The three council-round-2 mutants (G7e/path, G9j/path, G9k/path) were declared DX before any
+run and measured DX.
+
+In every case the YAML carries the measured value. Killer choice matters too. G5a/! and G5b/!
+measured FC while their only killer was the valid-pin innocence test. With their isolating
+fixtures (`[bin_is_directory]`, `[bin_not_executable_planted]`) added as killers, they
+measured FO. Hence the authoring rule in §5ter.3 step 1.
 
 The scratch suite shows that the contract can be satisfied. It is not the PR-1 test file; the
 resumed build writes that.
@@ -921,7 +1054,7 @@ resumed build writes that.
 The script is `scripts/ci/wa_codex_wrapper_mutants.py`. It ships in the resumed PR-1 together
 with its selftest and runs in `wa-codex-pin.yml`. It is generic over the inventory: the
 target file, the test files and the rows all come from the YAML. PR-2 therefore adds an
-installer inventory, not a second script. Where the installer uses syntax outside the 12 site
+installer inventory, not a second script. Where the installer uses syntax outside the 15 site
 kinds (`[[ … ]]`, `find` predicate terms, `awk` programs), PR-2 extends the grammar in the
 same PR, together with guilt and innocence selftests for the new kinds.
 
@@ -950,11 +1083,15 @@ python scripts/ci/wa_codex_wrapper_mutants.py [--inventory PATH] [--spec PATH]
   exit. The gate harnesses mutated a worktree in place and restored it by copy. That is
   harmless in CI, but locally it is the `git checkout --` hazard the repo already has a scar
   for.
-- **pytest settings.** pytest runs with `cwd=<temp tree>`, `-q -p no:cacheprovider -rf`,
-  `PYTHONDONTWRITEBYTECODE=1`, and a wall-clock timeout per run (default 180 s).
+- **pytest settings.** pytest runs with `cwd=<temp tree>`, stdin bound to `/dev/null`,
+  `-q -p no:cacheprovider -rf`, `PYTHONDONTWRITEBYTECODE=1`, and a wall-clock timeout per run
+  (default 180 s). The test file's `_run` binds the wrapper's stdin to `/dev/null` as well
+  (5bis.4).
 - **Run-log hook.** When `$WCBW_RUN_LOG` is set, the test file's `_run` helper appends one
-  JSON line per wrapper run: `{test, rc, stdout, heartbeat: [status, note], tagged: […]}`. The
-  test's tmp root is replaced by `<T>`, and the timestamp in the `pin applied` line by `<TS>`.
+  JSON line per wrapper run: `{test, rc, stdout, heartbeat: [ts, status, note], tagged: […]}`.
+  The test's tmp root is replaced by `<T>`, and every well-formed UTC stamp, in the heartbeat
+  `ts` and in the tagged lines, by `<TS>`. A malformed or empty stamp is kept as it is, so it
+  shows up as a difference.
   The hook lives in the TEST file only, so D6's "no test mode in the shipped script" still
   holds.
 
@@ -964,8 +1101,21 @@ Each step fails with a named error.
 
 1. **Schema.** Load the YAML with `yaml.safe_load` and validate it: the schema string; unique
    row and mutant ids; `disposition` in {MUST, EQUIVALENT}; a `reason` on every EQUIVALENT
-   row; at least one `killed_by` on every MUST mutant; `mode` one of the four values; `op` in
-   {sub, stmt}. Error: `SCHEMA`.
+   row; at least one `killed_by` on every MUST mutant; `mode` one of the five values; `op` in
+   {sub, stmt}. Then collect the test file's node ids (`pytest --collect-only -q` in the temp
+   tree). Each `killed_by` string must be a substring of exactly ONE collected id. A string
+   that matches none is a dead claim; one that matches several could be satisfied by a
+   collateral failure. Error: `SCHEMA`.
+
+   Authoring rule, checked in review and not by the script: a mutant's `killed_by` names the
+   fixture that isolates its fault, not only an innocence test that happens to fail. The mode
+   is measured on the killers, so a killer list without the isolating fixture can understate
+   it (5bis.8, G5a/! and G5b/!). What stays review-only is WHY the killer failed. A unique
+   node id cannot show that the failing assertion is the one about the isolated fault. Step 8
+   narrows it: the killer's run records must differ from the baseline in the declared mode's
+   way, so a killer that failed on an unrelated observation shows up as `MODE-MISMATCH` unless
+   that observation happens to have the same mode.
+
 2. **Anchors.** Resolve every anchor to the `occurrence`-th line whose full text equals it.
    Error: `STALE-ANCHOR`.
 3. **Closure.** Extract the sites (5bis.3) and compare them with the claims. Errors:
@@ -989,15 +1139,36 @@ Each step fails with a named error.
    - A killed EQUIVALENT mutant is `EQUIVALENCE-REFUTED`.
 8. **Mode.** For each killer test, compare its run records under the mutant with the same
    test's baseline records, normalised as in 5ter.2. The first matching rule wins:
-   1. the mutant's stdout is non-empty and differs from the baseline's: `fail-open`;
+   1. the mutant's stdout is non-empty and differs from the baseline's: `fail-open`. The
+      wrapper writes nothing to stdout itself (N.4, and P's stdout is the exec'd program's),
+      so non-empty stdout means a program was exec'd: the stub, or a decoy in its place.
+      Council round 2 proposed counting only runs that print the stub's marker. Measured,
+      that reclassified G8c/stmt, where the env's decoy `VENV_PY` is exec'd, from
+      `fail-open` to `fail-closed-other-rc`. The broader rule can overstate a mode, never
+      understate it, so it stays;
    2. the rc differs, whether the stub ran differs, or the run timed out:
       `fail-closed-other-rc`;
    3. the heartbeat or the tagged lines differ: `same-rc-other-diagnosis`;
    4. otherwise: `equivalent`.
 
-   A mutant's mode is the most severe result over its killer tests, and it must equal the
-   YAML `mode`. Error: `MODE-MISMATCH`. Validated in scratch: once the fixture rules of 5bis.4
-   were applied, all 99 declared modes equalled the measured ones.
+   A mutant's mode is the most severe result over its killer tests, in the order
+   `fail-open` > `fail-closed-other-rc` > `same-rc-other-diagnosis` > `equivalent`, and it
+   must equal the YAML `mode`. Error: `MODE-MISMATCH`.
+
+   A killer test that leaves no run record at baseline is static: it reads the blob and never
+   runs it. A mutant's mode is `static` exactly when every one of its killers is static.
+   Declaring `static` with a run-based killer, or a run mode with a static killer, is
+   `MODE-MISMATCH` too. `static` sits outside the severity order because it never meets a
+   run mode on the same mutant.
+
+   An EQUIVALENT mutant has no killers. Its run records are compared over EVERY test in the
+   file, and all of them must equal the baseline's. A difference that no test asserts is still
+   `MODE-MISMATCH`: an equivalence claim is about the observations, not about today's
+   assertions.
+
+   Validated in scratch on the PR-1 target: all 130 declared modes equal the measured ones.
+   Seven of them were corrected from a measurement first, and 5bis.8 names them. The four
+   EQUIVALENT mutants left identical records in all 46 tests that run the wrapper.
 
 9. **Parity.** The `--render-table` output must equal the spec block between
    `<!-- d5-inventory:begin -->` and `<!-- d5-inventory:end -->`. The comparison is cell by
@@ -1014,7 +1185,8 @@ Each step fails with a named error.
 
 ### 5ter.4 Selftest
 
-`--selftest` runs pytest only in case e below and takes under 30 s.
+`--selftest` runs pytest only in cases e, h and i below, one mutant each, and takes under
+60 s.
 
 Guilt cases. Each one must be detected, or the selftest fails:
 
@@ -1025,15 +1197,27 @@ Guilt cases. Each one must be detected, or the selftest fails:
 - **c. No-op mutant.** Give one mutant a `to` equal to its anchor: `NO-OP`.
 - **d. Missing statement.** Point one `stmt` mutant at a row whose block has no heartbeat:
   `NO-STMT`.
-- **e. End to end.** This is the observation re-gate #2's S3 asked for. Copy the test file,
-  remove every `killed_by` entry of row **G2a**
-  (`[two_lines_last_unterminated_planted]` and
-  `test_innocence_single_line_without_trailing_newline_applies`), and run only mutant
-  `G2a/limb`. It must be `SURVIVED`. Every run thus proves that the job goes red when the D10
-  fixture is removed.
+- **e. End to end.** This is the observation re-gate #2's S3 asked for. Copy the test file
+  into the temp tree and delete from the COPY the two tests that kill row **G2a**: the
+  `two_lines_last_unterminated_planted` parameter and
+  `test_innocence_single_line_without_trailing_newline_applies`. Leave the inventory as it
+  is, skip the step 1 collection check for this case only, and run only mutant `G2a/limb`.
+  It must be `SURVIVED`. Every run thus proves that the job goes red when the D10 fixture is
+  removed. (Deleting the `killed_by` entries instead would stop at `SCHEMA`, and deleting
+  nothing would give `KILLED`: neither observes the job going red.)
 
-Innocence: the committed target and inventory pass closure with exactly `derived_from.sites`
-sites (109 at `04dd6b51e4`) and zero schema errors.
+- **f. Dead killer.** Point one `killed_by` at a string no collected test contains:
+  `SCHEMA`.
+- **g. Ambiguous killer.** Replace one `killed_by` with `[bad_semver`, which is part of both
+  `[bad_semver]` and `[bad_semver_planted]`: `SCHEMA`.
+- **h. Wrong mode.** Declare `G3/!` as `same-rc-other-diagnosis` and run only that mutant:
+  `MODE-MISMATCH` (measured `fail-open`).
+- **i. Static confusion.** Declare `G0a/val` as `fail-open`, and separately `G0c/val` as
+  `static`, and run each alone: `MODE-MISMATCH` both times. The first has only a static killer;
+  the second only a run-based one.
+
+Innocence: the PR-1 target and the committed inventory pass closure with exactly
+`derived_from.sites` sites (134) and zero schema errors.
 
 ### 5ter.5 CI wiring
 
@@ -1044,8 +1228,9 @@ In `wa-codex-pin.yml`, either in the same job or in a second job after the pytes
 - `python scripts/ci/wa_codex_wrapper_mutants.py --spec docs/specs/2026-09-27-codexpin-v3-spec.md --receipt-dir "$RUNNER_TEMP/wcbw-mutants"`;
 - `actions/upload-artifact` of the receipt directory, with `if: always()`;
 - `paths:` gains the script, the inventory YAML and this spec;
-- `timeout-minutes: 25`. The 99 mutants take about 3 min on M5, the FIFO hang mutant costs the
-  test's 15 s timeout, and macOS runners are slower.
+- `timeout-minutes: 25`. The mutants took about 5.5 min on an idle M5 and 17 min under heavy
+  load, the FIFO hang mutant costs the test's 15 s timeout, and macOS runners are slower. If
+  the job nears the limit, raise it; never drop mutants to fit.
 
 It is not a required context (the D6 reasoning), but it CAN go red. The resumed PR-1 does not
 pass its gate unless this job is green on the PR head.
@@ -1157,10 +1342,15 @@ proof, not on logic. Split out, the S3 script would have no consumer, because it
 section and the rewritten tests to run against.
 
 The resumed build continues PR #7420 once this spec is on `origin/main`. It first merges
-`origin/main`; the branch was never armed, so it is not frozen. The wrapper logic stays
-byte-identical to `04dd6b51e4` (§5bis.5, D10 decision). Any logic change would re-open the
-full S3 run, which is cheap now. PR-2 uses the same mechanism: an installer inventory in the
-same schema, run by the same script (§5ter).
+`origin/main`; the branch was never armed, so it is not frozen. The wrapper stays
+byte-identical to `04dd6b51e4` except for the D5 heartbeat fix, lines 72 and 74 (§5bis.5,
+D10 decision). Built from `04dd6b51e4`, that target's blob id starts `78236b6070`, and the
+inventory already names it in `derived_from.blob` (with `base_commit`/`base_blob` recording
+where it came from). So S3's `SITE-COUNT` guard is armed from the resumed build's first run,
+as long as the wrapper is exactly that blob. Different bytes leave `SITE-COUNT` inert, so a
+build whose wrapper differs must re-derive `derived_from` in the same commit. Any further logic change re-runs S3 in full, which is
+cheap now. PR-2 uses the same mechanism: an installer inventory in the same schema, run by
+the same script (§5ter).
 
 ## 8. Not closable by construction (stated, not hidden)
 
@@ -1182,22 +1372,29 @@ same schema, run by the same script (§5ter).
 4. **A malicious operator account** (`nuzantara`) is out of model (§1).
 5. **A deliberately fd-silenced external call before the gate** is invisible to the D6 detector.
    It cannot execute under the test; in production it is controlled by D9/S1 and review.
-6. **`heartbeat()` resolves `mkdir` and `date` through PATH after the env is sourced**
-   (re-gate #1 §5, added 2026-09-27). The behaviour is identical on `origin/main`. An env
-   `PATH` that lacks them makes the `starting` heartbeat silently absent while the daemon
-   still starts. This is not a pin guard, so the D5 inventory does not claim it, and the two
-   hostile-PATH tests are exempt from P.4 (5bis.4). The fix is `/bin/mkdir` and `/bin/date`.
-   It is a wrapper logic change, so it re-runs S3 in full. It is recommended as its own small
-   PR after PR-1, now cheap because S3 exists.
+6. **`heartbeat()` resolved `mkdir` and `date` through PATH after the env was sourced**
+   (re-gate #1 §5, added 2026-09-27). **Closed in PR-1 by the D5 heartbeat fix.** The
+   behaviour is identical on `origin/main`. An env `PATH` that lacks them made the `starting`
+   heartbeat silently absent while the daemon still started. The first commit of this spec
+   deferred the fix to a PR after PR-1 and exempted the two hostile-PATH tests from P.4.
+   Council round 1 then showed that the gap also made G9b's EQUIVALENT claim false at
+   `04dd6b51e4`, so the fix moved into PR-1: two lines, re-checked by S3 in the same PR.
 7. **An unsearchable ANCESTOR of `RUNTIME_DIR`** (for example `/usr/local/lib` at 000) makes
    the wrapper log `no pin file … (legacy)` and then exit `78` on the venv check (re-gate #1
    §2, added 2026-09-27). The run still fails closed, because `VENV_PY` lives under
    `RUNTIME_DIR` and N1 pins it, but the diagnosis misleads. PR-2's D1 chain check refuses to
    install into such a chain, so the state is reachable only by a root-side change after
    install.
-8. **The process environment launchd hands the wrapper** (added 2026-09-27). Pre-source
-   initialisations such as `_wcbw_pin_ver=""` are not inventory sites (5bis.3). They matter
-   only if launchd injects those names, and the plist is root-owned (§1).
+8. **The process environment launchd hands the wrapper** (added 2026-09-27). The G0 rows
+   mutate the VALUES of the pre-source constants (5bis.3). Deleting one is different: it
+   crashes under `set -u` on every run unless launchd injects that name, and the plist is
+   root-owned (§1).
+9. **`date -u` is pinned by no test** (added 2026-09-27, council round 2). Dropping `-u`
+   from the heartbeat's or the proof line's `/bin/date` failed no test in the feasibility
+   suite: the stamp would be local time labelled `Z`, off by the host's UTC offset. §6 reads
+   the proof line's stamp to show the start is fresh. Recommended for PR-1, not a site: run
+   `test_pin_applied_log_line` under `TZ=Asia/Makassar` and assert that the stamp is within
+   two minutes of the test's own UTC clock.
 
 Adjacent, out of scope, noted: the daemon's venv python is Homebrew `python@3.14` (the `ps`
 `comm` on Pro shows `/opt/homebrew/Cellar/python@3.14/…`). A Homebrew python upgrade is the
@@ -1222,17 +1419,35 @@ same "shared Homebrew stops the bot" class for the interpreter.
 - macOS `install(1)`: temp file + rename always. `chmod -N` present. `ps -o comm` prints full
   executable paths without argv.
 
-Added 2026-09-27 (M5, bash 3.2.57, against the PR #7420 wrapper at `04dd6b51e4`, blob
-`4143a795d9`, sha256 prefix `9fb2268887392b6e`; scratch prototypes, not committed):
+Added 2026-09-27 (M5, bash 3.2.57; scratch prototypes, not committed). Blobs: the PR #7420
+wrapper at `04dd6b51e4` (blob `4143a795d9`, sha256 prefix `9fb2268887392b6e`), and the PR-1
+target, which is that blob plus the D5 heartbeat fix (blob `78236b6070`, sha256 prefix
+`022c86115eff1eda`).
 
-- **Site extractor (5bis.3).** It found 109 sites, all claimed by the 54 rows. Five planted
-  constructs produced 11 UNCLAIMED sites. One changed guard line produced `STALE-ANCHOR`
-  before any mutant ran.
-- **Current suite (28 tests).** 99 mutants: 54 killed, 45 survived (42 MUST plus the 3
-  EQUIVALENT), no `sh -n` failure (5bis.8).
-- **Feasibility suite (47 tests, contracts N and P).** 96 of 96 MUST mutants killed, each by
-  a declared killer. The 3 EQUIVALENT mutants survived. All 99 declared modes equal the
-  measured ones. About 3 minutes of wall time.
+- **Site extractor (5bis.3).** It found 134 sites on the PR-1 target, all claimed by the 69
+  rows, and 132 on `04dd6b51e4`, all claimed by the 67 rows that apply there. Nine planted
+  constructs produced 17 UNCLAIMED sites. In round 1, one changed guard line produced
+  `STALE-ANCHOR` before any mutant ran.
+- **Current suite (28 tests, `04dd6b51e4`).** 128 mutants: 71 killed, 57 survived (53 MUST
+  plus the 4 EQUIVALENT), no `sh -n` failure (5bis.8).
+- **Feasibility suite (49 tests, contracts N and P, PR-1 target).** 126 of 126 MUST mutants
+  killed, each by a declared killer. The 4 EQUIVALENT mutants survived with identical run
+  records. All 130 declared modes equal the measured ones, after the seven corrections that
+  5bis.8 names.
+- **Council round 1 (codex-gpt-5.6-sol, read-only), by execution.** Dropping the NUL probe's
+  `< "$CODEX_PIN_FILE"` let a NUL-bearing pin through, and it was applied. Dropping the `!`
+  of `if ! _is_semver` applied `a.b.c`. Neither was a site in the 12-kind grammar, which is
+  why G1d, the `neg` kind and the `redir` kind exist.
+- **G9b, raised by the same seat and reproduced by the author.** Under
+  `PATH=/does-not-exist`, with the sidecar directory present: at `04dd6b51e4` the shipped
+  `heartbeat()` wrote no file, and its G9b mutant wrote `{"ts":"","status":"starting"}`. The
+  two hostile-PATH feasibility tests, as they stood before the `ts` check was added, failed
+  on the shipped `04dd6b51e4` wrapper and passed on its mutant. On the PR-1 target they
+  passed on both.
+- **Council round 2 (both seats ACCEPT-WITH-NOTES).** kimi-code/k3 found that nothing pinned
+  the heartbeat's `/bin/date`. Hence the `abspath` kind, rows G9j and G9k, mutant G7e/path and
+  the `ts` clauses of N and P. codex-gpt-5.6-sol found the selftest had no guilt case for the
+  round-2 rules; cases f–i were added.
 - **Consistency with re-gate #2.** On the same blob, the prototype reproduces that gate's
   verdicts: D10, D25, D26, D02, S1–S5 and P1–P5 survive; D09, D11, D12, D13 and D16 die.
 - **Shipped-wrapper behaviour.** Under the shipped wrapper,
@@ -1241,29 +1456,43 @@ Added 2026-09-27 (M5, bash 3.2.57, against the PR #7420 wrapper at `04dd6b51e4`,
 
 ## 10. Changelog against the scratch text (2026-09-27)
 
-Every change below is traceable to a gate on PR #7420 or to the S2–S4 conditions of its
-BLOCK. D1–D4, D6's proof design, D8, D9, §1, §2, §4, §6 and the installer and sentinel test
+Every change below is traceable to a gate on PR #7420, to the S2–S4 conditions of its
+BLOCK, or to council rounds 1 and 2 on this spec (codex-gpt-5.6-sol and kimi-code/k3, journaled in the
+PR's evidence pack). D1–D4, D6's proof design, D8, D9, §1, §2, §4, §6 and the installer and sentinel test
 tables are unchanged, except where listed.
 
-| §          | Change                                                                                                                                         | Proved by                                                                |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| header, §0 | Commit note; scratch inputs marked ephemeral                                                                                                   | S2 (the spec lived only in `/private/tmp`)                               |
-| D5         | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused | re-gate #2 D10, D25, D26                                                 |
-| D5         | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                           | spalla review 2026-09-26; r0 C1, N2                                      |
-| D5         | Implemented check order; one tagged diagnostic line per refusal is contract                                                                    | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                    |
-| D5         | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                              | r0 C3, N4                                                                |
-| D5         | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                       | r0 spec-owner note; re-gate #2 S1–S5                                     |
-| D5         | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                        | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound |
-| D5         | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                        | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)     |
-| D5         | Kill-switch precedence stated                                                                                                                  | r0 N3; re-gate #1                                                        |
-| D5, §8.2   | Scope narrowed to the named DATA                                                                                                               | r0 spec-owner note                                                       |
-| D6         | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                    | re-gate #1 R1; r0 N7; S3                                                 |
-| D7         | Sentinel uses the exact same line grammar                                                                                                      | follows from the D10 decision                                            |
-| §5         | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                  | re-gate #2 §2                                                            |
-| §5         | Wrapper table marked superseded by §5bis                                                                                                       | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                   |
-| §5bis      | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                   | S2                                                                       |
-| §5ter      | S3 mutation check specified                                                                                                                    | S3                                                                       |
-| §5quater   | S4 evidence-text fixes                                                                                                                         | S4, re-gate #2 §4                                                        |
-| §7         | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                            | S2–S4                                                                    |
-| §8         | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                       | re-gate #1 §2 and §5; this inventory                                     |
-| §9         | 2026-09-27 measurements                                                                                                                        | this spec                                                                |
+| §           | Change                                                                                                                                               | Proved by                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| header, §0  | Commit note; scratch inputs marked ephemeral                                                                                                         | S2 (the spec lived only in `/private/tmp`)                               |
+| D5          | Line grammar: `IFS=`/`-r` are requirements; a single line without a final LF is accepted; two lines with an unterminated last line are refused       | re-gate #2 D10, D25, D26                                                 |
+| D5          | NUL probe rule, the bash-only `read -d`, explicit `/bin/sh` in tests                                                                                 | spalla review 2026-09-26; r0 C1, N2                                      |
+| D5          | Implemented check order; one tagged diagnostic line per refusal is contract                                                                          | r0 C1 plus re-gate #1 R3 (masking), this spec §5bis.4                    |
+| D5          | EACCES rule made precise (`[ -d ] && [ ! -x ]` on `RUNTIME_DIR`; `-r` on the pin)                                                                    | r0 C3, N4                                                                |
+| D5          | Semver wording: "three numeric fields", leading zeros allowed; per-alternative witnesses                                                             | r0 spec-owner note; re-gate #2 S1–S5                                     |
+| D5          | Handoff through positional `$1`/`$2`, not the named `PIN_VER`/`PIN_BIN`                                                                              | spalla review 2026-09-26 (named vars clobbered by DATA); r0 judged sound |
+| D5          | Post-source re-assert of six literals plus `PYTHONPATH`                                                                                              | r0 N1 (sol BLOCKER, `TAG` gap); `PYTHONPATH` by this inventory (G8g)     |
+| D5          | Kill-switch precedence stated                                                                                                                        | r0 N3; re-gate #1                                                        |
+| D5, §8.2    | Scope narrowed to the named DATA                                                                                                                     | r0 spec-owner note                                                       |
+| D6          | Watcher-coverage entry; extend `paths:` and the pytest argv; S3 steps; pinned pytest/pyyaml                                                          | re-gate #1 R1; r0 N7; S3                                                 |
+| D7          | Sentinel uses the exact same line grammar                                                                                                            | follows from the D10 decision                                            |
+| §5          | `test_semver_validators_agree` asserts expected verdicts, not agreement alone                                                                        | re-gate #2 §2                                                            |
+| §5          | Wrapper table marked superseded by §5bis                                                                                                             | r0 C1, re-gate #1 R3, re-gate #2 BLOCK                                   |
+| §5bis       | Closed D5 inventory, site grammar, fixture contract, dispositions, decisions                                                                         | S2                                                                       |
+| §5ter       | S3 mutation check specified                                                                                                                          | S3                                                                       |
+| §5quater    | S4 evidence-text fixes                                                                                                                               | S4, re-gate #2 §4                                                        |
+| §7          | PR-1 content and measured size; resumption on #7420; PR-2 reuses S3                                                                                  | S2–S4                                                                    |
+| §8          | Items 6–8 (heartbeat PATH, ancestor EACCES, launchd env)                                                                                             | re-gate #1 §2 and §5; this inventory                                     |
+| §9          | 2026-09-27 measurements                                                                                                                              | this spec                                                                |
+| D5, §8.6    | Heartbeat calls `/bin/mkdir` and `/bin/date`: the one wrapper change beyond `04dd6b51e4`, moved into PR-1                                            | council r1: sol raised G9b, the author reproduced it; re-gate #1 §5      |
+| §5bis.3     | Kinds `const`, `neg`, `redir` (130 sites, 67 rows); value substitution on `const` and `reassert`; the not-sites list restated                        | council r1: kimi findings 1–2; sol executed the `<` and `!` drops        |
+| §5bis.4     | Wrapper stdin is `/dev/null`; patched constants pinned statically; reasons pairwise non-containing; P.4 exemption removed                            | council r1: kimi findings 1 and 6                                        |
+| §5bis.5     | G0k is EQUIVALENT; G9b holds only on the PR-1 target                                                                                                 | council r1: sol                                                          |
+| §5bis.8     | Round-2 measurements; the seven mode corrections disclosed; the killer-choice rule                                                                   | council r1: kimi finding 3                                               |
+| §5ter       | `killed_by` matches exactly one node id; severity order; `static` mode; EQUIVALENT compared over every test; selftest (e) reworded; stdin            | council r1: kimi findings 4, 5 and 7                                     |
+| §7, §8      | PR-1 lands the heartbeat fix and re-arms `SITE-COUNT`; §8 items 6 and 8 restated                                                                     | council r1                                                               |
+| §5bis.3, D5 | Kind `abspath` (134 sites on the target, 132 at `04dd6b51e4`); rows G9j and G9k; mutant G7e/path                                                     | council r2: kimi finding 14 (nothing pinned the heartbeat's `/bin/date`) |
+| §5bis.4     | N.2, P.3 and P.4 assert well-formed UTC stamps; the scratch suite's N.4 aligned to empty stdout                                                      | council r2: kimi finding 14; the `grep -q` probe                         |
+| §5bis.3     | The not-sites rationale corrected and measured: line 177 inert, `-p` and `-q` killed, `-u` unpinned                                                  | council r2: sol findings 4–5, kimi finding 16                            |
+| §5ter       | FO rule kept and justified (a narrower one misclassified G8c/stmt, measured); selftest cases f–i; the review-only residue of killer causality stated | council r2: sol findings 1, 2 and 6, kimi finding 7                      |
+| YAML, §7    | `derived_from` names the PR-1 target blob, with `base_commit` and `base_blob`                                                                        | council r2: kimi finding 15                                              |
+| §8          | Item 9: `date -u` is pinned by no test; recommended fixture                                                                                          | council r2 probe                                                         |

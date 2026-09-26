@@ -6,11 +6,15 @@
 # .github/workflows/wa-codex-pin.yml on every PR that touches the wrapper, its tests or this file.
 #
 # Derived line by line from the wrapper at PR #7420 head 04dd6b51e4 (blob 4143a795d9f2,
-# sha256 9fb2268887392b6e...). The row comments name that blob's line numbers. The checker
-# never uses line numbers: it locates every mutant by the exact text of its anchor line.
+# sha256 9fb2268887392b6e...), plus the D5 heartbeat fix that PR-1 lands (lines 72 and 74 call
+# /bin/mkdir and /bin/date). That PR-1 target is the blob named in derived_from; G9b, G9j and G9k
+# anchor its lines 72 and 74, which exist only there. The fix adds two abspath sites (130 -> 132
+# at the base, 134 on the target) and shifts no line. The row comments name line numbers; the
+# checker never uses them: it locates every mutant by the exact text of its anchor line.
 #
 # Row grammar (spec §5bis.2):
-#   id          G<family><letter>. Families 1-5 keep the builder's G1..G5b meaning.
+#   id          G<family><letter>. Families 1-5 keep the builder's G1..G5b meaning; G0 holds
+#               the constants before the source (council round 1).
 #   was         earlier labels (builder G*, r0/re-gate C*/N*, re-gate #2 D*/S*/P*), for tracing.
 #   anchor      exact full text of one target line, indentation included.
 #   occurrence  1-based index among the lines whose text equals the anchor (default 1).
@@ -24,20 +28,181 @@
 #                              line (kind: diag|hb|exit) with `:` at the same indentation. This row
 #                              also claims the site on that line.
 #               mode = the mutant's effect as S3 measures it on the killer tests (spec §5ter.4):
-#                 fail-open | fail-closed-other-rc | same-rc-other-diagnosis | equivalent.
+#                 fail-open | fail-closed-other-rc | same-rc-other-diagnosis | static | equivalent.
+#                 static = every killer reads the blob and never runs it (spec §5ter.3 step 8).
 #                 S3 fails when the measured mode differs from this value.
-#               killed_by = pytest node-id substrings. For MUST rows, >=1 must be among the failures.
+#               killed_by = pytest node-id substrings, each matching exactly one collected test and
+#                 naming the fixture that isolates the fault. For MUST rows, >=1 must be among the
+#                 failures.
 
 schema: wa-codex-wrapper-inventory/1
 target: infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
 tests:
   - scripts/tests/test_wa_codex_broker_wrapper.py
 derived_from:
-  commit: 04dd6b51e4
-  blob: 4143a795d9 # 10-hex prefix of the git blob id
-  sites: 109
+  base_commit: 04dd6b51e4
+  base_blob: 4143a795d9 # 10-hex prefix of the wrapper's git blob id at base_commit
+  blob: 78236b6070 # 10-hex prefix of the PR-1 target: base_blob plus the D5 heartbeat fix
+  sites: 134
 
 rows:
+  # ------------------------------------ G0: constants before the source (l.49-64, l.140-141)
+  - id: G0a
+    was: [council r1]
+    anchor: |2-
+      HOME_DIR="/Users/zantara-codex"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0a/val
+        op: sub
+        to: |2-
+          HOME_DIR="/Users/zantara-codex-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
+  - id: G0b
+    was: [council r1]
+    anchor: |2-
+      RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0b/val
+        op: sub
+        to: |2-
+          RUNTIME_DIR="/usr/local/lib/wa-codex-broker-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
+  - id: G0c
+    was: [council r1]
+    anchor: |2-
+      ENV_FILE="$HOME_DIR/.wa-codex-broker.env"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0c/val
+        op: sub
+        to: |2-
+          ENV_FILE="$HOME_DIR/.wa-codex-broker.env-mutant"
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
+  - id: G0d
+    was: [council r1]
+    anchor: |2-
+      VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0d/val
+        op: sub
+        to: |2-
+          VENV_PY="$RUNTIME_DIR/.venv/bin/python3-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
+  - id: G0e
+    was: [council r1]
+    anchor: |2-
+      TAG="wa-codex-broker-wrapper"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0e/val
+        op: sub
+        to: |2-
+          TAG="wa-codex-broker-wrapper-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_guilt_env_file_missing_refuses
+  - id: G0f
+    was: [council r1]
+    anchor: |2-
+      ORGAN_ID="pro.wa_codex_broker"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0f/val
+        op: sub
+        to: |2-
+          ORGAN_ID="pro.wa_codex_broker-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_guilt_env_file_missing_refuses
+  - id: G0g
+    was: [council r1]
+    anchor: |2-
+      SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0g/val
+        op: sub
+        to: |2-
+          SIDECAR_DIR="$HOME_DIR/.organism/last_seen-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_guilt_env_file_missing_refuses
+  - id: G0h
+    was: [council r1]
+    anchor: |2-
+      CODEX_PIN_FILE="/usr/local/lib/wa-codex-broker/codex-pin.env"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0h/val
+        op: sub
+        to: |2-
+          CODEX_PIN_FILE="/usr/local/lib/wa-codex-broker/codex-pin.env-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
+  - id: G0i
+    was: [council r1]
+    anchor: |2-
+      PINNED_CODEX_ROOT="/usr/local/lib/wa-codex-broker/codex"
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0i/val
+        op: sub
+        to: |2-
+          PINNED_CODEX_ROOT="/usr/local/lib/wa-codex-broker/codex-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
+  - id: G0j
+    was: [council r1]
+    anchor: |2-
+      _wcbw_pin_ver=""
+    covers: [const]
+    disposition: MUST
+    mutants:
+      - id: G0j/val
+        op: sub
+        to: |2-
+          _wcbw_pin_ver="-mutant"
+        mode: fail-open
+        killed_by:
+          - test_innocence_missing_pin_is_legacy
+  - id: G0k
+    was: [council r1]
+    anchor: |2-
+      _wcbw_pin_bin=""
+    covers: [const]
+    disposition: EQUIVALENT
+    reason: >-
+      $2 is read only when $1 is non-empty, and $1 is non-empty only on the pin path, where
+      l.202 reassigns _wcbw_pin_bin before the handoff. On the legacy path $2 is never read.
+    mutants:
+      - id: G0k/val
+        op: sub
+        to: |2-
+          _wcbw_pin_bin="-mutant"
+        mode: equivalent
+
   # ---------------------------------------------------------------- G1: NUL probe (l.171)
   - id: G1
     was: [builder G1, D09]
@@ -117,6 +282,22 @@ rows:
         to: |2-
               if read -r -d '' _pin_nul_probe < "$CODEX_PIN_FILE"; then
         mode: equivalent
+  - id: G1d
+    was: [council r1]
+    expr: '< "$CODEX_PIN_FILE" (probe input)'
+    anchor: |2-
+          if IFS= read -r -d '' _pin_nul_probe < "$CODEX_PIN_FILE"; then
+    covers: [redir]
+    disposition: MUST
+    mutants:
+      - id: G1d/redir
+        op: sub
+        to: |2-
+              if IFS= read -r -d '' _pin_nul_probe; then
+        mode: fail-open
+        killed_by:
+          - "[nul_same_line_planted]"
+          - "[embedded_nul]"
 
   # ---------------------------------------------------- G2: exactly one line (l.178, l.182)
   - id: G2
@@ -211,13 +392,28 @@ rows:
         mode: fail-closed-other-rc
         killed_by:
           - test_innocence_valid_pin_overrides_env
+  - id: G2e
+    was: [council r1]
+    expr: '< "$CODEX_PIN_FILE" (loop input)'
+    anchor: |2-
+          done < "$CODEX_PIN_FILE"
+    covers: [redir]
+    disposition: MUST
+    mutants:
+      - id: G2e/redir
+        op: sub
+        to: |2-
+              done
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
 
   # ------------------------------------------------------------- G3: semver (l.84-87, l.197)
   - id: G3
     was: [builder G3, D13]
     anchor: |2-
           if ! _is_semver "$_wcbw_pin_ver"; then
-    covers: [cond]
+    covers: [cond, neg]
     disposition: MUST
     mutants:
       - id: G3/c
@@ -246,6 +442,14 @@ rows:
         killed_by:
           - "[bad_semver_planted]"
           - "[traversal_escape_planted]"
+      - id: G3/!
+        op: sub
+        to: |2-
+              if _is_semver "$_wcbw_pin_ver"; then
+        mode: fail-open
+        killed_by:
+          - "[bad_semver_planted]"
+          - test_innocence_valid_pin_overrides_env
   - id: G3a
     was: [S1]
     expr: "*[!0-9.]*"
@@ -471,7 +675,7 @@ rows:
     was: [D06]
     anchor: |2-
           if [ ! -f "$CODEX_PIN_FILE" ]; then
-    covers: [cond, test]
+    covers: [cond, test, neg]
     disposition: MUST
     mutants:
       - id: G4e/c
@@ -500,11 +704,20 @@ rows:
         killed_by:
           - "[directory]"
           - "[dev_null]"
+      - id: G4e/!
+        op: sub
+        to: |2-
+              if [ -f "$CODEX_PIN_FILE" ]; then
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
+          - "[directory]"
+          - "[dev_null]"
   - id: G4f
     was: [N4, D08]
     anchor: |2-
           if [ ! -r "$CODEX_PIN_FILE" ]; then
-    covers: [cond, test]
+    covers: [cond, test, neg]
     disposition: MUST
     mutants:
       - id: G4f/c
@@ -530,6 +743,14 @@ rows:
         kind: exit
         mode: same-rc-other-diagnosis
         killed_by:
+          - test_guilt_mode_000_pin_reports_unreadable_not_line_count
+      - id: G4f/!
+        op: sub
+        to: |2-
+              if [ -r "$CODEX_PIN_FILE" ]; then
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
           - test_guilt_mode_000_pin_reports_unreadable_not_line_count
 
   # ------------------------------------------------------ G5: derived binary (l.206)
@@ -570,7 +791,7 @@ rows:
     expr: '[ ! -f "$_wcbw_pin_bin" ]'
     anchor: |2-
           if [ ! -f "$_wcbw_pin_bin" ] || [ ! -x "$_wcbw_pin_bin" ]; then
-    covers: [test#1]
+    covers: [test#1, neg#1]
     disposition: MUST
     mutants:
       - id: G5a/-f
@@ -580,12 +801,20 @@ rows:
         mode: fail-open
         killed_by:
           - "[bin_is_directory]"
+      - id: G5a/!
+        op: sub
+        to: |2-
+              if [ -f "$_wcbw_pin_bin" ] || [ ! -x "$_wcbw_pin_bin" ]; then
+        mode: fail-open
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
+          - "[bin_is_directory]"
   - id: G5b
     was: [builder G5b, R3, D16]
     expr: '|| [ ! -x "$_wcbw_pin_bin" ]'
     anchor: |2-
           if [ ! -f "$_wcbw_pin_bin" ] || [ ! -x "$_wcbw_pin_bin" ]; then
-    covers: [test#2, andor]
+    covers: [test#2, andor, neg#2]
     disposition: MUST
     mutants:
       - id: G5b/-x
@@ -594,6 +823,14 @@ rows:
               if [ ! -f "$_wcbw_pin_bin" ]; then
         mode: fail-open
         killed_by:
+          - "[bin_not_executable_planted]"
+      - id: G5b/!
+        op: sub
+        to: |2-
+              if [ ! -f "$_wcbw_pin_bin" ] || [ -x "$_wcbw_pin_bin" ]; then
+        mode: fail-open
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
           - "[bin_not_executable_planted]"
 
   # ------------------------------------------ G6: RUNTIME_DIR not searchable (C3, l.134)
@@ -649,7 +886,7 @@ rows:
     expr: '&& [ ! -x "$RUNTIME_DIR" ]'
     anchor: |2-
       if [ -d "$RUNTIME_DIR" ] && [ ! -x "$RUNTIME_DIR" ]; then
-    covers: [test#2, andor]
+    covers: [test#2, andor, neg]
     disposition: MUST
     mutants:
       - id: G6b/-x
@@ -659,6 +896,14 @@ rows:
         mode: fail-closed-other-rc
         killed_by:
           - test_innocence_valid_pin_overrides_env
+      - id: G6b/!
+        op: sub
+        to: |2-
+          if [ -d "$RUNTIME_DIR" ] && [ -x "$RUNTIME_DIR" ]; then
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
+          - test_guilt_unsearchable_runtime_dir_refuses_not_legacy
 
   # --------------------------------------------------- G7: handoff and exec (l.212-273)
   - id: G7a
@@ -725,7 +970,7 @@ rows:
     was: [D24]
     anchor: |2-
           echo "$TAG: $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) pin applied: codex $1 at $2" >&2
-    covers: [diag]
+    covers: [diag, abspath]
     disposition: MUST
     mutants:
       - id: G7e/stmt
@@ -734,11 +979,18 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_pin_applied_log_line
+      - id: G7e/path
+        op: sub
+        to: |2-
+              echo "$TAG: $(date -u +%Y-%m-%dT%H:%M:%SZ) pin applied: codex $1 at $2" >&2
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - "[nonexistent]"
   - id: G7f
     was: [D19, D20]
     anchor: |2-
           exec /usr/bin/env WA_CODEX_CLI_VERSION_PIN="$1" WA_CODEX_BIN="$2" "$VENV_PY" -m backend.services.integrations.wa_codex_daemon
-    covers: [exec]
+    covers: [exec, abspath]
     disposition: MUST
     mutants:
       - id: G7f/plain
@@ -797,6 +1049,13 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8a/val
+        op: sub
+        to: |2-
+          HOME_DIR="/Users/zantara-codex-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
   - id: G8b
     was: [N1, D17b]
     anchor: |2-
@@ -811,6 +1070,13 @@ rows:
         mode: fail-open
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8b/val
+        op: sub
+        to: |2-
+          RUNTIME_DIR="/usr/local/lib/wa-codex-broker-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
   - id: G8c
     was: [N1, D17c]
     anchor: |2-
@@ -825,6 +1091,13 @@ rows:
         mode: fail-open
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8c/val
+        op: sub
+        to: |2-
+          VENV_PY="$RUNTIME_DIR/.venv/bin/python3-mutant"
+        mode: static
+        killed_by:
+          - test_wrapper_ships_production_constants
   - id: G8d
     was: [N1, D17d]
     anchor: |2-
@@ -839,6 +1112,13 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8d/val
+        op: sub
+        to: |2-
+          TAG="wa-codex-broker-wrapper-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
   - id: G8e
     was: [N1, D17e]
     anchor: |2-
@@ -853,6 +1133,13 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8e/val
+        op: sub
+        to: |2-
+          ORGAN_ID="pro.wa_codex_broker-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
   - id: G8f
     was: [N1, D17f]
     anchor: |2-
@@ -867,6 +1154,13 @@ rows:
         mode: same-rc-other-diagnosis
         killed_by:
           - test_guilt_env_cannot_clobber_post_source_literals
+      - id: G8f/val
+        op: sub
+        to: |2-
+          SIDECAR_DIR="$HOME_DIR/.organism/last_seen-mutant"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
   - id: G8g
     was: [new]
     anchor: |2-
@@ -877,6 +1171,13 @@ rows:
       - id: G8g/stmt
         op: sub
         to: ":"
+        mode: fail-open
+        killed_by:
+          - test_guilt_env_cannot_clobber_pythonpath
+      - id: G8g/val
+        op: sub
+        to: |2-
+          export PYTHONPATH="$RUNTIME_DIR-mutant"
         mode: fail-open
         killed_by:
           - test_guilt_env_cannot_clobber_pythonpath
@@ -898,24 +1199,56 @@ rows:
   - id: G9b
     was: [new]
     anchor: |2-
-          mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 0
+          /bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 0
     covers: [andor, exit]
     disposition: EQUIVALENT
     reason: >-
       No errexit and every caller ignores heartbeat's status, so rc and control flow are
       identical. The only difference is one extra shell error line (the failed redirect) when the
-      sidecar directory cannot be created; no contract pins the absence of that line.
+      sidecar directory cannot be created; no contract pins the absence of that line. Holds only
+      with /bin/mkdir and /bin/date (the D5 heartbeat fix): with PATH-resolved ones, a hostile
+      PATH made the shipped wrapper skip the heartbeat while the mutant wrote one.
     mutants:
       - id: G9b/limb
         op: sub
         to: |2-
-              mkdir -p "$SIDECAR_DIR" 2>/dev/null
+              /bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null
         mode: equivalent
+  - id: G9j
+    was: [council r2]
+    expr: "/bin/mkdir (heartbeat)"
+    anchor: |2-
+          /bin/mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 0
+    covers: [abspath]
+    disposition: MUST
+    mutants:
+      - id: G9j/path
+        op: sub
+        to: |2-
+              mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 0
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - "[nonexistent]"
+  - id: G9k
+    was: [council r2]
+    expr: "/bin/date (heartbeat)"
+    anchor: |2-
+              "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+    covers: [abspath]
+    disposition: MUST
+    mutants:
+      - id: G9k/path
+        op: sub
+        to: |2-
+                  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+        mode: same-rc-other-diagnosis
+        killed_by:
+          - "[nonexistent]"
   - id: G9c
     was: [P1]
     anchor: |2-
       if [ ! -f "$ENV_FILE" ]; then
-    covers: [cond, test]
+    covers: [cond, test, neg]
     disposition: MUST
     mutants:
       - id: G9c/c
@@ -941,6 +1274,14 @@ rows:
         kind: exit
         mode: fail-closed-other-rc
         killed_by:
+          - test_guilt_env_file_missing_refuses
+      - id: G9c/!
+        op: sub
+        to: |2-
+          if [ -f "$ENV_FILE" ]; then
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
           - test_guilt_env_file_missing_refuses
   - id: G9d
     was: [P2]
@@ -1024,7 +1365,7 @@ rows:
     was: [P4]
     anchor: |2-
       if [ ! -x "$VENV_PY" ]; then
-    covers: [cond, test]
+    covers: [cond, test, neg]
     disposition: MUST
     mutants:
       - id: G9g/c
@@ -1050,6 +1391,14 @@ rows:
         kind: exit
         mode: fail-closed-other-rc
         killed_by:
+          - test_guilt_venv_missing_refuses
+      - id: G9g/!
+        op: sub
+        to: |2-
+          if [ -x "$VENV_PY" ]; then
+        mode: fail-closed-other-rc
+        killed_by:
+          - test_innocence_valid_pin_overrides_env
           - test_guilt_venv_missing_refuses
   - id: G9h
     was: [P5]
