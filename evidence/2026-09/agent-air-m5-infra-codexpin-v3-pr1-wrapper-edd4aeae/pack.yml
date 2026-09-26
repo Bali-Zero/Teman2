@@ -2,27 +2,61 @@ brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 pii_scan: clean
 appetite_exceeded: >-
-  Brief declared 2h/2 adversarial rounds; the REWORK-BUILD response ran 2
-  more delta-council rounds (4 total) and ~4h wall clock — the gate's own
+  Brief declared 2h/2 adversarial rounds; the REWORK-BUILD response ran 3
+  more delta-council rounds (5 total) and ~4.5h wall clock — the gate's own
   REWORK-BUILD verdict and the delta council's own findings (C1 fixture
-  isolation, then round-1 and round-2 codex-gpt-5.6-sol gaps) drove every
-  extra round; none were self-inflicted rework of the same defect twice.
+  isolation, then round-1 and round-2 codex-gpt-5.6-sol gaps, then a
+  narrow round-3 confirmation of round 2's fix) drove every extra round;
+  none were self-inflicted rework of the same defect twice — round 3 found
+  no new gap, it confirmed the fix that closed round 2's single finding.
 spend:
-  wall_clock_hours: 4
-  adversarial_rounds: 4
+  wall_clock_hours: 4.5
+  adversarial_rounds: 5
 lanes:
   - lane: build
     role: build
     seat: claude-sonnet-5
     note: >-
-      Implemented D5 in infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
-      (pin parse before the env source, builtins only, fail-closed exit 78,
+      LANES CONSOLIDATED (fresh-gate note, 2026-09-27): this pack previously
+      declared this note as lane 0 (`build`) and a SEPARATE lane 4
+      (`rework-c1-c4`), both seat claude-sonnet-5. That was a lint artifact,
+      not two builders — the REWORK-BUILD response was the SAME builder
+      seat continuing the SAME lane in the SAME worktree after the gate's
+      REWORK-BUILD verdict, not a second, independent build. Recording it as
+      one lane makes the pack say what actually happened; it does not
+      invent a non-Anthropic seat that never built anything (D3's
+      seat-diversity floor only bites at >=2 build lanes, so this is not a
+      workaround for that floor — it is the true lane count). A fresh gate
+      should still form its own view of whether one continuous
+      claude-sonnet-5 lane, self-correcting under an independent council's
+      review, is sufficient without a second builder identity.
+
+      Initial build: implemented D5 in
+      infra/launchagents/wrappers/wa-codex-broker-wrapper.sh (pin parse
+      before the env source, builtins only, fail-closed exit 78,
       positional-parameter handoff, /usr/bin/env exec), wrote
       scripts/tests/test_wa_codex_broker_wrapper.py (17 cases covering
       every row of spec §5's wrapper table plus 4 spalla-driven additions),
       added .github/workflows/wa-codex-pin.yml (macos-latest, path-filtered,
       not continue-on-error), and produced the guilt-receipt table against
       origin/main and PR #7340's head.
+
+      REWORK-BUILD response (same builder, same lane, after the gate's
+      REWORK-BUILD verdict on PR #7420 @ 08a5d93537): C1: 4 new
+      discriminating fixtures planting the binary/tree the fault would
+      otherwise resolve to (nul_same_line_planted,
+      two_lines_diff_versions_planted, bad_semver_planted,
+      traversal_escape_planted); all 5 guards proven via real subprocess
+      mutation (mutant-table.md). C2: derived binary check is now
+      `[ -f ] && [ -x ]`, with a dedicated bin_is_directory test. C3: an
+      EACCES pin directory now exits 78 "pin invalid" before the legacy
+      fallback, with a dedicated chmod-000 test (pin file placed INSIDE
+      the unreadable dir per delta round 1's correction). C4: this pack
+      drops `seat_override`, wires `council_run`, and gets 3 delta
+      re-reviews from the gate's own codex-gpt-5.6-sol seat (see the
+      delta-review lanes below). N1-N7 cheap items implemented; N1's
+      regression extended per delta round 2, then confirmed by delta round
+      3 (below).
   - lane: review-round1
     role: review
     seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
@@ -62,23 +96,6 @@ lanes:
       ACCEPT-WITH-NOTES. See council-journal.jsonl lines 1-2 (copied
       verbatim from the gate's own draft) and reviews/codex-gpt-5.6-sol-r1.md
       / reviews/kimi-code-k3-r1.md.
-  - lane: rework-c1-c4
-    role: build
-    seat: claude-sonnet-5
-    note: >-
-      C1: 4 new discriminating fixtures planting the binary/tree the fault
-      would otherwise resolve to (nul_same_line_planted,
-      two_lines_diff_versions_planted, bad_semver_planted,
-      traversal_escape_planted); all 5 guards proven via real subprocess
-      mutation (mutant-table.md). C2: derived binary check is now
-      `[ -f ] && [ -x ]`, with a dedicated bin_is_directory test. C3: an
-      EACCES pin directory now exits 78 "pin invalid" before the legacy
-      fallback, with a dedicated chmod-000 test (pin file placed INSIDE
-      the unreadable dir per delta round 1's correction). C4: this pack
-      drops `seat_override`, wires `council_run`, and gets a delta
-      re-review from the gate's own codex-gpt-5.6-sol seat (2 rounds, see
-      below). N1-N7 cheap items implemented; N1's regression extended
-      per delta round 2 (see below).
   - lane: delta-review-round1
     role: review
     seat: >-
@@ -108,6 +125,21 @@ lanes:
       Fixed afterward (see dissent below) but NOT re-reviewed by this
       seat within the coordinator's time-box — see council-journal.jsonl
       line 4 and reviews/codex-gpt-5.6-sol-delta2-prompt.txt.
+  - lane: delta-review-round3
+    role: review
+    seat: codex-gpt-5.6-sol (gate's own dispatch mechanism)
+    note: >-
+      VERDICT: ACCEPT. Scope narrowed to round 2's single remaining gap
+      only (N1's six-name/heartbeat regression). Confirms the test now
+      clobbers all 6 protected literals (HOME_DIR/RUNTIME_DIR/VENV_PY/TAG/
+      ORGAN_ID/SIDECAR_DIR) and asserts the heartbeat JSON lands at the
+      wrapper's own HOME_DIR/ORGAN_ID path with status=starting/note=exec
+      daemon; a static two-file contract check passed in its read-only
+      sandbox (pytest itself could not run there, no writable tmp). No
+      residual finding within the narrow scope. This is the seat's first
+      ACCEPT across 3 delta rounds on this PR. See council-journal.jsonl
+      line 5 and reviews/codex-gpt-5.6-sol-delta3-prompt.txt /
+      reviews/codex-gpt-5.6-sol-delta3.md.
 dissent:
   - seat: codex-gpt-5.6-spalla
     objection: >-
@@ -203,9 +235,9 @@ dissent:
       `"status":"starting"`/`"note":"exec daemon"`, never the hostile
       destination. Mutation-verified: removing the HOME_DIR/ORGAN_ID/
       SIDECAR_DIR re-asserts from the wrapper's N1 block now turns this
-      test red. NOT re-reviewed by codex-gpt-5.6-sol (round 3 not
-      obtained within the coordinator's time-box) — see
-      council-journal.jsonl line 4.
+      test red. Re-reviewed by codex-gpt-5.6-sol in delta round 3 (scope
+      narrowed to this gap only): VERDICT ACCEPT — see
+      council-journal.jsonl line 5 and reviews/codex-gpt-5.6-sol-delta3.md.
 receipts:
   - claim: >-
       All 26 wrapper pytest cases pass on the final shipped wrapper, up

@@ -1,0 +1,82 @@
+Third delta re-review, same PR (#7420, wa-codex-broker-wrapper.sh, spec D5). SCOPE IS NARROW:
+your round 2 verdict was REWORK for exactly ONE remaining gap. Everything else you accepted in
+round 2 (C2/C3/N4, all independently mutation-confirmed by you) is OUT OF SCOPE here — do not
+re-litigate it. Review ONLY whether that one gap is now closed.
+
+YOUR ROUND 2 FINDING (verbatim): "N1's regression (test_guilt_env_cannot_clobber_post_source_
+literals) clobbered only 3 of the 6 protected wrapper-private literals (RUNTIME_DIR/VENV_PY/TAG,
+not HOME_DIR/ORGAN_ID/SIDECAR_DIR) and never checked the heartbeat file; proven by the seat's own
+mutation (removing just the HOME_DIR/ORGAN_ID/SIDECAR_DIR re-asserts left the test green)."
+
+WHAT CHANGED SINCE (diff against the version you reviewed in round 2):
+
+--- a/scripts/tests/test_wa_codex_broker_wrapper.py
++++ b/scripts/tests/test_wa_codex_broker_wrapper.py
+@@ test_guilt_env_cannot_clobber_post_source_literals @@
+     _write_daemon_env(
+         world,
+         WA_CODEX_CLI_VERSION_PIN="0.0.1",
+         WA_CODEX_BIN="/opt/homebrew/bin/codex",
+         WA_CODEX_BROKER_ENABLED="true",
+         RUNTIME_DIR="/nonexistent-evil-runtime",
+         VENV_PY="/nonexistent-evil-venv",
+         TAG="stale-tag",
++        HOME_DIR="/nonexistent-evil-home",
++        ORGAN_ID="evil.organ",
++        SIDECAR_DIR="/nonexistent-evil-sidecar",
+     )
+     pin_file = tmp_path / "codex-pin.env"
+     pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+     pinned_bin = _plant_pinned_codex(world, "9.9.9")
+
+     wrapper = _base_wrapper(tmp_path, world, pin_file)
+     result = _run(wrapper)
+     assert result.returncode == 0, result.stderr
+     assert "WA_CODEX_CLI_VERSION_PIN=9.9.9" in result.stdout
+     assert f"WA_CODEX_BIN={pinned_bin}" in result.stdout
+     assert "wa-codex-broker-wrapper: " in result.stderr
+     assert "stale-tag:" not in result.stderr
+     assert "evil" not in result.stderr
++
++    heartbeat_path = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
++    assert heartbeat_path.is_file(), (
++        "heartbeat must land at the wrapper's OWN HOME_DIR/ORGAN_ID, "
++        f"not the hostile one; not found at {heartbeat_path}"
++    )
++    heartbeat_body = heartbeat_path.read_text()
++    assert '"status":"starting"' in heartbeat_body
++    assert '"note":"exec daemon"' in heartbeat_body
++    assert not (tmp_path / "nonexistent-evil-sidecar").exists()
++    assert not Path("/nonexistent-evil-home").exists()
+
+The wrapper's N1 re-assert block itself (infra/launchagents/wrappers/wa-codex-broker-wrapper.sh,
+after `set +a`) is UNCHANGED from round 2 — it already re-asserted all six literals
+(HOME_DIR/RUNTIME_DIR/VENV_PY/TAG/ORGAN_ID/SIDECAR_DIR); only the TEST was under-scoped:
+
+    HOME_DIR="/Users/zantara-codex"
+    RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
+    VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
+    TAG="wa-codex-broker-wrapper"
+    ORGAN_ID="pro.wa_codex_broker"
+    SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
+
+MUTATION VERIFICATION (done ourselves before dispatching you, so you can independently re-derive
+it in your read-only sandbox by re-reading the two files above): removing the HOME_DIR/ORGAN_ID/
+SIDECAR_DIR lines from the wrapper's re-assert block, with the rest of the diff applied, turns
+`test_guilt_env_cannot_clobber_post_source_literals` red — the heartbeat_path.is_file() assertion
+fails because the heartbeat lands under the hostile /nonexistent-evil-home instead. We then
+restored the wrapper byte-for-byte (git diff was empty afterward) before this dispatch.
+
+Full suite: 26/26 pass on the shipped (unmutated) wrapper (scripts/tests/test_wa_codex_broker_
+wrapper.py, `python3 -m pytest ... -q`).
+
+YOUR JOB: confirm or refute, by reading the two files at their current on-disk state (this
+worktree is read-only to you, but readable) and by your own reasoning/dry-run, that this closes
+the exact gap you named in round 2 — no more, no less. Do not open new scope; if you see an
+unrelated concern, name it as a NOTE, not a blocker for this round's verdict.
+
+CODEX SEAT NOTE: your cwd is read-only at
+/Users/balizero/nuzantara/.worktrees/infra-codexpin-v3-pr1-wrapper — matches what is on disk
+there right now. You MAY read files and run read-only shell experiments. End your answer with
+exactly one line: `VERDICT: ACCEPT` or `VERDICT: REWORK`, followed by reasoning and any
+remaining findings.
