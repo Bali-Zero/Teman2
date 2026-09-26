@@ -1,0 +1,115 @@
+[Air-M5]
+
+### Constructive Council Review
+
+**Target**: `com.balizero.s7-yield.weekly` canonization (`agent/air-m5/infra/s7-yield-canon-0926`)  
+**Scope**: `apps/organism/organism/organs_registry.yaml`, `infra/home-fork/declared-pairs.json`, `infra/launchagents/com.balizero.s7-yield.weekly.plist`, `scripts/s7-yield-run.sh`, `scripts/tests/test_s7_yield_run_wrapper.py`.
+
+---
+
+### Findings
+
+#### 1. Missing single-instance mutual exclusion on LLM cron (Gene G10)
+- **Severity**: `MAJOR`
+- **File:Line**: `scripts/s7-yield-run.sh:78`
+- **Claim**: The job runs an LLM workload (local Ollama generating sales pitch drafts from CRM data). Per the genes contract (`infra/organ-conformance/genes.json`):
+  > *"G10_single_instance: wrapper uses a pidfile (+ liveness probe + trap cleanup) or flock; mandatory for llm-cron, advisory otherwise WHY: a healer/cron restarted over a live predecessor corrupts state"*
+  
+  `scripts/s7-yield-run.sh` contains no mutual exclusion mechanism. If an operator triggers a manual test run while the Sunday cron is executing, or if local Ollama stalls and a run overlaps with a subsequent trigger, concurrent instances will run simultaneously, causing unified memory contention and potentially generating duplicate client drafts.
+- **Evidence**:
+  ```bash
+  "$PY" "$SCRIPT" --all --limit "$LIMIT"
+  rc=$?
+  if [[ $rc -eq 0 ]]; then
+      organism_heartbeat "$ORGAN_ID" "ok" "rc=0"
+  ```
+  Neither a pidfile nor `flock` is present.
+- **Concrete Fix**: Add a portable pidfile lock with liveness probe and trap cleanup near the top of [scripts/s7-yield-run.sh](file:///Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/s7-yield-run.sh):
+  ```bash
+  PIDFILE="/tmp/s7-yield.pid"
+  if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+      log "another instance (PID $(cat "$PIDFILE")) is running; exiting"
+      exit 0
+  fi
+  echo "$$" > "$PIDFILE"
+  trap 'rm -f "$PIDFILE"' EXIT
+  ```
+
+---
+
+#### 2. Signals (SIGTERM/SIGINT) bypass failure heartbeat (Gene G2)
+- **Severity**: `MINOR`
+- **File:Line**: `scripts/s7-yield-run.sh:78-87`
+- **Claim**: G2 mandates liveness reporting on both success and failure paths:
+  > *"G2_heartbeat: wrapper calls organism_heartbeat or writes ~/.organism/last_seen/<id>.json on success AND failure paths"*
+  
+  Currently, if `launchctl stop`, system shutdown, or an operator sends `SIGTERM`/`SIGINT` while `$PY` is executing, bash terminates immediately and lines 80–87 are never reached. No failure/interrupted heartbeat is emitted, leaving the last heartbeat unchanged until the 8-day silence threshold expires.
+- **Evidence**:
+  ```bash
+  "$PY" "$SCRIPT" --all --limit "$LIMIT"
+  rc=$?
+  if [[ $rc -eq 0 ]]; then
+      organism_heartbeat "$ORGAN_ID" "ok" "rc=0"
+  else
+      organism_heartbeat "$ORGAN_ID" "error" "rc=$rc"
+  fi
+  exit "$rc"
+  ```
+- **Concrete Fix**: Register a signal trap before invoking the payload:
+  ```bash
+  trap 'organism_heartbeat "$ORGAN_ID" "error" "signal-abort"; exit 143' TERM INT
+  ```
+
+---
+
+#### 3. Test sandbox drops `PATH` from child environment
+- **Severity**: `MINOR`
+- **File:Line**: `scripts/tests/test_s7_yield_run_wrapper.py:35-37`
+- **Claim**: `_run()` passes a custom `env` dictionary containing only `HOME` and `S7_YIELD_REPO_ROOT`, dropping `PATH` completely from the child process.
+- **Evidence**:
+  ```python
+  def _run(home: Path, repo: Path, **extra: str) -> tuple[int, dict | None]:
+      env = {"HOME": str(home), "S7_YIELD_REPO_ROOT": str(repo), **extra}
+      proc = subprocess.run(["/bin/bash", str(WRAPPER)], env=env, capture_output=True, text=True)
+  ```
+  When `env` is explicitly provided to `subprocess.run`, `PATH` is not inherited from the parent process. Child utilities invoked by `heartbeat.sh` (e.g. `mkdir`, `date`, `mv`) rely on bash's internal default path fallback, which fails or resolves unexpected binaries in environments with custom tool paths (e.g. Homebrew, Nix, or specialized CI runners).
+- **Concrete Fix**: Inherit `PATH` from `os.environ` in [scripts/tests/test_s7_yield_run_wrapper.py](file:///Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/tests/test_s7_yield_run_wrapper.py):
+  ```python
+  import os
+  ...
+  env = {"HOME": str(home), "S7_YIELD_REPO_ROOT": str(repo), "PATH": os.environ.get("PATH", "/usr/bin:/bin"), **extra}
+  ```
+
+---
+
+#### 4. Kill-switch check does not recognize `0` as disabled
+- **Severity**: `NIT`
+- **File:Line**: `scripts/s7-yield-run.sh:63`
+- **Claim**: The kill switch strictly checks for `"false"` and `S7_YIELD_OFF=1`, but does not treat `S7_YIELD_ENABLED=0` as disabled.
+- **Evidence**:
+  ```bash
+  if [[ "${S7_YIELD_ENABLED:-true}" == "false" || "${S7_YIELD_OFF:-0}" == "1" ]]; then
+  ```
+  An operator attempting to disable the job via standard boolean convention `S7_YIELD_ENABLED=0` will not engage the kill switch.
+- **Concrete Fix**:
+  ```bash
+  if [[ "${S7_YIELD_ENABLED:-true}" == "false" || "${S7_YIELD_ENABLED:-true}" == "0" || "${S7_YIELD_OFF:-0}" == "1" ]]; then
+  ```
+
+---
+
+#### 5. Empty dependency declaration in organs registry
+- **Severity**: `NIT`
+- **File:Line**: `apps/organism/organism/organs_registry.yaml:3125`
+- **Claim**: The organ is declared with `dependencies: []`, though notes document direct runtime dependencies on the CRM Postgres database and local Ollama.
+- **Evidence**:
+  ```yaml
+    owner_module: scripts/s7-yield-run.sh
+    dependencies: []
+    recovery_action: human_only
+  ```
+  While `recovery_action: human_only` correctly prevents automated healer loops, declaring `dependencies: [infra.postgres]` allows sentinel diagnostics to distinguish between pipeline failures and upstream database outages.
+
+---
+
+VERDICT: REWORK

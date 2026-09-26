@@ -1,0 +1,48 @@
+**Tre rilievi MAJOR: serve REWORK.**
+
+1. **MAJOR — Heartbeat perso senza segnalazione.**  
+   [scripts/s7-yield-run.sh:60](/Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/s7-yield-run.sh:60):
+
+   ```bash
+   if ! declare -F organism_heartbeat >/dev/null 2>&1; then
+       organism_heartbeat() { :; }
+   fi
+   ```
+
+   Anche con la libreria presente, [scripts/lib/heartbeat.sh:241](/Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/lib/heartbeat.sh:241) contiene:
+
+   ```bash
+   mkdir -p "$_organism_hb_dir" 2>/dev/null || return 0
+   ```
+
+   **Prova:** libreria assente + kill switch restituisce `0` senza heartbeat `disabled`. Con `mkdir` simulato fallente e payload riuscito, risultato `0`, stdout/stderr vuoti, nessun heartbeat. Un precedente stato resta invariato; l’intenzione di disabilitare non viene registrata. Viola G2/G5. Il test a riga 88 addirittura accetta `assert hb is None`. Serve rendere visibile il fallimento della telemetria.
+
+2. **MAJOR — SIGTERM lascia il heartbeat vecchio e il payload attivo.**  
+   [scripts/s7-yield-run.sh:79](/Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/s7-yield-run.sh:79):
+
+   ```bash
+   "$PY" "$SCRIPT" --all --limit "$LIMIT"
+   rc=$?
+   ```
+
+   Il heartbeat viene scritto soltanto dopo il ritorno; nel wrapper non esistono trap per segnali o uscita.
+
+   **Prova:** con un processo payload innocuo, ho inviato SIGTERM esclusivamente al wrapper. Il wrapper è terminato con segnale 15, senza heartbeat; il figlio ha successivamente emesso `PAYLOAD_END`. La sostituzione di `exec` introduce un supervisore che non gestisce terminazione e inoltro dei segnali. Servono gestione del figlio e heartbeat finale sui segnali intercettabili.
+
+3. **MAJOR — G10 non garantito dal wrapper.**  
+   [scripts/s7-yield-run.sh:73](/Users/balizero/nuzantara/.worktrees/infra-s7-yield-canon-0926/scripts/s7-yield-run.sh:73) verifica l’esistenza dello script, quindi lo avvia direttamente:
+
+   ```bash
+   if [[ ! -f "$SCRIPT" ]]; then
+       ...
+   fi
+   "$PY" "$SCRIPT" --all --limit "$LIMIT"
+   ```
+
+   Nessun lock, pidfile o controllo di istanza precede l’avvio. **Prova:** due invocazioni dirette del wrapper sono entrate contemporaneamente nei payload simulati; entrambe hanno concluso pubblicando `ok`. Per questo job LLM, G10 richiede esclusione reciproca. `human_only` non impedisce rilanci manuali concorrenti. La prova riguarda il wrapper; non attribuisco protezioni o difetti al payload escluso dalla review.
+
+Verificati: checksum corretto, precedenti organi e coppie invariati, ID unico, plist parsabile e label coerente. Codici payload `0`, `3`, `127` propagati correttamente nelle prove in memoria. Nessuna PII nelle note heartbeat introdotte.
+
+Nessun file modificato. Pytest non eseguito perché crea file; plist live e configurazione caricata da launchd non verificati, come richiesto. L’helper di verifica della sessione ha restituito `JSONDecodeError`.
+
+VERDICT: REWORK
