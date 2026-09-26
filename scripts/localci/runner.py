@@ -21,6 +21,7 @@ import html
 import json
 import os
 import platform
+import shlex
 import shutil
 import signal
 import subprocess
@@ -30,7 +31,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RUNNER_VERSION = "0.2.0"
+RUNNER_VERSION = "0.2.1"
 STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
 BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
 EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
@@ -51,6 +52,21 @@ SECRET_ENV_SUFFIXES = ("_API_KEY", "_TOKEN", "_SECRET", "PASSWORD", "_PASSWD")
 
 def is_secret_env(name: str) -> bool:
     return name in SECRET_ENV or name.startswith(SECRET_ENV_PREFIXES) or name.endswith(SECRET_ENV_SUFFIXES)
+
+
+# Interpreter start-up hooks a candidate tree could plant (sitecustomize/usercustomize/.pth are found
+# through these variables) must never reach a TRUSTED interpreter: no PYTHONPATH, no user site.
+_TRUSTED_ENV_DROP = ("PYTHONPATH", "PYTHONSTARTUP", "PYTHONHOME", "PYTEST_ADDOPTS", "PYTEST_PLUGINS")
+
+
+def trusted_env(base: dict | None = None) -> dict:
+    """Environment for a trusted (base-ref) check: secrets stripped, python injection variables removed."""
+    env = {k: v for k, v in (os.environ if base is None else base).items() if not is_secret_env(k) and k not in _TRUSTED_ENV_DROP}
+    # PYTHONNOUSERSITE is deliberately NOT set: it propagates to child interpreters and hides user-site tools
+    # a trusted check legitimately shells out to (detect-secrets lives there on Pro -> the ban test went red).
+    # The trusted interpreter itself is started with -I, which already ignores the user site.
+    env.update(PYTHONSAFEPATH="1", PYTHONDONTWRITEBYTECODE="1")
+    return env
 DEFAULT_MAX_ATTEMPTS = 2
 DEFAULT_DEADLINE_S = 3600
 
@@ -144,7 +160,7 @@ def identity(wt: Path) -> dict:
 # ------------------------------------------------------------ environment evidence
 def _try(cmd: list[str], timeout: int = 60) -> str | None:
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=trusted_env())
     except (OSError, subprocess.TimeoutExpired):
         return None
     return r.stdout if r.returncode == 0 else None
@@ -152,7 +168,7 @@ def _try(cmd: list[str], timeout: int = 60) -> str | None:
 
 def deps_lock(venv_py: str) -> tuple[str, str]:
     """sha256 of the venv's frozen requirements — `<py> -m pip freeze`, else `uv pip freeze --python <py>`."""
-    for source, cmd in (("pip", [venv_py, "-m", "pip", "freeze"]), ("uv", ["uv", "pip", "freeze", "--python", venv_py])):
+    for source, cmd in (("pip", [venv_py, "-I", "-m", "pip", "freeze"]), ("uv", ["uv", "pip", "freeze", "--python", venv_py])):
         out = _try(cmd)
         if out is not None:
             return sha256_bytes(out.encode()), source
@@ -173,7 +189,7 @@ def tool_identity(exe: str, cwd: str | None = None) -> dict:
 
 def env_fingerprint(venv_py: str, checks: dict | None = None) -> dict:
     probe = "import sys,platform,pytest;print(sys.version.split()[0]);print(pytest.__version__);print(platform.platform())"
-    out = _try([venv_py, "-c", probe])
+    out = _try([venv_py, "-I", "-c", probe])
     py, pt, plat = (out.split("\n") + ["", "", ""])[:3] if out else ("unavailable", "unavailable", platform.platform())
     uv = _try(["uv", "--version"])
     gv = _try(["git", "--version"])
@@ -263,6 +279,21 @@ def _extract_base_file(wt: Path, base: str, rel: str) -> bytes | None:
     return r.stdout if r.returncode == 0 else None
 
 
+PLAN_HASH_EXCLUDE = ("created_at", "created_epoch", "deadline_at", "plan_hash")
+
+
+def plan_hash_of(plan: dict) -> str:
+    return sha256_json({k: v for k, v in plan.items() if k not in PLAN_HASH_EXCLUDE})
+
+
+def load_plan_verified(run_dir: Path) -> dict:
+    """Load plan.json and refuse it when its content no longer hashes to the plan_hash it carries."""
+    plan = json.loads((Path(run_dir) / "state" / "plan.json").read_text())
+    if plan.get("plan_hash") != plan_hash_of(plan):
+        sys.exit(f"plan.json integrity check failed in {run_dir}: content does not match its plan_hash — the plan was edited after it was frozen")
+    return plan
+
+
 def cmd_plan(a):
     run_dir, wt = Path(a.run_dir).resolve(), Path(a.worktree).resolve()
     store = Store(run_dir)
@@ -278,8 +309,8 @@ def cmd_plan(a):
             sys.exit(f"trusted classifier file {f} missing at base {base[:12]} — refusing to plan without the trusted classifier")
         (trusted / Path(f).name).write_bytes(blob)
     changed = git(wt, "diff", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()
-    cm = json.loads(subprocess.run([sys.executable, str(trusted / "change_map.py")], input="\n".join(changed) + "\n",
-                                   capture_output=True, text=True, check=True).stdout)
+    cm = json.loads(subprocess.run([sys.executable, "-I", str(trusted / "change_map.py")], input="\n".join(changed) + "\n",
+                                   capture_output=True, text=True, check=True, env=trusted_env()).stdout)
     test_mods = sorted(f for f in changed if f.startswith("scripts/tests/test_") and f.endswith(".py") and (wt / f).exists())
     optin = [m for m in test_mods if "real_pg" in m]
     pure = [m for m in test_mods if m not in optin]
@@ -288,7 +319,7 @@ def cmd_plan(a):
         venv_py = sys.executable
     trusted_sha: dict[str, str] = {}
     checks = {
-        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"],
+        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"], "trusted_pythonpath": str(trusted),
             "purpose": "the classifier that decides which jobs run is proven on its own guilt+innocence corpus, from the BASE ref (candidate cannot self-approve)"},
         "policy.change_map": {"kind": "record", "status": "PASS" if cm.get("mode") == "enforcing" and cm.get("reason") == "classified" else "FAIL",
             "reason": f"trusted change_map: reason={cm.get('reason')} run_all={cm.get('run_all')} suggested={cm.get('suggested_jobs')}", "data": cm},
@@ -331,7 +362,7 @@ def cmd_plan(a):
             "max_attempts": a.max_attempts, "deadline_s": a.deadline_s, "deadline_at": created_epoch + a.deadline_s,
             "contexts_file": a.contexts_file, "contexts_status": ctxs["status"], "contexts_reason": ctxs["reason"],
             "contexts_sha256": ctxs.get("sha256"), "required_contexts": ctxs["required"], "contexts_map": ctxs["map"], "checks": checks}
-    plan["plan_hash"] = sha256_json({k: v for k, v in plan.items() if k not in ("created_at", "created_epoch", "deadline_at")})
+    plan["plan_hash"] = plan_hash_of(plan)
     atomic_write(run_dir / "state" / "plan.json", json.dumps(plan, indent=2, sort_keys=True))
     env = env_fingerprint(venv_py, checks)
     st = {"run_id": run_dir.name, "plan_hash": plan["plan_hash"],
@@ -415,7 +446,7 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
     junit = run_dir / "receipts" / f"{name}.junit.xml"
     kind = spec["kind"]
     envx = {k: v for k, v in os.environ.items() if not is_secret_env(k)}
-    envx["PYTHONDONTWRITEBYTECODE"] = "1"
+    envx["PYTHONDONTWRITEBYTECODE"] = "1"  # kind "pytest" runs CANDIDATE tests (PYTHONPATH=cwd on purpose): they are not a trusted check
     cwd = spec.get("cwd") or plan["worktree"]
     if kind == "pytest":
         if not spec.get("modules"):
@@ -434,12 +465,15 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
         shutil.rmtree(overlay, ignore_errors=True)
         build_overlay(Path(cwd), overlay, blobs)
         ini = run_dir / "state" / "trusted" / "pytest-trusted.ini"
-        ini.write_text("[pytest]\n")
-        cmd = [spec["python"], "-m", "pytest", "-p", "no:cacheprovider", "--noconftest", "-c", str(ini), "--rootdir", cwd, "-q",
+        ini.write_text(f"[pytest]\npythonpath = {shlex.quote(cwd)}\n")
+        cmd = [spec["python"], "-I", "-m", "pytest", "-p", "no:cacheprovider", "--noconftest", "-c", str(ini), "--rootdir", cwd, "-q",
                f"--junitxml={junit}", *[str(overlay / r) for r in blobs]]
-        envx["PYTHONPATH"] = cwd
+        envx = trusted_env(envx)
     elif kind == "cmd":
         cmd = spec["cmd"]
+        envx = trusted_env(envx)
+        if spec.get("trusted_pythonpath"):  # a directory of BASE-ref files only (PYTHONSAFEPATH drops the script dir)
+            envx["PYTHONPATH"] = spec["trusted_pythonpath"]
     else:
         return {"status": "ERROR", "reason": f"unknown check kind {kind!r}", "rc": None, "counts": None}
     t0 = time.monotonic()
@@ -513,7 +547,7 @@ def _verify_receipt(run_dir: Path, name: str, c: dict, st: dict, cur_hash: str) 
 def cmd_run(a):
     run_dir = Path(a.run_dir).resolve()
     store = Store(run_dir)
-    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    plan = load_plan_verified(run_dir)
 
     def _term(signum, frame):
         raise KeyboardInterrupt(f"signal {signum}")
@@ -598,7 +632,7 @@ def _main_thread() -> bool:
 def cmd_review(a):
     run_dir = Path(a.run_dir).resolve()
     store = Store(run_dir)
-    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    plan = load_plan_verified(run_dir)
     raw = Path(a.file).read_bytes()
     file_sha = sha256_bytes(raw)
     with store.lock():
@@ -727,7 +761,7 @@ def overall(view: dict, plan: dict | None = None) -> str:
 def compute_status(run_dir: Path, write: bool = True) -> dict:
     run_dir = Path(run_dir).resolve()
     store = Store(run_dir)
-    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    plan = load_plan_verified(run_dir)
     lk = store.lock(blocking=False)
     try:
         st = store.load()

@@ -30,27 +30,30 @@ class GateMachine(RuleBasedStateMachine):
         self.patch.start()
         self.fx = fr.make_repo(self.root)
         fr.plan(self.fx, "--contexts-file", str(fr.contexts_file(self.fx, self.root / "contexts.yaml")),
-                "--extra-check", cmd_check("x.ok", self.fx["repo"], [PY, "-c", "pass"]))
+                "--extra-check", cmd_check("x.ok", self.fx["repo"], [PY, "-c", "import sys,pathlib;sys.exit(int(pathlib.Path(sys.argv[1]).exists()))", str(self.root / "switch")]))
+        self.switch = self.root / "switch"
         self.plan_path = self.fx["run"] / "state" / "plan.json"
         self.kinds = {n: s["kind"] for n, s in json.loads(self.plan_path.read_text())["checks"].items()}
         self.at_original, self.review_good, self.n = True, False, 0
         fr.run(self.fx)
 
-    def set_x_ok(self, argv):
-        plan = json.loads(self.plan_path.read_text())
-        plan["checks"]["x.ok"]["cmd"] = argv
-        self.plan_path.write_text(json.dumps(plan))
+    def set_switch(self, on: bool):
+        # x.ok reads a switch file, so the (integrity-checked) plan is never edited
+        if on:
+            self.switch.write_text("fail")
+        elif self.switch.exists():
+            self.switch.unlink()
 
     @rule()
     def run_check_pass(self):
-        self.set_x_ok([PY, "-c", "pass"])
+        self.set_switch(False)
         fr.run(self.fx, "--only", "x.ok")
 
     @rule()
     def run_check_fail(self):
-        self.set_x_ok([PY, "-c", "raise SystemExit(1)"])
+        self.set_switch(True)
         fr.run(self.fx, "--only", "x.ok")
-        self.set_x_ok([PY, "-c", "pass"])
+        self.set_switch(False)
 
     @rule()
     def move_candidate(self):

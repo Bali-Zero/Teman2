@@ -3,7 +3,7 @@
 
 Context ``pro/local-ci`` is NON-required and comparison-only: it lets a human set the
 local verdict beside the hosted checks, and never replaces one of them. In this phase
-the adapter only BUILDS the payload and the ``gh api`` argv; it posts nothing.
+the adapter only BUILDS the payload and the ``gh api`` argv; the only posting path (behind --post + LOCALCI_ADAPTER_ARMED=1 + LOCALCI_ADAPTER_PHASE=live) is refused in this phase and never reached by tests.
 
 Verdict mapping (``overall`` -> GitHub ``state``):
 

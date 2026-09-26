@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+import subprocess
 import sys
 
 import pytest
@@ -410,7 +411,7 @@ def test_real_env_fingerprint_carries_the_required_evidence(fx, monkeypatch):
     env = runner.env_fingerprint(PY, spec)
     for k in ("python", "pytest", "platform", "hostname", "runner_sha256", "git_version", "deps_lock_sha256", "deps_lock_source", "uv_version", "runner_version"):
         assert k in env
-    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.2.0"
+    assert env["python"].startswith(sys.version.split()[0]) and env["runner_version"] == "0.2.1"
     assert len(env["deps_lock_sha256"]) == 64 and env["deps_lock_source"] in ("pip", "uv")
     assert env["tools"]["c.tool"]["sha256"] not in ("not-a-file", None) and os.path.isabs(env["tools"]["c.tool"]["path"])
     assert env["tools"]["c.gone"] == {"path": None, "sha256": "not-a-file"}
@@ -451,3 +452,50 @@ def test_secret_env_rule_is_an_entity_not_a_spelling():
     assert r.is_secret_env("ANTHROPIC_AUTH_TOKEN") and r.is_secret_env("SOME_VENDOR_API_KEY")
     assert r.is_secret_env("PG_PASSWORD") and r.is_secret_env("REDIS_PASSWORD")
     assert not r.is_secret_env("PATH") and not r.is_secret_env("PYTHONPATH") and not r.is_secret_env("HOME")
+
+
+# ------------------------------------------- trusted interpreter isolation + plan integrity
+def test_sitecustomize_in_the_candidate_path_never_runs_inside_a_trusted_interpreter(tmp_path, monkeypatch):
+    planted = tmp_path / "candidate_root"
+    planted.mkdir()
+    marker = tmp_path / "marker"
+    (planted / "sitecustomize.py").write_text(f"open({str(marker)!r}, 'w').write('pwned')\n")
+    monkeypatch.setenv("PYTHONPATH", str(planted))
+    monkeypatch.setenv("PYTHONSTARTUP", str(planted / "sitecustomize.py"))
+    env = runner.trusted_env()
+    assert "PYTHONPATH" not in env and "PYTHONSTARTUP" not in env and "PYTHONHOME" not in env
+    assert env["PYTHONSAFEPATH"] == "1" and env["PYTHONDONTWRITEBYTECODE"] == "1"
+    subprocess.run([sys.executable, "-I", "-c", "pass"], env=env, check=True)
+    assert not marker.exists(), "candidate sitecustomize executed inside the trusted interpreter"
+    subprocess.run([sys.executable, "-c", "pass"], env=dict(os.environ), check=True)  # control: the inherited env DOES load it
+    assert marker.exists(), "control failed: the planted sitecustomize is not effective, the guilt test proves nothing"
+
+
+def test_trusted_env_strips_secrets_and_injection_variables(monkeypatch):
+    for k in ("CLAUDE_CODE_OAUTH_TOKEN", "SOME_SERVICE_TOKEN", "PYTHONHOME", "PYTEST_ADDOPTS", "KEEP_ME"):
+        monkeypatch.setenv(k, "v")
+    env = runner.trusted_env()
+    assert "KEEP_ME" in env and not ({"CLAUDE_CODE_OAUTH_TOKEN", "SOME_SERVICE_TOKEN", "PYTHONHOME", "PYTEST_ADDOPTS"} & set(env))
+    assert runner.trusted_env({"PYTHONPATH": "/x", "A": "1"}) == {"A": "1", "PYTHONSAFEPATH": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+
+
+def test_a_candidate_sitecustomize_at_the_worktree_root_cannot_reach_the_trusted_pytest(tmp_path):
+    marker = tmp_path / "marker"
+    fx = fr.make_repo(tmp_path, {"sitecustomize.py": f"open({str(marker)!r}, 'w').write('x')\n"})
+    fr.plan(fx)
+    fr.run(fx, "--only", "policy.paid_anthropic_ban")
+    assert fr.load_state(fx)["checks"]["policy.paid_anthropic_ban"]["status"] == "PASS" and not marker.exists()
+
+
+def test_plan_tampering_is_refused_before_anything_trusts_it(fx, tmp_path):
+    fr.plan(fx)
+    assert runner.load_plan_verified(fx["run"])["plan_hash"] == fr.load_state(fx)["plan_hash"]
+    pp = fx["run"] / "state" / "plan.json"
+    plan = json.loads(pp.read_text())
+    plan["checks"]["policy.trusted_classifier_corpus"]["cmd"] = [PY, "-c", "pass"]  # a forged, always-green command
+    pp.write_text(json.dumps(plan))
+    with pytest.raises(SystemExit):
+        runner.load_plan_verified(fx["run"])
+    for call in (lambda: fr.run(fx), lambda: fr.status(fx), lambda: fr.import_review(fx, tmp_path)):
+        with pytest.raises(SystemExit):
+            call()
