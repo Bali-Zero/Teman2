@@ -371,8 +371,8 @@ export function KBLISearch({
               />
             ))}
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-[var(--kbli-border)] bg-[var(--kbli-bg-base)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--kbli-text-muted)]">
-            <span className="tabular-nums">
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap border-t border-[var(--kbli-border)] bg-[var(--kbli-bg-base)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-normal text-[var(--kbli-text-muted)] sm:gap-3 sm:text-[11px] sm:tracking-[0.12em]">
+            <span className="min-w-0 truncate tabular-nums">
               {specimens.length} KBLI codes found
             </span>
             <span>
@@ -429,7 +429,7 @@ function SpecimenOption({
       onClick={onSelect}
       onMouseEnter={onHover}
       className={cn(
-        "grid w-full grid-cols-[4.75rem_1fr] gap-x-3 border-b border-[var(--kbli-border)] px-4 py-3 text-left last:border-b-0 sm:grid-cols-[5.5rem_1fr]",
+        "grid w-full grid-cols-[4rem_1fr] gap-x-3 border-b border-[var(--kbli-border)] px-4 py-3 text-left last:border-b-0 sm:grid-cols-[5.5rem_1fr]",
         active
           ? "bg-[var(--kbli-bg-surface-hover)] shadow-[inset_3px_0_0_var(--kbli-accent)]"
           : "hover:bg-[var(--kbli-bg-card-hover)]",
@@ -450,29 +450,34 @@ function SpecimenOption({
             {titleId}
           </span>
         )}
-        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          {typeof row?.f === "number" ? (
-            <OwnershipGauge pct={row.f} />
-          ) : (
-            <span
-              className={cn(
-                "inline-flex items-center rounded-[3px] border px-1.5 py-0.5 text-[11px] font-medium",
-                pmaVerified
-                  ? "border-[var(--kbli-border-hover)] text-[var(--kbli-text-primary)]"
-                  : "border-dashed border-[var(--kbli-border-hover)] text-[var(--kbli-text-muted)]",
-              )}
-            >
-              {pmaLabel}
-            </span>
-          )}
-          {risk && (
-            <RiskBadge
-              riskCategory={risk}
-              size="sm"
-              verificationPending={row?.rp === 1}
-            />
-          )}
-          {row?.b && (
+      </span>
+      {/* Facts span the full card width on phones (under the code too), so
+          the Bali pill has room for its one line (styles/kbli-theme.css
+          .kbli-specimen-bali). */}
+      <span className="col-span-2 mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:col-span-1 sm:col-start-2">
+        {typeof row?.f === "number" ? (
+          <OwnershipGauge pct={row.f} />
+        ) : (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-[3px] border px-1.5 py-0.5 text-[11px] font-medium",
+              pmaVerified
+                ? "border-[var(--kbli-border-hover)] text-[var(--kbli-text-primary)]"
+                : "border-dashed border-[var(--kbli-border-hover)] text-[var(--kbli-text-muted)]",
+            )}
+          >
+            {pmaLabel}
+          </span>
+        )}
+        {risk && (
+          <RiskBadge
+            riskCategory={risk}
+            size="sm"
+            verificationPending={row?.rp === 1}
+          />
+        )}
+        {row?.b && (
+          <span className="kbli-specimen-bali">
             <BaliStatusBadge
               status={row.b}
               confidence={row.bc}
@@ -481,8 +486,8 @@ function SpecimenOption({
               scope={row.bs}
               size="sm"
             />
-          )}
-        </span>
+          </span>
+        )}
       </span>
     </button>
   );
