@@ -917,9 +917,12 @@
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__next[data-ready="false"] {
-  /* "Not yet", never an error: wash + muted ink (BRIEF-v2 §2.2). */
+  /* "Not yet", never an error: wash + muted ink (BRIEF-v2 §2.2), and a
+     control-grade edge (3.88:1 on the sheet) so the slab reads as a button
+     waiting, not as a patch of the ground (council FIX, 2026-09-26). */
   background: var(--r19-wash);
   color: var(--r19-ink-muted);
+  box-shadow: inset 0 0 0 1px var(--r19-control-border);
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__assure {
@@ -1443,11 +1446,11 @@
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
-  order: 2;
+  order: 3;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-main {
-  order: 3;
+  order: 2;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-get {
@@ -1865,6 +1868,7 @@
   opacity: 1;
   background: var(--r19-wash) !important;
   color: var(--r19-ink-muted) !important;
+  box-shadow: inset 0 0 0 1px var(--r19-control-border);
   cursor: not-allowed;
 }
 
@@ -1937,4 +1941,113 @@
   font-weight: 450;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Council round 2026-09-26 (Codex/Gemini/Kimi, blind) — VOA items.
+ * ---------------------------------------------------------------------------
+ */
+
+/* [BLOCKER] One filled action colour. On VOA pages only, the site nav's
+   WhatsApp pill (HeaderWhatsAppCTA paints --accent-funnel, blue at the nav)
+   steps down to a quiet outline in the nav's own text colour. The shared
+   component is not edited; this rule exists only where the VOA wrapper does. */
+body:has([data-garuda-voa="r19"])
+  :is(header, nav):not([data-garuda-voa="r19"] *)
+  a[href^="https://wa.me/"] {
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* [FIX] One progress system: the counter's strip. The question rail becomes
+   an unlabelled four-segment hairline; its words stay for screen readers. */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__rail {
+  gap: 4px;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg {
+  padding-top: 0;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg-n,
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* [FIX] One peak: once the first answer is filed, the promise folds into a
+   one-line caption and the live question leads the sheet. */
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-sheet--landing[data-started="true"]
+  .voa-head__title {
+  max-width: none;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0;
+  color: var(--r19-ink-muted);
+}
+
+/* [FIX] Phone: the WhatsApp route under "Next", as a quiet text line. The
+   48px target stays; the pill does not. */
+@media (max-width: 63.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
+    display: grid;
+    gap: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--r19-line);
+    border-radius: 0;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"]
+    .voa-sheet--landing
+    .voa-hero-wa__cta {
+    justify-self: start;
+    padding: 0;
+    border-color: transparent;
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"]
+    .voa-sheet--landing
+    .voa-hero-wa__cta:hover {
+    background: transparent;
+    color: var(--text-primary);
+  }
+}
+
+/* Probe 2026-09-26 at 390x844 (natural scroll, no clipping ancestor): the
+   ACCEPT key action sat 38px under the fold and the landing WhatsApp line 6px
+   under it. The phone sheet tightens its rhythm so both land inside. */
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing,
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--flow {
+    gap: 1rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
+    padding-top: 0.5rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer {
+    gap: 1rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer__stamp {
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer .voa-entry {
+    padding: 1rem;
+  }
 }

@@ -98,6 +98,10 @@ export default function VoaEligibilityPage() {
   const tracker = useFunnelApp("visa_voa");
   const [submitError, setSubmitError] = useState<React.ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Once the first answer is filed the promise has done its job: the sheet
+  // folds it into a caption so the live question is the one peak (CSS keys
+  // on data-started). It stays folded for the rest of the walk.
+  const [started, setStarted] = useState(false);
   // AppWizard's per-step render only sees that step's own value, never the
   // whole answer set — but the "dates" step needs to know case_type (extension
   // asks two extra contract-required fields the issuance case must NOT send).
@@ -460,6 +464,7 @@ export default function VoaEligibilityPage() {
         aria-label={t("frame.title")}
         data-funnel="visa"
         className="voa-sheet voa-sheet--landing"
+        data-started={started ? "true" : undefined}
       >
         {/*
          * The lockup, the named agent and the price now live on the counter
@@ -528,7 +533,10 @@ export default function VoaEligibilityPage() {
               assure: t("wizard.assure"),
             }}
             persistKey="bz.garuda_voa.wizard"
-            onStepChange={(step, total) => tracker.wizardStep(step + 1, total)}
+            onStepChange={(step, total) => {
+              tracker.wizardStep(step + 1, total);
+              if (step > 0) setStarted(true);
+            }}
             onAbandon={(step) => tracker.wizardAbandoned(step)}
             onComplete={onComplete}
           />
