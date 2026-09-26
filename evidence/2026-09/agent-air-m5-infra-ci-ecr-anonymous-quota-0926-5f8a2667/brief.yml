@@ -1,0 +1,119 @@
+task_id: ci-ecr-anonymous-quota-0926
+gear: 3
+colour: BLUE
+objective: >-
+  No anonymous-registry pull on the CI critical path, without changing what the
+  tests run against. PR-1 of 2 (this brief): a weekly + on-demand workflow that
+  copies the exact linux/amd64 images the CI `services:` blocks use
+  (docker.io/library/postgres:15, redis:7) digest-preserved into
+  ghcr.io/bali-zero/ci-mirror/, plus a verify job that pulls them back as
+  service containers with a read-only GITHUB_TOKEN. PR-2, opened from fresh
+  origin/main only after this workflow's first run proves the packages exist,
+  points tests.yml, fly-deploy.yml, scripts-tests-sweep.yml and
+  intel-router-tests.yml at the mirror with a `credentials:` block.
+ground:
+  measured_at: "2026-09-26T10:05Z-10:20Z"
+  failure: >-
+    gh run list --workflow tests.yml --limit 150 (2026-09-24T22:30Z to
+    2026-09-26T10:15Z): 9 failures, 6 of them `toomanyrequests: Data limit
+    exceeded` on `docker pull public.ecr.aws/docker/library/postgres:15`, all
+    6 since 2026-09-26T04:24Z (61 runs in that window), one of them a
+    merge_group run (36231063029), so the queue itself is hit.
+  image_pulls: >-
+    9 service images in 4 workflows (tests.yml x5, scripts-tests-sweep.yml x2,
+    fly-deploy.yml x1, intel-router-tests.yml x1), all public.ecr.aws, all
+    anonymous. restore-drill.yml pulls postgis/postgis:17-3.5 from Docker Hub,
+    monthly, never gating a PR or the queue; security.yml's image is built
+    locally.
+  prod_parity: >-
+    PROD PostgreSQL is 17.9 (scripts/pg.sh -At -c "SHOW server_version",
+    read-only). CI runs 15 today, so CI and PROD majors ALREADY differ; this
+    mandate keeps 15 and records the skew as a separate follow-up.
+  runner: >-
+    ubuntu-24.04 image 20260920.314.1 ships Skopeo 1.13.3, PostgreSQL 16.15
+    (service disabled) and no Redis.
+  token: >-
+    repo default_workflow_permissions = read (contents+packages read), and none
+    of the 4 consumer workflows declares a top-level permissions block, so their
+    jobs already hold packages:read. Repo is PUBLIC, org plan free.
+  siblings: >-
+    10:10Z open PRs touching .github/workflows: #7102 (tests.yml, codecov bump,
+    BLOCKED on its own floor) and #7101 (sonarqube.yml), neither on the service
+    blocks; 10:17Z no lease besides this one on ci/workflow paths; 0 open PRs
+    on ci-image-mirror / main-push-failure-watch / the mirror pin test.
+design:
+  options:
+    - id: a
+      name: GHCR mirror, authenticated pull with GITHUB_TOKEN
+      verdict: CHOSEN
+      why: >-
+        Keeps postgres:15/redis:7 byte-identical (skopeo --preserve-digests
+        refuses to re-encode). GHCR pulls from Actions with GITHUB_TOKEN are
+        authenticated, so no anonymous quota exists to exhaust, and transfer to
+        Actions is not billed. Public repo means a public package is free.
+    - id: b
+      name: docker.io/library/postgres:15 directly
+      verdict: REJECTED
+      why: >-
+        Still an anonymous pull, so it fails the mandate by definition, not by
+        measurement. It is also the registry #3349 moved away from after a
+        measured `registry-1.docker.io ... context deadline exceeded`
+        container-init failure (1 in 100 merge_group runs). No throwaway run was
+        spent to re-measure a quota class the mandate already excludes.
+    - id: c
+      name: runner-preinstalled PostgreSQL 16 plus apt redis-server
+      verdict: REJECTED
+      why: >-
+        16 equals neither what the tests run against (15) nor PROD (17.9): a
+        major jump that matches nothing, plus a runtime apt fetch for Redis and
+        hand-started services in 9 jobs.
+  hardening_from_review: >-
+    The mirror's own upstream pull is anonymous too, so it tries docker.io then
+    public.ecr.aws (same Docker Official Image manifests) with skopeo retries.
+    A prune job deletes only untagged (superseded) versions beyond the two
+    newest, so storage stays bounded even if the packages are created private
+    on a Free org. Jobs pin ubuntu-24.04 and print skopeo --version.
+  sequencing: >-
+    A new workflow cannot be dispatched before it exists on the default branch,
+    so PR-1 lands the mirror with a push-on-own-path trigger that seeds it at
+    merge. PR-2 switches consumers only after the seeded packages are observed.
+constraints:
+  - Touch only .github/workflows/ci-image-mirror.yml (new), the watcher's name list in main-push-failure-watch.yml (one line, required by check_watcher_coverage.py), scripts/tests/test_ci_service_images_use_mirror.py, and this evidence directory.
+  - No consumer workflow changes in PR-1. No image version change anywhere.
+  - No third-party action (actions/delete-package-versions is first-party). No secret other than the job's own GITHUB_TOKEN, never echoed (fed to skopeo login on stdin).
+  - No client PII anywhere (none is in scope).
+acceptance:
+  - text: >-
+      WHEN ci-image-mirror.yml runs on main (push at merge, or
+      workflow_dispatch), it SHALL publish ghcr.io/bali-zero/ci-mirror/postgres:15
+      and redis:7 whose manifest digests equal the docker.io linux/amd64
+      digests of the same tags.
+    probe: GHCR=1 bash digests.sh (registry API, both sides) prints IDENTICAL twice
+  - text: >-
+      WHEN the verify job starts, its two service containers SHALL be pulled
+      from ghcr.io with a packages:read GITHUB_TOKEN and SHALL report
+      PostgreSQL 15.x and Redis 7.x.
+    probe: gh run view <run> --log shows "postgres (PostgreSQL) 15." and "Redis server v=7."
+  - text: >-
+      IF any workflow service image points at ghcr.io/bali-zero/ci-mirror/
+      with a tag the mirror matrix does not copy, or without GITHUB_TOKEN
+      credentials, THEN the pin test SHALL fail.
+    probe: python3 -m pytest scripts/tests/test_ci_service_images_use_mirror.py (6 passed) plus 3 mutations each turning it red
+  - text: >-
+      WHEN the prune job runs, it SHALL delete only untagged versions beyond the
+      two newest of each mirror package and SHALL never delete a tagged version.
+    probe: gh run view <run> --log (prune job) plus the mirror tags still resolving afterwards
+  - text: WHEN check_watcher_coverage.py runs, it SHALL count the new workflow as covered.
+    probe: python3 scripts/check_watcher_coverage.py
+  - text: WHEN actionlint 1.7.12 runs on the changed workflows, it SHALL report no finding.
+    probe: actionlint .github/workflows/ci-image-mirror.yml .github/workflows/main-push-failure-watch.yml
+assumptions:
+  - text: GITHUB_TOKEN with packages:write can create a new org package on first push.
+    status: unverified
+    probe: first post-merge run of ci-image-mirror.yml, mirror job conclusion
+  - text: The package inherits the PUBLIC repo's visibility.
+    status: unverified
+    probe: gh api /orgs/Bali-Zero/packages/container/ci-mirror%2Fpostgres --jq .visibility
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
