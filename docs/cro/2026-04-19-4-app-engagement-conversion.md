@@ -97,7 +97,7 @@ il CTA è sopra la piega.
 
 - Damar dev: **22h** (form 4h, backend rules 8h, share page 4h, Brevo
   cron per reminder 4h, CRM handoff 2h)
-- Antonello design: **6h** (wireframe figma + mobile polish + share image)
+- Zero design: **6h** (wireframe figma + mobile polish + share image)
 
 ### H) Expected lift CR1
 
@@ -209,7 +209,7 @@ reale anonimizzato, numeri, zero jargon).
 
 - Damar dev: **34h** (input parser NIB lookup 8h, compatibility engine
   8h, result UI 8h, PDF export 6h, email cron 4h)
-- Antonello design: **10h** (layout result tabella, PDF template,
+- Zero design: **10h** (layout result tabella, PDF template,
   social share card)
 
 ### H) Expected lift CR1
@@ -330,7 +330,7 @@ unless you request a review."
 - Damar dev: **48h** (upload+OCR wiring 8h, SPT parser 12h,
   benchmark engine 10h, scorecard UI 10h, privacy deletion cron 4h,
   CRM handoff 4h)
-- Antonello design: **14h** (scorecard layout, PDF template,
+- Zero design: **14h** (scorecard layout, PDF template,
   privacy frame, trust indicators)
 
 ### H) Expected lift CR1
@@ -453,7 +453,7 @@ verification + seller check, where we actually add value."
 
 - Damar dev: **18h** (2D map wrapper 6h, pin persistence 4h,
   share URL 3h, result UI 3h, CRM handoff 2h)
-- Antonello design: **8h** (mobile map layout, result card,
+- Zero design: **8h** (mobile map layout, result card,
   share card image)
 
 ### H) Expected lift CR1
@@ -503,7 +503,7 @@ perché motivated).
 | 3   | KBLI Decoder | 34h          | 10h         | 5-8%     | M-H        | M (accuracy engine)  | **3rd — urgency reale giugno 2026**                  |
 | 4   | Tax Gap      | 48h          | 14h         | 4-7%     | L-M        | H (privacy + bias)   | **4th — moat forte, ma rischio implementativo alto** |
 
-Totale effort se tutti e 4 shippano: **122h Damar + 38h Antonello** ≈
+Totale effort se tutti e 4 shippano: **122h Damar + 38h Zero** ≈
 **3-4 settimane** di build sequenziale, **6 settimane** testing A/B
 in parallelo.
 

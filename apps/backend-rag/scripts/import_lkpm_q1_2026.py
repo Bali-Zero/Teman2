@@ -54,7 +54,7 @@ logging.basicConfig(
 )
 
 
-# 59 PMA from Lori's PDF (Client LKPM Report Bose Antonello 2026.pdf, 2 pages).
+# 59 PMA from Lori's PDF (Client LKPM Report Bose Zero 2026.pdf, 2 pages).
 # Each tuple: (pdf_row, pdf_name, company_id_or_None, oss_username, oss_password)
 # company_id_or_None is None for the 5 minimal-create cases.
 LORI_59: list[tuple[int, str, int | None, str | None, str | None]] = [

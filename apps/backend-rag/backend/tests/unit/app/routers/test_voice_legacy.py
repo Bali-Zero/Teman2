@@ -710,7 +710,7 @@ def test_local_audio_synthesize_requires_api_key() -> None:
 
     response = client.post(
         "/api/voice/local-audio/synthesize",
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 401
@@ -724,7 +724,7 @@ def test_local_audio_synthesize_rejects_invalid_api_key() -> None:
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "invalid"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 403
@@ -741,7 +741,7 @@ def test_local_audio_synthesize_rejects_disabled_stack(monkeypatch) -> None:
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 503
@@ -761,7 +761,7 @@ def test_local_audio_synthesize_rejects_unapproved_runtime_host(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 503
@@ -778,7 +778,7 @@ def test_local_audio_synthesize_rejects_unavailable_provider(monkeypatch) -> Non
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 503
@@ -795,7 +795,7 @@ def test_local_audio_synthesize_rejects_cloud_policy(monkeypatch) -> None:
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 503
@@ -849,7 +849,7 @@ def test_local_audio_synthesize_returns_local_wav_and_deletes_temp_output(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello", "voice": "en"},
+        json={"text": "Ciao Zero", "voice": "en"},
     )
 
     assert response.status_code == 200
@@ -859,7 +859,7 @@ def test_local_audio_synthesize_returns_local_wav_and_deletes_temp_output(
     assert response.headers["x-voice-constraints"] == (
         "local_only,no_cloud_audio_fallback,no_raw_audio_persistence"
     )
-    assert provider.calls == [("Ciao Antonello", "en", False)]
+    assert provider.calls == [("Ciao Zero", "en", False)]
     assert not Path(provider.synthesize_paths[0]).exists()
 
 
@@ -875,7 +875,7 @@ def test_local_audio_synthesize_rejects_browser_realtime_profile_before_provider
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 503
@@ -894,12 +894,12 @@ def test_local_audio_synthesize_accepts_language_alias_for_voice(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello", "language": "it"},
+        json={"text": "Ciao Zero", "language": "it"},
     )
 
     assert response.status_code == 200
     assert response.content == b"local wav"
-    assert provider.calls == [("Ciao Antonello", "it", False)]
+    assert provider.calls == [("Ciao Zero", "it", False)]
 
 
 def test_local_audio_synthesize_rejects_oversized_audio_bytes(
@@ -914,12 +914,12 @@ def test_local_audio_synthesize_rejects_oversized_audio_bytes(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 413
     assert response.json() == {"detail": "audio payload too large"}
-    assert provider.calls == [("Ciao Antonello", None, False)]
+    assert provider.calls == [("Ciao Zero", None, False)]
 
 
 def test_local_audio_synthesize_rejects_oversized_audio_file(
@@ -934,12 +934,12 @@ def test_local_audio_synthesize_rejects_oversized_audio_file(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 413
     assert response.json() == {"detail": "audio payload too large"}
-    assert provider.calls == [("Ciao Antonello", None, False)]
+    assert provider.calls == [("Ciao Zero", None, False)]
     assert not Path(provider.synthesize_paths[0]).exists()
 
 
@@ -954,11 +954,11 @@ def test_local_audio_synthesize_deletes_temp_output_after_provider_error(
     response = client.post(
         "/api/voice/local-audio/synthesize",
         headers={"X-API-Key": "test_api_key_1"},
-        json={"text": "Ciao Antonello"},
+        json={"text": "Ciao Zero"},
     )
 
     assert response.status_code == 502
     assert response.json() == {"detail": "local TTS synthesis failed"}
-    assert provider.calls == [("Ciao Antonello", None, False)]
+    assert provider.calls == [("Ciao Zero", None, False)]
     assert "/tmp/client.wav" not in str(response.json())
     assert not Path(provider.synthesize_paths[0]).exists()

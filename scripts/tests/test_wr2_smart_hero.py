@@ -1,5 +1,5 @@
 """
-Locks down the 2026-06-13 Antonello decision: WR2 hero selection is FLEXIBLE
+Locks down the 2026-06-13 Zero decision: WR2 hero selection is FLEXIBLE
 and SMART. The model decides how many slides (6-11) and which of them deserve
 a full-bleed photo (is_hero_image: true), based on the story.
 

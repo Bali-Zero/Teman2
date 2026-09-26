@@ -50,7 +50,7 @@ This skill governs 4 brand surfaces. Load surface-specific spec when working on 
 
 ### Proposed amendments (not yet merged)
 
-- `_proposed-amendments/` — drafts awaiting Antonello git-commit to merge into constitution.
+- `_proposed-amendments/` — drafts awaiting Zero git-commit to merge into constitution.
 
 ## Brand DNA (one-paragraph summary)
 

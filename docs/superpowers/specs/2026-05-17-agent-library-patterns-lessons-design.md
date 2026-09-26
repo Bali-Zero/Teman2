@@ -1,7 +1,7 @@
 # Design: agent-library/02-patterns.md + 03-lessons.md
 
 **Date**: 2026-05-17
-**Status**: approved — all 4 design sections approved by Antonello
+**Status**: approved — all 4 design sections approved by Zero
 **Next**: writing-plans → implementation
 **Author**: Claude Opus 4.7 (1M context)
 
@@ -243,7 +243,7 @@ EOF
 
 ### Endgame
 
-- PR draft URL communicated to Antonello
+- PR draft URL communicated to Zero
 - NO merge from Claude (L2 autonomous ops permits draft creation, not merge)
 - Human review gate before merging
 

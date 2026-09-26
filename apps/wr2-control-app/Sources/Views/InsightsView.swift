@@ -186,7 +186,7 @@ enum MDBlock {
 // MARK: - collapsible technical evidence
 
 /// Hides the statistical detail behind a tap. Human takeaway stays visible; the numbers
-/// (N=, Save/Like, baselines) are one click away for Antonello's merge decisions.
+/// (N=, Save/Like, baselines) are one click away for Zero's merge decisions.
 struct TechDisclosure: View {
     let blocks: [MDBlock]
     let lang: LanguageManager

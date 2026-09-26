@@ -4,7 +4,7 @@
 >
 > **Stima**: 7-10 giorni solo-dev.
 >
-> **Pre-azione richiesta a Antonello**: decisione su B3.a (Competitor scraping yes/no) e B3.b (WR2 auto-publish autonomy level).
+> **Pre-azione richiesta a Zero**: decisione su B3.a (Competitor scraping yes/no) e B3.b (WR2 auto-publish autonomy level).
 
 ---
 
@@ -52,7 +52,7 @@ Prima di tutto, leggi:
 
 6. **Reddit organic dispatch** (manuale, NON scraper):
    - `reddit_dispatch_helper.py`: prepara post text + suggested target subreddits, ma NESSUN auto-post
-   - Antonello/team posta a mano 2-3x/settimana r/digitalnomad, r/IndoBali
+   - Zero/team posta a mano 2-3x/settimana r/digitalnomad, r/IndoBali
 
 7. **Drone Emprit exploratory** (R4 partnership lead):
    - Spawn `NB-WORKBENCH-DroneEmprit-partnership` (workbench Notion-style markdown in `~/Desktop/nuzantara/research/marketing/`)
@@ -78,7 +78,7 @@ Prima di tutto, leggi:
 - **Sora 2 deprecation 24 settembre 2026** — NO video generation pipeline su Sora 2.
 - **Originality.ai 7.3% recall** — NO usare per AI detection. GPTZero solo se serve.
 - **Reddit scraping aggressivo** — viola TOS. Solo defensive use (free tier 10k req/month).
-- **Trendpop $250+/min, Talkwalker enterprise** — SKIP. Brand24 Individual $99 sufficient se Antonello vuole social listening Bahasa.
+- **Trendpop $250+/min, Talkwalker enterprise** — SKIP. Brand24 Individual $99 sufficient se Zero vuole social listening Bahasa.
 - **Anthropic Constitution CC0-licensed** (R4 discovery) — usabile come reference per policy AI editorial interna.
 
 ### Regole forti
@@ -98,7 +98,7 @@ Prima di tutto, leggi:
 - Mouth publish step verifica content credentials presenti
 - External review wave (3 LLM minimum)
 
-### Pre-azione richiesta a Antonello
+### Pre-azione richiesta a Zero
 
 **PRIMA di partire**:
 

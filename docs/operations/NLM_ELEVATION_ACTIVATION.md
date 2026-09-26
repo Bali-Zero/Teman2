@@ -1,7 +1,7 @@
 # NLM Elevation — Production Activation Runbook
 
 **Date:** 2026-04-25
-**Owner:** Antonello (solo-dev)
+**Owner:** Zero (solo-dev)
 **Scope:** rollout the 6 PR shipped in Sprint 0/1/2 to production with measurable gates and rollback at every stage
 
 > **Read first:** the design behind these PR is in `research/nlm-elevation/07-synthesis-plan-v2.md`. The diagnosis behind T16/S0.5 is in `research/nlm-elevation/08-s02-dispatcher-diagnosis.md`. **Do not** activate components in a different order — each stage relies on signals produced by the previous one.

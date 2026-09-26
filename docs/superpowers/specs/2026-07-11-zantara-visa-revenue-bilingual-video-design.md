@@ -51,7 +51,7 @@ The video must follow official sources, not repeat those errors:
   `> IDR 2.815T` and the exact values remain in the audit ledger.
 - “Visa extensions” is replaced by “stay-permit extensions.”
 
-Antonello must approve this corrected claim ledger before any video credit is
+Zero must approve this corrected claim ledger before any video credit is
 spent. The carousel itself should be corrected before it and the video are
 published as one campaign; changing the carousel files is outside this design
 task unless separately authorized.
@@ -700,7 +700,7 @@ from the proven native-manifesto post lane with these rules:
    register, code delivery, and semantic fidelity.
 4. Editorial reviewer: every claim and graphic against the official source
    ledger, not only the original carousel.
-5. Antonello: identity, outfit, tone, exterior scene, positive close, and final
+5. Zero: identity, outfit, tone, exterior scene, positive close, and final
    approval.
 
 After authorization, inspect private/draft uploads on each platform and review
@@ -734,14 +734,14 @@ these links do not replace a current in-app preview.
 
 The production is complete only when:
 
-- Antonello approves the corrected claim ledger and scripts.
+- Zero approves the corrected claim ledger and scripts.
 - The companion carousel is corrected before campaign publication.
 - Flow is authenticated and the bounded credit plan is approved.
 - Both language pilots prove the selected lane.
 - Every selected clip passes its complete gate.
 - Both 42-second masters pass independently and creative parity passes.
 - The defect ledger contains zero open P0, P1, or P2 issue.
-- Independent reviewers and Antonello sign off.
+- Independent reviewers and Zero sign off.
 - Final hashes, asset log, source ledger, and provenance records are stored.
 
 There is no `PASS-WITH-NOTES` for this production.

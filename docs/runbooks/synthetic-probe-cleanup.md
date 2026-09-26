@@ -59,7 +59,7 @@ psql "${DATABASE_URL}" -c "
 Se il NB sandbox `NB-PROBE-SANDBOX-2026-05` è corrotto (es: source orfane, troppi push falliti):
 
 ```bash
-# Antonello-only — usa MCP
+# Zero-only — usa MCP
 # Step 1: cancella NB sandbox
 mcp__notebooklm-mcp__notebook_delete \
     --notebook-id 7e6ae978-136c-4c96-bed5-9fab6f39176f

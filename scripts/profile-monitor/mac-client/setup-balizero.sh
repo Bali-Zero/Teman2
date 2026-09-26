@@ -9,14 +9,14 @@
 #   5. Installa profilo DNS NextDNS (blocco WhatsApp/Telegram Web)
 #   6. Riepilogo finale + test end-to-end
 #
-# Eseguito SOLO da Antonello dal profilo balizero del Mac del dipendente.
+# Eseguito SOLO da Zero dal profilo balizero del Mac del dipendente.
 # Singolo argomento: <nome_dipendente> (es. surya, ari, krisna)
 #
 # Uso:
 #   cd ~/Downloads/mac-client
 #   bash setup-balizero.sh surya
 #
-# Disinstallazione completa (solo Antonello):
+# Disinstallazione completa (solo Zero):
 #   chflags nouchg ~/Desktop/employee-handbook-v1-ID.pdf
 #   rm ~/Desktop/employee-handbook-v1-ID.pdf
 #   launchctl bootout gui/$(id -u)/com.balizero.profile-monitor
@@ -87,7 +87,7 @@ WRAPPER_URL="http://${WRAPPER_HOST}:${WRAPPER_PORT}"
 if ! command -v tailscale &>/dev/null && [ ! -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]; then
     echo "⚠️  Tailscale non rilevato."
     echo "   1. Scarica Tailscale: https://tailscale.com/download/mac"
-    echo "   2. Login con account Bali Zero (Antonello invita)"
+    echo "   2. Login con account Bali Zero (Zero invita)"
     echo "   3. Riesegui questo script"
     exit 1
 fi
@@ -98,7 +98,7 @@ if ! curl -s --max-time 5 "$WRAPPER_URL/health" | grep -q '"status": "ok"'; then
     echo "❌ Wrapper Pro non raggiungibile su $WRAPPER_URL/health"
     echo "   Possibili cause:"
     echo "   - Tailscale non connesso (verifica icona menubar)"
-    echo "   - Non sei nel tailnet 'balizero' (Antonello deve invitare device)"
+    echo "   - Non sei nel tailnet 'balizero' (Zero deve invitare device)"
     echo "   - Pro spento o profile-monitor wrapper offline"
     exit 1
 fi
@@ -257,7 +257,7 @@ echo "     (device_label → $EMPLOYEE), così la tamper-detection lo traccia."
 echo ""
 echo "  Test manuale check-out (opzionale):"
 echo "    Apple menu → Logout 'balizero'... → riconferma"
-echo "    → Antonello dovrebbe ricevere alert Telegram entro 10 secondi"
+echo "    → Zero dovrebbe ricevere alert Telegram entro 10 secondi"
 echo "    → Login di nuovo a balizero, evento CHECKIN registrato"
 echo ""
 echo "✅ Setup balizero COMPLETO per $EMPLOYEE"

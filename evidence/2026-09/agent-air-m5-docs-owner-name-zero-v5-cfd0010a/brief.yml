@@ -1,0 +1,186 @@
+task_id: owner-name-zero-v5
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on the final pushed diff returns `3`,
+# by the SIZE term (S1) — 272 files changed (270 swept + this 2-file evidence pack), past the
+# ~400-net-line PR-contract target and past the Gear-3 size threshold. No hot-zone path is
+# touched (migrations_v2/** and .github/workflows/** were excluded from candidate enumeration
+# entirely, never opened for writing), so the floor is size-only, not hot-zone.
+objective: >-
+  Successor to PR #7441 (gate verdict REWORK-BUILD, six defects D1-D6 below), which was itself
+  the successor to #7430 (closed: whole-file trailing-whitespace churn) and #7434 (closed:
+  byte-preserving but incomplete, 942 residual hits). This v5 reproduces #7441's diff MINUS the
+  six defects an independent gate review found in it. In every case below, "the owner's first
+  name" refers to a single, specific, real given name that is PRIVATE per this repo's own
+  CLAUDE.md ("Owner codename: Zero (nome reale PRIVATO)") — this pack and its sibling pack.yml
+  deliberately never spell that name, nor the owner's personal email address, anywhere in their
+  own prose, even where #7441's own evidence pack did (that self-violation is D4, see below).
+  Where a literal code-identifier example is useful, it is given with the name replaced by the
+  placeholder token `<name>` / `<NAME>` (e.g. `needs-<name>` stands for a hyphen-prefixed
+  compound identifier that embeds the owner's first name lowercase).
+constraints:
+  - >-
+    D1 (functional/protected file, must stay byte-identical): `scripts/verify_the_verifiers_
+    gates.yaml` is sha256-pinned and CODEOWNERS-protected. #7441 edited a comment inside it
+    (renaming the owner's first name to "Zero" mid-sentence), silently invalidating the pin.
+    Added to this sweep's FUNCTIONAL_SKIP (whole file, never opened for writing). Verified
+    byte-identical to origin/main (`git diff` empty for this path).
+  - >-
+    D2 (functional/protected file, must stay byte-identical): `scripts/lint/
+    wr3_lint_cloud_dependency.py`'s `ALLOWED_MENTION_CONTEXTS` list is a functional allow-list
+    for a Law-6 cloud-dependency guard. #7441 renamed the owner's first name to "Zero" inside
+    that list, which would have widened the allow-list to whitelist any banned-vendor mention of
+    "Bali Zero" (a guard over-match, cicatrix-superscar.md family #3). Added to FUNCTIONAL_SKIP.
+    Verified byte-identical to origin/main, and `python3 scripts/lint/wr3_lint_cloud_dependency.py`
+    exits 0 unchanged.
+  - >-
+    D3 (5 code-literal lines wrongly swept as prose in #7441, reverted here to byte-identical):
+    a SQL `DEFAULT` string value, a JSON object key, a JSON boolean-field key, and two inline
+    email/manifest-value heuristics all used the owner's first name lowercase as a bare literal,
+    not adjacent to a hyphen or underscore, so the general word-boundary rule did not protect
+    them. Fixed via an explicit LINE_LEVEL_SKIP keyed by exact original line content (not line
+    number, so it survives future line-number drift): `docs/superpowers/plans/
+    2026-05-17-zantara-cockpit-s1-foundation.md` (SQL `DEFAULT '<name-lower>'`),
+    `research/operations/specs/2026-07-19-wa-bot-team-assistant-v1.md` (email-substring
+    heuristic quoting `"<name-lower>"|"<surname-lower>" in email`), `research/wr3/01-wr2-anatomy.md`
+    (JSON key `"approval_required": "<name-lower>"`), `research/wr3/02-verbi-atomici.md` (JSON
+    key `"human_signoff": {damar: bool, <name-lower>: bool}`), `research/wr3/
+    05-symbiosis-integration.md` (manifest value `approved_by: <name-lower>`). Two of these five
+    files had no OTHER real hit, so they are now fully byte-identical to origin/main; the other
+    three still carry their legitimate prose substitutions elsewhere in the same file.
+  - >-
+    D4 (this pack's own text, the central fix): #7441's own brief.yml/pack.yml wrote the
+    owner's real first name in plain capitalised prose ~40 times, the full "First Last" name 8
+    times, and the owner's personal email once — on a PUBLIC repository, which is exactly the
+    exposure this whole task exists to prevent. This brief and its sibling pack.yml use the
+    placeholder phrases "the owner's first name" / "the owner's full name" / "the owner's
+    personal email" throughout, and `<name>`/`<name-lower>`/`<NAME>` for code-identifier
+    examples, and never spell out the real string in any field, including receipts and dissent.
+  - >-
+    D5/D6 (accuracy of the pack's own claims): #7441's pack asserted "three commits" against a
+    1-commit branch, falsely claimed `research/wr3/05-symbiosis-integration.md` had been
+    reverted to origin/main when it was still in the diff (D3 fixes this for real now), quoted a
+    stale residual count (957 vs. a recount of 956 on the same head), undercounted
+    `scripts/test_redact_pii.py` at "27 tests" when it is actually 43, and claimed all 87
+    prettier-flagged files were prettier-clean on origin/main when 71 of the 87 were already
+    non-compliant at merge-base (local prettier 3.9.6 vs. the lockfile's pinned 3.9.9 — a
+    pre-existing version-drift issue, unrelated to this sweep). This pack recomputes every
+    number fresh against THIS branch's actual head and cites the exact command for each (see
+    pack.yml `receipts`), ships as exactly ONE commit, and states the prettier finding honestly:
+    16 of the 87 files are genuine regressions caused by this sweep's own substitution
+    (shortened a line enough to break a wrap width), the other 71 were already broken before
+    this sweep touched anything. Reconciling the prettier version drift, the 166 R1-gate
+    (adversarial-review-frontmatter) files, and the 2 PII-gate files is explicitly OUT of this
+    PR's scope — a parallel lane, PR #7445 ("finish the owner-codename sweep in the prettier, R1
+    and PII-gated files", open), already owns exactly that reconciliation. This PR excludes
+    (reverts to origin/main) the same three file sets #7441 excluded, for the same reasons, and
+    does not attempt to fix or re-verify them — it references #7445 rather than duplicating it.
+  - >-
+    KEEP unchanged, byte-identical (methodology carried over from #7441, unaffected by D1-D6):
+    any token containing `@`; handles/hostnames shaped like the owner's first-name-plus-surname
+    concatenation (either order, e.g. `<name-lower><surname-lower>`/
+    `<surname-lower>word<name-lower>`); filesystem paths/URLs referencing an actual repo file by name; any snake_case/
+    kebab-case/camelCase compound token where the character immediately before or after the name
+    is `_`, a hyphen immediately BEFORE the name, or another letter immediately after it
+    (`needs-<name>`, `needs-<name>-on-pro`, `action_needs_<name>`, `<name>-lab`,
+    `SKIP_<NAME>`/`SKIP_<name>`, `next_steps_for_<name>`, `<Name>SecretSender`); the surname
+    alone; a literal git-log author-string quote (`<Full Name> <noreply@anthropic.com>` in
+    `.claude/skills/modus/PENDING-ARMS.md`, 2 occurrences) protected by a dedicated regex
+    lookahead; the same 12-file FUNCTIONAL_SKIP roster #7441 used (NER known-names lists,
+    identity-resolver stopwords, the creator-persona email check + its test, a redaction-rule
+    DEFINITION, a username-to-email dict, a name-counter fixture test, the PII-leak-detector
+    regex + its test) — now 14 files with D1/D2 added.
+  - >-
+    Path-based exclusions applied at candidate-enumeration time, never opened, never in any
+    diff: `**/migrations_v2/**`, `.github/workflows/**`, `*.lock`, `.secrets.baseline`,
+    `shared/*.jsonl`, `evidence/**` of other PRs. This pack's own two files
+    (`evidence/2026-09/agent-air-m5-docs-owner-name-zero-v5-cfd0010a/{brief,pack}.yml`) are new
+    and, per D4, do not themselves discuss the owner's first name in cleartext — tabulated
+    separately as `own_evidence_pack_prose` in the residual audit purely for completeness (count
+    expected near-zero, unlike #7441's).
+  - >-
+    No client PII anywhere in the diff or this pack. No secrets echoed. No edit outside the
+    dedicated worktree (`agent/air-m5/docs/owner-name-zero-v5`).
+acceptance:
+  - text: >-
+      A1: WHEN every path from `git ls-files` is walked (candidate list carried over unchanged
+      from #7441's own final diff, since D1-D6 are corrections to that diff, not a re-derivation
+      of it) and a residual audit is run (excluding migrations_v2, .github/workflows, *.lock,
+      .secrets.baseline, shared/*.jsonl, evidence/** of other PRs), THE audit SHALL classify
+      every remaining line containing the owner's first name (either case) into a named KEEP
+      class, zero unclassified.
+    probe: >-
+      `git grep -In <Name>` + `git grep -In <name>` (case-split on the owner's first name,
+      same exclusions) -> 923 + 701 = 1624 lines, all classified (pack.yml `receipts`):
+      r1_gate_excluded 470, prettier_regression 463, email 429, code_token 201,
+      functional_code 28, git_author_quote 10, redaction_definition 8, evidence_record 6,
+      off_limits_file 3, pii_gate_excluded 3, path_url 3 — sum 1624, 0 unclassified.
+      Separately, the gate's own narrower word-boundary probe (`git grep -n -w <Name>` /
+      `-w <name>`, excluding only migrations_v2 and the whole of .github) gives 919 + 31 = 950
+      on this same head.
+  - text: >-
+      A2 (byte-preservation, the property #7441 already had and this build keeps): WHEN
+      `git diff --numstat` is computed against the merge-base with origin/main, THE added-line
+      count SHALL equal the deleted-line count for every one of the 270 swept files, with zero
+      exceptions, and both SHALL equal the sweep script's own per-file touched-line counter.
+    probe: >-
+      270 swept files, +603/-603, 0 files with added != deleted; the 2 new evidence-pack files
+      are pure additions, correctly outside this check. A standalone cross-check compares the
+      sweep script's own `touched_lines` counter per file against numstat — 0 mismatches.
+  - text: >-
+      A3: WHEN every touched .py/.json/.yaml/.yml file is parsed, THE parse SHALL succeed with
+      zero errors.
+    probe: >-
+      py_compile (58 files) + json.load (13 files) + yaml.safe_load (12 files) over the 270-file
+      touched list, by extension — 83 applicable files, 0 failures.
+  - text: >-
+      A4: WHEN the test suites covering every FUNCTIONAL_SKIP file are run, THEY SHALL pass at
+      the same rate as on origin/main, proving the skip did not silently break anything by
+      omission, and D2's fix SHALL leave the cloud-dependency guard functionally unchanged.
+    probe: >-
+      `scripts/test_redact_pii.py` 43 passed; `scripts/tests/test_whatsapp_corpus_privacy_
+      audit.py` 32 passed; `apps/backend-rag/.venv` running
+      `test_collective_memory_workflow.py` + `test_prompt_builder_exponential_coverage.py` 209
+      passed; `tests/wa_corpus/test_db_names.py` 2 passed — 286 passed, 0 failed, across all
+      suites that reference a functional-skip module. `python3 scripts/lint/
+      wr3_lint_cloud_dependency.py` exits 0 (D2's guard still fires correctly, unwidened).
+  - text: >-
+      A5: WHERE this pack's own text needs to refer to the owner's first name, surname, full
+      name, or personal email, THE text SHALL use a placeholder phrase or bracketed token,
+      never the literal string, in both brief.yml and pack.yml, including inside receipts and
+      dissent.
+    probe: >-
+      `git grep -c -iE '<the real first name>|<the real surname>|<the real personal email
+      local-part>'` over this pack's own two files -> 0 (verified by the authoring session by
+      reading both files in full immediately before commit; the probe string is intentionally
+      not itself written here per the same constraint it verifies).
+assumptions:
+  - text: >-
+      "Zero" is the owner's standing codename per CLAUDE.md, unchanged from #7430/#7434/#7441's
+      own verification; D1-D6 are corrections to HOW the sweep is applied and HOW this pack
+      describes itself, not to that premise.
+    status: verified
+    probe: grep CLAUDE.md for the codename line; unchanged from prior PRs' own verification.
+  - text: >-
+      Reconciling the prettier-version drift (local 3.9.6 vs. lockfile-pinned 3.9.9), the 166
+      R1-gate frontmatter gaps, and the 2 PII-gate trips is a separate concern from this sweep
+      and is already owned by PR #7445 (open, "finish the owner-codename sweep in the prettier,
+      R1 and PII-gated files") — this PR excludes the same file sets for the same reasons and
+      does not attempt to resolve them, to avoid two lanes racing the same files.
+    status: verified
+    probe: >-
+      `gh pr view 7445 --json state,title` -> OPEN, title matches; `git diff --name-only` for
+      this branch vs. origin/main shows none of the 87 prettier-flagged or 166 R1-flagged files
+      present.
+  - text: >-
+      A strictly line-scoped byte-preserving write, plus a whole-file FUNCTIONAL_SKIP list and a
+      content-keyed LINE_LEVEL_SKIP for the D3 cases, is sufficient to reproduce #7441's diff
+      minus D1-D3 without reintroducing any new collateral edit.
+    status: verified
+    probe: >-
+      A2 above (added==deleted==touched-line-count, all 270 files) plus a direct byte-diff check
+      that `scripts/verify_the_verifiers_gates.yaml` and `scripts/lint/
+      wr3_lint_cloud_dependency.py` are empty in `git diff` (D1/D2), and that the 5 D3 line
+      contents remain byte-identical to origin/main at their original line numbers.

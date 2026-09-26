@@ -4,7 +4,7 @@
 >
 > **Stima**: 7-10 giorni solo-dev.
 >
-> **Pre-azione richiesta a Antonello**: B6.a (2 NB-INTEL distinti vs 1) + B6.b (privacy line strict/aggressive/on-demand).
+> **Pre-azione richiesta a Zero**: B6.a (2 NB-INTEL distinti vs 1) + B6.b (privacy line strict/aggressive/on-demand).
 >
 > **CRITICAL**: questo dominio ha **red lines legali** UU PDP 27/2022. Implementazione errata = 5 anni / Rp 5B sanction. Compliance stance OBBLIGATORIA prima di codice.
 
@@ -162,7 +162,7 @@ Estrai cross-domain:
 - Auto-redact NIK pattern (`\d{16}`) prima di qualsiasi output esterno
 - Auto-redact home address pattern (Jl. + numero + RT/RW)
 - Block emit Telegram alert se entity ha `controversy.unverified=True`
-- Manual override: `force_publish=True` requires Antonello signature in code path
+- Manual override: `force_publish=True` requires Zero signature in code path
 
 ### R7 red flag check (legal)
 
@@ -202,7 +202,7 @@ Prima di ogni feature implementata, attraversa il flow di R7 §8.4 doxing line:
 - Hunchly integration o solo theatrical?
 - UU PDP red lines respect in OGNI sink?
 
-### Pre-azione richiesta a Antonello
+### Pre-azione richiesta a Zero
 
 **PRIMA di partire**:
 

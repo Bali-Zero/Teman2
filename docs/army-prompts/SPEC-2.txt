@@ -27,7 +27,7 @@ GIUNTO 1 — federation_orchestrator NO checkpointer:
     kg_langgraph_orchestrator + workflow/checkpointer (esistono nel repo). Il
     human_checkpoint_node usa input() bloccante → valuta interrupt LangGraph durabile.
 
-GIUNTO 2 — WR3 reflexion morto CODESIGNING (questo è il WR3-fix di Antonello):
+GIUNTO 2 — WR3 reflexion morto CODESIGNING (questo è il WR3-fix di Zero):
   com.balizero.wr3.reflexion.weekly → OS_REASON_CODESIGNING su apps/war-room/.venv/bin/
   python3 (è un SYMLINK a ~/.pyenv/versions/3.11.11/bin/python3, xattr com.apple.provenance).
   → DIAGNOSI ESATTA prima del fix: `codesign -v $(readlink -f apps/war-room/.venv/bin/

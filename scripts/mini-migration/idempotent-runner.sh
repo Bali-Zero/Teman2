@@ -54,7 +54,7 @@ case "$LABEL" in
   *)                                TTL=172800 ;;  # 2d (daily)
 esac
 
-# REDIS_HOST resolution (A4 — Antonello-decision §9.1):
+# REDIS_HOST resolution (A4 — Zero-decision §9.1):
 # - jobs with side_effects ∈ {brevo, social, telegram-broadcast} use Pro
 #   redis (cross-machine lock prevents double-fire during migration window)
 # - jobs with side_effects ∈ {file_only, none, drive} use local redis

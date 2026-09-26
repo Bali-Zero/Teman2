@@ -67,7 +67,7 @@ law_compliance:
   law_2_osint_blindato: "SOLE source of NB queries. NEVER returns source_ids in brief.json. nb_source_ids.private.json stays Pro-side only"
   law_3_event_driven: "Consumes from outbox, no event emit (handler returns synchronously)"
   law_4_graceful_degradation: "Quota exhaust → cascade to free Gemini, NB exhaust → hard halt (no silent degrade)"
-  law_5_zero_authority: "Brief MUST be reviewable by Antonello/Damar pre-script-editor"
+  law_5_zero_authority: "Brief MUST be reviewable by Zero/Damar pre-script-editor"
   law_6_local_sovereignty: "NotebookLM via Google free OAuth (sanctioned), no paid API"
   law_7_numbers_first: "Every numeric in brief.json has claim_id pointing to NB source verbatim"
   law_8_past_present_future: "Loads brief-interpreter skill cortex (NB routing map, claim templates)"

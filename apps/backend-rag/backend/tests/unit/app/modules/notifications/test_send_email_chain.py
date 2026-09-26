@@ -38,7 +38,7 @@ def _cc_of(*args, **kwargs):
 
 
 class TestEnforceBalizeroCc:
-    """Hard rule (Antonello 2026-06-17): a client never gets an email
+    """Hard rule (Zero 2026-06-17): a client never gets an email
     without a @balizero.com address copied in. Contextual CC:
     invoice → asya@ (accounting), else the assigned lead, else asya@.
 
@@ -276,7 +276,7 @@ async def test_intra_domain_does_not_use_resend(req_intra):
 
 
 class TestGarudaVoaStandingCc:
-    """RULED by Antonello 2026-09-02: "in cc questi 3 solo per le pratiche
+    """RULED by Zero 2026-09-02: "in cc questi 3 solo per le pratiche
     del garuda voa". A STANDING list scoped to one email family -- unlike
     every other rule here, which picks ONE contextual reader.
 

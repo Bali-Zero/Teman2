@@ -21,10 +21,10 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 | C1  | Q2 NB OSINT boundary      | **MODIFY** | Verbatim regulatory text è public domain (fair use) — MA da public/legal cache + domain NBs (NB-2..NB-7), NON da raw NB-INTEL OSINT family notes/source_ids/sintesi (NB-INTEL = OSINT cron feed, NEVER consumed by brief-interpreter for grounding). Codex sharpens: privato NB context, annotations, synthesis MAI escono dal Pro. |
 | C2  | Q3 channel granularity    | **MODIFY** | Consolidare strictly linear states: `brief_ready` + `script_frozen` → `pre_render_ready` (purché `wr3-script-editor` salvi frozen script state durably). Retain granularity solo su fan-out paralleli e gate human-in-loop.                                                                                                         |
 | C3  | Q4 hard-fail completeness | **MODIFY** | Variant ffmpeg fail = degrade (deliver master without variants). Master assembly fail = hard-fail. Veo 100% fail = degrade a still-image fallback.                                                                                                                                                                                  |
-| C4  | Q5 Telegram P0/P1/P2      | **KEEP**   | Strict triage: P0=halt episode (immediate), P1=quarantine agent (daily batch), P2=weekly digest. Preserva attention bandwidth Antonello.                                                                                                                                                                                            |
-| C5  | Q6 Cartesia fallback      | **REJECT** | **3/3 BAN cloud TTS for Zantara voice.** Degrade a no-VO + music + subtitles only. Cloud TTS = sovereignty breach Law 6 unless per-episode Antonello exception.                                                                                                                                                                     |
+| C4  | Q5 Telegram P0/P1/P2      | **KEEP**   | Strict triage: P0=halt episode (immediate), P1=quarantine agent (daily batch), P2=weekly digest. Preserva attention bandwidth Zero.                                                                                                                                                                                            |
+| C5  | Q6 Cartesia fallback      | **REJECT** | **3/3 BAN cloud TTS for Zantara voice.** Degrade a no-VO + music + subtitles only. Cloud TTS = sovereignty breach Law 6 unless per-episode Zero exception.                                                                                                                                                                     |
 | C6  | Q8 cicatrix citation      | **KEEP**   | Forces structural memory. Cross-domain inheritance valid: wr3-shot-director cita WR2 pre-render gatekeeper scar as "visual prompt must be gated before paid render".                                                                                                                                                                |
-| C7  | Q10 Law versioning        | **KEEP**   | 8 laws = immutable organism constitution. Law 9 propose path: collect repeated measured evidence (Law 7) → Antonello manual git-commit PR (Law 5).                                                                                                                                                                                  |
+| C7  | Q10 Law versioning        | **KEEP**   | 8 laws = immutable organism constitution. Law 9 propose path: collect repeated measured evidence (Law 7) → Zero manual git-commit PR (Law 5).                                                                                                                                                                                  |
 
 ## Divergenze 2-vs-1 (resolved by majority + best argument)
 
@@ -78,7 +78,7 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 3. wr3_episode_gate_passed → clip-renderer  (collapsed: prompts_ready + gate_passed)
 4. wr3_episode_assembly_ready  (collapsed: clips_ready + audio_ready) → post-assembler
 5. wr3_episode_critic_verdict (single channel with PASS/FAIL payload, was 2)
-6. wr3_episode_staged → Drive + Telegram notify Antonello
+6. wr3_episode_staged → Drive + Telegram notify Zero
 ```
 
 **Durability:** PG NOTIFY + `events_outbox` (Phase 1 EventBus pattern, cicatrix-resolved).
@@ -121,8 +121,8 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 3. Skill demotion archive (`_quarantine/` → `_archived/` via PR)
 4. Cost overrun ≥3× budget 7d → P0 halt + decision
 5. Critic FAIL ≥5 → P1 quarantine + decision
-6. Publish to IG/TT/YT: Damar/Antonello manual click
-7. New regulatory citation: brief-interpreter flag `regulatory_unverified` → Veronika/Antonello sign-off
+6. Publish to IG/TT/YT: Damar/Zero manual click
+7. New regulatory citation: brief-interpreter flag `regulatory_unverified` → Veronika/Zero sign-off
 
 ### Legge 6 — Sovranità locale
 
@@ -143,9 +143,9 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 - Brand cortex `~/.claude/skills/bali-zero-brand/`
 - Manifest + episode state `~/.cell-observatory/wr3/` + PG Pro/Mini
 
-**Per-episode Antonello exception path** (Law 6 escape hatch):
+**Per-episode Zero exception path** (Law 6 escape hatch):
 
-- If Chatterbox crashes mid-episode AND episode has Veronika regulatory cite that NEEDS voice → Antonello can approve 1-off Cartesia call via Telegram P0 reply within 30 min window
+- If Chatterbox crashes mid-episode AND episode has Veronika regulatory cite that NEEDS voice → Zero can approve 1-off Cartesia call via Telegram P0 reply within 30 min window
 - Manifest field `cloud_exception: {service: cartesia, approved_by: antonello, ticket: <telegram_msg_id>}`
 - Quarterly audit: # exceptions / # episodes. Target ≤2%.
 
@@ -185,7 +185,7 @@ Law 2 (OSINT) > Law 5 (Zero) > Law 7 (numeri/legal-proof) > Law 4 (graceful degr
 **Concrete examples:**
 
 - NB down + brief-interpreter cannot validate claim_id → Law 7 trumps Law 4 → episode → draft-only state (NOT legal-passed)
-- Cartesia exception requested but Antonello unreachable → Law 5 trumps Law 4 → degrade to no-VO + music + subs (NOT autonomous Cartesia call)
+- Cartesia exception requested but Zero unreachable → Law 5 trumps Law 4 → degrade to no-VO + music + subs (NOT autonomous Cartesia call)
 - Competitor screenshot accidentally in skill cortex → Law 2 trumps Law 8 (passato) → remove from git history immediately + cicatrix entry, do NOT preserve as "lesson learned"
 
 ## Summary table — 8 leggi → WR3 final controls
@@ -197,12 +197,12 @@ Law 2 (OSINT) > Law 5 (Zero) > Law 7 (numeri/legal-proof) > Law 4 (graceful degr
 | 3 Event-driven             | **6 channels** (consolidated from 9): brief_requested → pre_render_ready → gate_passed → assembly_ready → critic_verdict → staged. PG NOTIFY + outbox.                                                                              | `test_wr3_outbox_replay.py`                    |
 | 4 Graceful degradation     | **Matrix per failure mode** — hard-fail root/gate/master, degrade everything else loud. **NO silent placeholder.**                                                                                                                  | Contract validation pre-PR                     |
 | 5 Zero ultima istanza      | **P0/P1/P2 Telegram triage** + 7 human-in-loop gates. Critical paths halt rather than improvise.                                                                                                                                    | `lint_wr3_autonomous_publish.py`               |
-| 6 Sovranità locale         | Local Chatterbox + ffmpeg + ArcFace. Cloud whitelist: Veo + NLM + YT only. **Cartesia BANNED** (Antonello per-episode exception path only).                                                                                         | `lint_wr3_cloud_dependency.py`                 |
+| 6 Sovranità locale         | Local Chatterbox + ffmpeg + ArcFace. Cloud whitelist: Veo + NLM + YT only. **Cartesia BANNED** (Zero per-episode exception path only).                                                                                         | `lint_wr3_cloud_dependency.py`                 |
 | 7 Numeri prima             | JSONL telemetry 6 mandatory fields. Proxy metrics OK for micro-skills. Sustained pass-rate as graduation for additive skills.                                                                                                       | `lint_wr3_telemetry_completeness.py`           |
 | 8 Passato/Presente/Futuro  | Cicatrix citation pre-PR (cross-domain valid). Skill versioning manifest pin. Voyager curriculum.                                                                                                                                   | Pre-PR hook                                    |
 | **Cross-legge precedence** | **`Law 2 > Law 5 > Law 7 > Law 4`** arbitrated by orchestrator.                                                                                                                                                                     | Doctrine in `docs/wr3/symbiosis-precedence.md` |
 
-## Open questions per Antonello (decision gate)
+## Open questions per Zero (decision gate)
 
 1. **Cascade hot-path policy**: confermo NO cascade per orchestrator + gatekeeper (hard-fail invece)? Trade-off: resilienza ↓ vs disciplina spend ↑.
 2. **Channel consolidation 9→6**: ok perdere `brief_ready` come canale separato (incorporato in `pre_render_ready`)? Implica brief-interpreter scrive script_frozen state durably PRIMA che fire l'event.
@@ -210,7 +210,7 @@ Law 2 (OSINT) > Law 5 (Zero) > Law 7 (numeri/legal-proof) > Law 4 (graceful degr
 4. **P0/P1/P2 Telegram cadence**: P0 immediate, P1 daily 09:00, P2 Sun 09:00. Orari ok o vuoi shift?
 5. **Cross-legge precedence**: `Law 2 > Law 5 > Law 7 > Law 4` come doctrine. Vuoi che la precedence chain finisca in `SYMBIOSIS.md` come addendum, o stay WR3-doctrine-only?
 6. **Domain-NB source_id filtering** (brief-interpreter queries NB-2..NB-7; NB-INTEL OSINT family explicitly out of scope): brief-interpreter caches regulatory facts in local PG → quanto è OK manifest contenga `regulation_id: PMK_12_2026` ma non `nb_source_uuid: xxx-yyy-zzz`?
-7. **Law 9 propose path**: se WR3 evidenza forte richiede "stochastic-idempotence law", processo è: collect 30 episode evidence → Antonello PR. Confermo o vuoi watchdog flag prima dei 30?
+7. **Law 9 propose path**: se WR3 evidenza forte richiede "stochastic-idempotence law", processo è: collect 30 episode evidence → Zero PR. Confermo o vuoi watchdog flag prima dei 30?
 
 ## Next step (Step 6 — Architettura LangGraph + skeleton code)
 

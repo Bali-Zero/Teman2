@@ -76,7 +76,7 @@ class SendEmailRequest(BaseModel):
     bcc: str | None = None  # comma-separated BCC addresses
     attachments: list[EmailAttachment] | None = None
     idempotency_key: UUID | None = None
-    # Context for the @balizero.com CC hard rule (Antonello 2026-06-17):
+    # Context for the @balizero.com CC hard rule (Zero 2026-06-17):
     # invoice → asya@, everything else → the practice's assigned lead.
     # Both optional so legacy callers still work (they fall back to asya@).
     email_type: str | None = None  # e.g. "invoice_client", "welcome", "waiting_docs_client"
@@ -333,7 +333,7 @@ async def send_pending_alerts(
 _ACCOUNTING_CC = "asya@balizero.com"
 _INVOICE_EMAIL_TYPES = frozenset({"invoice_client", "invoice", "invoice_team"})
 
-#: RULED by Antonello 2026-09-02, scoped in his own words to "solo per le
+#: RULED by Zero 2026-09-02, scoped in his own words to "solo per le
 #: pratiche del garuda voa": VOA practice mail copies these three. Nothing
 #: else moves -- every other practice keeps the assigned-lead rule below.
 #: A tuple rather than one address because this is the single email family
@@ -384,8 +384,8 @@ def _pick_balizero_cc(email_type: str, assigned_to: str | None) -> list[str]:
     """Choose WHICH Bali Zero address(es) to copy.
 
     The order is a precedence, not a preference:
-    - GARUDA VOA practice -> the standing three (Antonello 2026-09-02)
-    - invoices            -> accounting (Antonello 2026-06-17)
+    - GARUDA VOA practice -> the standing three (Zero 2026-09-02)
+    - invoices            -> accounting (Zero 2026-06-17)
     - otherwise           -> the practice's assigned lead
     - no assigned lead    -> accounting, so a client mail is never sent
       with nobody copied.
@@ -408,7 +408,7 @@ def _enforce_balizero_cc(
 ) -> tuple[list[str] | None, list[str] | None]:
     """Decide who else is in the loop on an outbound email.
 
-    HARD RULE (Antonello 2026-06-17): a client must never receive an email
+    HARD RULE (Zero 2026-06-17): a client must never receive an email
     without a Bali Zero address copied in. Structural enforcement at the
     single send choke-point.
 
@@ -493,7 +493,7 @@ async def send_direct_email(
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
     attachments = [a.model_dump() for a in request.attachments] if request.attachments else None
 
-    # HARD RULE (Antonello 2026-06-17): a client never receives an email
+    # HARD RULE (Zero 2026-06-17): a client never receives an email
     # without at least one @balizero.com address in the loop. Enforced
     # here — the single send choke-point — so no caller can bypass it.
     # Contextual CC: GARUDA VOA → the standing three, invoice → asya@,

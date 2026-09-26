@@ -5,7 +5,7 @@
   "worktree": ".worktrees/organism-s17-new-agents",
   "branch": "agent/nuzantara/organism/s17-new-agents",
   "base": "origin/main @ e8e59150e",
-  "mission": "Design 3-5 NEW SOTA agents filling real gaps where Bali Zero does manual work. Proposals only — NOT installed in ~/.claude/agents/, NOT cron-registered. Antonello approves.",
+  "mission": "Design 3-5 NEW SOTA agents filling real gaps where Bali Zero does manual work. Proposals only — NOT installed in ~/.claude/agents/, NOT cron-registered. Zero approves.",
   "review_method": "Single adversarial panelist (Codex GPT-5.5, sandbox read-only, health-checked PONG). Each Codex finding then empirically verified on disk before applying fixes (anti-hallucination discipline).",
   "constraints_honored": [
     "No ANTHROPIC_API_KEY anywhere (Anthropic-specific paid ban)",
