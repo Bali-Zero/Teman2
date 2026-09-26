@@ -437,6 +437,70 @@ def test_telegram_alert_scrubs_addresses_from_subject_and_error_text(monkeypatch
     assert "5.1.1" in body
 
 
+@pytest.mark.parametrize(
+    "cut_at",
+    ["@", "leak.pr", "@exa"],
+    ids=["cut_right_after_at", "cut_inside_local_part", "cut_inside_domain"],
+)
+def test_telegram_alert_scrubs_address_cut_by_truncation(monkeypatch, cut_at):
+    """M4 (PR #7385 round 2): `error`/`subject` are truncated to 400/120
+    chars BEFORE the R3 scrub runs (truncating AFTER would run the regex
+    over unbounded text — quadratic, measured ~1s at 20k chars). A cut
+    landing right after `@`, inside the local part, or inside the domain
+    leaves a fragment `_scrub_email_tokens`'s regex cannot match at all (it
+    needs >=1 character on BOTH sides of `@`), so that fragment used to
+    survive the scrub untouched — a leak specifically CAUSED by truncating
+    before scrubbing rather than after."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    local = "leak.probe"
+    addr = f"{local}@example.com"
+    idx = addr.index(cut_at) + len(cut_at) if cut_at != "leak.pr" else len("leak.pr")
+    padding = "x " * 400
+    prefix = padding[: 400 - idx]
+    error = prefix + addr + " trailing text"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject="ok",
+            practice_id=1,
+            error=error,
+        )
+
+    body = mock_open.call_args[0][1].decode()
+    assert local not in body
+
+
+def test_telegram_alert_scrub_preserves_markdown_balance(monkeypatch):
+    """M5 (PR #7385 round 2): the R3 scrub's token class devoured `*`/`_`
+    delimiters together with the address it matched — `*Delivery to a@b*`
+    lost its closing `*`. This alert is sent with parse_mode="Markdown";
+    Telegram rejects an unbalanced message outright (swallowed by this
+    function's own try/except), so a corrupted scrub means the CRITICAL
+    alert is silently DROPPED — worse than the leak the scrub exists to
+    prevent."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    addr = "leak.probe@example.com"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject=f"*Delivery to {addr}*",
+            practice_id=1,
+            error="e",
+        )
+
+    import urllib.parse
+
+    text = urllib.parse.parse_qs(mock_open.call_args[0][1].decode())["text"][0]
+    assert "leak.probe" not in text
+    subj_line = next(line for line in text.splitlines() if line.startswith("*Subject:*"))
+    # The closing '*' the old token class ate is present again: balanced.
+    assert subj_line.count("*") % 2 == 0
+
+
 def test_missing_token_warning_does_not_log_the_recipient_address(monkeypatch, caplog):
     """The no-token early return logs a warning; it must be address-free too.
 

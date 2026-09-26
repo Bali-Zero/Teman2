@@ -183,6 +183,8 @@ class TestNoLoggerExceptionOrTracebackOnAClientAddressedSend:
         with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
             await service.send_birthday_email(_CLIENT)
 
+        assert all(record.exc_info is None for record in caplog.records)
+
 
 class TestRunLevelFailureNeverLogsException:
     @pytest.mark.asyncio
@@ -206,5 +208,3 @@ class TestRunLevelFailureNeverLogsException:
         assert _LEAK not in stats["error"]
         assert stats["error"] == "RuntimeError"
         assert "RuntimeError" in caplog.text
-
-        assert all(record.exc_info is None for record in caplog.records)

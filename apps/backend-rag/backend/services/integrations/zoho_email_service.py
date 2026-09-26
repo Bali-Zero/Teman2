@@ -153,6 +153,24 @@ def sanitize_filename(filename: str, max_length: int = 200) -> str:
     return sanitized
 
 
+_SAFE_FILENAME_EXT_RE = re.compile(r"[A-Za-z0-9]{1,8}")
+
+
+def _safe_filename_ext(filename: str) -> str:
+    """The file extension for a log line — bounded and whitelisted, never
+    the filename itself.
+
+    An unbounded extension is itself a PII surface (`Filename: <full name>`
+    is the obvious leak, but even `name.rsplit(".", 1)[-1]` alone can carry
+    content when the "extension" is really the tail of a name or address
+    with no real dot-extension at all). Anything that is not a short
+    alphanumeric token — including one containing `@`, spaces or non-ASCII —
+    collapses to `"other"`.
+    """
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+    return ext if _SAFE_FILENAME_EXT_RE.fullmatch(ext) else "other"
+
+
 class ZohoEmailService:
     """
     Handles all Zoho Mail API operations.
@@ -1219,8 +1237,13 @@ class ZohoEmailService:
         file_size_mb = len(content) / (1024 * 1024)
 
         logger.info(
-            f"[Email] Upload request user={user_id} "
-            f"filename={filename!r} size={file_size_mb:.2f}MB type={content_type}",
+            "[Email] Upload request user=%s filename_ext=%s filename_len=%d "
+            "size=%.2fMB type=%s",
+            user_id,
+            _safe_filename_ext(filename),
+            len(filename),
+            file_size_mb,
+            content_type,
         )
 
         # Validate file size (Zoho limit: 25MB per attachment)
@@ -1228,11 +1251,20 @@ class ZohoEmailService:
         MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
         if len(content) > MAX_FILE_SIZE_BYTES:
+            # The raised message (to the caller) keeps the real filename; only
+            # the LOG line is bounded — see M6, same split R1 used for upload
+            # provider errors.
             error_msg = (
                 f"File too large: {file_size_mb:.1f}MB exceeds {MAX_FILE_SIZE_MB}MB limit. "
                 f"Filename: {filename}"
             )
-            logger.error("[Email] %s", error_msg)
+            logger.error(
+                "[Email] File too large user=%s size_mb=%.1f filename_ext=%s filename_len=%d",
+                user_id,
+                file_size_mb,
+                _safe_filename_ext(filename),
+                len(filename),
+            )
             raise ValueError(error_msg)
 
         # Validate filename length before sanitization
@@ -1241,7 +1273,12 @@ class ZohoEmailService:
                 f"Filename too long: {len(filename)} characters exceeds 255 character limit. "
                 f"Filename: {filename}"
             )
-            logger.error("[Email] %s", error_msg)
+            logger.error(
+                "[Email] Filename too long user=%s filename_ext=%s filename_len=%d",
+                user_id,
+                _safe_filename_ext(filename),
+                len(filename),
+            )
             raise ValueError(error_msg)
 
         # Sanitize filename (remove spaces, special chars, truncate)
@@ -1249,8 +1286,13 @@ class ZohoEmailService:
 
         if sanitized_filename != original_filename:
             logger.info(
-                f"[Email] Filename sanitized user={user_id} "
-                f"original={original_filename!r} → sanitized={sanitized_filename!r}",
+                "[Email] Filename sanitized user=%s original_ext=%s original_len=%d "
+                "sanitized_ext=%s sanitized_len=%d",
+                user_id,
+                _safe_filename_ext(original_filename),
+                len(original_filename),
+                _safe_filename_ext(sanitized_filename),
+                len(sanitized_filename),
             )
             filename = sanitized_filename
 
@@ -1290,13 +1332,12 @@ class ZohoEmailService:
                 error_message = error_data.get("message", "No error message provided")
 
                 # No provider free text, no filename — just enough to triage.
-                ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
                 logger.error(
                     "[Email] Attachment upload failed user=%s status=%s "
                     "filename_ext=%s filename_len=%d",
                     user_id,
                     response.status_code,
-                    ext,
+                    _safe_filename_ext(filename),
                     len(filename),
                 )
 
@@ -1320,21 +1361,24 @@ class ZohoEmailService:
             }
 
             logger.info(
-                f"[Email] Attachment uploaded successfully "
-                f"user={user_id} attachment_id={result['attachment_id']} "
-                f"filename={filename!r} size={file_size_mb:.2f}MB",
+                "[Email] Attachment uploaded successfully user=%s attachment_id=%s "
+                "filename_ext=%s filename_len=%d size=%.2fMB",
+                user_id,
+                result["attachment_id"],
+                _safe_filename_ext(filename),
+                len(filename),
+                file_size_mb,
             )
 
             return result
 
         except httpx.HTTPError as e:
-            ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
             logger.error(
                 "[Email] HTTP error uploading attachment user=%s type=%s "
                 "filename_ext=%s filename_len=%d",
                 user_id,
                 type(e).__name__,
-                ext,
+                _safe_filename_ext(filename),
                 len(filename),
             )
             raise ValueError(f"Network error uploading '{original_filename}': {e!s}")

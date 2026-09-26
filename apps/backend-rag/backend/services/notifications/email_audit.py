@@ -203,12 +203,72 @@ async def record_email_result(
 # the recipient's address (e.g. a provider bounce message quoting it back).
 # Redacting only `to_email` below is not enough for this Telegram alert —
 # it is an OUTPUT, not storage.
-_EMAIL_TOKEN_RE = re.compile(r"[^\s@<>\"'`]+@[^\s@<>\"'`]+")
+#
+# Markdown/punctuation delimiters are excluded from the token class itself
+# (M5, PR #7385 round 2): this alert is sent with parse_mode="Markdown", and
+# the previous class (`[^\s@<>"'`]+`) happily consumed a closing `*`/`_` that
+# belonged to the SURROUNDING text, not the address — e.g. `*Delivery to
+# a@b*` lost its closing `*`, and Telegram then rejects the whole message as
+# malformed Markdown (swallowed below), which means the alert is DROPPED
+# entirely — worse than the leak it exists to prevent.
+_MD_DELIMS = "*_[]()"
+_EMAIL_TOKEN_RE = re.compile(
+    rf"[^\s@<>\"'`{re.escape(_MD_DELIMS)}]+@[^\s@<>\"'`{re.escape(_MD_DELIMS)}]+"
+)
+#: Trailing sentence punctuation is stripped from a MATCHED token rather than
+#: excluded from the class above — excluding "." there would also refuse the
+#: dots inside a real domain. Only a trailing run right at the end of the
+#: match is punctuation the surrounding sentence owns, not the address.
+_TRAILING_PUNCT_RE = re.compile(r"[.,;:!?]+$")
 
 
 def _scrub_email_tokens(text: str) -> str:
-    """Replace every email-shaped token in ``text`` with its log-safe digest."""
-    return _EMAIL_TOKEN_RE.sub(lambda m: redact_identifier_for_log(m.group(0)), text)
+    """Replace every email-shaped token in ``text`` with its log-safe digest.
+
+    Markdown delimiters immediately touching the token are left in the
+    surrounding text (never consumed into the match); trailing sentence
+    punctuation on the matched token itself is preserved the same way.
+    """
+
+    def _redact(match: re.Match[str]) -> str:
+        token = match.group(0)
+        trailing = _TRAILING_PUNCT_RE.search(token)
+        suffix = trailing.group(0) if trailing else ""
+        core = token[: len(token) - len(suffix)] if suffix else token
+        return redact_identifier_for_log(core) + suffix
+
+    return _EMAIL_TOKEN_RE.sub(_redact, text)
+
+
+#: A truncation cut can land mid-token (e.g. right after `@`, or inside a
+#: domain) and leave a fragment `_scrub_email_tokens` cannot match — its
+#: regex needs at least one character on BOTH sides of `@`. `leak.probe@`
+#: with nothing after `@` never matches, so it would survive truncation
+#: unredacted. This strips a trailing PARTIAL token — the same case is
+#: reachable whether or not `@` is actually present in it.
+_TRAILING_PARTIAL_TOKEN_RE = re.compile(r"\S+$")
+
+
+def _bounded_scrub(text: str, limit: int) -> str:
+    """Truncate to ``limit`` chars, drop a trailing partial token, then scrub.
+
+    Order matters (M4, PR #7385 round 2). Scrubbing BEFORE truncating would
+    run the regex over unbounded caller-supplied text — measured quadratic
+    on a long non-matching run (20k chars ~= 1.05s) — so truncation happens
+    first, bounding every call to this function's own ``limit``. But
+    truncating first can cut an address mid-token; if the cut did not land
+    on a whitespace boundary, the trailing partial token is dropped entirely
+    before scrubbing runs, rather than left for the regex to (fail to) catch.
+    Only applied when truncation actually removed something — text that
+    already fits under ``limit`` is untouched, so an untruncated string
+    ending in ordinary punctuation (e.g. Markdown's `*word*`) is not
+    mistaken for a mid-token cut.
+    """
+    was_truncated = len(text) > limit
+    truncated = text[:limit]
+    if was_truncated and truncated and not truncated[-1].isspace():
+        truncated = _TRAILING_PARTIAL_TOKEN_RE.sub("", truncated).rstrip()
+    return _scrub_email_tokens(truncated)
 
 
 def notify_email_failure_critical(
@@ -235,8 +295,8 @@ def notify_email_failure_critical(
         return
 
     practice_fragment = f" (practice #{practice_id})" if practice_id else ""
-    short_subj = _scrub_email_tokens((subject or "").strip()[:120])
-    short_err = _scrub_email_tokens(error.strip().replace("\n", " ")[:400])
+    short_subj = _bounded_scrub((subject or "").strip(), 120)
+    short_err = _bounded_scrub(error.strip().replace("\n", " "), 400)
 
     # Tell the operator whether to wait for retry or act immediately.
     # Non-resurrectable types (personalized HTML / attachments) bypass the
