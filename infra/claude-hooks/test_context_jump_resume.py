@@ -133,6 +133,14 @@ def test_garbage_last_gesture_ts_with_fresh_ts_is_still_picked():
     assert rc == 0 and out is not None and jump["to_session"] == "new"
 
 
+def test_last_gesture_ts_older_than_a_fresh_ts_does_not_stale_it():
+    # last_gesture_ts is always >= ts in real data, but max() is the floor:
+    # an OLDER last_gesture_ts must never make a fresher ts look stale.
+    home = _home_with_jump(os.getcwd(), last_gesture_ts=time.time() - 20 * 60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is not None and jump["to_session"] == "new"
+
+
 def test_missing_handoff_still_injects_a_recovery_context():
     home = _home_with_jump(os.getcwd(), handoff=False)
     rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
@@ -173,6 +181,28 @@ def test_fresh_ts_but_claimed_stays_mute_regardless_of_gesture():
 
 def test_garbage_last_gesture_ts_with_stale_ts_is_mute():
     home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, last_gesture_ts="x")
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_nan_string_last_gesture_ts_with_stale_ts_is_mute():
+    # float("nan") parses without raising, and now - nan > MAX_AGE_S is
+    # False — left unguarded this launders a stale ts into a fresh jump.
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, last_gesture_ts="nan")
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_json_nan_token_last_gesture_ts_with_stale_ts_is_mute():
+    # json.dumps(float("nan")) writes the bare NaN token, which json.loads
+    # reads back into an actual float("nan") — same trap via a different door.
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, last_gesture_ts=float("nan"))
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_inf_string_last_gesture_ts_with_stale_ts_is_mute():
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, last_gesture_ts="inf")
     rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is None and jump["to_session"] is None
 

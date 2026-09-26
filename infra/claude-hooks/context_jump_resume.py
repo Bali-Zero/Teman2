@@ -39,6 +39,7 @@ Kill switch: CONTEXT_JUMP_OFF=1.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -76,10 +77,14 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
     when the guard first tripped. A retry hours later still mints a real new
     window (2026-09-26, session cefbda50: guard tripped at ts, the retry
     opened the window that actually asked for the jump) and must be judged
-    fresh from ITS OWN gesture. `last_gesture_ts`, when present and parseable,
-    wins; a missing or unparseable one falls back to `ts` — a garbage
-    `last_gesture_ts` must not crash and must not launder a stale `ts` into a
-    fresh jump either."""
+    fresh from ITS OWN gesture. The reference time is `max(ts, last_gesture_ts)`
+    when `last_gesture_ts` is present and a FINITE float; a missing,
+    unparseable, NaN or infinite one falls back to `ts` alone — `float("nan")`
+    and `float("inf")` both parse without raising, and both would otherwise
+    launder a stale `ts` into a fresh jump (`now - nan > MAX_AGE_S` and
+    `now - inf > MAX_AGE_S` are both False), so they are rejected explicitly
+    via `math.isfinite`. `max()` also means a `last_gesture_ts` older than
+    `ts` can never make a fresher `ts` look stale."""
     if not want:
         return None
     now = time.time() if now is None else now
@@ -92,9 +97,16 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
     except (TypeError, ValueError):
         return None
     try:
-        reference = float(j["last_gesture_ts"])
+        last_gesture_ts = float(j["last_gesture_ts"])
+        if not math.isfinite(last_gesture_ts):
+            raise ValueError("last_gesture_ts not finite")
     except (KeyError, TypeError, ValueError):
         reference = ts
+    else:
+        # last_gesture_ts is always >= ts in real data (the guard only stamps
+        # it on a RETRY, after ts); max() is the defensive floor so an older
+        # last_gesture_ts can never make a fresher ts look stale.
+        reference = max(ts, last_gesture_ts)
     if now - reference > MAX_AGE_S or j.get("from_session") == session_id:
         return None
     return (p, j)
