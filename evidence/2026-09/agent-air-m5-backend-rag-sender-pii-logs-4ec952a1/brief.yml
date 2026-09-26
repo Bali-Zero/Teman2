@@ -1,0 +1,108 @@
+task_id: sender-pii-logs
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  PR #7385 closes the sender-PII-in-logs gap across Zoho email, the birthday notifier and the
+  critical-email Telegram alert: a raw recipient address, provider error text, or an exception's
+  own message could reach a log line or an owner-facing alert. Round 0 (commit 9666233cff)
+  redacted the OBVIOUS recipient-argument sites. A cross-family review (Codex FIX-FIRST, read-only,
+  against 9666233cff) found five more leak sites the round-0 pass missed, all through paths round 0
+  did not exercise: the provider error BODY (not just the recipient) on `_request`'s >=400 branch,
+  the email subject, the attachment-upload failure logs, an exception's own text at four more
+  `%s`-on-`e` call sites, and the Telegram alert's `subject`/`error` free-text fields (only
+  `to_email` was redacted). It also found that `redact_identifier_for_log` itself can raise
+  (`UnicodeEncodeError` on a lone surrogate), which is disqualifying for a helper that sits inside
+  a logger call on a send path — a redaction that can crash the send is worse than the leak.
+
+  This round (commit b3c5fdec5d) fixes all five findings plus the helper's own robustness bug, one
+  fix per finding, guilt-tested against 9666233cff so each fix is falsifiable rather than asserted.
+constraints:
+  - "Depth-1 fix-of-a-fix rule (CLAUDE.md Builder Contract #1): this is round 1 correcting round 0;
+    if THIS round's fix were itself found wrong, the next step is a spec, not a round 2 patch —
+    not exercised here because every fix passed its own guilt/innocence pair."
+  - 'Return/raise behaviour on every touched call site must stay byte-identical to before this
+    round except where the review explicitly named the change (`to=None`''s failure site moving
+    back to `",".join(to)`, matching origin/main) — this is a logging-only fix, not a behavior
+    change to the email send/reply/forward/upload paths themselves.'
+  - "No client PII in this PR's own artifacts (commit message, this pack, the PR body) — every
+    example address used in tests and here is an obviously-synthetic `leak.probe@example.com`/
+    `*.example`/`*.example.org` shape, never a real Bali Zero client address."
+  - "`internal_email.py`'s `log_context` free-text field is explicitly OUT OF SCOPE per the
+    spec — every current caller passes a fixed tag, so it is not live-exploitable today, and
+    widening scope to it would have broken the one-fix-per-finding shape this round is measured
+    against."
+acceptance:
+  - text: >-
+      WHEN Zoho's `_request` receives an HTTP status >= 400 whose body contains an email address
+      (a provider bounce/validation message quoting the recipient), the warning log line SHALL
+      contain the HTTP status and, if present, the provider's whitelisted errorCode token, and
+      SHALL NOT contain the address or any other provider free text.
+    probe: "pytest backend/tests/unit/services/integrations/test_zoho_email_service.py"
+  - text: >-
+      WHEN `send_email`'s subject contains an email address, the info log line SHALL carry only
+      `subject_len`, never subject text; and WHEN `to=None`, the raised `TypeError` SHALL occur at
+      the same `\",\".join(to)` site as origin/main, not inside the log line's redaction
+      comprehension.
+    probe: "pytest backend/tests/unit/services/integrations/test_zoho_email_service.py"
+  - text: >-
+      WHEN `upload_attachment` fails (a >=200 provider status or an `httpx.HTTPError`), the error
+      log SHALL carry user/status-or-exception-type/filename-extension+length only — never the
+      filename, the provider's free-text message, or a traceback (`exc_info`).
+    probe: "pytest backend/tests/unit/services/integrations/test_zoho_email_service.py"
+  - text: >-
+      WHEN `run_birthday_notifications`'s outer handler catches an exception whose text carries an
+      address, both the log line and `stats[\"error\"]` SHALL carry the exception's type name only.
+    probe: "pytest backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py"
+  - text: >-
+      WHEN the critical-email Telegram alert's `subject` or `error` text contains an email-shaped
+      token, that token SHALL be replaced by its log-safe digest before the alert is sent.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
+  - text: >-
+      WHEN `redact_identifier_for_log` receives an email-shaped string containing a lone (unpaired)
+      surrogate code point, it SHALL return an `id:`-prefixed digest rather than raising, and the
+      digest for any already-valid-UTF-8 input SHALL be unchanged from before this fix.
+    probe: "pytest backend/tests/unit/security/test_pii_log_identifier.py"
+consumer_map:
+  - "`backend/services/integrations/zoho_email_service.py` — live send/reply/forward/upload path
+    behind the Zoho-mail integration used by the CRM email UI; `_request`'s warning line is the one
+    every one of those operations funnels its provider-error logging through."
+  - "`backend/services/crm/birthday_notifier_service.py` — the cron-scheduled birthday-email sender
+    (`cron_notifiers.py`/`autonomous_scheduler.py`); its run-level failure log and returned `stats`
+    are read by whichever caller inspects the cron's own outcome."
+  - "`backend/services/notifications/email_audit.py`'s `notify_email_failure_critical` — the
+    synchronous Telegram page Bali Zero's owner reads on a critical-email failure; this is the
+    OUTPUT surface R3 closes (an owner-facing alert, not storage)."
+  - "`backend/security/pii_log_identifier.py`'s `redact_identifier_for_log` — shared plumbing
+    imported by every one of the above plus the client-bot/team-bot identity paths (per that
+    module's own docstring); the surrogate-input fix benefits every caller, not just this PR's
+    three files."
+risks:
+  - "Two pre-existing pytest failures were observed in the pre-push `quickcheck` run on this
+    branch (`test_evaluate_endpoint.py` — `UndefinedTableError` on a local-PG idempotency table;
+    `test_article_composer_integration.py::test_compose_article_rate_limit` — a rate-limiter timing
+    assertion; `test_genai_stream_awaits_the_sdk_coroutine.py` — an installed `google-genai` version
+    drift). All three are environment/pre-existing, unrelated to any file this PR touches; not
+    fixed here, flagged rather than hidden."
+  - "The `scripts_coupling_census` advisory flagged `scripts/tests/test_lint_home_fork.py` as
+    newly-coupled and STALE — unrelated to this PR's own file set (that test file is not part of
+    this diff); not fixed here since fixing it would touch files outside this PR's authorized
+    scope, per the same one-fix-per-finding discipline this round is measured against."
+  - "`upload_attachment`'s pre-validation logs (request-received, size-too-large, filename-too-long,
+    filename-sanitized — lines ~1221/1232/1241/1250 pre-round-1) still log the raw filename. Out of
+    the review's named scope (which was the two POST-request failure logs at ~1287/1327); flagged,
+    not fixed, to keep this round's diff to exactly what the spec named."
+grader: |
+  Cross-family review: Codex FIX-FIRST (read-only) against commit 9666233cff, given the round-0
+  diff and told to find residual leaks. Found the five sites this round fixes plus the helper's
+  surrogate-input bug — see `dissent:` in pack.yml for the full finding and disposition. Each fix
+  carries its own guilt test (fails on 9666233cff, passes on this round's head) rather than a
+  single after-the-fact review claim; verified locally by re-running each new test against a
+  `cp`-restored copy of 9666233cff's version of the touched file (`git stash` forbidden per this
+  session's own instructions), one file at a time, then restoring the cure.
+budget:
+  1 build lane (this session, correcting round 0) + 1 cross-family review lane (Codex
+  FIX-FIRST, prior round). Gear 2, no council gate.
+pii:
+  none — every address in this PR's diff/tests/pack is a synthetic `*.example`/`*.example.org`
+  literal.

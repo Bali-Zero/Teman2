@@ -1,0 +1,165 @@
+# STAGING PATH, NOT THE REAL ONE — harness-floor.yml copies both files to
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their canonical names and
+# the lint resolves brief_ref against THAT root, so this must read the literal
+# evidence/brief.yml even though the real brief lives beside this file.
+brief_ref: evidence/brief.yml
+plan_ref: "PR #7385 round 1 — spec written from a cross-family review (Codex FIX-FIRST, read-only) run against commit 9666233cff; no separate docs/plans/ file, the review itself is the spec this round implements one finding at a time."
+lanes:
+  - lane: sender-pii-r1
+    role: build
+    seat: "claude-sonnet-5 (this session, senderpii-r1)"
+  - lane: senderpii-review
+    role: review
+    seat: "codex FIX-FIRST, read-only, prior round — found 5 residual leak sites plus a crash bug in the redaction helper itself"
+  - lane: final-gate
+    role: review
+    seat: "this session — every receipt below re-run locally before commit"
+seat_diversity: degraded
+seat_diversity_note: >-
+  One build lane this round, so the D3 floor (>=2 build lanes) does not fire and this field stays
+  "degraded" on that basis. The review side is not degraded: a cross-family seat (Codex) gated the
+  round-0 diff and returned five concrete leak sites plus a helper crash bug this session's own
+  round-0 pass had missed — the argument for cross-family review stated as a measurement, not a
+  principle.
+diff:
+  net_lines: >-
+    12 files, +904/-39, commit count unmeasured (no --commit-count, no pull_request payload) —
+    the canonical `evidence_pack_lint.py --print-measured` sentence for the whole PR (round 0 +
+    round 1 code/test changes + this evidence pack) against origin/main, pasted rather than
+    hand-derived so it cannot drift from what the countable-claims rule itself checks.
+    `--print-floor` over the same diff reads floor two, source "size" (churn at or above
+    SIZE_GEAR2_THRESHOLD=400, no hot-zone path hit).
+  behaviour_change: >-
+    Logging/alerting only. No return value, no raised-exception TYPE, no payload sent to the
+    Zoho/Brevo/Telegram providers changes for any valid input. The one deliberate exception-SITE
+    change: Zoho `send_email`/`forward_email` with `to=None` now raises its `TypeError` at the
+    payload-build step (`",".join(to)`), matching origin/main's failure site exactly, instead of
+    one line earlier inside the redaction comprehension the round-0 diff introduced.
+receipts:
+  - claim:
+      "Every test in the five touched files (2 new source-adjacent test files, 3 files with
+      new tests added this round) passes on the round-1 head, plus the untouched
+      test_internal_email.py as an out-of-scope regression check."
+    cmd:
+      "PYTHONPATH=. pytest backend/tests/unit/services/integrations/test_zoho_email_service.py
+      backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py
+      backend/tests/services/crm/test_birthday_notifier_service.py
+      backend/tests/unit/services/notifications/test_email_audit.py
+      backend/tests/unit/app/services/test_internal_email.py backend/tests/unit/security"
+    result: "159 passed, 0 failed."
+    exit: 0
+    ts: "2026-09-26T11:10Z"
+    seat: "session (final gate)"
+  - claim:
+      "R1 guilt: the new `_request`/`send_email`/`upload_attachment` tests FAIL against
+      9666233cff's version of zoho_email_service.py (the provider body, subject and
+      filename/traceback leaks the review found) and PASS again once the cure is restored."
+    cmd: "cp services/integrations/zoho_email_service.py /tmp/*.cure; git show
+      9666233cff:apps/backend-rag/backend/services/integrations/zoho_email_service.py >
+      services/integrations/zoho_email_service.py; pytest
+      backend/tests/unit/services/integrations/test_zoho_email_service.py; cp /tmp/*.cure
+      services/integrations/zoho_email_service.py"
+    result: >-
+      Pre-fix: 5 failed (test_error_response_never_logs_provider_body_or_address,
+      test_send_email_subject_with_address_never_in_caplog,
+      test_send_email_to_none_fails_at_the_join_not_the_log_line,
+      TestUploadAttachmentNeverLogsFilenameOrProviderText x2), 50 passed. Cure restored via `cp`
+      (never `git stash`, per this session's instructions); file verified byte-identical to the
+      pre-swap cure afterward.
+    exit: 1
+    ts: "2026-09-26T11:03Z"
+    seat: "session (final gate)"
+  - claim: 'R2 guilt: the new run-level failure test FAILS against 9666233cff''s
+      birthday_notifier_service.py (`str(e)`/address in the log and in `stats["error"]`) and
+      PASSES on the cure.'
+    cmd: "cp services/crm/birthday_notifier_service.py /tmp/*.cure; git show
+      9666233cff:apps/backend-rag/backend/services/crm/birthday_notifier_service.py >
+      services/crm/birthday_notifier_service.py; pytest
+      backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py
+      backend/tests/services/crm/test_birthday_notifier_service.py; cp /tmp/*.cure
+      services/crm/birthday_notifier_service.py"
+    result: "Pre-fix: 1 failed (test_guilt_run_failure_logs_exception_type_only), 12 passed."
+    exit: 1
+    ts: "2026-09-26T11:05Z"
+    seat: "session (final gate)"
+  - claim:
+      "R3 guilt: the new Telegram-alert scrub test FAILS against 9666233cff's
+      email_audit.py (subject/error free text carried the address into the alert body) and
+      PASSES on the cure."
+    cmd: "cp services/notifications/email_audit.py /tmp/*.cure; git show
+      9666233cff:apps/backend-rag/backend/services/notifications/email_audit.py >
+      services/notifications/email_audit.py; pytest
+      backend/tests/unit/services/notifications/test_email_audit.py; cp /tmp/*.cure
+      services/notifications/email_audit.py"
+    result: >-
+      Pre-fix: 1 failed
+      (test_telegram_alert_scrubs_addresses_from_subject_and_error_text — the scrubbed-out
+      `urgent-reply-to`/`client-domain` tokens were found intact in the alert body), 22 passed.
+    exit: 1
+    ts: "2026-09-26T11:07Z"
+    seat: "session (final gate)"
+  - claim: 'R4 guilt: the new surrogate-input test FAILS against 9666233cff''s
+      pii_log_identifier.py (`UnicodeEncodeError` inside the strict `"utf-8"` encode) and
+      PASSES on the cure, with the normal-address digest unchanged.'
+    cmd: "cp security/pii_log_identifier.py /tmp/*.cure; git show
+      9666233cff:apps/backend-rag/backend/security/pii_log_identifier.py >
+      security/pii_log_identifier.py; pytest
+      backend/tests/unit/security/test_pii_log_identifier.py; cp /tmp/*.cure
+      security/pii_log_identifier.py"
+    result: >-
+      Pre-fix: 1 failed
+      (test_lone_surrogate_email_shaped_input_does_not_raise —
+      "UnicodeEncodeError: 'utf-8' codec can't encode character '\\ud800'"), 34 passed.
+    exit: 1
+    ts: "2026-09-26T11:08Z"
+    seat: "session (final gate)"
+  - claim: "No new lint surface and the FastAPI import chain still resolves."
+    cmd: "ruff check backend/services/integrations/zoho_email_service.py
+      backend/services/crm/birthday_notifier_service.py
+      backend/services/notifications/email_audit.py backend/security/pii_log_identifier.py
+      backend/tests/unit/services/integrations/test_zoho_email_service.py
+      backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py
+      backend/tests/unit/services/notifications/test_email_audit.py
+      backend/tests/unit/security/test_pii_log_identifier.py; python -c 'from
+      backend.services.integrations.zoho_email_service import ZohoEmailService; from
+      backend.services.crm.birthday_notifier_service import BirthdayNotifierService; from
+      backend.services.notifications.email_audit import notify_email_failure_critical; from
+      backend.security.pii_log_identifier import redact_identifier_for_log'"
+    result: "ruff: All checks passed! Import chain: no exception."
+    exit: 0
+    ts: "2026-09-26T11:12Z"
+    seat: "session (final gate)"
+pii_scan: clean
+cloud_ok: >-
+  CLAUDE.md Builder Contract 4 / SYMBIOSIS Law 2: every cloud seat in this pack (this session,
+  Codex FIX-FIRST) worked only on repository diffs, docstrings and synthetic test fixtures —
+  `leak.probe@example.com` and similarly obviously-fake addresses, never a real Bali Zero client
+  row, name, address or document. This attests the actual no-PII scope of this fix (a logging-only
+  change to code paths that touch CRM data at runtime, not a change exercised against runtime CRM
+  data itself), not an exception allowing cloud processing of real client data.
+dissent:
+  - seat: "codex FIX-FIRST (read-only), against commit 9666233cff"
+    objection: >-
+      Round 0's recipient redaction improved, but the Zoho send path still logged provider errors
+      in the clear. `_request` (blocking, confirmed with a synthetic probe on the extracted
+      method) logged the full decoded error body; `_log_activity`, `get_email`'s mark-read,
+      `get_unread_count` interpolated `e` directly; `upload_attachment` logged the complete
+      provider response at one site and `e` with `exc_info=True` at another; `send_email` still
+      logged the subject, letting an address inside it through in the clear.
+      `birthday_notifier_service.py`'s outer run-failure handler interpolated `e` too. Behavior for
+      valid input, payload, audit and Telegram was otherwise unchanged, which meant
+      `email_audit.py`'s alert still carried the raw error text. The redaction helper itself is not
+      infallible: an email-shaped string with a lone Unicode surrogate raises `UnicodeEncodeError`
+      inside it, and `to=None` in `send_email` now fails one line earlier than origin/main
+      (inside the new redaction comprehension, before the `try:`), changing the invalid-input
+      failure site. New round-0 tests mocked `_request` itself, which hid the blocking leak rather
+      than exercising it.
+    status: CONFIRMED
+    disposition: >-
+      All five leak sites and the helper's crash bug fixed this round, one fix per finding (see
+      `objective:`/`acceptance:` in brief.yml). `to=None` was restored to origin/main's exact
+      failure site via a None-safe redaction comprehension rather than an earlier fail-fast. The
+      one item explicitly NOT changed per the review's own instruction:
+      `birthday_notifier_service.py`'s `JSONDecodeError` `str(exc)[:80]` at custom_fields parsing —
+      its message is position-only (no field content), so redacting it further would remove
+      diagnostic value without closing a leak.
