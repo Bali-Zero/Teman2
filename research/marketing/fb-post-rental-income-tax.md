@@ -6,7 +6,7 @@
 **Cluster:** C2 — Tax Compliance
 **Topic:** Rental Income Tax 10% — Bali 2026
 **Posting window:** 19:00–21:00 WITA
-**Status:** Draft — pending Zero sign-off
+**Status:** Draft — pending Antonello sign-off
 
 ---
 
@@ -58,7 +58,7 @@ Slide breakdown:
 
 ---
 
-## KEY FIGURES (for Zero verification)
+## KEY FIGURES (for Antonello verification)
 
 1. Rate: 10% final — calculated on gross rental amount
 2. Tax base: gross only — no deductions (operating costs,

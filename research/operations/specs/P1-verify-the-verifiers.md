@@ -10,7 +10,7 @@ council_pieno: SÌ (decisione fondante, errore costosissimo)
 
 # SPEC Pezzo 1 — verify-the-verifiers
 
-> Il gate di verifica che SOSTITUISCE la code-review di Zero (non-dev, non revisiona codice).
+> Il gate di verifica che SOSTITUISCE la code-review di Antonello (non-dev, non revisiona codice).
 > Se questo è fragile, l'intero meta-dev-loop crolla. È il cardine.
 
 ## 0. La domanda e la risposta (verificata)
@@ -80,7 +80,7 @@ PR/diff dell'agente
   │  Ground-truth per il codice = output degli strati 0-3 (test che passano + mutant-KILL + property-hold),
   │  NON "il codice sembra giusto". Override fail-closed se ground-truth manca.
   │
-  ▼ STRATO 5 — GATE UMANO MINIMO (irriducibile, Zero)
+  ▼ STRATO 5 — GATE UMANO MINIMO (irriducibile, Antonello)
      Domande BINARIE DETERMINISTICHE (non riassunti LLM che mentono — Gemini #3):
      UMANO obbligatorio: Auth/RBAC · Destructive-Delete (drop table/column) · Prod-Deploy
      Declassabile a policy deterministica: Secrets (TruffleHog) · PII-egress (taint analysis) ·
@@ -133,7 +133,7 @@ Per un non-dev: il sistema gli dice quando fidarsi e quando no. È il GAP-1 che 
    e verifica che ogni gate BLOCCHI. Tool: pytest + Conftest/OPA + `semgrep --test`.
 3. **MVL "VerifyPack v0" (attivabile DOMANI)**: workflow manuale (input PR/branch) → output `verify-summary.md`
    + `.json`. Esegue i ~30 deterministici + hot-zone + evidence-lint + SAST esistenti, POI i 6 LLM **solo come
-   "sospetto" non come pass/fail**. Zero vede 3 blocchi: **PASS / BLOCK / HUMAN_ESCALATION**. Attiva con
+   "sospetto" non come pass/fail**. Antonello vede 3 blocchi: **PASS / BLOCK / HUMAN_ESCALATION**. Attiva con
    "Run workflow", legge solo la sintesi, zero review-codice.
 4. **Anti-reward-hacking PRIMA dell'ensemble**: Semgrep custom rules per assert-True, `assert 1==1`,
    `pytest.raises(Exception)` generico, mock-vuoti, monkeypatch-no-op, sys.exit(0), test-cancellati,

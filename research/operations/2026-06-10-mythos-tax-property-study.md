@@ -90,7 +90,7 @@ Zero organic property demand captured. But the channel has the strongest **unuse
 **Thesis: "the verification authority."** The property frontend's job: *don't lose your money — verify before you sign.*
 
 1. **The Buyer's Journey page** — the NB-5 7-step sequence as the channel's spine, each step mapped to what Bali Zero does there (journey-stage pattern, e-Residency/Henley). This page IS the channel hub.
-2. **Public zone-checker teaser** — reuse PRIME zone-lookup as a public "check a property's zone" instrument (category-defining per 2c; GEO-citable). Teaser → full DD report. *(Gated: PRIME exposure scope needs Zero — what's safe to expose publicly vs intel that stays internal per Law 2/6.)*
+2. **Public zone-checker teaser** — reuse PRIME zone-lookup as a public "check a property's zone" instrument (category-defining per 2c; GEO-citable). Teaser → full DD report. *(Gated: PRIME exposure scope needs Antonello — what's safe to expose publicly vs intel that stays internal per Law 2/6.)*
 3. **The redacted sample DD report** — publish one, with the verdict format (pass/flag/fail per check). Converts the universal fear-framing into proof; nobody does it (2c-edge 2).
 4. **Beat Seven Stones on "what the price buys"** — DD offer presented as scope tiers + turnaround days + the sample deliverable; price display gated on D2/E like everything pricing.
 5. **The nominee wedge** — content + guard-rail framing: "the agency that tells you what NOT to do," anchored on Perda Bali 4/2026 (§4 flag first). Highest-fear, highest-search-potential topic; aligns with the WhatsApp-bridge nominee canonical already hardened in W73.
@@ -122,4 +122,4 @@ All NB-sourced, not yet independently confirmed against primary sources: **BKPM 
 
 1. What actually kills Tax retainer deals and Property DD engagements? (If the team ever volunteers an anonymized, aggregated "why deals fail" digest to Subhi, both proposals above get sharper. Not solicited — noted per charter.)
 2. Who is the named, credentialed face for Tax (USKP?) and for Property/legal? The competitor gap is unclaimable without a real human willing to be on the page (needs team consent, like the PPJK/DJP badges).
-3. PRIME public exposure scope (2d-2) — Zero's call, Law 2/6 boundary.
+3. PRIME public exposure scope (2d-2) — Antonello's call, Law 2/6 boundary.

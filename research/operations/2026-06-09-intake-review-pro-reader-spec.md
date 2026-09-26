@@ -83,14 +83,14 @@ espliciti GO-WITH-CONDITIONS; DeepSeek (logic) converge su proxy/timeout/error-m
 Claude sintesi. Il design (reader Pro + Cloudflare Tunnel) è valido ma **non sicuro
 così com'era scritto**. Condizioni per gravità:
 
-### Law 2 — formulazione CORRETTA (Codex P0#5, decisione Zero 2026-06-09)
+### Law 2 — formulazione CORRETTA (Codex P0#5, decisione Antonello 2026-06-09)
 
 La formulazione originale "PII never leaves the Pro" era **FALSA**: le *risposte* del
 reader (queue + OCR + nomi) transitano cifrate via Fly + Cloudflare fino al browser.
 **Formulazione onesta**: *nessuna PERSISTENZA di PII su Postgres Fly né su Cloudflare;
 il transito TLS cifrato attraverso Fly/CF (che non la salvano) è presente e ACCETTATO*
 — coerente con come già funziona `crm/clients` (dati cliente passano via Fly al browser).
-Decisione Zero: **transito cifrato OK, no persistenza** → Cloudflare Tunnel confermato.
+Decisione Antonello: **transito cifrato OK, no persistenza** → Cloudflare Tunnel confermato.
 
 ### P0 — bloccanti (nel design prima del codice)
 
@@ -140,7 +140,7 @@ Decisione Zero: **transito cifrato OK, no persistenza** → Cloudflare Tunnel co
 
 ## Rischi / aperti
 
-- **Transport — DECISO 2026-06-09 (Zero): Cloudflare Tunnel.** Verificato che la
+- **Transport — DECISO 2026-06-09 (Antonello): Cloudflare Tunnel.** Verificato che la
   tailnet del Pro ha 4 peer e **nessuno è Fly** → Fly NON può raggiungere il Pro via
   Tailscale oggi. Scelta: **Cloudflare Tunnel dal Pro** (`cloudflared`).
   - **Perché**: il router del Pro è ISP-locked (no port-forward) → `cloudflared` fa

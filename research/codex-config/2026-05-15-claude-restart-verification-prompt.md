@@ -7,7 +7,7 @@ invocation: apri nuovo iTerm tab, `cd ~/Desktop/nuzantara && claude`, poi incoll
 
 # Prompt da incollare nella nuova sessione
 
-Ciao. Sono Zero. Nella sessione precedente di oggi (2026-05-15) abbiamo applicato 11+ fix di config Claude+Codex+Nuzantara per portare lo stack a SOTA. Ora apro questa nuova sessione per **verificare end-to-end** che tutto funzioni come previsto. Voglio che tu esegua un audit di verifica in 7 step, riportando per ogni step PASS/FAIL/PARTIAL con evidenza diretta.
+Ciao. Sono Antonello. Nella sessione precedente di oggi (2026-05-15) abbiamo applicato 11+ fix di config Claude+Codex+Nuzantara per portare lo stack a SOTA. Ora apro questa nuova sessione per **verificare end-to-end** che tutto funzioni come previsto. Voglio che tu esegua un audit di verifica in 7 step, riportando per ogni step PASS/FAIL/PARTIAL con evidenza diretta.
 
 ## Contesto cosa è cambiato oggi (riferimenti — leggi se serve)
 

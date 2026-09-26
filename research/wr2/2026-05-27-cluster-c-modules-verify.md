@@ -111,7 +111,7 @@ The Cluster C audit conclusion ("scaffold/orphan retire candidates") was empiric
 1. **`dossier_compiler_cli`** — primary intel pipeline producer (signals → clusters → dossiers). Cron 04:30 daily. Retiring breaks the entire war-room-v2 evening intel briefing.
 2. **`connector_cli`** — L1 cognitive synthesis (cross-dossier theses). Without it, Strategos + Oracle lose upstream non-obvious patterns.
 3. **`strategos_cli`** — L3 weekly strategic brief Sunday 22:00. Retiring breaks `wr2-deploy-pull.log` referenced cron logic AND the strategic Telegram delivery operator depends on.
-4. **`oracle_cli`** — L4 weekly Consiglio esteso (4-LLM panel UltraMoves to Zero Tuesday 09:00). Most sophisticated multi-LLM deliberation in codebase; retiring kills the reference 4-voice council pattern Zero uses for "feedback_always_review_spec_with_4_llm" rule.
+4. **`oracle_cli`** — L4 weekly Consiglio esteso (4-LLM panel UltraMoves to Zero Tuesday 09:00). Most sophisticated multi-LLM deliberation in codebase; retiring kills the reference 4-voice council pattern Antonello uses for "feedback_always_review_spec_with_4_llm" rule.
 5. **`learner_cli`** — nightly genome learning loop (Voyager-style skill/scar). Retiring breaks the Symbiosis evolutionary feedback that ties Cell organism back to WR2 outputs.
 6. **`newsletter_cli`** — Monday 06:00 weekly roundup email. Retiring removes the only outbound digest from war-room-v2.
 

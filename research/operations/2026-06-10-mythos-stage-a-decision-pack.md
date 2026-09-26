@@ -12,7 +12,7 @@ sources:
 
 # MYTHOS · Stage-A Decision Pack — Round 1A
 
-**This is the Law-5 gate artifact (charter §6 Stage A).** It asks Subhi (operator) and Zero (principal) to approve four things: the paradigm fork, the IA direction, the design language + rubric, and four secondary-token proposals. Until approval, no `gated-structural` code is built. The approval checklist is §5 — everything else is the defense.
+**This is the Law-5 gate artifact (charter §6 Stage A).** It asks Subhi (operator) and Antonello (principal) to approve four things: the paradigm fork, the IA direction, the design language + rubric, and four secondary-token proposals. Until approval, no `gated-structural` code is built. The approval checklist is §5 — everything else is the defense.
 
 > Ground-truth note: local M5 main was 4 commits behind origin/main during research; every load-bearing claim below was re-verified against **origin/main** and live URLs. Subhi's IMMEDIATE tier is substantially **shipped as of this morning**: hero CTA → direct WhatsApp (#1205), WA CTA tracking (#1216), nav contrast 0.65 (#1257). This pack builds the next layer; it does not re-do his.
 
@@ -53,7 +53,7 @@ The one place with real measured chat demand today (32 chat questions/28d, 304 c
 
 ### Contested points for arbitration
 
-None known against Subhi's audit — his thesis (demote the FAB as 1-of-6 competing CTAs) and this fork (FAB demoted on homepage; chat elevated *inside tools*) are compatible and complementary. If Subhi reads the Zantara role differently, that goes to Zero per charter §9.
+None known against Subhi's audit — his thesis (demote the FAB as 1-of-6 competing CTAs) and this fork (FAB demoted on homepage; chat elevated *inside tools*) are compatible and complementary. If Subhi reads the Zantara role differently, that goes to Antonello per charter §9.
 
 ---
 
@@ -76,7 +76,7 @@ None known against Subhi's audit — his thesis (demote the FAB as 1-of-6 compet
 | IA-3 | **`/book` consultation flow (NEW)** — the missing rail for Company/Tax/Property primary metric. Thin v1: qualified form + calendar handoff; events `book_*` added to FUNNEL_EVENTS. | Charter §2 stretch; 2a-3 |
 | IA-4 | **Trust layer, sitewide** — license/registration + NIB block in footer; Google-listing badge (live link, not quoted stars); office photos + map; AuthorByline on every guide | Exemplar P13, P7; trust signals C1/C3/C5 |
 | IA-5 | **"Indonesia Regulation Watch" public feed** — dated, geo-tagged regulatory alerts on the homepage + own page. Reuses the existing daily regulatory-watcher output (zero new intelligence cost). The GEO instrument: citable, structured, owned. | Exemplar P9 (Fragomen/Henley); GEO strategy |
-| IA-6 | **Pricing transparency** — `/pricing` becomes a real PricingTool-driven price list with official-fee vs service-fee split; funnel-card prices switch from hardcoded to PricingTool. The largest unclaimed flank vs all three competitors. **Gated on D2 (PricingTool access) + Zero's commercial sign-off on publishing prices.** | Exemplar P11; trust signal C4; D1 |
+| IA-6 | **Pricing transparency** — `/pricing` becomes a real PricingTool-driven price list with official-fee vs service-fee split; funnel-card prices switch from hardcoded to PricingTool. The largest unclaimed flank vs all three competitors. **Gated on D2 (PricingTool access) + Antonello's commercial sign-off on publishing prices.** | Exemplar P11; trust signal C4; D1 |
 | IA-7 | **Nav model:** 4 channels + Dispatch + Team/About + one primary CTA. Single-primary discipline per viewport (completes Subhi's thesis structurally). | Audit central thesis; rubric #3 |
 | IA-8 | **Measurement design:** hostname-scoped engaged-organic denominator (D3/D9); event-taxonomy cleanup (D5 dup, D6 gaps, `app_*` reconciliation); per-channel primary events incl. `book_*`; PII-scrub test + event allowlist per §6 guardrails. | Phase-0 D-ledger; charter §D |
 
@@ -135,7 +135,7 @@ A soul-defense that scores in adjectives fails; evidence (screenshot, copy line,
 
 ### Brand-systems coherence flag (observation, no action proposed)
 
-The IG carousel cortex (antracite `#2C2F38`, Montserrat, yellow `#F4C430`, red `#C8102E`) and the web identity (navy `#1e3863`, Cormorant+Inter, red `#FF2D4C`) are **two different visual systems under one brand** — legitimate per the cortex's own surface taxonomy, but a visitor crossing IG→site changes worlds (even the reds differ). Out of Round-1 scope (web core is frozen by charter); flagged for Zero as a Round-2+ brand-architecture question.
+The IG carousel cortex (antracite `#2C2F38`, Montserrat, yellow `#F4C430`, red `#C8102E`) and the web identity (navy `#1e3863`, Cormorant+Inter, red `#FF2D4C`) are **two different visual systems under one brand** — legitimate per the cortex's own surface taxonomy, but a visitor crossing IG→site changes worlds (even the reds differ). Out of Round-1 scope (web core is frozen by charter); flagged for Antonello as a Round-2+ brand-architecture question.
 
 ---
 
@@ -149,12 +149,12 @@ B1 **Measurement foundation** (events cleanup, `book_*`, hostname convention, PI
 
 | ✔ | Decision | Who |
 |---|---|---|
-| A | **Fork: page-first + Zantara-as-instrument + KBLI Concierge pilot** (§1) | Subhi + Zero (Zero arbitrates if contested) |
-| B | **IA direction** IA-1…IA-8 (§2b) — direction approval; each structural phase still ships gated per §6 | Subhi + Zero |
-| C | **Design language + Charisma Rubric** as the standing soul-defense standard (§3) | Subhi + Zero |
-| D | **Token proposals P1–P4** — individually | Zero (brand owner) |
-| E | **Pricing transparency direction** (IA-6) — publishing real prices is a commercial decision, separate from the D1 code fix | Zero |
-| F | **visa.balizero.com question** (D10): what is it, who owns it, consolidate or canonicalize? | Subhi (knowledge) → Zero (decision) |
+| A | **Fork: page-first + Zantara-as-instrument + KBLI Concierge pilot** (§1) | Subhi + Antonello (Antonello arbitrates if contested) |
+| B | **IA direction** IA-1…IA-8 (§2b) — direction approval; each structural phase still ships gated per §6 | Subhi + Antonello |
+| C | **Design language + Charisma Rubric** as the standing soul-defense standard (§3) | Subhi + Antonello |
+| D | **Token proposals P1–P4** — individually | Antonello (brand owner) |
+| E | **Pricing transparency direction** (IA-6) — publishing real prices is a commercial decision, separate from the D1 code fix | Antonello |
+| F | **visa.balizero.com question** (D10): what is it, who owns it, consolidate or canonicalize? | Subhi (knowledge) → Antonello (decision) |
 
 Operator asks still open from Phase 0: PricingTool role (D2) · original audit doc (D7) · GA4 filters (D3/D9).
 

@@ -7,7 +7,7 @@ sources: 18
 
 # Gemini Workspace nativo (Drive AI / Ask Gemini in Drive) — feasibility per automatismo programmabile
 
-**Status**: draft · **Author**: deep-researcher (Zero/Bali Zero) · **Question**: la sintesi multi-file che la UI mostra a `drive.google.com/drive/ai/<folder_id>` è raggiungibile via API in modo programmabile per popolare `crm_workspace_ai_snapshots`? Se no, qual è il path canonico Google-blessed?
+**Status**: draft · **Author**: deep-researcher (Antonello/Bali Zero) · **Question**: la sintesi multi-file che la UI mostra a `drive.google.com/drive/ai/<folder_id>` è raggiungibile via API in modo programmabile per popolare `crm_workspace_ai_snapshots`? Se no, qual è il path canonico Google-blessed?
 
 ## TL;DR (verdict per le 6 Q)
 

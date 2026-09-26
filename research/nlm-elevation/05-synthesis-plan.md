@@ -206,7 +206,7 @@ Sintesi dei rischi residui che un advisor o l'altro ha messo in luce:
 - **R2 Pool scratchpad pattern** (Gemini + NLM self): 5 NB-SCRATCHPAD riciclati possono comunque triggering anti-abuse se cicli troppo rapidi. Mitigation: cooldown 10 min fra source add/delete cicli.
 - **R3 Shadow graph drift** (DeepSeek): se NLM cambia sottilmente l'output structure in extraction, il parser rompe silent. Mitigation: CEP include "shadow graph fresh" come check (non solo "cron eseguito").
 - **R4 Evaluator come giudice di se stesso** (implicito): se DeepSeek è sia evaluator che deliberator, bias-blind. Mitigation: rotazione evaluator (week A = DeepSeek, week B = Gemini, week C = Claude review).
-- **R5 Scope creep sotto pressione cliente** (DeepSeek): un cliente VIP chiede "sanità Bali", Zero cede, crea NB-LIFESTYLE. Mitigation: hard rule documentata — solo Sprint 4 + solo con >5 richieste reali/settimana.
+- **R5 Scope creep sotto pressione cliente** (DeepSeek): un cliente VIP chiede "sanità Bali", Antonello cede, crea NB-LIFESTYLE. Mitigation: hard rule documentata — solo Sprint 4 + solo con >5 richieste reali/settimana.
 
 ---
 

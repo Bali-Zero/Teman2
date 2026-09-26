@@ -8,7 +8,7 @@ sources:
   - "Code (read-only): apps/cell/cell/main.py, apps/cell/cell/effectors/, apps/organism/organism/{organs_registry.yaml,genome.yaml,supervisor/dispatch.py,actuators/}"
   - "Independent probe: curl nuzantara-rag.fly.dev/health from Pro = HTTP 200 0.128s"
   - ".claude/rules/cicatrix-scars.md (W59/W61/W62/W63, active-active, organism-truth-FROZEN 2026-05-31)"
-author: Claude Opus 4.8 (Air-M5 session) — commissioned by Zero
+author: Claude Opus 4.8 (Air-M5 session) — commissioned by Antonello
 ---
 
 # TAC dell'organismo — referto diagnostico

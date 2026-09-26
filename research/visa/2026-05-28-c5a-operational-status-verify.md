@@ -4,7 +4,7 @@ domain: visa
 client_case: none-internal-editorial
 status: draft
 partial: false
-author: deep-researcher (Zero/Bali Zero)
+author: deep-researcher (Antonello/Bali Zero)
 sources:
   - https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C5A
   - https://www.imigrasi.go.id/siaran_pers/ditjen-imigrasi-terapkan-kebijakan-terbaru-tentang-klasifikasi-visa

@@ -52,7 +52,7 @@
 | /kbli/49297 | not indexed | present, confirmed via direct fetch | 13 May (51 days) | Crawl-priority gap |
 | /kbli/85104 | not indexed | present | 13 May (51 days) | Crawl-priority gap |
 
-**Sample verdict: 4/5 = genuine crawl-priority gap (actionable, Subhi scope). 1/5 = invalid code in data model (out of scope, informational note sent to Zero).**
+**Sample verdict: 4/5 = genuine crawl-priority gap (actionable, Subhi scope). 1/5 = invalid code in data model (out of scope, informational note sent to Antonello).**
 
 ## Root Cause
 Not a Google Core Update or algorithmic ranking loss. Pattern points to **crawl-budget/priority deprioritization** for long-tail `/kbli/*` pages — Google visits infrequently (40-50+ day gaps for some URLs), and pages not recently recrawled don't get indexed even when canonical/metadata are correct. One isolated case of an invalid KBLI code serving a live "soft 404" URL — not connected to the main pattern.
@@ -65,7 +65,7 @@ Not a Google Core Update or algorithmic ranking loss. Pattern points to **crawl-
 1. Audit `apps/mouth/src/app/sitemap.ts` (or equivalent) — verify all 1,563 `/kbli/*` URLs present, check `priority`/`changefreq` values
 2. Audit internal link density to long-tail KBLI pages (orphan pages get recrawled less)
 3. Re-check GSC in 2-3 weeks post-fix to measure recrawl rate improvement
-4. Informational note sent to Zero re: `10314` invalid code (no action required)
+4. Informational note sent to Antonello re: `10314` invalid code (no action required)
 
 ---
 *Investigation conducted: 2026-07-03 · Tools: GSC Performance UI, Coverage report, URL Inspection, direct HTML fetch, codebase grep*

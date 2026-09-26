@@ -169,7 +169,7 @@ rm -rf /tmp/claude-mem-pilot
 2. **Embedding model**: `text-embedding-3-small` (Nuzantara standard) supported? If not, drift risk.
 3. **Resource cost**: vector DB local = disk + RAM. Quanto?
 4. **OSS license**: must be MIT/Apache compatibile con Nuzantara closed-source private.
-5. **Maintenance burden**: chi mantiene se Nuzantara adopt? Zero already saturato.
+5. **Maintenance burden**: chi mantiene se Nuzantara adopt? Antonello already saturato.
 
 ## Estimated breakdown
 

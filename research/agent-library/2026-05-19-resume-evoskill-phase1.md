@@ -183,7 +183,7 @@ Effort: ~0.5h (escluso debug se smoke fail).
 
 ### Task #27 — 4-LLM panel pre-merge review
 
-Zero rule 2026-05-13: panel BEFORE merge di qualunque PR
+Antonello rule 2026-05-13: panel BEFORE merge di qualunque PR
 spec-bearing. Dispatch:
 
 1. Compose bundle `/tmp/pr-phase1-panel-review/` con:
@@ -284,7 +284,7 @@ mem query "Codex empirical grep" | head -3
 
 6. **Cap panel review a R3-R4 max** — cicatrix lesson "divergent
    panel = STOP signal". Se R4 ancora NEEDS_FIX su un PR, escalation
-   ad Zero.
+   ad Antonello.
 
 7. **NO claude-agent-sdk / anthropic / ANTHROPIC_API_KEY ANYWHERE**:
    no import, no dep transitive (uv pip show controlla Required-by),
@@ -332,7 +332,7 @@ mem query "Codex empirical grep" | head -3
 ## Modalità
 
 L2 autonomous ops (commit+push+PR draft OK, NO auto-merge senza
-review umana). Lingua italiano colloquiale con Zero.
+review umana). Lingua italiano colloquiale con Antonello.
 
 ## Prompt completo (copia-incolla in nuova sessione)
 

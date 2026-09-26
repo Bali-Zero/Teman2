@@ -1,7 +1,7 @@
 ---
 date: 2026-05-22
 domain: operations
-client_case: "Zero personal SIM +62 821 6459 9868 activation (Italian national, KITAS holder, PT PMA owner Bali Zero, Bali)"
+client_case: "Antonello personal SIM +62 821 6459 9868 activation (Italian national, KITAS holder, PT PMA owner Bali Zero, Bali)"
 sources: 11
 status: draft
 ---
@@ -10,13 +10,13 @@ status: draft
 
 ## Question
 
-How does Zero (Italian, KITAS, PT PMA owner) activate Telkomsel +62 821 6459 9868 in Bali in May 2026 under the new biometric regulation?
+How does Antonello (Italian, KITAS, PT PMA owner) activate Telkomsel +62 821 6459 9868 in Bali in May 2026 under the new biometric regulation?
 
 ## TL;DR
 
 - **Prefix 0821 = Telkomsel simPATI prepaid** (not Halo postpaid; postpaid uses 0811). Confirmed via Telkomsel prefix maps.
 - **Regulation just changed**: Permen Komdigi 7/2026 effective **19 Jan 2026** mandates **biometric face recognition** for new registrations; transition until ~Jul 2026 still allows NIK+KK self-registration for WNI. **For WNA (foreigners) registration was already GraPARI-only — no SMS 4444 self-service path** because WNA has no NIK+KK pair.
-- **Action for Zero**: bring KITAS + passport to **GraPARI Renon** (closest to Sanur/Bali Zero office); the agent registers passport/KITAS number + biometric. Do NOT attempt SMS 4444 — it will fail (no NIK+KK).
+- **Action for Antonello**: bring KITAS + passport to **GraPARI Renon** (closest to Sanur/Bali Zero office); the agent registers passport/KITAS number + biometric. Do NOT attempt SMS 4444 — it will fail (no NIK+KK).
 
 ## Key citations (verbatim)
 
@@ -36,9 +36,9 @@ The often-cited "Permenkominfo 14/2017" was already absorbed into Permenkominfo 
 - WNA path **unchanged in substance**: passport, KITAS, or KITAP, validated at operator outlet.
 - Transition: until ~19 Jul 2026 WNI may still use the legacy NIK+KK channel (SMS 4444, web, app).
 
-### 2. Activation channels — feasibility ranking for Zero
+### 2. Activation channels — feasibility ranking for Antonello
 
-| Channel                                                                | Zero (KITAS holder)                                                                                                      | Works?                                                |
+| Channel                                                                | Antonello (KITAS holder)                                                                                                      | Works?                                                |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | **GraPARI walk-in with KITAS + passport**                              | Agent enters passport + KITAS number, captures bio data + face                                                                | **YES — recommended**                                 |
 | SMS to 4444 (format `REG NIK#KK#`)                                     | Requires Indonesian NIK (KTP) and KK number; KITAS does have a NIK but Telkomsel self-service does not accept it (no KK pair) | **NO**                                                |
@@ -50,14 +50,14 @@ The often-cited "Permenkominfo 14/2017" was already absorbed into Permenkominfo 
 
 ### 3. Edge cases
 
-- **SIM already pre-registered to a previous owner (shop "starter pack" with someone else's NIK)**: requires "ganti kepemilikan" at GraPARI. Original registrant must come in person OR a notarised power of attorney (surat kuasa, Rp 10,000 materai) + originals of both parties' ID + KK. Telkomsel deliberately makes this friction-heavy to prevent number theft (TKBN-style security). Verify before paying: ask the shop to issue a fresh starter pack and let Zero register on the spot at GraPARI.
+- **SIM already pre-registered to a previous owner (shop "starter pack" with someone else's NIK)**: requires "ganti kepemilikan" at GraPARI. Original registrant must come in person OR a notarised power of attorney (surat kuasa, Rp 10,000 materai) + originals of both parties' ID + KK. Telkomsel deliberately makes this friction-heavy to prevent number theft (TKBN-style security). Verify before paying: ask the shop to issue a fresh starter pack and let Antonello register on the spot at GraPARI.
 - **Max SIMs**: 3 per identity per operator (Permen Komdigi 7/2026 Art.). Cross-operator total not capped by regulation but each operator enforces its own 3-cap.
 - **Grace period on failed registration**: legacy 2017–2024 rule was tiered (1st period outgoing blocked, then incoming, then number reclaimed at day ~60). Telkomsel current FAQ does not publish a hard timeline; in practice a starter SIM ships inactive and only "wakes up" after successful registration. If pre-registered to someone else and not transferred, the SIM behaves as "registered but not yours" — no service.
 - **Prefix lookup**: +62 821 X XXXX XXXX = **Telkomsel simPATI prepaid** (also 0822, 0823). Halo postpaid = 0811 only. So +62 821 6459 9868 is in scope of this prepaid procedure, NOT Halo Korporat.
 
 ### 4. PT PMA owner — corporate option
 
-Halo Korporat (postpaid corporate) is a separate enrollment under the PT PMA NPWP + Akta + Direktur KTP/KITAS; numbers issued are 0811-prefix. For a personal phone Zero already has 0821, so corporate route is not applicable to _this_ SIM. If later he wants a corporate line for Bali Zero billing, that is a different process (NPWP PT PMA + Akta + SIUP) handled by Telkomsel Account Manager, not GraPARI walk-in.
+Halo Korporat (postpaid corporate) is a separate enrollment under the PT PMA NPWP + Akta + Direktur KTP/KITAS; numbers issued are 0811-prefix. For a personal phone Antonello already has 0821, so corporate route is not applicable to _this_ SIM. If later he wants a corporate line for Bali Zero billing, that is a different process (NPWP PT PMA + Akta + SIUP) handled by Telkomsel Account Manager, not GraPARI walk-in.
 
 ### 5. GraPARI locations Denpasar (closest to Bali Zero / Sanur)
 
@@ -76,8 +76,8 @@ Call centre common to all: **0807 1 811 811** or **188** from a Telkomsel line.
 
 ## Disagreements / open questions
 
-- Telkomsel English FAQ for WNA does not mention biometric capture for WNA, but Permen Komdigi 7/2026 Art. requires the operator to retain biometric data for WNI registrations specifically. For WNA the regulation is silent on biometric — practical expectation: GraPARI agent may take a face photo for the activation record, but it is not validated against Dukcapil (which has no WNA face data). Zero should not be surprised if a photo is taken.
-- Open: does Zero's KITAS already have him in any Telkomsel registration (e.g. from a prior SIM)? If yes, the 3-cap may be tight. Verify via SMS `INFO` to 4444 from another Telkomsel line he owns, or ask at GraPARI.
+- Telkomsel English FAQ for WNA does not mention biometric capture for WNA, but Permen Komdigi 7/2026 Art. requires the operator to retain biometric data for WNI registrations specifically. For WNA the regulation is silent on biometric — practical expectation: GraPARI agent may take a face photo for the activation record, but it is not validated against Dukcapil (which has no WNA face data). Antonello should not be surprised if a photo is taken.
+- Open: does Antonello's KITAS already have him in any Telkomsel registration (e.g. from a prior SIM)? If yes, the 3-cap may be tight. Verify via SMS `INFO` to 4444 from another Telkomsel line he owns, or ask at GraPARI.
 
 ## Decision tree
 
@@ -98,18 +98,18 @@ Call centre common to all: **0807 1 811 811** or **188** from a Telkomsel line.
 │
 └─ SIM already registered to someone else (shop sold pre-activated starter)?
                                               ──> Option A (cleanest): return SIM to shop, demand fresh inactive starter pack, register on the spot.
-                                              ──> Option B: bring previous registrant in person to GraPARI Renon with their KTP+KK + Zero's KITAS + passport, request "ganti kepemilikan" (transfer of ownership).
-                                              ──> Option C (worst): notarised surat kuasa (Rp 10,000 materai) from previous registrant + originals of both parties' KTP+KK + Zero's KITAS + passport.
+                                              ──> Option B: bring previous registrant in person to GraPARI Renon with their KTP+KK + Antonello's KITAS + passport, request "ganti kepemilikan" (transfer of ownership).
+                                              ──> Option C (worst): notarised surat kuasa (Rp 10,000 materai) from previous registrant + originals of both parties' KTP+KK + Antonello's KITAS + passport.
                                               Do NOT pay the shop extra "activation fee" — GraPARI is free.
 ```
 
-## Checklist for action (Zero, Friday 23 May 2026)
+## Checklist for action (Antonello, Friday 23 May 2026)
 
 - [ ] Verify the starter pack: is it sealed/inactive, or did the shop pre-register? Dial `*888#` from the SIM — if it returns balance info, it's already active under someone's identity.
 - [ ] If active under someone else → return to shop, refuse, demand fresh sealed pack.
 - [ ] Pack documents: passport (original + 1 photocopy), KITAS (original + 1 photocopy), the SIM tray/card.
 - [ ] Drive to **GraPARI Renon, Jl. Raya Puputan Renon No. 33** before 12:00 Saturday (or any weekday 08–17). No appointment needed; expect 10–30 min queue.
-- [ ] Confirm at counter: this is registered to "Zero" passport + KITAS, max 3-line cap; ask for activation confirmation receipt (struk).
+- [ ] Confirm at counter: this is registered to "Antonello Siano" passport + KITAS, max 3-line cap; ask for activation confirmation receipt (struk).
 - [ ] Test: outbound call to +62 lokal, inbound call, SMS, data session, before leaving the GraPARI.
 - [ ] (Optional) Top-up Rp 100,000 at the GraPARI counter for a clean start.
 

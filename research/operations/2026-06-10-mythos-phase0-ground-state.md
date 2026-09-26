@@ -75,7 +75,7 @@ From the atlas (`~/Desktop/frontend-map/index.html`, built 2026-06-10 from the a
 - Scores: **UX 72/100 · UI 78/100 · AIDA Action 6/10 · LCP 3.5 s+ desktop · trust density 9/10**.
 - Diagnosis: *brand & content are category-leading; the funnel breaks at the Action stage* — **6 competing CTAs**, hero CTA goes to a scroll anchor not a booking/handoff, est. 15–25 % intent drop, attribution broken.
 - Central thesis: collapse to **one CTA hierarchy** (Primary = WhatsApp red · Secondary = AI tools purple · Tertiary = content). "Until there's ONE optimisable funnel entry, no CRO/A-B test is even possible."
-- 4-tier roadmap (IMMEDIATE/SHORT/MID/LONG); parts of IMMEDIATE **already shipped**: hero→WhatsApp + footer links (PR #1205), home WA tracking (PR #1216). One item needs Zero, not Subhi: **PPJK/DJP license data** for cert badges.
+- 4-tier roadmap (IMMEDIATE/SHORT/MID/LONG); parts of IMMEDIATE **already shipped**: hero→WhatsApp + footer links (PR #1205), home WA tracking (PR #1216). One item needs Antonello, not Subhi: **PPJK/DJP license data** for cert badges.
 - Audit scope = homepage funnel only; portal/workspace explicitly excluded; treats Zantara as a widget to demote (the atlas itself flags this as the open page-vs-conversation tension → charter §4).
 
 ---
@@ -133,7 +133,7 @@ With ~230 public sessions/week and a primary-CTA click baseline of ~2 % (≈70 f
 | # | Finding | Severity | Lane / owner |
 |---|---|---|---|
 | D1 | **Hardcoded prices on the live homepage** — `FunnelFeature.tsx:103,136,168,198` ("$350", "$1,850", "$220", "$850"), rendered by `(marketing)/page.tsx`. Violates Golden Rule 11 (PricingTool only). Also: `FUNNEL_PRICING_HREF` points at `visa.balizero.com/pricing`, `tax.balizero.com/pricing` etc. — destinations not verified live. | **P1** | **Gated-structural decision in Stage A** (price display = funnel surface; also blocked by PricingTool RBAC, see D2). NOT silently changed. |
-| D2 | PricingTool MCP refuses role `unknown` → Mythos cannot read canonical prices | P1 | Operator (Zero): grant role or sanction a backend read path |
+| D2 | PricingTool MCP refuses role `unknown` → Mythos cannot read canonical prices | P1 | Operator (Antonello): grant role or sanction a backend read path |
 | D3 | GA4 property mixes 7 hostnames + localhost dev traffic; no internal-traffic filter | P2 | Subhi (GA4 Editor): define filters; Mythos: hostname-scoped queries from today |
 | D4 | GA4 daily data begins 2026-05-21 (cause unknown) | P3 | Ask Subhi what changed ~May 21 |
 | D5 | `property_cta_clicked` vs `property_cta_click` duplicate event | P3 | `ungated-safe-fix` candidate (tiny PR, with event-allowlist note) |

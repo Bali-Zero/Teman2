@@ -1,6 +1,6 @@
 # Tier 1 Panel Brief — WhatsApp Corpus 105k
 
-Zero is the owner of Bali Zero, an Indonesia/Bali immigration, company setup, tax, and property agency. He has a local-only archive of WhatsApp conversations assembled on 2026-05-26 on his Pro Mac at `~/Desktop/wa-chats-MASTER-2026-05-26/`.
+Antonello Siano is the owner of Bali Zero, an Indonesia/Bali immigration, company setup, tax, and property agency. He has a local-only archive of WhatsApp conversations assembled on 2026-05-26 on his Pro Mac at `~/Desktop/wa-chats-MASTER-2026-05-26/`.
 
 Important privacy and sovereignty constraints:
 

@@ -1,6 +1,6 @@
 # W38b — Residual superuser role demotion: `nuzantara_rag` + `backend_ts_user`
 
-> **Status: SPEC READY — NOT EXECUTED.** Requires Zero's explicit go + a
+> **Status: SPEC READY — NOT EXECUTED.** Requires Antonello's explicit go + a
 > supervised execution window. The read-only Postgres MCP cannot run `ALTER
 > ROLE`; execution path is `fly ssh console -a nuzantara-rag` as a platform
 > superuser.
@@ -89,7 +89,7 @@ ALTER ROLE backend_ts_user SUPERUSER;
 
 ## 6. Guardrails
 
-- **Do NOT execute without Zero's explicit go.** Operator decision
+- **Do NOT execute without Antonello's explicit go.** Operator decision
   2026-06-12 was "schedule the demotion" with "I'll update you before
   executing" — this spec is the schedule, not the execution.
 - If, against expectation, a session for either role appears in

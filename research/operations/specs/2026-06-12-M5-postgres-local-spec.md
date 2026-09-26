@@ -1,6 +1,6 @@
 ---
 date: 2026-06-12
-status: READY FOR IMPLEMENTATION — decisions closed by Zero delegation ("decidi tu per me", session 2026-06-12)
+status: READY FOR IMPLEMENTATION — decisions closed by Antonello delegation ("decidi tu per me", session 2026-06-12)
 implements: research/operations/2026-06-12-m5-postgres-architecture.md (design + simulations)
 owner: Opus implementation session on M5 (user balizero@Air-M5)
 scope: M5 local PostgreSQL — test DB (CI parity) + dev snapshot (pull-only from Fly) + pre-push hook gate
@@ -14,7 +14,7 @@ out_of_scope: CI image bump (follow-up PR), LaunchAgent refresh (deferred), Redi
 Per CLAUDE.md §6 (4-LLM panel for architectural specs): run the panel on THIS file
 before writing code. `agy -p` (redteam) + `codex exec --sandbox read-only` (constructive)
 + DeepSeek V4 Pro (logic holes). Incorporate CRITICAL findings only; do not let the panel
-reopen the closed decisions in §2 (Zero delegated; relitigation needs his ping).
+reopen the closed decisions in §2 (Antonello delegated; relitigation needs his ping).
 ~$0.01, ~2min. Then proceed.
 
 ### §0-bis — Panel RAN 2026-06-12 (Opus session). Findings APPLIED below.
@@ -68,7 +68,7 @@ and the `cd apps/backend-rag` is INSIDE the subshell. §4 step 6 below targets t
 1. **PG version: `postgresql@17`** — prod parity (17.2). CI's 15 is the outlier.
 2. **One PR = Phases 1+2+3.** Phase 4 (LaunchAgent daily refresh) deferred until ≥1 week of manual `nuz-db-refresh` use.
 3. **CI 15→17: separate follow-up PR**, gated on AC2 green locally (empirical proof 17 breaks nothing) — `.github/workflows/` is hot-zone, atomic-commit discipline.
-4. **Brew-block hook**: authorized unblock. Install with one-shot `M5_HEAVY_BREW_GUARD=off`; then EDIT the hook removing only `postgresql`, `postgresql@16/17/18` from HEAVY (keep `redis`, `qdrant`, `gcc` etc. blocked — out of scope). Authorization: Zero, this session ("che ne pensi di far girare postgresql anche su m5" + "decidi tu per me").
+4. **Brew-block hook**: authorized unblock. Install with one-shot `M5_HEAVY_BREW_GUARD=off`; then EDIT the hook removing only `postgresql`, `postgresql@16/17/18` from HEAVY (keep `redis`, `qdrant`, `gcc` etc. blocked — out of scope). Authorization: Antonello, this session ("che ne pensi di far girare postgresql anche su m5" + "decidi tu per me").
 5. **Sync model**: schema = always-sync via repo migrations; data = pull-only snapshot Fly→M5 on demand; writes to prod = never. Pro local PG = never synced (Law 2). Full rationale + 7 simulations in the design doc.
 
 ## §3 — Architecture (1 glance)
@@ -141,7 +141,7 @@ Pro local PG — untouched, unsynced (Law 2)
    - Verify: row counts on 3 anchor tables (`clients`, `practices`, `schema_migrations`) > 0; print summary.
    - Rotate: keep last 3 dumps; dir `~/.nuzantara-db-snapshots/` chmod 700, files 600.
    - If the readonly role hits a permission error mid-dump (sequence/table outside the 255
-     SELECT grants): STOP and surface to Zero. Do NOT escalate to a higher-privilege
+     SELECT grants): STOP and surface to Antonello. Do NOT escalate to a higher-privilege
      role autonomously (W38 spirit).
    GATE: exit 0 + `psql -d nuzantara_dev -c 'select count(*) from clients'` > 0.
 

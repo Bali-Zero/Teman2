@@ -21,7 +21,7 @@ panel:
 
 # Dev AI stack additions — 4-LLM panel verdict (2026-06-09)
 
-> **Question (Zero)**: "Now that you know the system well, which Dev AI tools do you
+> **Question (Antonello)**: "Now that you know the system well, which Dev AI tools do you
 > recommend adding to my stack?" Stated pain: (1) code review/verification is the
 > bottleneck (AI generates faster than he can verify); (2) wants raw coding speed.
 

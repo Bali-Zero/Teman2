@@ -4,13 +4,13 @@ domain: operations
 client_case: internal-tooling
 type: decisions-addendum
 parent_spec: 2026-05-23-wa-team-inbox-webapp.md
-status: PROPOSED — pending Zero confirm/correct
+status: PROPOSED — pending Antonello confirm/correct
 ---
 
 # WA Team Inbox Webapp — Decisioni operative (addendum)
 
 > Risposte Claude alle 11 open questions §10 spec v3 + sintesi NLM compliance UU PDP 27/2022 + path implementativo B+full.
-> **Zero conferma/corregge ogni riga `[DEFAULT]`. Default sono ragionevoli ma reversibili.**
+> **Antonello conferma/corregge ogni riga `[DEFAULT]`. Default sono ragionevoli ma reversibili.**
 
 ---
 
@@ -223,7 +223,7 @@ Razionale: 8-12 week cadence empirica. Solo notify, mai auto-upgrade (Baileys è
 - Operator audit log
 - Privacy Notice update (centralized reply mention) prima di abilitare M3
 
-**Gate Fase 2**: Zero conferma che NLM compliance research §A è sufficient + Privacy Notice update pubblicato. Nessun counsel esterno needed (UU PDP è chiaro abbastanza via NB-6 + RPP non ancora vincolante).
+**Gate Fase 2**: Antonello conferma che NLM compliance research §A è sufficient + Privacy Notice update pubblicato. Nessun counsel esterno needed (UU PDP è chiaro abbastanza via NB-6 + RPP non ancora vincolante).
 
 ### Fase 3 — Polish (M5, ~1.5 giorni)
 

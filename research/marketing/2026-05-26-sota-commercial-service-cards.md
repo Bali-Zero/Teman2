@@ -27,7 +27,7 @@ llm_cost_estimate_usd: 0.05
 
 # SOTA Commercial Service Cards — Research for Bali Zero A5 Visa Card Series
 
-**Question** (verbatim from Zero):
+**Question** (verbatim from Antonello):
 > Deep research SOTA commercial product cards / service cards / one-pagers as of May 2026, with focus on visa-services, immigration consultancies, legal-services, and premium B2B/B2C service industries. Designing A5 visa-index reference cards for Bali Zero, 110 total, PDF + print, sales+consultation+compliance use.
 
 ## Executive Summary — 5 Actionable Principles for Bali Zero Visa Cards
@@ -158,7 +158,7 @@ These are the **resolved** directions after merging Gemini's 4 + DeepSeek's 4 + 
 
 ## Checklist for Action
 
-- [ ] Zero: pick 2 of the 4 directions to render as HTML/CSS mockups (recommended: A "Swiss Legal Grid" + B "Neo-Bali Bento" as base; C "Dokumen Asli" as wildcard test; D "Signal Overload" only if investor/PMA segment becomes lead persona).
+- [ ] Antonello: pick 2 of the 4 directions to render as HTML/CSS mockups (recommended: A "Swiss Legal Grid" + B "Neo-Bali Bento" as base; C "Dokumen Asli" as wildcard test; D "Signal Overload" only if investor/PMA segment becomes lead persona).
 - [ ] Render the chosen directions on ONE representative visa (D12 or KITAP Pensiunan) before scaling to 110.
 - [ ] Print-test on cheap office printer + retina screen review BEFORE locking templates. Capture hierarchy-collapse failure modes.
 - [ ] Define the QR-code live-page target URL structure (e.g., `balizero.com/visa/{code}/live`) and ensure it ships before any printed card.

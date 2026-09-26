@@ -1,6 +1,6 @@
 # S13-P7 — agent-library-contract-test-harness
 
-> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Zero approves graduation.
+> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Antonello approves graduation.
 > **Kind**: new-capability · **Priority**: P1
 > **Adversarial verdict**: ✅ KEEP — adversary-demanded, ships as the meta-fix
 

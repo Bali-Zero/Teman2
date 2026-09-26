@@ -2,7 +2,7 @@
 date: 2026-05-23
 domain: operations
 client_case: internal — Bali Zero chat-data intelligence (WhatsApp corpus → CRM/RAG/forecasting)
-status: draft — pre 4-LLM review gate, pre Zero approval
+status: draft — pre 4-LLM review gate, pre Antonello approval
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro + NB-6 ground-truth) + WebSearch (Gong/RAG/privacy 2026) + on-disk corpus census
 supersedes_partial: research/marketing/2026-05-16-whatsapp-conversation-intelligence.md (industry pattern + UU PDP base)
 complements: research/operations/2026-05-23-wa-mirror-dashboard-discovery.md (UI layer, different scope)
@@ -140,7 +140,7 @@ training corpus per scoring/forecasting, "what did we promise this client?" riso
 | Chat dipendenti        | legitimate interest **+ Peraturan Perusahaan + notice**                        | clausola PKWT (già `apps/wa-mirror/docs/PKWT_CLAUSE.md`) + notice |
 | Specific personal data | passaporti/bank = tier alto Art 4(2)                                           | redazione deterministica + encrypted-at-rest + RBAC               |
 | AI large-scale         | **DPIA obbligatorio**                                                          | DPIA prima di attivare la pipeline                                |
-| DPO                    | obbligatorio (systematic monitoring of specific data)                          | nominare DPO (Zero o delega)                                 |
+| DPO                    | obbligatorio (systematic monitoring of specific data)                          | nominare DPO (Antonello o delega)                                 |
 | ROPA                   | record processing activities                                                   | template APPDI/APINDO, file `docs/compliance/`                    |
 | Retention              | **min 5 anni** (KYC/fiscale) — riconcilia col 12-mesi della ricerca 2026-05-16 | 5y default; prospect non-convertiti rivalutare a fine periodo     |
 | Diritti subject        | objection ad automated decision                                                | nessun auto-write CRM senza human-in-loop                         |
@@ -186,7 +186,7 @@ training corpus per scoring/forecasting, "what did we promise this client?" riso
 - [ ] Qdrant collection locale `chat_history` con bge-m3 (MAI nel corpus 1536d frozen).
 - [ ] PricingTool come validator dei prezzi estratti (anti-poisoning) + tag legacy_data.
 - [ ] Gold #1 Handoff Dossier + #2 Case Ledger come primi deliverable.
-- [ ] **4-LLM review di questa spec PRIMA dell'approval Zero** (regola feedback 2026-05-13).
+- [ ] **4-LLM review di questa spec PRIMA dell'approval Antonello** (regola feedback 2026-05-13).
 
 ## Sources
 

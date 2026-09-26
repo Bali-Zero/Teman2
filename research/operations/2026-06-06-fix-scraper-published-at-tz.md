@@ -123,7 +123,7 @@ WHERE id IN (SELECT DISTINCT item_id FROM intel_observations WHERE producer_name
 - **0 item** resterebbero nel futuro dopo -8h → sfasamento confermato uniforme +8h.
 - Prova ai dati: tutti `pub=06-06 01:0X` / `seen=06-05 17:3X` (= esatto offset WITA). Sono oro Bali Zero (PPh UMKM, OSS RBA, red flags villa, deportazione 13 WNA, scam syndicate, Golden Visa).
 
-## PROCEDURA SICURA (da eseguire con go Zero, scraper gira LOCALE sul Pro via OpenClaw cron 03:00 WITA)
+## PROCEDURA SICURA (da eseguire con go Antonello, scraper gira LOCALE sul Pro via OpenClaw cron 03:00 WITA)
 
 1. PAUSA scraper cron (launchctl disable / OpenClaw) — niente nuovi sfasati.
 2. Deploy fix: `git pull` sul Pro (+ Mini se replica). Lo scraper NON è su Fly → niente pipeline Fly, è un pull locale.

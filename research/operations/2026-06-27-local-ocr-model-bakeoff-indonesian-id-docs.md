@@ -3,7 +3,7 @@ date: 2026-06-27
 domain: operations
 client_case: internal
 status: draft
-author: deep-researcher (Zero / Bali Zero)
+author: deep-researcher (Antonello / Bali Zero)
 sources:
   - Ollama library qwen3-vl (https://ollama.com/library/qwen3-vl) — tags/sizes/min-version, fetched 2026-06-27
   - HF Qwen/Qwen3-VL-8B-Instruct (https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct) — license apache-2.0, OCR 32-lang, fetched 2026-06-27

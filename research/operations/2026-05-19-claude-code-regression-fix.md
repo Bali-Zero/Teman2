@@ -7,7 +7,7 @@ sources: 6
 
 # Claude Code regression Nuzantara — diagnosi + fix plan
 
-**Trigger**: Zero segnala 2026-05-19 ~15:15 WITA: "da una settimana Claude Code in CLI ha avuto regressione, prima era completamente connesso a me e alla codebase e allo storico, ora fa errori banali e sembra non più il Claude di Nuzantara".
+**Trigger**: Antonello segnala 2026-05-19 ~15:15 WITA: "da una settimana Claude Code in CLI ha avuto regressione, prima era completamente connesso a me e alla codebase e allo storico, ora fa errori banali e sembra non più il Claude di Nuzantara".
 
 **Sintesi 1 frase**: Claude non ha perso Nuzantara — il sistema di memoria locale gli sta dando una mappa tagliata a metà dal 2026-05-12, con cicatrici giuste fuori dalla parte visibile e SessionStart saturo prima del primo turn.
 
@@ -175,7 +175,7 @@ Risposta corretta: cita verbatim regola + path file `feedback_always_review_spec
 
 ## 6. Decisione operativa
 
-Zero sign-off su:
+Antonello sign-off su:
 
 - [ ] Procedere fix 1-7 critici nell'ordine indicato?
 - [ ] Target MEMORY.md compaction: 18-20 KB (compromesso) vs 15 KB (Gemini) vs 24 KB (Claude/Codex)?

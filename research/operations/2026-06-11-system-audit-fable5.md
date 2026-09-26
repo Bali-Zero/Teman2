@@ -39,7 +39,7 @@ Fix: adottare il diff (commit+PR), ripulire il worktree → il puller riparte da
 
 **F04 · GUARDIANO-DISARMATO · Contratto Autonomous Ops L2 formalmente scaduto + l'hook di staleness misura la cosa sbagliata**
 Area: governance. Prova: `AUTONOMOUS_OPS.md:17` "active since 2026-04-21" (51 giorni fa); riga 20: ">30 days without a refresh commit → conservative fallback". `git log` sul file: nessun refresh (ultimo commit è un refactor di scope diverso). L'hook SessionStart riporta "file age 17d" — misura il **mtime** (resettato da qualunque edit) invece della data dichiarata, quindi non scatterà mai.
-Fix: re-certificazione di Zero (commit che aggiorna "active since") + fix dell'hook per leggere la data dichiarata. XS+S. Confidenza: ALTA. *Nota: tutte le operazioni L2 correnti girano su un contratto tecnicamente lapsed.*
+Fix: re-certificazione di Antonello (commit che aggiorna "active since") + fix dell'hook per leggere la data dichiarata. XS+S. Confidenza: ALTA. *Nota: tutte le operazioni L2 correnti girano su un contratto tecnicamente lapsed.*
 
 **F05 · BUG · Guard WhatsApp `_guard_property_zoning_reply`: trigger substring `lease⊂please`, `villa⊂village` — clobbera risposte corrette ai clienti**
 Area: canale WA. Prova: `scripts/openclaw_whatsapp_bridge.py:648-649` — `_contains_any(("villa","vila","airbnb")) and _contains_any(("zoning","residential","zone","lease"))` substring nudo. *"I'm buying a villa, can you **please** explain the purchase process?"* → clobberata con la lezione Airbnb/zoning (escape positive-gating irraggiungibile per una risposta corretta). Classe identica al live-proven W68. Il file è in 3 copie byte-identiche (M5/Pro-repo/Pro-HOME, hash md5 verificati identici) — il fix va in entrambe le copie + restart bridge.

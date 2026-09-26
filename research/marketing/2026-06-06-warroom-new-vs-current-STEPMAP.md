@@ -2,7 +2,7 @@
 
 **Captured**: 2026-06-06
 **Author**: Claude Opus 4.8 (orchestrator) + 2 agenti freschi (audit-codice-vivo Sonnet + architetto Opus)
-**Companion del report**: `2026-06-06-sota-carousel-automation.md` (i 7 bricks + gap P1-P7). Questo file è il **confronto operativo affiancato** che Zero ha chiesto.
+**Companion del report**: `2026-06-06-sota-carousel-automation.md` (i 7 bricks + gap P1-P7). Questo file è il **confronto operativo affiancato** che Antonello ha chiesto.
 **Metodo**: agenti freschi su world-state reale. Ogni riga "ATTUALE" è dal codice vivo (file:riga). Ogni riga "NUOVA" è legata a un brick del report.
 
 > ⚠️ **Scoperta capitale dall'audit del codice vivo**: WR2 oggi ha **DUE pipeline che non si parlano**.

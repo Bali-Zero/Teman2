@@ -217,7 +217,7 @@ jq '.critic_verdict, .total_cost_usd, .flow_credits_spent, .identity_overall_cos
   apps/war-room/output/episode/pilot-manifesto-zantara-2026-05-18/episode_manifest.json
 ```
 
-Zero reviews master.mp4 via Drive. Decision matrix per dossier 06:
+Antonello reviews master.mp4 via Drive. Decision matrix per dossier 06:
 
 | Metric             | Target          | Hard fail if                      |
 | ------------------ | --------------- | --------------------------------- |
@@ -269,7 +269,7 @@ Per dossier 06 §"Episode lifecycle", FAIL routes orchestrator to retry:
 - Lane 3 (brand voice) → script-editor rewrite
 - Lane 4 (legal/regulatory) → brief-interpreter re-ground
 
-Max 2 retry rounds. If still FAIL → manifest flagged, Telegram P0 to Zero.
+Max 2 retry rounds. If still FAIL → manifest flagged, Telegram P0 to Antonello.
 
 ### Flow Pro quota exhaustion mid-episode
 
@@ -286,7 +286,7 @@ After each pilot:
 2. Synthesizes ≤10 lessons/week/agent into
    `~/.claude/skills/bali-zero-brand/wr3/<agent>/lessons.md`
 3. Proposes new skills in `~/.claude/skills/bali-zero-brand/wr3/_proposed/`
-4. Zero manually graduates after 3 successful uses (Voyager curriculum)
+4. Antonello manually graduates after 3 successful uses (Voyager curriculum)
 
 `wr3-yt-metrics-analyst` (Mon 06:00 WITA cron, S7.5 stub) correlates
 engagement metrics with episode attributes after publish, proposes

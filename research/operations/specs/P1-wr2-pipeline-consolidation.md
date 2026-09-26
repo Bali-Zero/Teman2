@@ -13,7 +13,7 @@ sources:
 
 # P-1 — WR2 Pipeline Consolidation Spec (REV 2, post-panel)
 
-**Status**: REVISED after 4-LLM panel — awaiting Zero GO. Nothing merged to main.
+**Status**: REVISED after 4-LLM panel — awaiting Antonello GO. Nothing merged to main.
 **Scope**: architectural consolidation of the WR2 carousel pipelines into one. The renderer
 decision (HTML/CSS → PNG via Playwright) is ALREADY MADE AND SHIPPED (PR #1236, flag ON since
 2026-06-09 15:46 UTC) and is NOT re-litigated here.
@@ -65,7 +65,7 @@ image_generator                            'drafts'               → 'drafts_im
 fact_extractor                             'drafts_imaged'        → 'drafts_imaged_facted'
 fact_checker                               'drafts_imaged_facted' → 'drafts_imaged_checked' | 'fact_check_failed'
 html_render_apply (MAX_DRAFTS_PER_RUN=1)  'drafts_imaged_checked' → CAS lease 'rendering' →
-                    'rendered' + drive_url + wa_outbox notify (Zero + Damar)
+                    'rendered' + drive_url + wa_outbox notify (Antonello + Damar)
                   | 'rendered_shadow' (WR2_HTML_SHADOW=1)
                   | 'render_failed' (after 3 attempts, _html_attempts circuit breaker)
 ```
@@ -205,8 +205,8 @@ Key insight: **most of A's intelligence was already ported to B** by autopsy bat
 | S10 | Supervisor watchdog | `wr2_supervisor_watchdog.py` (loaded, Canva-keyed, degrade-open) | REPAIR (scope extended by panel) | Re-key: (a) gate flag → `wr2_html_renderer_enabled`; (b) success-rate source → **DB-derived** (`status='rendered' AND drive_url IS NOT NULL` vs `render_failed` over the 7-day window) replacing the JSONL telemetry file (kills the degrade-open 100% blindness); (c) freshness column `canva_applied_at` → `drive_url`/`updated_at`; (d) add daily S1-reconcile probe: `rendered` drafts missing a `topic_type_log` row > 24h → alert (closes DeepSeek M2 hole) |
 | S11 | A state machine (`wr2_carousel_runs`, `transition_state`) | orchestrator | DROP | B's status flow on `war_room_drafts` is the live state machine. ⚠️ table drop gated on the `wr2_worktree_gc.py` patch (§4 R1) |
 | S12 | Per-run worktree spawn (dispatcher) | dispatcher | DROP | irrelevant to B |
-| S13 | Damar queue UI (gen-1) | `_damar-queue-server.py` (running) | KEEP-FOR-NOW | Live delivery = WhatsApp+Drive; the queue UI is a parallel manual surface. Retiring it is an Zero/Damar UX decision — out of P-1 |
-| S14 | (NEW, red-team) Fact-check BEFORE image-gen | pipeline order | DEFER (stage 2, Zero call) | Today image_generator burns Codex `$imagegen` credits on drafts that may later land `fact_check_failed`. Reordering (extract/check facts on text → then images) saves credits but touches the status flow + both supervisor maps. Not in slice 1 |
+| S13 | Damar queue UI (gen-1) | `_damar-queue-server.py` (running) | KEEP-FOR-NOW | Live delivery = WhatsApp+Drive; the queue UI is a parallel manual surface. Retiring it is an Antonello/Damar UX decision — out of P-1 |
+| S14 | (NEW, red-team) Fact-check BEFORE image-gen | pipeline order | DEFER (stage 2, Antonello call) | Today image_generator burns Codex `$imagegen` credits on drafts that may later land `fact_check_failed`. Reordering (extract/check facts on text → then images) saves credits but touches the status flow + both supervisor maps. Not in slice 1 |
 
 ---
 
@@ -229,7 +229,7 @@ Key insight: **most of A's intelligence was already ported to B** by autopsy bat
                       ├── PNGs → Google Drive (SA-DWD)
                       ├── status='rendered'  ◄— TERMINAL SOFTWARE STATUS (Legge 5)
                       ├── best-effort INSERT topic_type_log (S1 — closes the variety loop)
-                      └── wa_outbox → WhatsApp (Zero + Damar) with Drive link
+                      └── wa_outbox → WhatsApp (Antonello + Damar) with Drive link
                                           │
                                   HUMAN (Damar) publishes manually on Instagram
                                           │
@@ -300,7 +300,7 @@ Order: consumers first, then producers, then backend.
    `wr2_canva_reconcile.py`, `wr2_canva_garbage_collector.py`, `wr2_canva_lease_watchdog.py`,
    `wr2_canva_token_watchdog.py`, `wr2_validate_master.py` — ONLY after S1 has moved the
    topic_type_log write out of `wr2_canva_desktop_apply.py`.
-   **Manual-Canva decision list (Zero call, default KEEP)**: `wr2_bootstrap_canva_oauth.py`,
+   **Manual-Canva decision list (Antonello call, default KEEP)**: `wr2_bootstrap_canva_oauth.py`,
    `lint_canva_pending.py` (not a daemon; Canva stays for manual special pieces per the
    2026-06-06 decision).
 3. Leave `system_settings` rows in place (historical record).
@@ -369,13 +369,13 @@ Risks:
 | Token leak amplified by R4 traffic | Gate 0 PRE-2 (silence httpx INFO + rotate) before R4 |
 | Drop of A-tables breaks `worktree-gc` (panel HIGH) | R1.1 GC patch ships BEFORE the drop migration; M10 staging test |
 | Busy-worker kickstart starvation (panel BLOCKER) | R4.2 drain-loop; at 1-3 drafts/day residual risk is latency-only, bounded by reconcile |
-| R2 deletes a Canva script a manual flow uses | Manual-Canva decision list (bootstrap + lint) default-KEEP, Zero GO on the rest |
+| R2 deletes a Canva script a manual flow uses | Manual-Canva decision list (bootstrap + lint) default-KEEP, Antonello GO on the rest |
 | Deploy-worktree drift re-runs old code (W50-class) | M-gates measured only after `git -C ~/Desktop/nuzantara-deploy rev-parse HEAD` == merge SHA |
-| Codex credit burn on fact-failing drafts | S14 deferred reorder (stage 2, explicit Zero call) |
+| Codex credit burn on fact-failing drafts | S14 deferred reorder (stage 2, explicit Antonello call) |
 
 **Staging**: slice 1 = S1 (script-side) + S10 watchdog re-key + supervisor both-maps patch +
 R4.2 drain-loop + R1.1 GC patch + unit tests — **code-only, zero launchctl changes, inert
-until R4 enable, behind the existing kill-switch**. Then: panel ✅ (done) → Zero GO ✅
+until R4 enable, behind the existing kill-switch**. Then: panel ✅ (done) → Antonello GO ✅
 (2026-06-11, slice 1 implemented on this branch, 20 unit tests) → merge slice 1 → Gate 0 →
 R4 enable → M1/M2/M6 green → R1 → R2 → R3 → table-drop migration.
 
@@ -404,4 +404,4 @@ not occurring; bounded-replay note added instead.
 REV 2 (S1 re-design, S10 scope extension, R1.1 GC patch, R4.2 drain-loop, R4.4 canva-apply
 bootout, M6 rewrite, S14 deferred reorder). The NO-GO applied to REV 1; REV 2 is the
 red-team's findings made structural. Final orchestrator verdict: **GO-WITH-FIXES,
-fixes already folded in — pending Zero GO before any merge.**
+fixes already folded in — pending Antonello GO before any merge.**

@@ -130,7 +130,7 @@ Errori `ConnectionRefusedError ('127.0.0.1', 15432)` fino al 2026-05-19. Da 19/0
 - `/tmp/nlm-bridge.{log,err}` (cicatrix `STRUCTURAL: 53 LaunchAgents Pro, only 13% KeepAlive`).
 - `matagaruda.bridge.adaptive.plist`: `RunAtLoad=false` + `KeepAlive` mancante. Funziona via `StartInterval=60`, ma non sopravvive a reboot fino al primo tick.
 
-## Decision matrix per Zero
+## Decision matrix per Antonello
 
 | Decisione                                            | Effort | Rischio                               | Beneficio                                                                             |
 | ---------------------------------------------------- | ------ | ------------------------------------- | ------------------------------------------------------------------------------------- |

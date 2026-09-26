@@ -53,7 +53,7 @@ I "11.699 clienti" includono **10.252 soft-deleted** gia' processati da `dedup_s
 
 **Remediation proposta** (NEEDS-ANTONELLO):
 
-- NON cancellare in blocco. Confermare con Zero la definizione operativa di "cliente attivo" (es. richiede >=1 pratica O >=1 interazione negli ultimi N mesi).
+- NON cancellare in blocco. Confermare con Antonello la definizione operativa di "cliente attivo" (es. richiede >=1 pratica O >=1 interazione negli ultimi N mesi).
 - Possibile re-import perso: investigare perche' `interactions` e' quasi vuota (1419/1447). Se le interazioni WhatsApp/email esistono ma non sono linkate al client_id → bug di linking, non orfani veri.
 
 ## Priorita' 2 — Link Drive rotti (10.980 error_404)
@@ -83,7 +83,7 @@ I "11.699 clienti" includono **10.252 soft-deleted** gia' processati da `dedup_s
 ## Priorita' 2 — Completezza contatti
 
 - 300 clienti non contattabili (zero canale): arricchire da `passport_ocr_data` / `whatsapp_*` staging tables se disponibili, altrimenti flag `incomplete-contact`.
-- 990 email mancanti: il dataset e' phone-first (WhatsApp). Non e' necessariamente un difetto — confermare con Zero se email e' campo obbligatorio per il workflow Bali Zero.
+- 990 email mancanti: il dataset e' phone-first (WhatsApp). Non e' necessariamente un difetto — confermare con Antonello se email e' campo obbligatorio per il workflow Bali Zero.
 
 ## Priorita' 3 — Infra CRM-Guardian
 

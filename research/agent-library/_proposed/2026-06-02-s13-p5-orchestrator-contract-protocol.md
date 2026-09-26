@@ -1,6 +1,6 @@
 # S13-P5 — orchestrator-contract-protocol
 
-> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Zero approves graduation.
+> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Antonello approves graduation.
 > **Kind**: shared-protocol · **Priority**: P3
 > **Adversarial verdict**: ⚖️ SPLIT verdict — downgraded per Codex (contract-test, not skill)
 

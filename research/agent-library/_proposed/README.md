@@ -1,7 +1,7 @@
 # S13 Evolution Cycle — Proposed Skill Drafts (2026-06-02)
 
 Output of the **S13 agent-library-evolution** manual cycle. These are **drafts
-only** — Zero approves any graduation (append to `lessons.md` / promotion to
+only** — Antonello approves any graduation (append to `lessons.md` / promotion to
 an agent's skill dir). NO production agent was modified by this cycle.
 
 ## Why a *manual* cycle

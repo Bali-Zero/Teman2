@@ -45,7 +45,7 @@ brief: /tmp/wr2-canva-ig-brief.md
 | Codex    | Né l'uno né l'altro — SSOT è narrative JSON, render è variabile per scopo                      | "PNG è derivato, NON sorgente"                     |
 | DeepSeek | Per regulatory verbatim → PNG vince (lock legal text esatto). Per editing → Canva-direct vince | Trade-off su lifecycle del carosello               |
 
-**Verdict synth**: Gemini overreach ("strictly superior"). Codex framing è il più corretto. **Per C5A regulatory editorial: HTML→PNG come QA artifact deterministico + Canva editable copy via edit-transaction su copia (NON template content-bearing) per ultima manuale Zero + PNG finale export IG.**
+**Verdict synth**: Gemini overreach ("strictly superior"). Codex framing è il più corretto. **Per C5A regulatory editorial: HTML→PNG come QA artifact deterministico + Canva editable copy via edit-transaction su copia (NON template content-bearing) per ultima manuale Antonello + PNG finale export IG.**
 
 ### A2 — Cost del bypass wr2-storyboarder + wr2-critic
 
@@ -306,11 +306,11 @@ Brief implica 11 slides è OK. Codex empirical: IG Graph max 10 + `ig_publisher.
 - `/tmp/panel-deepseek.md` (164 lines, troncato max_tokens=8000)
 - `/tmp/wr2-canva-ig-brief.md` (brief originale)
 
-## Operational decision matrix (sintesi per Zero)
+## Operational decision matrix (sintesi per Antonello)
 
 | Decisione                         | Opzioni                                                                                                  | Raccomandazione panel                                          |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| C5A oggi: ship Canva o defer?     | A) Ship oggi tunnel-assisted / B) Defer fino backend asset proxy / C) Ship PNG-only no Canva             | **A se Zero vuole editare; C se non gli serve editing**   |
+| C5A oggi: ship Canva o defer?     | A) Ship oggi tunnel-assisted / B) Defer fino backend asset proxy / C) Ship PNG-only no Canva             | **A se Antonello vuole editare; C se non gli serve editing**   |
 | 11 slides IG blocker              | A) Drop 1 slide (s10 status-list candidato) / B) Split 2 carouseli / C) Manual UI (anche IG rifiuta >10) | **A** — drop slide 10 status-list (è la più ridondante con s8) |
 | Hero hosting                      | A) Cloudflared tunnel oggi / B) Backend proxy P1 / C) Pro creds (sporco)                                 | **A oggi + B questa settimana**                                |
 | Cron `wr2_canva_renderer_enabled` | A) Tieni OFF / B) Riabilita per C5A / C) Refactor copy-first                                             | **A oggi, C in P1**                                            |

@@ -15,9 +15,9 @@ status: IMPLEMENTED 2026-06-01 — Opzione A hub-and-spoke attiva (ramo M5 nel d
 
 # M5 memory-integrity study — topologia a 3 nodi (Pro / Mini / Air-M5)
 
-> ⚠️ RUOLO CORRETTO 2026-06-01 (l'header originale qui sotto aveva il ruolo INVERTITO): Air-M5 = macchina PRINCIPALE di Zero (dev+ricerca) ma LEGGERA, modello THIN-CLIENT (lavori su M5, esegui pesante su Pro/Mini via ssh). Pro = workhorse pesante. NON il contrario. La decisione autoritativa è in memory decision_m5_air_fleet_join_2026_05_31; questo studio resta valido per la topologia di sync (Opzione A), non per il ruolo.
+> ⚠️ RUOLO CORRETTO 2026-06-01 (l'header originale qui sotto aveva il ruolo INVERTITO): Air-M5 = macchina PRINCIPALE di Antonello (dev+ricerca) ma LEGGERA, modello THIN-CLIENT (lavori su M5, esegui pesante su Pro/Mini via ssh). Pro = workhorse pesante. NON il contrario. La decisione autoritativa è in memory decision_m5_air_fleet_join_2026_05_31; questo studio resta valido per la topologia di sync (Opzione A), non per il ruolo.
 >
-> [storico, ruolo invertito] Decisione Zero 2026-05-31: ruolo M5 = posto di sviluppo interactive di Zero + automazioni PESANTI (Pro sgravato dal dev; Mini = automazioni leggere + lunghe/costanti). Macchina "solo dev, niente policy office-block". memory.db = fresco per-macchina. Sync continuo: STUDIARE PRIMA, zero daemon ora.
+> [storico, ruolo invertito] Decisione Antonello 2026-05-31: ruolo M5 = posto di sviluppo interactive di Antonello + automazioni PESANTI (Pro sgravato dal dev; Mini = automazioni leggere + lunghe/costanti). Macchina "solo dev, niente policy office-block". memory.db = fresco per-macchina. Sync continuo: STUDIARE PRIMA, zero daemon ora.
 
 ## 0. Cosa intendiamo per "integrità di Claude"
 
@@ -37,7 +37,7 @@ Non è UN file. Sono **4 layer distinti**, con criticità e meccaniche di sync d
 Sono **due problemi separati**, spesso confusi:
 
 - **Bootstrap (one-shot)**: come l'M5 nasce con la memoria-identità completa, da zero. Avviene UNA volta.
-- **Sync continuo (steady-state)**: come la memoria resta coerente tra 3 nodi mentre Zero lavora su Pro o M5. Avviene per sempre.
+- **Sync continuo (steady-state)**: come la memoria resta coerente tra 3 nodi mentre Antonello lavora su Pro o M5. Avviene per sempre.
 
 Il rischio per l'integrità sta quasi tutto nel **bootstrap fatto male** + nel **conflict-model a 3 nodi** (oggi scritto per 2).
 
@@ -95,14 +95,14 @@ Con 3 nodi questo modello si ROMPE in 3 modi:
    Pro/Mini ──(memoria via git branch dedicato)──> Air-M5
 ```
 
-- La memoria-identità (L1) viene versionata in un branch git dedicato (`memory/snapshot`) e l'M5 fa `git pull`. Push esplicito quando Zero vuole propagare.
+- La memoria-identità (L1) viene versionata in un branch git dedicato (`memory/snapshot`) e l'M5 fa `git pull`. Push esplicito quando Antonello vuole propagare.
 - Pro: massima auditabilità (ogni cambio memoria = commit), zero conflict silenziosi (git li forza espliciti), gira anche con nodi spenti (async).
 - Contro: meno ergonomico (push manuale), e la memoria contiene path/contenuti che oggi NON sono nel repo git (sono in `~/.claude/`, fuori da `~/Desktop/nuzantara`). Servirebbe un repo git separato per la memoria.
 - Interessante come **canale di bootstrap** anche se lo steady-state resta A.
 
 ## 4. memory.db (L2) — decisione presa: fresco per-macchina
 
-Zero 2026-05-31: **DB fresco per-macchina** (come Pro e Mini già fanno).
+Antonello 2026-05-31: **DB fresco per-macchina** (come Pro e Mini già fanno).
 
 - M5 parte con memory.db vuoto, cresce con le SUE sessioni.
 - `mem query` sull'M5 troverà i fatti **ri-indicizzando i 378 .md** (che SONO sincronizzati), non la storia-sessioni del Pro.
@@ -152,4 +152,4 @@ Ordine, ognuno verificabile:
 - Nessun patch a CLAUDE.md / memory (registro solo la decisione di studio).
 - Nessun rsync verso M5 (non esiste ancora in tailnet).
 
-**Prossimo gate**: Zero sceglie topologia (A/B/C) → solo allora preparo gli script di bootstrap + l'estensione hub del daemon, su branch feature, con i 4-LLM panel se tocca codice di sync (è shared-state → preflight L2).
+**Prossimo gate**: Antonello sceglie topologia (A/B/C) → solo allora preparo gli script di bootstrap + l'estensione hub del daemon, su branch feature, con i 4-LLM panel se tocca codice di sync (è shared-state → preflight L2).

@@ -103,7 +103,7 @@ E un cron daily `~/scripts/matagaruda-unmapped-gap-audit.sh` 09:00 WITA che alza
 
 ### Fix C.4 — DLQ esplicita per gap senza agent target
 
-Tipi come `missing_attribute / phone` non hanno agent designato (nessun `phone_harvester` esiste). Drain corrente è silenzioso. Spec: aggiungere terzo valore canonical `"gap.dlq:phone"` con `GAP_DISPATCH["gap.dlq:phone"] = None` MA con metric counter dedicato. Zero decide se merita un `phone_harvester` futuro.
+Tipi come `missing_attribute / phone` non hanno agent designato (nessun `phone_harvester` esiste). Drain corrente è silenzioso. Spec: aggiungere terzo valore canonical `"gap.dlq:phone"` con `GAP_DISPATCH["gap.dlq:phone"] = None` MA con metric counter dedicato. Antonello decide se merita un `phone_harvester` futuro.
 
 ## Effort + risk profile (totale)
 

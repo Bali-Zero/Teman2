@@ -221,7 +221,7 @@ async def dispatch_brief_interpreter(brief_topic: str):
 ### Episode lifecycle (6 channels post-Step 5 consolidation)
 
 ```
-Zero/Damar request → PG NOTIFY wr3_episode_brief_requested
+Antonello/Damar request → PG NOTIFY wr3_episode_brief_requested
                               ↓
                           wr3_supervisor.py consumer
                               ↓
@@ -271,7 +271,7 @@ Zero/Damar request → PG NOTIFY wr3_episode_brief_requested
    Drive staging        lane 2 → wr3-post-assembler
    Telegram P0          lane 3 → wr3-script-editor
             ↓           lane 4 → wr3-brief-interpreter
-   Zero/Damar
+   Antonello/Damar
    manual publish
 ```
 
@@ -380,11 +380,11 @@ async def route_event(conn, pid, channel, payload):
 | ArcFace cosine identity    | ≥0.6 avg over 12 clips          | <0.55 in any single clip                    |
 | Manifest fields complete   | 18/18                           | Any missing                                 |
 | Silent placeholder count   | 0                               | ≥1 (would violate Law 4 degrade-loud)       |
-| Designer override diff     | Empty/null                      | Any field modified by Zero pre-publish |
+| Designer override diff     | Empty/null                      | Any field modified by Antonello pre-publish |
 
 **v0 → v1 transition: 3 consecutive successes** (rule of 3).
 
-## Open questions per Zero (decision gate)
+## Open questions per Antonello (decision gate)
 
 1. **REJECT LangGraph confermo**: 3/3 panel converge no Plan B. Plan A definitivo? → CONFIRMED user 2026-05-18 "seguo il panel"
 2. **Skeleton path corretto**: scripts/ + ~/.claude/agents/ + apps/war-room/output/episode/. NO new `apps/wr3-room/`. Confermi? → CONFIRMED
@@ -409,7 +409,7 @@ Sequenza esecuzione:
 2. 13 commits (1 PR `wr3-room-genesis`): agent `.md` + skill cortex stub + I/O contract YAML + smoke test fixture + memory seed per agent
 3. `scripts/wr3_*.py` Python modules (supervisor, dispatch, telemetry, lint)
 4. Smoke pilot "Manifesto Zantara": topic + brief request → end-to-end episode
-5. Critic gate → staged → Zero review
+5. Critic gate → staged → Antonello review
 6. Telegram P0 + manifest
 7. v0 declared production-ready after 3 consecutive pilots PASS (rule of 3)
 

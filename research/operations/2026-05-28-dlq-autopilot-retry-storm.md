@@ -110,7 +110,7 @@ Secondary observations (non-blocking):
 
 - **What**: `launchctl bootout` for jobs that are no longer needed. Candidates:
   - `post_publish_poller`: references the decommissioned `~/Projects/nuzantara/` Air path. If it has been deprecated by `post_publish_webhook` (more modern push-based), bootout the poller.
-  - `prime_tunnel`: if Zero no longer uses cloudflared tunnel for prime dashboard, bootout the plist + remove from `UNMONITORED` map.
+  - `prime_tunnel`: if Antonello no longer uses cloudflared tunnel for prime dashboard, bootout the plist + remove from `UNMONITORED` map.
 - **Pro**: eliminates the noise at source. Cheapest possible action per job.
 - **Con**: requires operator-level decision on whether each job is genuinely obsolete. Cannot be derived from code alone. If `prime_tunnel` is needed (e.g., for `prime.balizero.com` external access), this option is wrong. Doesn't fix the systemic loop bug for other future stragglers.
 - **Effort**: ~2min per job, decision time variable.

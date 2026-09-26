@@ -2,7 +2,7 @@
 date: 2026-06-20
 domain: operations
 client_case: false
-author: deep-researcher (Zero/Bali Zero)
+author: deep-researcher (Antonello/Bali Zero)
 status: draft
 partial: false
 sources:
@@ -18,11 +18,11 @@ sources:
 
 # Galaxy S26 Ultra — Full Power Envelope for a Solo 3-Node Mac Fleet Operator
 
-**Date**: 2026-06-20 · **Domain**: operations · **Author**: deep-researcher (Zero/Bali Zero) · **Status**: draft
+**Date**: 2026-06-20 · **Domain**: operations · **Author**: deep-researcher (Antonello/Bali Zero) · **Status**: draft
 
 ## Question
 
-Identify the FULL power envelope a Samsung Galaxy S26 Ultra (2026 flagship) unlocks for a solo technical operator running a 3-node Mac fleet (M5/Pro/Mini) over Tailscale, with Claude Code agents, Postgres, Ollama, and a Python/RAG backend. Operator (Zero / Bali Zero, immigration agency Indonesia) prioritizes data sovereignty (on-device > cloud), automation, and remote control of his organism. Depth and sources, not a spec recap. Seven vectors: Galaxy AI on-device boundary, adb/scrcpy over Tailscale, Termux/Linux-on-Android, Samsung DeX, Knox/PII, automation frameworks, phone-as-field-sensor.
+Identify the FULL power envelope a Samsung Galaxy S26 Ultra (2026 flagship) unlocks for a solo technical operator running a 3-node Mac fleet (M5/Pro/Mini) over Tailscale, with Claude Code agents, Postgres, Ollama, and a Python/RAG backend. Operator (Antonello / Bali Zero, immigration agency Indonesia) prioritizes data sovereignty (on-device > cloud), automation, and remote control of his organism. Depth and sources, not a spec recap. Seven vectors: Galaxy AI on-device boundary, adb/scrcpy over Tailscale, Termux/Linux-on-Android, Samsung DeX, Knox/PII, automation frameworks, phone-as-field-sensor.
 
 ## TL;DR (3 bullets)
 
@@ -42,7 +42,7 @@ Identify the FULL power envelope a Samsung Galaxy S26 Ultra (2026 flagship) unlo
 | OS | Android 16 / One UI 8.5, 7 years upgrades (→ Mar 2033) | Wikipedia |
 | Port | USB-C **3.2** + DisplayPort 1.2 (wired DeX-grade) | gsmarena |
 
-Buy implication for Zero: the **Ultra specifically** is the only 2026 Galaxy that is Snapdragon regardless of purchase region. An S26/S26+ bought in Indonesia is Exynos 2600 — different NPU, different llama.cpp/Vulkan story. If the phone is meant to be a compute/automation node, the Ultra is the non-negotiable SKU. NPU TOPS are **not published** by Samsung (only a relative "39% NPU boost" press claim); treat absolute on-device-LLM throughput as unverified until benchmarked on the actual handset.
+Buy implication for Antonello: the **Ultra specifically** is the only 2026 Galaxy that is Snapdragon regardless of purchase region. An S26/S26+ bought in Indonesia is Exynos 2600 — different NPU, different llama.cpp/Vulkan story. If the phone is meant to be a compute/automation node, the Ultra is the non-negotiable SKU. NPU TOPS are **not published** by Samsung (only a relative "39% NPU boost" press claim); treat absolute on-device-LLM throughput as unverified until benchmarked on the actual handset.
 
 ## Findings
 
@@ -114,7 +114,7 @@ For the USA trip: a USB-C-to-HDMI dongle + folding BT keyboard turns the Ultra i
 - **Secure Folder** = a Knox-encrypted, separately-passworded container — the correct home for **KTP, passport scans, NPWP, akta** on the device. Hardware-backed, isolated from the main OS and from any cloud-AI feature that hasn't been granted access.
 - Certifications: Common Criteria 10 years running, NIAP, NIST FIPS, UK NCSC.
 
-**The hard tradeoff (decision-grade):** the **Knox eFuse**. Any tamper — rooting, custom ROM, bootloader unlock, or installing a non-stock environment that trips it — **permanently** disables the hardware root of trust: Secure Folder decryption keys are erased, the data is unrecoverable, and Samsung Pay/Wallet/secure features die forever. This means the **trusted-PII handset and the tinkerer's-rooted-handset cannot be the same device.** Zero's instinct (on-device > cloud, sovereignty) is *served* by Knox **only on a stock, un-rooted Ultra**. If he wants to deeply hack the device (root for unrestricted Termux/llama.cpp/NPU), that handset is disqualified from holding client PII. Recommendation: **stock Ultra = trusted PII + field node**; if heavy rooting is ever desired, use a separate burner, never the PII device.
+**The hard tradeoff (decision-grade):** the **Knox eFuse**. Any tamper — rooting, custom ROM, bootloader unlock, or installing a non-stock environment that trips it — **permanently** disables the hardware root of trust: Secure Folder decryption keys are erased, the data is unrecoverable, and Samsung Pay/Wallet/secure features die forever. This means the **trusted-PII handset and the tinkerer's-rooted-handset cannot be the same device.** Antonello's instinct (on-device > cloud, sovereignty) is *served* by Knox **only on a stock, un-rooted Ultra**. If he wants to deeply hack the device (root for unrestricted Termux/llama.cpp/NPU), that handset is disqualified from holding client PII. Recommendation: **stock Ultra = trusted PII + field node**; if heavy rooting is ever desired, use a separate burner, never the PII device.
 
 PII-boundary note (CLAUDE.md §5 / SYMBIOSIS Law 2): client PII may live **on-device in Secure Folder**, but must never be transcribed in cleartext into any report, memory, log, or artifact synced off the phone. The phone's value is local capture; the sync layer is where the boundary is enforced.
 
