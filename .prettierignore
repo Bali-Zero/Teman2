@@ -148,6 +148,11 @@ evidence/2026-09/agent-nuzantara-backend-rag-b1-4-support-signal-0956ceb5/*.json
 evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/*.json
 evidence/2026-09/agent-nuzantara-backend-rag-b2-2-harness-5936113c/reviews/**
 
+# codexpin v3 spec (S2 of the #7420 BLOCK): the council titolari's reviews, stored verbatim.
+# Measured: prettier rewrites their `*some*` emphasis to `_some_` and re-indents their lists,
+# so the committed copies would stop matching what the seats returned.
+evidence/2026-09/agent-air-m5-docs-codexpin-spec-v3-a4aa18ab/reviews/**
+
 # Cicatrix scar records — the exact bytes are load-bearing, and Prettier rewrites them.
 # Measured 2026-07-30 on origin/main: inside these long paragraphs Prettier parsed literal
 # text as emphasis delimiters and SWAPPED them, silently corrupting three tokens of the W104

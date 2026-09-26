@@ -1,0 +1,337 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  Coordinator (team-lead) mandate for condition S2 of the BLOCK on PR #7420
+  (re-gate #2, comment 5848838838): commit the codexpin v3 spec, add a
+  CLOSED inventory of every D5 guard and conjunct at 04dd6b51e4, specify S3
+  (the CI mutation check) and S4 (the evidence-text fixes). Docs only; the
+  author does not arm or merge.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: refute-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  docs/specs/2026-09-27-codexpin-v3-spec.md: the codexpin v3 spec, until now
+  session scratch only, committed with D1-D9, their amendments and the 3-PR
+  plan. New: §5bis, the closed D5 inventory (15-kind lexical site grammar,
+  closure rule, mutation operators, fixture contracts N and P,
+  dispositions, the decisions re-gate #2 asked for, the rendered table, the
+  new fixtures, what the 04dd6b51e4 suite kills today); §5ter, the S3
+  mutation check (interface, isolation, algorithm, selftest, CI wiring);
+  §5quater, S4; D5 gains the heartbeat fix that PR-1 lands (/bin/mkdir and
+  /bin/date); §10 changelog.
+  docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml: the normative
+  inventory S3 reads: 69 rows (65 MUST, 4 EQUIVALENT, 0 deferred), 134
+  sites on the PR-1 target, 130 mutants.
+  After council round 1: kinds const, neg and redir; the static mode; the
+  heartbeat fix moved into PR-1; stdin bound to /dev/null; the killed_by
+  exactly-one-node rule; EQUIVALENT compared over every test; selftest (e)
+  reworded; the seven mode corrections disclosed.
+  After council round 2: kind abspath with rows G9j, G9k and mutant
+  G7e/path; well-formed UTC stamps in contracts N and P; derived_from names
+  the target blob; selftest cases f-i; the not-sites rationale re-measured;
+  §8 item 9 (date -u unpinned).
+
+proof: |
+  See receipts. Every number in the spec's §5bis.8 and §9 comes from the
+  scratch prototypes whose outputs the receipts quote. The prototypes are
+  NOT the S3 implementation; the resumed PR-1 build writes that, and its
+  CI receipt replaces these numbers (§5quater).
+
+pii_scan: clean
+pii_scan_note: >-
+  The spec, the inventory and both council prompts carry repo paths, the
+  owner codename, service account names and synthetic pin fixtures only;
+  no client data, OSINT or credential. Council dispatch ran with a
+  scrubbed env (env -i), a read-only sandbox for codex and a no-tools
+  child for kimi.
+
+spend:
+  wall_clock_hours: 3.8
+  adversarial_rounds: 2
+spend_note: >-
+  Wall clock measured from the task's start (17:29Z) to the writing of this
+  pack (21:19Z). Commit, push and PR-open follow and are not
+  counted; they add minutes, and the total may end just past the 4 h
+  appetite. Two adversarial rounds, as declared.
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD"
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      R1-1 MAJOR: the pre-source constants (l.49-55, 63, 64) could be
+      value-changed invisibly; the harness overwrites five of them on every
+      run, so a typo in PINNED_CODEX_ROOT or CODEX_PIN_FILE ships green and
+      reads as "no pin, legacy" in production.
+    status: CONFIRMED
+    resolution: >-
+      New kind const (11 sites, rows G0a-G0k) with a value-substitution
+      operator, also applied to every reassert; new static test
+      test_wrapper_ships_production_constants pins every ^KEY= line of the
+      five patched keys, and a new mode `static` records that no run can see
+      those mutants. The 04dd6b51e4 suite kills none of the static ones.
+  - seat: kimi-code/k3
+    objection: >-
+      R1-2 MAJOR: the 12-kind grammar captured neither `!` negations nor `<`
+      input redirections, both fail-open-capable deletions.
+    status: CONFIRMED
+    resolution: >-
+      New kinds neg (8 sites) and redir (2 sites); a `!`-drop mutant on each
+      negated row and new rows G1d and G2e. Closure 130/130 on both blobs; a
+      planting experiment reports every planted site.
+  - seat: kimi-code/k3
+    objection: >-
+      R1-3 MAJOR: "every declared mode equalled the measured one" hid six
+      modes that had been corrected FROM the measurement.
+    status: CONFIRMED
+    resolution: >-
+      §5bis.8 now names all seven corrections (six in round 1, G6b/! in
+      round 2) and says the declarations are not independent predictions;
+      S3 guarantees only that a mode can never drift later.
+  - seat: kimi-code/k3
+    objection: >-
+      R1-4 MAJOR: selftest (e) as worded (remove the killed_by entries)
+      would stop at SCHEMA or KILLER-MISS, never SURVIVED.
+    status: CONFIRMED
+    resolution: >-
+      Reworded: delete the two killer TESTS from the copied test file, keep
+      the inventory, skip the collection check for that case only.
+  - seat: kimi-code/k3
+    objection: >-
+      R1-5/6/7 MINOR: undefined severity order; reason texts asserted as
+      substrings with no non-containment invariant; killed_by substrings
+      could match a collateral failing test.
+    status: CONFIRMED
+    resolution: >-
+      Severity order FO > FC > DX > EQ stated; static test
+      test_refusal_reasons_are_pairwise_non_containing; SCHEMA requires each
+      killed_by to match exactly one collected node id (0 violations in the
+      feasibility run).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R1-a/b: deleting the l.171 input redirection lets a NUL-bearing pin be
+      applied; deleting the `!` of l.197 applies a.b.c. Neither was a site.
+      (Executed by the seat; its session then ended without a verdict.)
+    status: CONFIRMED
+    resolution: >-
+      Same cure as R1-2: kinds neg and redir, rows G1d (FO) and G3/! (FO),
+      both killed by the feasibility suite and already by the 04dd6b51e4
+      suite.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R1-c: G9b is not equivalent under a hostile PATH, because heartbeat()
+      resolves mkdir and date through PATH.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced by the author (both hostile-PATH tests fail on the shipped
+      04dd6b51e4 wrapper and pass on its G9b mutant). PR-1 now lands
+      /bin/mkdir and /bin/date (D5, §8 item 6); on that target G9b leaves
+      identical records in all 46 run tests, and the P.4 exemption is gone.
+  - seat: kimi-code/k3
+    objection: >-
+      R2-14 MAJOR: the /bin/date half of the heartbeat fix is pinned by
+      nothing. Line 74 sits in the excluded heartbeat printf, and P.4 and
+      the run log saw only [status, note], so a regression to `date` writes
+      `starting` with an empty ts under a hostile PATH and stays green.
+    status: CONFIRMED
+    resolution: >-
+      New site kind abspath (4 sites on the target: lines 72, 74, 269, 270),
+      rows G9j and G9k and mutant G7e/path; N.2, P.3 and P.4 now require a
+      well-formed UTC stamp, and the run log keeps a malformed ts as a
+      difference. The three new mutants are killed by the hostile-PATH
+      fixture (receipt "feasibility").
+  - seat: kimi-code/k3
+    objection: >-
+      R2-15 MAJOR: derived_from named commit 04dd6b51e4 and its blob while
+      G9b anchors a line that exists only on the PR-1 target, so the
+      committed inventory could not resolve against its own declared blob.
+    status: CONFIRMED
+    resolution: >-
+      derived_from now names the target blob (78236b6070) plus base_commit
+      and base_blob; the 04dd6b51e4 measurement uses a derived inventory
+      (minus G9j/G9k, G9b re-anchored) and says so (§5bis.8, §7).
+  - seat: kimi-code/k3
+    objection: >-
+      R2-13 MAJOR: the planted-closure receipt showed 15 UNCLAIMED while the
+      spec claimed 16 with a pre-source export.
+    status: CONFIRMED
+    resolution: >-
+      The prompt carried a receipt taken before the export was planted. The
+      planting now has nine constructs (export and /usr/bin/true included)
+      and the committed receipt shows 17 UNCLAIMED.
+  - seat: kimi-code/k3
+    objection: >-
+      R2-12 MINOR: the static rule forbids mixing a static and a run killer
+      on one mutant, which makes the mode depend on the killer list.
+    status: PLAUSIBLE
+    resolution: >-
+      Kept by design for PR-1: a static killer must never mask a run mode.
+      Relaxing it is left to PR-2, as a reviewed grammar change.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R2-2 MAJOR: the selftest has no guilt case for the new static rule,
+      the exactly-one-node rule or MODE-MISMATCH, so an implementation that
+      drops them passes --selftest.
+    status: CONFIRMED
+    resolution: >-
+      Selftest cases f (dead killer), g (ambiguous killer), h (wrong mode on
+      G3/!) and i (static confusion both ways) added to §5ter.4.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R2-3 MAJOR: the claim that the four EQUIVALENT mutants leave identical
+      records in every run test was not in the receipt chain.
+    status: CONFIRMED
+    resolution: >-
+      modes_eq.py now runs as the receipt step modes_equivalent_final on the
+      committed bytes.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R2-1/R2-7 (and kimi R2-7): a unique killer node can still fail for an
+      unrelated assertion; the isolating-fixture rule is review-only.
+    status: PLAUSIBLE
+    resolution: >-
+      Stated in §5ter.3 step 1 as the review-only residue; step 8's mode
+      check narrows it, since the killer's records must differ in the
+      declared mode's way.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R2-4/5 MINOR (and kimi R2-16): the not-sites rationale was too broad;
+      deleting `_pin_line=""` is inert, dropping `mkdir -p` is caught for a
+      different reason.
+    status: CONFIRMED
+    resolution: >-
+      Rewritten from a measurement of each variant (receipt "workvars"). The
+      same probe found that dropping `date -u` is pinned by no test: §8
+      item 9, with a recommended TZ fixture for PR-1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      R2-6 MINOR: the classifier called any new stdout fail-open, even with
+      no daemon start behind it.
+    status: PLAUSIBLE
+    resolution: >-
+      Tried and measured: requiring the stub's marker reclassified G8c/stmt
+      (the env's decoy VENV_PY is exec'd) from fail-open to
+      fail-closed-other-rc. The broader rule is kept, with the reason written
+      into §5ter.3 step 8: the wrapper writes nothing to stdout itself, so
+      non-empty stdout means a program was exec'd; the rule can overstate a
+      mode, never understate it.
+
+receipts:
+  - claim: "the inventory is closed against the wrapper at 04dd6b51e4 (without G9j/G9k, G9b anchored on the PATH-resolved mkdir)"
+    cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --closure-only"
+    result: "sites extracted=132 claimed=132 rows=67 mutants=128; UNCLAIMED/PHANTOM/ERR lines: 0"
+    exit: 0
+    ts: "2026-09-26T20:52:23Z"
+    seat: claude-opus-5-5
+  - claim: "the inventory is closed against the PR-1 target (04dd6b51e4 plus the D5 heartbeat fix)"
+    cmd: "scratch proto_s3.py docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml wrapper_fixed.sh feasibility_test.py --closure-only"
+    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
+    exit: 0
+    ts: "2026-09-26T20:52:23Z"
+    seat: claude-opus-5-5
+  - claim: "nine planted constructs are each reported UNCLAIMED, site by site"
+    cmd: "scratch proto_s3.py <inventory> wrapper_planted_r2.sh feasibility_test.py --closure-only"
+    result: "sites extracted=151 claimed=134 rows=69 mutants=130; UNCLAIMED lines: 17"
+    exit: 0
+    ts: "2026-09-26T20:52:24Z"
+    seat: claude-opus-5-5
+  - claim: "the §5bis.6 table equals the YAML rendering, cell by cell"
+    cmd: "scratch parity.py docs/specs/2026-09-27-codexpin-v3-spec.md docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml"
+    result: "rows 70 70 equal True"
+    exit: 0
+    ts: "2026-09-26T20:52:24Z"
+    seat: claude-opus-5-5
+  - claim: "a suite applying §5bis.4/§5bis.7 kills every MUST mutant by a declared killer on the PR-1 target"
+    cmd: "scratch proto_s3.py <inventory> wrapper_fixed.sh feasibility_test.py --json feasibility.json"
+    result: "BASELINE 0 49 passed in 6.39s collected 49; KILLED with killer hit 126; SURVIVED MUST 0; SURVIVED EQUIVALENT 4; killer=n on a MUST 0; sh -n failures 0; SCHEMA lines 0"
+    exit: 0
+    ts: "2026-09-26T21:09:06Z"
+    seat: claude-opus-5-5
+  - claim: "every declared mode equals the measured one on the killer tests"
+    cmd: "scratch modes.py <inventory> wrapper_fixed.sh"
+    result: "130 mutants measured; DIFF lines 0"
+    exit: 0
+    ts: "2026-09-26T21:17:46Z"
+    seat: claude-opus-5-5
+  - claim: "what the 28-test suite at 04dd6b51e4 kills today (§5bis.8)"
+    cmd: "scratch proto_s3.py <inventory via inv_on_04dd.py> wrapper_04dd.sh test_wrapper_04dd.py --json suite_04dd.json"
+    result: "BASELINE 0 28 passed; mutants 128; killed 71; survived 57 (MUST 53 in 36 rows, EQUIVALENT 4); killed MUST without killer hit 5"
+    exit: 0
+    ts: "2026-09-26T21:15:12Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: closure_target_final"
+    cmd: "scratch quick_proof.sh step closure_target_final (inputs hashed in inputs_final.sha256)"
+    result: "sites extracted=134 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 0"
+    exit: 0
+    ts: "2026-09-26T21:17:47Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: closure_04dd_final"
+    cmd: "scratch quick_proof.sh step closure_04dd_final (inputs hashed in inputs_final.sha256)"
+    result: "sites extracted=132 claimed=132 rows=67 mutants=128; UNCLAIMED/PHANTOM/ERR lines: 0"
+    exit: 0
+    ts: "2026-09-26T21:17:47Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: closure_planted_final"
+    cmd: "scratch quick_proof.sh step closure_planted_final (inputs hashed in inputs_final.sha256)"
+    result: "sites extracted=151 claimed=134 rows=69 mutants=130; UNCLAIMED/PHANTOM/ERR lines: 17"
+    exit: 0
+    ts: "2026-09-26T21:17:47Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: parity_final"
+    cmd: "scratch quick_proof.sh step parity_final (inputs hashed in inputs_final.sha256)"
+    result: "rows 70 70 equal True"
+    exit: 0
+    ts: "2026-09-26T21:17:47Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: modes_equivalent_final"
+    cmd: "scratch quick_proof.sh step modes_equivalent_final (inputs hashed in inputs_final.sha256)"
+    result: "G0k/val measured=equivalent; G1c/IFS measured=equivalent; G7c/stmt measured=equivalent; G9b/limb measured=equivalent; DIFF lines: 0"
+    exit: 0
+    ts: "2026-09-26T21:18:10Z"
+    seat: claude-opus-5-5
+  - claim: "final re-check on the committed bytes: workvars_final"
+    cmd: "scratch quick_proof.sh step workvars_final (inputs hashed in inputs_final.sha256)"
+    result: "l176 _pin_lines=-1 failed=31; l176 _pin_lines=1 failed=29; l176 deleted failed=33; l177 deleted failed=0; l72 drop -p failed=43; l74 drop -u failed=0; l269 drop -u failed=0; l96 drop -q failed=1"
+    exit: 0
+    ts: "2026-09-26T21:18:38Z"
+    seat: claude-opus-5-5
+  - claim: "G9b is not equivalent at 04dd6b51e4 under a hostile PATH, and is on the PR-1 target"
+    cmd: "scratch g9b_repro.sh (feasibility hostile-PATH tests on shipped/mutant x 04dd/target; direct heartbeat() probe under PATH=/does-not-exist)"
+    result: 'shipped_04dd 2 failed; mutant_04dd 2 passed; shipped_target 2 passed; mutant_target 2 passed; direct probe: shipped NO-HEARTBEAT, mutant {"ts":"","status":"starting"}'
+    exit: 0
+    ts: "2026-09-26T20:17:02Z"
+    seat: claude-opus-5-5
+  - claim: "council round 2: both titolari returned a verdict"
+    cmd: "scratch council/dispatch_r2.sh sol; council/dispatch_r2.sh kimi (env -i, read-only codex sandbox, no-tools kimi child)"
+    result: "codex-gpt-5.6-sol ACCEPT-WITH-NOTES (rc 0); kimi-code/k3 ACCEPT-WITH-NOTES (rc 0); verbatim in reviews/"
+    exit: 0
+    ts: "2026-09-26T20:42:11Z"
+    seat: claude-opus-5-5
+  - claim: "both spec files and the brief are prettier-clean; the YAML parses; no PII shape in the committed files or in any council prompt"
+    cmd: "prettier --check <spec> <inventory> <brief>; python3 -c yaml.safe_load(<inventory>); scratch pii_scan.py <spec> <inventory> <brief> reviews/*.md council-journal.jsonl <3 council prompts>"
+    result: "All matched files use Prettier code style!; yaml ok wa-codex-wrapper-inventory/1 69; pii_scan hits=0 files=11"
+    exit: 0
+    ts: "2026-09-26T21:19:07Z"
+    seat: claude-opus-5-5
+  - claim: "this diff's deterministic Gear floor is 3, sourced from SIZE"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base..index name-only> --numstat-file <same numstat>; ... --print-floor-source"
+    result: "floor=3 source=size (staged diff before this receipt was appended: 10 files, 3,510 insertions, 0 deletions)"
+    exit: 0
+    ts: "2026-09-26T21:22:39Z"
+    seat: claude-opus-5-5
+  - claim: "the inventory names every decision re-gate #2 asked for"
+    cmd: "grep -nE 'D10|D25|D26|D02|S1|S5' docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml"
+    result: "6 lines: was [D10] (G2a), [D25] (G2b), [D26] (G2c), [S1] (G3a), [S5] (G3e), [D02] (G6a); S2-S4 are G3b-G3d, P1-P6 are the G9 rows (§5bis.5)"
+    exit: 0
+    ts: "2026-09-26T21:24:44Z"
+    seat: claude-opus-5-5

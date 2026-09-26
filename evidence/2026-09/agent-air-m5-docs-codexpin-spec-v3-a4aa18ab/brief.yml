@@ -1,0 +1,118 @@
+task_id: codexpin-spec-v3
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+objective: >-
+  Condition S2 of the BLOCK on PR #7420 (re-gate #2, comment 5848838838).
+  PR #7420 is PR-1 of the codexpin v3 rework, and it hit the same cause at
+  three gates: a guard or conjunct of the wrapper's D5 pin parse could be
+  deleted with the suite green, and every hand-written mutation table
+  missed one. This PR commits the codexpin v3 spec, until now only session
+  scratch, as docs/specs/2026-09-27-codexpin-v3-spec.md. It adds:
+  - a CLOSED inventory of every D5 guard, conjunct, parse flag, constant and
+    refusal consequence of the wrapper at 04dd6b51e4 plus the two-line
+    heartbeat fix PR-1 lands (§5bis, plus the normative YAML sidecar), with
+    a machine-checkable site grammar;
+  - the fixture contract that removes the masking class;
+  - the specification of S3, the CI mutation check (§5ter), and of S4, the
+    evidence-text fixes (§5quater).
+  Docs only. No code, no workflow, no wrapper change.
+constraints:
+  - >-
+    Docs only: docs/specs/ plus this evidence directory. PR #7420's branch
+    is suspended as a draft and is not touched. S3's implementation ships
+    with the resumed PR-1 build, not here.
+  - >-
+    Faithful to the scratch spec: D1-D9, their amendments and the 3-PR plan
+    are kept. Only what the three gates, or this PR's own council round 1,
+    proved wrong is changed, and each change is listed in §10 with what
+    proved it.
+  - >-
+    No secrets, no client PII, no private owner name. The spec names only
+    service accounts, repo paths and the owner codename.
+  - >-
+    This session does not arm and does not merge. The coordinating session
+    owns the gate and the merge.
+acceptance:
+  - text: >-
+      The inventory SHALL be closed against the PR-1 target (04dd6b51e4 plus
+      the heartbeat fix) and against 04dd6b51e4 itself: every site of the
+      16-kind grammar (§5bis.3) is claimed by exactly one row, every anchor
+      resolves, and a planted guard is reported UNCLAIMED. Expected: 134/134
+      on the target, 132/132 on 04dd6b51e4, 17 UNCLAIMED for nine planted
+      constructs.
+    probe: quick_proof.sh step closure_target_final
+  - text: >-
+      The inventory SHALL name every item re-gate #2 asked for: D10, D25,
+      D26, D02 and S1-S5, each with a disposition and an isolating fixture.
+    probe: >-
+      grep -nE 'D10|D25|D26|D02|S1|S5' docs/specs/2026-09-27-codexpin-v3-d5-inventory.yaml
+  - text: >-
+      The fixture contract SHALL be satisfiable: a suite applying §5bis.4
+      and §5bis.7 to the PR-1 target kills every MUST mutant, each by a test
+      in its killed_by list, while the EQUIVALENT mutants survive. Expected:
+      126/126 MUST killed with killer hit, every killed_by matching exactly
+      one node, 4 EQUIVALENT surviving, 0 sh -n failures, 0 mode mismatches.
+    probe: feasibility_test.py --json feasibility.json
+  - text: >-
+      The rendered table in §5bis.6 SHALL equal the YAML, cell by cell.
+      Expected: 70 rows equal (header plus 69).
+    probe: quick_proof.sh step parity_final
+  - text: >-
+      Both files SHALL be prettier-clean, and the YAML SHALL parse.
+    probe: prettier --check <spec> <inventory> <brief>
+consumer_map:
+  - >-
+    The resumed PR-1 build (PR #7420): it implements
+    scripts/ci/wa_codex_wrapper_mutants.py per §5ter, reads this YAML as
+    its inventory, rewrites the test file per §5bis.7, and fixes the pack
+    text per §5quater.
+  - >-
+    The CI mutation job that ships in that same build, inside
+    .github/workflows/wa-codex-pin.yml. It reads this inventory on every PR
+    that touches the wrapper, and fails on an unclaimed site, a surviving
+    MUST mutant or a table drift. Observation: that job green on the
+    resumed PR head, with its selftest proving that it goes red when the
+    D10 fixture is removed.
+  - >-
+    The fresh re-gate of the resumed PR-1, which runs the committed S3
+    check instead of a hand-enumerated table.
+risks:
+  - >-
+    The site grammar is lexical, not a shell parser. A guard written in a
+    construct outside the 16 kinds would escape closure. Mitigation: the
+    kinds cover every control construct the wrapper uses, the selftest
+    pins the grammar with planted guilt cases, and PR-2 must extend the
+    grammar before its installer uses new constructs (§5ter).
+  - >-
+    The mode classification is measured with a stub daemon, so a mode can
+    read milder than production when a fixture's hostile value does not
+    exist. Mitigation: the "hostile values must exist" fixture rule
+    (§5bis.4); measured on G8b and G8c.
+assumptions:
+  - text: >-
+      /bin/sh on the Pro runtime and on macos-latest CI is bash 3.2.57 in
+      POSIX mode, so `read -d ''` and the measured read semantics hold
+      where the wrapper runs.
+    status: verified
+    probe: /bin/sh --version (M5), r0 gate record for Pro
+  - text: >-
+      The daemon reads only WA_* and CODEX_HOME from its environment, which
+      is what the G7c EQUIVALENT claim rests on.
+    status: verified
+    probe: >-
+      grep -nE 'environ|getenv'
+      apps/backend-rag/backend/services/integrations/wa_codex_daemon.py
+grader: >-
+  Solo spec author (Claude Opus 5.5). A council of two titolari
+  (codex-gpt-5.6-sol and kimi-code/k3), convened by the author, reviews
+  the spec read-only, with a scrubbed env and a self-contained prompt that
+  carries no PII. Their verdicts are journaled in the pack. The final
+  harness/fable-gate verdict belongs to a fresh gate session convened by
+  the coordinator.
+budget: Existing subscription seats only (Claude CLI OAuth, Codex CLI OAuth, Kimi Code); no paid per-token API calls.
+pii: none
