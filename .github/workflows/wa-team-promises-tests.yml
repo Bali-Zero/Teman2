@@ -1,0 +1,167 @@
+name: wa team promises tests
+
+# Executor for `scripts/tests/test_wa_team_promises*.py` — the T3 promise
+# gate corpus (schema init + guard, the PR-2 candidates scanner, and the
+# static SQL/constant cross-check that PG-truths the contract).
+#
+# WHY THIS FILE EXISTS. Gate condition C-D on PR #7413 (the R5/R1 rework of
+# the T3 SQL cross-checker): `grep -rln 'test_wa_team_promises' .github/`
+# returned NOTHING before this file. The only runner was
+# `scripts-tests-sweep.yml` — nightly, `continue-on-error: true`,
+# report-only — so a PR that broke the cross-checker's parser or the
+# scanner's clause splitter went green. `WA_TEAM_PROMISES_REAL_PG=1` never
+# ran in CI either; see the real-PG note below for why that stays out of
+# THIS file rather than being invented here.
+#
+# Same shape, same reasoning and same file layout as `queue-doctor-tests.yml`
+# / `mq-oracle-tests.yml` (superscar #2, exists != armed, applied to this
+# corpus specifically).
+#
+# NOT a required context, matching `alarm-cure-alignment.yml` /
+# `tg-gateway.yml`'s reasoning: what matters here is that an executor exists
+# that CAN go red. Whether a red stops a merge is a repo-settings action
+# (branch protection), gated separately (CLAUDE.md §13), and a path-filtered
+# required check would hang every PR that never touches these paths on
+# "Expected — Waiting for status to be reported".
+#
+# NO `merge_group:` TRIGGER, and therefore a `paths:` filter is safe here —
+# same reasoning as `queue-doctor-tests.yml`: `merge_group` supports no
+# `paths:` key, so declaring one alongside a `pull_request` filter would
+# create a head-green/queue-red split. A workflow with a filter and no queue
+# trigger has nothing to diverge from.
+#
+# THE PATH LIST IS THE CORPUS'S READ-SET, not just the two obvious files.
+#   - `scripts/wa_team_promises.py` and `scripts/sql/pro_local/team_promises*.sql`
+#     are what the corpus asserts against directly.
+#   - `apps/backend-rag/backend/services/wa_copilot/team_promises.py` is
+#     listed even though the team-lead's own C-D spec did not name it,
+#     because `scripts/wa_team_promises.py` imports its regex catalog
+#     (`_PROMISE_PATTERNS_RE`, `_TEMPORAL_CUES`) at module scope — a change
+#     there can break the clause-splitter tests in
+#     `test_wa_team_promises_scan.py` while touching none of the paths the
+#     spec listed. Measured: no test file names it directly, all reach it
+#     transitively through `import scripts.wa_team_promises`.
+#   - `scripts/tests/conftest.py` is listed for the same reason
+#     `queue-doctor-tests.yml` lists it: its fixtures are `autouse=True`.
+#   - `scripts/wa_team_promises_scan_cron.sh` IS listed even though the
+#     corpus never invokes it (measured: zero references in
+#     scripts/tests/test_wa_team_promises*.py) — unlike `queue-doctor-tests.yml`'s
+#     deliberate omission of `scripts/mq.sh` for the identical reason. Kept
+#     here because the coordinator's C-D spec named it explicitly as part of
+#     this corpus's read-set; the cost is a workflow that sometimes runs on
+#     an edit it cannot judge, not a workflow that misses one it should.
+#
+# REAL-PG STAYS OUT OF THIS FILE. `test_wa_team_promises_real_pg.py` and its
+# three siblings do not read `DATABASE_URL` — each spins up its OWN
+# throwaway cluster via `pg_ctl`/`initdb` found on `PATH`
+# (`shutil.which("pg_ctl")`), and skips itself when either binary is absent
+# or `WA_TEAM_PROMISES_REAL_PG` is unset. That is a different shape from this
+# repo's existing service-container pattern (`scripts-tests-sweep.yml`'s
+# `ghcr.io/bali-zero/ci-mirror/postgres:15`, reachable over
+# `localhost:5432`) — a service container answers on a socket, it does not
+# put `pg_ctl`/`initdb` binaries on `PATH` for a `pg_ctl -w start` subprocess
+# to invoke. No existing workflow in this repo runs the local-cluster shape
+# (`git grep -n 'pg_ctl\|initdb' .github/workflows/` returns nothing). Wiring
+# either shape in here would be inventing a new PG setup, which the
+# coordinator's spec says not to do. Left for a follow-up that either adds
+# `postgresql-16` (server package, puts `pg_ctl`/`initdb` on `PATH`) to this
+# runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
+#
+# The 94/16 unit-vs-skip split below is this corpus's floor the day this file
+# was written (`test_wa_team_promises*.py`, REAL_PG unset): the 16 skips are
+# exactly the real-PG opt-in cases this file does not enable.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/wa_team_promises.py"
+      - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/sql/pro_local/team_promises*.sql"
+      - "scripts/tests/test_wa_team_promises*.py"
+      - "scripts/tests/conftest.py"
+      - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - ".github/workflows/wa-team-promises-tests.yml"
+  push:
+    branches:
+      - main
+    # Symmetric with the pull_request list above, this file included: an
+    # asymmetric filter means a direct push to main editing only this
+    # workflow runs nothing.
+    paths:
+      - "scripts/wa_team_promises.py"
+      - "scripts/wa_team_promises_scan_cron.sh"
+      - "scripts/sql/pro_local/team_promises*.sql"
+      - "scripts/tests/test_wa_team_promises*.py"
+      - "scripts/tests/conftest.py"
+      - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - ".github/workflows/wa-team-promises-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wa-team-promises-tests-${{ github.ref }}
+  # Superseded pushes on a PR branch may be cancelled freely; a main run may
+  # not, because the group is keyed on `github.ref` and cancelling an
+  # in-flight main run is a suppressed alarm rather than a saving.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  wa-team-promises-tests:
+    name: wa team promises tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # setup-python provisions a CLEAN interpreter: pip/setuptools/wheel
+      # only. `asyncpg` ships manylinux wheels (no compiler needed) and is
+      # the only third-party import the corpus needs when REAL_PG is unset —
+      # `scripts/wa_team_promises.py` and the wa_copilot regex module it
+      # imports are otherwise stdlib-only. Measured locally: `pip show
+      # asyncpg` on this repo's own `apps/backend-rag/requirements.txt` pins
+      # `>=0.31.0`; pinned here to the same floor so this job never drifts
+      # ahead of what the runtime actually ships.
+      - name: Install test deps
+        run: pip install --quiet pytest "asyncpg>=0.31.0"
+
+      # ONE run, and the assertion is on tests that PASSED — not on tests
+      # collected, and not on the exit code alone. Each of those three is a
+      # green that can hide an empty run:
+      #   * exit code alone: pytest exits 0 when every case is SKIPPED.
+      #   * collected count: `--collect-only` counts skipped cases too.
+      #   * a floor with no upper discipline: adding cases must never turn
+      #     this red, so the comparison is `-lt`, and the floor only
+      #     ratchets UP when someone raises it deliberately.
+      # `|| RC=$?` IS LOAD-BEARING, NOT STYLE — a `run:` block with no
+      # `shell:` key runs under GitHub's default `bash -e {0}`, and
+      # `set -uo pipefail` below does NOT clear that `-e`. A bare capture
+      # would abort the step the moment pytest exits non-zero, before the
+      # `printf`/`::error::` lines ever run, leaving a red step with an empty
+      # log (scar W101/W107, the same diagnosis `queue-doctor-tests.yml`
+      # carries verbatim).
+      - name: The T3 promise gate corpus still refuses to fabricate a measurement
+        run: |
+          set -uo pipefail
+          FLOOR=94   # the corpus size on main when this file was written (REAL_PG unset)
+          RC=0
+          OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
+          printf '%s\n' "$OUT"
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::the wa_team_promises corpus did not pass (pytest exit $RC) — output above"
+            exit 1
+          fi
+          PASSED="$(printf '%s\n' "$OUT" | sed -n 's/^\([0-9][0-9]*\) passed.*/\1/p' | tail -1)"
+          if [ -z "$PASSED" ]; then
+            echo "::error::pytest exited 0 but printed no 'N passed' line — the corpus may have been skipped in its entirety, which is not a pass"
+            exit 1
+          fi
+          if [ "$PASSED" -lt "$FLOOR" ]; then
+            echo "::error::the wa_team_promises corpus had $PASSED passing cases, below the floor of $FLOOR — cases were removed, or skipped (a skip is not a pass)"
+            exit 1
+          fi
+          echo "wa_team_promises corpus: $PASSED passing cases (floor $FLOOR)"
