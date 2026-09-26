@@ -164,23 +164,25 @@ What action should I take?"""
                 cost_usd=cost,
             )
 
-    async def _call_ollama(self, model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+    async def _call_ollama(
+        self, model: str, system: str, user: str, timeout: float = 30.0, keep_alive: int | None = None
+    ) -> tuple[str, float]:
         """Call a local Ollama model. Free, no API cost."""
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "stream": False,
+            "think": False,
+            "format": "json",
+            "options": {"temperature": 0.3, "num_predict": 256},
+        }
+        if keep_alive is not None:
+            payload["keep_alive"] = keep_alive
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{self._ollama_url}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                    "stream": False,
-                    "think": False,
-                    "format": "json",
-                    "options": {"temperature": 0.3, "num_predict": 256},
-                },
-            )
+            response = await client.post(f"{self._ollama_url}/api/chat", json=payload)
             response.raise_for_status()
             data = response.json()
             return data["message"]["content"], 0.0
@@ -310,8 +312,13 @@ What action should I take?"""
                 )
 
         # Tier 1: Qwen 3.5 27B (deeper reasoning)
+        # keep_alive=0 (Pro 2026-09-26): tier 1 fires when tier 0 times out behind
+        # the translator on the 9b's single slot, so the 27b loads BESIDE a busy 9b
+        # (OLLAMA_MAX_LOADED_MODELS=2 evicts neither). Measured 20:50:19-20:52:56.
+        # Unloading it after the one call bounds that stack to the call, instead
+        # of the server's 30m keep-alive.
         try:
-            text, cost = await self._call_ollama(self._model_heavy, system, user, timeout=60.0)
+            text, cost = await self._call_ollama(self._model_heavy, system, user, timeout=60.0, keep_alive=0)
             proposal = self._parse_response(text, tier=1, cost=cost)
             logger.info(f"Tier 1 (Qwen 27B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
             self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
