@@ -38,6 +38,10 @@ EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
 MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
+TRUSTED_PYSA_FILES = ["scripts/localci/pysa_check.py", "scripts/localci/pysa/taint.config", "scripts/localci/pysa/fastapi_sources_sinks.pysa",
+                      "scripts/localci/pysa/site_packages.txt"]  # taken from BASE: a candidate cannot weaken the taint models that judge it
+PYSA_SCOPE = "apps/backend-rag/backend/"
+DEFAULT_PYSA_HOME = Path.home() / ".nuzantara-pilots" / "local-ci" / "pysa-home"
 TRUSTED_CLASSIFIER_FILES = [
     "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
     "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py",
@@ -296,6 +300,27 @@ def load_plan_verified(run_dir: Path) -> dict:
     return plan
 
 
+def pysa_check_spec(wt: Path, base: str, cand: str, trusted: Path, run_dir: Path, changed: list[str], home_arg: str | None) -> dict:
+    """Pysa taint judge (no NEW flow vs BASE) — N/A when the diff has no backend python, BLOCKED when it cannot be trusted or run."""
+    touched = [f for f in changed if f.startswith(PYSA_SCOPE) and f.endswith(".py") and "/tests/" not in f and "/test/" not in f]
+    if not touched:
+        return {"kind": "record", "status": "NOT_APPLICABLE", "reason": f"no non-test python file under {PYSA_SCOPE} in the diff"}
+    tdir = trusted / "pysa"
+    (tdir / "pysa").mkdir(parents=True, exist_ok=True)
+    for rel in TRUSTED_PYSA_FILES:
+        blob = _extract_base_file(wt, base, rel)
+        if blob is None:
+            return {"kind": "record", "status": "BLOCKED", "reason": f"trusted pysa file {rel} missing at base {base[:12]} — the check cannot judge with candidate-supplied logic"}
+        (tdir / ("pysa_check.py" if rel.endswith("pysa_check.py") else f"pysa/{Path(rel).name}")).write_bytes(blob)
+    home = Path(home_arg) if home_arg else DEFAULT_PYSA_HOME
+    if not (home / "venv" / "bin" / "pyre").exists():
+        return {"kind": "record", "status": "BLOCKED", "reason": f"pysa home {home} not set up (python scripts/localci/pysa_check.py setup --home {home} --backend-venv apps/backend-rag/.venv)"}
+    return {"kind": "cmd", "cwd": str(wt), "trusted_pythonpath": str(tdir), "error_rcs": [2],
+            "cmd": [sys.executable, "-I", str(tdir / "pysa_check.py"), "judge", "--home", str(home), "--worktree", str(wt), "--base", base, "--candidate", cand,
+                    "--out", str(run_dir / "receipts" / "pysa")],
+            "purpose": f"Pysa taint on {len(touched)} touched backend file(s): no NEW log-injection/stack-trace/path/SSRF/redirect flow vs BASE {base[:12]}; judge logic and models from BASE"}
+
+
 def cmd_plan(a):
     run_dir, wt = Path(a.run_dir).resolve(), Path(a.worktree).resolve()
     store = Store(run_dir)
@@ -338,6 +363,7 @@ def cmd_plan(a):
                        else "mouth domain not touched per trusted change_map")},
         "review.independent": {"kind": "review", "purpose": "a seat != builder signs the reviewed candidate identity; BLOCKED until a matching review is imported"},
     }
+    checks["security.pysa_python"] = pysa_check_spec(wt, base, ident["candidate_sha"], trusted, run_dir, changed, a.pysa_home)
     tp_files = [BAN_TEST] + [f for f in (a.trusted_pytest or []) if f != BAN_TEST]
     for rel in tp_files:
         blob = _extract_base_file(wt, base, rel)
@@ -509,6 +535,8 @@ def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> d
             status, reason = "PASS", "rc=0"
         elif rc < 0:
             status, reason = "ERROR", f"crashed (signal {-rc})"
+        elif rc in (spec.get("error_rcs") or []):
+            status, reason = "ERROR", f"tool error rc={rc} (declared error_rcs={spec['error_rcs']}) — missing evidence is not a verdict"
         else:
             status, reason = "FAIL", f"rc={rc}"
     return {"status": status, "reason": reason, "rc": rc, "duration_s": dur, "counts": counts, "log": str(log)}
@@ -852,6 +880,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--deadline-s", type=float, default=DEFAULT_DEADLINE_S)
     p.add_argument("--trusted-pytest", action="append", help="extra base-ref test file to run against the candidate tree")
     p.add_argument("--extra-check", action="append")
+    p.add_argument("--pysa-home", help=f"Pysa home built by pysa_check.py setup (default {DEFAULT_PYSA_HOME})")
     p.set_defaults(fn=cmd_plan)
     r = sub.add_parser("run")
     r.add_argument("--run-dir", required=True)

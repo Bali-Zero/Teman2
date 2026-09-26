@@ -22,6 +22,22 @@ Trusted checks (classifier, `cmd`, `trusted_pytest`) run `python -I` (ignores us
 prefix (`policy.`, `tests.`, `review.`, `trusted.`) or is already planned, and when the spec is not an executable kind (`cmd`,
 `pytest`): an extra check can add evidence, never replace a policy verdict or record a PASS nobody ran (v0.2.2).
 
+## Security: Pysa taint judge (`security.pysa_python`)
+
+CodeQL CLI cannot run on this repo (public, no OSI licence), so the python security queries are stood in for by Pysa
+(Meta, MIT), chosen on a benchmark against the CodeQL flows GitHub produced for the same commit
+(`~/.nuzantara-pilots/local-ci-followup/benchmark/REPORT_BENCHMARK.md`: 80 % flow recall on log-injection, 100 % on
+stack-trace / path / SSRF / redirect, 135 s, 1.6 GB). The check is planned whenever the diff touches a non-test
+`apps/backend-rag/backend/**/*.py`; otherwise NOT_APPLICABLE. It is BLOCKED (never silently green) when the judge or
+its models are missing at the BASE ref — they are copied from BASE like the classifier, so a candidate cannot weaken the
+models that judge it — or when the Pysa home is not set up:
+
+    python scripts/localci/pysa_check.py setup --home ~/.nuzantara-pilots/local-ci/pysa-home --backend-venv apps/backend-rag/.venv
+
+Verdict = "no NEW flow versus BASE": each flow is keyed by family, source callable, sink callable and the sink
+statement text, so line shifts do not count; the BASE scan is cached per subtree sha under the home. rc 1 → FAIL with
+`receipts/pysa/report.md` listing the new flows; rc 2 → ERROR (declared via `error_rcs`, a tool failure is not a verdict).
+
 ## Statuses and overall
 
 `QUEUED RUNNING PASS FAIL ERROR BLOCKED STALE INTERRUPTED NOT_APPLICABLE` (NOT_APPLICABLE needs a recorded reason).
