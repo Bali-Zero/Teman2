@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-air-m5-infra-wa-team-promises-gate-43387e95/brief.yml
+brief_ref: evidence/brief.yml
 council_run: "journal.jsonl"
 plan_ref:
   "PR (agent/air-m5/infra/t3-tests-pr-gate, base main) — 'ci(wa-team): gate T3 promise tests on
