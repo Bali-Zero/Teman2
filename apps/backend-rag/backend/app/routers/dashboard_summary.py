@@ -19,6 +19,7 @@ from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool, require_team_member
 from backend.app.routers.crm_interactions import get_interactions_stats, list_interactions
 from backend.app.routers.crm_practices import get_practices_stats, list_practices
+from backend.app.utils.crm_utils import AvatarUrl
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import get_cache_service
 from backend.core.collection_registry import resolve_collection_name
@@ -855,7 +856,7 @@ class PortalChallengeTaxRules(BaseModel):
 class PortalChallengeEntry(BaseModel):
     member: str
     display_name: str
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     department: str | None
     is_tax: bool
     is_me: bool
