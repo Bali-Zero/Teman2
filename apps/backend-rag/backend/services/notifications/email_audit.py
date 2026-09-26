@@ -113,7 +113,11 @@ async def log_email_attempt(
             )
             return int(row_id) if row_id is not None else None
     except Exception as exc:
-        logger.warning("email_audit: log_email_attempt failed: %s", exc)
+        # C4 (PR #7385 gate follow-up): a DB exception's text is not
+        # controlled input — a unique-constraint violation on `to_email`,
+        # for instance, echoes the value straight back. Scrub before it
+        # reaches the log, same helper the Telegram alert below uses.
+        logger.warning("email_audit: log_email_attempt failed: %s", _bounded_scrub(str(exc), 400))
         return None
 
 
@@ -159,7 +163,11 @@ async def record_email_result(
                         # attempt 3 = no more retries; retry_after stays None →
                         # escalate_unrecoverable() will pick it up.
         except Exception as exc:
-            logger.warning("email_audit: could not resolve attempt_n for %d: %s", row_id, exc)
+            logger.warning(
+                "email_audit: could not resolve attempt_n for %d: %s",
+                row_id,
+                _bounded_scrub(str(exc), 400),
+            )
 
     # `status` travels twice, as $2 and $6. One shared parameter used to
     # feed both the `status` assignment (character varying) and the
@@ -195,7 +203,11 @@ async def record_email_result(
                 status,
             )
     except Exception as exc:
-        logger.warning("email_audit: record_email_result failed for %d: %s", row_id, exc)
+        logger.warning(
+            "email_audit: record_email_result failed for %d: %s",
+            row_id,
+            _bounded_scrub(str(exc), 400),
+        )
 
 
 # `error`/`subject` are caller-supplied free text and can themselves carry
@@ -222,47 +234,97 @@ async def record_email_result(
 #
 # K1 (PR #7417 gate follow-up, CodeQL alert 9200, `py/polynomial-redos`):
 # this used to be three `re` patterns — `_EMAIL_TOKEN_RE.sub(...)` plus two
-# peel regexes. All three have the same shape CodeQL flagged on C6's
+# peel regexes. Two of the three have the same shape CodeQL flagged on C6's
 # `_TRAILING_PARTIAL_TOKEN_RE`: an unanchored (or `.search`-driven) scan
 # whose failure mode backtracks per START POSITION, so a non-matching run
 # costs O(length²) rather than O(length) — measured 1.05-1.64s at 20k
-# chars for each of the three. `_bounded_scrub` bounds every caller to
-# 120/400 chars (a few ms even at that cost), so this was never a live
-# DoS, but the fix is the same one C6 already established: replace with a
-# construct that cannot backtrack. Below, `_scrub_word` is a single
-# forward pass (each character visited a bounded number of times, never
-# re-scanned from an earlier position — the same "two-pointer" shape as
-# `_strip_trailing_partial_token`), and `_redact_token`'s peel uses
+# chars for the token regex and the trailing peel (N2, PR #7426 gate: the
+# leading peel was `^[…]+` via `.match`, which is anchored and was already
+# linear — only the other two were ever quadratic). `_bounded_scrub` bounds
+# every caller to 120/400 chars (a few ms even at that cost), so this was
+# never a live DoS, but the fix is the same one C6 already established:
+# replace with a construct that cannot backtrack. Below, `_scrub_word` is a
+# single forward pass (each character visited a bounded number of times,
+# never re-scanned from an earlier position — the same "two-pointer" shape
+# as `_strip_trailing_partial_token`), and `_redact_token`'s peel uses
 # `str.lstrip`/`str.rstrip` over explicit character sets — a builtin, not
 # a regex, so there is no pattern for CodeQL (or an adversarial input) to
 # find a blowup in.
+#
+# K3 (PR #7417 gate follow-up, folded into the #7385 C4 PR): `'`/`` ` ``
+# are valid RFC 5322 `atext` (same class as `_`/`*` above) and were wrongly
+# excluded as hard boundaries — `qzvkwy'x@y.com` used to split into two
+# "words" at the apostrophe, so the fragment before it (`qzvkwy`) had no
+# `@` of its own and survived unredacted. They are content now, consumed
+# into the digest like any other local-part character. `"` stays out of
+# `_HARD_BOUNDARY_CHARS` too (RFC 5322 quoted-string local parts,
+# `"qzvk wjyg"@example.com`, can contain a space that must NOT split the
+# token in two), but a bare `"` is not itself address content, so
+# `_scrub_email_tokens` treats it specially: only a `"..."` span
+# IMMEDIATELY followed by `@` (checked with one `str.find` per quote, see
+# below) is pulled into the current word across whitespace; every other
+# quote — unpaired, or paired but not adjacent to `@` (plain prose like
+# `"call me @home"`) — is ordinary content and whitespace inside it still
+# splits words normally. `_redact_token` peels a matched `"..."` pair that
+# wraps the WHOLE token (`"matteo@example.com"` → `"id:…"`, symmetric,
+# nothing left unbalanced); a quote that is not at both edges — the
+# quoted-local case, where the closing `"` sits mid-token right before
+# `@` — is left as content and digested with the rest, deliberately: an
+# edge-only peel there would leave an orphan opening quote with nothing to
+# pair it, trading one cosmetic residual for another. Either way no
+# fragment of the local part survives.
+#
+# Linear-time argument for the added `str.find('"', j + 1)` lookahead: it
+# runs once per `"` encountered, searching only as far as the NEXT `"` (or
+# EOF). Those searched ranges are the gaps BETWEEN consecutive quotes,
+# which partition the string — they never overlap, so their total length
+# is bounded by the length of the text itself, however many quotes it has.
+# A pairing that is found but rejected (no `@` right after) does not skip
+# ahead; the scan falls back to advancing one character at a time, so nothing
+# is double-counted. Total added work is O(n); see
+# `test_scrub_email_tokens_handles_many_lone_quotes_without_hanging` for a
+# measured run.
 _MD_DELIMS = "*_[]()"
 _TRAILING_PUNCT_CHARS = _MD_DELIMS + ".,;:!?"
-#: A token never spans one of these, beyond whitespace — matches the
-#: `<>"'`` backtick chars the old `_EMAIL_TOKEN_RE`'s two character
-#: classes excluded (`@` is handled separately below: it is *within* a
-#: token, as the local/domain separator, never a boundary).
-_HARD_BOUNDARY_CHARS = "<>\"'`"
+#: A token never spans one of these, beyond whitespace — matches the `<>`
+#: chars the old `_EMAIL_TOKEN_RE`'s two character classes excluded (`@` is
+#: handled separately below: it is *within* a token, as the local/domain
+#: separator, never a boundary). `"'`` ` are deliberately NOT here — see the
+#: K3 comment above.
+_HARD_BOUNDARY_CHARS = "<>"
 
 
 def _redact_token(token: str) -> str:
-    """Peel edge Markdown/punctuation off ``token``, digest the core.
+    """Peel edge Markdown/punctuation (and a matched quote pair) off
+    ``token``, digest the core.
 
     A leading run of `*_[]()` and a trailing run of that same set plus
     sentence punctuation (`.,;:!?`) are peeled off and reattached to the
     output verbatim — they belong to the surrounding text, not the
     address (e.g. `(a@b).` keeps its parenthesis and period). Anything
-    INSIDE the token (e.g. `first_last@x`'s `_`) is part of the address
-    as far as this function is concerned and is consumed into the digest
-    like any other character, so no fragment of it survives. `@` is never
-    in either strip set, so a token can never be peeled down past its own
-    `@` — there is always something left to digest.
+    INSIDE the token (e.g. `first_last@x`'s `_`, or `o'brien@x`'s `'`) is
+    part of the address as far as this function is concerned and is
+    consumed into the digest like any other character, so no fragment of
+    it survives. `@` is never in either strip set, so a token can never be
+    peeled down past its own `@` — there is always something left to digest.
+
+    K3: a `"`-wrapped token (`"matteo@example.com"`, both edges) peels the
+    same way — `"id:…"`, quotes preserved, nothing unbalanced. A quote pair
+    that does NOT wrap the whole token — the quoted-local shape,
+    `"qzvk wjyg"@x`, whose closing `"` sits mid-token right before `@` — is
+    deliberately left alone here and digested as ordinary content: peeling
+    only the leading quote there would leave an orphan with no matching
+    close, trading one cosmetic residual for another. Either way, no PII
+    fragment survives.
     """
-    core = token.lstrip(_MD_DELIMS)
-    prefix = token[: len(token) - len(core)]
+    quoted = len(token) > 1 and token[0] == '"' and token[-1] == '"'
+    inner = token[1:-1] if quoted else token
+    core = inner.lstrip(_MD_DELIMS)
+    prefix = inner[: len(inner) - len(core)]
     stripped_core = core.rstrip(_TRAILING_PUNCT_CHARS)
     suffix = core[len(stripped_core) :]
-    return prefix + redact_identifier_for_log(stripped_core) + suffix
+    digested = prefix + redact_identifier_for_log(stripped_core) + suffix
+    return f'"{digested}"' if quoted else digested
 
 
 def _scrub_word(word: str) -> str:
@@ -316,6 +378,16 @@ def _scrub_email_tokens(text: str) -> str:
     untouched) and hands each word to `_scrub_word`. Both passes are
     single forward scans — see the K1 comment above the module-level
     constants for why that matters.
+
+    K3: a word's end normally stops at the first whitespace/hard-boundary
+    character, but a `"..."` span immediately followed by `@` — a quoted
+    local part, `"qzvk wjyg"@example.com` — is pulled in whole, embedded
+    whitespace and all, because splitting on that inner space would strand
+    `"qzvk` with no `@` of its own to redact it. Every other quote (no
+    pairing `"` at all, or one that is not immediately followed by `@` —
+    ordinary prose like `"call me @home"`) is left as ordinary content and
+    does not suppress whitespace-splitting; see the K3 comment above the
+    module-level constants for the linear-time argument.
     """
     out: list[str] = []
     i = 0
@@ -327,7 +399,17 @@ def _scrub_email_tokens(text: str) -> str:
             i += 1
             continue
         j = i
-        while j < n and not (text[j].isspace() or text[j] in _HARD_BOUNDARY_CHARS):
+        while j < n:
+            c = text[j]
+            if c == '"':
+                close = text.find('"', j + 1)
+                if close != -1 and close + 1 < n and text[close + 1] == "@":
+                    j = close + 1
+                    continue
+                j += 1
+                continue
+            if c.isspace() or c in _HARD_BOUNDARY_CHARS:
+                break
             j += 1
         out.append(_scrub_word(text[i:j]))
         i = j
@@ -430,11 +512,24 @@ def notify_email_failure_critical(
     else:
         footer = "Queued for retry. Check `email_send_log` if it escalates."
 
+    # K4 (PR #7417 gate follow-up): a Markdown delimiter glued directly to
+    # an address with no whitespace between them — `*Delivery*addr` — comes
+    # out unbalanced once the address is redacted (`*id:…`), because the
+    # peel in `_redact_token` only strips a delimiter that sits at the
+    # token's own edge, and a glued `*` is outside the token entirely. No
+    # current caller produces that shape in `subject` (real callers pass a
+    # plain string like `Invoice {invoice_number}`), so this was a
+    # theoretical residual, not a live leak — but a code span sidesteps it
+    # structurally rather than relying on that staying true: Telegram does
+    # not interpret `*_[]` for formatting inside a `` ` `` span, so any
+    # stray delimiter next to a redacted digest renders literally instead
+    # of toggling bold/italic. `short_err` already had this; `short_subj`
+    # gets it here too.
     text = (
         "🚨 *Email delivery failure* — critical path\n\n"
         f"*Type:* `{email_type}`{practice_fragment}\n"
         f"*To:* `{redact_identifier_for_log(to_email)}`\n"
-        f"*Subject:* {short_subj}\n"
+        f"*Subject:* `{short_subj}`\n"
         f"*Error:* `{short_err}`\n\n"
         f"{footer}"
     )

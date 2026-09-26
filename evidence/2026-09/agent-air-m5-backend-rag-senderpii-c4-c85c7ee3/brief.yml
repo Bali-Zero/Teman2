@@ -1,0 +1,158 @@
+task_id: senderpii-c4
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Closes the three remaining sender-PII conditions from the #7385/#7417/#7426 gate chain, per
+  team-lead mandate (deadline 2026-10-03):
+
+  C4 (PR #7385 final gate, pull/7385#issuecomment-5846332358): out-of-scope residuals that PR
+  declared and deferred — `app/modules/notifications/router.py`'s provider-chain logging
+  (`Direct email sent to {request.to} via {name}...`, `Provider {name} failed for {request.to}...`,
+  and `_send_via_zoho_smtp`'s `logger.error("Zoho SMTP failed for %s: %s", to_email, e)`) logged the
+  recipient address raw, and the SMTP exception's own text (`e`) is provider-supplied and can echo
+  the address back (a bounce quoting it). `services/notifications/email_audit.py`'s three DB-exception
+  logs (`log_email_attempt`, and `record_email_result`'s two `except` blocks) logged `exc` verbatim —
+  a DB error (e.g. a unique-constraint violation DETAIL line) can carry the value that violated it.
+
+  K3 (PR #7417 final gate, pull/7417#issuecomment-5847196175, folded here per that gate's own
+  routing): `'`/`` ` `` are valid RFC 5322 `atext` and were wrongly excluded as hard token
+  boundaries in `_scrub_email_tokens` — `qzvkwy'x@y.example.test` split at the apostrophe, so the
+  local-part fragment before it survived unredacted. Quoted local parts
+  (`"qzvk wjyg"@example.test`) fared worse: the gate's own words, "both [`b491d10138` and pre-K3
+  HEAD] leak the whole address when it is not truncated" — `"` as a hard boundary meant NEITHER the
+  address's local part NOR its domain ever saw a redaction pass.
+
+  K4 (same #7417 gate, NIT, folded here): a Markdown delimiter glued directly to an address with no
+  whitespace (`*Delivery*addr`) comes out unbalanced once the address is redacted, because
+  `_redact_token`'s peel only strips a delimiter AT the token's own edge. No current caller produces
+  this in `subject` — real callers pass a plain string — but the fix removes the class of shape
+  structurally rather than relying on that staying true.
+constraints:
+  - "One PR, three gate conditions the mandate itself bundled (team-lead's dispatch names all three
+    for this single follow-up) — not three separate PRs, per the mandate."
+  - "Reuse the existing helpers (`redact_identifier_for_log`, `_scrub_word`, `_redact_token`,
+    `_bounded_scrub`) — no new regex, and specifically no regex with a nested/unanchored
+    quantifier (K1's `py/polynomial-redos` class). The one new scan this PR adds
+    (`_scrub_email_tokens`'s quote-pairing lookahead) is `str.find`-based, not a regex, and is
+    proven linear in a comment + a dedicated stress test — see risks/grader below."
+  - "No client PII in this PR's own artifacts — every example/test address is a synthetic
+    `*.example`/`*.example.test`/`sender.pii.probe@example.com`-shape address, matching #7385's,
+    #7417's and #7426's own convention."
+  - 'K3''s quote-peel is deliberately NARROWER than the wording ''peel quotes at the token edge''
+    might suggest in the fully general case: only a quote pair that wraps the WHOLE token
+    (`"matteo@example.test"`) is peeled and reattached. The quoted-LOCAL shape
+    (`"qzvk wjyg"@example.test`, closing quote mid-token right before `@`) is deliberately left
+    as content and digested whole, documented in code as a considered trade-off (an edge-only peel
+    there would strand an orphan opening quote — trading one cosmetic residual for another) — see
+    `_redact_token`''s K3 docstring.'
+acceptance:
+  - text: >-
+      (C4-router) `send_direct_email`'s success/failure log lines and `_send_via_zoho_smtp`'s
+      exception log SHALL NOT contain the raw recipient address or raw exception text; SHALL
+      contain `redact_identifier_for_log`'s digest; non-address log content (provider name, tag,
+      non-PII exception text) SHALL be unchanged.
+    probe: "pytest backend/tests/unit/app/modules/notifications/test_send_email_chain.py::TestSendChainLoggingDoesNotLeakTheRecipient"
+  - text: >-
+      (C4-email_audit) `log_email_attempt`'s and `record_email_result`'s (both `except` blocks)
+      warning logs SHALL NOT contain a DB exception's raw text if it happens to carry the
+      recipient address.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py -k attempt_lookup_error_log or db_error_log or update_error_log"
+  - text: >-
+      (K3) `_scrub_email_tokens` SHALL fully digest an address whose local part contains `'` or
+      `` ` ``, and a quoted-local-part address (`\"qzvk wjyg\"@domain`) even when NOT truncated —
+      no fragment of the local part, domain, or the literal `@` may survive. `_redact_token` SHALL
+      peel a quote pair that wraps a token's WHOLE outer edge (`\"addr\"` -> `\"id:…\"`) without
+      leaving an orphan quote for the quoted-local shape. Ordinary quoted prose with no `\"...\"@`
+      pairing (`\"call me @home\"`) SHALL be untouched (innocence).
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py -k 'apostrophe or backtick or quoted_local or redact_token_peels or redact_token_does_not_orphan or ordinary_quoted_prose or unpaired_quote'"
+  - text: >-
+      (K3, linear-time) the added `str.find('\"', j+1)` lookahead in `_scrub_email_tokens` SHALL
+      complete on a 200k-char adversarial input (quotes spaced 50 chars apart, each pairing
+      rejected) without a quadratic slowdown.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_email_tokens_handles_many_lone_quotes_without_hanging"
+  - text: >-
+      (K4) `notify_email_failure_critical`'s Telegram alert SHALL wrap `subject` in a code span
+      (`` ` ``) the same way `error` already is, so a stray Markdown delimiter next to a redacted
+      digest renders literally instead of toggling bold/italic and corrupting the message.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_preserves_markdown_wrapping_delimiters_around_a_delimiter_bearing_address"
+  - text: >-
+      (N1/N2, PR #7426 gate wording NITs) the K1 block comment and the 200k trailing-punctuation
+      test's docstring SHALL correctly attribute which of the three old regexes were quadratic
+      (not all three — the leading peel was anchored and already linear), and a new test SHALL
+      cover the actually-quadratic shape (`a@b`+`!`*n+`x`, ending in a non-matching character).
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_email_tokens_handles_a_trailing_run_ending_in_a_non_delimiter_without_hanging"
+  - text: >-
+      (N4, PR #7426 gate wording NITs) the #7426 evidence pack's own brief.yml SHALL correct two
+      claims: K2's acceptance criterion overclaimed "both address/fragment present" on
+      `b491d10138` (only the fragment survives there), and a risk bullet claimed the byte-identical
+      proof ran against `b491d10138` (it ran against `37c03c1874`, the actual parent — b491 differs
+      in 2,141 corpus cases and would show diffs, not 0).
+    probe: "grep -n 'Corrected per the #7426 gate' evidence/2026-09/agent-air-m5-backend-rag-senderpii-k1k2-5d2b31a4/brief.yml"
+  - text: >-
+      No regression: the full notifications/security/newsletter/mail_loop/crm/birthday/integrations
+      test set, plus the 3 core RAG suites named in `apps/backend-rag/CLAUDE.md` §11, SHALL still
+      pass, and `ruff check` on the 4 touched files SHALL be clean.
+    probe: "pytest backend/tests/unit/services/notifications backend/tests/unit/app/modules/notifications backend/tests/unit/app/services/test_internal_email.py backend/tests/unit/security backend/tests/services/newsletter backend/tests/unit/services/mail_loop backend/tests/unit/services/crm backend/tests/services/crm backend/tests/unit/app/routers/test_newsletter_confirmation_email.py backend/tests/services/integrations backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py; ruff check backend/services/notifications/email_audit.py backend/app/modules/notifications/router.py backend/tests/unit/services/notifications/test_email_audit.py backend/tests/unit/app/modules/notifications/test_send_email_chain.py"
+consumer_map:
+  - "`backend/app/modules/notifications/router.py`'s `send_direct_email` / `_send_via_zoho_smtp` —
+    every direct-send request through `POST /api/notifications/send-email` (invoice, welcome,
+    completion, credential-delivery emails) now logs a digest instead of the recipient address on
+    success, provider-fallback, and Zoho-SMTP-exception paths."
+  - "`backend/services/notifications/email_audit.py`'s `log_email_attempt` / `record_email_result` /
+    `notify_email_failure_critical` — the same audit-write and Telegram-alert path #7385/#7417/#7426
+    already scrub; this PR closes the DB-exception-text gap and the quoted/apostrophe/backtick
+    local-part gap in the SAME scrub those PRs built."
+  - "GitHub code scanning (CodeQL) — the `_scrub_email_tokens` quote lookahead adds no regex, so
+    the 0-open-`py/polynomial-redos`-alerts state #7426 reached should be unchanged after the next
+    nightly scan on `email_audit.py`."
+risks:
+  - 'K3''s quote-pairing lookahead is a NEW `str.find` call site inside `_scrub_email_tokens`''s
+    forward scan, not present in #7426''s shipped code — it is amortized-linear by the same
+    disjoint-range argument K1''s own `_scrub_word`/`_redact_token` already rely on (each `find`
+    only searches the gap up to the NEXT `"`, and those gaps partition the string), proven with a
+    200k-char adversarial stress test (50-char gaps, every pairing rejected) rather than only
+    asserted in the code comment.'
+  - "K3 deliberately does NOT achieve the theoretically 'nicest' peel for every quote shape — see
+    the constraints entry above. This is a documented trade-off, not an oversight; a future gate
+    may disagree with the choice, but no PII fragment survives under either design."
+  - "K4's fix (wrapping `subject` in a code span) changes the exact text of two pre-existing tests
+    in `test_email_audit.py` (`test_scrub_preserves_markdown_wrapping_delimiters_around_a_delimiter_bearing_address`,
+    which now expects the leading/trailing backtick) — updated in this PR, not left for the gate to
+    discover as a silent format change."
+grader: |
+  Ran the full acceptance-criteria probe list above locally (venv `apps/backend-rag/.venv`):
+  104 passed in the two directly-touched test files (`test_email_audit.py` +
+  `test_send_email_chain.py`); 1244 passed across the wider
+  notifications/security/newsletter/mail_loop/crm/integrations set; 13 passed in the two
+  birthday-notifier suites under `tests/services/crm/`; 91 passed in the 3 core RAG suites.
+  `ruff check` on all 4 touched files: clean.
+
+  Mutation verification (cp-backed, not `git checkout --`, per this repo's own lesson on wiping an
+  uncommitted cure): backed up both cured source files, replaced each with `origin/main`'s version
+  at `ca168b59da` (this branch's base) in turn, re-ran the affected tests, and restored from the cp
+  backup afterward.
+  - `router.py` reverted to base: all 3 `TestSendChainLoggingDoesNotLeakTheRecipient` guilt tests
+    (success/provider-failure/Zoho-exception) went RED with the raw address visible in the
+    assertion diff; the other 33 tests in that file were unaffected. Restored — 36/36 green again.
+  - `email_audit.py` reverted to base: 8 tests went RED for the expected reason — the 3 new
+    C4 DB-exception-log tests (raw exception text visible), the K4 subject-format test (no
+    backtick wrapping), and 4 K3 tests (apostrophe/backtick/quoted-space fragments surviving, and
+    the fully-wrapped-quote peel producing no leading/trailing quote). 60 tests were unaffected.
+    Restored — 104/104 green again.
+  `git status --short` after both restores showed a byte-identical working tree to before the
+  mutation pass (diffed the restored files against the cp backup with `diff -q`, both reported no
+  difference), confirming the mutation pass left no residue.
+budget: >-
+  1 build lane (this session), no cross-family review lane — Gear 2 (declared; recomputed locally
+  with this branch's own `scripts/evidence_pack_lint.py --print-floor` against the CI-equivalent
+  changed-files/numstat inputs: floor 2, matching the declared gear). 4 files touched in the code
+  change (2 source + 2 test), +457/-40 there; this brief and a 2-line wording fix to #7426's own
+  brief.yml are evidence-only and outside that count. Net line count runs slightly past the
+  Builder Contract's ~400-line guidance because the mandate itself bundled three separate gate
+  conditions (C4, K3, K4) into this one follow-up rather than three PRs — declared here rather than
+  split against the mandate's own instruction.
+pii: >-
+  none — every address in this PR's diff/tests/pack is a synthetic
+  `*.example`/`*.example.test`/`sender.pii.probe@example.com` shape; no production `to_email`,
+  practice, or client identifier appears anywhere in this pack or the changed tests.

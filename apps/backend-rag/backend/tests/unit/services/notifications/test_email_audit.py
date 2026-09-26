@@ -85,6 +85,27 @@ async def test_log_email_attempt_swallows_db_error(fake_pool):
     assert row_id is None
 
 
+@pytest.mark.asyncio
+async def test_log_email_attempt_db_error_log_does_not_leak_the_recipient(fake_pool, caplog):
+    """C4 (PR #7385 gate follow-up): a DB exception's text is not
+    controlled input — a unique-constraint violation on `to_email`, for
+    instance, echoes the value straight back in its DETAIL line. It must
+    not reach the log raw."""
+    addr = "constraint.probe@example.com"
+    fake_pool._conn.fetchval.side_effect = RuntimeError(
+        'duplicate key value violates unique constraint "email_send_log_to_email_key" '
+        f"DETAIL: Key (to_email)=({addr}) already exists."
+    )
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.notifications.email_audit"):
+        row_id = await log_email_attempt(fake_pool, email_type="welcome", to_email=addr)
+
+    assert row_id is None
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert addr not in joined
+    assert "constraint.probe" not in joined
+
+
 # ----------------------------------------------------------------------
 # record_email_result — retry_after schedule
 # ----------------------------------------------------------------------
@@ -149,6 +170,42 @@ async def test_record_email_result_resurrectable_schedules_retry(fake_pool):
 
     update_call = fake_pool._conn.execute.call_args
     assert update_call.args[5] is not None, "hr_bonus attempt=1 must schedule retry (1h backoff)"
+
+
+@pytest.mark.asyncio
+async def test_record_email_result_attempt_lookup_error_log_does_not_leak(fake_pool, caplog):
+    """C4: the attempt_number/email_type lookup's own exception text can
+    carry the DB's echo of `to_email` (e.g. a connection error surfaced
+    mid-query); scrub it the same way the other two DB-exception logs in
+    this module are scrubbed."""
+    addr = "lookup.probe@example.com"
+    fake_pool._conn.fetchrow = AsyncMock(
+        side_effect=RuntimeError(f"server closed the connection while fetching row for {addr}")
+    )
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.notifications.email_audit"):
+        await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
+
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert addr not in joined
+    assert "lookup.probe" not in joined
+
+
+@pytest.mark.asyncio
+async def test_record_email_result_update_error_log_does_not_leak(fake_pool, caplog):
+    """C4: the terminal UPDATE's own exception text (e.g. a value-too-long
+    error quoting the offending value) must not reach the log raw either."""
+    addr = "update.probe@example.com"
+    fake_pool._conn.execute.side_effect = RuntimeError(
+        f"value too long for type character varying(255): {addr}"
+    )
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.notifications.email_audit"):
+        await record_email_result(fake_pool, 7, status="sent", provider="brevo")
+
+    joined = " ".join(r.getMessage() for r in caplog.records)
+    assert addr not in joined
+    assert "update.probe" not in joined
 
 
 @pytest.mark.asyncio
@@ -622,8 +679,10 @@ def test_scrub_preserves_markdown_wrapping_delimiters_around_a_delimiter_bearing
     assert "first_" not in text  # the fragment the old exclusion-based class left bare
     subj_line = next(line for line in text.splitlines() if line.startswith("*Subject:*"))
     err_line = next(line for line in text.splitlines() if line.startswith("*Error:*"))
-    # Wrapping delimiters preserved verbatim around the digest.
-    assert subj_line.startswith("*Subject:* _Re: ") and subj_line.endswith("_")
+    # Wrapping delimiters preserved verbatim around the digest. Subject is
+    # itself inside a code span since K4 (PR #7417 gate follow-up) — same
+    # treatment `error` already had — so the outer backtick comes first.
+    assert subj_line.startswith("*Subject:* `_Re: ") and subj_line.endswith("_`")
     assert err_line.startswith("*Error:* `(")
     assert err_line.endswith(").`")
 
@@ -811,18 +870,39 @@ def test_scrub_email_tokens_handles_200k_non_matching_chars_without_hanging():
 
 
 def test_scrub_email_tokens_handles_200k_char_trailing_punctuation_run_without_hanging():
-    """The other half of K1: the old `_TRAILING_MD_DELIM_PUNCT_RE.search(...)`
-    measured 1.64s/20k on a delimiter/punctuation run (`.search` tries
-    every possible start position). `_redact_token`'s `str.rstrip` has no
-    such failure mode: this completes, and — since `!` is itself one of
-    the trailing sentence-punctuation chars this function peels off, the
-    same way a real `email@x.com!!!` keeps its `!!!` outside the digest —
-    the address is redacted while the whole 200k-char run survives
-    verbatim as the trailing punctuation it's being treated as."""
+    """N1 (PR #7426 gate) corrects this docstring's own claim: this shape —
+    ending in `!`, itself one of `_TRAILING_MD_DELIM_PUNCT_RE`'s own
+    delimiter chars — is NOT the one that was ever quadratic on the old
+    regex. An anchored `.search` for a trailing delimiter run matches on
+    its very first attempt when the string actually ends in one (measured
+    2.7ms on the pre-K1 regex, not 1.64s/20k). It is still a useful
+    behaviour proof: `_redact_token`'s `str.rstrip` peels the whole run in
+    one pass regardless — the address is redacted while the 200k-char run
+    survives verbatim as the trailing punctuation it's being treated as.
+    See the sibling test below for the shape that was actually quadratic.
+    """
     token = "a@b" + "!" * 200_000
     out = _scrub_email_tokens(token)
     assert out.endswith("!" * 200_000)
     assert out[: len(out) - 200_000].startswith("id:")
+
+
+def test_scrub_email_tokens_handles_a_trailing_run_ending_in_a_non_delimiter_without_hanging():
+    """N1 (PR #7426 gate): the actually-quadratic shape on the old
+    `_TRAILING_MD_DELIM_PUNCT_RE.search(...)` ends its run in a character
+    the pattern can never match (here, `x`) — `.search` retries from every
+    earlier start position before giving up (measured 2,294ms at 20k on
+    the old regex, 1.5ms on the linear replacement). `str.rstrip` has no
+    such failure mode: since the very last character isn't in
+    `_TRAILING_PUNCT_CHARS`, it strips nothing in one check, so the whole
+    run — trailing `x` included — is consumed into the digest along with
+    the address instead of surviving as (non-existent) trailing punctuation.
+    """
+    token = "a@b" + "!" * 200_000 + "x"
+    out = _scrub_email_tokens(token)
+    assert out.startswith("id:")
+    assert "!" not in out
+    assert "x" not in out
 
 
 def test_scrub_email_tokens_fully_digests_a_400_char_single_token():
@@ -849,3 +929,104 @@ def test_redact_token_peels_edges_and_digests_the_core():
     assert out.endswith(").")
     assert "first_last" not in out
     assert "example.com" not in out
+
+
+# ----------------------------------------------------------------------
+# K3 (PR #7417 gate follow-up, folded into the #7385 C4 PR): quoted local
+# parts (`"…"@domain`) and `'`/`` ` `` inside a local part.
+# ----------------------------------------------------------------------
+
+
+def test_scrub_email_tokens_digests_an_apostrophe_in_the_local_part():
+    """GUILT: `'` used to be a hard boundary, so `qzvkwy'x@y.example.test`
+    split into two 'words' at the apostrophe — the piece before it
+    (`qzvkwy`) had no `@` of its own and survived unredacted, exactly the
+    gate's measured case. `'` is now ordinary content, consumed into the
+    digest with the rest of the local part."""
+    out = _scrub_email_tokens("qzvkwy'x@y.example.test")
+    assert "qzvkwy" not in out
+    assert "y.example.test" not in out
+    assert out.startswith("id:")
+
+
+def test_scrub_email_tokens_digests_a_backtick_in_the_local_part():
+    """GUILT: same bug, `` ` ``. RFC 5322 `atext` allows both — same
+    reasoning already applied to `_`/`*` above."""
+    out = _scrub_email_tokens("qzvkwy`x@y.example.test")
+    assert "qzvkwy" not in out
+    assert "y.example.test" not in out
+    assert out.startswith("id:")
+
+
+def test_scrub_email_tokens_fully_digests_a_quoted_local_part_with_a_space():
+    """GUILT (the gate's Codex-found shape): a quoted local part can
+    legally contain a space — `"qzvk wjyg"@example.test`. Before this fix
+    NEITHER the old regex NOR the pre-K3 linear scan redacted any of it
+    when the string is not truncated (`"` was a hard boundary, so the
+    quoted phrase split into whitespace-bounded pieces with no `@` in
+    them, and the bare `@example.test` piece had an empty local part and
+    was left alone too) — the gate's own words: "both leak the whole
+    address when it is not truncated". The quote-pairing lookahead below
+    pulls the whole `"..."@` span into one token across the internal
+    space, so the entire thing is now one digest."""
+    out = _scrub_email_tokens('"qzvk wjyg"@example.test')
+    assert "qzvk" not in out
+    assert "wjyg" not in out
+    assert "example.test" not in out
+    assert "@" not in out
+    assert out.startswith("id:")
+
+
+def test_redact_token_peels_a_fully_wrapped_quoted_address():
+    """A quote pair that wraps the WHOLE token — not just the local part —
+    peels symmetrically, same as the existing Markdown-delimiter peel:
+    `"matteo@example.test"` -> `"id:…"`, nothing unbalanced."""
+    out = _redact_token('"matteo@example.test"')
+    assert out.startswith('"') and out.endswith('"')
+    assert "matteo" not in out
+    assert "example.test" not in out
+
+
+def test_redact_token_does_not_orphan_a_quote_for_the_quoted_local_shape():
+    """The quoted-local shape's closing `"` sits mid-token, right before
+    `@`, not at the token's own trailing edge — `_redact_token` leaves it
+    as content rather than peeling only the leading quote and stranding an
+    unmatched one in the output."""
+    out = _redact_token('"qzvk wjyg"@example.test')
+    assert out.count('"') == 0
+
+
+# --- INNOCENCE: ordinary quoted prose is not over-redacted ---
+
+
+def test_scrub_email_tokens_does_not_merge_ordinary_quoted_prose_across_a_space():
+    """A quote that is not immediately followed by `@` — plain prose, not
+    a quoted local part — must not suppress whitespace-splitting. `@home`
+    here has no local part before it (nothing but the quote precedes it in
+    that word) and stays exactly as `_scrub_word`'s existing empty-local
+    special case already treats a bare `@word`."""
+    text = 'He said "call me @home" now'
+    out = _scrub_email_tokens(text)
+    assert out == text
+
+
+def test_scrub_email_tokens_leaves_an_unpaired_quote_alone_when_harmless():
+    """A single stray `"` with no closing quote at all is not an address
+    wrapper; nothing here is email-shaped, so nothing should be touched."""
+    text = 'the setting is 6" deep, no address here'
+    out = _scrub_email_tokens(text)
+    assert out == text
+
+
+def test_scrub_email_tokens_handles_many_lone_quotes_without_hanging():
+    """K3: proof the added quote-pairing lookahead in `_scrub_email_tokens`
+    stays linear. Each `"` triggers one `str.find` for its next pairing
+    quote, scanning 50 characters before finding it and then rejecting the
+    pairing (no `@` follows) — repeated 4,000 times (200k chars total).
+    The searched ranges between consecutive quotes partition the string
+    and never overlap, so total lookahead work is bounded by the string's
+    own length however many quotes it holds. Behaviour-only proof, never
+    wall-time, per the same convention the K1 200k tests above use."""
+    text = ('"' + "a" * 50) * 4_000
+    out = _scrub_email_tokens(text)
+    assert out == text

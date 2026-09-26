@@ -10,6 +10,7 @@ These tests exercise the chain order without going to the network.
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,8 +18,10 @@ import pytest
 from backend.app.modules.notifications.router import (
     SendEmailRequest,
     _enforce_balizero_cc,
+    _send_via_zoho_smtp,
     send_direct_email,
 )
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 
 def _cc_of(*args, **kwargs):
@@ -417,3 +420,120 @@ class TestCredentialDeliveryIsNeverCopied:
     def test_absent_email_type_is_NOT_exempt(self):
         cc, _ = _enforce_balizero_cc("alice@example.com", None, None)
         assert cc == ["asya@balizero.com"]
+
+
+class TestSendChainLoggingDoesNotLeakTheRecipient:
+    """C4 (PR #7385 gate follow-up, deadline 2026-10-03): the three log
+    lines in `send_direct_email`'s provider loop and `_send_via_zoho_smtp`'s
+    exception handler used to log `request.to`/`to_email` raw — a client's
+    address, in cleartext, in every successful/failed send. Reused
+    `redact_identifier_for_log` (the same digest `email_audit.py` uses) and
+    `_bounded_scrub` (for the free-text subject/exception, which can itself
+    carry an address back) instead of a new pattern.
+
+    Superscar #3 discipline: each guilt case pairs with an innocence case
+    that proves the fix does not also swallow non-address log content.
+    """
+
+    ADDR = "sender.pii.probe@example.com"
+
+    # --- GUILT: the success/failure/exception paths must not log ADDR raw ---
+    @pytest.mark.asyncio
+    async def test_success_log_does_not_leak_the_recipient(self, caplog):
+        req = SendEmailRequest(to=self.ADDR, subject="hi", body="<p>x</p>")
+        with (
+            patch(
+                "backend.app.modules.notifications.router._send_via_brevo",
+                new=AsyncMock(return_value=True),
+            ),
+            caplog.at_level(
+                logging.INFO, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            resp = await send_direct_email(req, _auth={})
+        assert resp.success is True
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert self.ADDR not in joined
+        assert "sender.pii.probe" not in joined
+        assert redact_identifier_for_log(self.ADDR) in joined
+
+    @pytest.mark.asyncio
+    async def test_provider_failure_log_does_not_leak_the_recipient(self, caplog):
+        req = SendEmailRequest(to=self.ADDR, subject="hi", body="<p>x</p>")
+        with (
+            patch(
+                "backend.app.modules.notifications.router._send_via_brevo",
+                new=AsyncMock(return_value=False),
+            ),
+            patch(
+                "backend.app.modules.notifications.router._send_via_resend",
+                new=AsyncMock(return_value=True),
+            ),
+            caplog.at_level(
+                logging.WARNING, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            await send_direct_email(req, _auth={})
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert self.ADDR not in joined
+        assert "sender.pii.probe" not in joined
+        assert redact_identifier_for_log(self.ADDR) in joined
+
+    @pytest.mark.asyncio
+    async def test_zoho_smtp_exception_log_does_not_leak_recipient_or_exception_text(
+        self, caplog
+    ):
+        """The SMTP exception's own text is provider-supplied free text and
+        can echo the recipient back (a bounce quoting the address) — scrub
+        it the same way `email_audit.notify_email_failure_critical` scrubs
+        its `error` field."""
+        boom = RuntimeError(f"550 mailbox {self.ADDR} rejected")
+        with (
+            patch(
+                "backend.app.modules.notifications.service.SMTPProvider.send_email",
+                new=AsyncMock(side_effect=boom),
+            ),
+            caplog.at_level(
+                logging.ERROR, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            result = await _send_via_zoho_smtp(self.ADDR, "hi", "<p>x</p>", None)
+        assert result is False
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert self.ADDR not in joined
+        assert "sender.pii.probe" not in joined
+        assert redact_identifier_for_log(self.ADDR) in joined
+
+    # --- INNOCENCE: non-address log content is untouched by the fix ---
+    @pytest.mark.asyncio
+    async def test_success_log_keeps_the_provider_name_and_tag(self, caplog):
+        req = SendEmailRequest(to=self.ADDR, subject="hi", body="<p>x</p>")
+        with (
+            patch(
+                "backend.app.modules.notifications.router._send_via_brevo",
+                new=AsyncMock(return_value=True),
+            ),
+            caplog.at_level(
+                logging.INFO, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            await send_direct_email(req, _auth={})
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert "brevo" in joined
+        assert "primary" in joined
+
+    @pytest.mark.asyncio
+    async def test_zoho_smtp_exception_log_keeps_the_non_pii_diagnostic_text(self, caplog):
+        boom = RuntimeError("connection reset by peer")
+        with (
+            patch(
+                "backend.app.modules.notifications.service.SMTPProvider.send_email",
+                new=AsyncMock(side_effect=boom),
+            ),
+            caplog.at_level(
+                logging.ERROR, logger="backend.app.modules.notifications.router"
+            ),
+        ):
+            await _send_via_zoho_smtp(self.ADDR, "hi", "<p>x</p>", None)
+        joined = " ".join(r.getMessage() for r in caplog.records)
+        assert "connection reset by peer" in joined

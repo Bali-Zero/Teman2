@@ -71,9 +71,11 @@ acceptance:
   - text: >-
       (K2) `test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters` SHALL assert
       against the alert's actual rendered `text` field (via `parse_qs`), not the raw urlencoded
-      body, and SHALL be RED (both `address`/`fragment` present) against `b491d10138`'s sources for
-      all 3 parametrized cases including `asterisk_in_local` — the case the pre-K2 test's
-      urlencoding bug made vacuously GREEN there.
+      body, and SHALL be RED against `b491d10138`'s sources for all 3 parametrized cases including
+      `asterisk_in_local` — the case the pre-K2 test's urlencoding bug made vacuously GREEN there.
+      Corrected per the #7426 gate (N4): on `b491d10138` the address itself IS already digested
+      (e.g. `qzvk_id:…`); only the fragment survives, and it is the fragment assert that turns the
+      test RED there, not "both `address`/`fragment` present".
     probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters"
 consumer_map:
   - "`backend/services/notifications/email_audit.py`'s `notify_email_failure_critical` — the
@@ -90,11 +92,13 @@ risks:
     100k-400k chars), higher than a compiled regex's per-char cost on the FAST path. Not a
     regression in the security sense (CodeQL's concern is the growth curve, not the constant), and
     every real caller is bounded to 400 chars regardless (~0.03-0.05 ms/call, measured)."
-  - "The byte-identical proof runs against `b491d10138`'s sources reloaded via `importlib` in the
-    SAME process as HEAD's module, for `redact_identifier_for_log`'s per-process fallback salt to
-    line up when neither module sets `LOG_PII_HMAC_SALT` — confirmed empirically (0 diffs across
-    15,886+15,886 cases, many of which redact something), not re-derived from the salt module's own
-    source in this brief."
+  - "The byte-identical proof runs against `37c03c1874`'s sources (the pre-K1, post-#7417-merge
+    module — corrected per the #7426 gate, N4: it cannot have run against `b491d10138`, which
+    differs from HEAD in the corpus's 2,141 leak cases and would show diffs, not 0) reloaded via
+    `importlib` in the SAME process as HEAD's module, for `redact_identifier_for_log`'s per-process
+    fallback salt to line up when neither module sets `LOG_PII_HMAC_SALT` — confirmed empirically
+    (0 diffs across 15,886+15,886 cases, many of which redact something), not re-derived from the
+    salt module's own source in this brief."
 grader: |
   K1: (a) re-ran PR #7417 gate's own `adversarial.py` corpus (15,886 cases) against this PR's head
   — 0 head leaks, 2,141 b491 leaks, 0 head-only regressions, matching the gate's own numbers
