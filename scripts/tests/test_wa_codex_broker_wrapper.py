@@ -239,6 +239,36 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
         bin_path = world["pinned_root"] / "9.9.9" / "bin" / "codex"
         bin_path.mkdir(parents=True)
         bin_path.chmod(0o755)
+    elif kind == "bare_version_planted":
+        # R3 (fresh re-gate, 2026-09-27, 2nd occurrence of the fixture-
+        # masking class): the `case "$_pin_line" in
+        # WA_CODEX_CLI_VERSION_PIN=*)` guard is the ONLY thing requiring
+        # the key prefix at all. `unknown_key` (SOMETHING_ELSE=9.9.9) does
+        # NOT isolate it: with the case guard deleted (accept any line,
+        # `_wcbw_pin_ver="${_pin_line#WA_CODEX_CLI_VERSION_PIN=}"`
+        # unconditional), "SOMETHING_ELSE=9.9.9" still fails `_is_semver`
+        # on its `=`/`_` characters either way, so that mutant stayed
+        # GREEN. A bare, keyless line that is ALREADY a valid semver, with
+        # the tree planted, is the one input whose acceptance the case
+        # guard alone decides: with the guard, the missing prefix makes it
+        # "unrecognized" (78); without it, the unchanged line parses as a
+        # valid version and the planted binary lets it through (0).
+        pin_file.write_text("9.9.9\n")
+        _plant_pinned_codex(world, "9.9.9")
+    elif kind == "bin_not_executable_planted":
+        # R3 (fresh re-gate, 2026-09-27): `bin_is_directory` above isolates
+        # the `-f` half of `[ -f ] && [ -x ]` (a directory fails -f, but a
+        # mode-0755 directory still passes -x, which is the ORIGINAL C2
+        # defect). Neither existing fixture isolates the `-x` half:
+        # `bin_missing` fails BOTH -f and -x (nothing exists), so reverting
+        # to `-f`-only would still correctly refuse it. A REGULAR, 0644,
+        # non-executable file at the derived path passes -f but must still
+        # be refused — only the `-x` half decides this one.
+        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+        bin_path = world["pinned_root"] / "9.9.9" / "bin" / "codex"
+        bin_path.parent.mkdir(parents=True, exist_ok=True)
+        bin_path.write_text(_FAKE_CODEX_STUB.format(version="9.9.9"))
+        bin_path.chmod(0o644)
     else:
         raise AssertionError(f"unknown case {kind!r}")
     return pin_file
@@ -251,6 +281,7 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
         "directory", "dev_null", "fifo", "embedded_nul",
         "nul_same_line_planted", "two_lines_diff_versions_planted", "bad_semver_planted",
         "traversal_escape_planted", "bin_is_directory",
+        "bare_version_planted", "bin_not_executable_planted",
     ],
 )
 def test_guilt_present_but_invalid_pin_refuses(tmp_path: Path, world: dict, kind: str) -> None:
@@ -394,7 +425,17 @@ def test_guilt_env_cannot_clobber_post_source_literals(tmp_path: Path, world: di
     from the wrapper's re-assert block while this test stayed green. Now
     all six are clobbered, and the heartbeat is asserted to land at the
     wrapper's OWN (test-patched) HOME_DIR/ORGAN_ID path, never the
-    hostile one."""
+    hostile one.
+
+    Round 3 (fresh re-gate, 2026-09-27): dropped two vacuous asserts this
+    test carried — `not (tmp_path / "nonexistent-evil-sidecar").exists()`
+    checked a path the absolute hostile SIDECAR_DIR can never reach (it is
+    not rooted at tmp_path at all), and `not Path("/nonexistent-evil-home"
+    ).exists()` cannot fail for a non-root runner on the sealed root
+    volume regardless of what the wrapper does. Neither added
+    discriminating power beyond `heartbeat_path.is_file()` plus its
+    content assertions below, which is what actually proves the hostile
+    HOME_DIR/ORGAN_ID/SIDECAR_DIR values were never used."""
     _write_daemon_env(
         world,
         WA_CODEX_CLI_VERSION_PIN="0.0.1",
@@ -428,8 +469,6 @@ def test_guilt_env_cannot_clobber_post_source_literals(tmp_path: Path, world: di
     heartbeat_body = heartbeat_path.read_text()
     assert '"status":"starting"' in heartbeat_body
     assert '"note":"exec daemon"' in heartbeat_body
-    assert not (tmp_path / "nonexistent-evil-sidecar").exists()
-    assert not Path("/nonexistent-evil-home").exists()
 
 
 def test_guilt_mode_000_pin_reports_unreadable_not_line_count(tmp_path: Path, world: dict) -> None:

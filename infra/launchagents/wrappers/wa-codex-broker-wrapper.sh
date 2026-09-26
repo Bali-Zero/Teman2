@@ -239,6 +239,15 @@ SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
 # the plist). Clean exit 0 stays DOWN under KeepAlive.SuccessfulExit=false;
 # the disabled heartbeat keeps a healer from resurrecting an intentional
 # stop.
+#
+# PRECEDENCE (N3, fresh re-gate 2026-09-27): the pin parse above runs
+# BEFORE `. "$ENV_FILE"`, so an invalid pin exits 78 — heartbeat
+# refused/"pin invalid" — without this kill switch ever being read. The
+# env-file kill switch therefore CANNOT stop the launchd relaunch loop a
+# broken root-owned pin causes: root must repair or remove the pin file
+# itself, or stop the job at the launchd level (`launchctl bootout` on the
+# job's label), not via this env var. That is intentional fail-closed
+# ordering, not a bug — see D5.
 if [ "${WA_CODEX_BROKER_ENABLED:-true}" = "false" ]; then
     echo "$TAG: WA_CODEX_BROKER_ENABLED=false - kill switch active, exiting clean" >&2
     heartbeat "disabled" "kill switch"

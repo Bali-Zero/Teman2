@@ -3,21 +3,26 @@ council_run: council-journal.jsonl
 pii_scan: clean
 appetite_exceeded: >-
   Brief declared 2h/2 adversarial rounds; the REWORK-BUILD response ran 3
-  more delta-council rounds (5 total) and ~4.5h wall clock — the gate's own
-  REWORK-BUILD verdict and the delta council's own findings (C1 fixture
-  isolation, then round-1 and round-2 codex-gpt-5.6-sol gaps, then a
-  narrow round-3 confirmation of round 2's fix) drove every extra round;
-  none were self-inflicted rework of the same defect twice — round 3 found
-  no new gap, it confirmed the fix that closed round 2's single finding.
+  more delta-council rounds (5 total) plus a FRESH independent re-gate that
+  returned REWORK-BUILD (narrow: R1 watcher coverage, R2 uncommitted r0
+  reviews, R3 a second occurrence of the fixture-masking class on 2 guards)
+  and one more response round to close it, ~5.5h wall clock total — every
+  extra round was driven by an external gate or council finding, never
+  self-inflicted rework of the same defect twice. The fresh re-gate's own
+  finding was a genuinely NEW defect class instance (2 guards this PR's own
+  C1 fix had not yet isolated), not a repeat of C1 itself.
 spend:
-  wall_clock_hours: 4.5
-  adversarial_rounds: 5
+  wall_clock_hours: 5.5
+  adversarial_rounds: 6
 lanes:
   - lane: build
     role: build
     seat: claude-sonnet-5
     note: >-
-      LANES CONSOLIDATED (fresh-gate note, 2026-09-27): this pack previously
+      LANES CONSOLIDATED (builder note addressed to the gate, 2026-09-27 —
+      relabelled from "fresh-gate note" after the fresh re-gate correctly
+      pointed out that phrasing reads as if a gate wrote it, when this is
+      the builder's own account for the gate to weigh): this pack previously
       declared this note as lane 0 (`build`) and a SEPARATE lane 4
       (`rework-c1-c4`), both seat claude-sonnet-5. That was a lint artifact,
       not two builders — the REWORK-BUILD response was the SAME builder
@@ -57,6 +62,29 @@ lanes:
       delta-review lanes below). N1-N7 cheap items implemented; N1's
       regression extended per delta round 2, then confirmed by delta round
       3 (below).
+
+      R1-R3 response (same builder, same lane, after the FRESH re-gate on
+      PR #7420 @ 737d16224a returned REWORK-BUILD narrow): R1 added
+      `"wa-codex-pin: dedicated broker pin (wrapper + installer +
+      sentinel)"` to `.github/workflows/main-push-failure-watch.yml`'s
+      `workflows:` list (`check_watcher_coverage.py` rc 1 -> rc 0). R2
+      committed `reviews/codex-gpt-5.6-sol-r1.md` and
+      `reviews/kimi-code-k3-r1.md` verbatim from the gate's own M5 scratch
+      (sha256 prefixes verified to match exactly: a8283fcbdc916829 /
+      34fad07a33c5d30e; scanned for secrets/PII before commit, 0 hits).
+      R3 added `bare_version_planted` and `bin_not_executable_planted` to
+      `test_guilt_present_but_invalid_pin_refuses`, isolating the pin
+      format's key `case` guard and the `-x` half of `[ -f ] && [ -x ]`
+      respectively — both had survived deletion with the suite green
+      (second occurrence of the fixture-masking class the gate's own C1
+      finding named). Per the depth rule this is the EXHAUSTIVE table
+      now (mutant-table.md): every guard and every conjunct, deleted
+      alone, turns >=1 test red — re-run by the builder itself with a
+      real subprocess mutation harness, not merely asserted. Also fixed
+      the cheap items the re-gate named: the kill-switch precedence
+      comment (N3), the two vacuous asserts in the N1 test, the 4 pack
+      dissent-text defects (§3 of the re-gate comment), the lane label,
+      and the PR body's D8→D7 misattribution (N8).
   - lane: review-round1
     role: review
     seat: codex-gpt-5.6 (codex-second-opinion skill, read-only sandbox)
@@ -182,10 +210,19 @@ dissent:
     status: CONFIRMED
     disposition: >-
       Fixed: a dedicated NUL probe (`IFS= read -r -d '' _pin_nul_probe <
-      "$CODEX_PIN_FILE"`, builtin `-d` — a bash/dash extension available
-      on macOS's own /bin/sh and on macos-latest CI, the only two shells
-      this wrapper ever actually runs under) returns 0 only when it found
-      a NUL delimiter before EOF, which a clean file never does.
+      "$CODEX_PIN_FILE"`, builtin `-d`) returns 0 only when it found a NUL
+      delimiter before EOF, which a clean file never does. CORRECTED
+      (fresh re-gate, 2026-09-27, R3 cheap-text pass): this line
+      previously called `read -d` "a bash/dash extension available on
+      macOS's own /bin/sh and on macos-latest CI" — that is false. Both
+      codex-gpt-5.6-sol and kimi-code/k3 independently ran `read -d ''`
+      under real `/bin/dash` and got `read: Illegal option -d`; dash does
+      NOT support it. It is a BASH extension only, and this wrapper's two
+      actual runtimes (macOS's own `/bin/sh`, which IS bash 3.2 in
+      POSIX-ish mode, and macos-latest CI's bash) both happen to be bash,
+      which is why the probe works where this file ever really runs — the
+      wrapper's own comment above the probe already states this
+      correctly; only this pack's prose repeated the earlier wrong claim.
       CORRECTED (gate 2026-09-26 REWORK-BUILD, C1): the pre-existing
       `embedded_nul` case put the NUL on its OWN line, which the
       exactly-one-line check alone already rejected regardless of the NUL
@@ -195,11 +232,17 @@ dissent:
       single trailing newline, binary planted so the fault resolves
       instead of being masked by a later guard) — mutation-verified:
       removing the NUL probe now turns exactly that case red.
-  - seat: codex-gpt-5.6-sol (gate-convened, delta rounds)
+  - seat: fresh-opus-5.5-gate + council (codex-gpt-5.6-sol, kimi-code/k3)
     objection: >-
-      REWORK-BUILD (gate 2026-09-26, PR #7420 @ 08a5d93537): the 5-guard
-      mutants stayed green against the then-current 17-test file (NUL
-      probe, one-line check, `_is_semver`, derived-binary check all
+      REWORK-BUILD (the GATE's own verdict, informed by the convened
+      council, 2026-09-26, PR #7420 @ 08a5d93537 — CORRECTED, fresh
+      re-gate 2026-09-27 R3 cheap-text pass: this line previously
+      attributed the REWORK-BUILD verdict itself to the seat
+      "codex-gpt-5.6-sol (gate-convened, delta rounds)"; the verdict was
+      the gate's own, codex-gpt-5.6-sol's role was one of the two
+      convened council reviewers feeding it, not the decider): the
+      5-guard mutants stayed green against the then-current 17-test file
+      (NUL probe, one-line check, `_is_semver`, derived-binary check all
       non-discriminating), the derived binary check accepted a 0755
       directory at bin/codex, an EACCES pin path fell through to legacy
       instead of failing closed, and this pack's `seat_override` masked
@@ -214,11 +257,19 @@ dissent:
       to this journal). Delta re-review by the gate's own
       codex-gpt-5.6-sol seat: round 1 REWORK (C2 fixture missing, C3
       fixture not isolating), round 2 REWORK (C2/C3/N4 confirmed fixed;
-      one remaining gap in N1's regression, see next entry). No round-3
-      accept was obtained within the coordinator's time-box — the fresh
-      re-gate decides whether the council (kimi ACCEPT-WITH-NOTES + this
-      seat's round-2 REWORK, with the round-2 gap fixed but unconfirmed)
-      is sufficient.
+      one remaining gap in N1's regression, see next entry), round 3
+      ACCEPT (scope narrowed to that one gap — see council-journal.jsonl
+      line 5 and reviews/codex-gpt-5.6-sol-delta3.md). CORRECTED (fresh
+      re-gate, 2026-09-27): this disposition previously said "No round-3
+      accept was obtained ... the fresh re-gate decides whether the
+      council ... is sufficient" — that was true when written but is
+      stale now; round 3's ACCEPT landed before that re-gate ran, and a
+      SECOND, fresh re-gate (2026-09-27, this R3 response) found the
+      wrapper logic correct and asked only for R1 (watcher coverage),
+      R2 (commit the two r0 council reviews verbatim), and R3 (two
+      isolating fixtures for the key `case` guard and the `-x` half of
+      `-f && -x`) — see this pack's `lanes:` and the R3 rows in
+      `receipts/mutant-table.md`.
   - seat: codex-gpt-5.6-sol (delta round 2)
     objection: >-
       N1's regression (test_guilt_env_cannot_clobber_post_source_literals)
@@ -238,21 +289,88 @@ dissent:
       test red. Re-reviewed by codex-gpt-5.6-sol in delta round 3 (scope
       narrowed to this gap only): VERDICT ACCEPT — see
       council-journal.jsonl line 5 and reviews/codex-gpt-5.6-sol-delta3.md.
+  - seat: fresh-opus-5.5-gate (independent, worked in .worktrees/infra-gate-7420, wrote nothing on this branch)
+    objection: >-
+      REWORK-BUILD, narrow (2026-09-27, PR #7420 @ 737d16224a): the
+      wrapper logic itself is correct (C2/C3 confirmed fixed and
+      discriminating, C4's `seat_override` gone, the council journal
+      honest, C1 as originally written met). Three conditions still block
+      the head: R1 — the PR adds wa-codex-pin.yml without listing it in
+      `main-push-failure-watch.yml`, so the `check` context is red and
+      merging would turn `Watcher coverage` red on main (missed at r0
+      too). R2 — the pack cites `reviews/codex-gpt-5.6-sol-r1.md` and
+      `reviews/kimi-code-k3-r1.md`, but `git ls-tree` of the evidence dir
+      had neither committed; the R9 quorum's kimi ok:true was backed only
+      by an M5 `/private/tmp` file. R3 — re-running C1's own mutation
+      table found the pin-format key `case` guard and the `-x` half of
+      C2's `[ -f ] && [ -x ]` both still survived deletion with 26/26
+      green (second occurrence of the fixture-masking class C1 itself
+      was built to close).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: R1 — added the workflow's exact `name:` string to
+      `main-push-failure-watch.yml`'s `workflows:` list;
+      `check_watcher_coverage.py` now rc 0. R2 — committed both r0
+      reviews verbatim (sha256 prefixes match the re-gate's own
+      verification exactly: a8283fcbdc916829 / 34fad07a33c5d30e; scanned
+      for secrets/PII first, 0 hits). R3 — added `bare_version_planted`
+      (a bare, keyless, already-valid-semver pin line with the tree
+      planted — isolates the `case` guard, since `unknown_key` fails
+      `_is_semver` regardless of that guard) and
+      `bin_not_executable_planted` (a regular, 0644, non-executable file
+      at the derived binary path — isolates the `-x` half, since
+      `bin_missing` fails both `-f` and `-x` at once). Re-ran the FULL
+      exhaustive mutation table myself (not merely the two new rows) with
+      a real subprocess harness against the actual worktree wrapper,
+      restored byte-for-byte after each mutant (`git hash-object` before
+      and after match, `git status --short` shows no residue): every
+      guard and every conjunct, deleted alone, now turns >=1 test red —
+      see the rebuilt `mutant-table.md`. Also fixed, in the same commit,
+      the four pack-text defects and the lane-label wording this seat's
+      own review named (§3 of its comment), the N3 kill-switch precedence
+      comment, N8 in the PR body (D8→D7), and the two vacuous asserts in
+      the N1 test.
 receipts:
   - claim: >-
-      All 26 wrapper pytest cases pass on the final shipped wrapper, up
-      from 17 at the gated head (08a5d93537): +5 new
+      All 28 wrapper pytest cases pass on the final shipped wrapper, up
+      from 17 at the gated head (08a5d93537): +7 new
       test_guilt_present_but_invalid_pin_refuses parametrize IDs (C1's 4
-      discriminating fixtures + C2's bin_is_directory) and +4 new
+      discriminating fixtures, C2's bin_is_directory, and R3's
+      bare_version_planted + bin_not_executable_planted) and +4 new
       standalone tests (C3's test_guilt_unsearchable_runtime_dir_refuses_
       not_legacy, N3's test_guilt_invalid_pin_beats_the_kill_switch,
       N1's test_guilt_env_cannot_clobber_post_source_literals, N4's
       test_guilt_mode_000_pin_reports_unreadable_not_line_count); N1's
-      own test was later extended in place (round 2 fix), not re-added
-      as a new test — see mutant-table.md for the per-guard mapping.
+      own test was later extended in place (round 2 fix, then had two
+      vacuous asserts removed in R3), not re-added as a new test — see
+      mutant-table.md for the per-guard mapping.
     cmd: python3 -m pytest scripts/tests/test_wa_codex_broker_wrapper.py -q
     exit: 0
-    ts: "2026-09-26T17:08:08Z"
+    ts: "2026-09-27T18:30:00Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Fresh re-gate on PR #7420 @ 737d16224a found the wrapper logic
+      correct (no wrapper code change required) and named 3 conditions:
+      R1 (wa-codex-pin.yml missing from main-push-failure-watch.yml's
+      watch list — `check` context red), R2 (the two r0 council reviews
+      cited by this pack were never committed under reviews/), R3 (two
+      guards still survived deletion with the suite green: the pin-format
+      `case` guard and the `-x` half of C2's `[ -f ] && [ -x ]` — same
+      fixture-masking class as C1, second occurrence). All three closed
+      in this commit: R1 via the watcher-list entry above (`python3
+      scripts/check_watcher_coverage.py` rc 0), R2 via
+      reviews/codex-gpt-5.6-sol-r1.md + reviews/kimi-code-k3-r1.md
+      (sha256 prefixes a8283fcbdc916829 / 34fad07a33c5d30e, matching the
+      re-gate's own verification exactly), R3 via bare_version_planted +
+      bin_not_executable_planted (mutant-table.md, exhaustive re-run,
+      every guard and every conjunct RED alone).
+    cmd: >-
+      python3 scripts/check_watcher_coverage.py; python3 -m pytest
+      scripts/tests/test_wa_codex_broker_wrapper.py -q; the mutation
+      harness re-run recorded in mutant-table.md (scratch script, not
+      committed, same convention as the gate's own regate7420/mutants.py)
+    exit: 0
+    ts: "2026-09-27T18:30:00Z"
     seat: claude-sonnet-5
   - claim: >-
       The wrapper is valid POSIX sh and bash after every edit (rework-
