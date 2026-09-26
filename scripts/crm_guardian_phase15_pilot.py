@@ -2,13 +2,14 @@
 """Phase 1.5 pilot — re-process the same 6 audited clients with OCR-enabled
 worker (Phase 1.5) so we can diff smartness vs the Phase 1 backup.
 
-Clients (matches the Phase 1 smartness audit set):
-  70  Oleksandr Ozolin
-  83  Sofia Mueller (the bulk-step-1 hallucination case)
-  266 Romain Pascal Baillieu
-  278 Declan Thompson & Shannon Knowles
-  283 Roman Pukhov
-  350 Armando Puddu (suspected-deceased filename case)
+Clients (matches the Phase 1 smartness audit set; names redacted 2026-09-27,
+Builder Contract §4 — see `clients.id` in CRM for the real record):
+  70  Client P1
+  83  Client P2 (the bulk-step-1 hallucination case)
+  266 Client P3
+  278 Client P4 & Client P5
+  283 Client P6
+  350 Client P7 (suspected-deceased filename case)
 
 Mode: enqueue with force=True (bypasses I10b enabled-guard) + run worker
 SYNCHRONOUSLY (no LaunchAgent) so we can observe latency + content snippets
