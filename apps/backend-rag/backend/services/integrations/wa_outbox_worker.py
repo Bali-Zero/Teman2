@@ -925,6 +925,7 @@ async def _process_claimed_row(
     # unscored bot route that never reaches the codex leg's carrier.
     persist_abstained = False
     persist_score: float | None = None
+    persist_served_by: str | None = None
     package_ref: str | None = None
     if needs_generation:
         if thread["human_handling"]:
@@ -1082,6 +1083,7 @@ async def _process_claimed_row(
                     leg.served_by == "codex" and leg.evidence_abstain_label is True
                 )
                 persist_score = leg.evidence_score
+                persist_served_by = leg.served_by
                 package_ref = leg.package_ref
                 logger.info(
                     "wa_outbox: %s served outbox=%s", leg.served_by, outbox_id
@@ -1104,6 +1106,7 @@ async def _process_claimed_row(
             # like a route that never called the leg at all.
             persist_abstained = False
             persist_score = None
+            persist_served_by = None
             package_ref = None
         finally:
             heartbeat_task.cancel()
@@ -1522,7 +1525,8 @@ async def _process_claimed_row(
             UPDATE wa_outbox
             SET status = 'done',
                 abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
-                evidence_score = $5::numeric
+                evidence_score = $5::numeric,
+                served_by = $6::text
             WHERE id = $1 AND claim_token = $2 AND status = $3
             RETURNING id
             """,
@@ -1531,6 +1535,7 @@ async def _process_claimed_row(
             expected_status,
             persist_abstained,
             persist_score_bind,
+            persist_served_by,
         )
         await conn.execute(
             """
@@ -1557,12 +1562,13 @@ async def _process_claimed_row(
 
     logger.info(
         "wa_outbox: sent (outbox=%s thread=%s wamid=%s abstained=%s "
-        "evidence_score=%s package_ref=%s)",
+        "evidence_score=%s served_by=%s package_ref=%s)",
         outbox_id,
         thread_id,
         wamid,
         persist_abstained,
         persist_score,
+        persist_served_by,
         package_ref,  # opaque hash — never the query/wire/text it covers
     )
     return "sent"
