@@ -1,0 +1,114 @@
+brief_ref: evidence/2026-09/agent-nuzantara-frontend-portal-champion-finish-fa665d5f/brief.yml
+pii_scan: clean
+council_run: council-journal.jsonl
+dissent:
+  - seat: claude-opus-5-5 (V2 verifier)
+    status: PLAUSIBLE
+    objection: >-
+      Non-blocking: EventSource cannot tell 401 from 503, so an expired
+      session retries about every 60 s until reload; a goal whose first
+      successful reconnect lands more than ~90 s after activation is not
+      replayed (by design); reduced motion keeps the opacity fade and drops
+      rings and spring.
+lanes:
+  - lane: build
+    role: build
+    seat: codex (external builder, 2026-09-25, prepare-only)
+    note: >-
+      Original 19-file candidate, frozen with per-file hashes; three prior
+      Claude review rounds ended PASS with source conditions (goal SQL
+      aggregation, reconnect cursor, inline publish latency — all present
+      in the frozen bytes).
+  - lane: recovery+release
+    role: build
+    seat: claude-opus-5-5 xhigh
+    note: >-
+      Replayed the Codex transcript's completed FileChange items and the
+      recorded prettier/ruff runs onto base a872cfa673 (transcript as data;
+      no historic shell command executed) → 19/19 byte-identical to the
+      manifest; no upstream drift. Integrated the uncommitted rag_proxy
+      SSE fix verbatim. Only own change: a mechanical ruff-format commit
+      restricted to lines this branch added.
+  - lane: verify-unit
+    role: review
+    seat: claude-sonnet-5
+  - lane: verify-e2e
+    role: review
+    seat: claude-opus-5-5
+receipts:
+  - claim: >-
+      Backend targeted suite (portal challenge events/leaderboard,
+      dashboard_summary, portal_invite + p0 capability, rag_proxy stream +
+      intake split, router manifest + registration parity): 503 passed.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest <9 files>
+    exit: 0
+    ts: "2026-09-26T15:24:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Goal SQL on a throwaway PostgreSQL 18 cluster (unix socket only,
+      synthetic temp tables): 8/8 executed (valid, duplicate, alias, staff,
+      deleted, test tag, pilot tag, previous activation).
+    cmd: >-
+      CHAMPION_TEST_PG_SOCKET=<scratch> PYTHONPATH=. .venv/bin/python -m
+      pytest backend/tests/unit/services/portal/test_challenge_events_postgres.py
+    exit: 0
+    ts: "2026-09-26T15:25:33Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Real throwaway Redis against the real challenge_events module: Lua
+      publish-once dedup (XLEN 1), two subscribers get the same id,
+      reconnect replay, 90-second window both sides, future cursor falls
+      back to now, reader teardown, publish returns <0.01 s and swallows
+      missing-Redis and SQL errors.
+    cmd: PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python redis_proof.py
+    exit: 0
+    ts: "2026-09-26T15:28:54Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Frontend: 81 vitest cases in 6 files pass; tsc --noEmit clean; eslint
+      0 errors on the 12 changed files (one pre-existing warning on an
+      unchanged line of layout.tsx).
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files>
+      --maxWorkers=2 && ../../node_modules/.bin/tsc --noEmit
+    exit: 0
+    ts: "2026-09-26T15:29:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Full local chain (real dashboard_summary router + real auth chain
+      with a throwaway JWT secret, real create_proxy_router, Next dev
+      proxy, throwaway Redis + PG18): `event: ready` arrives in 0.079 s via
+      the API proxy and 0.030 s via Next while the stream stays open; a
+      real publish lands `event: goal` on both open streams within 0.25 s;
+      JSON status/body/custom header preserved through both proxies.
+    cmd: p1_stream.py (local harness)
+    exit: 0
+    ts: "2026-09-26T15:31:30Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Two simultaneous authenticated synthetic Chrome sessions (/dashboard
+      and /notifications with reduced motion) both show "GOAL oleh
+      <synthetic>" 0.52 s after publish_registration_goal; 390 px arena has
+      no horizontal overflow; 0 broken images; anonymous → 401 and client
+      role → 403 via Next and via the API proxy with no celebration; a
+      duplicate publish leaves XLEN unchanged and shows no second overlay;
+      after a 17.6 s rag-process outage the goal published during the gap
+      appears on both pages 2.3 s after recovery without reload; 0 page
+      JavaScript errors.
+    cmd: p2_p5_browser.cjs (local harness, Playwright + Chrome)
+    exit: 0
+    ts: "2026-09-26T15:40:36Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      After the mechanical ruff-format commit the affected backend tests
+      still pass (86 passed) and the files added lines are format-clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/routers/test_portal_invite.py
+      backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/unit/services/portal/test_challenge_events.py
+    exit: 0
+    ts: "2026-09-26T15:45:19Z"
+    seat: claude-opus-5-5
