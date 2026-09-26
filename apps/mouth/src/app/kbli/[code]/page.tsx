@@ -218,7 +218,7 @@ export default async function KBLICodePage({
 
             {/* Hero content */}
             <div
-              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-24 sm:pt-32" : "pt-16 sm:pt-20"}`}
+              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-12 sm:pt-16" : "pt-10 sm:pt-12"}`}
             >
               {/* Code pill */}
               <div className="mb-4 flex items-center gap-3">

@@ -502,7 +502,7 @@ function OwnershipGauge({ pct }: { pct: number }) {
           style={{ width: `${clamped}%` }}
         />
       </span>
-      Foreign ≤ {clamped}%
+      {clamped === 100 ? "Foreign 100%" : `Foreign ≤ ${clamped}%`}
     </span>
   );
 }
