@@ -227,3 +227,10 @@ Continuity ladder, account-lane mapping and spend order (§17.2–§17.4):
 
 **Maintained by:** Bali Zero AI Team.
 **Authoritative last update:** `git log -1 --format=%cd -- AGENTS.md` in the repo root.
+
+## Physical mobile QA
+
+iQOO display-off device control is verified on Pro; client journeys require scoped QA.
+Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
+readiness, session ownership and the synthetic-vs-live evidence boundary.
+Do not assume connectivity or authenticated client access from this entry.

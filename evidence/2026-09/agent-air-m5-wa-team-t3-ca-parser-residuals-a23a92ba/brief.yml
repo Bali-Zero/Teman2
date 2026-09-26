@@ -1,0 +1,146 @@
+task: >-
+  Closes condition C-A of PR #7395's PASS-WITH-CONDITIONS gate
+  (pull/7395#issuecomment-5846140618, merged e16314b4f2 / parser at
+  c2045e12b1). That gate's own PG-truth probe found 8 residuals in the
+  Round-1 tokenizer (test_wa_team_promises_sql_crosscheck.py): R1 repeated
+  CREATE TABLE/ADD COLUMN statements were UNIONED where PG keeps only the
+  first and no-ops the rest; R2 a bare `\r` ends PG's `--` comment where
+  `_tokenize` only ended one at `\n`; R3 an `E'...\''` escape-string desync
+  hid a NOT NULL column; R4 any schema qualifier was discarded, not only
+  `public.`; R5 typmods were dropped; R6 SQL PG rejects was silently
+  accepted (trailing comma, conflicting NULL/NOT NULL, duplicate DEFAULT/
+  PRIMARY KEY, a non-boolean bare-literal CHECK, a typmod on a type that
+  doesn't take one, a reserved keyword as an unquoted column name); R7 a
+  non-ASCII identifier was folded by Python but not PG; R8 an empty `()`
+  body silently produced no `declared` entry.
+
+  REWORK (PR #7413's own fresh gate, pull/7413#issuecomment-5846951975,
+  verdict REWORK-BUILD on head 18f82e1daf — a fix-of-a-fix, last round per
+  Builder Contract §1): closing all 8 residuals regressed 3 real-file
+  mutations from RED (rejected on origin/main) to GREEN (silently accepted
+  here), and R5 had no discriminating guilt case. S1: typmods are now
+  rejected outright (`_TYPMOD_CAPABLE_TYPES` empty), not accepted-and-
+  dropped — the opt-in C1 real-PG query is restored to `atttypmod` (undoing
+  this PR's own earlier NULL swap), since a typmod can no longer reach
+  `_REQUIRED_COLUMNS` at all. S2: a duplicate column NAME inside ONE CREATE
+  body is rejected (PG raises `DuplicateColumnError`). S3: a repeated
+  `CREATE TABLE IF NOT EXISTS` body is still fully parsed and validated —
+  only a SEMANTICALLY valid repeat (one PG itself would silently skip) is
+  discarded; a SYNTAX error in it (a double comma, a bare reserved word)
+  still raises. S4: an `ADD COLUMN IF NOT EXISTS` that re-declares a column
+  the table's own CREATE body already defined, with a DIFFERENT
+  `(type, notnull)`, is rejected — first-wins stays unconditional only
+  between two CREATEs or two ALTERs. S5: 23 more of PG's own catcode-`T`
+  keywords join the reserved-column-name set, a stale comment ("every one
+  of these FAILED") is corrected to the true 16/19, and the real-PG R4/R6a
+  companion cases now also assert the static parser itself rejects, not
+  just that PG does. `scripts/wa_team_promises.py` remains untouched.
+
+  C-D (no PR-gating CI for these tests) is a SEPARATE, coordinator-owned
+  follow-up — see the PR body's honest `Bites:` line; this PR does not
+  claim a gate that does not exist.
+lane: wa-team/t3-ca-parser-residuals
+machine: M5
+date: "2026-09-26"
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat`
+  against the merge-base with origin/main (d2fd26086f, post-REWORK merge)
+  measures churn 850 across 3 test files + 2 evidence files (13+0 in
+  test_wa_team_promises_gate_conditions_real_pg.py; 114+0 in
+  test_wa_team_promises_real_pg.py; 502+21 in
+  test_wa_team_promises_sql_crosscheck.py; 117+0 and 83+0 in this brief/
+  pack) — above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD
+  (1828). No hot-zone path (scripts/tests/ is not a HOTZONE_PATTERNS
+  match). Confirmed locally via `scripts/evidence_pack_lint.py
+  --print-floor --print-floor-source` against this diff's numstat.
+  Test-only in substance — no application/runtime code changed. Excluding
+  the evidence files themselves, test-file-only churn is 650 — still floor
+  2 either way (C-E, record only: the gate's own prior round noted the
+  same evidence-inclusion delta on this branch, floor unaffected).
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Each of R1-R8 is closed exactly as before, PLUS the REWORK: S1 typmods
+    rejected outright (not dropped); S2 a duplicate column name inside one
+    CREATE body rejected; S3 a repeated CREATE body still validated for
+    SYNTAX (only a semantically-skippable repeat is discarded); S4 an ADD
+    COLUMN that re-declares a CREATE-body column with a different
+    (type, notnull) rejected, first-wins kept unconditional CREATE/CREATE
+    and ALTER/ALTER; S5 23 more PG catcode-T reserved keywords added.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k "round2_ca or s1_ or s2_ or s3_ or s4_" -v
+  A2: >-
+    Red-green receipt: the gate's own 3 named regressions (duplicate
+    `promise_text` inside one CREATE body; a repeated CREATE with a double-
+    comma syntax error; `cue` re-declared by ALTER with a different
+    nullability than the CREATE body) are GREEN (silently accepted) on
+    18f82e1daf and RED (UnrecognizedSqlShapeError) on this reworked head.
+    Mutation receipt (prior round): 16/19 new Round-2 C-A cases failed on
+    origin/main's parser, all 19 pass here.
+    probe: >-
+      (embedded receipt script, run once by hand against
+      `git show 18f82e1daf:scripts/tests/test_wa_team_promises_sql_crosscheck.py`
+      vs this head — see PR body for the full script and output)
+  A3: >-
+    The real SQL file (scripts/sql/pro_local/team_promises.sql) still
+    parses to the exact _REQUIRED_COLUMNS contract, both statically and
+    against a real PG17 catalog; the full existing unit + opt-in real-PG
+    suite for wa_team_promises stays green.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises*.py -q &&
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises*.py -q
+  A4: >-
+    5 of the 8 residuals (R1, R4, R5, R6a, R7) are re-proven against a REAL
+    throwaway PG17 cluster, each in its own scratch database; R4/R6a now
+    also assert the static parser itself rejects (REWORK S5c), not only
+    that PG does; R5 now asserts rejection too (REWORK S1), matching R7's
+    own pattern (PG accepts, the parser must still refuse).
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -v
+  A5: >-
+    An 80-input PG-truth corpus (20 PR cases — the gate's original 19 plus
+    this round's new S5b keyword case — plus 48 adversarial and 12
+    Codex-derived), reproduced independently against this session's own
+    throwaway PG17 cluster, shows 0 NEW silent-wrong beyond the 4 pre-
+    existing, S6-deferred ones (a table sharing a relation namespace with
+    an existing index; a 64-byte identifier PG truncates; SMALLSERIAL and
+    FLOAT type-alias fallbacks) — all caught by the runtime guard already.
+    probe: >-
+      (embedded corpus script, run once by hand against this head on a
+      throwaway PG17 cluster — see PR body for the full script and output)
+
+out_of_scope: >-
+  scripts/wa_team_promises.py's own logic (untouched, as both gate rounds
+  require). S6 (index/table namespace sharing, 64-byte identifier
+  truncation, SMALLSERIAL/FLOAT type-alias fallback) — pre-existing,
+  silent only in the static layer, the runtime guard catches all three;
+  recorded as a PENDING-ARMS row instead of fixed here, per the gate's own
+  spec ("optional ... otherwise record one row"). Condition C-B (the
+  #7395/#7367 rebase addendum) and C-D (wiring these tests into a
+  PR-gating CI job) — both separate, coordinator-owned, untouched here.
+
+assumptions:
+  - text: >-
+      Every PG-truth claim above (which SQL PG accepts/rejects, and what
+      it puts in pg_attribute) was measured against a throwaway PG17 17.10
+      (Homebrew) cluster on this machine — a fresh scratch database per
+      case, dropped after — not reasoned about by inspection, and not
+      taken on faith from the gate's own probe logs (the 23 catcode-T
+      keywords and the 3 named regressions were re-verified independently
+      on a separate cluster this session started).
+    status: verified
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k "round2_ca or s1_ or s2_ or s3_ or s4_" -v
+      && WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py -k round2_ca -v

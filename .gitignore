@@ -938,6 +938,11 @@ apps/backend-rag/scripts/output/*campaign*.csv
 **/dq_clients*.csv
 **/dq_orphan_clients*.csv
 research/nb-health/nb-inventory-live.json
+# apps/backend-rag/scripts/nlm_pack_crm.py writes WhatsApp client dossiers and their
+# timing file into research/crm/ of the checkout it runs from. They are client PII by
+# construction (Builder Contract §4) and must never be promoted: two were, until 2026-09-26.
+research/crm/*-wa-dossier-*.txt
+research/crm/*-timing-*.json
 
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/

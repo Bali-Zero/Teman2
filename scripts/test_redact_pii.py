@@ -19,6 +19,7 @@ Run:
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -471,3 +472,40 @@ def test_p2_dynamic_name_load_error_is_redaction_error():
     that catch RedactionError (e.g. _cli_main) fail-closed automatically.
     """
     assert issubclass(DynamicNameLoadError, RedactionError)
+
+
+def test_load_default_queries_companies_company_name_column(monkeypatch):
+    """PROD `companies` has no `name` column, only `company_name`
+    (verified live against PROD `information_schema.columns`, 2026-09-26).
+    pass4 must query the column that actually exists, or it fails-closed
+    on every real run with DATABASE_URL set. Mocks subprocess.run — no
+    live DB in tests — and asserts on the query text + parsed rows.
+    """
+    captured_queries: list[str] = []
+
+    def fake_run(cmd, **kwargs):
+        query = cmd[-1]
+        captured_queries.append(query)
+        if "clients" in query:
+            stdout = "Sofia Mueller\nAndrey Pozdnyakov\n"
+        else:
+            stdout = "PT Milkup\nCV Acme\n"
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x:x@127.0.0.1:15432/nuzantara_rag")
+
+    redactor = Redactor.load_default()
+
+    company_query = next(q for q in captured_queries if "companies" in q)
+    assert "company_name" in company_query, (
+        f"pass4 must select the column that exists on PROD (company_name), got: {company_query!r}"
+    )
+    assert "SELECT name FROM companies" not in company_query, (
+        "regression: companies.name does not exist on PROD"
+    )
+    assert redactor.runtime_names["__DYNAMIC_CRM_COMPANY_NAMES__"] == ["PT Milkup", "CV Acme"]
+    assert redactor.runtime_names["__DYNAMIC_CRM_CLIENT_NAMES__"] == [
+        "Sofia Mueller",
+        "Andrey Pozdnyakov",
+    ]

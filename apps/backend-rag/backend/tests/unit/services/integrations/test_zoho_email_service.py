@@ -22,6 +22,8 @@ with (
 ):
     from backend.services.integrations.zoho_email_service import (
         ZohoEmailService,
+        _safe_filename_ext,
+        _safe_filename_len,
         sanitize_filename,
     )
 
@@ -1043,3 +1045,57 @@ class TestUploadAttachmentNeverLogsFilenameOrProviderText:
                         content_type="application/octet-stream",
                     )
             assert filename not in caplog.text
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# _safe_filename_ext / _safe_filename_len — non-str tolerance (C3, PR #7385
+# gate follow-up, NIT). Both used to raise TypeError for anything that
+# isn't a str (`"." in filename` / `len(filename)` on a non-str blow up
+# immediately) — unreachable today (upload_attachment's only production
+# caller passes `file.filename or "unnamed"`), but a helper meant only to
+# feed a log line degrading to its own documented default beats crashing
+# ahead of the size/length validation this method still has to run.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSafeFilenameHelpersToleranceForNonStr:
+    @pytest.mark.parametrize("filename", [None, 42, b"scan.pdf", ["a.pdf"]])
+    def test_safe_filename_ext_tolerates_non_str(self, filename: Any) -> None:
+        assert _safe_filename_ext(filename) == "other"
+
+    @pytest.mark.parametrize("filename", [None, 42, b"scan.pdf", ["a.pdf"]])
+    def test_safe_filename_len_tolerates_non_str(self, filename: Any) -> None:
+        assert _safe_filename_len(filename) == 0
+
+    def test_safe_filename_ext_and_len_unchanged_for_str(self) -> None:
+        """Non-regression: the str path is untouched by the guard."""
+        assert _safe_filename_ext("scan.pdf") == "pdf"
+        assert _safe_filename_len("scan.pdf") == 8
+        assert _safe_filename_ext("scan.a@b") == "other"
+
+
+class TestUploadAttachmentNonStrFilenameDoesNotCrashBeforeValidation:
+    @pytest.mark.asyncio
+    async def test_none_filename_completes_instead_of_raising_type_error(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Guilt test: fails on b491d10138 with
+        ``TypeError: argument of type 'NoneType' is not iterable`` raised
+        out of the very FIRST log line in upload_attachment (PRE-VALIDATION
+        section) — before file size, filename length or sanitization ever
+        run. `sanitize_filename(None, ...)` already treats a falsy filename
+        as `"unnamed_file"`, so once the diagnostics helpers stop crashing,
+        the whole call completes normally with a safe placeholder name.
+        """
+        service._client = _mock_success_client()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            result = await service.upload_attachment(
+                user_id="user1",
+                filename=None,  # type: ignore[arg-type]
+                content=b"hello",
+                content_type="application/pdf",
+            )
+
+        assert result["attachment_id"] == "att1"
+        assert "filename_ext=other" in caplog.text

@@ -211,6 +211,21 @@ def machine_label() -> str:
     return host
 
 
+# agy's 40 s DEFAULT_TIMEOUTS budget (above) is measured on Pro, where the model call
+# alone answers PONG in 6.8-12 s. M5 is a different animal: the CLI itself prints PONG
+# in ~1 s (confirmed on a real tty), but Go's stdio to a non-tty fd (exactly what
+# capture_via_files gives it) is fully buffered, so the "judge partial stdout before
+# TIMEOUT" mitigation above never sees the reply until the WHOLE process exits — and on
+# M5 that exit is 58-95 s away even on a warm run (measured directly, three back-to-back
+# `agy -p "Reply with exactly: PONG"` calls, no ssh: 58.8 s, timeout at 30s with no
+# output, 74.7 s; a 110 s budget then returned LIVE at 94.6 s). --dangerously-skip-
+# permissions and --sandbox did not shorten this, which rules out a permissions.allow
+# gap as the cause (M5's settings.json already carries `command(agy)` plus ~150 other
+# entries). Bump only m5's floor; Pro/Mini keep the correct-for-them 40 s.
+if machine_label() == "m5":
+    DEFAULT_TIMEOUTS["agy"] = 120
+
+
 def is_ssh_context() -> bool:
     return bool(os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_TTY"))
 

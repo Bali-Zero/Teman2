@@ -204,38 +204,57 @@ async def record_email_result(
 # Redacting only `to_email` below is not enough for this Telegram alert —
 # it is an OUTPUT, not storage.
 #
-# Markdown/punctuation delimiters are excluded from the token class itself
-# (M5, PR #7385 round 2): this alert is sent with parse_mode="Markdown", and
-# the previous class (`[^\s@<>"'`]+`) happily consumed a closing `*`/`_` that
-# belonged to the SURROUNDING text, not the address — e.g. `*Delivery to
-# a@b*` lost its closing `*`, and Telegram then rejects the whole message as
-# malformed Markdown (swallowed below), which means the alert is DROPPED
-# entirely — worse than the leak it exists to prevent.
+# Markdown delimiters are part of the TOKEN CLASS again (C1, PR #7385 gate
+# follow-up — restores the round-1 shape): excluding them from the class
+# (M5, round 2) fixed the `*Delivery to a@b*` case but broke any address
+# that itself CONTAINS a delimiter — `first_last@x` matched only `last@x`
+# (the `_` split the local part in two, and the stray `first_` before it
+# never matched anything, so it survived unredacted); `x@sub_domain`
+# matched only `x@sub` for the same reason on the domain side. Excluding
+# `@`/whitespace/quotes/backtick/angle-brackets is enough to keep one
+# match from spanning two addresses or leaking past a sentence boundary;
+# `*_[]()` inside the span are the address's own characters until proven
+# otherwise. What M5 actually needed is peeling, not exclusion — see
+# `_redact` below: a LEADING/TRAILING run of delimiter chars right at the
+# very edge of the match (never in the interior) still belongs to the
+# surrounding Markdown, not the address, and goes back into the output
+# unredacted, keeping `*Delivery to a@b*`'s closing `*` (and Telegram's
+# parse_mode="Markdown" balance) intact.
 _MD_DELIMS = "*_[]()"
-_EMAIL_TOKEN_RE = re.compile(
-    rf"[^\s@<>\"'`{re.escape(_MD_DELIMS)}]+@[^\s@<>\"'`{re.escape(_MD_DELIMS)}]+"
-)
-#: Trailing sentence punctuation is stripped from a MATCHED token rather than
-#: excluded from the class above — excluding "." there would also refuse the
-#: dots inside a real domain. Only a trailing run right at the end of the
-#: match is punctuation the surrounding sentence owns, not the address.
-_TRAILING_PUNCT_RE = re.compile(r"[.,;:!?]+$")
+_EMAIL_TOKEN_RE = re.compile(r"[^\s@<>\"'`]+@[^\s@<>\"'`]+")
+#: Peeled off the START of a match — only `*_[]()` there is Markdown the
+#: sentence opened before the address, never legitimate leading address
+#: content (no valid local-part starts with one of these).
+_LEADING_MD_DELIM_RE = re.compile(rf"^[{re.escape(_MD_DELIMS)}]+")
+#: Peeled off the END of a match — Markdown delimiters AND trailing
+#: sentence punctuation (`.,;:!?`) together, in whatever order the
+#: sentence used them (e.g. `(a@b).` closes both the parenthetical and
+#: the sentence). Excluding "." from the class above instead would also
+#: refuse the dots inside a real domain, which the class must accept.
+_TRAILING_MD_DELIM_PUNCT_RE = re.compile(rf"[{re.escape(_MD_DELIMS)}.,;:!?]+$")
 
 
 def _scrub_email_tokens(text: str) -> str:
     """Replace every email-shaped token in ``text`` with its log-safe digest.
 
-    Markdown delimiters immediately touching the token are left in the
-    surrounding text (never consumed into the match); trailing sentence
-    punctuation on the matched token itself is preserved the same way.
+    A leading/trailing run of Markdown delimiters (and, trailing only,
+    sentence punctuation) is peeled off the match first and reattached to
+    the output verbatim — it belongs to the surrounding text, not the
+    address — so it is never fed to the redactor and never dropped. Any
+    delimiter INSIDE the match (e.g. `first_last@x`'s `_`) is part of the
+    address as far as this function is concerned and is consumed into the
+    digest like any other character, so no fragment of it survives.
     """
 
     def _redact(match: re.Match[str]) -> str:
         token = match.group(0)
-        trailing = _TRAILING_PUNCT_RE.search(token)
+        leading = _LEADING_MD_DELIM_RE.match(token)
+        prefix = leading.group(0) if leading else ""
+        core = token[len(prefix) :]
+        trailing = _TRAILING_MD_DELIM_PUNCT_RE.search(core)
         suffix = trailing.group(0) if trailing else ""
-        core = token[: len(token) - len(suffix)] if suffix else token
-        return redact_identifier_for_log(core) + suffix
+        core = core[: len(core) - len(suffix)] if suffix else core
+        return prefix + redact_identifier_for_log(core) + suffix
 
     return _EMAIL_TOKEN_RE.sub(_redact, text)
 
@@ -246,7 +265,21 @@ def _scrub_email_tokens(text: str) -> str:
 #: with nothing after `@` never matches, so it would survive truncation
 #: unredacted. This strips a trailing PARTIAL token — the same case is
 #: reachable whether or not `@` is actually present in it.
-_TRAILING_PARTIAL_TOKEN_RE = re.compile(r"\S+$")
+def _strip_trailing_partial_token(text: str) -> str:
+    """Drop the trailing run of non-whitespace chars — same result as
+    ``re.sub(r"\\S+$", "", text)``, replaced (C6, CodeQL alert 9192,
+    ``py/polynomial-redos``) because that pattern is genuinely polynomial:
+    fed 20k chars directly it measured ~2.0s, even though its only caller
+    (`_bounded_scrub`) already bounds every call to its own 120/400-char
+    ``limit`` (~1.4ms there) and the shape is unreachable at the size that
+    made it slow. A right-to-left linear scan for the last whitespace
+    character has the same worst case on any input size — it walks the
+    string once, never backtracks.
+    """
+    i = len(text)
+    while i > 0 and not text[i - 1].isspace():
+        i -= 1
+    return text[:i]
 
 
 def _bounded_scrub(text: str, limit: int) -> str:
@@ -259,15 +292,29 @@ def _bounded_scrub(text: str, limit: int) -> str:
     truncating first can cut an address mid-token; if the cut did not land
     on a whitespace boundary, the trailing partial token is dropped entirely
     before scrubbing runs, rather than left for the regex to (fail to) catch.
-    Only applied when truncation actually removed something — text that
-    already fits under ``limit`` is untouched, so an untruncated string
-    ending in ordinary punctuation (e.g. Markdown's `*word*`) is not
-    mistaken for a mid-token cut.
+
+    Only applied when the cut is actually mid-token: both `text[limit - 1]`
+    (the last kept char) AND `text[limit]` (the first dropped char) must be
+    non-whitespace (C3, PR #7385 gate follow-up). Checking only the first
+    of those — the pre-fix shape — could not tell "cut mid-token" apart
+    from "cut landed exactly on a token boundary", and dropped a COMPLETE
+    last token whenever the very next original character happened to be
+    whitespace (e.g. `limit=3` on `"abc def"`: `text[3]` is a space, `"abc"`
+    is whole, but the old check saw `"abc"[-1]` was not whitespace and
+    stripped it to `""` anyway). A single token longer than `limit` with no
+    whitespace at all in it — the shape this function exists to bound —
+    still collapses to an empty field either way: there is no boundary to
+    keep any of it on.
     """
     was_truncated = len(text) > limit
     truncated = text[:limit]
-    if was_truncated and truncated and not truncated[-1].isspace():
-        truncated = _TRAILING_PARTIAL_TOKEN_RE.sub("", truncated).rstrip()
+    if (
+        was_truncated
+        and truncated
+        and not truncated[-1].isspace()
+        and not text[limit].isspace()
+    ):
+        truncated = _strip_trailing_partial_token(truncated).rstrip()
     return _scrub_email_tokens(truncated)
 
 
