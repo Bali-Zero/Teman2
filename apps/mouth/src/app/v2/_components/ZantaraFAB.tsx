@@ -1,17 +1,22 @@
 "use client";
 
+import { BZLogo } from "@balizero/core/components/BZLogo";
+import { useR19 } from "@/components/r19/R19Presentation";
+
 // Zantara FAB — premium pill with lotus glyph.
 // Fixed bottom-right. Purple gradient, live status dot, "Ask Zantara" label.
 export function ZantaraFAB() {
+  const isR19 = useR19();
   return (
     <button
       id="zantara-fab"
       aria-label="Ask Zantara, your AI assistant"
       className="fab-zantara fixed z-[50] flex items-center gap-3 rounded-full transition-all hover:-translate-y-1 hover:scale-[1.03] group p-[10px] sm:pr-[20px]"
       style={{
-        background: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
+        background:
+          "var(--r19-slate, linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%))",
         boxShadow:
-          "0 8px 32px rgba(139, 92, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+          "var(--r19-fab-shadow, 0 8px 32px rgba(139, 92, 246, 0.5)), inset 0 1px 0 rgba(255,255,255,0.2)",
         border: "1px solid rgba(255,255,255,0.18)",
         bottom: 24,
         right: 24,
@@ -19,6 +24,7 @@ export function ZantaraFAB() {
     >
       {/* Lotus disc */}
       <span
+        aria-hidden="true"
         className="flex items-center justify-center rounded-full shrink-0 relative"
         style={{
           width: 40,
@@ -26,16 +32,24 @@ export function ZantaraFAB() {
           background: "rgba(255,255,255,0.22)",
         }}
       >
-        <img
-          src="/static/zantara-lotus.png"
-          alt=""
-          style={{
-            width: 24,
-            height: 24,
-            objectFit: "contain",
-            filter: "brightness(0) invert(1)",
-          }}
-        />
+        {isR19 ? (
+          <BZLogo
+            variant="zantara"
+            size={24}
+            className="object-contain brightness-0 invert"
+          />
+        ) : (
+          <img
+            src="/static/zantara-lotus.png"
+            alt=""
+            style={{
+              width: 24,
+              height: 24,
+              objectFit: "contain",
+              filter: "brightness(0) invert(1)",
+            }}
+          />
+        )}
         {/* Online pulse */}
         <span
           className="absolute rounded-full"
@@ -45,7 +59,7 @@ export function ZantaraFAB() {
             width: 14,
             height: 14,
             background: "#22c55e",
-            border: "2px solid #6d28d9",
+            border: "2px solid var(--r19-slate, #6d28d9)",
             boxShadow: "0 0 10px rgba(34,197,94,0.8)",
           }}
         />

@@ -18,7 +18,7 @@ const CHANNELS = [
     value: "+62 821 3454 721",
     href: buildWhatsAppLink("home"),
     note: "Fastest response.",
-    accent: "#22c55e",
+    accent: "var(--r19-slate, #22c55e)",
     fill: "solid" as const,
   },
   {
@@ -29,7 +29,7 @@ const CHANNELS = [
     note: "For documents, scans, and longer threads.",
     // Rumah Putih: the light card's "Open" CTA reads `accent` — navy keeps it
     // legible on the white card (white #ffffff here was invisible-on-white).
-    accent: "#1e3863",
+    accent: "var(--r19-slate, #1e3863)",
     fill: "light" as const,
   },
   {
@@ -38,7 +38,7 @@ const CHANNELS = [
     value: "Jalan Raya Anyar n.2, Kerobokan, Bali",
     href: GOOGLE_MAPS_URL,
     note: "By appointment — tap to open on Google Maps.",
-    accent: "#c8102e",
+    accent: "var(--r19-slate, #c8102e)",
     fill: "solid" as const,
   },
 ];

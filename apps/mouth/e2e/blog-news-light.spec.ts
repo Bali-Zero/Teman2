@@ -1,21 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
 
-/**
- * MYTHOS Stage-B Batch 1 — Rumah Putih LIGHT theme for the public blog/news.
- *
- * Pins the route-scoped light conversion of /news and the article detail page:
- *   - the page's top-level wrapper carries the warm-paper surface
- *     (--surface-base #f7f6f2 → rgb(247, 246, 242)) via RUMAH_VARS;
- *   - NavShell (the fixed masthead) + Footer stay their dark navy anchors
- *     (they read --nav-bg / --footer-bg, NOT --surface-base), per the
- *     Economist permanent-dark-chrome pattern;
- *   - no horizontal overflow at 390px (mobile) on either page.
- *
- * Describe title contains "page Page" — required by the CI grep
- * (.github/workflows/tests.yml runs `npx playwright test --grep "page Page"`).
- */
+/** R19 public presentation. The page Page title is the CI discovery contract. */
 
-const PAPER = "rgb(247, 246, 242)"; // --surface-base #f7f6f2 under Rumah Putih
+test.beforeEach(async ({ page }) => {
+  await page.route("**/*", (route) =>
+    ["GET", "HEAD"].includes(route.request().method())
+      ? route.continue()
+      : route.fulfill({ status: 204, body: "" }),
+  );
+});
+
+const PAPER = "rgb(247, 244, 238)"; // R19 paper
 
 /** Parse "rgb(r, g, b)" / "rgba(r, g, b, a)" → {r,g,b}. */
 function parseRgb(value: string): { r: number; g: number; b: number } | null {
@@ -42,8 +37,12 @@ async function assertNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
+test.afterEach(async ({ page }) => {
+  await page.close();
+});
+
 test.describe("blog news light page Page", () => {
-  test("/news renders on warm paper with a navy masthead + footer", async ({
+  test("/news renders on warm paper with R19 paper chrome", async ({
     page,
   }) => {
     await page.goto("/news");
@@ -56,21 +55,21 @@ test.describe("blog news light page Page", () => {
     );
     expect(wrapperBg).toBe(PAPER);
 
-    // Masthead (fixed nav) stays a dark navy anchor.
+    // The converted masthead uses R19 paper.
     const nav = page.locator("nav").first();
     await expect(nav).toBeVisible();
     const navBg = await nav.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(isDark(navBg)).toBe(true);
+    expect(navBg).toBe(PAPER);
 
-    // Footer stays dark too.
-    const footer = page.locator("footer").first();
+    // The converted footer uses the R19 wash.
+    const footer = page.locator("footer").last();
     await expect(footer).toBeAttached();
     const footerBg = await footer.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(isDark(footerBg)).toBe(true);
+    expect(footerBg).toBe("rgb(238, 233, 225)");
   });
 
   test("/news has no horizontal overflow at 390px", async ({ page }) => {
@@ -80,7 +79,7 @@ test.describe("blog news light page Page", () => {
     await assertNoHorizontalOverflow(page);
   });
 
-  test("article detail renders ink-on-paper with navy chrome", async ({
+  test("article detail renders ink-on-paper with R19 chrome", async ({
     page,
   }) => {
     // Discover a real article from /news (resilient to content changes).
@@ -117,12 +116,12 @@ test.describe("blog news light page Page", () => {
       expect(isDark(textColor)).toBe(true);
     }
 
-    // Masthead + footer stay navy.
+    // The article uses the same R19 chrome as News.
     const navBg = await page
       .locator("nav")
       .first()
       .evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(isDark(navBg)).toBe(true);
+    expect(navBg).toBe(PAPER);
   });
 
   test("article detail has no horizontal overflow at 390px", async ({

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { R19_VARS } from "@/components/r19/presentation";
 
 const ARTICLE = join(
   __dirname,
@@ -146,12 +147,37 @@ describe("WhatsApp accent ink guard", () => {
     }
   });
 
-  it("only the green-fill services CTA selects the dark ink", () => {
+  it("services CTA keeps dark ink on legacy green and sufficient contrast in R19", () => {
     const source = readFileSync(SERVICES, "utf8");
 
-    expect(source).toContain('accent: "#22c55e",');
+    expect(source).toContain('accent: "var(--r19-slate, #22c55e)",');
     expect(source).toContain('ctaInk: "var(--accent-whatsapp-ink)",');
-    expect(source).toContain('color: s.ctaInk ?? "#ffffff",');
+    expect(source).toContain(
+      'color: `var(--r19-cta-ink, ${s.ctaInk ?? "#ffffff"})`,',
+    );
+    const tokens = R19_VARS as Record<string, string>;
+    const luminance = (hex: string) => {
+      const rgb = hex
+        .replace("#", "")
+        .match(/../g)!
+        .map((value) => {
+          const channel = parseInt(value, 16) / 255;
+          return channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+      return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+    };
+    const pairs = [
+      ["#22c55e", "#0d3a1f"],
+      [tokens["--r19-slate"], tokens["--r19-cta-ink"]],
+    ];
+    for (const [fill, ink] of pairs) {
+      const values = [luminance(fill), luminance(ink)].sort((a, b) => b - a);
+      expect((values[0] + 0.05) / (values[1] + 0.05)).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    }
   });
 
   it("the sweep actually visits a realistic number of files (not a silently-empty glob)", () => {

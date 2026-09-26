@@ -1,0 +1,94 @@
+task: >-
+  Third unit of the R19 public-site cutover (plan: Pro worktree mouth-r19-cutover-audit-20260924,
+  docs/plans/r19-cutover-20260924/PLAN.md, the activation that follows the dormant foundation of
+  step 2, merged as #7428). Switch the editorial perimeter of apps/mouth to the R19 presentation
+  layer: / (a transplanted R19 home), /news and the category pages, the article readers, /team,
+  /services and the service detail pages, /contact. R19 is scoped by isR19Route
+  (components/r19/routePolicy.ts) inside R19Presentation, mounted in the (blog) layout and provided
+  by R19HomeProvider on the home; the shared v2 components it touches (MobileNav, ZantaraFAB,
+  Footer, HeroBlueprint, NewsHero, PersonaDoors, NavWhatsAppCTA) are either useR19()-gated or read a
+  var(--r19-*, <old literal>) alias. Owner ruling of Zero, 2026-09-27 Bali time (the evening of
+  2026-09-26 UTC): the R19 home keeps WhatsApp above the fold, so the hero carries "Start on
+  WhatsApp" (WhatsAppLeadButton, source homepage_hero, same contract as the pre-R19 home) and the
+  R19 header carries NavWhatsAppCTA (event home_whatsapp_cta with trigger nav). The funnels stay on
+  their current design and are not touched: /visa-oracle, /visa/second-home (+studio), /visa/voa,
+  /kbli, /property and /property/eligibility, /taxes/*, /tax-calendar, /v2, the portal.
+lane: mouth
+machine: pro
+date: 2026-09-26
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 2 by the SIZE term alone on the three activation commits, and 3 by the same term
+  once the footer cure and this pack are counted (scripts/evidence_pack_lint.py --print-floor over
+  the three activation commits: 23 files, +1190/-239, about +950 net, of which about 830 lines are
+  the two new e2e specs; the footer cure b6dd8aa649 later brought the branch to 26 files, +1297/-240); no hot-zone path. Gear 3 is declared above the floor by choice: this is
+  the unit that changes what balizero.com renders to every visitor of the front door, on the
+  surface that carries the company's WhatsApp and lead-capture contract, and it edits shared
+  components that funnel layouts also import, so "the funnels do not change" has to be falsified by
+  seats outside the author's chain and not merely asserted. The work does not split usefully below
+  the current size: the layout switch, the home transplant and the WhatsApp restoration are one
+  visible change, and the specs that pin it ship with it.
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Funnels render unchanged. The R19 wrapper is route-gated and data-presentation="r19" is
+    present on every editorial route and absent on every funnel route; every edit to a shared v2
+    component is either behind useR19() or reads a var(--r19-*, literal) alias whose fallback is
+    the literal it replaced.
+    probe: >-
+      built app under next start: curl of / /news /business /business/<article> /team /services
+      /services/visa /services/compliance /services/tax /contact → exactly one
+      data-presentation="r19" each; /visa-oracle /visa-oracle/unlock /visa/second-home
+      /visa/second-home/studio /visa/voa /kbli /kbli-explorer /property /property/eligibility
+      /taxes/gap /tax-calendar /v2 → zero.
+  A2: >-
+    WhatsApp and contact destinations and the analytics event names and payloads are unchanged
+    from the pre-R19 home, except layout; both WhatsApp actions sit above the fold.
+    probe: >-
+      apps/mouth/e2e/r19-home-contact.spec.ts (24 tests, chromium): every wa.me link dials
+      WA_NUMBER from lib/whatsapp-utm, hero and nav handoffs emit the existing capture payload,
+      lead_whatsapp_cta, lead_created, home_whatsapp_cta{trigger:"nav"} and the funnel beacon, the
+      footer WhatsApp link is the same tracked link as the pre-R19 footer (home link, home_whatsapp_cta
+      {trigger:"footer"}) and its Telegram, Email, Phone and Location links equal the v2 footer's,
+      captured=false fallback dials the same number, both actions inside the first 900px at 390 and
+      1440.
+  A3: >-
+    No SEO change: title, canonical, googlebot/robots meta, og:title, og:url, hreflang and the
+    JSON-LD type set of / /news /team /services /contact equal production's.
+    probe: >-
+      curl of http://localhost:3142 (next start of this head) against https://balizero.com for the
+      five routes; the only difference in the whole head is the per-request Sentry baggage and
+      sentry-trace meta tags.
+  A4: >-
+    Builds and tests green.
+    probe: >-
+      apps/mouth: tsc rc 0, vitest 553 files / 7281 passed / 2 skipped, next build --webpack rc 0
+      (also with the CI Playwright env), public login bundle guard rc 0, roster chunk guard rc 0,
+      brand_api_gen --check rc 0, Playwright chromium 48 passed across r19-presentation,
+      r19-home-contact, blog-news-light, service-pages-light (r19-home-contact 72 passed at repeat-each 3).
+  A5: >-
+    Live, after promote: balizero.com / shows the R19 hero and both WhatsApp CTAs above the fold at
+    390 and 1440 wide; the editorial routes carry data-presentation="r19"; the funnels are
+    unchanged.
+    probe: >-
+      public-domain browser check of /, /news, /team, /services and /contact at 390 and 1440 once
+      the production deployment is promoted (mouth deployments land staged and go live only on
+      vercel promote), plus the funnel routes' marker absence and one funnel screenshot each.
+
+out_of_scope: >-
+  The funnels listed in the task (design, copy, routes, analytics), the portal, /v2, the visa and
+  KBLI content, any SEO or metadata edit, any backend or packages/core change, the new-language
+  article translations sitting untracked in the main checkout. The promote and the live acceptance
+  A5 are done after merge by the session that ships, not by this pack.
+
+assumptions: >-
+  The evidence directory name is derived from the branch by scripts/ci/evidence_paths.py. The
+  before-state for A2 and A3 is origin/main for the code and https://balizero.com for the rendered
+  head, taken while production still serves the tree of 2c79f65096. ESLint cannot run locally
+  (eslint-plugin-react vs ESLint 10); CI lints. This head is the three activation commits rebased
+  onto origin/main ca168b59da, which brought in only the clock-chat backend fix and a ledger row.
