@@ -763,6 +763,19 @@
           "guilt": ["test_size_guilt_oversize_rejected"],
           "innocence": ["test_size_innocence_at_cap_passes"]
         },
+        "check_no_plain_scalar_hash_truncation": {
+          "scar": ["harness-v2-5", "superscar-3-guard-over-match"],
+          "guilt": [
+            "test_hash_trunc_guilt_mapping_value_convicted_post_flip",
+            "test_hash_trunc_guilt_list_item_value_convicted"
+          ],
+          "innocence": [
+            "test_hash_trunc_innocence_pre_flip_notices_never_convicts",
+            "test_hash_trunc_innocence_quoted_value_never_fires",
+            "test_hash_trunc_innocence_folded_block_scalar_body_never_fires",
+            "test_hash_trunc_innocence_bare_comment_line_never_fires"
+          ]
+        },
         "check_brief_ref_exists": {
           "scar": ["harness-v2-5"],
           "guilt": [
