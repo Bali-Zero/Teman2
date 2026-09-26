@@ -26,10 +26,12 @@ inverted sign — it wants its own guilt+innocence, not just a new "yes"):
   SHIPPED-ALLOWLIST PIN (2026-09-26) — the two append-union ledgers,
               shared/escalations_pro.jsonl and shared/hotfix_audit.jsonl,
               are dirtied on M5 and Mini too, not only Pro. Loading the REAL
-              allowlist file: both dirty together open the exception on
-              m5, mini and pro (innocence); a Pro-only path dirty on m5, a
-              ledger plus any undeclared file, or an undeclared host label
-              keep it shut (guilt).
+              allowlist file: both dirty together open the exception on m5,
+              and escalations alone opens it on mini and pro (innocence); a
+              Pro-only path dirty on m5, a ledger plus any undeclared file,
+              an undeclared host label, or hotfix_audit dirty on pro or mini
+              keep it shut (guilt). hotfix_audit stays m5-only because
+              pro-git-pull.sh reads any "pro" entry as Pro-authoritative.
 
     python3 infra/claude-hooks/test_runtime_state_allowlist.py
 Exit 0 = allowlist behaves on both polarities. Exit 1 = regression.
@@ -241,13 +243,21 @@ def main() -> int:
         def _reset() -> None:
             _git(repo, "checkout", "--", *ledgers, pa_rel, "apps.py")
 
-        for label in ("m5", "mini", "pro"):
+        declared = {"m5": ledgers, "mini": ledgers[:1], "pro": ledgers[:1]}
+        for label, dirty in declared.items():
             mod._machine_label = lambda hostname=None, _l=label: _l
-            _dirty(*ledgers)
+            _dirty(*dirty)
             if not mod._main_tree_tracked_clean():
-                failures.append(f"SHIPPED INNOCENCE: both union ledgers dirty on {label} wrongly shut the exception")
+                failures.append(f"SHIPPED INNOCENCE: declared ledgers {dirty} dirty on {label} wrongly shut the exception")
             if not (mod._only_ffonly_pull(cmd_scan) and mod._main_tree_tracked_clean()):
-                failures.append(f"SHIPPED INTEGRATION: ff-only pull does not open on {label} with only the union ledgers dirty")
+                failures.append(f"SHIPPED INTEGRATION: ff-only pull does not open on {label} with only {dirty} dirty")
+            _reset()
+
+        for label in ("pro", "mini"):
+            mod._machine_label = lambda hostname=None, _l=label: _l
+            _dirty("shared/hotfix_audit.jsonl")
+            if mod._main_tree_tracked_clean():
+                failures.append(f"SHIPPED GUILT: m5-only hotfix_audit.jsonl dirty on {label} wrongly opens the exception")
             _reset()
 
         mod._machine_label = lambda hostname=None: "m5"
@@ -275,8 +285,8 @@ def main() -> int:
     print("OK — every REAL allowlist path is a tracked blob (W91 reality-check, exact not "
           "pathspec: 3 guilt), and the allowlist opens the ff-only exception ONLY for declared "
           "Pro paths (2 innocence + 5 guilt + 1 integration + 1 baseline), and the SHIPPED "
-          "allowlist opens it for the two union ledgers on m5/mini/pro only (3 innocence + 3 "
-          "integration + 3 guilt)")
+          "allowlist opens it for the union ledgers only where each is declared (3 innocence + 3 "
+          "integration + 5 guilt)")
     return 0
 
 
