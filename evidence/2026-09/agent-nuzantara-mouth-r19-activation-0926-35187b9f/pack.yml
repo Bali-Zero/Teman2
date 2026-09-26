@@ -11,9 +11,9 @@ council_note: >-
   already happened. Two seats ran, both titolari: kimi-code/k3 (read access to the worktree) and
   tp1-qwen3.8-max (no repo access, redacted diff plus verbatim probe output). They disagree on claim 2:
   Kimi returned FALSIFIED on claims 2 and 5, Qwen returned HOLDS on all five. The author read both footers
-  against each other and CONFIRMED Kimi's finding on claim 2 (see dissent and the last two receipts); Qwen
+  against each other and CONFIRMED Kimi's finding on claim 2 (see dissent and the footer receipt of 18:16:11Z); Qwen
   did not see the pre-change footer, so its HOLDS on claim 2 is superseded on that point. The disagreement
-  is left visible and the finding is left OPEN.
+  is left visible; the finding was then cured in b6dd8aa649 and re-checked by Kimi on claim 2 (journal line 3).
 seat_fallback_reason: >-
   No seat was substituted. The third titolare, codex-gpt-5.6-sol, is the author of the R19 snapshot
   (see lanes_note) and was not dispatched: a Codex review of Codex-authored code would not be independent,
@@ -30,8 +30,10 @@ lanes:
     role: build
     seat: >-
       claude-opus-5-5 (conducting session) with claude-sonnet-5 (implementers): the three activation
-      commits carry both Co-Authored-By trailers; the verification battery, the review dispatches and this
-      pack were run by a claude-sonnet-5 continuation session on the rebased head
+      commits carry both Co-Authored-By trailers; the verification batteries, the review dispatches, the
+      footer cure (b6dd8aa649) and this pack were run by a claude-sonnet-5 continuation session on the
+      rebased head, the second battery through a delegated claude-sonnet-5 subagent whose logs the
+      continuation session read back before recording any number
   - lane: kimi-red-team
     role: review
     seat: kimi-code/k3
@@ -41,7 +43,7 @@ lanes:
   - lane: final-gate
     role: review
     seat: claude-opus-5-5 (fresh read-only session outside the contribution chain)
-    status: pending, signs after this pack is committed and the OPEN finding below is dispositioned
+    status: pending, signs after this pack is committed
 lanes_note: >-
   D3 (seat diversity among build lanes) is met by the first build lane, the external prepare-only builder
   of the snapshot, named as Codex (GPT-5.6 Sol). That attribution rests on Zero's confirmation of
@@ -56,13 +58,20 @@ snapshot_provenance: >-
   R19-aware edits of seven shared v2 components, the header and hero WhatsApp actions in r19/home/Entry.tsx
   and home.css, and the tests. r19/home/Footer.tsx is NOT part of this diff.
 spend:
-  wall_clock_hours: 3.1
-  adversarial_rounds: 1
+  wall_clock_hours: 3.8
+  adversarial_rounds: 2
 spend_note: >-
   Wall clock from the creation of this worktree (.git file birth 2026-09-26T15:47:14Z) to the last lint run
-  (about 18:55Z). It includes the predecessor session's work on the three activation commits (author times
-  16:11Z, 16:32Z, 16:58Z) and this session's verification battery, review dispatch and pack. Adversarial
-  rounds: one, Kimi K3 and Qwen 3.8 Max dispatched in parallel, no retry.
+  (about 19:35Z). It includes the predecessor session's work on the three activation commits (author times
+  16:11Z, 16:32Z, 16:58Z), this session's first verification battery, review dispatch and pack, and the
+  footer cure with its second battery and re-check. Adversarial rounds: two. Round 1: Kimi K3 and Qwen 3.8
+  Max dispatched in parallel, no retry. Round 2: Kimi K3 on claim 2 only, on the head that carries the cure.
+  Wall clock is inside the brief's appetite of four hours; the rounds are one over its appetite of one, by
+  design: round 1 confirmed a finding, and a cure has to be re-checked.
+appetite_exceeded: >-
+  adversarial_rounds 2 against a declared 1. Round 1 (Kimi K3 and Qwen 3.8 Max) confirmed a finding, the home
+  footer's lost tracked WhatsApp link, Telegram and Location links (dissent 1); the cure needed its own re-check
+  (round 2, Kimi K3 on claim 2). Wall clock, 3.8 hours against 4, stayed inside the ceiling.
 pii_scan: clean
 pii_scan_note: >-
   Added-line sweep of the candidate diff for e-mail, +62 numbers, passport, NPWP, NIK, KTP: only the company
@@ -104,7 +113,7 @@ receipts:
     exit: 0
     ts: 2026-09-26T17:46:31Z
     seat: claude-sonnet-5
-  - claim: production build compiles and generates every static page, once plain and once with the CI Playwright env
+  - claim: production build (head e80bf32873) compiles and generates every static page, once plain and once with the CI Playwright env
     cmd: >-
       cd apps/mouth && npx next build --webpack ; then the same with NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS=1
       NEXT_PUBLIC_HIDE_CELL_WIDGET=1 NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER set as playwright.config.ts's
@@ -125,7 +134,7 @@ receipts:
     exit: 0
     ts: 2026-09-26T18:01:09Z
     seat: claude-sonnet-5
-  - claim: Playwright Chromium is green on the four specs that pin the activation, against next start of the env build
+  - claim: Playwright Chromium is green on the four specs that pin the activation, against next start of the env build (head e80bf32873, before the footer cure)
     cmd: >-
       cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3142 npx playwright test
       --config=playwright.config.ts --project=chromium e2e/r19-presentation.spec.ts e2e/r19-home-contact.spec.ts
@@ -189,6 +198,74 @@ receipts:
     exit: 0
     ts: 2026-09-26T18:03:18Z
     seat: claude-sonnet-5
+  - claim: the cure commit b6dd8aa649 touches four files, all under apps/mouth, and the cured footer carries the tracked WhatsApp link, Telegram and Location
+    cmd: >-
+      git diff HEAD~1 HEAD --stat ; git diff --name-only origin/main...HEAD | grep -v '^evidence/' | grep -vc '^apps/mouth/' ;
+      grep -c on FooterWhatsAppLink.tsx and Footer.tsx for buildWhatsAppLink("home"), home_whatsapp_cta, trigger "footer",
+      a bare wa.me/, destinations.telegram and destinations.officeMap
+    result: >-
+      4 files, +139/-33 (spec, Footer.tsx, FooterWhatsAppLink.tsx new, destinations.ts); outside apps/mouth=0
+      of 26 non-evidence files; FooterWhatsAppLink has buildWhatsAppLink("home")=1, home_whatsapp_cta and
+      trigger "footer" present; Footer.tsx has bare wa.me/=0 and reaches Telegram and the map only through
+      destinations (https://t.me/Balizerobot and https://maps.google.com/?q=Bali+Indonesia, the literals of the
+      v2 Footer on origin/main). Non-evidence diff of the branch is now 26 files, +1297/-240.
+    exit: 0
+    ts: 2026-09-26T19:18:52Z
+    seat: claude-sonnet-5
+  - claim: typecheck is clean at head b6dd8aa649's tree
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: no output (log 0 bytes); the pre-commit hook of the cure commit also ran the mouth typecheck and passed
+    exit: 0
+    ts: 2026-09-26T18:57:40Z
+    seat: claude-sonnet-5
+  - claim: vitest is green on the touched directory and on the full mouth suite with the cure in the tree
+    cmd: cd apps/mouth && npx vitest --run src/components/r19 ; npx vitest --run
+    result: >-
+      r19 directory: Test Files 5 passed (5), Tests 42 passed (42); full suite: Test Files 553 passed (553),
+      Tests 7281 passed, 2 skipped (7283)
+    exit: 0
+    ts: 2026-09-26T18:59:15Z
+    seat: claude-sonnet-5
+  - claim: brand API artifacts are still fresh
+    cmd: python3 scripts/brand_api_gen.py --check
+    result: "brand-api OK — 32 components, artifacts fresh"
+    exit: 0
+    ts: 2026-09-26T18:59:20Z
+    seat: claude-sonnet-5
+  - claim: production build with the CI Playwright env compiles, generates every static page, and both bundle guards pass
+    cmd: >-
+      cd apps/mouth && NEXT_PUBLIC_HIDE_QUERY_DEVTOOLS=1 NEXT_PUBLIC_HIDE_CELL_WIDGET=1
+      NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER=628123456789 npx next build --webpack ;
+      node scripts/assert-public-login-bundle.mjs ; node scripts/assert-roster-not-in-public-chunks.mjs
+    result: >-
+      "Compiled successfully in 29.7s"; 1740 of 1740 static pages; "PUBLIC_LOGIN_BUNDLE_OK: inspected 5
+      assets; no internal API route prefixes found"; "ROSTER_CHUNK_ASSERT OK: scanned 509 chunks"
+    exit: 0
+    ts: 2026-09-26T19:01:33Z
+    seat: claude-sonnet-5
+  - claim: Playwright Chromium is green on the four specs with the cure, and r19-home-contact is stable over three repeats
+    cmd: >-
+      cd apps/mouth && PLAYWRIGHT_EXTERNAL_SERVER=1 BZ_E2E_PORT=3142 npx playwright test
+      --config=playwright.config.ts --project=chromium e2e/r19-presentation.spec.ts e2e/r19-home-contact.spec.ts
+      e2e/blog-news-light.spec.ts e2e/service-pages-light.spec.ts ; the same with --repeat-each 3 on
+      e2e/r19-home-contact.spec.ts alone
+    result: >-
+      48 passed (59.4s): r19-presentation 14, r19-home-contact 24, blog-news-light 4, service-pages-light 6;
+      then 72 passed (1.1m) at repeat-each 3; 0 failed, 0 flaky. Then, after prettier reformatted the spec (one
+      statement wrapped differently, no logic change) for the pre-commit gate, r19-home-contact once more:
+      24 passed (1.2m), 2026-09-26T19:08:58Z. Chromium only. The new spec cases were not run against the
+      pre-cure footer, so their failing-on-the-old-footer property is argued from the code, not observed.
+    exit: 0
+    ts: 2026-09-26T19:08:58Z
+    seat: claude-sonnet-5
+  - claim: the kimi-code/k3 re-check of claim 2 alone on the cure head returned a usable verdict
+    cmd: >-
+      ~/.kimi-code/bin/kimi -p "<claim-2-only prompt, read-only>" -m kimi-code/k3 < /dev/null (timeout 1200),
+      run on head b6dd8aa649 (the pack update lands in the next commit)
+    result: VERDICT HOLDS on claim 2 for the footer, 2927 bytes, dispatched 19:18:15Z, returned 19:21:29Z
+    exit: 0
+    ts: 2026-09-26T19:21:29Z
+    seat: claude-sonnet-5
 dissent:
   - seat: kimi-code/k3
     verdict: FALSIFIED
@@ -201,17 +278,21 @@ dissent:
       utm and fallback as HeroCTA; header: NavWhatsAppCTA firing home_whatsapp_cta{trigger:"nav"}).
     status: CONFIRMED
     disposition: >-
-      OPEN. Confirmed by the author against both files (the footer receipt, 18:16:11Z). The footer is below the fold and
-      outside Zero's 2026-09-27 ruling, and r19-home-contact.spec.ts:172 pins it as a "plain link", so the
-      change was known to the activation session but is recorded nowhere else. It is a real loss: WhatsApp
-      contacts entering through the home footer no longer carry the utm attribution or the greeting, and the
-      footer trigger of home_whatsapp_cta stops firing. Not cured in this pack: a cure edits the candidate
-      (r19/home/Footer.tsx or a tracked link component), so it needs the whole battery and a fresh review, and
-      dropping Telegram and Location is a design decision that is Zero's. Decision needed before arming: (a)
-      restore the tracked footer WhatsApp link (buildWhatsAppLink("home") plus the existing event) and rule on
-      Telegram and Location, or (b) accept the R19 footer as designed, by Zero's explicit ruling, and lower A2
-      to the above-the-fold actions and the eight cta_handoff links. Until then acceptance A2 is NOT met for
-      the footer.
+      RESOLVED in b6dd8aa649 ("fix(mouth): keep the R19 footer's tracked WhatsApp, Telegram and location
+      links"). Confirmed by the author against both files before the cure (the footer receipt, 18:16:11Z);
+      Zero's ruling was not needed: PLAN section 2 keeps existing contact destinations and analytics event
+      names as the contracts. The cure: FooterWhatsAppLink (buildWhatsAppLink("home"), new tab, rel
+      noopener noreferrer, home_whatsapp_cta with {trigger:"footer"} and the session id, as the v2 Footer
+      fires on "/"), and Telegram and Location restored with the v2 Footer's own literals
+      (https://t.me/Balizerobot, https://maps.google.com/?q=Bali+Indonesia) held in destinations.ts. R19
+      styling is unchanged. Re-checked by the same seat on the cure head: VERDICT HOLDS on claim 2, link by link
+      (WhatsApp, Telegram, Email, Phone, Location: href, target, rel, event name and payload identical to the
+      pre-R19 footer), and it read the e2e assertions that pin it (journal line 3, receipts of 18:57Z to
+      19:21Z). One caveat it recorded as non-falsifying: the R19 footer also carries a "Client reviews" link to
+      GOOGLE_MAPS_URL and other navigation links the old footer lacked, outside the contact block and firing no
+      events, inside the "except layout" carve-out. Note for the reader: the Location destination is the v2
+      Footer's generic maps search, as ruled by "same destinations as the current footer", not the Google
+      Business Profile URL GOOGLE_MAPS_URL that "Client reviews" uses.
   - seat: kimi-code/k3
     verdict: FALSIFIED
     objection: >-
@@ -258,8 +339,13 @@ dissent:
       second receipt, zero paths outside).
 residual_risks:
   - >-
-    The R19 home footer finding (dissent 1) is OPEN. The pack cannot be signed by the final gate until it is
-    dispositioned by a fix and a re-run, or by Zero's ruling.
+    The footer cure (b6dd8aa649) was re-checked by Kimi K3 on claim 2 only; claims 1, 3, 4 and 5 were judged
+    on the head before the cure by both seats, and the cure touches only Footer.tsx, a new client link, the
+    destinations file and the spec, so the SEO and marker probes of 17:57Z were not repeated. If anything
+    outside the footer changes before arming, they must be.
+  - >-
+    The new footer spec cases were not run against the pre-cure footer, so that they fail there is argued from
+    the code (bare wa.me href, no Telegram or Location link), not observed. A pre-cure build would settle it.
   - >-
     Playwright ran on Chromium only. Firefox, webkit and the Pixel 5 project were not run, and CI's
     collection also covers specs that were not run here.

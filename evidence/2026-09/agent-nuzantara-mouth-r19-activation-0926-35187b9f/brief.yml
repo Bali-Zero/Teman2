@@ -19,9 +19,10 @@ date: 2026-09-26
 
 gear: 3
 gear_reason: >-
-  Deterministic floor 2 by the SIZE term alone (scripts/evidence_pack_lint.py --print-floor over
+  Deterministic floor 2 by the SIZE term alone on the three activation commits, and 3 by the same term
+  once the footer cure and this pack are counted (scripts/evidence_pack_lint.py --print-floor over
   the three activation commits: 23 files, +1190/-239, about +950 net, of which about 830 lines are
-  the two new e2e specs); no hot-zone path. Gear 3 is declared above the floor by choice: this is
+  the two new e2e specs; the footer cure b6dd8aa649 later brought the branch to 26 files, +1297/-240); no hot-zone path. Gear 3 is declared above the floor by choice: this is
   the unit that changes what balizero.com renders to every visitor of the front door, on the
   surface that carries the company's WhatsApp and lead-capture contract, and it edits shared
   components that funnel layouts also import, so "the funnels do not change" has to be falsified by
@@ -49,9 +50,11 @@ acceptance:
     WhatsApp and contact destinations and the analytics event names and payloads are unchanged
     from the pre-R19 home, except layout; both WhatsApp actions sit above the fold.
     probe: >-
-      apps/mouth/e2e/r19-home-contact.spec.ts (22 tests, chromium): every wa.me link dials
+      apps/mouth/e2e/r19-home-contact.spec.ts (24 tests, chromium): every wa.me link dials
       WA_NUMBER from lib/whatsapp-utm, hero and nav handoffs emit the existing capture payload,
-      lead_whatsapp_cta, lead_created, home_whatsapp_cta{trigger:"nav"} and the funnel beacon,
+      lead_whatsapp_cta, lead_created, home_whatsapp_cta{trigger:"nav"} and the funnel beacon, the
+      footer WhatsApp link is the same tracked link as the pre-R19 footer (home link, home_whatsapp_cta
+      {trigger:"footer"}) and its Telegram, Email, Phone and Location links equal the v2 footer's,
       captured=false fallback dials the same number, both actions inside the first 900px at 390 and
       1440.
   A3: >-
@@ -66,8 +69,8 @@ acceptance:
     probe: >-
       apps/mouth: tsc rc 0, vitest 553 files / 7281 passed / 2 skipped, next build --webpack rc 0
       (also with the CI Playwright env), public login bundle guard rc 0, roster chunk guard rc 0,
-      brand_api_gen --check rc 0, Playwright chromium 46 passed across r19-presentation,
-      r19-home-contact, blog-news-light, service-pages-light.
+      brand_api_gen --check rc 0, Playwright chromium 48 passed across r19-presentation,
+      r19-home-contact, blog-news-light, service-pages-light (r19-home-contact 72 passed at repeat-each 3).
   A5: >-
     Live, after promote: balizero.com / shows the R19 hero and both WhatsApp CTAs above the fold at
     390 and 1440 wide; the editorial routes carry data-presentation="r19"; the funnels are
