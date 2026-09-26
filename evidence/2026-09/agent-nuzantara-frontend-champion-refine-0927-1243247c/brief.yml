@@ -1,0 +1,83 @@
+task: >-
+  CHAMPION-REFINE-0927 (BLUE, Dux Opus 5.5 xhigh). Focused visual refinement of the
+  live Portal Champion dashboard hero on kita.balizero.com/dashboard, not a rebuild:
+  merge the separate title/countdown band and the contender arena into one ink hero
+  that shows the team total once, put the selected contender's next target beside
+  (desktop) or directly under (mobile) the podium, replace the wall of equal-weight
+  contender pills with one compact picker, and frame the large podium portraits on
+  the staff faces instead of the lettering printed on the staff cards. Leaderboard
+  data and schema, dense ranks, prize thresholds 20/15/10, realtime lifecycle and
+  the GOAL celebration are unchanged.
+lane: frontend/champion-refine-0927
+machine: Pro
+date: "2026-09-27"
+
+gear: 2
+gear_reason: >-
+  Declared by the mandate. The deterministic floor is 1 (`scripts/evidence_pack_lint.py
+  --print-floor --print-floor-source` on the candidate diff against 3b3741d1dd); the
+  higher declared gear keeps an independent review and a fresh final gate on a change
+  every staff member sees on the dashboard.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    One ink hero carries eyebrow, "Portal Champion", tagline, the team total exactly
+    once, the countdown, the podium and the target panel; no second dark title band.
+    probe: >-
+      vitest "merges title, one team total, countdown and the race into one panel";
+      browser check "team total rendered once" at 1440x900, 390x844 and 360x780.
+  A2: >-
+    The target sits beside the podium at 1440 px and directly under it on mobile, its
+    sentence is inside the first viewport of the hero, the hero holds only the three
+    podium buttons plus one labelled native picker listing every contender, and
+    selection works from the keyboard (Tab+Space on a podium card, type-ahead on the
+    picker).
+    probe: >-
+      vitest "puts the target beside the podium..."; browser checks "target sits beside
+      or directly under the podium", "target sentence visible in the first screen",
+      "keyboard Tab+Space selects rank 3", "keyboard type-ahead on the focused picker".
+  A3: >-
+    Podium, target and ranking portraits of the 14 approved staff photos are framed on
+    the face with no card lettering visible; files outside the framing table keep the
+    plain centred crop; a failed or unsafe source still falls back to initials; the
+    source bitmaps are untouched.
+    probe: >-
+      vitest "frames approved staff photos on the face..." and "falls back to initials";
+      crop simulation of all 14 files at the shipped values; browser portrait checks;
+      `git diff --stat` shows no file under apps/mouth/public.
+  A4: >-
+    Functional regression: with podium 46/34/33, selecting rank 3 (33) yields
+    "2 poin untuk melewati" rank 2 (34); a tie is not a rival; a 0-point contender
+    shows rank "–" and the first-point prompt; zero, loading, error, full-ranking and
+    details behaviour and the GOAL tests are unchanged.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files> --maxWorkers=2
+  A5: >-
+    No horizontal overflow and no overlapping hero blocks at 1440x900, 390x844 and
+    360x780, with ranking and details open, portraits loaded, 0 page errors.
+    probe: >-
+      /tmp/portal-champion-refine-0927/harness/capture.cjs against next dev on
+      127.0.0.1 with a synthetic fixture (guilt probes included).
+
+out_of_scope: >-
+  Backend, auth, SSE, scoring, prizes, roster or photo mapping, bitmaps, packages and
+  lockfiles; the GOAL celebration overlay (it keeps the uncropped portrait); other
+  dashboard sections; production deploy and live proof (release owner).
+
+assumptions:
+  - text: >-
+      The 14 framing values were measured on the current approved files; a replaced or
+      newly added staff photo keeps the plain centred crop until its values are added.
+    status: verified
+    probe: >-
+      vitest "keeps other sources uncropped" (a file outside the table renders with no
+      transform).
+  - text: >-
+      The candidate preview used next dev with every /api call answered by a synthetic
+      fixture; it is not production proof.
+    status: verified
+    probe: capture-result.json lists 0 requests outside 127.0.0.1.
