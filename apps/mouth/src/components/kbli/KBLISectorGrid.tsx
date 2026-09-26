@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { KBLISection } from "@/lib/kbli-types";
-import { SECTION_VISUALS } from "@/lib/kbli-cover-design";
 import {
   Tractor,
   Pickaxe,
@@ -53,9 +52,8 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
   const maxCount = Math.max(...sections.map((s) => s.codeCount));
 
   // Specimen cards on paper (BRIEF-v2 §3.4): the section letter and the count
-  // set as figures, the bar measured against the largest section and drawn in
-  // the section's own SECTION_VISUALS accent — the same colour its dial
-  // segment wears, so the ring and the grid read as one instrument.
+  // set as figures, the bar measured against the largest section in the one
+  // structure ink the dial uses (council v2: a single-ink instrument).
   return (
     <div
       data-kbli-sector-grid=""
@@ -63,8 +61,6 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
     >
       {sections.map((s) => {
         const barPct = Math.max(4, Math.round((s.codeCount / maxCount) * 100));
-        const accent =
-          SECTION_VISUALS[s.id]?.accent ?? "var(--kbli-text-muted)";
 
         return (
           <Link
@@ -98,7 +94,10 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
               >
                 <div
                   className="absolute inset-y-0 left-0"
-                  style={{ width: `${barPct}%`, background: accent }}
+                  style={{
+                    width: `${barPct}%`,
+                    background: "var(--r19-structure, #233D52)",
+                  }}
                 />
               </div>
             </div>
