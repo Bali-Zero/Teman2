@@ -1,0 +1,200 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR (agent/air-m5/infra/s5-hotzone-egress-0927) — team-lead mandate
+  2026-09-27, S5 of docs/specs/2026-09-27-evidence-pack-fixed-point.md.
+lanes:
+  - lane: s5-hotzone-egress-build
+    role: build
+    seat: "session (M5, Sonnet 5 conducting)"
+seat_override: >-
+  Gear-3 diff edits the hot-zone gate list that itself decides when an
+  external seat (codex/kimi/agy/gemini/qwen) may be dispatched on a diff —
+  dispatching one of those same seats to review this exact diff would make
+  generator and grader the same entity on the surface most in need of
+  separation (this PR exists precisely because #7466 skipped independent
+  review). No council or external seat was run. The fresh `harness/fable-
+  gate` gate session, required at gear 3 by this very enforcement, is the
+  second opinion in place of a council quorum.
+diff:
+  net_lines: >-
+    Content diff at the graded sha: four new HOTZONE_PATTERNS entries
+    (scripts/evidence_pack_lint.py), the same four entries added to the
+    mirrored bash case block (.github/workflows/hot-zone-pr-gate.yml), one
+    new spec section S5 (docs/specs/2026-09-27-evidence-pack-fixed-point.md),
+    and one new sync test (scripts/tests/test_hotzone_lists_sync.py, 91
+    lines, 3 test cases). No production code path touched, no consumer's
+    runtime behavior changed except the floor computation those two lists
+    feed. Exact line counts are not narrated here on purpose (S1 of this
+    same spec): the pack's own bytes are not excluded from the size term
+    yet, so any figure written here drifts with every pack edit — the
+    gate's own receipt records the `git diff --numstat` it observed.
+  behaviour_change: >-
+    Before this PR, `.claude/scripts/codex-spalla.sh`, `scripts/lib/
+    spalla_redact.sh`, `.claude/hooks/codex-spalla-trigger.sh` and any
+    future `.codex/hooks/*` file floored at gear 1 (no hot-zone match) —
+    exactly the gap PR #7466 fell through. After this PR, a changed-file
+    set containing any of those four paths floors at gear 3 on both the
+    Python-side `compute_floor()` (consumed by harness-floor.yml) and the
+    bash-side case block (consumed by hot-zone-pr-gate.yml), and a new
+    pytest module fails CI the moment the two lists diverge again.
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from THIS PR's actual changed-file
+      list is 3 (path term — .github/workflows/hot-zone-pr-gate.yml is
+      itself hot-zone via the existing `.github/workflows/*` entry).
+    cmd: >-
+      MERGE_BASE=$(git merge-base origin/main HEAD); git diff --name-only
+      $MERGE_BASE HEAD > /tmp/s5-changed-files.txt; git diff --no-renames
+      --numstat $MERGE_BASE HEAD > /tmp/s5-numstat.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/s5-changed-files.txt --numstat-file /tmp/s5-numstat.txt
+    result: "3"
+    exit: 0
+    ts: "2026-09-27T07:35:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: "Floor source for this diff is the PATH term, not the SIZE term."
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file /tmp/s5-changed-files.txt --numstat-file
+      /tmp/s5-numstat.txt
+    result: "path"
+    exit: 0
+    ts: "2026-09-27T07:35:05Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      GUILT — each of the four newly-added paths floors at 3 in isolation
+      (a one-line synthetic changed-files list per path).
+    cmd: >-
+      for f in .claude/scripts/codex-spalla.sh scripts/lib/spalla_redact.sh
+      .claude/hooks/codex-spalla-trigger.sh .codex/hooks/some_new_hook.sh;
+      do printf '%s\n' "$f" > /tmp/probe.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/probe.txt; done
+    result: "3\n3\n3\n3"
+    exit: 0
+    ts: "2026-09-27T07:36:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: "INNOCENCE — an unrelated ordinary path still floors at 1."
+    cmd: >-
+      printf 'some/other/unrelated_file.py\n' > /tmp/probe5.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/probe5.txt
+    result: "1"
+    exit: 0
+    ts: "2026-09-27T07:36:05Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      The mirrored bash `case` block in hot-zone-pr-gate.yml matches a new
+      file under the freshly-added `.codex/hooks/*` glob, proving the two
+      lists were kept in the same shape (glob, not a literal-only match).
+    cmd: >-
+      bash -c 'f=".codex/hooks/some_new_hook.sh"; case "$f" in
+      .claude/scripts/codex-spalla.sh|scripts/lib/spalla_redact.sh|.claude/hooks/codex-spalla-trigger.sh|.codex/hooks/*)
+      echo "HIT: $f" ;; *) echo "MISS: $f" ;; esac'
+    result: "HIT: .codex/hooks/some_new_hook.sh"
+    exit: 0
+    ts: "2026-09-27T07:36:20Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: "The new sync test module passes in full (3/3)."
+    cmd: python3 -m pytest scripts/tests/test_hotzone_lists_sync.py -v
+    result: "3 passed"
+    exit: 0
+    ts: "2026-09-27T07:33:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      No regression to the existing HOTZONE_PATTERNS guilt+innocence corpus
+      or any other rule's selftest.
+    cmd: python3 scripts/evidence_pack_lint.py --selftest
+    result: "SELFTEST PASS"
+    exit: 0
+    ts: "2026-09-27T07:32:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: "The full evidence_pack_lint pytest suite (770 cases) stays green."
+    cmd: python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
+    result: "770 passed"
+    exit: 0
+    ts: "2026-09-27T07:31:45Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      .github/workflows/hot-zone-pr-gate.yml still parses as valid YAML
+      after the edit.
+    cmd: python3 -c "import yaml; yaml.safe_load(open('.github/workflows/hot-zone-pr-gate.yml'))"
+    result: "no exception raised"
+    exit: 0
+    ts: "2026-09-27T07:31:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+  - claim: >-
+      spalla_redact.sh and codex-spalla-trigger.sh are live, wired
+      dependencies of codex-spalla.sh (not dead code being gated for no
+      reason) as of the current origin/main.
+    cmd: >-
+      grep -n spalla_redact .claude/scripts/codex-spalla.sh; grep -n
+      "codex-spalla.sh" .claude/settings.json
+    result: >-
+      codex-spalla.sh:113: `. "$REPO_ROOT/scripts/lib/spalla_redact.sh"`;
+      .claude/settings.json:5: `"Bash(.claude/scripts/codex-spalla.sh:*)"`,
+      :56: hook command pointing at `.claude/hooks/codex-spalla-trigger.sh`.
+    exit: 0
+    ts: "2026-09-27T07:20:00Z"
+    seat: "session (M5, Sonnet 5 conducting)"
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff transcribes client/OSINT data. The changed surface is
+  a spec markdown file, a Python tuple of file-path strings, a bash case
+  block of the same file-path strings, and a pytest module asserting the
+  two lists agree — no client name, phone, email, KTP/NPWP or WhatsApp data
+  anywhere in scope. Grepped the full diff for those patterns: zero hits.
+bites:
+  consumer: >-
+    the harness floor on every future PR touching
+    .claude/scripts/codex-spalla.sh, scripts/lib/spalla_redact.sh,
+    .claude/hooks/codex-spalla-trigger.sh or .codex/hooks/*
+  where: ci
+  observe: >-
+    on origin/main post-merge, `printf '.claude/scripts/codex-spalla.sh\n'
+    > /tmp/x.txt && python3 scripts/evidence_pack_lint.py --print-floor
+    --changed-files-file /tmp/x.txt` prints 3, and
+    `python3 -m pytest scripts/tests/test_hotzone_lists_sync.py` passes
+  expect: exit0
+dissent:
+  - seat: "session (M5, Sonnet 5 conducting) — self-review, no external seat dispatched (see seat_override)"
+    objection: >-
+      [P1, self-raised] The repo-wide grep for diff-forwarding wrappers
+      (git grep -ln "git diff" -- '*.sh' | xargs grep -l -iE
+      "codex|kimi|agy|gemini|qwen") also matched
+      scripts/codex/codex-daily-research-actor.sh and
+      scripts/codex/codex-nightly-coverage-improver.sh. Both invoke `codex
+      exec` as an autonomous agent that reads source files through its own
+      sandboxed tool access — which still transmits that file content to
+      OpenAI's backend, structurally the same egress risk as
+      codex-spalla.sh piping a diff, just via a different verb. Excluding
+      them leaves a real, not-fully-closed instance of this gap's own
+      pattern.
+    status: CONFIRMED
+    resolution: >-
+      Verified directly: codex-nightly-coverage-improver.sh's `git diff`
+      calls (lines 300, 342, 355) are all `--name-only`/`--shortstat` used
+      for the script's own PR bookkeeping (file lists, LOC counts), never
+      piped into CODEX_PROMPT; the prompt (lines 239-260) only names
+      `${TARGET_FILE}` by path and instructs Codex to read it itself.
+      codex-daily-research-actor.sh's two `git diff --name-only` calls
+      (lines 344, 363) are the same bookkeeping pattern. Neither script
+      redacts-then-forwards diff/file content the way codex-spalla.sh does
+      — there is no redaction step to gate at all in this shape, because
+      the wrapper itself never holds the content; Codex's own file-read
+      tool does, under its own pre-existing sandboxed-write operating mode
+      used repo-wide (scripts/codex/*, scripts/agy_*.py, scripts/kimi_
+      client.py and dozens of other dispatch scripts share this same
+      "agent reads the repo itself" shape).
+    disposition: >-
+      Left out of this PR's hot-zone list on purpose. The objection is
+      real but out of scope: gating every `codex exec`/`kimi`/`gemini`/
+      `qwen` invocation in the repo — dozens of scripts, none sharing
+      codex-spalla.sh's specific redact-then-pipe-a-diff shape — is a
+      separate, much larger spec (which paths, which redaction contract,
+      which of those scripts are even live automation vs archived) that
+      does not fit this PR's ~120-line budget or its narrow gap (S5 closes
+      exactly the #7466 shape: a wrapper whose OWN code redacts/refuses
+      before forwarding). Documented explicitly in brief.yml's
+      `constraints` and in the spec's S5 Enforcement paragraph so the scope
+      cut is visible, not silent.

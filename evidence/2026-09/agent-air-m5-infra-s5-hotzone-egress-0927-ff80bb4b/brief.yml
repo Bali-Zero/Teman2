@@ -1,0 +1,54 @@
+task_id: s5-hotzone-egress-0927
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor computed for THIS diff (re-run 2026-09-27, merge-base 8ab178ecdc):
+# `git merge-base origin/main HEAD` then `git diff --name-only $MERGE_BASE HEAD`
+# + `git diff --no-renames --numstat $MERGE_BASE HEAD`, fed to
+# `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file ...
+# --numstat-file ...` returns 3 via the PATH term (.github/workflows/*
+# and the newly-added .claude/scripts/**, scripts/lib/spalla_redact.sh
+# entries are all hot-zone). Gear 3 declared to match.
+objective: >-
+  Close the gap that let PR #7466 (PII redaction/refusal guard for
+  .claude/scripts/codex-spalla.sh, the wrapper that forwards `git diff`
+  output to the Codex CLI) auto-merge unsigned at gear 1, minutes before its
+  own fresh gate returned REWORK-BUILD with five blockers (cure #7470).
+  Adds S5 to docs/specs/2026-09-27-evidence-pack-fixed-point.md (Gap/
+  Evidence/Rule/Enforcement/Migration, matching S1-S4's shape) and floors
+  four external-seat egress paths at gear 3 in both HOTZONE_PATTERNS
+  (scripts/evidence_pack_lint.py) and the mirrored bash `case` block
+  (.github/workflows/hot-zone-pr-gate.yml), with a new sync test
+  (scripts/tests/test_hotzone_lists_sync.py) asserting the two lists never
+  drift apart again.
+constraints:
+  - "No external seat (codex/kimi/gemini/qwen) dispatched on this diff —
+    this PR itself edits the hot-zone list that gates dispatch to those
+    seats, and generator must never be grader of its own gate surface. The
+    fresh `harness/fable-gate` gate session is this PR's second opinion,
+    per Builder Contract §5."
+  - "Existing HOTZONE_PATTERNS entries and the workflow's existing case
+    arms are untouched — only four new leaf entries appended to each list,
+    verbatim, in the same order."
+  - 'Repo-wide grep for other diff/file-forwarding wrappers
+    (git grep -ln "git diff" -- ''*.sh'' | xargs grep -l -iE
+    "codex|kimi|agy|gemini|qwen") found three additional files; none
+    forwards diff/file CONTENT into an external prompt the way
+    codex-spalla.sh does (two use `git diff --name-only` only for their own
+    PR bookkeeping and let Codex read source via its own sandboxed tool
+    access; one is an archived one-time audit helper under docs/audits/).
+    Deliberately left out of hot-zone scope — widening to every `codex
+    exec` invocation in the repo is a separate, larger change this spec
+    does not make.'
+acceptance:
+  - "scripts/tests/test_hotzone_lists_sync.py: 3 tests (identical-sets,
+    S5-paths-present-on-both-lists, an-unrelated-path-stays-off-both) pass."
+  - "scripts/evidence_pack_lint.py --selftest passes in full (no regression
+    to the existing HOTZONE_PATTERNS guilt+innocence corpus)."
+  - "scripts/tests/test_evidence_pack_lint.py's full suite (770 cases) passes
+    unchanged."
+  - "A guilt+innocence probe against --print-floor: each of the four new
+    paths floors at 3 in isolation; an unrelated path floors at 1."
+  - "YAML syntax of .github/workflows/hot-zone-pr-gate.yml parses clean
+    after the edit; a bash simulation of the edited case block matches
+    .codex/hooks/some_new_hook.sh."
