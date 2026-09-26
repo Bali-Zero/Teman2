@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # BVCL Zantara Sampling — 4 archetype × 3 tier prompts
 
 > **Anchor**: Zantara (synthetic, inspired by Riri) — recurring across all editorial BVCL content.
@@ -11,7 +14,7 @@
 
 **Hypothesis tested**: lip-sync precision + character consistency + narrative tension→resolution in 8s + audio scene (tense string → crystalline chime → warm silence).
 
-**This is Antonello's reference prompt verbatim** (slightly tightened to fit Veo 3.1 150-word target while preserving every story beat).
+**This is Zero's reference prompt verbatim** (slightly tightened to fit Veo 3.1 150-word target while preserving every story beat).
 
 ```
 Slow dolly push-in, medium shot, 16:9. Zantara, a young Indonesian woman late

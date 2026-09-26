@@ -46,71 +46,71 @@ Positive control for the canonical walk: `apps/mouth/src/app/visa/layout.tsx:13-
 "Self-canonical = NO" means no segment between the page and the root layout defines `alternates`,
 so the route inherits `apps/mouth/src/app/layout.tsx:131` `canonical: appUrl` — the homepage.
 
-| Route                               | Metadata owner                                 | Self-canonical        | Schema | In sitemap.ts | Source                                       |
-| ----------------------------------- | ---------------------------------------------- | --------------------- | ------ | ------------- | -------------------------------------------- |
-| `/`                                 | `(marketing)/page.tsx`                         | yes                   | no     | yes           | `(marketing)/page.tsx`                       |
-| `/[category]`                       | `(blog)/[category]/page.tsx`                   | yes                   | no     | dynamic       | `(blog)/[category]/page.tsx`                 |
-| `/[category]/[slug]`                | `(blog)/[category]/[slug]/page.tsx`            | yes                   | yes    | dynamic       | `(blog)/[category]/[slug]/page.tsx`          |
-| `/agents`                           | `root layout only`                             | **NO — inherits `/`** | no     | no            | `agents/page.tsx`                            |
-| `/assessment`                       | `(assessment)/assessment/layout.tsx`           | **NO — inherits `/`** | no     | no            | `(assessment)/assessment/page.tsx`           |
-| `/assessment/briefing`              | `(assessment)/assessment/briefing/page.tsx`    | **NO — inherits `/`** | no     | no            | `(assessment)/assessment/briefing/page.tsx`  |
-| `/book`                             | `(book)/layout.tsx`                            | **NO — inherits `/`** | no     | no            | `(book)/book/page.tsx`                       |
-| `/book/[chapter]`                   | `(book)/book/[chapter]/page.tsx`               | **NO — inherits `/`** | no     | dynamic       | `(book)/book/[chapter]/page.tsx`             |
-| `/contact`                          | `(blog)/contact/page.tsx`                      | yes                   | no     | yes           | `(blog)/contact/page.tsx`                    |
-| `/dream`                            | `root layout only`                             | **NO — inherits `/`** | no     | no            | `dream/page.tsx`                             |
-| `/edge`                             | `root layout only`                             | **NO — inherits `/`** | no     | no            | `edge/page.tsx`                              |
-| `/exclusive`                        | `exclusive/page.tsx`                           | **NO — inherits `/`** | no     | no            | `exclusive/page.tsx`                         |
-| `/interview_natalie`                | `(assessment)/interview_natalie/layout.tsx`    | **NO — inherits `/`** | no     | no            | `(assessment)/interview_natalie/page.tsx`    |
-| `/kbli`                             | `kbli/page.tsx`                                | yes                   | no     | yes           | `kbli/page.tsx`                              |
+| Route                               | Metadata owner                                 | Self-canonical                                | Schema | In sitemap.ts | Source                                       |
+| ----------------------------------- | ---------------------------------------------- | --------------------------------------------- | ------ | ------------- | -------------------------------------------- |
+| `/`                                 | `(marketing)/page.tsx`                         | yes                                           | no     | yes           | `(marketing)/page.tsx`                       |
+| `/[category]`                       | `(blog)/[category]/page.tsx`                   | yes                                           | no     | dynamic       | `(blog)/[category]/page.tsx`                 |
+| `/[category]/[slug]`                | `(blog)/[category]/[slug]/page.tsx`            | yes                                           | yes    | dynamic       | `(blog)/[category]/[slug]/page.tsx`          |
+| `/agents`                           | `root layout only`                             | **NO — inherits `/`**                         | no     | no            | `agents/page.tsx`                            |
+| `/assessment`                       | `(assessment)/assessment/layout.tsx`           | **NO — inherits `/`**                         | no     | no            | `(assessment)/assessment/page.tsx`           |
+| `/assessment/briefing`              | `(assessment)/assessment/briefing/page.tsx`    | **NO — inherits `/`**                         | no     | no            | `(assessment)/assessment/briefing/page.tsx`  |
+| `/book`                             | `(book)/layout.tsx`                            | **NO — inherits `/`**                         | no     | no            | `(book)/book/page.tsx`                       |
+| `/book/[chapter]`                   | `(book)/book/[chapter]/page.tsx`               | **NO — inherits `/`**                         | no     | dynamic       | `(book)/book/[chapter]/page.tsx`             |
+| `/contact`                          | `(blog)/contact/page.tsx`                      | yes                                           | no     | yes           | `(blog)/contact/page.tsx`                    |
+| `/dream`                            | `root layout only`                             | **NO — inherits `/`**                         | no     | no            | `dream/page.tsx`                             |
+| `/edge`                             | `root layout only`                             | **NO — inherits `/`**                         | no     | no            | `edge/page.tsx`                              |
+| `/exclusive`                        | `exclusive/page.tsx`                           | **NO — inherits `/`**                         | no     | no            | `exclusive/page.tsx`                         |
+| `/interview_natalie`                | `(assessment)/interview_natalie/layout.tsx`    | **NO — inherits `/`**                         | no     | no            | `(assessment)/interview_natalie/page.tsx`    |
+| `/kbli`                             | `kbli/page.tsx`                                | yes                                           | no     | yes           | `kbli/page.tsx`                              |
 | `/kbli-explorer`                    | `kbli-explorer/layout.tsx`                     | **NO — was mis-scored "yes" here, see §3.1a** | yes    | yes           | `kbli-explorer/page.tsx`                     |
-| `/kbli/[code]`                      | `kbli/[code]/page.tsx`                         | yes                   | yes    | dynamic       | `kbli/[code]/page.tsx`                       |
-| `/kbli/builder`                     | `kbli/builder/page.tsx`                        | yes                   | no     | no            | `kbli/builder/page.tsx`                      |
-| `/kbli/decoder`                     | `kbli/decoder/page.tsx`                        | yes                   | no     | no            | `kbli/decoder/page.tsx`                      |
-| `/kbli/sectors`                     | `kbli/sectors/page.tsx`                        | yes                   | no     | yes           | `kbli/sectors/page.tsx`                      |
-| `/kbli/sectors/[id]`                | `kbli/sectors/[id]/page.tsx`                   | yes                   | no     | dynamic       | `kbli/sectors/[id]/page.tsx`                 |
-| `/lab/voice-concierge`              | `root layout only`                             | **NO — inherits `/`** | no     | no            | `lab/voice-concierge/page.tsx`               |
-| `/news`                             | `(blog)/news/page.tsx`                         | yes                   | no     | yes           | `(blog)/news/page.tsx`                       |
-| `/prime`                            | `prime/page.tsx`                               | **NO — inherits `/`** | no     | no            | `prime/page.tsx`                             |
-| `/prime/proposal/[token]`           | `root layout only`                             | **NO — inherits `/`** | no     | dynamic       | `prime/proposal/[token]/page.tsx`            |
-| `/privacy`                          | `privacy/page.tsx`                             | **NO — inherits `/`** | no     | no            | `privacy/page.tsx`                           |
-| `/property`                         | `(blog)/property/page.tsx`                     | yes                   | no     | no            | `(blog)/property/page.tsx`                   |
-| `/property/eligibility`             | `property/eligibility/page.tsx`                | yes                   | no     | no            | `property/eligibility/page.tsx`              |
-| `/services`                         | `(blog)/services/page.tsx`                     | yes                   | no     | yes           | `(blog)/services/page.tsx`                   |
-| `/services/[slug]`                  | `(blog)/services/[slug]/page.tsx`              | yes                   | yes    | dynamic       | `(blog)/services/[slug]/page.tsx`            |
-| `/tax-calendar`                     | `(tax-calendar)/tax-calendar/layout.tsx`       | **NO — inherits `/`** | no     | no            | `(tax-calendar)/tax-calendar/page.tsx`       |
-| `/taxes/gap`                        | `taxes/gap/page.tsx`                           | yes                   | no     | yes           | `taxes/gap/page.tsx`                         |
-| `/team`                             | `(blog)/team/page.tsx`                         | yes                   | no     | yes           | `(blog)/team/page.tsx`                       |
-| `/terms`                            | `terms/page.tsx`                               | **NO — inherits `/`** | no     | no            | `terms/page.tsx`                             |
-| `/v2`                               | `v2/page.tsx`                                  | **NO — inherits `/`** | no     | no            | `v2/page.tsx`                                |
-| `/v2/company/about`                 | `v2/company/about/page.tsx`                    | **NO — inherits `/`** | no     | no            | `v2/company/about/page.tsx`                  |
-| `/v2/company/careers`               | `v2/company/careers/page.tsx`                  | **NO — inherits `/`** | no     | no            | `v2/company/careers/page.tsx`                |
-| `/v2/company/press`                 | `v2/company/press/page.tsx`                    | **NO — inherits `/`** | no     | no            | `v2/company/press/page.tsx`                  |
-| `/v2/cookies`                       | `v2/cookies/page.tsx`                          | **NO — inherits `/`** | no     | no            | `v2/cookies/page.tsx`                        |
-| `/v2/news`                          | `v2/news/page.tsx`                             | **NO — inherits `/`** | no     | no            | `v2/news/page.tsx`                           |
-| `/v2/privacy`                       | `v2/privacy/page.tsx`                          | **NO — inherits `/`** | no     | no            | `v2/privacy/page.tsx`                        |
-| `/v2/terms`                         | `v2/terms/page.tsx`                            | **NO — inherits `/`** | no     | no            | `v2/terms/page.tsx`                          |
-| `/verification`                     | `root layout only`                             | **NO — inherits `/`** | no     | no            | `verification/page.tsx`                      |
-| `/visa`                             | `visa/layout.tsx`                              | yes                   | no     | yes           | `visa/page.tsx`                              |
-| `/visa-oracle`                      | `(visa-oracle)/visa-oracle/layout.tsx`         | **NO — inherits `/`** | no     | no            | `(visa-oracle)/visa-oracle/page.tsx`         |
-| `/visa-oracle/privacy`              | `(visa-oracle)/visa-oracle/privacy/layout.tsx` | **NO — inherits `/`** | no     | no            | `(visa-oracle)/visa-oracle/privacy/page.tsx` |
-| `/visa-oracle/unlock`               | `(visa-oracle)/visa-oracle/layout.tsx`         | **NO — inherits `/`** | no     | no            | `(visa-oracle)/visa-oracle/unlock/page.tsx`  |
-| `/visa/clock`                       | `visa/clock/layout.tsx`                        | yes                   | no     | yes           | `visa/clock/page.tsx`                        |
-| `/visa/clock/[hash]`                | `visa/clock/layout.tsx`                        | yes                   | no     | dynamic       | `visa/clock/[hash]/page.tsx`                 |
-| `/visa/match`                       | `visa/match/layout.tsx`                        | yes                   | no     | yes           | `visa/match/page.tsx`                        |
-| `/visa/match/[hash]`                | `visa/match/layout.tsx`                        | yes                   | no     | dynamic       | `visa/match/[hash]/page.tsx`                 |
-| `/visa/privacy`                     | `visa/privacy/page.tsx`                        | yes                   | no     | no            | `visa/privacy/page.tsx`                      |
-| `/visa/second-home`                 | `visa/second-home/page.tsx`                    | yes                   | yes    | yes           | `visa/second-home/page.tsx`                  |
-| `/visa/second-home/[locale]`        | `visa/second-home/[locale]/page.tsx`           | yes                   | yes    | dynamic       | `visa/second-home/[locale]/page.tsx`         |
-| `/visa/second-home/studio`          | `visa/second-home/studio/page.tsx`             | yes                   | no     | yes           | `visa/second-home/studio/page.tsx`           |
-| `/visa/terms`                       | `visa/terms/page.tsx`                          | yes                   | no     | no            | `visa/terms/page.tsx`                        |
-| `/visa/voa`                         | `visa/voa/layout.tsx`                          | yes                   | no     | no            | `visa/voa/page.tsx`                          |
-| `/visa/voa/[hash]`                  | `visa/voa/layout.tsx`                          | yes                   | no     | dynamic       | `visa/voa/[hash]/page.tsx`                   |
-| `/visa/voa/auth/continue`           | `visa/voa/layout.tsx`                          | yes                   | no     | no            | `visa/voa/auth/continue/page.tsx`            |
-| `/visa/voa/checkout/[resultId]`     | `visa/voa/layout.tsx`                          | yes                   | no     | dynamic       | `visa/voa/checkout/[resultId]/page.tsx`      |
-| `/visa/voa/orders/[orderId]`        | `visa/voa/layout.tsx`                          | yes                   | no     | dynamic       | `visa/voa/orders/[orderId]/page.tsx`         |
-| `/visa/voa/orders/[orderId]/return` | `visa/voa/layout.tsx`                          | yes                   | no     | dynamic       | `visa/voa/orders/[orderId]/return/page.tsx`  |
-| `/visa/voa/upload/[resultId]`       | `visa/voa/layout.tsx`                          | yes                   | no     | dynamic       | `visa/voa/upload/[resultId]/page.tsx`        |
-| `/zoning`                           | `zoning/page.tsx`                              | yes                   | no     | no            | `zoning/page.tsx`                            |
+| `/kbli/[code]`                      | `kbli/[code]/page.tsx`                         | yes                                           | yes    | dynamic       | `kbli/[code]/page.tsx`                       |
+| `/kbli/builder`                     | `kbli/builder/page.tsx`                        | yes                                           | no     | no            | `kbli/builder/page.tsx`                      |
+| `/kbli/decoder`                     | `kbli/decoder/page.tsx`                        | yes                                           | no     | no            | `kbli/decoder/page.tsx`                      |
+| `/kbli/sectors`                     | `kbli/sectors/page.tsx`                        | yes                                           | no     | yes           | `kbli/sectors/page.tsx`                      |
+| `/kbli/sectors/[id]`                | `kbli/sectors/[id]/page.tsx`                   | yes                                           | no     | dynamic       | `kbli/sectors/[id]/page.tsx`                 |
+| `/lab/voice-concierge`              | `root layout only`                             | **NO — inherits `/`**                         | no     | no            | `lab/voice-concierge/page.tsx`               |
+| `/news`                             | `(blog)/news/page.tsx`                         | yes                                           | no     | yes           | `(blog)/news/page.tsx`                       |
+| `/prime`                            | `prime/page.tsx`                               | **NO — inherits `/`**                         | no     | no            | `prime/page.tsx`                             |
+| `/prime/proposal/[token]`           | `root layout only`                             | **NO — inherits `/`**                         | no     | dynamic       | `prime/proposal/[token]/page.tsx`            |
+| `/privacy`                          | `privacy/page.tsx`                             | **NO — inherits `/`**                         | no     | no            | `privacy/page.tsx`                           |
+| `/property`                         | `(blog)/property/page.tsx`                     | yes                                           | no     | no            | `(blog)/property/page.tsx`                   |
+| `/property/eligibility`             | `property/eligibility/page.tsx`                | yes                                           | no     | no            | `property/eligibility/page.tsx`              |
+| `/services`                         | `(blog)/services/page.tsx`                     | yes                                           | no     | yes           | `(blog)/services/page.tsx`                   |
+| `/services/[slug]`                  | `(blog)/services/[slug]/page.tsx`              | yes                                           | yes    | dynamic       | `(blog)/services/[slug]/page.tsx`            |
+| `/tax-calendar`                     | `(tax-calendar)/tax-calendar/layout.tsx`       | **NO — inherits `/`**                         | no     | no            | `(tax-calendar)/tax-calendar/page.tsx`       |
+| `/taxes/gap`                        | `taxes/gap/page.tsx`                           | yes                                           | no     | yes           | `taxes/gap/page.tsx`                         |
+| `/team`                             | `(blog)/team/page.tsx`                         | yes                                           | no     | yes           | `(blog)/team/page.tsx`                       |
+| `/terms`                            | `terms/page.tsx`                               | **NO — inherits `/`**                         | no     | no            | `terms/page.tsx`                             |
+| `/v2`                               | `v2/page.tsx`                                  | **NO — inherits `/`**                         | no     | no            | `v2/page.tsx`                                |
+| `/v2/company/about`                 | `v2/company/about/page.tsx`                    | **NO — inherits `/`**                         | no     | no            | `v2/company/about/page.tsx`                  |
+| `/v2/company/careers`               | `v2/company/careers/page.tsx`                  | **NO — inherits `/`**                         | no     | no            | `v2/company/careers/page.tsx`                |
+| `/v2/company/press`                 | `v2/company/press/page.tsx`                    | **NO — inherits `/`**                         | no     | no            | `v2/company/press/page.tsx`                  |
+| `/v2/cookies`                       | `v2/cookies/page.tsx`                          | **NO — inherits `/`**                         | no     | no            | `v2/cookies/page.tsx`                        |
+| `/v2/news`                          | `v2/news/page.tsx`                             | **NO — inherits `/`**                         | no     | no            | `v2/news/page.tsx`                           |
+| `/v2/privacy`                       | `v2/privacy/page.tsx`                          | **NO — inherits `/`**                         | no     | no            | `v2/privacy/page.tsx`                        |
+| `/v2/terms`                         | `v2/terms/page.tsx`                            | **NO — inherits `/`**                         | no     | no            | `v2/terms/page.tsx`                          |
+| `/verification`                     | `root layout only`                             | **NO — inherits `/`**                         | no     | no            | `verification/page.tsx`                      |
+| `/visa`                             | `visa/layout.tsx`                              | yes                                           | no     | yes           | `visa/page.tsx`                              |
+| `/visa-oracle`                      | `(visa-oracle)/visa-oracle/layout.tsx`         | **NO — inherits `/`**                         | no     | no            | `(visa-oracle)/visa-oracle/page.tsx`         |
+| `/visa-oracle/privacy`              | `(visa-oracle)/visa-oracle/privacy/layout.tsx` | **NO — inherits `/`**                         | no     | no            | `(visa-oracle)/visa-oracle/privacy/page.tsx` |
+| `/visa-oracle/unlock`               | `(visa-oracle)/visa-oracle/layout.tsx`         | **NO — inherits `/`**                         | no     | no            | `(visa-oracle)/visa-oracle/unlock/page.tsx`  |
+| `/visa/clock`                       | `visa/clock/layout.tsx`                        | yes                                           | no     | yes           | `visa/clock/page.tsx`                        |
+| `/visa/clock/[hash]`                | `visa/clock/layout.tsx`                        | yes                                           | no     | dynamic       | `visa/clock/[hash]/page.tsx`                 |
+| `/visa/match`                       | `visa/match/layout.tsx`                        | yes                                           | no     | yes           | `visa/match/page.tsx`                        |
+| `/visa/match/[hash]`                | `visa/match/layout.tsx`                        | yes                                           | no     | dynamic       | `visa/match/[hash]/page.tsx`                 |
+| `/visa/privacy`                     | `visa/privacy/page.tsx`                        | yes                                           | no     | no            | `visa/privacy/page.tsx`                      |
+| `/visa/second-home`                 | `visa/second-home/page.tsx`                    | yes                                           | yes    | yes           | `visa/second-home/page.tsx`                  |
+| `/visa/second-home/[locale]`        | `visa/second-home/[locale]/page.tsx`           | yes                                           | yes    | dynamic       | `visa/second-home/[locale]/page.tsx`         |
+| `/visa/second-home/studio`          | `visa/second-home/studio/page.tsx`             | yes                                           | no     | yes           | `visa/second-home/studio/page.tsx`           |
+| `/visa/terms`                       | `visa/terms/page.tsx`                          | yes                                           | no     | no            | `visa/terms/page.tsx`                        |
+| `/visa/voa`                         | `visa/voa/layout.tsx`                          | yes                                           | no     | no            | `visa/voa/page.tsx`                          |
+| `/visa/voa/[hash]`                  | `visa/voa/layout.tsx`                          | yes                                           | no     | dynamic       | `visa/voa/[hash]/page.tsx`                   |
+| `/visa/voa/auth/continue`           | `visa/voa/layout.tsx`                          | yes                                           | no     | no            | `visa/voa/auth/continue/page.tsx`            |
+| `/visa/voa/checkout/[resultId]`     | `visa/voa/layout.tsx`                          | yes                                           | no     | dynamic       | `visa/voa/checkout/[resultId]/page.tsx`      |
+| `/visa/voa/orders/[orderId]`        | `visa/voa/layout.tsx`                          | yes                                           | no     | dynamic       | `visa/voa/orders/[orderId]/page.tsx`         |
+| `/visa/voa/orders/[orderId]/return` | `visa/voa/layout.tsx`                          | yes                                           | no     | dynamic       | `visa/voa/orders/[orderId]/return/page.tsx`  |
+| `/visa/voa/upload/[resultId]`       | `visa/voa/layout.tsx`                          | yes                                           | no     | dynamic       | `visa/voa/upload/[resultId]/page.tsx`        |
+| `/zoning`                           | `zoning/page.tsx`                              | yes                                           | no     | no            | `zoning/page.tsx`                            |
 
 `(workspace)` routes (67) are deliberately excluded: `X-Robots-Tag: noindex, nofollow` at
 `apps/mouth/src/proxy.ts` on `isAppDomain`, permanent — memory item 37. Their missing metadata is not debt.
@@ -274,11 +274,11 @@ only what it measured itself:
 | organic traffic, any route                            | Ahrefs / GSC                                  | **not measured** — Insufficient plan | —     | —          | 2026-09-07 |
 
 Forbidden claims still binding (memory item 70): `Avg reply: 2 min`, `4.8h avg first-reply`.
-Founding year is contested (2019 vs 2006) — must not appear in copy or schema until Antonello settles it.
+Founding year is contested (2019 vs 2006) — must not appear in copy or schema until Zero settles it.
 
 ---
 
-## 5. Blocked on Antonello
+## 5. Blocked on Zero
 
 | Item                                                                       | Since                  | Note                                                         |
 | -------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------ |

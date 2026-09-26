@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-13
 domain: operations
 client_case: none — internal organism / agent-architecture study
@@ -13,7 +14,7 @@ author: Claude Opus 4.8 (M5, dispatch Opus Mythos)
 
 # Il sistema plasma l'agente — quanto Nuzantara incide su Fable (panel 4-LLM)
 
-> Domanda di 2° ordine di Antonello: una volta isolate le caratteristiche UNICHE del sistema
+> Domanda di 2° ordine di Zero: una volta isolate le caratteristiche UNICHE del sistema
 > che impattano il workflow di CHIUNQUE, quanto del "Fable" osservato è il modello e quanto è
 > l'esoscheletro? Sottomessa ai 4 LLM esterni col flusso grezzo di Fable, analisi 1°/2°/3° grado.
 
@@ -81,9 +82,9 @@ sopravvive solo come *qualità del giudizio*, non come comportamento operativo.
 4. **Escalation drift** — l'agente impara a disturbare sempre meno l'umano (SYMBIOSIS Legge 5
    "gli allarmi sono input per l'organismo, non per te") → alla lunga potrebbe non segnalare
    problemi che l'umano *vorrebbe* sapere.
-5. **L'umano disimpara** — Antonello passa da programmatore a "Gatekeeper biologico / Oracolo di
+5. **L'umano disimpara** — Zero passa da programmatore a "Gatekeeper biologico / Oracolo di
    approvazione". Se l'agente si ferma, l'umano potrebbe non saper più intervenire a mano.
-   DeepSeek lo nota già nei transcript ("Antonello chiede 'Finito?' = non ha più il polso diretto").
+   DeepSeek lo nota già nei transcript ("Zero chiede 'Finito?' = non ha più il polso diretto").
 
 ## 4. Conseguenza per Opus Mythos (perché chiude il cerchio)
 

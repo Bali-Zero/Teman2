@@ -11,6 +11,7 @@ family. The agent will look at the anchor and copy its mood — same lighting, s
 same dark-and-cinematic feeling.
 
 You pick 5 anchors, one per family:
+
 - visa anchor
 - tax anchor
 - property anchor
@@ -71,18 +72,22 @@ The agent will copy the mood. So pick photos that have these:
 ## Examples (mental pictures)
 
 ### GOOD visa anchor
+
 A passport open on a dark wooden desk, single overhead lamp casting a warm light, a hand in
 the corner of the frame holding a stamp. Low-saturation, teal-amber feeling.
 
 ### GOOD tax anchor
+
 A stack of paper documents, a calculator, a single fluorescent light from the side, motion
 blur on a hand stamping. Like a Reuters news photo.
 
 ### GOOD property anchor
+
 A construction site at dusk, scaffolding silhouetted against storm clouds, a distant security
 light. Empty, ominous.
 
 ### BAD anchor
+
 A smiling couple in front of a pool with a "Welcome to Bali!" sign. Too hospitality.
 
 ---
@@ -90,8 +95,9 @@ A smiling couple in front of a pool with a "Welcome to Bali!" sign. Too hospital
 ## What if NO past carousel looks right?
 
 If after browsing you can't find a great anchor for a family:
+
 1. Pick the **least bad one** for now.
-2. Tell Antonello — he can replace it later with a better photo.
+2. Tell Zero — he can replace it later with a better photo.
 
 The agent works with what you give it. Imperfect anchor > no anchor. Anchors can be replaced
 anytime; the previous one is auto-archived (not lost).
@@ -121,4 +127,4 @@ an archive folder.
 
 ---
 
-*Bali Zero — WR2 Editorial. Last updated 2026-05-08.*
+_Bali Zero — WR2 Editorial. Last updated 2026-05-08._

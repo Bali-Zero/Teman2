@@ -18,7 +18,7 @@ Sei l'orchestrator di un agent dedicato a **P0-6: Channels webhook ack-first + T
 3. **Outbox infra disponibile in main da Wave 2** (commit #342, #343, #352): `apps/backend-rag/backend/services/events/outbox.py`. Usa `outbox.publish()` per `inbound_webhook_queued` channel.
 4. `apps/backend-rag/backend/channels/` — current router structure (whatsapp, telegram, instagram, twitter, web)
 5. Cicatrix: Twitter CRC broken hardcoded in `logging_config.py` since 2026-04-03
-6. Memory pattern `2026-04-29 — Antonello NON è dev`: gli agent NON chiedono shell command ad Antonello, fallback ssh-pro o autonomo.
+6. Memory pattern `2026-04-29 — Zero NON è dev`: gli agent NON chiedono shell command ad Zero, fallback ssh-pro o autonomo.
 
 ## Files to touch (~10)
 
@@ -55,7 +55,7 @@ ALSO: on Fly machine crash mid-processing, in-flight webhook is lost — no ack 
 
 OUTBOX INFRA AVAILABLE: services/events/outbox.py is in main since Wave 2 (PR #342). Provides publish/acknowledge/replay_unconsumed.
 
-TASK: 
+TASK:
 1. New migration table inbound_webhooks (id, channel, payload, received_at, processed_at, error_message, attempts, next_retry_at)
 2. Each webhook router: persist payload + outbox.publish('inbound_webhook_queued', {...}) → return 200 OK in <200ms
 3. Background worker webhook_processor.py: LISTEN on inbound_webhook_queued OR poll inbound_webhooks every 5s, process pending, mark consumed
@@ -120,6 +120,7 @@ def test_twitter_crc_uses_consumer_secret_from_env(): pass
 ```
 
 CWD CRITICAL — pytest from `apps/backend-rag/`:
+
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara-wt/p0-6/apps/backend-rag
 source .venv/bin/activate
@@ -158,15 +159,16 @@ NB: Squawk ti dirà di aggiungere `set lock_timeout` etc — usa `-- squawk-igno
 ### Phase 5 — Implementation per file
 
 Per ogni router, pattern:
+
 ```python
 @router.post("/webhook/X")
 async def x_webhook(payload: dict, request: Request, db_pool=Depends(get_database_pool)):
     # 1. Verify signature (synchronous, fast)
     if not verify_X_signature(request): raise HTTPException(401)
-    
+
     # 2. Compute dedup key (Meta provides message_id)
     dedup_key = payload.get('messages', [{}])[0].get('id', f'fallback-{time.time()}')
-    
+
     # 3. Persist + notify (atomic)
     async with db_pool.acquire() as conn:
         async with conn.transaction():
@@ -177,13 +179,14 @@ async def x_webhook(payload: dict, request: Request, db_pool=Depends(get_databas
                 'X', json.dumps(payload), dedup_key
             )
             await outbox.publish(conn, 'inbound_webhook_queued', {'channel': 'X', 'dedup_key': dedup_key})
-    
+
     return {"status": "queued"}  # < 200ms
 ```
 
 Background processor: LISTEN on `inbound_webhook_queued`, poll fallback every 5s.
 
 Twitter CRC:
+
 ```python
 import hmac, hashlib, base64, os
 
@@ -226,6 +229,7 @@ git diff origin/main 2>&1 | head -300
 ```
 
 Verify:
+
 - No off-limits files
 - Migration 145 has rollback section
 - All tests cover happy + idempotent + retry paths
@@ -277,7 +281,7 @@ gh pr create --title "feat(p0-6): channels webhook ack-first + Twitter CRC" \
 - [x] Local synthetic load: 100/100 200 OK, p99 <200ms
 - [x] Twitter CRC manual test
 - [ ] Post-deploy: external Meta webhook send/receive
-- [ ] Twitter API webhook re-registration (manual followup with Antonello)
+- [ ] Twitter API webhook re-registration (manual followup with Zero)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 
@@ -336,12 +340,13 @@ git worktree remove ../nuzantara-wt/p0-6 2>&1 | tail -3
 - **Migration 145 Squawk fail**: aggiungi `-- squawk-ignore-all` per BIGSERIAL etc (canary pattern)
 - **CI cwd bug** (lesson da Wave 2 #343): TDD verify ALWAYS `cd apps/backend-rag && pytest`. Mai dal worktree root.
 - **CI red su Backend Tests advisory**: ignora se required green (lesson Wave 2)
-- **Twitter API webhook re-registration**: questo è manual (need TWITTER_CONSUMER_SECRET in Fly secrets, plus webhook URL POST to Twitter dev portal). Lascia comment in PR per Antonello followup, NON blocca merge.
+- **Twitter API webhook re-registration**: questo è manual (need TWITTER_CONSUMER_SECRET in Fly secrets, plus webhook URL POST to Twitter dev portal). Lascia comment in PR per Zero followup, NON blocca merge.
 - **Coord lock stuck**: standard recovery
 
 ## L2 autonomy
 
 Yes. Ask before:
+
 - Off-limits file edited
 - Twitter webhook re-registration on dev portal (manual)
 - Production smoke test that sends real Meta/Twitter messages (use mock or staging)
@@ -355,7 +360,7 @@ Yes. Ask before:
 - ~12 tests pass
 - Local smoke: 100/100 200 OK, p99 <200ms
 - Cicatrix Twitter CRC broken resolved
-- Twitter API webhook re-registration: deferred to Antonello manual
+- Twitter API webhook re-registration: deferred to Zero manual
 - Brainstorms in /tmp/wave3-pro-brainstorms
 ```
 

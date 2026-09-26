@@ -1,7 +1,10 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # 4-LLM Panel: NB-automations hardening loop W11→W21
 
 > **Data:** 2026-05-23
-> **Reviewer:** Antonello (Zero)
+> **Reviewer:** Zero (Zero)
 > **Branch:** `worktree-audit-nb-automations-2026-05-21`
 
 Questo documento raccoglie il consenso e le divergenze del panel 4-LLM in merito al hardening delle automazioni NB (W11-W21), come da prassi per decisioni architetturali.

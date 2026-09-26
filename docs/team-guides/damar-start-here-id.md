@@ -21,10 +21,10 @@ Panduan ini adalah panduan utama Damar. Tidak perlu memikirkan Bridge, ID artike
 | Pagi                    | Pilih dan terbitkan artikel website            |
 | Setelah artikel         | Pilih topik dan buat carousel                  |
 | Minimal 3 kali seminggu | Buat video Zantara dari topik carousel         |
-| Pukul 15:00             | Kirim carousel dan video kepada Antonello      |
+| Pukul 15:00             | Kirim carousel dan video kepada Zero           |
 | Pukul 17:00             | Publikasikan media sosial yang sudah disetujui |
 
-Artikel website boleh diterbitkan pada pagi hari setelah Damar memberi perintah final. Carousel dan video menunggu persetujuan Antonello.
+Artikel website boleh diterbitkan pada pagi hari setelah Damar memberi perintah final. Carousel dan video menunggu persetujuan Zero.
 
 ---
 
@@ -257,7 +257,7 @@ Tiga video per minggu berarti tiga video yang sudah lulus pemeriksaan, bukan tig
 
 # 4. Pengiriman pukul 15:00
 
-Paling lambat pukul 15:00, Damar mengirim kepada Antonello:
+Paling lambat pukul 15:00, Damar mengirim kepada Zero:
 
 ## Paket carousel
 
@@ -282,7 +282,7 @@ Gunakan pesan ini:
 
 > Paket hari ini siap untuk persetujuan. Carousel: [judul dan link]. Video ID: [link]. Video EN: [link]. Sumber dan caption sudah disertakan. Target publikasi: pukul 17:00 WITA.
 
-Diam bukan persetujuan. Jika belum ada persetujuan Antonello, statusnya **HOLD**.
+Diam bukan persetujuan. Jika belum ada persetujuan Zero, statusnya **HOLD**.
 
 ---
 
@@ -303,7 +303,7 @@ Setelah publikasi, periksa:
 
 Aktifkan label konten AI pada TikTok, Instagram, Facebook, dan Threads bila tersedia. Untuk WhatsApp, gunakan keterangan AI yang sudah disetujui bila diperlukan. Jangan menampilkan Zantara seolah-olah ia manusia nyata, pejabat, saksi, atau narasumber nyata.
 
-Kirim bukti publikasi kepada Antonello.
+Kirim bukti publikasi kepada Zero.
 
 ---
 

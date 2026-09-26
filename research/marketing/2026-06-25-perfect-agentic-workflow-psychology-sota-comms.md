@@ -1,8 +1,9 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-25
 domain: marketing
 client_case: Bali Zero WR2 carousel / WR3 video editorial war-room — "the perfect agentic workflow with all the psychological nuances of SOTA-level communication"
-author: deep-researcher (external consultant brief, Antonello/Bali Zero)
+author: deep-researcher (external consultant brief, Zero/Bali Zero)
 status: draft
 sources:
   - Instagram 2026 ranking-signal coverage (Socialync, Later, Buffer, Hootsuite, GOSO)

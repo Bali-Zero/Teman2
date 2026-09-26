@@ -1,6 +1,9 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # S13-P1 — provider-cascade-protocol
 
-> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Antonello approves graduation.
+> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Zero approves graduation.
 > **Kind**: shared-protocol · **Priority**: P1
 > **Adversarial verdict**: 🔧 REVISE — right gap, wrong artifact (see revised proposal)
 

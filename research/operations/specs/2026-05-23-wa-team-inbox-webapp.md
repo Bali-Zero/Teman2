@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-23
 revised: 2026-05-23 (v2 post deep-researcher panel)
 domain: operations
@@ -12,7 +13,7 @@ panel:
     codebase-audit,
     deep-researcher-agent,
   ]
-status: DRAFT for Antonello review — UU PDP gating risk identified
+status: DRAFT for Zero review — UU PDP gating risk identified
 companion: research/operations/2026-05-23-wa-mirror-dashboard-discovery.md
 ---
 
@@ -827,7 +828,7 @@ Tot estimato: ~1500 LOC frontend (nuovo app `apps/wa-dashboard/`), ~500 LOC back
 
 ---
 
-## 10. Open questions (decisione Antonello richiesta)
+## 10. Open questions (decisione Zero richiesta)
 
 1. **UU PDP counsel timeline**: hai già contatto con il legal counsel che ha già firmato off su altre attività Bali Zero (es. KYC retention)? Quanto tempo serve realisticamente per ottenere sign-off su (a)+(b)+(c)? Se >2 settimane, valutare path M0-bypass (read-only Admin-only MVP subito + outbound dopo).
 2. **App location final lock**: confermi `apps/wa-dashboard/` come nuovo app standalone (raccomandazione DeepSeek + spec v2)? Gemini consigliava reuse `apps/mouth` ma è public-facing.
@@ -845,7 +846,7 @@ Tot estimato: ~1500 LOC frontend (nuovo app `apps/wa-dashboard/`), ~500 LOC back
 
 ## 11. Devils-advocate gate (pending)
 
-PRIMA dell'approvazione finale Antonello, eseguire devils-advocate (DeepSeek reasoning_effort=high) su questa spec per cercare:
+PRIMA dell'approvazione finale Zero, eseguire devils-advocate (DeepSeek reasoning_effort=high) su questa spec per cercare:
 
 - Hidden assumption (es. "PG LISTEN/NOTIFY è gratis" — verificare wakeup cost)
 - Missing edge case (es. operator quit mid-send, bridge restart mid-broadcast)
@@ -900,17 +901,17 @@ PRIMA dell'approvazione finale Antonello, eseguire devils-advocate (DeepSeek rea
 
 ## Status
 
-**DRAFT v2** — post deep-researcher panel — pending review Antonello.
+**DRAFT v2** — post deep-researcher panel — pending review Zero.
 
 **Next gates**:
 
 1. ⏸️ **M0 UU PDP legal-counsel sign-off** (gating outbound capability M3+)
 2. ⏸️ Devils-advocate gate via DeepSeek (knowing token-allocation bug, fallback to Opus self-redteam pattern)
-3. ⏸️ Antonello answer 11 open questions §10
+3. ⏸️ Zero answer 11 open questions §10
 4. ✅ Spec written, committed (commit 65b3cccbc per v1, v2 incoming)
 5. ⏭️ M1 read-only implementation start (M0-bypass path)
 
-**Decision required from Antonello before M1 start**:
+**Decision required from Zero before M1 start**:
 
 - Confirm spec v2 architectural choices (SSE, PG queue, `apps/wa-dashboard/`, jitter 10-30s, `@chatscope/chat-ui-kit-react`)
 - Confirm M0-bypass path (ship M1+M2 read-only Admin-only subito) o aspettare M0 legal full

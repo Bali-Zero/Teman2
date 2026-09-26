@@ -10,22 +10,22 @@
 
 I baseline numbers in the brief vs reality after empirical probing:
 
-| Claim | Brief | Reality (verified 2026-04-29 ~05:30 UTC) | Source |
-|------|------|------------------------------------------|--------|
-| Apps | 27 | **26 directories under `apps/`** | `find apps -mindepth 1 -maxdepth 1 -type d` |
-| Backend routers | 139 | **140 router files**, but **88 registered routers** runtime | `find` + NB-1 |
-| Backend services | 512 | **607 service files** | `find apps/backend-rag/backend/services apps/backend-rag/backend/app/services -name '*.py'` |
-| Migrations v2 | 30 | 30 (last applied 140) | `ls migrations_v2/*.sql` |
-| LaunchAgents | 19 | **53 project plist** (com.nuzantara + com.balizero + com.cell) | `~/Library/LaunchAgents/` |
-| Circuit breakers OPEN | 16/58 | 16/58 (28%) — confirmed | `~/.agent/decisions/circuit_breakers.json` |
-| Sentinel jobs healthy | unknown | **10/58** at 2026-04-29 05:32 UTC | `~/.agent/decisions/sentinel_status.json` |
-| DLQ entries | 1 (key count) | **54 entries (7 terminal)** | sentinel_status |
-| Pro escalations pending | 5 | **7404 lines pending** in jsonl (file never pruned) | `wc -l shared/escalations_pro.jsonl` |
-| KG nodes/edges | 108K/243K | **87K/210K** (production) per NB-1 | NB-1 source citations |
-| LaunchAgents w/ KeepAlive=true | unknown | **7/53 (13%)**, 11/53 absent | grep `<key>KeepAlive</key>` |
-| LaunchAgents missing EnvironmentVariables | unknown | **5/53** (VADEMECUM §11 violation) | grep |
-| LaunchAgents logging to /tmp/ | unknown | **6/53** (lost on reboot) | grep |
-| Fly machines healthy | unknown | 2/2 started, machine `d894e65bede478` had OOM-free crash 5h ago at 10:47 WITA | `fly machine status` |
+| Claim                                     | Brief         | Reality (verified 2026-04-29 ~05:30 UTC)                                      | Source                                                                                      |
+| ----------------------------------------- | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Apps                                      | 27            | **26 directories under `apps/`**                                              | `find apps -mindepth 1 -maxdepth 1 -type d`                                                 |
+| Backend routers                           | 139           | **140 router files**, but **88 registered routers** runtime                   | `find` + NB-1                                                                               |
+| Backend services                          | 512           | **607 service files**                                                         | `find apps/backend-rag/backend/services apps/backend-rag/backend/app/services -name '*.py'` |
+| Migrations v2                             | 30            | 30 (last applied 140)                                                         | `ls migrations_v2/*.sql`                                                                    |
+| LaunchAgents                              | 19            | **53 project plist** (com.nuzantara + com.balizero + com.cell)                | `~/Library/LaunchAgents/`                                                                   |
+| Circuit breakers OPEN                     | 16/58         | 16/58 (28%) — confirmed                                                       | `~/.agent/decisions/circuit_breakers.json`                                                  |
+| Sentinel jobs healthy                     | unknown       | **10/58** at 2026-04-29 05:32 UTC                                             | `~/.agent/decisions/sentinel_status.json`                                                   |
+| DLQ entries                               | 1 (key count) | **54 entries (7 terminal)**                                                   | sentinel_status                                                                             |
+| Pro escalations pending                   | 5             | **7404 lines pending** in jsonl (file never pruned)                           | `wc -l shared/escalations_pro.jsonl`                                                        |
+| KG nodes/edges                            | 108K/243K     | **87K/210K** (production) per NB-1                                            | NB-1 source citations                                                                       |
+| LaunchAgents w/ KeepAlive=true            | unknown       | **7/53 (13%)**, 11/53 absent                                                  | grep `<key>KeepAlive</key>`                                                                 |
+| LaunchAgents missing EnvironmentVariables | unknown       | **5/53** (VADEMECUM §11 violation)                                            | grep                                                                                        |
+| LaunchAgents logging to /tmp/             | unknown       | **6/53** (lost on reboot)                                                     | grep                                                                                        |
+| Fly machines healthy                      | unknown       | 2/2 started, machine `d894e65bede478` had OOM-free crash 5h ago at 10:47 WITA | `fly machine status`                                                                        |
 
 ## Sentinel state at moment of audit
 
@@ -41,7 +41,7 @@ From `~/.agent/decisions/sentinel_status.json` (2026-04-29 05:32 UTC):
 }
 ```
 
-**This is the system in its current "normal" state.** 17% of monitored jobs healthy. 28% in circuit-open. 93% of DLQ never recovered. **The system Antonello uses every day is not a healthy system — it's a system that survives because Antonello restarts what breaks before it cascades.**
+**This is the system in its current "normal" state.** 17% of monitored jobs healthy. 28% in circuit-open. 93% of DLQ never recovered. **The system Zero uses every day is not a healthy system — it's a system that survives because Zero restarts what breaks before it cascades.**
 
 The audit goal is to make those numbers irrelevant — the system must self-recover so the daily counts fluctuate but never stay degraded.
 
@@ -74,6 +74,7 @@ The audit goal is to make those numbers irrelevant — the system must self-reco
 **Failure mode:** Symbiosis.md Law 4 says "if Redis is down, every agent works in isolation". The codebase doesn't use Redis Streams for event bus. It uses **PostgreSQL LISTEN/NOTIFY**. When PG drops connection (reconnect window 5s per `_RECONNECT_DELAY_S`), every NOTIFY published during the window is **silently lost** — `pg_notify` does not queue.
 
 **Blast radius:** Centinaia di eventi cognitive lost per outage minute. Specific consumers affected (per NB-1):
+
 - `practice.status_changed`, `client.changed`, `compliance.alert`, `lkpm.ingest_completed`
 - `war_room.event` (review_handler Telegram, publisher_worker, measurer_worker, dashboard_sse)
 - `intel.event` (4 cognitive layer tables: cross_dossier_theses, wr_anomaly_alerts, weekly_strategic_briefs, ultra_moves)
@@ -98,6 +99,7 @@ The audit goal is to make those numbers irrelevant — the system must self-reco
 **Failure mode:** Cell PulseLoop and Organism nervous system run as Python processes started manually or via plist. Per Codex empirical audit: of 53 project LaunchAgents, **only 7 have `KeepAlive=true`**. The Cell/Organism plist (`com.cell.organism.plist` exists in apps/cell/) per VADEMECUM §11 should have KeepAlive=true but verification needed.
 
 **Blast radius:** When Cell crashes, the entire local automation stops:
+
 - DNA recording stops (skill accumulation = 0)
 - Genome HGT stream `cell:skills` stops (cells can't learn from each other)
 - Sensor/Thinker/Actor lifecycle freezes
@@ -110,6 +112,7 @@ The audit goal is to make those numbers irrelevant — the system must self-reco
 **Why it's P0:** The "organism" doesn't survive its own organ death. There's no auto-restart equivalent of Fly for the local Mac processes.
 
 **Fix:** Audit ALL 53 plist:
+
 1. `KeepAlive=true` for daemons (Cell, Organism, NLM-bridge, post-publish-poller, etc.)
 2. `EnvironmentVariables` always present (5 missing currently)
 3. `StandardOutPath`/`StandardErrorPath` to `~/logs/`, never `/tmp/` (6 violators)
@@ -156,6 +159,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Why it's P0:** Two issues compound: (a) dep fail-fast = restart-loop on missing service; (b) async client leak = same restart-loop on FD exhaustion. Both deterministic.
 
 **Fix:**
+
 1. Audit all `httpx.AsyncClient(` instantiations: `rg "httpx\.AsyncClient\(" apps/backend-rag/backend` — convert each to lazy-singleton in module scope, register `close_*_client` in `app_factory.lifespan()`. Reference: `services/notifications/email_http.py` pattern documented in CLAUDE.md §14.
 2. Convert `dependencies.py` fail-fast to log-and-degrade — return 503 with `{error: "<service>_unavailable"}` instead of raising HTTPException at module import time.
 
@@ -170,6 +174,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Failure mode:** Twitter X webhook disabled hardcoded in `logging_config.py` since 2026-04-03 due to broken CRC handshake. Other channels (WhatsApp, Telegram, Instagram) have basic webhook handlers but if processing > 3s, Twitter/Meta auto-disable webhooks. Also, on Fly machine crash, in-flight webhook processing is lost — message ack not sent → external retries → duplicates.
 
 **Blast radius:**
+
 - Twitter: 100% missed messages from X (chronic).
 - WhatsApp/IG: depends on Meta retry policy. Webhook-disable threshold = 3 consecutive failures over 5 min.
 - Telegram: bot polling — less affected.
@@ -181,6 +186,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Why it's P0:** Inbound = client traffic. Lost = lost lead.
 
 **Fix:**
+
 1. Move webhook handler to "ack first, process async" pattern. Router returns 200 OK after persisting payload to `inbound_webhooks` table; background worker picks up and processes. Ack < 200ms guaranteed.
 2. Restore Twitter CRC: rewrite handshake per Graph API spec (HMAC SHA-256 of crc_token).
 
@@ -203,6 +209,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Current recovery:** None. Manual.
 
 **Fix:** Two parts.
+
 1. Fix root cause: `claim_extractor.py:216` CB_NLM=OPEN block (separate work).
 2. Auto-recovery for pipelines that have been stuck >24h: `system_doctor.py` Pro should detect, attempt rerun, and only escalate to Telegram if rerun fails. Currently Pro's `system_doctor.py` doesn't read `~/logs/cron-agent/` per memory `project_automations_audit_2026_04_19`.
 
@@ -223,6 +230,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Current recovery:** None.
 
 **Fix:**
+
 1. Convert `escalations_pro.jsonl` and `escalations_air.jsonl` to SQLite tables (single file each) with index on `(job, created_at)`.
 2. Add `cron-escalations-prune.plist` LaunchAgent that runs daily, marks resolved escalations as such, deletes resolved older than 30 days, archives non-resolved older than 90 days.
 
@@ -261,6 +269,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Current recovery:** Manual fix + redeploy.
 
 **Fix:**
+
 1. CI lint: `scripts/lint_i18n_providers.sh` — for every route group dir under `apps/mouth/src/app/`, check the layout.tsx contains `<I18nProvider>` IF any descendant component imports `useTranslation`. AST-based, in pre-deploy.
 2. Alternative: provider in root layout (rejected per memory `lesson_2026_04_27` — by design for SSG hydration cost). So lint is the right path.
 
@@ -281,6 +290,7 @@ Generate from VADEMECUM §11 a `scripts/lint_launchagents.sh` that runs on PreTo
 **Current recovery:** Manual re-auth at `https://kita.balizero.com/settings/integrations`.
 
 **Fix:**
+
 1. Restore drive-poll cron Pro after fixing broken-pipe root cause.
 2. Move OAuth refresh to a service account (no expiry) where possible — but Workspace constraints may prevent this.
 3. Watchdog escalation: 30 days warning, 14 days warning, 7 days warning, 1 day warning + Telegram urgent.
@@ -308,6 +318,7 @@ CLAUDE.md §10: must use `git push` not `vercel --prod` for build env to take ef
 ### P2-15. Healthcheck probe coverage gaps
 
 `healthcheck@balizero.com` 15min login probe added 2026-04-29 — covers backend auth + frontend kita login flow. But doesn't test:
+
 - WhatsApp send/receive
 - Telegram bot ping
 - Drive doc creation
@@ -330,6 +341,7 @@ Each subdomain needs a corresponding probe.
 ### C. `system_doctor.py` Pro vs OpsIntelligence Fly confusion
 
 Two different daemons with similar names:
+
 1. `~/scripts/system_doctor.py` (Pro local, runs cron 08:00) — per `feedback_self_repair_blind_2026_04_20`, this one was blind to `~/.agent/decisions/state/launchd_bad_exits.json` and was patched commit `a284ea39a`.
 2. `apps/evaluator/nlm_deep_research/ops_intelligence.py` (Fly, Mon 08:00 WITA) — NLM aggregator for management briefing.
 
@@ -358,6 +370,7 @@ Per memory `air-monitoring`: Tailscale OFF during AI work. If Air goes offline (
 Every fix above has a touchpoint with Cell/Genoma. Mapped in `10_cell_genoma_alignment.md`.
 
 Quick preview:
+
 - P0-1 SearchService degraded mode → record skill/scar in genome `apps/backend-rag` cell
 - P0-2 EventBus Outbox → cell:skills HGT publisher for "PG outbox events emitted" milestone
 - P0-3 Cell/Organism plist KeepAlive → meta touchpoint, fixes the cell substrate itself
@@ -368,18 +381,18 @@ Quick preview:
 
 ## 6. Confidence calibration
 
-| Finding | Confidence | Why |
-|----|----|----|
-| P0-1 SearchService fail-fast | High | NB-1 cited code directly |
-| P0-2 EventBus PG NOT Redis | High | NB-1 cited PG_CHANNEL_MAP + asyncpg listener |
-| P0-3 Cell auto-restart absent | High | Codex empirical 7/53 KeepAlive |
-| P0-4 PR #307 | High | Documented cicatrix STRUCTURAL |
-| P0-5 dependencies.py SPOF | High | NB-1 + CLAUDE.md Golden Rule #10 |
-| P0-6 Channels webhook | Medium-High | Twitter CRC documented; inbound async ack pattern proposed without verifying current behavior |
-| P1-7 NLM DLQ | High | Sentinel state + memory + escalations.jsonl |
-| P1-8 Escalations.jsonl growth | High | wc -l 7404 verified by Codex |
-| P1-9 MCP monolite | Medium | Architectural — partition vs not is judgement call |
-| P1-10 i18n provider | High | Lesson 2026-04-27 documented |
-| P1-11 Drive OAuth | High | Memory + CLAUDE.md |
+| Finding                       | Confidence  | Why                                                                                           |
+| ----------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| P0-1 SearchService fail-fast  | High        | NB-1 cited code directly                                                                      |
+| P0-2 EventBus PG NOT Redis    | High        | NB-1 cited PG_CHANNEL_MAP + asyncpg listener                                                  |
+| P0-3 Cell auto-restart absent | High        | Codex empirical 7/53 KeepAlive                                                                |
+| P0-4 PR #307                  | High        | Documented cicatrix STRUCTURAL                                                                |
+| P0-5 dependencies.py SPOF     | High        | NB-1 + CLAUDE.md Golden Rule #10                                                              |
+| P0-6 Channels webhook         | Medium-High | Twitter CRC documented; inbound async ack pattern proposed without verifying current behavior |
+| P1-7 NLM DLQ                  | High        | Sentinel state + memory + escalations.jsonl                                                   |
+| P1-8 Escalations.jsonl growth | High        | wc -l 7404 verified by Codex                                                                  |
+| P1-9 MCP monolite             | Medium      | Architectural — partition vs not is judgement call                                            |
+| P1-10 i18n provider           | High        | Lesson 2026-04-27 documented                                                                  |
+| P1-11 Drive OAuth             | High        | Memory + CLAUDE.md                                                                            |
 
 Low/medium confidence findings flagged for cross-LLM convergence in `08_convergent_findings.md`.

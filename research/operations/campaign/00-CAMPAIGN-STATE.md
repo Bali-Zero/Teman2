@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # CONNECTOME CAMPAIGN — stato condiviso (shared-context layer)
 
 > **Questo file è L'UNICA fonte di verità dello stato di campagna.** Ogni sessione (L0/L2/L3, su qualsiasi
@@ -11,7 +14,7 @@
 ## 0. Genesi e mandato
 - **Data avvio:** 2026-06-15
 - **Mandato (Zero):** chiudere tutti i loop + trovare tutti i mega-pattern + audit completo + security/Law2 + knowledge-freshness + meta-loop. Autonomia: **trova + chiude tutto tranne firebreak FISICI**. Nessun limite di sessioni.
-- **Super-Osservatore (L0):** sessione M5 interattiva di Antonello+Claude (questa). NON esegue lavoro: vigila, raccoglie effect-receipt, decide firebreak fisici, fa gate finale.
+- **Super-Osservatore (L0):** sessione M5 interattiva di Zero+Claude (questa). NON esegue lavoro: vigila, raccoglie effect-receipt, decide firebreak fisici, fa gate finale.
 - **Fondamento ricerca:** orchestrator-worker (Anthropic, 70% prod, +90% vs single) · reliability compounding 95%^N · context-inconsistency = causa #1 · token ~15× giustificato · parallelismo solo su task indipendenti. Refuter cross-AI OBBLIGATORIO.
 
 ## 1. Topologia (verificata su disco 2026-06-15, account aggiornati)

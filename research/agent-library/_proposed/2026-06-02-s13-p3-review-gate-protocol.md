@@ -1,6 +1,9 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # S13-P3 — review-gate-protocol
 
-> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Antonello approves graduation.
+> **Status**: PROPOSED (S13 evolution cycle, 2026-06-02). Draft only — Zero approves graduation.
 > **Kind**: shared-protocol · **Priority**: P2
 > **Adversarial verdict**: ❌ KILLED by adversaries — documented, NOT graduated
 

@@ -607,7 +607,7 @@ Bali Zero implication: clienti EU in Bali → se Bali Zero processa loro persona
 
 > "Bellingcat has established an Ethics Committee—a body of staff who debate ethical dilemmas as they present themselves, offering advice on solutions—and are guided by their Editorial Standards & Practices, Principles for Data Collection, and other research on ethics and open source investigations." — bellingcat.com
 
-URL: https://www.bellingcat.com/about/editorial-standards-practices/ · Pattern adopt Bali Zero: Nexus OSINT internal-use only (no publication of private details), Ethics Committee = Antonello + 1 senior team member sign-off prima di any external use.
+URL: https://www.bellingcat.com/about/editorial-standards-practices/ · Pattern adopt Bali Zero: Nexus OSINT internal-use only (no publication of private details), Ethics Committee = Zero + 1 senior team member sign-off prima di any external use.
 
 ### 8.4 Doxing line — Indonesia legal framework
 
@@ -620,15 +620,16 @@ URL: https://www.bellingcat.com/about/editorial-standards-practices/ · Pattern 
 > "Whistleblowing involves revealing information about legal violations or corruption for public interest, typically with certain legal protections, whereas doxing is done to harm individuals personally, not for public interest, with the key difference lying in intent and the type of information disseminated." — Multilingual Journal of Universal Studies
 
 **OSINT lecito vs illegale Indonesia (sintesi)**:
-| Activity | Legal status | Reasoning |
-|---|---|---|
-| Reading e-LHKPN public data | LEGAL | KPK explicitly publishes |
-| Querying Daftar Caleg KPU | LEGAL | KPU portal public |
+
+| Activity                                       | Legal status        | Reasoning                                                             |
+| ---------------------------------------------- | ------------------- | --------------------------------------------------------------------- |
+| Reading e-LHKPN public data                    | LEGAL               | KPK explicitly publishes                                              |
+| Querying Daftar Caleg KPU                      | LEGAL               | KPU portal public                                                     |
 | Compiling internal dossier from public sources | LEGAL (if internal) | UU PDP Art. 15 personal/household exemption questionable for business |
-| Publishing pejabat home address | ILLEGAL (doxing) | UU PDP Art. 67(2) — 5y / Rp 5B |
-| Publishing pejabat NIK / KTP number | ILLEGAL | sensitive data UU PDP Art. 4 |
-| Cross-ref data breach DB to enrich profile | ILLEGAL | UU PDP Art. 65 — unlawful obtainment |
-| Using OSINT for KYC / due diligence (internal) | LEGAL | Lawful interest basis, but document |
+| Publishing pejabat home address                | ILLEGAL (doxing)    | UU PDP Art. 67(2) — 5y / Rp 5B                                        |
+| Publishing pejabat NIK / KTP number            | ILLEGAL             | sensitive data UU PDP Art. 4                                          |
+| Cross-ref data breach DB to enrich profile     | ILLEGAL             | UU PDP Art. 65 — unlawful obtainment                                  |
+| Using OSINT for KYC / due diligence (internal) | LEGAL               | Lawful interest basis, but document                                   |
 
 ### 8.5 Bali Zero Nexus OSINT — Recommended Compliance Stance
 
@@ -641,7 +642,7 @@ URL: https://www.bellingcat.com/about/editorial-standards-practices/ · Pattern 
 7. **Privacy notice** to clients: disclose OSINT due diligence in engagement letter.
 8. **No automated mass scraping** of public sites (TOS conflict + UU ITE Art. 30 unauthorized access risk).
 9. **EU clients adjacency**: GDPR Art. 6(1)(b) contract basis + Art. 6(1)(f) legitimate interest balancing test documented.
-10. **Bellingcat-style ethics review**: Antonello + senior team approval before any output beyond internal note.
+10. **Bellingcat-style ethics review**: Zero + senior team approval before any output beyond internal note.
 
 URLs key:
 

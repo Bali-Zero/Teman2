@@ -11,11 +11,11 @@ Sei l'orchestrator di un team agent `wave2-pro`. Lanci 3 sub-agent paralleli, og
 
 **Fix assegnati a Sessione 2 (Pro):**
 
-| Agent | Fix | Effort | File principali |
-|---|---|---|---|
-| **agent-X** | **P0-2 fase 1** Outbox foundation | 1 giorno | migration 144, services/events/outbox.py, EventBus reconnect |
-| **agent-Y** | **P1-8** escalations.jsonl → SQLite | 1 giorno | scripts/migrate_escalations_to_sqlite.py + cron prune |
-| **agent-Z** | **NB-D** Vercel monorepo cross-import lint | 6h | .github/workflows/lint-cross-import.yml + pre-deploy gate |
+| Agent       | Fix                                        | Effort   | File principali                                              |
+| ----------- | ------------------------------------------ | -------- | ------------------------------------------------------------ |
+| **agent-X** | **P0-2 fase 1** Outbox foundation          | 1 giorno | migration 144, services/events/outbox.py, EventBus reconnect |
+| **agent-Y** | **P1-8** escalations.jsonl → SQLite        | 1 giorno | scripts/migrate_escalations_to_sqlite.py + cron prune        |
+| **agent-Z** | **NB-D** Vercel monorepo cross-import lint | 6h       | .github/workflows/lint-cross-import.yml + pre-deploy gate    |
 
 **Sessione 1 (questa, mia)** sta lavorando su P0-1, NB-A, P1-11 in parallelo.
 **Sessione 3 (Air)** sta lavorando su P0-5 fase 1, P1-7, P1-10 in parallelo.
@@ -48,6 +48,7 @@ Ogni sub-agent che lanci deve:
 4. **Self-review** prima di commit: re-read diff, verifica contro brainstorm sintesi, controllo regressioni (smoke test su test esistenti).
 
 5. **Coord commit + push + PR**:
+
    ```bash
    source /Users/nuzantara/Desktop/nuzantara/docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/_coordination.sh
    coord_commit "feat(<id>): <subject>" <files>
@@ -57,6 +58,7 @@ Ogni sub-agent che lanci deve:
    ```
 
 6. **Watch CI + deploy**:
+
    ```bash
    PR=$(gh pr view --json number -q .number)
    gh pr checks $PR --watch
@@ -65,10 +67,12 @@ Ogni sub-agent che lanci deve:
    ```
 
 7. **Verify deploy SUCCESS**:
+
    ```bash
    curl -sI https://nuzantara-rag.fly.dev/health | head -1   # Expected: HTTP/1.1 200
    curl -s https://nuzantara-rag.fly.dev/health | jq '.status'  # Expected: "healthy"
    ```
+
    Per fix DB: `fly ssh console -a nuzantara-rag --machine d894e65bede478 -C "..."` per verificare schema.
 
 8. **MOS save** + cicatrix update + worktree cleanup.
@@ -229,7 +233,7 @@ Agent(
 # 3. Ognuno parte in parallelo. I 3 condividono il team scratchpad
 # (per "io ho il git-commit lock" / "ho aperto PR #XXX") e i lock files di disco.
 
-# 4. Quando uno finisce: ricevi notification, verify, report ad Antonello.
+# 4. Quando uno finisce: ricevi notification, verify, report ad Zero.
 # 5. Se uno blocca: SendMessage all'agent in difficoltà per debug, OR escalate.
 ```
 
@@ -237,7 +241,7 @@ Agent(
 
 - **Agent X (P0-2) trova bug nei reference (services/bridge/outbox.py)**: SendMessage X "puoi proporre fix in stesso PR o spinoff?". Decide tu.
 - **Agent Y (P1-8) chiede schema specifico**: rispondigli che schema è suo da designare basato su brainstorm sintesi.
-- **Agent Z (NB-D) trova package.json broken in main**: stop work, escalate ad Antonello (è broken state preesistente, fuori scope NB-D).
+- **Agent Z (NB-D) trova package.json broken in main**: stop work, escalate ad Zero (è broken state preesistente, fuori scope NB-D).
 - **Lock stuck >30min**: `coord_status`, break manualmente solo se PID dead.
 - **Race su migration number**: 144 è next disponibile (S3 ha preso 142+143). Se altro agent sceglie 144 ANCHE, conflitto di file. Coord brief brain dice "144 è preso da P0-2".
 - **Sessione 1 (mia) è ancora running**: agent X può finire prima — OK. Se PR #X dipende da PR #1 (improbabile), check via team scratchpad.
@@ -245,6 +249,7 @@ Agent(
 ## Reporting
 
 A fine sessione (quando tutti 3 agent done):
+
 ```
 [wave2-team-pro DONE]
 - agent-X (P0-2 fase 1): PR #<num> merged, deploy verified, migration 144 applied
@@ -256,7 +261,8 @@ A fine sessione (quando tutti 3 agent done):
 
 ## L2 autonomy
 
-Tutti i 3 agent operano L2 autonomous. Tu come orchestrator escali a Antonello via Telegram solo se:
+Tutti i 3 agent operano L2 autonomous. Tu come orchestrator escali a Zero via Telegram solo se:
+
 - Off-limits file accidentally edited
 - Production health drops sotto 95% durante deploy
 - Una PR resta CI red >2h senza che l'agent reagisca

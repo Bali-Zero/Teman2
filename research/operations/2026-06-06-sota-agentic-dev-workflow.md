@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-06
 domain: operations
 client_case: none
@@ -12,14 +13,14 @@ status: STUDY-PHASE — ricerca dell'avanguardia, decisione architetturale (orch
 
 # SOTA del meta-workflow di sviluppo software agentico end-to-end (2026)
 
-> Fase: **studio dell'avanguardia**, NON implementazione. Per scelta esplicita di Antonello:
+> Fase: **studio dell'avanguardia**, NON implementazione. Per scelta esplicita di Zero:
 > "si deve prima vedere come lavora l'avanguardia". La decisione orchestrare-esistente vs
 > greenfield viene DOPO, informata da questa ricerca.
 >
 > Metodo: SOTA-architecture-loop (FRAME→GROUND→REASON→COUNCIL→CAPTURE) + reuse-first + deep-research.
-> Tre direttive di Antonello rispettate: panel 4-LLM, deep-research, reuse-first sui repo globali.
+> Tre direttive di Zero rispettate: panel 4-LLM, deep-research, reuse-first sui repo globali.
 
-## TL;DR (per Antonello)
+## TL;DR (per Zero)
 
 1. **Non ti sei perso "dei pezzi" — ti sei perso 9 pezzi precisi**, elencati sotto. I 3 più importanti
    (verifica-a-ogni-giuntura, test-in-container-come-prod, accumulo-memoria) sono load-bearing e oggi
@@ -42,7 +43,7 @@ status: STUDY-PHASE — ricerca dell'avanguardia, decisione architetturale (orch
 
 ## 1. FRAME — il loop richiesto, scomposto
 
-Antonello vuole, a velocità siderale:
+Zero vuole, a velocità siderale:
 `studia → ricerca feature → disegna architettura → organizza squadre → costruisce pezzo-per-pezzo
 (parallelo dove si può) → arricchisce → design + app internal → testa in container come fosse produzione → ship`
 
@@ -58,7 +59,7 @@ Scomposto in 11 stadi-mattone (+ 1 trasversale):
 | 5 | SEAM-VERIFY | verifica a ogni giuntura PRIMA di assemblare |
 | 6 | ENRICH | design + internal-app dentro il brand |
 | 7 | TEST-PROD | test in ambiente isomorfo a produzione |
-| 8 | REVIEW | verifica avversariale = review delegata (sostituisce Antonello) |
+| 8 | REVIEW | verifica avversariale = review delegata (sostituisce Zero) |
 | 9 | SHIP | merge-gate + branch protection |
 | 10 | LEARN | accumulo memoria/skill (Reflexion/Voyager) |
 | * | GOVERN | observability adoption + cost budget |
@@ -172,7 +173,7 @@ Verdetto sintetico (fatti 3-0, il dettaglio è nel file dedicato):
 
 ## 4. I 9 PEZZI MANCANTI (risposta diretta a "mi sono perso dei pezzi?")
 
-**6 mancavano nella formulazione iniziale di Antonello:**
+**6 mancavano nella formulazione iniziale di Zero:**
 1. **SPEC come artefatto-cardine** (non check finale) — è il 4-LLM panel promosso a fondamenta.
 2. **SEAM-VERIFY** (verifica a ogni giuntura, non solo alla fine) — MAST: 37% fallimenti = verifica/terminazione.
 3. **Gate "decidere SE parallelizzare"** — fan-out degrada −70% su task sequenziali/coding (Google Science of Scaling).
@@ -188,12 +189,12 @@ Verdetto sintetico (fatti 3-0, il dettaglio è nel file dedicato):
 
 ---
 
-## 5. REASON — modello dell'avanguardia per il caso Antonello
+## 5. REASON — modello dell'avanguardia per il caso Zero
 
 > Council 4-LLM completato (Gemini+Codex+DeepSeek, 3 panelisti su modelli diversi; Claude=proponente).
 > La tesi sotto è stata attaccata e RIFORMULATA — vedi §6 per i difetti e §8 per la versione difendibile.
 
-**Tesi centrale**: per Antonello (solo-dev, locale-sovrano, non-dev, no-paid-Anthropic), il loop SOTA è
+**Tesi centrale**: per Zero (solo-dev, locale-sovrano, non-dev, no-paid-Anthropic), il loop SOTA è
 comporre 5 strati già posseduti al 70%, colmando i 3 buchi con primitivi local-first verificati:
 
 ```
@@ -276,12 +277,12 @@ META-DEV-LOOP (proposta da validare)
    cost-tracking). OpenHands stesso **avvisa che servono modelli potenti e contesto grande** → conferma CRITICO-2.
 10. **Storybook incrementale**: parti con 5 primitive + stories + a11y(axe-core) + Playwright-snapshot; il
     Storybook-MCP completo dopo. Dà verifiche VISIVE a un non-dev (rosso/verde, non codice).
-11. **gate umani minimi (CRITICO-1, lato umano — la lista concreta)**: Antonello approva SOLO:
+11. **gate umani minimi (CRITICO-1, lato umano — la lista concreta)**: Zero approva SOLO:
     auth/RBAC · billing/pricing · migrazioni irreversibili · delete-dati · deploy-prod · secrets/env ·
     egress-PII · contenuti-pubblici/legali · daemon/launchd. Via GitHub rulesets/CODEOWNERS + branch-protection
     + OPA. **Il non-dev non legge codice, ma blocca i rischi business irreversibili.** → risolve il vincolo #1.
 12. **CASO PILOTA: "Agent Run Evidence Dashboard"** (il pilota È la soluzione): internal-tool che legge
-    ledger + diff + test-JSON + worktree-attivi + seam-verdict + hot-zone + rollback-plan, e mostra ad Antonello
+    ledger + diff + test-JSON + worktree-attivi + seam-verdict + hot-zone + rollback-plan, e mostra ad Zero
     **rosso/verde/evidenze invece di codice**. Valida l'intero loop senza toccare clienti E gli dà la review
     delegata resa leggibile. (Next.js admin esistente + SQLite/Postgres locale + pytest-json-report + Playwright.)
 
@@ -291,7 +292,7 @@ META-DEV-LOOP (proposta da validare)
 1. **[PARADOSSO DEL VERIFICATORE, #4+#8] (il difetto più profondo, CONVERGE con Gemini #1)**: il piano
    *cita* "verify-the-verifiers" ma **non lo implementa nel loop**. Se i modelli imbrogliano i benchmark
    (reward-hacking ammesso), possono imbrogliare anche il verificatore avversariale. Il vincolo #1
-   (Antonello non revisiona) **chiude la via di fuga umana**. → senza un livello esplicito che verifichi
+   (Zero non revisiona) **chiude la via di fuga umana**. → senza un livello esplicito che verifichi
    l'output del verificatore (meta-verifier su modello diverso + metriche ortogonali + gate umano sui
    sospetti false-solve), il loop è fragile in coda.
 2. **[NUMERI GRATUITI, #6+#11+#7]**: "60% dello sforzo su verifica", "−70% fan-out (Google Science of
@@ -328,7 +329,7 @@ I 3 LLM, indipendentemente, hanno colpito gli **stessi 2 difetti CRITICI**:
       (a) **barriere deterministiche PRIMA degli LLM** — compilatore/type-check/linter-bloccante/security-scanner
       (un compilatore prende in ms errori su cui gli LLM "discuterebbero" — Gemini #9); (b) verificatore su
       **modello diverso** dal generatore con **metriche ortogonali**; (c) **gate umano minimo** sui sospetti
-      false-solve e sulle classi irreversibili (auth/billing/migration) — Antonello firma SOLO questi, non tutto.
+      false-solve e sulle classi irreversibili (auth/billing/migration) — Zero firma SOLO questi, non tutto.
 - [ ] 🔧 **anti-reward-hacking**: detector che flagga test indeboliti (`assert True`, mock vuoti, asserzioni
       rimosse) prima del merge. Senza, copertura 100% = teatro (Gemini #7, DeepSeek #4).
 - [ ] ✅ **4-LLM panel asimmetrico** (Claude+Gemini+Codex+DeepSeek, ruoli diversi) — già usato, da rendere
@@ -411,7 +412,7 @@ si aggiungono SOLO per evidenza, non all'inizio. Il primo "arricchimento" è il 
 
 ### Il caso pilota che È la soluzione (Codex #12)
 **"Agent Run Evidence Dashboard"**: un internal-tool che legge il ledger + diff + test-JSON + seam-verdict +
-hot-zone + rollback-plan e mostra ad Antonello **rosso/verde/evidenze invece di codice**. Risolve due cose:
+hot-zone + rollback-plan e mostra ad Zero **rosso/verde/evidenze invece di codice**. Risolve due cose:
 (a) valida l'intero loop senza toccare clienti; (b) **È** la "review delegata resa leggibile" — il vincolo #1
 diventa un'interfaccia, non un atto di fede. Stack: Next.js admin esistente + SQLite/Postgres + pytest-json-report.
 Metriche di stress obbligatorie nel pilota (DeepSeek #12): ≥1 migrazione DB + ≥1 API-mocked + ≥1 rollback.

@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-13
 domain: operations (cross: visa, tax, company-kbli, property)
 client_case: none — internal knowledge-layer audit
@@ -12,7 +13,7 @@ author: Claude Fable 5 (autonomous session, M5)
 
 # La TAC della Conoscenza — knowledge-decay audit dello stack di risposte cliente
 
-> Topic eseguito in autonomia su richiesta di Antonello ("un topic che solo tu puoi fare
+> Topic eseguito in autonomia su richiesta di Zero ("un topic che solo tu puoi fare
 > qualitativamente e profondamente"), scelto per NON duplicare le due sessioni attive:
 > la TAC dell'organismo (2026-06-13, plumbing) e lo sciame fix F/A (codice). Questo audit
 > copre il terzo strato, mai auditato: **la conoscenza che Bali Zero vende** — ciò che il

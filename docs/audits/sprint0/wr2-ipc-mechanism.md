@@ -9,9 +9,10 @@
 > orchestratore centrale. Se Redis e' down, ogni agente funziona in isolamento.
 
 Reality (per cicatrix-scars.md): the substrate is **PostgreSQL LISTEN/NOTIFY
-+ events_outbox** (migration 144 + 146), not Redis Streams. Same intent
-("durable async event bus"), different runtime. The Law's spirit holds:
-no polling, no central orchestrator.
+
+- events_outbox** (migration 144 + 146), not Redis Streams. Same intent
+  ("durable async event bus"), different runtime. The Law's spirit holds:
+  no polling, no central orchestrator.
 
 ## What was audited
 
@@ -32,25 +33,25 @@ publishes its work product to downstream consumers**:
 
 ## Empirical findings (per organelle)
 
-| Organelle | Cognitive Level | Output | Channel | Verdict |
-|---|---|---|---|---|
-| `oracle` | L4 | INSERT into `ultra_moves` (mig 114) | `cognitive_event` | ✅ Event-driven |
-| `strategos` | L3 | INSERT into `weekly_strategic_briefs` (mig 114) | `cognitive_event` | ✅ Event-driven |
-| `connector` | L1 | INSERT into `cross_dossier_theses` (mig 114) | `cognitive_event` | ✅ Event-driven |
-| `supervisor` | L2 | LISTEN on `wr2_status_change` (mig 138) + chain steps | n/a (consumer, not producer) | ✅ Event-driven (consumer) |
-| `pg-proxy` | L2 | TCP proxy to Postgres flycast — substrate | n/a (infra, no IPC events) | ✅ neutral |
-| `learner-nightly` | L1 | INSERT into M14 retrain log + skills/scars (mig 114) | `cognitive_event` (anomaly side) + skills/scars (cell-core) | ✅ Event-driven |
-| `trend-hunter` | L1 | INSERT into `trend_signals` (mig 113) | `intel_event` | ✅ Event-driven |
-| `measurer` | L1 | INSERT into `post_metrics_history` + `m13_retrain_log` | (no trigger registered → silent) | ⚠️ DB write but NO NOTIFY — needs trigger |
-| `dossier-compiler` | L1 | INSERT/UPDATE on `research_dossiers` (mig 113) | `intel_event` | ✅ Event-driven |
-| `topic-selector` (Pro-only) | operational | INSERT into `war_room_drafts` (mig 112 + 138) | `war_room_event` + `wr2_status_change` | ✅ Event-driven (dual emitter) |
-| `draft-generator` (Pro-only) | operational | UPDATE `war_room_drafts.status` (status='drafted') (mig 138) | `wr2_status_change` | ✅ Event-driven |
-| `image-generator` (Pro-only) | operational | UPDATE `war_room_drafts` (image fields) | (only on status change → fires `wr2_status_change`) | ✅ Event-driven |
-| `canva-apply` (Pro-only) | operational | UPDATE `war_room_drafts` to status='reviewed' | `wr2_status_change` | ✅ Event-driven |
-| `canva-renderer` (repo-only orphan) | operational | shell script, every 300s — likely renders Canva exports to disk | filesystem only | ⚠️ pure filesystem — see Sprint 0 follow-up |
-| `newsletter` | operational | NewsletterPublisher writes to `apps/web/blog/` MDX files; INSERT into `war_room_posts` | `war_room_event` | ✅ Event-driven (after MDX commit) |
-| `sla-worker` | operational | UPDATE `war_room_drafts.status` (timeout → status='abandoned') | `wr2_status_change` | ✅ Event-driven |
-| `hardening` | operational | runs 3 hardening CLIs; output to launchd logs + Telegram | filesystem + Telegram | ⚠️ no DB write — see "operational hardening" below |
+| Organelle                           | Cognitive Level | Output                                                                                 | Channel                                                     | Verdict                                            |
+| ----------------------------------- | --------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
+| `oracle`                            | L4              | INSERT into `ultra_moves` (mig 114)                                                    | `cognitive_event`                                           | ✅ Event-driven                                    |
+| `strategos`                         | L3              | INSERT into `weekly_strategic_briefs` (mig 114)                                        | `cognitive_event`                                           | ✅ Event-driven                                    |
+| `connector`                         | L1              | INSERT into `cross_dossier_theses` (mig 114)                                           | `cognitive_event`                                           | ✅ Event-driven                                    |
+| `supervisor`                        | L2              | LISTEN on `wr2_status_change` (mig 138) + chain steps                                  | n/a (consumer, not producer)                                | ✅ Event-driven (consumer)                         |
+| `pg-proxy`                          | L2              | TCP proxy to Postgres flycast — substrate                                              | n/a (infra, no IPC events)                                  | ✅ neutral                                         |
+| `learner-nightly`                   | L1              | INSERT into M14 retrain log + skills/scars (mig 114)                                   | `cognitive_event` (anomaly side) + skills/scars (cell-core) | ✅ Event-driven                                    |
+| `trend-hunter`                      | L1              | INSERT into `trend_signals` (mig 113)                                                  | `intel_event`                                               | ✅ Event-driven                                    |
+| `measurer`                          | L1              | INSERT into `post_metrics_history` + `m13_retrain_log`                                 | (no trigger registered → silent)                            | ⚠️ DB write but NO NOTIFY — needs trigger          |
+| `dossier-compiler`                  | L1              | INSERT/UPDATE on `research_dossiers` (mig 113)                                         | `intel_event`                                               | ✅ Event-driven                                    |
+| `topic-selector` (Pro-only)         | operational     | INSERT into `war_room_drafts` (mig 112 + 138)                                          | `war_room_event` + `wr2_status_change`                      | ✅ Event-driven (dual emitter)                     |
+| `draft-generator` (Pro-only)        | operational     | UPDATE `war_room_drafts.status` (status='drafted') (mig 138)                           | `wr2_status_change`                                         | ✅ Event-driven                                    |
+| `image-generator` (Pro-only)        | operational     | UPDATE `war_room_drafts` (image fields)                                                | (only on status change → fires `wr2_status_change`)         | ✅ Event-driven                                    |
+| `canva-apply` (Pro-only)            | operational     | UPDATE `war_room_drafts` to status='reviewed'                                          | `wr2_status_change`                                         | ✅ Event-driven                                    |
+| `canva-renderer` (repo-only orphan) | operational     | shell script, every 300s — likely renders Canva exports to disk                        | filesystem only                                             | ⚠️ pure filesystem — see Sprint 0 follow-up        |
+| `newsletter`                        | operational     | NewsletterPublisher writes to `apps/web/blog/` MDX files; INSERT into `war_room_posts` | `war_room_event`                                            | ✅ Event-driven (after MDX commit)                 |
+| `sla-worker`                        | operational     | UPDATE `war_room_drafts.status` (timeout → status='abandoned')                         | `wr2_status_change`                                         | ✅ Event-driven                                    |
+| `hardening`                         | operational     | runs 3 hardening CLIs; output to launchd logs + Telegram                               | filesystem + Telegram                                       | ⚠️ no DB write — see "operational hardening" below |
 
 ## Two violations + one grey area
 
@@ -74,7 +75,7 @@ Pro per Track B1) runs a shell script every 300s. No DB write, no event.
 Not a real organelle — likely a legacy auto-render daemon that should be
 deleted.
 
-**Action (Sprint 0 follow-up):** confirm with Antonello whether
+**Action (Sprint 0 follow-up):** confirm with Zero whether
 `canva-renderer` is still useful. If not, remove the plist from repo (and
 unload from Pro if present). If yes, document its consumer (probably a
 filesystem watcher in `scripts/wr2_canva_apply.py` — needs verification).
@@ -116,11 +117,11 @@ fanout via the durable substrate. **No action needed.**
 
 ## Verdict
 
-| Question | Answer |
-|---|---|
-| Do all 13 (+4 Pro-only) WR2 LaunchAgents respect Symbiosis Law 4 (Event-driven)? | **Effectively yes**, with 1 narrow violation (`measurer` write-without-trigger), 1 orphan to clean (`canva-renderer`), and 1 grey area (`hardening` chain — fits observed-shell tier). |
-| Is the migration to PG NOTIFY needed, as round 2 brainstorm Gemini suggested? | **NO migration needed for the cognitive set.** Triggers from migrations 112+113+114 already cover oracle/strategos/connector/learner-nightly/trend-hunter/dossier-compiler. The 4 Pro-only operational organelle update `war_room_drafts` and trigger 138 fires correctly. |
-| Specific deltas? | (a) Add trigger on `post_metrics_history` (`measurer`); (b) decide fate of `canva-renderer` orphan; (c) wire `wr2-hardening-chain.sh` to ObservedShellBus.emit (Track C2). |
+| Question                                                                         | Answer                                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Do all 13 (+4 Pro-only) WR2 LaunchAgents respect Symbiosis Law 4 (Event-driven)? | **Effectively yes**, with 1 narrow violation (`measurer` write-without-trigger), 1 orphan to clean (`canva-renderer`), and 1 grey area (`hardening` chain — fits observed-shell tier).                                                                                     |
+| Is the migration to PG NOTIFY needed, as round 2 brainstorm Gemini suggested?    | **NO migration needed for the cognitive set.** Triggers from migrations 112+113+114 already cover oracle/strategos/connector/learner-nightly/trend-hunter/dossier-compiler. The 4 Pro-only operational organelle update `war_room_drafts` and trigger 138 fires correctly. |
+| Specific deltas?                                                                 | (a) Add trigger on `post_metrics_history` (`measurer`); (b) decide fate of `canva-renderer` orphan; (c) wire `wr2-hardening-chain.sh` to ObservedShellBus.emit (Track C2).                                                                                                 |
 
 ## Action items (post-merge / Sprint 1)
 

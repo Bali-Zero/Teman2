@@ -4,19 +4,19 @@
 
 **Goal:** Scaffold and ship a personal Claude Code "Zantara Onboarding" running on Subhi Darajat's MacBook Pro 16GB during his 90-day probation, speaking bahasa Indonesia, with daily-mirrored Bali Zero memory (excluding the confidential `Subhi/` folder), and RBAC hooks enforcing `apps/mouth/**` scope + `sancho/*` branch workflow.
 
-**Architecture:** Local Claude Code CLI on Subhi's Mac (`subhi@balizero.com` OAuth on Antonello's MAX plan #2) + per-project `.claude/` config in a separate private repo `balizero/nuzantara-subhi` with a `zantara-onboarding.md` sub-agent and PreToolUse Bash guard hook + nightly memory mirror cron on Antonello Pro that filters Antonello's `~/.claude/projects/-Users-nuzantara/memory/` (excluding `Subhi/` folder, `discovery_token_*`, `MEMORY_ARCHIVE`, secret regex matches) and pushes the result to the repo for `git pull` morning sync.
+**Architecture:** Local Claude Code CLI on Subhi's Mac (`subhi@balizero.com` OAuth on Zero's MAX plan #2) + per-project `.claude/` config in a separate private repo `balizero/nuzantara-subhi` with a `zantara-onboarding.md` sub-agent and PreToolUse Bash guard hook + nightly memory mirror cron on Zero Pro that filters Zero's `~/.claude/projects/-Users-nuzantara/memory/` (excluding `Subhi/` folder, `discovery_token_*`, `MEMORY_ARCHIVE`, secret regex matches) and pushes the result to the repo for `git pull` morning sync.
 
 **Tech Stack:** macOS · zsh · git · Claude Code CLI v2.0+ · Node 20 · npm · brew · uv (Python tool installer) · LaunchAgent (launchd) · GitHub fine-grained PAT · Tailscale · NotebookLM CLI (`nlm`) · MCP servers (github, notebooklm-mcp, filesystem, fetch).
 
 **Reference spec:** `docs/superpowers/specs/2026-05-04-subhi-tutor-design.md`
 
-**Working machine:** Antonello Pro `nuzantara@Nuzantara` (`~/Desktop/nuzantara`). All scripts/scaffolds are authored on Pro. Subhi's Mac receives a curl-installable script + clones the repo.
+**Working machine:** Zero Pro `nuzantara@Nuzantara` (`~/Desktop/nuzantara`). All scripts/scaffolds are authored on Pro. Subhi's Mac receives a curl-installable script + clones the repo.
 
 ---
 
 ## File Structure
 
-### On Antonello Pro (this repo: `balizero/nuzantara`)
+### On Zero Pro (this repo: `balizero/nuzantara`)
 
 | Path                                                              | Responsibility                                                 | Created in task |
 | ----------------------------------------------------------------- | -------------------------------------------------------------- | --------------- |
@@ -24,9 +24,9 @@
 | `scripts/subhi/subhi-memory-mirror.config.yaml`                   | Include/exclude patterns + secret regex                        | T2              |
 | `scripts/subhi/subhi-memory-mirror-test.sh`                       | Dry-run test harness (no push)                                 | T2              |
 | `scripts/subhi/subhi-tutor-install.sh`                            | Install script Subhi runs on his Mac                           | T6              |
-| `scripts/subhi/README.md`                                         | Operator notes for Antonello (rotation, troubleshooting)       | T2              |
+| `scripts/subhi/README.md`                                         | Operator notes for Zero (rotation, troubleshooting)            | T2              |
 | `infra/launchagents/com.balizero.subhi-memory-mirror.daily.plist` | LaunchAgent, 04:00 WITA daily, runs mirror                     | T3              |
-| `docs/runbooks/subhi-tutor-day1.md`                               | Antonello-side runbook for Day 1 live setup                    | T7              |
+| `docs/runbooks/subhi-tutor-day1.md`                               | Zero-side runbook for Day 1 live setup                         | T7              |
 
 ### On a NEW repo `balizero/nuzantara-subhi` (Subhi's workspace)
 
@@ -64,19 +64,19 @@ Same `nuzantara-subhi` clone in `~/Projects/nuzantara-subhi/` + main repo clone 
 
 ## Phases
 
-- **Phase 0 — Pre-requisites** (T0): Antonello side prep, ~25 min, no code
+- **Phase 0 — Pre-requisites** (T0): Zero side prep, ~25 min, no code
 - **Phase 1 — Memory mirror** (T1, T2, T3): script + LaunchAgent + audit trail
 - **Phase 2 — Repo skeleton** (T4): `.claude/` + hooks + settings
 - **Phase 3 — Sub-agent + content** (T5): bahasa docs + exercises + sub-agent prompt
 - **Phase 4 — Install script** (T6): one-liner curl-able for Subhi's Mac
-- **Phase 5 — Runbook + dry-run** (T7, T8): Antonello-side runbook + Mini test
-- **Phase 6 — Day 1 live** (T9): Subhi setup with Antonello on WhatsApp video
+- **Phase 5 — Runbook + dry-run** (T7, T8): Zero-side runbook + Mini test
+- **Phase 6 — Day 1 live** (T9): Subhi setup with Zero on WhatsApp video
 
 ---
 
 ## Task 0: Pre-requisites checklist (no code)
 
-**Files:** none — Antonello manual ops on GitHub UI, NLM CLI, Tailscale admin.
+**Files:** none — Zero manual ops on GitHub UI, NLM CLI, Tailscale admin.
 
 **Goal:** verify all 8 pre-requisites from spec §11 are met before any scripting starts. If any fails, plan blocks.
 
@@ -173,7 +173,7 @@ Cannot verify directly. Add to install script (T6) — script generates SSH key 
 
 - [ ] **Step 8: Confirm MacBook arrival window**
 
-Antonello manual: confirm with Subhi via WhatsApp the date/time MacBook arrives. Tailscale check 2026-05-04 13:30 showed only Windows laptop in tailnet — Mac not yet joined. Update tracking when joined.
+Zero manual: confirm with Subhi via WhatsApp the date/time MacBook arrives. Tailscale check 2026-05-04 13:30 showed only Windows laptop in tailnet — Mac not yet joined. Update tracking when joined.
 
 Expected: confirmed Day 1 date.
 
@@ -271,7 +271,7 @@ git commit -m "feat(subhi): memory mirror filter config"
 - Create: `scripts/subhi/README.md`
 - Test: `scripts/subhi/test_mirror.sh`
 
-**Goal:** bash script that reads YAML config, filters Antonello's memory dir, redacts secret content, generates `_AUDIT.txt`, commits + pushes to `balizero/nuzantara-subhi` branch `subhi/memory-mirror`. Test harness runs in dry-run mode without git ops.
+**Goal:** bash script that reads YAML config, filters Zero's memory dir, redacts secret content, generates `_AUDIT.txt`, commits + pushes to `balizero/nuzantara-subhi` branch `subhi/memory-mirror`. Test harness runs in dry-run mode without git ops.
 
 - [ ] **Step 1: Write the failing test (test_mirror.sh)**
 
@@ -356,7 +356,7 @@ Write `~/Desktop/nuzantara/scripts/subhi/subhi-memory-mirror.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# subhi-memory-mirror.sh — mirror Antonello memory dir to Subhi tutor repo.
+# subhi-memory-mirror.sh — mirror Zero memory dir to Subhi tutor repo.
 # Reads YAML config for include/exclude/redact rules.
 # Run by LaunchAgent daily 04:00 WITA OR manually.
 # Env: DRY_RUN=1 skips git push; CONFIG_OVERRIDE_SOURCE_DIR / DEST_DIR for tests.
@@ -597,7 +597,7 @@ Write `scripts/subhi/README.md`:
 
 ## What it does
 
-Daily filter+copy of Antonello's `~/.claude/projects/-Users-nuzantara/memory/`
+Daily filter+copy of Zero's `~/.claude/projects/-Users-nuzantara/memory/`
 to Subhi's `nuzantara-subhi` repo at `.claude/memory-mirror/`. Filter rules
 in `subhi-memory-mirror.config.yaml`.
 
@@ -638,7 +638,7 @@ stripping, audit trail.
 ## First-run safety
 
 Before pushing the FIRST mirror to GitHub, run dry-run, review `_AUDIT.txt`
-manually. Send Telegram notification, wait for Antonello approval, then
+manually. Send Telegram notification, wait for Zero approval, then
 remove `DRY_RUN=1` and run.
 
 ````
@@ -776,7 +776,7 @@ git commit -m "feat(subhi): LaunchAgent for daily memory mirror at 04:00 WITA"
 - Create: `~/Projects/nuzantara-subhi/.claude/hooks/subhi-session-log.sh`
 - Create: `~/Projects/nuzantara-subhi/.gitignore`
 
-**Goal:** the `.claude/` directory that gives Claude Code its zantara-onboarding sub-agent + RBAC hooks. This task is run on Antonello Pro after `gh repo clone balizero/nuzantara-subhi` to scaffold the repo, then push.
+**Goal:** the `.claude/` directory that gives Claude Code its zantara-onboarding sub-agent + RBAC hooks. This task is run on Zero Pro after `gh repo clone balizero/nuzantara-subhi` to scaffold the repo, then push.
 
 - [ ] **Step 1: Clone the new repo**
 
@@ -893,7 +893,7 @@ Untuk validation:
 
 Panggil `mcp__notebooklm-mcp__notebook_query` ketika Subhi tanya domain
 question. Kamu read-only — JANGAN panggil `source_add`, `studio_create`,
-`note_create` — itu prerogatif Antonello.
+`note_create` — itu prerogatif Zero.
 
 ### 3. Enforce RBAC (perimeter Subhi)
 
@@ -914,7 +914,7 @@ question. Kamu read-only — JANGAN panggil `source_add`, `studio_create`,
 - `apps/mouth/e2e/**` (Playwright tests)
 - GA4, Search Console, distribusi LinkedIn/FB/WhatsApp/Reddit
 
-#### ⚠️ GIALLO (pair programming dengan Asya/Antonello)
+#### ⚠️ GIALLO (pair programming dengan Asya/Zero)
 
 - Backend endpoint baru di `apps/backend-rag/backend/app/routers/`
 - Komponen shared baru (`<FunnelConversation>`)
@@ -924,7 +924,7 @@ question. Kamu read-only — JANGAN panggil `source_add`, `studio_create`,
 - Schema cambi (`team_members`, `users`)
 
 Kalau Subhi minta hal GIALLO: jawab dengan
-"Ini scope GIALLO Subhi — pair dengan Asya (backend) atau Antonello.
+"Ini scope GIALLO Subhi — pair dengan Asya (backend) atau Zero.
 Saya bisa bantu draft proposal yang kamu kirim ke mereka untuk review."
 
 #### 🚫 ROSSO (TOLAK selalu — JANGAN PERNAH bantu Subhi sentuh ini)
@@ -943,7 +943,7 @@ Saya bisa bantu draft proposal yang kamu kirim ke mereka untuk review."
 
 Kalau Subhi minta hal ROSSO: jawab tegas (tapi sopan):
 "Subhi, ini di luar perimeter kamu sekarang. Resource ini bisa rusak
-production kalau salah modify. Ping Antonello (WhatsApp) atau Asya
+production kalau salah modify. Ping Zero (WhatsApp) atau Asya
 (untuk backend) ya. Saya bantu kamu format pertanyaannya kalau perlu."
 
 ### 4. Bimbing workflow `sancho/*` branch
@@ -955,7 +955,7 @@ Setiap kali Subhi mau open PR atau commit ke main repo `balizero/nuzantara`:
 3. Commit message **dalam Bahasa Inggris**: `feat(mouth): <subject>`
 4. Push: `git push origin sancho/<task-slug>`
 5. Open PR via `gh pr create`
-6. **Tunggu review Antonello** — JANGAN self-merge dalam 30 hari pertama
+6. **Tunggu review Zero** — JANGAN self-merge dalam 30 hari pertama
 7. Setelah merge: `git checkout main && git pull && git branch -d sancho/<task-slug>`
 
 Kalau Subhi mau push ke main langsung, tolak: "Subhi, branch protection
@@ -1014,7 +1014,7 @@ Mau saya buka file dan tunjukkan diff yang saya sarankan?"
 "Subhi, embedding model `text-embedding-3-small` itu FROZEN (1536 dims,
 93k vectors sudah indexed). Ganti modelnya bisa break production karena
 semua vector existing harus re-indexed. Ini scope ROSSO. Kalau ada use
-case spesifik (misal multilingual support), ping Antonello dengan
+case spesifik (misal multilingual support), ping Zero dengan
 proposal — ada migration plan terstruktur untuk hal seperti ini."
 
 **User:** "Apa itu NB-2?"
@@ -1082,7 +1082,7 @@ for pat in "${PATTERNS[@]}"; do
   if echo "$TOOL_INPUT" | grep -qE "$pat"; then
     echo "Subhi, command ini di luar perimeter kamu (pattern: ${pat:0:30}...)." >&2
     echo "Production resource (fly, gcloud, aws), sudo, atau pipe-to-shell tidak diizinkan." >&2
-    echo "Kalau perlu deploy/ssh prod, ping Antonello." >&2
+    echo "Kalau perlu deploy/ssh prod, ping Zero." >&2
     exit 2
   fi
 done
@@ -1355,7 +1355,7 @@ Overwrite `.claude/hooks/subhi-session-log.sh`:
 ```bash
 #!/usr/bin/env bash
 # subhi-session-log.sh — Stop hook, dual responsibility:
-#   1. Append jsonl session log (raw, for Antonello weekly review)
+#   1. Append jsonl session log (raw, for Zero weekly review)
 #   2. Extract session summary → .claude/memory-mirror-subhi/<date>.md
 #      (read by zantara-onboarding sub-agent for conversational continuity)
 set -euo pipefail
@@ -1537,7 +1537,7 @@ Write `~/Projects/nuzantara-subhi/CLAUDE.md`:
 **Selalu jawab dalam Bahasa Indonesia kepada Subhi.** Code, commit, branch
 name, PR title tetap dalam Bahasa Inggris (konvensi codebase).
 
-Antonello (boss, owner Bali Zero) parla italiano — tapi ketika kamu
+Zero (boss, owner Bali Zero) parla italiano — tapi ketika kamu
 berinteraksi DI SINI, dengan Subhi, selalu bahasa.
 
 ## Tutor
@@ -1555,7 +1555,7 @@ Sub-agent ini punya akses ke memory mirror harian dari sistem Bali Zero,
 
 ## Memory mirror
 
-`.claude/memory-mirror/` di-update setiap pagi 04:00 WITA dari Pro Antonello.
+`.claude/memory-mirror/` di-update setiap pagi 04:00 WITA dari Pro Zero.
 Baca file ini ketika butuh konteks tentang:
 - Project aktif (NLM strategy, Sprint W1, audit zero-crash)
 - Konvensi codebase, repo paths
@@ -1569,7 +1569,7 @@ Untuk update terbaru: `git pull` di pagi hari sebelum mulai kerja.
 Lihat `docs/onboarding/02_RBAC_BAHASA.md` lengkap. Ringkasan:
 
 - ✅ **VERDE**: `apps/mouth/**`, GA4/GSC, distribution
-- ⚠️ **GIALLO**: backend endpoint baru → pair Asya/Antonello
+- ⚠️ **GIALLO**: backend endpoint baru → pair Asya/Zero
 - 🚫 **ROSSO**: RAG core, Qdrant, secrets, fly.toml, organism/genome
 
 Tutor akan tolak request yang masuk ROSSO. Hooks `.claude/hooks/subhi-bash-guard.sh`
@@ -1582,7 +1582,7 @@ juga enforce di Bash level (fly, gcloud, sudo, etc).
 3. Commit dalam Bahasa Inggris: `feat(mouth): add CTA WhatsApp on /visa`
 4. Push: `git push origin sancho/<task-slug>`
 5. Open PR via `gh pr create`
-6. **Tunggu review Antonello** — JANGAN self-merge dalam 30 hari pertama
+6. **Tunggu review Zero** — JANGAN self-merge dalam 30 hari pertama
 7. Setelah merge: `git checkout main && git pull && git branch -d sancho/<task-slug>`
 
 ## Daily standup
@@ -1634,7 +1634,7 @@ Branch kamu: `sancho/<task-slug>` saja.
 
 ## Kontak
 
-- Antonello (boss): WhatsApp 1-1
+- Zero (boss): WhatsApp 1-1
 - Asya (platform): backend pair
 - Daily standup: 09:00 WITA, kantor Kuta
 ```
@@ -1696,7 +1696,7 @@ Tutor (`/agent zantara-onboarding`) akan tolak otomatis kalau salah scope.
 
 Kamu menutup loop di sisi growth. Selamat memulai 🚀
 
-— Antonello
+— Zero
 ```
 
 - [ ] **Step 4: Write the 8 remaining docs/onboarding/ files**
@@ -1707,7 +1707,7 @@ For each of the following, create the file with the content described. Brevity O
 
 `docs/onboarding/02_RBAC_BAHASA.md`: full bahasa translation of `~/.claude/projects/-Users-nuzantara/memory/subhi-rbac-permissions.md`. GitHub access, CRM read-only analytics, GA4/GSC viewer, Vercel viewer, NB read full, Fly NO, Pro/Air NO, NLM mutations NO. Include conversion criteria post-probation.
 
-`docs/onboarding/03_TASK_ROUTING_BAHASA.md`: bahasa translation of `subhi-task-routing.md`. VERDE list (apps/mouth/ paths), GIALLO list (backend pair), ROSSO list (rag/cell/organism/secrets/fly). Concrete examples + escalation routing (Asya backend, Antonello strategic, Sahira/Surya/Ari domain).
+`docs/onboarding/03_TASK_ROUTING_BAHASA.md`: bahasa translation of `subhi-task-routing.md`. VERDE list (apps/mouth/ paths), GIALLO list (backend pair), ROSSO list (rag/cell/organism/secrets/fly). Concrete examples + escalation routing (Asya backend, Zero strategic, Sahira/Surya/Ari domain).
 
 `docs/onboarding/04_BAHASA_CODEBASE_TOUR.md`: guided tour of `apps/mouth/` — top-level dirs (`src/app/`, `src/components/`, `src/lib/`, `src/content/articles/`, `e2e/`, `public/`). Key files: `FunnelFeature.tsx`, `analytics.ts`, `ArticleClient.tsx`. Flow: blog post URL → Next.js dynamic route → ArticleClient → CTA.
 
@@ -1739,7 +1739,7 @@ Write `~/Projects/nuzantara-subhi/exercises/day1_setup_check.md`:
 ````markdown
 # Hari 1 — Setup Check
 
-**Tanggal:** Hari pertama kamu di kantor (yang ditentukan Antonello)
+**Tanggal:** Hari pertama kamu di kantor (yang ditentukan Zero)
 **Mission ref:** §10 setup teknis (`07_60_DAY_MISSION_BAHASA.md`)
 **Estimasi waktu:** 30 menit
 
@@ -1750,7 +1750,7 @@ dengan Zantara Onboarding untuk pertama kali.
 
 ## Konteks
 
-Antonello sudah pre-setup beberapa hal:
+Zero sudah pre-setup beberapa hal:
 
 - Akun GitHub `subhi@balizero.com` collaborator di `balizero/nuzantara` + `balizero/nuzantara-subhi`
 - NotebookLM share NB-1, NB-2, NB-9, NB-OPS ke email kamu
@@ -1765,7 +1765,7 @@ tailnet di MacBook baru.
 - [ ] MacBook Pro 16GB sudah on
 - [ ] Login macOS dengan akun kamu
 - [ ] Internet kantor Kuta connected
-- [ ] WhatsApp video call dengan Antonello ready (untuk supervisi)
+- [ ] WhatsApp video call dengan Zero ready (untuk supervisi)
 
 ## Langkah-langkah
 
@@ -1775,7 +1775,7 @@ tailnet di MacBook baru.
 
 ### 2. Run install script
 
-Antonello kasih kamu link gist. Copy-paste command ini:
+Zero kasih kamu link gist. Copy-paste command ini:
 
 ```bash
 bash <(curl -sL <gist-url-yang-dikirim-Antonello>)
@@ -1844,25 +1844,25 @@ Tutor harus jawab:
 
 ## Kalau ada error
 
-| Error                                 | Fix                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `claude: command not found`           | Re-source `~/.zshrc`, atau `npm install -g @anthropic-ai/claude-code` ulang                      |
-| OAuth login Claude fail               | Cek koneksi internet, retry. Kalau persisten, ping Antonello — mungkin MAX plan slot belum ready |
-| `/agent zantara-onboarding not found` | CWD kamu salah. `cd ~/Projects/nuzantara-subhi` dulu                                             |
-| Tutor jawab dalam bahasa Inggris      | Sub-agent prompt salah load. Restart Claude session, retry                                       |
-| `nlm login` fail                      | Google MFA — coba `nlm login --clear` lalu login lagi                                            |
+| Error                                 | Fix                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `claude: command not found`           | Re-source `~/.zshrc`, atau `npm install -g @anthropic-ai/claude-code` ulang                 |
+| OAuth login Claude fail               | Cek koneksi internet, retry. Kalau persisten, ping Zero — mungkin MAX plan slot belum ready |
+| `/agent zantara-onboarding not found` | CWD kamu salah. `cd ~/Projects/nuzantara-subhi` dulu                                        |
+| Tutor jawab dalam bahasa Inggris      | Sub-agent prompt salah load. Restart Claude session, retry                                  |
+| `nlm login` fail                      | Google MFA — coba `nlm login --clear` lalu login lagi                                       |
 
 ## Selesai?
 
 Kalau verifikasi 5/5 ✅:
 
 1. Screenshot tutor reply
-2. Kirim screenshot ke Antonello via WhatsApp
+2. Kirim screenshot ke Zero via WhatsApp
 3. Lanjut ke `exercises/day2_codebase_tour.md` besok
 
 Kalau ada blocker yang nggak ke-fix di tabel di atas:
 
-- Stop di sini, ping Antonello dengan screenshot error
+- Stop di sini, ping Zero dengan screenshot error
 - Jangan teruskan ke Day 2 sebelum Day 1 selesai
 
 ````
@@ -1873,7 +1873,7 @@ Each file follows the same template. Pseudocode for content:
 
 `exercises/day2_codebase_tour.md`: tutor prompts (`/agent zantara-onboarding jelaskan apa itu FunnelFeature.tsx`), guided read of 3 files, find the 2 missing onClicks at lines 365 and 393, identify import gap for `trackFunnelEvent`. Verifikasi: bahasa explanation in Subhi's own words, posted to shared note. Selesai: shared note + WA screenshot.
 
-`exercises/day3_first_pr.md`: branch creation `sancho/d1-funnel-tracking-fix`, edit `FunnelFeature.tsx` (add onClick + import), commit message `feat(mouth): add CTA tracking on FunnelFeature.tsx (D1)`, push, open PR via `gh pr create`. Verifikasi: PR open, Antonello sees it on his GitHub. Selesai: PR URL + screenshot.
+`exercises/day3_first_pr.md`: branch creation `sancho/d1-funnel-tracking-fix`, edit `FunnelFeature.tsx` (add onClick + import), commit message `feat(mouth): add CTA tracking on FunnelFeature.tsx (D1)`, push, open PR via `gh pr create`. Verifikasi: PR open, Zero sees it on his GitHub. Selesai: PR URL + screenshot.
 
 `exercises/day4_playwright_test.md`: open `apps/mouth/e2e/funnel-ctas.spec.ts`, add test that clicks each CTA and verifies GA4 event fires. Run `npm run test:e2e` locally, verify green. Verifikasi: terminal output "X passed". Selesai: screenshot terminal.
 
@@ -2071,7 +2071,7 @@ if [[ -f "$SETTINGS" ]]; then
   sed -i.bak "s|__SUBHI_USERNAME_PLACEHOLDER__|$CURRENT_USER|g" "$SETTINGS"
 
   # Prompt for PAT
-  INFO "Antonello akan kasih kamu GitHub Personal Access Token (PAT)."
+  INFO "Zero akan kasih kamu GitHub Personal Access Token (PAT)."
   INFO "Format: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx (40 chars)"
   read -r -s -p "Paste PAT (akan tersembunyi): " PAT
   echo ""
@@ -2087,7 +2087,7 @@ fi
 
 # === 12. Claude OAuth login ===
 BAHASA "Login Claude Code (akan buka browser)..."
-INFO "Login pakai subhi@balizero.com — ini claim slot MAX plan dari Antonello"
+INFO "Login pakai subhi@balizero.com — ini claim slot MAX plan dari Zero"
 cd "$HOME/Projects/nuzantara-subhi"
 # Trigger OAuth — sends user to browser, then exits
 claude --version  # Just to verify it runs
@@ -2113,7 +2113,7 @@ echo "  Langkah berikutnya:"
 echo "  1. Buka VSCode: code ~/Projects/nuzantara-subhi"
 echo "  2. Baca: docs/onboarding/00_SELAMAT_DATANG.md"
 echo "  3. Mulai: exercises/day1_setup_check.md"
-echo "  4. Screenshot tutor reply ke Antonello via WhatsApp"
+echo "  4. Screenshot tutor reply ke Zero via WhatsApp"
 echo "════════════════════════════════════════════════════════"
 ```
 
@@ -2159,7 +2159,7 @@ gh api gists/<gist-id> --jq '.files | to_entries[0].value.raw_url'
 ## Step 3: Test before sending to Subhi
 
 ```bash
-# On Antonello Mini (clean macOS account, recommended)
+# On Zero Mini (clean macOS account, recommended)
 bash <(curl -sL '<raw-url>') 2>&1 | tee /tmp/install-test.log
 ```
 
@@ -2175,14 +2175,14 @@ The raw URL stays stable. Subhi never needs to update his bookmark.
 
 ## Step 5: Send link to Subhi
 
-WhatsApp Antonello → Subhi:
+WhatsApp Zero → Subhi:
 
 > Halo Subhi, ini installer untuk MacBook kamu. Run command ini di
 > Terminal pas kamu di kantor besok pagi:
 >
 > bash <(curl -sL '<raw-url>')
 >
-> 30 menit. Saya jaga via WA video call. — Antonello
+> 30 menit. Saya jaga via WA video call. — Zero
 
 ````
 
@@ -2196,13 +2196,13 @@ git commit -m "feat(subhi): one-shot install script + gist hosting notes"
 
 ---
 
-## Task 7: Day 1 runbook for Antonello
+## Task 7: Day 1 runbook for Zero
 
 **Files:**
 
 - Create: `~/Desktop/nuzantara/docs/runbooks/subhi-tutor-day1.md`
 
-**Goal:** runbook Antonello prints/reads while supervising Subhi's Day 1 install. Step-by-step phone-friendly checklist.
+**Goal:** runbook Zero prints/reads while supervising Subhi's Day 1 install. Step-by-step phone-friendly checklist.
 
 - [ ] **Step 1: Create runbooks dir if missing**
 
@@ -2218,7 +2218,7 @@ Write `~/Desktop/nuzantara/docs/runbooks/subhi-tutor-day1.md`:
 # Runbook — Subhi Tutor Day 1 Live Setup
 
 **Estimated time:** 90 minutes
-**Audience:** Antonello, supervising Subhi via WhatsApp video call
+**Audience:** Zero, supervising Subhi via WhatsApp video call
 **Pre-requisite:** Phase 0-5 of plan complete (memory mirror live, repo
 seeded, install script gist-hosted, dry-run on Mini OK).
 
@@ -2250,32 +2250,32 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 - [ ] Send WhatsApp message kepada Subhi malam sebelum:
   > "Subhi, besok jam 09:30 kantor. Bawa MacBook charged. Saya kirim
   > installer link via WA jam 09:35 — kita install bareng via video
-  > call. — Antonello"
+  > call. — Zero"
 
 ## T+0 (09:30 WITA)
 
 - [ ] Subhi arrives kantor Kuta, MacBook on, internet connected
-- [ ] Antonello: "Buka MacBook, login macOS"
-- [ ] Antonello: WhatsApp video call attivo, audio + screen share
+- [ ] Zero: "Buka MacBook, login macOS"
+- [ ] Zero: WhatsApp video call attivo, audio + screen share
 
 ## T+5 to T+30 — Install (25 min)
 
-- [ ] Antonello: send WA message:
+- [ ] Zero: send WA message:
   > Run di Terminal:
   > `bash <(curl -sL '<gist-raw-url>')`
 - [ ] Subhi: copy-paste, run
-- [ ] Antonello: monitor WA screen share
+- [ ] Zero: monitor WA screen share
 
 **Watch for these prompts (script asks Subhi):**
 
 1. Xcode CLI tools install — GUI dialog appears, Subhi clicks "Install".
-   Script exits, Antonello tells Subhi to wait ~5 min then re-run.
+   Script exits, Zero tells Subhi to wait ~5 min then re-run.
 2. Homebrew password prompt — Subhi types Mac password.
 3. Tailscale login browser — verify Subhi logs in with `subhi@balizero.com`.
 4. SSH key prompt — Subhi presses Enter (key auto-generated).
 5. GitHub `gh auth login` — browser flow, verify Subhi uses correct GH account.
 6. SSH key add to GitHub — script auto-adds.
-7. PAT paste — Antonello sends PAT via WA (separate message), Subhi pastes.
+7. PAT paste — Zero sends PAT via WA (separate message), Subhi pastes.
    ⚠️ NEVER send PAT via screen share (visible to anyone watching).
 8. Claude OAuth — browser flow, verify subhi@balizero.com.
 9. NLM login — browser flow, accept the 4 NB invitations.
@@ -2284,7 +2284,7 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 
 - Read the error in stderr
 - Common fixes: re-run, sometimes brew is slow, sometimes nvm/uv
-- If unrecoverable: Antonello takes screenshot, debug post-call
+- If unrecoverable: Zero takes screenshot, debug post-call
 
 ## T+30 to T+45 — First tutor test (15 min)
 
@@ -2314,25 +2314,25 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 - `claude --version` — must be 2.0+
 - If <2.0: `npm install -g @anthropic-ai/claude-code` ulang
 
-- [ ] Subhi screenshot tutor reply, sends to Antonello shared note
-- [ ] Antonello verifies bahasa, scope correct
+- [ ] Subhi screenshot tutor reply, sends to Zero shared note
+- [ ] Zero verifies bahasa, scope correct
 
 ## T+45 to T+75 — Reading + first exercise (30 min)
 
 - [ ] Subhi reads `docs/onboarding/00_SELAMAT_DATANG.md` (~5 min)
 - [ ] Subhi reads `exercises/day1_setup_check.md` (~5 min) — already done!
-- [ ] Subhi marks Day 1 complete: WhatsApp screenshot to Antonello
-- [ ] Antonello: "Mantap. Day 2 besok pagi. Daily standup besok 09:00 — kita
+- [ ] Subhi marks Day 1 complete: WhatsApp screenshot to Zero
+- [ ] Zero: "Mantap. Day 2 besok pagi. Daily standup besok 09:00 — kita
       ketemu di kantor."
 
 ## T+75 to T+90 — Daily standup briefing (15 min)
 
 - [ ] Subhi reads `docs/onboarding/02_RBAC_BAHASA.md` (5 min)
 - [ ] Subhi reads `docs/onboarding/06_SANCHO_BRANCH_WORKFLOW.md` (5 min)
-- [ ] Antonello: "Pertanyaan?"
+- [ ] Zero: "Pertanyaan?"
 - [ ] Q&A live, end call
 
-## Post-Day-1 (Antonello, that evening)
+## Post-Day-1 (Zero, that evening)
 
 - [ ] Read Subhi session log:
   ```bash
@@ -2354,7 +2354,7 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 | Install script crashes mid-step    | Re-run from same point — most steps are idempotent                                              |
 | OAuth Claude fails                 | Check MAX plan slot, retry. If >3 fails, fall back to Subhi's personal Google + buy his own MAX |
 | Tutor responds wrong language      | Edit sub-agent prompt, push, Subhi `git pull && claude` restart                                 |
-| Subhi can't run any commands       | Antonello checks Tailscale ACL — if Subhi accidentally got Pro access, revoke immediately       |
+| Subhi can't run any commands       | Zero checks Tailscale ACL — if Subhi accidentally got Pro access, revoke immediately            |
 | Anything taking >2x estimated time | Stop, screenshot state, defer to async fix                                                      |
 
 ## Day 2 readiness signal
@@ -2362,7 +2362,7 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 Send WhatsApp message that evening:
 
 > "Subhi, Day 1 selesai 🎉. Besok Day 2: codebase tour. Buka exercises/day2_codebase_tour.md
-> setelah daily standup. Antonello"
+> setelah daily standup. Zero"
 
 ````
 
@@ -2370,12 +2370,12 @@ Send WhatsApp message that evening:
 
 ```bash
 git add docs/runbooks/subhi-tutor-day1.md
-git commit -m "docs(subhi): Day 1 live setup runbook for Antonello"
+git commit -m "docs(subhi): Day 1 live setup runbook for Zero"
 ````
 
 ---
 
-## Task 8: Dry-run on Antonello Mini (Mac Mini M4 Pro)
+## Task 8: Dry-run on Zero Mini (Mac Mini M4 Pro)
 
 **Files:** none (live verification on a different machine)
 
@@ -2510,7 +2510,7 @@ Then fix the config and retry.
 
 **Files:** none (live execution)
 
-**Goal:** execute the runbook from T7. Antonello supervises Subhi via WhatsApp video as Subhi installs everything on his MacBook.
+**Goal:** execute the runbook from T7. Zero supervises Subhi via WhatsApp video as Subhi installs everything on his MacBook.
 
 This task is not run in this session — it happens on the actual Day 1 morning when MacBook arrives. The runbook in T7 is the script.
 
@@ -2534,7 +2534,7 @@ gh api /repos/balizero/nuzantara-subhi/branches/subhi/memory-mirror | python3 -c
 
 - [ ] **Step 2: MacBook arrival event**
 
-When Antonello confirms MacBook arrived and is set up enough to use Terminal:
+When Zero confirms MacBook arrived and is set up enough to use Terminal:
 
 - Schedule Day 1 with Subhi
 - Send WhatsApp evening before with installer link

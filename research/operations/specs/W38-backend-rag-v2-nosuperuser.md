@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # W38 — Demote `backend_rag_v2` from SUPERUSER (defense-in-depth)
 
 **Status**: DRAFT — PENDING ANTONELLO APPROVAL — **DO NOT EXECUTE**
@@ -167,7 +170,7 @@ ADMIN_DATABASE_URL = postgres://flypgadmin:…@…        (SUPERUSER — migrati
 3. **Verify Olympus pulse partition rotation works without superuser** — `olympus_heartbeats` is owned by `backend_rag_v2`, ownership is preserved, so this should work post-demotion; but test once.
 4. **Document the `ADMIN_DATABASE_URL` for `flypgadmin`** — extract from Fly Postgres via `repmgr` or `fly secrets list -a nuzantara-postgres` (if accessible).
 
-**Gate**: all pre-flight smoke green AND Antonello signs off → proceed to Stage B.
+**Gate**: all pre-flight smoke green AND Zero signs off → proceed to Stage B.
 
 ### Stage B — Code + secret prep (no DB change, ~20 min)
 
@@ -250,12 +253,12 @@ Run via `fly ssh console -a nuzantara-rag` as `repmgr`. No deploy needed. No dat
 
 ## 6. Recommended execution timing
 
-- **Stages A+B**: any weekday, Antonello available, expect ~50 min total wall
+- **Stages A+B**: any weekday, Zero available, expect ~50 min total wall
 - **Stage C**: **Sunday 03:00 WITA** (best window):
   - Lowest CRM/wa-mirror traffic
   - No critical cron firing (judgement-day at 16:00 leaves 13h grace)
   - Easy rollback window if anything breaks
-  - Antonello available for monitoring during execution
+  - Zero available for monitoring during execution
 
 **NOT recommended**:
 
@@ -274,7 +277,7 @@ Run via `fly ssh console -a nuzantara-rag` as `repmgr`. No deploy needed. No dat
 
 ---
 
-## 8. Open questions for Antonello
+## 8. Open questions for Zero
 
 1. **Approve Stage A (pre-flight tests in prod with throwaway role)?** Yes / No
 2. **Approve Stage B (`ADMIN_DATABASE_URL` secret + code patch + GRANT pg_monitor)?** Yes / No

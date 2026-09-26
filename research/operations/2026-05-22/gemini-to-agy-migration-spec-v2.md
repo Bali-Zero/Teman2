@@ -1,9 +1,10 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-22
 domain: operations
 client_case: internal — Antigravity CLI migration spec v2 post 4-LLM panel
 sources: 4
-status: DRAFT v2 — 4-LLM panel synthesized, awaiting Antonello sign-off
+status: DRAFT v2 — 4-LLM panel synthesized, awaiting Zero sign-off
 supersedes: gemini-to-agy-migration-spec-v1.md
 ---
 
@@ -36,7 +37,7 @@ supersedes: gemini-to-agy-migration-spec-v1.md
 | C3  | `settings.json` schema compat agy NON testata         | deepseek HIGH #4, codex HIGH #7, NB-1 (pattern HOME override per subprocess) | HIGH — primo agy run può crashare | integration test `agy -p "test"` con production settings.json PRIMA Wave 1 |
 | C4  | Wave 1 audit per `-m`/`-o stream-json` incompleto     | codex CRITICAL #1, deepseek CRITICAL #2, agy MEDIUM #7 (model contamination) | CRITICAL — silent behavior change | aggiungere preflight audit per ogni Wave 1 file                            |
 | C5  | Test pattern `GEMINI_BIN` env override = anti-pattern | NB-1 (test mocking via `@patch`), codex MEDIUM #9, agy MEDIUM #8             | MEDIUM — tech debt                | usare `@patch("subprocess.run")` in test suite, NON env var                |
-| C6  | Wave 3 supply chain — URL TBD + no checksum           | codex CRITICAL #3, deepseek HIGH #5, agy implicit                            | P0 — supply-chain attack vector   | BLOCK Wave 3 finché Antonello fornisce URL ufficiale + SHA256              |
+| C6  | Wave 3 supply chain — URL TBD + no checksum           | codex CRITICAL #3, deepseek HIGH #5, agy implicit                            | P0 — supply-chain attack vector   | BLOCK Wave 3 finché Zero fornisce URL ufficiale + SHA256              |
 
 ### Convergenza 2/4
 
@@ -197,7 +198,7 @@ Pattern uniforme `_resolve_binary` + `@patch` test coverage. Eccezione Strategia
 
 ### Wave 3 — BLOCKED
 
-Cannot ship finché Antonello non fornisce:
+Cannot ship finché Zero non fornisce:
 
 1. **URL ufficiale Antigravity** per distribuzione binary (panel C6)
 2. **SHA256 checksum** per ogni arch (darwin-arm64, darwin-x86_64, linux-arm64, linux-x86_64) — supply chain
@@ -224,7 +225,7 @@ Aggiunto:
 | oauth_creds race corruption    | P0 → mitigated    | Wave 0 T0.3 file lock OR single-writer cron         |
 | settings.json schema incompat  | P1 → mitigated    | Wave 0 T0.1 integration test                        |
 | Silent model contamination     | P1 → mitigated    | Auto-fallback to legacy when `GEMINI_MODEL` env set |
-| Wave 3 supply chain            | P0 → BLOCKED      | Antonello sign-off required (URL + SHA256)          |
+| Wave 3 supply chain            | P0 → BLOCKED      | Zero sign-off required (URL + SHA256)          |
 | `chains.py` HTTP API debt      | P2 → out of scope | Documentato come debt separato                      |
 
 ## Verification post-Wave (cross-wave)
@@ -235,7 +236,7 @@ Aggiunto:
 4. `scripts/ai-dispatch.sh help` mostra agy nel cascade chain
 5. `apps/backend-rag/backend/agents/services/multi_ai_adapter.py` smoke test importable + `GeminiAdapter.available()` returns True
 
-## Open questions per Antonello
+## Open questions per Zero
 
 1. **URL ufficiale agy binary** — dove scaricare per Wave 3 installer? Antigravity ha distribution channel pubblico o richiede auth Antigravity?
 2. **`chains.py` HTTP API call** — è intenzionale (escape hatch valido per cost optimization $0.0001/article) o viola SYMBIOSIS Law 1 da rimuovere?

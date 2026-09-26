@@ -2,7 +2,7 @@
 
 **Data:** 2 May 2026 (round 2)
 **Reviewer:** Codex GPT-5.5 xhigh + Gemini 3.1 Pro CLI + DeepSeek V4 Reasoner
-**Owner:** Antonello Siano / Bali Zero / Nuzantara
+**Owner:** Zero / Bali Zero / Nuzantara
 **Conduttore:** Claude Opus 4.7
 
 **Round 1 risultati:** in `99_synthesis.md` (stessa cartella). Round 2 incorpora 4 audit di completezza (file `04`, `05`, `06`, `07`) che hanno rivelato **briefing round 1 sotto-stimato del 50%+**.
@@ -12,6 +12,7 @@
 ### 1. Numero automazioni: 130 → ~300+
 
 Round 1 diceva 130 automazioni. Audit completezza (file 04):
+
 - 87 LaunchAgent plist (67 nuzantara-prefixed)
 - 110+ crontab entries (post Air retirement)
 - 63 state registry files in `~/.agent/decisions/state/`
@@ -54,6 +55,7 @@ File 05 audit:
 #### cron-agent-python è il VERO production runner
 
 `~/.cron-agent-python/` esegue 19 strategie LIVE oggi:
+
 - fact-checker (running 14:15 oggi)
 - tech-orchestrator (12:30 oggi)
 - daily-ops, system-doctor, log-anomaly, fly-watcher, intel-radar, intel-feed-processor, oss-monitor, pajak-monitor, imigrasi-monitor, bi-exchange-rate, vision-doc, tdd-pipeline, client-health-monitor, compliance-ops
@@ -73,6 +75,7 @@ OpenClaw li carica ma nessuna automation li chiama. Capacity sprecata (Drive, Gi
 #### Lobster workflows = unico uso ATTIVO di OpenClaw
 
 `~/.openclaw/workspace/workflows/`:
+
 - autofix-loop.lobster
 - nightly-code-quality.lobster
 - weekly-dep-audit.lobster
@@ -98,6 +101,7 @@ OpenClaw li carica ma nessuna automation li chiama. Capacity sprecata (Drive, Gi
 #### Versione installata vecchia: 2026.3.31 vs 2026.4.29 latest
 
 Gap features:
+
 - **Knowledge Agents** (v2026.4.09) — 6 nuovi MCP tools (build_corpus, prime_corpus, query_corpus, etc.). NOT EXPLOITED.
 - **Auth Profile System** (v2026.3.31+) — multi-profile support
 - **DM Pairing security** default (require approval code per unknown senders)
@@ -153,6 +157,7 @@ Gap features:
 ### Q1) Cell+genoma×automazioni — espandere/correggere lista candidate?
 
 Round 1 promote 12 cell. Audit completezza ha rivelato:
+
 - **Bali Zero Dispatch 7 LaunchAgents (newsletter, canva-apply, draft-generator, image-generator, oracle, strategos, connector, dossier-compiler, topic-selector)** già live — sono cell o sub-modules di war-room-organism?
 - **Mata-Garuda Layer 4.5** (asset indexer) — promote a `mata-garuda-cell`?
 - **CRM 13 automazioni** (crm_automation_engine, practice_status_listener, etc.) — qualcuna promote-worthy?
@@ -165,12 +170,14 @@ Round 1 promote 12 cell. Audit completezza ha rivelato:
 ### Q2) OpenClaw runtime consolidation — tra OpenClaw, cron-agent-python, cagent?
 
 Round 1 trattava OpenClaw come unico player. Realtà:
+
 - **cron-agent-python** esegue 19 strategie LIVE (fact-checker, tech-orchestrator, daily-ops, system-doctor, log-anomaly, fly-watcher, intel-radar, oss-monitor, pajak-monitor, imigrasi-monitor, bi-exchange-rate, vision-doc, tdd-pipeline, client-health-monitor, compliance-ops, intel-feed-processor, daily-ops)
 - **OpenClaw 24 jobs FROZEN** dal 30 Apr (overlap con cron-agent-python)
 - **OpenClaw Lobster workflows** = unico OpenClaw production usage (4 file, 45 step, autofix-loop + nightly-code-quality + weekly-dep-audit + nuzantara-dev-pipeline)
 - **mcporter 129 tools** idle in OpenClaw
 
 **Opzioni runtime consolidation**:
+
 - **A) OpenClaw vince**: spegni cron-agent-python, migra 19 strategie a OpenClaw, revivi 24 frozen jobs, attiva Knowledge Agents v12.1.0
 - **B) cron-agent-python vince**: spegni OpenClaw scheduler, lascia OpenClaw solo per Lobster + Telegram, mantieni cron-agent-python come runner
 - **C) Split clean**: OpenClaw = agentic/multi-tool/stateful + Telegram channel; cron-agent-python = scheduled-deterministic single-purpose batch
@@ -181,11 +188,13 @@ Round 1 trattava OpenClaw come unico player. Realtà:
 ### Q3) Intel Scraper + WR2 — riconsiderare con WR2 7 LaunchAgents già live + Innervation Genoma esplicita
 
 Round 1 trattava WR2 come "cell-organism mascherato da pipeline" con 3 OpenClaw insertions (L1 Connector + Learner M14 + Trend pre-filter). Realtà:
+
 - **WR2 7 LaunchAgents già live** (Bali Zero Dispatch): newsletter, canva-apply, draft-generator, image-generator, oracle (L4!), strategos (L3!), connector (L1!), dossier-compiler, topic-selector
 - **Cognitive Levels L1-L4 NON sono roadmap** — connector/strategos/oracle sono già LaunchAgents attivi
 - **Intel Scraper cicatrix-related**: drive-poll DISABLED 2026-04-29 (PG load), ma non è chiaro se Intel scraper main path è ancora 03:00 WITA daily
 
 **Domanda concreta**:
+
 - WR2: il lavoro è "esplicitare cell-mapping su 7 LaunchAgents già live" + 3 OpenClaw insertions per micro-task non agentic? Oppure ridisegno?
 - Intel Scraper: ancora cell-leggera (Genome+HGT publisher only)?
 - Mata-Garuda: separato o sub-cell di WR2?

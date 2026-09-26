@@ -7,7 +7,7 @@
 > `research/operations/2026-07-14-wr2-deep-audit.md`.
 >
 > **Status**: Pre-implementation review. Owner-approved scope from `2026-05-07-wr2-longterm-design.md`.
-> **Author**: Claude Opus 4.7 in collaboration with Antonello Siano.
+> **Author**: Claude Opus 4.7 in collaboration with Zero.
 > **Audience**: future Claude sessions executing these sprints, future contributors.
 
 ---
@@ -651,15 +651,16 @@ CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "900"))  # was
 - Otherwise `git merge --ff-only` and log advance count.
 
 **Failure surfaces (each Telegram-alerted with 6h per-key cooldown)**:
-| Alert key | Cause | Fix |
-|---|---|---|
-| `deploy_missing` | `~/Desktop/nuzantara-deploy` removed | `git worktree add ~/Desktop/nuzantara-deploy -b deploy/main origin/main` |
-| `wrong_branch` | manual checkout to non-`deploy/main` | `cd ~/Desktop/nuzantara-deploy && git checkout deploy/main` |
-| `dirty_worktree` | local edits to tracked files | `git status` then revert |
-| `local_ahead` | someone committed in deploy dir | cherry-pick into main repo, then `git reset --hard origin/deploy/main` here |
-| `diverged` | force-push on origin OR rebase mid-flight | operator-judgement reset; cf. cicatrix |
-| `fetch_failed` | network or GitHub auth | `gh auth status`, check VPN |
-| `ff_failed` | unexpected git error | inspect `git status` + log |
+
+| Alert key        | Cause                                     | Fix                                                                         |
+| ---------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| `deploy_missing` | `~/Desktop/nuzantara-deploy` removed      | `git worktree add ~/Desktop/nuzantara-deploy -b deploy/main origin/main`    |
+| `wrong_branch`   | manual checkout to non-`deploy/main`      | `cd ~/Desktop/nuzantara-deploy && git checkout deploy/main`                 |
+| `dirty_worktree` | local edits to tracked files              | `git status` then revert                                                    |
+| `local_ahead`    | someone committed in deploy dir           | cherry-pick into main repo, then `git reset --hard origin/deploy/main` here |
+| `diverged`       | force-push on origin OR rebase mid-flight | operator-judgement reset; cf. cicatrix                                      |
+| `fetch_failed`   | network or GitHub auth                    | `gh auth status`, check VPN                                                 |
+| `ff_failed`      | unexpected git error                      | inspect `git status` + log                                                  |
 
 **Why dedicated puller (not nuz-sync)**: cf. cicatrix scar "Untracked files lost when sibling automation switches branches" (2026-04-29) — `nuz-sync` was the prime suspect for incident #1. The deploy worktree must be isolated from main-repo automation. See also `discovery_worktree_deploy_isolation_2026_05_06.md`.
 
@@ -910,4 +911,4 @@ Già documentati in `2026-05-07-wr2-longterm-design.md` §6. Ricapitolo:
 
 ---
 
-— Drafted 2026-05-08, Antonello + Claude Opus 4.7 (1M context)
+— Drafted 2026-05-08, Zero + Claude Opus 4.7 (1M context)

@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 spec_id: R2
 title: Exa MCP OAuth — semantic search web for research
 tier: research
@@ -35,7 +36,7 @@ Today empirical: `mcp__claude_ai_Exa__authenticate` already deferred tool, just 
 
 ## Acceptance criteria
 
-- [ ] OAuth completato Antonello → Exa account
+- [ ] OAuth completato Zero → Exa account
 - [ ] Tool list include `mcp__claude_ai_Exa__search` (or similar)
 - [ ] Test query: returns 5-10 semantic results
 - [ ] Memory entry doc usage
@@ -50,9 +51,9 @@ In Claude session:
 mcp__claude_ai_Exa__authenticate
 ```
 
-Returns URL for Antonello to visit.
+Returns URL for Zero to visit.
 
-### Step 2 — Antonello completes OAuth
+### Step 2 — Zero completes OAuth
 
 Browser → Exa auth grant → claude.ai backend persists token.
 

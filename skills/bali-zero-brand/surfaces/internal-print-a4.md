@@ -2,12 +2,13 @@
 
 > **Inheritance**: governed by `constitution.md` Articles 2 (palette), 3 (typography family), 6.3-6.7 (numbers/regulatory/bilingual/no-emoji), 7 (forbidden phrases), 8 (spelling/accuracy). Articles below are deviations or additions specific to the A4 print surface.
 >
-> Last revision: 2026-05-17 (v1.1 — official logo PNG embedded). Owner: Antonello Siano.
+> Last revision: 2026-05-17 (v1.1 — official logo PNG embedded). Owner: Zero.
 
 ## A0 — Official logo (v1.1, 2026-05-17)
 
 A0.1 **Source of truth**: `assets/balizero_logo_circle.png` (940×940 RGBA, sfondo nero,
 "3ALI ZERO" rosso/bianco + Om symbol). Versioni ottimizzate generate:
+
 - `assets/balizero_logo_circle_200.png` (30 KB) — cover use
 - `assets/balizero_logo_circle_400.png` (96 KB) — high-DPI fallback
 - `assets/balizero_logo_circle_80.png` (8 KB) — header interior pages
@@ -34,6 +35,7 @@ A1.4 **Hero photo**: NOT mandatory on A4 documents. Optional on cover; omit on i
 ## A2 — Page architecture
 
 A2.1 **Cover page (always page 1)**: dark mode (`color.bg.antracite` background). Contains:
+
 - Top: thin 1.5px gold rule full-width-with-margin (anchors brand).
 - Header row: logo box (22mm square, `color.bg.black` fill, "B" in `color.status.red`, "ALI ZERO" in `color.text.white`) + brand eyebrow (`BALI ZERO · <DOC TYPE>`) + tagline (`Powered by humans, fueled by a thinking engine.`).
 - Title block (vertically anchored to bottom-third):
@@ -44,6 +46,7 @@ A2.1 **Cover page (always page 1)**: dark mode (`color.bg.antracite` background)
 - Footer row: `balizero.com · Kuta / Canggu / Denpasar` SX, document scope tag DX, disclaimer line in `color.text.muted` 7pt.
 
 A2.2 **Interior pages (page ≥ 2)**: light mode (white background, `--bz-text-body: #1F2329` text). Contains:
+
 - Header row: mini logo (12mm square) + breadcrumb (`BALI ZERO` brand bold + document subtitle in `color.accent.yellow`) + page number (`hal. NN`) right-aligned. Gold rule 1.5px below.
 - Body content (see A4 typographic system).
 - Footer row: `balizero.com · Penggunaan internal` SX + tagline DX, 1px subtle border-top.
@@ -65,12 +68,13 @@ A4.3 **Lead paragraph**: 10.5pt, `--bz-text-secondary` (#4B5563), max-width 165m
 A4.4 **Chapter heading**: 38pt gold digit (light Montserrat 300) + chapter title at 18pt with thin gold rule below. Margin top 10mm. Reserved for major narrative breaks (max 6-8 per document).
 A4.5 **H3**: 11pt bold, page-break-after avoid.
 A4.6 **Callout cards** (the canonical A4 device):
+
 - `.callout` (info): 3px left border `color.accent.yellow`, fill `#FFFAEB` (yellow @ 8% on white), 4mm padding.
 - `.callout.warning`: 3px left border `color.status.red`, fill `#FDF1F3` (red @ 6% on white).
 - Title in matching accent UPPERCASE 8.5pt letter-spacing 0.1em.
 - Body 9.5pt, line-height 1.5.
-A4.7 **Tables**: dark header (`color.bg.antracite` fill, `color.text.white` text) on row 1, alternating zebra rows in body (`#fafbfc` even rows). Border 1px `--bz-border` (#E5E7EB).
-A4.8 **Tags / chips**: rounded-pill, dark fill `color.bg.antracite` + white text 7.5pt UPPERCASE 0.05em. Variants `.tag.gold` (gold fill, dark text), `.tag.red` (red fill, white text).
+  A4.7 **Tables**: dark header (`color.bg.antracite` fill, `color.text.white` text) on row 1, alternating zebra rows in body (`#fafbfc` even rows). Border 1px `--bz-border` (#E5E7EB).
+  A4.8 **Tags / chips**: rounded-pill, dark fill `color.bg.antracite` + white text 7.5pt UPPERCASE 0.05em. Variants `.tag.gold` (gold fill, dark text), `.tag.red` (red fill, white text).
 
 ## A5 — Voice & content (inherited + clarified)
 
@@ -83,11 +87,13 @@ A5.5 **Emoji** (inherited Art. 6.7): no emoji in title or body. Typographic glyp
 ## A6 — File structure (canonical template)
 
 A6.1 **Template files** in `~/.claude/skills/bali-zero-brand/surfaces/internal-print-a4/`:
+
 - `_template.css` — canonical stylesheet, ~250 lines, surface-aware
 - `_render.py` — Playwright headless Chromium → PDF, A4 zero-margin
 - `example-brief.html` — skeleton with cover + 2 interior pages, ready to clone
 
 A6.2 **How to use** (zero-drift workflow):
+
 1. Copy `example-brief.html` to your working dir, rename to `<DocName>.html`.
 2. Edit cover title/subtitle/description + interior chapters in place.
 3. Reference `_template.css` (do NOT copy; symlink or relative path).
@@ -109,7 +115,7 @@ A7.6 Page numbering inconsistent with logical chapter sequence → **soft fail**
 > **PII boundary (UU PDP / SYMBIOSIS Law 2):** the original A8 gallery named real
 > client files (rendered PDFs). Those artifacts are NOT versioned in this repo —
 > they live only on the operator machine. The examples below are described by
-> *document type + structure pattern* (the reusable lesson), never by client identity.
+> _document type + structure pattern_ (the reusable lesson), never by client identity.
 
 - **Regulatory primer** (SIMBG-submit class) — 3-page. Reference for cover layout + tables + chip footer.
 - **Client-case tax report** — 7-page client case quote, palette Bali Zero.

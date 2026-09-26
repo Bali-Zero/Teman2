@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-27
 domain: wr2
 phase: A.3 (architecture spec pre-FASE B)
@@ -97,7 +98,7 @@ cd /tmp && echo "test user prompt" | claude --print --system-prompt "You are a t
 
 ```bash
 cd /tmp && echo "say hi" | claude --print --system-prompt-file /Users/nuzantara/.claude/agents/wr2-brief-interpreter.md --model claude-haiku-4-5 --output-format text
-# Output: "Ciao, Antonello! 👋 I'm **wr2-brief-interpreter** ..."
+# Output: "Ciao, Zero! 👋 I'm **wr2-brief-interpreter** ..."
 # Exit: 0
 ```
 

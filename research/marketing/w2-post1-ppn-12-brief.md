@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # W2 Post 1 — PPN 12% Indonesia 2026
 
 ## Theme
@@ -128,4 +131,4 @@ Bali Zero should own the “clarity layer” for Indonesian compliance topics.
 - PMK 141/PMK.010/2021 jo PMK 42/PMK.010/2022 (kendaraan mewah)
 - PMK 81/2024 (CoreTax/PSIAP — e-Faktur classification)
 
-_NB-4 verified by Antonello · 25 Mei 2026 · PR #858_
+_NB-4 verified by Zero · 25 Mei 2026 · PR #858_

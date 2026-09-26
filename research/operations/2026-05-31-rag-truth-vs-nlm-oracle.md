@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-31
 domain: compliance
 client_case: false
@@ -133,7 +134,7 @@ Qui ho fatto il confronto risposta-vs-oracolo reale; il problema è che **solo l
 risposta, che arrivano solo dal RAG prod, bloccato). `abstain_when_should_answer` e
 `answer_when_should_abstain` restano `null` nel FROZEN — onestamente non misurati, non zero.
 
-## 5. Fix SHIPPATI vs Fix che aspettano Antonello
+## 5. Fix SHIPPATI vs Fix che aspettano Zero
 
 ### Shippati (SAFE, L2) in questo audit
 
@@ -143,7 +144,7 @@ risposta, che arrivano solo dal RAG prod, bloccato). `abstain_when_should_answer
 - Artefatti d'audit prodotti (additivi, auditable): il FROZEN, questo report, l'artefatto del gate
   DeepSeek.
 
-### Aspettano Antonello (NEEDS-ANTONELLO)
+### Aspettano Zero (NEEDS-ANTONELLO)
 
 1. **Sbloccare il braccio Zantara per l'audit** (F1, BLOCKER): fornire una credenziale service-role
    (`visa_specialist`/`tax_consultant`/`company_setup`) o un token sessione `kita.balizero.com`,
@@ -154,7 +155,7 @@ risposta, che arrivano solo dal RAG prod, bloccato). `abstain_when_should_answer
    (Non l'ho toccato: è dato condiviso, fuori dal perimetro SAFE additivo.)
 3. **Risolvere il dubbio villa 55193-vs-55203** (F3) contro la **fonte BPS KBLI 2020 verbatim**. Il gate
    ha mostrato che né l'oracolo né il codebase sono verificati contro di essa. Questo tocca una guardia
-   regolatoria in prod (`whatsapp_kbli_guard.py`) — decisione di Antonello, non auto-fix.
+   regolatoria in prod (`whatsapp_kbli_guard.py`) — decisione di Zero, non auto-fix.
 4. **Confidence/soglie**: invariate (Data Invariant). Re-index dei 93283 vettori: non toccato.
 
 ## 6. Verdetto onesto

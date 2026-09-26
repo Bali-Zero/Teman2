@@ -16,7 +16,7 @@
 - The dominant contributor is the **43 OpenClaw-bundled skills** under
   `~/.openclaw/lib/node_modules/openclaw/skills/*` that load by default. These
   are NOT toggled via `skills.entries[<name>].enabled=false` (that flag only
-  takes effect for skills *also* listed there); they require either an explicit
+  takes effect for skills _also_ listed there); they require either an explicit
   `skills.deny[]` entry or a hot-patch of `tools.alsoAllow` to be excluded
   from the Telegram menu sync.
 
@@ -27,19 +27,27 @@ via `OPENCLAW_HOST=pro` SSH, OR locally on Pro (no flag). It produces a
 JSONL with one record per discovered skill:
 
 ```json
-{"skill":"notion","kind":"user-enabled","enabled":true,"invocations_30d":0,"last_seen":null,"recommendation":"disable","reason":"user-enabled but 0 invocations in 30d"}
+{
+  "skill": "notion",
+  "kind": "user-enabled",
+  "enabled": true,
+  "invocations_30d": 0,
+  "last_seen": null,
+  "recommendation": "disable",
+  "reason": "user-enabled but 0 invocations in 30d"
+}
 ```
 
 Output committed verbatim at `docs/audits/sprint0/openclaw-skills-audit.jsonl`.
 
 ## Counts (current state, Pro 2026-05-02)
 
-| Kind | Count | Notes |
-|---|---|---|
-| **user-enabled (entry in `skills.entries`)** | 12 | of which 5 enabled, 7 disabled |
-| **bundled (under `lib/node_modules/openclaw/skills`)** | 43 | always loaded; not in `skills.entries` |
-| **plugins (`plugins.entries`)** | 4 | `memory-core`, `lobster`, `llm-task`, `voice-call` (the plugin twin of the skill) |
-| **TOTAL distinct names** | 59 | |
+| Kind                                                   | Count | Notes                                                                             |
+| ------------------------------------------------------ | ----- | --------------------------------------------------------------------------------- |
+| **user-enabled (entry in `skills.entries`)**           | 12    | of which 5 enabled, 7 disabled                                                    |
+| **bundled (under `lib/node_modules/openclaw/skills`)** | 43    | always loaded; not in `skills.entries`                                            |
+| **plugins (`plugins.entries`)**                        | 4     | `memory-core`, `lobster`, `llm-task`, `voice-call` (the plugin twin of the skill) |
+| **TOTAL distinct names**                               | 59    |                                                                                   |
 
 The 92-command count Telegram observes is **not** equal to the skill count:
 each skill contributes 1–4 menu entries (e.g. `notion` → `/notion_search`,
@@ -66,7 +74,7 @@ edits `~/.openclaw/openclaw.json`:
 ```
 
 Manual procedure (NOT executed by this Sprint 0 PR — application is post-merge
-on Pro by Antonello):
+on Pro by Zero):
 
 ```bash
 ssh pro 'cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.pre-skill-disable-2026-05-02 && \
@@ -90,12 +98,12 @@ OpenClaw v2026.3.31 documents `skills.deny[]` as the supported way to exclude
 bundled skills from menu sync. Skills below have **0 invocations in 30 days**
 of `gateway.log` and fall in clearly-irrelevant categories for Bali Zero ops:
 
-| Category | Skills (drop these) |
-|---|---|
-| Personal / not-Bali-Zero | `1password`, `apple-notes`, `apple-reminders`, `bear-notes`, `obsidian`, `imsg`, `bluebubbles`, `discord`, `slack`, `spotify-player`, `trello` |
-| Hardware / device-specific | `eightctl`, `camsnap`, `node-connect`, `gog`, `gifgrep` |
-| Adjacent ecosystems | `gh-issues`, `github`, `clawhub`, `clawflow`, `clawflow-inbox-triage` |
-| Audio/visual not in scope | `voice-call`, `sherpa-onnx-tts` |
+| Category                   | Skills (drop these)                                                                                                                            |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Personal / not-Bali-Zero   | `1password`, `apple-notes`, `apple-reminders`, `bear-notes`, `obsidian`, `imsg`, `bluebubbles`, `discord`, `slack`, `spotify-player`, `trello` |
+| Hardware / device-specific | `eightctl`, `camsnap`, `node-connect`, `gog`, `gifgrep`                                                                                        |
+| Adjacent ecosystems        | `gh-issues`, `github`, `clawhub`, `clawflow`, `clawflow-inbox-triage`                                                                          |
+| Audio/visual not in scope  | `voice-call`, `sherpa-onnx-tts`                                                                                                                |
 
 Concrete `skills.deny` proposal (drop ~25 → save ~30 commands, lands well
 under 80 with margin for new skills):

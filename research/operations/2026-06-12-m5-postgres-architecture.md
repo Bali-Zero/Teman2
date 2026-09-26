@@ -1,8 +1,9 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-12
 domain: operations
 client_case: internal-infra
-status: DESIGN ONLY — approved-pending-GO, NOT implemented (Antonello: "simulala, poi fermati")
+status: DESIGN ONLY — approved-pending-GO, NOT implemented (Zero: "simulala, poi fermati")
 author: Claude (Fable 5 session, M5) — handoff to Opus implementation session
 sources:
   - apps/backend-rag/backend/tests/conftest.py:22 (DATABASE_URL default test:test@localhost:5432/test)
@@ -70,7 +71,7 @@ Pro local PG — NOT synced (Law 2). M5 dashboard dev uses synthetic fixtures.
 4. **Phase 4 (opt) — LaunchAgent** daily refresh, AC+network gated, NO KeepAlive
    (it's a cron — 2026-04-29 daemon-vs-cron scar).
 
-## Open decisions for Antonello
+## Open decisions for Zero
 
 - (a) Phase 1 only first, or 1+2 together?
 - (b) SessionStart hook checks postgresql@18 — update hook to @17 (prod parity) or install 18?

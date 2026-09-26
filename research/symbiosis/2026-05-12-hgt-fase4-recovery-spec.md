@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-12
 domain: symbiosis
 client_case: SYMBIOSIS gap-closure loop · Step 3 · Gap 3 HGT FASE 4 HALT recovery
@@ -188,7 +189,7 @@ When all 3 hold, the existing `apps/cell-core/hgt_coordinator/` quarantine mecha
 
 This loop is 3h wall-clock with mixed mode. The 3 tickets above add up to ~3-5 person-days each, even before integration testing. Out of scope.
 
-The value of THIS step is: a verifiable, dated, fact-checked spec that the next implementer (Antonello or contracted dev) can pick up without redoing the HALT-root-cause analysis.
+The value of THIS step is: a verifiable, dated, fact-checked spec that the next implementer (Zero or contracted dev) can pick up without redoing the HALT-root-cause analysis.
 
 ## What this step does NOT do
 

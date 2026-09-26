@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # Wave 3 Final — owner_cashout_sync DISABLED
 
 ## Decision
@@ -6,7 +9,7 @@ Disabled `owner_cashout_sync` (Monday 01:00 weekly cron) on 2026-05-19.
 
 ## Rationale
 
-- Antonello (owner): "lo Sheet si ferma a gennaio, siamo a maggio"
+- Zero (owner): "lo Sheet si ferma a gennaio, siamo a maggio"
 - Sheet `1OZzgvDLgf3yd9eUh5CyADjHCHLoXmE5nIRoJlut_jBE` stale 5+ months
 - Service Account 403 — likely revoked because nobody noticed it was gone
 - No user complaints in 5 months → not load-bearing

@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-07-06
 domain: operations
 topic: Google Antigravity ecosystem (agy CLI, Antigravity IDE, Gemini 3.1 Pro, AI Ultra entitlements, Jules) — active inclusion assessment for Nuzantara
@@ -155,7 +156,7 @@ Ranked by expected-gain/risk/cost ratio, most to least compelling.
 **Invocation path**: install the Jules GitHub App scoped to a **single low-stakes repo or even a single directory** (NOT the full Nuzantara monorepo on day one, given secrets/PII exposure risk of a persistent cloud-VM checkout) — good first candidate: the `agent-library` or a research-only repo with no client data. Submit tasks via GitHub issue @mention (`@jules fix the dependabot warning in X`).
 **Slots into**: a new lane parallel to Codex, explicitly scoped narrower — candidate first tasks: Python patch-safe dependency bumps (`audit_weekly_dependencies` already tracks 15 patch-safe items), CHANGELOG/docs-sync mechanical updates.
 **Expected gain**: offloads pure-mechanical PR-and-fix-CI work without spending Claude MAX quota or Codex ChatGPT-Pro quota; validates whether the auto-CI-fix loop is trustworthy before considering wider scope.
-**Risk/cost**: **medium** — this is the one proposal that changes our trust boundary (cloud VM holds a full repo checkout, not our filesystem/worktree). Requires: (a) explicit repo scoping away from any PII/secrets-bearing path, (b) Antonello's authorization before first use per our "new tool/workflow touching repo" norm, (c) a human merge gate identical to what we already require for Codex/Antigravity (never auto-merge from an external agent). This is NOT pre-authorized by existing CLAUDE.md rules (it's a new cloud surface, not a "paid per-token API" in the strict sense, but the PII-boundary logic applies identically) — **surface to Antonello before first real use.**
+**Risk/cost**: **medium** — this is the one proposal that changes our trust boundary (cloud VM holds a full repo checkout, not our filesystem/worktree). Requires: (a) explicit repo scoping away from any PII/secrets-bearing path, (b) Zero's authorization before first use per our "new tool/workflow touching repo" norm, (c) a human merge gate identical to what we already require for Codex/Antigravity (never auto-merge from an external agent). This is NOT pre-authorized by existing CLAUDE.md rules (it's a new cloud surface, not a "paid per-token API" in the strict sense, but the PII-boundary logic applies identically) — **surface to Zero before first real use.**
 
 ### P4 — Wake the sleeping Antigravity IDE 6-step workflow using its native Agent Manager instead of manual worktree-spawn, for the specific case of 2-3 independent parallel front-end/UI fixes
 

@@ -67,7 +67,7 @@ chmod 0400 ~/.automation-cleanup-2026-05-16/exposed-secrets-mini.json
 
 **Rotazione (manuale, NON autonomous-ops)**:
 
-- `CLAUDE_CODE_OAUTH_TOKEN_*` (3 token): regenerate via `claude /login` slot 1+2 + agent-specific. Bisogna **Antonello-in-loop** perché OAuth browser flow.
+- `CLAUDE_CODE_OAUTH_TOKEN_*` (3 token): regenerate via `claude /login` slot 1+2 + agent-specific. Bisogna **Zero-in-loop** perché OAuth browser flow.
 - `TELEGRAM_BOT_TOKEN`: rotation via @BotFather `/revoke` + new token. Aggiornare poi tutti i plist che lo referenziano (grep mostrerà ~15 plist).
 
 **Verifica**:
@@ -80,7 +80,7 @@ ssh mini 'find ~/Library/LaunchAgents -name "com.matagaruda.*.plist" -perm +044 
 
 **Rollback**: `ssh mini 'chmod 0644 ...'` (NON consigliato — cicatrix). Vero rollback: rotation **prima** di restore mode.
 
-**Decision gate**: F1.2 procede SOLO se Antonello conferma di aver avviato la rotazione (anche se non completata) — chmod 0400 da solo è valore zero se token già leakati.
+**Decision gate**: F1.2 procede SOLO se Zero conferma di aver avviato la rotazione (anche se non completata) — chmod 0400 da solo è valore zero se token già leakati.
 
 ### F1.2 — Audit completo Mini per altri plist 0644+secrets
 
@@ -326,7 +326,7 @@ cd ~/Desktop/nuzantara && git log --all --diff-filter=D -- scripts/legal_radar.p
 # Se mai esistito: commenta crontab entry
 ```
 
-**Decision gate**: dipende da git history. Antonello-in-loop se git mostra file deleted intenzionalmente vs orphan reference.
+**Decision gate**: dipende da git history. Zero-in-loop se git mostra file deleted intenzionalmente vs orphan reference.
 
 ### F4.2 — `bali-zero-akta/scripts/run_overnight.sh` missing
 
@@ -438,7 +438,7 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 
 **Trauma**: producer attivo (mig 146), 0 consumers cablati. Eventi accumulano in `events_outbox` senza ack.
 
-**Decisione richiesta** (Antonello):
+**Decisione richiesta** (Zero):
 
 - Opzione A: cablare consumer in `apps/backend-rag/backend/services/events/handlers/_core.py` (registra handler)
 - Opzione B: ritirare producer (drop trigger mig 146 con nuova migration)
@@ -495,7 +495,7 @@ gh workflow disable fly-restart-detector.yml
 
 | Agent                         | Decisione raccomandata                                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Antonello                                                |
+| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Zero                                                     |
 | `email-template-builder`      | Wire-in: utile per Brevo template generation                                                                                  |
 | `wr2-external-bench`          | Wire-in cron mensile (1st Monday) — già spec'd nel system prompt agent                                                        |
 | `wr2-image-prompt-author`     | Wire-in pipeline WR2 Step 4.5 (tra storyboarder e layout-composer) — spec dice "Used by wr2-design-architect" ma non chiamato |
@@ -573,7 +573,7 @@ F9 (verify) ── tutto, dopo
 | Rischio                                         | Probabilità | Impatto | Mitigation                                            |
 | ----------------------------------------------- | ----------- | ------- | ----------------------------------------------------- |
 | Telegram alarm storm durante cleanup            | Media       | Basso   | F0.3 disable dispatcher, F9.4 re-enable               |
-| Rotazione token rompe altri servizi             | Media       | Alto    | F1 ordina rotation prima di chmod, Antonello-in-loop  |
+| Rotazione token rompe altri servizi             | Media       | Alto    | F1 ordina rotation prima di chmod, Zero-in-loop       |
 | `cell.organism` fix richiede deploy Fly         | Media       | Medio   | F2.2 investigation-only, no deploy in questa wave     |
 | `kg-query-api` bind 0.0.0.0 espone porta        | Bassa       | Medio   | Verifica firewall Mini, IP locked to Tailscale subnet |
 | pg-proxy cluster NON self-heals dopo 24h        | Bassa       | Medio   | F3.1 decision gate, triage individuale se needed      |
@@ -584,13 +584,13 @@ F9 (verify) ── tutto, dopo
 
 - **Migrazione Redis pub/sub → events_outbox** dei 6 channel non-compliant: troppo lavoro per questa wave, fase successiva
 - **Refactor `pg-to-organism-bridge` per HA pair**: il watchdog F2.3 è mitigation sufficiente per ora
-- **Rotation manuale OAuth Claude Code**: richiede browser flow, Antonello-task
+- **Rotation manuale OAuth Claude Code**: richiede browser flow, Zero-task
 - **Audit secrets Pro plist 0644** (non-Mini): già verificato 2026-04-29, no regression
 - **Rinominare `partner.commission_changed` → `partner_commission_changed`** per fix EventBus emit_pg validation: separate PR
 
 ## Approvazione
 
-Questo piano **richiede approval Antonello** prima esecuzione (autonomous-ops L2 non copre rotation token o modifiche estese organs_registry).
+Questo piano **richiede approval Zero** prima esecuzione (autonomous-ops L2 non copre rotation token o modifiche estese organs_registry).
 
 Prossimo step: **review 4-LLM panel** (Gemini + Codex + DeepSeek + NotebookLM NB-1) per:
 

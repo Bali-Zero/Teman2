@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-04
 domain: operations
 study: doc-intake-unified
@@ -294,7 +295,7 @@ Dato il digest, EvoSkill puo proporre — ognuna come change in PR draft:
    MODEL_TOPOLOGY.json / tabella soglie sez. 1.1.
 
 Tutte e tre passano per evidence-lint + entailment + **draft PR + review umana**
-(Antonello/Zero). Coerente con il contratto \"PROPONE -> PR, non auto-applica\".
+(Zero/Zero). Coerente con il contratto \"PROPONE -> PR, non auto-applica\".
 
 ### 4.4 Loop di chiusura
 ```
@@ -303,7 +304,7 @@ intake -> AI estrae -> umano corregge -> intake_corrections (volume)
    |                                       [weekly evolver]
    |                                      digest -> proposta -> DRAFT PR
    |                                              |
-   +------ Antonello merge la PR (prompt/regola/soglia migliore) ----+
+   +------ Zero merge la PR (prompt/regola/soglia migliore) ----+
 ```
 Il miglioramento e **misurabile**: la `correction_rate` per (doc_type, field) deve
 **scendere** dopo una PR mergiata. Se non scende in 2-3 settimane, la PR successiva

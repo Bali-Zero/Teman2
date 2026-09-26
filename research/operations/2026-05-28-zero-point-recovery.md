@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-28
 domain: operations
 client_case: none
@@ -36,9 +37,9 @@ checklist:
 
 ## Executive Summary (3 bullets)
 
-1. **Baseline → Zero**: worktree 24→12 (-50%), stash 59→11 (-81%), branch 79→69, 2 PR merged + 14 auto-merge queued, 4 PR pending decision Antonello (#891 #877 #859 substantially superseded da #903, #855 draft).
+1. **Baseline → Zero**: worktree 24→12 (-50%), stash 59→11 (-81%), branch 79→69, 2 PR merged + 14 auto-merge queued, 4 PR pending decision Zero (#891 #877 #859 substantially superseded da #903, #855 draft).
 2. **P0 EMERGENCY scoperto durante audit**: Fly api machine 7847d95 critical 3.5h, flapping health check, asyncpg ConnectionDoesNotExistError ricorrente. Patch shipped (PR #903 NEW): memory 2gb→3gb + cpus 1→2, surgical 2-line fly.toml change, --no-verify autorizzato (hook stesso lo prevede). 13744 test PASS pre-push.
-3. **3 issue separati identificati ma NON risolti** (need Antonello decision): (a) launchagent-state-bridge dead 2026-05-26 → DLQ retry storm 4676 escalations (Option A restart + KeepAlive raccomandato), (b) events_outbox autovacuum threshold troppo permissivo (16gg senza VACUUM, ALTER TABLE SET pronto), (c) Telegram bot ID 8295471667 token revoked/blocked (alert ciechi).
+3. **3 issue separati identificati ma NON risolti** (need Zero decision): (a) launchagent-state-bridge dead 2026-05-26 → DLQ retry storm 4676 escalations (Option A restart + KeepAlive raccomandato), (b) events_outbox autovacuum threshold troppo permissivo (16gg senza VACUUM, ALTER TABLE SET pronto), (c) Telegram bot ID 8295471667 token revoked/blocked (alert ciechi).
 
 ## Numeri before/after
 
@@ -65,7 +66,7 @@ checklist:
 | 6   | Cherry-pick 2-line patch da PR #859 stale → PR #903 emergency NEW                      | api flap real-time, PR #859 ha 40+ conflict, rebase = ore di lavoro vs 5min patch chirurgica                              | NO (commit pushed)                                                             |
 | 7   | `git commit --no-verify` su fly.toml                                                   | hook stesso autorizza con spiegazione, P0 emergency, surgical 2-line, off-limits guard NON è bypass strutturale           | NO (commit pushed)                                                             |
 
-## Decisioni NON autonome — escalate Antonello
+## Decisioni NON autonome — escalate Zero
 
 | #   | Issue                                                              | Why escalated                                                              | File spec                                                     |
 | --- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -73,7 +74,7 @@ checklist:
 | 2   | PR #877 cherry-pick (single research file)                         | Low priority, branch ha 40+ conflict drift, cleanup work più che value-add | —                                                             |
 | 3   | DLQ retry storm fix (launchagent-state-bridge restart + KeepAlive) | Touch LaunchAgent infra, va prima testato in dev                           | `research/operations/2026-05-28-dlq-autopilot-retry-storm.md` |
 | 4   | events_outbox autovacuum tuning (ALTER TABLE)                      | DDL change su prod DB, requires confirmation per AUTONOMOUS_OPS L2         | task #15                                                      |
-| 5   | Telegram bot 8295471667 token rotation                             | Serve accesso @BotFather (Antonello solo)                                  | task #16                                                      |
+| 5   | Telegram bot 8295471667 token rotation                             | Serve accesso @BotFather (Zero solo)                                  | task #16                                                      |
 | 6   | 6 stash residui (preflight + sibling-work + voa-pricing)           | Possono contenere WIP recente, label ambiguo                               | —                                                             |
 | 7   | crm-guardian-drive worktree separato                               | Mtime 5 giorni ma struttura suggerisce workspace ancora attivo             | —                                                             |
 
@@ -88,7 +89,7 @@ checklist:
 
 #903 (emergency fly.toml), #902 (palette widget), #901 (wr2 telegram_gate), #898 (secrets triage), #897 (wr2 Playwright renderer), #896 (wr2 critic parser), #894 (wr2 imagegen), #885 (Kepmen taxonomy), #883 #867 #864 #863 (Dependabot), #859 (#903 supersede — leave open), #877 (DIRTY, will not auto-merge until rebase)
 
-### Pending decision Antonello (5)
+### Pending decision Zero (5)
 
 - **#891** feat/wr2-c5a-pilot — DIRTY, current branch, 34 commit ahead. Rebase dedicated session.
 - **#877** docs/visa-c5a — DIRTY, 1 file research, cherry-pick standalone.
@@ -102,12 +103,12 @@ checklist:
 | Issue                                                            | Priority | Impact                    | Owner                                        |
 | ---------------------------------------------------------------- | -------- | ------------------------- | -------------------------------------------- |
 | api machine flapping (resolved via #903 once merged + deployed)  | P0       | Prod degraded             | Auto-resolves via PR #903 merge              |
-| events_outbox 16gg senza autovacuum                              | P1       | DB bloat lento            | Antonello applica ALTER TABLE                |
-| launchagent-state-bridge dead                                    | P1       | 4 cron in retry storm 7gg | Antonello restart + KeepAlive                |
-| Telegram bot 8295471667 401                                      | P2       | Alert backend ciechi      | Antonello @BotFather rotate                  |
+| events_outbox 16gg senza autovacuum                              | P1       | DB bloat lento            | Zero applica ALTER TABLE                |
+| launchagent-state-bridge dead                                    | P1       | 4 cron in retry storm 7gg | Zero restart + KeepAlive                |
+| Telegram bot 8295471667 401                                      | P2       | Alert backend ciechi      | Zero @BotFather rotate                  |
 | Postgres ConnectionDoesNotExistError ricorrente                  | P2       | Pool churn                | Investigate post-#903 deploy                 |
 | 12 worktree residui (1 per PR open)                              | P3       | Storage waste minore      | Auto-cleanup via gh pr merge --delete-branch |
-| 11 stash ambigui residui                                         | P3       | Storage waste             | Antonello review manuale                     |
+| 11 stash ambigui residui                                         | P3       | Storage waste             | Zero review manuale                     |
 | `~/scripts/verify_mcp_integrity.sh` MISSING (cicatrix candidate) | P3       | Audit baseline lost       | Re-author o recover da Mini                  |
 
 ## Cicatrix candidates (da scrivere)
@@ -117,7 +118,7 @@ checklist:
 3. **W62 — STRUCTURAL Agent broker TTL=60min violato 34× per ops fan-out** (proposta in /tmp/wave-c-ops-triage-2026-05-28.md)
 4. **W63 — STRUCTURAL nested worktree bug `wr2-critic-parser-fix/.worktrees/wr2-playwright-render-fix`** (scoperto e droppato in WAVE-B)
 
-## Next steps Antonello
+## Next steps Zero
 
 1. **Verify PR #903 deploy success** — `gh pr view 903` → mergedAt timestamp → wait `scripts/post-deploy-verify.sh 903` Telegram completion. Expected: api machine restart, /health 200 stable, no PR01 errors.
 2. **Apply event_outbox autovacuum tuning** (when convenient):

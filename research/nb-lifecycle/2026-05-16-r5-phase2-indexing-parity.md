@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-16
 domain: nb-lifecycle
 client_case: R5 Phase 2 — Indexing parity audit (Qdrant + KG canonical for Core domains)
@@ -72,7 +73,7 @@ URL: `http://localhost:6333`
 
 - `bali_zero_skills_local` esiste **solo** in Qdrant local Pro
 - Backend prod su Fly usa Qdrant Cloud GCP → query skills da Fly = collection_not_found
-- Antonello must decide: (a) re-indicizzare skills in cloud (cost $0.05 + new line in Fly secrets), oppure (b) cabling Phase 3 router a localhost solo via VPN/tailnet quando Antonello è sul Pro
+- Zero must decide: (a) re-indicizzare skills in cloud (cost $0.05 + new line in Fly secrets), oppure (b) cabling Phase 3 router a localhost solo via VPN/tailnet quando Zero è sul Pro
 
 **MOS save**: discovery id 2392 (importance 9) — "Phase 1 R5 ha indicizzato bali_zero_skills_local SOLO in Qdrant Docker locale Pro"
 
@@ -235,7 +236,7 @@ Per fare gap detection vero (NB sources NOT in Qdrant), serve enumerazione live 
 - **NB-5 Property 117 sources → legal_unified_2026 18 unique sources** (di cui 1 dominante `Permen_18_2021` con 10.266 chunks): gap simile, NB-5 ha ~99 fonti property mancanti in Qdrant cloud.
 - **NB-7 Editorial 89 sources → balizero_news 1 UNKNOWN source**: gap totale per source attribution. Re-ingest necessario per coverage report misurabile.
 
-### AIL per Antonello
+### AIL per Zero
 
 Per shippare Phase 2.5 (re-index) serve:
 
@@ -259,7 +260,7 @@ Per shippare Phase 2.5 (re-index) serve:
 | Source attribution gap (6 collection UNKNOWN) | **Defer to Phase 2.5** (AIL)         | Coverage report richiede re-index — pulizia provenance                                                          |
 | KG nodes drift CLAUDE.md vs reality           | **Verify Fly DB** (1h investigation) | Se 108k è Fly prod, sync KG localhost-Fly rotto — separato bug fix                                              |
 | `legal_unified_hybrid_hybrid` doppio suffix   | **Rename in Phase 3** (cosmetic)     | `legal_unified_hybrid_hybrid` → `legal_unified` via migration v2 (rename non destructive, just registry update) |
-| `garuda_assets` vuoto (0 points)              | **Delete o populate**                | Antonello decision: enrolled in genome ma never wired up                                                        |
+| `garuda_assets` vuoto (0 points)              | **Delete o populate**                | Zero decision: enrolled in genome ma never wired up                                                        |
 
 ---
 
@@ -292,13 +293,13 @@ Per shippare Phase 2.5 (re-index) serve:
 
 1. ~~Fix `nuzantara_general_hybrid` ghost~~ — INVALIDATED (dead-code, no prod impact). Cleanup optional debt P2.
 2. Verify KG Fly prod count (resolve drift CLAUDE.md vs reality) — 1h (DeepSeek flagged)
-3. Decision Antonello: skills routing local-only vs re-index cloud — 5min
+3. Decision Zero: skills routing local-only vs re-index cloud — 5min
 4. **NEW (Codex P1)**: SurfaceRouter Phase 3 design MUST consume `QueryRouter` SSOT (production) NOT `query_planner` (shadow). Aggiornare `project_nb_lifecycle_master_2026_05_04.md` Phase 3 spec di conseguenza.
 5. **NEW (Codex P1)**: registry/live diff test — `pytest` che fail se Qdrant cloud ha collection NON in registry (caught `legal_unified_2026`, `kbli_tka_hybrid`, `intel_authoritative_sources`, `garuda_assets` come gap registry-side) — 2h
 
 **NICE TO HAVE PRE-Phase 3**: 6. ~~Update CLAUDE.md golden rule #11~~ — REVISED (Codex P1: full payload census su 12 col PRIMA di policy update) — 4h 7. Document `legal_unified_hybrid_hybrid` typo rename in Phase 3 acceptance — 10min 8. Source attribution backfill plan — REVISED methodology (Codex P1: scan ALL payload fields, not just 5) — 6h investigation
 
-**AIL per Antonello** (gate Phase 2.5):
+**AIL per Zero** (gate Phase 2.5):
 
 - ✅ Approve approccio Phase 2.5 (re-index NB sources to Qdrant cloud)
 - ✅ Launch notebooklm-mcp + retry Phase 2.5 enumeration
@@ -329,7 +330,7 @@ Reference docs (read-only):
 
 ---
 
-_Audit by Claude Opus 4.7, autonomous L2, session 2026-05-16 09:00→10:30 WITA. Phase 2.5 re-index gated on Antonello approval + notebooklm-mcp launch. Phase 3 SurfaceRouter design awaits ghost collection fix._
+_Audit by Claude Opus 4.7, autonomous L2, session 2026-05-16 09:00→10:30 WITA. Phase 2.5 re-index gated on Zero approval + notebooklm-mcp launch. Phase 3 SurfaceRouter design awaits ghost collection fix._
 
 ---
 

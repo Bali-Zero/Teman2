@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-07
 domain: operations
 client_case: internal — meta dev-loop SOTA, verdetto finale a eserciti sui 9 pezzi
@@ -7,7 +8,7 @@ sources: 9 spec (research/operations/specs/P1-P9) + report madre (2026-06-06-sot
 
 # Verdetto finale — i 9 pezzi del workflow agentico, controllati a eserciti
 
-> **Cos'è questo documento.** Chiude il ciclo richiesto da Antonello: studiare il workflow agentico
+> **Cos'è questo documento.** Chiude il ciclo richiesto da Zero: studiare il workflow agentico
 > più avanzato, scomporlo nei 9 pezzi mancanti, e per ognuno fare deep-research + panel 4-LLM +
 > reuse-first → spec. «Alla fine, con gli agenti ad eserciti, controllate logica e coerenza e potenza».
 > Questo è quel controllo finale, + il giudizio onesto sull'insieme.
@@ -135,7 +136,7 @@ rendi ogni decisione reversibile, tieni l'umano come ultima istanza solo sull'ir
 Non 9 pezzi scollegati: **9 applicazioni dello stesso teorema a 9 stadi del loop.** Prova di coerenza:
 P9 si dichiara "la governance del loop intero" e mappa ogni sua proprietà su un pezzo precedente; P7
 osserva che **questo stesso ciclo di 9 spec È il LEARN-loop sicuro** (proposta=spec,
-applicazione=gated-da-Antonello). Il sistema è auto-descrittivo.
+applicazione=gated-da-Zero). Il sistema è auto-descrittivo.
 
 ### (c) Il rischio sistemico più grande — il decadimento entropico inosservabile
 

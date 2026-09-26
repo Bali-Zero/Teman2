@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # APPENDICE — 4 output grezzi del panel system-impact (2026-06-13)
 # Domanda: quanto il sistema Nuzantara incide su Fable? Analisi 1°/2°/3° grado.
 
@@ -221,7 +224,7 @@ Non è più un chatbot. È un **operatore software semi-autonomo** con vincoli p
 
 - L'umano passa da **programmatore** a **direttore strategico**. Dice "fai X", l'agente esegue l'intero flusso: analisi, implementazione, test, PR, merge, deploy, verifica live.
 - L'umano deve fidarsi, ma la fiducia è costruita su **verificabilità** (l'agente produce PR, non push diretti; lascia tracce; riporta onestamente).
-- Rischio: l'umano **disimpara** i dettagli operativi del proprio sistema. Se l'agente si ferma, l'umano potrebbe non sapere come intervenire manualmente. Questo è già visibile nel transcript: Antonello a volte chiede "Finito?" e Fable risponde con lo stato dettagliato, indicando che l'umano non ha più il polso diretto.
+- Rischio: l'umano **disimpara** i dettagli operativi del proprio sistema. Se l'agente si ferma, l'umano potrebbe non sapere come intervenire manualmente. Questo è già visibile nel transcript: Zero a volte chiede "Finito?" e Fable risponde con lo stato dettagliato, indicando che l'umano non ha più il polso diretto.
 
 ### Rischi sistemici
 
@@ -393,7 +396,7 @@ Verrebbero sovrascritti:
 - criterio di verità: verifica empirica;
 - criterio di fine: deploy/live/disk-state pulito o intent marker;
 - memoria: scars, MOS, active context;
-- rapporto con Antonello: escalation solo dove serve.
+- rapporto con Zero: escalation solo dove serve.
 
 Resterebbe del modello originale:
 

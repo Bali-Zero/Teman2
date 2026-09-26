@@ -1,7 +1,7 @@
 # Zantara Onboarding for Subhi — Design Spec
 
 **Date:** 2026-05-04
-**Author:** Antonello + Claude Opus 4.7 (1M context)
+**Author:** Zero + Claude Opus 4.7 (1M context)
 **Status:** Brainstorm complete, awaiting user review before implementation
 **Subject:** Subhi Darajat (Growth Systems Owner, probation 2026-04-30 → 2026-07-29)
 
@@ -16,22 +16,22 @@ and contract draft), that:
 
 1. Speaks **bahasa Indonesia** with him (codice/commit/PR remain English)
 2. Enforces his RBAC perimeter: VERDE (`apps/mouth/**`, GA4/GSC) → green-light;
-   GIALLO (backend new endpoints) → escalate to Asya/Antonello pair;
+   GIALLO (backend new endpoints) → escalate to Asya/Zero pair;
    ROSSO (RAG core, Qdrant, secrets, Fly) → refuse with educational redirect.
 3. Maps his work to the 60-day mission (`00_MISI_SUBHI_60_HARI_BAHASA.md`)
    with daily exercises that escalate D1 (fix tracking) → D2 (12 money pages)
    → D3 (Article-to-Tool components) → D4 (organic distribution) → D5
    (WhatsApp contextual CTAs).
-4. Remains under Antonello control: MAX plan quota is Antonello's, daily
+4. Remains under Zero control: MAX plan quota is Zero's, daily
    memory mirror filtered+audited, GitHub PAT scoped `sancho/*` only,
    no Fly/Pro/secrets access.
 
 ## 2. Non-goals
 
 - **Not** installing on Subhi's PC remotely. Subhi runs the install script
-  himself, supervised live by Antonello via WhatsApp video call. Ownership
+  himself, supervised live by Zero via WhatsApp video call. Ownership
   of the setup is preserved.
-- **Not** giving Subhi access to Antonello's `~/.claude/projects/.../memory/`
+- **Not** giving Subhi access to Zero's `~/.claude/projects/.../memory/`
   directly. He sees a _daily-refreshed mirror_ in his own repo, with
   the `Subhi/` folder excluded.
 - **Not** building a multi-agent orchestration. One sub-agent (`zantara-onboarding`)
@@ -46,13 +46,13 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
 
 | #   | Question                 | Answer                        | Implication                                 |
 | --- | ------------------------ | ----------------------------- | ------------------------------------------- |
-| 1   | OS                       | Win11 → switch to MacBook Pro | macOS (matches Antonello Pro)               |
+| 1   | OS                       | Win11 → switch to MacBook Pro | macOS (matches Zero Pro)                    |
 | 2   | RAM                      | 16GB                          | Sufficient. No local Ollama.                |
 | 3   | Terminal use             | Sometimes                     | VSCode integrated terminal OK               |
 | 4   | Git                      | Basic (clone/commit/push)     | Linear `sancho/*` flow, no rebase chirurgia |
 | 5   | VSCode                   | Daily user                    | Skip install                                |
 | 6   | AI tools                 | GitHub Copilot user           | Coexist, no duplication                     |
-| 7   | Account for Claude OAuth | `subhi@balizero.com`          | MAX plan #2 of Antonello's 3                |
+| 7   | Account for Claude OAuth | `subhi@balizero.com`          | MAX plan #2 of Zero's 3                     |
 | 8   | Internet                 | Stable                        | MCP remoti OK                               |
 | 9   | Language                 | Mix bahasa+EN                 | Bahasa narrative, EN code                   |
 | 10  | Setup window             | Morning 09-11 WITA            | Day 1 = morning standup window              |
@@ -91,14 +91,14 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
                               │
                               ▼ git push origin sancho/<branch>
               GitHub balizero/nuzantara (branch protection main)
-                              │ PR review by Antonello
+                              │ PR review by Zero
                               ▼
                             Fly deploy
 ```
 
 **Boundary layers (defense in depth):**
 
-1. **OAuth-level**: MAX plan owned by Antonello, revocable.
+1. **OAuth-level**: MAX plan owned by Zero, revocable.
 2. **GitHub-level**: fine-grained PAT `sancho/*` write only.
 3. **MCP-level**: filesystem confined to `~/Projects/nuzantara-subhi/`.
 4. **Settings-level**: `permissions.deny` on Bash patterns
@@ -150,9 +150,9 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__github__*, mcp__notebooklm-mcp_
 
 ## 6. Memory mirror
 
-**Pattern:** Antonello's `~/.claude/projects/-Users-nuzantara/memory/` (231 .md files, ~2.5MB) filtered nightly into `~/Projects/nuzantara-subhi/.claude/memory-mirror/` and pushed to GitHub.
+**Pattern:** Zero's `~/.claude/projects/-Users-nuzantara/memory/` (231 .md files, ~2.5MB) filtered nightly into `~/Projects/nuzantara-subhi/.claude/memory-mirror/` and pushed to GitHub.
 
-**Inclusion rule:** "Tutto eccetto cartella `Subhi/`" (per Antonello directive 2026-05-04).
+**Inclusion rule:** "Tutto eccetto cartella `Subhi/`" (per Zero directive 2026-05-04).
 
 **Exclude patterns (mandatory):**
 
@@ -168,12 +168,12 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__github__*, mcp__notebooklm-mcp_
 
 **Sync mechanism:**
 
-- Script: `~/Desktop/nuzantara/scripts/subhi-memory-mirror.sh` (lives on Antonello Pro, NOT in Subhi repo)
+- Script: `~/Desktop/nuzantara/scripts/subhi-memory-mirror.sh` (lives on Zero Pro, NOT in Subhi repo)
 - LaunchAgent: `com.balizero.subhi-memory-mirror.daily.plist` — 04:00 WITA daily
 - Push: `git push origin subhi/memory-mirror` to `balizero/nuzantara-subhi` repo
 - Subhi pulls via `git pull` morning standup
 
-**First-run safety:** manual approval. Mirror generates `_AUDIT.txt` listing included/excluded files + redaction count. Antonello receives Telegram notification, reviews `_AUDIT.txt`, manually approves first push. Subsequent runs are cron-driven without notification (unless audit anomalies detected).
+**First-run safety:** manual approval. Mirror generates `_AUDIT.txt` listing included/excluded files + redaction count. Zero receives Telegram notification, reviews `_AUDIT.txt`, manually approves first push. Subsequent runs are cron-driven without notification (unless audit anomalies detected).
 
 ## 7. MCP whitelist + permissions
 
@@ -290,7 +290,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__github__*, mcp__notebooklm-mcp_
 
 - Append-only JSONL to `~/Projects/nuzantara-subhi/.claude/session-log.jsonl` (gitignored)
 - Fields: timestamp, model, token usage (in/out/cache), cwd, exit reason
-- Used for weekly onboarding review (Antonello reads, Subhi never sees it modified)
+- Used for weekly onboarding review (Zero reads, Subhi never sees it modified)
 
 ## 9. Repo structure `nuzantara-subhi`
 
@@ -342,7 +342,7 @@ nuzantara-subhi/
 Mapped to `00_MISI_SUBHI_60_HARI_BAHASA.md` deliverables D1 (fix tracking)
 through D5 (WhatsApp CTAs). Start date assumed: Tuesday 6 May 2026
 (if Subhi has MacBook Pro from that day onward — actual start date TBD
-by Antonello).
+by Zero).
 
 | Day | Date       | Mission ref      | Title                                    | Files touched                                                          | Visible deliverable               |
 | --- | ---------- | ---------------- | ---------------------------------------- | ---------------------------------------------------------------------- | --------------------------------- |
@@ -385,18 +385,18 @@ Subhi asks "apa misi hari ini" by reading `00_MISI_SUBHI_60_HARI_BAHASA.md`
 ## Linked tutor prompts
 ```
 
-## 11. Pre-requisites (Antonello Day 0 prep, ~25 min)
+## 11. Pre-requisites (Zero Day 0 prep, ~25 min)
 
-| #   | Step                                                                   | Owner               | Time | Blocker for?     |
-| --- | ---------------------------------------------------------------------- | ------------------- | ---- | ---------------- |
-| 1   | MacBook Pro joined to tailnet `balizero`                               | Subhi (guided WA)   | 5min | install script   |
-| 2   | SSH key Subhi MacBook generated                                        | Subhi               | 1min | git clone        |
-| 3   | SSH key added to GitHub `subhi@balizero.com`                           | Subhi               | 1min | git clone        |
-| 4   | GitHub fine-grained PAT scoped `balizero/nuzantara` `sancho/*` write   | Antonello           | 5min | settings.json    |
-| 5   | Repo `balizero/nuzantara-subhi` created (Subhi+Antonello collaborator) | Antonello           | 2min | clone repo       |
-| 6   | NLM share NB-1, NB-2, NB-9, NB-OPS to subhi@balizero.com               | Antonello (NLM CLI) | 3min | tutor NB queries |
-| 7   | Tailscale ACL verified (Subhi NOT seeing `nuzantara` Pro)              | Antonello           | 5min | security         |
-| 8   | MAX plan #2 OAuth login validated with subhi@balizero.com              | Antonello           | 2min | claude command   |
+| #   | Step                                                                 | Owner             | Time | Blocker for?     |
+| --- | -------------------------------------------------------------------- | ----------------- | ---- | ---------------- |
+| 1   | MacBook Pro joined to tailnet `balizero`                             | Subhi (guided WA) | 5min | install script   |
+| 2   | SSH key Subhi MacBook generated                                      | Subhi             | 1min | git clone        |
+| 3   | SSH key added to GitHub `subhi@balizero.com`                         | Subhi             | 1min | git clone        |
+| 4   | GitHub fine-grained PAT scoped `balizero/nuzantara` `sancho/*` write | Zero              | 5min | settings.json    |
+| 5   | Repo `balizero/nuzantara-subhi` created (Subhi+Zero collaborator)    | Zero              | 2min | clone repo       |
+| 6   | NLM share NB-1, NB-2, NB-9, NB-OPS to subhi@balizero.com             | Zero (NLM CLI)    | 3min | tutor NB queries |
+| 7   | Tailscale ACL verified (Subhi NOT seeing `nuzantara` Pro)            | Zero              | 5min | security         |
+| 8   | MAX plan #2 OAuth login validated with subhi@balizero.com            | Zero              | 2min | claude command   |
 
 **Note:** Tailscale verification 2026-05-04 13:30 shows MacBook NOT yet joined to tailnet (only Windows `laptop-i9elf7cc` visible). Step 1 is the first action when MacBook arrives.
 
@@ -404,16 +404,16 @@ Subhi asks "apa misi hari ini" by reading `00_MISI_SUBHI_60_HARI_BAHASA.md`
 
 ```
 T+0    09:30 WITA  Subhi arrives kantor Kuta with MacBook
-T+5    09:35       Antonello: "Open MacBook, log in macOS"
+T+5    09:35       Zero: "Open MacBook, log in macOS"
 T+10   09:40       WhatsApp video call active (audio + screen share)
-T+10   09:40       Antonello sends gist link to install script
+T+10   09:40       Zero sends gist link to install script
 T+15   09:45       Subhi: bash <(curl -sL <gist>) — follows prompts
 T+30   10:00       Install complete: claude, nlm, tailscale all up
 T+35   10:05       Subhi opens VSCode on ~/Projects/nuzantara-subhi/
 T+40   10:10       Subhi opens integrated terminal, runs claude
 T+45   10:15       Subhi: /agent zantara-onboarding halo
 T+50   10:20       Tutor responds in bahasa, presents scope
-T+55   10:25       Antonello verifies reply, screenshot to shared note
+T+55   10:25       Zero verifies reply, screenshot to shared note
 T+60   10:30       Subhi reads docs/onboarding/00_SELAMAT_DATANG.md
 T+75   10:45       Subhi completes exercises/day1_setup_check.md
 T+90   11:00       Daily standup: tomorrow Day 2 codebase tour
@@ -422,7 +422,7 @@ T+90   11:00       Daily standup: tomorrow Day 2 codebase tour
 ## 13. Install script overview
 
 `scripts/subhi-tutor-install.sh` — runs on Subhi's MacBook (he executes,
-NOT Antonello via SSH). Steps:
+NOT Zero via SSH). Steps:
 
 1. macOS check + Xcode CLI tools
 2. Homebrew install (if absent)
@@ -453,33 +453,33 @@ NOT Antonello via SSH). Steps:
 
 ## 15. Open issues / risks
 
-1. **MacBook not in tailnet yet** (verified 2026-05-04). Step 1 of pre-reqs blocks everything else. Antonello must guide tailscale up live with Subhi.
+1. **MacBook not in tailnet yet** (verified 2026-05-04). Step 1 of pre-reqs blocks everything else. Zero must guide tailscale up live with Subhi.
 
-2. **OAuth quota MAX plan #2**: assumes Antonello has MAX plan #2 dedicated to Subhi. If not, falls back to Subhi's personal Google account → he pays for his own MAX (per `subhi-rbac-permissions.md` "PROPRIO Claude Code MAX subscription"). Antonello to confirm.
+2. **OAuth quota MAX plan #2**: assumes Zero has MAX plan #2 dedicated to Subhi. If not, falls back to Subhi's personal Google account → he pays for his own MAX (per `subhi-rbac-permissions.md` "PROPRIO Claude Code MAX subscription"). Zero to confirm.
 
-3. **NB share `subhi@balizero.com`**: requires Antonello to share NB-1/NB-2/NB-9/NB-OPS via NLM CLI before Day 1. If forgotten, tutor's NB queries return 403.
+3. **NB share `subhi@balizero.com`**: requires Zero to share NB-1/NB-2/NB-9/NB-OPS via NLM CLI before Day 1. If forgotten, tutor's NB queries return 403.
 
-4. **Memory mirror first push** could leak content if regex misses. First-run audit + manual approval required before push. Antonello reviews `_AUDIT.txt`.
+4. **Memory mirror first push** could leak content if regex misses. First-run audit + manual approval required before push. Zero reviews `_AUDIT.txt`.
 
 5. **GitHub PAT rotation**: PAT in `settings.json` is plaintext (Claude doesn't yet support keychain-backed PAT in MCP env). Mitigation: PAT scoped narrowly + rotate every 90 days + Subhi `.gitignore` includes `settings.json`. Trade-off accepted.
 
 6. **Tailscale ACL**: default-allow tailnet means Subhi could `ssh nuzantara` (Pro) if Pro has SSH server enabled. Pro `Remote Login` is currently OFF (verified 2026-05-04 — but verify before Day 1). If ON, Tailscale ACL must restrict `subhi@` group.
 
-7. **Sub-agent prompt drift**: tutor prompt is large. Risk of hallucination on edge cases (e.g., "is `apps/cell/` red or yellow?"). Mitigation: weekly Antonello review of session logs for first 30 days.
+7. **Sub-agent prompt drift**: tutor prompt is large. Risk of hallucination on edge cases (e.g., "is `apps/cell/` red or yellow?"). Mitigation: weekly Zero review of session logs for first 30 days.
 
 8. **Copilot coexistence**: Subhi uses Copilot in VSCode. Both tools may suggest competing edits. No technical conflict, but UX confusion possible. Mitigation: tutor docs mention Copilot is fine for inline completion, but ROSSO-bound code should not be Copilot-accepted blindly.
 
 ## 16. Implementation order
 
-1. **Phase 0 — Pre-reqs** (Antonello, ~25 min): GitHub PAT, repo create, NLM share, tailnet check, ACL.
+1. **Phase 0 — Pre-reqs** (Zero, ~25 min): GitHub PAT, repo create, NLM share, tailnet check, ACL.
 2. **Phase 1 — Memory mirror script** (~1h): `subhi-memory-mirror.sh` + LaunchAgent + first-run audit.
 3. **Phase 2 — Repo skeleton** (~2h): `nuzantara-subhi` repo with all `.claude/`, `docs/onboarding/`, `exercises/day1-7`, `CLAUDE.md`.
 4. **Phase 3 — Sub-agent + hooks** (~1.5h): `zantara-onboarding.md`, `subhi-bash-guard.sh`, `subhi-session-log.sh`, `settings.json`.
 5. **Phase 4 — Install script** (~1h): `subhi-tutor-install.sh` + gist hosting.
-6. **Phase 5 — Dry-run on Antonello Mini** (~30min): test full flow on a clean macOS account before Subhi sees it.
+6. **Phase 5 — Dry-run on Zero Mini** (~30min): test full flow on a clean macOS account before Subhi sees it.
 7. **Phase 6 — Day 1 live setup** (90 min, with Subhi).
 
-**Total Antonello time pre-Day-1:** ~6 hours.
+**Total Zero time pre-Day-1:** ~6 hours.
 **Total Subhi time Day 1:** 90 min.
 
 ## 17. Success criteria
@@ -508,26 +508,26 @@ After 30 days:
 
 ## 18. Decisions log
 
-| #   | Decision                                                     | Rationale                                                                                         | Date       |
-| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | Approach 1 (Local + Git sync)                                | Multi-device handled by Git pull, no cloud cost                                                   | 2026-05-04 |
-| 2   | Single sub-agent (not 5 split)                               | Cognitive overhead, 90-day scope                                                                  | 2026-05-04 |
-| 3   | Model `sonnet` not `opus`                                    | Quota saving, sufficient for Q&A                                                                  | 2026-05-04 |
-| 4   | Tools include Edit/Write                                     | Subhi is Builder track, needs autonomy                                                            | 2026-05-04 |
-| 5   | NB read-only full access                                     | Ground-truth value > minimal RBAC                                                                 | 2026-05-04 |
-| 6   | Bahasa Indonesia hardcoded output                            | Subhi native, no auto-detect drift                                                                | 2026-05-04 |
-| 7   | Memory: tutto eccetto cartella `Subhi/`                      | Subhi sees other team memos but not own assessment                                                | 2026-05-04 |
-| 8   | Repo separato `nuzantara-subhi` (not branch)                 | RBAC cleaner                                                                                      | 2026-05-04 |
-| 9   | Memory mirror first push manual approval, then cron          | Safety net                                                                                        | 2026-05-04 |
-| 10  | Exercises mapped to 60-day mission deliverables              | Ground exercises in real work, not toy tasks                                                      | 2026-05-04 |
-| 11  | Renamed sub-agent: `bali-zero-tutor` → `zantara-onboarding`  | Antonello directive: tie-in to Zantara brand, warmer name                                         | 2026-05-04 |
-| 12  | Tutor rebalanced: 60% teacher / 30% RBAC enforcer / 10% peer | Antonello directive: Subhi must "talk with Claude and have everything explained" — not be policed | 2026-05-04 |
+| #   | Decision                                                     | Rationale                                                                                    | Date       |
+| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Approach 1 (Local + Git sync)                                | Multi-device handled by Git pull, no cloud cost                                              | 2026-05-04 |
+| 2   | Single sub-agent (not 5 split)                               | Cognitive overhead, 90-day scope                                                             | 2026-05-04 |
+| 3   | Model `sonnet` not `opus`                                    | Quota saving, sufficient for Q&A                                                             | 2026-05-04 |
+| 4   | Tools include Edit/Write                                     | Subhi is Builder track, needs autonomy                                                       | 2026-05-04 |
+| 5   | NB read-only full access                                     | Ground-truth value > minimal RBAC                                                            | 2026-05-04 |
+| 6   | Bahasa Indonesia hardcoded output                            | Subhi native, no auto-detect drift                                                           | 2026-05-04 |
+| 7   | Memory: tutto eccetto cartella `Subhi/`                      | Subhi sees other team memos but not own assessment                                           | 2026-05-04 |
+| 8   | Repo separato `nuzantara-subhi` (not branch)                 | RBAC cleaner                                                                                 | 2026-05-04 |
+| 9   | Memory mirror first push manual approval, then cron          | Safety net                                                                                   | 2026-05-04 |
+| 10  | Exercises mapped to 60-day mission deliverables              | Ground exercises in real work, not toy tasks                                                 | 2026-05-04 |
+| 11  | Renamed sub-agent: `bali-zero-tutor` → `zantara-onboarding`  | Zero directive: tie-in to Zantara brand, warmer name                                         | 2026-05-04 |
+| 12  | Tutor rebalanced: 60% teacher / 30% RBAC enforcer / 10% peer | Zero directive: Subhi must "talk with Claude and have everything explained" — not be policed | 2026-05-04 |
 
 ---
 
 ## 19. Conversational continuity layer
 
-**Driver (Antonello, 2026-05-04):** _"voglio che Subhi possa parlare con te
+**Driver (Zero, 2026-05-04):** _"voglio che Subhi possa parlare con te
 e tu gli spieghi tutto"_ — the tutor must feel like a partner that
 remembers prior conversations, explains the system at depth, and only
 enforces RBAC when actually needed (not as primary register).
@@ -539,11 +539,11 @@ semantics:
 
 | Layer                         | Path                                       | Refresh                         | What it holds                                                                                                |
 | ----------------------------- | ------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Project memory mirror**     | `.claude/memory-mirror/`                   | Daily 04:00 WITA cron           | Antonello's full memory minus `Subhi/` folder — static system knowledge                                      |
+| **Project memory mirror**     | `.claude/memory-mirror/`                   | Daily 04:00 WITA cron           | Zero's full memory minus `Subhi/` folder — static system knowledge                                           |
 | **Subhi conversation memory** | `~/.claude/projects/<encoded-cwd>/memory/` | Per-session, native Claude Code | Subhi's own past sessions: questions asked, answers given, patterns                                          |
 | **Subhi tutor notes**         | `.claude/memory-mirror-subhi/`             | Stop hook on each tutor exit    | Curated facts extracted from sessions: "Subhi understood X on day N", "Confused about Y", "Working on PR #Z" |
 
-The first is push-from-Antonello (system knowledge). The second is native
+The first is push-from-Zero (system knowledge). The second is native
 Claude Code memory (conversational). The third is **new** — generated by
 the Stop hook scanning the session and writing 1-3 line summaries.
 

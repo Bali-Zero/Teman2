@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-07
 domain: marketing
 client_case: none
@@ -105,7 +106,7 @@ vs Satori being faster but flexbox-only): [vercel/satori](https://github.com/ver
 **Recommendation (Dimension 1): Playwright-Python, headless Chromium.**
 
 - Why not Satori: this brand is CSS-variable-native and the *entire premise* of this work order is
-  "infinite layout combinations" — which Antonello's own brief and the brand docs implement with CSS
+  "infinite layout combinations" — which Zero's own brief and the brand docs implement with CSS
   Grid. Satori's flexbox-only + no-`var()` model would force throwing away `_base.css` and every
   `var(--token)` reference. The speed win (Satori ~tens of ms vs Playwright ~1 s/slide) is irrelevant
   for a 7–11-slide carousel rendered on operator demand, not at web scale.
@@ -246,7 +247,7 @@ playing with the value of grid-template-areas"*
   per-layout in `tokens.json layout_defaults`. Extend the same idea to `data-layout` + optional
   `data-density` modifiers rather than ad-hoc inline CSS.
 
-This maps the four families Antonello already named (swiss-grid-asymmetry, stat-card-hero,
+This maps the four families Zero already named (swiss-grid-asymmetry, stat-card-hero,
 thin-red-rule-divider, monospace-evidence-block) plus the existing `.md` families (cover-photo,
 dark-status-list, evidence-carved, statement-bomb, qa-dialogue, timeline-pinboard, elegant-close)
 onto a single grid. **Recommendation:** migrate the per-family `.md` skeletons (which today each
@@ -497,7 +498,7 @@ the renderer just has to make it *easy to obey and hard to violate*.
    downscale as an option). Persist with the existing working-dir convention (heroes + html + png
    co-located), which also gives the operator a re-renderable artifact.
 9. **Operator loop:** because rendering is ~1 s/slide and deterministic, the
-   "anteprima → dimmi cosa cambiare → re-render in 2s" loop Antonello wants is native — expose
+   "anteprima → dimmi cosa cambiare → re-render in 2s" loop Zero wants is native — expose
    per-slide knobs as tokens/attributes (`data-layout`, `--focal`, `heading_color`, `data-density`)
    so changes are declarative, never hand-edited CSS.
 10. **Law 5:** renderer terminates at PNG (status `rendered`); **no Instagram/Graph publish call.**

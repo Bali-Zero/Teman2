@@ -113,6 +113,7 @@ ln -sf /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv apps/backend-ra
 ### Phase 3 — TDD
 
 Write the tests FIRST in:
+
 - `apps/backend-rag/backend/tests/app/routers/test_health_startup_failed.py` (3 tests minimum)
 - `apps/cell/cell/tests/test_pulse_classify.py` (3 tests minimum)
 
@@ -263,11 +264,13 @@ Next: P0-1 can start (now unblocked).
 ## Autonomy boundary
 
 This session operates under AUTONOMOUS_OPS L2. You CAN:
+
 - Open PR, gh pr merge --auto, watch fly-deploy
 - Telegram notify on success/failure (hotfix-notify.sh wired)
 - Save MOS memory autonomously
 
-You MUST ASK Antonello before:
+You MUST ASK Zero before:
+
 - Force push, force-with-lease (any branch)
 - Reverting an already-merged PR
 - Editing off-limits files

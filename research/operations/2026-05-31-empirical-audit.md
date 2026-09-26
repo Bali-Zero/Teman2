@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-31
 domain: operations
 client_case: false
@@ -131,7 +132,7 @@ as a _final decision_: once a fresh worktree off `origin/main` stayed pristine t
 the same window, the sibling-race precondition no longer applied and the contract's
 mandate to ship SAFE fixes took over.
 
-## Fixes that wait for Antonello (strategic / out-of-scope)
+## Fixes that wait for Zero (strategic / out-of-scope)
 
 1. **W38 — `backend_rag_v2` has `rolsuper=t`.** Demotion spec drafted; **explicitly
    out of L2** (PENDING APPROVAL). Do not execute.

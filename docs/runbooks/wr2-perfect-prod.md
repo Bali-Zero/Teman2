@@ -19,11 +19,11 @@ WR2 è semi-batch (1 carosello/giorno è normale). Giallo su "drafts last 24h" n
 
 `TELEGRAM_PROBE_CHAT_ID` o `TELEGRAM_OWNER_CHAT_ID` (fallback):
 
-| Alert                                 | Significato                                | Azione                             |
-| ------------------------------------- | ------------------------------------------ | ---------------------------------- |
-| `🔴 wr2 e2e probe FAILED rc=N`        | Probe sintetico ha fallito una transizione | Vedi §3                            |
-| `🔴 wr2 supervisor down`              | Daemon orchestratore morto                 | Vedi §4                            |
-| `⚠️ canva-renderer rejected N drafts` | Render fallito ripetutamente               | Antonello — cicatrix template scar |
+| Alert                                 | Significato                                | Azione                        |
+| ------------------------------------- | ------------------------------------------ | ----------------------------- |
+| `🔴 wr2 e2e probe FAILED rc=N`        | Probe sintetico ha fallito una transizione | Vedi §3                       |
+| `🔴 wr2 supervisor down`              | Daemon orchestratore morto                 | Vedi §4                       |
+| `⚠️ canva-renderer rejected N drafts` | Render fallito ripetutamente               | Zero — cicatrix template scar |
 
 ## 3. Fail-mode "wr2 e2e probe FAILED"
 
@@ -35,15 +35,15 @@ grep "hop[1-6]" ~/logs/wr2-probe-cron.log | tail -10
 | Hop | Causa probabile                                                 | Azione                                                                               |
 | --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | 1   | DB pool non disponibile / migration 187 non applicata           | Verifica `psql ... -c "SELECT 1"` + `\d intel_items`                                 |
-| 2   | `war_room_drafts` table mancante / status enum drift            | Controlla migration recente — Antonello                                              |
-| 3   | `patch_json` schema cambiato — colonna `drafts_json` rinominata | Antonello — repository.py changelog                                                  |
+| 2   | `war_room_drafts` table mancante / status enum drift            | Controlla migration recente — Zero                                                   |
+| 3   | `patch_json` schema cambiato — colonna `drafts_json` rinominata | Zero — repository.py changelog                                                       |
 | 4   | Critic rubric values forzati < 0.85 (test bug, non prod)        | Probe script bug — non bloccante per produzione                                      |
 | 5   | Non può fallire (just a log line)                               | N/A                                                                                  |
 | 6   | Probe lasciato dangling                                         | Cleanup: `psql -c "DELETE FROM war_room_drafts WHERE topic LIKE '[PROBE-SANDBOX-%'"` |
 
 ## 4. Supervisor down
 
-Antonello-only.
+Zero-only.
 
 ```bash
 # Verifica WR2 supervisor

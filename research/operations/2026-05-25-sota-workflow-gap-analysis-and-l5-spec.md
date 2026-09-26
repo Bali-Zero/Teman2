@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-25
 domain: operations
 client_case: nuzantara-internal
@@ -93,7 +94,7 @@ Quando Claude Code dispatcha un sub-agent via `Agent(subagent_type=X)`, il sub-a
 
 L1-L4 coprono **isolation + merge gates**. Mancano fasi del lifecycle:
 
-| Fase richiesta da Antonello                                  | L1-L4 coverage                                            | Gap                                                                                             |
+| Fase richiesta da Zero                                  | L1-L4 coverage                                            | Gap                                                                                             |
 | ------------------------------------------------------------ | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | 1. Studio (read existing + memory + cicatrix)                | ❌                                                        | Manca skill `session-study` con checklist (mem recent + cicatrix grep + INDEX.md scan)          |
 | 2. Pianificazione (Plan tool + 4-LLM panel se architectural) | ⚠️ parziale (CLAUDE.md menziona Federation Orchestrator)  | Manca trigger automatico 4-LLM panel su `architectural=true` lane                               |
@@ -268,7 +269,7 @@ L5.8 (reflexion)   ← BLOCKED BY: L5.5 (need metric data)
 
 **Conclusione**: merge dei 4 PR draft L1-L4 è precondizione per tutto il resto. **Senza merge, niente di L5 ha senso**.
 
-## 5. Raccomandazione operativa per Antonello
+## 5. Raccomandazione operativa per Zero
 
 ### Step 1 — Review + merge dei 4 PR SOTA draft (priorità P0, 30min)
 
@@ -298,10 +299,10 @@ Una settimana dopo L5.1 enforcement. Permette di osservare comportamento Claude 
 | ----------------------------- | ------ | -------------------------------------------------------------- |
 | Cloud LLM                     | $0     | Tutto Claude OAuth MAX + Gemini Ultra + DeepSeek $0.01/section |
 | Wall-time L5.1 implementativo | ~2h    | Single Claude session in worktree dedicato                     |
-| Wall-time Antonello           | ~30min | Review + sign-off 4 PR draft                                   |
+| Wall-time Zero           | ~30min | Review + sign-off 4 PR draft                                   |
 | Risk                          | BASSO  | Tutto reversible via kill-switch + rollback script             |
 
-## 7. Open questions per Antonello
+## 7. Open questions per Zero
 
 1. **Accetto la dependency-chain**: nessun L5 può partire prima di L1-L4 mergiati. Conferma?
 2. **Auto-merge whitelist** in L3 include `docs/auto-sync-*` + `dependabot/*` + `chore/fmt-*`. Vuoi aggiungere/togliere lane?

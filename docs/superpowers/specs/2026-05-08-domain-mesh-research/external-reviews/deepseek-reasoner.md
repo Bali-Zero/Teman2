@@ -1,6 +1,6 @@
 # Domain Mesh Autonomic — Critical Review
 
-**Reviewer framing:** Antonello runs a real business (Bali Zero) with daily client needs. Every abstraction that doesn’t serve that business in the next 3 months is a liability. I will evaluate each part against that time-to-value test.
+**Reviewer framing:** Zero runs a real business (Bali Zero) with daily client needs. Every abstraction that doesn’t serve that business in the next 3 months is a liability. I will evaluate each part against that time-to-value test.
 
 ---
 
@@ -14,7 +14,7 @@ The lifecycle is a well-articulated _observation_ of how any NB _should_ develop
 
 - **Nasce (Phase 1):** No single human can curate a seed set of 10–50 sources for OSINT that covers “news + curiosities about authorities” without overwhelming noise. The design requires `genesis.yaml` with boundary statements – but OSINT feeds are inherently unbounded (who decides what “authority curio” is?).
 - **Cresce (Phase 2):** Auto-ingest from cron-fed scrapers is fine, but promotion to AUTHORITY makes no sense for OSINT: there is no “law” or “curated ground truth” in OSINT. Yet the design forces every domain to have the same tier matrix.
-- **Cosciente (Phase 4):** Mitochondrial Value Monitor tracks queries-per-source. For OSINT, the value is in serendipity, not query volume. A low-query OSINT NB might be _more_ valuable than a high-query one (e.g., a rare but critical lead). The monitor would flag it as senescent and Antonello would waste time investigating.
+- **Cosciente (Phase 4):** Mitochondrial Value Monitor tracks queries-per-source. For OSINT, the value is in serendipity, not query volume. A low-query OSINT NB might be _more_ valuable than a high-query one (e.g., a rare but critical lead). The monitor would flag it as senescent and Zero would waste time investigating.
 - **Canalizza (Phase 5):** “Skill graduation” from a workbench NB to a permanent Claude skill – OSINT outputs are too fluid to ever graduate.
 
 **Concrete evidence:** The design doc (lines ~110–130, head) states that each domain declares which growth modalities it accepts. The trust tier matrix (line ~170) says AUTHORITY gets “auto-ingest: NO (manual + promotion gated)”. But OSINT _must_ auto-ingest to stay current – forcing it into AUTHORITY would either starve it of data or create a manual bottleneck that kills the domain.
@@ -27,7 +27,7 @@ The lifecycle is a well-articulated _observation_ of how any NB _should_ develop
 
 The tiers look good on paper because they map to trustworthiness of sources. The boundary is _cosmetic_ for the real-world data flow in **NB-3 Company Setup**.
 
-**Concrete example:** A new regulation (e.g., Permendag 26/2021) is published. It starts as an INTEL source (scraped from JDIHN). The design says “Only tier ≤ 2 can trigger promotion; tier 4-5 stays in INTEL”. But Permendag is a **tier-1** source (government law). So the design allows promotion to AUTHORITY. The promotion requires human approval (owner Adit). But Adit is a human with limited time. What happens if Adit doesn’t review for 2 weeks? The INTEL copy sits in NB-INTEL-Regulation but NB-3 Company Setup (AUTHORITY) still has the _old_ regulation. The system has no _automatic_ propagation of tier-1 sources to AUTHORITY – the trust tier matrix says AUTHORITY can only update via human approval. So the INTEL tier becomes a staging area that creates **awareness** but not **action**. The business impact: Antonello gives a client outdated advice.
+**Concrete example:** A new regulation (e.g., Permendag 26/2021) is published. It starts as an INTEL source (scraped from JDIHN). The design says “Only tier ≤ 2 can trigger promotion; tier 4-5 stays in INTEL”. But Permendag is a **tier-1** source (government law). So the design allows promotion to AUTHORITY. The promotion requires human approval (owner Adit). But Adit is a human with limited time. What happens if Adit doesn’t review for 2 weeks? The INTEL copy sits in NB-INTEL-Regulation but NB-3 Company Setup (AUTHORITY) still has the _old_ regulation. The system has no _automatic_ propagation of tier-1 sources to AUTHORITY – the trust tier matrix says AUTHORITY can only update via human approval. So the INTEL tier becomes a staging area that creates **awareness** but not **action**. The business impact: Zero gives a client outdated advice.
 
 **Boundary unclear:** The `genesis.yaml` (line ~60) says `ingestion_policy: auto_ingest: false; promotion_from: [NB-INTEL-Regulation]`. But “promotion” is not defined as a system action – it’s a manual step. If the system cannot auto-promote a verified tier-1 source, the AUTHORITY tier is just a “manual curation” flag, not an active guard. The real difference is _who touches the data_: human vs cron. That’s a domain of responsibility, not a trust level.
 
@@ -45,9 +45,9 @@ The tiers look good on paper because they map to trustworthiness of sources. The
 | **Mem0**                 | Python package, moderate.                                                                                                           | Medium – memory profiles, but same can be done with SQLite + embedding.                  |
 | **Anthropic Memory MCP** | Requires Claude API key (already capped). MCP server maintenance.                                                                   | Low – adds an API dependency for what local SQLite can do.                               |
 
-The design doc (line ~20) says “Federation via Wikibase + Mem0 + Anthropic Memory MCP (Phase 1)”. The plan (head ~25) says “Wikibase self-host (deferred to Phase 1)” – which means Phase 0 already punted on it. But Phase 1 is supposed to add federation. Antonello will spend weeks setting up Wikibase, then maintaining it, while client revenue depends on having correct tax tables.
+The design doc (line ~20) says “Federation via Wikibase + Mem0 + Anthropic Memory MCP (Phase 1)”. The plan (head ~25) says “Wikibase self-host (deferred to Phase 1)” – which means Phase 0 already punted on it. But Phase 1 is supposed to add federation. Zero will spend weeks setting up Wikibase, then maintaining it, while client revenue depends on having correct tax tables.
 
-**Key risk:** The design treats federation as a _three-legged stool_ where each component has a distinct role (Wikibase = shared KG, Mem0 = short-term memory, Anthropic MCP = long-term context). For solo-dev, a simple **SQLite triple store** + a **single embedding cache** handles all three with <100 lines of SQL. The only reason to use Wikibase is if Antonello wants to publish data to Wikidata or integrate with external SPARQL queries – the design doesn’t justify this.
+**Key risk:** The design treats federation as a _three-legged stool_ where each component has a distinct role (Wikibase = shared KG, Mem0 = short-term memory, Anthropic MCP = long-term context). For solo-dev, a simple **SQLite triple store** + a **single embedding cache** handles all three with <100 lines of SQL. The only reason to use Wikibase is if Zero wants to publish data to Wikidata or integrate with external SPARQL queries – the design doesn’t justify this.
 
 **Verdict:** Replace with SQLite + pgvector/paiss (or just SQLite trigram indexing). Defer Wikibase until Phase 3, if ever. Anthropic Memory MCP adds zero value unless you ship a Claude skill that needs cross-session memory – that’s Phase 4 at best. The 3-tier KG creates unnecessary coupling.
 
@@ -129,7 +129,7 @@ The inventory JSON (provided) has 17 entries. Notable potential issues:
 
 **Flaw:** No validation in test that these URLs actually resolve. The test `test_load_inventory_returns_seed_entries` only checks that the inventory has entries, not that the URLs are correct. A typo (`imigrasi` vs `imigrasu`) would be caught only at runtime.
 
-**Recommendation:** Add a small integration test that pings the first 3 portals and asserts they return 200 or known error (like cloudflare). Use a `pytest.mark.slow` decorator. Also add a script that prints the status table monthly, which Antonello will actually look at.
+**Recommendation:** Add a small integration test that pings the first 3 portals and asserts they return 200 or known error (like cloudflare). Use a `pytest.mark.slow` decorator. Also add a script that prints the status table monthly, which Zero will actually look at.
 
 ---
 
@@ -143,9 +143,9 @@ The inventory JSON (provided) has 17 entries. Notable potential issues:
 
 `CalibratedClassifierCV(cv=1)` is invalid because `cv` must be at least 2 (stratified cross-validation requires at least 2 folds). This will raise `ValueError: k-fold cross-validation requires at least one train/test split by setting n_splits=2 or more`.
 
-The plan (head, Step 3 of Task 8) describes the same logic. So the code as released will crash if Antonello has only 3 papers tagged. The test for this edge case is missing (the test suite only tests happy path with mocked data that likely uses enough papers to hit cv=3).
+The plan (head, Step 3 of Task 8) describes the same logic. So the code as released will crash if Zero has only 3 papers tagged. The test for this edge case is missing (the test suite only tests happy path with mocked data that likely uses enough papers to hit cv=3).
 
-**Flaw:** Untested edge case that will bite Antonello early (since 3 papers is plausible for a solo researcher). The `or 2` trick is supposed to guard against `len(papers)//2 = 0`, but it doesn’t guard against `len(papers)//2 = 1`.
+**Flaw:** Untested edge case that will bite Zero early (since 3 papers is plausible for a solo researcher). The `or 2` trick is supposed to guard against `len(papers)//2 = 0`, but it doesn’t guard against `len(papers)//2 = 1`.
 
 **Recommendation:** Change logic to ensure minimum cv=2:
 
@@ -203,7 +203,7 @@ No enforcement exists. The design doc (head, ~lines 270-290) mentions “Strict 
 - **Data retention** – no mechanism to automatically delete data after N days (the design assumes data is “public”, but PDP applies to processing of personal data, not just public sourcing).
 - **Consent/legitimate interest** – no logged legal basis for each OSINT source.
 
-The Nexus OSINT NB could scrape a KPK press release containing a suspect’s photo and address. If that data is later used in a Telegram alert, Bali Zero could be liable for processing personal data without compliance. The “manual deep-dive” is a human process that will be skipped when Antonello is busy. The system should enforce: (1) auto-tag all OSINT source entities as `PDP_SENSITIVE`, (2) block them from `#osint` Telegram channel unless explicitly approved, (3) log a compliance decision with owner name.
+The Nexus OSINT NB could scrape a KPK press release containing a suspect’s photo and address. If that data is later used in a Telegram alert, Bali Zero could be liable for processing personal data without compliance. The “manual deep-dive” is a human process that will be skipped when Zero is busy. The system should enforce: (1) auto-tag all OSINT source entities as `PDP_SENSITIVE`, (2) block them from `#osint` Telegram channel unless explicitly approved, (3) log a compliance decision with owner name.
 
 **Verdict:** The phrase “Strict + manual deep-dive” is a policy statement, not an implementation. Without code-level enforcement, it provides zero legal protection.
 
@@ -235,9 +235,9 @@ Hunchly is a browser extension for capturing web pages with chain-of-custody has
 
 The €30k+/yr estimate appears to be a strawman. Let’s calculate:
 
-- Anthropic Claude Opus + Sonnet via API (pay-as-you-go): if Antonello were doing 50 automated queries per day per domain × 6 domains = 300 queries/day. Each query maybe 1k input + 1k output tokens. Opus ~$15/1M in, $75/1M out → 300 queries/day at ~$0.09/query → $27/day → ~€9,000/year. If he uses Sonnet (~$3/1M in, $15/1M out) → ~$1,800/year. The €30k figure assumes heavy use of Opus with large context windows. It’s plausible as an upper bound but not an average.
+- Anthropic Claude Opus + Sonnet via API (pay-as-you-go): if Zero were doing 50 automated queries per day per domain × 6 domains = 300 queries/day. Each query maybe 1k input + 1k output tokens. Opus ~$15/1M in, $75/1M out → 300 queries/day at ~$0.09/query → $27/day → ~~€9,000/year. If he uses Sonnet (~~$3/1M in, $15/1M out) → ~$1,800/year. The €30k figure assumes heavy use of Opus with large context windows. It’s plausible as an upper bound but not an average.
 
-**The real risk:** The estimate is used to justify “zero new Anthropic API key” (a HARD RULE). But the system still relies on Claude OAuth (Max 3x) – that means Antonello’s own Claude Pro subscription is used for the “Cosciente” explainability queries, “Auto-correct” conflict detection, and “Canalizza” content generation. These queries eat into the 3x rate limit. If the system runs unattended cron jobs that trigger Claude queries (e.g., nightly self-report generation), Antonello may hit rate limits during business hours when he needs Claude for client work. The cost model doesn’t account for the **opportunity cost** of rate-limited Claude access.
+**The real risk:** The estimate is used to justify “zero new Anthropic API key” (a HARD RULE). But the system still relies on Claude OAuth (Max 3x) – that means Zero’s own Claude Pro subscription is used for the “Cosciente” explainability queries, “Auto-correct” conflict detection, and “Canalizza” content generation. These queries eat into the 3x rate limit. If the system runs unattended cron jobs that trigger Claude queries (e.g., nightly self-report generation), Zero may hit rate limits during business hours when he needs Claude for client work. The cost model doesn’t account for the **opportunity cost** of rate-limited Claude access.
 
 **Verdict:** The cost comparison is directional but doesn’t model the constraint. The real limitation is not €30k/yr but the 3x cap, which could degrade client service. The design should specify how many Claude calls per day the system is budgeted and enforce a quota.
 

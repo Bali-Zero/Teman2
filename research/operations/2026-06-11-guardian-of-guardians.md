@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-11
 domain: compliance
 client_case: internal — guardian-of-guardians armament audit (W64/W69/W70/W71 family)
@@ -89,7 +90,7 @@ informational/UNKNOWN items).
 10. **P3 — daily-gsc-indexing-sweep (4.5)**: lint-broken plist dies at next reboot (silent), and Pro+Mini active-active double-submits.
 11. **P3 — post-publish-poller / automap-watchdog dead after login (4.6)**; **WR2 orphan watchdog exit 74 + 3 dead plists on disk (4.4)**; **codex embedded dead MCP token (1.3)** — hygiene tier.
 
-## Escalation queue — exact commands, **NOT RUN**, Antonello decides
+## Escalation queue — exact commands, **NOT RUN**, Zero decides
 
 ```bash
 # E1 (P1) — stop the indexing-sweep crash-loop (pick A: kill the redundant twin)
@@ -125,7 +126,7 @@ gh api -X POST repos/Balizero1987/Teman2/branches/main/protection/required_statu
 # E13 (P3) — codex: remove/reauth the dead embedded MCP server token (invalid_grant) to kill panel hangs
 ```
 
-## Execution log — Antonello approved 1-13 (2026-06-11 ~16:30-17:00 WITA)
+## Execution log — Zero approved 1-13 (2026-06-11 ~16:30-17:00 WITA)
 
 All 13 escalations executed same-day after explicit operator approval ("1-13 sì, owner GSC = Mini"):
 

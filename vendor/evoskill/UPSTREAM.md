@@ -8,7 +8,7 @@
 | Upstream tag         | `v1.1.0`                                                                                                                                                                                |
 | Upstream commit SHA  | `5ae91616b36ebbe2ea7ee90e8a66393aa8d5e8e4`                                                                                                                                              |
 | Vendored date        | 2026-05-18                                                                                                                                                                              |
-| Vendored by          | Antonello Siano (`zero@balizero.com`)                                                                                                                                                   |
+| Vendored by          | Zero (`zero@balizero.com`)                                                                                                                                                              |
 | License              | Apache 2.0 (kept verbatim — see `LICENSE`)                                                                                                                                              |
 | Reason for vendoring | CLAUDE.md hard rule: no paid Anthropic API ever; physical strip of `claude-agent-sdk` + `anthropic` + `openai-codex-sdk`. Upstream is `pip install`-ready but ships Claude SDK in deps. |
 
@@ -34,12 +34,12 @@
 **Rationale:**
 
 - `claude-agent-sdk` — pulls in `anthropic` Python SDK transitively. CLAUDE.md
-  hard rule: no `ANTHROPIC_API_KEY` ever (Antonello holds 2 Claude MAX x20
+  hard rule: no `ANTHROPIC_API_KEY` ever (Zero holds 2 Claude MAX x20
   OAuth plans — per-token paid API would duplicate flat fee).
 - `openai-codex-sdk` — used by upstream `src/harness/codex/` to drive
   ChatGPT Pro Codex CLI. Autonomous loops (this is exactly our use case)
   trigger Cloudflare protections + 500-msg/3h quota cap, which would lock
-  Antonello's daily Pro access. v2 Codex panel finding #2 HIGH. We use
+  Zero's daily Pro access. v2 Codex panel finding #2 HIGH. We use
   DeepSeek V4 Pro API (~$0.10-0.30/run) as cheap insurance instead.
 - `openhands-tools` — pulls `browser-use>=0.8.0` which pulls
   `anthropic 0.94.0`. Even though our AST strip of `claude-agent-sdk`
@@ -249,12 +249,12 @@ metadata (then hit the stub raise on reload).
   retry policy 30s→60s→120s on transient errors (5xx, 429, 408,
   network timeouts), non-retryable raise on 4xx. `parse_response()`
   unwraps `choices[0].message.content`, strips ```json fences, JSON-
-decodes, validates against the Pydantic `response_model`, and
-builds AgentTrace-compatible fields including `total_cost_usd`computed from`usage.{prompt_cache_hit_tokens, prompt_cache_miss_tokens,
-  completion_tokens}`× public pricing snapshot (deepseek-v4-pro:
-$0.07/M cache-hit, $0.27/M cache-miss, $1.10/M output as of
-2026-05). RuntimeError raised if`DEEPSEEK_API_KEY`env var missing.
-Verified by 21 unit tests in`scripts/test_deepseek_executor.py`
+  decodes, validates against the Pydantic `response_model`, and
+  builds AgentTrace-compatible fields including `total_cost_usd`computed from`usage.{prompt_cache_hit_tokens, prompt_cache_miss_tokens,
+completion_tokens}`× public pricing snapshot (deepseek-v4-pro:
+  $0.07/M cache-hit, $0.27/M cache-miss, $1.10/M output as of
+  2026-05). RuntimeError raised if`DEEPSEEK_API_KEY`env var missing.
+  Verified by 21 unit tests in`scripts/test_deepseek_executor.py`
   (happy path, auth, 401 non-retry, 500 retry, 429 retry, 400 non-
   retry, JSON code-fence stripping, Pydantic ValidationError capture,
   empty messages fallback, cost math, fuzzy model prefix match,

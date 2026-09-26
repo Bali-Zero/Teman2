@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # Bali Zero WA Corpus — Empirical System State 2026-05-25
 
 > Generated for tri-LLM panel context enrichment.
@@ -35,7 +38,7 @@
  Sahira BZ             | 6574
  ~ Amanda Bali Zero    | 5023
  Ari Bali Zero         | 4572
- Antonello ~ Bali Zero | 3078
+ Zero ~ Bali Zero | 3078
  Aditya Morpheus       | 2638
  Krisna - BZ           | 1127
  Suryadi BZ            | 1021

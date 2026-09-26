@@ -9,6 +9,7 @@
 ## Reading guide
 
 For each surface with recovery gap below:
+
 - **Severity:** P0 (crash without recovery now) | P1 (degrade without alert) | P2 (manual recovery)
 - **Confidence:** High (4-5 LLM convergence) | Medium (2-3 LLM) | Low (1 LLM only)
 - **Convergence:** which LLMs identified it
@@ -111,6 +112,7 @@ curl -sI http://localhost:8001/health | head -1
 ```
 
 Numbers before/after:
+
 - Before: deterministic startup failure = 100% API down + monitoring green (silent crash)
 - After: deterministic startup failure = 503 from /health → Fly restart attempt → Telegram alert via deploy-failure-alert OR Sentinel circuit breaker
 
@@ -198,6 +200,7 @@ curl -sI http://localhost:8001/health | head -1
 ```
 
 Numbers before/after:
+
 - Before: deterministic init failure = Fly restart loop = 100% API down
 - After: deterministic init failure = uvicorn bound, /health reports degraded, /api/query 503 — backend serves OTHER routes (channels, /static, etc.)
 
@@ -222,6 +225,7 @@ NB-1 cited the actual code in `backend/services/events/handlers/__init__.py` con
 ### Blast radius
 
 Per NB-1, affected channels:
+
 - `practice.status_changed` (CRM practice updates)
 - `client.changed`
 - `compliance.alert`
@@ -324,6 +328,7 @@ psql ... -c "SELECT COUNT(*) FROM events_outbox WHERE consumed_at IS NULL"
 ```
 
 Before/after:
+
 - Before: 100 events, 30s outage = ~30 events lost (depending on disconnect timing)
 - After: 0 lost — all replayed on reconnect
 
@@ -344,6 +349,7 @@ Before/after:
 ### Failure mode
 
 53 project LaunchAgents (Codex empirical):
+
 - Only **7 (13%)** have `KeepAlive=true`
 - **11 (21%)** have NO `KeepAlive` directive at all
 - **5 (9%)** missing `EnvironmentVariables` (VADEMECUM §11 violation, scar documented)
@@ -352,6 +358,7 @@ Before/after:
 ### Blast radius
 
 Each unmonitored daemon is a single-process SPOF. Critical examples:
+
 - `com.balizero.nlm-bridge` — NLM bridge between Pro and Fly (without it, NB-1..NB-10 pipelines fail silently)
 - `com.balizero.intel.nightly` — daily intel scraper
 - `com.balizero.post-publish-poller` — feeds publisher_worker
@@ -408,18 +415,21 @@ Add to `~/.claude/settings.json`:
 
 ```json
 {
-  "hooks": [{
-    "matcher": "Edit|Write",
-    "matcher_args": ["**/Library/LaunchAgents/*.plist"],
-    "type": "command",
-    "command": "bash ~/Desktop/nuzantara/scripts/lint_launchagents.sh"
-  }]
+  "hooks": [
+    {
+      "matcher": "Edit|Write",
+      "matcher_args": ["**/Library/LaunchAgents/*.plist"],
+      "type": "command",
+      "command": "bash ~/Desktop/nuzantara/scripts/lint_launchagents.sh"
+    }
+  ]
 }
 ```
 
 **Step C: Mass plist patch**
 
 For each violator, add proper directives. Example template patch:
+
 - `com.balizero.intel.nightly`: this is daily-cron — KeepAlive=false, has EnvironmentVariables, logs to ~/logs/
 - `com.balizero.nlm-bridge`: this IS daemon — KeepAlive=true, EnvironmentVariables present, logs to ~/logs/
 
@@ -444,6 +454,7 @@ NEW_PID=$(launchctl list com.cell.organism | jq -r .PID)
 ```
 
 Numbers:
+
 - Before: 7/53 KeepAlive=true (13%)
 - After audit: ~25-30/53 KeepAlive=true (proper daemon classification, the rest are cron-style with KeepAlive=false explicit)
 - Before: 5/53 missing EnvironmentVariables
@@ -538,6 +549,7 @@ gh run view <run-id> --log | grep "Applying migration 141"
 ### Failure mode
 
 Two compounding issues:
+
 1. `dependencies.py` raises `HTTPException` if service missing from `app.state` → fail-fast at request time
 2. Scattered `httpx.AsyncClient(` instantiations leak sockets → eventual FD exhaustion → process crash
 
@@ -657,6 +669,7 @@ curl -s http://localhost:8001/api/query -d '{"q":"x"}' | jq
 ### Failure mode
 
 Two issues:
+
 1. Webhook routers process synchronously. If processing >3s, Meta/Twitter auto-disable webhook after 3 failures in 5 min.
 2. Twitter X CRC handshake broken since 2026-04-03 (already disabled in `logging_config.py`).
 
@@ -989,6 +1002,7 @@ Claude Code, Cowork, OpenClaw all lose 115 tools. Federation launcher restarts (
 ### Fix proposto
 
 Partition into 3 specialized FastMCP processes:
+
 - `nuzantara-mcp-crm` (CRM, clients, conversations, ~50 tools)
 - `nuzantara-mcp-ingestion` (Drive, OCR, ingestion, ~30 tools)
 - `nuzantara-mcp-intel` (Mata Garuda, OSINT, ~35 tools)
@@ -1096,6 +1110,7 @@ def check_token_expiry():
 **Step C: Cell sensor**
 
 Add to Cell PulseLoop `Sensor`:
+
 ```python
 # packages/cell-core/cell_core/sensors/oauth_health.py
 class OAuthExpirySensor(Sensor):
@@ -1161,9 +1176,10 @@ Heartbeat schedule. L2 yes. ~2 hours.
 
 ## Implementation order recommendation
 
-Given autonomy L2 + Antonello not reviewing code, I recommend the following order, optimizing for risk reduction per hour invested:
+Given autonomy L2 + Zero not reviewing code, I recommend the following order, optimizing for risk reduction per hour invested:
 
 **Week 1 (highest impact P0 — start TODAY):**
+
 1. **P0-0 (/health + Cell pulse classify, 1-2h)** — implement BEFORE all others. Without it, every other fix is masked by silent green health.
 2. P0-7 (migration duplicates, 2-4h) — schema integrity, blocks new migrations safely
 3. P0-4 (deploy ordering bug, 30min) — quickest, eliminates a chronic recurring pain
@@ -1171,18 +1187,10 @@ Given autonomy L2 + Antonello not reviewing code, I recommend the following orde
 5. P0-3 (LaunchAgents audit, 3h) — makes ALL local daemons resilient
 6. P0-6 (channels ack-first, 2-3 days) — protects client-facing messages
 
-**Week 2 (foundational):**
-5. P0-2 (EventBus Outbox, 1-3 days) — fixes Symbiosis Law 4 docs-vs-code drift
-6. P0-5 (httpx + dependencies.py, 1-2 days) — eliminates resource leak class
+**Week 2 (foundational):** 5. P0-2 (EventBus Outbox, 1-3 days) — fixes Symbiosis Law 4 docs-vs-code drift 6. P0-5 (httpx + dependencies.py, 1-2 days) — eliminates resource leak class
 
-**Week 3 (P1 cleanup):**
-7. P1-7 (NLM auto-recovery, 4h)
-8. P1-8 (escalations SQLite, 1 day)
-9. P1-10 (i18n lint, 4h)
-10. P1-11 (OAuth tiers, 4h)
+**Week 3 (P1 cleanup):** 7. P1-7 (NLM auto-recovery, 4h) 8. P1-8 (escalations SQLite, 1 day) 9. P1-10 (i18n lint, 4h) 10. P1-11 (OAuth tiers, 4h)
 
-**Week 4+ (P1 architectural + P2):**
-11. P1-9 (MCP partition) — Zero handoff first
-12. P2-12..15 + NB-A..G (cleanup wave)
+**Week 4+ (P1 architectural + P2):** 11. P1-9 (MCP partition) — Zero handoff first 12. P2-12..15 + NB-A..G (cleanup wave)
 
 **Total estimated effort:** ~20-30 working days. Spread over 4-6 weeks at autonomy L2.

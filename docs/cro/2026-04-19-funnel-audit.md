@@ -1,7 +1,7 @@
 # Audit CRO — 4 Funnel Homepage balizero.com
 
 **Data:** 2026-04-19 (file rigenerato 2026-04-19 sera dopo overwrite incidentale; equivalente per dati e findings, possibili variazioni minori di stile vs versione originale)
-**Autore:** Claude Opus 4.7 (consulente growth/CRO/brand) — sessione Antonello
+**Autore:** Claude Opus 4.7 (consulente growth/CRO/brand) — sessione Zero
 **Scope:** Homepage v2 (`apps/mouth/src/app/(marketing)/page.tsx` = balizero.com production), 4 sezioni funnel: visa, kbli, tax, property
 **Commit/SHA scope:** `apps/mouth/src/app/v2/_components/FunnelFeature.tsx`, `HeroBlueprint.tsx`, e landing target `visa.balizero.com`, `tax.balizero.com`, `/kbli`, `/property/eligibility`
 **Companion design (4 app):** `docs/cro/2026-04-19-4-app-engagement-conversion.md`
@@ -315,7 +315,7 @@ CR website attuale = sotto 0.5% (impossibile calcolare esatto senza GA4 sessions
 | 3.2 | SLA garanzia esplicita                               | 3h                       | +8-15%                          | H          | backend SLA already live   | **4°**            |
 | 3.1 | "Filed this month" rotative + onesta su numeri bassi | 6h                       | +10-18%                         | M          | cron daily                 | **5°**            |
 | 4.1 | SEO push 4 articoli high-intent                      | 16h                      | +200-500% traffic 90gg          | M          | war-room pipeline          | **6°**            |
-| 2.1 | Rewrite copy 4 sezioni con X_BRAND_VOICE             | 6h                       | +15-25%                         | M          | review Antonello           | **7°**            |
+| 2.1 | Rewrite copy 4 sezioni con X_BRAND_VOICE             | 6h                       | +15-25%                         | M          | review Zero                | **7°**            |
 | 2.3 | DecisionAid singolo (sostituisce 4 funnel-feature)   | 16h                      | +200-500%                       | MH         | wireframe + content matrix | **8° — pilastro** |
 | 3.3 | Logos clienti enterprise                             | 10h biz dev + 2h dev     | +15-25%                         | H          | consenso 5+ clienti        | **9°**            |
 | 4.2 | WhatsApp UTM + GMB attribution                       | 4h                       | tracking only                   | H          | nessuna                    | **10°**           |
@@ -328,19 +328,19 @@ Il problema **non è il design dei 4 funnel-feature**. Il problema è che **bali
 
 ### What I would ship next 14 days (Mon 21 April → Sun 4 May)
 
-**Mattina lunedì 21 aprile — Antonello + Damar (1 dev-day):**
+**Mattina lunedì 21 aprile — Zero + Damar (1 dev-day):**
 
 1. **Fix bait-and-switch + tracking onClick** (#1.1 + #1.2 + #1.3, 4-5h) — _owner: Damar_. Deploy in giornata. Non richiede approvazione architetturale. Crea fondamenta per ogni A/B successivo. **Done quando:** dopo 24h, `funnel_sessions` ha last_event almeno per 70% delle sessioni create.
 
-2. **Title swap + SLA garanzia esplicita** (#2.2 + #3.2, 4h) — _owner: Antonello copy + Damar deploy_. Deploy entro mercoledì 23. **Done quando:** "Visa Oracle" non esiste più sulla home; banner SLA visibile sotto CTA visa.
+2. **Title swap + SLA garanzia esplicita** (#2.2 + #3.2, 4h) — _owner: Zero copy + Damar deploy_. Deploy entro mercoledì 23. **Done quando:** "Visa Oracle" non esiste più sulla home; banner SLA visibile sotto CTA visa.
 
-**Mercoledì 23 → venerdì 25 aprile — Antonello (writer) + Sahira (review):**
+**Mercoledì 23 → venerdì 25 aprile — Zero (writer) + Sahira (review):**
 
-3. **Scrivere 2 articoli SEO di profondità** (#4.1 parziale, 8h) — _owner: Antonello scrive, war-room pipeline pubblica_. Target query: "KITAS for digital nomad cost 2026", "PT PMA minimum capital reality vs paper". Voce X_BRAND_VOICE rigorosa. **Done quando:** 2 articoli live su balizero.com, linkati dalla home, indicizzati su Google entro 48h.
+3. **Scrivere 2 articoli SEO di profondità** (#4.1 parziale, 8h) — _owner: Zero scrive, war-room pipeline pubblica_. Target query: "KITAS for digital nomad cost 2026", "PT PMA minimum capital reality vs paper". Voce X_BRAND_VOICE rigorosa. **Done quando:** 2 articoli live su balizero.com, linkati dalla home, indicizzati su Google entro 48h.
 
 **Settimana 2 (28 aprile → 4 maggio) — wireframe DecisionAid:**
 
-4. **Wireframe + content matrix DecisionAid** (#2.3 prep, 8h) — _owner: Antonello + Damar_. NON deploy, solo design + spec. Discutere giovedì 1 maggio con Asya per validation business logic (quali sono le 3 domande di qualifica per ognuno dei 4 rami). **Done quando:** doc design pronto + wireframe approvato da Antonello, plan implementazione 2 sprint successivi.
+4. **Wireframe + content matrix DecisionAid** (#2.3 prep, 8h) — _owner: Zero + Damar_. NON deploy, solo design + spec. Discutere giovedì 1 maggio con Asya per validation business logic (quali sono le 3 domande di qualifica per ognuno dei 4 rami). **Done quando:** doc design pronto + wireframe approvato da Zero, plan implementazione 2 sprint successivi.
 
 **Cosa NON fare nei 14 giorni:**
 

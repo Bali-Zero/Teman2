@@ -1,7 +1,10 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # Prompt per sessione Claude Code parallela — C5A Step 1 follow-up
 
 > **Per**: Claude Code session su Pro machine (`nuzantara@Nuzantara`)
-> **Da**: Antonello via Claude Opus 4.7 session 2026-05-26
+> **Da**: Zero via Claude Opus 4.7 session 2026-05-26
 > **Workdir di riferimento**: `/Users/nuzantara/Desktop/nuzantara/` (main branch)
 > **File da modificare**: `research/visa/2026-05-26-c5a-content-creator-deep-research.md` (su branch `docs/visa-c5a-research-2026-05-26`, PR #877 aperto)
 > **Branch handoff**: `git fetch && git checkout docs/visa-c5a-research-2026-05-26 && git pull`
@@ -64,7 +67,7 @@ Il dossier è strutturato in 12 sezioni + 6 appendici (A-F). Devi modificare:
 
 ### TASK 2 — Servizio #2 (§9): costi/requirements REALI, no [SPECULATIVE]
 
-**Trigger**: Antonello ha richiesto chiaro su C5A pricing/requirements, non supposizioni.
+**Trigger**: Zero ha richiesto chiaro su C5A pricing/requirements, non supposizioni.
 
 **3-step execution**:
 
@@ -97,7 +100,7 @@ Il dossier è strutturato in 12 sezioni + 6 appendici (A-F). Devi modificare:
   Terima kasih atas perhatiannya.
 
   Hormat saya,
-  [Antonello Siano - confirm with Antonello before send]
+  [Zero - confirm with Zero before send]
   ```
 - Output: ricevuta PPID + ETA risposta (di solito 10 hari kerja)
 
@@ -140,7 +143,7 @@ Solo dopo le 3 verifiche empiriche. Se almeno 1 di 2.A/2.B/2.C fallisce, mantene
 
 **Trigger**: Appendix A è attualmente vuoto (`NB-2 NON consultato in questo turn`). Va chiuso il gap.
 
-**Pre-condizione**: verifica MCP `notebooklm` connesso via `claude mcp list | grep notebooklm`. Se non connesso, escalate ad Antonello (non procedere blind).
+**Pre-condizione**: verifica MCP `notebooklm` connesso via `claude mcp list | grep notebooklm`. Se non connesso, escalate ad Zero (non procedere blind).
 
 **Tool prefix**: `mcp__notebooklm-mcp__*`
 
@@ -256,7 +259,7 @@ git rev-parse --abbrev-ref HEAD  # deve essere docs/visa-c5a-research-2026-05-26
 git add research/visa/2026-05-26-c5a-content-creator-deep-research.md
 git commit -m "docs(visa): C5A dossier — gossip §6.4 'aumm aumma' + Servizio #2 verified pricing + Appendix A NB-2 queries
 
-3 chirurgical edits post Antonello feedback 2026-05-26:
+3 chirurgical edits post Zero feedback 2026-05-26:
 - §6 Layer GOSSIP: aggiunta sotto-sezione 6.4 con 2 interpretazioni 'zero casi' (I emissioni minime vs II mediation invisible 'aumm aumma'). Tabella simmetrica + caveat operativo no-public-claim.
 - §9 Servizio #2: rimosso [SPECULATIVE pricing], inseriti dati VERIFIED da: telefonata Kantor Imigrasi Denpasar [risposte verbatim] + PPID Kepmen request submitted [ETA] + PP 45/2024 sister visa cluster cross-check.
 - Appendix A: chiuso gap NB-2. Eseguita 1 deep-research query + 7 structured queries strutturate (PNBP, extension pattern, sponsor agency-as-sponsor, Pasal 122 verbatim, eVisa portal, aktivitas dilarang, migrazione C5→C5A). Cross-reference applicato a §3, §9, §11 OQ-1 a OQ-7.
@@ -273,10 +276,10 @@ git push origin docs/visa-c5a-research-2026-05-26
 
 ## Stop conditions / escalation
 
-Escalation ad Antonello via Telegram (`scripts/sentinel_lib/alerter.py` se preferisci, altrimenti scrivi un msg in chat) **prima** di procedere se:
+Escalation ad Zero via Telegram (`scripts/sentinel_lib/alerter.py` se preferisci, altrimenti scrivi un msg in chat) **prima** di procedere se:
 
 1. **Kantor Imigrasi Denpasar non risponde** in 24h → procedi solo con Step 2.B + 2.C, marca PNBP C5A come `[UNVERIFIED — Kantor non risponde, PPID pending]` ma NON [SPECULATIVE]
-2. **PPID Kemenimipas richiede signed letter** → escalate (richiede signature fisica Antonello)
+2. **PPID Kemenimipas richiede signed letter** → escalate (richiede signature fisica Zero)
 3. **NB-2 MCP non connesso** → escalate (non procedere blind con NB query inventate)
 4. **NB-2 risposta divergente** dal dossier corrente in ≥2 facts critici (F1 Kepmen date, F12 Bonnie Blue case, F23 PP 45/2024) → escalate (potrebbe richiedere correzioni più ampie)
 

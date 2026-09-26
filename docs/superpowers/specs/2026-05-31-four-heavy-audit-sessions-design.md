@@ -9,7 +9,7 @@ sources:
   - apps/evaluator/nlm_nb{2..10}_claims.jsonl (~1204 NB ground-truth claims already extracted)
   - apps/backend-rag/data/evaluation/search_quality_golden.json + scripts/evaluate_search_quality.py
   - ~/.claude/agents/{client-case-quote-generator,yield-optimizer,devils-advocate}.md
-author: Claude Opus 4.8 (1M context) + Antonello Siano
+author: Claude Opus 4.8 (1M context) + Zero
 status: approved-design
 ---
 
@@ -18,7 +18,7 @@ status: approved-design
 ## Goal
 
 Consume ~25% weekly Claude MAX quota in a few hours on **4 parallel heavy audit sessions**,
-one per impact axis chosen by Antonello, each producing **empirical truth** about the real
+one per impact axis chosen by Zero, each producing **empirical truth** about the real
 state of the system (numbers measured, not estimated) **plus L2-shipped safe fixes**.
 
 Form chosen: **audit + empirical truth**. Authority: **full L2 autonomy** (within AUTONOMOUS_OPS.md
@@ -28,12 +28,12 @@ Orchestration: **4 self-contained copy-paste prompts + 1 workflow orchestrator**
 
 ## The 4 targets (one per axis)
 
-| # | Axis | Target | Why Opus-grade (not grunt work) |
-|---|------|--------|--------------------------------|
-| S1 | Organism reliability | "The nervous system lies" — empirical audit of all 167 plist + DLQ + escalations + state-bridge: which alerts are real, which are structural noise, how many jobs are dead-but-think-they-live | 167 surfaces × cross-check launchctl↔disk↔log↔PG. Reasoning over self-contradicting distributed state. |
-| S2 | RAG truth | "How accurate is Zantara really" — bipolar verifier at scale: ~1204 already-extracted NB claims → generate questions → ask Zantara prod → measure divergence vs NB-oracle per domain (visa/tax/KBLI/property) | Building the *judgment* over divergence: when Zantara and NB disagree, who is right? Opus arbitrates thousands of regulatory comparisons. |
-| S3 | Business lever | "Does the quote hold up in court?" — red-team the `client-case-quote-generator` pipeline on N real client cases: wrong KBLI? tax miscalc? impossible timeline? price off PricingTool? | The only organ producing signed client deliverables. One error = money/reputation. Opus devil's-advocate on legal-fiscal output. |
-| S4 | Structural debt | "The attack & incident surface" — unified audit of the 9 open STRUCTURAL scars + 170 branches + P1 `rolsuper=t` + worktree/deploy desync: what's still true, what already exploded, what will explode | Correlating 9 open scars with current state needs the whole system history in context. 1M Opus = right tool. |
+| #   | Axis                 | Target                                                                                                                                                                                                        | Why Opus-grade (not grunt work)                                                                                                           |
+| --- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| S1  | Organism reliability | "The nervous system lies" — empirical audit of all 167 plist + DLQ + escalations + state-bridge: which alerts are real, which are structural noise, how many jobs are dead-but-think-they-live                | 167 surfaces × cross-check launchctl↔disk↔log↔PG. Reasoning over self-contradicting distributed state.                                    |
+| S2  | RAG truth            | "How accurate is Zantara really" — bipolar verifier at scale: ~1204 already-extracted NB claims → generate questions → ask Zantara prod → measure divergence vs NB-oracle per domain (visa/tax/KBLI/property) | Building the _judgment_ over divergence: when Zantara and NB disagree, who is right? Opus arbitrates thousands of regulatory comparisons. |
+| S3  | Business lever       | "Does the quote hold up in court?" — red-team the `client-case-quote-generator` pipeline on N real client cases: wrong KBLI? tax miscalc? impossible timeline? price off PricingTool?                         | The only organ producing signed client deliverables. One error = money/reputation. Opus devil's-advocate on legal-fiscal output.          |
+| S4  | Structural debt      | "The attack & incident surface" — unified audit of the 9 open STRUCTURAL scars + 170 branches + P1 `rolsuper=t` + worktree/deploy desync: what's still true, what already exploded, what will explode         | Correlating 9 open scars with current state needs the whole system history in context. 1M Opus = right tool.                              |
 
 ## Common backbone (every prompt enforces this)
 
@@ -46,6 +46,7 @@ Orchestration: **4 self-contained copy-paste prompts + 1 workflow orchestrator**
 7. **DEFINITION OF DONE** — verifiable checklist, not "I'm done".
 
 ### Cross-cutting gate (S2 + S3 only)
+
 Before declaring an NB claim "wrong" or a quote "flawed", the finding **must** pass the
 adversarial panel (`devils-advocate` subagent / DeepSeek V4 Pro). No single-LLM legal verdict —
 that is failure #9 ("ethical collapse") in the Air-era failure taxonomy.
@@ -54,7 +55,7 @@ that is failure #9 ("ethical collapse") in the Air-era failure taxonomy.
 
 An audit that modifies what it measures falsifies its own result. If you fix a plist mid-count,
 the final "red" number is no longer what you found. Phase A freezes the truth in a timestamped
-file under absolute prod-read-only; Phase B acts on safe fixes *after* the freeze and re-measures
+file under absolute prod-read-only; Phase B acts on safe fixes _after_ the freeze and re-measures
 only the delta. The report always reads "how it was + what I changed", never a confused hybrid.
 
 ## Safe-fix vs needs-Antonello criterion (shared)
@@ -78,6 +79,6 @@ unanimously confirm.
 
 ## Out of scope
 
-- Actually running the 4 sessions (Antonello launches them)
+- Actually running the 4 sessions (Zero launches them)
 - Any fix that the audits surface (those happen inside the sessions, Phase B)
 - W38 rolsuper demotion (explicitly needs-Antonello)

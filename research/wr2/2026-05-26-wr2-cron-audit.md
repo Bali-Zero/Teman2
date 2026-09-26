@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-26
 domain: wr2
 client_case: Bali Zero internal — WR2 cron fleet empirical audit (35 LaunchAgent)
@@ -159,5 +160,5 @@ Tutti i label hanno prefix `com.balizero.wr2.` omesso per leggibilità.
 ## Raccomandazioni next-action
 
 1. **Primo carousel WR2 procede SENZA fix cron**. Sufficiente HOT pg-proxy + queue-server. Subagent dispatchato via interactive Claude Code session (gestito separatamente).
-2. **Sessione dedicata "WR2 cron repair"**: prioritizzare OI-2 (5min secret editing, Antonello-only) + OI-1 (sync wrapper, unlock 11 cron). OI-3 + OI-4 sono decisioni architetturali (retire vs revive), candidate per 4-LLM panel review prima di shippare.
+2. **Sessione dedicata "WR2 cron repair"**: prioritizzare OI-2 (5min secret editing, Zero-only) + OI-1 (sync wrapper, unlock 11 cron). OI-3 + OI-4 sono decisioni architetturali (retire vs revive), candidate per 4-LLM panel review prima di shippare.
 3. **OI-5 (subagent autonomous bridge)** è il vero gap di prodotto: senza, WR2 resta semi-manual. Architettura: `cron supervisor → subprocess.run(["claude", "--print", "--model", "claude-opus-4-7", "--prompt", template])` → output → queue-server → carousel renderable. 4-LLM panel obbligatorio.

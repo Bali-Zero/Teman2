@@ -14,25 +14,25 @@ Empirically:
 Difference: **4 plist live on Pro that are NOT versioned in the repo, +1 in
 the repo that is NOT deployed on Pro**:
 
-| In Pro (live) | In repo (versioned) | Status |
-|---|---|---|
-| `canva-apply` | — (repo has `canva-renderer`, different name) | drift |
-| `draft-generator` | — | drift |
-| `image-generator` | — | drift |
-| `topic-selector` | — | drift |
-| `connector` | `connector` | aligned |
-| `dossier-compiler` | `dossier-compiler` | aligned |
-| `hardening` | `hardening` | aligned |
-| `learner-nightly` | `learner-nightly` | aligned |
-| `measurer` | `measurer` | aligned |
-| `newsletter` | `newsletter` | aligned |
-| `oracle` | `oracle` | aligned |
-| `pg-proxy` | `pg-proxy` | aligned (daemon, KeepAlive=true) |
-| `sla-worker` | `sla-worker` | aligned |
-| `strategos` | `strategos` | aligned |
-| `supervisor` | `supervisor` | aligned (KeepAlive=dict) |
-| `trend-hunter` | `trend-hunter` | aligned |
-| — | `canva-renderer` | repo-only (orphan) |
+| In Pro (live)      | In repo (versioned)                           | Status                           |
+| ------------------ | --------------------------------------------- | -------------------------------- |
+| `canva-apply`      | — (repo has `canva-renderer`, different name) | drift                            |
+| `draft-generator`  | —                                             | drift                            |
+| `image-generator`  | —                                             | drift                            |
+| `topic-selector`   | —                                             | drift                            |
+| `connector`        | `connector`                                   | aligned                          |
+| `dossier-compiler` | `dossier-compiler`                            | aligned                          |
+| `hardening`        | `hardening`                                   | aligned                          |
+| `learner-nightly`  | `learner-nightly`                             | aligned                          |
+| `measurer`         | `measurer`                                    | aligned                          |
+| `newsletter`       | `newsletter`                                  | aligned                          |
+| `oracle`           | `oracle`                                      | aligned                          |
+| `pg-proxy`         | `pg-proxy`                                    | aligned (daemon, KeepAlive=true) |
+| `sla-worker`       | `sla-worker`                                  | aligned                          |
+| `strategos`        | `strategos`                                   | aligned                          |
+| `supervisor`       | `supervisor`                                  | aligned (KeepAlive=dict)         |
+| `trend-hunter`     | `trend-hunter`                                | aligned                          |
+| —                  | `canva-renderer`                              | repo-only (orphan)               |
 
 The 4 Pro-only plist are backed by Python files that DO exist in the repo
 under `scripts/wr2_canva_apply.py`, `scripts/wr2_draft_generator.py`,
@@ -72,16 +72,16 @@ topic-selector    | (drift)    | likely cron Sun/Mon AM   | scripts/wr2_topic_se
 
 The brainstorm v2 maps WR2 organelle to cognitive levels:
 
-| Cognitive Level | Organelle |
-|---|---|
-| **L4 (organism)** | `oracle` (single decisional voice) |
-| **L3 (system)** | `strategos` (planner) |
-| **L2 (organ)** | `supervisor` (orchestrator), `pg-proxy` (event substrate) |
-| **L1 (tissue)** | `connector` (Genome→Bali bridge), `learner-nightly`, `trend-hunter`, `measurer`, `dossier-compiler` |
+| Cognitive Level         | Organelle                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **L4 (organism)**       | `oracle` (single decisional voice)                                                                                               |
+| **L3 (system)**         | `strategos` (planner)                                                                                                            |
+| **L2 (organ)**          | `supervisor` (orchestrator), `pg-proxy` (event substrate)                                                                        |
+| **L1 (tissue)**         | `connector` (Genome→Bali bridge), `learner-nightly`, `trend-hunter`, `measurer`, `dossier-compiler`                              |
 | **operative organelle** | `newsletter`, `sla-worker`, `hardening`, `canva-apply`, `canva-renderer`, `draft-generator`, `image-generator`, `topic-selector` |
 
 The "7-9 LaunchAgents" count in the round 1 briefing corresponds to the
-*intentional cognitive set* — the set excluding pure operational/distribution
+_intentional cognitive set_ — the set excluding pure operational/distribution
 LaunchAgents (newsletter/canva/draft/image/topic). The actual cognitive
 backbone is **9 organelle** (oracle, strategos, supervisor, pg-proxy,
 connector, learner-nightly, trend-hunter, measurer, dossier-compiler).
@@ -94,19 +94,20 @@ is 9, not 7 nor 13/16.**
 
 ## Verdict (verdetto finale)
 
-| Question | Answer |
-|---|---|
-| Is "7" or "9" the canonical count for WR2 cognitive organelle? | **9** (oracle + strategos + supervisor + pg-proxy + connector + learner-nightly + trend-hunter + measurer + dossier-compiler) |
+| Question                                                        | Answer                                                                                                                                              |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is "7" or "9" the canonical count for WR2 cognitive organelle?  | **9** (oracle + strategos + supervisor + pg-proxy + connector + learner-nightly + trend-hunter + measurer + dossier-compiler)                       |
 | Is the rest (newsletter/canva-*/draft/image/topic) part of WR2? | **Yes**, but as **operational organelle** (sub-cell level), not cell candidate themselves. They are workflow steps, not autonomous reasoning units. |
-| Should the 4 Pro-only plist be committed to repo? | **Yes** — Sprint 0 follow-up (separate PR or Sprint 1 W0). |
-| Should `canva-renderer` (repo-only) be removed? | **Maybe** — first investigate whether it was renamed to `canva-apply` (probable). If yes, delete the orphan. |
-| Cognitive Level mapping survives round 2? | **Yes** — oracle=L4, strategos=L3, connector=L1 confirmed. |
+| Should the 4 Pro-only plist be committed to repo?               | **Yes** — Sprint 0 follow-up (separate PR or Sprint 1 W0).                                                                                          |
+| Should `canva-renderer` (repo-only) be removed?                 | **Maybe** — first investigate whether it was renamed to `canva-apply` (probable). If yes, delete the orphan.                                        |
+| Cognitive Level mapping survives round 2?                       | **Yes** — oracle=L4, strategos=L3, connector=L1 confirmed.                                                                                          |
 
 ## Action items (manual, post-merge)
 
 ### Immediate (blocking Sprint 1 — WR2 mapping doc)
 
-1. **Antonello: rsync the 4 Pro-only plist into `infra/launchagents/`** (read-only fetch, then commit):
+1. **Zero: rsync the 4 Pro-only plist into `infra/launchagents/`** (read-only fetch, then commit):
+
    ```bash
    rsync -av pro:~/Library/LaunchAgents/com.balizero.wr2.canva-apply.plist \
               pro:~/Library/LaunchAgents/com.balizero.wr2.draft-generator.plist \
@@ -114,9 +115,10 @@ is 9, not 7 nor 13/16.**
               pro:~/Library/LaunchAgents/com.balizero.wr2.topic-selector.plist \
               infra/launchagents/
    ```
+
    Then verify `plutil -lint infra/launchagents/com.balizero.wr2.*.plist` passes.
 
-2. **Antonello: clarify `canva-renderer` vs `canva-apply`** — likely a rename
+2. **Zero: clarify `canva-renderer` vs `canva-apply`** — likely a rename
    that left a dead artifact in repo. Run `git log infra/launchagents/com.balizero.wr2.canva-renderer.plist`
    to find the original commit, decide whether to delete or rename.
 

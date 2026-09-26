@@ -5,7 +5,7 @@
 > **without asking the user**. If under "requires confirmation", Claude MUST ask
 > in chat. If unlisted, default is "requires confirmation" (conservative).
 >
-> The user (Antonello / Zero) is not a developer and explicitly does not want
+> The user (Zero / Zero) is not a developer and explicitly does not want
 > to review code changes. His veto is NOT the safety layer — the guardrails
 > below are. This contract exists because a pre-declared, version-controlled
 > policy is safer than ad-hoc per-action prompts.
@@ -16,7 +16,7 @@
 
 **Level 2 — active since 2026-06-11**
 (Level 1 was active earlier same day; promoted to L2 once all activation gates closed.)
-(re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04.
+(re-certified 2026-06-11 by Zero after the Fable-5 system audit F04.
 That same day the SessionStart staleness hook was fixed to read this declared
 date rather than the file mtime — see `2d26dea7d`, which records the fix and its
 verification. **Corrected 2026-08-31: that fix is gone.** Measured on Pro, the
@@ -31,10 +31,10 @@ Two traps that script exists to avoid: the old hook's grep matches only the
 `**Level N — active since**` line, so a naive "parse the declared date" fix reads
 2026-06-11 and not the later re-certification below; and this file carries two
 dozen unrelated ISO dates that must never govern.)
-(re-certified 2026-07-19 by Antonello — routine 30-day refresh; Level 2 unchanged.
+(re-certified 2026-07-19 by Zero — routine 30-day refresh; Level 2 unchanged.
 As of 2026-08-31 that is 43 days: this contract is LAPSED by its own rule below,
 and no session was told, because of the defect described above.)
-(re-certified 2026-09-01 by Antonello — ordered in the M5 interactive session
+(re-certified 2026-09-01 by Zero — ordered in the M5 interactive session
 ("rinnova il contratto") after the wave-2 dashboard surfaced the 43-day lapse;
 Level 2 unchanged.)
 
@@ -84,7 +84,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 > normal feature PR is being _more conservative than this contract_ — don't.
 > `--auto` is the professional move precisely because it cannot force a red merge:
 > GitHub holds the PR until required checks pass, so branch protection stays the
-> safety layer above Claude. Confirmed by Antonello 2026-06-25. (Exception: the
+> safety layer above Claude. Confirmed by Zero 2026-06-25. (Exception: the
 > "Still requires confirmation" list below — guardrail/contract/critical-config
 > changes, migrations without a green dry-run, force push, destructive DB ops —
 > still merge by the operator.)
@@ -155,13 +155,13 @@ scope for L2.
 > The rules below stand on their own — they are the contract, not a summary of a
 > document.
 
-| Rule                                                                                                     | Why                                                                                                                                            |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.                 | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward.  |
-| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**        | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                                                |
-| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run _post-deploy_ in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Antonello. |
-| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**               | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                                             |
-| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**              | Catches syntax errors and ordering issues before they reach the deploy job.                                                                    |
+| Rule                                                                                                     | Why                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.                 | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward. |
+| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**        | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                                               |
+| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run _post-deploy_ in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Zero.     |
+| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**               | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                                            |
+| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**              | Catches syntax errors and ordering issues before they reach the deploy job.                                                                   |
 
 **Recovery:** if a migration fails _before_ deploy, stop and fix the SQL
 file. If a migration fails _after_ deploy (Python apply_migration_NNN
@@ -285,11 +285,11 @@ decides this.
   two of four sampled merges read "3 not green" purely as a function of when the sample
   was taken. Still open and NOT closed by this audit: the monthly restore drill, the three
   unrequired suites (see L2.1 above), and enforcement-under-race.
-- **2026-09-01** — Re-certified by Antonello ("rinnova il contratto", M5 interactive
+- **2026-09-01** — Re-certified by Zero ("rinnova il contratto", M5 interactive
   session). The 2026-07-19 certification lapsed on 2026-08-18 and no session was told:
   the mtime-based staleness hook was dead on all three machines. The durable check now
   lives in `scripts/check_autonomous_ops_staleness.py` (PR #5425). Level 2 unchanged.
-- **2026-07-19** — Re-certified by Antonello (routine 30-day refresh after the
+- **2026-07-19** — Re-certified by Zero (routine 30-day refresh after the
   2026-06-11 certification lapsed). Level 2 unchanged.
 - **2026-04-21** — File created by Claude at Zero's request. Level 1 active
   immediately. Level 2 promoted same day once activation gates closed:

@@ -1,8 +1,9 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-12
 domain: architecture
 status: design-approved
-authors: Antonello Siano + Claude Opus 4.7 + Codex GPT-5.5 + Gemini 3.1 Pro + DeepSeek Reasoner
+authors: Zero + Claude Opus 4.7 + Codex GPT-5.5 + Gemini 3.1 Pro + DeepSeek Reasoner
 client_case: Nuzantara intel pipeline unification
 sources: tri-LLM panel + empirical codebase audit
 ---

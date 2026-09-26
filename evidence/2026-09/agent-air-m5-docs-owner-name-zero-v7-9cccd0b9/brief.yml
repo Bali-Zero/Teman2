@@ -1,0 +1,147 @@
+task_id: owner-name-zero-v7
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on the pushed diff returns `3`, by
+# the SIZE term (S1) — 255 content files changed, well past the ~400-net-line PR-contract
+# target and past the Gear-3 size threshold. No hot-zone path is touched (migrations_v2/** and
+# .github/workflows/** are excluded from the candidate list entirely, never opened), so the
+# floor is size-only, not hot-zone.
+objective: >-
+  Rework of PR #7445 (agent/air-m5/docs/owner-name-zero-v4, closed, superseded by this PR) after
+  a fresh gate session returned REWORK-BUILD on head 9553dd4dcc. #7445 itself finished the
+  255-file set that PR #7441 (agent/air-m5/docs/owner-name-zero-v3, now CLOSED, superseded by a
+  separate PR #7450 covering a disjoint 270-file set) deliberately reverted because a repo gate
+  would fire on the owner-codename substitution or on pre-existing unrelated content: 87 files
+  gated by `.husky/pre-commit`'s prettier-formatting check, 166 `research/**/*.md` files gated
+  by `.husky/pre-push`'s R1 adversarial-review frontmatter gate
+  (`scripts/check_adversarial_review.py`), and 2 files gated by `.husky/pre-commit`'s Law-2 PII
+  gate on pre-existing, unrelated NPWP-shaped example text. The gate's own re-verification of
+  #7445's file-set selection (its "1c" check) confirmed the 255-file reconstruction itself was
+  correct. What this rework fixes, all found by that same gate session:
+  (a) THREE lowercase occurrences of the owner's first name that #7445 incorrectly swept to
+  "Zero" — a doc-embedded JSON template's `"owner"` field, a Telegram-channel-naming design
+  spec's `#<name>` handle, and an admin-handle list's third name — are now left byte-identical
+  to origin/main. The gate's ruling, applied here without exception: a lowercase form is treated
+  as a potential code literal/identifier and stays untouched regardless of whether it reads as
+  prose in isolation or whether any code currently parses it — "unmistakably prose" is not by
+  itself sufficient once a form is lowercase. This PR's own substitution script therefore never
+  applies the lowercase-form rule at all (only the capitalised name and the capitalised full
+  name are ever rewritten).
+  (b) The commit message must not spell the owner's name anywhere, in any case — the previous
+  commit message did, 5 times, and that lands permanently in `main`'s history on a public repo.
+  This PR's commit message uses the standing codename and a placeholder phrase only.
+  (c) Two minor residual-audit numbers the gate found imprecise are recomputed fresh on this
+  branch's actual head rather than carried forward.
+constraints:
+  - >-
+    KEEP rules unchanged from #7441/#7445 (see #7441's own brief.yml `constraints` for the full
+    rationale, and pack.yml `dissent` here for what changed): any token containing `@` (emails);
+    handles/hostnames where the name is immediately followed by another word character;
+    snake_case/kebab-case/camelCase compounds where `_` or a hyphen immediately precedes the
+    name, or a letter immediately follows it; filesystem paths/URLs naming an actual repo file;
+    the git-author-quote shape (the owner's full name immediately followed by an email in angle
+    brackets); the functional-code/test full-file skips (NER fixtures, known-names lists, the
+    CREATOR-persona identity check, the whatsapp-corpus name-detector and its test,
+    `tests/wa_corpus/test_db_names.py`); `agent-library/config/redaction-rules.yaml` (redaction
+    rule DEFINITION); `apps/backend-rag/backend/prompts/zantara_core.py` (repo-wide off-limits);
+    `scripts/verify_the_verifiers_gates.yaml` (sha-pinned safety-gate registry) and
+    `scripts/lint/wr3_lint_cloud_dependency.py` (functional per-episode-override allow-list) —
+    named explicitly this round because a prior sibling task's gate flagged them; `migrations_v2/**`,
+    `.github/**`; other PRs' `evidence/**` packs.
+  - >-
+    NEW this round, the tightened lowercase rule (see `objective`): standalone lowercase
+    occurrences of the name are NEVER rewritten by this PR's substitution, full stop — not
+    "swept when unmistakably prose". This is a stricter rule than #7441/#7445 applied (which
+    swept a lowercase form when it judged the surrounding context as pure prose); the gate's
+    ruling on #7445 treats that judgment call itself as the defect (a lowercase form is
+    presumptively a literal/identifier). Net effect versus #7445: 3 fewer lines rewritten (881
+    vs 884 substitution hit lines), the 3 files affected otherwise unchanged.
+  - >-
+    Process constraint from the #7445 gate: never amend + force-push an armed branch again. This
+    PR is a fresh commit on a fresh branch off current `origin/main`, pushed once, normally.
+  - >-
+    No client PII anywhere in the diff or this pack (the 2 PII-gate-adjacent lines were read,
+    confirmed to be pre-existing NPWP-*format*-illustration text with no real person's number,
+    and left byte-identical — only the unrelated capitalised-name line elsewhere in each file
+    was substituted). No secrets echoed, no owner's real name or personal email anywhere in this
+    brief or the accompanying pack.yml — placeholders only, verified by grep before push. No
+    edit outside the dedicated worktree (`agent/air-m5/docs/owner-name-zero-v7`).
+acceptance:
+  - text: >-
+      A1: WHEN `scripts/check_adversarial_review.py --files` runs over all 168 touched
+      `research/**/*.md` files (166 R1-gated + 2 PII-gated, both under `research/`), THE gate
+      SHALL PASS for all of them.
+    probe: >-
+      `python3 scripts/check_adversarial_review.py --files <168 paths>` -> "PASS — 168 research
+      file(s) carry a valid adversarial review", each printing a NOTICE for its
+      `exempt-mechanical-privacy-sweep-no-claim-changed` value.
+  - text: >-
+      A2: WHEN `npx prettier --check` runs (worktree cwd) over the full 255-file touched set,
+      under BOTH the locally-installed prettier version AND the exact `package-lock.json`-pinned
+      version (3.9.9, the one CI's fresh `npm ci` actually runs), THE check SHALL report zero
+      formatting issues under both.
+    probe: >-
+      `npx prettier --check <255 paths>` -> "All matched files use Prettier code style!";
+      `npx --yes prettier@3.9.9 --check <255 paths>` -> "All matched files use Prettier code
+      style!". The actual `git commit` in this session ran the real
+      `.husky/pre-commit` hook and passed.
+  - text: >-
+      A3: WHERE a touched-candidate file is a functional-code/test full-file skip, the
+      redaction-rule definition, the off-limits prompt file, the sha-pinned safety-gate registry,
+      the cloud-dependency allow-list, or another PR's evidence pack, THE file SHALL remain
+      byte-identical to origin/main.
+    probe: >-
+      None of these paths appear in this PR's changed-file list (never opened for writing);
+      confirmed via `git diff --stat` against `origin/main` showing exactly 255 content files.
+  - text: >-
+      A4: WHERE a line in this PR's own touched files carries a standalone LOWERCASE occurrence
+      of the name, THE line SHALL remain byte-identical to origin/main, with no exception for
+      an author's own judgment that the surrounding text is prose.
+    probe: >-
+      The 3 lines the prior round (#7445) incorrectly rewrote
+      (`docs/superpowers/plans/2026-04-19-seo-cell-A-prenatal-foundation.md:84`,
+      `docs/superpowers/specs/2026-05-08-domain-mesh-autonomic-design.md:175`,
+      `research/operations/doc-intake-unified/04-5-hitl-evolver.md:176`) are confirmed
+      byte-identical to origin/main in this PR's diff (absent from `git diff origin/main` for
+      those three files' hunks); the substitution script's lowercase rule is provably never
+      invoked (removed from the write path, not merely unreached).
+  - text: >-
+      A5: WHEN the 2 PII-gate-adjacent files are committed with `PII_GATE_ENFORCEMENT=false`,
+      THE only content that gate would have flagged SHALL be pre-existing and unchanged by this
+      diff.
+    probe: >-
+      `git diff origin/main -- <2 files>` shows exactly the substituted capitalised-name lines
+      plus frontmatter additions; the NPWP-shaped lines the gate's own regex matches do not
+      appear in the diff at all.
+  - text: >-
+      A6: WHEN `scripts/test_redact_pii.py` is run, THE full suite SHALL pass unmodified.
+    probe: "`python3 -m pytest scripts/test_redact_pii.py -q` -> 43 passed, 0 failed."
+  - text: >-
+      A7: WHEN the commit message of this PR's single commit is inspected, IT SHALL NOT contain
+      the owner's real name in any case.
+    probe: >-
+      `git log -1 --format=%B <head>` grepped case-insensitively for the real first name and
+      surname -> 0 matches; the standing codename "Zero" and a placeholder phrase are used
+      instead.
+assumptions:
+  - text: >-
+      The 255-file content set is unchanged from #7445 (only 3 specific lines within it are
+      cured differently); the file-SET selection itself was independently re-verified correct by
+      the gate that reworked #7445 (its own "1c" check on the prior round), so it is not
+      re-derived from scratch here, only re-applied with the corrected substitution rule.
+    status: verified
+    probe: >-
+      `comm` between this PR's 255-file changed-file list and #7445's own 255-file changed-file
+      list (fetched from that closed PR's branch) -> identical sets, 0 difference.
+  - text: >-
+      Disclosed quality artifact carried over from #7441/#7445 (not introduced here): where
+      source text already paired "Zero" with the real first name as a gloss, the byte-preserving
+      substitution produces a redundant-looking double mention — accepted as-is per the same
+      no-editorial-judgment mandate (fixing it needs per-instance semantic rewriting, out of
+      scope for a mechanical sweep).
+    status: verified
+    probe: >-
+      Unaffected by this round's lowercase-rule change (all instances of this artifact are
+      capitalised-name pairings, not lowercase); count unchanged from #7445's own disclosure.

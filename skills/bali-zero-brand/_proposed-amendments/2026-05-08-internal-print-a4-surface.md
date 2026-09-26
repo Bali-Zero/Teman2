@@ -1,9 +1,9 @@
 # Proposed Amendment — Internal Print A4 Surface
 
 **Date**: 2026-05-08
-**Author**: Antonello Siano (via Claude Opus 4.7 working session)
+**Author**: Zero (via Claude Opus 4.7 working session)
 **Triggering artifact**: `~/Desktop/BaliZero_4Funnel_MASTER.pdf` + `~/Desktop/BaliZero_Subhi_Brief_W2.pdf` (2026-05-08), strategy briefs for funnel-week-2 work, design replicated from `~/Desktop/PBG_Villa_Kutuh_BaliZero_ID.pdf` (2026-04-29).
-**Status**: PROPOSED — awaiting Antonello git-commit to merge into `constitution.md`.
+**Status**: PROPOSED — awaiting Zero git-commit to merge into `constitution.md`.
 
 ---
 
@@ -28,12 +28,12 @@ This amendment adds:
 
 12.1 **Recognized surfaces** (closed set):
 
-| Surface ID | Format | Spec file | Production tool |
-|---|---|---|---|
-| `carousel-ig` | 1080×1350 PNG, 7-10 slides | `constitution.md` Art. 1-11 (this file) | wr2-design-architect |
-| `internal-print-a4` | A4 portrait PDF, dark cover + light interior | `surfaces/internal-print-a4.md` | manual HTML+CSS via Playwright |
-| `web-mouth` | Next.js frontend, theme-switch | `apps/mouth/CLAUDE.md` + `packages/core/styles/bz-tokens.css` | Vercel deploy |
-| `email-template` | HTML email, Brevo-rendered | TBD (no spec yet — open backlog) | Brevo `/api/notifications/send-email` |
+| Surface ID          | Format                                       | Spec file                                                     | Production tool                       |
+| ------------------- | -------------------------------------------- | ------------------------------------------------------------- | ------------------------------------- |
+| `carousel-ig`       | 1080×1350 PNG, 7-10 slides                   | `constitution.md` Art. 1-11 (this file)                       | wr2-design-architect                  |
+| `internal-print-a4` | A4 portrait PDF, dark cover + light interior | `surfaces/internal-print-a4.md`                               | manual HTML+CSS via Playwright        |
+| `web-mouth`         | Next.js frontend, theme-switch               | `apps/mouth/CLAUDE.md` + `packages/core/styles/bz-tokens.css` | Vercel deploy                         |
+| `email-template`    | HTML email, Brevo-rendered                   | TBD (no spec yet — open backlog)                              | Brevo `/api/notifications/send-email` |
 
 12.2 **Cross-surface palette** (always required, all 4 surfaces): the tokens in `tokens.json` (`color.bg.antracite`, `color.text.white`, `color.accent.yellow`, `color.status.red`) are mandatory across surfaces. Surfaces MAY add derived tokens (e.g. light-mode body color for `internal-print-a4`) but MUST NOT redefine the core 4.
 
@@ -58,13 +58,14 @@ This amendment adds:
 ## Triggering rationale (why now, not later)
 
 The 2026-05-08 funnel-strategy work shipped 2 internal PDFs that:
+
 - Drifted from the constitution palette (used `#d4a23a` instead of `#F4C430`, `#c94545` instead of `#C8102E`, `#2a2d35` instead of `#2C2F38`).
 - Used Georgia serif in the logo glyph (Article 3.2 violation).
 - Contained "unlock" + "paradigm" forbidden phrases (Article 7 violation).
 
 These were caught by manual brand-cortex audit AFTER the PDFs were already on Desktop. With a documented surface spec + canonical template, future briefs (Subhi Week 3, client case quotes, regulatory primers) inherit the brand by default — no audit needed.
 
-## Approval checklist (Antonello)
+## Approval checklist (Zero)
 
 - [ ] Read this amendment + `surfaces/internal-print-a4.md`
 - [ ] Spot-check: do the 2 PDFs on Desktop now match the spec?

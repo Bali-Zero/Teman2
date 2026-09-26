@@ -1,7 +1,7 @@
 # Sprint 0 Wrap — 2026-05-02
 
 **Owner:** Claude Opus 4.7 (Air session, branch
-`feat/sprint0-inventory-hardening`) on behalf of Antonello Siano.
+`feat/sprint0-inventory-hardening`) on behalf of Zero.
 **Reference:** brainstorm 2026-05-02 round 2 § "Sprint 0 — Inventory +
 Hardening (1 settimana, urgente)".
 
@@ -19,11 +19,11 @@ for the brainstorm docs themselves). Branch pushed to origin.
 2. `feat(sprint0): OpenClaw skill audit + Telegram <80 commands plan`
    → `scripts/openclaw-skill-audit.py` (read-only, runs from Air via
    SSH or local on Pro) + `docs/audits/sprint0/openclaw-skills-audit.jsonl`
-   + `docs/audits/sprint0/openclaw-telegram-skills.md`. Empirical:
-   92 commands → ~57-62 expected after disable plan.
+   - `docs/audits/sprint0/openclaw-telegram-skills.md`. Empirical:
+     92 commands → ~57-62 expected after disable plan.
 3. `feat(sprint0): mcporter usage audit + disable idle plan`
    → `scripts/openclaw-mcporter-toggle.sh` + `docs/audits/sprint0/
-   mcporter-usage.md`. 13 servers, 208 tools — only 13 tools have
+mcporter-usage.md`. 13 servers, 208 tools — only 13 tools have
    ever been called in 30 days. Disable list: 8 servers (docker,
    playwright, perplexity, brave-search, exa, context7,
    sequential-thinking, vercel/fetch). KEEP_FORCE: nuzantara-mcp,
@@ -37,8 +37,8 @@ for the brainstorm docs themselves). Branch pushed to origin.
    → `docs/audits/sprint0/openclaw-claude-code-agent.md` (read-only
    audit procedure for the undocumented 3rd agent, decision matrix
    document/remove) + `docs/audits/sprint0/openclaw-frozen-jobs.md`
-   + `scripts/openclaw-frozen-jobs-disable.sh` (idempotent, --revert
-   from latest backup).
+   - `scripts/openclaw-frozen-jobs-disable.sh` (idempotent, --revert
+     from latest backup).
 
 ### Track B — Audit completeness (4 commits)
 
@@ -51,7 +51,7 @@ for the brainstorm docs themselves). Branch pushed to origin.
    → all 13+4 organelle effectively respect Law 4 via DB triggers
    (mig 112/113/114/138). 1 narrow violation: `measurer` writes
    `post_metrics_history` without trigger. 1 grey area: `wr2-hardening
-   chain.sh` outputs filesystem only — fits Track C2 ObservedShellBus.
+chain.sh` outputs filesystem only — fits Track C2 ObservedShellBus.
 8. `docs(sprint0): WR2 OpenClaw insertions duplicate detection`
    → 3 round-1 insertions (#1 L1 Connector, #2 Learner M14, #3 Trend
    pre-filter). Verdict: #1 + #2 are DUPLICATES of existing LaunchAgents
@@ -61,7 +61,7 @@ for the brainstorm docs themselves). Branch pushed to origin.
 9. `docs(sprint0): Intel Scraper main path verification`
    → drive-poll incident (cicatrix 2026-04-29) is unrelated. Intel
    Scraper main path alive: `apps/bali-intel-scraper/` 03:00 WITA daily
-   + cron-agent-python intel-radar hourly + intel-feed-processor 2h.
+   - cron-agent-python intel-radar hourly + intel-feed-processor 2h.
 
 ### Track C — Cell admission framework (3 commits)
 
@@ -77,8 +77,8 @@ for the brainstorm docs themselves). Branch pushed to origin.
     (NOT 147 — collision with `federation_alert_proposals.sql`. ROLLBACK
     marker present; squawk-ignore directives on indexes for legitimate
     empty-table case) + `apps/backend-rag/backend/services/events/
-    observed_shell.py` + `apps/backend-rag/backend/tests/services/events/
-    test_observed_shell.py` (4 tests) + `docs/cell-core/observed-shell-tier.md`
+observed_shell.py` + `apps/backend-rag/backend/tests/services/events/
+test_observed_shell.py` (4 tests) + `docs/cell-core/observed-shell-tier.md`
     (lists 11 Sprint-1 migration targets).
 12. `docs(cell-core): cognitive levels matrix 14 cells L0-L4.5 + 7 Leggi pre-check`
     → per-cell offline judgment on which Sprint addresses each ⚠️ in
@@ -95,13 +95,13 @@ for the brainstorm docs themselves). Branch pushed to origin.
 
 ## Audit findings consolidated
 
-| Track | Question | Verdict |
-|---|---|---|
-| **B1** | "7" or "9" Bali Zero Dispatch organelle? | **9** cognitive backbone (oracle, strategos, supervisor, pg-proxy, connector, learner-nightly, trend-hunter, measurer, dossier-compiler). Operational organelle (newsletter, canva, draft, image, topic, sla-worker, hardening) bring file-count to 13/repo or 16/Pro. |
-| **B2** | Do all WR2 LA respect Event-driven Law? | **Effectively yes**, with 1 narrow violation (`measurer` write without trigger) + 1 grey area (`hardening` filesystem-only) + 1 orphan (`canva-renderer`). NO PG NOTIFY migration needed for cognitive set. |
-| **B3** | Are the 3 OpenClaw insertions duplicates? | **#1 + #2 yes (dismiss); #3 not duplicate but defer.** Sprint 5 freed up. |
-| **B4** | Is Intel Scraper main path alive? | **Yes** — drive-poll incident orthogonal. 03:00 WITA cron alive + intel-radar hourly + intel-feed-processor 2h. |
-| **D2** | OpenClaw vs cron-agent-python verdict per cell? | 11/14 cron-agent-python primary; 1/14 OpenClaw primary (hgt-coordinator); 1/14 hybrid (tech-orchestrator). |
+| Track  | Question                                        | Verdict                                                                                                                                                                                                                                                                |
+| ------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B1** | "7" or "9" Bali Zero Dispatch organelle?        | **9** cognitive backbone (oracle, strategos, supervisor, pg-proxy, connector, learner-nightly, trend-hunter, measurer, dossier-compiler). Operational organelle (newsletter, canva, draft, image, topic, sla-worker, hardening) bring file-count to 13/repo or 16/Pro. |
+| **B2** | Do all WR2 LA respect Event-driven Law?         | **Effectively yes**, with 1 narrow violation (`measurer` write without trigger) + 1 grey area (`hardening` filesystem-only) + 1 orphan (`canva-renderer`). NO PG NOTIFY migration needed for cognitive set.                                                            |
+| **B3** | Are the 3 OpenClaw insertions duplicates?       | **#1 + #2 yes (dismiss); #3 not duplicate but defer.** Sprint 5 freed up.                                                                                                                                                                                              |
+| **B4** | Is Intel Scraper main path alive?               | **Yes** — drive-poll incident orthogonal. 03:00 WITA cron alive + intel-radar hourly + intel-feed-processor 2h.                                                                                                                                                        |
+| **D2** | OpenClaw vs cron-agent-python verdict per cell? | 11/14 cron-agent-python primary; 1/14 OpenClaw primary (hgt-coordinator); 1/14 hybrid (tech-orchestrator).                                                                                                                                                             |
 
 ## OpenClaw hardening artifacts
 
@@ -138,7 +138,7 @@ for the brainstorm docs themselves). Branch pushed to origin.
 
 This Sprint 0 was completed during a window when Pro was unreachable
 via SSH (`Host is down` for the entire Track A4 onwards). Several
-verifications must be re-run by Antonello once Pro is back:
+verifications must be re-run by Zero once Pro is back:
 
 - `[gap]` Verify state file timestamps for cells #1-12 (B4 procedure)
 - `[gap]` Reverse-engineer schedules of the 4 Pro-only WR2 plist
@@ -154,7 +154,7 @@ These don't block PR review or merge — they just defer the manual
 
 ## Action items MANUAL (pre-Sprint 1)
 
-Owner: Antonello. Order matters; do NOT change.
+Owner: Zero. Order matters; do NOT change.
 
 1. **`Day 0` — Apply Track A2 (Telegram skill disable)** on Pro:
    - Backup `~/.openclaw/openclaw.json` to `.pre-skill-disable-2026-05-02`
@@ -217,12 +217,12 @@ Sprint 1 deliverables (per `99b_synthesis_v2.md` § Sprint 1):
   via OpenClaw — the only cell where OC is primary). ≥10 uses + conf>0.7
   gate enforced inside the cell.
 
-Sprint 1 estimated 1 week, 2-3 PRs. Owner: Antonello + (future) Asya.
+Sprint 1 estimated 1 week, 2-3 PRs. Owner: Zero + (future) Asya.
 
 ## References
 
 - All Sprint 0 docs: `docs/audits/sprint0/*.md` + `docs/cell-core/*.md`
-  + `docs/automations/*.md`
+  - `docs/automations/*.md`
 - Brainstorm round 1+2: `docs/audits/2026-05-02-cell-openclaw-brainstorm/`
 - Cicatrix log: `.claude/rules/cicatrix-scars.md`
 - Symbiosis principles: `SYMBIOSIS.md`
