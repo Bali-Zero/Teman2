@@ -56,7 +56,7 @@ snapshot_provenance: >-
   #7428 from the read-only snapshot worktree, authored by Codex as an external prepare-only builder. This
   diff adds: the (blog) layout mount of R19Presentation, the transplanted home in (marketing)/page.tsx,
   R19-aware edits of seven shared v2 components, the header and hero WhatsApp actions in r19/home/Entry.tsx
-  and home.css, and the tests. r19/home/Footer.tsx is NOT part of this diff.
+  and home.css, the footer cure in r19/home/Footer.tsx + FooterWhatsAppLink.tsx (b6dd8aa649), and the tests.
 spend:
   wall_clock_hours: 3.8
   adversarial_rounds: 2
@@ -179,7 +179,7 @@ receipts:
       home_whatsapp_cta, payload trigger footer), t.me=1, a maps link; new footer: bare
       https://wa.me/628213454721 =1, buildWhatsAppLink or trackFunnelEvent=0, t.me=0, maps link replaced by
       GOOGLE_MAPS_URL on the "Client reviews" entry. The old home imported the v2 Footer; the activated home
-      imports the R19 one. r19/home/Footer.tsx is unchanged by this diff (it landed in #7428).
+      imports the R19 one. At this receipt r19/home/Footer.tsx was unchanged by this diff; b6dd8aa649 later cured it.
     exit: 0
     ts: 2026-09-26T18:16:11Z
     seat: claude-sonnet-5
