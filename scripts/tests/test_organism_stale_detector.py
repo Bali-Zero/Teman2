@@ -1349,3 +1349,77 @@ def test_the_empty_json_list_is_the_hooks_only_branch_and_is_a_contract():
         finding = StaleFinding(organ_id="o", kind=kind, age_days=9.0, status="failed", detail="d")
         noisy = _json.dumps([finding.to_dict()])
         assert noisy != "[]", f"a {kind} finding must never serialize to '[]': {noisy!r}"
+
+
+# ---------------------------------------------------------------------------
+# On-command organs (infra/organism/on_command_organs.json) — the CLI reader.
+# Zero ruled 2026-09-01 "WR2 runs only on command"; the declaration existed but
+# only the SessionStart brief read it, so `--json` (proprioception P1) kept
+# paging 24 stale + 7 "label not loaded" WR2 organs for 25 days.
+# ---------------------------------------------------------------------------
+
+def _run_cli_json(capsys, d, *extra):
+    from organism_stale_detector import main as _main
+
+    _main(["--dir", d, "--json", "--no-cross-host-sync", "--no-coverage-branch-scan", *extra])
+    return {f["organ_id"]: f for f in json.loads(capsys.readouterr().out)}
+
+
+def _on_command_file(tmp_path, patterns):
+    p = tmp_path / "on_command_organs.json"
+    p.write_text(json.dumps({"patterns": patterns}))
+    return str(p)
+
+
+def test_guilt_declared_off_stale_and_not_loaded_are_not_paged(tmp_path, capsys):
+    d = tmp_path / "sidecars"
+    d.mkdir()
+    old = time.time() - 30 * 86400
+    _write(str(d), "wr2.supervisor", {"ts": old, "status": "ok"})
+    _write(str(d), "pro.wr2_wrapper_guard.backend.services.cognitive.oracle_cli", {"ts": old, "status": "ok"})
+    _write(str(d), "wr2.daily_metrics", {"ts": time.time(), "status": "failed", "last_error": "label not loaded"})
+    _write(str(d), "mata_garuda.scheduled_thing", {"ts": old, "status": "ok"})
+    got = _run_cli_json(capsys, str(d), "--on-command-file", _on_command_file(tmp_path, ["wr2.*", "pro.wr2_*"]))
+    assert set(got) == {"mata_garuda.scheduled_thing"}
+
+
+def test_innocence_loaded_on_command_organ_that_fails_still_surfaces(tmp_path, capsys):
+    d = tmp_path / "sidecars"
+    d.mkdir()
+    _write(str(d), "wr2.pg_proxy", {"ts": time.time(), "status": "failed", "last_error": "fly token rejected"})
+    got = _run_cli_json(capsys, str(d), "--on-command-file", _on_command_file(tmp_path, ["wr2.*"]))
+    assert got["wr2.pg_proxy"]["kind"] == "unhealthy"
+
+
+def test_innocence_unreadable_on_command_file_hides_nothing(tmp_path, capsys):
+    d = tmp_path / "sidecars"
+    d.mkdir()
+    _write(str(d), "wr2.supervisor", {"ts": time.time() - 30 * 86400, "status": "ok"})
+    got = _run_cli_json(capsys, str(d), "--on-command-file", str(tmp_path / "missing.json"))
+    assert got["wr2.supervisor"]["kind"] == "stale"
+
+
+def test_innocence_default_list_not_applied_to_a_non_default_dir(tmp_path, capsys):
+    d = tmp_path / "sidecars"
+    d.mkdir()
+    _write(str(d), "wr2.supervisor", {"ts": time.time() - 30 * 86400, "status": "ok"})
+    got = _run_cli_json(capsys, str(d))
+    assert got["wr2.supervisor"]["kind"] == "stale"
+
+
+def test_human_report_counts_declared_off_findings(tmp_path, capsys):
+    from organism_stale_detector import main as _main
+
+    d = tmp_path / "sidecars"
+    d.mkdir()
+    _write(str(d), "wr2.oracle", {"ts": time.time() - 30 * 86400, "status": "ok"})
+    _main(["--dir", str(d), "--no-cross-host-sync", "--no-coverage-branch-scan",
+           "--on-command-file", _on_command_file(tmp_path, ["wr2.*"])])
+    out = capsys.readouterr().out
+    assert "all organs breathing" in out and "+1 on-command organ finding(s) not paged" in out
+
+
+def test_repo_on_command_file_parses_and_names_wr2():
+    from organism_stale_detector import DEFAULT_ON_COMMAND_FILE, load_on_command_patterns
+
+    assert "wr2.*" in load_on_command_patterns(DEFAULT_ON_COMMAND_FILE)

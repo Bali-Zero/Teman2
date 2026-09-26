@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # NB mitochondrial value monitor weekly ranking table (generated artifact, not a research deliverable — no prose/sources/client_case, pure cron output)
+---
+
 # NB Mitochondrial Value Monitor — 2026-W24
 
 _Generated at 2026-06-14T18:30:04+00:00_
@@ -22,7 +26,7 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | 14 | `KITAS Research 2025-2026` | DYING | 0 | 0 | +0 | 17 |
 | 15 | `KITAP Research 2025-2026` | DYING | 0 | 0 | +0 | 17 |
 | 16 | `Indonesian Tax Updates 2025-2026` | DYING | 0 | 0 | +0 | 17 |
-| 17 | `Meet 2026-05-13 Salvatore Iorio — Bali Real Estate` | DYING | 0 | 0 | +0 | 17 |
+| 17 | `Meet 2026-05-13 [CLIENT-NAME-REDACTED] — Bali Real Estate` | DYING | 0 | 0 | +0 | 17 |
 | 18 | `[ARCHIVED-DELETE-2026-05-07] NB-NLM-ELEVATION — SOTA research & brainstorm 2026-04-25` | DYING | 0 | 0 | +0 | 17 |
 | 19 | `[MERGED-INTO-dc5d01cd-2026-05-07] Claude Code optimization research 2026-04-21` | DYING | 0 | 0 | +0 | 17 |
 | 20 | `[MERGED-INTO-d2a05271-2026-05-07] Digital Sovereignty & Ancestral Wisdom AI` | DYING | 0 | 0 | +0 | 17 |
@@ -30,14 +34,14 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | 22 | `[ARCHIVED-DELETE-2026-05-07] Analisi Video AI Agency` | DYING | 0 | 0 | +0 | 17 |
 | 23 | `[MERGED-INTO-dc5d01cd-2026-05-07] Nexus — Palantir Architecture Deep Research` | DYING | 0 | 0 | +0 | 17 |
 | 24 | `NB-6 Operations & Compliance Indonesia 2025 — Bali Zero` | DYING | 0 | 0 | +0 | 17 |
-| 25 | `Piano di Ristrutturazione e Conformità per PT Wirramanda` | DYING | 0 | 0 | +0 | 17 |
+| 25 | `Piano di Ristrutturazione e Conformità per [COMPANY-NAME-REDACTED]` | DYING | 0 | 0 | +0 | 17 |
 | 26 | `Agenti in Evoluzione: Rapporto sulla Ricerca 2026` | DYING | 0 | 0 | +0 | 17 |
 | 27 | `[EXPORTED-2026-05-07] BZ Morning News — Multi-Domain Briefing` | DYING | 0 | 0 | +0 | 17 |
 | 28 | `Bali Zero Setup Guide Mac+Mobile — Cinematic ID` | DYING | 0 | 0 | +0 | 17 |
 | 29 | `WR2 Badung HOREKA Waste Carousel Verification 2026-05-11` | DYING | 0 | 0 | +0 | 17 |
 | 30 | `Labor Regulatory Check May 2026` | DYING | 0 | 0 | +0 | 17 |
 | 31 | `CRM sync open-source patterns fast import 2026-05-09` | DYING | 0 | 0 | +0 | 17 |
-| 32 | `Kura Kura Bali Crisis 2026-05-12 — OSINT briefing` | DYING | 0 | 0 | +0 | 17 |
+| 32 | `[INTERNAL-DOSSIER-REDACTED]` | DYING | 0 | 0 | +0 | 17 |
 | 33 | `Ciclo di Vita e Manutenzione dei Sistemi Informativi NotebookLM` | DYING | 0 | 0 | +0 | 17 |
 | 34 | `AI Evolutionary Frontier quicktime 2026 — ALTK/DGM/PTB/SoM` | DYING | 0 | 0 | +0 | 17 |
 | 35 | `NLM Video Falla Research 2026-05-08` | DYING | 0 | 0 | +0 | 17 |
@@ -50,7 +54,7 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | 42 | `NB-0 Meta-NLM — System Reflection` | DYING | 0 | 0 | +0 | 17 |
 | 43 | `NB-HARARI — Yuval Noah Harari on AI (2021-2026)` | DYING | 0 | 0 | +0 | 17 |
 | 44 | `Regulatory Research 2025-2026` | DYING | 0 | 0 | +0 | 17 |
-| 45 | `August 2025 Income Tax Return for The Creative Agency` | DYING | 0 | 0 | +0 | 17 |
+| 45 | `August 2025 Income Tax Return for [COMPANY-NAME-REDACTED]` | DYING | 0 | 0 | +0 | 17 |
 | 46 | `Labor Law Research 2025-2026` | DYING | 0 | 0 | +0 | 17 |
 | 47 | `Codex Config Deep Research 2026 — Nuzantara Operator` | DYING | 0 | 0 | +0 | 17 |
 | 48 | `Codex 5.5 best practices May 2026` | DYING | 0 | 0 | +0 | 17 |
@@ -101,7 +105,7 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | `KITAS Research 2025-2026` | N/A | N/A | N/A | N/A | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `KITAP Research 2025-2026` | N/A | N/A | N/A | N/A | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Indonesian Tax Updates 2025-2026` | N/A | N/A | N/A | N/A | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
-| `Meet 2026-05-13 Salvatore Iorio — Bali Real Estate` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
+| `Meet 2026-05-13 [CLIENT-NAME-REDACTED] — Bali Real Estate` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `[ARCHIVED-DELETE-2026-05-07] NB-NLM-ELEVATION — SOTA research & brainstorm 2026-04-25` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `[MERGED-INTO-dc5d01cd-2026-05-07] Claude Code optimization research 2026-04-21` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `[MERGED-INTO-d2a05271-2026-05-07] Digital Sovereignty & Ancestral Wisdom AI` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
@@ -109,14 +113,14 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | `[ARCHIVED-DELETE-2026-05-07] Analisi Video AI Agency` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `[MERGED-INTO-dc5d01cd-2026-05-07] Nexus — Palantir Architecture Deep Research` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `NB-6 Operations & Compliance Indonesia 2025 — Bali Zero` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
-| `Piano di Ristrutturazione e Conformità per PT Wirramanda` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
+| `Piano di Ristrutturazione e Conformità per [COMPANY-NAME-REDACTED]` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Agenti in Evoluzione: Rapporto sulla Ricerca 2026` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `[EXPORTED-2026-05-07] BZ Morning News — Multi-Domain Briefing` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Bali Zero Setup Guide Mac+Mobile — Cinematic ID` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `WR2 Badung HOREKA Waste Carousel Verification 2026-05-11` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Labor Regulatory Check May 2026` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `CRM sync open-source patterns fast import 2026-05-09` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
-| `Kura Kura Bali Crisis 2026-05-12 — OSINT briefing` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
+| `[INTERNAL-DOSSIER-REDACTED]` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Ciclo di Vita e Manutenzione dei Sistemi Informativi NotebookLM` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `AI Evolutionary Frontier quicktime 2026 — ALTK/DGM/PTB/SoM` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `NLM Video Falla Research 2026-05-08` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
@@ -129,7 +133,7 @@ _Generated at 2026-06-14T18:30:04+00:00_
 | `NB-0 Meta-NLM — System Reflection` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `NB-HARARI — Yuval Noah Harari on AI (2021-2026)` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Regulatory Research 2025-2026` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
-| `August 2025 Income Tax Return for The Creative Agency` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
+| `August 2025 Income Tax Return for [COMPANY-NAME-REDACTED]` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Labor Law Research 2025-2026` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Codex Config Deep Research 2026 — Nuzantara Operator` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |
 | `Codex 5.5 best practices May 2026` | N/A | N/A | N/A | 0.29 | cookie_refresh_pending;pending_qdrant_local_post_fase1;pending_oracle_logging_post_fase4 |

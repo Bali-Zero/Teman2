@@ -1,0 +1,109 @@
+task: >-
+  PR #7395 closes condition C5 (+ C2 fixes) of PR #7366's PASS-WITH-
+  CONDITIONS gate (merged c1ee9cb0b9). Round 0 (head 44e80f888d) made
+  test_wa_team_promises_sql_crosscheck.py's parse_declared_columns
+  fail-closed via an allowlist of three statement shapes, matched with
+  three regexes. A Codex FIX-FIRST review of that head found the regexes
+  themselves were not fail-closed: 16 column bodies + 2 semicolon tricks
+  were ACCEPTED SILENTLY with a WRONG result (invented/dropped columns,
+  flipped nullability — e.g. `c TEXT /* NOT NULL */`, `c BIGSERIAL` read as
+  nullable, `CONSTRAINT pk PRIMARY KEY (c)` read as a column named
+  "constraint"), and 5 mutations of the REAL SQL file kept the full
+  declared-vs-contract comparison green despite changing real semantics.
+  This round (Round 1) replaces the regex parser with an actual tokenizer
+  (`_tokenize`): a single left-to-right lexer pass that recognizes string
+  literals and `--` comments IN CONTEXT, rejects `/`, `*`, `$`, `"` outside
+  a string outright, and parses column definitions via an explicit grammar
+  instead of a NOT-NULL substring scan. C2's sequence-existence booleans
+  were also upgraded to full sequence-definition comparisons (a Round-1
+  nit, cheap to add). Test-only — scripts/wa_team_promises.py (owned by a
+  parallel PR #7367 on the same lane) is untouched.
+lane: wa-team/t3-c5-sql-allowlist
+machine: M5
+date: "2026-09-26"
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat`
+  against the merge-base with origin/main (a6768f8a7b) measures churn 854
+  (767 additions + 87 deletions across the two test files: +704/-75 in
+  test_wa_team_promises_sql_crosscheck.py, the tokenizer rewrite plus 23
+  new Round-1 guilt/support cases; +63/-12 in
+  test_wa_team_promises_gate_conditions_real_pg.py, the sequence-definition
+  upgrade) — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (scripts/tests and
+  scripts/sql/pro_local are not a HOTZONE_PATTERNS match). Confirmed
+  locally via `scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source` against this diff — the Round-0 commit alone
+  (44e80f888d) measured floor 1; the Round-1 tokenizer rewrite is what
+  pushes total PR churn past the size threshold. Test-only in substance —
+  no application/runtime code changed.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    parse_declared_columns is tokenizer-backed (_tokenize/_split_into_
+    statements/_parse_create_table/_parse_alter_table/_parse_column_def/
+    _parse_default_value), rejects `/`, `*`, `$`, `"` outside a string
+    literal, splits on `;` and top-level `,` as TOKENS (never inside a
+    string), and parses `ident type [(args)] [NOT NULL|NULL|DEFAULT
+    <allowed-value>|PRIMARY KEY|CHECK (...)]*` in any clause order.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -v
+  A2: >-
+    All 16 Round-1 column-body shapes and both semicolon tricks are either
+    REJECTED (UnrecognizedSqlShapeError) or parsed to the column set
+    actually shown (never silently passed with a wrong result); all 5
+    Round-1 mutations of the real SQL file make the full declared-vs-
+    contract comparison non-green (either rejected outright or a set
+    inequality) — see the PR body's before/after table.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k round1 -v
+  A3: >-
+    The C1 innocence test and both files' pre-existing guilt tests (3 from
+    C1, 8 from C5 Round 0) still pass unmodified against the new tokenizer;
+    origin/main's team_promises.sql and PR #7367's (90c4326fde) both still
+    parse to their exact respective contracts (26 / 27 columns) — verified
+    directly, not by inspection.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises.py
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -v
+  A4: >-
+    C2's real-PG catalog snapshot now compares each BIGSERIAL PRIMARY KEY's
+    full sequence DEFINITION (name + pg_sequences row: data_type,
+    start_value, min_value, max_value, increment_by, cycle) before/after
+    every guilt case's rollback, not just an existence boolean; the 10-test
+    real-PG opt-in suite stays green.
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m
+      pytest scripts/tests/test_wa_team_promises_real_pg.py
+      scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py -v
+
+out_of_scope: >-
+  scripts/wa_team_promises.py's own logic (owned by a parallel PR #7367 on
+  the same lane — this PR touches test files and this evidence brief
+  only). A full SQL grammar (this tokenizer supports exactly the shapes
+  team_promises.sql needs, deliberately not general Postgres DDL).
+  Re-litigating C2's guilt-shape set itself (only the sequence-comparison
+  MECHANISM changed, not which 6 shapes are tested).
+
+assumptions:
+  - text: >-
+      The 23 new Round-1 guilt/support cases were run once against
+      44e80f888d's (Round 0) parser before this brief was written, not
+      merely reasoned about by inspection: 15/16 column-body cases, 2/2
+      semicolon tricks, and 5/5 real-file mutations stayed silently green
+      there (one column-body case — a string DEFAULT containing `--` —
+      happened to raise on 44e80f888d too, coincidentally, via its
+      line-based comment-stripping truncating the string mid-literal, not
+      because it correctly detected the real issue).
+    status: verified
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -k round1 -v

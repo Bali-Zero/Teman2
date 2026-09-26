@@ -30,6 +30,14 @@ MANDATED = (
 
 MISSING, REFUSED, NEEDS_FIX = 3, 4, 5
 
+# The wrapper runs the gate under /usr/bin/python3 (Pro has PyYAML there; M5 does not).
+# Without PyYAML the redactor cannot load and the gate must REFUSE — so the fake-world
+# happy path is asserted where the redactor can run, and the refusal where it cannot.
+SYSTEM_PY_HAS_YAML = (
+    Path("/usr/bin/python3").exists()
+    and subprocess.run(["/usr/bin/python3", "-c", "import yaml"], capture_output=True).returncode == 0
+)
+
 
 def _run_gate(report: Path, *extra: str) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -309,11 +317,14 @@ def test_wrapper_FAILS_when_the_brain_writes_no_report(tmp_path):
 def test_wrapper_REPAIRS_a_report_written_without_the_mandated_frontmatter(tmp_path):
     proc = _fake_world(tmp_path, "nofrontmatter", wrapper=WRAPPER)
     log = _log(tmp_path)
-    assert proc.returncode == 0, f"a repairable report is not a failure\n{log}"
 
     reports = list((tmp_path / "home/nuzantara/research/nb-health").glob("*.md"))
     assert len(reports) == 1, f"expected exactly one report, got {reports}"
     assert _r1_verdict(reports[0]).returncode == 0, "the wrapper must leave an R1-clean artifact"
+    if not SYSTEM_PY_HAS_YAML:
+        assert proc.returncode == 2 and "REDACTOR UNAVAILABLE" in log, log
+        return
+    assert proc.returncode == 0, f"a repairable report is not a failure\n{log}"
     assert "artifact gate rc=0" in log
 
 
@@ -322,6 +333,9 @@ def test_wrapper_is_silent_and_green_on_a_compliant_run(tmp_path):
     """Innocence: the happy path must not start alarming."""
     proc = _fake_world(tmp_path, "good", wrapper=WRAPPER)
     log = _log(tmp_path)
+    if not SYSTEM_PY_HAS_YAML:
+        assert proc.returncode == 2 and "REDACTOR UNAVAILABLE" in log, log
+        return
     assert proc.returncode == 0, log
     assert "no action/anomaly" in log
     assert "ARTIFACT GATE FAILED" not in log
@@ -345,3 +359,97 @@ def test_a_missing_gate_and_a_missing_gateway_both_leave_a_TRACE(tmp_path):
     assert proc.returncode == 2, log
     assert "ARTIFACT GATE MISSING" in log
     assert "ALERT NOT SENT — gateway missing" in log
+
+
+# ------------------------------------------------- REDACTION (gate + inventory)
+# Invented names only. Shapes mirror the leaks measured 2026-09-26 in promoted reports.
+
+LISTED_ID = "afd7fc4e-2568-4fff-861f-67b661842ece"
+LEAKY_BODY = (
+    "# NB Arsenal Health Report\n\n"
+    "| id | title | sources |\n|---|---|---|\n"
+    "| `11112222` | Piano di Ristrutturazione per PT Fakeco Nusantara | 3 |\n"
+    "| `33334444` | NB-2: Immigration & Visa — Indonesia 2025 | 80 |\n\n"
+    "Contact: someone@example.org\n"
+)
+
+
+def test_gate_redacts_client_identifiers_in_the_body_and_spares_the_frontmatter(tmp_path):
+    report = _report(tmp_path, "2026-09-26-health.md")
+    report.write_text(MANDATED + "\n" + LEAKY_BODY, encoding="utf-8")
+    proc = _run_gate(report, "--fix")
+    assert proc.returncode == 0, proc.stderr
+    assert "REDACTED: 2 line(s)" in proc.stdout
+    out = report.read_text(encoding="utf-8")
+    assert "Fakeco" not in out and "someone@example.org" not in out
+    assert "| Piano di Ristrutturazione per [COMPANY-NAME-REDACTED] | 3 |" in out
+    assert "| NB-2: Immigration & Visa — Indonesia 2025 | 80 |" in out
+    assert out.startswith(MANDATED), "the R1 declaration must survive byte for byte"
+    assert _r1_verdict(report).returncode == 0
+
+
+def test_gate_without_fix_reports_identifiers_and_leaves_the_file(tmp_path):
+    report = _report(tmp_path, "2026-09-26-health.md")
+    report.write_text(MANDATED + "\n" + LEAKY_BODY, encoding="utf-8")
+    proc = _run_gate(report)
+    assert proc.returncode == NEEDS_FIX
+    assert report.read_text(encoding="utf-8") == MANDATED + "\n" + LEAKY_BODY
+
+
+def _inventory_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("nb_inv_under_test", REPO / "scripts/nb_generate_inventory.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _raw_inventory(inv):
+    notebooks = [
+        {"id": "55556666-0000-0000-0000-000000000000", "title": "Meet 2026-05-13 Jane Placeholder — Villa", "source_count": 2},
+        {"id": LISTED_ID, "title": "Harmless Looking Title", "source_count": 1},
+        {"id": "77778888-0000-0000-0000-000000000000", "title": "NB-3: Company Setup — Indonesia 2025", "source_count": 9},
+    ]
+    sources = {k: [] for k in inv.NB_INTEL}
+    sources["press"] = [{"title": "Reach us: someone@example.org"}]
+    return inv.build_inventory(notebooks, sources)
+
+
+def test_inventory_titles_are_redacted_before_the_brain_reads_them():
+    inv = _inventory_module()
+    out = inv.redact_inventory(_raw_inventory(inv), inv.load_title_redactor())
+    assert [n["title"] for n in out["notebooks"]] == [
+        "Meet 2026-05-13 [CLIENT-NAME-REDACTED] — Villa",
+        "[CLIENT-NOTEBOOK-REDACTED]",
+        "NB-3: Company Setup — Indonesia 2025",
+    ]
+    assert out["nb_intel"]["press"]["titles"] == ["Reach us: [CLIENT-EMAIL-REDACTED]"]
+    assert out["redaction"] == "applied"
+
+
+def test_inventory_withholds_every_title_when_the_redactor_cannot_load(tmp_path):
+    inv = _inventory_module()
+    redactor = inv.load_title_redactor(tmp_path / "missing_redactor.py")
+    assert redactor is None
+    out = inv.redact_inventory(_raw_inventory(inv), redactor)
+    assert [n["title"] for n in out["notebooks"]][0] == "[NB-TITLE-WITHHELD:55556666]"
+    assert out["nb_intel"]["press"]["titles"] == ["[SOURCE-TITLE-WITHHELD]"]
+    assert out["redaction"] == "withheld"
+
+
+def test_inventory_main_writes_only_redacted_titles(tmp_path, monkeypatch):
+    """The wiring, not just the function: `--write` must never put a raw title on disk."""
+    import json
+
+    inv = _inventory_module()
+    monkeypatch.setattr(inv, "fetch_notebooks", lambda: [
+        {"id": "99990000-0000-0000-0000-000000000000", "title": "Kontrak untuk PT Fakeco Nusantara", "source_count": 1},
+    ])
+    monkeypatch.setattr(inv, "fetch_sources", lambda _uuid: [{"title": "Plain headline"}])
+    monkeypatch.setattr(inv, "OUTPUT_PATH", tmp_path / "nb-inventory-live.json")
+    monkeypatch.setattr(sys, "argv", ["nb_generate_inventory.py", "--write"])
+    assert inv.main() == 0
+    written = (tmp_path / "nb-inventory-live.json").read_text(encoding="utf-8")
+    assert "Fakeco" not in written
+    assert json.loads(written)["notebooks"][0]["title"] == "Kontrak untuk [COMPANY-NAME-REDACTED]"

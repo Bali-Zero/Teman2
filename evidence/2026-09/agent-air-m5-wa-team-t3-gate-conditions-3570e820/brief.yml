@@ -1,0 +1,108 @@
+task: >-
+  PR #7342's own fresh-Opus final gate was PASS-WITH-CONDITIONS on 8f79340477
+  (merged as b98757efff): C0 was satisfied pre-merge, and four follow-ups
+  (C1-C4) were due before PR-2 (2026-10-02). This PR closes all four,
+  test-only plus the SQL file's own header comment. C1: a statement-level
+  SQL/constant cross-check (name+type+NOT NULL set equality against
+  scripts/wa_team_promises.py's `_REQUIRED_COLUMNS`, type aliases
+  normalized, multi-line ALTER safe) with three in-memory mutations proving
+  it discriminates, plus a real-PG 26-row catalog-completeness proof. C2:
+  real-PG rollback proof (pg_attribute/pg_index/pg_constraint snapshot
+  equality before/after) for 6 guilt shapes — core column wrong type, a
+  domain hiding behind a column name, a missing NOT NULL, each of the two
+  unique indexes in the wrong shape, and duplicate rows aborting the index
+  build — plus a mutation-proof test that runs a SCRATCH copy of the module
+  (verification moved outside the transaction, never touching the real file)
+  and shows the same assertions go red. C3: per the coordinator's option
+  (a), the literal migrations_v2/200 team_promises shape (resolved/
+  created_at NULLABLE, Fly-only, frozen) is confirmed REJECTED fail-closed
+  at `team_promises.resolved`, never upgraded — the SQL file's header
+  comment now states this explicitly. C4: a PR-body note on #7342 itself
+  (out of this PR's diff).
+lane: wa-team/t3-gate-conditions
+machine: M5
+date: "2026-09-26"
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: `git diff --no-renames --numstat`
+  against the merge-base with origin/main measures churn 726 (all
+  additions: 9 scripts/sql/pro_local/team_promises.sql header comment, 517
+  scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py, 200
+  scripts/tests/test_wa_team_promises_sql_crosscheck.py) — above
+  SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No
+  hot-zone path (scripts/sql/pro_local and scripts/tests are not a
+  HOTZONE_PATTERNS match). Confirmed locally via
+  `scripts/evidence_pack_lint.py --print-floor --print-floor-source`
+  against this diff, matching what the `Harness floor recompute` check
+  will report. Test-only in substance (plus one SQL comment) — the large
+  churn is real-PG scenario coverage (6 guilt shapes + a mutation-proof
+  meta-test), not application logic.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    C1's parser (test_wa_team_promises_sql_crosscheck.py) parses
+    scripts/sql/pro_local/team_promises.sql's CREATE TABLE bodies and both
+    single-line and multi-line ALTER TABLE ... ADD COLUMN IF NOT EXISTS
+    statements into (name, type, notnull) tuples, type-alias-normalized,
+    and the parsed set equals `_REQUIRED_COLUMNS` exactly for both tables;
+    the three mutations (multi-line drift-column ALTER, promise_text
+    retyped to VARCHAR, attempts losing its NOT NULL) each produce a set
+    inequality against the same required set.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_sql_crosscheck.py -v
+  A2: >-
+    C1's real-PG half: on a freshly `run_init_schema`-initialized empty
+    database, the full pg_attribute catalog for both tables (name, exact
+    `format_type`, NOT NULL) equals `_REQUIRED_COLUMNS` exactly — 26 rows.
+    C2: each of 6 guilt shapes (core-column wrong type, a domain-typed
+    column, a missing NOT NULL, each of the two unique indexes in the
+    wrong shape, duplicate rows aborting the index build) leaves the
+    catalog (pg_attribute + pg_index + pg_constraint snapshot) unchanged
+    after `run_init_schema` raises, and `team_promise_candidates` stays
+    absent wherever it started absent. The mutation-proof test loads a
+    scratch copy of `scripts/wa_team_promises.py` with verification moved
+    outside `conn.transaction()` and confirms the SAME scenario now
+    commits the DDL despite the raised mismatch — proving the C2
+    assertions would go red against that bug. C3: the literal
+    migrations_v2/200 CREATE TABLE for team_promises (stubbing
+    `clients`/`whatsapp_conversations` for its FKs) is rejected at
+    `team_promises.resolved`, catalog unchanged, the round-2 upgrade
+    columns (thread_key etc.) never landing.
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_real_pg.py
+      scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py -v
+  A3: >-
+    The existing PR-1 unit suite (schema+guard, 20 tests) stays green
+    unmodified — this PR adds coverage, it does not touch
+    scripts/wa_team_promises.py's own logic.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises.py -v
+
+out_of_scope: >-
+  scripts/wa_team_promises.py's own logic (owned by a parallel scanner
+  builder on the same lane — this PR touches test files, the SQL header
+  comment, and this evidence brief only). Applying/relaxing any threshold
+  on the migrations_v2/200 rejection (C3 is a REJECTION per the
+  coordinator's option (a), not an upgrade path). Installing anything on
+  Pro — `--init-schema` already ran there 2026-09-26 per C0; this PR
+  changes no runtime behavior.
+
+assumptions:
+  - text: >-
+      The 6 C2 guilt-case DDL fixtures and the C3 migration-200 extraction
+      were each run once against a live throwaway Homebrew postgresql@17
+      cluster on M5 before this brief was written (not merely composed by
+      inspection) — see the PR body's reported pass counts for the exact
+      commands and output.
+    status: verified
+    probe: >-
+      WA_TEAM_PROMISES_REAL_PG=1 apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py -v

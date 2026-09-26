@@ -9,5 +9,5 @@
 # local audio ABI separately from the deployable backend base image.
 torch==2.14.0
 torchaudio==2.11.0
-silero-vad==6.2.1
+silero-vad==6.2.2
 chatterbox-tts==0.1.7

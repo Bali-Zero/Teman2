@@ -140,6 +140,33 @@ async def test_send_confirmation_email_swallows_failures(
     )
 
 
+@pytest.mark.asyncio
+async def test_send_confirmation_email_never_logs_raw_address_via_log_context(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """M1 (PR #7385 round 2): this caller used to pass
+    `log_context=f"newsletter-double-optin email={email}"` straight through to
+    `internal_email.py`'s log lines. `send_internal_email` is NOT patched
+    here — only the outbound httpx client is — so this exercises the REAL
+    log_context path rather than hiding the leak behind a mock, the same gap
+    the gate found in round 1's own tests."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json = MagicMock(return_value={"success": True, "message": "sent"})
+    mock_client = MagicMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+
+    with patch(
+        "backend.app.services.internal_email.get_email_client",
+        new=AsyncMock(return_value=mock_client),
+    ):
+        with caplog.at_level(logging.INFO, logger="backend.app.services.internal_email"):
+            await send_confirmation_email(email="leak.probe@example.com", token="tok-123")
+
+    assert "@" not in caplog.text
+    assert "leak.probe" not in caplog.text
+
+
 # ============================================================================
 # subscribe() integration
 # ============================================================================

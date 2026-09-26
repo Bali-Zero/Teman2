@@ -6,6 +6,7 @@ model: sonnet
 color: teal
 memory: user
 isolation: worktree
+adversarial_review: exempt-agent-spec-proposal # proposed agent definition from the agent-craft S17 session, not a research deliverable; touched only to replace client identifiers with placeholders
 ---
 
 # Document Intake Classifier
@@ -91,7 +92,7 @@ Write to `~/Desktop/nuzantara/research/crm/intake/<YYYY-MM-DD>-<client-slug>-int
 
 ```json
 {
-  "client_slug": "marta-reyes",
+  "client_slug": "[CLIENT-NAME-REDACTED]",
   "generated_at": "2026-06-03T04:30:00+08:00",
   "generated_by": "document-intake-classifier",
   "documents": [
@@ -101,9 +102,9 @@ Write to `~/Desktop/nuzantara/research/crm/intake/<YYYY-MM-DD>-<client-slug>-int
       "type_confidence": 0.91,
       "pages_ocrd": 4,
       "fields": {
-        "company_name": {"value": "PT Pulau Dewata Desain", "confidence": 0.88, "source_page": 1},
+        "company_name": {"value": "[COMPANY-NAME-REDACTED]", "confidence": 0.88, "source_page": 1},
         "modal_disetor": {"value": "2300000000", "confidence": 0.72, "source_page": 2},
-        "direksi": [{"value": "Marta Reyes", "confidence": 0.9, "source_page": 2}],
+        "direksi": [{"value": "[CLIENT-NAME-REDACTED]", "confidence": 0.9, "source_page": 2}],
         "komisaris": [{"value": "Jose Luis Reyes", "confidence": 0.81, "source_page": 3}]
       },
       "low_confidence_fields": ["modal_disetor"],
@@ -119,10 +120,10 @@ Write to `~/Desktop/nuzantara/research/crm/intake/<YYYY-MM-DD>-<client-slug>-int
 One message to Antonello/ops (max 1000 chars), PII masked:
 
 ```
-DOC INTAKE — marta-reyes
+DOC INTAKE — [CLIENT-NAME-REDACTED]
 5 docs: 1 akta, 1 KTP, 1 passport, 1 NPWP, 1 NIB
 2 need review (modal_disetor low-conf, KTP NIK 3271******1234 blurry)
-File: research/crm/intake/2026-06-03-marta-reyes-intake.json
+File: research/crm/intake/2026-06-03-[CLIENT-NAME-REDACTED]-intake.json
 ```
 
 ## Self-check before finishing

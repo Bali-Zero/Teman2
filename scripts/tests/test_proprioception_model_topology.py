@@ -198,6 +198,37 @@ def test_guilt_alias_to_an_absent_model_still_fires_and_shows_the_chain():
     assert any("cell_tier1 -> big_local -> gemma4:26b" in line for line in ev), ev
 
 
+def test_innocence_mlx_tagged_role_is_not_judged():
+    """`cell_tier1 -> qwen3.8:27b-mlx` is never `ollama pull`ed on any machine —
+    MLX models are served by `mlx_lm.server` / `MLXProvider`, a third local
+    failure-domain beside ollama_pro/ollama_mini (apps/backend-rag/backend/llm/
+    providers/mlx.py). Found live on mini 2026-09-26: this probe called it a
+    missing ollama model forever, on every machine, by construction — the
+    permanent false-DIVERGED shape (superscar #2's cousin: a probe that always
+    shouts about something that can never be true gets trained out of existence).
+    """
+    roles = {"cell_tier1": "qwen3.8:27b-mlx", "fast": "qwen3.5:9b"}
+    with tempfile.TemporaryDirectory() as td:
+        root = _root(Path(td), roles)
+        status, n, ev = _probe(_fake_ollama(_listing("qwen3.5:9b")), root)
+    assert status == pp.RECONCILED, ev
+    assert n == 0, "an -mlx model is not a missing ollama model"
+    assert any("1 roles name other doors" in line for line in ev), ev
+
+
+def test_guilt_mlx_suffix_does_not_launder_a_real_ollama_gap():
+    """A genuinely absent ollama role must still fire even when an unrelated
+    -mlx role is present in the same topology (the exclusion is per-role, not
+    a switch that goes blind on the whole probe)."""
+    roles = {"cell_tier1": "qwen3.8:27b-mlx", "vision": "qwen2.5vl:7b"}
+    with tempfile.TemporaryDirectory() as td:
+        root = _root(Path(td), roles)
+        status, n, ev = _probe(_fake_ollama(_listing()), root)
+    assert status == pp.DIVERGED, ev
+    assert n == 1, ev
+    assert any("vision -> qwen2.5vl:7b" in line for line in ev), ev
+
+
 def test_alias_cycle_terminates():
     with tempfile.TemporaryDirectory() as td:
         root = _root(Path(td), {"a": "b", "b": "a"})

@@ -1,0 +1,184 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+pii_scan: clean
+seat_fallback_reason: >-
+  The reserve seat agy-gemini-3.1-pro is counted in place of the titolare
+  codex-gpt-5.6-sol. The lead's ruling for this PR fixed the modus panel as
+  Gemini (agy, constructive), Codex (red team, default model, "do not pass
+  -m") and Kimi k3 (refuter). On M5 the Codex default model is gpt-6-astra,
+  observed in the header of the codex exec run (council/codex-gpt-6-astra.txt
+  is its verbatim output), so the Codex seat sat as codex-gpt-6-astra, which is
+  not in R9's roster: its line is journaled and its findings are disposed
+  below, but it does not count toward quorum. tp1-qwen3.8-max was not in the
+  ruled panel. Quorum by R9 = kimi-code/k3 (titolare) + agy-gemini-3.1-pro
+  (reserve, second attempt; the first attempt returned no judgement because
+  headless agy auto-denied a shell tool, see its non-judgement journal line).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+    note: >-
+      Brought the live plist into infra/launchagents byte-identical (sha256
+      32b486c82fbd4490 repo == live, compared over ssh before and after the
+      council), declared the Pro pair, added the pro.s7_yield_weekly registry
+      entry with an in-place checksum update, retrofitted heartbeat and kill
+      switch into the wrapper, wrote the sandbox test, then applied the
+      council fixes (signal forwarding, pidfile, logged lost heartbeat).
+  - lane: review-round1
+    role: review
+    seat: codex-gpt-6-astra
+    note: >-
+      Red team, VERDICT REWORK, three MAJOR: lost heartbeat without a signal,
+      SIGTERM orphaning the payload with no heartbeat, no single-instance
+      guard. All three reproduced by the builder and fixed.
+  - lane: review-round1
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Refuter, VERDICT PASS. Confirmed by execution: exit-code propagation,
+      kill switch, checksum validity, and the round-1 tests failing on the
+      pre-genes wrapper except the one designed to pass on both. Two MINOR (silent heartbeat waiver when the library is absent;
+      plist identity unverifiable from its seat) and two NIT (no signal trap,
+      no pidfile).
+  - lane: review-round1
+    role: review
+    seat: agy-gemini-3.1-pro
+    note: >-
+      Constructive, VERDICT REWORK: G10 missing (MAJOR), signals bypass the
+      heartbeat (MINOR), test env drops PATH (MINOR), S7_YIELD_ENABLED=0 not
+      honoured (NIT), dependencies empty (NIT).
+dissent:
+  - seat: codex-gpt-6-astra
+    objection: >-
+      MAJOR 1: a missing heartbeat library, or heartbeat.sh's own mkdir
+      failure, loses the heartbeat with no signal.
+    status: CONFIRMED
+    disposition: >-
+      Fixed for this wrapper: the fallback now logs "heartbeat library missing
+      — status <s> not recorded" (test_missing_heartbeat_library_is_logged_and_keeps_the_exit_code).
+      Rejected for heartbeat.sh's internal `mkdir ... || return 0`: that is the
+      shared library contract of every organ, outside this diff; an unwritten
+      heartbeat surfaces as silence after expected_hb_seconds.
+  - seat: codex-gpt-6-astra
+    objection: >-
+      MAJOR 2: SIGTERM to the wrapper leaves the payload running and writes no
+      heartbeat, a regression from the old `exec`.
+    status: CONFIRMED
+    disposition: >-
+      Reproduced before fixing (rc=143, payload alive, finished anyway, no
+      heartbeat). Fixed: TERM/INT/HUP trapped, forwarded to the payload as
+      TERM, waited for, error "signal <SIG>" written, exit 128+n. Reproduced
+      after (payload dead, heartbeat error "signal TERM").
+      test_sigterm_stops_the_payload_and_writes_error.
+  - seat: codex-gpt-6-astra
+    objection: >-
+      MAJOR 3: no single-instance guard; two manual runs overlap.
+    status: CONFIRMED
+    disposition: >-
+      Fixed with an O_EXCL pidfile under ~/.organism/run, liveness probe,
+      stale reclaim and release on exit; a live holder means skip with a
+      warning heartbeat. launchd itself never overlaps runs of one label, so
+      the guard covers manual runs. Tests: live skip, stale reclaim. The
+      conformance gate now reports advisory: [] for this organ.
+  - seat: kimi-code/k3
+    objection: >-
+      MINOR: plist byte-identity cannot be verified from the review seat.
+    status: PLAUSIBLE
+    disposition: >-
+      Verified by the builder: sha256 32b486c82fbd4490 for the repo file and
+      for Pro's live file, compared over ssh at 2026-09-26T11:25Z. The
+      post-merge acceptance probe is lint_home_fork --check on Pro.
+  - seat: agy-gemini-3.1-pro
+    objection: >-
+      MINOR: the test sandbox drops PATH, so heartbeat.sh utilities may not
+      resolve.
+    status: RETRACTED
+    disposition: >-
+      Refuted by evidence (RETRACTED = the objection does not hold): the wrapper exports its own absolute PATH at
+      scripts/s7-yield-run.sh:51 before any external command, and the tests
+      pass with no PATH in the environment, which is the launchd-like case.
+  - seat: agy-gemini-3.1-pro
+    objection: >-
+      NIT: S7_YIELD_ENABLED=0 should also disable the job.
+    status: PLAUSIBLE
+    disposition: >-
+      Rejected: the repo convention for *_ENABLED kill switches is `=false`
+      (44 of 45 wrapper comparisons use "false"; genes.json G5 spells
+      <SCOPE>_ENABLED=false). A second spelling for one organ would diverge
+      from what operators type everywhere else.
+  - seat: agy-gemini-3.1-pro
+    objection: >-
+      NIT: dependencies: [] although the payload uses Postgres and Ollama.
+    status: PLAUSIBLE
+    disposition: >-
+      Rejected: no runtime reader of `dependencies` exists (only the type
+      check at validate_organs_registry.py:164), and which organ serves
+      localhost:15432 is not provable from the repo (wr2.pg_proxy's
+      owner_module path does not exist), so declaring it would be a guess.
+receipts:
+  - claim: >-
+      The ten wrapper tests pass on the final wrapper.
+    cmd: python3 -m pytest -q scripts/tests/test_s7_yield_run_wrapper.py
+    exit: 0
+    ts: "2026-09-26T11:23:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      All ten tests fail against origin/main's wrapper, and the four
+      council-driven tests fail against the first genes wrapper (6 pass,
+      4 fail), so the tests bite on both the missing genes and the council
+      findings.
+    cmd: >-
+      git show origin/main:scripts/s7-yield-run.sh > scripts/s7-yield-run.sh;
+      pytest (10 failed); git show b0ead9e643:scripts/s7-yield-run.sh >
+      scripts/s7-yield-run.sh; pytest (4 failed, 6 passed); restored with cp
+    exit: 1
+    ts: "2026-09-26T11:23:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      SIGTERM before the fix: wrapper rc=143, payload alive and finished, no
+      heartbeat. After the fix: rc=143, payload dead, heartbeat
+      {"status":"error","note":"signal TERM"}.
+    cmd: bash sigterm_probe.sh scripts/s7-yield-run.sh (scratchpad reproducer, run before and after)
+    exit: 0
+    ts: "2026-09-26T11:22:08Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Organ conformance: 170 plists scanned, 0 regressions, 0 non-conformant
+      births; this organ reports missing [] and advisory [].
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py --json
+    exit: 0
+    ts: "2026-09-26T11:24:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      organs_registry.yaml validates with the in-place checksum after the
+      rebase onto origin/main.
+    cmd: python3 apps/organism/organism/tools/validate_organs_registry.py apps/organism/organism/organs_registry.yaml
+    exit: 0
+    ts: "2026-09-26T11:08:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      The tracked plist and Pro's live plist have the same sha256
+      (32b486c82fbd4490...).
+    cmd: >-
+      shasum -a 256 infra/launchagents/com.balizero.s7-yield.weekly.plist;
+      ssh pro 'shasum -a 256 ~/Library/LaunchAgents/com.balizero.s7-yield.weekly.plist'
+    exit: 0
+    ts: "2026-09-26T11:25:37Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Neighbouring suites stay green: organ-conformance tests (135 passed) and
+      lint_home_fork, own-plist margin, heartbeat-vs-poller and healer
+      receptor tests (39 passed, 1 skipped).
+    cmd: >-
+      pytest infra/organ-conformance/test_gene_g2_heartbeat_fires.py
+      infra/organ-conformance/test_organ_conformance.py; pytest
+      scripts/tests/test_lint_home_fork.py
+      scripts/tests/test_self_reporting_cron_own_plist_margin.py
+      scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py
+      scripts/tests/test_healer_receptor_running_status.py
+    exit: 0
+    ts: "2026-09-26T11:24:00Z"
+    seat: claude-opus-5-5

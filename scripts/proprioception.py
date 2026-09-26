@@ -1941,8 +1941,14 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
     — which is protection by accident, and hides the drift instead of reporting it.
 
     Only ollama-shaped roles are judged. `agy/...`, `claude --print`, `codex
-    --full-auto`, `openrouter/...` and `google-gemini-cli/...` name other doors
-    entirely and are listed as out-of-scope rather than silently counted clean.
+    --full-auto`, `openrouter/...`, `google-gemini-cli/...` and any `...-mlx`
+    tag name other doors entirely and are listed as out-of-scope rather than
+    silently counted clean. `-mlx` models are never `ollama pull`ed at all —
+    they are served by `mlx_lm.server` and read through `MLXProvider`
+    (`apps/backend-rag/backend/llm/providers/mlx.py`), a third local
+    failure-domain beside `ollama_pro`/`ollama_mini`. Judging one against
+    `ollama list` is a permanent false DIVERGED: no machine will ever install
+    it there, by design, so the finding could never self-heal.
 
     UNPROBEABLE, never RECONCILED, where ollama is absent (M5): "no daemon here"
     and "every role resolves" are different facts, and reporting the second for the
@@ -2002,7 +2008,7 @@ def probe_model_topology_drift(root: Path, args: dict, timeout: int) -> tuple[st
         if not isinstance(declared, str):
             continue
         model = _resolve(declared)
-        if model.startswith(OTHER_DOORS) or " " in model:
+        if model.startswith(OTHER_DOORS) or model.endswith("-mlx") or " " in model:
             other += 1
             continue
         if model not in installed and model.rsplit(":", 1)[0] not in installed:
