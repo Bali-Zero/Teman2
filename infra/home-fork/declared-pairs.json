@@ -1176,6 +1176,12 @@
       "repo": "scripts/pro/ollama-single-manager.sh",
       "machines": ["pro"],
       "_note": "Pro-only (launchd com.nuzantara.ollama, StartInterval 120, execs `ollama serve` with the memory caps). Brought into canon 2026-09-26 to cap llama-server's host prompt cache (LLAMA_ARG_CACHE_RAM) after swap exhaustion; the HOME-only copy dated 2026-09-02."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.s7-yield.weekly.plist",
+      "repo": "infra/launchagents/com.balizero.s7-yield.weekly.plist",
+      "machines": ["pro"],
+      "_note": "Pro-only S7 CRM yield draft job (Sunday 04:00). Installed live by copy on 2026-08-20 (s7-cutover) and never tracked; brought into canon 2026-09-26 byte-identical to the live copy. Its payload scripts/s7-yield-run.sh runs from the repo checkout (not a HOME copy), so it is tracked in the same PR and needs no pair of its own."
     }
   ],
   "allow": [
