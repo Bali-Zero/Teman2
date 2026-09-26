@@ -1,0 +1,121 @@
+task_id: senderpii-k1k2
+gear: 1
+l_level: L1
+gate_class: opus
+objective: |
+  Follow-up PR #7417 mandated: closes K1 and K2 of that PR's final on-disk gate
+  (pull/7417#issuecomment-5847196175). #7417 (`fix(email): close C1/C2/C3/C6 of PR #7385's gate
+  on the sender-PII scrub`) is merged (squashed as `37c03c1874`).
+
+  K1 (SHOULD-FIX, CodeQL alert 9200, `py/polynomial-redos`): #7417's own C1 fix restored the
+  round-1 token class via `_EMAIL_TOKEN_RE = re.compile(r"[^\s@<>\"'`]+@[^\s@<>\"'`]+")` and added
+  two peel regexes, `_LEADING_MD_DELIM_RE` (`^[chars]+`) and `_TRAILING_MD_DELIM_PUNCT_RE`
+  (`[chars]+$`). The gate measured all three at the same quadratic cost C6 had already removed
+  from `_TRAILING_PARTIAL_TOKEN_RE` (1.05-1.28s and 1.64s at 20k chars respectively): a
+  `.sub()`/`.search()` scan whose failure mode backtracks per start position, so a non-matching or
+  anchor-blocked run costs O(length²). `_bounded_scrub` bounds every caller to 120/400 chars (a few
+  ms even at that cost), so this was never a live DoS — but the shape is the same one C6 was
+  supposed to close everywhere in this module, and it moved a HIGH CodeQL alert onto `main` instead
+  (9200 never existed on `main` before #7417; 9192, the alert C6 actually closed, does not recur).
+
+  Cure: replaced all three regexes with linear constructs. `_scrub_word` is a single forward pass
+  over a boundary-free "word" (the same two-pointer shape `_strip_trailing_partial_token` already
+  uses) that locates `local@domain` spans via `str.find` with a monotonically-advancing start
+  index — each character of the word is visited a bounded number of times across the whole call,
+  never re-scanned from an earlier position. `_redact_token`'s peel now uses `str.lstrip`/
+  `str.rstrip` over the same two character sets the regexes encoded — a builtin, not a pattern, so
+  there is no backtracking construct left for CodeQL (or an adversarial input) to find a blowup in.
+  `_scrub_email_tokens` itself is now a third single forward pass that splits `text` into these
+  boundary-free words (whitespace and `<>"'`` backtick are still the only hard boundaries — `@` is
+  never one, since it lives *inside* a token as the local/domain separator) and hands each to
+  `_scrub_word`.
+
+  K2: `test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters` (added by #7417
+  for its own C1 fix) asserted `address not in body` / `fragment not in body` against the RAW
+  urlencoded POST payload passed to `urlopen` — `urllib.parse.urlencode` (via `quote_plus`)
+  percent-encodes both `@` (-> `%40`) and `*` (-> `%2A`), so neither literal character can ever
+  survive urlencoding regardless of what the redaction actually did. The gate proved this: the
+  `asterisk_in_local` param is GREEN on `b491d10138` (pre-#7417) even though that commit's alert
+  `text` literally contains the `a*` fragment the test exists to catch. Fixed by parsing the
+  payload with `urllib.parse.parse_qs(body)["text"][0]` first and asserting on that — the same
+  string Telegram actually renders — and the PR body/this brief's `grader` correct #7417's own
+  overclaim rather than repeating it.
+constraints:
+  - "One-fix-per-finding: K1 touches only the token-scan/peel implementation in
+    `_scrub_email_tokens`/`_scrub_word`/`_redact_token`; K2 touches only the one test's assertions.
+    No other behaviour in `email_audit.py` changed — the module's PUBLIC surface
+    (`_bounded_scrub`, `notify_email_failure_critical`, `_strip_trailing_partial_token`) is
+    untouched by K1 beyond the internal helpers it calls."
+  - "K1 is REQUIRED to be byte-identical to the pre-K1 (post-#7417) implementation on every
+    reachable input — this is a performance/CodeQL-shape fix, not a behavior change. Verified, not
+    merely asserted (see grader)."
+  - "No client PII in this PR's own artifacts — every example address is a synthetic
+    `*.example`/`*.example.test` shape, matching #7385's and #7417's own convention."
+  - "K3 and K4 (quoted local parts / apostrophes / backticks; Markdown glued to an address with no
+    whitespace) are explicitly OUT OF SCOPE for this PR per the gate's own routing — they fold into
+    the later C4 follow-up PR (2026-10-03)."
+acceptance:
+  - text: >-
+      (K1) `_scrub_email_tokens` SHALL produce output BYTE-IDENTICAL to the pre-K1 implementation
+      (the version merged as PR #7417 / `37c03c1874`) on every case in PR #7417 gate's own
+      15,886-case adversarial corpus (14 synthetic addresses × 24 Markdown/quoting wrappers ×
+      {subject, error}, truncation cuts at every offset, and 6,000 seeded random fuzz inputs), and
+      SHALL complete on a 200,000-character single non-matching-token input without the quadratic
+      slowdown CodeQL flagged.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py; plus the gate's adversarial.py corpus re-run against this head (see grader)"
+  - text: >-
+      (K1) `_scrub_email_tokens` SHALL still fully digest a single email-shaped token that fills
+      the entire 400-char `_bounded_scrub` bound for the `error` field — the linear rewrite must
+      not special-case short tokens only.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_email_tokens_fully_digests_a_400_char_single_token"
+  - text: >-
+      (K2) `test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters` SHALL assert
+      against the alert's actual rendered `text` field (via `parse_qs`), not the raw urlencoded
+      body, and SHALL be RED (both `address`/`fragment` present) against `b491d10138`'s sources for
+      all 3 parametrized cases including `asterisk_in_local` — the case the pre-K2 test's
+      urlencoding bug made vacuously GREEN there.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters"
+consumer_map:
+  - "`backend/services/notifications/email_audit.py`'s `notify_email_failure_critical` — the
+    synchronous Telegram page Bali Zero's owner reads on a critical-email failure; K1's fix is
+    entirely internal to the helpers this alert path's `subject`/`error` scrub already calls."
+  - "GitHub code scanning (CodeQL) — alert 9200 (`py/polynomial-redos`) should show 0 open
+    instances on `email_audit.py` at `refs/heads/main` after the next nightly scan (there is no
+    'closes' framing here — 9200 never existed on `main` before #7417 introduced the shape this PR
+    now removes; #7417's own 9192 is the one that actually closed)."
+risks:
+  - "K1's `_scrub_word` still walks left-to-right through every character of a boundary-free word
+    once for the outer boundary scan and once (amortized) for the inner `@`-pairing scan — O(n)
+    total but with a real Python-level constant factor per character (~90-280 ns/char measured,
+    100k-400k chars), higher than a compiled regex's per-char cost on the FAST path. Not a
+    regression in the security sense (CodeQL's concern is the growth curve, not the constant), and
+    every real caller is bounded to 400 chars regardless (~0.03-0.05 ms/call, measured)."
+  - "The byte-identical proof runs against `b491d10138`'s sources reloaded via `importlib` in the
+    SAME process as HEAD's module, for `redact_identifier_for_log`'s per-process fallback salt to
+    line up when neither module sets `LOG_PII_HMAC_SALT` — confirmed empirically (0 diffs across
+    15,886+15,886 cases, many of which redact something), not re-derived from the salt module's own
+    source in this brief."
+grader: |
+  K1: (a) re-ran PR #7417 gate's own `adversarial.py` corpus (15,886 cases) against this PR's head
+  — 0 head leaks, 2,141 b491 leaks, 0 head-only regressions, matching the gate's own numbers
+  exactly (sanity-checked the harness reproduces the gate's baseline before trusting its verdict
+  on this head). (b) Wrote a SEPARATE byte-identical diff harness comparing raw alert bodies
+  (not just leak counts) between the pre-K1 (post-#7417-merge) module and this head's module over
+  the SAME 15,886 cases: 0 diffs. (c) Timed `_scrub_email_tokens` directly at 5k/10k/20k/100k/
+  400k chars on three adversarial pump characters (`!`, `*`, `a`) — ns/char stays in the
+  90-280 range across that 80x size range (no quadratic growth), versus the gate's measured
+  1.05-1.64s/20k (order-of-magnitude slower) on the regex it replaces.
+
+  K2: ran the corrected test directly against a dynamically-loaded copy of `b491d10138`'s
+  `email_audit.py` (via `importlib.util.spec_from_file_location`, same technique #7417's own gate
+  used) for all 3 parametrized cases — `underscore_in_local`, `asterisk_in_local`,
+  `underscore_in_domain` — all 3 show `fragment_absent=False` (RED), confirming the corrected
+  assertion actually catches what the vacuous urlencoded-body check could not.
+budget: >-
+  1 build lane (this session), no cross-family review lane, no council gate — Gear 1 (2 files,
+  +196/-46 in the working commit; net +150/-46 relative to origin/main after rebase). Verification:
+  full existing + new pytest suite, the gate's own adversarial corpus re-run, a from-scratch
+  byte-identical diff harness, and direct timing at up to 400k chars.
+pii:
+  none — every address in this PR's diff/tests/pack is a synthetic `*.example`/`*.example.test`
+  shape, matching #7385's and #7417's own convention.
