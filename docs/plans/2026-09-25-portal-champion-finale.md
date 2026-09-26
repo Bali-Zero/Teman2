@@ -1,6 +1,6 @@
 # Portal Champion finale
 
-Status: implemented and independently reviewed PASS in an isolated BLUE builder worktree; not deployed. Final review, condition verification and frozen hashes are recorded in [the preparation receipt](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finale-4d7385d5/review.md).
+Status: prepared in an isolated BLUE builder worktree (2026-09-25) and reviewed PASS there; that worktree was later removed. On 2026-09-26 the BLUE release owner recovered the candidate byte-exact from the builder transcript (19/19 files match the frozen per-file hashes, aggregate `d528380df865…069f`), added the API-to-RAG proxy streaming fix, re-verified and released it. Release receipts: [brief](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finish-fa665d5f/brief.yml) and [pack](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finish-fa665d5f/pack.yml).
 
 ## Product behavior
 
@@ -13,14 +13,14 @@ A scored registration produces a short full-screen goal celebration on authentic
 1. The existing registration service commits before the router schedules a background goal publication.
 2. A three-second deadline bounds publication. The canonical challenge CTEs decide eligibility and score; the goal payload contains only staff presentation fields and activation count.
 3. An atomic Redis operation appends to a bounded stream and deduplicates by a hash of the scoring unit. One shared reader per backend process distributes events to individual staff browser queues.
-4. The staff-only SSE endpoint runs through the existing same-origin Next proxy without buffering. Native reconnects retain the event cursor; permanent failures recreate the connection with capped backoff. Replay is restricted to recent events. The server clock calibrates stale-event checks.
+4. The staff-only SSE endpoint runs through the existing same-origin Next proxy and the API-to-RAG proxy without buffering. Native reconnects retain the event cursor; permanent failures recreate the connection with capped backoff. Replay is restricted to recent events. The server clock calibrates stale-event checks.
 5. A goal invalidates the identity-scoped leaderboard query. The UI requests a fresh snapshot so an overlapping pre-goal cached request cannot freeze the standings behind the celebration. The challenge subscription stops after the fixed contest window closes.
 
 ## Verification
 
-Current checks: 81 frontend tests and 103 backend tests pass, including eight scratch-PostgreSQL cases. TypeScript passes. Ruff passes. ESLint reports no errors and one existing workspace-layout ref-cleanup warning outside this change. The context verification helper records four successful check commands.
+Release re-verification (2026-09-26): 81 frontend tests and 503 targeted backend tests pass, plus eight scratch-PostgreSQL cases and a real-Redis proof. TypeScript and Ruff checks pass. ESLint reports no errors and one existing workspace-layout warning outside this change. A full local chain (real events router and auth, real API-to-RAG proxy, Next proxy, throwaway Redis and PostgreSQL) delivered a goal to two authenticated synthetic browser sessions and covered unauthorized, duplicate and outage-replay cases.
 
-Evidence and synthetic previews: [desktop](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finale-4d7385d5/portal-champion-desktop.png), [mobile](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finale-4d7385d5/portal-champion-mobile.png), [goal](../../evidence/2026-09/agent-nuzantara-frontend-portal-champion-finale-4d7385d5/portal-champion-goal.png). The same directory contains logs, the verification receipt and frozen source hashes.
+Synthetic previews (desktop arena, 390 px arena, goal overlay, reduced-motion goal overlay) were reviewed during release; the repository ignores PNG files, so they are not committed. Their portraits are pattern placeholders and their names are fixtures.
 
 - Targeted frontend tests cover presentation order, contender selection, identity cleanup, duplicate/stale suppression, reconnect cursor, clock skew and streaming proxy behavior.
 - Targeted backend tests cover the scoring rules, staff-only endpoint, fresh cache bypass, publication projection, excluded registrations, timeout and after-commit background scheduling, fanout and replay.
