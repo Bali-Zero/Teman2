@@ -61,8 +61,8 @@ export const metadata: Metadata = {
  * What makes the daylight ground safe for TEXT, measured rather than assumed
  * (`voa-contrast.computed.guard.test.tsx` recomputes all of it from
  * globals.css on every run): on `[data-theme="operative-light"][data-product="my"]`
- * the accent the funnel paints text with — `--bz-accent`, at the clock's
- * handoff link and at "Ask us anything before you pay" — is copper #a44b36,
+ * the accent the funnel paints text with — `--bz-accent`, at
+ * "Ask us anything before you pay" — is copper #a44b36,
  * 5.26:1 on the #f7f4ee ground and 5.64:1 on the #fffcf7 card. Both clear AA.
  * The naive flip, which is the one worth naming because it was the plan
  * before the numbers came in, was to keep the DARK block's lifted copper

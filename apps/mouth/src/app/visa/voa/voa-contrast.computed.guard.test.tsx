@@ -1265,7 +1265,11 @@ const boundaryRe = (token: string) =>
   new RegExp(`border(?:-?[cC]olor)?:[^;\n]*${token}`);
 
 describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
-  it.each([".voa-clock__handoff", ".voa-next__ask"])(
+  // Re-pinned 2026-09-26 (BRIEF-v2 R-1/§2.2, one primary action per
+  // viewport): «Filing somewhere else?» is no longer a bordered copper pill
+  // but a quiet underlined ink TEXT link, so it has no control boundary for
+  // 1.4.11 to judge. Its own rows below pin what it is now.
+  it.each([".voa-next__ask"])(
     "%s's boundary clears 3:1 on the ground it sits on",
     (cls) => {
       const ratio = contrastRatio(
@@ -1275,6 +1279,19 @@ describe("control boundaries clear 1.4.11's 3:1 (mandate accent 6)", () => {
       expect(ratio, `${cls}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
     },
   );
+
+  it(".voa-clock__handoff is a quiet ink link: ink, not copper, 4.5:1, underlined", () => {
+    const colour = ruleColour(".voa-clock__handoff");
+    expect(colour).toBe(resolveColor("var(--text-primary)", SURFACE_TOKENS));
+    expect(colour).not.toBe(resolveColor("var(--r19-copper)", SURFACE_TOKENS));
+    expect(
+      contrastRatio(colour, SURFACE_TOKENS["--bz-base"]),
+    ).toBeGreaterThanOrEqual(4.5);
+    const rule =
+      /\.voa-clock__handoff\s*\{([^}]*)\}/.exec(VOA_R19_CSS)?.[1] ?? "";
+    expect(rule).toMatch(/text-decoration:\s*underline/);
+    expect(rule).not.toMatch(/--bz-accent|--r19-copper/);
+  });
 
   it("GUILTY: both retired tokens fail that floor, on the ground and on a field fill", () => {
     for (const token of RETIRED_BOUNDARY_TOKENS) {

@@ -241,31 +241,31 @@
  * lives on the checkout screen and is green.
  */
 [data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff {
+  /* A quiet ink text link (BRIEF-v2 §2.2, 2026-09-26): the key form beside
+     the price is this viewport's ONE copper action, so the clock's hand-off
+     steps down from a copper pill to an underlined ink link. */
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   align-self: flex-start;
   justify-self: start;
-  min-height: 48px;
-  margin-top: 0.5rem;
-  padding: 0 1.1rem;
-  border: 1px solid var(--tx-tertiary);
-  border-radius: 999px;
+  min-height: 44px;
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
   background: transparent;
-  color: var(--bz-accent);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.2;
-  text-decoration: none;
-  transition: border-color 160ms ease;
+  text-decoration: underline;
+  text-decoration-color: var(--r19-control-border);
+  text-underline-offset: 3px;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff:hover,
-[data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff:focus-visible {
-  border-color: var(--bz-accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+[data-product="my"][data-garuda-voa="r19"] .voa-clock__handoff:hover {
+  text-decoration-color: var(--text-primary);
 }
 
 /*
