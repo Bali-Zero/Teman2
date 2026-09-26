@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./oracle.css";
+import "./road.css";
 
 // Route-local pre-paint bootstrap. The root layout uses the same raw-script
 // pattern because App Router's beforeInteractive scripts can land too late to

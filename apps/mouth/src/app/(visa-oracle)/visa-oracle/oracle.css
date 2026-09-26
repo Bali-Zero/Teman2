@@ -41,26 +41,26 @@
 /* ─── Theme: light (DEFAULT — design doc §3, gov-demo default) ────────── */
 .oracle-root,
 .oracle-root[data-oracle-theme="light"] {
-  --oracle-bg: #f7f5ef;
-  --oracle-bg-elevated: #ffffff;
-  --oracle-ink: #16231c;
+  --oracle-bg: #f7f4ee;
+  --oracle-bg-elevated: #fffcf7;
+  --oracle-ink: #1d2c3b;
   /* Finding #11: `rgba(22,35,28,0.62)`/`0.38` over the light bg computed
    * to well under WCAG AA's 4.5:1 for normal text (the reviewer measured
    * the faint tier at ~4.06:1 on a tinted surface, which we independently
    * reproduced). Solid hex tuned for AA headroom on both `--oracle-bg`
    * and `--oracle-bg-elevated`: ink-muted ~7.1:1, ink-faint ~5.7:1. */
-  --oracle-ink-muted: #35473f;
-  --oracle-ink-faint: #5b6a60;
-  --oracle-canopy: #1f4d3d;
-  --oracle-branch: #6b7a5e;
-  --oracle-leaf-pending: #cdc6ac;
-  --oracle-leaf-active: #1f4d3d;
-  --oracle-leaf-pruned: rgba(139, 82, 53, 0.28);
-  --oracle-border: rgba(22, 35, 28, 0.12);
-  --oracle-border-strong: rgba(22, 35, 28, 0.22);
-  --oracle-star: rgba(31, 77, 61, 0.5);
-  --oracle-accent-gold: #a8791f;
-  --oracle-focus-ring: #1f4d3d;
+  --oracle-ink-muted: #414e5a;
+  --oracle-ink-faint: #58626b;
+  --oracle-canopy: #233d52;
+  --oracle-branch: #7b817f;
+  --oracle-leaf-pending: #dad8d1;
+  --oracle-leaf-active: #233d52;
+  --oracle-leaf-pruned: rgba(35, 61, 82, 0.22);
+  --oracle-border: rgba(29, 44, 59, 0.12);
+  --oracle-border-strong: rgba(29, 44, 59, 0.24);
+  --oracle-star: rgba(35, 61, 82, 0.5);
+  --oracle-accent-gold: #a44b36;
+  --oracle-focus-ring: #a44b36;
 
   --oracle-state-eligible: #16683f;
   --oracle-state-likely: #2a6f97;
@@ -78,25 +78,25 @@
 
 /* ─── Theme: dark (premium/oracle read) ────────────────────────────────── */
 .oracle-root[data-oracle-theme="dark"] {
-  --oracle-bg: #0a100d;
-  --oracle-bg-elevated: #131c17;
-  --oracle-ink: rgba(240, 242, 236, 0.94);
+  --oracle-bg: #1d2c3b;
+  --oracle-bg-elevated: #243648;
+  --oracle-ink: #f7f4ee;
   /* Finding #11: same fix as the light theme above — solid hex tuned for
    * AA headroom against `--oracle-bg-elevated` (#131c17): ink-muted
    * ~8.1:1, ink-faint ~5.68:1 (the reviewer's flagged pairing measured
    * ~3.05:1 before this). */
-  --oracle-ink-muted: #a9b3ad;
-  --oracle-ink-faint: #8b968f;
-  --oracle-canopy: #7fc4a0;
-  --oracle-branch: #587d63;
-  --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
-  --oracle-leaf-active: #8fe0b8;
-  --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
-  --oracle-border: rgba(240, 242, 236, 0.1);
-  --oracle-border-strong: rgba(240, 242, 236, 0.18);
+  --oracle-ink-muted: #cdd2d6;
+  --oracle-ink-faint: #aab3bb;
+  --oracle-canopy: #a9c1d6;
+  --oracle-branch: #6d7f8f;
+  --oracle-leaf-pending: rgba(247, 244, 238, 0.16);
+  --oracle-leaf-active: #d9e4ee;
+  --oracle-leaf-pruned: rgba(247, 244, 238, 0.08);
+  --oracle-border: rgba(247, 244, 238, 0.12);
+  --oracle-border-strong: rgba(247, 244, 238, 0.22);
   --oracle-star: rgba(255, 255, 255, 0.9);
-  --oracle-accent-gold: #e0bb6c;
-  --oracle-focus-ring: #8fe0b8;
+  --oracle-accent-gold: #e9a48d;
+  --oracle-focus-ring: #e9a48d;
 
   --oracle-state-eligible: #4ade80;
   --oracle-state-likely: #7dd3fc;
@@ -113,20 +113,20 @@
    ready so subsequent local toggles win without touching global data-theme. */
 html[data-oracle-theme-bootstrap="dark"]
   .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) {
-  --oracle-bg: #0a100d;
-  --oracle-bg-elevated: #131c17;
-  --oracle-ink: rgba(240, 242, 236, 0.94);
-  --oracle-ink-muted: #a9b3ad;
-  --oracle-ink-faint: #8b968f;
-  --oracle-canopy: #7fc4a0;
-  --oracle-branch: #587d63;
-  --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
-  --oracle-leaf-active: #8fe0b8;
-  --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
-  --oracle-border: rgba(240, 242, 236, 0.1);
-  --oracle-border-strong: rgba(240, 242, 236, 0.18);
-  --oracle-accent-gold: #e0bb6c;
-  --oracle-focus-ring: #8fe0b8;
+  --oracle-bg: #1d2c3b;
+  --oracle-bg-elevated: #243648;
+  --oracle-ink: #f7f4ee;
+  --oracle-ink-muted: #cdd2d6;
+  --oracle-ink-faint: #aab3bb;
+  --oracle-canopy: #a9c1d6;
+  --oracle-branch: #6d7f8f;
+  --oracle-leaf-pending: rgba(247, 244, 238, 0.16);
+  --oracle-leaf-active: #d9e4ee;
+  --oracle-leaf-pruned: rgba(247, 244, 238, 0.08);
+  --oracle-border: rgba(247, 244, 238, 0.12);
+  --oracle-border-strong: rgba(247, 244, 238, 0.22);
+  --oracle-accent-gold: #e9a48d;
+  --oracle-focus-ring: #e9a48d;
   --oracle-state-eligible: #4ade80;
   --oracle-state-likely: #7dd3fc;
   --oracle-state-conditional: #f5c451;
@@ -143,20 +143,20 @@ html[data-oracle-theme-bootstrap="dark"]
 @media (prefers-color-scheme: dark) {
   html:not([data-oracle-theme-bootstrap])
     .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) {
-    --oracle-bg: #0a100d;
-    --oracle-bg-elevated: #131c17;
-    --oracle-ink: rgba(240, 242, 236, 0.94);
-    --oracle-ink-muted: #a9b3ad;
-    --oracle-ink-faint: #8b968f;
-    --oracle-canopy: #7fc4a0;
-    --oracle-branch: #587d63;
-    --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
-    --oracle-leaf-active: #8fe0b8;
-    --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
-    --oracle-border: rgba(240, 242, 236, 0.1);
-    --oracle-border-strong: rgba(240, 242, 236, 0.18);
-    --oracle-accent-gold: #e0bb6c;
-    --oracle-focus-ring: #8fe0b8;
+    --oracle-bg: #1d2c3b;
+    --oracle-bg-elevated: #243648;
+    --oracle-ink: #f7f4ee;
+    --oracle-ink-muted: #cdd2d6;
+    --oracle-ink-faint: #aab3bb;
+    --oracle-canopy: #a9c1d6;
+    --oracle-branch: #6d7f8f;
+    --oracle-leaf-pending: rgba(247, 244, 238, 0.16);
+    --oracle-leaf-active: #d9e4ee;
+    --oracle-leaf-pruned: rgba(247, 244, 238, 0.08);
+    --oracle-border: rgba(247, 244, 238, 0.12);
+    --oracle-border-strong: rgba(247, 244, 238, 0.22);
+    --oracle-accent-gold: #e9a48d;
+    --oracle-focus-ring: #e9a48d;
     --oracle-state-eligible: #4ade80;
     --oracle-state-likely: #7dd3fc;
     --oracle-state-conditional: #f5c451;

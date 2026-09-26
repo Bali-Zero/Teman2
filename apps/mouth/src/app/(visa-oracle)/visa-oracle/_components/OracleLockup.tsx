@@ -12,7 +12,10 @@ export function OracleLockup({ language }: { language: Language }) {
     <div className="oracle-lockup">
       <BZLogo variant="full" size={36} priority />
       <span className="oracle-lockup__text">
-        <span className="oracle-lockup__name">Visa Oracle</span>
+        <span className="oracle-lockup__brand">
+          <span className="oracle-lockup__wordmark">Bali Zero</span>
+          <span className="oracle-lockup__name">Visa Oracle</span>
+        </span>
         <span
           className="oracle-lockup__tag"
           title={translate(language, "prototype.badge.detail")}

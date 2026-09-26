@@ -69,6 +69,14 @@ import { OutcomeSheet } from "./OutcomeSheet";
 import { ConsentHandoff, type ConsentHandoffProps } from "./ConsentHandoff";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
+import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
+import { r19FontClassName } from "@/lib/theme/r19Fonts";
+import "@/styles/r19-direction-a.css";
+
+/** R19 Direction A on the Oracle's own wrapper (BRIEF-v2 R-1): the family
+ * faces and var set sit on `.oracle-root`, never on the root layout. */
+const ORACLE_ROOT_CLASS = `oracle-root ${R19_CLASS} ${r19FontClassName}`;
+const ORACLE_ROOT_STYLE = R19_DIRECTION_A_VARS;
 
 const HIDE_COUNTER_ON = new Set(["in_indonesia", "permit_expiry"]);
 
@@ -266,7 +274,12 @@ export function OracleShell({ internalMode = false }: OracleShellProps = {}) {
 
   if (hydrated === null) {
     return (
-      <div className="oracle-root" data-oracle-theme="light" data-funnel="visa">
+      <div
+        className={ORACLE_ROOT_CLASS}
+        style={ORACLE_ROOT_STYLE}
+        data-oracle-theme="light"
+        data-funnel="visa"
+      >
         <div className="oracle-shell">
           <header className="oracle-topbar">
             <div className="oracle-topbar__inner">
@@ -897,7 +910,8 @@ function OracleShellRuntime({
 
   return (
     <div
-      className="oracle-root"
+      className={ORACLE_ROOT_CLASS}
+      style={ORACLE_ROOT_STYLE}
       data-oracle-theme={theme}
       data-funnel="visa"
       data-internal-preview={internalMode ? "true" : undefined}

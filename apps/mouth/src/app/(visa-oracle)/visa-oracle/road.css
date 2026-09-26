@@ -1,0 +1,131 @@
+/*
+ * Visa Oracle — R19 Direction A shell (BRIEF-v2 R-1) and «La strada»
+ * (ROADHEAD, R-3). Loaded after oracle.css by layout.tsx; everything stays
+ * under `.oracle-root`. The four outcome-state colours are NOT declared
+ * here: they live only in oracle.css's four theme blocks (R-2, pinned by
+ * oracle-state-tokens.test.ts).
+ */
+
+/* ─── Shell tokens the road adds, per theme ───────────────────────────── */
+.oracle-root,
+.oracle-root[data-oracle-theme="light"] {
+  --oracle-action: #a44b36;
+  --oracle-action-hover: #843719;
+  --oracle-on-action: #fffcf7;
+  --oracle-wash: #eae3d8;
+  --road-ink: #1d2c3b;
+  --road-pencil: #7b817f;
+  --road-stub: rgba(35, 61, 82, 0.18);
+  --road-copper: #a44b36;
+  --road-structure: #233d52;
+}
+.oracle-root[data-oracle-theme="dark"] {
+  --oracle-action: #e9a48d;
+  --oracle-action-hover: #f2bba8;
+  --oracle-on-action: #1d2c3b;
+  --oracle-wash: #2b3e51;
+  --road-ink: #f7f4ee;
+  --road-pencil: #8c96a0;
+  --road-stub: rgba(247, 244, 238, 0.16);
+  --road-copper: #e9a48d;
+  --road-structure: #a9c1d6;
+}
+html[data-oracle-theme-bootstrap="dark"]
+  .oracle-root[data-oracle-theme="light"]:not([data-oracle-theme-ready]) {
+  --oracle-action: #e9a48d;
+  --oracle-action-hover: #f2bba8;
+  --oracle-on-action: #1d2c3b;
+  --oracle-wash: #2b3e51;
+  --road-ink: #f7f4ee;
+  --road-pencil: #8c96a0;
+  --road-stub: rgba(247, 244, 238, 0.16);
+  --road-copper: #e9a48d;
+  --road-structure: #a9c1d6;
+}
+
+/* The R19 scope paints paper; the Oracle keeps its own ground so the dark
+   theme still works (R-5). */
+.oracle-root.r19-direction-a {
+  background: var(--oracle-bg);
+  color: var(--oracle-ink);
+}
+.oracle-root.r19-direction-a[data-oracle-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ─── Type: Fraunces 450 titles, Manrope UI (family layer §2.4) ───────── */
+.oracle-root .oracle-headline {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  letter-spacing: -0.03em;
+  line-height: 1.13;
+  font-size: clamp(1.75rem, 3.4vw, 2.6rem);
+}
+.oracle-root .oracle-eyebrow {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+/* ─── Top bar 56px + lockup: mark · BALI ZERO · product ───────────────── */
+.oracle-root .oracle-topbar {
+  min-height: 56px;
+  padding-block: var(--space-2);
+  background: var(--oracle-bg);
+  border-bottom-color: var(--oracle-border-strong);
+}
+.oracle-root .oracle-lockup__brand {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.oracle-root .oracle-lockup__wordmark {
+  font-family: var(--font-sans);
+  font-weight: 750;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--oracle-ink);
+}
+.oracle-root .oracle-lockup__name {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.oracle-root .oracle-lockup__text {
+  align-items: center;
+}
+.oracle-root .oracle-topbar .oracle-consultant__toggle {
+  border-radius: 3px;
+  border-color: var(--oracle-branch);
+}
+
+/* ─── One copper action; disabled = "not yet" (wash + muted) ──────────── */
+.oracle-root .oracle-cta {
+  border-color: var(--oracle-action);
+  border-radius: 3px;
+  background: var(--oracle-action);
+  color: var(--oracle-on-action);
+  box-shadow: none;
+}
+.oracle-root .oracle-cta:hover {
+  background: var(--oracle-action-hover);
+  border-color: var(--oracle-action-hover);
+}
+.oracle-root .oracle-cta:disabled,
+.oracle-root .oracle-cta[aria-disabled="true"] {
+  border: 1px solid var(--oracle-wash);
+  background: var(--oracle-wash);
+  color: var(--oracle-ink-faint);
+}
+.oracle-root :focus-visible {
+  outline: 3px solid var(--oracle-focus-ring);
+  outline-offset: 3px;
+}
+.oracle-root .oracle-option-card,
+.oracle-root .oracle-tile {
+  border-radius: 3px;
+}
