@@ -35,7 +35,8 @@ import {
   type OutcomeViewModel,
   type ServiceAvailabilityStatus,
 } from "../_lib/outcome-view-model";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,

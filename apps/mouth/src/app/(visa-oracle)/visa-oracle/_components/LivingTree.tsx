@@ -12,7 +12,8 @@ import {
 } from "../_lib/flow";
 import type { Language } from "../_lib/flow";
 import { CATEGORY_KEYS, type OracleFacts } from "../_lib/tree";
-import { dict, translate, type I18nKey } from "../_lib/i18n";
+import { dict, type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate, answeredOf } from "./plain-copy";
 import { formatFactDisplay } from "./ConfirmationCard";
 import {
   ProcessBranches,
@@ -222,10 +223,11 @@ export function LivingTree({
           {translate(language, "tree.sr_path_label")}
           {" · "}
           <span className="oracle-tabular-nums">
-            {translate(language, "process.step_of", {
-              current: model.answeredQuestions,
-              total: model.totalQuestions,
-            })}
+            {answeredOf(
+              language,
+              model.answeredQuestions,
+              model.totalQuestions,
+            )}
           </span>
           {model.chosenCategory !== null && (
             <>

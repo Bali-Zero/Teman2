@@ -13,7 +13,8 @@ import {
   type OracleFacts,
 } from "../_lib/tree";
 import type { Language } from "../_lib/flow";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 
 export interface ConfirmationCardProps {
   language: Language;

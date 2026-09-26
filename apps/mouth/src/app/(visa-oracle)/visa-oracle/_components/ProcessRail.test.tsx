@@ -122,7 +122,7 @@ describe("ProcessProgress — where the visitor is", () => {
     const panel = rail("progress");
     // "3 of 8 ANSWERED", never "step 3": the open question is the fourth,
     // and a count of answers must not be read as an ordinal.
-    expect(panel.textContent).toContain("3 of 8 answered");
+    expect(panel.textContent).toContain("3 of about 8 answered");
     expect(panel.textContent).toContain("Who you are");
     expect(
       panel.querySelector('[data-process-phase="identity"]'),
@@ -209,7 +209,7 @@ describe("ProcessProgress — where the visitor is", () => {
       />,
     );
     const panel = rail("progress");
-    expect(panel.textContent).toContain("The engine’s answer");
+    expect(panel.textContent).toContain("Your result");
     // Re-pinned: Zero rejected engine vocabulary on the rail (MV:2167, BRIEF-v2 R-3/R-7) — the "no question is open" sentence left with it.
     expect(panel.textContent).not.toContain(
       translate("en", "process.decides_title"),
@@ -283,7 +283,7 @@ describe("ProcessBranches — what closed and why", () => {
     expect(
       panel.querySelector('[data-process-category="work"]'),
     ).toHaveAttribute("data-status", "pending");
-    expect(panel.textContent).toContain("Every purpose branch is still open");
+    expect(panel.textContent).toContain("Every purpose is still possible");
   });
 
   it("keeps the ten closed branches VISIBLE and names the answer that closed them", () => {
@@ -309,7 +309,7 @@ describe("ProcessBranches — what closed and why", () => {
       panel.querySelector('[data-process-category="work"]'),
     ).toHaveAttribute("data-status", "current");
     expect(panel.textContent).toContain(
-      "10 branches closed when you chose “Work & employment”",
+      "10 other purposes were set aside when you chose “Work & employment”",
     );
   });
 
@@ -324,7 +324,7 @@ describe("ProcessBranches — what closed and why", () => {
     const panel = rail("branches");
     expect(panel).toHaveAttribute("data-process-rail", "mobile");
     expect(panel.textContent).toContain(
-      "10 cabang ditutup ketika Anda memilih",
+      "10 tujuan lain dikesampingkan saat Anda memilih",
     );
   });
 });
@@ -338,7 +338,7 @@ describe("ProcessOutcome — only what the ENGINE named", () => {
         variant="desktop"
       />,
     );
-    expect(rail("outcome").textContent).toContain("No product is named yet");
+    expect(rail("outcome").textContent).toContain("No visa path is named yet");
   });
 
   it("names the engine's own product codes at the terminal node", () => {
@@ -360,7 +360,7 @@ describe("ProcessOutcome — only what the ENGINE named", () => {
     expect(
       panel.querySelector('[data-process-candidate="E23"]')?.textContent,
     ).toContain("Working KITAS");
-    expect(panel.textContent).toContain("last node of this tree");
+    expect(panel.textContent).toContain("This is where the road ends");
   });
 
   it("says the engine named nothing only when the engine DECIDED nothing fits", () => {
@@ -377,7 +377,7 @@ describe("ProcessOutcome — only what the ENGINE named", () => {
       />,
     );
     expect(rail("outcome").textContent).toContain(
-      "The engine named no product",
+      "No visa path fits these answers",
     );
   });
 
@@ -397,8 +397,12 @@ describe("ProcessOutcome — only what the ENGINE named", () => {
         />,
       );
       const panel = rail("outcome");
-      expect(panel.textContent).toContain("did not name a product");
-      expect(panel.textContent).not.toContain("The engine named no product");
+      expect(panel.textContent).toContain(
+        "No visa path was named for these answers",
+      );
+      expect(panel.textContent).not.toContain(
+        "No visa path fits these answers",
+      );
     },
   );
 
@@ -411,7 +415,7 @@ describe("ProcessOutcome — only what the ENGINE named", () => {
       />,
     );
     expect(rail("outcome").textContent).toContain(
-      "Belum ada produk yang disebut",
+      "Belum ada jalur visa yang disebut",
     );
   });
 });
@@ -445,7 +449,9 @@ describe("the NEEDS_INPUT follow-up node", () => {
       />,
     );
     const panel = rail("progress");
-    const match = panel.textContent?.match(/(\d+) of (\d+) answered/);
+    const match = panel.textContent?.match(
+      /(\d+) of (?:about )?(\d+) answered/,
+    );
     if (!match) throw new Error(`no count in: ${panel.textContent}`);
     const [, answered, total] = match.map(Number);
     expect(answered).toBe(Object.keys(COMPLETED_TOURISM).length);
@@ -470,7 +476,7 @@ describe("the NEEDS_INPUT follow-up node", () => {
       />,
     );
     const text = rail("outcome").textContent ?? "";
-    expect(text).toContain("named a fact it still needs");
+    expect(text).toContain("One more answer is needed");
     // NEEDS_INPUT may name several facts; the rail cannot say "one more"
     // (council round 11).
     expect(text).not.toContain("one more fact");
@@ -489,7 +495,7 @@ describe("the NEEDS_INPUT follow-up node", () => {
       />,
     );
     expect(rail("branches").textContent).toContain(
-      "closed when you chose “Tourism & short visit”",
+      "set aside when you chose “Tourism & short visit”",
     );
   });
 });
@@ -579,8 +585,10 @@ describe("a non-ENGINE outcome is not an engine answer (council round 4)", () =>
       const outcomePanel = document.querySelector(
         '[data-process-part="outcome"][data-process-rail="mobile"]',
       );
-      expect(outcomePanel?.textContent).toContain("No product is named yet");
-      expect(outcomePanel?.textContent).not.toContain("named no product");
+      expect(outcomePanel?.textContent).toContain("No visa path is named yet");
+      expect(outcomePanel?.textContent).not.toContain(
+        "No visa path fits these answers",
+      );
     },
   );
 });

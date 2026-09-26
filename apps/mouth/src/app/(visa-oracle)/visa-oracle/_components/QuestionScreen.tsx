@@ -9,7 +9,8 @@ import {
   type OracleFacts,
   type OracleQuestion,
 } from "../_lib/tree";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 import {
   canonicalCountryCodes,
   getCountryOptions,

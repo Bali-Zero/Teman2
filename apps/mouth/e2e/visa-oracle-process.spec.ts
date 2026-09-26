@@ -185,23 +185,25 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     await page.goto("/visa-oracle");
 
     const progress = rail(page, "progress", false);
-    await expect(progress).toContainText(/12 of \d+ answered/);
+    await expect(progress).toContainText(/12 of (about )?\d+ answered/);
     // Re-pinned: "What this question decides" was rejected by Zero
     // 2026-09-22 (MV:2167) as engine vocabulary; its absence is the pin now.
     await expect(progress).not.toContainText("What this question decides");
-    // The purpose branch is chosen: ten of the eleven are closed, and the
-    // rail says WHY — the visitor's own answer, named.
+    // The purpose is chosen: ten of the eleven are set aside, and the rail
+    // says WHY — the visitor's own answer, named. Re-pinned to the plain
+    // wording ("closed"/"branches" was engine vocabulary: MV:2167 and
+    // council CRITIQUE-v2 Oracle #1).
     const branches = rail(page, "branches", false);
     await expect(
       branches.locator('[data-process-category][data-status="pruned"]'),
     ).toHaveCount(10);
-    await expect(branches).toContainText("closed when you chose");
+    await expect(branches).toContainText("set aside when you chose");
     // Nothing on screen may name a product before the engine has answered.
     await expect(rail(page, "outcome", false)).toContainText(
-      "No product is named yet",
+      "No visa path is named yet",
     );
     await expect(page.locator("[data-process-announce]")).toHaveText(
-      /10 of the other purpose branches closed\.$/,
+      /10 other purposes are set aside for now\.$/,
     );
     await expectNoWcagViolations(page);
   });
@@ -244,7 +246,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
       })
       .click();
     await expect(rail(page, "branches", false)).toContainText(
-      "closed when you chose “Study”",
+      "set aside when you chose “Study”",
     );
     for (const questionId of ["in_indonesia", "nationalities", "birth_date"]) {
       await expect(
@@ -265,7 +267,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
     await expect(
       outcome.locator('[data-process-candidate="C1"]'),
     ).toBeVisible();
-    await expect(outcome).toContainText("last node of this tree");
+    await expect(outcome).toContainText("This is where the road ends");
     // Re-pinned: "No question is open" was rejected by Zero 2026-09-22
     // (MV:2167) as engine vocabulary — the progress rail now names the
     // open STAGE instead of an open question. Absence is the pin; the
@@ -287,7 +289,7 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
 
     const trigger = page.locator(".oracle-tree-minimap-trigger");
     await expect(trigger).toBeVisible();
-    await expect(trigger).toContainText(/12 of \d+ answered/);
+    await expect(trigger).toContainText(/12 of (about )?\d+ answered/);
     await expect(trigger).toContainText("Work & employment");
     await expect(rail(page, "progress", true)).toHaveCount(0);
 
@@ -328,13 +330,15 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
           if (language === "id") await switchToIndonesian(shot);
           const mobile = viewportName === "mobile";
           if (mobile) await openMobileSheet(shot);
-          // The render must show the state its file name claims.
+          // The render must show the state its file name claims. The total
+          // reads "about N" until the last answer (council CRITIQUE-v2
+          // Oracle #4: a denominator that grows must say it is an estimate).
           if (name === "outcome") {
             await expect(rail(shot, "outcome", mobile)).toContainText("C1");
           } else {
             await expect(rail(shot, "progress", mobile)).toContainText(
               new RegExp(
-                `\\b${Object.keys(state.facts).length} (of|dari) \\d+`,
+                `\\b${Object.keys(state.facts).length} (of|dari) (about |sekitar )?\\d+`,
               ),
             );
           }

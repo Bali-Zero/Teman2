@@ -143,7 +143,7 @@ describe("LivingTree visible breadcrumb", () => {
     );
 
     const breadcrumb = screen.getByRole("navigation", {
-      name: "Current interview branch",
+      name: "Your latest answers",
     });
     expect(within(breadcrumb).getByText("Passports")).toHaveAttribute(
       "aria-current",
@@ -316,7 +316,7 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
     );
     const trigger = screen.getByRole("button", { expanded: false });
     expect(trigger.textContent).toContain("Your path so far");
-    expect(trigger.textContent).toMatch(/\d+ of \d+ answered/);
+    expect(trigger.textContent).toMatch(/\d+ of (about )?\d+ answered/);
     expect(trigger.textContent).toContain("Work & employment");
   });
 
@@ -332,7 +332,7 @@ describe("LivingTree jump sheet (W-VO-T)", () => {
     const announcers = container.querySelectorAll("[data-process-announce]");
     expect(announcers).toHaveLength(1);
     expect(announcers[0].textContent).toBe(
-      "You chose Work & employment. 10 of the other purpose branches closed.",
+      "You chose Work & employment. 10 other purposes are set aside for now.",
     );
   });
 });

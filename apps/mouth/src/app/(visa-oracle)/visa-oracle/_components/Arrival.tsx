@@ -3,7 +3,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import type { Language } from "../_lib/flow";
 import type { OutcomeViewModel } from "../_lib/outcome-view-model";
-import { BODY_FIRST, translate, type I18nKey } from "../_lib/i18n";
+import { BODY_FIRST, type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 import {
   LEGAL_STATUS_CHIP_STATE,
   LEGAL_STATUS_ICON,

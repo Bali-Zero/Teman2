@@ -15,7 +15,8 @@ import {
   questionPromptI18nKey,
   type OracleFacts,
 } from "../_lib/tree";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 import { formatFactDisplay } from "./ConfirmationCard";
 import { roadCopy } from "./road-copy";
 import { RoadCanvas, type RoadHeadStatus } from "./RoadCanvas";

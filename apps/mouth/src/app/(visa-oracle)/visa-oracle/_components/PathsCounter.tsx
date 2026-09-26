@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Language } from "../_lib/flow";
-import { translate } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 
 export interface PathsCounterProps {
   language: Language;

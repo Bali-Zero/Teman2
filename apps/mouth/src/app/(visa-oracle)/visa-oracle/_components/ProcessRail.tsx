@@ -6,7 +6,8 @@ import { PROCESS_PHASES, type Language, type ProcessModel } from "../_lib/flow";
 import type { LocalizedText, OutcomeState } from "../_lib/outcome-view-model";
 import { localized } from "../_lib/outcome-view-model";
 import { roadCopy } from "./road-copy";
-import { translate, type I18nKey } from "../_lib/i18n";
+import { type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate, answeredOf } from "./plain-copy";
 
 /** The engine's own answer, passed down ONLY at the terminal node. The rail
  * never computes, ranks or filters a product: it names what the engine
@@ -89,10 +90,7 @@ export function ProcessProgress({
       className="oracle-rail-progress"
     >
       <p className="oracle-rail-progress__headline oracle-tabular-nums">
-        {translate(language, "process.step_of", {
-          current: model.answeredQuestions,
-          total: model.totalQuestions,
-        })}
+        {answeredOf(language, model.answeredQuestions, model.totalQuestions)}
       </p>
 
       {/* The stages read as one segmented meter. Status is carried by shape,

@@ -9,7 +9,8 @@ import type {
   OutcomeState,
   OutcomeViewModel,
 } from "../_lib/outcome-view-model";
-import { translate, BODY_FIRST, type I18nKey } from "../_lib/i18n";
+import { BODY_FIRST, type I18nKey } from "../_lib/i18n";
+import { plainTranslate as translate } from "./plain-copy";
 
 export interface VerdictRevealProps {
   language: Language;

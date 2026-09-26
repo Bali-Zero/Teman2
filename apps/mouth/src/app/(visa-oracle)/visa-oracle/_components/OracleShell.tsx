@@ -112,7 +112,7 @@ const SESSION_COPY = {
   en: {
     consultant: "Talk to a consultant",
     loading: "Restoring your private browser session…",
-    evaluating: "Checking the verified Visa Oracle engine…",
+    evaluating: "Checking your answers against the dated rules…",
     resume:
       "Optional: save the full interview, including sensitive immigration, nationality and family answers, in this browser session for up to 2 hours. It expires while this tab stays open and can be cleared at any time.",
     resumeOptIn: "Save my interview on this device for 2 hours",
@@ -122,7 +122,7 @@ const SESSION_COPY = {
   id: {
     consultant: "Bicara dengan konsultan",
     loading: "Memulihkan sesi browser privat Anda…",
-    evaluating: "Memeriksa mesin Visa Oracle terverifikasi…",
+    evaluating: "Memeriksa jawaban Anda terhadap aturan bertanggal…",
     resume:
       "Opsional: simpan wawancara lengkap, termasuk jawaban sensitif tentang imigrasi, kewarganegaraan, dan keluarga, dalam sesi browser ini hingga 2 jam. Data kedaluwarsa saat tab ini tetap terbuka dan dapat dihapus kapan saja.",
     resumeOptIn: "Simpan wawancara saya di perangkat ini selama 2 jam",

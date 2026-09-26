@@ -35,14 +35,14 @@ const FACTS = { in_indonesia: "yes", category: "tourism" };
 
 const DISCLAIMER_EN = [
   "This is a private decision-support tool, not a government service.",
-  "The result reflects only the facts you entered and the dated sources shown above.",
+  "The result reflects only the answers you gave and the dated sources shown above.",
   "It is not an approval, a guarantee, or a filing.",
   "A disclosed criminal record goes to a person before any path is confirmed; an answer the signed rules cannot assess is sent to a person or routed to a consultation. Every other disclosure stays on your result as a named condition our team checks with you before submission. Ditjen Imigrasi decides, not this tool.",
 ];
 
 const DISCLAIMER_ID = [
   "Ini alat bantu keputusan privat, bukan layanan pemerintah.",
-  "Hasil ini hanya mencerminkan data yang Anda masukkan dan sumber bertanggal yang ditampilkan di atas.",
+  "Hasil ini hanya mencerminkan jawaban yang Anda berikan dan sumber bertanggal yang ditampilkan di atas.",
   "Ini bukan persetujuan, jaminan, atau pengajuan resmi.",
   "Catatan kriminal yang Anda ungkapkan diteruskan ke seseorang sebelum jalur mana pun dikonfirmasi; jawaban yang tidak dapat dinilai oleh aturan yang telah disahkan diteruskan ke seseorang atau diarahkan ke konsultasi. Pengungkapan lainnya tetap melekat pada hasil Anda sebagai kondisi bernama yang diperiksa tim kami bersama Anda sebelum pengajuan. Ditjen Imigrasi yang memutuskan, bukan alat ini.",
 ];
@@ -349,7 +349,7 @@ describe("OutcomeSheet — honest five-state rendering", () => {
       <OutcomeSheet language="en" outcome={networkOutcome} facts={FACTS} />,
     );
     expect(screen.getAllByText("Decision service unavailable")).toHaveLength(2);
-    expect(screen.getByText(/engine did not answer/i)).toBeInTheDocument();
+    expect(screen.getByText(/the check did not answer/i)).toBeInTheDocument();
   });
 
   it("renders SHADOW as verification-only with no decision receipt or candidates", () => {

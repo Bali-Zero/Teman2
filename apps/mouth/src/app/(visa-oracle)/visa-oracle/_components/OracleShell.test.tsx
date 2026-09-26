@@ -767,7 +767,7 @@ describe("OracleShell authoritative evaluate integration", () => {
     await expectStateHeading("SUPPORTED_CANDIDATES");
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(
-      screen.queryByText("Checking the verified Visa Oracle engine…"),
+      screen.queryByText("Checking your answers against the dated rules…"),
     ).toBeNull();
   });
 
@@ -974,7 +974,7 @@ describe("OracleShell persistent consultant contact", () => {
         }),
     );
     render(<OracleShell />);
-    await screen.findByText("Checking the verified Visa Oracle engine…");
+    await screen.findByText("Checking your answers against the dated rules…");
     await waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole("button", { name: consultant }));
     fireEvent.click(
