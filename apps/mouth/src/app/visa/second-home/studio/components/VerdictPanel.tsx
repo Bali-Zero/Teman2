@@ -3,6 +3,7 @@
 import type { Ref } from "react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import type { Verdict, VerdictBand } from "@/lib/secondhome-studio/types";
+import { BAND_TONES, glassBackground } from "../room/bandTones";
 
 export interface VerdictPanelProps {
   verdict: Verdict;
@@ -91,31 +92,31 @@ const CLOSE_ICON = (
 
 const BAND_STYLES: Record<VerdictBand, BandStyle> = {
   strong_fit: {
-    borderColor: "var(--state-success)",
+    borderColor: BAND_TONES.strong_fit,
     borderWidth: 3,
     icon: CHECK_ICON,
-    background: "color-mix(in srgb, var(--state-success) 6%, transparent)",
+    background: glassBackground("strong_fit"),
   },
   likely_fit: {
-    borderColor: "var(--state-info)",
+    borderColor: BAND_TONES.likely_fit,
     borderWidth: 2,
     icon: INFO_ICON,
-    background: "color-mix(in srgb, var(--state-info) 6%, transparent)",
+    background: glassBackground("likely_fit"),
   },
   edge_case: {
-    borderColor: "var(--state-warning)",
+    borderColor: BAND_TONES.edge_case,
     borderWidth: 2,
     icon: WARNING_ICON,
-    background: "color-mix(in srgb, var(--state-warning) 6%, transparent)",
+    background: glassBackground("edge_case"),
   },
   not_eligible: {
     // Deliberately neutral rather than --state-danger: a clear, respectful
     // "no" for a 55+ risk-averse audience. The signal is carried by the
     // icon shape and border weight in addition to the muted tone.
-    borderColor: "var(--text-secondary)",
+    borderColor: BAND_TONES.not_eligible,
     borderWidth: 2,
     icon: CLOSE_ICON,
-    background: "color-mix(in srgb, var(--text-secondary) 8%, transparent)",
+    background: glassBackground("not_eligible"),
   },
 };
 
@@ -131,23 +132,39 @@ export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
   return (
     <section
       data-verdict-band={verdict.band}
+      className="bz-shs-window"
       style={{
         display: "grid",
         gap: "var(--space-3, 1rem)",
-        background: style.background,
+        // The glass over raised paper, so the band's light reads the same
+        // whatever surface the window hangs on (the desk is wash).
+        background: `linear-gradient(${style.background}, ${style.background}), var(--surface-raised, transparent)`,
         border: `${style.borderWidth}px solid ${style.borderColor}`,
-        borderRadius: 12,
+        // The window (BRIEF-v2 §3.2): a flat R19 frame; the band is its light.
+        borderRadius: 2,
         padding: "var(--space-4, 1.5rem)",
         fontVariantNumeric: "tabular-nums",
       }}
     >
+      {/* Three panes of glass lit by the band — decoration only; the band's
+          words and icon below carry the meaning. */}
+      <div
+        aria-hidden="true"
+        className="bz-shs-window-panes"
+        style={{ color: style.borderColor }}
+      >
+        <span />
+        <span />
+        <span />
+      </div>
       <p
         style={{
           margin: 0,
           fontSize: "0.7rem",
+          fontWeight: 700,
           letterSpacing: "0.15em",
           textTransform: "uppercase",
-          opacity: 0.6,
+          // No opacity: muted ink at 0.6 composited under 4.5:1 on paper.
           color: "var(--color-text-muted)",
         }}
       >
@@ -171,6 +188,7 @@ export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
       <h1
         ref={headingRef}
         tabIndex={-1}
+        className="bz-shs-window-title"
         style={{
           margin: 0,
           fontFamily: "var(--font-serif, Georgia, serif)",
@@ -180,7 +198,8 @@ export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
           // reads as the page's crown. Capped at 3.75rem/60px, inside the
           // 46-64px "whispered authority" band (never the masthead's 105px)
           // per spec.
-          fontSize: "clamp(2.4rem, 6.5vw, 3.75rem)",
+          // R19 room: the window sits in the desk column, not full width.
+          fontSize: "clamp(2rem, 3.6vw, 3rem)",
           lineHeight: 1.1,
           color: "var(--text-primary)",
         }}

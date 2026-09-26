@@ -93,10 +93,13 @@ describe("VerdictPanel", () => {
   it("renders the verdict title larger than secondary card titles would be", () => {
     render(<VerdictPanel verdict={baseVerdict("strong_fit")} />);
     const heading = screen.getByRole("heading", { name: /strong match/i });
-    // S13 verdict-crown: raised from clamp(2.2rem,6vw,3.5rem)/56px so this
-    // heading reads as the page's crown now that it is the verdict stage's
-    // sole <h1> — capped at 3.75rem/60px (46-64px band, see VerdictPanel.tsx).
-    expect(heading.style.fontSize).toBe("clamp(2.4rem, 6.5vw, 3.75rem)");
+    // S13 verdict-crown: this heading is the verdict stage's sole <h1>.
+    // RE-PINNED 2026-09-26 (BRIEF-v2 R-1/§3.2): the verdict is now a window
+    // in the DESK column of the R19 room, not a full-width band, so the
+    // crown caps at 3rem/48px (was clamp(2.4rem, 6.5vw, 3.75rem)). It stays
+    // the largest type on the stage — drawer headings are 28px — and its
+    // 2rem floor keeps the serif above R4's 24px display floor.
+    expect(heading.style.fontSize).toBe("clamp(2rem, 3.6vw, 3rem)");
   });
 
   describe("S13 verdict-crown — P2-3 focus contract must not regress", () => {
