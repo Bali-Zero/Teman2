@@ -481,6 +481,74 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     );
   });
 
+  // PR-M (owner ruling 2026-09-27): the retirement branch asks the E33F-only
+  // penjamin sibling, so `family.sponsor_confirmed` is now collected by THREE
+  // questions. A retiree reaches the penjamin wording — never the family one.
+  it("innocence: a retiree is asked the penjamin question their own walk reaches, not the family one", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.sponsor_confirmed"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "retirement",
+        retirement_basis: "passive_income",
+      },
+      editableQuestionIds: ["category", "retirement_basis"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "retirement_penjamin_confirmed",
+      followUp: true,
+    });
+    expect(outcome.missingInputs[0].message.en).toMatch(/penjamin/i);
+    expect(outcome.missingInputs[0].message.en).not.toMatch(/family/i);
+  });
+
+  it("innocence: an already-answered penjamin question is a plain edit; family and D12 applicants never reach it", () => {
+    const edit = makeVisaOracleResponse("NEEDS_INPUT");
+    edit.decision.missing_facts = ["family.sponsor_confirmed"];
+    const editOutcome = buildEngineOutcome(edit, {
+      facts: {
+        in_indonesia: "no",
+        category: "retirement",
+        retirement_basis: "passive_income",
+        retirement_penjamin_confirmed: "no",
+      },
+      editableQuestionIds: [
+        "category",
+        "retirement_basis",
+        "retirement_penjamin_confirmed",
+      ],
+    });
+    if (editOutcome.state !== "NEEDS_INPUT")
+      throw new Error("unexpected state");
+    expect(editOutcome.missingInputs[0].questionId).toBe(
+      "retirement_penjamin_confirmed",
+    );
+    expect(editOutcome.missingInputs[0].followUp).toBeUndefined();
+
+    const otherBranches: OracleFacts[] = [
+      { in_indonesia: "no", category: "family", family_relation: "SPOUSE" },
+      {
+        in_indonesia: "no",
+        category: "business",
+        business_activity: "exploring",
+      },
+    ];
+    for (const facts of otherBranches) {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = ["family.sponsor_confirmed"];
+      const outcome = buildEngineOutcome(response, {
+        facts,
+        editableQuestionIds: ["category"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).not.toBe(
+        "retirement_penjamin_confirmed",
+      );
+    }
+  });
+
   it("guilt: no facts supplied means no follow-up — fail-closed", () => {
     const response = makeVisaOracleResponse("NEEDS_INPUT");
     response.decision.missing_facts = ["process.wants_onshore_conversion"];
@@ -1483,6 +1551,122 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(message.en).not.toMatch(/^Verified reason: /);
     expect(message.en).toMatch(/sponsor/i);
     expect(message.id).toMatch(/sponsor/i);
+  });
+
+  // PR-M (owner ruling 2026-09-27): an E33F needs a penjamin, not a family
+  // sponsor, and Bali Zero can act as one.
+  it("names the penjamin — never a family sponsor — and offers Bali Zero as one (EN + ID)", () => {
+    const message = firstNoPathReason("SPONSOR_REQUIRED");
+    expect(message.en).toMatch(/penjamin/i);
+    expect(message.en).not.toMatch(/family/i);
+    expect(message.en).toContain("Bali Zero can act as your penjamin");
+    expect(message.id).toMatch(/penjamin/i);
+    expect(message.id).not.toMatch(/keluarga/i);
+    expect(message.id).toContain(
+      "Bali Zero dapat bertindak sebagai penjamin Anda",
+    );
+  });
+});
+
+describe("PR-M · E33F verdict copy: neutral eligibility sentence + the penjamin note", () => {
+  const RETIREMENT_ANSWERS = ["no", "unsure"] as const;
+
+  function e33fResponse(state: "SUPPORTED_CANDIDATES" | "NO_SUPPORTED_PATH") {
+    const response = makeVisaOracleResponse(state);
+    for (const candidate of response.decision.candidates) {
+      candidate.product_code = "E33F";
+    }
+    for (const candidate of response.display.candidates) {
+      candidate.product_code = "E33F";
+    }
+    return response;
+  }
+
+  it("the E33F eligibility sentence carries no sponsor clause in either language", () => {
+    const copy = SUPPORT_REASON_COPY.E33F_RETIREMENT_ELIGIBLE;
+    expect(copy.en).not.toMatch(/sponsor|penjamin/i);
+    expect(copy.id).not.toMatch(/sponsor|penjamin/i);
+  });
+
+  it("the note reads exactly as the owner ruled, in EN and ID", () => {
+    expect(SUPPORT_REASON_COPY.E33F_PENJAMIN_NOTE).toEqual({
+      en: "A penjamin (licensed visa agency or person) must sponsor your E33F. Bali Zero can act as your penjamin.",
+      id: "Visa E33F Anda harus disponsori oleh penjamin (biro visa berlisensi atau perorangan). Bali Zero dapat bertindak sebagai penjamin Anda.",
+    });
+  });
+
+  it.each(RETIREMENT_ANSWERS)(
+    "guilt: an E33F candidate + a penjamin answer of %s carries the note as a sourceless condition",
+    (answer) => {
+      const outcome = buildEngineOutcome(e33fResponse("SUPPORTED_CANDIDATES"), {
+        facts: {
+          category: "retirement",
+          retirement_penjamin_confirmed: answer,
+        },
+      });
+      expect(outcome.conditions).toEqual([
+        {
+          code: "E33F_PENJAMIN_NOTE",
+          message: SUPPORT_REASON_COPY.E33F_PENJAMIN_NOTE,
+          sourceIds: [],
+        },
+      ]);
+    },
+  );
+
+  it("guilt: the note is appended AFTER the backend notices, never in place of one", () => {
+    const response = e33fResponse("SUPPORTED_CANDIDATES");
+    response.decision.notices = [
+      {
+        code: "DISCLOSED_HEALTH_CONCERN_CONDITION",
+        rule_ids: [],
+        source_refs: [],
+      },
+    ];
+    const outcome = buildEngineOutcome(response, {
+      facts: { category: "retirement", retirement_penjamin_confirmed: "no" },
+    });
+    expect(outcome.conditions.map((item) => item.code)).toEqual([
+      "DISCLOSED_HEALTH_CONCERN_CONDITION",
+      "E33F_PENJAMIN_NOTE",
+    ]);
+  });
+
+  it("innocence: a confirmed penjamin, an unanswered one, or no facts at all carries no note", () => {
+    const quietCases: (OracleFacts | undefined)[] = [
+      { category: "retirement", retirement_penjamin_confirmed: "yes" },
+      { category: "retirement" },
+      undefined,
+    ];
+    for (const facts of quietCases) {
+      const outcome = buildEngineOutcome(e33fResponse("SUPPORTED_CANDIDATES"), {
+        facts,
+      });
+      expect(outcome.conditions).toEqual([]);
+    }
+  });
+
+  it("innocence: the note is E33F's alone — another candidate, another sponsor question or another state never shows it", () => {
+    const otherCandidate = buildEngineOutcome(
+      makeVisaOracleResponse("SUPPORTED_CANDIDATES"),
+      {
+        facts: { category: "retirement", retirement_penjamin_confirmed: "no" },
+      },
+    );
+    expect(otherCandidate.conditions).toEqual([]);
+
+    const familyWording = buildEngineOutcome(
+      e33fResponse("SUPPORTED_CANDIDATES"),
+      {
+        facts: { category: "family", family_sponsor_confirmed: "no" },
+      },
+    );
+    expect(familyWording.conditions).toEqual([]);
+
+    const noPath = buildEngineOutcome(e33fResponse("NO_SUPPORTED_PATH"), {
+      facts: { category: "retirement", retirement_penjamin_confirmed: "no" },
+    });
+    expect(noPath.conditions).toEqual([]);
   });
 });
 

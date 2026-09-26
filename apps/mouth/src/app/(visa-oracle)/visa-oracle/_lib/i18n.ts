@@ -491,6 +491,12 @@ const en = {
     "Choose yes only after the sponsor has agreed.",
   "why.family_sponsor_confirmed":
     "Sponsor confirmation is sent as its own boolean decision fact.",
+  "q.retirement_penjamin_confirmed":
+    "Do you have a penjamin — a licensed visa agency or a person in Indonesia — who will sponsor your retirement KITAS?",
+  "q.retirement_penjamin_confirmed.hint":
+    "If not, Bali Zero can act as your penjamin.",
+  "why.retirement_penjamin_confirmed":
+    "Penjamin confirmation is sent as its own boolean decision fact.",
 
   "q.retirement_basis": "Which basis can you document today?",
   "q.retirement_basis.hint":
@@ -680,6 +686,8 @@ const en = {
     "You weren’t sure whether you can document that connection, so we assessed this plan as if the answer were “no”; a Bali Zero advisor confirms it with you.",
   "assumption.retirement_basis":
     "You weren’t sure which basis you can document today, so we assessed this plan as if you had not chosen a basis yet; a Bali Zero advisor confirms it with you.",
+  "assumption.retirement_penjamin_confirmed":
+    "You weren’t sure whether you have a penjamin, so we assessed this plan as if the answer were “no”; Bali Zero can act as your penjamin.",
   "assumption.generic":
     "You marked “Not sure” for “{{question}}”; no value was inferred.",
 
@@ -764,6 +772,7 @@ const en = {
     "Parents' marriage certificate",
   "tree.family_stepchild_birth_certificate_confirmed": "Birth certificate",
   "tree.family_sponsor_confirmed": "Family sponsor",
+  "tree.retirement_penjamin_confirmed": "Retirement penjamin",
   "tree.retirement_basis": "Long-stay basis",
   "tree.secondhome_basis": "Second Home basis",
   "tree.secondhome_deposit_usd": "Bank deposit",
@@ -1547,6 +1556,12 @@ const id: Record<Keys, string> = {
     "Pilih ya hanya setelah sponsor menyetujuinya.",
   "why.family_sponsor_confirmed":
     "Konfirmasi sponsor dikirim sebagai fakta keputusan boolean tersendiri.",
+  "q.retirement_penjamin_confirmed":
+    "Apakah Anda sudah memiliki penjamin — biro visa berlisensi atau seseorang di Indonesia — yang akan mensponsori KITAS pensiun Anda?",
+  "q.retirement_penjamin_confirmed.hint":
+    "Jika belum, Bali Zero dapat bertindak sebagai penjamin Anda.",
+  "why.retirement_penjamin_confirmed":
+    "Konfirmasi penjamin dikirim sebagai fakta keputusan boolean tersendiri.",
 
   "q.retirement_basis": "Dasar mana yang dapat Anda buktikan saat ini?",
   "q.retirement_basis.hint":
@@ -1730,6 +1745,8 @@ const id: Record<Keys, string> = {
     "Anda tidak yakin apakah Anda dapat membuktikan hubungan tersebut, jadi rencana ini kami nilai seolah jawabannya “tidak”; konsultan Bali Zero akan memastikannya bersama Anda.",
   "assumption.retirement_basis":
     "Anda tidak yakin dasar mana yang dapat Anda buktikan saat ini, jadi rencana ini kami nilai seolah Anda belum memilih dasar; konsultan Bali Zero akan memastikannya bersama Anda.",
+  "assumption.retirement_penjamin_confirmed":
+    "Anda tidak yakin apakah Anda sudah memiliki penjamin, jadi rencana ini kami nilai seolah jawabannya “tidak”; Bali Zero dapat bertindak sebagai penjamin Anda.",
   "assumption.generic":
     "Anda memilih “Tidak yakin” untuk “{{question}}”; tidak ada nilai yang diperkirakan.",
 
@@ -1814,6 +1831,7 @@ const id: Record<Keys, string> = {
     "Akta nikah orang tua",
   "tree.family_stepchild_birth_certificate_confirmed": "Akta lahir",
   "tree.family_sponsor_confirmed": "Sponsor keluarga",
+  "tree.retirement_penjamin_confirmed": "Penjamin pensiun",
   "tree.retirement_basis": "Dasar tinggal panjang",
   "tree.secondhome_basis": "Dasar Second Home",
   "tree.secondhome_deposit_usd": "Deposito bank",

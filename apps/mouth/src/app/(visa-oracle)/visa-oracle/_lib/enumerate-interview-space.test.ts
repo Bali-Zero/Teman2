@@ -778,10 +778,13 @@ describe("renderCoveringWalks — assessment_id is a per-walk deterministic UUID
   // A6-bis (mouth slice, PLAN-ratified, not yet merged) adds two more "Not sure" defaults and may
   // move this pinned literal — do not re-pin speculatively; re-measure and re-pin only when
   // A6-bis lands, by command (MANDATE-vo.md, row 4 "enumeration memo-space").
-  it("cardinality: the covering subset renders exactly 254 walks (pinned literal, re-measured after Slice A7-M's birth_date branch)", () => {
+  it("cardinality: the covering subset renders exactly 256 walks (pinned literal, re-measured after PR-M's retirement_penjamin_confirmed)", () => {
     // Slice A7-M (2026-09-22): `birth_date` joins `BRANCH_RELEVANT_FACT_KEYS`
     // with two representative values (adult, minor) — 252 → 254.
-    expect(RENDERED.length).toBe(254);
+    // PR-M (2026-09-27): the retirement branch asks the E33F penjamin sibling
+    // `retirement_penjamin_confirmed` (yes/no) — its two answers join the
+    // covering subset — 254 → 256.
+    expect(RENDERED.length).toBe(256);
   });
 
   it("guilt+innocence: every rendered walk's assessment_id is a valid v5 UUID", () => {

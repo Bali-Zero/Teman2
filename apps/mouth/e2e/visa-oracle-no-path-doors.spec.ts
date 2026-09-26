@@ -74,7 +74,7 @@ const WALKS: { label: string; steps: Step[] }[] = [
       { id: "secondhome_state_bank", value: "yes" },
       { id: "secondhome_own_name", value: "yes" },
       { id: "secondhome_passive_income_usd", value: "1000000000" },
-      { id: "family_sponsor_confirmed", value: "yes" },
+      { id: "retirement_penjamin_confirmed", value: "yes" },
       { id: "stay_days", value: "121" },
       { id: "review_gate", value: "none" },
     ],

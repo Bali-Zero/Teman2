@@ -21,7 +21,7 @@ export interface OracleOption {
 
 /** Why a "Not sure?" answer is held for human review instead of taking a
  * conservative default (slice A6, spec `kit/DRAFT-SPEC-A6-1.v3.md` §2.2/§2.4).
- * The 54 `notSure`-bearing questions in `QUESTIONS` partition into three
+ * The 55 `notSure`-bearing questions in `QUESTIONS` partition into three
  * groups, computed from each question's `decisionMapping.factPaths` against
  * `rulepack-prod-022.signed.json`'s `required_facts`/`on_unknown`, never
  * hand-copied:
@@ -1192,6 +1192,41 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     ],
     whyWeAsk: { i18nKey: "why.business_sponsor_confirmed" },
     notSure: { mode: "human-review", because: "money-payer-clients" },
+  },
+  // E33F-only sibling of `family_sponsor_confirmed` (owner ruling 2026-09-27,
+  // PR-M): the retirement branch (`category === "retirement"`, flow.ts) asks
+  // THIS id — never `family_sponsor_confirmed` — because an E33F needs a
+  // penjamin (a licensed visa agency or a person), not a family sponsor.
+  // Same engine fact as its siblings (`el.e33f.retirement` reads `family.
+  // sponsor_confirmed` regardless of which question asked it — fact-mapper.ts
+  // merges all three ids with `pairedBooleanFact`), so this is copy-only: no
+  // new fact, no new rule, no behavior change for any other branch. NotSure
+  // is CONSERVATIVE ("no"), unlike both human-review siblings: with rule pack
+  // seq-24 the retiree who answers "no"/"not sure" is still an E33F candidate
+  // (the verdict carries the penjamin note instead), so an unresolved answer
+  // must map to KNOWN(false) — feeding UNVERIFIED here would make the engine
+  // ask the question the applicant just answered. A "not sure" retiree is not
+  // ambiguous either: `mapDisclosedReviewFlags` deliberately does NOT raise
+  // AMBIGUOUS_SPONSOR for this id — they simply do not have a penjamin yet.
+  retirement_penjamin_confirmed: {
+    id: "retirement_penjamin_confirmed",
+    i18nKey: "q.retirement_penjamin_confirmed",
+    kind: "branch",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["family.sponsor_confirmed"],
+    },
+    sensitive: false,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.retirement_penjamin_confirmed" },
+    // seq-24 (separate backend PR): a missing penjamin no longer kills E33F
+    // — the conservative "no" keeps the fact KNOWN(false) and lets the
+    // verdict render the penjamin note. See the ruling block above.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   // Stepchild route (2026-08-23 owner ruling — the E31D stepchild-of-a-
   // mixed-marriage product exists in the catalog, but every one of its

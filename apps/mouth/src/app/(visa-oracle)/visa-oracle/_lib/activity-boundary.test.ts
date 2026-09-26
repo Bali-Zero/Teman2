@@ -194,7 +194,7 @@ const WALKS: readonly WalkCase[] = [
     flags: [],
   },
   {
-    name: "retirement · property — FREED (PR-D3, D3-3): family_sponsor_confirmed is now asked as a fallback, curing the §6 R3 defect this HELD",
+    name: "retirement · property — FREED (PR-D3, D3-3): the sponsor question (since PR-M the penjamin wording, retirement_penjamin_confirmed) is now asked as a fallback, curing the §6 R3 defect this HELD",
     category: "retirement",
     tripScope: "single",
     branch: [
@@ -202,7 +202,7 @@ const WALKS: readonly WalkCase[] = [
       ["retirement_basis", "property"],
       ["secondhome_property_value_usd", "1200000"],
       ["secondhome_passive_income_usd", "5000"],
-      ["family_sponsor_confirmed", "yes"],
+      ["retirement_penjamin_confirmed", "yes"],
       ["stay_days", "365"],
     ],
     flags: [],
@@ -234,7 +234,7 @@ const WALKS: readonly WalkCase[] = [
       ["sponsor_category", "NONE"],
       ["retirement_basis", "family_sponsor"],
       ["secondhome_passive_income_usd", "5000"],
-      ["family_sponsor_confirmed", "yes"],
+      ["retirement_penjamin_confirmed", "yes"],
       ["stay_days", "365"],
     ],
     flags: [],
