@@ -15,7 +15,8 @@ If auth_sentinel cannot be imported, the tick skips (a)-(c) and reports `import_
 
 Output: ~/.organism/last_seen/nlm-watchdog.json, replaced atomically on every tick:
 `status` (ok|degraded), `codes`, the inventory figures when it was read (`max_source_count`,
-`notebook_count`, `inventory_age_h`, `near_cap_ids`), and on degraded `note`/`last_error`.
+`notebook_count`, `near_cap_ids`, and `inventory_age_h` when `generated_at` is a
+timezone-aware timestamp), and on degraded `note`/`last_error`.
 Telegram (scripts/tg_notify.py) is secondary: a send is attempted when status, codes or
 near_cap_ids differ from the previous heartbeat, except on a first tick that is ok; its
 outcome never changes the exit code.
@@ -453,7 +454,7 @@ def main(argv: list[str] | None = None) -> int:
     if do_alert:
         try:
             maybe_alert(verdict, previous_status, previous_codes, previous_near_cap_ids)
-        except Exception:  # noqa: BLE001 — the verdict is already recorded; an alert bug must not turn it into a crash
+        except Exception:  # noqa: BLE001 — the heartbeat write already ran; an alert bug must not turn the tick into a crash
             pass
 
     print(json.dumps({
