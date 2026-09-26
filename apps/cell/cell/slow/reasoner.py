@@ -7,6 +7,7 @@ Tiered LLM escalation (all local, zero cost):
 
 Given a situation, the reasoner proposes an action from the allowlist.
 """
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -16,6 +17,13 @@ import httpx
 
 from cell.effectors.allowlist import ActionNotAllowed, ActionRegistry
 from cell.memory.pattern_index import PatternIndex
+
+
+def _tier0_busy(exc: BaseException) -> bool:
+    """A 9b that is BUSY (client timeout, or Ollama's 503 queue-full) is not a broken 9b."""
+    if isinstance(exc, httpx.TimeoutException):
+        return True
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 503
 
 logger = logging.getLogger("cell.slow")
 
@@ -65,6 +73,7 @@ class SlowReasoner:
         self._model_heavy = ollama_model_heavy
         self._registry = ActionRegistry()
         self._patterns = PatternIndex()
+        self._busy_retry_s = 20.0
 
     def _build_system_prompt(self, ltm_context: str = "", journal_context: str = "", skill_context: str = "") -> str:
         actions = self._registry.all()
@@ -163,6 +172,29 @@ What action should I take?"""
                 tier_used=tier,
                 cost_usd=cost,
             )
+
+    async def _call_fast(self, system: str, user: str) -> tuple[str, float]:
+        """Tier 0, with ONE retry when the 9b is busy rather than broken."""
+        try:
+            return await self._call_ollama(self._model_fast, system, user, timeout=15.0)
+        except Exception as e:
+            if not _tier0_busy(e):
+                raise
+            logger.info(
+                f"Tier 0 (Qwen 9B) busy ({type(e).__name__}), retrying once in "
+                f"{self._busy_retry_s:.0f}s instead of escalating to Tier 1"
+            )
+            await asyncio.sleep(self._busy_retry_s)
+            return await self._call_ollama(self._model_fast, system, user, timeout=15.0)
+
+    async def _unload_model(self, model: str) -> None:
+        """Ask Ollama to drop `model` now. Never raises: memory hygiene must not block the alert path."""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(f"{self._ollama_url}/api/generate", json={"model": model, "keep_alive": 0})
+                response.raise_for_status()
+        except Exception as e:
+            logger.warning(f"Unload of {model} before Tier 1 failed, proceeding: {type(e).__name__}: {e}")
 
     async def _call_ollama(
         self, model: str, system: str, user: str, timeout: float = 30.0, keep_alive: int | None = None
@@ -276,7 +308,7 @@ What action should I take?"""
 
         # Tier 0: Qwen 3.5 9B (fast)
         try:
-            text, cost = await self._call_ollama(self._model_fast, system, user, timeout=15.0)
+            text, cost = await self._call_fast(system, user)
             proposal = self._parse_response(text, tier=0, cost=cost)
             logger.info(f"Tier 0 (Qwen 9B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
 
@@ -296,8 +328,11 @@ What action should I take?"""
             logger.info(f"Qwen 9B confidence {proposal.confidence:.2f} < 0.6, escalating to Tier 1 (27B)")
 
         except Exception as e:
-            logger.warning(f"Tier 0 (Qwen 9B) failed: {e}")
-            if max_tier < 1:
+            busy = _tier0_busy(e)
+            logger.warning(f"Tier 0 (Qwen 9B) failed: {type(e).__name__}: {e}")
+            if busy:
+                logger.info("Tier 0 (Qwen 9B) still busy after retry — not escalating to Tier 1 (27B)")
+            if max_tier < 1 or busy:
                 # On GREEN health, LLM unavailability is not an emergency
                 if health_status == "green":
                     return ReasonerProposal(
@@ -307,16 +342,16 @@ What action should I take?"""
                     )
                 return ReasonerProposal(
                     action="alert_human",
-                    reason=f"Qwen 9B unavailable: {e}. Situation: {health_status}",
+                    reason=f"Qwen 9B unavailable: {type(e).__name__} {e}. Situation: {health_status}",
                     confidence=0.5, tier_used=0, cost_usd=0.0,
                 )
 
-        # Tier 1: Qwen 3.5 27B (deeper reasoning)
-        # keep_alive=0 (Pro 2026-09-26): tier 1 fires when tier 0 times out behind
-        # the translator on the 9b's single slot, so the 27b loads BESIDE a busy 9b
-        # (OLLAMA_MAX_LOADED_MODELS=2 evicts neither). Measured 20:50:19-20:52:56.
-        # Unloading it after the one call bounds that stack to the call, instead
-        # of the server's 30m keep-alive.
+        # Tier 1: Qwen 3.5 27B (deeper reasoning), only for a real tier-0 error or
+        # low confidence. Pro 2026-09-26 20:50: a 9b merely BUSY behind the
+        # translator escalated, and the 27b loaded beside it (OLLAMA_MAX_LOADED_MODELS=2
+        # evicts neither). Drop the 9b first (best-effort), and do not keep the 27b.
+        if self._model_heavy != self._model_fast:
+            await self._unload_model(self._model_fast)
         try:
             text, cost = await self._call_ollama(self._model_heavy, system, user, timeout=60.0, keep_alive=0)
             proposal = self._parse_response(text, tier=1, cost=cost)
