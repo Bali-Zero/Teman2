@@ -1,0 +1,243 @@
+/* R19 Direction A roles; tokens from lib/theme/r19Vars.ts (branch origin/codex/website-r19-integrated, apps/website/src/). */
+
+/* scope — entry.css:330-334 body:has(.entry-hero), atlas.css:8 color-scheme */
+.r19-direction-a {
+  color-scheme: light;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-base);
+}
+
+/* display — entry.css:357-363 hero h1 */
+.r19-direction-a .r19-display {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: clamp(42px, 4.5vw, 64px);
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  font-variation-settings:
+    "SOFT" 25,
+    "WONK" 0;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+
+/* section — atlas.css:63 .oracle-headline */
+.r19-direction-a .r19-section {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: clamp(32px, 3.4vw, 49px);
+  line-height: 1.13;
+  letter-spacing: -0.035em;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+
+/* title — reuse map §1 (research/design/2026-09-11-r19-design-reuse-map-apps-mouth.md:51) card 28/1.14 */
+.r19-direction-a .r19-title {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 28px;
+  line-height: 1.14;
+  overflow-wrap: break-word;
+  color: var(--text-primary);
+}
+
+/* option — atlas.css:78 .oracle-option-card strong */
+.r19-direction-a .r19-option {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+/* body — reuse map §1 body 400 15/1.75 */
+.r19-direction-a .r19-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+/* eyebrow — atlas.css:56,61 kicker/junction label */
+.r19-direction-a .r19-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r19-ink-muted);
+}
+
+/* link — reuse map §1 text-link 13px copper; hover design-system.module.css:9 */
+.r19-direction-a .r19-link {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--r19-copper);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.r19-direction-a .r19-link:hover {
+  color: var(--r19-copper-hover);
+}
+
+/* focus ring — visa-tools.css:80-82 (3px copper), atlas.css:204 (offset 3px) */
+.r19-direction-a
+  :is(.r19-btn, .r19-link, .r19-field, .r19-option-card):focus-visible {
+  outline: 3px solid var(--r19-copper);
+  outline-offset: 3px;
+}
+
+/* button — visa-tools.css:172-187; atlas.css:67 (48px) */
+.r19-direction-a .r19-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--r19-radius-control);
+  font-family: var(--font-sans);
+  font-weight: 650;
+  font-size: 14px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease-out,
+    border-color 140ms ease-out,
+    color 140ms ease-out;
+}
+.r19-direction-a .r19-btn--primary {
+  background: var(--r19-copper);
+  border-color: var(--r19-copper);
+  color: var(--text-on-accent);
+}
+.r19-direction-a .r19-btn--primary:hover {
+  background: var(--r19-copper-hover);
+  border-color: var(--r19-copper-hover);
+}
+.r19-direction-a .r19-btn--quiet {
+  background: transparent;
+  border-color: var(--r19-control-border);
+  color: var(--text-primary);
+}
+.r19-direction-a .r19-btn--quiet:hover {
+  background: var(--r19-wash);
+}
+.r19-direction-a .r19-btn:is([disabled], [aria-disabled="true"]) {
+  background: var(--r19-wash);
+  border-color: var(--r19-wash);
+  color: var(--r19-ink-muted);
+  cursor: not-allowed;
+}
+
+/* field — atlas.css:85 .oracle-form-control (52px, 16px), atlas.css:12 control border */
+.r19-direction-a .r19-field {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 52px;
+  padding: 12px;
+  border: 1px solid var(--r19-control-border);
+  border-radius: var(--r19-radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+/* option card — atlas.css:75-81 .oracle-option-card */
+.r19-direction-a .r19-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 19px 22px;
+  border: 1px solid var(--r19-line);
+  border-radius: var(--r19-radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease-out,
+    border-color 140ms ease-out;
+}
+.r19-direction-a .r19-option-card:hover {
+  border-color: var(--r19-line-strong);
+}
+.r19-direction-a .r19-option-card:is([aria-pressed="true"], :has(:checked)) {
+  padding: 18px 21px;
+  border: 2px solid var(--r19-structure);
+  background: var(--r19-wash);
+}
+
+/* sheet — atlas.css:75 border-only surface (box-shadow:none) */
+.r19-direction-a .r19-sheet {
+  background: var(--surface-raised);
+  border: 1px solid var(--r19-line);
+  border-radius: var(--r19-radius-card);
+  box-shadow: none;
+}
+
+/* rule — atlas.css:118 1px border line */
+.r19-direction-a .r19-rule {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--r19-line);
+}
+
+/* lockup — atlas.css:49-51 .atlas-brand, scaled to the funnel header */
+.r19-direction-a .r19-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.r19-direction-a .r19-lockup__mark {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.r19-direction-a .r19-lockup__wordmark {
+  font-family: var(--font-sans);
+  font-weight: 750;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.r19-direction-a .r19-lockup__product {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* reduced motion — atlas.css:192 */
+@media (prefers-reduced-motion: reduce) {
+  .r19-direction-a,
+  .r19-direction-a *,
+  .r19-direction-a *::before,
+  .r19-direction-a *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
