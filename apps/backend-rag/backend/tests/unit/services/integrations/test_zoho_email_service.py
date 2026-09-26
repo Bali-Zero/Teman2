@@ -7,6 +7,7 @@ Covers: sanitize_filename, ZohoEmailService (list_folders, list_emails, get_emai
         _get_account_id, _log_activity, close)
 """
 
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -554,6 +555,91 @@ class TestForwardEmail:
             to=["fwd@example.com"],
         )
         assert result["success"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# send_email / reply_email / forward_email — recipients never reach the log
+# in cleartext (sender-PII split of PR #7308; the raw `to`/`to_address` here
+# was the same shape as birthday_notifier_service.py's leak).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_LOGGER_NAME = "backend.services.integrations.zoho_email_service"
+_LEAK = "leak.probe@example.com"
+
+
+class TestSendReplyForwardNeverLogRawRecipients:
+    @pytest.mark.asyncio
+    async def test_send_email_logs_redacted_recipients_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "sent1"}})
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+                await service.send_email(
+                    user_id="user1",
+                    to=[_LEAK],
+                    subject="Test",
+                    content="<p>Hello</p>",
+                    cc=["cc.leak@example.com"],
+                    bcc=["bcc.leak@example.com"],
+                )
+
+        # The payload sent to Zoho is untouched — only the log is redacted.
+        payload = service._request.call_args[1]["json_data"]
+        assert payload["toAddress"] == _LEAK
+        assert payload["ccAddress"] == "cc.leak@example.com"
+        assert payload["bccAddress"] == "bcc.leak@example.com"
+
+        assert _LEAK not in caplog.text
+        assert "cc.leak@example.com" not in caplog.text
+        assert "bcc.leak@example.com" not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
+        assert redact_identifier_for_log("cc.leak@example.com") in caplog.text
+        assert redact_identifier_for_log("bcc.leak@example.com") in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_reply_email_logs_redacted_recipient_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "reply1"}})
+        service._log_activity = AsyncMock()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.reply_email(
+                user_id="user1",
+                message_id="m1",
+                content="Thanks!",
+                to_address=_LEAK,
+            )
+
+        assert _LEAK not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_forward_email_logs_redacted_recipients_only(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from backend.security.pii_log_identifier import redact_identifier_for_log
+
+        service._request = AsyncMock(return_value={"data": {"messageId": "fwd1"}})
+        service._log_activity = AsyncMock()
+
+        with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+            await service.forward_email(
+                user_id="user1",
+                message_id="m1",
+                to=[_LEAK],
+                content="<p>FYI</p>",
+            )
+
+        assert _LEAK not in caplog.text
+        assert redact_identifier_for_log(_LEAK) in caplog.text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

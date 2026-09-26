@@ -27,6 +27,7 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.app.metrics import metrics_collector
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = logging.getLogger(__name__)
@@ -753,8 +754,13 @@ class ZohoEmailService:
         """
         start_time = time.time()
         logger.info(
-            f"[Email] Sending email user={user_id} to={to} subject='{subject[:50]}...' "
-            f"cc={cc} bcc={bcc} attachments={len(attachments or [])}",
+            "[Email] Sending email user=%s to=%s subject=%r cc=%s bcc=%s attachments=%d",
+            user_id,
+            [redact_identifier_for_log(addr) for addr in to],
+            subject[:50] + "...",
+            [redact_identifier_for_log(addr) for addr in cc] if cc else cc,
+            [redact_identifier_for_log(addr) for addr in bcc] if bcc else bcc,
+            len(attachments or []),
         )
         try:
             # Get sender email from account
@@ -854,7 +860,7 @@ class ZohoEmailService:
             user_id,
             message_id,
             reply_all,
-            to_address,
+            redact_identifier_for_log(to_address),
         )
 
         # Build payload with required toAddress
@@ -915,7 +921,12 @@ class ZohoEmailService:
         Returns:
             Send result
         """
-        logger.info("[Email] Forwarding email user=%s message_id=%s to=%s", user_id, message_id, to)
+        logger.info(
+            "[Email] Forwarding email user=%s message_id=%s to=%s",
+            user_id,
+            message_id,
+            [redact_identifier_for_log(addr) for addr in to],
+        )
         payload: dict[str, Any] = {
             "toAddress": ",".join(to),
         }
