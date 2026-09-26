@@ -45,7 +45,6 @@ import { KBLIEditorial } from "@/components/kbli/KBLIEditorial";
 import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
 import { KBLITransitionSources } from "@/components/kbli/KBLITransitionSources";
 import { getRelatedArticle } from "@/lib/kbli-articles";
-import { SECTION_VISUALS } from "@/lib/kbli-cover-design";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
@@ -163,9 +162,6 @@ export default async function KBLICodePage({
   ];
 
   const isGold = !!gold;
-  const sectionAccent =
-    (kbli.section && SECTION_VISUALS[kbli.section]?.accent) ||
-    "var(--kbli-accent)";
   const article = getRelatedArticle(kbli.code);
 
   return (
@@ -207,13 +203,13 @@ export default async function KBLICodePage({
           <div className="relative -mx-4 mb-10 mt-4 overflow-hidden border-y border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] sm:-mx-6 sm:rounded-[var(--kbli-radius-xl)] sm:border lg:-mx-8">
             {/* Carta filigranata (BRIEF-v2 §3.4): the header is a paper
                 plate with a guilloché band at ≤5% opacity and a hairline in
-                the section's own SECTION_VISUALS accent — a token re-skin of
+                the R19 structure slate (one ink family) — a token re-skin of
                 the former photo/gradient layers, same position in the page. */}
             <div aria-hidden="true" className="kbli-guilloche" />
             <div
               aria-hidden="true"
               className="absolute inset-x-0 top-0 h-[3px]"
-              style={{ background: sectionAccent }}
+              style={{ background: "var(--r19-structure, #233D52)" }}
             />
 
             {/* Hero content */}
@@ -233,7 +229,7 @@ export default async function KBLICodePage({
                   KBLI {kbli.code}
                 </span>
                 {isGold && (
-                  <span className="text-xs text-[var(--kbli-amber)] font-medium">
+                  <span className="text-xs text-[var(--kbli-text-secondary)] font-medium">
                     ★ Gold-Tier Intel
                   </span>
                 )}

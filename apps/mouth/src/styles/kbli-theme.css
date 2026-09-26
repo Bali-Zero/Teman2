@@ -305,10 +305,10 @@
   --kbli-accent-subtle: #f3e6e0;
   --kbli-accent-muted: #efdcd4;
 
-  --kbli-accent2: #3e4f8c;
+  --kbli-accent2: #34506b;
   --kbli-accent2-glow: transparent;
 
-  --kbli-amber: #8a5a10;
+  --kbli-amber: #7a5a1e;
   --kbli-amber-glow: transparent;
 
   --kbli-text-primary: #1d2c3b;
@@ -319,26 +319,30 @@
   --kbli-border-hover: #a8aca9;
   --kbli-border-accent: #d9b7ab;
 
-  --kbli-pma-open: #2f6b45;
-  --kbli-pma-open-bg: #e6efe6;
-  --kbli-pma-restricted: #8a5a10;
-  --kbli-pma-restricted-bg: #f4ead6;
-  --kbli-pma-closed: #9e2b25;
-  --kbli-pma-closed-bg: #f5e3df;
+  /* Council v2 (2026-09-26): the states are ink-family words on raised
+     paper, not green/amber/red slabs — a verdict's colour must not read as
+     more certain than its "medium conf." qualifier. Hues stay distinct
+     (deep green / ochre / oxblood / slate), all ≥4.5:1, no tinted fills. */
+  --kbli-pma-open: #2e5e4e;
+  --kbli-pma-open-bg: #fffcf7;
+  --kbli-pma-restricted: #7a5a1e;
+  --kbli-pma-restricted-bg: #fffcf7;
+  --kbli-pma-closed: #8e2f2a;
+  --kbli-pma-closed-bg: #fffcf7;
 
-  --kbli-risk-low: #2f6b45;
-  --kbli-risk-medium-low: #2d5f8a;
-  --kbli-risk-medium-high: #8a5a10;
-  --kbli-risk-high: #9e2b25;
+  --kbli-risk-low: #2e5e4e;
+  --kbli-risk-medium-low: #34506b;
+  --kbli-risk-medium-high: #7a5a1e;
+  --kbli-risk-high: #8e2f2a;
 
   --kbli-zantara: #233d52;
   --kbli-zantara-bg: #eae3d8;
   --kbli-zantara-glow: none;
 
   --kbli-map-unchanged: #5b636b;
-  --kbli-map-renamed: #2d5f8a;
-  --kbli-map-merged: #8a5a10;
-  --kbli-map-new: #2f6b45;
+  --kbli-map-renamed: #34506b;
+  --kbli-map-merged: #7a5a1e;
+  --kbli-map-new: #2e5e4e;
 
   --kbli-shadow-card: 0 0 0 1px #dad8d1;
   --kbli-shadow-card-hover: 0 0 0 1px #a8aca9, 0 6px 18px #1d2c3b0f;
@@ -439,4 +443,27 @@
   .kbli-specimen-bali > span > span:first-child > span:first-child + span {
     margin-left: 0;
   }
+}
+
+/* The FunnelFrame handoff on /kbli. Core semantic.css paints
+   [data-funnel="kbli"] gold (#eab308): a second action colour on an R19 page
+   where copper is the single action (BRIEF-v2 R-1). The frame's accent is
+   re-pointed at copper here, and the rail sits in the flow at the end of the
+   page instead of floating over it (council v2 blocker: the floating pill
+   covered the persona doors on desktop and the dial legend on mobile). The
+   header's copper "Get Started" remains the persistent action. Inline styles
+   in packages/core CTAHandoff can only be overridden with !important. */
+.kbli-paper [data-funnel="kbli"] {
+  --accent-funnel: #a44b36;
+  --accent-funnel-text: #a44b36;
+  --text-on-accent: #fffcf7;
+}
+.kbli-paper [data-funnel="kbli"] > [role="group"][aria-label="Next actions"] {
+  position: static !important;
+}
+.kbli-paper
+  [data-funnel="kbli"]
+  > [role="group"][aria-label="Next actions"]
+  > :is(a, button) {
+  box-shadow: none !important;
 }
