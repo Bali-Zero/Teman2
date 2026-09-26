@@ -7,19 +7,23 @@ import { useRouter } from "next/navigation";
 export interface DialSection {
   id: string;
   nameEn: string;
-  /** SECTION_VISUALS[id].label — the short name the list can hold */
+  /** SECTION_VISUALS[id].label — the short name the list prints in full */
   shortName: string;
   codeCount: number;
-  /** SECTION_VISUALS[id].accent (lib/kbli-cover-design.ts) */
-  color: string;
 }
 
-const SIZE = 240;
+const SIZE = 260;
 const C = SIZE / 2;
-const R_OUT = 104;
-const R_IN = 78;
-const R_TICK = 112;
+const R_OUT = 96;
+const R_IN = 72;
+const R_TICK = 101;
+const R_COUNT = 117;
 const GAP_DEG = 0.9;
+/** A segment narrower than this carries no engraved letter/count on the rim. */
+const LABEL_MIN_DEG = 11;
+
+const INK = "var(--r19-structure, #233D52)";
+const COPPER = "var(--kbli-accent, #A44B36)";
 
 function polar(r: number, deg: number): [number, number] {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -43,14 +47,17 @@ function arcPath(start: number, end: number): string {
 }
 
 /**
- * The sector dial — the Navigator's instrument face.
+ * The sector dial — the Navigator's instrument face, engraved in ONE ink.
  *
  * One ring, one segment per non-empty KBLI 2025 section, each segment's angle
  * = its codeCount over the total (both read from `getSections()` at render,
- * never a literal), each coloured by the section's SECTION_VISUALS accent.
+ * never a literal). Council v2 (2026-09-26): no per-section rainbow — the
+ * segments are the R19 structure slate in two alternating weights, the
+ * section letter is engraved on the band and its count on the rim, and only
+ * the ACTIVE section turns copper.
  *
- * The ORDERED LIST beside the ring is the truth: every section is a real link
- * to /kbli/sectors/[id] with its name and count in text. The SVG is
+ * The ORDERED LIST under the ring is the truth: every section is a real link
+ * to /kbli/sectors/[id] with its full short name and count in text. The SVG is
  * aria-hidden decoration that follows the list — hovering or focusing an
  * entry swings the needle to its segment and reads it in the centre; pointer
  * users may also click a segment (same destination as the link).
@@ -68,30 +75,36 @@ export function KBLISectorDial({
 
   const segments = React.useMemo(() => {
     let cursor = 0;
-    return sections.map((s) => {
+    return sections.map((s, i) => {
       const sweep = (s.codeCount / sum) * 360;
       const start = cursor + GAP_DEG / 2;
       const end = cursor + sweep - GAP_DEG / 2;
       const mid = cursor + sweep / 2;
       cursor += sweep;
-      return { ...s, start, end: Math.max(end, start + 0.4), mid };
+      return {
+        ...s,
+        start,
+        end: Math.max(end, start + 0.4),
+        mid,
+        sweep,
+        weight: i % 2 === 0 ? 0.92 : 0.62,
+      };
     });
   }, [sections, sum]);
 
   const current = segments.find((s) => s.id === active) ?? null;
-  const needleDeg = current ? current.mid : 0;
 
   return (
     <div className="kbli-dial grid grid-cols-1 items-center gap-5">
-      <div className="relative mx-auto w-full max-w-[12rem] sm:max-w-[13rem]">
+      <div className="relative mx-auto w-full max-w-[13rem] sm:max-w-[14rem]">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className="block h-auto w-full"
           aria-hidden="true"
           focusable="false"
         >
-          {/* bezel: 72 minor ticks, 4 major */}
-          <g stroke="var(--kbli-text-primary)" strokeLinecap="round">
+          {/* bezel: 72 minor ticks, 4 major, slate */}
+          <g stroke={INK} strokeLinecap="round">
             {Array.from({ length: 72 }, (_, i) => {
               const deg = i * 5;
               const major = deg % 90 === 0;
@@ -105,32 +118,63 @@ export function KBLISectorDial({
                   x2={x2}
                   y2={y2}
                   strokeWidth={major ? 1.1 : 0.6}
-                  opacity={major ? 0.7 : 0.35}
+                  opacity={major ? 0.75 : 0.4}
                 />
               );
             })}
           </g>
-          <circle
-            cx={C}
-            cy={C}
-            r={R_OUT + 2.5}
-            fill="none"
-            stroke="var(--kbli-text-primary)"
-            strokeWidth={0.5}
-            opacity={0.35}
-          />
-          {segments.map((s) => (
-            <path
-              key={s.id}
-              d={arcPath(s.start, s.end)}
-              fill={s.color}
-              opacity={active === null || active === s.id ? 1 : 0.28}
-              onMouseEnter={() => setActive(s.id)}
-              onMouseLeave={() => setActive(null)}
-              onClick={() => router.push(`/kbli/sectors/${s.id}`)}
-              style={{ cursor: "pointer", transition: "opacity 160ms" }}
-            />
-          ))}
+          {segments.map((s) => {
+            const on = active === s.id;
+            return (
+              <path
+                key={s.id}
+                d={arcPath(s.start, s.end)}
+                fill={on ? COPPER : INK}
+                opacity={on ? 1 : active === null ? s.weight : 0.22}
+                onMouseEnter={() => setActive(s.id)}
+                onMouseLeave={() => setActive(null)}
+                onClick={() => router.push(`/kbli/sectors/${s.id}`)}
+                style={{ cursor: "pointer", transition: "opacity 160ms" }}
+              />
+            );
+          })}
+          {/* engraved letters on the band, counts on the rim */}
+          <g
+            style={{ fontFamily: "var(--font-sans)", pointerEvents: "none" }}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {segments
+              .filter((s) => s.sweep >= LABEL_MIN_DEG)
+              .map((s) => {
+                const [lx, ly] = polar((R_IN + R_OUT) / 2, s.mid);
+                const [cx, cy] = polar(R_COUNT, s.mid);
+                const on = active === s.id;
+                return (
+                  <g key={s.id}>
+                    <text
+                      x={lx}
+                      y={ly}
+                      fontSize={10}
+                      fontWeight={700}
+                      fill="var(--kbli-bg-surface, #FFFCF7)"
+                    >
+                      {s.id}
+                    </text>
+                    <text
+                      x={cx}
+                      y={cy}
+                      fontSize={9.5}
+                      fontWeight={600}
+                      fill={on ? COPPER : "var(--kbli-text-secondary, #58626B)"}
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {s.codeCount}
+                    </text>
+                  </g>
+                );
+              })}
+          </g>
           <circle
             cx={C}
             cy={C}
@@ -142,7 +186,7 @@ export function KBLISectorDial({
           {current && (
             <g
               style={{
-                transform: `rotate(${needleDeg}deg)`,
+                transform: `rotate(${current.mid}deg)`,
                 transformOrigin: `${C}px ${C}px`,
                 transition: "transform 220ms ease-out",
               }}
@@ -151,8 +195,8 @@ export function KBLISectorDial({
                 x1={C}
                 y1={C - R_IN + 4}
                 x2={C}
-                y2={C - R_TICK - 6}
-                stroke="var(--kbli-accent)"
+                y2={C - R_TICK - 8}
+                stroke={COPPER}
                 strokeWidth={1.6}
                 strokeLinecap="round"
               />
@@ -162,23 +206,23 @@ export function KBLISectorDial({
         {/* centre readout (decorative mirror of the list; aria-hidden) */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[26%] text-center"
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[29%] text-center"
         >
           {current ? (
             <>
-              <span className="kbli-figure text-[30px] leading-none text-[var(--kbli-text-primary)]">
+              <span className="kbli-figure text-[28px] leading-none text-[var(--kbli-accent)]">
                 {current.codeCount.toLocaleString("en-US")}
               </span>
-              <span className="mt-1 line-clamp-3 text-[10.5px] font-semibold leading-tight text-[var(--kbli-text-secondary)]">
+              <span className="mt-1 line-clamp-3 text-[10px] font-semibold leading-tight text-[var(--kbli-text-secondary)]">
                 {current.id} · {current.nameEn}
               </span>
             </>
           ) : (
             <>
-              <span className="kbli-figure text-[32px] leading-none text-[var(--kbli-text-primary)]">
+              <span className="kbli-figure text-[30px] leading-none text-[var(--kbli-text-primary)]">
                 {totalCodes.toLocaleString("en-US")}
               </span>
-              <span className="mt-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-secondary)]">
+              <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-secondary)]">
                 codes
               </span>
             </>
@@ -189,7 +233,7 @@ export function KBLISectorDial({
       <ol
         aria-label="KBLI 2025 sections"
         data-kbli-dial-list=""
-        className="grid grid-cols-2 gap-x-5"
+        className="grid grid-cols-1 gap-x-6 sm:grid-cols-2"
       >
         {sections.map((s) => (
           <li key={s.id}>
@@ -199,20 +243,13 @@ export function KBLISectorDial({
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(s.id)}
               onBlur={() => setActive(null)}
-              className="group flex min-h-[44px] items-center gap-2 border-b lg:min-h-[30px] border-[var(--kbli-border)] text-[13px] leading-tight text-[var(--kbli-text-primary)] no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)]"
+              title={s.nameEn}
+              className="group flex min-h-[44px] items-center gap-2.5 border-b border-[var(--kbli-border)] py-1 text-[13px] leading-snug text-[var(--kbli-text-primary)] no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)] lg:min-h-[32px]"
             >
-              <span
-                aria-hidden="true"
-                className="h-2.5 w-2.5 shrink-0 rounded-[1px]"
-                style={{ background: s.color }}
-              />
-              <span className="w-3 shrink-0 font-bold text-[var(--kbli-text-secondary)]">
+              <span className="w-3 shrink-0 font-bold text-[var(--kbli-text-secondary)] group-hover:text-[var(--kbli-accent)]">
                 {s.id}
               </span>
-              <span
-                title={s.nameEn}
-                className="min-w-0 flex-1 truncate group-hover:text-[var(--kbli-accent)]"
-              >
+              <span className="min-w-0 flex-1 group-hover:text-[var(--kbli-accent)]">
                 {s.shortName}
               </span>
               <span className="kbli-figure shrink-0 text-[14px] text-[var(--kbli-text-secondary)]">

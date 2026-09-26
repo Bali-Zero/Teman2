@@ -66,7 +66,6 @@ export default async function KBLIHomePage({
     nameEn: s.nameEn,
     shortName: SECTION_VISUALS[s.id]?.label ?? s.nameEn,
     codeCount: s.codeCount,
-    color: SECTION_VISUALS[s.id]?.accent ?? "var(--kbli-text-muted)",
   }));
 
   return (
