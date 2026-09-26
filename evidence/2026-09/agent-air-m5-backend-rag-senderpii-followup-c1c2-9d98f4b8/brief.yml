@@ -1,0 +1,114 @@
+task_id: senderpii-followup-c1c2c3c6
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Follow-up PR #7385 mandated: closes C1, C2, C3 and C6 of that PR's PASS-WITH-CONDITIONS
+  final on-disk gate (pull/7385#issuecomment-5846332358, CI addendum -5846374534). #7385
+  itself is merged as b491d10138.
+
+  C1 (SHOULD-FIX, M5 residual): `email_audit.py`'s `_EMAIL_TOKEN_RE` excluded `*_[]()` from
+  the token class entirely (round 2's fix for `*Delivery to a@b*` losing its closing `*`),
+  which also broke matching for an address that itself CONTAINS one of those characters —
+  `first_last@x` matched only `last@x`, leaving `first_` bare; `a*b@x` matched only `b@x`,
+  leaving `a*` bare; `x@sub_domain` matched only `x@sub`, leaving `_domain` bare. Restored the
+  round-1 token class (delimiters allowed inside the token) and moved the exclusion to a
+  peel-and-reattach step in `_redact`: only a leading/trailing run of `*_[]()` (trailing also
+  `.,;:!?`) right at the EDGE of a match is Markdown the surrounding sentence owns, and it goes
+  back into the output unredacted rather than being excluded from the class up front.
+
+  C2: sharpened the M4 truncation test — parametrized over BOTH bounded fields (`subject`@120,
+  `error`@400 — the shipped test only exercised `error`) and replaced `local not in body` with
+  `local[:7] not in body` (a substring is never equal to the whole string it's part of, so the
+  original assertion could not have caught a partial-fragment leak). No production code change
+  for C2; a companion rationale test demonstrates the assertion's added value directly.
+
+  C3 (NIT): `_bounded_scrub` only stripped a trailing partial token when `truncated[-1]` was
+  non-whitespace — it could not distinguish "cut mid-token" from "cut landed exactly on a token
+  boundary" and dropped a COMPLETE last token whenever the very next original character (past
+  `limit`) happened to be whitespace. Now checks `text[limit]` too. `_safe_filename_ext` (and
+  new `_safe_filename_len`, replacing every bare `len(filename)` call in `upload_attachment`)
+  now return `"other"`/`0` for a non-str `filename` instead of raising `TypeError` out of the
+  very first PRE-VALIDATION log line — unreachable today (the only caller passes
+  `file.filename or "unnamed"`), but a log-line helper degrading to its own documented default
+  beats crashing ahead of the checks it sits alongside.
+
+  C6 (SHOULD-FIX, CodeQL alert 9192, `py/polynomial-redos`): `_TRAILING_PARTIAL_TOKEN_RE =
+  r"\S+$"` measured ~2.0s at 20k chars fed directly — genuinely polynomial, not just slow.
+  Replaced with `_strip_trailing_partial_token`, a linear right-to-left scan for the last
+  whitespace character (one pass, no backtracking), with an equivalence test proving identical
+  output to the regex it replaces on every existing case, plus a behaviour-only (never
+  wall-time) 200k-char completion test.
+constraints:
+  - "One-fix-per-finding, same discipline #7385 itself was measured against: C1's peel logic
+    touches only `_scrub_email_tokens`'s token class and `_redact`; C3's boundary check touches
+    only `_bounded_scrub`'s condition; C6 touches only the trailing-partial-token strip. No
+    other behaviour in either file changed."
+  - "C2 carries NO production code change — the M4 code cure already ships on `b491d10138`;
+    C2 is a test-assertion sharpening plus a rationale test, not a regression fix. Reported as
+    such in the mutation receipt rather than overclaiming a guilt test that fails on
+    `b491d10138` where none exists to fail."
+  - "No client PII in this PR's own artifacts (commit message, this pack, the PR body) — every
+    example address used in tests and here is a synthetic `*.example`/`leak.probe@example.com`
+    shape, matching #7385's own convention."
+  - "C6's 200k-char linearity test is NOT run against the pre-fix regex at that size — doing so
+    would reproduce the polynomial hang the fix exists to close rather than prove anything the
+    CodeQL scan and the gate addendum's own 20k-char/~2.0s measurement don't already show."
+acceptance:
+  - text: >-
+      (C1) WHEN an email-shaped token in `subject`/`error` text itself contains `*_[]()`
+      (e.g. `first_last@example.com`, `a*b@example.com`, `x@sub_domain.example`), no fragment
+      of the address (neither the piece before nor after the delimiter) SHALL survive
+      `_scrub_email_tokens` unredacted; WHEN the same delimiters instead WRAP the address as
+      Markdown (`_Re: <addr>_`, `(<addr>).`, `*_Update for <addr>_*`), they SHALL be preserved
+      verbatim around the digest and the subject line's `*`/`_` counts SHALL equal the input's.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
+  - text: >-
+      (C2) WHEN the critical-email Telegram alert's `subject`(@120)/`error`(@400) is truncated
+      with the cut landing right after `@`, inside the local part, or inside the domain, the
+      first 7 characters of the local part SHALL NOT appear anywhere in the sent alert body.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
+  - text: >-
+      (C3) WHEN `_bounded_scrub`'s cut lands exactly on a whitespace boundary (`text[limit]` is
+      whitespace), the complete last token SHALL be kept, not dropped; WHEN the cut is
+      genuinely mid-token (`text[limit]` is NOT whitespace), the partial token SHALL still be
+      stripped. WHEN `_safe_filename_ext`/`_safe_filename_len` receive a non-`str` `filename`,
+      they SHALL return `"other"`/`0` rather than raising `TypeError`.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py backend/tests/unit/services/integrations/test_zoho_email_service.py"
+  - text: >-
+      (C6) `_strip_trailing_partial_token` SHALL produce output identical to
+      `re.sub(r"\S+$", "", text)` on every case `_bounded_scrub` actually feeds it, and SHALL
+      complete on a 200,000-character single-token input without hanging.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
+consumer_map:
+  - "`backend/services/notifications/email_audit.py`'s `notify_email_failure_critical` — the
+    synchronous Telegram page Bali Zero's owner reads on a critical-email failure; C1/C2/C3/C6
+    all sit on this alert's `subject`/`error` scrub-and-bound path."
+  - "`backend/services/integrations/zoho_email_service.py`'s `upload_attachment` — the live
+    Zoho attachment-upload path behind the CRM email UI; C3's filename-tolerance fix covers
+    every log line in this method."
+  - "GitHub code scanning (CodeQL) — alert 9192 (`py/polynomial-redos` on `email_audit.py`)
+    closes on `main` once this PR merges."
+risks:
+  - "C2 has no guilt test that fails on `b491d10138` (see constraints above) — the sharpened
+    assertion is validated by a standalone rationale test (a synthetic leaked-fragment string)
+    rather than by a before/after diff on production code. Flagged, not hidden."
+  - "The 200k-char C6 tests are correctness-only (never timing-asserted) and are not run
+    against the pre-fix regex — see constraints above for why that omission is deliberate."
+grader: |
+  Every C1/C3/C6 cure carries a guilt test verified locally by dynamically loading
+  `b491d10138`'s copy of the touched source file (`importlib.util.spec_from_file_location`,
+  since the new private symbols `_strip_trailing_partial_token`/`_safe_filename_len` don't
+  exist on that commit and would fail full-module pytest collection against it) and calling
+  the same scenario the shipped test exercises directly: all four fail on `b491d10138`
+  (`first_`/`a*`/`_domain` fragments leak; `_bounded_scrub("abcde fghij", 5)` returns `""`
+  instead of `"abcde"`; `_safe_filename_ext(None)` raises `TypeError`) and all four pass on
+  this PR's head via the full pytest suite. C2 has no such counterpart (see constraints/risks).
+budget: >-
+  1 build lane (this session), no cross-family review lane, no council gate — Gear 2 (4 files,
+  +427/-58, well under SIZE_GEAR3_THRESHOLD). Verification: guilt tests run against a
+  dynamically-loaded copy of `b491d10138`'s sources (not a full checkout) plus the full
+  existing + new test suite on HEAD.
+pii:
+  none — every address in this PR's diff/tests/pack is a synthetic `*.example`/
+  `leak.probe@example.com`/`first_last@example.com` shape, matching #7385's own convention.

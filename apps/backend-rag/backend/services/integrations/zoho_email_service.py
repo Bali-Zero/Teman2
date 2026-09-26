@@ -166,9 +166,24 @@ def _safe_filename_ext(filename: str) -> str:
     with no real dot-extension at all). Anything that is not a short
     alphanumeric token — including one containing `@`, spaces or non-ASCII —
     collapses to `"other"`.
+
+    A non-``str`` ``filename`` (C3, PR #7385 gate follow-up) also collapses
+    to `"other"` rather than raising `TypeError` out of `.rsplit`/`.fullmatch`
+    — unreachable today (`upload_attachment`'s only caller passes
+    ``file.filename or "unnamed"``), but a log-line helper degrading to its
+    own safe default is cheaper than a caller having to prove that forever.
     """
+    if not isinstance(filename, str):
+        return "other"
     ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
     return ext if _SAFE_FILENAME_EXT_RE.fullmatch(ext) else "other"
+
+
+def _safe_filename_len(filename: str) -> int:
+    """``len(filename)`` for a log line / length check — 0 for a non-``str``
+    filename rather than `TypeError` (same C3 rationale as
+    `_safe_filename_ext`, same unreachable-today caller guarantee)."""
+    return len(filename) if isinstance(filename, str) else 0
 
 
 class ZohoEmailService:
@@ -1241,7 +1256,7 @@ class ZohoEmailService:
             "size=%.2fMB type=%s",
             user_id,
             _safe_filename_ext(filename),
-            len(filename),
+            _safe_filename_len(filename),
             file_size_mb,
             content_type,
         )
@@ -1263,21 +1278,21 @@ class ZohoEmailService:
                 user_id,
                 file_size_mb,
                 _safe_filename_ext(filename),
-                len(filename),
+                _safe_filename_len(filename),
             )
             raise ValueError(error_msg)
 
         # Validate filename length before sanitization
-        if len(filename) > 255:
+        if _safe_filename_len(filename) > 255:
             error_msg = (
-                f"Filename too long: {len(filename)} characters exceeds 255 character limit. "
+                f"Filename too long: {_safe_filename_len(filename)} characters exceeds 255 character limit. "
                 f"Filename: {filename}"
             )
             logger.error(
                 "[Email] Filename too long user=%s filename_ext=%s filename_len=%d",
                 user_id,
                 _safe_filename_ext(filename),
-                len(filename),
+                _safe_filename_len(filename),
             )
             raise ValueError(error_msg)
 
@@ -1290,9 +1305,9 @@ class ZohoEmailService:
                 "sanitized_ext=%s sanitized_len=%d",
                 user_id,
                 _safe_filename_ext(original_filename),
-                len(original_filename),
+                _safe_filename_len(original_filename),
                 _safe_filename_ext(sanitized_filename),
-                len(sanitized_filename),
+                _safe_filename_len(sanitized_filename),
             )
             filename = sanitized_filename
 
@@ -1338,7 +1353,7 @@ class ZohoEmailService:
                     user_id,
                     response.status_code,
                     _safe_filename_ext(filename),
-                    len(filename),
+                    _safe_filename_len(filename),
                 )
 
                 # Raise informative error for user
@@ -1366,7 +1381,7 @@ class ZohoEmailService:
                 user_id,
                 result["attachment_id"],
                 _safe_filename_ext(filename),
-                len(filename),
+                _safe_filename_len(filename),
                 file_size_mb,
             )
 
@@ -1379,7 +1394,7 @@ class ZohoEmailService:
                 user_id,
                 type(e).__name__,
                 _safe_filename_ext(filename),
-                len(filename),
+                _safe_filename_len(filename),
             )
             raise ValueError(f"Network error uploading '{original_filename}': {e!s}")
 
