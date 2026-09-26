@@ -33,7 +33,14 @@
 # for a dead one.
 #
 # Heartbeat: ~/.organism/last_seen/pro.s7_yield_weekly.json (organs_registry.yaml
-# id pro.s7_yield_weekly) on every exit path. Its note carries the exit code only.
+# id pro.s7_yield_weekly) on every exit the wrapper can observe: kill switch,
+# missing payload, payload exit, a skipped overlapping run, and SIGTERM/SIGINT/
+# SIGHUP (forwarded to the payload, which is waited for). SIGKILL cannot be
+# observed; the registry's 8-day silence threshold covers it. The note carries an
+# exit code or a fixed phrase only.
+#
+# Single instance: an O_EXCL pidfile with a liveness probe. launchd never overlaps
+# its own runs; the pidfile stops a manual run from drafting a second batch.
 
 set -uo pipefail
 unset ANTHROPIC_API_KEY
@@ -51,14 +58,15 @@ ORGAN_ID="pro.s7_yield_weekly"
 
 log() { echo "s7-yield-run: $*" >&2; }
 
-# bash 3.2 exits the whole script when `source` cannot find the file: guard it,
-# and fall back to a no-op so a missing library never blocks the run.
+# bash 3.2 exits the whole script when `source` cannot find the file: guard it.
+# A missing library must not block the run, but it must not be silent either:
+# the fallback says in the log which heartbeat was lost.
 if [[ -f "$REPO_ROOT/scripts/lib/heartbeat.sh" ]]; then
     # shellcheck disable=SC1091
     source "$REPO_ROOT/scripts/lib/heartbeat.sh" || true
 fi
 if ! declare -F organism_heartbeat >/dev/null 2>&1; then
-    organism_heartbeat() { :; }
+    organism_heartbeat() { log "heartbeat library missing — status $2 not recorded"; }
 fi
 
 if [[ "${S7_YIELD_ENABLED:-true}" == "false" || "${S7_YIELD_OFF:-0}" == "1" ]]; then
@@ -76,8 +84,49 @@ if [[ ! -f "$SCRIPT" ]]; then
     exit 1
 fi
 
-"$PY" "$SCRIPT" --all --limit "$LIMIT"
+RUN_DIR="$HOME/.organism/run"
+PIDFILE="$RUN_DIR/$ORGAN_ID.pid"
+take_pidfile() { ( set -C; echo $$ > "$PIDFILE" ) 2>/dev/null; }
+if mkdir -p "$RUN_DIR" 2>/dev/null && [[ -w "$RUN_DIR" ]]; then
+    if ! take_pidfile; then
+        other="$(cat "$PIDFILE" 2>/dev/null || true)"
+        if [[ -n "$other" ]] && kill -0 "$other" 2>/dev/null; then
+            log "previous run still alive (pid $other) — skipping"
+            organism_heartbeat "$ORGAN_ID" "warning" "skipped: previous run alive"
+            exit 0
+        fi
+        log "removing stale pidfile (pid ${other:-unknown} not alive)"
+        rm -f "$PIDFILE"
+        if ! take_pidfile; then
+            log "another run took the pidfile first — skipping"
+            organism_heartbeat "$ORGAN_ID" "warning" "skipped: lost pidfile race"
+            exit 0
+        fi
+    fi
+    trap '[[ "$(cat "$PIDFILE" 2>/dev/null)" == "$$" ]] && rm -f "$PIDFILE"' EXIT
+else
+    log "cannot write $RUN_DIR — running without the single-instance pidfile"
+fi
+
+child=""
+on_signal() {
+    log "received SIG$1 — stopping the payload"
+    if [[ -n "$child" ]]; then
+        kill -TERM "$child" 2>/dev/null
+        wait "$child" 2>/dev/null
+    fi
+    organism_heartbeat "$ORGAN_ID" "error" "signal $1"
+    exit "$2"
+}
+trap 'on_signal TERM 143' TERM
+trap 'on_signal INT 130' INT
+trap 'on_signal HUP 129' HUP
+
+"$PY" "$SCRIPT" --all --limit "$LIMIT" &
+child=$!
+wait "$child"
 rc=$?
+child=""
 if [[ $rc -eq 0 ]]; then
     organism_heartbeat "$ORGAN_ID" "ok" "rc=0"
 else
