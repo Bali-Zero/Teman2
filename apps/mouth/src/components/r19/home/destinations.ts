@@ -26,6 +26,15 @@ export const destinations = {
     label: "Bali Zero on Google Maps",
     href: GOOGLE_MAPS_URL,
   },
+  // The two contact destinations of the pre-R19 v2 Footer, verbatim.
+  telegram: {
+    label: "Telegram",
+    href: "https://t.me/Balizerobot",
+  },
+  officeMap: {
+    label: "Location",
+    href: "https://maps.google.com/?q=Bali+Indonesia",
+  },
   email: {
     label: "Email",
     href: "mailto:zantara@balizero.com",

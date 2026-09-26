@@ -169,7 +169,7 @@ test.describe("R19 home contact actions", () => {
       })),
     );
     const whatsapp = links.filter((l) => l.href.includes("wa.me"));
-    // Header CTA, hero handoff, eight cta_handoff and the footer's plain link.
+    // Header CTA, hero handoff, eight cta_handoff and the footer's tracked link.
     expect(whatsapp).toHaveLength(11);
     for (const { href } of whatsapp) {
       const url = new URL(href);
@@ -180,8 +180,9 @@ test.describe("R19 home contact actions", () => {
       "homepage_hero",
       ...ACTIONS.map(() => "cta_handoff"),
     ]);
-    // The header CTA and the hero fallback are the live home's own link.
-    expect(whatsapp.filter((l) => l.href === HOME_LINK)).toHaveLength(2);
+    // The header CTA, the hero fallback and the footer link are the live
+    // home's own link.
+    expect(whatsapp.filter((l) => l.href === HOME_LINK)).toHaveLength(3);
     expect(
       tracked
         .filter((l) => l.lead === "cta_handoff")
@@ -285,39 +286,90 @@ test.describe("R19 home contact actions", () => {
     });
   }
 
-  test("the header WhatsApp action opens the company chat in a new tab and fires the nav event", async ({
-    page,
-    context,
-  }) => {
-    const gtag = await armGtag(page);
-    const beacons = await armBeacon(page, false);
-    await page.goto("/");
-    const link = page.locator(".site-header a[href*='wa.me']");
-    expect(await link.getAttribute("target")).toBe("_blank");
-    const opened = context.waitForEvent("page");
-    await link.click();
-    const tab = await opened;
-    await tab.waitForLoadState("domcontentloaded");
-    expect(tab.url()).toBe(HOME_LINK);
-    await expect.poll(() => events(gtag, "home_whatsapp_cta").length).toBe(1);
-    const [nav] = events(gtag, "home_whatsapp_cta");
-    expect(nav).toMatchObject({
-      event: "home_whatsapp_cta",
-      session_id: expect.any(String),
-    });
-    expect(JSON.parse(nav.payload as string)).toEqual({ trigger: "nav" });
-    await expect.poll(() => beacons.length).toBe(1);
-    expect(beacons).toEqual([
-      {
-        session_id: expect.any(String),
+  // The two plain-link WhatsApp actions of the live home: the header CTA
+  // (NavWhatsAppCTA, trigger "nav") and the footer link (Footer, trigger
+  // "footer"). Both open the company chat in a new tab and fire the same event.
+  for (const [name, selector, trigger] of [
+    ["header", ".site-header a[href*='wa.me']", "nav"],
+    ["footer", "footer a[href*='wa.me']", "footer"],
+  ] as const) {
+    test(`the ${name} WhatsApp action opens the company chat in a new tab and fires the ${trigger} event`, async ({
+      page,
+      context,
+    }) => {
+      const gtag = await armGtag(page);
+      const beacons = await armBeacon(page, false);
+      await page.goto("/");
+      const link = page.locator(selector);
+      await expect(link).toHaveCount(1);
+      await link.scrollIntoViewIfNeeded();
+      expect(await link.getAttribute("href")).toBe(HOME_LINK);
+      expect(await link.getAttribute("target")).toBe("_blank");
+      expect(await link.getAttribute("rel")).toBe("noopener noreferrer");
+      const opened = context.waitForEvent("page");
+      await link.click();
+      const tab = await opened;
+      await tab.waitForLoadState("domcontentloaded");
+      expect(tab.url()).toBe(HOME_LINK);
+      await expect.poll(() => events(gtag, "home_whatsapp_cta").length).toBe(1);
+      const [event] = events(gtag, "home_whatsapp_cta");
+      expect(event).toMatchObject({
         event: "home_whatsapp_cta",
-        payload: { trigger: "nav" },
-        hostname: expect.any(String),
-      },
+        session_id: expect.any(String),
+      });
+      expect(JSON.parse(event.payload as string)).toEqual({ trigger });
+      await expect.poll(() => beacons.length).toBe(1);
+      expect(beacons).toEqual([
+        {
+          session_id: expect.any(String),
+          event: "home_whatsapp_cta",
+          payload: { trigger },
+          hostname: expect.any(String),
+        },
+      ]);
+      // A bare wa.me link: no lead capture, so no capture events.
+      expect(events(gtag, "lead_whatsapp_cta")).toEqual([]);
+      expect(events(gtag, "lead_created")).toEqual([]);
+    });
+  }
+
+  test("the footer keeps the contact destinations of the pre-R19 footer", async ({
+    page,
+  }) => {
+    // Production's values for the two destinations the R19 footer had dropped.
+    const TELEGRAM = "https://t.me/Balizerobot";
+    const LOCATION = "https://maps.google.com/?q=Bali+Indonesia";
+    const contacts = () =>
+      page.evaluate(() =>
+        [
+          ...document.querySelectorAll(
+            "footer a[href*='wa.me'], footer a[href*='t.me/'], footer a[href*='maps.google.com'], footer a[href^='mailto:'], footer a[href^='tel:']",
+          ),
+        ].map((a) => ({
+          href: a.getAttribute("href"),
+          target: a.getAttribute("target"),
+          rel: a.getAttribute("rel"),
+        })),
+      );
+    await page.goto("/");
+    const r19 = await contacts();
+    expect(r19.map((c) => c.href)).toEqual([
+      HOME_LINK,
+      TELEGRAM,
+      `mailto:${EMAIL}`,
+      `tel:+${WA_NUMBER}`,
+      LOCATION,
     ]);
-    // A bare wa.me link: no lead capture, so no capture events.
-    expect(events(gtag, "lead_whatsapp_cta")).toEqual([]);
-    expect(events(gtag, "lead_created")).toEqual([]);
+    for (const c of r19.filter((c) => /^https:/.test(c.href!))) {
+      expect(c.target).toBe("_blank");
+      expect(c.rel).toBe("noopener noreferrer");
+    }
+    // And they are the ones the v2 footer still renders today.
+    await page.goto("/v2");
+    const live = await contacts();
+    expect(live.map((c) => c.href).sort()).toEqual(
+      r19.map((c) => c.href).sort(),
+    );
   });
 
   HANDOFFS.forEach((handoff, index) => {
