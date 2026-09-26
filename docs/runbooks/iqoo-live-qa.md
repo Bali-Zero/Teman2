@@ -1,6 +1,6 @@
 # iQOO physical client QA
 
-Status: **Physical display-off QA verified on Pro, 2026-09-26**.
+Status: **Display-off device lifecycle verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
 Owner mandate: `IQOO-LIVE-QA-20260926` (BLUE). This runbook is a shared capability
 for Claude, Codex, Gemini and Qwen; it does not grant release authority.
 
@@ -143,6 +143,9 @@ Do not attach to or evaluate code in unrelated tabs, and do not read browser-wid
 cookies or storage. Capture only the owned test page, with no personal browser
 chrome, notifications or other applications visible.
 
+Before every native ADB touch, verify Android Chrome is the foreground app and
+the owned target is active, visible and focused. Recheck its DOM identity and
+touch bounds immediately before input; stop if ownership or focus is uncertain.
 Prefer native ADB touch for physical touch assertions. Translate CSS coordinates
 using the measured pixel ratio, Android toolbar offset and
 `visualViewport.offsetTop`; remeasure with the keyboard open. Do not claim native
@@ -193,13 +196,16 @@ Before changing the status to verified, preserve a dated, redacted receipt of:
   temporarily shortening that timeout is acceptable if explicitly recorded and
   restored. Do not describe such a test as an overnight or normal-timeout soak.
 - A harmless native touch and navigation with the physical display still off.
-- The selected client flow and its real-vs-fixture boundary, including concrete
-  DOM predicates, keyboard geometry and post-action evidence.
 - Session exit/restoration: owned tabs/processes/forwards closed, original tabs
   retained, temporary power settings restored, phone asleep and locked, and
   exclusive lock released. Remove only the owned forward with
   `adb forward --remove tcp:N`, never `--remove-all`.
   Record remaining target IDs/types without private URLs.
+
+Client-flow verification is separate and remains pending for each selected
+journey: record its real-vs-fixture boundary, concrete DOM predicates, keyboard
+geometry where relevant and post-action evidence. The lifecycle receipt does
+not satisfy these flow-specific checks.
 
 A disconnect, reboot, re-lock or authorization loss stops dependent testing.
 Report the missing physical prerequisite and continue only independent work;

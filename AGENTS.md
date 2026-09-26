@@ -230,7 +230,7 @@ Continuity ladder, account-lane mapping and spend order (§17.2–§17.4):
 
 ## Physical mobile QA
 
-iQOO physical client QA, including display-off operation, is verified on Pro.
+iQOO display-off device control is verified on Pro; client journeys require scoped QA.
 Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
 readiness, session ownership and the synthetic-vs-live evidence boundary.
 Do not assume connectivity or authenticated client access from this entry.
