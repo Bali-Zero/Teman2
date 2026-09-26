@@ -39,7 +39,7 @@ const SERVICES: Service[] = [
     tagline: "KITAS, KITAP, Golden Visa, Digital Nomad",
     description:
       "24+ visa categories. AI narrows the options; licensed konsultan imigrasi files.",
-    accent: "#c8102e",
+    accent: "var(--r19-slate, #c8102e)",
     icon: IdCard,
     bullets: [
       "Tourist, Business, KITAS, KITAP, Golden Visa, E33G",
@@ -55,7 +55,7 @@ const SERVICES: Service[] = [
     tagline: "PT PMA, PT Local, KBLI, OSS, licenses",
     description:
       "From KBLI fit to the live NIB: one team, one price list, audit-grade paperwork.",
-    accent: "#d4a017",
+    accent: "var(--r19-slate, #d4a017)",
     icon: Building2,
     bullets: [
       "1,559 KBLI 2025 codes · 4-level risk mapping",
@@ -71,7 +71,7 @@ const SERVICES: Service[] = [
     tagline: "CoreTax 2026, PPh, PPN, BPJS, LKPM",
     description:
       "Corporate and personal tax compliance under CoreTax 2026 — filed, not guessed.",
-    accent: "#38bdf8",
+    accent: "var(--r19-slate, #38bdf8)",
     icon: TrendingUp,
     bullets: [
       "12+ filing types · monthly + annual",
@@ -87,7 +87,7 @@ const SERVICES: Service[] = [
     tagline: "Hak Pakai, HGB via PMA, leasehold, DD",
     description:
       "Plot-level zoning, legal vehicle, tax exposure and risk score before you sign.",
-    accent: "#22c55e",
+    accent: "var(--r19-slate, #22c55e)",
     ctaInk: "var(--accent-whatsapp-ink)",
     icon: MapPinned,
     bullets: [
@@ -297,7 +297,7 @@ export default function ServicesPage() {
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-[13px] font-semibold"
                       style={{
                         background: s.accent,
-                        color: s.ctaInk ?? "#ffffff",
+                        color: `var(--r19-cta-ink, ${s.ctaInk ?? "#ffffff"})`,
                         boxShadow: `0 8px 24px color-mix(in srgb, ${s.accent} 45%, transparent)`,
                       }}
                     >
@@ -353,25 +353,25 @@ export default function ServicesPage() {
                 n: "01",
                 title: "Scope it",
                 body: "WhatsApp or Visa Check for a first read — free.",
-                accent: "#c8102e",
+                accent: "var(--r19-slate, #c8102e)",
               },
               {
                 n: "02",
                 title: "AI drafts",
                 body: "The AI reads your case against every primary source we track.",
-                accent: "#d4a017",
+                accent: "var(--r19-slate, #d4a017)",
               },
               {
                 n: "03",
                 title: "Licensed sign-off",
                 body: "A konsultan imigrasi, konsultan pajak or notary reviews and signs.",
-                accent: "#38bdf8",
+                accent: "var(--r19-slate, #38bdf8)",
               },
               {
                 n: "04",
                 title: "Filed + cited",
                 body: "Every filing comes with a source trail — no black-box guidance.",
-                accent: "#22c55e",
+                accent: "var(--r19-slate, #22c55e)",
               },
             ].map(({ n, title, body, accent }) => (
               <li

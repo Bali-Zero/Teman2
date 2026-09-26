@@ -40,10 +40,10 @@ import {
  * parity-tested.
  */
 
-const PAPER = "#f7f6f2";
-const HAIRLINE = "#e3e1da";
-const NAVY = "#1e3863";
-const INK_SOFT = "#475372";
+const PAPER = "var(--r19-paper, #f7f6f2)";
+const HAIRLINE = "var(--r19-line, #e3e1da)";
+const NAVY = "var(--r19-slate, #1e3863)";
+const INK_SOFT = "var(--r19-muted, #475372)";
 
 interface Door {
   door: PersonaDoor;
@@ -171,7 +171,7 @@ export function PersonaDoors() {
                   id={funnel}
                   className="scroll-mt-24 flex flex-col gap-4 rounded-xl p-6 transition-colors"
                   style={{
-                    background: "#ffffff",
+                    background: "var(--r19-surface, #ffffff)",
                     border: `1px solid ${HAIRLINE}`,
                   }}
                 >
@@ -244,7 +244,7 @@ export function PersonaDoors() {
                   {alsoNeeded && (
                     <p
                       className="text-[9px] leading-tight"
-                      style={{ color: "#475372" }}
+                      style={{ color: "var(--r19-muted, #475372)" }}
                     >
                       {alsoNeeded}
                     </p>

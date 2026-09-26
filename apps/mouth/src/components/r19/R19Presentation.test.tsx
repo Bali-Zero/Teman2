@@ -60,9 +60,7 @@ describe("R19 presentation and portal", () => {
     },
   );
 
-  // Dormant foundation: this asserts the R19-aware MobileNav drawer, which lands with the
-  // cutover change to app/v2/_components/MobileNav.tsx. Un-skip it in that PR.
-  it.skip("applies the selected theme to a drawer outside the page wrapper", async () => {
+  it("applies the selected theme to a drawer outside the page wrapper", async () => {
     route.pathname = "/news";
     const { container } = render(<R19Presentation>{child}</R19Presentation>);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));

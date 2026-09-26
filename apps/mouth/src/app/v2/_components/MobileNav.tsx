@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useR19 } from "@/components/r19/R19Presentation";
+import { R19_VARS } from "@/components/r19/presentation";
+import r19Styles from "@/components/r19/R19Presentation.module.css";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { trackFunnelEvent } from "@balizero/core/analytics";
@@ -13,17 +16,20 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ items, funnel }: MobileNavProps) {
+  const isR19 = useR19();
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
-    const desktop = window.matchMedia("(min-width: 768px)");
+    const desktop = window.matchMedia(
+      isR19 ? "(min-width: 981px)" : "(min-width: 768px)",
+    );
     const closeOnDesktop = () => {
       if (desktop.matches) setOpen(false);
     };
     closeOnDesktop();
     desktop.addEventListener("change", closeOnDesktop);
     return () => desktop.removeEventListener("change", closeOnDesktop);
-  }, [open]);
+  }, [open, isR19]);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -31,11 +37,13 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
       <Dialog.Trigger asChild>
         <button
           aria-label="Open menu"
-          className="md:hidden inline-flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-lg"
+          className={`${isR19 ? "min-[981px]:hidden w-11 h-11" : "md:hidden w-10 h-10"} inline-flex items-center justify-center flex-shrink-0 rounded-lg`}
           style={{
-            color: "#ffffff",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.14)",
+            color: isR19 ? "#1D2C3B" : "#ffffff",
+            background: isR19 ? "#FFFCF7" : "rgba(255,255,255,0.06)",
+            border: isR19
+              ? "1px solid #DAD8D1"
+              : "1px solid rgba(255,255,255,0.14)",
           }}
         >
           <Menu size={22} strokeWidth={2.2} />
@@ -57,8 +65,12 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
         {/* Drawer panel */}
         <Dialog.Content
           aria-describedby={undefined}
-          className="md:hidden fixed inset-y-0 left-0 z-[399] flex flex-col w-[min(80vw,320px)]"
+          className={`${isR19 ? `${r19Styles.drawer} min-[981px]:hidden` : "md:hidden"} fixed inset-y-0 left-0 z-[399] flex flex-col w-[min(80vw,320px)]`}
+          data-presentation={isR19 ? "r19-drawer" : undefined}
           style={{
+            ...(isR19 ? R19_VARS : {}),
+            fontFamily: isR19 ? "var(--font-sans)" : undefined,
+            color: "var(--text-primary)",
             background: "var(--nav-bg)",
             borderRight: "1px solid var(--nav-border)",
             backdropFilter: "blur(16px)",
@@ -70,7 +82,10 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
           {/* Header row with close button */}
           <div
             className="flex items-center justify-between px-5 h-14 flex-shrink-0"
-            style={{ borderBottom: "1px solid var(--nav-border)" }}
+            style={{
+              borderBottom: "1px solid var(--nav-border)",
+              height: isR19 ? "var(--public-header-height)" : undefined,
+            }}
           >
             <span
               className="text-[11px] font-bold uppercase tracking-widest"

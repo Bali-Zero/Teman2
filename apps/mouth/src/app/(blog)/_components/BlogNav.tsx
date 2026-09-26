@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useR19 } from "@/components/r19/R19Presentation";
 import { usePathname } from "next/navigation";
 import { NavShell, BZLogo } from "@balizero/core";
 import { MobileNav } from "@/app/v2/_components/MobileNav";
@@ -18,6 +19,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 export function BlogNav() {
   const pathname = usePathname();
+  const isR19 = useR19();
   const items =
     pathname === "/"
       ? ALL_NAV_ITEMS.filter((item) => item.href !== "/")
@@ -25,13 +27,14 @@ export function BlogNav() {
 
   return (
     <NavShell
+      variant={isR19 ? "paper" : "default"}
       logo={
         <Link
           href="/"
           aria-label="Bali Zero"
           className="inline-flex items-center"
         >
-          <BZLogo variant="full" />
+          <BZLogo variant="full" size={isR19 ? 52 : undefined} />
         </Link>
       }
       items={items}
