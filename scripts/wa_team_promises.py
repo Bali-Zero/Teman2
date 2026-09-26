@@ -48,7 +48,7 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -249,7 +249,7 @@ _WITA = ZoneInfo("Asia/Makassar")
 # never drift between the ceiling read and the batch read.
 _SCAN_ELIGIBLE_WHERE = f"""
     direction = 'outbound'
-    AND created_at > now() - interval '{_SCAN_LOOKBACK_DAYS} days'
+    AND created_at >= now() - interval '{_SCAN_LOOKBACK_DAYS} days'
     AND COALESCE(NULLIF(body, ''), NULLIF(message_text, '')) IS NOT NULL
 """
 
@@ -289,10 +289,12 @@ RETURNING (xmax = 0) AS inserted
 """
 
 # Digest counts, read fresh from Postgres at send time (see _send_scan_digest).
+# REWORK B2: the window is YESTERDAY's full local day, not "since midnight" —
+# a completed day has a fixed total, which is what makes "send it once" work.
 _DIGEST_COUNTS_SQL = """
 SELECT
-  count(*) FILTER (WHERE created_at >= $1) AS created_today,
-  count(*) FILTER (WHERE revised_at >= $1) AS revised_today,
+  count(*) FILTER (WHERE created_at >= $1 AND created_at < $2) AS created_yesterday,
+  count(*) FILTER (WHERE revised_at >= $1 AND revised_at < $2) AS revised_yesterday,
   count(*) FILTER (WHERE status = 'unjudged') AS unjudged
 FROM team_promise_candidates
 """
@@ -300,16 +302,32 @@ FROM team_promise_candidates
 # Clause boundaries: sentence punctuation, `;` and newline (discarded — the
 # predecessor's round-2 review flagged both as missing), plus a conjunction
 # boundary per language (EN/ID/IT: but/however/tapi/tetapi/namun/ma/pero/però,
-# and — REWORK A3 — and/dan/serta/e, whole-word so "candidate"/"Android"/
-# "che"/"sede" never split). The conjunction stays attached to the clause it
-# introduces — catalog patterns aren't string-anchored, so a leading
-# "but"/"tapi"/"and"/"e" never blocks a match. Over-splitting is safe here:
-# this is a PROPOSER only (no dedup, no past-tense discard — the judge in
-# PR-3 decides both), so an extra clause just gives it one more thing to rule
-# on, never a lost one.
+# and — REWORK A3 — and/dan/serta/e). The conjunction stays attached to the
+# clause it introduces — catalog patterns aren't string-anchored, so a
+# leading "but"/"tapi"/"and"/"e" never blocks a match. Over-splitting is safe
+# here: this is a PROPOSER only (no dedup, no past-tense discard — the judge
+# in PR-3 decides both), so an extra clause just gives it one more thing to
+# rule on, never a lost one.
+#
+# REWORK B3: the right boundary is `(?=\s)` (an actual whitespace char after
+# the word), not `\b` — a bare word boundary also fires between a word char
+# and adjacent punctuation, so "e-mail" and "e' pronto" used to split and
+# lose the due hint that followed. The left side needs no separate boundary:
+# `\s+` itself already requires the PRECEDING char to be literal whitespace,
+# which already excludes "candidate"/"Android"/"che"/"sede" (the conjunction
+# there is never preceded by whitespace) without a `\b`.
+#
+# The period alternative is narrowed the same way, for the same reason: a
+# bare `.` split treated "e.g." as two sentence terminators (splitting "e"
+# from "g" from what follows), which is how it lost a due hint on the OTHER
+# side of it too. `(?![a-z])` skips a period immediately followed by a
+# lowercase letter (still mid-abbreviation, e.g. the dot between "e" and
+# "g"); `(?<!e\.g)` skips the period immediately AFTER "e.g" itself (its
+# trailing dot). This is a narrow, named allowlist for the one abbreviation
+# the addendum's guilt case names — not general abbreviation detection.
 _CLAUSE_SPLIT_RE = re.compile(
-    r"[.!?;\n]+|\s+(?=\b(?:but|however|tapi|tetapi|namun|ma|per[oò]"
-    r"|and|dan|serta|e)\b)",
+    r"[!?;\n]+|(?<!e\.g)\.(?![a-z])|\s+(?=(?:but|however|tapi|tetapi|namun|ma|per[oò]"
+    r"|and|dan|serta|e)\s)",
     re.IGNORECASE,
 )
 
@@ -462,35 +480,71 @@ async def run_scan(pool: asyncpg.Pool, *, batch_size: int, dry_run: bool) -> Sca
     return metrics
 
 
-def _wita_today() -> tuple[datetime, str]:
-    """Local midnight (Asia/Makassar/WITA) as a UTC-aware timestamp, plus its
-    `YYYY-MM-DD` label — ONE time source for both the digest's 'since local
-    midnight' window and its per-day dedup key, so the two can never observe
-    different 'today's around a UTC-vs-WITA day-boundary race."""
+def _wita_yesterday_window() -> tuple[datetime, datetime, str]:
+    """Yesterday's full local (Asia/Makassar/WITA) day as `[start, end)`
+    UTC-aware timestamps, plus yesterday's `YYYY-MM-DD` label.
+
+    REWORK B2: A4's premise was false — `tg_notify` dedups BEFORE spooling,
+    so a per-day key on a "since midnight, growing all day" count only ever
+    let the first tick or two of the day through, each showing a stale
+    near-zero total (simulated: 6 records over 3 days, all "today 0", against
+    a true ~120/day). A COMPLETED day has a FIXED total, so reporting
+    yesterday's window makes the CONTENT correct — but the key alone does
+    not make the CADENCE exactly-once: calling this every tick all day would
+    still let tg_notify's own ladder open a SECOND opportunity ~6h after the
+    first hit (its window starts at `TG_DEDUP_HOURS`, same key, same day).
+    See `_is_first_digest_opportunity_of_the_day`, which is what actually
+    restricts the attempt to the midnight hour and removes that second
+    opportunity — this function only computes WHAT to report, not WHEN."""
     now_wita = datetime.now(_WITA)
-    midnight_wita = now_wita.replace(hour=0, minute=0, second=0, microsecond=0)
-    return midnight_wita.astimezone(timezone.utc), midnight_wita.strftime("%Y-%m-%d")
+    today_midnight_wita = now_wita.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_midnight_wita = today_midnight_wita - timedelta(days=1)
+    return (
+        yesterday_midnight_wita.astimezone(timezone.utc),
+        today_midnight_wita.astimezone(timezone.utc),
+        yesterday_midnight_wita.strftime("%Y-%m-%d"),
+    )
 
 
-async def _fetch_digest_counts(pool: asyncpg.Pool, since_utc: datetime) -> tuple[int, int, int]:
-    """Candidates created/revised since local midnight, plus the current
-    unjudged total — read fresh from Postgres at SEND time, never carried
-    over from this tick's own (possibly tiny, possibly deduped-away)
-    counters. See _send_scan_digest's REWORK note."""
+def _is_first_digest_opportunity_of_the_day(now_wita: datetime) -> bool:
+    """True only during the midnight WITA hour (00:00-00:59).
+
+    This — not a persisted "already sent today" flag — is what makes the
+    digest send exactly once per day: `tg_notify`'s own dedup on the
+    per-yesterday-date key only needs to collapse however many ticks land
+    inside THIS hour into one spooled record (its window starts well past
+    one cron interval, so the first hit in the hour suppresses the rest of
+    it); calling `notify()` again later the same day — at 06:00, say — would
+    hand the ladder a SECOND chance to open (its window keeps growing, but
+    it always starts a new day's clock from the first hit, wherever that
+    lands), which is exactly the double-send the gate's simulation caught.
+    Restricting the ATTEMPT to this one hour removes that chance instead of
+    hoping the ladder absorbs it. No state file: a missed 00:00 tick is
+    covered by 00:15/00:30/00:45 landing in the same hour."""
+    return now_wita.hour == 0
+
+
+async def _fetch_digest_counts(
+    pool: asyncpg.Pool, start_utc: datetime, end_utc: datetime,
+) -> tuple[int, int, int]:
+    """Candidates created/revised during yesterday's full local day, plus the
+    CURRENT unjudged total — read fresh from Postgres at SEND time, never
+    carried over from this tick's own counters. See _send_scan_digest's
+    REWORK note."""
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(_DIGEST_COUNTS_SQL, since_utc)
-    return int(row["created_today"]), int(row["revised_today"]), int(row["unjudged"])
+        row = await conn.fetchrow(_DIGEST_COUNTS_SQL, start_utc, end_utc)
+    return int(row["created_yesterday"]), int(row["revised_yesterday"]), int(row["unjudged"])
 
 
-def _digest_line(candidates_today: int, revised_today: int, unjudged_total: int) -> str:
+def _digest_line(candidates_yesterday: int, revised_yesterday: int, unjudged_total: int) -> str:
     """Counts only, enforced — not just by convention. A caller that ever
     tried to pass a clause, name, phone or client id here (even embedded in
     a string) gets a TypeError before it can reach the gateway."""
-    if not all(isinstance(x, int) for x in (candidates_today, revised_today, unjudged_total)):
+    if not all(isinstance(x, int) for x in (candidates_yesterday, revised_yesterday, unjudged_total)):
         raise TypeError("wa_team_promises: _digest_line accepts int counts only")
     return (
-        f"promises: candidates today {candidates_today} "
-        f"(revised {revised_today}), unjudged {unjudged_total}"
+        f"promises: yesterday {candidates_yesterday} "
+        f"(revised {revised_yesterday}), unjudged {unjudged_total}"
     )
 
 
@@ -512,30 +566,26 @@ def _resolve_py3() -> str:
 
 
 def _send_scan_digest(
-    candidates_today: int, revised_today: int, unjudged_total: int, *, day_label: str,
+    candidates_yesterday: int, revised_yesterday: int, unjudged_total: int, *, yesterday_label: str,
 ) -> None:
     """Best-effort, never raises — same contract as
     wa_mirror_intake_sweeper.py::_tg_notify. The message is built ONLY from
-    the three int counts passed in; nothing else reaches this call.
-
-    REWORK A4: the dedup key used to be the CONSTANT `wa-team-promises-scan`
-    — tg_notify's mute window grows from 6h to 168h with every repeat of the
-    same key, so a chatty tick schedule could leave Zero looking at a count
-    up to a week stale. Keying by WITA day (`wa-team-promises:<YYYY-MM-DD>`)
-    caps that staleness at one day, and because the counts themselves are
-    always read fresh from Postgres (_fetch_digest_counts), whichever call
-    actually gets through for the day is always the correct running total as
-    of that moment — never a single tick's own partial delta."""
+    the three int counts passed in; nothing else reaches this call. The
+    caller only invokes this during the midnight WITA hour (see
+    `_is_first_digest_opportunity_of_the_day`) — `tg_notify`'s own dedup
+    ladder on `wa-team-promises:<yesterday>` then collapses however many
+    ticks land in that hour into exactly one spooled record. No local state
+    file: a missed 00:00 tick is covered by 00:15/00:30/00:45."""
     try:
         gateway = Path(__file__).resolve().parent / "tg_notify.py"
         if not gateway.is_file():
             logger.warning("wa_team_promises: tg_notify.py missing at %s", gateway)
             return
-        text = _digest_line(candidates_today, revised_today, unjudged_total)
+        text = _digest_line(candidates_yesterday, revised_yesterday, unjudged_total)
         res = subprocess.run(
             [_resolve_py3(), str(gateway), "--tier", "digest",
              "--source", "wa-team-promises-scan",
-             "--dedup-key", f"wa-team-promises:{day_label}",
+             "--dedup-key", f"wa-team-promises:{yesterday_label}",
              "--", text],
             capture_output=True, text=True, timeout=30,
         )
@@ -580,8 +630,8 @@ async def cli_main(argv: list[str] | None = None) -> int:
                               "promise-catalog clauses and insert unjudged "
                               "team_promise_candidates rows. Judge lands in PR-3.")
     parser.add_argument("--dry-run", action="store_true",
-                         help="With --scan: compute counts only — no candidate insert, no "
-                              "watermark advance, no digest.")
+                         help="With --scan: compute counts only — no candidate insert/revise, "
+                              "no digest.")
     parser.add_argument("--batch-size", type=int, default=_SCAN_BATCH_SIZE_DEFAULT)
     parser.add_argument("--log-level", default="INFO")
     try:
@@ -633,14 +683,21 @@ async def cli_main(argv: list[str] | None = None) -> int:
                     metrics = await run_scan(pool, batch_size=args.batch_size, dry_run=args.dry_run)
                     if not args.dry_run:
                         stage = "digest"
-                        midnight_utc, day_label = _wita_today()
-                        candidates_today, revised_today, unjudged_total = await _fetch_digest_counts(
-                            pool, midnight_utc,
-                        )
                         _save_scan_metrics(metrics)
-                        _send_scan_digest(
-                            candidates_today, revised_today, unjudged_total, day_label=day_label,
-                        )
+                        # REWORK B2: the digest is only ATTEMPTED during the
+                        # midnight WITA hour — see
+                        # _is_first_digest_opportunity_of_the_day for why
+                        # that (not the dedup key alone) is what makes the
+                        # cadence exactly-once-per-day.
+                        if _is_first_digest_opportunity_of_the_day(datetime.now(_WITA)):
+                            start_utc, end_utc, yesterday_label = _wita_yesterday_window()
+                            candidates_yesterday, revised_yesterday, unjudged_total = (
+                                await _fetch_digest_counts(pool, start_utc, end_utc)
+                            )
+                            _send_scan_digest(
+                                candidates_yesterday, revised_yesterday, unjudged_total,
+                                yesterday_label=yesterday_label,
+                            )
                 finally:
                     if lock_fd is not None:
                         _release_scan_lock(lock_fd)

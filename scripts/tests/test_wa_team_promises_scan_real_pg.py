@@ -19,14 +19,19 @@ instead.
 
 Guilt: test_out_of_order_commit_is_found_on_the_next_tick and
 test_late_body_fill_is_found_on_the_next_tick both FAIL against 3adc6c0e89
-(the pre-REWORK head) — that code's run_scan_batch/run_scan take a
-persisted `watermark` kwarg instead of this file's `cursor`/`hi`, so calling
-them the way A1 requires raises a TypeError there: proof the old watermark
-design does not expose the full-window-rescan behavior these tests require,
-never mind pass it.
+(the pre-REWORK head) — NOT with a TypeError (`run_scan`'s own signature,
+`pool, *, batch_size, dry_run`, is IDENTICAL on both heads; the persisted
+watermark lives entirely inside the function body via module-level state).
+The failure is a semantic assertion (`assert 0 == 1`): the old code's
+monotonic watermark, once advanced past a row's id, never looks at that id
+again even after it becomes eligible later — proven by running BOTH tests
+against the old `.py` (verified this turn with `$HOME` redirected to a
+scratch dir, see the PR body's Rework section for the exact output).
 """
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import os
 import shutil
 import subprocess
@@ -339,7 +344,8 @@ class _NoCloseProxyPool:
 async def test_digest_and_metrics_run_after_commit_and_while_still_locked(
     pg_socket_dir, monkeypatch, tmp_path,
 ):
-    async with _fresh_database(pg_socket_dir, "scan_lockorder") as pool:
+    db_name = "scan_lockorder"
+    async with _fresh_database(pg_socket_dir, db_name) as pool:
         await _setup(pool)
         await _insert_wmc(pool, msg_id=601, body="I will send it tomorrow")
 
@@ -352,11 +358,41 @@ async def test_digest_and_metrics_run_after_commit_and_while_still_locked(
         monkeypatch.setattr(wa_team_promises, "STATE_DIR", tmp_path)
         monkeypatch.setattr(wa_team_promises, "_SCAN_LOCK_FILE", tmp_path / "scan.lock")
         monkeypatch.setattr(wa_team_promises, "_SCAN_METRICS_FILE", tmp_path / "metrics.json")
+        # REWORK B2: the digest is only attempted during the midnight WITA
+        # hour — this test is about lock/commit ORDERING, not the daily
+        # cadence gate (that's test_digest_cadence_sends_exactly_once_per_
+        # day_with_the_true_previous_day_total's job), so force the gate
+        # open regardless of the real wall clock at test-run time.
+        monkeypatch.setattr(wa_team_promises, "_is_first_digest_opportunity_of_the_day", lambda _now: True)
         for k in list(os.environ):
             if k.startswith("FLY_"):
                 monkeypatch.delenv(k, raising=False)
 
+        def _independent_committed_count() -> int:
+            # REWORK B4 (Codex MEDIUM): a fresh connection, opened INSIDE the
+            # callback itself — not the pool cli_main is using, not a check
+            # deferred until after cli_main returns. Moving these callbacks
+            # before an eventual commit could still pass a same-pool or
+            # after-the-fact check; a brand-new connection can only see what
+            # is actually durably committed at the moment it queries. The
+            # callbacks are sync, called from inside the running event loop
+            # cli_main awaits on, so the query runs on its OWN loop in a
+            # separate thread (asyncio.run in-loop would raise "already
+            # running").
+            async def _q() -> int:
+                conn = await asyncpg.connect(
+                    host=str(pg_socket_dir), user="postgres", database=db_name,
+                )
+                try:
+                    return await conn.fetchval("SELECT count(*) FROM team_promise_candidates")
+                finally:
+                    await conn.close()
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                return ex.submit(asyncio.run, _q()).result()
+
         order: list[str] = []
+        committed_counts: dict[str, int] = {}
         real_save_metrics = wa_team_promises._save_scan_metrics
 
         def _spy_save_metrics(metrics):
@@ -365,11 +401,13 @@ async def test_digest_and_metrics_run_after_commit_and_while_still_locked(
             # own held lock, so this failing to grab it proves the lock is
             # still held here.
             assert wa_team_promises._acquire_scan_lock_or_none() is None, "lock released too early"
+            committed_counts["metrics"] = _independent_committed_count()
             order.append("metrics")
             return real_save_metrics(metrics)
 
         def _spy_send_digest(*_a, **_kw):
             assert wa_team_promises._acquire_scan_lock_or_none() is None, "lock released too early"
+            committed_counts["digest"] = _independent_committed_count()
             order.append("digest")
 
         monkeypatch.setattr(wa_team_promises, "_save_scan_metrics", _spy_save_metrics)
@@ -379,7 +417,9 @@ async def test_digest_and_metrics_run_after_commit_and_while_still_locked(
 
         assert rc == 0
         assert order == ["metrics", "digest"]
-        # the scan's own write already committed by the time metrics/digest ran
+        # committed and visible to an INDEPENDENT connection, from INSIDE
+        # both callbacks — not inferred after cli_main returned.
+        assert committed_counts == {"metrics": 1, "digest": 1}
         assert len(await _candidates(pool)) == 1
 
         # released once cli_main returns
