@@ -179,7 +179,11 @@ jobs:
               .github/workflows/*|\
               .github/CODEOWNERS|\
               fly.toml|\
-              apps/backend-rag/fly.toml)
+              apps/backend-rag/fly.toml|\
+              .claude/scripts/codex-spalla.sh|\
+              scripts/lib/spalla_redact.sh|\
+              .claude/hooks/codex-spalla-trigger.sh|\
+              .codex/hooks/*)
                 HOTZONE_MATCH="true"
                 echo "HOT-ZONE HIT: $f"
                 ;;

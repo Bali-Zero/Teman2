@@ -461,6 +461,15 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     ".github/CODEOWNERS",
     "fly.toml",
     "apps/backend-rag/fly.toml",
+    # S5 (2026-09-27, docs/specs/2026-09-27-evidence-pack-fixed-point.md):
+    # external-seat egress wrappers — a script that forwards this repo's own
+    # diff/file content to an external model (Codex/Kimi/Agy/Gemini/Qwen).
+    # PR #7466 merged unsigned at gear 1 with a weakened refusal list and a
+    # redaction gap; the fresh gate caught it minutes too late (cure #7470).
+    ".claude/scripts/codex-spalla.sh",
+    "scripts/lib/spalla_redact.sh",
+    ".claude/hooks/codex-spalla-trigger.sh",
+    ".codex/hooks/*",
 )
 
 # ---------------------------------------------------------------------------

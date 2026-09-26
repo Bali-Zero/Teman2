@@ -157,3 +157,42 @@ to packs authored after this ships.
    change digits only inside already-existing lines so the line count — and therefore the size
    term — does not move again. `pii_scan` is written using S3's structured shape if any
    pre-existing PII remains in scope; every cross-PR claim carries `as_of` per S4.
+
+## S5 — External-seat egress scripts are hot-zone
+
+**Gap.** The floor computed from `HOTZONE_PATTERNS` (`scripts/evidence_pack_lint.py`, ~line 448)
+has no entry for the wrapper scripts that forward this repo's own diffs or files to an external
+model. A gear-1 floor lets such a wrapper merge unsigned — no `harness/fable-gate` verdict is
+required — even though editing it is exactly the class of change that can quietly weaken the PII
+redaction or refusal logic standing between repo content and an outbound cloud call.
+
+**Evidence.** PR #7466 (PII redaction/refusal guard for `.claude/scripts/codex-spalla.sh`, the
+wrapper that forwards `git diff` output to the Codex CLI — OpenAI cloud) auto-merged at
+2026-09-26T23:07Z because `.claude/scripts/**` + `scripts/lib/**` + `scripts/tests/**` floored at
+gear 1. The fresh gate finished minutes later with a REWORK-BUILD verdict and five blockers: a
+10/11 test regression, a hand-typed refusal list, an under-matched rename, transcripts written
+0644, and a silent pass4 skip. The cure shipped separately as PR #7470, after the unsigned merge
+was already live.
+
+**Rule.** Every path whose job is to forward repository or diff content to an external seat
+(Codex, Kimi, Agy/Gemini, Qwen) is hot-zone: floor 3, a gate verdict required before merge. This
+covers the wrapper script itself, its redaction/allow-deny library, and the hook that triggers it
+— the same shape #7466 touched.
+
+**Enforcement.** Add to `HOTZONE_PATTERNS` in `scripts/evidence_pack_lint.py` and the mirrored
+`case` block in `.github/workflows/hot-zone-pr-gate.yml` (kept in sync by hand per the existing
+comment at both sites): `.claude/scripts/codex-spalla.sh`, `scripts/lib/spalla_redact.sh`,
+`.claude/hooks/codex-spalla-trigger.sh`, `.codex/hooks/*`. A repo-wide sweep
+(`git grep -ln "git diff" -- '*.sh' | xargs grep -l -iE "codex|kimi|agy|gemini|qwen"`) found three
+other files mentioning both terms — `scripts/codex/codex-daily-research-actor.sh`,
+`scripts/codex/codex-nightly-coverage-improver.sh`, and an archived one-time audit helper under
+`docs/audits/2026-04-29-zero-crash-audit/`. None forwards diff or file _content_ into an external
+prompt the way `codex-spalla.sh` does: the two `scripts/codex/*` actors use `git diff --name-only`
+only for their own PR bookkeeping (file lists, LOC counts) and let the Codex CLI read source files
+through its own sandboxed tool access rather than piping content through the wrapper — a
+structurally different, pre-existing operating mode used repo-wide, not the redact-then-forward
+shape this gap is about. They are deliberately left out of this list; widening hot-zone to every
+`codex exec` invocation in the repo is a separate, larger change this spec does not make.
+
+**Migration.** None. No pack currently on `main` declares a gear against these four paths, so
+nothing already-merged is retroactively out of compliance.
