@@ -19,15 +19,15 @@ gear_reason: >-
   Declared by the mandate (recovery of a full-stack SSE feature on the
   release critical path; backend-rag deploys on merge, mouth needs an
   explicit promote) and equal to the deterministic floor: 3, source `size`
-  (+1995/-69 across 26 files against merge-base 806a684c38 including this
-  evidence; +1717 for code, tests and plan alone; no hot-zone path),
+  (+2226/-71 across 26 files against merge-base 806a684c38 including this
+  evidence; +1903 for code, tests and plan alone; no hot-zone path),
   measured with `scripts/evidence_pack_lint.py --print-floor
   --print-floor-source`. No design choice changes, so there is no
   architecture council; the Gear-3 council_run is two cross-family REVIEW
   seats on the recovered candidate, followed by a fresh Opus 5.5 final gate.
   The diff exceeds the ~400-net-line guideline because it is a frozen,
-  already-reviewed candidate plus its consumer-bound proxy fix; about 700
-  of the added lines are tests. Splitting the proxy fix out would leave
+  already-reviewed candidate plus its consumer-bound proxy fix and the
+  final gate's pool-isolation fix; about 900 of the added lines are tests. Splitting the proxy fix out would leave
   that PR without its consumer (Builder Contract §2).
 
 appetite:
@@ -73,6 +73,16 @@ acceptance:
     equal the merge; authenticated live dashboard renders the arena with
     portraits (image load counts only) and the events stream answers
     `event: ready` through kita. No artificial production event is created.
+  A6: >-
+    Open event streams cannot starve other API-to-RAG traffic (final-gate
+    round 1): with 100 open streams through the real create_proxy_router a
+    heavy GET still returns 200 in under 1 s, shutdown closes the stream
+    client, a hidden tab holds no stream and resumes from its cursor when
+    visible, and a Redis outage answers 503 before any stream starts.
+    probe: >-
+      pool probe adapted from the gate's (N=100 and N=200) plus
+      test_rag_proxy_stream.py, TestPortalChallengeEndpoint and
+      PortalChampionCelebration.test.tsx, each red on 26162e7963.
 
 out_of_scope: >-
   Scoring rules, prize amounts, campaign dates, client communications,
