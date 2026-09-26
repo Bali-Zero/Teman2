@@ -26,19 +26,34 @@ as `abstained_at`/`evidence_score` (`wa_outbox_worker.py`). Before this column, 
 `support_abstain` rate (Iteration 2 "Measured, not fixed") was only visible by hashing message
 bodies — this makes it a plain `GROUP BY`. Scoped to `needs_generation` rows only (a human send
 never calls the codex leg, so it correctly stays NULL — including it in the denominator would
-undercount the real support_abstain rate):
+undercount the real support_abstain rate), and bounded to rows created after migration 322
+deployed to PROD (2026-09-26T12:49:12Z; drop this bound once your window falls entirely after
+that date — e.g. a rolling 7-day query is safe to drop it from 2026-10-03 on):
 
 ```sql
-SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
+SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > '2026-09-26T12:49:12+00' GROUP BY 1 ORDER BY 2 DESC;
 ```
 
-`NULL` (within that scope) means a failed generation — the row never reached a served completion.
+CORRECTED (Gear-3 final gate on PR #7392, PASS-WITH-CONDITIONS C1): the earlier wording here
+attributed a NULL `served_by` in this scope to an unsuccessful generation attempt — that was
+false. Inside `needs_generation AND status = 'done'`, `status = 'done'` is reached ONLY via the
+post-send fenced UPDATE in `wa_outbox_worker.py`; an unsuccessful attempt never reaches
+`status = 'done'` at all, so it can never produce a NULL row in this scope. The only real cause
+of a NULL `served_by` here is a row that completed BEFORE
+migration 322 existed to record it — which the `created_at` bound above excludes going forward,
+so the NULL bucket in a bounded query is historical, not a live signal. (Migration 322's own
+`COMMENT ON COLUMN`, frozen in PROD, lists two NULL causes — failed generation, human-send route
+— which predates this correction and is incomplete but not false outside this query's scope; this
+is the third, and the one this KPI query actually has to account for.)
+
 `apps/backend-rag/fly.toml`'s `release_command` (`migrate apply-all && schema_audit`) runs on the
 NEW image before Fly replaces any machine and fails the release outright on a pending migration,
 so there is no deploy-window gap: the column exists before this worker code is ever live (verified
-against real deploy run logs for migrations 318/320/321). The closed vocabulary otherwise is
-`codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`,
-`scripted_identity`.
+against real deploy run logs for migrations 318/320/321). The one-PR precedent for shipping a
+column together with its writer is migration 318 (#6561) — migration 314 shipped expand-first
+across two separate PRs, a looser guarantee than either 318 or this one. The closed vocabulary
+otherwise is `codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`,
+`scripted_human_handoff`, `scripted_identity`.
 
 ## Iteration 1 — 2026-09-25 (M5)
 
