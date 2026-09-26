@@ -112,9 +112,14 @@ User writes colloquial Italian — translate internally, reply Italian. Never as
 > Authoritative last update: `git log -1 --format=%cd -- CLAUDE.md` in repo root.
 > Maintained by: Bali Zero AI Team.
 
-## Physical mobile QA
+## Important: shared iQOO mobile QA
 
-iQOO display-off device control is verified on Pro; client journeys require scoped QA.
-Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
-readiness, session ownership and the synthetic-vs-live evidence boundary.
-Do not assume connectivity or authenticated client access from this entry.
+**Use the physical iQOO for authorized mobile journey checks across all Bali Zero /
+Nuzantara products, not only the portal.** Include a device check when available;
+otherwise record the concrete availability blocker. Read the
+[iQOO runbook](docs/runbooks/iqoo-live-qa.md) before taking the device lease.
+Wireless ADB TLS through **Pro/Tailscale** and interactive **display-off** browser
+QA were verified; **USB is optional**. Keep the phone on an AC charger and have
+its owner unlock it locally at session start. M5/Mini drive it through `ssh pro`.
+Recheck readiness each session; preserve owner tabs, restore settings and lock
+on exit. Never save or automate the PIN. Product-flow acceptance remains per flow.

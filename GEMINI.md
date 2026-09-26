@@ -288,9 +288,14 @@ Gemini CLI è DEPRECATO (2026-06-18) — la porta Google è **agy/Antigravity**.
 - PII: mai. Quote cliente: mai. Legge 5: mai pubblicare **di propria iniziativa** — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).
 
-## Physical mobile QA
+## Important: shared iQOO mobile QA
 
-iQOO display-off device control is verified on Pro; client journeys require scoped QA.
-Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
-readiness, session ownership and the synthetic-vs-live evidence boundary.
-Do not assume connectivity or authenticated client access from this entry.
+**Use the physical iQOO for authorized mobile journey checks across all Bali Zero /
+Nuzantara products, not only the portal.** Include a device check when available;
+otherwise record the concrete availability blocker. Read the
+[iQOO runbook](docs/runbooks/iqoo-live-qa.md) before taking the device lease.
+Wireless ADB TLS through **Pro/Tailscale** and interactive **display-off** browser
+QA were verified; **USB is optional**. Keep the phone on an AC charger and have
+its owner unlock it locally at session start. M5/Mini drive it through `ssh pro`.
+Recheck readiness each session; preserve owner tabs, restore settings and lock
+on exit. Never save or automate the PIN. Product-flow acceptance remains per flow.
