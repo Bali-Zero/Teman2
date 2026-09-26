@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { getAllCodes, getBaliCensus, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
+import { SECTION_VISUALS } from "@/lib/kbli-cover-design";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
+import { KBLISectorDial } from "@/components/kbli/KBLISectorDial";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
-import { FunnelFrame } from "@balizero/core";
+import { BZLogo, FunnelFrame } from "@balizero/core";
 import {
   GOOGLE_MAPS_URL,
   GOOGLE_RATING,
@@ -29,6 +30,12 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * /kbli — «La bussola» (BRIEF-v2 §3.4). The landing is an instrument printed
+ * on watermarked paper: the lockup, one line, the search needle, the readings
+ * line, and the sector dial — all above the fold at 390px. Every figure is
+ * computed here at render from the served dataset; none is a literal.
+ */
 export default async function KBLIHomePage({
   searchParams,
 }: {
@@ -39,7 +46,7 @@ export default async function KBLIHomePage({
   const sections = getSections().filter((s) => s.codeCount > 0);
   const allCodes = getAllCodes();
   const codeCount = allCodes.length.toLocaleString("en-US");
-  // Added 2026-09-16 (W-J B1 disclose): the trust-bar stat now reads the
+  // Added 2026-09-16 (W-J B1 disclose): the readings line reads the
   // canonical Bali status census (`getBaliCensus()`), not the served subset
   // (`allCodes` withholds `baliL4` on most unlocated records) — the served
   // subset alone used to understate the true population ("~1%"/14 of 1559
@@ -54,135 +61,111 @@ export default async function KBLIHomePage({
   const largest = sections.reduce((a, b) =>
     b.codeCount > a.codeCount ? b : a,
   );
+  const dialSections = sections.map((s) => ({
+    id: s.id,
+    nameEn: s.nameEn,
+    shortName: SECTION_VISUALS[s.id]?.label ?? s.nameEn,
+    codeCount: s.codeCount,
+    color: SECTION_VISUALS[s.id]?.accent ?? "var(--kbli-text-muted)",
+  }));
 
   return (
     <FunnelFrame funnel="kbli" sessionId="SSR">
-      <div className="space-y-14 sm:space-y-16">
-        {/* ── HERO: the search is the promise, so it is the peak of the
-            first viewport on every width. The hero does not clip its
-            children — the results dropdown must open over the page — so
-            the ornament and photograph are clipped in their own layer. No
-            z-index here: a stacking context would trap the dropdown's z-50
-            below the sticky handoff pill (z-40). ── */}
+      <div className="space-y-12 sm:space-y-16">
+        {/* ── THE INSTRUMENT. No z-index and no overflow clip on the plate:
+            the results dropdown must open over the page (a stacking context
+            would trap its z-50 under the sticky handoff pill, z-40). The
+            guilloché sits in its own clipped, aria-hidden layer. ── */}
         <section
           aria-labelledby="kbli-title"
-          className="relative -mx-4 rounded-3xl border border-white/[0.06] bg-[var(--kbli-ink)] sm:-mx-6 lg:-mx-8"
+          className="relative -mx-4 border-y border-[var(--kbli-border)] bg-[var(--kbli-bg-surface)] sm:-mx-6 sm:rounded-[var(--kbli-radius-xl)] sm:border lg:-mx-8"
         >
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
+            className="pointer-events-none absolute inset-0 overflow-hidden sm:rounded-[var(--kbli-radius-xl)]"
           >
-            <div
-              className="absolute inset-0 hidden lg:block"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Crect x='0' y='0' width='200' height='200' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='50' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='30' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='8' fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='0.5'/%3E%3Ccircle cx='100' cy='100' r='2' fill='rgba(255,255,255,0.05)'/%3E%3Cpath d='M100,50 Q120,70 100,90 Q80,70 100,50Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M100,150 Q120,130 100,110 Q80,130 100,150Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M50,100 Q70,120 90,100 Q70,80 50,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3Cpath d='M150,100 Q130,120 110,100 Q130,80 150,100Z' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='0.5'/%3E%3C/svg%3E")`,
-                backgroundSize: "200px 200px",
-              }}
-            />
-            {/* The editorial still (812x572, see git history for why it is
-                not a video) now sits behind the right half as a masked
-                backdrop instead of inside a tilted tablet frame. Decorative
-                here, so alt is empty; lg+ only, so phones never fetch it. */}
-            <div className="absolute inset-y-0 right-0 hidden w-[48%] lg:block">
-              <Image
-                src="/images/kbli-navigator-hero.jpg"
-                alt=""
-                fill
-                sizes="560px"
-                className="object-cover opacity-70"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(90deg, var(--kbli-ink) 0%, color-mix(in srgb, var(--kbli-ink) 55%, transparent) 45%, color-mix(in srgb, var(--kbli-ink) 20%, transparent) 100%)",
-                }}
-              />
-            </div>
+            <div className="kbli-guilloche" />
           </div>
 
-          {/* Phones: natural height — no forced min-h stretch. A floating
-              handoff pill may overlay content BELOW the hero (that scrolls
-              under it), but it must never cover the search input, the
-              chips or the proof line here, so this section stays as short
-              as its own content. */}
-          <div className="relative flex flex-col px-5 py-8 sm:px-12 sm:py-12 lg:px-16 lg:py-14">
-            {/* Product lockup — the mark BESIDE the wordmark, never as a
-                letter of it (design corner §3.6). */}
-            <div className="flex items-center gap-3">
-              <Image
-                src="/assets/logo/balizero-logo-clean.png"
-                alt="Bali Zero"
-                width={36}
-                height={36}
-                className="rounded-full"
-              />
-              <span className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white">
-                KBLI Navigator
-              </span>
+          <div className="relative grid gap-8 px-5 pb-8 pt-6 sm:px-10 sm:pb-10 sm:pt-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12 lg:px-12 lg:pb-12">
+            <div className="min-w-0">
+              {/* Lockup — the mark BESIDE the wordmark, never as a letter
+                  (design corner §3.6; BRIEF-v2 §2.1). */}
+              <div className="r19-lockup">
+                <BZLogo variant="mark" size={28} className="r19-lockup__mark" />
+                <span className="flex flex-col">
+                  <span className="r19-lockup__wordmark">Bali Zero</span>
+                  <span className="r19-lockup__product">KBLI Navigator</span>
+                </span>
+              </div>
+
+              <h1
+                id="kbli-title"
+                style={{ fontFamily: "var(--font-serif)" }}
+                className="mt-6 max-w-[16ch] text-[34px] font-[450] leading-[1.08] tracking-[-0.035em] text-[var(--kbli-text-primary)] sm:mt-8 sm:text-[48px] lg:text-[56px]"
+              >
+                Find the KBLI 2025 code for your business
+              </h1>
+
+              <div id="search" className="mt-5 scroll-mt-24 sm:mt-7">
+                <KBLISearch
+                  autoFocus
+                  initialQuery={initialQuery}
+                  placeholder="Search KBLI codes"
+                  quickFilters={[
+                    "Restaurant",
+                    "Tech",
+                    "Real Estate",
+                    "Retail",
+                    "Manufacturing",
+                  ]}
+                />
+              </div>
+
+              {/* The readings line — proof is a line, not a section (design
+                  corner R4). Every figure keeps its source: the served code
+                  list, the sections the dial draws, the Bali census, and
+                  trust-figures.ts (the rating links to the live profile). */}
+              <p
+                data-kbli-readings=""
+                className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-[var(--kbli-border)] pt-3 text-[13px] tabular-nums text-[var(--kbli-text-secondary)]"
+              >
+                <span>{codeCount} codes</span>
+                <span aria-hidden="true">·</span>
+                <span>{sections.length} sections</span>
+                <span aria-hidden="true">·</span>
+                <span title={baliBlockedHint(allCodes, baliCensus)}>
+                  ~{baliBlockedPct}% blocked in Bali
+                </span>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={GOOGLE_MAPS_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Read on ${MEASURED_ON}`}
+                  className="text-[var(--kbli-text-secondary)] underline decoration-[var(--kbli-border-hover)] underline-offset-4 hover:text-[var(--kbli-text-primary)]"
+                >
+                  ★ {GOOGLE_RATING} ·{" "}
+                  {GOOGLE_REVIEW_COUNT.toLocaleString("en-US")} Google reviews
+                </a>
+              </p>
             </div>
 
-            <h1
-              id="kbli-title"
-              className="mt-6 max-w-2xl text-[2.5rem] leading-[1.05] text-white sm:text-5xl lg:max-w-none lg:text-6xl"
-            >
-              Find your KBLI 2025 business code
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-              Search by activity, keyword or code number, then check foreign
-              ownership (PMA), licensing and what changed from KBLI 2020.
-            </p>
-
-            <div id="search" className="mt-6 max-w-2xl scroll-mt-24 sm:mt-8">
-              <KBLISearch
-                autoFocus
-                initialQuery={initialQuery}
-                placeholder="Search KBLI codes"
-                quickFilters={[
-                  "Restaurant",
-                  "Tech",
-                  "Real Estate",
-                  "Retail",
-                  "Manufacturing",
-                ]}
+            <div className="min-w-0 lg:border-l lg:border-[var(--kbli-border)] lg:pl-10">
+              <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-secondary)]">
+                The {sections.length} sections, by number of codes
+              </h2>
+              <KBLISectorDial
+                sections={dialSections}
+                totalCodes={allCodes.length}
               />
             </div>
-
-            {/* Proof is a line, not a section (design corner R4). Every
-                figure keeps its previous source: the served code list, the
-                sector count this page always printed, the Bali census, and
-                trust-figures.ts (the rating links to the live profile). */}
-            <p className="mt-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-[13px] tabular-nums text-zinc-400">
-              <span>{codeCount} codes</span>
-              <span aria-hidden="true">·</span>
-              <span>{sections.length} sectors</span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                ·
-              </span>
-              <span
-                title={baliBlockedHint(allCodes, baliCensus)}
-                className="basis-full sm:basis-auto"
-              >
-                ~{baliBlockedPct}% blocked in Bali
-              </span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                ·
-              </span>
-              <a
-                href={GOOGLE_MAPS_URL}
-                target="_blank"
-                rel="noreferrer"
-                title={`Read on ${MEASURED_ON}`}
-                className="basis-full underline decoration-white/20 underline-offset-4 hover:text-zinc-200 hover:decoration-white/50 sm:basis-auto"
-              >
-                ★ {GOOGLE_RATING} ·{" "}
-                {GOOGLE_REVIEW_COUNT.toLocaleString("en-US")} Google reviews
-              </a>
-            </p>
           </div>
         </section>
 
         <KBLIPersonaDoors />
+
+        <hr aria-hidden="true" className="kbli-tumpal" />
 
         {/* ── SECTORS ── */}
         <section
@@ -190,10 +173,14 @@ export default async function KBLIHomePage({
           aria-labelledby="kbli-sectors"
           className="scroll-mt-20"
         >
-          <h2 id="kbli-sectors" className="text-3xl text-white">
+          <h2
+            id="kbli-sectors"
+            style={{ fontFamily: "var(--font-serif)" }}
+            className="text-[30px] font-[450] leading-[1.13] tracking-[-0.03em] text-[var(--kbli-text-primary)] sm:text-[38px]"
+          >
             Browse by sector
           </h2>
-          <p className="mt-2 mb-6 max-w-2xl text-sm text-zinc-300">
+          <p className="mb-6 mt-2 max-w-2xl text-sm text-[var(--kbli-text-secondary)]">
             Each bar compares a sector&apos;s number of codes with the largest,{" "}
             {largest.nameEn} ({largest.codeCount.toLocaleString("en-US")}{" "}
             codes).
@@ -201,20 +188,34 @@ export default async function KBLIHomePage({
           <KBLISectorBrowser sections={sections} />
         </section>
 
-        {/* ── ZANTARA AI ── */}
+        <hr aria-hidden="true" className="kbli-tumpal" />
+
+        {/* ── ZANTARA: a quiet line that opens the chat, not a panel ── */}
         <section aria-labelledby="kbli-ask">
-          <h2 id="kbli-ask" className="mb-6 text-3xl text-white">
-            Ask Zantara
-          </h2>
-          <ZantaraChat
-            opener="I'm Zantara, your KBLI expert. Ask me anything about Indonesian business codes — which ones you need, PMA rules, what changed in 2025, or how to set up in Bali."
-            suggestions={[
-              "What KBLI do I need for a restaurant in Bali?",
-              "Can foreigners own a villa rental business?",
-              "What changed from KBLI 2020 to 2025?",
-              "What's the difference between 55101 and 55203?",
-            ]}
-          />
+          <details className="group">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 text-[15px] text-[var(--kbli-text-secondary)] [&::-webkit-details-marker]:hidden">
+              <h2
+                id="kbli-ask"
+                className="text-[15px] font-normal text-[var(--kbli-text-secondary)]"
+              >
+                Still unsure which code fits?{" "}
+                <span className="font-semibold text-[var(--kbli-accent)] underline decoration-[var(--kbli-border-accent)] underline-offset-4 group-open:no-underline">
+                  Ask Zantara, our KBLI assistant
+                </span>
+              </h2>
+            </summary>
+            <div className="mt-4">
+              <ZantaraChat
+                opener="I'm Zantara, your KBLI expert. Ask me anything about Indonesian business codes — which ones you need, PMA rules, what changed in 2025, or how to set up in Bali."
+                suggestions={[
+                  "What KBLI do I need for a restaurant in Bali?",
+                  "Can foreigners own a villa rental business?",
+                  "What changed from KBLI 2020 to 2025?",
+                  "What's the difference between 55101 and 55203?",
+                ]}
+              />
+            </div>
+          </details>
         </section>
       </div>
     </FunnelFrame>
