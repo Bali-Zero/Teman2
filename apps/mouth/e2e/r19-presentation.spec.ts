@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { contrast, over, parseColor } from "./support/contrast";
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/*", (route) =>
@@ -12,29 +13,6 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => {
   await page.close();
 });
-
-type Rgba = [number, number, number, number];
-const parseColor = (css: string): Rgba => {
-  const [r, g, b, a] = css.match(/[\d.]+/g)!.map(Number);
-  return [r, g, b, a ?? 1];
-};
-const over = (fg: Rgba, bg: Rgba): Rgba => [
-  fg[0] * fg[3] + bg[0] * (1 - fg[3]),
-  fg[1] * fg[3] + bg[1] * (1 - fg[3]),
-  fg[2] * fg[3] + bg[2] * (1 - fg[3]),
-  1,
-];
-const luminance = ([r, g, b]: Rgba) => {
-  const [lr, lg, lb] = [r, g, b].map((v) => {
-    const c = v / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
-};
-const contrast = (a: Rgba, b: Rgba) => {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-};
 
 test.describe("R19 integration page Page", () => {
   for (const width of [980, 981, 1024]) {
@@ -180,6 +158,28 @@ test.describe("R19 integration page Page", () => {
     const surface = over(parseColor(ring.surface), ground);
     expect(contrast(parseColor(ring.color), surface)).toBeGreaterThanOrEqual(3);
     expect(contrast(parseColor(ring.color), ground)).toBeGreaterThanOrEqual(3);
+    // The primary WhatsApp CTA: its ring floats over the hero ground too, and
+    // its own label must clear AA on the copper surface.
+    const cta = page.locator('.entry-hero a[data-lead-source="homepage_hero"]');
+    await cta.focus();
+    const ctaRing = await cta.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        style: s.outlineStyle,
+        width: parseFloat(s.outlineWidth),
+        color: s.outlineColor,
+        label: s.color,
+        surface: s.backgroundColor,
+      };
+    });
+    expect(ctaRing.style).toBe("solid");
+    expect(ctaRing.width).toBeGreaterThanOrEqual(2);
+    expect(contrast(parseColor(ctaRing.color), ground)).toBeGreaterThanOrEqual(
+      3,
+    );
+    expect(
+      contrast(parseColor(ctaRing.label), parseColor(ctaRing.surface)),
+    ).toBeGreaterThanOrEqual(4.5);
     const heading = page.locator("h1").first();
     // Variable face: the computed weight must lie inside the face's declared
     // axis and that face must be loaded, so the browser has nothing to fake.
@@ -237,13 +237,20 @@ test.describe("R19 integration page Page", () => {
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const button = page.locator(".entry-hero .entry-categories a").first();
-    await button.waitFor({ state: "visible" });
+    const targets = [
+      page.locator('.entry-hero a[data-lead-source="homepage_hero"]'),
+      page.locator(".entry-hero .entry-categories a").first(),
+    ];
+    for (const target of targets) await target.waitFor({ state: "visible" });
     const geometry = () =>
-      button.evaluate((el) => ({
-        width: el.getBoundingClientRect().width,
-        arrowX: el.querySelector("span")!.getBoundingClientRect().x,
-      }));
+      Promise.all(
+        targets.map((target) =>
+          target.evaluate((el) => ({
+            width: el.getBoundingClientRect().width,
+            arrowX: el.querySelector("span")!.getBoundingClientRect().x,
+          })),
+        ),
+      );
     const fontsLoaded = () =>
       page.evaluate(() => [
         document.fonts.check('400 15px "R19 Home Manrope"'),
@@ -259,8 +266,10 @@ test.describe("R19 integration page Page", () => {
     await page.evaluate(() => document.fonts.ready);
     expect(await fontsLoaded()).toEqual([true, true]);
     const after = await geometry();
-    expect(Math.abs(before.width - after.width)).toBeLessThanOrEqual(0.1);
-    expect(Math.abs(before.arrowX - after.arrowX)).toBeLessThanOrEqual(0.1);
+    before.forEach((b, i) => {
+      expect(Math.abs(b.width - after[i].width)).toBeLessThanOrEqual(0.1);
+      expect(Math.abs(b.arrowX - after[i].arrowX)).toBeLessThanOrEqual(0.1);
+    });
   });
 
   for (const [language, heading] of Object.entries({
@@ -292,7 +301,7 @@ test.describe("R19 integration page Page", () => {
             nav: rect(".site-header"),
             hero: rect(".entry-hero"),
             title: rect("h1"),
-            cta: rect(".entry-hero .entry-categories li:last-child a"),
+            cta: rect(".entry-hero .entry-whatsapp a"),
             overflow: document.documentElement.scrollWidth - innerWidth,
           };
         });
@@ -301,32 +310,43 @@ test.describe("R19 integration page Page", () => {
         expect(geometry.overflow).toBeLessThanOrEqual(1);
         // A heading that runs away must show up as a hero that ballooned.
         expect(await heroHeight()).toBeLessThanOrEqual(baseline * 1.5);
-        // The last action stays reachable: nothing (the caption included)
-        // sits on top of its centre or intersects its box.
-        const covered = await page.evaluate(() => {
-          const last = document.querySelector<HTMLElement>(
-            ".entry-hero .entry-categories li:last-child a",
-          )!;
-          last.scrollIntoView({ block: "center" });
-          const l = last.getBoundingClientRect();
-          const hit = document.elementFromPoint(
-            l.left + l.width / 2,
-            l.top + l.height / 2,
-          );
-          const c = document
-            .querySelector(".entry-hero .hero-caption")!
-            .getBoundingClientRect();
-          return {
-            reachable: !!hit && last.contains(hit),
-            captionOverlaps: !(
-              c.right <= l.left ||
-              c.left >= l.right ||
-              c.bottom <= l.top ||
-              c.top >= l.bottom
-            ),
-          };
-        });
-        expect(covered).toEqual({ reachable: true, captionOverlaps: false });
+        // Both hero actions stay reachable: nothing (the caption included)
+        // sits on top of their centre or intersects their box.
+        const selectors = [
+          ".entry-hero .entry-categories li:last-child a",
+          ".entry-hero .entry-whatsapp a",
+        ];
+        const covered = await page.evaluate((list) => {
+          return list.map((selector) => {
+            const link = document.querySelector<HTMLElement>(selector)!;
+            link.scrollIntoView({ block: "center" });
+            const l = link.getBoundingClientRect();
+            const hit = document.elementFromPoint(
+              l.left + l.width / 2,
+              l.top + l.height / 2,
+            );
+            const c = document
+              .querySelector(".entry-hero .hero-caption")!
+              .getBoundingClientRect();
+            return {
+              selector,
+              reachable: !!hit && link.contains(hit),
+              captionOverlaps: !(
+                c.right <= l.left ||
+                c.left >= l.right ||
+                c.bottom <= l.top ||
+                c.top >= l.bottom
+              ),
+            };
+          });
+        }, selectors);
+        expect(covered).toEqual(
+          selectors.map((selector) => ({
+            selector,
+            reachable: true,
+            captionOverlaps: false,
+          })),
+        );
       });
     }
   }
