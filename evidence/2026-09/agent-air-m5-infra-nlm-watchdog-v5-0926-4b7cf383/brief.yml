@@ -1,0 +1,189 @@
+task_id: nlm-watchdog-v5-0926
+gear: 3
+objective: >-
+  New M5 organ m5.nlm_watchdog: every 6h, over ssh to Pro, it checks Pro's nlm
+  login, each notebook's source_count in Pro's daily inventory against 450
+  (account cap 500), and the inventory's age against 30h, and writes
+  ~/.organism/last_seen/nlm-watchdog.json for the M5 SessionStart organism
+  digest. #7307, #7309 and #7317 each received REWORK-BUILD from a fresh
+  Opus gate (the last one for prose only); the owner authorized one more
+  round written by the conductor. #7333 carried that round with comments
+  cut in nlm_watchdog.py only, and its required `antidotes` check was red
+  (a `~/Desktop/nuzantara` comment tripped the TCC lint) on an armed,
+  frozen branch. This PR rebuilds the same round from fresh origin/main:
+  the same cut in the wrapper, plist, registry notes and tests, the TCC
+  comment removed, `write_hb`/`do_alert` set before the probe branch
+  (CodeQL py/uninitialized-local-variable on #7333), and an autouse test
+  fixture that keeps tests off the real tg_notify.py.
+constraints:
+  - >-
+    Touch only scripts/nlm_watchdog.py, scripts/nlm_watchdog_cron.sh,
+    infra/launchagents/com.balizero.nlm-watchdog.6h.plist (renamed from
+    ...daily.plist to match the real 6h StartInterval),
+    apps/organism/organism/organs_registry.yaml (the m5.nlm_watchdog entry
+    only), scripts/tests/test_nlm_watchdog.py, and this evidence directory.
+  - >-
+    No LaunchAgent install, no launchctl bootstrap/kickstart, no HOME-fork
+    pair declaration in infra/home-fork/declared-pairs.json, no merge, no
+    arm, no deploy — the conductor runs those post-merge. The 2-round,
+    3-seat council already ran (see journal.jsonl); what gates THIS rebuild
+    is a fresh on-disk Opus 5.5 gate re-reviewing the fixed HEAD, not
+    another council round.
+  - >-
+    No client PII, no OSINT, no real e-mail/name in any test fixture or
+    committed string — synthetic placeholder (owner@example.test) only.
+  - >-
+    Never echo/print/commit a secret; nlm_watchdog.py never emits raw CLI
+    output (login stdout/stderr) into a heartbeat, log, or Telegram message.
+  - Tests exercise no real ssh/nlm subprocess and never the real
+    tg_notify.py — every probe is behind an injected callable
+    (login_fn/inventory_fn) and TG_NOTIFY is a fake or an absent path,
+    guilt AND innocence proven per probe class with fakes only.
+acceptance:
+  - text: >-
+      WHEN classify_login receives rc=0 and output containing the literal
+      substring "Authentication invalid", it SHALL classify the login as
+      dead, not ok (codex finding 3 / kimi finding 3: `"valid" in
+      out.lower()` used to accept "invalid" too).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "invalid" -v
+  - text: >-
+      WHEN write_heartbeat is called, it SHALL write to a tmp file and
+      os.replace it into place, so a concurrent organism_digest.py read
+      never observes a partial write (codex finding 2 / kimi finding 6).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "leaves_no_tmp_file_behind" -v
+  - text: >-
+      WHEN a notebook is near its source cap, the heartbeat/Telegram/log
+      SHALL carry ONLY the notebook's id8 (or "unknown") — never a title,
+      curated-looking or not (round-2 codex finding 1, BLOCKING: a
+      `^NB-...` prefix gate is not a privacy boundary — `NB-CLIENT-CASE
+      Jane Doe` matched round 1's gate and still leaked).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "never_leaks_any_title" -v
+  - text: >-
+      WHEN status stays degraded across two ticks but the underlying reason
+      codes change, maybe_alert SHALL fire — a new failure hiding behind an
+      old one is exactly the silent-failure class this organ exists to
+      surface (codex finding 4 / qwen finding 4).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "maybe_alert" -v
+  - text: >-
+      WHEN the first inventory fetch returns rc=0 with an empty/whitespace
+      body, it SHALL be retried exactly like a malformed non-empty body —
+      only a hard ssh-level failure (rc != 0) skips the retry (round-2
+      codex finding 2 / kimi MAJOR2 / qwen NIT3).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "fetch_inventory_first_empty" -v
+  - text: >-
+      WHEN one notebook stays near-cap and a SECOND, different notebook
+      newly crosses the cap, maybe_alert SHALL fire even though the reason
+      CODE set is unchanged (both only ever contribute CAP_NEAR) — the
+      sorted near-cap id8 list is now part of the alert signature (round-2
+      codex finding 3, MAJOR).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "new_notebook_joins_near_cap" -v
+  - text: >-
+      WHEN a notebook's source_count is non-numeric (or a bool), it SHALL
+      be skipped without crashing the tick, and counted into its own
+      degraded reason/code — the fix for round-2 kimi MINOR2 / qwen
+      MINOR1 (a bare `or 0` let a non-numeric value raise TypeError at
+      `max()`/`>=`, discarding the whole verdict via main's crash handler).
+    probe: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "non_numeric_source_count or bool_source_count" -v
+  - text: >-
+      WHEN the wrapper's own fallback heartbeat write fails to install
+      (the mv itself fails), the wrapper's final exit SHALL be non-zero —
+      never `|| true`'d into a false success (round-2 codex finding 4,
+      MAJOR).
+    probe: >-
+      S=$(mktemp -d); mkdir -p "$S/nuzantara/scripts" "$S/.organism/last_seen";
+      printf 'import sys\nsys.exit(0)\n' > "$S/nuzantara/scripts/nlm_watchdog.py";
+      chmod 555 "$S/.organism/last_seen";
+      HOME="$S" bash scripts/nlm_watchdog_cron.sh; echo "EXIT=$?"
+  - text: >-
+      WHEN the module-level `from auth_sentinel import ...` fails at import
+      time, main() SHALL still write a degraded heartbeat carrying
+      Code.IMPORT_FAILED rather than crash before ever reaching its own
+      exception handler (qwen finding 1, BLOCKING).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "import" -v
+  - text: >-
+      WHEN the inventory read races Pro's non-atomic
+      nb_generate_inventory.py write and gets transiently malformed JSON,
+      the watchdog SHALL retry once after a short delay before reporting
+      INVENTORY_MALFORMED, instead of firing a false transition on every
+      race (codex finding 5 / kimi finding 7).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "retry" -v
+  - text: >-
+      WHEN generated_at is a naive timestamp or is skewed into the future
+      beyond a small tolerance, evaluate_inventory_data SHALL degrade with a
+      targeted reason instead of letting a TypeError escape to the top-level
+      crash handler (kimi finding 5 / qwen finding 2).
+    probe: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "naive or skew or future" -v
+  - text: >-
+      WHEN infra/launchagents and apps/organism/organism/organs_registry.yaml
+      are linted, both SHALL pass with zero findings attributable to this
+      PR's files (organ-conformance-at-birth, plist-keepalive superscar #7).
+    probe: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+consumer_map:
+  - >-
+    ~/.organism/last_seen/nlm-watchdog.json, read by organism_digest.py
+    (status key, SessionStart digest) and organism_stale_detector.py
+    (note/last_error keys) — this PR is what makes those two keys reliable:
+    the write is now atomic and always populated on every reachable path,
+    including a caught crash.
+  - >-
+    The secondary (non-Telegram-flood) Telegram channel itself, via
+    maybe_alert — fires only on a real change to status, reason-code set,
+    OR near-cap id8 set, so the owner sees exactly one message per new
+    fact (including a second notebook newly crossing the cap), not one
+    per tick.
+  - >-
+    apps/organism/organism/organs_registry.yaml's own consumers (drift
+    audits, healer ticks) — the m5.nlm_watchdog entry's
+    expected_hb_seconds/recovery_params now match the real 6h cadence and
+    label, instead of a stale 12h/"daily" pair from the pre-council draft.
+risks:
+  - >-
+    This PR does not install the LaunchAgent, does not declare the
+    HOME-fork pair, and does not merge/deploy. Until that install happens,
+    the organ exists in the repo but is not armed — the registry entry
+    could otherwise be read as "already breathing" when nothing is
+    scheduled yet (kimi's dissent, acknowledged not rebutted). That install
+    is the conductor's own next step, by explicit instruction, not silently
+    dropped.
+  - >-
+    Grepping this repo for an M5 LaunchAgent that already SSHes to Pro
+    non-interactively (the precedent nlm_watchdog_cron.sh's own `ssh pro
+    '...'` shape assumes) turned up one wrapper with the right shell shape
+    (infra/launchagents/wrappers/wr2-warroom-sync.sh) but it is not
+    currently referenced by any installed .plist in this tree — so
+    launchd-context ssh-to-Pro is NOT independently proven live here. This
+    is the same gap codex/kimi named (finding 6 / finding 2): proving it
+    requires the actual install-and-kickstart step this PR deliberately
+    does not take.
+  - >-
+    home-fork lint (scripts/lint_home_fork.py) currently fails on this M5
+    checkout, but for reasons entirely unrelated to this PR — pre-existing
+    undeclared payloads and .bak shadows already on disk before this branch
+    existed. Verified by running it and confirming no finding names
+    nlm_watchdog/anything this diff touches.
+assumptions:
+  - text: >-
+      Pro's nb_generate_inventory.py writes its inventory JSON
+      non-atomically (open("w") + json.dump, no tempfile+rename), so a
+      concurrent read can observe transient malformed JSON.
+    status: verified
+    probe: grep -n "open(" scripts/nb_generate_inventory.py (read-only, confirmed in the prior read-only prep turn; not re-run this round to avoid an unneeded Pro round-trip)
+grader: >-
+  The 2-round, 3-seat external council (codex-gpt-5.6-sol, kimi-code/k3,
+  tp1-qwen3.8-max — see journal.jsonl) already ran and is not repeated by
+  this rebuild; what grades THIS specific fix is a fresh on-disk Opus 5.5
+  gate re-reviewing the rebuilt HEAD. Generator is not grader either way:
+  this session does not merge, arm, or install — the conductor does, after
+  that gate passes.
+budget: Existing subscription seats only; no paid per-token API calls.
+pii: none

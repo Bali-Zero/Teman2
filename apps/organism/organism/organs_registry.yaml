@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2d6adc1da4a56d99387f66569894f39ab5a4f2980370fc6bd973a4d2b88ab516 # pragma: allowlist secret
+checksum: 2c9616d5280e38467382f9a57d8177108e1f07965f5db56fbe90ac68e94146fb # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3095,5 +3095,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.mailbox_janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.nlm_watchdog
+  runtime: air_launchd
+  type: cron
+  expected_hb_seconds: 64800
+  owner_module: scripts/nlm_watchdog_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.nlm-watchdog.6h
+  severity_on_silence: warning
+  notes: Cross-host probe (M5 -> ssh pro) of Pro's nlm login, each notebook's source_count
+    against --cap-warn (default 450; the per-notebook cap is 500), and the age of Pro's
+    nb-inventory-live.json (over 30h is degraded). StartInterval 21600s; expected_hb_seconds
+    is 3x that (64800) because M5 sleeps overnight. Kill switch under launchd is the flag
+    file ~/.organism/kill/nlm_watchdog; NLM_WATCHDOG_ENABLED=false applies to manual runs.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/nlm-watchdog.json
     timestamp_field: ts
     status_field: status

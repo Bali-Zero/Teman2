@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.nlm-watchdog.6h</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/balizero/.nuzantara-cron/nlm_watchdog_cron.sh</string>
+    </array>
+    <!-- One-shot every 6h: StartInterval, no KeepAlive (scar #7). -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Logs outside the Desktop folder (W84 TCC). -->
+    <key>StandardOutPath</key>
+    <string>/Users/balizero/.local/state/nlm-watchdog/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/balizero/.local/state/nlm-watchdog/launchd.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

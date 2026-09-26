@@ -1,0 +1,599 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Round 1: fixed every BLOCKING/MAJOR finding from the first-round
+      Gear-3 council on HEAD 603b4a105f: guarded auth_sentinel import,
+      atomic heartbeat write, a `^NB-...`-prefix title gate, login-classifier
+      dead-check ordered before the ok branch, reason-code-aware
+      maybe_alert, inventory retry-on-transient-malformed-JSON with
+      naive/future-timestamp handling, a flag-file kill switch alongside
+      the env var, plist/registry rename to the real 6h cadence with
+      3x expected_hb_seconds, and a synthetic e-mail replacing the real
+      one that had leaked into the test file (47 tests).
+      Round 2: implemented the conductor's S1-S5 spec against the
+      second-council BLOCKING (codex) on 79c2d92a0b — the round-1 title
+      gate was itself a leak (S1), so `_display_name` now takes only an
+      id, never a title; an empty-body first fetch retries like a
+      malformed one (S2); the alert signature gained a sorted near-cap
+      id8 list (S3); the wrapper's fallback write no longer `|| true`s an
+      mv failure and detail is sed-escaped (S4); a non-numeric
+      source_count is skipped, not crashed on (S5). 54 tests.
+      Round 3: a fresh Opus 5.5 on-disk gate on PR #7307 (HEAD
+      3da9d5891d) returned REWORK-BUILD — shipped behavior all PASSED,
+      but two comments misdescribed the shipped code (the import
+      guard's rationale, and an "`_run` never raises" claim that did
+      not hold for the import-failure fallback), and the fallback
+      `_run` itself was a real gap: it RAISED instead of returning,
+      but the raise meant
+      `maybe_alert`'s attempt to invoke tg_notify.py never actually
+      ran a subprocess at all on that path. #7307's branch was already
+      armed (frozen), so PR #7309 was a REBUILD from fresh origin/main
+      carrying that fix: comments rewritten, the fallback made
+      non-raising, main()'s own maybe_alert() call wrapped as an
+      independent second layer, one new test. 55 tests.
+      Round 4: a SECOND fresh gate on PR #7309 (HEAD 1a8eb53890) FAILED
+      again for the SAME root cause (2nd red) — non-raising was not
+      the same as WORKING: the round-3 fallback `_run` returned a
+      canned `(1, "PROBE_ERR:...")` tuple without ever invoking a real
+      subprocess, so tg_notify.py still never ran on the import-failure
+      path; the gate reproduced this directly (`sys.modules[
+      "auth_sentinel"] = None`, sandbox HOME, previous ok heartbeat,
+      fake tg_notify writing a marker -> marker NOT written). Per the
+      Builder Contract (third red suspends), the conductor wrote spec
+      V3 (F1-F4), implemented exactly here: `_run` is now a LOCAL
+      subprocess runner ALWAYS defined at module scope (not inside the
+      auth_sentinel import guard, and not conditional on it), the
+      import brings in only `_AUTH_DEAD_RE`/`_hostname`, and every
+      sentence claiming otherwise ("still calls `_run`", "no real
+      subprocess machinery", "fallback `_run` made total" as if two
+      runners existed) is corrected. New test reloads the module with
+      `auth_sentinel` genuinely blocked and asserts a fake tg_notify.py
+      actually WRITES A MARKER FILE — proven to fail against both the
+      round-2 raising shape and the round-3 no-op shape (see receipts).
+      55 tests (1 test replaced, not added).
+      Owner-authorized last round (#7333, then this rebuild): written and
+      applied by the conductor (claude-opus-5-5), no builder seat. #7333
+      cut comments in nlm_watchdog.py only; its armed branch then showed a
+      red required `antidotes` check (TCC lint on a `~/Desktop/nuzantara`
+      comment) and a CodeQL py/uninitialized-local-variable alert on
+      `write_hb`. This rebuild removes that comment, sets `write_hb` and
+      `do_alert` right after argument parsing, cuts the remaining
+      narrative in the wrapper, plist, registry notes and tests, and adds
+      an autouse fixture pointing TG_NOTIFY at an absent path (without it,
+      the import-failure and crash tests of main() invoked the real
+      tg_notify.py, which reads ~/.nuzantara-secrets.env). 55 tests.
+  - lane: review-round1
+    role: review
+    seat: tp1-qwen3.8-max
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl):
+      unguarded import as a fail-invisible ImportError path, TypeError
+      escaping the freshness parse, unproven HOME-fork plist target, and
+      degraded-to-degraded alert suppression on reason change.
+  - lane: review-round1
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl): a
+      real e-mail committed in cleartext inside the PII-boundary test
+      itself, an organ registered as breathing while nothing is
+      installed, a login classifier that reads "invalid" as valid, and a
+      kill switch that is dead code under launchd.
+  - lane: review-round1
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      First-round BLOCKING verdict on 603b4a105f (see journal.jsonl):
+      unredacted notebook titles reaching heartbeat/Telegram/logs,
+      non-atomic unguarded heartbeat writes with a wrapper that swallows
+      failures, and the same login-classifier word-boundary bug kimi
+      found independently.
+  - lane: review-round2
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      Second-round BLOCKING verdict on 79c2d92a0b (see journal.jsonl): the
+      round-1 title fix (a `^NB-...` prefix gate) was not actually a
+      boundary, plus 3 MAJOR findings on the empty-body retry gap, the
+      near-cap alert signature, and the wrapper's `mv ... || true`. All
+      four fixed this round (S1-S4).
+  - lane: review-round2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      Second-round OK verdict on 79c2d92a0b (see journal.jsonl): confirmed
+      6 of 9 round-1 findings fully RESOLVED, flagged 3 as PARTIAL (title
+      gate, wrapper mv swallow, empty-body retry — all three match codex's
+      independent round-2 findings and are fixed here) plus a MAJOR on the
+      near-cap alert signature and a MINOR on non-numeric source_count.
+  - lane: review-round2
+    role: review
+    seat: tp1-qwen3.8-max
+    note: >-
+      Second-round OK verdict on 79c2d92a0b (see journal.jsonl): all 9
+      round-1 findings confirmed RESOLVED with file:line citations; 2
+      MINOR/NIT hardening items (non-numeric source_count, unescaped
+      $detail in the wrapper's printf) also fixed this round even though
+      qwen itself did not block on them.
+receipts:
+  - claim: >-
+      54/54 tests pass on the round-2-fixed HEAD (up from 47 after round
+      1) — guilt and innocence proven per probe class (login classifier,
+      inventory evaluation, fetch/retry, heartbeat write/read,
+      maybe_alert, main), no real ssh/nlm subprocess in any test.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-24T21:35:53Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The specific codex/kimi BLOCKING finding (rc=0 + "Authentication
+      invalid" used to classify as ok) now classifies as dead — the
+      regression test for it passes.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "invalid" -v
+    exit: 0
+    ts: "2026-09-24T20:54:55Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      write_heartbeat's tmp+os.replace sequence leaves no .tmp file
+      behind on the success path (the atomic-write fix for codex finding
+      2 / kimi finding 6).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "leaves_no_tmp_file_behind" -v
+    exit: 0
+    ts: "2026-09-24T20:55:53Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      ROUND-1 CLAIM, SUPERSEDED BY S1 (see the round-2 receipts below —
+      the first fresh Opus 5.5 on-disk gate, on PR #7307's HEAD
+      3da9d5891d, flagged this exact sentence as stale; it is a
+      DIFFERENT mechanism from the 3-seat council and ran AFTER round 2,
+      not during it. Corrected here rather than deleted, so the fix
+      history stays legible): "_display_name() redacts every notebook
+      title path:
+      curated NB- titles truncate at 60 chars, uncurated titles fall back
+      to the first 8 chars of the id, a missing id falls back to
+      'unknown'". That curated-title branch no longer exists — S1 (round
+      2) found the round-1 fix itself leaked
+      (`NB-CLIENT-CASE Jane Doe` matched the `^NB-...` gate and still
+      surfaced verbatim) and removed title display entirely.
+      `_display_name` now takes only an id and never shows a title,
+      curated-looking or not — see the "S1" receipt further down for the
+      current, correct behavior.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "display_name" -v
+    exit: 0
+    ts: "2026-09-24T20:55:54Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Organ-conformance-at-birth gate reports 0 regressions and 0
+      non-conformant births across the repo, including the renamed
+      com.balizero.nlm-watchdog.6h.plist and the updated m5.nlm_watchdog
+      registry entry.
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    exit: 0
+    ts: "2026-09-24T20:51:03Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      lint_plist_keepalive.py reports 0 findings scanning
+      infra/launchagents (the 2 WARNs it does print name two
+      pre-existing, unrelated plists — wa-codex-broker and
+      wr2.pg-proxy — neither touched by this diff).
+    cmd: python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    exit: 0
+    ts: "2026-09-24T20:51:12Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      lint_home_fork.py exits nonzero on this M5 checkout, but every
+      named finding (a stale codex-hooks checkout, 3 undeclared
+      unrelated payloads, 13 directories of pre-existing .bak shadows)
+      predates this branch and names none of this PR's files — confirmed
+      by reading the full finding list, not inferred from the exit code
+      alone.
+    cmd: python3 scripts/lint_home_fork.py
+    exit: 3
+    ts: "2026-09-24T20:51:17Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Every e-mail-shaped string in this branch's full diff over
+      origin/main (round 1 + round 2) is exactly one of the three the
+      conductor's spec allows: the synthetic test fixture, the
+      Co-Authored-By trailer, and the real git author — nothing else.
+    cmd: >-
+      git log -p origin/main..HEAD | grep -o -E
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]+' | sort -u
+    exit: 0
+    ts: "2026-09-24T21:43:51Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      auth_sentinel._run() is a total function: it catches
+      subprocess.TimeoutExpired, FileNotFoundError, and any other
+      Exception, returning a (code, string) tuple in every case — it
+      cannot raise OSError/FileNotFoundError past its own boundary,
+      which closes the specific mechanism tp1-qwen3.8-max's dissent
+      named (a raise from _run reopening the no-heartbeat gap).
+      Superseded: _run is no longer imported from auth_sentinel;
+      nlm_watchdog.py defines its own.
+    cmd: sed -n '81,96p' scripts/auth_sentinel.py
+    exit: 0
+    ts: "2026-09-24T20:56:40Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      maybe_alert fires on every real transition (ok<->degraded, first
+      tick reads degraded) and on a degraded->degraded code-set change,
+      stays silent on same-status/same-codes and on a first tick that
+      reads ok, and never raises when the Telegram call itself fails —
+      the fix for codex finding 4 / qwen finding 4.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "maybe_alert" -v
+    exit: 0
+    ts: "2026-09-24T20:58:37Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      main() reports an auth_sentinel import failure as a degraded
+      heartbeat carrying Code.IMPORT_FAILED instead of crashing before
+      its own exception handler is reachable — the fix for qwen finding
+      1 (BLOCKING).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "import" -v
+    exit: 0
+    ts: "2026-09-24T20:58:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      _fetch_inventory_data degrades to INVENTORY_MALFORMED only after a
+      retry still fails (and never retries on an ssh-level failure) — the
+      fix for codex finding 5 / kimi finding 7's inventory-race concern.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "retry" -v
+    exit: 0
+    ts: "2026-09-24T20:58:45Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      evaluate_inventory_data degrades safely (not a crash) on a naive
+      timestamp and on a future timestamp beyond the clock-skew
+      tolerance, and stays innocent on a tiny in-tolerance future skew —
+      the fix for kimi finding 5 / qwen finding 2 (TypeError escaping to
+      the top-level crash handler).
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k "naive or
+      skew or future" -v
+    exit: 0
+    ts: "2026-09-24T20:58:48Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The combined acceptance probe (organ-conformance-at-birth THEN
+      plist-keepalive) exits 0 end-to-end: 0 regressions, 0
+      non-conformant births, 0 keepalive findings — re-run clean on the
+      round-2 HEAD too.
+    cmd: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    exit: 0
+    ts: "2026-09-24T21:43:07Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S1 (codex round-2 finding 1, BLOCKING): a notebook titled
+      "NB-CLIENT-CASE Jane Doe" at 460 sources surfaces only its id8 in
+      every reason string — neither "NB-CLIENT" nor "Jane" appears
+      anywhere in the output.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "never_leaks_any_title" -v
+    exit: 0
+    ts: "2026-09-24T21:36:04Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S2 (codex round-2 finding 2 / kimi MAJOR2 / qwen NIT3): an
+      rc==0-with-empty-body first fetch now retries exactly like a
+      malformed one, succeeding on a good retry and reporting
+      INVENTORY_MISSING (not MALFORMED) if the retry is also empty.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "fetch_inventory_first_empty" -v
+    exit: 0
+    ts: "2026-09-24T21:36:05Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S3 (codex round-2 finding 3, MAJOR): a SECOND notebook newly
+      crossing the cap fires an alert even when notebook A was already
+      near-cap and the code set (CAP_NEAR only) does not change —
+      near_cap_ids is now part of the alert signature.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "new_notebook_joins_near_cap" -v
+    exit: 0
+    ts: "2026-09-24T21:36:07Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S5 (kimi round-2 MINOR2 / qwen round-2 MINOR1): a non-numeric (or
+      bool) source_count is skipped and reported as its own degraded
+      reason/code instead of raising TypeError and discarding the whole
+      tick's verdict via main's crash handler.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_nlm_watchdog.py -k
+      "non_numeric_source_count or bool_source_count" -v
+    exit: 0
+    ts: "2026-09-24T21:36:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S4 (codex round-2 finding 4, MAJOR): in a sandbox with an
+      unwritable ~/.organism/last_seen (the fallback mv cannot install),
+      the wrapper's own final exit is 1 — never a false success — even
+      though the stubbed nlm_watchdog.py it invokes exits 0.
+    cmd: >-
+      S=$(mktemp -d); mkdir -p "$S/nuzantara/scripts"
+      "$S/.organism/last_seen"; printf 'import sys\nsys.exit(0)\n' >
+      "$S/nuzantara/scripts/nlm_watchdog.py"; chmod 555
+      "$S/.organism/last_seen"; HOME="$S" bash
+      scripts/nlm_watchdog_cron.sh; echo "EXIT=$?"
+    exit: 1
+    ts: "2026-09-24T21:37:39Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      S4's escape sequence (sed backslash-then-quote) produces valid,
+      parseable JSON for a $detail string containing both a literal
+      backslash and a double quote — the exact shape an unescaped printf
+      would have corrupted.
+    cmd: >-
+      detail='cron wrapper: path "C:\Users\test" contains a backslash and
+      a quote'; escaped="$(printf '%s' "$detail" | sed -e 's/\\/\\\\/g' -e
+      's/"/\\"/g')"; printf '{"note":"%s"}' "$escaped" | python3 -c
+      "import json,sys; json.load(sys.stdin)"
+    exit: 0
+    ts: "2026-09-24T21:43:32Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Answers kimi's round-2 dissent (the ok-branch hinges on an
+      unverifiable literal string): the real `nlm login --check` success
+      output on Pro today, read-only, is structurally
+      "Checking credentials for profile: default..." / "✓ Authentication
+      valid!" / "  Profile: default" / "  Notebooks found: 62" / "
+      Account: <owner e-mail>" — line 2 matches `_SUCCESS_RE`
+      (`\bauthentication\s+valid\b`, case-insensitive) exactly as coded.
+      The real e-mail is redacted here per the PII boundary; it is never
+      reproduced in the pack, the code, or its tests.
+    cmd: ssh -o ConnectTimeout=10 -o BatchMode=yes pro '~/.local/bin/nlm login --check'
+    exit: 0
+    ts: "2026-09-24T21:34:29Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The real, posted `harness/fable-gate` status on PR #7307's HEAD
+      (3da9d5891d) is `failure`/REWORK-BUILD. GitHub's own `description`
+      field (truncated by GitHub itself to ~140 chars) reads: "REWORK-BUILD
+      | fresh Opus 5.5 gate: stale code comments (:101-104, :466-467) +
+      non-total fallback _run on import-failure path; rest PASS...." — a
+      PARAPHRASE of the fuller reasoning in the actual gate transcript
+      (scratchpad/wd/gate7307.txt), not a verbatim quote of that transcript.
+      The `ts` below is the API's own `updated_at` for this status (when
+      GitHub recorded it), not the moment this command was run.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/commits/3da9d5891d/status --jq
+      '.statuses[] | select(.context=="harness/fable-gate") |
+      {context, state, description, updated_at}'
+    exit: 0
+    ts: "2026-09-24T21:56:28Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      The real, posted `harness/fable-gate` status on PR #7309's HEAD
+      (1a8eb53890) — a SECOND fresh gate, the 2nd red for this root cause —
+      is `failure`/REWORK-BUILD. GitHub's own `description` field
+      (truncated by GitHub itself) reads: "REWORK-BUILD | fresh Opus 5.5
+      gate #2: fallback _run is a no-op stub so Telegram still never
+      fires on import-failure; comments/PR body cl...." — again a
+      PARAPHRASE truncated by GitHub, not a verbatim transcript quote.
+      The `ts` below is the API's own `updated_at` for this status, not
+      the moment this command was run (re-run at 2026-09-24T22:30:58Z to
+      confirm it still reads the same verdict before writing this
+      receipt).
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/commits/1a8eb53890/status --jq
+      '.statuses[] | select(.context=="harness/fable-gate") |
+      {context, state, description, updated_at}'
+    exit: 0
+    ts: "2026-09-24T22:13:53Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      F2 red #1: the new test (renamed
+      test_module_reload_with_auth_sentinel_blocked_actually_sends_telegram,
+      no monkeypatch of `_run`) FAILS against the round-3/#7309 no-op
+      stub shape (`_run` returns a canned `(1, "PROBE_ERR:...")` tuple
+      without invoking any subprocess) — the fake tg_notify.py's marker
+      file is never written, reproducing the fresh gate's own finding
+      exactly. `_run` was temporarily reverted to that exact stub shape
+      to produce this run, then restored (see the green receipt below).
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -k
+      "module_reload_with_auth_sentinel_blocked" -v
+    exit: 1
+    ts: "2026-09-24T22:26:37Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      F2 red #2: the same test FAILS against the round-2/a raising `_run` variant too
+      (fallback `_run` raises RuntimeError instead of returning a tuple)
+      — main()'s own try/except swallows the raise, but the marker file
+      is still never written, because no real subprocess ever ran on
+      that path either. `_run` was temporarily reverted to this exact
+      raising shape to produce this run, then restored.
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -k
+      "module_reload_with_auth_sentinel_blocked" -v
+    exit: 1
+    ts: "2026-09-24T22:26:45Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      F2 green: with F1 restored (the single LOCAL, always-defined,
+      never-conditional `_run`), the full suite passes 55/55, including
+      the renamed regression test — the marker file IS written on the
+      import-failure path, proving a real subprocess actually ran.
+    cmd: >-
+      date -u +%Y-%m-%dT%H:%M:%SZ && python3 -m pytest
+      scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-24T22:30:27Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Fresh Opus 5.5 gate on 97fc4da2b6 (#7317) returned REWORK-BUILD for
+      prose only; runtime checks passed.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/commits/97fc4da2b6b276136e316f2071f5e8e7943acae0/status
+      --jq '.statuses[]|select(.context=="harness/fable-gate")|.state'
+    exit: 0
+    ts: "2026-09-24T23:02:53Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Fourth-round build (comments cut to short factual statements, code
+      identical to #7317): full suite still passes 55/55.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-24T23:18:19Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Import-failure probe re-run on the fourth-round code: with
+      auth_sentinel blocked, main() returns rc=1, writes a degraded
+      heartbeat carrying only Code.IMPORT_FAILED, and a fake tg_notify.py
+      actually writes its marker file — a real subprocess ran.
+    cmd: >-
+      python3 -c "$(cat <<'PY'
+      import sys, os, json, tempfile, importlib.util
+      from pathlib import Path
+      tmphome = tempfile.mkdtemp()
+      os.environ['HOME'] = tmphome
+      sys.modules['auth_sentinel'] = None
+      target = 'scripts/nlm_watchdog.py'
+      spec = importlib.util.spec_from_file_location('nlm_watchdog', target)
+      module = importlib.util.module_from_spec(spec)
+      sys.modules['nlm_watchdog'] = module
+      spec.loader.exec_module(module)
+      hb = os.path.join(tmphome, 'heartbeat.json')
+      json.dump({'status': 'ok', 'codes': []}, open(hb, 'w'))
+      module.HEARTBEAT_PATH = Path(hb)
+      marker = os.path.join(tmphome, 'marker')
+      tg = os.path.join(tmphome, 'tg_notify.py')
+      open(tg, 'w').write(f"open({marker!r}, 'w').close()\n")
+      module.TG_NOTIFY = Path(tg)
+      rc = module.main([])
+      hbdata = json.load(open(hb))
+      print('rc', rc, 'status', hbdata['status'], 'codes', hbdata['codes'],
+            'marker', os.path.exists(marker))
+      PY
+      )"
+    exit: 0
+    ts: "2026-09-24T23:18:32Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Rebuild on fresh origin/main: full suite passes 55/55 with the
+      autouse TG_NOTIFY fixture.
+    cmd: python3 -m pytest scripts/tests/test_nlm_watchdog.py -q
+    exit: 0
+    ts: "2026-09-26T05:02:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      TCC lint (the step that failed `antidotes` on #7333) is clean; no
+      `Desktop/nuzantara` string remains in nlm_watchdog.py.
+    cmd: >-
+      python3 scripts/lint_tcc_desktop_paths.py && ! grep -q
+      'Desktop/nuzantara' scripts/nlm_watchdog.py
+    exit: 0
+    ts: "2026-09-26T05:02:01Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      No council/round/PR-number narrative remains in the shipped code,
+      wrapper, plist or tests (git grep finds no match).
+    cmd: >-
+      ! git grep -n -i -E 'council|gear-3|round[ -][0-9]|#7[0-9]{3}|codex|kimi|qwen'
+      -- scripts/nlm_watchdog.py scripts/nlm_watchdog_cron.sh
+      scripts/tests/test_nlm_watchdog.py
+      infra/launchagents/com.balizero.nlm-watchdog.6h.plist
+    exit: 0
+    ts: "2026-09-26T05:02:01Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Organ conformance 0 regressions, registry valid with the recomputed
+      checksum, plist lints, wrapper parses, and the strict keepalive lint
+      reports nothing for nlm-watchdog (its 12 findings are other plists).
+    cmd: >-
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry &&
+      plutil -lint infra/launchagents/com.balizero.nlm-watchdog.6h.plist &&
+      bash -n scripts/nlm_watchdog_cron.sh &&
+      ! python3 scripts/lint_plist_keepalive.py --strict 2>&1 | grep -q nlm-watchdog
+    exit: 0
+    ts: "2026-09-26T05:02:04Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Import-failure probe on the rebuild (same script as the fourth-round
+      receipt above): rc 1, degraded, codes [import_failed], fake
+      tg_notify.py marker written.
+    cmd: >-
+      python3 -c "$(cat <<'PY'
+      import sys, os, json, tempfile, importlib.util
+      from pathlib import Path
+      tmphome = tempfile.mkdtemp()
+      os.environ['HOME'] = tmphome
+      sys.modules['auth_sentinel'] = None
+      target = 'scripts/nlm_watchdog.py'
+      spec = importlib.util.spec_from_file_location('nlm_watchdog', target)
+      module = importlib.util.module_from_spec(spec)
+      sys.modules['nlm_watchdog'] = module
+      spec.loader.exec_module(module)
+      hb = os.path.join(tmphome, 'heartbeat.json')
+      json.dump({'status': 'ok', 'codes': []}, open(hb, 'w'))
+      module.HEARTBEAT_PATH = Path(hb)
+      marker = os.path.join(tmphome, 'marker')
+      tg = os.path.join(tmphome, 'tg_notify.py')
+      open(tg, 'w').write(f"open({marker!r}, 'w').close()\n")
+      module.TG_NOTIFY = Path(tg)
+      rc = module.main([])
+      hbdata = json.load(open(hb))
+      print('rc', rc, 'status', hbdata['status'], 'codes', hbdata['codes'],
+            'marker', os.path.exists(marker))
+      PY
+      )"
+    exit: 0
+    ts: "2026-09-26T05:02:12Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The strongest objection is that this monitoring organ can itself
+      fail, return launchd success, and preserve a stale healthy
+      heartbeat — the exact silent-failure class it claims to eliminate.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      Even ignoring the PII line, this PR registers a living organ that
+      does not live — nothing is installed, launchd execution of the
+      exact ssh command shape is unproven, and the registry now asserts
+      a heartbeat no process will ever write.
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Even if the import is made resilient, the entire design rests on
+      _run from auth_sentinel behaving as a total function (never
+      raising). If _run can throw OSError on a missing ssh binary or
+      FileNotFoundError, the same no-heartbeat gap reappears through a
+      different door — the dependency on an external module's internal
+      contract, not just its import surface, is the real fragility.
+    status: RETRACTED
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The strongest objection is the still-bypassable PII guard. Full
+      pytest was environment-blocked because the read-only sandbox
+      exposes no writable temporary directory; 27 direct tests plus AST,
+      shell, plist, registry, and conformance checks passed.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      The ok-branch hinges on the literal string "authentication valid"
+      (nlm_watchdog.py:185) — unverifiable from this read-only seat; but
+      the failure direction is fail-visible (LOGIN_UNKNOWN degraded,
+      never a false ok), so it is not blocking.
+    status: RETRACTED

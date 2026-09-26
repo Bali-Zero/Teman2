@@ -1,0 +1,22 @@
+task: Replace the News Room converter's layered Next Steps regexes with one line-based parser that implements docs/specs/newsroom-next-steps-grammar-v1.md, and give the four mapped "##" sections one shared heading grammar.
+lane: backend-rag/next-steps-grammar
+machine: M5
+date: 2026-09-26
+mission_id: newsroom-converter-fidelity
+mission_colour: BLUE
+role: Dux session (Opus 5.5) — builds, arms, deploys; the final gate is a fresh read-only session outside this chain
+gear: 2
+gear_reason: >-
+  Built from the spec that #7338 wrote after a fix-of-a-fix past depth 1
+  (#7322 BLOCK, #7331 live, #7336 BLOCK for regressing G1/G2). The spec's
+  case table is the test, written first and run against origin/main: only
+  the five rows marked "live" passed there. Churn ~410 lines with the
+  brief, no hot-zone path: Gear 2 by the size term.
+acceptance:
+  A1: Every row of the spec's case table (E1–E24, G1–G3) holds as one parametrized test, plus placeholder variants (P1), "-5%" (D7) and rule/bare-bullet spellings (R1).
+  A2: Invariant 1 — no worded line of a Next Steps body is dropped or truncated; text before the first label, after a non-audience heading, or after a blank line inside a labelled group lands in an item (D3, D4); no cap (D6).
+  A3: Invariant 3 — a horizontal rule or bare bullet is never an item, on the labelled path too (G1 and G2, the #7336 regression).
+  A4: Invariant 4/5 — whole-text placeholders are dropped, "None of the above applies." is kept; only the leading list marker is removed ("**Deadline**:" keeps its "**"); numbered lists split per number (D5).
+  A5: D8 — Summary / Facts / Bali Zero Take / Next Steps and extra_sections are read through one heading classifier; a trailing ":" and CRLF line ends parse like the plain LF form.
+  A6: Every pre-existing converter and renderer test still passes unchanged (test_intel_scraper_router.py, test_article_composer.py, and the other files that import intel_scraper).
+out_of_scope: Repairing already-published MDX whose Next Steps items were truncated by the pre-#7331 substring bug (separate content pass); inline labels such as "For Expats — renew…" stay one intact general item by decision D2; a non-audience heading's own text is not rendered (spec E10/E16); renderer and schema are unchanged.
