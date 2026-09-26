@@ -1,0 +1,222 @@
+# Gear-3 Evidence Pack — wa_outbox.served_by (migration 322 + the fenced-write carrier).
+# Precedent modeled on evidence/2026-09/agent-nuzantara-backend-rag-b2-3a-schema-f39f3ec2/
+# (migration-only schema PR, same table) and the newer council format in
+# evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-con-efdb78db/ (council_run ->
+# council-journal.jsonl). Written by the Claude session that built this PR (Sonnet 5, lane
+# backend-rag, worktree .worktrees/backend-rag-wa-outbox-served-by). Every receipt below ran
+# in this session against an isolated, dedicated local Postgres 17 database
+# (nuzantara_test_wa322) created solely for this PR's own verification — never the shared
+# CI/dev nuzantara_test.
+task_id: backend-rag-wa-outbox-served-by
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+base_sha: "a6768f8a7b709a97e3f5e801c9edad2fce7cf86b" # pragma: allowlist secret — origin/main at council time
+head_sha: "c960cdbf6aa156e8cdf858e530ed3ab0a7db8d6f" # pragma: allowlist secret — this pack's HEAD (correction round)
+pii_scan: clean
+outcome: >-
+  Additive nullable column + a one-column carrier addition to an already-fenced production
+  write (migration 314, live). No production release, no real WhatsApp send, no client data
+  in this pack. CORRECTION ROUND (fix-of-a-fix depth 1, per Builder Contract §1): the fresh
+  gate that read this pack refuted its central premise -- it named a "deploy-window" race
+  (the new worker code referencing served_by going live before migration 322 applied) and
+  shipped a code fallback for it. That premise is FALSE: `apps/backend-rag/fly.toml:15`'s
+  `release_command` (`migrate apply-all && schema_audit`) runs on the NEW image before Fly
+  replaces a single machine, and `schema_audit.py`'s `_check_pending_migrations` fails the
+  release outright on a pending migration -- verified against real deploy run logs
+  (34937690207/35440961020/36072036287, migrations 318/320/321) showing
+  `release_command ... completed successfully` before every rolling update, with the
+  SEPARATE `run-sql-v2-migrations-post-deploy` GH Actions job printing "0 migrations applied
+  on fresh image" every time (it is belt-and-suspenders, not the actual gate). Precedent
+  #6561 (migration 318) already shipped a column + its writer in one PR with no such
+  fallback. This round removes the fallback code and its dedicated test, and rewrites every
+  text (migration header/COMMENT, worker comment, KPI doc, PR body) that stated the false
+  premise -- BEFORE migration 322 could be applied to PROD and its file checksummed into
+  `_schema_versions` (unrecoverable past that point short of a 323 migration).
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: "evidence_pack_lint.compute_floor(files, numstat) on the staged diff (migrations_v2 hot zone, path term); net diff ~245 lines, well under the SIZE term's own threshold — this is a path-sourced floor, not a size-sourced one."
+
+deploy_impact:
+  merging_deploys: true
+  path: "apps/backend-rag/** -> fly-deploy.yml (nuzantara-rag)"
+  order: >-
+    The GH Actions `run-migrations` job (pre-deploy, `flyctl ssh console` against the
+    CURRENTLY DEPLOYED image) and `run-sql-v2-migrations-post-deploy` (after `deploy`, ssh
+    into the fresh image) are BOTH real, but neither is the actual gate that matters here --
+    they run `migrate apply-all` a second and third time as belt-and-suspenders (measured:
+    the post-deploy job prints "0 migrations applied on fresh image" on every real deploy,
+    because the migration is already applied by then). The REAL gate is
+    `apps/backend-rag/fly.toml:15`'s `release_command` (`migrate apply-all && schema_audit`):
+    Fly runs this on the NEW image, in a throwaway release machine, BEFORE replacing a single
+    running machine with the rolling strategy, and `schema_audit.py`'s
+    `_check_pending_migrations` returns an `error`-severity finding on any pending migration,
+    which fails `schema_audit`'s exit code, which fails the `&&`-chained release_command,
+    which makes Fly abort the release before any traffic ever reaches the new image. Verified
+    against real deploy logs: runs 34937690207 (migration 318), 35440961020 (320) and
+    36072036287 (321) each show `release_command ... completed successfully` BEFORE the
+    rolling update proceeds. CONSEQUENCE: migration 322 and the worker code that reads
+    `served_by` can never be live at the same time as a missing column -- there is no
+    deploy-window gap, and no fallback is needed (same guarantee migration 314's
+    `abstained_at`/`evidence_score` already relies on, unremarked because it is the default
+    safe case). This section previously (commit dc893a75) named a false deploy-window race
+    and a code fallback for it; both are corrected as of this pack's current head.
+  lock: >-
+    ADD COLUMN IF NOT EXISTS ... TEXT NULL with no default is catalog-only on Postgres >= 11
+    (no table rewrite, no row touched) -- same reasoning as migrations 314/318. SET LOCAL
+    lock_timeout='5s' / statement_timeout='30s' bound the ACCESS EXCLUSIVE wait, matching
+    314's convention; ~450 rows in production (per migration 318's own measurement) makes the
+    DDL itself instant regardless.
+  rollback: >-
+    Routine rollback = revert the worker commit only, keep the column (314/318 convention) --
+    the old worker's fenced UPDATE names status/abstained_at/evidence_score explicitly and
+    never references served_by, so a bare revert is safe by construction. A real
+    `DROP COLUMN` in production is a separately authorized destructive action, never part of
+    a routine revert; the migration's own ROLLBACK section exists for isolated up/down/up
+    validation (proven in receipts/roundtrip-up-down-up.txt), not a deploy-time path.
+
+numbering:
+  chosen: 322
+  last_on_main: "321_portal_reply_and_email.sql (git ls-tree origin/main a6768f8a7b)"
+  open_prs_swept: "gh pr list --state open --json number,files at open time: zero PRs claim a migrations_v2 number"
+
+lanes:
+  - lane: wa-outbox-served-by-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: wa-outbox-served-by-council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    artifact: reviews/codex-gpt-5.6-sol-r1.md
+  - lane: wa-outbox-served-by-council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: reviews/kimi-code-k3-r1.md
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: "gate (fresh Opus, PR #7392 @ 3b77978ef8)"
+    objection: >-
+      The entire "deploy-window" premise behind the _finalize() fallback and its test is
+      FALSE: `apps/backend-rag/fly.toml:15`'s `release_command` runs `migrate apply-all &&
+      schema_audit` on the NEW image before Fly replaces any machine, and
+      `schema_audit.py:529`'s `_check_pending_migrations` fails the release outright on a
+      pending migration -- proven against real deploy logs (runs 34937690207/35440961020/
+      36072036287 for migrations 318/320/321: `release_command ... completed successfully`
+      before every rolling update, post-deploy job prints "0 migrations applied"). Precedent
+      #6561 (migration 318) already shipped a column + writer in one PR with no fallback.
+    status: CONFIRMED
+    resolution: >-
+      Correction round (fix-of-a-fix depth 1): `_finalize()` and its
+      UndefinedColumnError-catching retry removed entirely; the fenced UPDATE now carries
+      `served_by = $6::text` inline like the other carrier columns (persist_score,
+      persist_abstained), same as migration 314's original shape. The dedicated
+      drop-column/restore-column guilt+innocence test is removed. Every text asserting the
+      false premise is rewritten: migration 322's header and `COMMENT ON COLUMN` (this PR,
+      before the file could ever be applied to PROD and checksummed into
+      `_schema_versions`), the worker's inline comment, `docs/zantara-loop-state.md`'s KPI
+      block, and the PR body. Neither council seat could have caught this from the diff
+      alone -- both are static reviewers with no tool access to fly.toml, schema_audit.py or
+      real deploy run logs; their own reviews (below) correctly judged the fallback CODE as
+      internally consistent given the (false) premise it was built to serve.
+  - seat: codex-gpt-5.6-sol
+    objection: 'The _finalize() except clause wraps the WHOLE three-statement transaction (wa_outbox UPDATE + meta_inbox_messages UPDATE + _apply_pending_status), not just the served_by-bearing statement -- an UndefinedColumnError from either of the other two (hypothetically, an unrelated future column typo) would be misattributed to "migration 322 pending" and retried needlessly.'
+    status: PLAUSIBLE
+    resolution: >-
+      MOOT as of this pack's current head: the entire _finalize()/except mechanism this
+      objection concerned has been removed in the correction round above (the deploy-window
+      premise it existed to serve was refuted). Recorded for the historical review trail,
+      not because the underlying code point was wrong on its own terms.
+  - seat: codex-gpt-5.6-sol
+    objection: 'The migration and column COMMENT''s original wording ("NULL = no completion") is too narrow: a row finalized via the deploy-window fallback, or a historical row predating this column, also reads NULL and neither means "no completion happened".'
+    status: CONFIRMED
+    resolution: >-
+      Reworded (commit cf4170257d, then simplified further in the correction round once the
+      deploy-window case was refuted): the migration header, the column COMMENT, and
+      docs/zantara-loop-state.md's KPI block now say "route not recorded" and name the two
+      remaining real NULL causes (a failed generation, or a route that never calls the codex
+      leg), and explicitly note this is NOT the same narrower meaning NULL has for
+      evidence_score.
+  - seat: codex-gpt-5.6-sol
+    objection: "The test's real DROP COLUMN / ADD COLUMN cycle needs a sacrificial, isolated database; the diff alone does not prove that isolation."
+    status: PLAUSIBLE
+    resolution: >-
+      MOOT as of this pack's current head: the test this objection concerned
+      (test_served_by_column_missing_mid_deploy_still_finalizes) is removed in the
+      correction round above, along with the fallback code it exercised.
+  - seat: kimi-code/k3
+    objection: "wa_codex_leg.CodexLegResult.served_by is a plain str, not a Literal[...] of the closed vocabulary -- the DB has no CHECK (by design, see Q2) and the type system doesn't enforce it either, so a future typo'd value would flow straight through."
+    status: PLAUSIBLE
+    resolution: >-
+      Not fixed in this PR: wa_codex_leg.py is outside this diff's scope (this PR only adds a
+      carrier for an existing field, it does not touch the producer). A cheap follow-up, not
+      a blocker for this PR's own correctness.
+  - seat: kimi-code/k3
+    objection: "The deploy-pipeline ordering that creates the deploy-window gap is systemic (fly-deploy.yml's pre-deploy migration job always sees the PREVIOUS image's checkout) and will recur for every future additive column+writer pair, not just this one."
+    status: RETRACTED
+    resolution: >-
+      Measured false: `apps/backend-rag/fly.toml:15`'s `release_command` (`migrate
+      apply-all && schema_audit`) is the ACTUAL gate, and it runs on the NEW image before
+      Fly replaces a single machine -- `schema_audit.py`'s `_check_pending_migrations`
+      fails the release outright on any pending migration. The GH Actions `run-migrations`/
+      `run-sql-v2-migrations-post-deploy` jobs this objection (and the fallback it defended)
+      were built around are real but redundant belt-and-suspenders, not the mechanism that
+      actually gates traffic. Verified against real deploy run logs for migrations
+      318/320/321 (34937690207/35440961020/36072036287): `release_command` completes before
+      every rolling update, and the post-deploy job prints "0 migrations applied on fresh
+      image" every time. There is no systemic gap to flag for a future PR — every additive
+      column+writer pair already gets this same guarantee, which is why migration 314's own
+      abstained_at/evidence_score needed no fallback either.
+
+limitations:
+  - "No production release, no real WhatsApp send, no client PII in this pack or its receipts (synthetic phone numbers only, matching the pre-existing test module's own convention)."
+  - "release_command's ordering guarantee (fly.toml:15 + schema_audit.py's pending-migration check) is read from the workflow/script and confirmed against real historical deploy run logs for migrations 318/320/321 — not independently re-run by this session against a live Fly deploy of THIS PR's own commit."
+  - "Council review was a static diff review (both seats: no tool execution, no test run) — neither seat had access to fly.toml, schema_audit.py or real deploy logs, so neither could catch the false deploy-window premise the first version of this pack shipped with; the fresh gate that read the pack found it instead (see the first dissent entry above)."
+  - "The actual test suite (see receipts/pytest-final.txt) was run and its output captured by this session, not independently reproduced by either council seat."
+  - "No re-ask of either council seat on the correction-round delta: the delta from the council-reviewed head (cf4170257d) to this pack's current head is a REMOVAL (the _finalize()/UndefinedColumnError fallback and its dedicated test) plus text corrections (migration header/COMMENT, worker comment, KPI doc, this pack) — no new logic was added that either seat has not already reviewed the surrounding shape of (the fenced UPDATE itself, unchanged from cf4170257d's review, just one bind restored to inline)."
+
+release_requirements:
+  - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge (repo Builder Contract §5)."
+  - 'Coordinator/release owner confirms the deploy''s `release_command` step (`migrate apply-all && schema_audit`) in the `deploy` job''s own log completed successfully and that row 322 appears in `_schema_versions` — NOT the separate `run-sql-v2-migrations-post-deploy` job, which will correctly print "0 migrations applied" since release_command already applied it.'
+  - "After that, run the KPI query from docs/zantara-loop-state.md against PROD (Bites observation): the first needs_generation outbox row that reaches status='done' after the deploy must show a non-NULL served_by matching CodexLegResult.served_by's closed vocabulary; human-send rows correctly stay NULL and are excluded from the query's own scope."
+
+cloud_ok: >-
+  Builder Contract §4 / SYMBIOSIS Law 2: this is a code-only lane. Both council seats received
+  only the repository diff (migration SQL, worker Python, test Python, one markdown doc) and a
+  static question set — no client rows, names, addresses, phone numbers, documents or
+  credentials. Test fixtures use synthetic phone numbers (matching the pre-existing test
+  module's own documented convention). This attests the actual no-PII scope of this review, not
+  a general exception.
+
+receipts:
+  - claim: "Full carrier + mocked worker + migration lint/rollback suite, final state, isolated DB"
+    cmd: "PYTHONPATH=.:../crm-cell pytest backend/tests/unit/services/test_wa_outbox_worker_carrier.py backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/db/test_migration_uniqueness.py backend/tests/db/test_migration_apply_strips_rollback.py backend/tests/db/test_migration_base_rollback.py backend/tests/db/test_migration_rollback_extraction.py backend/tests/app/setup/test_garuda_environment_matches_schema.py"
+    result: "69 passed"
+    exit: 0
+    ts: "2026-09-26T11:44:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/pytest-final.txt
+  - claim: "Guilt proof: the new served_by test fails against origin/main's worker (no column reference, no bind), passes against this PR's cure"
+    cmd: "cp aside; git show origin/main:<path> > <path>; pytest ...::test_served_by_persists_support_abstain -v; cp restore"
+    result: "1 failed against origin/main (assert None == 'support_abstain'); 69/69 passed after restore"
+    exit: 1
+    ts: "2026-09-26T11:43:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/guilt-cases.txt
+  - claim: "Migration 322 round-trip up -> down -> up on an isolated dedicated Postgres 17 database, zero failures"
+    cmd: "python -m backend.db.migrate apply-all (bootstrap); MigrationManager.rollback_migration('322_wa_outbox_served_by'); MigrationManager.apply_all_pending()"
+    result: "column + both ledger rows present before, absent after rollback, present again after reapply; reapply result {'applied': [322], 'skipped': [], 'failed': []}"
+    exit: 0
+    ts: "2026-09-26T11:42:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/roundtrip-up-down-up.txt
+  - claim: "Deterministic Gear-3 floor, path-sourced (migrations_v2 hot zone), on the full origin/main...HEAD diff"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <f> --numstat-file <f> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-26T11:44:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/floor.txt

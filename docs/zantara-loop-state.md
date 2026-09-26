@@ -19,6 +19,27 @@
 - **Broker liveness is `wa_broker_gauge.broker_last_seen_at` advancing** (the daemon polls every
   2s), never `breaker_state` — the breaker stays `closed` while the daemon is paused.
 
+## KPI: served_by (migration 322, closes the F3/Iteration-2 gap below)
+
+`served_by` is `CodexLegResult.served_by` verbatim, persisted in the SAME fenced terminal write
+as `abstained_at`/`evidence_score` (`wa_outbox_worker.py`). Before this column, the
+`support_abstain` rate (Iteration 2 "Measured, not fixed") was only visible by hashing message
+bodies — this makes it a plain `GROUP BY`. Scoped to `needs_generation` rows only (a human send
+never calls the codex leg, so it correctly stays NULL — including it in the denominator would
+undercount the real support_abstain rate):
+
+```sql
+SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
+```
+
+`NULL` (within that scope) means a failed generation — the row never reached a served completion.
+`apps/backend-rag/fly.toml`'s `release_command` (`migrate apply-all && schema_audit`) runs on the
+NEW image before Fly replaces any machine and fails the release outright on a pending migration,
+so there is no deploy-window gap: the column exists before this worker code is ever live (verified
+against real deploy run logs for migrations 318/320/321). The closed vocabulary otherwise is
+`codex`, `support_abstain`, `scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`,
+`scripted_identity`.
+
 ## Iteration 1 — 2026-09-25 (M5)
 
 | Gate    | Re-measured                                                                                                                                                                                                                                                                                                                            | Verdict                                  |
@@ -56,7 +77,7 @@ Red team F1: constant text in en/id/it/ru/fr (uk → en); fenced once per outbox
 
 ### Measured, not fixed (inputs for the next gaps)
 
-- **F3 is invisible in SQL**: in 30 days, 23 of ~31 questions that reached retrieval got the fixed `support_abstain` stub (EN ×17, ID ×6). `abstained_at` stays NULL on them by design (D6/B2.3b), and `served_by` is not persisted. Count stubs by body hash until a `served_by` column exists. The lever is KB coverage (F9), not the gate.
+- **F3 is invisible in SQL**: in 30 days, 23 of ~31 questions that reached retrieval got the fixed `support_abstain` stub (EN ×17, ID ×6). `abstained_at` stays NULL on them by design (D6/B2.3b). `served_by` is now persisted (migration 322, see the KPI block above) — the `GROUP BY` there replaces the body-hash count from here on. The lever is KB coverage (F9), not the gate.
 - **F7 holds**: 0 inbound answered twice in 30 days. 5 pairs of identical stubs within 2 minutes are one stub per inbound in a burst (UX, not a duplicate send).
 - **T3-T7 have no living organ**: `team_promises`, `action_queue`, `whatsapp_practice_candidates` exist only on Fly, unfed since the 2026-05-24 cutover. On Pro, `wa_dashboard_outbound_queue`, `wa_dashboard_threads` and 14-day `whatsapp_operator_actions` are all 0.
 - **Open defects found by review** (own PRs): ingestion stores `body` only for `type=='text'`, so captions are lost; `notify_human_handoff` returns True even when the email failed silently (the B2.5-2 handoff copy depends on it); the Homebrew codex is shared between the broker daemon and every agent seat (dedicated pinned binary = sudo provisioning).
