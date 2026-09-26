@@ -1046,13 +1046,17 @@ async def portal_challenge_events(
     from backend.services.portal.challenge_leaderboard import compute_status
 
     if compute_status(datetime.now(timezone.utc)) == "closed":
-        return StreamingResponse(iter(["event: closed\ndata: {}\n\n"]), media_type="text/event-stream")
+        return StreamingResponse(
+            iter(["event: closed\ndata: {}\n\n"]), media_type="text/event-stream"
+        )
 
     redis = RedisManager.get_instance().get_async_client()
     if redis is None:
         raise HTTPException(status_code=503, detail="Live celebrations temporarily unavailable")
     return StreamingResponse(
-        goal_fanout.events(redis, request.headers.get("last-event-id") or request.query_params.get("last_event_id")),
+        goal_fanout.events(
+            redis, request.headers.get("last-event-id") or request.query_params.get("last_event_id")
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no"},
     )

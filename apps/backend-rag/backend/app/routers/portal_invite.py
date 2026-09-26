@@ -493,7 +493,9 @@ async def complete_registration(
 
         from backend.services.portal.challenge_events import publish_registration_goal
 
-        background_tasks.add_task(publish_registration_goal, invite_service.pool, result["client_id"])
+        background_tasks.add_task(
+            publish_registration_goal, invite_service.pool, result["client_id"]
+        )
 
         logger.info(f"Client registration completed: {result['email']}")
 
