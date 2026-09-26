@@ -1744,3 +1744,35 @@ one silent-wrong-language failure mode for another.
 **Family: #3 (Guard-over-match / UNDER-match)** — precision-only threshold: raising recall by
 widening markers turns the guard into one that renders a verdict on languages it cannot actually
 tell apart, an over-match on the marker-count heuristic dressed up as coverage.
+
+## W139 — disk sentinel measured the sealed system volume, alert never fired — 2026-09-26
+
+**TRAUMA:** Pro's disk hit 97% (407/460G) and `~/scripts/disk-monitor.sh` never alerted, because
+it measured `df /` — the sealed system volume, permanently ~32% used — instead of the APFS Data
+volume where all writes actually land. The live copy in `$HOME` was dated 2026-04-30 while the
+repo twin had already moved on (HOME-fork, family #1). The real writer was kernel swap (≥18 GiB),
+not a log or a cache: `du` over Data cannot see swap pages, and Data's own Used figure does not
+grow with swap — only the container's free space shrinks, invisible to any per-directory census.
+`/Users/Shared/BaliZero` (23 GB, the owner's 3D reconstruction workspace) sat outside every
+census tool's scope entirely. Fixed by PR #7378 (monitor now measures
+`/System/Volumes/Data`, alert wired and proven firing: log line "data volume
+`/System/Volumes/Data`: 94% used … alerts fired (2)") plus a home-fork resync
+(`lint_home_fork.py` clean on Pro for that pair). Zero also removed `muse-glimmer:30b-mlx`
+(21 GB, unused) by decision; disk is now at 85%.
+
+**ANTIBODY:** a disk sentinel must name the volume it measures and prove that name in its own log
+line, not just emit a bare percentage. Census lists must include `/Users/Shared` and the swap
+files (`ls -la /System/Volumes/VM`). A macOS disk that fills and empties on its own has exactly
+two usual suspects — purgeable APFS snapshots (`diskutil apfs listSnapshots`) and swap
+(`sysctl vm.swapusage`) — check both before hunting for a phantom writer. Keep ≥45 GB free on
+Pro's Data volume.
+
+**GOTCHA:** under zsh, `log` is a shell builtin — a monitor that wants the system log must call
+`/usr/bin/log` explicitly. Separately, `sysctl` is not on launchd's PATH (`/usr/sbin` is missing
+there), so `scripts/agent_start.py`'s RAM gate fails open when invoked under launchd — left open
+deliberately, tracked in the ledger rather than patched blind.
+
+**Family: #2 (Esiste≠Armato)** — the sentinel existed, ran on schedule, and reported green; it
+was measuring the wrong thing the whole time. Cousin to #8 (network/proxy fragility as invisible
+long-running failure) in spirit: a long-running daemon silently wrong about its one job, never
+crashed, never logged an error, just watching an answer that could never move.
