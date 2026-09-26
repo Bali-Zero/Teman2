@@ -565,6 +565,25 @@ BRIDGED_TCP_PROBES: tuple[TcpProbe, ...] = (
         host="100.93.236.6",
         port=6379,
     ),
+    # Added 2026-09-27, closing a gap PR #7436 left open (superscar #2,
+    # Esiste≠Armato): BRIDGED_LABELS' pro.profile_monitor_wrapper entry above
+    # only checks launchctl's PID column, so a wrapper stuck retrying an
+    # EADDRNOTAVAIL bind (process alive, port never opened — see
+    # wrapper.py's _serve_with_bind_retry) still reads "ok". Same organ_id,
+    # deliberately: write_receipts() runs BRIDGED_LABELS first and
+    # BRIDGED_TCP_PROBES second, both against the SAME
+    # last_seen/pro.profile_monitor_wrapper.json path, so this probe's
+    # result is what actually lands — PID-alive-but-port-closed now
+    # overwrites the daemon check's "ok" with "failed" on the very same
+    # poller tick, and a genuinely dead process still reads "failed" either
+    # way (connection refused). Host is Pro's own Tailscale IP — this bridge
+    # only ever runs on Pro (RESIDENT_HOST), so this is a loopback-adjacent
+    # local probe, not a cross-host one like eventbus_redis_mini above.
+    TcpProbe(
+        organ_id="pro.profile_monitor_wrapper",
+        host="100.107.22.111",
+        port=9099,
+    ),
 )
 
 
