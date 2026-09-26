@@ -87,7 +87,7 @@ export default async function KBLIHomePage({
             <div className="kbli-guilloche" />
           </div>
 
-          <div className="relative grid gap-8 px-5 pb-8 pt-6 sm:px-10 sm:pb-10 sm:pt-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12 lg:px-12 lg:pb-12">
+          <div className="relative grid gap-6 px-5 pb-8 pt-5 sm:gap-8 sm:px-10 sm:pb-10 sm:pt-9 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12 lg:px-12 lg:pb-12">
             <div className="min-w-0">
               {/* Lockup — the mark BESIDE the wordmark, never as a letter
                   (design corner §3.6; BRIEF-v2 §2.1). */}
@@ -102,12 +102,12 @@ export default async function KBLIHomePage({
               <h1
                 id="kbli-title"
                 style={{ fontFamily: "var(--font-serif)" }}
-                className="mt-6 max-w-[16ch] text-[34px] font-[450] leading-[1.08] tracking-[-0.035em] text-[var(--kbli-text-primary)] sm:mt-8 sm:text-[48px] lg:text-[56px]"
+                className="mt-4 max-w-[16ch] text-[30px] font-[450] leading-[1.08] tracking-[-0.035em] text-[var(--kbli-text-primary)] sm:mt-8 sm:text-[48px] lg:text-[56px]"
               >
                 Find the KBLI 2025 code for your business
               </h1>
 
-              <div id="search" className="mt-5 scroll-mt-24 sm:mt-7">
+              <div id="search" className="mt-4 scroll-mt-24 sm:mt-7">
                 <KBLISearch
                   autoFocus
                   initialQuery={initialQuery}
@@ -128,7 +128,7 @@ export default async function KBLIHomePage({
                   trust-figures.ts (the rating links to the live profile). */}
               <p
                 data-kbli-readings=""
-                className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t border-[var(--kbli-border)] pt-3 text-[13px] tabular-nums text-[var(--kbli-text-secondary)]"
+                className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t sm:mt-6 border-[var(--kbli-border)] pt-3 text-[13px] tabular-nums text-[var(--kbli-text-secondary)]"
               >
                 <span>{codeCount} codes</span>
                 <span aria-hidden="true">·</span>
@@ -152,7 +152,7 @@ export default async function KBLIHomePage({
             </div>
 
             <div className="min-w-0 lg:border-l lg:border-[var(--kbli-border)] lg:pl-10">
-              <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-secondary)]">
+              <h2 className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--kbli-text-secondary)]">
                 The {sections.length} sections, by number of codes
               </h2>
               <KBLISectorDial

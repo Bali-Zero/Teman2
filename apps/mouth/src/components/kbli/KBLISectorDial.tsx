@@ -82,8 +82,8 @@ export function KBLISectorDial({
   const needleDeg = current ? current.mid : 0;
 
   return (
-    <div className="kbli-dial grid items-center gap-6 sm:grid-cols-[minmax(0,15rem)_1fr] lg:grid-cols-1 xl:grid-cols-[minmax(0,15rem)_1fr]">
-      <div className="relative mx-auto w-full max-w-[15rem]">
+    <div className="kbli-dial grid grid-cols-1 items-center gap-5">
+      <div className="relative mx-auto w-full max-w-[12rem] sm:max-w-[13rem]">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className="block h-auto w-full"
@@ -189,7 +189,7 @@ export function KBLISectorDial({
       <ol
         aria-label="KBLI 2025 sections"
         data-kbli-dial-list=""
-        className="grid grid-cols-2 gap-x-4 sm:grid-cols-2"
+        className="grid grid-cols-2 gap-x-5"
       >
         {sections.map((s) => (
           <li key={s.id}>
@@ -199,7 +199,7 @@ export function KBLISectorDial({
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(s.id)}
               onBlur={() => setActive(null)}
-              className="group flex min-h-[44px] items-center gap-2 border-b border-[var(--kbli-border)] text-[13px] leading-tight text-[var(--kbli-text-primary)] no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)]"
+              className="group flex min-h-[44px] items-center gap-2 border-b lg:min-h-[30px] border-[var(--kbli-border)] text-[13px] leading-tight text-[var(--kbli-text-primary)] no-underline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)]"
             >
               <span
                 aria-hidden="true"
