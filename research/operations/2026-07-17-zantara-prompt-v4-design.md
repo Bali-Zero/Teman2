@@ -504,7 +504,7 @@ re-verified against source before accepting/rejecting. Verdict per item:
    never calls `.format()` on `ZANTARA_MASTER_TEMPLATE` at all — it returns the raw template
    string with `{user_memory}`, `{rag_results}`, `{query}` still present as literal unresolved
    text, then string-concatenates `context_sections`. This means the Oracle/Creator-mode path
-   (used directly by Antonello per `is_creator` detection in `prompt_builder.py`) has been
+   (used directly by Zero per `is_creator` detection in `prompt_builder.py`) has been
    leaking three literal curly-brace placeholders into every system prompt on that path,
    independent of anything in this PR. **NOT fixed here** — distinct bug, distinct blast radius
    (Oracle path, not WhatsApp), and fixing `PromptManager`'s placeholder resolution is its own

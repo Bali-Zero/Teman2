@@ -1,6 +1,6 @@
 #!/bin/bash
 # install_verify_connectome.sh — idempotent installer for the connectome
-# drift-verifier LaunchAgent (authorized by Antonello 2026-06-13).
+# drift-verifier LaunchAgent (authorized by Zero 2026-06-13).
 #
 # Schedule by machine:
 #   Pro (user nuzantara) : DAILY  07:30 WITA — canonical guardian, runs from

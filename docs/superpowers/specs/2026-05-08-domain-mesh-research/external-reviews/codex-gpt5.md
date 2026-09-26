@@ -46,4 +46,4 @@
 
 The biggest concrete risk is **building Phase 1 on green mocked contracts that are live-contract broken**.
 
-The pasal client is the clearest proof: tests pass against mocked top-level fields, but the real API currently requires auth, uses `/api/v1/search`, and returns nested `work` data. The plan even labels the live smoke as optional/known-risk and out of scope if it fails. If Phase 1 treats Phase 0 as "foundations done," Antonello will spend time wiring domain agents, trust tiers, and federation over adapters that fail the first real request or silently ingest wrong shapes.
+The pasal client is the clearest proof: tests pass against mocked top-level fields, but the real API currently requires auth, uses `/api/v1/search`, and returns nested `work` data. The plan even labels the live smoke as optional/known-risk and out of scope if it fails. If Phase 1 treats Phase 0 as "foundations done," Zero will spend time wiring domain agents, trust tiers, and federation over adapters that fail the first real request or silently ingest wrong shapes.

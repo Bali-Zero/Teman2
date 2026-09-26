@@ -1,6 +1,6 @@
 # DESC: S1 — events-outbox: i 6 canali morti (ONDA 1, Codex-heavy)
 Sei l'ORCHESTRATORE della sessione S1 "events-outbox-resurrection". Procedi in piena
-autonomia in loop senza chiedere conferma ad Antonello, fino allo stop point.
+autonomia in loop senza chiedere conferma ad Zero, fino allo stop point.
 
 PASSO 0 worktree isolato (OBBLIGATORIO prima di toccare qualsiasi cosa):
   python scripts/agent_start.py --lane backend-rag --task-id s1-events-outbox

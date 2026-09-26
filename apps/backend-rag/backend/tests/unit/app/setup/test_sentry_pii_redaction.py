@@ -44,7 +44,7 @@ PII_SAMPLES: dict[str, str] = {
     "email": "zero@balizero.com",
     "phone": "+62 812 3456 7890",
     "client_id": "CL-000142",
-    "name": "Antonello",
+    "name": "Zero",
     "surname": "Siano",
     # Added 2026-08-02 with the free-text tests below. Deliberately sequential,
     # like every other value here: these are sentinels, and a sentinel that

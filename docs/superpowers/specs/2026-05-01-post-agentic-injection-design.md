@@ -1,7 +1,7 @@
 # Era Post-Agentica — Iniezione Cell + Genoma via vertical-slice renewals
 
 **Data**: 2026-05-01 (revisione 2026-05-02 §3.3.2 + §3.3.6 + §4 Sprint 1-2)
-**Autore**: Claude Opus 4.7 (max effort, 1M context) in dialogo con Antonello (Zero)
+**Autore**: Claude Opus 4.7 (max effort, 1M context) in dialogo con Zero (Zero)
 **Branch propost**: `feature/post-agentic-injection-2026-05-01` (Sprint 0 done) → `feat/post-agentic-skill-registry-2026-05-02` + `feat/post-agentic-heartbeat-middleware-2026-05-02` (Sprint 1)
 
 **Changelog 2026-05-02**:

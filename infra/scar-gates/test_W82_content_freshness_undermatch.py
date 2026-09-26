@@ -21,7 +21,7 @@ WHAT W82 IS (verified verbatim on origin/main 2026-06-23):
 WHY THIS TEST PASSES (exit 0) WHILE THE BUG IS UNFIXED — read carefully:
   A `scar_test` is GREEN = "the disease is under control / captured", NOT "the
   disease doesn't exist". W82's ANTIBODY (a fact-based sentinel) is a designed-
-  but-NOT-armed operator firebreak (Antonello, 2026-06-16) — we must NOT arm it
+  but-NOT-armed operator firebreak (Zero, 2026-06-16) — we must NOT arm it
   here. So this gate does the honest thing the Loop-B allows WITHOUT crossing the
   firebreak: it PINS the documented current (broken) contract and asserts the
   under-match still behaves exactly as the scar describes.

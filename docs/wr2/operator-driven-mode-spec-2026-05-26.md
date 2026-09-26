@@ -324,7 +324,7 @@ Steps performed by `wr2_operator_apply.py` (P1 follow-up implementation):
 
 ---
 
-## Open questions for Antonello
+## Open questions for Zero
 
 1. **`wr2_operator_apply.py` location**: `scripts/` (local cron) vs `apps/backend-rag/.../wr2/operator_apply.py` (backend service)?
 2. **Approval gate UI**: Telegram bot button vs `kita.balizero.com/wr2-approve` route?

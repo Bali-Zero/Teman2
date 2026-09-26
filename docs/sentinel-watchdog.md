@@ -59,7 +59,7 @@ restart → exit`. Total wall time ~50ms-2s. It cannot hang
    crashes mid-tick, the next `StartInterval` fires a fresh process
    anyway. If launchd itself fails, the entire Pro Mac is dead and
    that's caught by Air-side monitoring (lack of SSH reachability) and
-   by Antonello losing interactive use of the machine.
+   by Zero losing interactive use of the machine.
 3. **Mutual watch.** The watchdog writes
    `~/.agent/decisions/state/sentinel_meta_watchdog.json` each tick.
    Sentinel can be extended (separate task) to alert if THAT goes

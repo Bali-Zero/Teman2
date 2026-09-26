@@ -2,7 +2,7 @@
 every pass, by comparing the DESIRED state (computed now from the DB) against the
 RECORDED state (what we did last time, stored in wa_corpus_docs).
 
-This is the flow Antonello asked for: it is NOT enough to create a Doc once.
+This is the flow Zero asked for: it is NOT enough to create a Doc once.
 Every run we must handle the state transitions:
   - new counterpart                          -> CREATE
   - title changed (prospect→client, CRM name updated, category changed) -> RENAME
@@ -49,7 +49,7 @@ ARCHIVED_PREFIX = "ARCHIVED · "
 
 
 def archived_title(title: str) -> str:
-    """Title used when a Doc is archived (kept, not deleted — Antonello: rename)."""
+    """Title used when a Doc is archived (kept, not deleted — Zero: rename)."""
     if title.startswith(ARCHIVED_PREFIX):
         return title
     return ARCHIVED_PREFIX + title

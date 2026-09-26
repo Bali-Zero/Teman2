@@ -19,7 +19,7 @@
 > tokens. Reconciling the two is an Article 12.4 amendment and an owner decision — draft it in
 > `_proposed-amendments/`, do not resolve it by shipping.
 >
-> Created 2026-08-31. Owner: Antonello Siano.
+> Created 2026-08-31. Owner: Zero.
 
 ---
 

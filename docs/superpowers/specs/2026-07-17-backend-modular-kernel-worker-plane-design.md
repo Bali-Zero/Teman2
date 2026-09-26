@@ -2,7 +2,7 @@
 date: 2026-07-17
 component: backend-architecture
 status: implementation-plan-review-pending
-decision_owner: Antonello
+decision_owner: Zero
 implementation: plan-review
 authorization: active-goal-2026-07-18
 authorization_thread: 019f734c-8e0c-7562-a448-14e73ac2e43d

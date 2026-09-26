@@ -20,7 +20,7 @@ it. `_write_layout_proposal()` in `wr2_reflexion_synthesis.py` closes that gap.
    new/modified layout family). Nothing here is read by the live rendering pipeline
    (`scripts/wr2_html_renderer/composer.py` only reads the sibling `layouts/*.md` files, never
    this subdirectory) — a proposal here has **zero production effect** until promoted.
-2. **operator review** — Antonello (or a session acting as operator per
+2. **operator review** — Zero (or a session acting as operator per
    `feedback_no_operator_lane_io_sono_te_2026_07_06`) reads the proposal, checks it against the
    brand constitution and the existing layout family pool, and decides accept/reject/rework.
 3. **merged into the library** — on accept, the reviewer authors or edits the corresponding

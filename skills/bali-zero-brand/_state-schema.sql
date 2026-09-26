@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS reflective_lessons (
     lesson_category TEXT NOT NULL,       -- voice | layout | image | copy | regulatory
     confidence TEXT NOT NULL,            -- low | medium | high (based on N motivating runs + designer-delta strength)
     proposed_amendment_path TEXT,        -- if lesson proposes constitution change
-    accepted_at TEXT,                    -- when Antonello commits the lesson
+    accepted_at TEXT,                    -- when Zero commits the lesson
     rejected_at TEXT,
     rejection_reason TEXT
 );

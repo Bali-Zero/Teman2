@@ -1,6 +1,6 @@
 # ── Ghostty · machine profile: M5 (balizero@Air-M5, M5 24GB) ───────────────
 # Loaded AFTER fleet.ghostty, so anything here overrides the fleet base.
-# Role: THE interactive workstation. Antonello works here 100% of the time.
+# Role: THE interactive workstation. Zero works here 100% of the time.
 # Deliberately light: no daemons, no cron, no Ollama.
 # NOTE the different home — this machine's user is `balizero`, not `nuzantara`.
 

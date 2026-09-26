@@ -10,7 +10,7 @@ is the Guardian itself: it reads that on-disk corpus and uses a long-context LLM
 to hunt INCOHERENCE across four dimensions, then writes a ranked report + a
 structured JSON delta.
 
-FOUR COHERENCE DIMENSIONS (confirmed with Antonello 2026-06-15)
+FOUR COHERENCE DIMENSIONS (confirmed with Zero 2026-06-15)
 --------------------------------------------------------------
   internal_nlm : sources WITHIN one NB that contradict each other / dup / stale.
   vs_regulatory: KB facts vs current Indonesian regulatory reality
@@ -26,7 +26,7 @@ WHY GEMINI 3.5 FLASH (not Opus, not Pro)
 Per memory decision_opus_mythos_model_2026_06_13 + empirical `agy models`:
 3.5 Flash (High) is the right tool for wide fan-out / sweep work (this is a sweep
 over hundreds of sources); 3.1 Pro is reserved for final architectural synthesis.
-Antonello's explicit choice for this guardian: Gemini 3.5 Flash.
+Zero's explicit choice for this guardian: Gemini 3.5 Flash.
 
 GUARDRAILS (inherited from Phase A/B — CLAUDE.md §5/§14, SYMBIOSIS Law 2)
 ------------------------------------------------------------------------
@@ -90,7 +90,7 @@ REGULATORY_DIR = REPO_ROOT / "research" / "regulatory"
 # already whitelists, but the Guardian re-checks what it feeds to the LLM.
 PII_DENY = ("crm", "mata", "garuda", "subhi", "client", "harari", "agents")
 
-# agy model — Antonello's choice; verified present via `agy models` (2026-06-15).
+# agy model — Zero's choice; verified present via `agy models` (2026-06-15).
 AGY_MODEL = "Gemini 3.5 Flash (High)"
 AGY_TIMEOUT_S = 600  # a corpus-wide pass is long-context; be patient.
 

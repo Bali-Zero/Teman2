@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WR3 Veo audio nativo extractor — primary VO path (override 2026-05-22 Antonello).
+"""WR3 Veo audio nativo extractor — primary VO path (override 2026-05-22 Zero).
 
 Pilot-A `pilot-A-veo-zantara-lipsync.mp4` confirmed Veo 3.1 audio is Emma-grade lipsync.
 This script extracts the embedded audio track from each `clips/<n>.mp4`, concatenates to

@@ -153,7 +153,7 @@ def can_view_all_clients(user: dict) -> bool:
 
 def is_super_admin(user: dict) -> bool:
     """
-    Check if a user is a super admin (e.g. Zero, Antonello).
+    Check if a user is a super admin (e.g. Zero, Zero).
 
     Super admin is the global admin set (`settings.admin_emails_set`) minus
     the CRM-specific additions. We accept the global set as the super-admin

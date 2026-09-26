@@ -47,7 +47,7 @@ def _safe(s: str) -> str:
 
 
 def doc_title(counterpart_phone: str, crm_name: str | None) -> str:
-    """OBLIGATORY naming rule (Antonello, 2026-06-04):
+    """OBLIGATORY naming rule (Zero, 2026-06-04):
 
     The Doc name is EITHER the CRM client name OR the phone number (a number that
     will later become a CRM client). The phone number is ALWAYS embedded as the

@@ -88,7 +88,7 @@ implementation):
 
 DeepSeek round 2 returned 0 bytes (heredoc escape bug). Codex round 2
 investigated `nlm --help` interactively but produced no narrative
-critique. Antonello approved proceeding given 10/10 round-1 bugs were
+critique. Zero approved proceeding given 10/10 round-1 bugs were
 addressed. Cap iterations to avoid devils_advocate_loop_pattern.
 
 **Useful side-effect of Codex investigation**: empirical confirmation

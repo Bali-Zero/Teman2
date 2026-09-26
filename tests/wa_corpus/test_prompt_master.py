@@ -11,7 +11,7 @@ def test_prompt_contains_all_top_level_sections():
 
 
 def test_prompt_has_two_levels_and_perspectives():
-    # PART A multi-perspective + PART B specific points (Antonello's requirement)
+    # PART A multi-perspective + PART B specific points (Zero's requirement)
     for perspective in ("Operational", "Relationship", "Commercial", "Risk"):
         assert perspective in PROMPT_MASTER
     for point in ("Company / entity", "Deadlines", "Amounts / payments",
