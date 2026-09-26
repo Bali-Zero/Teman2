@@ -179,6 +179,19 @@ async def test_c1_real_pg_catalog_matches_required_columns_exactly(pg_socket_dir
         await run_init_schema(pool)
         async with pool.acquire() as conn:
             rows = await conn.fetch(
+                # REWORK (PR #7413 gate, condition C-A R5): kept as
+                # `atttypmod` — a PR #7395 round briefly swapped this for a
+                # literal NULL to match the parser's then-chosen "accept a
+                # typmod and drop it" semantics, but that erased the only
+                # layer that ever SAW a typmod. The static parser now
+                # rejects every typmod outright (`_TYPMOD_CAPABLE_TYPES` is
+                # empty in test_wa_team_promises_sql_crosscheck.py), so
+                # nothing in `_REQUIRED_COLUMNS` can carry one and reach
+                # here — `atttypmod` and a literal NULL are identical on
+                # every row today. Keeping `atttypmod` means this query
+                # still NOTICES the day a typmod'd column slips past the
+                # static check some other way, instead of being typmod-
+                # blind by construction like the runtime guard already is.
                 "SELECT c.relname AS table_name, a.attname, "
                 "format_type(a.atttypid, a.atttypmod) AS pg_type, a.attnotnull "
                 "FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
