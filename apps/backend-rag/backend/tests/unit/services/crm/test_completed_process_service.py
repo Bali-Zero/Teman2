@@ -28,15 +28,13 @@ from backend.services.crm.completed_process_service import CompletedProcessServi
 
 def _make_service() -> tuple[CompletedProcessService, MagicMock]:
     pool = MagicMock()
-    # completed_process_service.py imports both classes eagerly at module
-    # scope (unlike automation.py's ProcessAutomationService, which does a
-    # lazy in-method import) — patch the names bound in *this* module, not
-    # their origin modules, or the real DriveFolderService()/ZohoEmailService()
-    # constructors still run.
-    with (
-        patch("backend.services.crm.completed_process_service.ZohoEmailService"),
-        patch("backend.services.crm.completed_process_service.DriveFolderService"),
-    ):
+    # completed_process_service.py imports DriveFolderService eagerly at
+    # module scope — patch the name bound in *this* module, not its origin
+    # module, or the real DriveFolderService() constructor still runs.
+    # (ZohoEmailService was removed 2026-09-27 — the Brevo→Zoho fallback
+    # called it with the wrong keyword arguments since the call site was
+    # first written, so it never actually worked; see TestSendWithBrevoFallback.)
+    with patch("backend.services.crm.completed_process_service.DriveFolderService"):
         svc = CompletedProcessService(pool)
     svc.drive_service = AsyncMock()
     return svc, pool
@@ -120,3 +118,118 @@ def test_save_final_document_record_no_longer_exists() -> None:
     under its old name — a future re-add should write to `documents` with
     an explicit column mapping, not silently resurrect this method."""
     assert not hasattr(CompletedProcessService, "_save_final_document_record")
+
+
+# ---------------------------------------------------------------------------
+# _send_with_brevo_fallback — Zoho fallback removal (2026-09-27)
+# ---------------------------------------------------------------------------
+#
+# GUILT (the bug this fixes): the old "Zoho fallback" branch called
+# ``ZohoEmailService.send_email(to_email=..., subject=..., body=...)`` —
+# kwargs that never matched the real signature
+# ``send_email(user_id, to, subject, content, ...)`` since the call site
+# was first written (2026-02-22, before Brevo-primary even existed). Every
+# double-failure was therefore recorded with ``provider="zoho"`` even
+# though Zoho was never actually reachable through that call. The
+# regression signal below is exactly that: a Brevo failure must now
+# record ``provider="brevo"``, never ``"zoho"`` — a lone `create_autospec`
+# on the (now-deleted) attribute can't express this anymore since the
+# attribute itself is gone, which is the point: `test_no_zoho_attribute`
+# guards against it coming back.
+
+
+def test_no_zoho_attribute() -> None:
+    """GUILT: ZohoEmailService must not be re-attached to this service —
+    it was never a usable fallback (staff-personal OAuth mailbox, not a
+    system identity) and every call site for it was broken since 2026-02-22."""
+    svc, _pool = _make_service()
+    assert not hasattr(svc, "zoho_email_service")
+
+
+@pytest.mark.asyncio
+async def test_brevo_failure_records_failed_brevo_and_alerts() -> None:
+    """GUILT: before the fix this row would land as
+    ``status='failed', provider='zoho'`` (a wasted, always-broken Zoho
+    attempt) instead of ``provider='brevo'`` with an immediate alert."""
+    svc, _pool = _make_service()
+
+    mock_client = AsyncMock()
+    mock_client.post.side_effect = RuntimeError("Brevo down")
+
+    with (
+        patch(
+            "backend.services.crm.completed_process_service.get_email_client",
+            AsyncMock(return_value=mock_client),
+        ),
+        patch(
+            "backend.services.crm.completed_process_service.log_email_attempt",
+            AsyncMock(return_value=42),
+        ) ,
+        patch(
+            "backend.services.crm.completed_process_service.record_email_result",
+            AsyncMock(),
+        ) as mock_record,
+        patch(
+            "backend.services.crm.completed_process_service.notify_email_failure_critical",
+            MagicMock(),
+        ) as mock_notify,
+        pytest.raises(RuntimeError, match="Brevo down"),
+    ):
+        await svc._send_with_brevo_fallback(
+            "client@x.com",
+            "Subject",
+            "Body",
+            email_type="completion_client",
+            practice_id=1,
+            client_id=10,
+        )
+
+    mock_record.assert_awaited_once()
+    _args, kwargs = mock_record.call_args
+    assert kwargs["status"] == "failed"
+    assert kwargs["provider"] == "brevo"
+    mock_notify.assert_called_once()
+    assert mock_notify.call_args.kwargs["email_type"] == "completion_client"
+
+
+@pytest.mark.asyncio
+async def test_brevo_success_records_sent_brevo_no_alert() -> None:
+    svc, _pool = _make_service()
+
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_client = AsyncMock()
+    mock_client.post.return_value = mock_response
+
+    with (
+        patch(
+            "backend.services.crm.completed_process_service.get_email_client",
+            AsyncMock(return_value=mock_client),
+        ),
+        patch(
+            "backend.services.crm.completed_process_service.log_email_attempt",
+            AsyncMock(return_value=42),
+        ),
+        patch(
+            "backend.services.crm.completed_process_service.record_email_result",
+            AsyncMock(),
+        ) as mock_record,
+        patch(
+            "backend.services.crm.completed_process_service.notify_email_failure_critical",
+            MagicMock(),
+        ) as mock_notify,
+    ):
+        await svc._send_with_brevo_fallback(
+            "client@x.com",
+            "Subject",
+            "Body",
+            email_type="completion_client",
+            practice_id=1,
+            client_id=10,
+        )
+
+    mock_record.assert_awaited_once()
+    _args, kwargs = mock_record.call_args
+    assert kwargs["status"] == "sent"
+    assert kwargs["provider"] == "brevo"
+    mock_notify.assert_not_called()

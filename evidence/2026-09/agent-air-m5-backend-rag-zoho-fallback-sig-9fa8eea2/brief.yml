@@ -1,0 +1,135 @@
+task_id: zoho-fallback-sig
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Removes a Brevo→Zoho email fallback that has been broken since it was first written and
+  wires the two CRM services that already had partial audit coverage, plus a third copy that
+  had none, to alert immediately on a Brevo failure instead.
+
+  Origin (git-log-S verified, not inferred): `ZohoEmailService.send_email` landed 2025-12-31
+  (`67c81fae1b`) with signature `(self, user_id, to, subject, content, cc=None, bcc=None,
+  attachments=None, is_html=True)`. `completed_process_service.py`'s Zoho fallback call was
+  added 2026-02-22 (`4a34ac8404`) calling it as
+  `send_email(to_email=..., subject=..., body=...)` — kwargs that never matched, from day
+  one; `waiting_documents_service.py` mirrors it. Brevo-primary/Zoho-fallback wrapping came
+  later (`7e479a8d31`, 2026-03-31) — the fallback never worked even at introduction. A third,
+  independent copy of the same broken idiom lives in `services/crm/automation.py`'s
+  module-level `_send_with_brevo_fallback` (used by the live `ProcessAutomationService`), and
+  unlike the two named services it did not even catch the resulting `TypeError` — a Brevo
+  failure there escaped with no Telegram page and no `email_send_log` row at all.
+
+  Prod impact, measured (`email_send_log`, read-only `scripts/pg.sh` against
+  `nuzantara_readonly`, all-time and 90-day, COUNTS ONLY per this repo's PII output boundary):
+  `provider` is ever only `'brevo'`/`'unknown'` — **zero** rows with `provider='zoho'`,
+  **zero** rows whose `error_message` mentions `zoho`/`TypeError`/`positional`/`keyword`. So
+  Brevo has never actually failed for these three flows since `email_send_log` started
+  (2026-04-21) — this fix closes a live landmine, not a firing one. (Separately observed,
+  NOT this bug, reported to the mandate owner: 536 `email_send_log` rows escalated as
+  `stale_sending: worker_crash_or_timeout` — a distinct worker-hang issue, out of scope here.)
+
+  Design choice (b) of three considered, per mandate owner's explicit go: the router that
+  DOES call `ZohoEmailService.send_email` correctly (`app/routers/zoho_email.py`) passes the
+  AUTHENTICATED user's own OAuth-connected mailbox — Zoho here is a staff member's personal
+  mailbox, never a system identity, which contradicts the house rule that CRM mail goes out
+  as `from=zantara@balizero.com` via Brevo. So the fix removes the fallback rather than
+  wiring it to a real Zoho identity, and pages the owner immediately
+  (`notify_email_failure_critical`) on a Brevo failure instead.
+
+  A fourth, GENUINELY DEAD copy of the same idiom was found and deliberately left untouched:
+  `services/crm/process_automation_service.py`'s own `ProcessAutomationService` /
+  `_send_with_brevo_fallback` — zero importers anywhere in `apps/backend-rag/backend`
+  (confirmed via repo-wide grep); the live `ProcessAutomationService` is the one in
+  `automation.py`, imported by `services/crm/__init__.py` and `practice_status_listener.py`.
+  Fixing dead code is not this PR's concern; named here so it doesn't surprise a future reader.
+constraints:
+  - "One PR, one concern (Builder Contract §1): removes the dead Zoho fallback and adds the
+    missing audit wiring in exactly the 3 live call sites the mandate named — no rename of
+    `_send_with_brevo_fallback` (kept for minimal diff/lower collision risk with the sibling
+    PR below), no touch of the genuinely dead 4th copy."
+  - 'Overlap declared, not hidden: open PR #7449 (`agent/air-m5/backend-rag/senderpii-c5`,
+    sender-PII lane) redacts `to_email` in the EXACT log lines this PR deletes inside
+    `completed_process_service.py`''s and `waiting_documents_service.py`''s
+    `_send_with_brevo_fallback` (the "Brevo failed... trying Zoho" / "Both Brevo and Zoho
+    failed" lines) — confirmed via `gh pr diff 7449`. Whichever of the two PRs merges second
+    will need a trivial rebase; the mandate owner has said they will serialize. #7449''s own
+    brief.yml (`agent-air-m5-backend-rag-senderpii-c5-9c18e7a3`) independently named
+    `automation.py` and `process_automation_service.py` as the same broken idiom and left them
+    as an explicit follow-up — this PR IS that follow-up, converging from the other direction
+    (removal, not redaction).'
+  - "No client PII in this PR's own artifacts (diff, tests, this brief) — every example
+    address is a synthetic `*@x.com` shape; the DB counts above are counts only, no addresses,
+    no client/practice identifiers."
+acceptance:
+  - text: >-
+      `CompletedProcessService`/`WaitingDocumentsService`/`ProcessAutomationService` (via
+      `automation.py`'s module-level `_send_with_brevo_fallback`) SHALL NOT attach or call a
+      `ZohoEmailService` anywhere; a Brevo failure SHALL record `email_send_log` with
+      `status='failed', provider='brevo'` (never `provider='zoho'`) and SHALL call
+      `notify_email_failure_critical` before re-raising; a Brevo success SHALL record
+      `status='sent', provider='brevo'` and SHALL NOT alert.
+    probe: "pytest backend/tests/unit/services/crm/test_completed_process_service.py backend/tests/unit/services/crm/test_waiting_documents_service.py backend/tests/unit/services/crm/test_automation.py"
+  - text: >-
+      No regression across the wider CRM/notifications/integrations suites, and `ruff check`
+      on the 6 touched source+test files is clean.
+    probe: "pytest backend/tests/unit/services/crm backend/tests/unit/services/notifications backend/tests/unit/services/integrations; ruff check backend/services/crm/completed_process_service.py backend/services/crm/waiting_documents_service.py backend/services/crm/automation.py backend/tests/unit/services/crm/test_completed_process_service.py backend/tests/unit/services/crm/test_waiting_documents_service.py backend/tests/unit/services/crm/test_automation.py"
+  - text: >-
+      Import chain unaffected — `backend.app.dependencies` and the three touched service
+      modules still import cleanly with `ZohoEmailService` removed.
+    probe: 'python -c "from backend.app.dependencies import get_current_user; from backend.services.crm.completed_process_service import CompletedProcessService; from backend.services.crm.waiting_documents_service import WaitingDocumentsService; from backend.services.crm.automation import ProcessAutomationService; print(''OK'')"'
+consumer_map:
+  - "`CompletedProcessService._send_with_brevo_fallback` — every completion-client and
+    completion-team email (practice status → `completed`) now alerts the owner immediately
+    and records `provider='brevo'` on a Brevo failure, instead of silently recording
+    `provider='zoho'` after an always-broken second attempt."
+  - "`WaitingDocumentsService._send_with_brevo_fallback` — same fix for waiting-docs-client
+    and waiting-docs-team emails (practice status → `waiting_documents`)."
+  - "`ProcessAutomationService` (`automation.py`) — process-start client/team emails (practice
+    status → `on_process`) now write to `email_send_log` at all (new email_types
+    `process_start_client`/`process_start_team`) and page the owner on a Brevo failure; before
+    this PR a Brevo failure here produced no audit row and no alert, only a caught-and-logged
+    `TypeError` two frames up in `trigger_on_process_start`."
+risks:
+  - "New `email_send_log.email_type` values `process_start_client`/`process_start_team` are
+    not in `email_audit.CRITICAL_EMAIL_TYPES`/`NON_RESURRECTABLE_EMAIL_TYPES` — deliberate:
+    this PR's alert path calls `notify_email_failure_critical` directly and unconditionally
+    (same as the other two services already did), so classification membership does not gate
+    the alert. The retry worker will treat a failed row of these new types as ordinary/
+    retryable (computes a `retry_after`), which is new behavior (automation.py had zero retry
+    capability before) and is a net improvement, not a regression — flagged for the mandate
+    owner in case a future pass wants to add these two types to `NON_RESURRECTABLE_EMAIL_TYPES`
+    for symmetry with `completion_client`/`waiting_docs_client`/`welcome`."
+  - "Diff churn (421 raw add+del across 6 files, `evidence_pack_lint.py --print-floor` = 2,
+    source = size) floors this PR at Gear 2 on size alone, not on any hot-zone path hit —
+    3 near-identical call sites plus full guilt+innocence coverage for each (including a new
+    test file for `waiting_documents_service.py`, which had none before) inflated churn past
+    the Gear-1 default; declared here rather than split into 3 PRs, since splitting would
+    have left the mandate's `automation.py` audit-wiring ask isolated from its own callers."
+grader: |
+  TDD guilt/innocence via a real `ZohoEmailService(db_pool)` instance (no mock, no
+  `create_autospec` needed — the ACTUAL class rejects the wrong kwargs on its own):
+  `git stash push --keep-index` on just the 3 source files (tests untouched) reproduced the
+  live production bug directly —
+  `TypeError: ZohoEmailService.send_email() got an unexpected keyword argument 'to_email'` —
+  in both `test_completed_process_service.py::test_brevo_failure_records_failed_brevo_and_alerts`
+  and the `waiting_documents_service` sibling; `test_no_zoho_attribute` failed on both
+  (`assert not True`); `automation.py`'s two new tests failed with `AttributeError` (no
+  `log_email_attempt` bound in that module pre-fix) — 6 failed, 18 passed. `git stash pop`
+  restored the fix; the same 24 tests then passed, 0 failed.
+
+  Full local run after restore (venv `apps/backend-rag/.venv`, `PYTHONPATH=.`):
+  24/24 in the 3 targeted files; 407/407 in `backend/tests/unit/services/crm/`; 96/96 in
+  `backend/tests/unit/services/notifications/`; 924/924 across crm+notifications+integrations
+  combined. `ruff check` on all 6 touched files: clean. Import-chain smoke
+  (`backend.app.dependencies` + the 3 touched service modules): OK.
+budget: >-
+  1 build lane (this session, investigate-then-build per team-lead mandate), no cross-family
+  review lane — Gear 2 (declared; matches `scripts/evidence_pack_lint.py --print-floor` run
+  locally against this branch's own changed-files/numstat). 6 files touched (3 source + 3
+  test, one test file new), +306/-115 in tracked diff plus a new 128-line test file; this
+  brief is evidence-only and outside that count.
+pii: >-
+  none — every example address in this PR's diff/tests/pack is a synthetic `*@x.com` shape;
+  the production DB counts quoted in `objective` above are aggregate counts only (COUNT(*)
+  GROUP BY provider/status/error_message-pattern) — no address, client_id, practice_id or row
+  content was read or transcribed anywhere in this PR or this brief.

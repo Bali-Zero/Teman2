@@ -16,7 +16,6 @@ from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
-from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_audit import (
     format_send_error,
     log_email_attempt,
@@ -41,7 +40,6 @@ class CompletedProcessService:
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
-        self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
 
     @cache_invalidating(
@@ -377,10 +375,19 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
         include_logo: bool = False,
         prebuilt_html: bool = False,
     ) -> None:
-        """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
+        """Send email via Brevo. No provider fallback (2026-09-27, removed).
 
-        Every attempt is audited to ``email_send_log``. Double-failure is
-        re-raised so the caller's ``*_notified`` flag reflects reality.
+        A Zoho fallback used to sit here but called
+        ``ZohoEmailService.send_email`` with the wrong keyword arguments
+        (``to_email``/``subject``/``body`` vs. the real
+        ``user_id``/``to``/``subject``/``content``) since the call site was
+        first written 2026-02-22 — Zoho was never per-tenant/system mail
+        anyway, only a staff member's own OAuth-connected mailbox, which
+        contradicts the house rule that CRM mail goes out as
+        ``from=zantara@balizero.com`` via Brevo. Every attempt is audited to
+        ``email_send_log``; a Brevo failure pages the owner immediately via
+        :func:`notify_email_failure_critical` and is re-raised so the
+        caller's ``*_notified`` flag reflects reality.
         """
         row_id = await log_email_attempt(
             self.db_pool,
@@ -418,45 +425,21 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
             return
         except Exception as brevo_error:
-            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
             brevo_err_msg = format_send_error(brevo_error)
-
-        # 2) Zoho fallback
-        try:
-            await self.zoho_email_service.send_email(
-                to_email=to_email,
-                subject=subject,
-                body=body,
-            )
-            logger.info("Email sent to %s via Zoho fallback", to_email)
-            await record_email_result(
-                self.db_pool,
-                row_id,
-                status="sent",
-                provider="zoho",
-                error_message=f"brevo_failed: {brevo_err_msg}",
-            )
-            return
-        except Exception as zoho_error:
-            combined_err = f"brevo: {brevo_err_msg} | zoho: {format_send_error(zoho_error)}"
-            logger.error(
-                "Both Brevo and Zoho failed for %s: %s",
-                to_email,
-                combined_err,
-            )
+            logger.error("Brevo failed for %s, no fallback provider: %s", to_email, brevo_err_msg)
             await record_email_result(
                 self.db_pool,
                 row_id,
                 status="failed",
-                provider="zoho",
-                error_message=combined_err,
+                provider="brevo",
+                error_message=brevo_err_msg,
             )
             notify_email_failure_critical(
                 email_type=email_type,
                 to_email=to_email,
                 subject=subject,
                 practice_id=practice_id,
-                error=combined_err,
+                error=brevo_err_msg,
             )
             raise
 

@@ -14,7 +14,6 @@ import asyncpg
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.welcome.welcome_templates import PRACTICE_DOCUMENT_CHECKLISTS
-from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_audit import (
     format_send_error,
     log_email_attempt,
@@ -39,7 +38,6 @@ class WaitingDocumentsService:
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
-        self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating(
         [
@@ -259,12 +257,20 @@ Zantara — Bali Zero Team
         include_logo: bool = False,
         prebuilt_html: bool = False,
     ) -> None:
-        """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
+        """Send email via Brevo. No provider fallback (2026-09-27, removed).
 
-        Every attempt is recorded in ``email_send_log`` so the retry worker
-        can pick up drops silently. If BOTH providers fail the exception is
-        re-raised after emitting a Telegram page — the caller's outer
-        try/except then flips ``*_notified=False`` in the results dict.
+        A Zoho fallback used to sit here but called
+        ``ZohoEmailService.send_email`` with the wrong keyword arguments
+        (``to_email``/``subject``/``body`` vs. the real
+        ``user_id``/``to``/``subject``/``content``) since the call site was
+        first written — Zoho here would only ever be a staff member's own
+        OAuth-connected mailbox, not a system identity, which contradicts
+        the house rule that CRM mail goes out as
+        ``from=zantara@balizero.com`` via Brevo. Every attempt is recorded
+        in ``email_send_log`` so the retry worker can pick up drops
+        silently. If Brevo fails the exception is re-raised after emitting
+        a Telegram page — the caller's outer try/except then flips
+        ``*_notified=False`` in the results dict.
         """
         row_id = await log_email_attempt(
             self.db_pool,
@@ -309,44 +315,20 @@ Zantara — Bali Zero Team
             return
         except Exception as brevo_error:
             brevo_err_msg = format_send_error(brevo_error)
-            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_err_msg)
-
-        # 2) Zoho fallback — wrapped so that a double-failure is observable.
-        try:
-            await self.zoho_email_service.send_email(
-                to_email=to_email,
-                subject=subject,
-                body=body,
-            )
-            logger.info("Email sent to %s via Zoho fallback", to_email)
-            await record_email_result(
-                self.db_pool,
-                row_id,
-                status="sent",
-                provider="zoho",
-                error_message=f"brevo_failed: {brevo_err_msg}",
-            )
-            return
-        except Exception as zoho_error:
-            combined_err = f"brevo: {brevo_err_msg} | zoho: {format_send_error(zoho_error)}"
-            logger.error(
-                "Both Brevo and Zoho failed for %s: %s",
-                to_email,
-                combined_err,
-            )
+            logger.error("Brevo failed for %s, no fallback provider: %s", to_email, brevo_err_msg)
             await record_email_result(
                 self.db_pool,
                 row_id,
                 status="failed",
-                provider="zoho",
-                error_message=combined_err,
+                provider="brevo",
+                error_message=brevo_err_msg,
             )
             notify_email_failure_critical(
                 email_type=email_type,
                 to_email=to_email,
                 subject=subject,
                 practice_id=practice_id,
-                error=combined_err,
+                error=brevo_err_msg,
             )
             raise
 

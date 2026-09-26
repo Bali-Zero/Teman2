@@ -134,33 +134,84 @@ class TestFetchPracticeWithClient:
 
 @pytest.mark.asyncio
 class TestSendWithBrevoFallback:
-    async def test_sends_via_brevo(self):
+    """GUILT (2026-09-27): the old "Zoho fallback" here called
+    ``zoho_email_service.send_email(to_email=..., subject=..., body=...)`` —
+    kwargs that never matched ``ZohoEmailService.send_email``'s real
+    signature (``user_id, to, subject, content, ...``) — and, unlike the
+    sibling copies in completed_process_service.py/waiting_documents_service.py,
+    did not even catch the resulting TypeError: a Brevo failure escaped this
+    function with no Telegram page and no ``email_send_log`` row at all
+    (the old ``test_falls_back_to_zoho`` used a bare ``AsyncMock()`` with no
+    ``spec=ZohoEmailService``, so it accepted the wrong kwargs silently and
+    never caught this). The fallback is removed; the fix adds the same
+    ``email_send_log`` audit wiring the other two services already had.
+    """
+
+    async def test_sends_via_brevo_records_sent(self):
         from backend.services.crm.automation import _send_with_brevo_fallback
 
-        mock_zoho = AsyncMock()
+        pool, _conn = _make_pool()
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
-        with patch("backend.services.crm.automation.httpx.AsyncClient") as mock_cls:
+        with (
+            patch("backend.services.crm.automation.httpx.AsyncClient") as mock_cls,
+            patch(
+                "backend.services.crm.automation.log_email_attempt",
+                AsyncMock(return_value=42),
+            ),
+            patch(
+                "backend.services.crm.automation.record_email_result", AsyncMock()
+            ) as mock_record,
+            patch(
+                "backend.services.crm.automation.notify_email_failure_critical", MagicMock()
+            ) as mock_notify,
+        ):
             mock_c = AsyncMock()
             mock_c.__aenter__.return_value = mock_c
             mock_c.__aexit__.return_value = False
             mock_c.post.return_value = mock_response
             mock_cls.return_value = mock_c
-            await _send_with_brevo_fallback(mock_zoho, "to@x.com", "Sub", "Body")
-        mock_zoho.send_email.assert_not_awaited()
+            await _send_with_brevo_fallback(
+                pool, "to@x.com", "Sub", "Body", email_type="process_start_client"
+            )
+        mock_record.assert_awaited_once()
+        assert mock_record.call_args.kwargs["status"] == "sent"
+        assert mock_record.call_args.kwargs["provider"] == "brevo"
+        mock_notify.assert_not_called()
 
-    async def test_falls_back_to_zoho(self):
+    async def test_brevo_failure_records_failed_and_alerts_no_zoho_attempt(self):
+        """GUILT: before the fix this exception would have propagated as a
+        TypeError from the broken Zoho call, with no alert and no audit row."""
         from backend.services.crm.automation import _send_with_brevo_fallback
 
-        mock_zoho = AsyncMock()
-        with patch("backend.services.crm.automation.httpx.AsyncClient") as mock_cls:
+        pool, _conn = _make_pool()
+        with (
+            patch("backend.services.crm.automation.httpx.AsyncClient") as mock_cls,
+            patch(
+                "backend.services.crm.automation.log_email_attempt",
+                AsyncMock(return_value=42),
+            ),
+            patch(
+                "backend.services.crm.automation.record_email_result", AsyncMock()
+            ) as mock_record,
+            patch(
+                "backend.services.crm.automation.notify_email_failure_critical", MagicMock()
+            ) as mock_notify,
+        ):
             mock_c = AsyncMock()
             mock_c.__aenter__.return_value = mock_c
             mock_c.__aexit__.return_value = False
             mock_c.post.side_effect = Exception("Brevo down")
             mock_cls.return_value = mock_c
-            await _send_with_brevo_fallback(mock_zoho, "to@x.com", "Sub", "Body")
-        mock_zoho.send_email.assert_awaited_once()
+            with pytest.raises(Exception, match="Brevo down"):
+                await _send_with_brevo_fallback(
+                    pool, "to@x.com", "Sub", "Body", email_type="process_start_client"
+                )
+        mock_record.assert_awaited_once()
+        assert mock_record.call_args.kwargs["status"] == "failed"
+        assert mock_record.call_args.kwargs["provider"] == "brevo"
+        mock_notify.assert_called_once()
+        assert mock_notify.call_args.kwargs["email_type"] == "process_start_client"
 
 
 @pytest.mark.asyncio
@@ -182,11 +233,9 @@ class TestLogActivity:
 class TestProcessAutomationService:
     def _make_service(self):
         pool, conn = _make_pool()
-        with patch("backend.services.integrations.zoho_email_service.ZohoEmailService"):
-            from backend.services.crm.automation import ProcessAutomationService
+        from backend.services.crm.automation import ProcessAutomationService
 
-            svc = ProcessAutomationService(pool)
-        svc.zoho_email_service = AsyncMock()
+        svc = ProcessAutomationService(pool)
         return svc, pool, conn
 
     async def test_trigger_practice_not_found(self):
