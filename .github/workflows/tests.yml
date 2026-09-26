@@ -930,7 +930,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15
+        image: ghcr.io/bali-zero/ci-mirror/postgres:15
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -944,7 +947,10 @@ jobs:
           - 5432:5432
 
       redis:
-        image: public.ecr.aws/docker/library/redis:7
+        image: ghcr.io/bali-zero/ci-mirror/redis:7
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 2s
@@ -2232,7 +2238,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15
+        image: ghcr.io/bali-zero/ci-mirror/postgres:15
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -2246,7 +2255,10 @@ jobs:
           - 5432:5432
 
       redis:
-        image: public.ecr.aws/docker/library/redis:7
+        image: ghcr.io/bali-zero/ci-mirror/redis:7
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 2s
@@ -2653,7 +2665,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15
+        image: ghcr.io/bali-zero/ci-mirror/postgres:15
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
