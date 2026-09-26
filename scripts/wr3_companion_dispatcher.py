@@ -175,7 +175,7 @@ def _read_wr2_sidecar(payload: dict[str, Any], *, key: str) -> dict[str, Any]:
 def _resolve_requested_sub_modes(
     wr2_brief: dict[str, Any], config: CompanionModeConfig
 ) -> list[str]:
-    """Inspect WR2 brief for Antonello flags + return ordered list of sub-modes.
+    """Inspect WR2 brief for Zero flags + return ordered list of sub-modes.
 
     The default sub-mode is always added unless `companion_skip=true` — Zero's
     2026-07-26 ruling made the companion PREORDAINED, so there is no opt-in flag

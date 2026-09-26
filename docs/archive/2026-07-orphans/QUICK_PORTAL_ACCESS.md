@@ -44,7 +44,7 @@ export DATABASE_URL="postgresql://postgres:<REDACTED_2026_08_21_see_supabase_das
 python backend/scripts/create_portal_test_user_simple.py \
   --email antonello@balizero.com \
   --pin 123456 \
-  --name "Antonello"
+  --name "Zero"
 ```
 
 ### Step 3: Accedi

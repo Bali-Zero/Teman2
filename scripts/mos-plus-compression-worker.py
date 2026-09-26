@@ -4,7 +4,7 @@
 Reads pending raw_observations, groups by session_id, prompts LLM for synthesis,
 INSERTs compressed memory + links via compressed_to_memory_id.
 
-Routing matrix v2.1 (Antonello correction — peer-tier, not degraded):
+Routing matrix v2.1 (Zero correction — peer-tier, not degraded):
   osint_sensitive=1   → Ollama qwen3.5:9b LOCAL    (Law 2 sovranità)
   default routine     → claude haiku OAuth          (cheap, fast, peer)
   batch >50 obs       → agy Gemini 3.1 Pro 1M ctx   (long context, peer)

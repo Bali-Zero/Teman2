@@ -72,7 +72,7 @@ scripts/mini-migration/overlap-detector.sh
 4. **Sync daemons untouched**: memory-sync, claude-config-sync, secrets-sync,
    drive-sync, git-pull-main must stay green.
 
-## Open questions (spec §9, pending Antonello)
+## Open questions (spec §9, pending Zero)
 
 1. Redis cross-machine for distributed lock? (`Nuzantara.local:6379` exposed
    on LAN vs each machine isolated)

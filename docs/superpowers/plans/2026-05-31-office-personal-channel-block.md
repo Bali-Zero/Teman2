@@ -16,7 +16,7 @@
 
 Two task types:
 
-- **CONFIG/OPERATOR tasks** (Step 0, C1, C3) — manual actions by Antonello (NextDNS console, contract, Windows install). Given as exact checklists, not TDD — they are not repo code.
+- **CONFIG/OPERATOR tasks** (Step 0, C1, C3) — manual actions by Zero (NextDNS console, contract, Windows install). Given as exact checklists, not TDD — they are not repo code.
 - **CODE tasks** (C2, C4) — real repo changes with tests where testable.
 
 Sequencing: Step 0 (contract) ∥ C1 (NextDNS) first → C2 (Mac) → C3 (Windows) → C4 (tamper-detection, required).

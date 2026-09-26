@@ -9,7 +9,7 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retractio
 
 # Claude Code best configuration — Maggio 2026
 
-**Trigger**: post-diagnosi regression Nuzantara (2026-05-19). Antonello chiede ricerca cross-source su miglior config Claude Code per stack come il nostro (monorepo 24 apps, multi-LLM cascade, Pro+Mini, 60+ MCP tool, autonomous L2).
+**Trigger**: post-diagnosi regression Nuzantara (2026-05-19). Zero chiede ricerca cross-source su miglior config Claude Code per stack come il nostro (monorepo 24 apps, multi-LLM cascade, Pro+Mini, 60+ MCP tool, autonomous L2).
 
 **Sintesi 1 frase**: Anthropic ha rilasciato strumenti progressive-disclosure (Tool Search 2.1.7, Skill-3-layer loading, hierarchical CLAUDE.md, ENABLE_TOOL_SEARCH=auto) che risolvono in modo strutturale i 3 problemi della nostra config attuale — context saturation, MEMORY.md truncation silenziosa, tool schema bloat — ma vanno adottati esplicitamente, non sono default per setup legacy come il nostro.
 
@@ -274,13 +274,13 @@ If you find yourself citing facts you "know" without a Read tool call → STOP a
 
 ## 7. Cosa NON ho potuto verificare (open questions)
 
-1. **Exa MCP** è in `.mcp.json` ma richiede OAuth manuale (`/mcp` da user). Avrei voluto eseguire deep-research Exa parallelo a NB-AGENTS+WebSearch. **Azione**: chiedere a Antonello di completare auth con `/mcp` → claude.ai Exa, poi ri-eseguire questa query con 4 source.
+1. **Exa MCP** è in `.mcp.json` ma richiede OAuth manuale (`/mcp` da user). Avrei voluto eseguire deep-research Exa parallelo a NB-AGENTS+WebSearch. **Azione**: chiedere a Zero di completare auth con `/mcp` → claude.ai Exa, poi ri-eseguire questa query con 4 source.
 2. **Claude Code 2.1.144 vs 2.1.140 changelog differenze precise**. WebSearch ha confermato "52 changes 2.1.69→2.1.101 e poi 2.1.140-144 release" ma non differenze granulari su context-packing.
 3. **Empirical test che ENABLE_TOOL_SEARCH=auto:5 effettivamente defer 8 MCP server di Nuzantara**. Misurabile: contare token system prompt prima/dopo settings change con stesso payload.
 
 ---
 
-## 8. Sintesi 1 frase (per Telegram update Antonello)
+## 8. Sintesi 1 frase (per Telegram update Zero)
 
 Il sistema Claude Code di Nuzantara è 80% allineato a SOTA Maggio 2026 (skill library, multi-LLM cascade, devils-advocate, Reflexion cron, hierarchical CLAUDE.md), ma soffre 4 regressioni tecniche cumulative (MEMORY.md truncation, hook lessons stale, archive auto-load violato, SSH mDNS-only) che insieme fanno percepire "Claude non più di Nuzantara" — fix P0 in 60 minuti.
 

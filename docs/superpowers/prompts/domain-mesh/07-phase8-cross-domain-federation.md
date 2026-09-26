@@ -4,7 +4,7 @@
 >
 > **Stima**: 8-12 giorni solo-dev.
 >
-> **Pre-azione richiesta a Antonello**: nessuna. Questa fase è puramente integrativa.
+> **Pre-azione richiesta a Zero**: nessuna. Questa fase è puramente integrativa.
 >
 > **Differenza dalle fasi precedenti**: questa NON aggiunge un nuovo dominio, **collega quelli esistenti** in un grafo federato + skill graduation pipeline (la promessa Round 2 dal R1.5 NB lifecycle).
 
@@ -67,13 +67,13 @@ Poi leggi:
 6. **Skill graduation pipeline** (design §1.6 sink 5):
    - `skill_graduation.py`: detector di NB-WORKBENCH che hanno raggiunto maturity (3+ deep items, sustained query traffic, no internal conflicts)
    - Auto-spawn proposal in `~/.claude/plugins/proposed-skills/<name>/SKILL.md`
-   - Antonello review + approve via `/skills/graduate <name>` slash command
+   - Zero review + approve via `/skills/graduate <name>` slash command
    - Once approved: skill copied to `~/.claude/plugins/cache/.../skills/`
 
 7. **ADR auto-generator** (design §1.6 sink 6):
    - `adr_generator.py`: critical autonomous decisions (NB-merge, NB-decommission, federation rule change) → ADR markdown in `docs/adr/`
    - Format: standard MADR template
-   - Sign-off: system + Antonello approval timestamp
+   - Sign-off: system + Zero approval timestamp
 
 8. **Cross-domain cron orchestrator**:
    - `infra/scripts/federation-cron.sh`
@@ -123,7 +123,7 @@ A questo punto, il sistema è **completo** secondo il design 5-fase:
 - Smoke test: PolicyEvent fake → assert routes a 3+ domini correttamente
 - Mitochondrial monitor smoke su 3+ NB: scoring corretto
 - Decision log audit: 24h di esecuzione produce JSONL valido
-- Antonello approva alert routing rules YAML
+- Zero approva alert routing rules YAML
 
 ### Esito finale
 

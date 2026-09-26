@@ -287,7 +287,7 @@ Zantara — Bali Zero Team
             if cc:
                 payload["cc"] = cc
             # Context for the endpoint's @balizero.com CC hard rule
-            # (Antonello 2026-06-17): non-invoice → assigned lead, else asya@.
+            # (Zero 2026-06-17): non-invoice → assigned lead, else asya@.
             # cc here is the practice's assigned/team-leader address.
             payload["email_type"] = email_type
             if cc:

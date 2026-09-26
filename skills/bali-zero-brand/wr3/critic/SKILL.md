@@ -21,7 +21,7 @@ MANDATORY quality gate. Reviews 4 lanes: (1) Identity — ArcFace cosine + 5-fra
 
 ## Symbiosis law emphasis
 
-Law 5 (Zero ultima istanza) — gate before Antonello/Damar manual publish
+Law 5 (Zero ultima istanza) — gate before Zero/Damar manual publish
 
 ## On-tone examples
 

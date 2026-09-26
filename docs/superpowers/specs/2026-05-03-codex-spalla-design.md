@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-03
 **Status:** approved (user, 2026-05-03)
-**Authors:** Claude Opus 4.7 (1M ctx) + Antonello (Bali Zero)
+**Authors:** Claude Opus 4.7 (1M ctx) + Zero (Bali Zero)
 **Branch:** `feat/codex-spalla`
 
 ## 1. Problem

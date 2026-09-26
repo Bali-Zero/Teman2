@@ -110,5 +110,5 @@
     "PMK Nomor 61 Tahun 2026",
     "PMK Nomor 57 Tahun 2026"
   ],
-  "note": "All 4 NB-INTEL queries failed with auth_expired (nlm CLI). Antonello: run 'nlm login' manually to restore the NotebookLM path. Web cross-check ran on all 11 sources (5 primary + 6 backup); zero deltas matching the Step-4 service-line filter found within the 48h window."
+  "note": "All 4 NB-INTEL queries failed with auth_expired (nlm CLI). Zero: run 'nlm login' manually to restore the NotebookLM path. Web cross-check ran on all 11 sources (5 primary + 6 backup); zero deltas matching the Step-4 service-line filter found within the 48h window."
 }

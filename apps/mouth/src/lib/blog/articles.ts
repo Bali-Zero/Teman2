@@ -1026,7 +1026,7 @@ export async function searchArticles(
 // (marketing)/page.tsx with a silent `.filter(Boolean)`. A deleted/renamed
 // slug therefore silently drops with NO signal — and Next.js notFound() returns
 // HTTP 200, so status-only monitoring also misses it. This guard makes the
-// drift LOUD at build/test time. (Antonello flagged 2026-06-11.)
+// drift LOUD at build/test time. (Zero flagged 2026-06-11.)
 
 /** Keys in homepage-layout.json that hold a curated article slug. Non-slug
  *  metadata keys (anything starting with `_`, e.g. `_comment`) are ignored. */

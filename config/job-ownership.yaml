@@ -641,7 +641,7 @@ jobs:
     candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+    notes: "Zero-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.image-generator:
     owner: pro
@@ -669,7 +669,7 @@ jobs:
     candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+    notes: "Zero-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.measurer:
     owner: pro
@@ -767,7 +767,7 @@ jobs:
     candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+    notes: "Zero-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.sla-worker:
     owner: pro
@@ -865,7 +865,7 @@ jobs:
     candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+    notes: "Zero-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.yield-optimizer.weekly:
     owner: pro

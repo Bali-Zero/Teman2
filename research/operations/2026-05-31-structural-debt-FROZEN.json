@@ -26,7 +26,7 @@
       "id": "W38-rolsuper",
       "title": "backend_rag_v2 Postgres role has rolsuper=t (PENDING P1 SECURITY)",
       "verdict": "still_armed",
-      "evidence": "postgres-nuzantara MCP read-only (verified TWICE this turn): SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true. Spec research/operations/specs/W38-backend-rag-v2-nosuperuser.md EXISTS (18420 bytes), frontmatter 'status: DRAFT — awaiting Antonello approval', 'status_detail: NOT EXECUTED — Stage C (ALTER ROLE NOSUPERUSER) requires explicit operator sign-off'. Audit snapshot 2026-05-23-w38-backend-rag-v2-rolsuper-audit.json EXISTS (15123 bytes). grep migrations_v2 for NOSUPERUSER = NONE (demotion never applied). Bomb is LIVE. Correctly NEEDS-ANTONELLO; NOT demoted by this audit.",
+      "evidence": "postgres-nuzantara MCP read-only (verified TWICE this turn): SELECT rolname,rolsuper FROM pg_roles WHERE rolsuper=true returns backend_rag_v2 rolsuper=true. Spec research/operations/specs/W38-backend-rag-v2-nosuperuser.md EXISTS (18420 bytes), frontmatter 'status: DRAFT — awaiting Zero approval', 'status_detail: NOT EXECUTED — Stage C (ALTER ROLE NOSUPERUSER) requires explicit operator sign-off'. Audit snapshot 2026-05-23-w38-backend-rag-v2-rolsuper-audit.json EXISTS (15123 bytes). grep migrations_v2 for NOSUPERUSER = NONE (demotion never applied). Bomb is LIVE. Correctly NEEDS-ANTONELLO; NOT demoted by this audit.",
       "fix_owner": "ANTONELLO (sign-off required; do NOT ALTER ROLE autonomously)"
     },
     {
@@ -131,7 +131,7 @@
 
   "rolsuper_still_armed": true,
   "w38_spec_exists": true,
-  "w38_status": "DRAFT — awaiting Antonello approval; NOT EXECUTED",
+  "w38_status": "DRAFT — awaiting Zero approval; NOT EXECUTED",
 
   "top3_armed_bombs_by_blast_radius": [
     {

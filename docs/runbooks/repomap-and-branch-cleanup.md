@@ -17,7 +17,7 @@ silently growing past 162:
    `origin/*`, classifies into `merged` / `claude/* zombie` / `stale other`,
    and emits a Markdown report. Weekly cron runs report-only + Telegram
    alert; deletion (only of category 1, merged-safe) is a manual
-   `--apply` invocation by Antonello.
+   `--apply` invocation by Zero.
 
 ---
 
@@ -83,7 +83,7 @@ Apply (delete category 1 = merged-safe only — NEVER category 2/3):
 ```bash
 scripts/branch_graveyard_cleanup.sh --apply
 # Confirms each `git push origin --delete <branch>`.
-# Operator (Antonello) MUST run this manually — the weekly cron is
+# Operator (Zero) MUST run this manually — the weekly cron is
 # report-only.
 ```
 

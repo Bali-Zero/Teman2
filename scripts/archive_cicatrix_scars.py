@@ -22,7 +22,7 @@ so this loop now only runs as an optional manual cleanup, never as a wall.
 This script closes the loop: append (by /scar) + auto-archive (by this) =
 bounded size.
 
-CRITERION (chosen by Antonello 2026-06-07): "RESOLVED/INFO + age", with an
+CRITERION (chosen by Zero 2026-06-07): "RESOLVED/INFO + age", with an
 age-based STRUCTURAL fallback because the file's MASS is open ⚠️ STRUCTURAL
 entries ~30-39d old — RESOLVED/INFO alone can never bring it under 40k.
 
@@ -68,7 +68,7 @@ ARCHIVE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars-archive.md"
 LIMIT_CHARS = 10_000_000
 DEFAULT_TARGET_CHARS = 9_000_000
 DEFAULT_RESOLVED_AGE_DAYS = 14
-# Antonello 2026-06-07: file mass is OPEN ⚠️ STRUCTURAL ~30-39d old; a 60d
+# Zero 2026-06-07: file mass is OPEN ⚠️ STRUCTURAL ~30-39d old; a 60d
 # fallback could never bring it under 40k. 15d makes old-but-open structural
 # scars archivable as a Stage-2 fallback ONLY when Stage 1 isn't enough.
 DEFAULT_STRUCTURAL_AGE_DAYS = 15

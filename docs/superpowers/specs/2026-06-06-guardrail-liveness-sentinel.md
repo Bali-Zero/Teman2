@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-06
 **Author**: Claude (Opus 4.8), autonomous, M5
-**Status**: DRAFT v2 — panel-reviewed, pending Antonello approval + Pro re-verification
+**Status**: DRAFT v2 — panel-reviewed, pending Zero approval + Pro re-verification
 **Origin**: Reflection on Anthropic essay "When AI builds itself" (5 Jun 2026). Its single named
 bottleneck for the most-likely future (Scenario 2): _"code review becomes the constraint as Claude
 generates faster than humans verify."_ We have scars of the same shape — guardrail alive-on-paper,
@@ -119,7 +119,7 @@ v1 was "build a new weekly sentinel." v2 is: **add the 3 missing checks to the e
 
 ## 7. Next steps (gated)
 
-1. **Antonello approval** of this v2 direction (extend-not-build). ✅ APPROVED 2026-06-06.
+1. **Zero approval** of this v2 direction (extend-not-build). ✅ APPROVED 2026-06-06.
 2. **Re-verify on Pro** every `[ASSUMED-MEMORY]` tag. ✅ DONE 2026-06-06 (Pro back online):
 3. Implement as extension to `nuzantara-sentinel.py` + register with `sentinel_meta_watchdog.sh`.
 4. TDD per acceptance §6 before any LaunchAgent install.

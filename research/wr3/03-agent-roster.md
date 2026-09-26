@@ -21,7 +21,7 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the 2026-08-02 retractio
 | C1  | **wr3-veo-producer DEVE essere SPLIT** in `wr3-clip-renderer` (Phase 5+6) + `wr3-audio-asset-producer` (Phase 7+8) | Failure domains diversi: render fallisce su safety filter / cost / identity drift; audio fallisce su pronuncia / LUFS / license / Content ID. Retry loop devono essere isolati. Single-responsibility violato a 26-28 verbi cross-modal. |
 | C2  | **Phase 4 → `wr3-pre-render-gatekeeper` standalone**                                                               | Self-review trap: shot-director scrive prompt Veo (`3.4a-d`), non può anche approvarli (`4.2 review_shot_list_against_cliche`). Separation of creator/approver è inviolabile pre-spend.                                                  |
 | C3  | **`wr3-reflexion-synth` resta cron weekly standalone** (NON nell'orchestrator)                                     | Mirror esatto WR2 pattern. Orchestrator deve restare lean per real-time. Reflexion legge episodi sett. + diffs human-override, sintetizza ≤10 lezioni Markdown.                                                                          |
-| C4  | **Skill graduation = Antonello human-veto**                                                                        | No auto-merge. `_proposed/<name>.md` → 3 successful uses (critic ≥ threshold) → Antonello reviewa diff git → commit to main. Voyager propone, Antonello firma.                                                                           |
+| C4  | **Skill graduation = Zero human-veto**                                                                        | No auto-merge. `_proposed/<name>.md` → 3 successful uses (critic ≥ threshold) → Zero reviewa diff git → commit to main. Voyager propone, Zero firma.                                                                           |
 | C5  | **Least-privilege tool restrictions** per ogni agente                                                              | Read-only agents (brief, critic) no Write/Edit/Agent. Execution agents (clip-renderer, post-assembler) no WebFetch. Tutti no recursive Agent calls eccetto orchestrator.                                                                 |
 
 ## Divergenze 2-contro-1 (risolte)
@@ -183,7 +183,7 @@ color: red  # same as clip-renderer — distinct context (Phase 11 vs Phase 5/6)
 6. **Cost zero paid API**: solo Claude OAuth (Opus/Sonnet/Haiku), Gemini free, DeepSeek API ($0.01/q OK), NotebookLM free. NEVER ANTHROPIC_API_KEY.
 7. **No emoji** in user-facing output.
 
-## Open questions per Antonello (decision gate)
+## Open questions per Zero (decision gate)
 
 1. **Critic split rationale**: NB-AGENTS ha proposto 3 critic paralleli (sync + brand + identity). Tu accetti single con internal lanes (2 vs 1 voto) o vuoi forzare split?
 2. **Roster expansion 11 → 13**: panel ha aggiunto wr3-pre-render-gatekeeper (giustificato, no self-review) e split veo-producer (giustificato, retry loop isolation). Confermi 13 actors o vuoi compress?
@@ -199,7 +199,7 @@ Per ogni agente disegnare:
 - **Impara** (Reflexion feedback loop verbal lessons + Voyager skill proposals)
 - **Produce** (verb cluster + I/O contract)
 - **Misura** (metrics: latency, cost, critic score, retry rate)
-- **Migliora** (skill graduation via 3 successful uses + Antonello approval)
+- **Migliora** (skill graduation via 3 successful uses + Zero approval)
 - **Muore** (sunset: 60 days unused → `_archived/`, broken skill → quarantine)
 
 Trigger: confirm Step 3 roster decisions (A/B/C/D)?

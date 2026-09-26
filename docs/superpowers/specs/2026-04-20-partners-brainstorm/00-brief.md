@@ -36,7 +36,7 @@ filtered view.
   warm-depth design tokens `packages/core/styles/bz-tokens.css`).
 - RBAC: existing pattern `verify_client_access` with
   `except HTTPException: raise` before generic except (SCAR 2026-03-26).
-- Admin: Zero (`zero@`), Antonello (`antonellosiano@`), Asya (`asya@`) see all.
+- Admin: Zero (`zero@`), Zero (`antonellosiano@`), Asya (`asya@`) see all.
 - Indonesian regulatory context: UU PDP (personal data), PPh 21/23 (witholding
   tax on professional services), kwitansi/invoice standard.
 

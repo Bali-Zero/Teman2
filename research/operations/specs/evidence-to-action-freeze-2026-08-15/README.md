@@ -7,7 +7,7 @@ adversarial_review: exempt-frozen-spec-landed-verbatim-from-10d500e1c
 **Frozen architecture:** `research-os/v1.0.0`
 **Freeze date:** 2026-08-15 WITA
 **Status:** canonical decision record; implementation is split into the twenty-three work packets in this directory
-**Change authority:** Antonello/Zero, advised by the interactive Conductor and an independent verifier
+**Change authority:** Zero/Zero, advised by the interactive Conductor and an independent verifier
 
 ## 1. North Star
 

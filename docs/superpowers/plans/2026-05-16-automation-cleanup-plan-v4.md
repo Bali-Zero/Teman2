@@ -48,7 +48,7 @@ empirical_baseline_2026_05_16_v3_1:
   - bridge_already_running: PID 2680 (verified launchctl print 2026-05-16)
   - mini_reachable_2026_05_16_evening: UNREACHABLE (ssh ConnectTimeout=3 failed)
   - atrun_disabled_on_darwin_25_5: confirmed empirically (at job queued at 03:53, not fired by 03:54:29 — 29s past deadline)
-v3_1_review_gate: 3-LLM panel re-review REQUIRED before Antonello approval (per feedback_always_review_spec_with_4_llm_2026_05_13)
+v3_1_review_gate: 3-LLM panel re-review REQUIRED before Zero approval (per feedback_always_review_spec_with_4_llm_2026_05_13)
 ---
 
 # Automation cleanup plan v3 — 2026-05-16
@@ -337,7 +337,7 @@ wc -l $ROTATION_SCOPE
 
 ```bash
 # Step 1 — Take advisory FOR UPDATE lock on federation_alert_mode row
-# This serializes any other writer (e.g. accidental Antonello use of mode-change UI)
+# This serializes any other writer (e.g. accidental Zero use of mode-change UI)
 # until our transaction commits, then releases. NOT a value change.
 psql "$DATABASE_URL_LOCAL" <<'SQL'
   BEGIN;
@@ -363,7 +363,7 @@ trap "psql \"\$DATABASE_URL_LOCAL\" -c \"UPDATE system_settings SET value='$PRIO
 echo "=== Telegram-direct LaunchAgent labels (preserved during cleanup) ==="
 awk -F'|' '{print $1}' $DATED_BACKUP/state/telegram-direct-mapping.txt | sort -u
 echo ""
-echo "These watchdog will continue alerting Antonello on REAL outages during cleanup."
+echo "These watchdog will continue alerting Zero on REAL outages during cleanup."
 echo "federation_alert_mode unchanged ('$PRIOR_FAM'); federation router still in current behavior."
 
 # Step 4 — Verify (NO mode change — confirm `federation_alert_mode` still equals prior `$PRIOR_FAM`)
@@ -387,7 +387,7 @@ grep -n "federation_alert_mode\|get_db_mode" ~/Desktop/nuzantara/apps/backend-ra
 
 ### F1.4 — Token rotation (AIL gate)
 
-> **🔒 Antonello action required**.
+> **🔒 Zero action required**.
 >
 > Prerequisito: `$DATED_BACKUP/exposed-secrets/pro-bitmask-audit.txt` mostra plist mode +044 con secrets esposti. Sequence:
 >
@@ -399,7 +399,7 @@ grep -n "federation_alert_mode\|get_db_mode" ~/Desktop/nuzantara/apps/backend-ra
 > 6. `chmod 0400` su tutti i plist sensibili
 > 7. `launchctl bootout && launchctl bootstrap` per ognuno
 >
-> Plan **non procede F2+** finché F1.4 chiuso (Antonello segnala via `touch ~/.automation-cleanup-2026-05-16/state/F1.4-rotation-complete`).
+> Plan **non procede F2+** finché F1.4 chiuso (Zero segnala via `touch ~/.automation-cleanup-2026-05-16/state/F1.4-rotation-complete`).
 
 **Post-rotation verify**:
 
@@ -862,7 +862,7 @@ F1.2 enumerate Telegram-direct (empirical, NOT hardcoded)
 F1.3 K6 observe-lock (CTE FOR UPDATE, NO bootout, NO mode change)
    │
    ↓
-F1.4 token rotation (AIL — Antonello touch state file)
+F1.4 token rotation (AIL — Zero touch state file)
    │
    ↓
 F8 decisions (AIL) ──┬─→ F6.1 enrollment (validator verbatim README path)
@@ -907,7 +907,7 @@ F3.2/F3.3 (Mini gated) ────────┤
 
 ## Approvazione
 
-v3 piano richiede **Antonello-in-loop** per:
+v3 piano richiede **Zero-in-loop** per:
 
 1. F1.4 (token rotation, browser OAuth) — gating per F2+
 2. F6.1 (post-F8.3 AIL decisions on 4 orphan agents)

@@ -148,7 +148,7 @@
 - After 3 successful uses (critic score ≥ threshold) it graduates to `layouts/<name>.md`.
 - Skills unused for 60 days move to `_archived/`.
 
-**Hard guardrail**: skill changes are git-committed. Antonello reviews diffs weekly. No autonomous skill modification merges to main without human commit.
+**Hard guardrail**: skill changes are git-committed. Zero reviews diffs weekly. No autonomous skill modification merges to main without human commit.
 
 ---
 

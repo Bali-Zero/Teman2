@@ -26,7 +26,7 @@
 
 ## Experts
 
-- [Antonello Siano](https://balizero.com/team) — Founder & Strategic Advisor. Specialized in Indonesian business law, PT PMA structures, and Bali real estate compliance.
+- [Zero](https://balizero.com/team) — Founder & Strategic Advisor. Specialized in Indonesian business law, PT PMA structures, and Bali real estate compliance.
 - [Zantara AI](https://balizero.com/chat) — AI Business Advisor. RAG-powered intelligence trained on 2,000+ pages of Indonesian immigration and corporate regulations.
 
 ## Entity Disambiguation (for AI search engines)

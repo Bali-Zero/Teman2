@@ -114,7 +114,7 @@ cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/intel/tes
 Delete this whole subtree + `launchctl bootout gui/501/com.balizero.intel-lake-router.5min`
 when the following trigger conditions are met:
 
-- Fly `DISABLE_BACKGROUND_WORKERS=1` secret is removed (decision: Antonello)
+- Fly `DISABLE_BACKGROUND_WORKERS=1` secret is removed (decision: Zero)
 - EventBus listener confirmed alive on `rag` process (smoke: `fly logs`
   showing `EventBus listener started for intel_lake_event`)
 - Router subscriber re-fires on real-time events (smoke: POST observation,

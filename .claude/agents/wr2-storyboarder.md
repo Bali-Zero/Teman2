@@ -61,7 +61,7 @@ the NB-INTEL doesn't support.
 - NO body
 - `is_hero_image: true`
 
-**Cover empirical anchors rule (added 2026-05-12, refined same day after Antonello edge-case challenge — Article 6.9.fail enforcement, source `_empirical-metrics-2026-05-12.md`)**:
+**Cover empirical anchors rule (added 2026-05-12, refined same day after Zero edge-case challenge — Article 6.9.fail enforcement, source `_empirical-metrics-2026-05-12.md`)**:
 
 Heading + subhead together MUST carry AT LEAST ONE of these six anchors (any combination of where they appear is fine — number in heading + verdict in subhead, OR contrast in heading + location in subhead, etc.):
 

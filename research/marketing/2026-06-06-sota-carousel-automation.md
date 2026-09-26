@@ -14,7 +14,7 @@ adversarial_review_note: "Frontmatter added 2026-08-02 with the correction block
 **Cost**: $0 (Claude OAuth MAX, free WebSearch/WebFetch)
 **Anchor**: compared against our own production pipeline `apps/war-room` (WR2) + prior `~/.claude/skills/bali-zero-brand/_external-bench-2026-05.md`
 
-> **Why this exists**: Antonello asked for a deep research on how SOTA agentic IG-carousel automations are built, using `/skill reuse-first` so we bring home **both architectures and code**. We already run a mature pipeline (WR2). So this is comparative + code-acquisitive: what is genuinely beyond what we have, and which working code (license-cleared) we can vendor.
+> **Why this exists**: Zero asked for a deep research on how SOTA agentic IG-carousel automations are built, using `/skill reuse-first` so we bring home **both architectures and code**. We already run a mature pipeline (WR2). So this is comparative + code-acquisitive: what is genuinely beyond what we have, and which working code (license-cleared) we can vendor.
 
 ---
 
@@ -245,7 +245,7 @@ Items relayed from Sonnet lanes but **NOT independently re-verified by the orche
 
 ## 12. ⭐ VITALE — Nuova architettura War Room (da agenti freschi, 2026-06-06)
 
-> Antonello: "lavora con agenti freschi per sistemare la nuova potenziale architettura della War Room + un grafico con tutti gli step affiancato all'attuale WR2 per capire cosa deve cambiare." Fatto. Il **grafico affiancato step-by-step completo** è nel file companion:
+> Zero: "lavora con agenti freschi per sistemare la nuova potenziale architettura della War Room + un grafico con tutti gli step affiancato all'attuale WR2 per capire cosa deve cambiare." Fatto. Il **grafico affiancato step-by-step completo** è nel file companion:
 > **`2026-06-06-warroom-new-vs-current-STEPMAP.md`** (stesso dir). Qui sotto la sintesi caricante.
 
 ### La scoperta che cambia tutto (audit del codice vivo)

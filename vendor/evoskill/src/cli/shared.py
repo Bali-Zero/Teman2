@@ -113,7 +113,7 @@ async def call_llm(provider: str, model: str, prompt: str) -> str:
         # Bali Zero Nuzantara vendor strip (CLAUDE.md hard rule):
         # the original `import anthropic` + AsyncAnthropic block was
         # physically removed. We never call the paid Anthropic API by
-        # token (Antonello holds 2 Claude MAX x20 OAuth subscriptions —
+        # token (Zero holds 2 Claude MAX x20 OAuth subscriptions —
         # paying per token would duplicate flat fee). Configure DeepSeek
         # V4 Pro via `provider=deepseek` for proposer/skill-builder, or
         # Gemini 3.1 Pro free OAuth via `provider=google` for entailment.

@@ -121,7 +121,7 @@ Generates two text-only artifacts for community engagement:
 1. **IG comment (≤220 chars)**: Zantara's pinned comment on the carousel itself
 2. **DM reply template (3 variants)**: response template for the 3 most likely DM categories ("Mi serve aiuto", "Quanto costa?", "Sono in questa situazione")
 
-No video. No voiceover. Output is structured JSON for manual review by Antonello before publishing.
+No video. No voiceover. Output is structured JSON for manual review by Zero before publishing.
 
 ### Structure
 
@@ -172,7 +172,7 @@ _"Domanda da expat: avete mai trovato un agente che vi ha detto NO a un Investor
 
 ### Manual review checkpoint (Law 5)
 
-`comment_interactive` outputs are **ALWAYS** manually reviewed by Antonello before publish. The critic Lane 3 gate flags forbidden phrases but does NOT autopublish — there is no "autopublish_comment" code path by design.
+`comment_interactive` outputs are **ALWAYS** manually reviewed by Zero before publish. The critic Lane 3 gate flags forbidden phrases but does NOT autopublish — there is no "autopublish_comment" code path by design.
 
 ## Forbidden across all 3 sub-modes (Lane 3 regex)
 

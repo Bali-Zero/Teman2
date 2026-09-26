@@ -37,7 +37,7 @@ Keep `/codex-second-opinion` and Consiglio v1 **separate**. Do not bolt Codex in
 
 ### Why DIY instead of OpenAI's `codex-plugin-cc`
 
-- Official plugin requires `OPENAI_API_KEY` (not OAuth). CLAUDE.md user-global hard rule bans paid API keys (Antonello holds 3× MAX, ChatGPT Plus, Gemini OAuth — paying per-token would duplicate flat subscriptions).
+- Official plugin requires `OPENAI_API_KEY` (not OAuth). CLAUDE.md user-global hard rule bans paid API keys (Zero holds 3× MAX, ChatGPT Plus, Gemini OAuth — paying per-token would duplicate flat subscriptions).
 - DIY using `codex` CLI shells out to ChatGPT OAuth via Codex itself, which is the sanctioned path.
 
 ## Decision parameters (recap of the 3 design Q&A)

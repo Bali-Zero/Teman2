@@ -68,7 +68,7 @@ cross-family seats.
   verdict screen, copy/legal), §5 the eleven knobs, §6 owner-only decisions, and §7 — the honesty
   section this INDEX draws its WARNING from.
 - `dossier.html` — the owner-facing presentation of the synthesis, published as a Claude Artifact for
-  Antonello to review visually rather than as raw Markdown.
+  Zero to review visually rather than as raw Markdown.
 - `reports/FACT-voa-government-fee.md` — a dedicated verification pass that resolved a three-lane
   contradiction on the e-VOA government fee (see "Three facts" below).
 - `reports/L01-colour.md` — colour systems, night/dark as the hard case. Dark-theme lightness-ramp

@@ -1,6 +1,6 @@
 # spec-tax.md — Tax content cluster mapping & 12 money pages
 
-**Owner**: Antonello + Subhi
+**Owner**: Zero + Subhi
 **Created**: 2026-05-11
 **Source of truth**: this file. Notion / Google Docs intermediate workspaces allowed for brainstorming, final deliverables land here.
 **Status**: §1-§5 ready for Day 2 (Minggu 3 — 14-20 Mei).
@@ -214,7 +214,7 @@ Subhi consumes this table directly when building `ArticleClusterCTA` component (
 
 ## §6 — URL canonicalization & cannibalization fixes (separate ticket, NOT D2 scope)
 
-GSC reveals 4 cannibalization clusters that must be resolved via 301 redirects + `<link rel="canonical">` headers. These are tracked here for Antonello/Subhi visibility but **NOT part of D2 Subhi scope** — they need Next.js routing changes + redirect map + revalidation.
+GSC reveals 4 cannibalization clusters that must be resolved via 301 redirects + `<link rel="canonical">` headers. These are tracked here for Zero/Subhi visibility but **NOT part of D2 Subhi scope** — they need Next.js routing changes + redirect map + revalidation.
 
 ### 6.1 `tax-incentives-indonesia` triple-fork
 
@@ -267,13 +267,13 @@ The `balizero.com` (Domain property) GSC sees both `www.balizero.com` and `baliz
 ## §7 — Deliverable handoff to Subhi
 
 **Owner D2 (Minggu 3 — 14-20 Mei)**: Subhi
-**Owner cluster JSON authoring**: Antonello (this PR + follow-up `data/clusters/c1..c6.json`)
-**Owner §6 redirect map**: Antonello (separate infrastructure PR, no Subhi blocking)
+**Owner cluster JSON authoring**: Zero (this PR + follow-up `data/clusters/c1..c6.json`)
+**Owner §6 redirect map**: Zero (separate infrastructure PR, no Subhi blocking)
 
 ### 7.1 What Subhi needs to start D2
 
 1. ✅ This file (`docs/marketing/spec-tax.md`)
-2. ⏳ The 6 cluster JSON files (Antonello deliverable, **paling lambat Kamis 15 Mei**)
+2. ⏳ The 6 cluster JSON files (Zero deliverable, **paling lambat Kamis 15 Mei**)
 3. ✅ `HeaderWhatsAppCTA` component (already shipped PR #584)
 4. ⏳ `<ArticleClusterCTA cluster="c1-tax-residency" />` component (D2 build itself)
 5. ⏳ `<ArticleToolEmbed tool="tax-calendar" />` component slot (D3)
@@ -290,20 +290,20 @@ The `balizero.com` (Domain property) GSC sees both `www.balizero.com` and `baliz
 
 - Lighthouse SEO ≥ 95 per money page
 - All money pages must have ≥ 5 inbound internal links from cluster siblings (verify via `scripts/audit-internal-links.ts` — to build if doesn't exist, otherwise grep)
-- Vercel preview reviewed by Antonello before merge
+- Vercel preview reviewed by Zero before merge
 
 ---
 
-## §8 — Open questions for Antonello
+## §8 — Open questions for Zero
 
-1. **Is `www.balizero.com` → `balizero.com` 301 redirect on Antonello's roadmap?** Without it, every D2 money page will continue to be indexed twice (waste).
+1. **Is `www.balizero.com` → `balizero.com` 301 redirect on Zero's roadmap?** Without it, every D2 money page will continue to be indexed twice (waste).
 2. **Should `/services/tax` page (currently position 73-79 with 73-83 impressions combined) be kept or redirected to `/tax/` pillar?** Mixed signals: it serves a different intent (commercial/service-oriented) but cannibalizes residency/incentive intent.
 3. **Tourist tax (`bali-tourist-tax-2026-amount`)**: 4-5 query variants, no existing slug. Greenfield article worth creating in C5? Or separate `bali-fees/` cluster?
 4. **`crypto-tax-indonesia-2026.mdx` exists but no GSC visibility yet** — should we promote it (D2 spoke) or wait for organic discovery?
-5. **Subhi access to GSC**: should Antonello add Subhi as Restricted User to `balizero.com` Domain property so he can self-verify after-merge ranking shifts? Recommend: yes, restricted (read-only) role.
+5. **Subhi access to GSC**: should Zero add Subhi as Restricted User to `balizero.com` Domain property so he can self-verify after-merge ranking shifts? Recommend: yes, restricted (read-only) role.
 
 ---
 
 ## §9 — Changelog
 
-- **2026-05-11** — v1 spec created from GSC 90gg export + repo inventory baseline. Author: Antonello (with Claude Opus 4.7 assist). PR: `docs(marketing): spec-tax §1-§5 cluster mapping`.
+- **2026-05-11** — v1 spec created from GSC 90gg export + repo inventory baseline. Author: Zero (with Claude Opus 4.7 assist). PR: `docs(marketing): spec-tax §1-§5 cluster mapping`.

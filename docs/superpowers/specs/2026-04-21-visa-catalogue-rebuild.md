@@ -1,7 +1,7 @@
 # Visa Catalogue rebuild from authoritative seed
 
 **Date:** 2026-04-21
-**Author:** Claude (Opus 4.7, 1M ctx) — brainstormed with Antonello (Zero)
+**Author:** Claude (Opus 4.7, 1M ctx) — brainstormed with Zero (Zero)
 **Scope:** `apps/backend-rag/backend/services/visa_check/{catalogue,match_tree,pricing_bridge}.py`
 **Branch target:** `refactor/visa-catalogue-from-seed`
 

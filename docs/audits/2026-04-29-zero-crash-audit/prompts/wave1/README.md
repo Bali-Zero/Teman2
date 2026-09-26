@@ -63,7 +63,7 @@ S7 (P0-6) — needs S6 (Outbox infra) → wave 3
 | `coord_commit` aspetta >30min | Altra sessione bloccata sul lock | `coord_status` per vedere holder, break manualmente se PID morto |
 | 2 sessioni stesso branch | git worktree non in dir separate | sempre `git worktree add -b feat/X ../nuzantara-wt/Y` |
 | Air sessione fallisce a venv | Air usa `venv` non `.venv` | `source apps/backend-rag/venv/bin/activate` (no `.venv`) |
-| PR merge stuck | CI red su test pre-existing | identificare se è regressione del fix o pre-existing; se pre-existing, `gh pr merge --admin` con permission Antonello |
+| PR merge stuck | CI red su test pre-existing | identificare se è regressione del fix o pre-existing; se pre-existing, `gh pr merge --admin` con permission Zero |
 
 ## Estimated wall-clock
 
@@ -93,7 +93,7 @@ Se durante la wave qualcosa fa baseload deviation severa:
 
 2. **PR S2 deploy aborted**: il canary migration 141_audit_canary fallisce → P0-4 fix non funziona. Stop, escalate to Zero, do NOT merge follow-up cleanup.
 
-3. **S3 trova entrambe le duplicate applicate in prod**: data integrity scenario. Document, escalate, await Antonello decision.
+3. **S3 trova entrambe le duplicate applicate in prod**: data integrity scenario. Document, escalate, await Zero decision.
 
 4. **S4 patch script breaks com.cell.organism o com.balizero.nlm-bridge**: revert backup, escalate.
 

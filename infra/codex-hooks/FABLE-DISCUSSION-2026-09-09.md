@@ -62,7 +62,7 @@ changed during the consultation.
 
 ## Mandate and scope
 
-Antonello requested an actual discussion with **Fable 5.1, xhigh effort** before
+Zero requested an actual discussion with **Fable 5.1, xhigh effort** before
 acting on the six proposals below. This is an independent architecture review,
 not implementation, deployment, or a request for agreement. Challenge the proposals
 against the existing workflow. Keep a distinction between observed runtime,

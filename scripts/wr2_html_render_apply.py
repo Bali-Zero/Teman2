@@ -5,7 +5,7 @@ Polls war_room_drafts for status='drafts_imaged_checked', CAS-claims one via the
 HTML-lane lease (heartbeat-renewable), renders the carousel with the HTML/CSS engine
 (scripts/wr2_html_renderer), uploads the PNGs to Google Drive (SA-DWD), then in ONE
 transaction promotes the draft to 'rendered'+drive_url and enqueues a WhatsApp text
-notification (the Drive link) to Antonello + Damar via the durable wa_outbox. NO
+notification (the Drive link) to Zero + Damar via the durable wa_outbox. NO
 Telegram gate (Legge 5 honored — delivery is the 24h-window WhatsApp text, the link
 lives on Drive regardless).
 
@@ -106,7 +106,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
 MAX_DRAFTS_PER_RUN = 1
-DEFAULT_RECIPIENTS = ["6282230102328", "628213454726"]  # Antonello +62 822-3010-2328, Damar +62 821-3454-726
+DEFAULT_RECIPIENTS = ["6282230102328", "628213454726"]  # Zero +62 822-3010-2328, Damar +62 821-3454-726
 TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 

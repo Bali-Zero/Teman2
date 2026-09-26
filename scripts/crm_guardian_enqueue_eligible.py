@@ -119,7 +119,7 @@ def _resolve_db_url() -> str:
 #
 # We exclude 'success' to avoid re-enqueueing the 5 production-flip clients
 # (queue ids 6, 8, 10, 11, 12). We leave 'error'/'skipped' enqueuable in case
-# Antonello later wants to retry id=7 (266 pydantic error pre-repo-fix) or
+# Zero later wants to retry id=7 (266 pydantic error pre-repo-fix) or
 # id=9 (283 ENOENT pre-repo-fix) — but those are now success in queue 11/12,
 # so they have a different exclusion: client_id with ANY 'success' row.
 

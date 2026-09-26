@@ -261,7 +261,7 @@ Real smoke (manual, separate from automated tests):
 
 ---
 
-## Open question for Antonello
+## Open question for Zero
 
 **Q**: 1 PJAP partner (Pajakku from R3) is needed for Coretax integration **only**. Setup Team itself doesn't need PJAP — it interfaces with regulation databases, not DJP. Confirm Phase 1 doesn't need PJAP contract yet (B2 Tax Engine does, separate Phase).
 
@@ -294,7 +294,7 @@ Default if no answer: skip PJAP for Phase 1 Setup Team.
 
 ## Next step
 
-After Antonello reviews this Phase 1 plan:
+After Zero reviews this Phase 1 plan:
 
 1. If approved → invoke `superpowers:subagent-driven-development` for Tasks 1-10.
 2. If changes requested → revise inline.

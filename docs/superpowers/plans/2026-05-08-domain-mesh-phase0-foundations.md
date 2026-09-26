@@ -1116,7 +1116,7 @@ git commit -m "feat(foundations): cahya BERT-NER bahasa wrapper (R7 SOTA)"
 - Create: `apps/mata-garuda/mata_garuda/foundations/arxiv_sanity_scorer.py`
 - Test: `apps/mata-garuda/tests/foundations/test_arxiv_sanity_scorer.py`
 
-**Context:** R5 — arxiv-sanity-lite uses SVM-on-tfidf (zero LLM cost) for per-tag personal relevance recommendation. We port the core to Python class. Used by B4 Antonello Lab for paper ranking.
+**Context:** R5 — arxiv-sanity-lite uses SVM-on-tfidf (zero LLM cost) for per-tag personal relevance recommendation. We port the core to Python class. Used by B4 Zero Lab for paper ranking.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1183,7 +1183,7 @@ Expected: FAIL with ModuleNotFoundError
 Discovered in R5 SOTA 2026-05-08. Karpathy's pattern: zero LLM cost,
 self-host. Port of arxiv-sanity-lite core algorithm.
 
-Train on Antonello's tagged papers, score new candidates by per-tag SVM.
+Train on Zero's tagged papers, score new candidates by per-tag SVM.
 """
 from __future__ import annotations
 

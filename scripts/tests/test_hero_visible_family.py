@@ -1,4 +1,4 @@
-"""Layout-aware hero-visibility gate (Antonello 2026-06-13).
+"""Layout-aware hero-visibility gate (Zero 2026-06-13).
 
 The `_hero_visible_in_png` gate samples where the PHOTO is exposed for a given
 layout family, instead of always sampling the top third:

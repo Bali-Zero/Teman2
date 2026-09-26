@@ -113,7 +113,7 @@ If verdict=GREEN, the analyzer:
 5. Opens a PR with metrics summary + manual follow-up instructions to add
    `hot-zone-enforcement` to `required_status_checks.contexts` (10 contexts total)
 
-The PR still requires manual approve + merge — Antonello stays in the loop
+The PR still requires manual approve + merge — Zero stays in the loop
 for the actual production change. The analyzer just removes the toil of
 opening the PR.
 

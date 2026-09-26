@@ -263,5 +263,5 @@ SHIP+ARM. Per the ship-lifecycle hard rule, the session owns merge/arm/deploy �
 Concretely, before `--auto` merge is armed on the PR this GatePack ships with: **a Fable-tier
 pass must re-read this GatePack + the actual diff and either bless or reject it.** This
 session will commit, push, and open the PR (ship-lifecycle ownership is not in question), but
-will not itself arm `--auto` merge — that step is flagged to Antonello/the next Fable-tier
+will not itself arm `--auto` merge — that step is flagged to Zero/the next Fable-tier
 turn explicitly, not silently skipped or silently performed.

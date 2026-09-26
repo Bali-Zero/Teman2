@@ -17,7 +17,7 @@ Operating rules:
 - Start read-only: map routes, components, API clients, backend endpoints, auth/session flow, and existing tests before editing.
 - Prefer existing patterns and local helpers. Do not invent a parallel design system.
 - Keep code changes scoped and atomic.
-- Use English for code/docs/commits, Italian only when reporting to Antonello.
+- Use English for code/docs/commits, Italian only when reporting to Zero.
 - Verify with real commands and browser runs. Do not claim a test passed unless you ran it in this turn.
 - Do not deploy production or mutate real client data unless explicitly authorized.
 
@@ -88,6 +88,6 @@ Deliverables:
 - Concise final report listing changed files, tests run, pass/fail status, residual risks, and exact next production gate.
 
 Stop conditions:
-- Stop and ask Antonello only for production deployment, destructive operations, real client-data mutation, or an architecture tradeoff that cannot be resolved from repo context.
+- Stop and ask Zero only for production deployment, destructive operations, real client-data mutation, or an architecture tradeoff that cannot be resolved from repo context.
 - If production login cannot be verified locally, document the exact remaining production smoke and keep local synthetic gates green.
 ```

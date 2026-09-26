@@ -50,7 +50,7 @@
   "adversarial_review": {
     "tool": "Codex GPT-5.5 (Tier 3) attempted",
     "outcome": "HUNG — process alive but 0 CPU for 8+min, no session rollout file, zero stdout (documented OAuth-revoked / network-stall failure mode per CLAUDE.md). Killed. Tier 2 (agy/Gemini) also unavailable on Air-M5 (re-auth required). Per anti-hallucination discipline, NO adversarial output was fabricated.",
-    "mitigation": "The safety claims Codex was asked to challenge were instead settled EMPIRICALLY (race test, lossless round-trip, SQLite durability, consumer execution) — stronger than an LLM opinion. The 2 remaining judgment calls (Q1 commit-default, Q2 per-job cooldown) were decided by the operator-agent grounded in cicatrix scar history; both are documented below for Antonello override."
+    "mitigation": "The safety claims Codex was asked to challenge were instead settled EMPIRICALLY (race test, lossless round-trip, SQLite durability, consumer execution) — stronger than an LLM opinion. The 2 remaining judgment calls (Q1 commit-default, Q2 per-job cooldown) were decided by the operator-agent grounded in cicatrix scar history; both are documented below for Zero override."
   },
   "fixes_shipped": {
     "FIX_1_generator": {

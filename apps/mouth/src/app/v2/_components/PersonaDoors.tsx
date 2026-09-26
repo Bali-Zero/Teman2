@@ -12,7 +12,7 @@ import {
  * directly after the hero. "Start where you are." — the visitor self-selects
  * by situation, not by tool name (Fragomen P10 / GOV.UK P5 exemplar pattern).
  *
- * B2R2 (Antonello 2026-06-11):
+ * B2R2 (Zero 2026-06-11):
  *  - FOUR doors now (tax added THIRD): moving · business · tax · property
  *  - the FunnelChips strip is gone — each door carries its tool identity
  *    as a bold tool-link line (label · sub verbatim from the old chips,

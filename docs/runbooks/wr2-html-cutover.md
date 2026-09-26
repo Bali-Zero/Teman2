@@ -1,7 +1,7 @@
 # WR2 HTML renderer cutover runbook (Canva → HTML/CSS)
 
 > **DO NOT execute the cutover steps until the SHADOW run has proven the HTML lane
-> on a throwaway draft AND Antonello approves the live flip (Legge 5 — live client
+> on a throwaway draft AND Zero approves the live flip (Legge 5 — live client
 > delivery).** Until then the HTML worker no-ops (kill-switch OFF) and Canva runs
 > unchanged. This runbook is the recorded procedure, gated.
 
@@ -11,7 +11,7 @@ The Canva apply chokepoint: transition `drafts_imaged_facted → drafts_imaged_c
 is rendered by `com.balizero.wr2.canva-apply`. The HTML lane (`wr2_html_render_apply.py`
 
 - `com.balizero.wr2.html-apply`) renders the same `drafts_imaged_checked` drafts to
-  HTML/CSS→PNG, uploads to Drive, and notifies Antonello+Damar over WhatsApp (24h window).
+  HTML/CSS→PNG, uploads to Drive, and notifies Zero+Damar over WhatsApp (24h window).
 
 ## Pre-flight (before any flip)
 
@@ -37,9 +37,9 @@ WR2_HTML_SHADOW=1 WR2_VISION_REQUIRED=1 DATABASE_URL=... \
 # => status rendered_shadow, drive_url_shadow set, NO WhatsApp. Inspect the Drive folder WR2-SHADOW-<id>.
 ```
 
-## CUTOVER (real — ONLY after shadow OK + Antonello approval)
+## CUTOVER (real — ONLY after shadow OK + Zero approval)
 
-1. **Have Antonello + Damar message the Meta number +62 821-3465-159** (opens the 24h
+1. **Have Zero + Damar message the Meta number +62 821-3465-159** (opens the 24h
    window — without this the link enqueues but the worker marks it failed + ops alert).
 2. **Stop Canva from racing** (do this BEFORE flipping the route, W-finding #9):
    ```bash
@@ -58,7 +58,7 @@ WR2_HTML_SHADOW=1 WR2_VISION_REQUIRED=1 DATABASE_URL=... \
    ```
    (copy the plist from the repo to `~/Library/LaunchAgents/` first)
 5. Kill-switch already ON from shadow; ensure `WR2_HTML_SHADOW` is UNSET for real runs.
-6. First real carousel: Antonello + Damar receive the Drive link over WhatsApp.
+6. First real carousel: Zero + Damar receive the Drive link over WhatsApp.
 
 ## ROLLBACK (instant)
 
