@@ -279,5 +279,11 @@ def redact_identifier_for_log(value: str | int | None) -> str:
         key_material = _fold_national_prefix(digits)
 
     key = _resolve_salt().encode("utf-8")
-    digest = hmac.new(key, key_material.encode("utf-8"), sha256).hexdigest()[:_DIGEST_HEX_LEN]
+    # A redaction helper on a send path must never raise: `errors="surrogatepass"`
+    # tolerates a lone surrogate (e.g. from malformed upstream text) that plain
+    # "utf-8" strict encoding rejects with UnicodeEncodeError, without changing
+    # the digest for any input that was already valid UTF-8.
+    digest = hmac.new(
+        key, key_material.encode("utf-8", errors="surrogatepass"), sha256
+    ).hexdigest()[:_DIGEST_HEX_LEN]
     return f"id:{digest}"

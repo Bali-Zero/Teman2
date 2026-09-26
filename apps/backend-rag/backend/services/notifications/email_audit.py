@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -198,6 +199,18 @@ async def record_email_result(
         logger.warning("email_audit: record_email_result failed for %d: %s", row_id, exc)
 
 
+# `error`/`subject` are caller-supplied free text and can themselves carry
+# the recipient's address (e.g. a provider bounce message quoting it back).
+# Redacting only `to_email` below is not enough for this Telegram alert —
+# it is an OUTPUT, not storage.
+_EMAIL_TOKEN_RE = re.compile(r"[^\s@<>\"'`]+@[^\s@<>\"'`]+")
+
+
+def _scrub_email_tokens(text: str) -> str:
+    """Replace every email-shaped token in ``text`` with its log-safe digest."""
+    return _EMAIL_TOKEN_RE.sub(lambda m: redact_identifier_for_log(m.group(0)), text)
+
+
 def notify_email_failure_critical(
     *,
     email_type: str,
@@ -222,8 +235,8 @@ def notify_email_failure_critical(
         return
 
     practice_fragment = f" (practice #{practice_id})" if practice_id else ""
-    short_subj = (subject or "").strip()[:120]
-    short_err = error.strip().replace("\n", " ")[:400]
+    short_subj = _scrub_email_tokens((subject or "").strip()[:120])
+    short_err = _scrub_email_tokens(error.strip().replace("\n", " ")[:400])
 
     # Tell the operator whether to wait for retry or act immediately.
     # Non-resurrectable types (personalized HTML / attachments) bypass the

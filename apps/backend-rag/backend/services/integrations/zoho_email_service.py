@@ -241,7 +241,7 @@ class ZohoEmailService:
                 logger.debug("[Email Activity] Logged %s for user=%s", operation, user_id)
         except Exception as e:
             # Don't fail the main operation if logging fails
-            logger.warning("[Email Activity] Failed to log activity: %s", e)
+            logger.warning("[Email Activity] Failed to log activity: %s", type(e).__name__)
 
     async def _get_headers(self, user_id: str) -> dict[str, str]:
         """
@@ -310,11 +310,17 @@ class ZohoEmailService:
 
         if response.status_code >= 400:
             error_data = _decode_body(response)
+            code = zoho_error_code(error_data)
+            safe_code = code if re.fullmatch(r"[A-Z0-9_]{1,64}", code) else "unknown"
             logger.warning(
-                f"[Email API] Error: {method} {endpoint} user={user_id} "
-                f"status={response.status_code} error={error_data}",
+                "[Email API] Error: %s %s user=%s status=%s code=%s",
+                method,
+                endpoint,
+                user_id,
+                response.status_code,
+                safe_code,
             )
-            raise ValueError(f"API error: {zoho_error_code(error_data)}")
+            raise ValueError(f"API error: {code}")
 
         logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
         response_data = response.json()
@@ -558,7 +564,7 @@ class ZohoEmailService:
         try:
             await self.mark_read(user_id, [message_id], is_read=True)
         except Exception as e:
-            logger.warning("Failed to mark email as read: %s", e)
+            logger.warning("Failed to mark email as read: %s", type(e).__name__)
 
         # Return in format matching frontend EmailDetail
         is_html = "<" in content and ">" in content
@@ -754,10 +760,10 @@ class ZohoEmailService:
         """
         start_time = time.time()
         logger.info(
-            "[Email] Sending email user=%s to=%s subject=%r cc=%s bcc=%s attachments=%d",
+            "[Email] Sending email user=%s to=%s subject_len=%d cc=%s bcc=%s attachments=%d",
             user_id,
-            [redact_identifier_for_log(addr) for addr in to],
-            subject[:50] + "...",
+            [redact_identifier_for_log(addr) for addr in (to or [])],
+            len(subject),
             [redact_identifier_for_log(addr) for addr in cc] if cc else cc,
             [redact_identifier_for_log(addr) for addr in bcc] if bcc else bcc,
             len(attachments or []),
@@ -925,7 +931,7 @@ class ZohoEmailService:
             "[Email] Forwarding email user=%s message_id=%s to=%s",
             user_id,
             message_id,
-            [redact_identifier_for_log(addr) for addr in to],
+            [redact_identifier_for_log(addr) for addr in (to or [])],
         )
         payload: dict[str, Any] = {
             "toAddress": ",".join(to),
@@ -1283,17 +1289,15 @@ class ZohoEmailService:
                 error_code = error_data.get("errorCode", "UNKNOWN_ERROR")
                 error_message = error_data.get("message", "No error message provided")
 
-                # Comprehensive error logging
+                # No provider free text, no filename — just enough to triage.
+                ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
                 logger.error(
-                    f"[Email] Attachment upload failed\n"
-                    f"  User: {user_id}\n"
-                    f"  Filename: {filename!r} (original: {original_filename!r})\n"
-                    f"  Size: {file_size_mb:.2f}MB\n"
-                    f"  Content-Type: {content_type}\n"
-                    f"  HTTP Status: {response.status_code}\n"
-                    f"  Zoho Error Code: {error_code}\n"
-                    f"  Zoho Error Message: {error_message}\n"
-                    f"  Full Response: {error_body}",
+                    "[Email] Attachment upload failed user=%s status=%s "
+                    "filename_ext=%s filename_len=%d",
+                    user_id,
+                    response.status_code,
+                    ext,
+                    len(filename),
                 )
 
                 # Raise informative error for user
@@ -1324,10 +1328,14 @@ class ZohoEmailService:
             return result
 
         except httpx.HTTPError as e:
+            ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
             logger.error(
-                f"[Email] HTTP error uploading attachment user={user_id} "
-                f"filename={filename!r}: {e}",
-                exc_info=True,
+                "[Email] HTTP error uploading attachment user=%s type=%s "
+                "filename_ext=%s filename_len=%d",
+                user_id,
+                type(e).__name__,
+                ext,
+                len(filename),
             )
             raise ValueError(f"Network error uploading '{original_filename}': {e!s}")
 
@@ -1414,5 +1422,5 @@ class ZohoEmailService:
             # Sum unread from all folders
             return sum(f.get("unread_count", 0) for f in folders)
         except Exception as e:
-            logger.warning("Failed to get unread count: %s", e)
+            logger.warning("Failed to get unread count: %s", type(e).__name__)
             return 0

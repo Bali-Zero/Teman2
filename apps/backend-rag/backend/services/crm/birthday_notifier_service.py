@@ -419,8 +419,8 @@ class BirthdayNotifierService:
             return stats
 
         except Exception as e:
-            logger.error("Birthday notification run failed: %s", e)
-            stats["error"] = str(e)
+            logger.error("Birthday notification run failed: %s", type(e).__name__)
+            stats["error"] = type(e).__name__
             return stats
 
 

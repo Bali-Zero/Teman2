@@ -7,10 +7,12 @@ Covers: sanitize_filename, ZohoEmailService (list_folders, list_emails, get_emai
         _get_account_id, _log_activity, close)
 """
 
+import json
 import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 # Patch heavy imports before importing the module
@@ -281,6 +283,37 @@ class TestRequest:
 
         with pytest.raises(ValueError, match="Unexpected response format"):
             await service._request("user1", "GET", "/folders")
+
+    @pytest.mark.asyncio
+    async def test_error_response_never_logs_provider_body_or_address(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Guilt (R1, PR #7385 round 1): exercises the REAL `_request` — only
+        the transport is mocked, same seam as `test_error_response` above, so
+        this does not hide behind mocking `_request` itself. FAILS on
+        9666233cff, whose `_request` logged the fully decoded error body
+        (address included) in the warning line."""
+        body = {
+            "data": {"errorCode": "INVALID_INPUT"},
+            "moreInfo": "recipient leak.probe@example.com is invalid",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.content = json.dumps(body).encode()
+        mock_response.json.return_value = body
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="API error"):
+                await service._request("user1", "POST", "/messages")
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "400" in caplog.text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -641,6 +674,46 @@ class TestSendReplyForwardNeverLogRawRecipients:
         assert _LEAK not in caplog.text
         assert redact_identifier_for_log(_LEAK) in caplog.text
 
+    @pytest.mark.asyncio
+    async def test_send_email_subject_with_address_never_in_caplog(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """R1.2 (PR #7385 round 1): the subject itself can carry an address —
+        `subject=%r` used to log up to 50 characters of the raw subject."""
+        service._request = AsyncMock(return_value={"data": {"messageId": "sent1"}})
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+                await service.send_email(
+                    user_id="user1",
+                    to=["ok@example.com"],
+                    subject=f"Re: invoice for {_LEAK}",
+                    content="<p>Hello</p>",
+                )
+
+        assert "@" not in caplog.text
+        assert "invoice" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_send_email_to_none_fails_at_the_join_not_the_log_line(
+        self, service: ZohoEmailService
+    ) -> None:
+        """R1.2: `to=None` must fail at the SAME site as origin/main
+        (`",".join(to)` inside the payload build) — not earlier, inside the
+        log line's redaction comprehension, which would turn a TypeError
+        with a different message into a different bug report."""
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            with pytest.raises(TypeError, match="can only join an iterable"):
+                await service.send_email(
+                    user_id="user1",
+                    to=None,  # type: ignore[arg-type]
+                    subject="Test",
+                    content="<p>Hi</p>",
+                )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ZohoEmailService.mark_read / toggle_flag / move_to_folder
@@ -774,3 +847,69 @@ class TestLogActivity:
             mock_logger.warning.call_args.args[0]
             == "[Email Activity] Failed to log activity: %s"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.upload_attachment — never logs the filename or provider
+# free text on a failure path (PR #7385 round 1, R1.3)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestUploadAttachmentNeverLogsFilenameOrProviderText:
+    @pytest.mark.asyncio
+    async def test_error_response_logs_no_filename_or_address(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        body = {
+            "data": {
+                "errorCode": "INVALID_INPUT",
+                "message": f"recipient {_LEAK} rejected",
+            },
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.content = json.dumps(body).encode()
+        mock_response.json.return_value = body
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.ERROR, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="Upload failed"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename=f"Passport_{_LEAK}.pdf",
+                    content=b"hello",
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "leak.probe" not in caplog.text
+        assert "Passport" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_http_error_logs_no_traceback_filename_or_message(
+        self, service: ZohoEmailService, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=httpx.ConnectError(f"boom talking to {_LEAK}"),
+        )
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with caplog.at_level(logging.ERROR, logger=_LOGGER_NAME):
+            with pytest.raises(ValueError, match="Network error"):
+                await service.upload_attachment(
+                    user_id="user1",
+                    filename="report.pdf",
+                    content=b"hello",
+                    content_type="application/pdf",
+                )
+
+        assert "@" not in caplog.text
+        assert "boom" not in caplog.text
+        for record in caplog.records:
+            assert record.exc_info is None

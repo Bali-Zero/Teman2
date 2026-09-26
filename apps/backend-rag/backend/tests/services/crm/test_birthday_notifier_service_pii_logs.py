@@ -18,6 +18,7 @@ an emptied log line does not pass as "fixed".
 from __future__ import annotations
 
 import logging
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -181,5 +182,29 @@ class TestNoLoggerExceptionOrTracebackOnAClientAddressedSend:
 
         with caplog.at_level(logging.WARNING, logger=_LOGGER_NAME):
             await service.send_birthday_email(_CLIENT)
+
+
+class TestRunLevelFailureNeverLogsException:
+    @pytest.mark.asyncio
+    async def test_guilt_run_failure_logs_exception_type_only(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """R2 (PR #7385 round 1): `run_birthday_notifications`'s outer
+        failure handler used to `%s`-interpolate the exception itself, and
+        stash `str(e)` in `stats["error"]` — either can carry the
+        recipient's address if the failure came from `get_todays_birthdays`
+        surfacing a provider error."""
+        service = _make_service()
+        service.get_todays_birthdays = AsyncMock(
+            side_effect=RuntimeError(f"query failed for {_LEAK}"),
+        )
+
+        with caplog.at_level(logging.ERROR, logger=_LOGGER_NAME):
+            stats = await service.run_birthday_notifications()
+
+        assert _LEAK not in caplog.text
+        assert _LEAK not in stats["error"]
+        assert stats["error"] == "RuntimeError"
+        assert "RuntimeError" in caplog.text
 
         assert all(record.exc_info is None for record in caplog.records)

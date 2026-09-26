@@ -407,6 +407,36 @@ def test_telegram_alert_never_transcribes_the_recipient_address(monkeypatch):
     assert "7" in body
 
 
+def test_telegram_alert_scrubs_addresses_from_subject_and_error_text(monkeypatch):
+    """R3 (PR #7385 round 1): `subject`/`error` are caller-supplied free
+    text, not just `to_email` — a provider bounce message routinely quotes
+    the recipient back, and a mis-typed subject line can BE an address.
+    Redacting only `to_email` (the fix this test's sibling above covers)
+    left both of these as an open leak into the same Telegram alert.
+    """
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    subject_leak = "urgent-reply-to@client-domain.example"
+    error_leak = "SMTP 550 5.1.1: recipient bounce.target@another-domain.example unknown"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject=subject_leak,
+            practice_id=7,
+            error=error_leak,
+        )
+
+    body = mock_open.call_args[0][1].decode()
+    assert "urgent-reply-to" not in body
+    assert "client-domain" not in body
+    assert "bounce.target" not in body
+    assert "another-domain" not in body
+    # Triage keys still survive the scrub.
+    assert "welcome" in body
+    assert "5.1.1" in body
+
+
 def test_missing_token_warning_does_not_log_the_recipient_address(monkeypatch, caplog):
     """The no-token early return logs a warning; it must be address-free too.
 
