@@ -86,7 +86,7 @@ async def send_confirmation_email(
             to=email,
             subject=subject,
             body=body,
-            log_context=f"newsletter-double-optin email={email}",
+            log_context="newsletter-double-optin",
         )
     except Exception as e:
         logger.warning(
