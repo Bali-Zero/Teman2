@@ -1,0 +1,139 @@
+task_id: senderpii-c5
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Closes C2 and C3 of the fresh gate on PR #7438
+  (pull/7438#issuecomment-5848706894), due 2026-10-03:
+
+  C2 — the fresh gate found C4 (#7385's gate) was only PARTIALLY closed by #7438: the
+  `router.py`/`email_audit.py` groups were fixed, but the third named group — the CRM
+  services' own copy of the same "Email sent to %s via Zoho fallback" pattern — was
+  untouched. `grep -n 'logger\.[a-z]*(.*to_email' services/crm/{waiting_documents,
+  completed_process}_service.py` on `d59690c8f2` (post-#7438 main) showed 8 raw `to_email`
+  sites: `waiting_documents_service.py` 302/312/321/334, `completed_process_service.py`
+  412/421/431/444. `completed_process_service.py`'s `except Exception as brevo_error:`
+  block had an EXTRA defect its sibling did not: it logged the raw exception OBJECT
+  (`%s` on `brevo_error`, i.e. `str()`) BEFORE `format_send_error` even ran, so nothing
+  had been formatted yet, let alone scrubbed.
+
+  A broader grep of `apps/backend-rag/backend` for `to_email`/`recipient`/`request\.to`/
+  `email=` inside a `logger.*(` call found many more hits outside these two files —
+  listed and triaged in the PR body's "Other raw-address log sites found" section.
+  Only `services/crm/process_automation_service.py` (285/288) and
+  `services/crm/automation.py` (172/175/178-179) are the SAME class (a third and fourth
+  copy of this exact Brevo→Zoho fallback idiom, evidently forked from the same
+  original); left OUT of this PR and named explicitly, both to keep this PR's diff
+  reviewable and because they were never named by C2/C4 — flagged for a follow-up.
+  Everything else found (staff/security/other-notification-family logs) is a different
+  risk class and is also named and left out — see the PR body.
+
+  C3 — the gate's own mutation table found "router success log, raw `request.subject`"
+  SURVIVED (all 104 tests still passed with the scrub removed): no existing test put an
+  address in a SUCCESSFUL send's subject. Separately, CodeQL opened 3 new
+  `py/log-injection` alerts on #7438's new call sites:
+    - 9217 (real regression): `router.py`'s success log used to interpolate
+      `{request.subject!r}` on `main`, whose `repr()` escapes `\n`. #7438's rewrite to
+      %-style logging dropped that escaping, so a subject with an embedded newline
+      landed in the log raw — a forged log line one `\n` away (mitigated in prod by the
+      JSON `StructuredFormatter`, live in dev/non-JSON handlers).
+    - 9216 and 9218: both fire on `redact_identifier_for_log(...)` call sites. The value
+      logged there is ALWAYS one of an HMAC digest (`id:<12 hex>`), the literal
+      `"anonymous"`, or `MISSING_IDENTIFIER_MARKER` (see
+      `backend/security/pii_log_identifier.py::redact_identifier_for_log`'s own
+      docstring) — none of those three shapes can carry attacker-controlled newlines or
+      log-forging content, so both are false positives in substance. This PR does not
+      dismiss them (the mandate reserves that action); it records the justification in
+      the PR body for the mandate-owning session to act on.
+constraints:
+  - "C2 fixes exactly the 8 named sites in the two named files, applying the SAME
+    redact_identifier_for_log/_bounded_scrub treatment #7438 already established for
+    router.py/email_audit.py — no new regex, no new redaction primitive."
+  - "The free-text diagnostic values (`brevo_err_msg`, `combined_err`, and the raw
+    exception at completed_process_service.py's Brevo `except` block) are scrubbed with
+    `_bounded_scrub` at every log call site touched, not just the one line the gate
+    named (completed_process_service.py's raw `brevo_error`) — for consistency with the
+    established C4 treatment of provider-supplied free text. The underlying
+    (unscrubbed) variables are untouched everywhere they feed `record_email_result`'s
+    `error_message` column (a DB write, not a log) or `notify_email_failure_critical`
+    (which already scrubs internally) — those are correctly NOT double-scrubbed."
+  - "C3's fix order is scrub-then-escape: `repr(_bounded_scrub(request.subject, 120))`,
+    not the reverse — scrubbing first keeps every caller's contract (bound the input),
+    escaping second restores exactly what `main` had before #7438's rewrite."
+  - "No client PII in this PR's own artifacts — every example/test address is a
+    synthetic `*.example.com`-shape address."
+acceptance:
+  - text: >-
+      (C2) `WaitingDocumentsService._send_with_brevo_fallback` and
+      `CompletedProcessService._send_with_brevo_fallback` SHALL NOT log the raw
+      recipient address or raw provider-exception text on any of the three branches
+      (Brevo success, Brevo failure -> Zoho success, both fail); each SHALL log
+      `redact_identifier_for_log`'s digest instead; non-PII diagnostic text (provider
+      names, non-address exception text) SHALL be unchanged (innocence).
+    probe: "pytest backend/tests/unit/services/crm/test_waiting_documents_service_pii_logs.py backend/tests/unit/services/crm/test_completed_process_service_pii_logs.py"
+  - text: >-
+      (C3) `send_direct_email`'s success log SHALL NOT leak an address placed in
+      `request.subject`, and SHALL escape an embedded newline in `request.subject`
+      (closing CodeQL 9217) the same way `main`'s pre-#7438 `{subject!r}` did.
+    probe: "pytest backend/tests/unit/app/modules/notifications/test_send_email_chain.py -k subject"
+  - text: >-
+      No regression: the full notifications/security/newsletter/mail_loop/crm/
+      integrations test set, plus the 3 core RAG suites named in
+      `apps/backend-rag/CLAUDE.md` §11, SHALL still pass; `ruff check` on the 6 touched
+      files SHALL be clean.
+    probe: "pytest backend/tests/unit/services/notifications backend/tests/unit/app/modules/notifications backend/tests/unit/app/services/test_internal_email.py backend/tests/unit/security backend/tests/services/newsletter backend/tests/unit/services/mail_loop backend/tests/unit/services/crm backend/tests/services/crm backend/tests/unit/app/routers/test_newsletter_confirmation_email.py backend/tests/services/integrations backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py; ruff check backend/app/modules/notifications/router.py backend/services/crm/waiting_documents_service.py backend/services/crm/completed_process_service.py backend/tests/unit/app/modules/notifications/test_send_email_chain.py backend/tests/unit/services/crm/test_waiting_documents_service_pii_logs.py backend/tests/unit/services/crm/test_completed_process_service_pii_logs.py"
+consumer_map:
+  - "`backend/services/crm/waiting_documents_service.py` / `completed_process_service.py`'s
+    `_send_with_brevo_fallback` — every client-facing waiting-documents and
+    completed-process notification now logs a digest instead of the recipient address
+    on all three send outcomes."
+  - "`backend/app/modules/notifications/router.py`'s `send_direct_email` — the success
+    log's subject is now newline-safe, closing the CodeQL 9217 regression."
+  - "GitHub code scanning (CodeQL) — 9217 should close on the next scan of `main`; 9216
+    and 9218 are recorded as false positives in the PR body for the mandate-owning
+    session to dismiss (not this PR's action)."
+risks:
+  - "C2 does not touch `process_automation_service.py`/`automation.py`, which carry the
+    identical fallback idiom (same two log messages, same `to_email` variable) — a
+    deliberate scope decision to keep this PR bounded to what C2 named, not an
+    oversight. Both are listed by name in the PR body as follow-up candidates."
+  - "The broader grep turned up a long tail of raw-address/email logging outside the
+    Brevo/Zoho-fallback family (staff-identity audit logs, security incident logs,
+    partner/welcome/invoice notification paths). None of it is touched here — different
+    risk class, different owners, and fixing all of it would blow past this PR's
+    ~400-line budget. Full list in the PR body so it is not silently lost."
+grader: |
+  Ran the acceptance-criteria probes above locally (venv `apps/backend-rag/.venv`):
+  13 passed across the two new PII-log test files; 38 passed in
+  test_send_email_chain.py (36 pre-existing + 2 new C3 tests); 1565 passed across the
+  wider notifications/security/newsletter/mail_loop/crm/integrations set; 91 passed in
+  the 3 core RAG suites. `ruff check` on all 6 touched/new files: clean.
+
+  Mutation verification (cp-backed, never `git checkout --`): backed up all 3 cured
+  source files, replaced each with `d59690c8f2`'s version (this branch's base, #7438's
+  merge commit) in turn, re-ran the affected tests, restored from the cp backup.
+  - `router.py` reverted to base: the new C3 newline-escaping guilt test went RED
+    (raw `\n` visible in the log record); the new C3 subject-address test stayed GREEN
+    (that half was already fixed by #7438 — confirms this PR closes exactly the gap the
+    gate named, not a re-fix of something already working). 37 other tests unaffected.
+    Restored — 38/38 green again.
+  - `waiting_documents_service.py` + `completed_process_service.py` reverted to base
+    together: all 6 guilt tests (3 per file) went RED with the raw address visible; the
+    2 innocence tests stayed GREEN. Restored — both new test files' 13 tests green
+    again, plus the pre-existing `test_completed_process_service.py` unaffected (13
+    total across the 3 files).
+  `diff -q` against the cp backups after each restore reported no difference.
+budget: >-
+  1 build lane (this session), no cross-family review lane — Gear 2 (declared;
+  recomputed locally with `scripts/evidence_pack_lint.py --print-floor` against the
+  CI-equivalent changed-files/numstat inputs, including the 2 new test files: floor 2,
+  matching). 6 files touched: 3 source (+48/-11) + 3 test (2 new, 1 extended, +245/0
+  combined). This brief is evidence-only and outside that count. Net line count runs
+  past the Builder Contract's ~400-line guidance mainly because of the two new,
+  from-scratch PII-log test files (matching the repo's own established convention,
+  `test_birthday_notifier_service_pii_logs.py`, which is itself ~150+ lines) — declared
+  here rather than trimmed against that convention.
+pii: >-
+  none — every address in this PR's diff/tests/pack is a synthetic
+  `*.example.com`-shape address; no production `to_email`, practice, or client
+  identifier appears anywhere in this pack or the changed tests.
