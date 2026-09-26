@@ -126,7 +126,11 @@ function ChecklistDrawer({
   return (
     <>
       <p className="bz-shs-drawer-intro">
-        {getCopy("room.checklistDrawer.intro")}
+        {getCopy(
+          verdict
+            ? "room.checklistDrawer.intro"
+            : "room.checklistDrawer.introOpen",
+        )}
       </p>
       {lists.map(({ key, label }) => {
         const items = classified.filter((c) => c.applicability === key);

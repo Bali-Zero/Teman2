@@ -567,6 +567,8 @@ export const COPY = {
       },
     },
     checklistDrawer: {
+      introOpen:
+        "Until your answers settle the route, every item is listed as applying — that is how the checklist stays on the safe side. Your fit-check result sorts them.",
       intro:
         "Sorted against your answers so far. You can tick items off on your fit-check result.",
       applies: "Applies to you",

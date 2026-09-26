@@ -151,6 +151,11 @@ describe("the shelf — five drawers of real material", () => {
     render(<Shelf plan={plan} verdict={null} />);
     const dialog = open("Checklist");
     expect(within(dialog).getByText("Applies to you")).toBeInTheDocument();
+    // Mid-flow the engine keeps an unresolved route conservative (every item
+    // applies); the drawer says so instead of implying a sorted list.
+    expect(
+      within(dialog).getByText(/Until your answers settle the route/),
+    ).toBeInTheDocument();
     expect(within(dialog).queryByRole("checkbox")).toBeNull();
   });
 
