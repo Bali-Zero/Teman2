@@ -11,9 +11,14 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend.services.observability import llm_cost_tracked, set_usage
+
+if TYPE_CHECKING:
+    import tiktoken
+
+    from backend.app.core.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,7 @@ _OPENAI_EMBED_MAX_TOKENS_PER_REQUEST = 300_000
 _OPENAI_EMBED_TOKEN_BUDGET = 200_000  # safety margin for limit (1)
 _OPENAI_EMBED_MAX_TOKENS_PER_INPUT = 8192  # OpenAI hard limit (2)
 _OPENAI_EMBED_INPUT_TOKEN_BUDGET = 7500  # safety margin for limit (2)
+_TIKTOKEN_ENCODER: "tiktoken.Encoding | None"
 try:
     import tiktoken
 
@@ -118,17 +124,18 @@ except ImportError:
     from contextlib import contextmanager
 
     @contextmanager
-    def trace_span(name: Any, attrs: Any = None) -> Any:
+    def trace_span(span_name: str, attributes: dict[str, Any] | None = None) -> Any:
         yield
 
-    def set_span_attribute(key: Any, value: Any) -> Any:
+    def set_span_attribute(key: str, value: Any) -> None:
         pass
 
-    def set_span_status(status: Any, msg: Any = None) -> Any:
+    def set_span_status(status: str, description: str | None = None) -> None:
         pass
 
 
 # Import settings
+_default_settings: "Settings | None"
 try:
     from backend.app.core.config import settings as _default_settings
 except ImportError:
@@ -144,7 +151,7 @@ class EmbeddingCache:
     """
 
     def __init__(self, max_size: int = 1000) -> None:
-        self._cache = {}
+        self._cache: dict[str, list[list[float]]] = {}
         self._max_size = max_size
         self._hits = 0
         self._misses = 0
@@ -175,7 +182,7 @@ class EmbeddingCache:
             key = self._get_key(texts)
             self._cache[key] = embeddings
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         total = self._hits + self._misses
         return {
@@ -383,7 +390,7 @@ class EmbeddingsGenerator:
                 set_span_status("error", str(e))
                 raise
 
-    def get_cache_stats(self) -> dict:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get embedding cache statistics."""
         return _global_embedding_cache.get_stats()
 
@@ -505,7 +512,7 @@ class EmbeddingsGenerator:
             )
 
             # Convert numpy array to list of lists
-            embeddings_list = embeddings.tolist()
+            embeddings_list: list[list[float]] = embeddings.tolist()
             logger.info(f"✅ Generated {len(embeddings_list)} embeddings (Sentence Transformers)")
             return embeddings_list
 
@@ -553,7 +560,7 @@ class EmbeddingsGenerator:
         """
         return await self.generate_embeddings(texts)
 
-    def get_model_info(self) -> dict:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get information about the embedding model.
 

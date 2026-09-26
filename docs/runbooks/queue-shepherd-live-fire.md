@@ -86,6 +86,20 @@ write path exists for.
 - The drill leaves no code behind. If you find yourself editing `queue_shepherd.py` to make the
   drill work, the drill has become a fiction — stop.
 
+## Exit codes
+
+`queue_shepherd.py --tick` returns one of four codes (module docstring carries the full text):
+
+- `0` clean tick (or `--report`, or the disabled-organ no-op)
+- `1` usage error — neither `--tick` nor `--report` was passed
+- `2` CANNOT-VERIFY this tick — a read failed, fail-closed, nothing re-armed/cancelled on the
+  unreadable side
+- `rc=3` a PR's re-arm WRITE has failed `REARM_WRITE_FAIL_LIMIT` (3) consecutive times. The tick
+  otherwise ran normally — it re-armed/cancelled what it could — but is reported NOT ok because
+  a write keeps failing underneath it (K-3, Kimi council finding, S1 2026-09-11). Not something
+  this drill produces on its own: it surfaces from real re-arm write failures over several
+  ticks, not from a single cancelled run.
+
 ## When to run it
 
 After any change to the classification or re-arm path, and otherwise whenever the log has shown

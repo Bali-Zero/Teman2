@@ -1,0 +1,80 @@
+task: >-
+  PR3f-r — replacement for #6951 (agent/air-m5/infra/dynamic-workflow-3f, head
+  38f539ddc8), which is armed and frozen but blocked on fresh main by a literal
+  the original branch could not have known about: #7154 (2026-09-22, "Opus 5.5
+  replaces Opus 5 in every seat") moved the C5 gate judge's seat literal from
+  `opus-5` to `opus-5-5` (RULED 2026-09-23, docs/rules/RULINGS.md). #6951's
+  SKILL.md and brief.template.md hardcoded the now-superseded bare `opus-5` as
+  the C5 literal in the gate-row example, the judge description and the Round-3
+  / BLUE-Dux seat mentions, so a brief rendered from that template fails C5 on
+  main today. This PR carries #6951's content forward onto fresh main with
+  every C5 literal and every other current-seat "Opus 5" mention moved to
+  Opus 5.5, one deliberate historical fact (F3, session 2026-09-18, predates
+  the ruling) and one deliberate explanatory mention of the superseded spelling
+  (SKILL.md's own C5 description, stating what now fails) left untouched, plus
+  a GUILT test (test_shipped_gate_row_passes_c5_and_the_pre_7154_bare_opus_5_spelling_fails_it)
+  that imports main's own scripts/dynamic_workflow.py::_check_c5 to prove the
+  shipped gate row passes and the pre-#7154 spelling fails it. It also repoints
+  F12's two MODEL_ROSTER.md line citations (70->71, 90->91), which drifted on
+  main independently of the C5 fix and would otherwise fail
+  test_curated_source_pointers_contain_their_declared_keyword on this head.
+lane: infra/dynamic-workflow-3f-r
+machine: air-m5
+date: 2026-09-24
+colour: BLUE
+
+gear: 3
+gear_reason: >-
+  Floor is 3, PATH-sourced: the diff touches
+  .github/workflows/dynamic-workflow-selftest.yml, a hot-zone path
+  (HOTZONE_PATTERNS in scripts/evidence_pack_lint.py / the duplicated case
+  block in .github/workflows/hot-zone-pr-gate.yml) — a workflow file, even a
+  one-line edit re-adding scripts/tests/test_dynamic_workflow_skill.py to the
+  pytest step. A hot-zone hit floors (and ceilings) gear at 3 regardless of
+  the diff's size or shape (evidence_pack_lint.py:1041, 1194-1198); #6951's
+  own brief declared gear 2 off a size-sourced floor of 2 on a branch that
+  predates this workflow-path hit becoming decisive, which is exactly what
+  the conductor's "Harness floor recompute: declared gear 2 is BELOW the
+  deterministic floor 3" refusal on #6951 was catching.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    Every C5 literal in the two new docs (.claude/skills/dynamic-workflow/
+    SKILL.md, brief.template.md) names opus-5-5/Opus 5.5, matching main's
+    _C5_SEAT_ENTITY_RE and the gate row `| gate | opus-5-5 | window | serial |
+    1 | sign | done |` exactly. The two remaining bare "opus 5"/"opus-5" hits
+    are deliberate: F3 (a dated historical fact, session 2026-09-18, predates
+    RULED 2026-09-23) and SKILL.md's C5 description naming the superseded
+    spelling as what NOW fails.
+    probe: grep -rn -P '\bopus[- ]5\b(?![.-]5)' -i .claude/skills/dynamic-workflow scripts/tests/test_dynamic_workflow_skill.py
+  A2: >-
+    A GUILT test imports the judge from scripts/dynamic_workflow.py (never
+    re-implements the regex) and proves both directions on the shipped gate
+    row read verbatim off brief.template.md: it passes C5 as shipped, and
+    fails C5 with opus-5-5 replaced by the bare opus-5.
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -q -k test_shipped_gate_row_passes_c5
+  A3: >-
+    Full suite green on this head, including the pre-existing
+    test_dynamic_workflow.py C5 unit tests (unchanged, already covering the
+    opus-5-5 entity regex) and test_skills_canonical.py (dynamic-workflow
+    added to KNOWN_CLAUDE_ONLY_NAMES).
+    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py scripts/tests/test_dynamic_workflow_skill.py scripts/tests/test_skills_canonical.py scripts/tests/test_lint_workflow_script.py -q
+  A4: >-
+    CI consumer in the same PR (unchanged from #6951's own A5): the skill
+    test file is in .github/workflows/dynamic-workflow-selftest.yml's pytest
+    step, and `.claude/skills/dynamic-workflow/**` is already in that
+    workflow's paths filter, so the job re-runs on this PR's own head. That
+    run green, with its URL, is the Bites observation.
+    probe: gh run list --workflow dynamic-workflow-selftest --branch <branch>
+
+out_of_scope: >-
+  Any change to scripts/dynamic_workflow.py, scripts/arsenal_probe.py or the
+  lint scripts — this PR is documentation plus its own test, same boundary
+  #6951 declared. #6951 itself, left armed and frozen; this PR does not touch
+  it, arm it, merge it or comment on it. Any SPEC-PROPOSALS row #6951 already
+  put out of scope. The root evidence/brief.yml, deliberately untouched: this
+  brief lives at its own per-PR path, same convention as #6951's.

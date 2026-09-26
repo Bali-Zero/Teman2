@@ -72,6 +72,16 @@ def _db_url_for(db_name: str) -> str:
     return _ADMIN_URL.rsplit("/", 1)[0] + f"/{db_name}"
 
 
+def _dsn_with_credentials(dsn: str, *, user: str, password: str) -> str:
+    """Swap the ``user[:password]@`` portion of a Postgres DSN, keeping the
+    host/port/dbname untouched. Used to connect as a freshly-created role
+    rather than whatever ``TEST_DATABASE_URL`` originally named."""
+
+    scheme, rest = dsn.split("://", 1)
+    _, _, host_and_db = rest.partition("@")
+    return f"{scheme}://{user}:{password}@{host_and_db}"
+
+
 async def _apply_migrations_through(database_dsn: str, *, through: int) -> None:
     """Apply every Visa Engine migration up to and including ``through``, in
     the exact order ``fullstack_smoke.MIGRATION_NUMBERS`` defines -- the
@@ -106,7 +116,35 @@ async def _insert_test_retention_policy(database_dsn: str) -> None:
 async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
     """The shape ``backend_rag_v2`` has after the D1 least-privilege repair:
     SELECT-only on the retention-policy table, SELECT+INSERT (never UPDATE)
-    on the idempotency table it writes to."""
+    on the idempotency table it writes to.
+
+    Also explicitly grants the connecting role its OWN membership in
+    ``role`` (with default options), so the ``SET LOCAL ROLE`` calls below
+    work regardless of the ambient cluster superuser status of whatever
+    role ``database_dsn`` happens to connect as. A CREATEROLE role that is
+    not a superuser gets NO membership in a role it creates on any
+    Postgres version -- pre-16, `CREATE ROLE` alone never granted the
+    creator membership at all; PG16 added an automatic ADMIN-OPTION-only
+    self-grant (explicitly excluding the separate SET option split
+    introduced the same release), which is narrower than what `SET LOCAL
+    ROLE` needs but still not membership at all pre-16. Either way, an
+    explicit follow-up `GRANT "role" TO CURRENT_USER` (no `WITH` clause --
+    that clause's role-option syntax is itself PG16+-only, a syntax error
+    on PG15) creates or overwrites the `pg_auth_members` row with each
+    version's own EXPLICIT-grant defaults, which include SET on every
+    version this repo runs (measured live against a PG16 cluster: the
+    implicit self-grant alone left `SET LOCAL ROLE` failing with
+    `permission denied to set role`; this follow-up plain GRANT, no WITH
+    clause, fixed it). Reproduced 2026-08-08 on a PG17 dev cluster whose
+    local `test` role was `rolsuper=f, rolcreaterole=t` -- CI's own
+    Postgres service is a cluster superuser (bypasses every privilege
+    check regardless of any of this), which is why CI never hit it via the
+    two tests below that reuse the ambient `database_dsn` connection, only
+    via the one that deliberately constructs a non-superuser connection.
+    This explicit grant makes the test carry its own privilege instead of
+    depending on the connecting role's ambient status; it weakens no
+    assertion -- the ``pytest.raises(InsufficientPrivilegeError)`` case
+    still exercises the low-priv role exactly as it does today."""
 
     connection = await asyncpg.connect(database_dsn)
     try:
@@ -117,6 +155,7 @@ async def _create_lowpriv_role(database_dsn: str, role: str) -> None:
         await connection.execute(
             f'GRANT SELECT, INSERT ON TABLE public.visa_evaluate_idempotency TO "{role}"'
         )
+        await connection.execute(f'GRANT "{role}" TO CURRENT_USER')
     finally:
         await connection.close()
 
@@ -224,6 +263,85 @@ async def test_post_268_low_privilege_insert_succeeds(m268_sandbox: _Sandbox) ->
     assert row is not None
     assert row["retention_policy_id"] is not None
     assert row["expires_at"] is not None
+
+
+async def test_create_lowpriv_role_grants_set_privilege_without_ambient_superuser(
+    m268_sandbox: _Sandbox,
+) -> None:
+    """PENDING-ARMS row `visa-engine retention test depends on ambient
+    superuser` -- proof-of-armed: `_create_lowpriv_role` must not depend
+    on the CONNECTING role already being a cluster superuser (CI's own
+    Postgres service is, which is exactly why this gap never showed up
+    there). Creates a non-superuser CREATEROLE role -- the same shape a
+    PG17 dev cluster's local role had (``rolsuper=f, rolcreaterole=t``) --
+    and proves THAT role can `SET LOCAL ROLE` into the low-priv role
+    `_create_lowpriv_role` creates, which needs the explicit follow-up
+    `GRANT "role" TO CURRENT_USER` this row added: bare `CREATE ROLE`
+    grants the creator no membership at all pre-PG16, and PG16's own
+    automatic self-grant is ADMIN-OPTION-only, not SET -- verified live
+    against both a real PG15 cluster (CI's own version) and a real PG16
+    cluster, not just reasoned about."""
+
+    await _apply_migrations_through(m268_sandbox.database_dsn, through=268)
+
+    creator_role = f"visa268_creator_{uuid.uuid4().hex[:12]}"
+    creator_password = secrets.token_urlsafe(16)
+
+    # CREATE ROLE is cluster-wide (any database connection can issue it),
+    # but GRANT ON TABLE must run against the sandbox database that
+    # actually owns those two tables -- NOT `_ADMIN_URL`, which targets
+    # the unrelated "postgres" maintenance database.
+    admin_conn = await asyncpg.connect(_ADMIN_URL)
+    try:
+        await admin_conn.execute(
+            f'CREATE ROLE "{creator_role}" NOSUPERUSER CREATEROLE LOGIN '
+            f"PASSWORD '{creator_password}'"
+        )
+    finally:
+        await admin_conn.close()
+
+    sandbox_admin_conn = await asyncpg.connect(m268_sandbox.database_dsn)
+    try:
+        await sandbox_admin_conn.execute(
+            "GRANT ALL ON TABLE public.visa_decision_retention_policies, "
+            f'public.visa_evaluate_idempotency TO "{creator_role}" WITH GRANT OPTION'
+        )
+    finally:
+        await sandbox_admin_conn.close()
+
+    creator_dsn = _dsn_with_credentials(
+        m268_sandbox.database_dsn, user=creator_role, password=creator_password
+    )
+
+    try:
+        await _create_lowpriv_role(creator_dsn, m268_sandbox.lowpriv_role)
+
+        connection = await asyncpg.connect(creator_dsn)
+        try:
+            async with connection.transaction():
+                await connection.execute(f'SET LOCAL ROLE "{m268_sandbox.lowpriv_role}"')
+                current = await connection.fetchval("SELECT current_user")
+        finally:
+            await connection.close()
+
+        assert current == m268_sandbox.lowpriv_role
+    finally:
+        # Drop everything creator_role owns/was granted IN THE SANDBOX
+        # DATABASE first (the ADMIN ROLE GRANT ... WITH SET TRUE and the
+        # GRANT OPTION on the two tables) -- DROP ROLE fails otherwise,
+        # since the sandbox database itself isn't dropped until the
+        # m268_sandbox fixture's own teardown, which runs AFTER this one.
+        sandbox_admin_conn = await asyncpg.connect(m268_sandbox.database_dsn)
+        try:
+            await sandbox_admin_conn.execute(f'DROP OWNED BY "{creator_role}"')
+        finally:
+            await sandbox_admin_conn.close()
+
+        admin_conn = await asyncpg.connect(_ADMIN_URL)
+        try:
+            await admin_conn.execute(f'DROP ROLE IF EXISTS "{creator_role}"')
+        finally:
+            await admin_conn.close()
 
 
 async def test_268_marks_all_three_retention_binding_triggers_security_definer(

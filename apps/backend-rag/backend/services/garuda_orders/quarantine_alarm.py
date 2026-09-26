@@ -62,6 +62,16 @@ _MAX_LISTED = 5
 #: already depend on — the same reasoning that made `REALERT_SECONDS` shared
 #: rather than re-declared, "so the two cadences cannot silently drift".
 
+#: Once the window empties, a standing `lifetime` total gets ONE more message
+#: at most this often — never the silence a bare "quiet notice fired once"
+#: would otherwise produce forever (L1600). No schema change and no
+#: acknowledgement column: `lifetime` already travels in every snapshot, so
+#: this is a second, much longer timer on the same signal, not a new one.
+#: A day is long enough that the channel is not spammed by a standing
+#: condition nobody can act on faster than that, and short enough that the
+#: money state never actually goes silent.
+LIFETIME_REMINDER_SECONDS = 86_400.0
+
 
 def _plural(n: int, word: str) -> str:
     return f"{n} {word}" if n == 1 else f"{n} {word}s"
@@ -91,16 +101,25 @@ class QuarantineAlarm:
         Fires while the window holds any refused callback. Re-fires only when
         the CONDITION CHANGED (a different count, or a different set of
         reasons) or when `REALERT_SECONDS` has passed.
+
+        Once the window empties, a standing `lifetime` total still gets a
+        reminder every `LIFETIME_REMINDER_SECONDS` (L1600) — otherwise the one
+        quiet notice fired on the transition to empty is the last word this
+        alarm ever has on a row nobody acted on, forever.
         """
 
         recent = max(0, int(snapshot.recent))
         reasons = frozenset(snapshot.reasons or ())
 
         if recent == 0:
-            if self._last_signature is None:
-                return None
-            self._pending = (None, now)
-            return self._compose_quiet(snapshot.lifetime)
+            if self._last_signature is not None:
+                # Transition from an active condition to quiet: announce it.
+                self._pending = (None, now)
+                return self._compose_quiet(snapshot.lifetime)
+            if snapshot.lifetime > 0 and (now - self._last_sent_at) >= LIFETIME_REMINDER_SECONDS:
+                self._pending = (None, now)
+                return self._compose_quiet(snapshot.lifetime)
+            return None
 
         signature = (recent, reasons)
         changed = signature != self._last_signature
@@ -177,14 +196,13 @@ class QuarantineAlarm:
             # Markdown V1 too, so the old `[{order}]` form broke the parse on
             # every single page even after the ids themselves were made safe.
             # NOT "no matching order": NULL here does not mean the callback was
-            # unmatchable. `garuda_payment_inbox.order_id` is never written —
-            # not by the INSERT, not by `_quarantine` — so it is NULL even for
-            # amount_mismatch and unexpected_state, where the repository HAD
-            # already found the order (codex-gpt-5.6-sol, cross-family council).
-            # Saying "no matching order" would state something false in an
-            # alert, which is the defect this PR was opened to cure. Until the
-            # writer records it (ledgered, REQUIRED), the page says only what
-            # is true: this row does not carry one.
+            # unmatchable. `_quarantine` now writes `order_id` for
+            # `amount_mismatch`, `session_not_bound` and `unexpected_state`
+            # (L1606, repository.py) — the two genuinely unmatched reasons
+            # (`unmatched_session`) still leave it NULL because no order row
+            # was ever found. Saying "no matching order" would still be false
+            # for a NULL that predates this fix (rows quarantined before
+            # L1606 landed), so the wording stays honest either way.
             order = _code_span(event.order_id) if event.order_id else "no order id on the inbox row"
             lines.append(
                 f"  {_code_span(event.provider_event_id)} order {order} "
@@ -197,4 +215,4 @@ class QuarantineAlarm:
         return "\n".join(lines)
 
 
-__all__ = ["REALERT_SECONDS", "QuarantineAlarm"]
+__all__ = ["REALERT_SECONDS", "LIFETIME_REMINDER_SECONDS", "QuarantineAlarm"]

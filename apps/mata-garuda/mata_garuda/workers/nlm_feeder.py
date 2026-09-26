@@ -348,6 +348,18 @@ _SOURCE_TO_DOMAIN: dict[str, str] = {
     "intel_scraper": "press",  # bali-intel-scraper articles → press feed
 }
 
+# Sources whose NLM delivery is owned end-to-end by the Intel Lake, not this
+# feeder. intel_scraper_bridge.py writes these items with url/title only (no
+# `content`), so the stream loop would always drop them as no_body — but the
+# Intel Lake (`intel_items`, same canonical_url) has the same articles WITH a
+# real summary, and intel-lake-router-cron already decides per item
+# (nb-intel / blog / needs_review); scripts/intel-lake-nb-pusher-* delivers
+# the nb-intel-routed ones to these same NLM notebooks. Giving this feeder a
+# body would bypass that curation (dumping blog/needs_review into Press) and
+# duplicate what the pusher already delivers. Route these out before domain
+# inference/routing instead of letting them fall through to no_body.
+_LAKE_OWNED_SOURCES = frozenset({"intel_scraper"})
+
 
 def infer_domain_from_item(data: dict) -> str:
     """Best-effort domain inference when the item has none.
@@ -375,6 +387,21 @@ def infer_domain_from_item(data: dict) -> str:
 
 def _nlm_fed_marker(url_or_hash: str) -> str:
     return f"nlm_fed {url_or_hash}"
+
+
+# An item whose only text is its own title is not a source. The old fallback
+# (`content or title`) published it anyway, and NB-INTEL-Press filled up with
+# title-only sources until the 2026-09-22 prune removed 184 of them — using this
+# same 200-char bar, measured on the body with the title set aside.
+MIN_BODY_CHARS = 200
+
+
+def _real_body(title: str, content: str) -> str:
+    """The content worth publishing, or "" when the item carries no real body."""
+    body = (content or "").strip()
+    head = (title or "").strip()
+    rest = body[len(head):].strip() if head and body.startswith(head) else body
+    return body if len(rest) > MIN_BODY_CHARS else ""
 
 
 def _dedup_key(title: str, url: str) -> str:
@@ -424,9 +451,9 @@ def run_nlm_feeder(kb: KnowledgeBase, max_items: int = 30) -> dict:
     Reads items from KB, adds URLs to appropriate NLM notebook.
     Tracks what's been fed via KB entry type 'nlm_fed'.
 
-    Returns stats: {processed, fed, skipped, errors}
+    Returns stats: {processed, fed, skipped, errors, no_body}
     """
-    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
+    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0}
 
     items = kb.get_by_type("harvested_item", limit=max_items)
     if not items:
@@ -464,7 +491,11 @@ def run_nlm_feeder(kb: KnowledgeBase, max_items: int = 30) -> dict:
             success = _nlm_add_url(notebook_id, url)
         else:
             title = content.split("\n")[0][:100]
-            success = _nlm_add_text(notebook_id, title, content[:2000])
+            body = _real_body(title, content)[:2000]
+            if not body:
+                stats["no_body"] += 1
+                continue
+            success = _nlm_add_text(notebook_id, title, body)
 
         if success:
             kb.store("nlm_feeder", "nlm_fed", _nlm_fed_marker(url), url, 1.0)
@@ -496,7 +527,7 @@ def _run_nlm_feeder_from(
     derived from Ollama. The enriched stream lacks `topic` because the
     scorer doesn't write back into it — only into alerts + KB.
     """
-    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
+    stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0, "no_body": 0, "lake_owned": 0}
 
     items = stream_read_new(stream, consumer_group, consumer_name, count=max_items)
     if not items:
@@ -507,6 +538,17 @@ def _run_nlm_feeder_from(
         stats["processed"] += 1
         msg_id = item["id"]
         data = item.get("data") or {}
+
+        # Lake-owned sources (same normalisation as infer_domain_from_item):
+        # the Intel Lake router + nb-pusher already curate and deliver these
+        # to NLM with a real body, so this feeder must not touch them at all —
+        # not even as a no_body skip. Ack and count, before domain inference.
+        source_type_norm = (data.get("source_type") or "").strip().lower()
+        source_norm = (data.get("source") or "").strip().lower()
+        if source_type_norm in _LAKE_OWNED_SOURCES or source_norm in _LAKE_OWNED_SOURCES:
+            stats["lake_owned"] += 1
+            stream_ack(stream, consumer_group, msg_id)
+            continue
 
         title = data.get("title", "") or ""
         content = data.get("content", "") or ""
@@ -542,6 +584,16 @@ def _run_nlm_feeder_from(
             except (TypeError, ValueError):
                 pass  # unparseable score → fail-open, feed it
 
+        text_body = _real_body(title, content)[:4000]
+        if not text_body:
+            stats["no_body"] += 1
+            logger.info(
+                f"[nlm_feeder] skip (no body beyond title): "
+                f"{(title or url)[:60]} (domain={domain})"
+            )
+            stream_ack(stream, consumer_group, msg_id)
+            continue
+
         # Dedup on ITEM identity (title+url), not the bare URL — distinct items
         # sharing one landing-page URL (LHKPN officials, peraturan harmon docs)
         # must dedup independently (W89 #2). Look up by (type, source) directly —
@@ -556,7 +608,6 @@ def _run_nlm_feeder_from(
         # Feed as text (title + content) so NLM gets context even if URL
         # is paywalled. Matches briefing spec. Title falls back to url (NOT the
         # dedup_key — that's a hash now and would make an unreadable NLM title).
-        text_body = content[:4000] if content else title
         effective_title = (title or url or dedup_key)[:200]
         success = _nlm_add_text(notebook_id, effective_title, text_body)
 
@@ -591,7 +642,8 @@ def _run_nlm_feeder_from(
 
     logger.info(
         f"[nlm_feeder] {stream} done: {stats['processed']} processed, "
-        f"{stats['fed']} fed, {stats['skipped']} skipped, {stats['errors']} errors"
+        f"{stats['fed']} fed, {stats['skipped']} skipped, {stats['errors']} errors, "
+        f"{stats['lake_owned']} lake_owned"
     )
     return stats
 

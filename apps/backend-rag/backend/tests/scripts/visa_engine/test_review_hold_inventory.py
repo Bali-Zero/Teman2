@@ -31,6 +31,7 @@ from backend.scripts.visa_engine.review_hold_inventory import (
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.api_models import DisclosedReviewFlag
 from backend.services.visa_engine.evaluate_path import (
+    DEAD_END_DISCLOSED_FLAGS,
     HOLDING_DISCLOSED_FLAGS,
     MINOR_GUARDIAN_PRIVACY_REVIEW_CODE,
 )
@@ -86,16 +87,20 @@ def real_pack() -> M.RulePackPayload:
 def test_inventory_counts_match_the_signed_pack(real_pack: M.RulePackPayload) -> None:
     review_rules = pack_review_rules(real_pack)
     escalations = pack_unknown_escalations(real_pack)
-    assert len(review_rules) == 9, (
-        f"sequence {real_pack.sequence}: expected 9 HUMAN_REVIEW-stage rules, "
-        f"got {len(review_rules)} — PLAN §1.3(c) named exactly 9 for seq-22; a "
-        "changed count on a later sequence is real news, not a stale pin"
+    # Printed by `review_hold_inventory --json` on the signed seq-23 tree
+    # (Slice A9.3), never typed: seq-22's 9 / 7 became 1 / 0 when seq-23
+    # retired 8 review.* rules and flipped the 4 HARD_FILTER escalations to
+    # NEEDS_INPUT — A8.4's derived target.
+    assert len(review_rules) == 1, (
+        f"sequence {real_pack.sequence}: expected 1 HUMAN_REVIEW-stage rule "
+        f"(review.e33.below-threshold-studio), got {len(review_rules)} — "
+        "A8.4 derived exactly 1 for seq-23; a changed count on a later "
+        "sequence is real news, not a stale pin"
     )
-    assert len(escalations) == 7, (
-        f"sequence {real_pack.sequence}: expected 7 on_unknown=HUMAN_REVIEW "
-        f"escalations, got {len(escalations)} — PLAN §1.3(d) named exactly 7 for "
-        "seq-22 (the 3 overlapping HUMAN_REVIEW-stage rules plus 4 HARD_FILTER "
-        "rules)"
+    assert len(escalations) == 0, (
+        f"sequence {real_pack.sequence}: expected 0 on_unknown=HUMAN_REVIEW "
+        f"escalations, got {len(escalations)} — A8.4 derived 0 for seq-23 "
+        "(the 4 bridging/B1 HARD_FILTER rules now ask instead of holding)"
     )
 
 
@@ -106,38 +111,42 @@ def test_every_disclosed_flag_has_exactly_one_code() -> None:
 
 
 def test_holding_split_matches_the_2026_09_13_ruling_floor() -> None:
-    """PLAN VISA-ORACLE-DW-20260919 slice A1' (gate vo-gate-a1, OBS-3
-    MEDIUM): the inventory must derive holding vs conditioning from
-    `HOLDING_DISCLOSED_FLAGS` itself, not hand-list the split.
+    """PLAN VISA-ORACLE-DW-20260919 slice A1'/A3'-B (gate vo-gate-a1, OBS-3
+    MEDIUM; Slice A3'-B): the inventory must derive holding, dead-end and
+    conditioning from `HOLDING_DISCLOSED_FLAGS`/`DEAD_END_DISCLOSED_FLAGS`
+    themselves, not hand-list the split.
 
     Unlike `test_inventory_is_a_derivation_not_a_hand_list` below, THIS test
-    hard-pins the membership (`set(holding) ==
-    {CRIMINAL_RECORD, ACTIVITY_BOUNDARY}`, `len(holding) == 2`,
-    `len(conditioning) == 12`) — on purpose: a widening or narrowing of the
-    ruling's floor SHOULD turn this test red, because
-    `split_disclosed_review_codes` deriving its answer from
-    `HOLDING_DISCLOSED_FLAGS` is what the previous gate's OBS-3 asked for,
-    not a promise that the counts float free. What this test proves instead
-    is that the split is a PARTITION of `adapter_review_codes()`'s 14 rows
-    (no code lost, none duplicated, none moved to the wrong side) rather
-    than an independent hand-list that could silently drift from the
-    production mapping — see the final two assertions below."""
+    hard-pins the membership (`set(holding) == {CRIMINAL_RECORD}`,
+    `set(dead_end) == {ACTIVITY_BOUNDARY}`, `len(holding) == 1`,
+    `len(dead_end) == 1`, `len(conditioning) == 12`) — on purpose: a
+    widening or narrowing of the ruling's floor SHOULD turn this test red,
+    because `split_disclosed_review_codes` deriving its answer from those
+    two constants is what the previous gate's OBS-3 asked for, not a
+    promise that the counts float free. What this test proves instead is
+    that the split is a PARTITION of `adapter_review_codes()`'s 14 rows (no
+    code lost, none duplicated, none moved to the wrong side) rather than
+    an independent hand-list that could silently drift from the production
+    mapping — see the final two assertions below."""
 
     codes = adapter_review_codes()
-    holding, conditioning = split_disclosed_review_codes(codes)
+    holding, dead_end, conditioning = split_disclosed_review_codes(codes)
 
     assert set(holding) == HOLDING_DISCLOSED_FLAGS
-    assert set(holding) == {
-        DisclosedReviewFlag.CRIMINAL_RECORD,
-        DisclosedReviewFlag.ACTIVITY_BOUNDARY,
-    }
-    assert len(holding) == 2
+    assert set(holding) == {DisclosedReviewFlag.CRIMINAL_RECORD}
+    assert set(dead_end) == DEAD_END_DISCLOSED_FLAGS
+    assert set(dead_end) == {DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+    assert len(holding) == 1
+    assert len(dead_end) == 1
     assert len(conditioning) == 12
-    assert set(holding) | set(conditioning) == set(DisclosedReviewFlag)
+    assert set(holding) | set(dead_end) | set(conditioning) == set(DisclosedReviewFlag)
+    assert set(holding) & set(dead_end) == set()
     assert set(holding) & set(conditioning) == set()
+    assert set(dead_end) & set(conditioning) == set()
     # Every code stays paired with its own flag across the split — the
     # split partitions rows, it never rewrites a code.
     assert holding == {flag: codes[flag] for flag in holding}
+    assert dead_end == {flag: codes[flag] for flag in dead_end}
     assert conditioning == {flag: codes[flag] for flag in conditioning}
 
 

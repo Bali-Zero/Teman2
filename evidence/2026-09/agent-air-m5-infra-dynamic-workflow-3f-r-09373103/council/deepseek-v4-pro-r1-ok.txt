@@ -1,0 +1,14 @@
+VERDICT: SOUND  
+OBJECTIONS: None.
+
+**Checks performed and how:**
+
+1. **Remaining C5-relevant `opus-5`/`Opus 5` as a current seat** – Scanned the entire diff of `.claude/skills/dynamic-workflow/SKILL.md` and `brief.template.md` for `opus-5`/`opus 5`. The only occurrences are the two deliberate ones: the historical fact F3 and the explanatory sentence in §4 that names the superseded spelling. All other seat mentions (gate row, rule text, synthesis step, Dux description) are `opus-5-5`/`Opus 5.5`. The phrase “fresh-Opus synthesis” in the skill description heading is not a “bare opus-5” literal, matches neither the regex nor the A1 grep, and the corresponding §5 heading already states “Opus 5.5 `xhigh`”.
+
+2. **Test re-implements the regex** – The new test in `<REDACTED>` imports the launcher module via `_load_launcher()` and calls `dw._check_c5(…)`. It never duplicates or hand-rolls the C5 regex. The `TEMPLATE_GATE_ROW_RE` used to find the example row is purely structural, not a semantic entity matcher.
+
+3. **Template gate row rejected by main’s `_check_c5`** – The shipped gate row is `| final gate | opus-5-5 | window | serial | 1 | <command> | <next> |`. The `_C5_SEAT_ENTITY_RE` explicitly accepts `opus-5-5` and rejects bare `opus-5`. The row’s mode cell contains “window”. The row structure (seven columns, correct order) matches what `_md_table_rows` parses. The GUILT test calls `_check_c5` on exactly that row and confirms it passes.
+
+4. **Scope creep beyond the three intended changes** – The diff against `#6951` is limited to: the gate-seat literal bump, the two `MODEL_ROSTER.md` line re-points, and the new GUILT test. The CI one-liner adds the test file to the pytest step, which is necessary to run the new test—it was already present in `#6951` and is not an extra change. The evidence brief and allowlist entry are unchanged from `#6951`’s content, only carried forward.
+
+5. **Workflow edit that could skip/mask tests** – The workflow edit appends `scripts/tests/<REDACTED>` to the existing `pytest` invocation. Both test files are together; the previous selftest step (`dynamic_workflow.py --selftest`) runs independently. A failure in selftest would stop the job, which is correct—no test is skipped, and no masking occurs because the job is already red.

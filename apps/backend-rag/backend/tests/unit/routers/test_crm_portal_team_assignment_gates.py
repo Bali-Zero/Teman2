@@ -354,3 +354,43 @@ async def test_b3_archived_client_excluded_from_by_client_even_for_admin(mock_db
 
     by_client_query = conn.fetch.await_args.args[0]
     assert "c.deleted_at IS NULL" in by_client_query
+
+
+@pytest.fixture(autouse=True)
+def pending_replies(monkeypatch):
+    # These existing tests cover the legacy unread queries. The independent
+    # pending query and its relational semantics have their own acceptance tests.
+    from unittest.mock import AsyncMock
+
+    lookup = AsyncMock(return_value={"total_pending": 0, "pending_by_client": []})
+    monkeypatch.setattr("backend.app.routers.crm_portal_integration.get_pending_replies", lookup)
+    return lookup
+
+
+@pytest.mark.asyncio
+async def test_pending_reply_query_receives_the_same_assignment(mock_db_pool, pending_replies):
+    conn = mock_db_pool._mock_conn
+    conn.fetchval.return_value = 0
+    conn.fetch.return_value = []
+    await get_unread_messages_count(
+        _current_user={"email": "staff@example.test", "role": "team"},
+        assigned_filter="staff@example.test",
+        db_pool=mock_db_pool,
+    )
+    pending_replies.assert_awaited_once_with(conn, "staff@example.test")
+
+
+@pytest.mark.asyncio
+async def test_pending_query_failure_cannot_return_a_false_zero_reply_state(
+    mock_db_pool, pending_replies
+):
+    conn = mock_db_pool._mock_conn
+    conn.fetchval.return_value = 0
+    conn.fetch.return_value = []
+    pending_replies.side_effect = RuntimeError("synthetic unavailable")
+    with pytest.raises(RuntimeError, match="synthetic unavailable"):
+        await get_unread_messages_count(
+            _current_user={"email": "staff@example.test", "role": "team"},
+            assigned_filter="staff@example.test",
+            db_pool=mock_db_pool,
+        )

@@ -71,6 +71,8 @@ class TestClose:
     async def test_close_when_no_client(self, service):
         service._client = None
         await service.close()  # Should not raise
+        # A no-op close must leave the client attribute untouched (None).
+        assert service._client is None
 
 
 # ── send_message ────────────────────────────────────────────────────────────

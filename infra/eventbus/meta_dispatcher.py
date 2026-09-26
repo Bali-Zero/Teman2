@@ -28,6 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eventbus import EventSubscriber, EventEnvelope, beat, start_background_beater
 
+# Checkout root, resolved from this file's own location (works identically for
+# the repo checkout and any HOME-fork copy) — overridable for tests/tooling.
+# NB scar family #1: an invoker resolved against a checkout cannot HOME-fork;
+# a hardcoded absolute path to a sibling script always can (PENDING-ARMS L1621).
+REPO_ROOT = Path(os.environ.get("NUZANTARA_REPO_ROOT") or Path(__file__).resolve().parent.parent.parent)
+
 LOG = Path.home() / "logs" / "meta-dispatcher.log"
 LOG.parent.mkdir(parents=True, exist_ok=True)
 
@@ -298,8 +304,8 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
             return
         topic_slug = p.get("topic_slug", "unknown")
         cmd = [
-            "/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3",
-            "/Users/nuzantara/scripts/eventbus/devils_advocate_runner.py",
+            sys.executable,
+            "-m", "infra.eventbus.devils_advocate_runner",
             "--target", target,
             "--topic-slug", topic_slug,
             "--domain", domain if domain in ("tax", "regulatory", "property", "visa") else "other",
@@ -307,8 +313,10 @@ def _process_action(action: dict, env: EventEnvelope) -> None:
             "--source-event-id", env.event_id,
         ]
         try:
+            # Resolved against the checkout (cwd=REPO_ROOT), not a HOME literal
+            # path — see REPO_ROOT comment above (PENDING-ARMS L1621).
             subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             start_new_session=True)
+                             start_new_session=True, cwd=str(REPO_ROOT))
             log.info("spawn-devils-advocate-runner launched (event %s, domain=%s, target=%s)",
                      env.event_id, domain, target)
         except Exception as e:

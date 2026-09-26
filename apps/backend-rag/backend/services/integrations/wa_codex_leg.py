@@ -116,6 +116,7 @@ import asyncpg
 import httpx
 
 from backend.app.core.config import settings
+from backend.services.communication import detect_language
 from backend.services.integrations import wa_broker
 from backend.services.integrations.wa_completion_envelope import decode_completion
 from backend.services.integrations.wa_finalize import (
@@ -124,6 +125,7 @@ from backend.services.integrations.wa_finalize import (
 )
 from backend.services.integrations.wa_greeting import match_greeting
 from backend.services.integrations.wa_human_handoff import (
+    _FALLBACK_RECIPIENT,
     match_human_request,
     notify_human_handoff,
 )
@@ -510,6 +512,151 @@ class CodexLegResult:
     package_ref: str | None = None
 
 
+# Deterministic scripted reply for a caption-less non-text attachment
+# (B2.5-3). Measured on real delivery, 2026-09-25: thread 394, inbound
+# 899/901 (2026-09-20), both `media_type='image'`, `body` length 0 — the
+# bound inbound classified as `no_customer_message`, the row burned the full
+# five-attempt retry ladder (~7.5 min) and terminalized `failed`. The client
+# got no reply at all and no human was told; they re-sent the photo 12
+# minutes later. In 90 days: 2 image + 2 unsupported out of 282 inbound.
+#
+# Scope, and a KNOWN GAP left for a follow-up PR: `bound.media_type` is
+# checked, never guessed from `query` — but `query` (the anchor's `body`)
+# is empty on TWO different inputs, and this leg cannot tell them apart.
+# `whatsapp_chat.py::_handle_meta_inbox_message` fills `body` ONLY for
+# `type == "text"` (`~:1227`); Meta ships the caption on other message
+# types as sibling fields the ingest path never reads, so an attachment
+# WITH a caption ALSO lands here today, indistinguishable from one
+# without. Fixing the ingestion gap is its own PR (captures the caption
+# into `body` for every media type) — out of scope here, and the reply
+# copy below is worded to be true either way in the meantime: it never
+# assumes the client did not already ask something, and never claims the
+# file was opened or read.
+_MEDIA_ACK_TYPES = frozenset({"image", "document", "audio", "video", "sticker", "unsupported"})
+
+# Wording rules (hard, PR description + round-2 review finding MEDIUM):
+# never claims the bot read/opened the file; never invites documents,
+# passport numbers or other personal data over WhatsApp; never assumes
+# the client did not already write a question — and says so EXPLICITLY,
+# not just by omission, because the ingestion gap above means a caption
+# sitting unread on the Meta side is a real, common case: the text states
+# plainly that a caption sent together with the file is not read either,
+# so the client understands WHY a second, separate text message is
+# needed instead of silently re-asking; and — since `notify_human_handoff`
+# can return True on a dedup-suppressed OR an email-delivery-failed send
+# (best-effort, `send_internal_email(..., raise_on_failure=False)`) —
+# never claims a colleague was notified at all. ONE text per language;
+# the notification call stays best-effort and its outcome is logged, but
+# the reply no longer branches on it.
+_MEDIA_ACK_TEXTS: dict[str, str] = {
+    "en": (
+        "I can't open or check attachments in this chat, and I can't "
+        "read text sent together with a file. If there's anything I can "
+        "help with, please send it here as a separate text message."
+    ),
+    "id": (
+        "Saya tidak bisa membuka atau memeriksa lampiran di chat ini, "
+        "dan tidak bisa membaca teks yang dikirim bersama file. Kalau "
+        "ada yang bisa saya bantu, silakan kirim di sini sebagai pesan "
+        "teks terpisah."
+    ),
+    "it": (
+        "Non riesco ad aprire o controllare gli allegati in questa "
+        "chat, né a leggere il testo inviato insieme al file. Se c'è "
+        "qualcosa in cui posso aiutarti, mandamelo qui come messaggio "
+        "di testo separato."
+    ),
+    "ru": (
+        "Я не могу открывать или проверять вложения в этом чате и не "
+        "вижу текст, отправленный вместе с файлом. Если чем-то можно "
+        "помочь, напишите об этом здесь отдельным текстовым "
+        "сообщением."
+    ),
+    "uk": (
+        "Я не можу відкривати або перевіряти вкладення в цьому чаті й "
+        "не бачу текст, надісланий разом із файлом. Якщо чимось можу "
+        "допомогти, напишіть про це тут окремим текстовим "
+        "повідомленням."
+    ),
+}
+
+_MEDIA_ACK_FALLBACK_LANG = "en"
+
+
+def _media_ack_language(history: list[dict[str, str]]) -> str:
+    """The language of the latest prior CUSTOMER text turn, newest first.
+
+    `detect_language` (backend.services.communication) is the SAME detector
+    the apology/ack path (`wa_outbox_worker._maybe_send_apology`) already
+    uses for this exact fallback shape, and its own keys ("it"/"en"/"id"/
+    "ru"/"uk"/"auto") are used here DIRECTLY as the `_MEDIA_ACK_TEXTS`
+    lookup — never routed through `get_localized_stub`'s "ITALIAN"-style
+    vocabulary, which is a different table with different keys entirely
+    (wiring one into the other silently answers in English under a
+    matching-looking key — measured 2026-08-11, pinned by
+    `test_an_unknown_language_name_must_not_silently_become_an_english_apology`).
+    'auto' means unclassified, not a language: keep scanning older turns:
+    the SAME history-fallback order `_maybe_send_apology` uses. No
+    classifiable turn at all (empty history, or every candidate 'auto')
+    falls to the fixed English default, never a guess.
+    """
+    for turn in reversed(history):
+        if turn.get("role") != "user":
+            continue
+        detected = detect_language(turn.get("content") or "")
+        if detected != "auto":
+            return detected
+    return _MEDIA_ACK_FALLBACK_LANG
+
+
+def _media_ack_text(language: str) -> str:
+    return _MEDIA_ACK_TEXTS.get(language, _MEDIA_ACK_TEXTS[_MEDIA_ACK_FALLBACK_LANG])
+
+
+# The B2.5-2 human-handoff turn's honest fallback (round-1 cross-family
+# review finding, 2026-09-25): `notify_human_handoff`'s return now means
+# DELIVERED, not merely attempted — so the turn below picks ITS reply from
+# that truthful signal instead of always returning `human_request.text`
+# ("I'm flagging this for a colleague..."), which would otherwise repeat
+# the exact lie this whole PR exists to stop, one call site downstream of
+# where the notifier itself was fixed. Deliberately never names a phone —
+# `_FALLBACK_RECIPIENT` (imported from `wa_human_handoff`) is the ONE
+# existing constant for "write to us directly" in this codebase; nothing
+# new is invented.
+_HUMAN_HANDOFF_UNREACHABLE_TEXTS: dict[str, str] = {
+    "en": (
+        f"I couldn't reach a colleague automatically just now. Please try "
+        f"again in a few minutes, or write directly to {_FALLBACK_RECIPIENT}."
+    ),
+    "id": (
+        f"Saya belum berhasil menghubungi kolega secara otomatis saat ini. "
+        f"Silakan coba lagi dalam beberapa menit, atau kirim email langsung "
+        f"ke {_FALLBACK_RECIPIENT}."
+    ),
+    "it": (
+        f"Al momento non sono riuscito a contattare automaticamente un "
+        f"collega. Riprova tra qualche minuto, oppure scrivi direttamente a "
+        f"{_FALLBACK_RECIPIENT}."
+    ),
+    "ru": (
+        f"Сейчас не удалось автоматически связаться с коллегой. "
+        f"Попробуйте, пожалуйста, ещё раз через несколько минут или "
+        f"напишите напрямую на {_FALLBACK_RECIPIENT}."
+    ),
+    "uk": (
+        f"Зараз не вдалося автоматично зв'язатися з колегою. Спробуйте, "
+        f"будь ласка, ще раз за кілька хвилин або напишіть напряму на "
+        f"{_FALLBACK_RECIPIENT}."
+    ),
+}
+
+
+def _human_handoff_unreachable_text(language: str) -> str:
+    return _HUMAN_HANDOFF_UNREACHABLE_TEXTS.get(
+        language, _HUMAN_HANDOFF_UNREACHABLE_TEXTS[_MEDIA_ACK_FALLBACK_LANG]
+    )
+
+
 async def _stub_unsupported(
     *,
     parsed_wire: dict[str, Any],
@@ -666,6 +813,58 @@ async def _attempt(
         bound.inbound_message_id,
         outbox_id,
     )
+
+    # Deterministic caption-less-attachment turn (B2.5-3), checked BEFORE
+    # the `no_customer_message` fall-off below: an empty body on a real
+    # image/document/audio/video/sticker/unsupported message is not the
+    # same standing condition as a thread with no customer inbound at
+    # all — it is a turn with a scripted answer, same reasoning as the
+    # greeting/identity/human-handoff turns further down. Placed here,
+    # before them, because it is the only one of the four whose predicate
+    # is decided by `bound.media_type` rather than by matching `query`
+    # text — and `query` is empty by construction on this branch, so none
+    # of the text matchers below could ever fire on it anyway.
+    #
+    # Notification reuses `notify_human_handoff` (best-effort, wrapped here
+    # for the same reason the human-handoff turn wraps it: a Brevo failure
+    # must never turn a served scripted reply into a text=None fall-off)
+    # with `reason="media_attachment_no_caption"` so the in-app alert and
+    # email describe what actually happened instead of borrowing the
+    # human-handoff turn's "client asked for a human" text. The RETURN
+    # VALUE is logged, never read by the reply text: `notify_human_handoff`
+    # now reports genuine delivery, but this ack is sent whatever it
+    # returns, and a True from the dedup window means a colleague was
+    # reached about the thread earlier, not about THIS attachment. The ack
+    # text therefore takes no `notified` argument at all — it never
+    # promises a notification about the attachment it cannot vouch for.
+    if not query and bound.media_type in _MEDIA_ACK_TYPES:
+        language = _media_ack_language(history)
+        notified = False
+        try:
+            notified = await notify_human_handoff(
+                pool,
+                thread_id=thread_id,
+                counterpart_phone=thread["counterpart_phone"],
+                language=language,
+                reason="media_attachment_no_caption",
+            )
+        except Exception as exc:
+            logger.error(
+                "wa_codex_leg: media-ack notification failed (outbox=%s): %s",
+                outbox_id,
+                type(exc).__name__,
+            )
+        logger.info(
+            "wa_codex_leg: scripted media ack served outbox=%s lang=%s notified=%s",
+            outbox_id,
+            language,
+            notified,
+        )
+        return CodexLegResult(
+            text=_media_ack_text(language),
+            served_by="scripted_media_ack",
+        )
+
     if not query:
         # generate_bot_reply raises BotStandingCondition for this too; the
         # ROUTE decision just steps aside and lets the same reason surface
@@ -717,15 +916,30 @@ async def _attempt(
     # list and notify nobody, silently dropping the highest-intent message
     # this bot ever receives. Human-request wins the double-match.
     #
-    # Notification is best-effort and wrapped here, not inside
-    # `notify_human_handoff`: the client's confirmation must never be lost
-    # because Brevo failed, and the outer `attempt()` turns any unhandled
-    # exception from `_attempt` into a text=None fall-off — which would
-    # silently swallow the confirmation this leg is about to return.
+    # Notification is best-effort and wrapped here, not (only) inside
+    # `notify_human_handoff`: `notify_human_handoff` itself never raises
+    # (its own contract), but the outer `attempt()` turns ANY unhandled
+    # exception from `_attempt` into a text=None fall-off, so this stays a
+    # second, independent layer — the client's REPLY must never be lost
+    # even if a future bug breaks that contract.
+    #
+    # The reply text is now CONDITIONED on the truthful return
+    # (round-1 cross-family review, 2026-09-25; corrected round 3, S1 of
+    # spec_Fa_r3.md): `notify_human_handoff` returning True means a
+    # colleague HAS BEEN REACHED for this thread — either by THIS call, or
+    # by an earlier call still live in the dedup window — so only THEN
+    # does the client hear "I'm flagging this for a colleague". A False
+    # (nobody reached AT ALL — every channel failed this call, or the
+    # thread is in the failed-attempt cooldown) or a caught exception gets
+    # the honest variant instead: no claim that anyone was told, a
+    # concrete next step (try again shortly, or write directly). A
+    # dedup-suppressed call is no longer in the False set — it means
+    # someone already was told, and now says so.
     human_request = match_human_request(query)
     if human_request is not None:
+        notified = False
         try:
-            await notify_human_handoff(
+            notified = await notify_human_handoff(
                 pool,
                 thread_id=thread_id,
                 counterpart_phone=thread["counterpart_phone"],
@@ -737,12 +951,18 @@ async def _attempt(
                 outbox_id,
                 type(exc).__name__,
             )
+        reply_text = (
+            human_request.text
+            if notified
+            else _human_handoff_unreachable_text(human_request.language)
+        )
         logger.info(
-            "wa_codex_leg: scripted human handoff served outbox=%s lang=%s",
+            "wa_codex_leg: scripted human handoff served outbox=%s lang=%s notified=%s",
             outbox_id,
             human_request.language,
+            notified,
         )
-        return CodexLegResult(text=human_request.text, served_by="scripted_human_handoff")
+        return CodexLegResult(text=reply_text, served_by="scripted_human_handoff")
 
     # Deterministic identity turn (B2.5-1b), second authority, same order,
     # same reasoning, checked right after the greeting: measured on real

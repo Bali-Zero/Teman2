@@ -1,0 +1,84 @@
+task_id: vo-a8-2-copy
+gear: 2
+base_sha: 1a0c29774b # pragma: allowlist secret
+lane: mouth
+host: air-m5 (M5)
+branch: agent/air-m5/mouth/vo-a8-2-copy
+objective: >-
+  Slice A8-2 (MANDATE-vo.md, 2026-09-24 — mouth, copy before activation; opens
+  after A8-1 merges): `SUPPORT_REASON_COPY` in `engine-adapter.ts` gains the 10
+  EXCLUDE-effect codes the candidate SOURCE pack `rulepack-prod-023.source.json`
+  adds beyond the currently-live SIGNED `rulepack-prod-022.signed.json`
+  (`CALLING_VISA_NATIONALITY_NOT_ASSESSED`, `VOA_DUAL_NATIONALITY_NOT_ASSESSED`,
+  `ACTIVE_OVERSTAY_SETTLE_FIRST`, `MINOR_SPONSOR_NOT_CONFIRMED`,
+  `BRIDGING_ADVERSE_HISTORY_NOT_ASSESSED`, `E33_EMPLOYMENT_NOT_COVERED`,
+  `E33G_LOCAL_MARKET_NOT_ALLOWED`, `E33G_LOCAL_COMPANY_NOT_ALLOWED`,
+  `STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED`,
+  `RETIREMENT_INCOME_BELOW_THRESHOLD`), copied byte-exact (curly apostrophe,
+  em dash preserved) from DRAFT-SPEC-A8-1.v2.md §1's "Copy owed" list — this
+  copy must exist before seq-23 is ever signed/activated (A9), so a real
+  applicant never meets a raw machine code. A new regression test
+  (`excludeReasonCodesOf`/`excludeReasonCodesInSignedPack(22)` /
+  `highestSequenceSourcePack()`) diffs the highest source pack's EXCLUDE codes
+  against the pinned signed-seq-22 baseline, prints the set difference, guards
+  the guard at `length >= 10`, and fails naming any code still missing copy.
+  A companion test pins that the pre-existing known-debt code
+  `LEVEL_BAND_DIKTI` keeps its raw `Verified reason: LEVEL_BAND_DIKTI`
+  fallback unchanged when it appears beside the new
+  `STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED` code on the same outcome.
+constraints:
+  - >-
+    Mouth-only: no file under apps/backend-rag/** is touched, no pack file
+    (signed or source) is modified — read-only reads at test time, same idiom
+    PACKS_DIR already uses elsewhere in this test file.
+  - >-
+    Two files only: engine-adapter.ts (SUPPORT_REASON_COPY additions) and
+    engine-adapter.test.ts (the two new tests + three new helper functions).
+  - >-
+    The 10 EN/ID strings are shipped VERBATIM from DRAFT-SPEC-A8-1.v2.md §1 —
+    not rewritten, retranslated, or ASCII-normalized; verified byte-equal by a
+    scripted comparison against the spec source, not eyeballed.
+  - >-
+    The 9 pre-existing uncopied EXCLUDE codes (known debt:
+    E28A_PAID_CAPITAL_BELOW_MIN, E28A_TOTAL_INVESTMENT_BELOW_MIN,
+    E33B_/E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE, LEVEL_BAND_DASMEN,
+    LEVEL_BAND_DIKTI, OVERSTAY_EXCEEDS_60_DAYS, REQ_PARENT_SPONSOR_INDONESIAN,
+    REQ_UNDER_18, REQ_UNMARRIED) are left uncopied — named in the PR body,
+    never touched in code.
+  - >-
+    PR ships UNARMED and unmerged by this sub-conductor. No arming, merging,
+    or gate verdict — a separate gate/conductor session does that.
+appetite: { wall_clock_hours: 1 }
+seats:
+  build: "Kimi K3 (kimi-code/kimi-for-coding), via scripts/seat_build.sh --seat kimi --tier coding (arsenal_probe 2026-09-24 ~09:27Z: kimi LIVE)"
+  verify_and_ship: "Sonnet 5 (subcond-a8-2), sub-conductor for this slice"
+acceptance:
+  - text: >-
+      The full visa-oracle vitest suite passes with the 10 new
+      SUPPORT_REASON_COPY entries and the two new tests included.
+    probe: "cd apps/mouth && ../../node_modules/.bin/vitest run --root . 'src/app/(visa-oracle)/visa-oracle'"
+  - text: >-
+      GUILT: every EXCLUDE code the highest source pack adds beyond signed
+      seq-22 has copy — deleting one row reddens naming exactly that code.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "has copy for every EXCLUDE code the highest source pack adds beyond signed seq-22"'
+  - text: >-
+      LEVEL_BAND_DIKTI keeps printing its raw-code fallback beside the new
+      STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy on the same outcome.
+    probe: 'cd apps/mouth && ../../node_modules/.bin/vitest run "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" -t "LEVEL_BAND_DIKTI keeps its raw-code fallback"'
+  - text: "tsc --noEmit exits 0 across the whole apps/mouth project."
+    probe: "cd apps/mouth && ../../node_modules/.bin/tsc --noEmit"
+assumptions:
+  - text: >-
+      The set difference between rulepack-prod-023.source.json's EXCLUDE codes
+      and rulepack-prod-022.signed.json's EXCLUDE codes is exactly the 10
+      codes named in DRAFT-SPEC-A8-1.v2.md §1, no more and no fewer.
+    status: verified
+    probe: >-
+      python3 walk of effect.type=="EXCLUDE" over both pack files' full rule
+      trees (source vs signed.payload), set-subtracted and sorted — matches
+      the mandate's 10 codes exactly.
+  - text: >-
+      None of the 10 new keys already existed in SUPPORT_REASON_COPY before
+      this PR (no accidental overwrite of pre-existing copy).
+    status: verified
+    probe: "grep -c '^  <CODE>:' apps/mouth/.../engine-adapter.ts for each of the 10 codes on origin/main — 0 hits each"

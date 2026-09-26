@@ -35,7 +35,7 @@ from backend.services.cognitive.models import (
     UltraMoveCreate,
 )
 from backend.services.cognitive.repository import CognitiveRepository
-from backend.services.council.cli_runners import CLIRunner
+from backend.services.council.cli_runners import CLIRunner, CLIRunnerError
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,11 @@ class OracleResult:
 
     @property
     def degraded(self) -> bool:
+        # `self.errors` covers the case a whole round never produced proposals at all
+        # (e.g. every proponent's TaskGroup was cancelled) — comparing two lengths of
+        # the same possibly-empty `proposals` list alone reads 0 < 0 as "not degraded".
+        if self.errors:
+            return True
         valid = [p for p in self.proposals if p.ok]
         return len(valid) < len(self.proposals)
 
@@ -212,10 +217,16 @@ class OracleCouncil:
                 context=context,
                 max_moves=self.max_moves,
             )
-            parsed, result = await runner.run_json(
-                prompt,
-                timeout=self.round_timeout,
-            )
+            try:
+                parsed, result = await runner.run_json(
+                    prompt,
+                    timeout=self.round_timeout,
+                )
+            except CLIRunnerError as exc:
+                # A missing binary (or other fatal subprocess error) must not cancel
+                # every sibling proponent's task — one dead voice degrades this voice
+                # only, per §Meta-pattern "the council survives one dead voice".
+                return OracleProposal(author=name, ok=False, error=f"{type(exc).__name__}: {exc}")
             if not result.ok or parsed is None:
                 return OracleProposal(
                     author=name,

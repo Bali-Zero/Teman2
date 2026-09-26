@@ -20,11 +20,12 @@ export interface ComposeRequest {
 }
 
 export interface TLDRSection {
-  should_worry: string;
   what: string;
-  who: string;
-  when: string;
-  risk_level: string;
+  // Absent when the source does not state it; the published card omits the row.
+  should_worry?: string | null;
+  who?: string | null;
+  when?: string | null;
+  risk_level?: string | null;
 }
 
 export interface BaliZeroTake {
@@ -36,6 +37,19 @@ export interface BaliZeroTake {
 export interface NextSteps {
   expat: string[];
   investor: string[];
+  // Audience-neutral steps: a draft with no "For Expats"/"For Investors"
+  // subsections states one list — it renders as one neutral group, never a
+  // fabricated 50/50 split (2026-09-23 GloBE regression).
+  general?: string[];
+}
+
+// A draft "##" section the converter does not map to a dedicated field
+// (e.g. "In Practice", "Sources") — preserved verbatim instead of being
+// silently dropped (2026-09-23 GloBE regression).
+export interface ExtraSection {
+  heading: string;
+  body: string;
+  insert_after?: "facts" | "bali_zero_take" | "next_steps";
 }
 
 export interface EnrichedArticle {
@@ -56,6 +70,7 @@ export interface EnrichedArticle {
   source: string;
   source_url: string | null;
   enriched_at: string;
+  extra_sections?: ExtraSection[];
 }
 
 export interface ComposeResponse {

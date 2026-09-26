@@ -14,10 +14,11 @@ NOTE: TelegramChannelAdapter has a deep import chain
 We mock the TelegramBotService at the module level before importing the adapter.
 """
 
+import logging
 import os
 import sys
 from types import ModuleType
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -32,24 +33,34 @@ _mock_telegram_bot_service_module = ModuleType("backend.services.integrations.te
 _mock_telegram_bot_service_cls = MagicMock()
 _mock_telegram_bot_service_module.TelegramBotService = _mock_telegram_bot_service_cls  # type: ignore[attr-defined]
 
-# Only inject if not already importable
+# Only inject if not already importable, and only for the duration of the
+# import below: under pytest-xdist (-n auto --dist loadfile), one worker
+# process runs multiple test files in sequence, so an unscoped
+# `sys.modules[...] = fake` here used to leak past this file's own imports
+# and poison later files' real `from backend.services.integrations.X import
+# Y` (they'd hit this fake, path-less ModuleType instead of the real
+# package). patch.dict restores the prior state (i.e. removes these keys,
+# since they were absent) as soon as the `with` block exits, so nothing
+# survives to affect a file collected after this one in the same worker.
+_mock_patch_values: dict[str, ModuleType] = {}
 if "backend.services.integrations.telegram_bot_service" not in sys.modules:
-    # Also mock the integrations __init__ if needed
     if "backend.services.integrations" not in sys.modules:
-        _mock_integrations = ModuleType("backend.services.integrations")
-        sys.modules["backend.services.integrations"] = _mock_integrations
-    sys.modules["backend.services.integrations.telegram_bot_service"] = (
+        _mock_patch_values["backend.services.integrations"] = ModuleType(
+            "backend.services.integrations"
+        )
+    _mock_patch_values["backend.services.integrations.telegram_bot_service"] = (
         _mock_telegram_bot_service_module
     )
 
 # Now we can safely import - the __init__.py will trigger adapter import
 # which will find our mocked TelegramBotService
-from backend.channels.base import ChannelResponse
+with patch.dict(sys.modules, _mock_patch_values):
+    from backend.channels.base import ChannelResponse
 
-# Import adapter directly from its module to control the mock
-from backend.channels.telegram.adapter import TelegramChannelAdapter
-from backend.channels.telegram.config import TelegramChannelConfig
-from backend.channels.telegram.formatter import TelegramMessageFormatter
+    # Import adapter directly from its module to control the mock
+    from backend.channels.telegram.adapter import TelegramChannelAdapter
+    from backend.channels.telegram.config import TelegramChannelConfig
+    from backend.channels.telegram.formatter import TelegramMessageFormatter
 
 # ============================================================================
 # FIXTURES
@@ -453,13 +464,19 @@ class TestTelegramAdapter:
     async def test_send_status_update_failure_noncritical(
         self,
         adapter: TelegramChannelAdapter,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         adapter.bot_service.send_chat_action = AsyncMock(
             side_effect=Exception("API error"),
         )
 
-        # Should not raise (non-critical)
-        await adapter.send_status_update("123", "thinking")
+        # Should not raise (non-critical) — and the swallowed error must be
+        # observable as a warning log naming the failure, not silently eaten.
+        with caplog.at_level(logging.WARNING, logger="backend.channels.telegram.adapter"):
+            await adapter.send_status_update("123", "thinking")
+        text = "\n".join(r.getMessage() for r in caplog.records)
+        assert "Failed to send Telegram status update" in text
+        assert "API error" in text
 
     async def test_stream_response_sends_initial_and_final(
         self,

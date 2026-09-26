@@ -37,7 +37,6 @@ import argparse
 import asyncio
 import json
 import os
-import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -337,7 +336,21 @@ def render_text(reports: list[WindowReport]) -> str:
     return "\n".join(lines)
 
 
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+# The gateway's verdict is read by the ONE canonical extractor, never a
+# private regex `.search()` (that returns the FIRST `tg_notify:` match, and a
+# P0-unsendable run prints a human diagnostic line before the machine
+# verdict). Resolved repo-relative first, then the HOME-fork copy (#1), so an
+# import failure never crashes this report (#2) — it degrades to an
+# explicit unknown.
+for _cand in (Path(__file__).resolve().parent.parent, Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 # For `--tier digest` the HEALTHY verdict is `spooled`: tg_digest_flush.py sends
 # one grouped message per slot, so demanding `sent` here would paint a permanent
@@ -387,14 +400,14 @@ def send_telegram(text: str) -> str:
     except OSError as exc:
         return f"gateway not runnable: {type(exc).__name__}: {exc}"
 
-    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    if not match:
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    if not verdict:
         tail = " ".join((proc.stderr or "").split())[-160:]
         return (
             f"gateway printed no verdict (rc={proc.returncode}): "
             f"{tail or '<no stderr>'}"
         )
-    return match.group(1)
+    return verdict
 
 
 def main() -> int:

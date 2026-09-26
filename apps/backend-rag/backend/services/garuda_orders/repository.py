@@ -87,7 +87,13 @@ class ExpiryOutcome:
 _CHECKOUT_TTL_MINUTES = 60
 
 
-async def _quarantine(conn: asyncpg.Connection, *, provider_event_id: str, reason: str) -> None:
+async def _quarantine(
+    conn: asyncpg.Connection,
+    *,
+    provider_event_id: str,
+    reason: str,
+    order_id: str | None = None,
+) -> None:
     """Refuse an authentic provider callback, ON THE RECORD and with the cause.
 
     A quarantined row is not an error we swallowed — it is a signature-valid
@@ -103,6 +109,13 @@ async def _quarantine(conn: asyncpg.Connection, *, provider_event_id: str, reaso
     certain, rather than re-derived later by a reader that would have to
     guess between three causes this table used to collapse into one.
 
+    `order_id` is left NULL for the two callers that genuinely have no order
+    row (`unmatched_session`) and passed through for the three that already
+    hold one when they decide to quarantine (`amount_mismatch`,
+    `session_not_bound`, `unexpected_state`) — those callers had the row in
+    hand and quarantined anyway, so withholding the id here was never a
+    safety property, only a gap (L1606).
+
     Five call sites shared this UPDATE verbatim before the reason existed;
     they call this instead so the vocabulary has exactly one home.
     """
@@ -112,11 +125,13 @@ async def _quarantine(conn: asyncpg.Connection, *, provider_event_id: str, reaso
         UPDATE garuda_payment_inbox
            SET outcome = 'quarantined',
                quarantine_reason = $2,
+               order_id = $3,
                processed_at = statement_timestamp()
          WHERE provider = 'xendit' AND provider_event_id = $1
         """,
         provider_event_id,
         reason,
+        order_id,
     )
 
 
@@ -519,6 +534,7 @@ class GarudaOrderRepository:
                     conn,
                     provider_event_id=event.provider_event_id,
                     reason="amount_mismatch",
+                    order_id=order_id,
                 )
                 return "OP-F03"
 
@@ -676,6 +692,7 @@ class GarudaOrderRepository:
                     conn,
                     provider_event_id=event.provider_event_id,
                     reason="session_not_bound",
+                    order_id=order_id,
                 )
                 return "OP-F03"
 
@@ -722,6 +739,7 @@ class GarudaOrderRepository:
                     conn,
                     provider_event_id=event.provider_event_id,
                     reason="unmatched_session" if order is None else "unexpected_state",
+                    order_id=None if order is None else order["order_id"],
                 )
                 return "OP-F03"
 
@@ -792,6 +810,7 @@ class GarudaOrderRepository:
                     conn,
                     provider_event_id=event.provider_event_id,
                     reason="unmatched_session" if order is None else "unexpected_state",
+                    order_id=None if order is None else order["order_id"],
                 )
                 return "OP-F03"
 

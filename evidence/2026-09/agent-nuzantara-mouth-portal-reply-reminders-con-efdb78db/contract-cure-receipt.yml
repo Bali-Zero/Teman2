@@ -1,0 +1,31 @@
+recorded_at: "2026-09-24T22:33:19.259289+00:00"
+prior_candidate: 4d79882377f8819b9006165d25936bab72cc6814 # pragma: allowlist secret
+source_identical_before_generated_delta: true
+generated_diff_files:
+  - apps/mouth/src/lib/api/schema.d.ts
+  - apps/mouth/src/lib/api/schema.d.ts.openapi-sha256
+receipts:
+  - claim: Canonical OpenAPI and TypeScript generation plus Visa Oracle contract validation
+    cmd: npm run contract:visa-oracle
+    exit: 0
+    ts: "2026-09-24T22:33:19.259289+00:00"
+    seat: Codex on Pro
+    result: exit0; canonical pin matches CI live hash
+    log_sha256: f320e8e0dc34e915bf4cad1f80538bb85dedcfec989acbbbea3163cb1be02249 # pragma: allowlist secret
+  - claim: OpenAPI drift pin regression
+    cmd: pytest backend/tests/unit/scripts/test_generate_openapi_schema_pin.py --tb=short
+    exit: 0
+    ts: "2026-09-24T22:33:19.259289+00:00"
+    seat: Codex on Pro
+    result: 1 passed in8.38s; exec63900 exit0
+    log_sha256: b7e37ff7a5e9216462b4c7a7cff627e1716346879502cdd3a300634ee826491c # pragma: allowlist secret
+  - claim: Generated contract typecheck
+    cmd: npm run typecheck
+    exit: 0
+    ts: "2026-09-24T22:33:19.259289+00:00"
+    seat: Codex on Pro
+    result: exit0 observed by root exec96033; log has no diagnostics
+    log_sha256: fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f # pragma: allowlist secret
+ci_prior_result: "PR7310 run36066333303: bootstrap+apply-all passed x3 PG15; one API pin mismatch stopped shard2"
+runtime_behavior: unchanged from prior independently gated candidate
+no_real_sends: true

@@ -62,7 +62,17 @@ def main():
             "(a) direct Bash, (b) load skill, (c) spawn subagent, (d) call MCP — "
             "and state why this choice fits the task."
         ).format(total_lines)
-        print(json.dumps({"systemMessage": reminder}))
+        # PENDING-ARMS L1087: `systemMessage` alone reaches the operator's
+        # terminal only, per the Claude Code hooks doc — never the agent this
+        # hook exists to steer. `hookSpecificOutput.additionalContext` is what
+        # actually surfaces in Claude's own context on UserPromptSubmit.
+        print(json.dumps({
+            "systemMessage": reminder,
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": reminder,
+            },
+        }))
 
     sys.exit(0)
 

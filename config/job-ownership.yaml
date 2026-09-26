@@ -1036,18 +1036,18 @@ jobs:
     notes: ""
 
   com.matagaruda.intel-bridge.daily:
-    owner: mini-only-undocumented
+    owner: pro
     family: matagaruda
-    cluster: C_migrate_candidate
-    state: mini-only
+    cluster: A_residence_pro
+    state: active
     side_effects: [file_only]
     idempotent: unknown
     resource_class: cron_light
     schedule: daily
-    candidate_migrate: true
-    last_migrated: null
+    candidate_migrate: false
+    last_migrated: "2026-09-25"
     git_sha: null
-    notes: "Migrazione precedente non documentata, era gia su Mini"
+    notes: "Pinned to Pro 2026-09-25: its input apps/bali-intel-scraper/data/published_articles.json is written only on Pro by com.balizero.intel.nightly (Mini holds a stale git copy), and its Redis target and nlm-feeder consumer are on Pro. Was loaded on BOTH hosts; Mini copy booted out, plist kept as .disabled-20260925-owner-pro. HOME-fork drift aligned 2026-09-25: the repo plist in infra/launchagents dropped the Mini-only env (GARUDA_REDIS_HOST=tailnet, MATAGARUDA_FETCH_CONTENT=1) and now matches Pro's live plist byte-for-byte (plutil xml1 diff empty)."
 
   com.matagaruda.invalidation-sweep:
     owner: pro

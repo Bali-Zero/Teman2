@@ -3199,7 +3199,7 @@ def lint(
     for _notice in appetite_notices:
         print(f"evidence_pack_lint: NOTICE — {_notice}", file=sys.stderr)
 
-    lane_violations, lane_notice = check_lanes_build_seat_diversity(pack, gear)
+    lane_violations, lane_notice = check_lanes_build_seat_diversity(pack, gear, today=today)
     violations += lane_violations
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
@@ -3998,6 +3998,30 @@ def selftest() -> int:
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("guilt: invalid lane role rejected", rc == 1)
+
+        # lint()'s own `today` seam must reach check_lanes_build_seat_diversity —
+        # not just direct calls to that function (2026-09-24: lint()'s call site
+        # omitted `today=today`, so a caller pinning `today` for an end-to-end
+        # test still got NOW's real date inside the lanes check, and a phased
+        # requirement whose grace window had genuinely elapsed by NOW read as
+        # enforced even when the test meant to pin a date BEFORE the flip).
+        _lanes_before_flip = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None, today=_lanes_before_flip)
+        check(
+            "guilt: lint()'s today= reaches the lanes check (missing lanes: "
+            "before the flip date is a NOTICE via lint(), not a violation)",
+            rc == 0,
+        )
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None, today=LANES_NON_ANTHROPIC_ENFORCEMENT_DATE)
+        check(
+            "L1355: integration guilt — gear>=2 pack with no lanes:, "
+            "today=flip-date pinned via lint() -> rc==1 + D3 message present",
+            rc == 1 and any("D3 lane-declaration rule" in v for v in viol),
+        )
 
         # two Anthropic build lanes on Gear 2 -> violation on/after flip date
         before_flip = LANES_NON_ANTHROPIC_ENFORCEMENT_DATE - datetime.timedelta(days=1)

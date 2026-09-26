@@ -116,8 +116,21 @@ anti superscar #7). Heartbeat reale = la riga scritta nel DB (`computed_at`).
 
 - ❌ Send messaggi (read-only)
 - ❌ Live SSE (refresh polling ogni 10s)
-- ❌ Auth (deve girare solo su localhost via firewall macOS)
+- ❌ Auth: nessuna identità per-utente (bind loopback è l'unico perimetro, non un firewall
+  macOS — vedi "Accesso remoto")
 - ❌ Group resolve membership/sender CRM linking (mostra `sender_phone` raw)
+
+## Accesso remoto
+
+Default `HOST=127.0.0.1` in `server.cjs`: `/data.json` e `/thread.json` mostrano chat team
+mirrorate senza autenticazione, quindi un bind wildcard le espone a chiunque sia sulla stessa
+rete. **Contenimento 2026-09-25**: prima di questa data il default era `0.0.0.0` — il firewall
+macOS su Pro era spento, quindi la LAN 192.168.0.x poteva leggere `/health.json` e i dati
+mirrorati. Per accesso remoto legittimo (solo Zero, tailnet single-user): `tailscale serve` su
+Pro verso `127.0.0.1:7790`, MAI riportare `HOST` a un bind wildcard. Il LaunchAgent Pro
+(`com.balizero.wa-dashboard-m1`, non ancora tracciato nel repo — arriva in una PR successiva
+con le sue organ genes) è già stato ricontenuto live il 2026-09-25 06:20 WITA (`HOST=127.0.0.1`
+nel plist).
 
 ## Differenze vs `~/bin/wa-viewer/`
 
@@ -140,6 +153,9 @@ anti superscar #7). Heartbeat reale = la riga scritta nel DB (`computed_at`).
 - 2026-05-25: shipped da `feat/wa-dashboard-m1-readonly-2026-05-25` (worktree isolato).
 - DB Fly contiene 67 messaggi reali 23-24/05 (verificato), bridge wa-mirror locali scrivono lì.
 - DB locale `nuzantara_dev` contiene solo dati di import storico + test M1 sintetici.
+- **2026-09-25 (LAN containment, spec_T37 P0)**: `HOST` default era `0.0.0.0` in `server.cjs`.
+  Default ora `127.0.0.1`, warning loud se un operatore imposta esplicitamente un bind
+  wildcard. Vedi "Accesso remoto".
 - **2026-06-16 (doc-drift corretto)**: il deployment Pro ATTUALE punta a `nuzantara_dev`
   LOCALE — verificato via `/health.json` (`db_url_host=127.0.0.1:5432`) + plist
   `WA_DASHBOARD_DATABASE_URL`, NON a Fly. Il mirror vivo del team ora scrive nel locale

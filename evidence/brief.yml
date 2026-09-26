@@ -1,35 +1,65 @@
 gear: 2
-task_id: crm-18-soft-delete
-lane: mouth
-host: pro (Pro)
-branch: sancho/crm18-delete-client
+task_id: t3-schema-guard
+lane: wa-team
+host: air-m5 (M5)
+branch: agent/air-m5/wa-team/t3-schema-guard
 gate_class: none
 l_level: L2
 objective: >-
-  CRM-18: soft-delete affordance on the client detail desk. The button is
-  offered only to admin/founder or the assigned-to viewer; the backend's
-  verify_client_access(..., write=True) (crm_utils.py:169-232) is the real
-  fence — the desk predicate is intentionally NARROWER (narrower = no 403 for
-  the offered button, not a bypass). Soft-delete sets status=inactive +
-  deleted_at; nothing is erased. Gate session reviewed the full diff:
-  guilt+innocence corpus present, source assertions pin the predicate wiring
-  rather than constant-folding it, no isAdmin() leakage, backend fence is
-  unchanged.
+  PR #7342 round-2 FIX-FIRST correction (review_7342_r2_out.txt, head
+  cce93510cd) for T3's schema+guard PR-1 — last correction round per an
+  exact spec addendum. Floor is 2 on SIZE alone, unchanged from round 1 —
+  no hot-zone path hit, no new auth/route/schema-on-Fly surface. Round 1's
+  four findings were confirmed cured; round 1's own column-check was itself
+  incomplete: _REQUIRED_COLUMNS covered only the four ALTER-added columns,
+  and information_schema.data_type reads a DOMAIN over text as "text" (its
+  base type), so a core column with the wrong type, a missing core column,
+  or a domain swapped in for a declared type all passed --init-schema
+  silently. Fix per the addendum: _REQUIRED_COLUMNS is now the single
+  source of truth for EVERY column of both tables (name, Postgres type,
+  NOT NULL) as declared in team_promises.sql, cross-checked by a new unit
+  test that parses the SQL file and asserts every declared column appears
+  in the constant (and vice versa). verify_required_columns() now queries
+  pg_attribute directly (attrelid = to_regclass(...)::oid, attnum > 0, NOT
+  attisdropped) and compares atttypid = '<type>'::regtype — which fails for
+  a domain, since its atttypid is the domain's OWN oid, never the base
+  type's (verified against a live Homebrew Postgres 17 cluster before
+  writing the fix). information_schema is no longer used anywhere in this
+  script. A mismatch raises SchemaMismatchError('<table>.<column>'),
+  allowlist-validated, inside the same transaction as the DDL and both
+  index checks — rollback on any gap, never OK on an incomplete/mistyped
+  schema. Both round-2 findings red-proved against cce93510cd in an
+  isolated scratch copy (never `git checkout --`): old code's ALTER-only
+  contract never even had "message_id" as a key, so a wrong-type or
+  missing CORE column could never be caught; and a domain-over-text column
+  reads as plain "text" via information_schema, so old code's string
+  comparison ('text' == 'text') accepted it. The opt-in real-Postgres
+  companion now exercises a genuine domain-over-text mismatch AND an
+  index-only mismatch (columns untouched) against a real cluster —
+  verified passing on M5 (Homebrew postgresql@17) before this push.
 scope:
   - >-
-    apps/mouth/src/app/(workspace)/clients/client-row-model.ts — new
-    viewerCanDeleteClient(client, email, role) predicate. DELETE_ADMIN_ROLES
-    = {admin, founder}, narrower than api.isAdmin().
+    scripts/wa_team_promises.py — _REQUIRED_COLUMNS rebuilt as {table:
+    [(column, pg_type, not_null), ...]} covering every column of both
+    tables; _ALLOWED_SCHEMA_IDENTIFIERS derived from it
+    (f"{table}.{column}" for every entry, plus the two index names);
+    verify_required_columns() rewritten against pg_attribute/atttypid/
+    regtype, information_schema removed entirely.
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/ClientDetailClient.tsx —
-    reads currentUserRole from profile, computes canDeleteClient, implements
-    confirmDeleteClient (toast confirmation, router.push on success, error
-    toast on failure).
+    scripts/sql/pro_local/team_promises.sql — unchanged this round (the
+    round-1 CREATE TABLE / ALTER ADD COLUMN split already matches the new
+    Python contract 1:1, confirmed by the new cross-check test).
   - >-
-    apps/mouth/src/app/(workspace)/clients/[id]/components/OverviewTab.tsx —
-    Trash2 button rendered only when canDeleteClient=true, disabled during
-    flight, aria-label="Delete client".
+    scripts/tests/test_wa_team_promises.py — 20 tests (was 16):
+    parametrized column-mismatch guilt cases (core wrong-type, core
+    missing, core NOT NULL mismatch, ALTER-column missing) plus the SQL-
+    file/constant cross-check test; SQL-text assertions updated to
+    pg_attribute/atttypid/regtype present, information_schema absent. All
+    pass; ruff clean.
   - >-
-    tests: delete-client-permission.guard.test.ts pins the predicate rule;
-    OverviewTab.test.tsx guilt/innocence/in-flight; ClientDetailClient.test.tsx
-    source assertion (never a literal, never isAdmin).
+    scripts/tests/test_wa_team_promises_real_pg.py — extended: after the
+    complete-schema+idempotent baseline, mutates one column to a real
+    Postgres DOMAIN over text and asserts the mismatch is caught by
+    identifier (not silently accepted), then a genuine index-only
+    mismatch (unaffected columns) is caught separately. Verified passing
+    on M5 before this push.

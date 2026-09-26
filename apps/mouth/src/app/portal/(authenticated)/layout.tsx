@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
+import { PortalUsageTracker } from "@/components/analytics/PortalUsageTracker";
+import { PortalMessageNotice } from "@/components/portal/PortalMessageNotice";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
 import { ToastProvider } from "@/components/ui/toast";
@@ -287,6 +289,7 @@ export default function PortalLayout({
 
   const portalContent = (
     <ToastProvider>
+      <PortalUsageTracker />
       <a href="#portal-main-content" className="bz-skip-link">
         Skip to main content
       </a>
@@ -360,6 +363,7 @@ export default function PortalLayout({
             tabIndex={-1}
             className="flex-1 p-[var(--bz-product-page-gap)] pb-28 md:pb-[var(--bz-product-page-gap)]"
           >
+            {!isPartnerPortal && <PortalMessageNotice />}
             <PortalErrorBoundary section="Portal">
               {children}
             </PortalErrorBoundary>

@@ -138,7 +138,9 @@ class TestHttpClientLifecycle:
     @pytest.mark.asyncio
     async def test_close_when_no_client(self, instagram_service) -> None:
         """close is safe to call when no client exists."""
-        await instagram_service.close()  # Should not raise
+        assert instagram_service._client is None
+        await instagram_service.close()
+        assert instagram_service._client is None
 
 
 # ============================================================================

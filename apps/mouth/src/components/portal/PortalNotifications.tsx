@@ -10,6 +10,8 @@ import {
   AlertTriangle,
   MessageCircle,
 } from "lucide-react";
+import { usePortalUnreadMessages } from "@/hooks/usePortalUnreadMessages";
+import { PortalMessageNotice } from "./PortalMessageNotice";
 import { usePortalNotifications } from "@/hooks/usePortalNotifications";
 import type { PortalNotification } from "@/lib/api/portal/portal.types";
 import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
@@ -235,6 +237,7 @@ export function PortalNotificationsList({
 }
 
 export function PortalNotificationsPopover() {
+  const { data: messageCount = 0 } = usePortalUnreadMessages();
   const {
     notifications,
     unreadCount,
@@ -251,6 +254,9 @@ export function PortalNotificationsPopover() {
     retryMarkRead,
     retryMarkAllRead,
   } = usePortalNotifications();
+  // Prioritise real messages; keep the server total for other notifications.
+  // Never add counts from two stores that can contain overlapping events.
+  const alertCount = messageCount > 0 ? messageCount : unreadCount;
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -294,13 +300,13 @@ export function PortalNotificationsPopover() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg transition-colors hover:bg-[var(--surface-raised)] focus-ring"
-        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-label={`Notifications${alertCount > 0 ? ` (${alertCount} unread${messageCount > 0 ? " messages" : ""})` : ""}`}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls="portal-notifications-popover"
       >
         <Bell className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
-        <PortalNotificationBadge count={unreadCount} />
+        <PortalNotificationBadge count={alertCount} />
       </button>
 
       {isOpen && (
@@ -318,6 +324,7 @@ export function PortalNotificationsPopover() {
             backdropFilter: "blur(24px)",
           }}
         >
+          <PortalMessageNotice compact />
           {isLoading ? (
             <div
               role="status"

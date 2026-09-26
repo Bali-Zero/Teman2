@@ -17,9 +17,11 @@ self-rating alone.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -29,6 +31,31 @@ from backend.services.garuda_documents.models import PassportReviewFieldName
 logger = logging.getLogger(__name__)
 
 OLLAMA_MODEL = "qwen2.5vl:7b"
+
+
+class OcrEgressBlocked(RuntimeError):
+    """OLLAMA_URL does not resolve to a loopback destination (guardrail G-OCR-LOCAL)."""
+
+
+def _assert_loopback_ollama_url(url: str) -> None:
+    """Refuses to send an identity-document image anywhere but the local Ollama host.
+
+    Binds the *destination string*, not the network path — a loopback-bound reverse
+    proxy would still defeat it. Accepted: the realistic failure this guards against is
+    a misconfigured OLLAMA_URL env var, not an adversary already on the box.
+    """
+    host = urlsplit(url).hostname
+    if host == "localhost":
+        return
+    try:
+        if host is not None and ipaddress.ip_address(host).is_loopback:
+            return
+    except ValueError:
+        pass  # host is a non-IP hostname (not "localhost") -- falls through to refuse below
+    raise OcrEgressBlocked(
+        f"garuda_documents: OLLAMA_URL host {host!r} is not loopback — refusing to send "
+        "passport OCR image (guardrail G-OCR-LOCAL)"
+    )
 
 _PROMPT = """You are reading a passport biodata page photo. Extract exactly these fields:
 full_name, passport_number, nationality, passport_expiry_date (ISO YYYY-MM-DD if legible).
@@ -91,10 +118,14 @@ async def _run_one_pass(image_base64: str) -> OcrPassResult | None:
         "options": {"temperature": 0.2},
     }
     try:
+        _assert_loopback_ollama_url(settings.ollama_url)
         resp = await client.post(f"{settings.ollama_url}/api/chat", json=payload)
         resp.raise_for_status()
         content = resp.json()["message"]["content"]
         parsed = json.loads(content)
+    except OcrEgressBlocked:
+        logger.error("garuda_documents: OCR pass refused — non-loopback OLLAMA_URL (G-OCR-LOCAL)")
+        return None
     except (httpx.HTTPError, KeyError, ValueError) as exc:
         logger.warning("garuda_documents: OCR pass failed (%s)", type(exc).__name__)
         return None

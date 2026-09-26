@@ -1,0 +1,61 @@
+gear: 2
+task_id: wa-media-only-turn
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/wa-media-only-turn
+gate_class: none
+l_level: L2
+objective: >-
+  Fix: a client sending an image/document/audio/video/sticker/"unsupported"
+  WhatsApp message with NO caption left meta_inbox_messages.body empty, so
+  wa_codex_leg classified it as the standing condition no_customer_message —
+  five silent retry attempts (~7.5 min), outbox row failed, no reply, no
+  human notified. Measured on prod 2026-09-25: thread 394, inbound 899/901
+  (2026-09-20), media_type='image', body length 0. Two adversarial rounds
+  (Codex) on the same branch, both cured as new commits (never amended):
+  round 1 (b866f30ea0 -> 657c679028) found (F1) the scripted reply did not
+  account for the ingestion gap where a captioned attachment ALSO arrives
+  with an empty body (whatsapp_chat.py fills body only for type=="text"),
+  and (F2) notify_human_handoff can report True on a dedup-suppressed or
+  email-delivery-failed send, so the old reply's "I've told a colleague"
+  claim could be false; round 2 found one MEDIUM — the copy did not tell a
+  client who already captioned a question WHY nothing happened. Not merged,
+  not armed by this session — a coordinator session runs review/merge/arm/
+  deploy per the Ship-lifecycle rule.
+scope:
+  - >-
+    apps/backend-rag/backend/services/integrations/wa_codex_leg.py — new
+    scripted turn (B2.5-3) checked before the no_customer_message fall-off:
+    a caption-less non-text attachment (bound.media_type in
+    {image,document,audio,video,sticker,unsupported}) gets a scripted
+    served_by="scripted_media_ack" reply from a module-level per-language
+    table (en/id/it/ru/uk), language taken from the latest prior customer
+    TEXT turn via detect_language (never routed through get_localized_
+    stub's different vocabulary), and a best-effort notify_human_handoff
+    call whose return value is logged but never drives the reply text
+    (round-1 F2) — the final copy (round-2) also states explicitly that
+    text sent together with a file is not read, so a client who already
+    captioned their question understands why a separate text message is
+    needed (round-1 F1's declared, out-of-scope ingestion gap: body is
+    only populated for type=="text" today).
+  - >-
+    apps/backend-rag/backend/services/integrations/wa_inbox_bot.py —
+    additive: _load_bound_thread_context / BoundThreadContext now also
+    return the anchor row's media_type (existing callers unaffected,
+    default None).
+  - >-
+    apps/backend-rag/backend/services/integrations/wa_human_handoff.py —
+    notify_human_handoff gains an optional reason= kwarg (default
+    preserves the existing human-request wording) so the in-app alert and
+    email describe a caption-less attachment correctly instead of
+    borrowing "client asked for a human".
+  - >-
+    tests: backend/tests/unit/services/test_wa_codex_leg.py (guilt +
+    innocence: attachment-with-caption / plain text / kill-switch / no
+    customer inbound / greeting+identity+handoff turns unchanged;
+    notify-failure and notify-success serve the identical text; no
+    language's copy names a colleague); backend/tests/unit/services/
+    test_wa_inbox_bot_bound_context.py (real-Postgres test proving
+    media_type is read from the anchor row itself, not the dataclass
+    default — the leg's own tests fully replace the loader and would not
+    catch that mutation).

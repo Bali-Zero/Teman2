@@ -163,6 +163,9 @@ class TestQdrantClient:
         """Test close when no client exists"""
         qdrant_client._http_client = None
         await qdrant_client.close()  # Should not raise
+        # close() must guard on the missing client rather than blindly
+        # calling .aclose() on None.
+        assert qdrant_client._http_client is None
 
     @pytest.mark.asyncio
     async def test_context_manager(self):

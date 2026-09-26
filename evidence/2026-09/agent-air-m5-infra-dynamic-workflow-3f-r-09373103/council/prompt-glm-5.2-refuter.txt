@@ -1,0 +1,1146 @@
+You are an independent REFUTER (GLM 5.2) on a pull request in a private repo. You did not write it. Your job: find what is WRONG. Default to defective; a clean bill must be earned.
+
+Context. PR #7198 re-lands a previously frozen PR (#6951): it adds a Claude Code skill `.claude/skills/dynamic-workflow/SKILL.md`, a default brief template `brief.template.md` used by `scripts/dynamic_workflow.py` (a multi-seat launcher whose `judge` subcommand mechanically disqualifies answers on rules C1/C5/C8), a test file `scripts/tests/test_dynamic_workflow_skill.py`, a one-line CI workflow edit that adds that test to the selftest job, a one-line allowlist edit in `test_skills_canonical.py`, and an evidence brief. The ONLY intended changes vs #6951: (1) the C5 gate-seat literal moves from the bare `opus-5` to the Opus 5.5 entity (`opus-5-5`), because an owner ruling on 2026-09-23 replaced Opus 5 with Opus 5.5 in every seat and main's judge now rejects bare `opus-5`; (2) two line pointers into another doc (MODEL_ROSTER.md) were renumbered because that doc drifted; (3) one GUILT test was added proving the shipped gate row passes C5 and the bare `opus-5` spelling fails it, importing main's own `_check_c5`.
+
+Main's current C5 judge (excerpt of scripts/dynamic_workflow.py on main) follows, then the full diff.
+
+Answer in this exact format, max 400 words:
+VERDICT: DEFECTIVE | SOUND-WITH-OBJECTIONS | SOUND
+OBJECTIONS: numbered list; each = severity (HIGH/MEDIUM/LOW) + file:line-in-diff + what is wrong + why it matters. Look especially for: a remaining C5-relevant literal that still says bare opus-5 / Opus 5 as a CURRENT seat; a test that re-implements the regex instead of importing it, or that would pass even if the template regressed; a template gate row that main's _check_c5 would reject (check the regex and the window/gate cell rules yourself); scope creep beyond the three intended changes; a workflow edit that could skip or mask tests.
+If you have no objection, say which of those five you checked and how.
+
+=== MAIN C5 JUDGE EXCERPT ===
+    lines = [ln for ln in _section_text(body, section).splitlines() if ln.strip().startswith("|")]
+    data_lines = [ln for ln in lines[1:] if not _is_md_separator_row(ln)]  # skip header + separator
+    return [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in data_lines]
+
+
+# Entity, not a spelling (scar family #3: over/under-match are symmetric). The gate seat is Opus
+# 5.5 (RULED 2026-09-23, replaces Opus 5 in every seat). `\bopus[\s-]+5(?:\.5|-5)` accepts
+# "opus-5-5", "opus-5.5", "Opus 5.5", "opus 5-5", inside `fresh opus-5-5 xhigh` or backticks, and
+# "claude-opus-5-5" — a word boundary before "opus", hyphen/space, then the 5.5 pair in either the
+# prose (dot) or the model-id (hyphen) spelling. The negative lookahead blocks a longer entity
+# wearing it as a prefix: "opus-5-50"/"opus-5.55" (word char follows), "opus-5.5.1" (dot follows),
+# "opus-5-5-1" (the vendor's own model-suffix shape, hence the extra `-\d` branch);
+# "opus-5-5-xhigh" (non-digit after the hyphen) must still pass. The superseded bare "opus-5",
+# "claude-opus-5" and "Opus 5" now fail, as do "opus-5-1"/"opus-4-8"/"sonnet-5".
+_C5_SEAT_ENTITY_RE = re.compile(r"\bopus[\s-]+5(?:\.5|-5)(?![\w.]|-\d)", re.IGNORECASE)
+# "window(s)" as a whole word: "window (on-disk gate)" and a real coach's own plural ("two
+# windows, post-reset") both pass; "windowless"/"windowed" must not (no boundary right after
+# "window" when a letter follows it — "windowed" tries "window" then "ed", still a word char
+# right after, so it fails the same way "windowless" does). Owner ruling 2026-09-20 is "contains
+# window", and "windowed" is not the word "window" or "windows", it is a different word wearing
+# it as a prefix — same reasoning as opus-5-50/opus-5.5.1 above for the seat cell.
+_C5_MODE_WINDOW_RE = re.compile(r"\bwindows?\b", re.IGNORECASE)
+# A stage NAMES a gate only as a whole word ("gate"/"gates", any case): "Final Gate", "on-disk
+# gate", "pre-gate" (hyphen is a non-word boundary too) all count. "aggregate results",
+# "delegate to r2", "investigate", "mitigate risk", "gatekeeper review" must NOT — a bare
+# substring match lets a coach's post-gate stage silently outrank the real gate row once the
+# LAST matching row is what decides.
+_C5_GATE_STAGE_RE = re.compile(r"\bgates?\b", re.IGNORECASE)
+
+
+def _check_c5(body: str) -> tuple[bool, str]:
+    """The LAST Tactics row whose stage names a gate decides, not the first — a coach is free to
+    list pre-gates before its final gate (owner ruling 2026-09-20; the parent code judged the
+    first such row and wrongly disqualified a coach whose real gate came later)."""
+    gate_row = None
+    for row in _md_table_rows(body, "Tactics"):
+        if len(row) < 3:
+            continue
+        if _C5_GATE_STAGE_RE.search(row[0]):
+            gate_row = row
+    if gate_row is None:
+        return False, "no gate row in Tactics"
+    stage, seat, mode = gate_row[0], gate_row[1], gate_row[2]
+    if _C5_SEAT_ENTITY_RE.search(seat) and _C5_MODE_WINDOW_RE.search(mode):
+        return True, "gate row ok"
+    return False, f"gate row (stage={stage!r}) seat={seat!r} mode={mode!r}, want opus-5-5/window"
+
+
+def _check_c8(body: str) -> tuple[bool, str]:
+    for role, seat, *_ in _md_table_rows(body, "Formation"):
+        if seat in ("fable-5-1", "astra") and role not in ("coach", "imperator"):
+
+=== DIFF ===
+diff --git a/.claude/skills/dynamic-workflow/SKILL.md b/.claude/skills/dynamic-workflow/SKILL.md
+new file mode 100644
+index 0000000000..a1ee57e3aa
+--- /dev/null
++++ b/.claude/skills/dynamic-workflow/SKILL.md
+@@ -0,0 +1,314 @@
++---
++name: dynamic-workflow
++description: "Coach mode. Zero writes an objective; the invited seats each design the workflow formation + tactics for THAT objective knowing the live arsenal; sealed answers, one cross-family refutation, fresh-Opus synthesis, Zero picks; the pick becomes the Workflow script that modus runs. USE when Zero states an objective and says /dynamic-workflow. modus stays the default loop."
++---
++
++# /dynamic-workflow — the coaches pick the formation, Zero picks the coach
++
++> Shipped: `scripts/dynamic_workflow.py` is the ONE launcher — `--help` lists every subcommand
++> below; run nothing this file doesn't name. Template: `brief.template.md` beside this file.
++> modus (`.claude/skills/modus/SKILL.md`) is the loop; `/workflow` is the generic fan-out arm;
++> this skill decides the SHAPE of that arm per objective.
++
++## 0. Inputs (from Zero, verbatim)
++
++- `objective` — the argument of `/dynamic-workflow <objective>`. Free text, written to a file
++  for `--objective-file`. **It travels to five external clouds: it must carry no client
++  PII/OSINT (C2).** `brief` refuses fail-closed (exit 3) if `Redactor.load_default().redact()`
++  changes it by one byte — no `--skip-pii` flag exists. Ask for a `client_id`/placeholder
++  instead of a client name or case.
++- `colour` — BLUE unless Zero says ORANGE (`--colour` must be exactly `BLUE` or `ORANGE`).
++  `floor` — from `scripts/evidence_pack_lint.py` if a candidate exists, else `unknown`
++  (`--floor`, optional).
++- Coaches, default six: Fable 5.1 (the convening window, participant — never dispatched via
++  `r1 --seats`, it writes `r1/fable-5-1.md` itself before anything else runs), Astra
++  `gpt-6-astra` (Zero opens the window; add `--astra-fallback` to `r1` for the one-shot Codex
++  path instead), Kimi K3, Qwen 3.8 Max, DeepSeek V4 Pro, Gemini 3.1 Pro high. Zero may
++  add/remove coaches in the same message — anything else passed to `--seats` is refused unless
++  it resolves to a known family (`_require_known_family`, r2 pairing/jury both fail closed on
++  an unrecognised seat).
++
++## 1. Build the brief (bytes identical for every seat)
++
++```bash
++python3 scripts/dynamic_workflow.py brief --slug <slug> --objective-file <file> \
++  --colour BLUE [--floor <floor>] [--template <path>] \
++  --kit ~/BATTAGLIA-$(date +%Y%m%d)/DYNAMIC-WORKFLOW-<slug>
++```
++
++`--template` defaults to `.claude/skills/dynamic-workflow/brief.template.md` — the file beside
++this one, which is why the template ships with the skill and not with the launcher. Without it
++`brief` refuses before writing anything (`refused: template not found at <path> (pass
++--template)`). `--kit` must resolve outside the repo, or exit 2.
++
++Fills `{{OBJECTIVE}} {{COLOUR}} {{FLOOR}} {{DATE}}` from the flags above and
++`{{ARSENAL_LIVENESS}}` from `scripts/arsenal_probe.py --json` (600 s timeout; every seat
++`unknown (probe failed)` on probe failure, never omitted); writes `BRIEF.md`, `brief.sha`,
++`inputs.json` and creates `r1/`, `r2/` under the kit. `{{SEAT}}` stays blank in the master;
++`python3 scripts/dynamic_workflow.py check --kit K` recomputes the brief from `inputs.json` +
++template and refuses (exit 1) if `BRIEF.md` differs by one byte, or the ledger fails its own
++sha check — a hand-edited brief is not a brief (W78).
++**Never add the convener's own design to the brief.** A changed brief is a new round, run
++`brief` again with a new slug, never a hand patch.
++
++The squad block that lands in `BRIEF.md` is four columns — `seat | status | healthy |
++latency_ms` — and carries NONE of the probe's own `evidence` field: that field is raw CLI output
++(hook noise, error JSON, org/repo names) and crossing the output boundary with it buys a coach
++nothing. A seat whose probe status is exactly `TIMEOUT` renders as `unknown (probe budget 15 s)`
++with `healthy` rewritten to `unknown` too, and a fixed sentence under the table states that
++`unknown` is not `dead`: the probe's budget is far shorter than a real round's, and a false-dead
++table rewrote every formation in the first real run.
++
++## 2. Round 1 — sealed answers (one shot each, stdin closed, watchdog, content-judged)
++
++The convening Fable window writes `r1/fable-5-1.md` itself, **before any other file lands**,
++using the prompt prefix below plus the brief, then reads nothing else until R1 closes. It
++launches only shell one-shots: no `Agent`, no `Workflow` (C8).
++
++```
++You are a coach in a sealed brainstorm. Use ONLY the brief below and the exact skeleton in §4.
++No tools, no browsing, no file reads. Output only the answer.
++
++<BRIEF.md>
++```
++
++```bash
++python3 scripts/dynamic_workflow.py r1 --kit <K> --seats kimi-k3,qwen3.8-max,deepseek-v4-pro,gemini-3.1-pro-high [--astra-fallback]
++python3 scripts/dynamic_workflow.py r1 --kit <K> --register astra   # hand-pasted window answer
++```
++
++- Refuses (exit 2) unless `r1/fable-5-1.md` already validates, and unless its mtime precedes the
++  first `sent` ledger row — the convener answers first, checked, not just recorded.
++- Per seat: copies the brief with `{{SEAT}}` filled, asserts its sha (SEAT blanked) equals
++  `brief.sha`, launches ONE one-shot with `stdin=DEVNULL`, a per-kind timeout (kimi/TP1 900 s,
++  agy 1500 s, astra 1200 s) and **cwd set to a fresh empty temp dir** — launched from the repo,
++  a seat with tools reads the launcher's source instead of answering blind, which is what the
++  kimi seat did in the first real round. Astra's `codex exec -o` target lives in that same
++  per-call temp dir, never in the kit, so r2 and jury cannot overwrite its R1 answer and a
++  relaunch that writes nothing returns empty rather than the previous attempt's bytes. Writes
++  `r1/<key>.md`, appends a ledger row. Astra without `--astra-fallback` gets `awaiting-window`
++  and no launch — Zero pastes the prompt into an open `gpt-6-astra` window by hand.
++- A coach CLI's transport wrapper is stripped before any check sees the text: CRLF/CR → LF, a
++  whole-answer ` ``` ` fence, and `kimi --output-format text`'s own `• `/two-space
++  decoration plus its trailing "To resume this session:" paragraph. Judging those bytes instead
++  of the answer is what ledgered four substantive answers `dead` in the first real round. The
++  raw bytes always survive beside the normalised file (in round 2, `r2/<key>.raw.md`).
++- A file is an answer only if `validate_answer` accepts it: frontmatter `seat:` +
++  `objective_sha256:` matching `brief.sha` + non-empty `facts_cited:` + `assumptions:` + all
++  seven `## ` sections present IN ORDER (`Formation`, `Tactics`, `Termination`, `Evidence
++between stages`, `Never`, `First move`, `Cost`) + `Formation`/`Tactics` each carrying at
++  least one table row past the header — a markdown separator row (`|---|`) is not a data row —
++  and ≤1,500 words. Empty, unparseable or truncated = `dead`: logged, relaunched at most once — a
++  seat with two `sent` ledger rows already gets `refused-max-relaunch` on a third `r1`.
++- `python3 scripts/dynamic_workflow.py validate <file> --sha <brief.sha>` runs the identical
++  check standalone (`PASS`/`FAIL` + reason, exit 0/1) — use it to re-check a hand-pasted Astra
++  answer before it counts as `answered`.
++- `r1 --register <seat>` is the only path that turns a window answer into an `answered` row: it
++  reads `r1/<key>-window.md`, normalises it exactly like a dispatched seat's output, validates
++  it against `brief.sha`, and on PASS writes `r1/<key>.md` plus an `answered` row stamped at the
++  WINDOW FILE's own mtime (the human pasted it then, not at register time). It refuses (exit 2)
++  before touching the window file if the seat is already `answered` or was never marked
++  `awaiting-window`, and on a failing paste it records `window-invalid` and exits 1.
++- Seat identity (PR2g'/PR2i): every seat FILE — `r1/<key>.md`, `r2/<key>.md`,
++  `r2/<key>.rejected.md`, and the r1 sources that `judge`, `jury` and `anonymise` read — is
++  named by the canonical key `_seat_key(seat)`: the seat's canonical spelling with `/` collapsed
++  to `__` (alias `kimi-2.7` → `r1/kimi-code__kimi-for-coding-highspeed.md`). `ledger.md` rows,
++  `pairing.md` cells, `judge.md` rows and stdout keep the RAW spelling passed to `--seats`. Two
++  seats in `--seats` that resolve to one key: the second is refused at `r1` before its own
++  dispatch, with both spellings in the message (`slug '<key>' already claimed by seat '<a>',
++seat '<b>' collides`); the first seat of the pair has already been launched. A corrupt, empty or
++  truncated `slugs.json` under the kit refuses with exit 2 naming the file and the class
++  (`UnicodeDecodeError`, `JSONDecodeError`, shape error); `slugs.json` and its `.lock`/`.tmp`
++  sidecars are never captured (§8).
++- `ledger.md` is append-only, and every append holds `ledger.md.lock` (`fcntl.flock`) across
++  append → hash → `.sha` write, so a concurrent writer can no longer leave a `.sha` describing
++  fewer rows than the ledger holds; `check` (§1) is what catches a tampered row.
++
++## 3. Round 2 — one cross-family refutation
++
++```bash
++python3 scripts/dynamic_workflow.py r2 --kit <K>
++```
++
++Computes `pairing.md` deterministically (seeded on `brief.sha`): each answered seat (convener
++excluded) gets exactly two R1 answers from two OTHER families, refusing if a seat can't find
++two (insufficient diversity) or if `pairing.md` already exists and a recompute disagrees with
++it — same brief, same pairing, every time. Sends "Object only where you can name an F/C and a
++test that would settle it. No test, no objection." plus the sealed sentence, plus the SHAPE it
++parses, plus the two target answers, one shot, to `r2/<key>.md`. **The shape it keeps, stated in
++the prompt because a filter nobody is told about discards good work:**
++
++- one paragraph per objection, paragraphs separated by a blank line; each paragraph cites at
++  least one `F<n>`/`C<n>` and carries a line that starts with `Test:`; or
++- ONE markdown table whose header names a `test`/`tests` column (matched as a whole WORD, so
++  "Latest status" or "Contested by" is not a test column). Then each DATA row is one objection:
++  kept iff the row carries an F/C ref anywhere and its test cell is non-empty after stripping
++  (`-`, `—`, `n/a`, `none`, `tbd` read as empty). The separator row is never a data row.
++
++Kept units land in `r2/<key>.md`, rejected ones in `r2/<key>.rejected.md`, and a split table is
++re-emitted on both sides as valid markdown (original header + separator + that side's rows).
++The ledger row records `r2-kept=<n>-rejected=<m>`; an EMPTY raw output is `r2-dead`, a state of
++its own and never `kept=0` (stdout prints `kept=<n> rejected=<m>`, or `dead (empty output)`).
++There is no `r2b` — a seat that produced nothing usable here is not relaunched.
++
++## 4. Judge, then jury — two separate subcommands, run in that order
++
++```bash
++python3 scripts/dynamic_workflow.py judge --kit <K>
++python3 scripts/dynamic_workflow.py jury  --kit <K>
++```
++
++`judge` is MECHANICAL disqualification only, before any jury sees anything, and it judges
++ENTITIES rather than spellings the brief never asked for:
++
++- **C1** — banned-entity regex (`ANTHROPIC_API_KEY`, `api_key=`, `from anthropic import`,
++  `bedrock`, `vertex`, `agy .*claude-`). A match inside a `## Never` bullet is the coach CITING
++  the ban, which the brief's own C1 invites, and is forgiven; forgiveness is by POSITION, so a
++  byte-identical bullet outside `## Never` is still a use, and a match in the frontmatter is
++  never forgiven.
++- **C5** — the LAST Tactics row whose stage names a `gate`/`gates` as a whole word decides (a
++  coach may list pre-gates before its final one). That row's seat must match `opus-5-5` as an
++  entity (RULED 2026-09-23, `opus-5-5` replaces `opus-5` in every seat) — `opus-5-5`,
++  `Opus 5.5`, `fresh opus-5-5 xhigh` pass; `opus-5`, `opus-5-50`, `opus-5.55`, `opus-5-1` do
++  not — and its mode must contain the word `window`/`windows`.
++- **C8** — `fable-5-1`/`astra` Formation rows carry only role `coach`/`imperator`; EVERY Tactics
++  row carries a bare-integer round cap in column 5 (`3`, not "3 rounds"); every `## Never` bullet
++  cites an F/C; ≤1,500 words.
++
++Writes `judge.md` — the pass/fail table jury reads back as its own list of survivors. `jury`
++refuses (exit 2) if `judge.md` doesn't exist yet, and refuses again (exit 2) if judge
++disqualified every answered seat: zero survivors is not a green round, it is a round with
++nothing to score.
++
++`jury` blinds every survivor to A–F (`jury/mapping.json`, chmod 600, same letters `anonymise`
++below reuses), sends each juror the OTHER survivors' formations with the `seat:`/
++`objective_sha256:` lines stripped, and asks for an integer 1–5 on six axes (termination, cost,
++robustness, evidence, implementability, fit) as ONE markdown table, no prose. Each ballot is
++persisted at `jury/ballot-<letter>.md` under the JUROR'S OWN letter, never its seat id — the
++only place a seat id lives before reveal is `jury/mapping.json`. A ballot missing any letter it
++was shown, or not a parseable table, is `dead` for that juror — no partial credit. The script
++itself tabulates Borda + firsts into `jury/tabulation.md`; no synthesizer LLM writes this file.
++
++## 5. Round 3 — synthesis by a fresh Opus 5.5 `xhigh` (not the convener)
++
++New window, cwd outside the repo, reads `jury/tabulation.md` (and `r1/`/`r2/` for the
++formations themselves) only, writes `DECISION.md`: per skeleton section, a table of
++agreement/disagreement with seat names; which R2 objections survived (had a test); the
++candidate formations side by side; each coach's `First move` with its `Bites:`. **It names
++disagreements — it does not pick. No round 4.** This step is prose because judging open-ended
++design agreement is not code's job; the tabulation it reads already is.
++
++## 6. Zero picks — `Z-DECISIONI.md`
++
++Zero names the coach (or an explicitly-stated merge of two). That text is the mandate — the
++one step the launcher cannot run for Zero.
++
++```bash
++python3 scripts/dynamic_workflow.py reveal --kit <K>          # only after Z-DECISIONI.md exists
++python3 scripts/dynamic_workflow.py anonymise --kit <K>       # (re)writes Z-BLIND/, if not already current
++```
++
++`reveal` refuses (exit 2) until `Z-DECISIONI.md` exists, then prints the letter→seat mapping
++`jury`/`anonymise` already computed — it never computes one of its own — and writes
++`jury/tabulation.revealed.md`, the same tabulation recomputed from the persisted per-juror
++ballots but with seats named; `jury/tabulation.md` (the blind one) is never rewritten here.
++
++## 7. The pick becomes the script
++
++The BLUE Dux (Opus 5.5 window, not the imperator) writes `infra/workflows/<slug>.js` from the
++chosen formation: `model:` pinned on every `agent()`, the round caps as literal counters, the
++exit commands as the phase gates, dead-seat substitution read at start from
++`~/.organism/arsenal/last.json` (`scripts/arsenal_probe.py --read-last`) —
++`scripts/lint_workflow_script.py` enforces only the first and second of these (RULE 1
++model-pin, RULE 3 bounded-rounds) in CI; exit-command phase gates and dead-seat substitution
++are not linted. It runs via the `Workflow` tool inside a normal modus session; gate, ship and
++prove-live are modus's, unchanged.
++
++## 8. Capture (research convention §15)
++
++```bash
++python3 scripts/dynamic_workflow.py capture-check --kit <K> \
++  --dest research/operations/<date>-dynamic-workflow-<slug>/
++```
++
++Requires `BRIEF.md`, `brief.sha`, `r1/`, `r2/`, `judge.md`, `jury/tabulation.md`,
++`jury/tabulation.revealed.md`, `Z-DECISIONI.md`, `OUTCOME.md` (with `rounds_used`,
++`dead_at_launch`, `wall_clock`, `bites` keys) — an unrevealed kit is not decided. It copies
++exactly the nine required items and nothing else — `ledger.md`, `pairing.md`, `inputs.json`,
++`slugs.json` (+ `.lock`/`.tmp`), `jury/mapping.json`, `jury/ballot-*.md` and `Z-BLIND/` stay in
++the kit. Refuses before creating anything: exit 2 if `--dest` is not the canonical path above or
++already holds files, exit 3 if any required file fails the same per-file PII gate `brief` uses —
++naming the FILE and the span COUNT only, never the text. Exits non-zero naming whatever is
++missing rather than shipping a partial capture — the outcome becomes the next brief's F-line.
++
++## Selftest
++
++```bash
++python3 scripts/dynamic_workflow.py --selftest
++```
++
++Runs offline (`DW_FAKE_SEATS=1`, canned valid/invalid answers) through lettered sections A–Q:
++PII gate refusal, brief sha stability, `check` on an untouched vs hand-edited kit, ledger tamper
++detection, the convener-first refusal, invalid-answer → dead → one relaunch → third-launch
++refusal, deterministic r2 pairing and the objection filter, judge C1/C5/C8, the blind jury with
++its Borda tabulation and one dead ballot, the full anonymise chain, `reveal`'s seal,
++`capture-check`, wrapper normalisation, attempt preservation and `r1 --register`. The
++`capture-check` section (labelled `N.`) runs under a temporary `REPO_ROOT` (PR2i): `--selftest`
++writes nothing under the real `research/operations/` — prove it with a marker file and
++`find research/operations -maxdepth 1 -newer <marker>` → empty.
++
++`scripts/tests/test_dynamic_workflow.py` (pytest) mirrors it. Its case count grows with every
++launcher PR, so read it from
++`python3 -m pytest scripts/tests/test_dynamic_workflow.py --collect-only -q -p no:cacheprovider | tail -1`
++rather than from a number frozen in this file. CI consumer:
++`.github/workflows/dynamic-workflow-selftest.yml` runs `--selftest`, that suite and
++`scripts/tests/test_dynamic_workflow_skill.py` (this skill's own guard) on every PR touching the
++launcher, its tests, or this skill directory.
++
++## Invariants (bans as entities)
++
++- Brief bytes identical across seats; answers move as bytes until R3; nobody rewrites a seat.
++- The convener never summarises before R3, never fans out, never implements the pick.
++- The gate is never an `agent()` lane and never cheaper than the builder.
++- Judge by content, never by exit code or by a listing.
++- An empty outcome is never a green one: `r2-dead`, `jury` on zero survivors, `capture-check` on
++  a missing file all refuse instead of reporting a round that never happened.
++- The objective is PII-free or `brief` refuses at §0.
++
++## Source map — every CLI fact above, at the symbol that enforces it
++
++> Cited by SYMBOL, not by line: a launcher line number is stale the next time anything above it
++> is edited, and this lane merges a launcher PR most days. `scripts/tests/test_dynamic_workflow_skill.py`
++> requires every symbol below to still occur in `scripts/dynamic_workflow.py` and the set here to
++> equal its own curated list, both ways — so a fact whose enforcement was renamed or deleted goes
++> red, while a fact that merely moved does not. Re-point by symbol, never delete.
++
++| fact (§)                                                                    | source                                                             |
++| --------------------------------------------------------------------------- | ------------------------------------------------------------------ |
++| `brief` needs no `--template`: the default is the file beside this one (§1) | (source: scripts/dynamic_workflow.py::DEFAULT_TEMPLATE)            |
++| the probe budget the squad block reports (§1)                               | (source: scripts/dynamic_workflow.py::PROBE_TIMEOUT_S)             |
++| the fixed `unknown` is not `dead` sentence under the table (§1)             | (source: scripts/dynamic_workflow.py::_ARSENAL_UNKNOWN_NOTE)       |
++| per-kind one-shot timeouts (§2)                                             | (source: scripts/dynamic_workflow.py::SEAT_TIMEOUTS)               |
++| the arsenal probe's own 600 s budget (§1)                                   | (source: scripts/dynamic_workflow.py::_arsenal_liveness_block)     |
++| the squad block's four columns, `evidence` absent (§1)                      | (source: scripts/dynamic_workflow.py::latency_ms)                  |
++| the ledger lock held across append → hash → `.sha` (§2)                     | (source: scripts/dynamic_workflow.py::_ledger_lock)                |
++| a markdown separator row is not a data row (§2)                             | (source: scripts/dynamic_workflow.py::_is_md_separator_row)        |
++| what makes a file an answer (§2)                                            | (source: scripts/dynamic_workflow.py::validate_answer)             |
++| wrapper normalisation before any check sees the text (§2)                   | (source: scripts/dynamic_workflow.py::_normalise_seat_output)      |
++| `--kit` must resolve outside the repo (§1)                                  | (source: scripts/dynamic_workflow.py::_ensure_outside_repo)        |
++| the refusal when the template is missing (§1)                               | (source: scripts/dynamic_workflow.py::template not found)          |
++| the sealed sentence every round's prompt carries (§2, §3)                   | (source: scripts/dynamic_workflow.py::_SEALED_SENTENCE)            |
++| one shot, stdin closed, empty temp cwd, astra's `-o` outside the kit (§2)   | (source: scripts/dynamic_workflow.py::_launch_seat)                |
++| the canonical key every seat FILE is named by (§2)                          | (source: scripts/dynamic_workflow.py::_seat_key)                   |
++| the two-seats-one-key refusal, both spellings named (§2)                    | (source: scripts/dynamic_workflow.py::already claimed by seat)     |
++| `r1 --register`, the only path from a window answer to `answered` (§2)      | (source: scripts/dynamic_workflow.py::_cmd_r1_register)            |
++| the r2 prompt stating the shape it parses (§3)                              | (source: scripts/dynamic_workflow.py::_R2_PROMPT_PREFIX)           |
++| one objection per table row, kept or rejected (§3)                          | (source: scripts/dynamic_workflow.py::_filter_objection_paragraph) |
++| `r2-dead` is a state of its own (§3)                                        | (source: scripts/dynamic_workflow.py::r2-dead)                     |
++| C1 forgiven inside a `## Never` bullet, by position (§4)                    | (source: scripts/dynamic_workflow.py::_check_c1)                   |
++| C5 reads the LAST gate row, seat and mode as entities (§4)                  | (source: scripts/dynamic_workflow.py::_check_c5)                   |
++| C8's bare-integer round cap and Never-bullet F/C (§4)                       | (source: scripts/dynamic_workflow.py::_check_c8)                   |
++| the six jury axes (§4)                                                      | (source: scripts/dynamic_workflow.py::JURY_AXES)                   |
++| `jury` refuses on zero survivors (§4)                                       | (source: scripts/dynamic_workflow.py::0 surviving formations)      |
++| the nine items `capture-check` requires and copies (§8)                     | (source: scripts/dynamic_workflow.py::_CAPTURE_REQUIRED)           |
++| `OUTCOME.md`'s four required keys (§8)                                      | (source: scripts/dynamic_workflow.py::_OUTCOME_KEYS)               |
+diff --git a/.claude/skills/dynamic-workflow/brief.template.md b/.claude/skills/dynamic-workflow/brief.template.md
+new file mode 100644
+index 0000000000..bc57e4366f
+--- /dev/null
++++ b/.claude/skills/dynamic-workflow/brief.template.md
+@@ -0,0 +1,196 @@
++# /dynamic-workflow — brief for the coaches (generic template; sealed, one round)
++
++Filled at invocation by the skill. Same bytes for every seat. Placeholders in `{{ }}`.
++
++```
++objective_by_zero: |
++  {{OBJECTIVE}}
++colour: {{COLOUR}}            # BLUE unless Zero declared ORANGE
++gear_floor: {{FLOOR}}         # from scripts/evidence_pack_lint.py if a candidate exists, else "unknown"
++date: {{DATE}}
++brief_sha256: {{SHA}}
++you_are: {{SEAT}}
++```
++
++## 0. What you are asked
++
++You are the coach. You know the squad (§2) and the rules of the league (§3). Design the
++**formation and the tactics for THIS match** — the objective above — not the general method.
++Which seats play, in which role, in what order, parallel or serial, with what round cap per stage,
++what exit condition (a command, not an opinion), what runs inside a dynamic `Workflow` script and
++what runs in a human or Dux window. You answer ALONE; you do not see other coaches. Where the
++brief lacks something, write `ASSUMPTION:` and continue. Do not propose seats or paid APIs that
++are not in §2.
++
++`modus` is the loop around whatever you design (GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM →
++PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE). Your design is the fan-out arm inside it. The final
++on-disk gate, the ship sequence and prove-live are fixed by §3 and are not yours to redesign.
++
++## 1. Scouting report (measured; cite by number, do not re-derive)
++
++F1. SAETTA's first 36 h of PARABELLUM (measured 2026-09-11 07:30 → 09-12 19:30 WITA; PARABELLUM
++ruled 2026-09-10): 111 PRs merged; 29% ledger/gate ceremony PRs; 60 of
++300 harness-floor runs came back red; 0 ORANGE missions; 2 customer-visible results.
++(source: docs/rules/RULINGS.md:106, docs/rules/RULINGS.md:85 (RULED 2026-09-10, the PARABELLUM
++ruling date), SAETTA 2026-09-12 retrospective — 111 PRs, the 32/111
++ledger-row count and the 60/300 harness-floor-red count are the verbatim figures there; read
++literally that is 20% of RUNS red, not "20% of reds were false" — no clause there classifies
++any red as a false positive, so that reading is dropped; the 0-ORANGE-missions clause is not
++independently confirmed)
++F2. Ledger rule (one row per mission, healer at most daily) vs practice: the ledger is touched
++far more often than once per mission, and healer-tick closes land in batches on a single day.
++(source: `git log --oneline --since=2026-09-12 -- .claude/skills/modus/PENDING-ARMS.md | wc -l`
++and `git log --oneline --since=2026-09-16 --until=2026-09-17 --grep=healer -i | wc -l` —
++measured by the convener at brief time and pasted into the kit's `BRIEF.md`; a number in this
++template is stale by construction)
++F3. Second army (Sonnet Dux verifies on disk, inferior cross-family seats build), 2 runs: 7 tasks,
++2 shipped as-is, 1 died. Every shipped item was re-verified by a fresh Opus 5 session. The run
++report did not pass the adversarial gate.
++(source: session 2026-09-18, unverified)
++F4. Same-family review: 7 false-clean of 8 (W100). A refuter must be a different family.
++(source: .claude/skills/workflow/SKILL.md:49)
++F5. Codex Sol loses its verdict to a context rollover at ~176K unless launched with cwd OUTSIDE the
++repo, the material inlined, and `VERDICT:` requested first.
++(source: session 2026-09-18, unverified)
++F6. Gemini via `agy` returns empty unless told "no tools" with the material inlined (that specific
++behaviour is unverified here); a 12 KB research lane took 848 s.
++(source: research/design/2026-08-31-web-design-sixteen-lane-corpus/SYNTHESIS.md:9 — confirms
++`agy rc=0 bytes=12021 secs=848` verbatim; the "empty unless no-tools" clause is a separate claim
++not covered by this pointer)
++F7. Alibaba TP1 is ONE weekly bucket shared by 7 models; agentic multi-turn use drains it in hours;
++one-shot calls do not.
++(source: session 2026-09-18, unverified)
++F8. Kimi K3 has a monthly quota (dead 09-15, live 09-18). Codex Spark: HTTP 400 dead since 09-15.
++Jules: 3/day, queues often empty. The daily liveness probe covers 1 of 16 seats; the Gear-3
++quorum lint counts seats from a static roster, not from the probe.
++(source: docs/architecture/dual-consul/army-map.md:72,74,76 — Codex Spark 400-dead-since-09-15
++and Jules 3/day clauses grep-confirmed there; the Kimi K3 quota dates and the probe-coverage
++clause are not independently confirmed)
++F9. A `claude -p` child costs ~36K context tokens before doing anything; ~15K with
++`--restricted --strict-mcp-config`.
++(source: research/agent-craft/cc-meta-loop/BACKLOG.md:206 — confirms the default-shape baseline
++exactly (36,322, "~36K" not "~37K"); research/agent-craft/cc-meta-loop/BACKLOG.md:208 confirms
++the `--restricted --strict-mcp-config` figure exactly (15,064))
++F10. Eight lanes launched without `model:` inherited Fable and died together 25 s in. Five Fable
++lanes exhaust a MAX seat in 2–3 min. The 113-agent run was Opus (6 readers, 106 refuters,
++1 synthesizer, peak 8 concurrent).
++(source: .claude/skills/workflow/SKILL.md:36-42 — eight-lanes/25s clause;
++docs/rules/RULINGS.md:69 and docs/architecture/dual-consul/army-map.md:276 —
++five-Fable-lanes/2-3-min clause grep-confirmed at both;
++research/operations/2026-09-07-astra-operative-workflow-audit.md:25 — 113-agent run composition
++and Opus attribution)
++F11. A Sonnet "courier" lane allowed to fix "only syntax" re-authored 14/19 lines of a Qwen seat's
++output and reported "title fix". A read-only diff of disk vs seat transcript caught it.
++Self-reported journals are not evidence.
++(source: session 2026-09-18, unverified)
++F12. Strengths, measured here and globally: Opus 5.5 = architecture, red-team, long-horizon, gate;
++Sonnet 5 = well-specified BUILD units (rewrites others' work when used as courier); Haiku =
++grunt. Sol = empirical sandbox, migrations, working React UIs (Website Arena 1415 vs 1238);
++Luna = mechanical edits, wrong on shared semantics. Gemini 3.1 Pro = corpus ingestion (1M),
++regulatory search; 3.8 Flash = cheap width, last in both local design juries. Kimi K3 =
++long-context audit, evidence-pack verifier, design (Design Arena #2, R19 tied first).
++Qwen 3.8 Max = strategy voice, instruction following, non-PII mass documents, design (won the
++08-30 blind jury). DeepSeek V4 Pro = hard logic, counter-analysis. GLM 5.2 = first-call refuter
++for diffs <5K chars. deepseek-v4-flash / qwen3.7-plus / qwen3.6-flash = batch and grunt.
++NotebookLM = ground-truth verifier, never synthesizer. Ollama local = the only PII lane.
++(source: MODEL_ROSTER.md:71 (`gemini-3.1-pro`: 1M-ctx corpus ingestion, KBLI/visa/regulatory
++search) and MODEL_ROSTER.md:91 (`k3` / `kimi-code/k3`: 1M-ctx long-context auditor, multimodal
++Evidence-Pack verifier) — the roster spells the ids that way, grep those literals;
++the Website Arena / Design Arena / 08-30 blind jury competition-score numbers are not
++independently confirmed)
++F13. Real missions to date ran on tmux windows with pasted prompts; the dynamic executor
++`saetta.js` never ran a mission; `second-army.js` ran twice; a design tournament ran once.
++(source: session 2026-09-18, unverified)
++F14. Claude→Codex has no native channel: a file in the shared folder is published, not delivered.
++(source: research/operations/2026-09-10-fable-max-sessions/README.md:69 — "published, not
++delivered" verbatim; docs/architecture/dual-consul/army-map.md:147-151 — "Claude↔Codex have no
++native channel" verbatim, replacing the earlier :81-90 pointer which is Direction-of-
++verification doctrine, not the channel clause)
++F15. Merged ≠ live: backend-rag merge is the deploy; mouth stays STAGED until `vercel promote`.
++(source: memory discovery-merging-a-backend-rag-pr-deploys-by-itself;
++discovery_mouth_production_deployments_land_staged_and_go_live_only_on_vercel_promote_2026_09_17)
++
++## 2. The squad today
++
++{{ARSENAL_LIVENESS}}
++
++(Filled at invocation from `scripts/arsenal_probe.py --json`: four columns — seat, status,
++healthy, latency_ms — and nothing else. The probe's own free-text `evidence` field stays in the
++probe's machine-local report and never enters this brief. A seat whose probe status was `TIMEOUT`
++reads `unknown (probe budget 15 s)` with `healthy` also `unknown`: the probe's budget is far
++shorter than a real round, so **`unknown` is not `dead`** and a seat listed that way may still
++answer. Do not write it out of the formation — give it a substitute under F8 and keep it in.)
++
++## 3. Rules of the league (binding; a design that breaks one is disqualified)
++
++C1. No Claude model through a paid per-token Anthropic endpoint, any alias or Bedrock/Vertex route.
++Only the `claude` CLI on OAuth. Other paid per-token APIs need Zero's explicit OK.
++C2. PII is an OUTPUT boundary: no client PII/OSINT in cleartext anywhere. Client documents: Ollama.
++C3. One PR, one concern, ≤ ~400 net lines. Auto-merge armed at PR-open; armed branch frozen. Push,
++create, merge are three separate commands. Every PR body carries `Bites:` (consumer + the
++observation that proves it is live).
++C4. The session that owns the mandate ships end to end; the codeowner never merges/reviews/
++deploys. External seats PREPARE, never ship. ORANGE exception: one appointed Sol Dux ships,
++a fresh Sol signs.
++C5. Final on-disk gate: a FRESH Opus 5.5 `xhigh` session outside the chain (BLUE). Never cheaper
++than the builder, never cascaded, never an `agent()` lane.
++C6. Generator ≠ grader, always; grader from a different family; never shown the builder's claim first.
++C7. Fix-of-a-fix stops at depth 1. Three reds for the same cause: suspend. Never rerun a red
++before knowing why it is red.
++C8. Imperators (Fable 5.1, Astra) never fan out and never implement. Every `agent()` pins `model:`.
++C9. Ceremony has a budget: coordination only while measured overhead (wait + rework + human
++interventions) stays below the time it saves.
++C10. Agents work in `.worktrees/<lane>-<id>/`; the main checkout is read-only for agents.
++
++## 4. Deliverable — formation and tactics (exact skeleton; the synthesizer parses it)
++
++```
++---
++seat: <family/model>
++objective_sha256: {{SHA}}
++facts_cited: [F.., C..]
++assumptions: <count>
++---
++## Formation
++| role | seat | why (F ref) | substitute if dead (F8) |
++## Tactics
++| stage | seat(s) | in-script or window | parallel/serial | round cap | exit command | hands to next stage |
++| final gate | opus-5-5 | window | serial | 1 | <command> | <next> |
++## Termination
++<the counter that makes a fourth round impossible: where it lives, who reads it>
++## Evidence between stages
++<what a stage hands over so the receiver verifies without trusting the sender's journal (F11, F14)>
++## Never
++- ... (F/C ref)
++- ... (F/C ref)
++- ... (F/C ref)
++## First move
++<the first ≤100-line thing to build or run> · Bites: <consumer> · <observation>
++## Cost
++<calls per seat; Anthropic windows opened; expected wall-clock>
++```
++
++Limits: ≤ 1,500 words. Command lines allowed, no other code. Judge nothing by exit code.
++
++**Checked mechanically before any juror reads you.** These are the literals the judge parses,
++stated here so that no answer is thrown out for a spelling this brief never gave it:
++
++- All seven `## ` sections present, in the order above. `## Formation` and `## Tactics` each carry
++  at least one DATA row past the header — a `|---|` separator line is not a data row.
++- Your FINAL gate row in Tactics: the seat cell names `opus-5-5` (`Opus 5.5` and
++  `fresh opus-5-5 xhigh` read as the same entity) and the mode cell contains the word `window`
++  (C5). List pre-gates
++  freely — the LAST Tactics row whose stage names a gate is the one read.
++- `round cap` is a BARE INTEGER on EVERY Tactics row: `1`, never "one", "3 rounds", "per stage"
++  or "n/a". A round cap written as prose disqualifies (C8).
++- Every `## Never` bullet cites at least one F or C by number (C8).
++- Formation rows for the imperator seats (`fable-5-1`, `astra`) carry only role `coach` or
++  `imperator` (C8).
++- Cite C1 by NUMBER. You never need to spell a banned vendor, endpoint or env-var name; if you
++  do, it is read as a citation only inside a `## Never` bullet — the same string anywhere else
++  disqualifies you (C1).
++- `objective_sha256` is the value above byte-for-byte; `facts_cited` and `assumptions` non-empty.
++
++If a later round asks you to object: one objection = one paragraph citing an F/C and carrying a
++line that starts with `Test:`, or one row of a table whose header names a `test` column, with an
++F/C in the row and a non-empty test cell. No test, no objection.
+diff --git a/.github/workflows/dynamic-workflow-selftest.yml b/.github/workflows/dynamic-workflow-selftest.yml
+index 790f3b90aa..a6e16b7ba3 100644
+--- a/.github/workflows/dynamic-workflow-selftest.yml
++++ b/.github/workflows/dynamic-workflow-selftest.yml
+@@ -74,7 +74,7 @@ jobs:
+         run: python3 scripts/dynamic_workflow.py --selftest
+ 
+       - name: pytest test_dynamic_workflow.py
+-        run: python -m pytest scripts/tests/test_dynamic_workflow.py -v
++        run: python -m pytest scripts/tests/test_dynamic_workflow.py scripts/tests/test_dynamic_workflow_skill.py -v
+ 
+       - name: pytest lint wrapper tests
+         run: python -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -v
+diff --git a/evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3f-r-09373103/brief.yml b/evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3f-r-09373103/brief.yml
+new file mode 100644
+index 0000000000..619350eca8
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3f-r-09373103/brief.yml
+@@ -0,0 +1,80 @@
++task: >-
++  PR3f-r — replacement for #6951 (agent/air-m5/infra/dynamic-workflow-3f, head
++  38f539ddc8), which is armed and frozen but blocked on fresh main by a literal
++  the original branch could not have known about: #7154 (2026-09-22, "Opus 5.5
++  replaces Opus 5 in every seat") moved the C5 gate judge's seat literal from
++  `opus-5` to `opus-5-5` (RULED 2026-09-23, docs/rules/RULINGS.md). #6951's
++  SKILL.md and brief.template.md hardcoded the now-superseded bare `opus-5` as
++  the C5 literal in the gate-row example, the judge description and the Round-3
++  / BLUE-Dux seat mentions, so a brief rendered from that template fails C5 on
++  main today. This PR carries #6951's content forward onto fresh main with
++  every C5 literal and every other current-seat "Opus 5" mention moved to
++  Opus 5.5, one deliberate historical fact (F3, session 2026-09-18, predates
++  the ruling) and one deliberate explanatory mention of the superseded spelling
++  (SKILL.md's own C5 description, stating what now fails) left untouched, plus
++  a GUILT test (test_shipped_gate_row_passes_c5_and_the_pre_7154_bare_opus_5_spelling_fails_it)
++  that imports main's own scripts/dynamic_workflow.py::_check_c5 to prove the
++  shipped gate row passes and the pre-#7154 spelling fails it. It also repoints
++  F12's two MODEL_ROSTER.md line citations (70->71, 90->91), which drifted on
++  main independently of the C5 fix and would otherwise fail
++  test_curated_source_pointers_contain_their_declared_keyword on this head.
++lane: infra/dynamic-workflow-3f-r
++machine: air-m5
++date: 2026-09-24
++colour: BLUE
++
++gear: 3
++gear_reason: >-
++  Floor is 3, PATH-sourced: the diff touches
++  .github/workflows/dynamic-workflow-selftest.yml, a hot-zone path
++  (HOTZONE_PATTERNS in scripts/evidence_pack_lint.py / the duplicated case
++  block in .github/workflows/hot-zone-pr-gate.yml) — a workflow file, even a
++  one-line edit re-adding scripts/tests/test_dynamic_workflow_skill.py to the
++  pytest step. A hot-zone hit floors (and ceilings) gear at 3 regardless of
++  the diff's size or shape (evidence_pack_lint.py:1041, 1194-1198); #6951's
++  own brief declared gear 2 off a size-sourced floor of 2 on a branch that
++  predates this workflow-path hit becoming decisive, which is exactly what
++  the conductor's "Harness floor recompute: declared gear 2 is BELOW the
++  deterministic floor 3" refusal on #6951 was catching.
++
++appetite:
++  wall_clock_hours: 1
++  adversarial_rounds: 1
++
++acceptance:
++  A1: >-
++    Every C5 literal in the two new docs (.claude/skills/dynamic-workflow/
++    SKILL.md, brief.template.md) names opus-5-5/Opus 5.5, matching main's
++    _C5_SEAT_ENTITY_RE and the gate row `| gate | opus-5-5 | window | serial |
++    1 | sign | done |` exactly. The two remaining bare "opus 5"/"opus-5" hits
++    are deliberate: F3 (a dated historical fact, session 2026-09-18, predates
++    RULED 2026-09-23) and SKILL.md's C5 description naming the superseded
++    spelling as what NOW fails.
++    probe: grep -rn -P '\bopus[- ]5\b(?![.-]5)' -i .claude/skills/dynamic-workflow scripts/tests/test_dynamic_workflow_skill.py
++  A2: >-
++    A GUILT test imports the judge from scripts/dynamic_workflow.py (never
++    re-implements the regex) and proves both directions on the shipped gate
++    row read verbatim off brief.template.md: it passes C5 as shipped, and
++    fails C5 with opus-5-5 replaced by the bare opus-5.
++    probe: python3 -m pytest scripts/tests/test_dynamic_workflow_skill.py -q -k test_shipped_gate_row_passes_c5
++  A3: >-
++    Full suite green on this head, including the pre-existing
++    test_dynamic_workflow.py C5 unit tests (unchanged, already covering the
++    opus-5-5 entity regex) and test_skills_canonical.py (dynamic-workflow
++    added to KNOWN_CLAUDE_ONLY_NAMES).
++    probe: python3 -m pytest scripts/tests/test_dynamic_workflow.py scripts/tests/test_dynamic_workflow_skill.py scripts/tests/test_skills_canonical.py scripts/tests/test_lint_workflow_script.py -q
++  A4: >-
++    CI consumer in the same PR (unchanged from #6951's own A5): the skill
++    test file is in .github/workflows/dynamic-workflow-selftest.yml's pytest
++    step, and `.claude/skills/dynamic-workflow/**` is already in that
++    workflow's paths filter, so the job re-runs on this PR's own head. That
++    run green, with its URL, is the Bites observation.
++    probe: gh run list --workflow dynamic-workflow-selftest --branch <branch>
++
++out_of_scope: >-
++  Any change to scripts/dynamic_workflow.py, scripts/arsenal_probe.py or the
++  lint scripts — this PR is documentation plus its own test, same boundary
++  #6951 declared. #6951 itself, left armed and frozen; this PR does not touch
++  it, arm it, merge it or comment on it. Any SPEC-PROPOSALS row #6951 already
++  put out of scope. The root evidence/brief.yml, deliberately untouched: this
++  brief lives at its own per-PR path, same convention as #6951's.
+diff --git a/scripts/tests/test_dynamic_workflow_skill.py b/scripts/tests/test_dynamic_workflow_skill.py
+new file mode 100644
+index 0000000000..6f0eca389c
+--- /dev/null
++++ b/scripts/tests/test_dynamic_workflow_skill.py
+@@ -0,0 +1,442 @@
++"""PR3f (2026-09-20, resumption of the skill lineage suspended after dw-gate-18 per mandate §S)
++— tests for the dynamic-workflow skill + brief template.
++
++Shape: 13 single-assertion-family test functions, no `@pytest.mark.parametrize` anywhere — 4
++carried from #6779, 3 from #6802, 2 from #6804 and 4 new here (§S S1's frozen-count ban, the
++flag-coverage converse, and the two that make SKILL.md's Source map evidence: set equality with
++the curated launcher map, and the keyword actually present at each cited launcher line). Read the
++count from `--collect-only`, never from this docstring.
++
++PR3f-r (2026-09-24, replaces #6951): one GUILT test added — #7154 (2026-09-22) moved the C5
++gate literal from `opus-5` to `opus-5-5` (RULED 2026-09-23, `docs/rules/RULINGS.md`), and
++#6951's gate row still hardcoded the bare `opus-5`, so a brief rendered from that template
++failed main's own `_check_c5`. The new test imports the judge from `scripts/dynamic_workflow.py`
++rather than re-implementing the regex (scar family #3: a guard judges entities, a second
++hand-rolled regex here would just be a second guard to keep in sync).
++
++NOTE ON SKILL.md's SOURCE MAP: it cites the launcher by SYMBOL (`scripts/dynamic_workflow.py::
++<keyword>`), not by `path:line`. No line of the mandate requires line numbers there — every
++pointer/line-number rule in it is scoped to `brief.template.md` (addendum A3 (i)/(ii) and
++Amendment A3(ii), all phrased against `_VERIFIED_POINTER_KEYWORDS` and "POINTER_RE finds in
++brief.template.md"), while the SKILL.md requirement is that "every step is a launcher subcommand".
++Citing by symbol means a launcher PR that shifts lines cannot make this skill stale, while a
++renamed or deleted enforcement point still goes red — which is the drift actually worth catching.
++
++Verifies: every subcommand SKILL.md names is real (doc/code drift guard, e.g. the judge/jury
++split); the CONVERSE (obs 11) — every real subcommand is named in SKILL.md, the direction a
++"delete `reveal` from SKILL.md" mutation turns red, which the first check alone would miss; the
++same converse for every FLAG the launcher's own `--help` screens expose, so a flag added to the
++launcher and never documented (`r1 --register` was exactly that) goes red instead of drifting;
++every F-line (F1..F15) in brief.template.md carries a source pointer, real or the exact
++"(source: session 2026-09-18, unverified)" literal, never a bare claim; every "(source:
++path:line[-line])" pointer names a file that exists (obs 10: no prior test opened one); a
++curated subset of those pointers — the ones dw-gate-11 flagged wrong (F1, F14) or missing (F6,
++F9, F10) — contains the keyword the fact declares, at the CURRENTLY cited line(s); and F2 states
++its two commands WITHOUT their output (dw-gate-11 obs 5, dw-gate-18 obs 1: the same count was
++copied forward twice and did not reproduce either time — a count that grows daily is stale by
++construction, so the template may not carry one at all).
++"""
++from __future__ import annotations
++
++import importlib.util
++import re
++import subprocess
++import sys
++from pathlib import Path
++from types import ModuleType
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++SKILL_MD = REPO_ROOT / ".claude" / "skills" / "dynamic-workflow" / "SKILL.md"
++BRIEF_TEMPLATE = REPO_ROOT / ".claude" / "skills" / "dynamic-workflow" / "brief.template.md"
++LAUNCHER = REPO_ROOT / "scripts" / "dynamic_workflow.py"
++
++
++def _load_launcher() -> ModuleType:
++    """Same loading shape as test_dynamic_workflow.py (scripts/ is a flat bag, not a package):
++    importlib.util.spec_from_file_location, so the C5 judge is imported, never re-implemented."""
++    spec = importlib.util.spec_from_file_location("dynamic_workflow", LAUNCHER)
++    assert spec is not None and spec.loader is not None
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[spec.name] = module
++    spec.loader.exec_module(module)
++    return module
++
++
++dw = _load_launcher()
++
++SUBCOMMAND_SET_RE = re.compile(r"\{([a-z0-9,\-]+)\}")
++SKILL_SUBCOMMAND_RE = re.compile(r"dynamic_workflow\.py\s+([a-z][a-z0-9\-]*)")
++F_LINE_RE = re.compile(r"^F(\d+)\.", re.MULTILINE)
++SOURCE_RE = re.compile(r"\(source:\s*[^)]+\)")
++UNVERIFIED_RE = re.compile(r"\(source:[^)]*unverified[^)]*\)")
++CANONICAL_UNVERIFIED = "(source: session 2026-09-18, unverified)"
++
++# Matches "path:line", "path:line-line" or "path:line,line,line". A pointer that line-wraps
++# mid-path resolves to a nonexistent repo-root file instead of matching across the newline —
++# that is by design, the exact failure mode this test exists to catch, not a regex to relax.
++POINTER_RE = re.compile(r"([A-Za-z0-9_./-]+\.(?:md|py)):(\d+(?:[-,]\d+)*)")
++
++# A bare "path.md" / "path.py" mention, with or without a trailing ":line" — superset of
++# POINTER_RE's path group, used to catch a repo pointer that DROPPED its line number (obs 6).
++BARE_FILE_TOKEN_RE = re.compile(r"[A-Za-z0-9_./-]+\.(?:md|py)")
++
++# A long-form date first, so the alternation cannot consume "26-09" out of "2026-09-12" and leave
++# "12" looking like a bare count. Only digits INSIDE one of these two shapes are allowed in F2.
++DATE_TOKEN_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2}-\d{2}")
++DIGIT_RUN_RE = re.compile(r"\d+")
++
++# argparse writes flags as "--slug SLUG" / "-h, --help"; long form only — the launcher has no
++# single-letter flag of its own, and "-h" is argparse's, not the launcher's contract.
++LONG_FLAG_RE = re.compile(r"--[a-z][a-z0-9-]*")
++FLAGS_NOT_THE_LAUNCHERS_OWN = {"--help"}
++
++# The example gate row inside brief.template.md's own "## 4. Deliverable" skeleton (the coach
++# copies its shape, not its bytes) — read verbatim so a future edit that regresses the seat cell
++# back to the bare `opus-5` fails the "shipped template passes" half below, not just the
++# hand-built "bare opus-5 fails" half.
++TEMPLATE_GATE_ROW_RE = re.compile(r"^\| final gate \|.*\|\s*$", re.MULTILINE)
++
++# SKILL.md's own "## Source map": every CLI fact in the skill, named by the launcher SYMBOL that
++# enforces it. A symbol, not a line — see the module docstring for why the mandate allows it and
++# why it is the better guard here. This set is the curated half: it must equal what SKILL.md's
++# table cites (both directions) and every member must still occur in the launcher.
++LAUNCHER_SYMBOL_RE = re.compile(r"\(source:\s*scripts/dynamic_workflow\.py::([^)]+)\)")
++
++_LAUNCHER_SYMBOLS = {
++    "DEFAULT_TEMPLATE",
++    "PROBE_TIMEOUT_S",
++    "_ARSENAL_UNKNOWN_NOTE",
++    "SEAT_TIMEOUTS",
++    "_arsenal_liveness_block",
++    "latency_ms",
++    "_ledger_lock",
++    "_is_md_separator_row",
++    "validate_answer",
++    "_normalise_seat_output",
++    "_ensure_outside_repo",
++    "template not found",
++    "_SEALED_SENTENCE",
++    "_launch_seat",
++    "_seat_key",
++    "already claimed by seat",
++    "_cmd_r1_register",
++    "_R2_PROMPT_PREFIX",
++    "_filter_objection_paragraph",
++    "r2-dead",
++    "_check_c1",
++    "_check_c5",
++    "_check_c8",
++    "JURY_AXES",
++    "0 surviving formations",
++    "_CAPTURE_REQUIRED",
++    "_OUTCOME_KEYS",
++}
++
++# Curated (path, line-spec) -> keyword the fact declares, re-verified by opening each pointer
++# 2026-09-19 (PR3b''' addendum A2/A3; Amendment A3(ii), 05:20Z, builder-reported). Full set
++# equality with every POINTER_RE match in brief.template.md is the point of
++# test_curated_map_covers_every_line_pointer — all 15 (path, spec) pairs the template cites
++# have an entry below, including F4 and F8's two pre-existing, previously-uncurated pointers.
++_VERIFIED_POINTER_KEYWORDS = {
++    ("docs/rules/RULINGS.md", "106"): "60/300",
++    ("research/design/2026-08-31-web-design-sixteen-lane-corpus/SYNTHESIS.md", "9"): "secs=848",
++    ("research/agent-craft/cc-meta-loop/BACKLOG.md", "206"): "36,322",
++    ("research/agent-craft/cc-meta-loop/BACKLOG.md", "208"): "15,064",
++    (".claude/skills/workflow/SKILL.md", "36-42"): "25 s",
++    ("docs/rules/RULINGS.md", "69"): "2-3 minutes",
++    ("docs/architecture/dual-consul/army-map.md", "276"): "2–3 minutes",
++    ("docs/architecture/dual-consul/army-map.md", "147-151"): "no native",
++    ("research/operations/2026-09-10-fable-max-sessions/README.md", "69"):
++        "published, not delivered",
++    ("docs/rules/RULINGS.md", "85"): "RULED 2026-09-10",
++    ("research/operations/2026-09-07-astra-operative-workflow-audit.md", "25"): "106 refuters",
++    ("MODEL_ROSTER.md", "71"): "gemini-3.1-pro",
++    ("MODEL_ROSTER.md", "91"): "kimi-code/k3",
++    (".claude/skills/workflow/SKILL.md", "49"): "7 false-clean",
++    ("docs/architecture/dual-consul/army-map.md", "72,74,76"): "400-dead",
++}
++
++
++def _real_subcommands() -> set[str]:
++    assert LAUNCHER.exists(), f"launcher missing: {LAUNCHER}"
++    out = subprocess.run(
++        [sys.executable, str(LAUNCHER), "--help"],
++        capture_output=True, text=True, timeout=30, check=True,
++    ).stdout
++    match = SUBCOMMAND_SET_RE.search(out)
++    assert match, f"could not find a {{...}} subcommand set in --help output:\n{out}"
++    return set(match.group(1).split(","))
++
++
++def _skill_named_subcommands() -> set[str]:
++    text = SKILL_MD.read_text(encoding="utf-8")
++    return set(SKILL_SUBCOMMAND_RE.findall(text))
++
++
++def _help_text(*argv: str) -> str:
++    return subprocess.run(
++        [sys.executable, str(LAUNCHER), *argv, "--help"],
++        capture_output=True, text=True, timeout=30, check=True,
++    ).stdout
++
++
++def _real_flags() -> dict[str, set[str]]:
++    """{"": top-level flags} plus one entry per subcommand, read from the launcher's OWN --help
++    screens rather than from a list kept here — a list would drift exactly the way SKILL.md did."""
++    found = {"": set(LONG_FLAG_RE.findall(_help_text())) - FLAGS_NOT_THE_LAUNCHERS_OWN}
++    for sub in sorted(_real_subcommands()):
++        found[sub] = set(LONG_FLAG_RE.findall(_help_text(sub))) - FLAGS_NOT_THE_LAUNCHERS_OWN
++    return found
++
++
++def _fact_blocks(text: str) -> list[str]:
++    """F1..F15's bodies, in order, as the two older tests split them — same split, one place."""
++    section = text.split("## 1. Scouting report", 1)[1].split("## 2.", 1)[0]
++    return re.split(r"\nF\d+\.", section)[1:]
++
++
++def test_every_skill_named_subcommand_is_real():
++    real = _real_subcommands()
++    named = _skill_named_subcommands()
++    assert named, "SKILL.md named no dynamic_workflow.py subcommands — nothing to check"
++    unknown = named - real
++    assert not unknown, (
++        f"SKILL.md names subcommand(s) {sorted(unknown)} that --help does not list "
++        f"(real subcommands: {sorted(real)})"
++    )
++
++
++def test_every_real_subcommand_is_named_in_skill_md():
++    """Converse of the test above (obs 11, PASS condition a): deleting every "reveal" mention
++    from SKILL.md must go red here, even though the one-directional test stays green."""
++    real = _real_subcommands()
++    named = _skill_named_subcommands()
++    missing = real - named
++    assert not missing, (
++        f"--help lists subcommand(s) {sorted(missing)} that SKILL.md never mentions as "
++        f"'dynamic_workflow.py <subcommand>' (named: {sorted(named)})"
++    )
++
++
++def test_judge_and_jury_are_two_separate_documented_steps():
++    """Regression guard: the ORIGINAL mandate prose conflated judge+jury into one step;
++    the shipped CLI splits them. SKILL.md must show both as separate commands, in order."""
++    text = SKILL_MD.read_text(encoding="utf-8")
++    judge_idx = text.find("dynamic_workflow.py judge")
++    jury_idx = text.find("dynamic_workflow.py jury")
++    assert judge_idx != -1, "SKILL.md does not mention 'dynamic_workflow.py judge'"
++    assert jury_idx != -1, "SKILL.md does not mention 'dynamic_workflow.py jury'"
++    assert judge_idx < jury_idx, "SKILL.md must document judge before jury"
++
++
++def test_every_fact_line_in_template_carries_a_source_pointer():
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    fact_numbers = sorted(int(n) for n in F_LINE_RE.findall(text))
++    assert fact_numbers == list(range(1, 16)), (
++        f"expected F1..F15 in brief.template.md, found {fact_numbers}"
++    )
++    section = text.split("## 1. Scouting report", 1)[1].split("## 2.", 1)[0]
++    blocks = re.split(r"\nF\d+\.", section)[1:]
++    assert len(blocks) == 15, f"expected 15 fact blocks, split found {len(blocks)}"
++    for i, block in enumerate(blocks, start=1):
++        assert SOURCE_RE.search(block), f"F{i} has no (source: ...) pointer:\n{block[:200]}"
++
++
++def test_unverified_marks_use_the_exact_literal():
++    """Anything not grep-confirmed must use the mandate's exact literal, not a paraphrase —
++    so a reader can grep for it and know every hit is a genuine gap, not a typo."""
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    for hit in UNVERIFIED_RE.findall(text):
++        assert hit == CANONICAL_UNVERIFIED, f"non-canonical unverified mark: {hit!r}"
++
++
++def test_every_source_pointer_resolves_to_a_real_file():
++    """dw-gate-11 obs 10 on #6779: no test previously opened a single pointer. This one opens
++    every "path:line" pointer in the template and asserts the named file exists."""
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    pointers = POINTER_RE.findall(text)
++    assert pointers, "no (source: path:line) pointers found in brief.template.md"
++    for rel, spec in pointers:
++        target = REPO_ROOT / rel
++        assert target.exists(), f"source pointer names a file that does not exist: {rel}:{spec}"
++
++
++def _lines_for_spec(path: Path, spec: str) -> str:
++    """spec is "106", "36-42" or "72,74,76" (1-indexed, inclusive on a range)."""
++    all_lines = path.read_text(encoding="utf-8").splitlines()
++    numbers: set[int] = set()
++    for part in spec.split(","):
++        if "-" in part:
++            start, end = part.split("-", 1)
++            numbers.update(range(int(start), int(end) + 1))
++        else:
++            numbers.add(int(part))
++    return "\n".join(all_lines[n - 1] for n in sorted(numbers) if 0 < n <= len(all_lines))
++
++
++def test_curated_source_pointers_contain_their_declared_keyword():
++    """Curated subset dw-gate-11 flagged wrong or missing on #6779 (F1, F6, F9, F10, F14),
++    re-verified 2026-09-19. Checked against what brief.template.md cites RIGHT NOW — a
++    citation that moves without updating this map goes red on the membership check below,
++    it does not silently pass against a stale spec."""
++    assert _VERIFIED_POINTER_KEYWORDS, "curated pointer map is empty — nothing to check"
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    cited_now = set(POINTER_RE.findall(text))
++    for (rel, spec), keyword in _VERIFIED_POINTER_KEYWORDS.items():
++        assert (rel, spec) in cited_now, (
++            f"brief.template.md no longer cites {rel}:{spec} — the citation moved, was "
++            f"removed, or its line spec changed; update this map or fix the template"
++        )
++        target = REPO_ROOT / rel
++        assert target.exists(), f"{rel} does not exist"
++        cited = _lines_for_spec(target, spec)
++        assert keyword in cited, (
++            f"{rel}:{spec} does not contain {keyword!r} — pointer is stale or the source moved"
++        )
++
++
++def test_every_repo_pointer_carries_a_line_number():
++    """Obs 6 turned into a rule (PR3b''' A3i): a bare "path.md"/"path.py" mention with no line
++    number can't be opened at an exact span. Checked per F-block so two non-repo-path
++    exemptions apply narrowly: F2 cites shell commands (one of them contains the substring
++    "PENDING-ARMS.md" inside a backtick command, not a source pointer) and F15 cites memory
++    slugs, not repo paths. Both are exempted by fact number, not by loosening the pattern."""
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    section = text.split("## 1. Scouting report", 1)[1].split("## 2.", 1)[0]
++    blocks = re.split(r"\nF\d+\.", section)[1:]
++    assert len(blocks) == 15, f"expected 15 fact blocks, split found {len(blocks)}"
++    EXEMPT_FACT_NUMBERS = {2, 15}
++    for i, block in enumerate(blocks, start=1):
++        if i in EXEMPT_FACT_NUMBERS:
++            continue
++        pointer_starts = {m.start() for m in POINTER_RE.finditer(block)}
++        for m in BARE_FILE_TOKEN_RE.finditer(block):
++            assert m.start() in pointer_starts, (
++                f"F{i} cites {m.group()!r} at char {m.start()} of the block with no line "
++                f"number immediately after it — every repo pointer must carry :line so a "
++                f"reader (and test_curated_source_pointers_contain_their_declared_keyword) "
++                f"can open the exact span"
++            )
++
++
++def test_curated_map_covers_every_line_pointer():
++    """Obs 6 turned into a rule (PR3b''' A3ii): the curated map must name every "path:line"
++    pointer POINTER_RE finds in the template, in both directions — a real pointer missing a
++    map entry, or a map entry for a pointer that moved or was removed, both go red here."""
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    cited_now = set(POINTER_RE.findall(text))
++    mapped = set(_VERIFIED_POINTER_KEYWORDS.keys())
++    missing_from_map = cited_now - mapped
++    stale_in_map = mapped - cited_now
++    assert not missing_from_map, (
++        f"brief.template.md cites pointer(s) with no _VERIFIED_POINTER_KEYWORDS entry: "
++        f"{sorted(missing_from_map)}"
++    )
++    assert not stale_in_map, (
++        f"_VERIFIED_POINTER_KEYWORDS has entry/entries for pointer(s) brief.template.md no "
++        f"longer cites: {sorted(stale_in_map)}"
++    )
++
++
++def test_f2_carries_no_frozen_count():
++    """§S S1. F2's two commands count commits, so their output grows every day the ledger is
++    touched. The count was copied forward into the template twice and failed to reproduce both
++    times (dw-gate-11 obs 5: 88/6 written, 86/4 measured; dw-gate-18 obs 1: 107 written, 104
++    measured) — three reds on this deliverable, two of them this one line. The cure is not a
++    fresher number, it is no number: F2 prints the commands, the convener runs them at brief time
++    and the OUTPUT lives in the kit's own BRIEF.md. Enforced by shape, not by a blocklist of the
++    counts that were wrong before: inside the F2 block, every digit run must be part of a date
++    token, so any bare integer fails and names itself."""
++    blocks = _fact_blocks(BRIEF_TEMPLATE.read_text(encoding="utf-8"))
++    assert len(blocks) == 15, f"expected 15 fact blocks, split found {len(blocks)}"
++    f2 = blocks[1]
++    allowed = [m.span() for m in DATE_TOKEN_RE.finditer(f2)]
++    for run in DIGIT_RUN_RE.finditer(f2):
++        inside = any(lo <= run.start() and run.end() <= hi for lo, hi in allowed)
++        assert inside, (
++            f"F2 carries the digit run {run.group()!r} at char {run.start()} of its block, "
++            f"outside any date token — a count in this template is stale by construction (§S "
++            f"S1); print the command and let the convener paste its output into BRIEF.md"
++        )
++
++
++def test_every_launcher_flag_is_named_in_skill_md():
++    """Converse of the subcommand check, one level down: a flag the launcher grew and the skill
++    never learned is silent drift, and `r1 --register` was exactly that — the only path that
++    turns a hand-pasted window answer into an `answered` row, absent from the skill for two PRs.
++    Read from the launcher's own --help screens, so a new flag fails here the day it lands."""
++    skill_text = SKILL_MD.read_text(encoding="utf-8")
++    missing: list[str] = []
++    for scope, flags in _real_flags().items():
++        for flag in sorted(flags):
++            if flag not in skill_text:
++                missing.append(f"{scope or '<top-level>'} {flag}")
++    assert not missing, (
++        f"the launcher's --help exposes flag(s) SKILL.md never names: {missing} — document the "
++        f"flag or the skill is describing a launcher that no longer exists"
++    )
++
++
++def test_curated_map_covers_every_launcher_symbol_in_skill_md():
++    """SKILL.md's "## Source map" and `_LAUNCHER_SYMBOLS` must name the same set, both ways. A fact
++    added to the table without curation, or a curated entry whose row was deleted, are the two
++    halves of the same rot — a map nobody compares to the document it describes is decoration."""
++    cited_now = set(LAUNCHER_SYMBOL_RE.findall(SKILL_MD.read_text(encoding="utf-8")))
++    assert cited_now, "SKILL.md's Source map cites no launcher symbol — the section is missing"
++    assert not cited_now - _LAUNCHER_SYMBOLS, (
++        f"SKILL.md's Source map cites symbol(s) with no _LAUNCHER_SYMBOLS entry: "
++        f"{sorted(cited_now - _LAUNCHER_SYMBOLS)}"
++    )
++    assert not _LAUNCHER_SYMBOLS - cited_now, (
++        f"_LAUNCHER_SYMBOLS has entry/entries SKILL.md's Source map no longer cites: "
++        f"{sorted(_LAUNCHER_SYMBOLS - cited_now)}"
++    )
++
++
++def _tactics_body(*rows: str) -> str:
++    """Same shape test_dynamic_workflow.py's C5 tests use: a body with a `## Tactics` table the
++    launcher's `_md_table_rows`/`_check_c5` can parse, minimal down to the one section they read."""
++    header = ("| stage | seat(s) | in-script or window | parallel/serial | round cap | "
++              "exit command | hands to next stage |")
++    return "## Tactics\n" + header + "\n" + "|---|---|---|---|---|---|---|\n" + "\n".join(rows) + "\n"
++
++
++def test_shipped_gate_row_passes_c5_and_the_pre_7154_bare_opus_5_spelling_fails_it():
++    """GUILT (replaces #6951): that PR's gate row hardcoded the bare `opus-5`, which fails
++    main's `_check_c5` since #7154 (2026-09-22) moved the C5 seat literal to `opus-5-5`
++    (RULED 2026-09-23). Reads the row VERBATIM off brief.template.md for the innocence half, so
++    a future regression back to `opus-5` fails HERE too, not only in the hand-built guilty row;
++    both halves go through the launcher's own judge, never a re-implemented regex."""
++    text = BRIEF_TEMPLATE.read_text(encoding="utf-8")
++    match = TEMPLATE_GATE_ROW_RE.search(text)
++    assert match, "brief.template.md has no '| final gate | ...' row to check"
++    shipped_row = match.group(0)
++    assert "opus-5-5" in shipped_row, f"gate row no longer names opus-5-5: {shipped_row!r}"
++
++    # Innocence: the row exactly as shipped passes C5.
++    assert dw._check_c5(_tactics_body(shipped_row))[0] is True, (
++        f"shipped gate row fails C5: {shipped_row!r}"
++    )
++
++    # Guilt: the same row with the superseded bare `opus-5` fails C5.
++    guilty_row = shipped_row.replace("opus-5-5", "opus-5")
++    assert guilty_row != shipped_row, "substitution was a no-op — row shape changed?"
++    assert dw._check_c5(_tactics_body(guilty_row))[0] is False, (
++        f"bare-opus-5 gate row should fail C5 but did not: {guilty_row!r}"
++    )
++
++
++def test_every_launcher_symbol_occurs_in_the_launcher():
++    """The half that makes the Source map evidence: each symbol must appear in the launcher at
++    least once, as an exact substring. This is what goes red when an enforcement point is renamed
++    or removed — i.e. when the skill has started describing a launcher that no longer exists —
++    and it stays green through a line shift, which is the churn this repo actually produces."""
++    assert _LAUNCHER_SYMBOLS, "launcher symbol map is empty — nothing to check"
++    assert LAUNCHER.exists(), f"launcher missing: {LAUNCHER}"
++    source = LAUNCHER.read_text(encoding="utf-8")
++    absent = sorted(s for s in _LAUNCHER_SYMBOLS if s not in source)
++    assert not absent, (
++        f"SKILL.md's Source map names symbol(s) absent from {LAUNCHER.name}: {absent} — the fact's "
++        f"enforcement point was renamed or deleted, so the skill is describing a launcher that is "
++        f"no longer there; re-point the row to the symbol that enforces it now, or drop the claim"
++    )
+diff --git a/scripts/tests/test_skills_canonical.py b/scripts/tests/test_skills_canonical.py
+index b89b8f92ba..f27f2b2bad 100644
+--- a/scripts/tests/test_skills_canonical.py
++++ b/scripts/tests/test_skills_canonical.py
+@@ -123,6 +123,7 @@ AGENTS_SKILLS = REPO_ROOT / ".agents" / "skills"
+ KNOWN_SHARED_NAMES = {"bot", "kbli-navigator", "secondhome", "visaoracle", "wr2"}
+ KNOWN_CLAUDE_ONLY_NAMES = {
+     "agent-session-discipline",
++    "dynamic-workflow",
+     "final-gate-discipline",
+     "intake",
+     "karpathy-discipline",

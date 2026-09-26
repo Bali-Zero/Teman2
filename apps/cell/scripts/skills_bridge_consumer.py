@@ -26,7 +26,6 @@ import asyncio
 import fcntl
 import logging
 import os
-import re
 import subprocess
 import sys
 import urllib.parse
@@ -140,7 +139,20 @@ def _reset_503_counter() -> None:
             pass
 
 
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+# The gateway's verdict is read by the ONE canonical extractor, never a
+# private regex `.search()` (that returns the FIRST `tg_notify:` match, and a
+# P0-unsendable run prints a diagnostic line before the machine verdict).
+# Resolved the same two places as `_find_gateway()` below, so an import
+# failure never kills the shim (#2) — it degrades to an explicit unknown.
+for _cand in (Path(__file__).resolve().parents[3], Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
 
 
 def _find_gateway() -> Path | None:
@@ -204,9 +216,9 @@ def _send_telegram_alert(msg: str, *, dedup_key: str) -> None:
         return
     # Verdict on stderr, never the exit code — the gateway exits 0 by design,
     # so a refusal read through returncode looks like a success (W104).
-    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-    if match:
-        logger.info("[skills_bridge] tg_notify: %s (%s)", match.group(1), dedup_key)
+    verdict = extract_gateway_verdict(proc.stderr or "")
+    if verdict:
+        logger.info("[skills_bridge] tg_notify: %s (%s)", verdict, dedup_key)
     else:
         tail = " ".join((proc.stderr or "").split())[-160:]
         logger.warning(

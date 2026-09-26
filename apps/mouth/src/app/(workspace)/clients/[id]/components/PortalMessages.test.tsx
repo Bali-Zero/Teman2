@@ -1,3 +1,5 @@
+import type React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 /**
  * PortalMessages — scroll-guard coverage.
  *
@@ -45,7 +47,12 @@
  * shared across files, so the handle is re-read and cleared explicitly in
  * beforeEach rather than trusting vi.clearAllMocks() alone.
  */
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
 import { PortalMessages } from "./PortalMessages";
@@ -347,3 +354,14 @@ describe("PortalMessages load error state", () => {
     expect(screen.getByText(/out of date/i)).toBeInTheDocument();
   });
 });
+
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}

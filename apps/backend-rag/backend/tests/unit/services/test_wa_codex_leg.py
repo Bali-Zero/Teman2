@@ -30,7 +30,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.services.integrations import human_escalation_notifier, wa_broker, wa_codex_leg
+from backend.services.integrations import (
+    human_escalation_notifier,
+    wa_broker,
+    wa_codex_leg,
+    wa_human_handoff,
+)
 from backend.services.integrations.wa_broker import (
     OfferOutcome,
     OfferResult,
@@ -193,6 +198,8 @@ def _wire_stubs(
     consume: str | None = "the broker reply",
     query: str = "what is a KITAS?",
     finalize: FinalizeResult | None = None,
+    media_type: str | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> SimpleNamespace:
     """Install fakes; return the namespace of spies."""
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
@@ -211,7 +218,8 @@ def _wire_stubs(
         return_value=BoundThreadContext(
             inbound_message_id=830,
             query=query,
-            history=[{"role": "user", "content": "hi"}],
+            history=history if history is not None else [{"role": "user", "content": "hi"}],
+            media_type=media_type,
         )
     )
     monkeypatch.setattr(wa_codex_leg, "_load_bound_thread_context", load)
@@ -463,6 +471,10 @@ async def test_a_human_handoff_request_is_served_from_the_script_before_any_io(
     result = await _run()
 
     assert result.text is not None
+    # notified=True -> today's copy: the turn actually promises a colleague.
+    assert result.text == wa_codex_leg.match_human_request(
+        "voglio parlare con una persona"
+    ).text
     assert result.reason == "" and not result.stand_down and not result.fail
     stubs.rag_client.post.assert_not_awaited()
     stubs.offer_job.assert_not_awaited()
@@ -496,13 +508,17 @@ async def test_two_authorities_match_human_request_wins_over_identity(
 
 
 @pytest.mark.asyncio
-async def test_human_handoff_notification_failure_does_not_lose_the_confirmation(
+async def test_human_handoff_notification_failure_does_not_lose_the_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The client's confirmation must never be lost because Brevo failed —
-    the notification is wrapped at THIS call site precisely so an
-    exception from `notify_human_handoff` cannot turn a served confirmation
-    into a text=None fall-off (see `attempt()`'s broad except)."""
+    """The client's REPLY must never be lost because Brevo failed — the
+    notification is wrapped at THIS call site precisely so an exception
+    from `notify_human_handoff` cannot turn a served turn into a text=None
+    fall-off (see `attempt()`'s broad except). But (round-1 cross-family
+    review, 2026-09-25) the reply is no longer the "a colleague will
+    contact you" confirmation on a failure — that would be the exact lie
+    this whole PR exists to stop. It is the honest, no-one-was-notified
+    variant instead."""
     _wire_stubs(monkeypatch, query="talk to a human")
     notify = AsyncMock(side_effect=RuntimeError("brevo down"))
     monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
@@ -510,21 +526,30 @@ async def test_human_handoff_notification_failure_does_not_lose_the_confirmation
     result = await _run()
 
     assert result.text is not None
+    assert result.text == wa_codex_leg._human_handoff_unreachable_text("en")
+    assert result.text != wa_codex_leg.match_human_request("talk to a human").text
     assert result.reason == "" and not result.stand_down and not result.fail
     notify.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once(
+async def test_a_repeated_human_handoff_request_notifies_once_and_the_second_reply_is_also_confirmed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The dedup window lives inside `notify_human_handoff` (reused from
     `human_escalation_notifier`), not at this call site — this test proves
     the call site does not defeat it: two real calls through the actual
-    (unmocked) notifier, second one inside the window, still both confirm
-    the client and only the first accepts a send."""
+    (unmocked) notifier, second one inside the window, only the first
+    accepts a send. Both replies are non-None AND (S1, round 3, corrected
+    from the round-1 shape this test previously pinned) they ARE the SAME
+    text: `notify_human_handoff`'s dedup-suppressed return is True, not
+    False — a colleague WAS reached, by the first call, and the second
+    request must not tell the client otherwise. `sent.assert_awaited_once()`
+    is what actually proves no second email went out; the reply text is not
+    the signal for that."""
     human_escalation_notifier._recent_escalations.clear()
-    sent = AsyncMock()
+    wa_human_handoff._recent_failed_attempts.clear()
+    sent = AsyncMock(return_value=True)
     monkeypatch.setattr(
         "backend.services.integrations.wa_human_handoff.send_internal_email", sent
     )
@@ -539,7 +564,245 @@ async def test_a_repeated_human_handoff_request_still_confirms_but_notifies_once
     second = await _run()
 
     assert first.text is not None and second.text is not None
+    assert first.text == wa_codex_leg.match_human_request("talk to a human").text
+    assert second.text == wa_codex_leg.match_human_request("talk to a human").text
+    assert second.text != wa_codex_leg._human_handoff_unreachable_text("en")
     sent.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_human_handoff_notified_false_gets_the_honest_variant_in_indonesian(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A plain `False` return (no exception — e.g. both channels failed,
+    per `notify_human_handoff`'s own delivery-truth contract) must ALSO get
+    the honest variant, in the CLIENT's language, not just the exception
+    path — and it must never claim a colleague was reached."""
+    _wire_stubs(monkeypatch, query="saya mau bicara dengan konsultan soal KITAS saya")
+    notify = AsyncMock(return_value=False)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._human_handoff_unreachable_text("id")
+    assert result.text != wa_codex_leg.match_human_request(
+        "saya mau bicara dengan konsultan soal KITAS saya"
+    ).text
+    notify.assert_awaited_once()
+
+
+def test_human_handoff_unreachable_texts_name_the_direct_contact_not_a_promise() -> None:
+    """Every honest-variant string: (1) reuses the ONE existing 'write to
+    us' constant (`_FALLBACK_RECIPIENT`, imported from `wa_human_handoff` —
+    nothing invented), and (2) never claims a colleague was told."""
+    for language, text in wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS.items():
+        assert wa_codex_leg._FALLBACK_RECIPIENT in text, language
+    # English/Indonesian pinned verbatim — the two the reviewer asked for.
+    assert wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS["en"] == (
+        "I couldn't reach a colleague automatically just now. Please try "
+        "again in a few minutes, or write directly to zero@balizero.com."
+    )
+    assert wa_codex_leg._HUMAN_HANDOFF_UNREACHABLE_TEXTS["id"] == (
+        "Saya belum berhasil menghubungi kolega secara otomatis saat ini. "
+        "Silakan coba lagi dalam beberapa menit, atau kirim email langsung "
+        "ke zero@balizero.com."
+    )
+
+
+# ── gate 2e: the scripted caption-less-attachment turn (B2.5-3) ────────────
+#
+# Placement note for every test below: this turn is checked BEFORE
+# `if not query:`, so it can only ever fire when `query == ""` — the
+# greeting/identity/human-handoff matchers above all require non-empty text
+# and can never collide with it.
+
+
+@pytest.mark.asyncio
+async def test_a_caption_less_image_is_served_from_the_script_and_a_human_is_notified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The measured production defect (thread 394, inbound 899/901,
+    2026-09-20): a bound inbound with `media_type='image'` and an empty
+    body used to fall through to `no_customer_message` and burn the full
+    retry ladder in silence. Same shape as the human-handoff turn's own
+    guilt test: negative assertions (no build, no offer) plus the positive
+    one that a human was actually notified, with the media-specific
+    `reason`."""
+    stubs = _wire_stubs(monkeypatch, query="", media_type="image")
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.served_by == "scripted_media_ack"
+    assert result.reason == "" and not result.stand_down and not result.fail
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+    notify.assert_awaited_once()
+    assert notify.await_args.kwargs["thread_id"] == 7
+    assert notify.await_args.kwargs["counterpart_phone"] == "628111"
+    assert notify.await_args.kwargs["reason"] == "media_attachment_no_caption"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "media_type", ["image", "document", "audio", "video", "sticker", "unsupported"]
+)
+async def test_every_catalogued_media_type_is_served_from_the_script(
+    monkeypatch: pytest.MonkeyPatch, media_type: str
+) -> None:
+    stubs = _wire_stubs(monkeypatch, query="", media_type=media_type)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", AsyncMock(return_value=True))
+
+    result = await _run()
+
+    assert result.text is not None
+    assert result.served_by == "scripted_media_ack"
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_an_attachment_with_a_caption_takes_the_normal_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: a real caption makes `query` non-empty, so the media-ack
+    check's own `not query` guard steps aside and the package build runs
+    exactly as before — an image is not, by itself, a reason to short-
+    circuit. This exercises the LEG's own boundary at the bound context it
+    is handed; whether ingestion actually populates `body` with a caption
+    on a non-text message is a SEPARATE, known gap
+    (`whatsapp_chat.py::_handle_meta_inbox_message` fills `body` only for
+    `type == "text"`, ~:1227) — out of scope here, see the module-level
+    comment above `_MEDIA_ACK_TYPES`."""
+    stubs = _wire_stubs(
+        monkeypatch, query="what is this document about?", media_type="document"
+    )
+    await _run()
+
+    stubs.rag_client.post.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_plain_text_message_is_unaffected_by_the_media_ack_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: an ordinary text message (`media_type='text'`) takes the
+    normal route untouched, same as every pre-existing test in this file."""
+    stubs = _wire_stubs(monkeypatch, query="what is a KITAS?", media_type="text")
+    await _run()
+
+    stubs.rag_client.post.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_thread_with_genuinely_no_customer_inbound_still_falls_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: no anchor at all leaves `media_type=None` (the
+    `BoundThreadContext` default), which is not in `_MEDIA_ACK_TYPES` — the
+    row still falls off as `no_customer_message`, unchanged from before this
+    turn existed (see `test_no_customer_message_falls_off_before_http`,
+    which exercises the same default implicitly)."""
+    stubs = _wire_stubs(monkeypatch, query="", media_type=None)
+    result = await _run()
+
+    assert result.reason == "no_customer_message"
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_media_ack_notification_failure_still_serves_the_same_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Wording rule (hard, corrected 2026-09-25 review): `notify_human_
+    handoff` can return True on a dedup-suppressed call or on an email
+    `send_internal_email(..., raise_on_failure=False)` swallowed — so the
+    reply text must NEVER brand on the return value at all, success or
+    failure. A raised exception — same shape as `test_human_handoff_
+    notification_failure_does_not_lose_the_confirmation` above — must never
+    lose the scripted reply, and the served text is IDENTICAL to the
+    success case below."""
+    stubs = _wire_stubs(monkeypatch, query="", media_type="image")
+    notify = AsyncMock(side_effect=RuntimeError("brevo down"))
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", notify)
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
+    assert result.reason == "" and not result.stand_down and not result.fail
+    notify.assert_awaited_once()
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_media_ack_notification_success_serves_the_same_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch, query="", media_type="image")
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", AsyncMock(return_value=True))
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.parametrize("language", sorted(wa_codex_leg._MEDIA_ACK_TEXTS))
+def test_no_media_ack_text_claims_a_colleague_was_notified(language: str) -> None:
+    """Review finding F2: `notify_human_handoff`'s success return does not
+    prove delivery, so no language's copy may claim one — checked against
+    the actual per-language word for "colleague", not just the English
+    one (guard family #3: an under-match here would let a translated claim
+    slip past an English-only substring check)."""
+    colleague_word = {
+        "en": "colleague",
+        "id": "kolega",
+        "it": "collega",
+        "ru": "коллег",
+        "uk": "колег",
+    }[language]
+    text_lower = wa_codex_leg._MEDIA_ACK_TEXTS[language].lower()
+    assert colleague_word not in text_lower, (
+        f"{language} media-ack text claims a colleague was notified: "
+        f"{wa_codex_leg._MEDIA_ACK_TEXTS[language]!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_media_ack_language_comes_from_the_latest_prior_customer_text_turn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The empty-bodied attachment itself carries no language signal — the
+    turn must look at the bound history, newest customer turn first, same
+    order `_maybe_send_apology`'s history fallback uses."""
+    history = [
+        {"role": "user", "content": "ciao, quanto costa una PT PMA?"},
+        {"role": "assistant", "content": "Il costo dipende dal pacchetto scelto."},
+    ]
+    stubs = _wire_stubs(monkeypatch, query="", media_type="image", history=history)
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", AsyncMock(return_value=True))
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["it"]
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_media_ack_language_falls_back_to_english_with_no_classifiable_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No customer turn classifies (empty history) — falls to the fixed
+    English default, never a guess, same last-resort shape as
+    `_apology_text`'s own English default."""
+    stubs = _wire_stubs(monkeypatch, query="", media_type="sticker", history=[])
+    monkeypatch.setattr(wa_codex_leg, "notify_human_handoff", AsyncMock(return_value=True))
+
+    result = await _run()
+
+    assert result.text == wa_codex_leg._MEDIA_ACK_TEXTS["en"]
+    stubs.rag_client.post.assert_not_awaited()
 
 
 # ── gate 3: the package build ───────────────────────────────────────────────

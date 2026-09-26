@@ -328,42 +328,64 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         rationale="An Indonesian citizen is outside the foreign-national visa product set.",
     ),
     2: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("CALLING_VISA_REVIEW", "CITIZENSHIP_LIST_DIVERGENCE"),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with `hf.calling-visa-nationality` / `hf.b1.voa-dual-nationality`, both
+        # `on_unknown: NEEDS_INPUT`: unresolved nationality evidence is asked
+        # for again rather than held.
+        state=DecisionState.NEEDS_INPUT,
+        missing=("person.nationalities",),
         legal_citations=(
             "Daftar Negara Calling Visa - Ditjen Imigrasi",
             "Daftar Negara Subjek Visa on Arrival - Ditjen Imigrasi",
         ),
-        rationale="Conflicting nationality evidence cannot safely resolve either country list.",
+        rationale="Conflicting nationality evidence cannot resolve either country list; the applicant is asked to state it.",
     ),
     3: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("CALLING_VISA_REVIEW",),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with the named dead end `hf.calling-visa-nationality`.
+        # The other four codes are the remaining products' own exclusions for
+        # a non-VOA, non-BVK, under-55 applicant without a sponsor, in engine
+        # order.
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_codes=(
+            "BVK_NATIONALITY_ONLY",
+            "CALLING_VISA_NATIONALITY_NOT_ASSESSED",
+            "VOA_NATIONALITY_ONLY",
+            "AGE_BELOW_55",
+            "SPONSOR_REQUIRED",
+        ),
         legal_citations=("Daftar Negara Calling Visa - Ditjen Imigrasi",),
-        rationale="Afghan nationality is on the Calling Visa list and requires review.",
+        rationale="Afghan nationality is on the Calling Visa list, which this oracle does not assess.",
     ),
     4: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("ACTIVE_OVERSTAY",),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with the named dead end `hf.active-overstay`. The other
+        # three codes are the remaining products' own exclusions, in engine order.
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_codes=(
+            "BVK_NATIONALITY_ONLY",
+            "ACTIVE_OVERSTAY_SETTLE_FIRST",
+            "AGE_BELOW_55",
+            "SPONSOR_REQUIRED",
+        ),
         legal_citations=("UU 6/2011 jo. UU 63/2024 tentang Keimigrasian",),
-        rationale="A disclosed active overstay must be reviewed before recommending a route.",
+        rationale="A disclosed active overstay must be settled before any route is recommended.",
     ),
     5: ProductionReplayExpectation(
-        # Re-derived 2026-09-21 (Slice A7-B, OD-4b re-ruled): the
-        # ``person.guardian_consent`` adapter now PASSES THROUGH an
-        # already-``HUMAN_REVIEW_REQUIRED`` decision untouched, replicating
-        # ``:1213``'s existing pass-through, instead of appending its own
-        # ``MINOR_GUARDIAN_PRIVACY_REVIEW`` reason onto the rule pack's own
-        # ``MINOR_WITHOUT_CONFIRMED_GUARDIAN`` hold. This persona's facts
-        # never answer the new fact (rollout-default UNKNOWN), so the
-        # RULE-level hold survives alone. Same legal outcome (public
-        # recommendation withheld), narrower reason set.
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("MINOR_WITHOUT_CONFIRMED_GUARDIAN",),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with `hf.minor-without-confirmed-sponsor`. With the
+        # rule-level hold gone, the A7-B guardian-consent adapter asks for
+        # the unanswered consent first, exactly as it does for persona 6.
+        state=DecisionState.NEEDS_INPUT,
+        missing=("person.guardian_consent",),
         legal_citations=(
             "Kepmen M.IP-08.GR.01.01/2025 - family visa classifications",
         ),
-        rationale="A minor without a confirmed guardian cannot receive a public recommendation.",
+        rationale="A minor without a confirmed guardian gets no public recommendation; guardian consent is asked first.",
     ),
     6: ProductionReplayExpectation(
         # Re-derived 2026-09-21 (Slice A7-B, OD-4b re-ruled): "the public
@@ -425,8 +447,11 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         rationale="Remote work with a foreign employer and no Indonesian clients or pay supports E33G.",
     ),
     12: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=("LOCAL_MARKET_ACTIVITY_REVIEW",),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with the named dead end `hf.e33g.local-market`.
+        state=DecisionState.NO_SUPPORTED_PATH,
+        no_path_codes=("E33G_LOCAL_MARKET_NOT_ALLOWED",),
         legal_citations=(
             "Permenkumham 22/2023 jo. Permenkumham 11/2024 Pasal 33(2)(j)",
         ),
@@ -490,15 +515,17 @@ PRODUCTION_REPLAY_EXPECTATIONS: dict[int, ProductionReplayExpectation] = {
         rationale="A French national's complete 30-day tourism facts support both B1 and C1 alternatives.",
     ),
     20: ProductionReplayExpectation(
-        state=DecisionState.HUMAN_REVIEW_REQUIRED,
-        review_codes=(
-            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
-            "BRIDGING_TO_BRIDGING_PROHIBITED",
-        ),
+        # Re-derived 2026-09-24 (Slice A9.3): seq-23 is the highest signed
+        # pack, and DRAFT-SPEC-A8-1.v2 §1 (owner-ratified, OD-6) replaced
+        # this persona's human-review hold with `on_unknown: NEEDS_INPUT` on `hf.bridging.from-visit-itk`,
+        # `hf.bridging.to-bridging` and `hf.active-overstay`: the unknown
+        # facts are asked for, overstay first.
+        state=DecisionState.NEEDS_INPUT,
+        missing=("immigration.overstay_days",),
         legal_citations=(
             "Permenkumham 22/2023 jo. Permenkumham 11/2024 - ITK peralihan",
         ),
-        rationale="Unknown source status cannot rule out either prohibited bridging origin.",
+        rationale="Unknown source status and overstay cannot rule out a prohibited bridging origin; they are asked for.",
     ),
 }
 

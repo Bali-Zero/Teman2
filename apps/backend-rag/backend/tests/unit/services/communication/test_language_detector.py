@@ -55,10 +55,11 @@ class TestLanguageDetector:
         assert result == "auto"
 
     def test_detect_language_mixed(self):
-        """Test detecting language with mixed markers"""
+        """A message with one marker per language is a three-way tie — the
+        scoring rule treats tied evidence as unreliable and returns 'auto'
+        rather than picking one arbitrarily (2026-09-25 recall fix)."""
         result = detect_language("Ciao hello apa")
-        # Should return the language with most markers
-        assert result in ["it", "en", "id"]
+        assert result == "auto"
 
     def test_get_language_instruction_italian(self):
         """Test getting language instruction for Italian"""
@@ -175,3 +176,134 @@ class TestLanguageDetector:
         """Test detecting language with special characters"""
         assert detect_language("Ciao! Come stai?") == "it"
         assert detect_language("Hello! How are you?") == "en"
+
+    # --- 2026-09-25 recall fix: guilt (ordinary phrasing the OLD marker
+    # list missed and returned 'auto' on) + innocence (must NOT flip to a
+    # real language when it shouldn't) synthetic sentences. All sentences
+    # below are written for this test, not taken from any real message. ---
+
+    def test_guilt_italian_ordinary_price_question(self):
+        """'Quanto costa il KITAS investor?' had zero markers in the old
+        list (only 'ciao'/'come'/'cosa'/'sono'/'voglio'/'posso'/'grazie'/
+        'quando'/'dove'/'perché') and returned 'auto'."""
+        assert detect_language("Quanto costa il KITAS investor?") == "it"
+
+    def test_guilt_english_ordinary_document_question(self):
+        """'Which documents do I need for the company?' had zero markers
+        in the old English list and returned 'auto'."""
+        assert detect_language("Which documents do I need for the company?") == "en"
+
+    def test_guilt_indonesian_ordinary_penalty_question(self):
+        """'Klien belum lapor pajak bulan ini, berapa dendanya?' has none
+        of the old Indonesian markers (apa/bagaimana/siapa/dimana/kapan/
+        mengapa/saya/kamu/bisa/mau/terima/kasih/bantuan/bantuannya) and
+        returned 'auto'."""
+        assert detect_language("Klien belum lapor pajak bulan ini, berapa dendanya?") == "id"
+
+    def test_guilt_ukrainian_script_decides_without_old_markers(self):
+        """'Скільки коштує послуга KITAS?' contains none of the old
+        Ukrainian substring markers but has the Ukrainian-only letter 'і'
+        ('Скільки') — script alone now decides."""
+        assert detect_language("Скільки коштує послуга KITAS?") == "uk"
+
+    def test_guilt_russian_script_decides_without_old_markers(self):
+        """'Сколько документов нужно для визы?' contains none of the old
+        Russian substring markers but has the Russian-only letter 'ы'
+        ('визы') — script alone now decides."""
+        assert detect_language("Сколько документов нужно для визы?") == "ru"
+
+    def test_innocence_english_with_italian_loanword_stays_english(self):
+        """A loanword ('cappuccino') must not flip an otherwise-English
+        sentence to Italian — none of the Italian function-word markers
+        appear, only the borrowed noun."""
+        assert (
+            detect_language("I would like a cappuccino and my invoice, please.") == "en"
+        )
+
+    def test_innocence_mixed_language_stays_auto(self):
+        """One marker per language is tied evidence, not a verdict."""
+        assert detect_language("Ciao hello, mau tanya something") == "auto"
+
+    def test_innocence_very_short_stays_auto(self):
+        """Short, generic, or content-free strings never had — and still
+        don't have — enough evidence to name a language."""
+        assert detect_language("ok") == "auto"
+        assert detect_language("?") == "auto"
+        assert detect_language("\U0001f44d") == "auto"  # thumbs-up emoji
+
+    def test_innocence_indonesian_with_english_tech_words_stays_id(self):
+        """Business/tech loanwords ('setup', 'virtual office') must not
+        flip an Indonesian-grammar sentence to English."""
+        assert (
+            detect_language("Klien mau setup PT PMA pakai virtual office, apa boleh?")
+            == "id"
+        )
+
+    def test_detect_language_elongated_greeting_still_italian(self):
+        """WhatsApp-style elongated vowels ('ciaooo') used to defeat the
+        exact-word 'ciao' marker outright."""
+        assert detect_language("ciaooo") == "it"
+        assert detect_language("ciaoooo") == "it"
+
+    def test_detect_language_perche_without_accent(self):
+        """WA clients routinely drop the accent on 'perché'."""
+        assert detect_language("non capisco perche") == "it"
+
+    # --- Correction round 1 (cross-family review / Codex, 2026-09-25):
+    # out-of-vocabulary languages (es/fr/de/pt/nl/tl/ms) must abstain
+    # ('auto') instead of borrowing an it/en/id label off one shared word.
+    # All sentences below are synthetic, written for this regression suite —
+    # none are copied from the real eval set. Expected values match what
+    # Codex's independent 30-message synthetic probe flagged as wrong.
+
+    def test_innocence_spanish_stays_auto_not_italian(self):
+        """'un' is also the Spanish indefinite article; 'mi' is also
+        Spanish 'my' — both used to win a confident 'it' verdict."""
+        assert detect_language("Necesito un visado.") == "auto"
+        assert detect_language("Hola, mi pasaporte vence pronto.") == "auto"
+
+    def test_innocence_french_stays_auto_not_italian_or_english(self):
+        """'il'/'un' are also French; 'documents' is spelled identically
+        in French and English."""
+        assert detect_language("Bonjour, il faut un visa ?") == "auto"
+        assert detect_language("Voici les documents.") == "auto"
+
+    def test_innocence_german_stays_auto_not_english(self):
+        """A bare 'hi' used to be enough to win 'en' even against an
+        otherwise entirely German sentence."""
+        assert detect_language("Hi, ich brauche ein Visum.") == "auto"
+
+    def test_innocence_dutch_stays_auto_not_english(self):
+        """'contact' is spelled identically in Dutch and English."""
+        assert detect_language("Kan je morgen contact opnemen?") == "auto"
+
+    def test_innocence_portuguese_stays_auto_not_english_or_italian(self):
+        """'nome' is also the Portuguese word for 'name'."""
+        assert detect_language("Qual o prazo do visto?") == "auto"
+        assert detect_language("Qual é o nome da empresa?") == "auto"
+
+    def test_innocence_malay_stays_auto_not_indonesian(self):
+        """'boleh'/'dokumen' are shared with Indonesian, but 'hantar'/
+        'esok' are Malay-specific — the guard needs only ONE of those to
+        tie the Indonesian score and abstain."""
+        assert detect_language("Boleh hantar dokumen tersebut esok?") == "auto"
+
+    def test_innocence_tagalog_stays_auto_not_indonesian(self):
+        """'sama' is also an Indonesian word ('with/together'); 'puwede'
+        is Tagalog-specific and ties it."""
+        assert detect_language("Sama kami bukas, puwede?") == "auto"
+
+    def test_innocence_quoted_cyrillic_inside_english_stays_english(self):
+        """A single quoted Cyrillic word inside an otherwise-English
+        sentence used to force the Cyrillic branch on ANY Cyrillic
+        character present — Cyrillic now only decides by script once it is
+        the MAJORITY of the letters in the text."""
+        assert detect_language("Please translate «привіт» for me.") == "en"
+        assert detect_language("Please translate «визы» for me.") == "en"
+
+    def test_innocence_fake_word_does_not_match_ciao_by_substring(self):
+        """Mutation-killing negative: with a real \\b...\\b word-boundary
+        regex, 'ciaos' must NOT match the 'ciao' marker (no boundary
+        between 'o' and the trailing 's') — a weakened/removed trailing
+        \\b would let it pass and wrongly return 'it'."""
+        assert detect_language("ciaos") == "auto"

@@ -14,6 +14,7 @@ import {
   SECOND_HOME_DEPOSIT_THRESHOLD_USD,
   SECOND_HOME_PROPERTY_THRESHOLD_USD,
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
+  SOURCELESS_NO_PATH_CODES,
   SUPPORT_REASON_COPY,
   buildEngineOutcome,
   isSecondHomeStudioOnly,
@@ -265,15 +266,16 @@ describe("Visa Oracle authoritative outcome adapter", () => {
 
   it("curates review-reason copy for a known code, EN and ID", () => {
     const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
-    response.decision.review_reasons[0].code = "CALLING_VISA_REVIEW";
+    response.decision.review_reasons[0].code =
+      "DISCLOSED_CRIMINAL_RECORD_REVIEW";
 
     const outcome = buildEngineOutcome(response);
     expect(outcome.state).toBe("HUMAN_REVIEW_REQUIRED");
     if (outcome.state !== "HUMAN_REVIEW_REQUIRED")
       throw new Error("unexpected state");
     const message = outcome.reviewReasons[0].message;
-    expect(message.en).toMatch(/calling visa/i);
-    expect(message.id).toMatch(/calling visa/i);
+    expect(message.en).toMatch(/criminal record/i);
+    expect(message.id).toMatch(/catatan kriminal/i);
     expect(message.en.toLowerCase()).not.toContain(
       "no evaluation was submitted",
     );
@@ -557,6 +559,155 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   );
 });
 
+// Slice A3'-M: the mouth reads a sourceless named dead end before any
+// backend sends one. `SOURCELESS_NO_PATH_CODES` narrows the usual
+// decisive-ref invariant to exactly the one code no rule in the signed
+// pack could ever cite a source for.
+describe("Slice A3'-M: a sourceless named dead end (M1, M2)", () => {
+  function noPathOutcomeFor(code: string, sourceRefs: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code,
+        rule_ids: ["system.disclosed-no-path.activity-boundary"],
+        source_refs: [...sourceRefs],
+      },
+    ];
+    return buildEngineOutcome(response);
+  }
+
+  it("names a sourceless dead end instead of throwing RESPONSE_INVARIANT (M1)", () => {
+    const outcome = noPathOutcomeFor("DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH", []);
+    expect(outcome.state).toBe("NO_SUPPORTED_PATH");
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    expect(outcome.noPathReasons[0].message).toEqual(
+      SUPPORT_REASON_COPY.DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH,
+    );
+    expect(outcome.noPathReasons[0].sourceIds).toEqual([]);
+    expect(outcome.alternatives).toEqual([]);
+  });
+
+  it("innocence: an unlisted code with empty source_refs still throws RESPONSE_INVARIANT (M1)", () => {
+    expect(() => noPathOutcomeFor("NOT_A_SYSTEM_CODE", [])).toThrow(
+      new VisaOracleResponseError("RESPONSE_INVARIANT"),
+    );
+  });
+
+  it("innocence: the listed code with a non-decisive ref still throws RESPONSE_INVARIANT (M1)", () => {
+    expect(() =>
+      noPathOutcomeFor("DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH", [
+        "not-a-known-source-id",
+      ]),
+    ).toThrow(new VisaOracleResponseError("RESPONSE_INVARIANT"));
+  });
+
+  it("guards the guard: every SOURCELESS_NO_PATH_CODES entry has SUPPORT_REASON_COPY (M2)", () => {
+    const missing = [...SOURCELESS_NO_PATH_CODES].filter(
+      (code) => !(code in SUPPORT_REASON_COPY),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  // Slice A3'-B (backend-side counterpart of M2): the coupled test named in
+  // the PR body, so it runs on both A3'-0 (backend) and mouth PRs. M2 above
+  // only proves this module's OWN exemption set is internally consistent
+  // (every SOURCELESS_NO_PATH_CODES entry has copy); it says nothing about
+  // whether that set still matches what the backend actually derives a
+  // dead end from. This reads `evaluate_path.py`'s
+  // `_DISCLOSED_NO_PATH_REASON_CODES` — the ONE source of truth for which
+  // codes `_apply_disclosed_review_flags` can emit as a sourceless dead
+  // end — so a backend rename that forgets the mouth is a red HERE, not a
+  // silent `RESPONSE_INVARIANT` discovered live.
+  it("Slice A3'-B: every backend _DISCLOSED_NO_PATH_REASON_CODES value is SOURCELESS_NO_PATH_CODES and SUPPORT_REASON_COPY (B8)", () => {
+    const EVALUATE_PATH = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../../../../../..",
+      "apps/backend-rag/backend/services/visa_engine/evaluate_path.py",
+    );
+    const evaluatePathText = fs.readFileSync(EVALUATE_PATH, "utf-8");
+    const start = evaluatePathText.indexOf(
+      "_DISCLOSED_NO_PATH_REASON_CODES: MappingProxyType",
+    );
+    if (start < 0) {
+      throw new Error(
+        "could not find _DISCLOSED_NO_PATH_REASON_CODES in evaluate_path.py",
+      );
+    }
+    const end = evaluatePathText.indexOf("\n)", start);
+    if (end < 0) {
+      throw new Error(
+        "could not isolate the _DISCLOSED_NO_PATH_REASON_CODES block",
+      );
+    }
+    const codes =
+      evaluatePathText
+        .slice(start, end)
+        .match(/"[A-Z][A-Z0-9_]*"/g)
+        ?.map((code) => code.slice(1, -1)) ?? [];
+    // Guard the guard (cicatrix family #3): an empty slice would make every
+    // assertion below vacuously true.
+    expect(codes.length).toBeGreaterThan(0);
+    for (const code of codes) {
+      expect(
+        SOURCELESS_NO_PATH_CODES.has(code),
+        `${code}: in evaluate_path.py's _DISCLOSED_NO_PATH_REASON_CODES but ` +
+          "not in SOURCELESS_NO_PATH_CODES — the mouth would throw " +
+          "RESPONSE_INVARIANT on a real dead end carrying this code",
+      ).toBe(true);
+      expect(
+        code in SUPPORT_REASON_COPY,
+        `${code}: in evaluate_path.py's _DISCLOSED_NO_PATH_REASON_CODES but ` +
+          "has no SUPPORT_REASON_COPY entry — the mouth has no sentence to render for it",
+      ).toBe(true);
+    }
+  });
+
+  // The CTA the dead end's copy quotes is OracleShell.tsx's OWN consultant
+  // toggle label — read from its source text, never retyped, so a rename
+  // there cannot silently orphan the quote.
+  const ORACLE_SHELL_PATH = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../_components/OracleShell.tsx",
+  );
+
+  function oracleShellConsultantLabels(): { en: string; id: string } {
+    const src = fs.readFileSync(ORACLE_SHELL_PATH, "utf-8");
+    const marker = "const SESSION_COPY = {";
+    const start = src.indexOf(marker);
+    if (start === -1) {
+      throw new Error(
+        `${marker} not found in ${ORACLE_SHELL_PATH} — SESSION_COPY renamed or moved`,
+      );
+    }
+    const enStart = src.indexOf("en: {", start);
+    const idStart = src.indexOf("id: {", enStart);
+    const idBlockEnd = src.indexOf("\n  },", idStart);
+    if (enStart === -1 || idStart === -1 || idBlockEnd === -1) {
+      throw new Error(
+        `en/id blocks not found in SESSION_COPY (${ORACLE_SHELL_PATH})`,
+      );
+    }
+    const enMatch = /consultant:\s*"([^"]+)"/.exec(src.slice(enStart, idStart));
+    const idMatch = /consultant:\s*"([^"]+)"/.exec(
+      src.slice(idStart, idBlockEnd),
+    );
+    if (!enMatch || !idMatch) {
+      throw new Error(
+        `consultant label not found in SESSION_COPY (${ORACLE_SHELL_PATH})`,
+      );
+    }
+    return { en: enMatch[1], id: idMatch[1] };
+  }
+
+  it("quotes OracleShell's own consultant CTA label verbatim, read from its source text (M2)", () => {
+    const labels = oracleShellConsultantLabels();
+    const copy = SUPPORT_REASON_COPY.DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH;
+    expect(copy.en).toContain(labels.en);
+    expect(copy.id).toContain(labels.id);
+  });
+});
+
 describe("support reasons are sentences, not machine codes", () => {
   const HERE = path.dirname(fileURLToPath(import.meta.url));
   const PACKS_DIR = path.resolve(
@@ -742,6 +893,215 @@ describe("support reasons are sentences, not machine codes", () => {
     }
     throw new Error(`${ruleId} is absent from the highest-sequence pack`);
   }
+
+  /**
+   * Slice A8-2: `highestSequencePack()` reads signed envelopes, but the pack
+   * whose copy must exist BEFORE signing is the highest-sequence SOURCE pack
+   * — the flat shape (`sequence` and `rules` are top-level, no `.payload`
+   * wrapper, unlike the signed envelope).
+   */
+  function highestSequenceSourcePack(): {
+    sequence: number;
+    rules?: Array<Record<string, unknown>>;
+  } {
+    let best: {
+      pack: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of productionPackFiles()) {
+      const pack = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (typeof pack.sequence !== "number") continue;
+      if (best === null || pack.sequence > best.sequence) {
+        best = {
+          pack: pack as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: pack.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(
+        `no source pack under ${PACKS_DIR} had a numeric sequence`,
+      );
+    }
+    return best.pack;
+  }
+
+  /** Every EXCLUDE reason code a pack's rules can emit. */
+  function excludeReasonCodesOf(pack: {
+    rules?: Array<Record<string, unknown>>;
+  }): Set<string> {
+    const codes = new Set<string>();
+    for (const rule of pack.rules ?? []) {
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        codes.add(effect.reason_code);
+      }
+    }
+    return codes;
+  }
+
+  /**
+   * EXCLUDE codes of ONE numbered SIGNED pack — pinned to an explicit
+   * sequence, never derived from "whichever signed pack is highest": once a
+   * later slice signs seq-23, "highest signed" becomes 23 and the diff
+   * against itself silently goes empty, making the A8-2 tripwire vacuous
+   * exactly when it matters most. Same prior art as
+   * `reviewReasonCodesInSignedPack(20)` above.
+   */
+  function excludeReasonCodesInSignedPack(sequence: number): Set<string> {
+    const envelope = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          PACKS_DIR,
+          `rulepack-prod-${String(sequence).padStart(3, "0")}.signed.json`,
+        ),
+        "utf-8",
+      ),
+    ) as { payload?: { rules?: Array<Record<string, unknown>> } };
+    return excludeReasonCodesOf({ rules: envelope.payload?.rules ?? [] });
+  }
+
+  it("has copy for every EXCLUDE code the highest source pack adds beyond signed seq-22 (Slice A8-2)", () => {
+    const seq22Excludes = excludeReasonCodesInSignedPack(22);
+    const sourceExcludes = excludeReasonCodesOf(highestSequenceSourcePack());
+    const owed = [...sourceExcludes]
+      .filter((code) => !seq22Excludes.has(code))
+      .sort();
+    // eslint-disable-next-line no-console -- printed by design (A8-2 contract: "the set
+    // difference is printed"), not left-over debugging.
+    console.log("Slice A8-2 — EXCLUDE codes owed SUPPORT_REASON_COPY:", owed);
+    // Guard-of-the-guard: a glob/parse that silently found nothing (e.g. the source pack
+    // regressed to fewer EXCLUDE rules, or PACKS_DIR stopped resolving) would make the
+    // assertion below vacuously true. The mandate fixes this floor at exactly 10 today;
+    // >= 10 keeps this test from going quiet if a future pack adds an eleventh.
+    expect(owed.length).toBeGreaterThanOrEqual(10);
+    const missing = owed.filter((code) => !(code in SUPPORT_REASON_COPY));
+    expect(missing).toEqual([]);
+  });
+
+  it("has copy for every EXCLUDE code the highest SIGNED pack can emit (Slice A10)", () => {
+    const payload = highestSequencePack();
+    const codes = excludeReasonCodesOf({ rules: payload.rules ?? [] });
+    // Guard-of-the-guard: today's highest signed pack (seq-23) carries 35
+    // distinct EXCLUDE codes; >= 35 keeps this from going quiet if a pack
+    // regresses to fewer EXCLUDE rules or PACKS_DIR stops resolving. Unlike
+    // the Slice A8-2 test above (a DELTA against seq-22), this is an
+    // ABSOLUTE floor — the technique that let these 14 pre-existing codes go
+    // uncopied for two pack cycles (they were already in seq-22, so a
+    // seq22-vs-source diff can never name them; gate-a8-2's own finding).
+    expect(codes.size).toBeGreaterThanOrEqual(35);
+    const missing = [...codes].filter((code) => !(code in SUPPORT_REASON_COPY));
+    expect(missing).toEqual([]);
+  });
+
+  /**
+   * Walks a rule's `when` tree looking for a `{ op: "lt", fact, value }`
+   * node on the named fact, at any nesting depth — same shape as
+   * `findGteValue` above, mirrored for the `lt` operator the two E28A
+   * below-minimum rules use.
+   */
+  function findLtValue(node: unknown, fact: string): number | undefined {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findLtValue(item, fact);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+    if (node === null || typeof node !== "object") return undefined;
+    const record = node as Record<string, unknown>;
+    if (
+      record.op === "lt" &&
+      record.fact === fact &&
+      typeof record.value === "number"
+    ) {
+      return record.value;
+    }
+    if (Array.isArray(record.args)) {
+      return findLtValue(record.args, fact);
+    }
+    return undefined;
+  }
+
+  it("Slice A10: the E28A below-minimum copy states the signed pack's own two thresholds, in each language's own thousands separator", () => {
+    const payload = highestSequencePack();
+    const rules = payload.rules ?? [];
+    const paidCapitalRule = rules.find(
+      (r) => r.rule_id === "hf.e28a.paid-capital-below-min",
+    );
+    const totalInvestmentRule = rules.find(
+      (r) => r.rule_id === "hf.e28a.total-investment-below-min",
+    );
+    // Guard-of-the-guard: both rules must actually be found in the signed
+    // pack, or the assertions below would vacuously pass on `undefined`.
+    expect(paidCapitalRule).toBeDefined();
+    expect(totalInvestmentRule).toBeDefined();
+    const paidCapitalValue = findLtValue(
+      paidCapitalRule!.when,
+      "investment.paid_up_capital_idr",
+    );
+    const totalInvestmentValue = findLtValue(
+      totalInvestmentRule!.when,
+      "investment.investment_capital_idr",
+    );
+    expect(paidCapitalValue).toBeDefined();
+    expect(totalInvestmentValue).toBeDefined();
+
+    const paidCapitalEn = paidCapitalValue!.toLocaleString("en-US");
+    const paidCapitalId = paidCapitalValue!.toLocaleString("id-ID");
+    const totalInvestmentEn = totalInvestmentValue!.toLocaleString("en-US");
+    const totalInvestmentId = totalInvestmentValue!.toLocaleString("id-ID");
+
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.en).toContain(
+      `IDR ${paidCapitalEn}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).toContain(
+      `IDR ${paidCapitalId}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.en).toContain(
+      `IDR ${totalInvestmentEn}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id).toContain(
+      `IDR ${totalInvestmentId}`,
+    );
+  });
+
+  it("Slice A10: LEVEL_BAND_DIKTI renders its own copy beside the STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED copy", () => {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = [
+      {
+        code: "LEVEL_BAND_DIKTI",
+        rule_ids: ["hf.study.level-band-dikti"],
+        source_refs: [TEST_SOURCE_ID],
+      },
+      {
+        code: "STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED",
+        rule_ids: ["hf.study.admission-or-sponsor-unconfirmed"],
+        source_refs: [TEST_SOURCE_ID],
+      },
+    ];
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    expect(outcome.noPathReasons[0].message).toEqual(
+      SUPPORT_REASON_COPY.LEVEL_BAND_DIKTI,
+    );
+    expect(outcome.noPathReasons[1].message).toEqual(
+      SUPPORT_REASON_COPY.STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED,
+    );
+  });
 
   /**
    * Walks a rule's `when` tree (the `all`/`args` structure, never regexed
@@ -1412,16 +1772,17 @@ describe("review reasons cover every code the current pack can emit", () => {
     );
   });
 
-  // EMPTY SINCE THE seq-22 ACTIVATION (2026-09-16T20:16:45Z, activation_id
-  // 10937ac5, payload 3d7555af…6e37). While seq-20 was in force, the eight
-  // codes seq-22 retires still reached real applicants, so their copy had to
-  // stay and this list named them by name. Production now evaluates on
-  // seq-22, which cannot emit any of them, so the copy was deleted in the
-  // same change that emptied this list. An entry here is a claim that a code
-  // is live on signed seq-20 and gone from the highest signed pack; the
-  // honesty test below still enforces that, so the list cannot be used as a
-  // parking lot for a copy nobody wants to delete.
-  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY: string[] = [];
+  // EMPTY SINCE THE seq-23 ACTIVATION (2026-09-24). While signed seq-22 was
+  // in force, the twelve codes signed seq-23 retires (its rules turn them
+  // into named dead ends or NEEDS_INPUT) still reached real applicants, so
+  // their copy had to stay and this list named them by name. Production now
+  // evaluates on signed seq-23, which cannot emit any of them, so the copy
+  // was deleted in the same change that emptied this list (Slice A9.6,
+  // 2026-09-25, mirroring #6683's seq-22 retirement). An entry here is a
+  // claim that a code is live on signed seq-22, gone from signed seq-23, and
+  // still has copy; the honesty test below still enforces all three, so the
+  // list cannot be used as a parking lot for a copy nobody wants to delete.
+  const REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY: string[] = [];
 
   /** Review reason codes a given signed pack's rules can emit. */
   function reviewReasonCodesInSignedPack(sequence: number): Set<string> {
@@ -1468,8 +1829,8 @@ describe("review reasons cover every code the current pack can emit", () => {
     //
     // 38 -> 31 when the signed seq-22 bundle landed (SAETTA-20260916): the
     // highest signed pack is now seq-22, which emits 13 codes (the eight
-    // above retired), + 18 pack-independent = 31, measured. The eight keep
-    // their copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY below.
+    // above retired), + 18 pack-independent = 31, measured. The eight kept
+    // their copy under a seq-20-only list until the seq-22 activation.
     //
     // 31 -> 34 measured after A5-3bis (R-A5-DRIFT-CURE, 2026-09-20): 13 pack
     // + 21 pack-independent (the three A3-B held-only codes joined
@@ -1477,7 +1838,15 @@ describe("review reasons cover every code the current pack can emit", () => {
     // pin; the three new codes are accounted by HELD_ONLY_REVIEW_CODES, not
     // REVIEW_REASON_COPY, so they do not change what "mapped or known gap"
     // means for this assertion.
-    expect(allRealCodes.length).toBeGreaterThanOrEqual(31);
+    //
+    // 34 -> 22 measured when the signed seq-23 bundle landed (Slice A9.3,
+    // 2026-09-24): the highest source and the highest signed pack are both
+    // seq-23, which emits one review code (SECOND_HOME_BELOW_THRESHOLD_STUDIO),
+    // + 21 pack-independent = 22. The twelve codes seq-23 retires kept their
+    // copy under REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY while seq-22 was
+    // in force; Slice A9.6 (2026-09-25, the seq-23 activation) deleted that
+    // copy and emptied the list in the same change, so the floor holds at 22.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(22);
 
     const unaccounted = allRealCodes.filter(
       (code) =>
@@ -1497,31 +1866,42 @@ describe("review reasons cover every code the current pack can emit", () => {
       .filter((code) => !allRealCodes.has(code))
       .sort();
     expect(staleKeys).toEqual(
-      [...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY].sort(),
+      [...REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY].sort(),
     );
   });
 
-  it("keeps the seq-20-only list honest: every entry is live on signed seq-20 and gone from the highest signed pack", () => {
+  it("keeps the seq-22-only list honest: every entry is live on signed seq-22, gone from signed seq-23, and still has copy", () => {
     // The list above is a claim about production, not a parking lot: each
-    // entry must be a code the signed seq-20 pack still emits (or its copy
-    // really is dead and must go), and must be absent from the highest
-    // signed pack (or it is not "seq-20 only" and belongs in the ordinary
-    // stale-key check).
-    const seq20 = reviewReasonCodesInSignedPack(20);
-    const highest = new Set([
-      ...reviewReasonCodesInPack(),
-      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
-    ]);
-    const notLiveOnSeq20 = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
-      (code) => !seq20.has(code),
+    // entry must be a code the signed seq-22 pack still emits (or its copy
+    // really is dead and must go), must be absent from signed seq-23 (or it
+    // is not "seq-22 only" and belongs in the ordinary stale-key check),
+    // must not be a pack-independent code the backend emits on its own, and
+    // must still have copy here. Both packs are named by sequence, never
+    // "whichever is highest": once a later pack is signed, a
+    // highest-vs-highest diff would go silently empty (the same reasoning as
+    // A8-2's `excludeReasonCodesInSignedPack(22)`).
+    const seq22 = reviewReasonCodesInSignedPack(22);
+    const seq23 = reviewReasonCodesInSignedPack(23);
+    // Guard the guard: if either pack stopped parsing, the sets below would
+    // be empty and every filter assertion after them would pass vacuously.
+    expect(seq22.size).toBeGreaterThan(0);
+    expect(seq23.size).toBeGreaterThan(0);
+    const derived = [...seq22].filter((code) => !seq23.has(code)).sort();
+    expect(derived.length).toBeGreaterThan(0);
+    const notLiveOnSeq22 = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter(
+      (code) => !seq22.has(code),
     );
-    expect(notLiveOnSeq20).toEqual([]);
-    const stillEmittedByHighest =
-      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter((code) =>
-        highest.has(code),
+    expect(notLiveOnSeq22).toEqual([]);
+    const stillEmittedBySeq23 =
+      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter((code) =>
+        seq23.has(code),
       );
-    expect(stillEmittedByHighest).toEqual([]);
-    const withoutCopy = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY.filter(
+    expect(stillEmittedBySeq23).toEqual([]);
+    const emittedByBackend = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter(
+      (code) => PACK_INDEPENDENT_REVIEW_REASON_CODES.includes(code),
+    );
+    expect(emittedByBackend).toEqual([]);
+    const withoutCopy = REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY.filter(
       (code) => !(code in REVIEW_REASON_COPY),
     );
     expect(withoutCopy).toEqual([]);
@@ -1556,8 +1936,8 @@ describe("review reasons cover every code the current pack can emit", () => {
   });
 
   it("keeps the held-only allowlist honest: every entry is a code the derivation actually produces (stale)", () => {
-    // Mirror image of the seq-20-only honesty test above, for
-    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ20_ONLY:
+    // Mirror image of the seq-22-only honesty test above, for
+    // HELD_ONLY_REVIEW_CODES instead of REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY:
     // if A3-B's release is ever reverted or the flag renamed, the derivation
     // stops producing that name and this list would be naming a code that
     // is not derived — a dead placeholder no other assertion here would
@@ -1769,7 +2149,7 @@ describe("isSecondHomeStudioOnly (D23 B-STUDIO)", () => {
     const [first] = response.decision.review_reasons;
     response.decision.review_reasons = [
       { ...first, code: SECOND_HOME_STUDIO_REVIEW_REASON_CODE },
-      { ...first, code: "CALLING_VISA_REVIEW" },
+      { ...first, code: "DISCLOSED_CRIMINAL_RECORD_REVIEW" },
     ];
     expect(isSecondHomeStudioOnly(buildEngineOutcome(response))).toBe(false);
   });
@@ -1871,7 +2251,7 @@ describe("notices render as named conditions (slice A2)", () => {
     },
   );
 
-  it("has all fourteen codes N1 names, and no other code, EN and ID both non-empty", () => {
+  it("has all thirteen codes N1 names, and no other code, EN and ID both non-empty (A3'-M M6: fourteen -> thirteen, ACTIVITY_BOUNDARY retired)", () => {
     const EXPECTED_CODES = [
       "OBSOLETE_PRODUCT_CODE",
       "DISCLOSED_HEALTH_CONCERN_CONDITION",
@@ -1881,7 +2261,10 @@ describe("notices render as named conditions (slice A2)", () => {
       "DISCLOSED_SOURCE_OF_FUNDS_CONDITION",
       "DISCLOSED_DIPLOMATIC_PASSPORT_CONDITION",
       "DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION",
-      "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
+      // DISCLOSED_ACTIVITY_BOUNDARY_CONDITION retired here (A3'-M, M6): the
+      // kill switch can never release it into a live condition again (see
+      // PRE_PROVISIONED_NOTICE_CODES below), so the pre-provisioned row is
+      // gone rather than dead weight.
       "DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION",
       "CONFLICTING_IMMIGRATION_STATUS_CONDITION",
       // Slice A3-M (DRAFT-SPEC-A3-1.v2-M §4.1, M4): three new keys.
@@ -1917,17 +2300,15 @@ describe("notices render as named conditions (slice A2)", () => {
     "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION", // evaluate_path.py:1176
   ];
 
-  // `ACTIVITY_BOUNDARY` only ever holds (never conditions) while it sits in
-  // `HOLDING_DISCLOSED_FLAGS` — `_resolve_holding_flags` (evaluate_path.py)
-  // returns `recognized | HOLDING_DISCLOSED_FLAGS`, so the env kill switch
-  // can add a hold but never release one, and unreachable BY CONSTRUCTION,
-  // not by accident. The copy stays JUSTIFIED, not removed: deleting it
-  // would only mean re-adding it in slice A3', and an absent key would fall
-  // to the production fallback sentence at the exact moment the flag is
-  // released.
-  const PRE_PROVISIONED_NOTICE_CODES = [
-    "DISCLOSED_ACTIVITY_BOUNDARY_CONDITION",
-  ];
+  // A3' (slice A3'-M, M6) retires the row this list used to carry:
+  // `DISCLOSED_ACTIVITY_BOUNDARY_CONDITION` is gone from
+  // `NOTICE_CONDITION_COPY` above, and `DEAD_END_DISCLOSED_FLAGS` (slice
+  // A3'-B, evaluate_path.py) moves ACTIVITY_BOUNDARY out of
+  // `HOLDING_DISCLOSED_FLAGS` for good — the kill switch that used to make
+  // this pre-provisioning unreachable BY CONSTRUCTION now has nothing left
+  // to release into a condition. Nothing is provisioned and nothing is
+  // sent; an empty list here is the honest state, not dead weight.
+  const PRE_PROVISIONED_NOTICE_CODES: string[] = [];
 
   it("NOTICE_CONDITION_COPY carries no code the backend cannot emit and never provisioned", () => {
     const allowed = new Set([
@@ -1939,9 +2320,9 @@ describe("notices render as named conditions (slice A2)", () => {
     );
     expect(uncovered).toEqual([]);
 
-    // The allowlist is non-empty only for codes actually named in the copy
-    // table — no dead weight, no unaccounted release.
-    expect(PRE_PROVISIONED_NOTICE_CODES.length).toBeGreaterThan(0);
+    // A3' (M6): nothing is provisioned any more — ACTIVITY_BOUNDARY's row
+    // is retired, not replaced, so the list is empty rather than non-empty.
+    expect(PRE_PROVISIONED_NOTICE_CODES).toEqual([]);
     const missingFromTable = PRE_PROVISIONED_NOTICE_CODES.filter(
       (code) => !(code in NOTICE_CONDITION_COPY),
     );
@@ -2230,6 +2611,11 @@ describe("notices render as named conditions (slice A2)", () => {
   interface ConditionsBlockSourceTables {
     noticeConditionCopy: Record<string, { en: string; id: string }>;
     genericNoticeCondition: { en: string; id: string };
+    // A3'-M (FIX-5): the SOURCELESS_NO_PATH_CODES slice of SUPPORT_REASON_
+    // COPY joins the scan too — the sourceless dead end's copy lives there,
+    // never in noticeConditionCopy, so it needs its own source table rather
+    // than smuggling it into the notice one.
+    sourcelessNoPathCopy: Record<string, { en: string; id: string }>;
     translate: (
       language: "en" | "id",
       key:
@@ -2265,13 +2651,29 @@ describe("notices render as named conditions (slice A2)", () => {
         | "assumption.secondhome_own_name"
         | "assumption.study_admission_confirmed"
         | "assumption.study_sponsor_confirmed"
+        // Slice A6-bis: two more declared-conservative questions get their
+        // own `assumption.*` string, same reason as A6-4b above.
+        | "assumption.diaspora_documents"
+        | "assumption.retirement_basis"
         | "assumption.generic",
     ) => string;
   }
 
+  // A3'-M (FIX-5): built from SUPPORT_REASON_COPY by filtering on
+  // SOURCELESS_NO_PATH_CODES, never hand-typed — a code added to the set
+  // without copy would otherwise slip the scan silently.
+  const SOURCELESS_NO_PATH_COPY: Record<string, { en: string; id: string }> =
+    Object.fromEntries(
+      [...SOURCELESS_NO_PATH_CODES].map((code) => [
+        code,
+        SUPPORT_REASON_COPY[code],
+      ]),
+    );
+
   const DEFAULT_SOURCE_TABLES: ConditionsBlockSourceTables = {
     noticeConditionCopy: NOTICE_CONDITION_COPY,
     genericNoticeCondition: GENERIC_NOTICE_CONDITION,
+    sourcelessNoPathCopy: SOURCELESS_NO_PATH_COPY,
     translate,
   };
 
@@ -2280,6 +2682,11 @@ describe("notices render as named conditions (slice A2)", () => {
   ): ConditionsBlockEntry[] {
     const entries: ConditionsBlockEntry[] = [];
     for (const [code, message] of Object.entries(tables.noticeConditionCopy)) {
+      entries.push({ key: code, language: "en", text: message.en });
+      entries.push({ key: code, language: "id", text: message.id });
+    }
+    // A3'-M (FIX-5): the sourceless dead end's own copy joins the scan.
+    for (const [code, message] of Object.entries(tables.sourcelessNoPathCopy)) {
       entries.push({ key: code, language: "en", text: message.en });
       entries.push({ key: code, language: "id", text: message.id });
     }
@@ -2317,6 +2724,10 @@ describe("notices render as named conditions (slice A2)", () => {
       "assumption.secondhome_own_name",
       "assumption.study_admission_confirmed",
       "assumption.study_sponsor_confirmed",
+      // Slice A6-bis: two more declared-conservative questions' own
+      // assumption strings.
+      "assumption.diaspora_documents",
+      "assumption.retirement_basis",
       "assumption.generic",
     ] as const) {
       entries.push({ key, language: "en", text: tables.translate("en", key) });
@@ -2340,6 +2751,12 @@ describe("notices render as named conditions (slice A2)", () => {
 
   const EXPECTED_CONDITIONS_BLOCK_KEYS = [
     ...Object.keys(NOTICE_CONDITION_COPY),
+    // Slice A3'-M (FIX-5): the ONE sourceless dead-end code — a LITERAL
+    // name, not a spread, since it lives in SUPPORT_REASON_COPY (via
+    // SOURCELESS_NO_PATH_CODES), never in NOTICE_CONDITION_COPY. Moves
+    // this pin 68 - 2 (M6 retires DISCLOSED_ACTIVITY_BOUNDARY_CONDITION,
+    // fourteen codes -> thirteen) + 2 (this one code, EN+ID) = 68, net zero.
+    "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
     "GENERIC_NOTICE_CONDITION",
     "outcome.conditions.title",
     "outcome.conditions.intro",
@@ -2372,12 +2789,17 @@ describe("notices render as named conditions (slice A2)", () => {
     "assumption.secondhome_own_name",
     "assumption.study_admission_confirmed",
     "assumption.study_sponsor_confirmed",
+    // Slice A6-bis: two more declared-conservative questions' own
+    // `assumption.*` keys join the scan, moving this pin 68 → 72 (two keys
+    // × two languages = four new entries).
+    "assumption.diaspora_documents",
+    "assumption.retirement_basis",
     "assumption.generic",
   ].sort();
 
-  it("pins the scan's own iteration: exactly the title, intro, generic fallback, fourteen codes, guardian consent and thirteen assumption keys, both languages (V3, A6-3 + A6-4b + A7-M)", () => {
+  it("pins the scan's own iteration: exactly the title, intro, generic fallback, thirteen codes, guardian consent, one sourceless dead-end code and fifteen assumption keys, both languages (V3, A6-3 + A6-4b + A6-bis + A7-M + A3'-M FIX-5)", () => {
     const entries = conditionsBlockEntries();
-    expect(entries).toHaveLength(68);
+    expect(entries).toHaveLength(72);
     expect(Array.from(new Set(entries.map((e) => e.key))).sort()).toEqual(
       EXPECTED_CONDITIONS_BLOCK_KEYS,
     );
@@ -2392,7 +2814,7 @@ describe("notices render as named conditions (slice A2)", () => {
     }
   });
 
-  it("innocence: all 68 shipped strings pass the scan clean", () => {
+  it("innocence: all 72 shipped strings pass the scan clean", () => {
     const hits = scanConditionsBlock();
     expect(hits, JSON.stringify(hits)).toEqual([]);
   });
@@ -2708,6 +3130,13 @@ describe("notices render as named conditions (slice A2)", () => {
       language: "id",
       text: "Kondisi ini tak berpengaruh terhadap hasil Anda.",
     },
+    {
+      label:
+        "A3'-M FIX-5: 'cleared' plant on the new sourceless dead-end copy — proves the scan reaches SUPPORT_REASON_COPY's SOURCELESS_NO_PATH_CODES entry, not just NOTICE_CONDITION_COPY",
+      key: "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+      language: "en",
+      text: "One of your answers is one our verified rules cannot assess; you are cleared for a consultation.",
+    },
   ];
 
   function buildInjectedTables(
@@ -2731,6 +3160,21 @@ describe("notices render as named conditions (slice A2)", () => {
         genericNoticeCondition: {
           ...GENERIC_NOTICE_CONDITION,
           [fixture.language]: fixture.text,
+        },
+      };
+    }
+    if (fixture.key === "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH") {
+      // A3'-M (FIX-5): routed to the NEW table, never noticeConditionCopy —
+      // this is the proof the scan really reaches SUPPORT_REASON_COPY's
+      // sourceless entry, not a lucky hit through the wrong bucket.
+      return {
+        ...DEFAULT_SOURCE_TABLES,
+        sourcelessNoPathCopy: {
+          ...DEFAULT_SOURCE_TABLES.sourcelessNoPathCopy,
+          [fixture.key]: {
+            ...DEFAULT_SOURCE_TABLES.sourcelessNoPathCopy[fixture.key],
+            [fixture.language]: fixture.text,
+          },
         },
       };
     }

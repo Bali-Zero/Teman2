@@ -70,6 +70,32 @@ def _is_excluded(p: Path) -> bool:
     )
 
 
+def _uses_private_verdict_regex_search(node: ast.AST) -> bool:
+    """Whether the function calls `<name>_RE.search(...)` on its OWN compiled
+    regex instead of the canonical `extract_gateway_verdict()`.
+
+    `.search()` returns the FIRST match; `tg_notify.py` can print a human
+    diagnostic `tg_notify:` line before its machine verdict (an undeliverable
+    P0 does exactly this — measured 2026-09-24, seven callers each carried a
+    private `_TG_STATUS_RE`/`_GATEWAY_VERDICT_RE` and misread pajak's real
+    `p0_unsent_spooled` as the diagnostic's leading word). A caller naming its
+    own regex `..._RE` and `.search()`-ing it is the shape of that bug,
+    independent of whatever the surrounding return does with the result.
+    """
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        func = child.func
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr == "search"
+            and isinstance(func.value, ast.Name)
+            and func.value.id.endswith("_RE")
+        ):
+            return True
+    return False
+
+
 def _subprocess_lines(node: ast.AST, src: str) -> list[int]:
     lines: list[int] = []
     for child in ast.walk(node):
@@ -114,6 +140,14 @@ def _returncode_zero_means_success(node: ast.AST) -> bool:
 def _reads_verdict_semantically(node: ast.AST, body: str, src: str) -> bool:
     """Reject verdict theatre: parsing/logging followed by blind success."""
     if not READS_VERDICT.search(body):
+        return False
+
+    # A caller's own `..._RE.search()` is the exact anti-pattern this guard
+    # exists to catch (see _uses_private_verdict_regex_search) UNLESS it also
+    # reaches for the canonical extractor — e.g. a function migrating one
+    # call site at a time, or a private regex used for something unrelated
+    # to the gateway's verdict.
+    if "extract_gateway_verdict(" not in body and _uses_private_verdict_regex_search(node):
         return False
 
     subprocess_lines = _subprocess_lines(node, src)

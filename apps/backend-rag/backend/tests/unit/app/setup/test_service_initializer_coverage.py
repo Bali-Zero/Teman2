@@ -22,6 +22,7 @@ if str(backend_path) not in sys.path:
 
 import contextlib
 
+from backend.app.core.service_health import ServiceStatus
 from backend.app.setup.service_initializer import (
     _database_health_check_loop,
     _init_critical_services,
@@ -629,6 +630,11 @@ async def test_database_health_check_loop_cancel():
         with contextlib.suppress(asyncio.CancelledError):
             await task
 
+    assert task.done()
+    # The loop catches CancelledError internally (logs + breaks) rather than
+    # letting it propagate, so the task completes cleanly, not as cancelled.
+    assert not task.cancelled()
+
 
 @pytest.mark.asyncio
 async def test_database_health_check_loop_failure_and_recovery():
@@ -652,7 +658,10 @@ async def test_database_health_check_loop_failure_and_recovery():
     mock_pool.expire_connections = AsyncMock()
 
     with (
-        patch("backend.app.setup.service_initializer.service_registry"),
+        # _database_health_check_loop does a LOCAL `from ...service_health import
+        # service_registry` (see module docstring), so the patch target must be
+        # the origin module, not service_initializer's (now-stale) top-level binding.
+        patch("backend.app.core.service_health.service_registry") as mock_registry,
         patch(
             "backend.app.setup.service_initializer.asyncio.sleep",
             side_effect=[None, asyncio.CancelledError()],
@@ -660,6 +669,12 @@ async def test_database_health_check_loop_failure_and_recovery():
     ):
         with contextlib.suppress(asyncio.CancelledError):
             await _database_health_check_loop(mock_pool)
+
+    # First check fails (registers DEGRADED), then recovery succeeds
+    # (registers HEALTHY again) before the loop is cancelled on the next tick.
+    statuses = [call.args[1] for call in mock_registry.register.call_args_list]
+    assert statuses == [ServiceStatus.DEGRADED, ServiceStatus.HEALTHY]
+    mock_pool.expire_connections.assert_awaited_once()
 
 
 # ============================================================================
@@ -739,7 +754,7 @@ async def test_crm_memory_success(mock_app):
 
     with (
         patch("backend.app.setup.service_initializer.settings") as mock_settings,
-        patch("backend.app.setup.service_initializer.service_registry"),
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
         patch(
             "backend.services.memory.MemoryServicePostgres",
         ) as mock_mem,
@@ -766,7 +781,13 @@ async def test_crm_memory_success(mock_app):
         mock_activity.initialize = AsyncMock()
 
         await initialize_crm_and_memory_services(mock_app, MagicMock(), mock_pool)
-        # No exception = success
+
+        mock_mem_instance.connect.assert_awaited_once()
+        assert mock_app.state.memory_service is mock_mem_instance
+        assert mock_app.state.collective_memory_workflow is not None
+        mock_registry.register.assert_called_once_with(
+            "memory", ServiceStatus.HEALTHY, critical=False
+        )
 
 
 @pytest.mark.asyncio
@@ -774,7 +795,7 @@ async def test_crm_memory_failure(mock_app):
     """CRM/memory init fails gracefully."""
     with (
         patch("backend.app.setup.service_initializer.settings") as mock_settings,
-        patch("backend.app.setup.service_initializer.service_registry"),
+        patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
         patch(
             "backend.services.memory.MemoryServicePostgres",
             side_effect=Exception("DB error"),
@@ -782,7 +803,12 @@ async def test_crm_memory_failure(mock_app):
     ):
         mock_settings.database_url = "postgresql://test:test@localhost/test"
         await initialize_crm_and_memory_services(mock_app, MagicMock(), None)
-        # Should not raise, just log error
+
+        # Should not raise, just log error and record the failure.
+        assert mock_app.state.crm_init_error == "DB error"
+        mock_registry.register.assert_called_once_with(
+            "memory", ServiceStatus.DEGRADED, error="DB error", critical=False
+        )
 
 
 # ============================================================================
@@ -792,9 +818,11 @@ async def test_crm_memory_failure(mock_app):
 async def test_intelligent_router_success(mock_app):
     """IntelligentRouter initializes with all dependencies."""
     with (
-        patch("backend.services.routing.intelligent_router.IntelligentRouter"),
+        patch("backend.services.routing.intelligent_router.IntelligentRouter") as mock_router_cls,
         patch("backend.services.crm.collaborator_service.CollaboratorService"),
-        patch("backend.services.routing.specialized_service_router.SpecializedServiceRouter"),
+        patch(
+            "backend.services.routing.specialized_service_router.SpecializedServiceRouter"
+        ) as mock_specialized_cls,
         patch("backend.app.setup.service_initializer.service_registry"),
     ):
         await initialize_intelligent_router(
@@ -809,6 +837,9 @@ async def test_intelligent_router_success(mock_app):
             None,
             MagicMock(),
         )
+
+        assert mock_app.state.intelligent_router is mock_router_cls.return_value
+        assert mock_app.state.specialized_router is mock_specialized_cls.return_value
 
 
 @pytest.mark.asyncio
@@ -842,7 +873,7 @@ async def test_intelligent_router_failure(mock_app):
 async def test_intelligent_router_collaborator_fails(mock_app):
     """CollaboratorService fails but router still initializes."""
     with (
-        patch("backend.services.routing.intelligent_router.IntelligentRouter"),
+        patch("backend.services.routing.intelligent_router.IntelligentRouter") as mock_router_cls,
         patch(
             "backend.services.crm.collaborator_service.CollaboratorService",
             side_effect=Exception("Collab failed"),
@@ -862,6 +893,11 @@ async def test_intelligent_router_collaborator_fails(mock_app):
             None,
             MagicMock(),
         )
+
+        # Collaborator init failed and must not have been left half-set...
+        assert mock_app.state.collaborator_service is None
+        # ...but the router itself is non-fatal to that failure and still initializes.
+        assert mock_app.state.intelligent_router is mock_router_cls.return_value
 
 
 @pytest.mark.asyncio
@@ -898,5 +934,9 @@ async def test_intelligent_router_specialized_fails(mock_app):
 async def test_initialize_services_already_initialized(mock_app):
     """Services already initialized — returns early."""
     mock_app.state.services_initialized = True
-    await initialize_services(mock_app)
-    # Should return without doing anything
+    with patch(
+        "backend.app.setup.service_initializer._initialize_redis_manager",
+    ) as mock_redis_init:
+        await initialize_services(mock_app)
+    # Should return without doing anything — not even the first init step.
+    mock_redis_init.assert_not_called()

@@ -1,0 +1,208 @@
+# Gear-3 evidence pack — seq-23 SIGNING (Slice A9.1/A9.2/A9.3, VISA-ORACLE-DW-20260919).
+# Written by vo-ceremony-a9 (Claude Opus 5.5), the SIGNER and the generator of this PR — never its gate.
+# Every receipt below is a command this writer executed in this session on M5, except those whose
+# seat is vo-a9-finish: that continuing instance (Claude Opus 5.5) ran them after the signer hit its
+# tool ceiling. It signed nothing and never touched the private key or the rollback receipt.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: MANDATE-vo.md Slice A9 (runbook steps 1-6), owner OD-6 2026-09-22 + «firmo e autorizzo» 2026-09-24T09:23:28Z
+mission: VISA-ORACLE-DW-20260919 — Slice A9.3 signing PR (signed, NOT activated)
+lanes:
+  - lane: a9-sign
+    role: build
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - lane: a9-finish
+    role: build
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - lane: a9-council-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: a9-council-deepseek
+    role: review
+    seat: tp1-deepseek-v4-pro
+  - lane: a9-council-glm
+    role: review
+    seat: tp1-glm-5.2
+  - lane: a9-ground-truth
+    role: ground_truth
+    seat: >-
+      session (this writer). The pack asserts no new regulatory figure. Its ground truth is the
+      merged seq-23 source (#7174, H23), the signed seq-22 anchor (H22) and the ratified §1
+      disposition table in MANDATE-vo.md.
+    nb: >-
+      Three repo files this PR signs or verifies against, read at HEAD:
+      rulepack-prod-023.source.json (the signed payload), rulepack-prod-022.signed.json (the H22
+      anchor), docs/runbooks/visa-engine-key-ceremony.md (the public trust array).
+    query_hash: "d51379bd97be0608df65fa5babf708e9a43770fb81d984859196c3f5c1e03bc0" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the three files concatenated in that order, computed this session
+      at the signer's head (88081e2c before the rebase). The runbook doc changes afterwards in this PR
+      (D-kid-discrepancy), so recomputing at the new head gives a different hash.
+council_run: council/journal.jsonl
+seat_fallback_reason: >-
+  No fallback. scripts/arsenal_probe.py --seats tp1-qwen3.8-max,tp1-deepseek-v4-pro,tp1-glm-5.2
+  at 2026-09-24T09:43:08Z measured all three LIVE (1689 / 2011 / 1277 ms, HTTP 200). All three
+  ran. Round 1: qwen FAIL (3 MEDIUM), glm FAIL (2 MEDIUM), deepseek PASS with no findings.
+  Round 2 sent qwen and glm the MEASURED answers (census replay, F1 table, validity bound,
+  fixture baseline); both WITHDREW every MEDIUM and returned VERDICT PASS.
+pii_scan: clean
+decisions:
+  - id: D-f1-witness-shape
+    decision: >-
+      The per-row witness reads evaluator.evaluate_product on the row's own product, because
+      Reason.rule_ids names the rule that decided. A decision-level no_path code alone cannot:
+      e33e/e33f share RETIREMENT_INCOME_BELOW_THRESHOLD, and a surviving C1 hides B1's exclusion
+      from no_path_reasons (measured: voa-dual TRUE persona → SUPPORTED_CANDIDATES [C1]).
+  - id: D-f1-guilt-collateral
+    decision: >-
+      The GUILT is not `red == {rule_id}`. Measured on the first run: reverting a nationality row
+      also reddens the other two nationality rows' UNKNOWN persona, and reverting a status-code
+      row reddens the other status-code row's. They share one UNKNOWN persona. So the collateral
+      is allowed only for a row that shares the SAME unknown fact, and only on its UNKNOWN
+      persona.
+  - id: D-kid-discrepancy
+    decision: >-
+      The runbook doc's trust array names the production kid `2026-07-prod-1`. The signed headers
+      of seq-20/22/23 and the test pins carry `prod-2026-07-1`. Used verbatim, the doc's array
+      rejects the ALREADY-LIVE seq-22 too. So the discrepancy is a stale doc, not a signing
+      mismatch, and the ceremony continued with the same public key under the kid the artifacts
+      carry. First recorded as "not edited here"; on the conductor's order the array is corrected in
+      this PR (commit `docs(visa-engine): the key-ceremony trust array names the real kid
+      prod-2026-07-1`). Measured by vo-a9-finish: the doc's array verbatim REJECTS seq-22 with
+      `unknown signing key_id: 'prod-2026-07-1'`; the same array with only that kid relabeled
+      VERIFIES it; the corrected doc's array verbatim VERIFIES seq-22 and seq-23. The TEST kid is
+      relabeled too, on the doc's own 2026-07-25 ERRATA table (no TEST-signed pack is in the repo to
+      measure it against).
+  - id: D-seq22-only-list
+    decision: >-
+      Mouth part, landed on top of Slice A8-2 (#7224). The twelve review codes signed seq-22 emits and
+      signed seq-23 does not keep their REVIEW_REASON_COPY: seq-22 stays in force until activation and
+      the pre-signed rollback seq-24 carries its rules. They are named in
+      REVIEW_REASON_COPY_KEYS_LIVE_ON_SEQ22_ONLY, which replaces the seq-20 list (empty since the seq-22
+      activation). Its honesty test requires the list to EQUAL signed-22 minus signed-23, both packs
+      named by sequence and read from disk. The union-fed floor moves 31 -> 22 (1 pack + 21
+      pack-independent), measured.
+  - id: D-gold-expectations
+    decision: >-
+      Six PRODUCTION_REPLAY_EXPECTATIONS (2,3,4,5,12,20) re-derived under the owner-ratified §1
+      table. Floor 17 and unexplained {1,9,10} unchanged. Flagged for the gate: the table's own
+      header asks an independent reviewer for a changed legal reading.
+receipts:
+  - claim: Key file present with owner-only permissions (by path, never read).
+    cmd: test -r K && echo READABLE; stat -f '%Sp' K
+    result: "READABLE / -rw-------"
+    exit: 0
+    ts: "2026-09-24T09:40:00Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: H23 printed by PR 7174 equals the JCS digest of the merged source; previous = H22.
+    cmd: compile_pack_source -> canonicalize_json -> sha256
+    result: "e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204 MATCH; previous 3d7555af…6e37 MATCH"
+    exit: 0
+    ts: "2026-09-24T09:40:00Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: Signed and verified before and after Prettier.
+    cmd: sign_pack … --sequence 23 --i-know-this-is-production; verify_rule_pack; prettier --write; verify_rule_pack
+    result: "OK — signed and self-verified; VerifiedRulePack(sequence=23, PRODUCTION, prod-2026-07-1, unsigned_dev=False) twice; file sha256 b7edf63088c21748520ffbe6ee91299b60ac3d4c0bd17e70249ae6df79ce1fff"
+    exit: 0
+    ts: "2026-09-24T09:40:00Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: Rollback seq-24 signed off-repo, rejected against head 22.
+    cmd: sign_pack --sequence 24 → kit/receipts/; activate_pack (no --yes) --current-sequence 22 --current-payload-sha256 H22
+    result: "CHANGED 6 / IDENTICAL 12; receipt sha256 ab933638ed14ae78003ad0e95d72fd2463766bcb878eb6c60ddac67e77e84698; REJECTED candidate previous_payload_sha256 does not match"
+    exit: 1
+    ts: "2026-09-24T09:40:00Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: Whole visa_engine + scripts/visa_engine dirs on the signed tree.
+    cmd: pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -rs
+    result: "2678 passed, 14 skipped, 198 errors — 0 failed; all 198 errors are `Connect call failed ('::1', 5432)` (no local Postgres on M5); 14 skips = candidate tests with no unsigned pack above seq-23"
+    exit: 1
+    ts: "2026-09-24T09:40:00Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: The observer exits 0.
+    cmd: python3 scripts/ci/observe_visa_seq23_signed.py
+    result: "highest signed sequence=23; 93 passed / 39 passed, 14 skipped / 7 passed"
+    exit: 0
+    ts: "2026-09-24T10:01:06Z"
+    seat: Claude Opus 5.5 (vo-ceremony-a9)
+  - claim: Mouth visa-oracle suite on the signed tree BEFORE the mouth part (pre-A8-2 head 88081e2c).
+    cmd: vitest run --root . 'src/app/(visa-oracle)/visa-oracle'; tsc --noEmit
+    result: "2 failed / 1201 passed (1203), both in engine-adapter.test.ts: floor `expected 22 to be greater than or equal to 31`; stale keys = the 12 codes signed seq-23 retires. tsc exit 0."
+    exit: 1
+    ts: "2026-09-24T10:05:56Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: Runbook trust array vs the live seq-22 (before and after the doc fix).
+    cmd: verify_with_doc_array.py <runbook> rulepack-prod-022.signed.json [2026-07-prod-1=prod-2026-07-1]
+    result: "doc verbatim: REJECTED unknown signing key_id 'prod-2026-07-1' (exit 1); kid relabeled only: VERIFIED (exit 0); fixed doc verbatim: VERIFIED seq-22 and seq-23 (exit 0)"
+    exit: 0
+    ts: "2026-09-24T10:08:14Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: GUILT for the seq-22-only list (scratch mutations, restored by cp and cmp).
+    cmd: drop VOA_NATIONALITY_ONLY from the list; then add SECOND_HOME_BELOW_THRESHOLD_STUDIO to it
+    result: "each mutation: 2 failed (stale-key test + seq-22-only honesty test) / 7 passed in the describe"
+    exit: 1
+    ts: "2026-09-24T10:10:43Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+  - claim: After the rebase onto PR 7224, the whole mouth visa-oracle suite, tsc, the backend dirs and the observer.
+    cmd: vitest run --root . 'src/app/(visa-oracle)/visa-oracle'; tsc --noEmit; pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ -rs; python3 scripts/ci/observe_visa_seq23_signed.py
+    result: "vitest 45 files / 1205 passed, 0 failed; tsc exit 0; pytest 2678 passed, 14 skipped, 198 errors, 0 failed (all 198 = Postgres connect ::1/127.0.0.1:5432, no local DB on M5); observer exit 0"
+    exit: 0
+    ts: "2026-09-24T10:20:55Z"
+    seat: Claude Opus 5.5 (vo-a9-finish)
+dissent:
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM: the seq-23 census pin equals seq-22 with no `_SEQ23_OUTCOME_CHANGES`, so the 11 new
+      HARD_FILTERs may be masked.
+    status: RETRACTED
+    resolution: >-
+      `_SEQ23_OUTCOME_CHANGES = {}` exists since #7174. The replay on the signed tree measures 0
+      outcome violations and 0 dead-end violations against EXPECTED_OUTCOME_BY_SEQUENCE[23] over
+      116 walks. The engine-only corpus sends no disclosure flag, and no walk trips a retired rule.
+  - seat: tp1-glm-5.2
+    objection: >-
+      MEDIUM ×2 (round 1): the minor row's UNKNOWN witness would miss family.sponsor_confirmed
+      behind the guardian-consent adapter; _BRIDGING_APPLICANT might leave overstay_days
+      UNKNOWN and shadow the bridging facts.
+    status: RETRACTED
+    resolution: >-
+      Withdrawn by the seat in round 2 on the measurements: the minor UNKNOWN decision's
+      missing_facts are ['family.sponsor_confirmed', 'person.guardian_consent'], and the gold
+      baseline carries immigration.overstay_days KNOWN 0.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM: hf.e33.employment-not-covered's UNKNOWN persona makes intent.purposes UNKNOWN,
+      which blocks every product, so it does not isolate the row.
+    status: PLAUSIBLE
+    resolution: >-
+      True as stated: the rule reads only intent.purposes, so its UNKNOWN persona cannot isolate
+      it. The witness still asserts what §1 asks for (E33 BLOCKED_UNKNOWN on intent.purposes,
+      decision NEEDS_INPUT naming it). The row's isolation comes from its TRUE persona and its
+      GUILT, which is red on revert.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      MEDIUM: EVALUATED_AT assumes valid_period.from 2026-09-23; if the rules were not in force,
+      the witnesses would silently pass.
+    status: RETRACTED
+    resolution: >-
+      Not silent by construction. The TRUE witness requires the row's rule_id in an EXCLUDED
+      proof's Reason.rule_ids, so a rule out of force is RED. Measured: the max inserted
+      valid_period.from is 2026-09-23T00:00:00Z.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LOW ×4: the TRUE decision check rejects only HUMAN_REVIEW_REQUIRED (not a wrong
+      NEEDS_INPUT); the NO_EFFECT branch does not assert the product's status; the inventory
+      message names only the 4 flipped escalations; the observer falls back to sys.executable.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as residual. The product-level EXCLUDED-by-rule assertion is the row's witness,
+      and the decision check is only the "no human hold" guard. The observer's fallback copies
+      the seq-22 sibling's.
+  - seat: tp1-deepseek-v4-pro
+    objection: >-
+      Returned only `VERDICT: PASS` (333 bytes) and no finding. That is a thin review. This
+      writer does not count it as independent evidence that the witnesses are non-vacuous; the
+      in-test GUILTs are that evidence.
+    status: CONFIRMED
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: first runbook mismatch stops the ceremony; three reds on the same cause suspends

@@ -20,7 +20,11 @@ def _reason_codes(exc: ValidationError) -> set[str]:
 
 def test_valid_fixtures_round_trip(load_json: Any) -> None:
     schema = load_json(SCHEMA_DIRECTORY / f"{CONTRACT_KIND}.schema.json")
-    for fixture_path in sorted((FIXTURES_ROOT / CONTRACT_KIND).glob("valid_*.json")):
+    fixture_paths = sorted((FIXTURES_ROOT / CONTRACT_KIND).glob("valid_*.json"))
+    # Lower bound, not merely non-empty: a silently emptied/renamed fixture
+    # directory would otherwise make this loop pass having asserted nothing.
+    assert len(fixture_paths) >= 3, "expected at least the 3 known valid verification_receipt fixtures"
+    for fixture_path in fixture_paths:
         payload = load_json(fixture_path)
         Draft202012Validator(schema).validate(payload)
         instance = VerificationReceipt.model_validate(payload)
@@ -28,16 +32,28 @@ def test_valid_fixtures_round_trip(load_json: Any) -> None:
 
 
 def test_invalid_fixtures_reject_with_exact_expected_reason(load_json: Any) -> None:
-    fixture_paths = (
+    fixture_paths = sorted(
         path
         for path in (FIXTURES_ROOT / CONTRACT_KIND).glob("invalid_*.json")
         if not path.name.endswith(".expect.json")
     )
-    for fixture_path in sorted(fixture_paths):
+    # Lower bound, not merely non-empty -- see test_valid_fixtures_round_trip above.
+    assert len(fixture_paths) >= 4, "expected at least the 4 known invalid verification_receipt fixtures"
+    for fixture_path in fixture_paths:
         expected = load_json(fixture_path.with_suffix(".expect.json"))["reason_code"]
         with pytest.raises(ValidationError) as caught:
             VerificationReceipt.model_validate(load_json(fixture_path))
         assert expected in _reason_codes(caught.value), fixture_path.name
+
+
+def test_fixture_glob_guard_fails_loud_on_emptied_directory(tmp_path: Any) -> None:
+    """Guilt-arm for the two bare-glob guards above: an emptied/renamed
+    fixtures directory must fail loud, not silently validate zero fixtures."""
+    empty_dir = tmp_path / CONTRACT_KIND
+    empty_dir.mkdir()
+    fixture_paths = sorted(empty_dir.glob("valid_*.json"))
+    with pytest.raises(AssertionError):
+        assert fixture_paths, f"expected at least one valid fixture for {CONTRACT_KIND}"
 
 
 def test_rejects_unknown_top_level_field(load_json: Any) -> None:

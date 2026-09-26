@@ -476,9 +476,14 @@ class TestRefreshFromDB:
         assert "r1" in builder_with_db.relationships
 
     @pytest.mark.asyncio
-    async def test_refresh_db_error(self, builder_with_db, mock_db_pool):
+    async def test_refresh_db_error(self, builder_with_db, mock_db_pool, sample_entity):
+        # Pre-populate in-memory state so we can prove it survives the error
+        # untouched: the DB error is caught before self.entities is reset.
+        builder_with_db.entities[sample_entity.entity_id] = sample_entity
         mock_db_pool.fetch = AsyncMock(side_effect=Exception("DB error"))
         await builder_with_db._refresh_from_db()
+        assert builder_with_db.entities == {sample_entity.entity_id: sample_entity}
+        assert builder_with_db.relationships == {}
 
 
 # ============================================================================

@@ -5680,29 +5680,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/crm/intelligence/{client_id}/query": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Query Notebooklm For Client
-     * @description Query NotebookLM with CRM context for a specific client.
-     *
-     *     Builds an Italian-language prompt that references the client by name and ID,
-     *     then shells out to the NLM CLI to query the CRM notebook.
-     */
-    post: operations["query_notebooklm_for_client_api_crm_intelligence__client_id__query_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/crm/interactions/": {
     parameters: {
       query?: never;
@@ -21741,6 +21718,8 @@ export interface components {
       cover_image_alt?: string | null;
       /** Enriched At */
       enriched_at: string;
+      /** Extra Sections */
+      extra_sections?: components["schemas"]["ExtraSection"][];
       /** Facts */
       facts: string;
       /** Headline */
@@ -21875,6 +21854,25 @@ export interface components {
       status?: ("VERIFIED" | "UNKNOWN") | null;
     };
     /**
+     * ExtraSection
+     * @description A draft ``##`` section the converter does not map to a dedicated
+     *     EnrichedArticle field (e.g. "In Practice", "Sources"). Preserved
+     *     verbatim instead of being silently dropped (2026-09-23 GloBE
+     *     regression).
+     */
+    ExtraSection: {
+      /** Body */
+      body: string;
+      /** Heading */
+      heading: string;
+      /**
+       * Insert After
+       * @default next_steps
+       * @enum {string}
+       */
+      insert_after: "facts" | "bali_zero_take" | "next_steps";
+    };
+    /**
      * ExtractEventRequest
      * @description Request to extract and save event from message
      */
@@ -21883,6 +21881,13 @@ export interface components {
       ai_response?: string | null;
       /** Message */
       message: string;
+    };
+    /** ExtractVisaRequest */
+    ExtractVisaRequest: {
+      /** Doc Id */
+      doc_id?: number | null;
+      /** File Id */
+      file_id: string;
     };
     /**
      * FactPath
@@ -23828,9 +23833,11 @@ export interface components {
     /** NextSteps */
     NextSteps: {
       /** Expat */
-      expat: string[];
+      expat?: string[];
+      /** General */
+      general?: string[];
       /** Investor */
-      investor: string[];
+      investor?: string[];
     };
     /** NibExtractRequest */
     NibExtractRequest: {
@@ -23853,34 +23860,6 @@ export interface components {
       nib?: string | null;
       /** Success */
       success: boolean;
-    };
-    /**
-     * NlmCitation
-     * @description A single citation returned by NotebookLM.
-     */
-    NlmCitation: {
-      /** Cited Text */
-      cited_text: string;
-      /** Source Id */
-      source_id: string;
-    };
-    /**
-     * NlmQueryRequest
-     * @description Request body for querying NotebookLM about a specific client.
-     */
-    NlmQueryRequest: {
-      /** Question */
-      question: string;
-    };
-    /**
-     * NlmQueryResponse
-     * @description Response from a NotebookLM client query.
-     */
-    NlmQueryResponse: {
-      /** Answer */
-      answer: string;
-      /** Citations */
-      citations: components["schemas"]["NlmCitation"][];
     };
     /** NotificationPrefsIn */
     NotificationPrefsIn: {
@@ -26020,6 +25999,11 @@ export interface components {
      * @description Response from direct email send.
      */
     SendEmailResponse: {
+      /**
+       * Delivery Uncertain
+       * @default false
+       */
+      delivery_uncertain: boolean;
       /** Message */
       message: string;
       /** Success */
@@ -26637,15 +26621,15 @@ export interface components {
     /** TLDRSection */
     TLDRSection: {
       /** Risk Level */
-      risk_level: string;
+      risk_level?: string | null;
       /** Should Worry */
-      should_worry: string;
+      should_worry?: string | null;
       /** What */
       what: string;
       /** When */
-      when: string;
+      when?: string | null;
       /** Who */
-      who: string;
+      who?: string | null;
     };
     /** TaxCompanyPilotDocument */
     TaxCompanyPilotDocument: {
@@ -28465,6 +28449,8 @@ export interface components {
       cc?: string | null;
       /** Email Type */
       email_type?: string | null;
+      /** Idempotency Key */
+      idempotency_key?: string | null;
       /** Subject */
       subject: string;
       /** To */
@@ -35975,9 +35961,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": {
-          [key: string]: unknown;
-        };
+        "application/json": components["schemas"]["ExtractVisaRequest"];
       };
     };
     responses: {
@@ -37120,41 +37104,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceAiSnapshotResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  query_notebooklm_for_client_api_crm_intelligence__client_id__query_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        client_id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["NlmQueryRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["NlmQueryResponse"];
         };
       };
       /** @description Validation Error */

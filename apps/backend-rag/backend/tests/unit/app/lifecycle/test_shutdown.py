@@ -181,6 +181,6 @@ class TestShutdownHandlers:
         """Test shutdown without any services"""
         handler_func = capture_shutdown_handler(mock_app)
 
-        if handler_func:
-            # Should not raise any errors
-            await handler_func()
+        assert handler_func is not None, "register_shutdown_handlers must register an on_event('shutdown') callback"
+        # Should not raise any errors
+        await handler_func()

@@ -106,18 +106,21 @@ async def _insert_message(
     direction: str,
     sender_role: str,
     body: str | None,
+    media_type: str | None = None,
 ) -> int:
     async with pool.acquire() as conn:
         return await conn.fetchval(
             """
-            INSERT INTO meta_inbox_messages (thread_id, direction, sender_role, body, status)
-            VALUES ($1, $2, $3, $4, 'received')
+            INSERT INTO meta_inbox_messages
+                (thread_id, direction, sender_role, body, media_type, status)
+            VALUES ($1, $2, $3, $4, $5, 'received')
             RETURNING id
             """,
             thread_id,
             direction,
             sender_role,
             body,
+            media_type,
         )
 
 
@@ -364,6 +367,53 @@ async def test_a_whitespace_only_anchor_yields_an_empty_query(
     bound = await _load_bound_thread_context(db_pool, thread_id=thread_id, outbox_id=outbox_id)
 
     assert bound.query == ""
+
+
+@pytest.mark.asyncio
+async def test_media_type_is_read_from_the_anchor_row(db_pool: asyncpg.Pool) -> None:
+    """B2.5-3 review finding: the leg tests (`test_wa_codex_leg.py`) fully
+    REPLACE this loader with a fake that hands back whatever `media_type`
+    the test passes it — so a mutation that deletes `media_type = rows[0][
+    "media_type"]` in the real function (leaving the `BoundThreadContext`
+    default of `None`) would survive that whole suite unnoticed. This test
+    drives the REAL loader against a real row and would catch exactly that
+    mutation: a caption-less image anchor must come back tagged 'image',
+    not the dataclass default."""
+    thread_id = await _seed_thread(db_pool)
+    anchor_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="inbound", sender_role="customer",
+        body="", media_type="image",
+    )
+    stub_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="outbound", sender_role="bot", body=None,
+    )
+    outbox_id = await _insert_outbox(
+        db_pool, thread_id=thread_id, stub_message_id=stub_id, inbound_message_id=anchor_id,
+    )
+
+    bound = await _load_bound_thread_context(db_pool, thread_id=thread_id, outbox_id=outbox_id)
+
+    assert bound.media_type == "image"
+    assert bound.query == ""
+
+
+@pytest.mark.asyncio
+async def test_media_type_none_when_no_anchor_exists(db_pool: asyncpg.Pool) -> None:
+    """Innocence, same shape as `test_no_anchor_found_returns_empty_context`:
+    a thread with no prior inbound at all leaves `media_type=None` — never a
+    catalogued media type by accident, which would wrongly route a
+    genuinely-empty thread into the scripted media-ack turn."""
+    thread_id = await _seed_thread(db_pool)
+    stub_id = await _insert_message(
+        db_pool, thread_id=thread_id, direction="outbound", sender_role="bot", body=None,
+    )
+    outbox_id = await _insert_outbox(
+        db_pool, thread_id=thread_id, stub_message_id=stub_id, inbound_message_id=None,
+    )
+
+    bound = await _load_bound_thread_context(db_pool, thread_id=thread_id, outbox_id=outbox_id)
+
+    assert bound.media_type is None
 
 
 def test_legacy_anchor_derive_depends_on_the_thread_upsert_serializing_webhooks() -> None:

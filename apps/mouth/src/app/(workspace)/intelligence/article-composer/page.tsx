@@ -837,7 +837,7 @@ export default function ArticleComposerPage() {
                     <div className="grid gap-2 text-[12px]">
                       <div className="grid grid-cols-2 gap-2">
                         <select
-                          value={activeArticle.tldr.should_worry}
+                          value={activeArticle.tldr.should_worry ?? ""}
                           onChange={(e) =>
                             updateEditedField(
                               "tldr.should_worry",
@@ -849,12 +849,14 @@ export default function ArticleComposerPage() {
                           onFocus={() => setFocusedInput("tldr_worry")}
                           onBlur={() => setFocusedInput(null)}
                         >
+                          <option value="">— not stated</option>
                           <option>Yes</option>
                           <option>No</option>
+                          <option>Depends</option>
                           <option>Maybe</option>
                         </select>
                         <select
-                          value={activeArticle.tldr.risk_level}
+                          value={activeArticle.tldr.risk_level ?? ""}
                           onChange={(e) =>
                             updateEditedField("tldr.risk_level", e.target.value)
                           }
@@ -863,6 +865,7 @@ export default function ArticleComposerPage() {
                           onFocus={() => setFocusedInput("tldr_risk")}
                           onBlur={() => setFocusedInput(null)}
                         >
+                          <option value="">— not stated</option>
                           <option>Low</option>
                           <option>Medium</option>
                           <option>High</option>
@@ -880,7 +883,7 @@ export default function ArticleComposerPage() {
                         placeholder="What"
                       />
                       <input
-                        value={activeArticle.tldr.who}
+                        value={activeArticle.tldr.who ?? ""}
                         onChange={(e) =>
                           updateEditedField("tldr.who", e.target.value)
                         }
@@ -892,7 +895,7 @@ export default function ArticleComposerPage() {
                         aria-label="Who"
                       />
                       <input
-                        value={activeArticle.tldr.when}
+                        value={activeArticle.tldr.when ?? ""}
                         onChange={(e) =>
                           updateEditedField("tldr.when", e.target.value)
                         }
@@ -920,7 +923,7 @@ export default function ArticleComposerPage() {
                                   : "text-[color-mix(in_srgb,var(--state-warning)_50%,var(--bz-text-pure))]"
                             }
                           >
-                            {activeArticle.tldr.should_worry}
+                            {activeArticle.tldr.should_worry || "—"}
                           </span>
                         </div>
                         <div>
@@ -936,7 +939,7 @@ export default function ArticleComposerPage() {
                                   : "text-[color-mix(in_srgb,var(--state-warning)_50%,var(--bz-text-pure))]"
                             }
                           >
-                            {activeArticle.tldr.risk_level}
+                            {activeArticle.tldr.risk_level || "—"}
                           </span>
                         </div>
                       </div>
@@ -951,13 +954,13 @@ export default function ArticleComposerPage() {
                           <strong style={{ color: "var(--bz-text-1)" }}>
                             Who:
                           </strong>{" "}
-                          {activeArticle.tldr.who}
+                          {activeArticle.tldr.who || "—"}
                         </div>
                         <div>
                           <strong style={{ color: "var(--bz-text-1)" }}>
                             When:
                           </strong>{" "}
-                          {activeArticle.tldr.when}
+                          {activeArticle.tldr.when || "—"}
                         </div>
                       </div>
                     </div>

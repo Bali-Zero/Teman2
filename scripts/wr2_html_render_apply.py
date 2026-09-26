@@ -472,7 +472,7 @@ async def _publish_visibility(
         await _ops_alert(
             f"WR2 visibility REFUSED for draft {draft_id}: empty topic or zero "
             f"slides — entry NOT queued (W96 junk guard). Drive: {drive_url or 'n/a'}",
-            tier="p1", dedup_key=f"wr2-visibility-malformed-{draft_id}",
+            tier="digest", dedup_key=f"wr2-visibility-malformed-{draft_id}",
         )
         return
 

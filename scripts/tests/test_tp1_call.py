@@ -120,6 +120,25 @@ def test_extract_answer_unparseable_body_is_an_error_not_a_crash():
     assert error is not None
 
 
+def test_extract_answer_unparseable_body_persists_raw_body_and_names_the_path(
+    monkeypatch, tmp_path
+):
+    """PENDING-ARMS L1835: the failure used to destroy its own body — a
+    corrupted response must now be written to disk AND the stderr-bound
+    error must name that file, not just the last 200 characters."""
+    import tp1_call
+
+    monkeypatch.setattr(tp1_call, "TP1_UNPARSEABLE_SCRATCH_DIR", tmp_path)
+    corrupted = '{"choices": [{"message": {"content": "cut off mid-strea'
+    answer, warning, error = extract_answer(corrupted)
+    assert answer is None
+    assert error is not None
+    dumped = list(tmp_path.glob("*.json"))
+    assert len(dumped) == 1
+    assert dumped[0].read_text(encoding="utf-8") == corrupted
+    assert str(dumped[0]) in error
+
+
 if __name__ == "__main__":
     import pytest
 
@@ -633,3 +652,44 @@ def test_secret_store_warning_reaches_stderr_on_a_successful_call(monkeypatch, c
     assert WARN in captured.err
     assert SECRET not in captured.err
     assert SECRET not in captured.out
+
+
+def test_answer_keeps_a_prompt_identifier_and_still_redacts_an_absent_secret(monkeypatch, capsys):
+    """tp1_call integration (gate-scrub-7314 r3, PROVENANCE not shape). The answer
+    output boundary (main() calling scrub(answer, [token], keep=_prompt_identifiers(prompt)))
+    must keep an identifier we quoted in our OWN prompt verbatim, while still redacting
+    a synthetic secret that was never in the prompt — even one that is ALSO
+    identifier-shaped (SCREAMING_SNAKE, 24+ chars): shape alone earns no exemption
+    under this design, only having been sent by us does.
+    """
+    import tp1_call
+
+    SECRET = "sk-totally-fake-secret-value-1234567890"  # pragma: allowlist secret
+    PROMPT_IDENTIFIER = "secondhome_property_value_usd_prompt_case"
+    ABSENT_IDENTIFIER = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW_ABSENT"
+    prompt = f"check {PROMPT_IDENTIFIER} against the client file"
+    monkeypatch.setattr(tp1_call, "resolve_tp1_key", lambda: ("realtoken", "vault", None))
+    monkeypatch.setattr(tp1_call, "audit_tp1_secret_store_modes", lambda *a, **k: [])
+    answer_text = f"{PROMPT_IDENTIFIER} is confirmed; also saw {ABSENT_IDENTIFIER} and {SECRET}"
+    monkeypatch.setattr(
+        tp1_call.urllib.request,
+        "urlopen",
+        lambda req, timeout=None: _FakeResponse([_frame(content=answer_text), _DONE]),
+    )
+    exit_code = tp1_call.main(["--model", "qwen3.8-max", "-p", prompt, "--effort", "low"])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert PROMPT_IDENTIFIER in captured.out
+    assert SECRET not in captured.out
+    assert ABSENT_IDENTIFIER not in captured.out
+
+
+def test_prompt_identifiers_extracts_only_runs_at_or_above_24_chars():
+    from tp1_call import _prompt_identifiers
+
+    prompt = "a_short_id and secondhome_property_value_usd and AN_UPPER_ID and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    found = _prompt_identifiers(prompt)
+    assert "secondhome_property_value_usd" in found
+    assert "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW" in found
+    assert "a_short_id" not in found
+    assert "AN_UPPER_ID" not in found

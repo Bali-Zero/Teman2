@@ -196,21 +196,22 @@ and per-kind precision is what keeps this filter from swallowing it anyway:
     OTHER caller of that function, out of proportion for an unobserved
     risk.
 
-DECLARED RESIDUAL, THE OTHER DIRECTION (a refuter, round 2, 2026-09-02):
-the python collection-literal branch above treats EVERY `Tuple`/`List`/
-`Dict`/`Set` element as safe-to-downgrade data — that is what correctly
-identifies this filter's own primary motivating example, `CORPUS_FILES =
-("cicatrix-scars.md", "cicatrix-scars-archive.md")`, as data. But it
-cannot distinguish that from `FILES = ["victim.txt"]` later consumed as
-`for f in FILES: open(f)` — a real, cwd-relative consumer with no
-directory context on the LITERAL's own line. Telling these apart requires
-tracing how the collection NAME is used elsewhere in the file — the exact
-same "resolve what a NAME resolves to across multiple lines" question the
-SCARS_DIR-shaped residual below already declares out of scope, just
-manifesting as an UNDER-match here instead of an over-match there. Same
-fix-of-a-fix boundary, not chased in this PR; not observed in the measured
-#5331 corpus (verified: none of its 49 downgraded hits are a
-later-iterated collection).
+CLOSED RESIDUAL, THE OTHER DIRECTION (PENDING-ARMS L1842, closed): the
+python collection-literal branch above treats EVERY `Tuple`/`List`/`Dict`/
+`Set` element as safe-to-downgrade data by default — correctly identifying
+this filter's own primary motivating example, `CORPUS_FILES =
+("cicatrix-scars.md", "cicatrix-scars-archive.md")`, as data. Originally
+this could not distinguish that from `FILES = ["victim.txt"]` later
+consumed as `for f in FILES: open(f)` — a real, cwd-relative consumer with
+no directory context on the LITERAL's own line. `_collection_literal_is_
+later_consumed` now closes this: before downgrading, it traces whether the
+literal's assigned NAME is later used, anywhere in the same file, as a
+`for`-loop iterable, an `open`/`Path`/`.read_text`/`.read_bytes`/`.open`
+argument, or unpacked/indexed one level into a name that is — if so, the
+element stays LIVE regardless of directory-adjacency. Deliberately one
+level of indirection, not unbounded dataflow tracing (same fix-of-a-fix
+boundary the SCARS_DIR-shaped residual below still declares out of scope
+for its own, over-match-shaped question).
 
 This filter ONLY DOWNGRADES when the search used the FULL basename (with
 its extension) — never on a `.py` target's bare import-stem search alone
@@ -648,6 +649,98 @@ def _python_basename_parent_kinds_at_line(
     return kinds
 
 
+_FILE_OPEN_CALLEES = frozenset({"open", "Path"})
+_FILE_OPEN_METHODS = frozenset({"open", "read_text", "read_bytes"})
+
+
+def _root_name(node: ast.AST | None) -> str | None:
+    """Unwraps a Subscript/Attribute chain down to its root Name id, e.g.
+    `FILES[0]` or `FILES.values()`'s callee both resolve to "FILES"."""
+    while isinstance(node, (ast.Subscript, ast.Attribute)):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def _assign_target_names(target: ast.AST) -> list[str]:
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [n for elt in target.elts for n in _assign_target_names(elt)]
+    return []
+
+
+def _collection_literal_is_later_consumed(
+    tree: ast.AST, basename: str, lineno: int
+) -> bool:
+    """PENDING-ARMS L1842 (DECLARED RESIDUAL, THE OTHER DIRECTION — module
+    docstring): `DATA_CONTAINER_PARENT_KINDS` treats every `Tuple`/`List`/
+    `Dict`/`Set` element as safe-to-downgrade data, but a collection
+    literal's ASSIGNED NAME can be a genuinely LIVE consumer elsewhere in
+    the same file — `FILES = ["victim.txt"]` followed anywhere by `for f
+    in FILES: open(f)`. True iff the literal containing `basename` at this
+    exact line is bound (by `Assign`/`AnnAssign`) to a name later used,
+    anywhere in the file, as (a) the iterable of a `for` loop, (b) an
+    argument to `open(`/`Path(`/`.read_text(`/`.read_bytes(`/`.open(`, or
+    (c) unpacked/indexed into a further name that is itself later used as
+    (a) or (b) — one level of indirection, matching the concrete shapes
+    this filter has actually needed to tell apart (`x = FILES[0]`, `a, b =
+    FILES`), not unbounded dataflow tracing.
+    """
+    literals: list[ast.AST] = []
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            if (
+                isinstance(child, ast.Constant)
+                and isinstance(child.value, str)
+                and child.value == basename
+                and getattr(child, "lineno", None) == lineno
+                and type(node).__name__ in DATA_CONTAINER_PARENT_KINDS
+            ):
+                literals.append(node)
+    if not literals:
+        return False
+
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        value = getattr(node, "value", None)
+        if value is None or not any(value is lit for lit in literals):
+            continue
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                names.update(_assign_target_names(target))
+        elif isinstance(node, ast.AnnAssign):
+            names.update(_assign_target_names(node.target))
+    if not names:
+        return False
+
+    def _consumed_directly(candidates: set[str]) -> bool:
+        for node in ast.walk(tree):
+            if isinstance(node, ast.For) and _root_name(node.iter) in candidates:
+                return True
+            if isinstance(node, ast.Call):
+                callee = node.func
+                is_open_call = (
+                    isinstance(callee, ast.Name) and callee.id in _FILE_OPEN_CALLEES
+                ) or (
+                    isinstance(callee, ast.Attribute) and callee.attr in _FILE_OPEN_METHODS
+                )
+                if is_open_call and any(_root_name(a) in candidates for a in node.args):
+                    return True
+        return False
+
+    if _consumed_directly(names):
+        return True
+
+    # (c) one level of unpack/index indirection: `x = FILES[0]` / `a, b = FILES`.
+    indirect: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and _root_name(node.value) in names:
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                indirect.update(_assign_target_names(target))
+    return bool(indirect) and _consumed_directly(indirect)
+
+
 def _python_stem_is_real_import_at_line(tree: ast.AST, stem: str, lineno: int) -> bool:
     """Is `stem` used as an actual `import stem` / `from stem import ...` /
     `from pkg.stem import ...` Python import AT THIS EXACT LINE?
@@ -902,6 +995,9 @@ def find_consumers(
                                 if (
                                     exact_parents <= DATA_CONTAINER_PARENT_KINDS
                                     and not _line_has_directory_adjacent(content, basename)
+                                    and not _collection_literal_is_later_consumed(
+                                        tree, basename, lineno
+                                    )
                                 ):
                                     verdict = "bare-basename"
                             elif not _line_has_directory_adjacent(content, basename):

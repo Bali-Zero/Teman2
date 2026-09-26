@@ -1,0 +1,18 @@
+tp1_call: credential source: env
+VERDICT: BLOCK
+
+**Findings:**
+
+1. **Unsupported payload-sha claim (Claim 2).** The README asserts `rule_pack.sequence = 23` "on all 252/252 walks (payload sha `e5f791b5...72204`)." The sequence=23 part is fully verified (all 252 entries carry `"sequence": 23`). However, no field in either attached JSON excerpt contains a payload hash, a rule-pack identifier, or any string resembling `e5f791b5...72204`. This is a factual assertion about the data that is **not supported by the attached excerpts**. It cannot be confirmed or refuted from the provided material.
+
+2. **"New reason codes ABSENT from every walk in B4-2b" is a load-bearing, unverifiable assumption (Claim 6).** The b42b-excerpt carries only `walk_id` and `engine_state`; it has no `review_reasons` or `no_path_reasons` fields. The README's assertion that <REDACTED>, <REDACTED>, <REDACTED>, and <REDACTED> are *absent* from every B4-2b walk is **not demonstrable from the attached data**. The counts *within* A9 are correct (7 / 4 / 2 / 1 respectively), but the "absent from B4-2b" half of the claim rests entirely on an assumption the excerpts cannot substantiate. This assumption is load-bearing: if B4-2b's full report carried any of these codes (e.g., on its 43 HUMAN_REVIEW_REQUIRED or 31 NO_SUPPORTED_PATH walks), the "new" designation would be false.
+
+3. **All other numerical and set-logic claims verified clean.** Specifically:
+   - Census: 185 SUPPORTED_CANDIDATES + 8 NEEDS_INPUT + 31 NO_SUPPORTED_PATH + 28 HUMAN_REVIEW_REQUIRED = 252. ✓
+   - `http_status` = 200 on all 252 entries. ✓
+   - Walk-id sets are identical (252 shared, 0 added, 0 dropped). ✓
+   - Exactly 15 state transitions, all from HUMAN_REVIEW_REQUIRED: 13 → SUPPORTED_CANDIDATES, 2 → NEEDS_INPUT. The 15 walk_ids and their target states match the README table exactly. The remaining 237 walks are state-invariant. ✓
+   - Review-reason breakdown across the 28 HUMAN_REVIEW_REQUIRED walks: <REDACTED> ×25, <REDACTED> ×2, <REDACTED> ×1, sum = 28, no other code present. ✓
+   - A9-internal counts for the four "new" codes: 7 + 4 + 2 + 1 confirmed. ✓
+
+4. **No additional arithmetic, set-logic, or transcription errors found** in the moved-walk table, the census row, or the per-walk state assignments.

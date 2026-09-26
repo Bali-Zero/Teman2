@@ -474,7 +474,9 @@ class TestPrimeNexusService:
     @pytest.mark.asyncio
     async def test_close_noop_if_no_client(self) -> None:
         svc = PrimeNexusService()
-        await svc.close()  # should not raise
+        assert svc._http_client is None
+        await svc.close()
+        assert svc._http_client is None
 
     # ── Business extraction ─────────────────────────────────────────
     def test_extract_businesses_filters_non_relevant(self) -> None:

@@ -485,6 +485,11 @@ class TestProcessOneJob:
 
         await _process_one_job(pool, mock_app_state)
 
+        # Empty queue: only the claim-side acquire() happens, and there is no
+        # job to update — no second acquire, no execute call at all.
+        pool.acquire.assert_called_once()
+        conn.execute.assert_not_called()
+
     @pytest.mark.asyncio
     async def test_pending_job_no_source_url_fails(self, mock_db_pool, mock_app_state):
         pool, conn = mock_db_pool
@@ -541,7 +546,11 @@ class TestRunWorker:
             )
 
             await run_worker(pool, mock_app_state)
-            # Should return gracefully
+
+            # Cancellation must stop the loop immediately: the worker calls
+            # _process_one_job exactly once and returns, it does not keep
+            # polling after a CancelledError.
+            mock_process.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_worker_handles_exception(self, mock_db_pool, mock_app_state):

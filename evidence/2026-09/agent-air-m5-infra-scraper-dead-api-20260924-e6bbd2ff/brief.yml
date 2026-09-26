@@ -1,0 +1,113 @@
+task: >-
+  Delete `apps/bali-intel-scraper/api/` (`main.py`, `requirements.txt`): a dead, un-COPYed
+  Docker entrypoint — the Dockerfile never copies `api/`, the app actually runs as
+  `backend.app.main` (Pro nightly cron `com.balizero.intel.nightly`, `.venv`), and
+  `api/main.py` imports a module (`orchestrator`) that exists nowhere in the repo. Also
+  delete `apps/bali-intel-scraper/tests/test_api.py` (every test in it targets `api.main`,
+  the whole file is `pytest.importorskip("orchestrator", ...)`-skipped and self-documents
+  as "Skipped until api/main.py is updated"). A re-verification grep against origin/main
+  found one REAL consumer, escalated to the conductor mid-task and ruled on (option a,
+  widen scope): `apps/backend-rag/backend/tests/unit/routers/test_intel_path_injection_guards.py`
+  carried a class, `TestScraperApiArticleIdRoutes`, that read `api/main.py` from disk and
+  AST-walked its 5 routes to pin the path-injection guards CodeQL alert #370 (on
+  `api/main.py:680`) is about. That class (and its `scraper_api_source` fixture, and the
+  `ast`/`re` imports it alone used) is removed in the same diff — deleting the file removes
+  the attack surface the pin protected, so the pin has nothing left to protect. The two
+  OTHER sinks this test file guards (`intel.upload_cover_image`, `intel_scraper._publish_staging_item`)
+  are untouched, still pinned by `TestCoverUploadRoute`/`TestPublishStagingItem` in the
+  same file. `docs/operations/LOCAL_TESTING_GUIDE.md` is corrected in the same diff — it
+  told a reader to `uvicorn api.main:app`; that instruction is replaced with how the app
+  actually runs, minimal edit, rest of the doc's pre-existing staleness left alone
+  (out of scope).
+lane: infra/scraper-dead-api-20260924
+machine: air-m5
+date: 2026-09-24
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`. `git diff --no-renames --numstat` against the
+  merge-base with origin/main (e04b4aa1377856f2acbd92acc3347cb876448599) measures churn
+  1133 across 5 files: apps/bali-intel-scraper/api/main.py (0+910), api/requirements.txt
+  (0+18), tests/test_api.py (0+89), apps/backend-rag/backend/tests/unit/routers/
+  test_intel_path_injection_guards.py (9+98), docs/operations/LOCAL_TESTING_GUIDE.md
+  (7+2) — above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). The
+  PATH term alone is 1: none of the 5 files match HOTZONE_PATTERNS in
+  scripts/evidence_pack_lint.py (the backend-rag test file is a test, not a hot-zone
+  source path). Confirmed locally: `python3 scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source --numstat-file <numstat> --changed-files-file <names>` printed
+  `2` then `size`.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    No real consumer of `apps/bali-intel-scraper/api/` remains outside this diff. A
+    re-verification grep against origin/main after the escalation found exactly one real
+    consumer (the AST-pin test class) and it is removed in this same diff; every other hit
+    is ledger prose, archived docs, or frozen historical evidence/CodeQL-snapshot artifacts
+    that reference the old path without executing it.
+    probe: >-
+      git grep -nE "bali-intel-scraper/api|from api\.|import api\b|api\.main|api/main"
+      origin/main -- . ':!apps/bali-intel-scraper/api/**'
+  A2: >-
+    `apps/bali-intel-scraper`'s own pytest suite is unchanged before/after except the
+    skip count dropping by exactly 1 (the deleted, already-skipped test_api.py module);
+    the 4 pre-existing cell_core collection errors are untouched.
+    probe: >-
+      cd apps/bali-intel-scraper && <throwaway venv>/bin/python -m pytest -q
+      --continue-on-collection-errors
+  A3: >-
+    `apps/backend-rag/backend/tests/unit/routers/test_intel_path_injection_guards.py`
+    still collects and passes after `TestScraperApiArticleIdRoutes` is removed; test
+    count drops from 18 to 11 (exactly the 7 removed: 5 parametrized route tests + 2
+    regex/length-bound tests), zero failures, zero new errors. The two sinks the
+    docstring claims stay pinned (`TestCoverUploadRoute` line ~149,
+    `TestPublishStagingItem` line ~230) are untouched by this diff and their tests are
+    part of the 11 that still pass.
+    probe: >-
+      cd apps/backend-rag && ./.venv/bin/python -m pytest
+      backend/tests/unit/routers/test_intel_path_injection_guards.py
+  A4: >-
+    docs/operations/LOCAL_TESTING_GUIDE.md no longer instructs a reader to run the
+    deleted `api.main:app`; Terminal 2 now runs `backend.app.main` with a note on how
+    the app actually runs in prod.
+    probe: >-
+      grep -n "api.main" docs/operations/LOCAL_TESTING_GUIDE.md
+      # expect: no match (only "backend.app.main" remains)
+
+out_of_scope: >-
+  Rewriting the rest of docs/operations/LOCAL_TESTING_GUIDE.md, which is stale well
+  beyond the one section touched here (hardcoded `/Users/antonellosiano/Projects/nuzantara`
+  path, references to a `zantara-media` local dev flow, `scripts/start_local_services.sh`
+  tmux windows not re-verified). Closing CodeQL alert #370 itself in the GitHub UI —
+  this diff removes the sink the alert is about, but dismissing/closing the alert record
+  is a separate GitHub-side action, not part of this PR. `.claude/skills/modus/PENDING-ARMS.md`
+  — the conductor writes the mission row at close, not this diff.
+
+assumptions:
+  - text: >-
+      `apps/bali-intel-scraper/tests/test_api.py`'s entire content targets `api.main`
+      (import, `TestClient(app)` fixture, one `@patch("api.main.run_stage1_scraping")`)
+      — deleting it alongside `api/` does not orphan any test of a still-live surface.
+    status: verified
+    probe: cat apps/bali-intel-scraper/tests/test_api.py (read in full before deletion)
+  - text: >-
+      No sibling agent worktree touches the same files. `git worktree list` shows
+      `.worktrees/backend-rag-scraper-deps-prune-20260924` also working under
+      `apps/bali-intel-scraper/`, but its diff is confined to
+      `apps/bali-intel-scraper/requirements.txt` (the scraper's OWN deps file) — a
+      different file from `api/requirements.txt`, which this diff deletes. No overlap.
+    status: verified
+    probe: >-
+      git worktree list; cd .worktrees/backend-rag-scraper-deps-prune-20260924 && git diff
+      --stat "$(git merge-base HEAD origin/main)" -- .
+  - text: >-
+      This PR touches apps/backend-rag/** (a test-only file), which per this repo's
+      merge-triggers-deploy discovery means its merge will trigger a Fly deploy of
+      nuzantara-rag even though nothing in the deployed app changes (test file only).
+    status: verified
+    probe: >-
+      apps/backend-rag/CLAUDE.md §11 Deploy Lifecycle; memory
+      discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01

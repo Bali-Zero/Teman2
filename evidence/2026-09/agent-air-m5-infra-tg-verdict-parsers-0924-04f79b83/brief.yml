@@ -1,0 +1,66 @@
+gear: 3
+task_id: tg-verdict-parsers-0924
+lane: infra
+host: air-m5 (M5)
+branch: agent/air-m5/infra/tg-verdict-parsers-0924
+gate_class: none
+l_level: L3
+objective: >-
+  tg_notify.py can print TWO stderr lines starting with `tg_notify:` on an
+  undeliverable P0 — a human diagnostic ("P0 unsendable...") followed by the
+  machine verdict ("p0_unsent_spooled"). The canonical parser
+  scripts/tg_gateway_verdict.py::extract_gateway_verdict() already reads the
+  LAST exact canonical line, but nine live callers parsed with a private
+  `_TG_STATUS_RE`/`_GATEWAY_VERDICT_RE` regex + `.search()`, which returns the
+  FIRST match instead — the diagnostic's leading word "P0". Live effect: Pro's
+  pajak-monitor.log has logged `telegram_gateway_rejected rc=0 status=P0` on
+  every run since 2026-09-10 (agent_job.py), silently skipping the designed
+  `telegram_unsent_spooled` fail-visible warning. This PR migrates all nine
+  callers to the shared extractor, deletes the now-dead private regex
+  constants, and tightens the class guard
+  (scripts/tests/test_gateway_callers_read_the_verdict.py) so a caller using
+  its own `<name>_RE.search()` instead of `extract_gateway_verdict()` fails it
+  — closing the laundering gap that let all nine pass unnoticed until today.
+  Gear 3 is the deterministic floor: scripts/dlq_autopilot.py is a declared
+  hot-zone path (HOTZONE_PATTERNS in scripts/evidence_pack_lint.py); the
+  change to it here is the same one-line parser swap as its eight siblings,
+  not a behavior change to the autopilot's own decision logic.
+scope:
+  - >-
+    scripts/cron-agent-python/agent_job.py, scripts/cron-agent-python/curiosity_batch.py,
+    scripts/dlq_autopilot.py, scripts/job_health.py,
+    scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py,
+    apps/bali-intel-scraper/scripts/post_publish_poller.py,
+    apps/cell/scripts/skills_bridge_consumer.py — the seven callers named in
+    the mandate. Each swaps its private `.search()` regex for
+    `scripts.tg_gateway_verdict.extract_gateway_verdict()`, resolved
+    repo-relative first then the HOME-fork copy per file's own existing
+    gateway-path convention, and deletes the dead regex constant.
+  - >-
+    scripts/suite_growth_probe.py, scripts/web_lead_funnel_report.py — two
+    more instances of the byte-identical anti-pattern, discovered because the
+    tightened class guard (see below) also catches them; migrated the same
+    way rather than left to redden CI on a guard this same PR ships.
+  - >-
+    scripts/tests/test_gateway_callers_read_the_verdict.py — tightened to
+    disqualify (mark blind) any caller whose function calls a
+    `<name>_RE.search()` on its own compiled regex unless it ALSO calls
+    `extract_gateway_verdict()`, closing the gap where the guard's old
+    READS_VERDICT/SEMANTIC_VERDICT_USE regexes treated the mere presence of
+    `_GATEWAY_VERDICT_RE`/`tg_notify:` text as sufficient evidence of correct
+    reading. Selftest fixtures (guilt+innocence) updated in place; guard now
+    reports 0 blind callers (was silently 0 blind even pre-fix, i.e. it was
+    never actually exercising this class of bug before this PR).
+  - >-
+    Six test files touched (new guilt+innocence cases for the two-line
+    P0-unsendable stderr, run against origin/main's version of each caller to
+    prove the old parse actually mis-reads "P0", then restored and re-run
+    green): scripts/tests/test_agent_job_telegram_gateway.py,
+    scripts/tests/test_suite_growth_probe.py,
+    apps/bali-intel-scraper/tests/unit/test_post_publish_poller.py,
+    apps/cell/tests/scripts/test_skills_bridge_consumer.py,
+    apps/backend-rag/backend/tests/scripts/test_web_lead_funnel_report.py.
+    dlq_autopilot.py, job_health.py and intel-lake-outbox-drain.py have no
+    dedicated test module on origin/main and none was added (out of scope
+    for a parser-swap PR); their fix was verified by direct extractor calls
+    against the two-line fixture instead.

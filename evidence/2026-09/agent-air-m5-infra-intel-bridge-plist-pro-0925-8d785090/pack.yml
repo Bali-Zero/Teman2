@@ -1,0 +1,135 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+seat_fallback_reason: >-
+  tp1-glm-5.2 (reserve) counted toward quorum in place of tp1-qwen3.8-max
+  (titolare): the builder's task mandate explicitly named "Kimi (kimi -p),
+  GLM via TP1, or Gemini (agy)" as the three-seat pool to draw the council
+  from — a scoping choice made by the mandate itself, not an observed
+  outage. arsenal_probe.py run this session (--seats
+  tp1-deepseek-v4-pro,tp1-deepseek-v4-flash-0731,tp1-glm-5.2,tp1-qwen3.8-max,tp1-qwen3.7-max,tp1-qwen3.7-plus,tp1-qwen3.6-flash)
+  showed tp1-qwen3.8-max itself LIVE (3254ms) at the same moment — it was
+  not engaged because it fell outside the named pool, not because it was
+  down. codex-gpt-5.6-sol (titolare) was never in the named pool either and
+  was not engaged. kimi-code/k3 (titolare) WAS engaged directly and
+  answered ok:true, so quorum here rests on one titolare (kimi-code/k3)
+  plus one reserve (tp1-glm-5.2), with a third non-qualifying seat
+  (agy-gemini-3.8-flash) recorded for completeness only.
+
+lanes:
+  - lane: intel-bridge-plist-pro-0925 — plist alignment
+    role: build
+    seat: claude-sonnet-5 (M5 worktree agent)
+    note: >-
+      Edited infra/launchagents/com.matagaruda.intel-bridge.daily.plist to
+      drop the two Mini-only EnvironmentVariables (GARUDA_REDIS_HOST,
+      MATAGARUDA_FETCH_CONTENT), verified against Pro's live plist scp'd
+      read-only, and updated one job-ownership.yaml notes sentence.
+  - lane: adversarial review
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      OK, 0 blocking findings, 2 non-blocking nits. Reviewed with agentic
+      tool access in the worktree (independently re-ran the plutil xml1
+      diff and lint, traced Redis-auth provenance, checked PENDING-ARMS
+      live evidence) — not text-only.
+  - lane: adversarial review
+    role: review
+    seat: tp1-glm-5.2
+    note: OK, 0 findings, 1 non-blocking advisory carried into brief.yml risks.
+  - lane: adversarial review
+    role: review
+    seat: agy-gemini-3.8-flash
+    note: >-
+      OK, 0 findings. Self-identified model differs from R9's registered
+      "agy-gemini-3.1-pro" name; recorded honestly, does not count toward
+      R9 quorum (quorum already met by kimi-code/k3 + tp1-glm-5.2).
+
+receipts:
+  - claim: >-
+      Pro's live installed plist (scp'd read-only from Pro's
+      ~/Library/LaunchAgents/) carries neither GARUDA_REDIS_HOST nor
+      MATAGARUDA_FETCH_CONTENT in its EnvironmentVariables block, confirming
+      the drift the owner described.
+    cmd: >-
+      scp pro:Library/LaunchAgents/com.matagaruda.intel-bridge.daily.plist
+      <scratch>/pro-live.plist && cat <scratch>/pro-live.plist
+    exit: 0
+    ts: "2026-09-24T18:06:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      After editing the repo plist to remove the same two keys, the
+      plutil-xml1-normalized diff against Pro's live plist is EMPTY — every
+      other key (Label, ProgramArguments, StartCalendarInterval, RunAtLoad,
+      StandardOutPath/ErrorPath, KeepAlive, and the surviving
+      EnvironmentVariables HOME+PATH) already matched.
+    cmd: >-
+      diff <(plutil -convert xml1 -o -
+      infra/launchagents/com.matagaruda.intel-bridge.daily.plist)
+      <(plutil -convert xml1 -o - <scratch>/pro-live.plist)
+    exit: 0
+    ts: "2026-09-24T18:06:42Z"
+    seat: claude-sonnet-5
+  - claim: The edited plist passes plutil's own structural lint.
+    cmd: plutil -lint infra/launchagents/com.matagaruda.intel-bridge.daily.plist
+    exit: 0
+    ts: "2026-09-24T18:06:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      scripts/lint_plist_keepalive.py (the executable antidote for cicatrix
+      superscar #7) reports 0 findings for infra/launchagents, confirming
+      the edited plist's KeepAlive=false + StartCalendarInterval shape is
+      not a restart-storm risk. The 2 pre-existing WARNs it reports belong
+      to two other, unrelated plists (wa-codex-broker, wr2.pg-proxy).
+    cmd: python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    exit: 0
+    ts: "2026-09-24T18:06:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      launchctl confirms current ownership split: Pro has the job loaded
+      with last-exit-status 0; Mini has zero matches (booted out per #7262).
+    cmd: >-
+      ssh pro "launchctl list | grep -i matagaruda.intel-bridge" ; ssh mini
+      "launchctl list | grep -i matagaruda.intel-bridge"
+    exit: "0 (Pro, 1 match); 1 (Mini, 0 matches — grep found nothing)"
+    ts: "2026-09-24T18:06:43Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      No other file in the repo installs this plist's EnvironmentVariables
+      with either removed key — the only hits for the two key names outside
+      this plist and this PR's own diff are unrelated code
+      (intel_scraper_bridge.py's opt-in flag definition + its tests),
+      unrelated plists/scripts for OTHER matagaruda jobs
+      (pipeline-health.hourly, install_pipeline_health_cron.sh,
+      base_worker.py's generic Redis-host override), and historical
+      docs/ledger prose (PENDING-ARMS.md, cicatrix-scars-archive.md).
+    cmd: >-
+      git grep -n "MATAGARUDA_FETCH_CONTENT\|GARUDA_REDIS_HOST" -- .
+    exit: 0
+    ts: "2026-09-24T18:06:43Z"
+    seat: claude-sonnet-5
+  - claim: config/job-ownership.yaml remains valid YAML after the notes edit.
+    cmd: python3 -c "import yaml; yaml.safe_load(open('config/job-ownership.yaml'))"
+    exit: 0
+    ts: "2026-09-24T18:07:05Z"
+    seat: claude-sonnet-5
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      "matches Pro's live plist byte-for-byte (plutil xml1 diff empty)" in
+      the job-ownership.yaml note slightly overclaims: plutil -convert xml1
+      re-serializes the file, so an empty diff proves key/value/order
+      equality, not literal raw-byte equality of the two source files
+      (e.g. it would normalize incidental whitespace differences, though
+      none exist here since both files already share the same 4-space
+      style). The parenthetical discloses the actual check, so it is not
+      misleading, just slightly stronger phrasing than the check itself
+      proves.
+    status: PLAUSIBLE
+  - seat: kimi-code/k3
+    objection: >-
+      If this job is ever re-homed off Pro in the future, the plist (plus
+      _bootstrap_env.py's 127.0.0.1 default when no per-host secrets file
+      is present) would silently target localhost Redis with no error.
+    status: RETRACTED

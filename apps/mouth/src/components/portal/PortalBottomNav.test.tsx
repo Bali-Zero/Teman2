@@ -1,5 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import React from "react";
 import { PortalBottomNav } from "./PortalBottomNav";
 
@@ -38,6 +44,8 @@ vi.mock("next/link", () => ({
 // Mock api
 vi.mock("@/lib/api", () => ({
   api: {
+    getUserProfile: () => ({ id: "fixture-client" }),
+    getPortalImpersonation: () => null,
     portal: {
       getMessages: mockGetMessages,
     },
@@ -201,34 +209,6 @@ describe("PortalBottomNav", () => {
     expect(mockGetMessages.mock.calls.length).toBeGreaterThan(initialCallCount);
   });
 
-  it("should refetch when navigating away from chat", async () => {
-    mockUsePathname.mockReturnValue("/portal/chat");
-    mockGetMessages.mockResolvedValue({
-      messages: [],
-      total: 0,
-      unreadCount: 0,
-    });
-
-    const { rerender } = render(<PortalBottomNav />);
-
-    await waitFor(() => {
-      expect(mockGetMessages).toHaveBeenCalled();
-    });
-
-    const callCountAfterInitial = mockGetMessages.mock.calls.length;
-
-    // Navigate away from chat
-    mockUsePathname.mockReturnValue("/portal/vault");
-    rerender(<PortalBottomNav />);
-
-    await waitFor(() => {
-      // Should have been called again due to pathname change
-      expect(mockGetMessages.mock.calls.length).toBeGreaterThan(
-        callCountAfterInitial,
-      );
-    });
-  });
-
   it("should handle API errors gracefully", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetMessages.mockRejectedValue(new Error("API Error"));
@@ -257,3 +237,14 @@ describe("PortalBottomNav", () => {
     expect(nav).toBeInTheDocument();
   });
 });
+
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}

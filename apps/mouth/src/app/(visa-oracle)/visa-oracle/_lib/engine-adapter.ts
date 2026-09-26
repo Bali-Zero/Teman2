@@ -138,6 +138,20 @@ export function isSecondHomeStudioOnly(outcome: OutcomeViewModel): boolean {
   );
 }
 
+// A3'-M (Slice A3'-M, M1): dead-end codes the mouth may show WITHOUT a
+// decisive source ref, because no rule in the signed pack — today or ever
+// — could name one for this answer: the pack does not decide it at all, so
+// there is no rule reference to demand. Narrow by design:
+// `requireDecisiveRefs` stays the default gate on every other
+// NO_SUPPORTED_PATH code, and this exemption fires only when BOTH the code
+// is listed here AND `source_refs` is actually empty — a listed code that
+// arrives with a non-empty, non-decisive ref still throws
+// `RESPONSE_INVARIANT`, because that shape is not the sourceless one this
+// exemption exists for.
+export const SOURCELESS_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
+]);
+
 export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   A1_BVK_ELIGIBLE: text(
     "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
@@ -574,6 +588,123 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You told us the activity is paid and that your employer is not an Indonesian entity. An Indonesian work permit is issued to a sponsoring entity in Indonesia, so the work routes are closed on that answer. If the work is done from Indonesia for that same employer abroad and none of the pay comes from an Indonesian source, the open door is the Second Home Visa — Remote Worker (E33G); if you are coming for meetings rather than to work, it is the Business Visit Visa (C2).",
     "Anda menyampaikan bahwa aktivitas tersebut dibayar dan pemberi kerja Anda bukan badan usaha Indonesia. Izin kerja Indonesia diterbitkan kepada badan penjamin di Indonesia, sehingga jalur kerja tertutup atas jawaban tersebut. Jika pekerjaan dilakukan dari Indonesia untuk pemberi kerja yang sama di luar negeri dan tidak ada bayaran yang berasal dari sumber di Indonesia, pintu yang terbuka adalah Visa Rumah Kedua Pekerja Jarak Jauh (E33G); jika Anda datang untuk pertemuan dan bukan untuk bekerja, pintunya adalah Visa Kunjungan Bisnis (C2).",
   ),
+  // A3'-M (M2): the ONE sourceless dead end SOURCELESS_NO_PATH_CODES lists.
+  // Copy byte-equal to kit/a3p-spec-strings-20260922.json, inserted by
+  // script (never retyped) — the quoted CTA label is OracleShell.tsx's
+  // own `SESSION_COPY.{en,id}.consultant` string, proved in
+  // engine-adapter.test.ts by reading that file's source text.
+  DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH: text(
+    "One of your answers, listed below, is one our verified rules cannot assess, so this tool cannot name a visa path for it. A consultant can assess it with you: use “Talk to a consultant” to arrange a consultation.",
+    "Salah satu jawaban Anda, yang tercantum di bawah, tidak dapat dinilai oleh aturan terverifikasi kami, sehingga alat ini tidak dapat menyebutkan jalur visa untuk jawaban tersebut. Konsultan kami dapat menilainya bersama Anda: gunakan tombol “Bicara dengan konsultan” untuk mengatur konsultasi.",
+  ),
+  // Slice A8-2 (2026-09-24): copy for the 10 EXCLUDE codes seq-23 adds beyond
+  // signed seq-22, owed ahead of the A9 signing/activation so a real applicant
+  // never meets the raw machine code.
+  CALLING_VISA_NATIONALITY_NOT_ASSESSED: text(
+    "One of your nationalities is on Indonesia’s Calling Visa list: a visa on that passport goes through the Calling Visa procedure, which the Oracle doesn’t assess. If you also hold another passport, the one you travel on can change the answer — a consultation is the route.",
+    "Salah satu kewarganegaraan Anda termasuk dalam daftar negara Calling Visa: visa dengan paspor tersebut diproses melalui prosedur Calling Visa, yang tidak dinilai oleh Oracle. Jika Anda juga memiliki paspor lain, paspor yang Anda gunakan untuk bepergian dapat mengubah jawabannya — konsultasi adalah jalurnya.",
+  ),
+  VOA_DUAL_NATIONALITY_NOT_ASSESSED: text(
+    "You hold passports on both sides of the Visa on Arrival list. Whether Visa on Arrival applies depends on the passport you travel on, which the Oracle doesn’t assess — a consultation is the route.",
+    "Anda memegang paspor dari negara yang termasuk dan yang tidak termasuk dalam daftar Visa Saat Kedatangan. Berlaku tidaknya Visa Saat Kedatangan bergantung pada paspor yang Anda gunakan untuk bepergian, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  ACTIVE_OVERSTAY_SETTLE_FIRST: text(
+    "You told us you are overstaying now. The Oracle can’t assess a new stay until the overstay is settled with Immigration — a consultation is the route.",
+    "Anda menyatakan sedang overstay. Oracle tidak dapat menilai izin tinggal baru sebelum overstay diselesaikan dengan Imigrasi — konsultasi adalah jalurnya.",
+  ),
+  MINOR_SPONSOR_NOT_CONFIRMED: text(
+    "You told us the family sponsor isn’t confirmed. For a minor, the Oracle can’t assess any route without a confirmed sponsor — a consultation is the route.",
+    "Anda menyatakan bahwa sponsor keluarga belum dikonfirmasi. Untuk anak di bawah umur, Oracle tidak dapat menilai jalur apa pun tanpa sponsor yang sudah dikonfirmasi — konsultasi adalah jalurnya.",
+  ),
+  BRIDGING_ADVERSE_HISTORY_NOT_ASSESSED: text(
+    "The Oracle doesn’t assess the Bridging Visa (Transitional Stay Permit) after a disclosed overstay, deportation, entry ban or immigration investigation — a consultation is the route.",
+    "Oracle tidak menilai Izin Tinggal Peralihan setelah adanya overstay, deportasi, penangkalan, atau pemeriksaan keimigrasian yang Anda ungkapkan — konsultasi adalah jalurnya.",
+  ),
+  E33_EMPLOYMENT_NOT_COVERED: text(
+    "The Second Home visa doesn’t by itself allow employment; working while holding it needs a separate dual-activity permission (rangkap kegiatan), which the Oracle doesn’t assess — a consultation is the route.",
+    "Visa Rumah Kedua tidak dengan sendirinya mengizinkan bekerja; bekerja selama memegangnya memerlukan izin rangkap kegiatan tersendiri, yang tidak dinilai oleh Oracle — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_MARKET_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) covers work for a company based outside Indonesia, and its permit bars selling services in Indonesia; the Oracle can’t confirm it for work serving Indonesian clients — a consultation is the route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mencakup pekerjaan untuk perusahaan yang berkedudukan di luar Indonesia, dan izinnya melarang penjualan jasa di Indonesia; Oracle tidak dapat mengonfirmasinya untuk pekerjaan yang melayani klien Indonesia — konsultasi adalah jalurnya.",
+  ),
+  E33G_LOCAL_COMPANY_NOT_ALLOWED: text(
+    "The Remote Worker visa (E33G) doesn’t cover owning or running an Indonesian company; that is an investor route.",
+    "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) tidak mencakup kepemilikan atau pengelolaan perusahaan Indonesia; itu jalur investor.",
+  ),
+  STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED: text(
+    "A study visa needs a confirmed admission and a confirmed sponsor; you haven’t confirmed both yet.",
+    "Visa pelajar memerlukan penerimaan dan sponsor yang sudah dikonfirmasi; Anda belum mengonfirmasi keduanya.",
+  ),
+  RETIREMENT_INCOME_BELOW_THRESHOLD: text(
+    "The retirement visa (E33E/E33F) needs documented passive income at the required minimum; the figure you gave is below it.",
+    "Visa pensiun (E33E/E33F) memerlukan penghasilan pasif terdokumentasi sesuai batas minimum; angka yang Anda berikan di bawahnya.",
+  ),
+
+  // Slice A10 — 14 EXCLUDE codes reachable in signed seq-23 that predate
+  // seq-23 (already in seq-22) and so were structurally invisible to the
+  // Slice A8-2 delta test above, which only diffs against seq-22. Product
+  // names are byte-equal to the mouth's own display of each code: the
+  // E28A/E30A/E30B/E31C/E31E/E33B/E33C names match `i18n.ts`'s
+  // `q.stay_permit_code.opt.*` catalog entries; Bridging and B1 have no
+  // catalog entry, so their names reuse the wording of the HUMAN_REVIEW copy
+  // these codes carried before Slice A9.6 retired it.
+  BRIDGING_ONSHORE_ONLY: text(
+    "The Bridging Visa — Transitional Stay Permit can only be issued to applicants already in Indonesia, and you are not currently in the country.",
+    "Izin Tinggal Peralihan hanya dapat diterbitkan bagi pemohon yang sudah berada di Indonesia, sedangkan Anda saat ini tidak berada di dalam negeri.",
+  ),
+  BRIDGING_FROM_VISIT_ITK_PROHIBITED: text(
+    "The Bridging Visa — Transitional Stay Permit cannot be issued when your current immigration status is a visit-based stay or visa status, and yours is one of those.",
+    "Izin Tinggal Peralihan tidak dapat diterbitkan apabila status keimigrasian Anda saat ini berupa izin tinggal atau visa berbasis kunjungan, dan status Anda termasuk salah satunya.",
+  ),
+  BRIDGING_TO_BRIDGING_PROHIBITED: text(
+    "You already hold an active Bridging Visa — Transitional Stay Permit, and this route cannot issue a second bridging permit on top of one already active.",
+    "Anda sudah memiliki Izin Tinggal Peralihan yang masih aktif, dan jalur ini tidak dapat menerbitkan izin peralihan kedua selama izin tersebut masih berlaku.",
+  ),
+  VOA_NATIONALITY_ONLY: text(
+    "Visa on Arrival — Tourism (B1) is issued only to nationals of listed VOA-eligible countries, and your nationality is not on that list.",
+    "Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang termasuk daftar negara subjek VOA, dan kewarganegaraan Anda tidak termasuk daftar tersebut.",
+  ),
+  E28A_PAID_CAPITAL_BELOW_MIN: text(
+    "The Investor Visa (E28A) requires paid-up capital of at least IDR 2,500,000,000, and the figure you gave is below it.",
+    "Visa Investor (E28A) memerlukan modal disetor minimal IDR 2.500.000.000, dan angka yang Anda berikan berada di bawahnya.",
+  ),
+  E28A_TOTAL_INVESTMENT_BELOW_MIN: text(
+    "The Investor Visa (E28A) requires total investment capital of at least IDR 10,000,000,000, and the figure you gave is below it.",
+    "Visa Investor (E28A) memerlukan total modal investasi minimal IDR 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",
+  ),
+  E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE: text(
+    "The Second Home Golden Visa — Special-Expertise Collaboration (E33B) is sponsored only by an Indonesian government body or held with no sponsor, and your sponsor type is neither.",
+    "Visa Rumah Kedua Kolaborasi Keahlian Khusus (E33B) hanya dapat diajukan dengan penjamin instansi pemerintah Indonesia atau tanpa penjamin, dan jenis penjamin Anda bukan keduanya.",
+  ),
+  E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE: text(
+    "The Second Home Golden Visa — World-Figure Government Invitation (E33C) is sponsored only by an Indonesian government body or held with no sponsor, and your sponsor type is neither.",
+    "Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C) hanya dapat diajukan dengan penjamin instansi pemerintah Indonesia atau tanpa penjamin, dan jenis penjamin Anda bukan keduanya.",
+  ),
+  LEVEL_BAND_DASMEN: text(
+    "The Primary/Secondary Education Visa (E30A) covers primary and secondary study levels only, and the level you declared is not one of them.",
+    "Visa Pendidikan Dasar dan Menengah (E30A) hanya mencakup jenjang pendidikan dasar dan menengah, dan jenjang yang Anda nyatakan bukan salah satu dari keduanya.",
+  ),
+  LEVEL_BAND_DIKTI: text(
+    "The Higher Education Visa (E30B) covers vocational, undergraduate, and postgraduate study levels only, and the level you declared is not one of them.",
+    "Visa Pendidikan Tinggi (E30B) hanya mencakup jenjang vokasi, sarjana, dan pascasarjana, sedangkan jenjang yang Anda nyatakan bukan salah satunya.",
+  ),
+  OVERSTAY_EXCEEDS_60_DAYS: text(
+    "Your declared overstay is more than 60 days, and no route in this assessment is offered above that limit.",
+    "Masa overstay yang Anda nyatakan lebih dari 60 hari, dan tidak ada jalur dalam penilaian ini yang ditawarkan di atas batas tersebut.",
+  ),
+  REQ_PARENT_SPONSOR_INDONESIAN: text(
+    "The Family Visa — Child of Legal Mixed Marriage (E31C) requires the parent-sponsor to hold Indonesian nationality, and yours does not.",
+    "Visa Keluarga Anak Hasil Perkawinan Sah WNA-WNI (E31C) mensyaratkan orang tua penjamin berkewarganegaraan Indonesia, dan penjamin Anda bukan WNI.",
+  ),
+  REQ_UNDER_18: text(
+    "The Family Visa — Child of ITAS/ITAP Holder (E31E) is only for applicants under 18, and your declared age is 18 or older.",
+    "Visa Keluarga Anak Pemegang ITAS/ITAP (E31E) hanya berlaku untuk pemohon di bawah usia 18 tahun, dan usia yang Anda nyatakan sudah 18 tahun atau lebih.",
+  ),
+  REQ_UNMARRIED: text(
+    "The Family Visa — Child of ITAS/ITAP Holder (E31E) is only for applicants who have never married, and your declared marital status is not single.",
+    "Visa Keluarga Anak Pemegang ITAS/ITAP (E31E) hanya berlaku untuk pemohon yang belum menikah, dan status perkawinan yang Anda nyatakan bukan lajang.",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
@@ -719,6 +850,12 @@ export function buildNoPathDoors(
   facts: OracleFacts,
 ): NoSupportedPathAlternative[] {
   const doors: NoSupportedPathAlternative[] = [];
+  // A3'-M (M3): a sourceless dead end names no door. The pack never decided
+  // this answer at all, so there is no replay-proven alternative to name —
+  // the CTA on this dead end is a consultation, never a category switch.
+  if (noPathReasonCodes.some((code) => SOURCELESS_NO_PATH_CODES.has(code))) {
+    return doors;
+  }
   const category = facts.category;
   if (category === undefined || category === "unsure") return doors;
   // Shuts every door under every purpose — measured, not assumed.
@@ -861,71 +998,23 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // must (1) name the specific fact/answer, in the applicant's own terms,
   // that the signed rules cannot decide, (2) state authoritatively that the
   // case is held deliberately for that named reason, and (3) name what
-  // resolves it. Applies to these 9 pre-existing entries too, revised below.
-  // review.calling-visa carries on_unknown: "HUMAN_REVIEW" (verified in
-  // rulepack-prod-020.signed.json), so the identical code fires when
-  // nationality itself is UNKNOWN, not only when it is confirmed on the
-  // list — the round-2 refuter gate caught the first draft asserting the
-  // list membership outright, false on that path. Worded to be true on
-  // both without losing the list's own specificity.
-  CALLING_VISA_REVIEW: text(
-    "This case is held because your nationality is on Indonesia's Calling Visa list, or because your nationality has not been established. Confirming your nationality, and the calling-visa clearance that list requires if it applies, is what resolves it before any visa can be confirmed.",
-    "Kasus ini ditahan karena kewarganegaraan Anda termasuk dalam daftar Calling Visa Indonesia, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi kewarganegaraan Anda, beserta proses persetujuan calling visa yang disyaratkan oleh daftar tersebut apabila berlaku, adalah yang akan menyelesaikannya sebelum visa apa pun dapat dikonfirmasi.",
-  ),
-  ACTIVE_OVERSTAY: text(
-    "You reported active overstay days on your immigration record, so a person needs to review it — clearing the overstay is what resolves it.",
-    "Anda melaporkan adanya hari overstay yang masih berjalan pada catatan keimigrasian Anda, sehingga memerlukan peninjauan oleh seseorang — menyelesaikan overstay tersebut adalah yang akan menyelesaikannya.",
-  ),
-  // Renamed from CITIZENSHIP_EVIDENCE_CONFLICT (QW-4a, 2026-08-17): that key
-  // named no code in any pack from seq-6 onward. CITIZENSHIP_LIST_DIVERGENCE
-  // is its current name (services/visa_engine/contracts/packs/
-  // rulepack-prod-007.source.json). review.citizenship-conflict ALSO carries
-  // on_unknown: "HUMAN_REVIEW" (verified in rulepack-prod-020.signed.json),
-  // so the identical code fires when nationality is entirely UNKNOWN, not
-  // only when multiple declared nationalities are known to diverge — the
-  // round-2 refuter gate caught the first draft asserting "you declared
-  // more than one nationality" outright, false on the unknown path. Worded
-  // to be true on both without losing the known-path specificity.
-  CITIZENSHIP_LIST_DIVERGENCE: text(
-    "This case is held because you declared more than one nationality that falls into different eligibility categories, or because your nationality has not been established. Confirming which passport you will use to apply is what resolves it.",
-    "Kasus ini ditahan karena Anda mencantumkan lebih dari satu kewarganegaraan yang termasuk dalam kategori kelayakan yang berbeda, atau karena kewarganegaraan Anda belum dapat dipastikan. Konfirmasi paspor mana yang akan Anda gunakan untuk mengajukan permohonan adalah yang akan menyelesaikannya.",
-  ),
-  // review.minor-without-guardian: derived.is_minor == true AND
-  // family.sponsor_confirmed == false — confirming the sponsor is the fact
-  // that resolves it (the same fact the rule tests).
-  MINOR_WITHOUT_CONFIRMED_GUARDIAN: text(
-    "This case involves a minor whose sponsor has not yet been confirmed, and a person needs to review it — confirming the sponsor is what resolves it.",
-    "Kasus ini melibatkan anak di bawah umur yang sponsornya belum dikonfirmasi, dan memerlukan peninjauan oleh seseorang — konfirmasi sponsor adalah yang akan menyelesaikannya.",
-  ),
-  // E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW and E23V_TRADE_OFFICE_STAFF_REVIEW
-  // used to sit here. seq-22 retires both: it supports E23U/E23V outright
-  // instead of holding them for a manual staff-relationship check, so no
-  // verdict can emit either code any more. Activated in PRODUCTION on
-  // 2026-09-16T20:16:45Z (activation_id 10937ac5, payload 3d7555af…6e37),
-  // which is why their copy goes now and not when the bundle landed.
-  // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
-  // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
-  // in rulepack-prod-007+. review.bridging.adverse-history fires on ANY of 4
-  // distinct violation_history values (OVERSTAY / DEPORTATION / BLACKLIST /
-  // IMMIGRATION_INVESTIGATION) OR on that fact being unknown (on_unknown:
-  // "HUMAN_REVIEW") — one code, several distinct causes with different
-  // real-world resolutions. Named all 4 rather than guessing one; flagged as
-  // a split candidate in the PR-O2 report. Round-1 refuter fix (Gemini 3.1
-  // Pro + Kimi K3, converged independently): the first draft asserted the
-  // record "shows" one of the four even on the UNKNOWN-fact trigger path —
-  // false the moment the hold is raised because the record hasn't been
-  // established at all, not because a specific violation was found. Rewritten
-  // to cover both paths without asserting any of the four exists, matching
-  // the "not yet established" pattern already used for the 4 HARD_FILTER
-  // codes above.
-  BRIDGING_ADVERSE_HISTORY: text(
-    "This case is held to check your immigration record while in Indonesia for an overstay, deportation, blacklist entry, or open investigation, or because that record has not been established. Confirming your record is what resolves it before the Bridging Visa — Transitional Stay Permit can be confirmed.",
-    "Kasus ini ditahan untuk memeriksa catatan keimigrasian Anda selama berada di Indonesia terkait overstay, deportasi, entri daftar hitam (blacklist), atau investigasi yang masih berjalan, atau karena catatan tersebut belum dapat dipastikan. Konfirmasi catatan Anda adalah yang akan menyelesaikannya sebelum Izin Tinggal Peralihan dapat dipastikan.",
-  ),
-  LOCAL_MARKET_ACTIVITY_REVIEW: text(
-    "You said your remote work serves Indonesian clients, and the Second Home Visa — Remote Worker (E33G) is for income from outside Indonesia only — a person needs to confirm your work does not cross into locally reserved business.",
-    "Anda menyatakan bahwa pekerjaan jarak jauh Anda melayani klien di Indonesia, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) hanya untuk penghasilan dari luar Indonesia — diperlukan konfirmasi oleh seseorang bahwa pekerjaan Anda tidak melanggar bidang usaha yang dicadangkan untuk lokal.",
-  ),
+  // resolves it.
+  //
+  // Slice A9.6 (2026-09-25): signed seq-23 is ACTIVE in production (switched
+  // from signed seq-22 on 2026-09-24) and turns every review hold seq-22
+  // emitted into a named dead end or NEEDS_INPUT, so no live verdict can
+  // emit any of the twelve retired codes. The six below this comment went
+  // here — CALLING_VISA_REVIEW, ACTIVE_OVERSTAY,
+  // CITIZENSHIP_LIST_DIVERGENCE, MINOR_WITHOUT_CONFIRMED_GUARDIAN,
+  // BRIDGING_ADVERSE_HISTORY, LOCAL_MARKET_ACTIVITY_REVIEW (the E23U/E23V
+  // pair that used to sit above them went with the seq-22 activation
+  // itself, #6683). E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP,
+  // E33_WORK_RANGKAP_KEGIATAN_GATED and the four HARD_FILTER codes
+  // (BRIDGING_ONSHORE_ONLY, BRIDGING_FROM_VISIT_ITK_PROHIBITED,
+  // BRIDGING_TO_BRIDGING_PROHIBITED, VOA_NATIONALITY_ONLY) retire with
+  // seq-23 too — their copy is gone from the blocks below. The
+  // engine-adapter.test.ts seq-keyed list emptied in the same change.
+
   // fact-mapper.ts::hasUndecidableActivityAnswer raises this ONE code from 7
   // distinct question ids (business_activity, investment_vehicle,
   // retirement_basis, diaspora_connection, diaspora_documents,
@@ -947,46 +1036,27 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   // string below is written to D2-bis's three rules too: name the specific
   // fact, state the hold authoritatively, name what resolves it.
 
-  // This block held 8 codes from rulepack-prod-020, stage HUMAN_REVIEW. Six
-  // of them (E28B, E28C, E28D, E28F, E33B, GOVT_INVITATION_REQUIRED) are
-  // retired by seq-22, live in PRODUCTION since 2026-09-16T20:16:45Z, and
-  // their copy went with this change. The two that survive keep theirs.
-  E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP: text(
-    "You said you have committed to PT PMA company ownership, and the Second Home Visa — Remote Worker (E33G) excludes local company ownership — a person needs to confirm your PT PMA commitment before this can be resolved.",
-    "Anda menyatakan telah berkomitmen pada kepemilikan perusahaan PT PMA, sedangkan Visa Rumah Kedua Pekerja Jarak Jauh (E33G) mengecualikan kepemilikan perusahaan lokal — diperlukan konfirmasi oleh seseorang atas komitmen PT PMA Anda sebelum hal ini dapat diselesaikan.",
-  ),
-  E33_WORK_RANGKAP_KEGIATAN_GATED: text(
-    "You selected both a Second Home Visa (E33) purpose and an employment purpose, and a person needs to confirm how the two combine before this case can be resolved.",
-    "Anda memilih tujuan Visa Rumah Kedua (E33) sekaligus tujuan bekerja, dan diperlukan konfirmasi oleh seseorang mengenai bagaimana keduanya digabungkan sebelum kasus ini dapat diselesaikan.",
-  ),
-  // Fires identically for two products (E33A, E33C) that share this reason
-  // code — both name their own product verbatim rather than picking one.
+  // This block held 8 codes from rulepack-prod-020, stage HUMAN_REVIEW. All
+  // eight are retired now: six (E28B, E28C, E28D, E28F, E33B,
+  // GOVT_INVITATION_REQUIRED) when seq-22 activated in production on
+  // 2026-09-16 (#6683), the last two (E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP,
+  // E33_WORK_RANGKAP_KEGIATAN_GATED) when signed seq-23 activated on
+  // 2026-09-24 (Slice A9.6, 2026-09-25) — no live verdict can emit any of
+  // them, so their copy went with this change.
 
   // 4 codes from rulepack-prod-020, stage HARD_FILTER with
   // `on_unknown: "HUMAN_REVIEW"` (hf.bridging.offshore / .from-visit-itk /
-  // .to-bridging / hf.b1.not-voa-nationality). When the underlying fact is
-  // KNOWN these rules EXCLUDE the product outright; when it is UNKNOWN,
+  // .to-bridging / hf.b1.not-voa-nationality) used to sit here. seq-23
+  // retires all four — an UNKNOWN fact now resolves as a named dead end or
+  // NEEDS_INPUT instead of one of these holds — so their copy went with
+  // Slice A9.6 (2026-09-25). The constraint their copy was written under
+  // stands for any future HARD_FILTER review code: when the underlying fact
+  // is KNOWN these rules EXCLUDE the product outright; when it is UNKNOWN,
   // `evaluator.py::_partition_unknowns_by_policy` + `_reason_from_rule`
   // escalate to REVIEW and reuse the SAME reason_code (see
-  // evaluator.py:355-410, 741-751) — so this copy must never read as an
+  // evaluator.py:355-410, 741-751) — so that copy must never read as an
   // exclusion, only as a fact still to be established; naming that missing
   // fact doubles as naming what resolves it (confirming the fact).
-  BRIDGING_ONSHORE_ONLY: text(
-    "This case is held because whether you are currently in Indonesia has not been established, which the Bridging Visa — Transitional Stay Permit requires — confirming your current location is what resolves it.",
-    "Kasus ini ditahan karena belum dapat dipastikan apakah Anda saat ini berada di Indonesia, padahal Izin Tinggal Peralihan mensyaratkan hal itu — konfirmasi lokasi Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  BRIDGING_FROM_VISIT_ITK_PROHIBITED: text(
-    "This case is held because your current immigration status code has not been established, and the Bridging Visa — Transitional Stay Permit cannot be issued from certain visit-based statuses — confirming your current status code is what resolves it.",
-    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat diterbitkan dari status berbasis kunjungan tertentu — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  BRIDGING_TO_BRIDGING_PROHIBITED: text(
-    "This case is held because your current immigration status code has not been established, and a Bridging Visa — Transitional Stay Permit cannot follow one already active — confirming your current status code is what resolves it.",
-    "Kasus ini ditahan karena kode status keimigrasian Anda saat ini belum dapat dipastikan, sedangkan Izin Tinggal Peralihan tidak dapat mengikuti izin peralihan yang masih aktif — konfirmasi kode status Anda saat ini adalah yang akan menyelesaikannya.",
-  ),
-  VOA_NATIONALITY_ONLY: text(
-    "This case is held because your nationality has not been established, and the Visa on Arrival — Tourism (B1) is issued only for listed nationalities — confirming your nationality is what resolves it.",
-    "Kasus ini ditahan karena kewarganegaraan Anda belum dapat dipastikan, sedangkan Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang terdaftar — konfirmasi kewarganegaraan Anda adalah yang akan menyelesaikannya.",
-  ),
   // `review.e33.below-threshold-studio` (seq-22 unsigned source,
   // `fold_pack_seq22.py`'s DEFECT 3, owner decision D23 "OPTION B-STUDIO"
   // 2026-09-16): the SAME two thresholds seq-21's deleted HARD_FILTER read,
@@ -1263,10 +1333,6 @@ export const NOTICE_CONDITION_COPY: Record<string, LocalizedText> = {
   DISCLOSED_AMBIGUOUS_SPONSOR_CONDITION: text(
     "Whether your sponsor holds a stay permit of their own has not been established here. Our team confirms the sponsor's own stay permit with you before submission and tells you what to prepare.",
     "Belum dapat dipastikan di sini apakah sponsor Anda memiliki izin tinggal sendiri. Tim kami akan memastikan izin tinggal sponsor tersebut bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
-  ),
-  DISCLOSED_ACTIVITY_BOUNDARY_CONDITION: text(
-    "One of your answers about your planned activity, investment vehicle, retirement basis, or diaspora connection is not one the signed rules can decide on their own. Our team confirms it with you before submission and tells you what to prepare.",
-    "Salah satu jawaban Anda mengenai aktivitas yang direncanakan, kendaraan investasi, dasar pensiun, atau hubungan diaspora bukan jawaban yang dapat diputuskan sendiri oleh aturan yang telah disahkan. Tim kami akan memastikannya bersama Anda sebelum pengajuan dan memberi tahu apa yang perlu disiapkan.",
   ),
   DISCLOSED_MULTI_PURPOSE_TRIP_CONDITION: text(
     "You said your trip serves more than one purpose. Our team reviews how those purposes combine with you before submission and tells you what to prepare.",
@@ -1826,7 +1892,15 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: 0,
         noPathReasons: response.decision.no_path_reasons.map((item) => {
-          requireDecisiveRefs(item.source_refs);
+          // A3'-M (M1): the narrow exemption. A listed code with a
+          // non-empty ref still goes through the normal decisive-ref gate —
+          // only the actually-sourceless shape skips it.
+          const isSourcelessDeadEnd =
+            SOURCELESS_NO_PATH_CODES.has(item.code) &&
+            item.source_refs.length === 0;
+          if (!isSourcelessDeadEnd) {
+            requireDecisiveRefs(item.source_refs);
+          }
           return reason(item.code, item.source_refs, trustedIds, options.facts);
         }) as [OutcomeReason, ...OutcomeReason[]],
         alternatives: buildNoPathDoors(

@@ -1,0 +1,60 @@
+task_id: kbli-pma-49-inverted-formula
+gear: 2
+l_level: L2
+gate_class: opus
+# Floor 2 via the SIZE term alone (evidence_pack_lint.py --print-floor /
+# --print-floor-source on the branch numstat: 16 files, +832/-120, 3 commits).
+# No hot-zone path, no migration, no new dependency. Most of the line count is
+# three generated copies of the same 29-field data change plus one spec.
+objective: >-
+  16 KBLI codes told a reader "a PT PMA can hold up to 49% of the company", which inverts the
+  law: the PT PMA IS the company, and its FOREIGN SHAREHOLDERS may hold up to 49% of it under
+  the Perpres 49/2021 Lampiran III cap, with the rest held by Indonesian shareholders. The sentence was
+  live on balizero.com/kbli/<code> and in the prod KG (15 kg_nodes whatYouNeed). Cure the 29
+  fields in the canonical with the existing sha256-pinned prose compiler. The 15 cured codes
+  that are canonicalIntel-certified must keep publishing, so their contentSha256 is re-issued
+  by a new compiler that proves the only change is the spec's graded text.
+constraints:
+  - >-
+    Whole-field, sha256-pinned replacement via cure_prose_national_openness.py, left unmodified.
+    25 of 29 replacements are byte-identical to the 2026-09-17 graded text (never-pushed M5
+    branch a139515038); 50133/53200 whatYouNeed are re-pinned to today's bytes with the same
+    sentence replacement as the other eleven whatYouNeed fields; 25200/30400 whatYouNeed (the
+    two defence codes, pma_kondisi "may exceed 49% with Menteri Pertahanan approval") condition
+    the sentence on the Minister of Defence's approval, after the Codex cross-family review
+    (verdict BLOCK: 1 BLOCKER + 3 MAJOR; all compiler findings cured with tests that fail on
+    the first draft; the generic legal hedge on the other 14 codes rejected, since their
+    pma_kondisi carries no exception).
+  - >-
+    No hand edit of data/kbli-filiera/** (data-plane guard). contentSha256 moves only through
+    reissue_editorial_content_certs.py. Per code it requires that the registry certified the base
+    bytes, that the base fields hash to old_sha256, that live intel_2026 equals base plus the spec
+    and nothing else, and that pmaFingerprint is unchanged. It never certifies a new code.
+  - >-
+    No verdict change: pma_status / pma_max_asing / every pma_* field is untouched (pmaFingerprint
+    0 mismatches on 38 certified entries). No PII, no Anthropic per-token door, no dependency.
+  - >-
+    One concern. The rest of the W-H prose lot (fbf085e1fa: PMDN kondisi, pullQuotes, unverified
+    date, dangling sentence, 93114 overclaim) is out of scope and gets its own PR if it re-applies
+    cleanly.
+acceptance:
+  - text: >-
+      A1 GUILT: the regex /PT PMA (can|may) (hold|own)[^.]{0,40}49%|A PT PMA can hold up to that 49%/i
+      matches 0 lines in data/source_documents/KBLI_2025_FINAL_CLEAN.json,
+      apps/mouth/data/KBLI_2025_FINAL_CLEAN.json and apps/kbli-navigator/data/kbli-2025.json
+      (29 each on origin/main), and the corrected sentence is present on all 16 codes.
+    probe: "grep -c -i -E '<regex>' <file>; pytest scripts/kbli_filiera/tests/test_prose_wh_inverted_49_formula_2026_09_24.py"
+  - text: >-
+      A2 INNOCENCE: the detector does not fire on the corrected wording nor on 50142's correct
+      "a foreign-owned PT PMA can hold 100%" (open code); lint counts identical to origin/main
+      (only the L11 duplicate-sentence text changes, to the corrected sentence).
+    probe: "pytest ...::test_innocence_the_detector_spares_the_correct_wordings; kbli_dataset_lint.py --json main vs branch"
+  - text: >-
+      A3 PUBLICATION KEPT: the 15 certified codes still match their certification (population 36
+      unchanged), so the corrected Intelligence section is served rather than withdrawn.
+    probe: "vitest kbli (63 files, 892 tests); backend kbli pytest (1012); filiera pytest (1821)"
+  - text: >-
+      A4 LIVE: after merge + vercel promote, /kbli/50124 (and >=2 more) serve the corrected
+      sentence and 0 inverted matches; after kg_kbli_resync --apply the prod KG holds 0 inverted
+      nodes.
+    probe: "curl -sL https://balizero.com/kbli/<code> | grep -c; scripts/pg.sh count on kg_nodes"

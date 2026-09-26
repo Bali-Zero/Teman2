@@ -445,26 +445,55 @@ async def evaluate_support(
 # ---------------------------------------------------------------------------
 
 
+#: Codepoints whose Unicode category is L/N/P/S (so the plain category
+#: check below would call them "visible") but that Unicode itself marks
+#: `Default_Ignorable_Code_Point` — glyphless fillers with no rendered
+#: form. Hangul fillers are category `Lo` (letter), the braille blank is
+#: `So` (symbol); none of them is a question a human wrote. V5 (B2.4 close
+#: ledger residual): a message made only of these — e.g. four U+115F
+#: choseong fillers, or a run of U+2800 braille blanks — passed
+#: `has_visible_character` on both the leg and the daemon parser and was
+#: offered and judged on context alone.
+_DEFAULT_IGNORABLE_LNPS = frozenset(
+    {
+        "ᅟ",  # HANGUL CHOSEONG FILLER
+        "ᅠ",  # HANGUL JUNGSEONG FILLER
+        "ㅤ",  # HANGUL FILLER
+        "ﾠ",  # HALFWIDTH HANGUL FILLER
+        "⠀",  # BRAILLE PATTERN BLANK
+    }
+)
+
+
 def has_visible_character(text: str) -> bool:
     """True iff `text` carries at least one character whose Unicode
-    category is a letter, number, punctuation or symbol (`L`/`N`/`P`/`S`) —
-    a genuinely visible character a human reads as content. Marks (`M`,
-    e.g. U+0301 combining acute, U+FE0F variation selector), separators
-    (`Z`) and others/control/format (`C`, e.g. U+200B zero-width space,
-    U+FEFF BOM) never count ON THEIR OWN: a combining mark or variation
-    selector modifies a PRECEDING base character and carries no content by
-    itself, so a query made only of such codepoints (no base character at
-    all) is exactly as blank as one made only of whitespace. Codex PR-2
-    round-1 MAJOR: the original `category(c)[0] not in "ZC"` rule let a
-    lone U+FE0F or U+0301 through, since Mn is not Z or C either — an
-    emoji's variation selector detached from its base, or a bare combining
-    accent, is not a question. A visible base character CARRYING a
-    trailing mark (e.g. an emoji followed by U+FE0F) still passes, because
-    the base character itself is `S`/`L`/etc. Extracted (B2.4 PR-2, design
+    category is a letter, number, punctuation or symbol (`L`/`N`/`P`/`S`)
+    AND is not a `Default_Ignorable_Code_Point` filler — a genuinely
+    visible character a human reads as content. Marks (`M`, e.g. U+0301
+    combining acute, U+FE0F variation selector), separators (`Z`) and
+    others/control/format (`C`, e.g. U+200B zero-width space, U+FEFF BOM)
+    never count ON THEIR OWN: a combining mark or variation selector
+    modifies a PRECEDING base character and carries no content by itself,
+    so a query made only of such codepoints (no base character at all) is
+    exactly as blank as one made only of whitespace. Codex PR-2 round-1
+    MAJOR: the original `category(c)[0] not in "ZC"` rule let a lone
+    U+FE0F or U+0301 through, since Mn is not Z or C either — an emoji's
+    variation selector detached from its base, or a bare combining accent,
+    is not a question. A visible base character CARRYING a trailing mark
+    (e.g. an emoji followed by U+FE0F) still passes, because the base
+    character itself is `S`/`L`/etc. V5 (B2.4 close ledger residual): the
+    plain `L`/`N`/`P`/`S` check alone is not enough either — Hangul filler
+    codepoints and the braille blank ARE category `L`/`S` despite being
+    glyphless, so `_DEFAULT_IGNORABLE_LNPS` excludes them explicitly; real
+    Hangul syllables, real Indonesian text and real emoji are unaffected,
+    since none of them is in that set. Extracted (B2.4 PR-2, design
     B2-4-design.md §2 item B "residual V4") so `wa_codex_leg.py`'s
     pre-offer check and this module's own `support_inputs_from_wire` apply
     the IDENTICAL rule instead of two copies drifting apart."""
-    return any(unicodedata.category(char)[0] in "LNPS" for char in text)
+    return any(
+        unicodedata.category(char)[0] in "LNPS" and char not in _DEFAULT_IGNORABLE_LNPS
+        for char in text
+    )
 
 
 def support_inputs_from_wire(wire: str) -> tuple[str, str]:

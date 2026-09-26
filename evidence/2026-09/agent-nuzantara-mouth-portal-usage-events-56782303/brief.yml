@@ -1,0 +1,35 @@
+task_id: portal-usage-events
+mandate_id: PORTAL-USAGE-20260924
+colour: BLUE
+l_level: L2
+gate_class: opus
+gear: 2
+gear_reason: "Frontend instrumentation feature across real portal consumers; no schema, auth or dependency changes."
+objective: >-
+  Measure authenticated client portal navigation and message/document submission
+  attempts and outcomes through the existing GA4 browser tag, so usage patterns
+  can be studied after release. Historical GA4 access remains pending Google sign-in.
+constraints:
+  - "External builder prepares only; Claude owns release and live verification."
+  - "Closed event labels; no client identity, content, document metadata, query tokens or raw errors."
+  - "Exclude staff, impersonation, partner and public/auth pages."
+  - "Reuse GA4 browser pseudonymous identifiers; no custom user_id or cross-device mapping."
+  - "Include the real Vault XHR uploader, chat API consumer and authenticated layout."
+acceptance:
+  - "Targeted Vitest suite: five test files, 71 tests passing; independent gate reran them."
+  - "tsc --noEmit --incremental false and ESLint on changed production files: exit 0."
+  - "git diff --check: exit 0; no code changes after independent verification."
+  - "After authorized release, synthetic-client events appear in intended GA4 Realtime/DebugView; pending."
+verification:
+  code_commit: "112f632142"
+  quality_review:
+    model: claude-opus-5-5
+    effort: xhigh
+    session_id: "21f6c787-eb1e-4f4d-9707-7c04de77fcff"
+    verdict: PASS
+  independent_code_gate:
+    model: claude-opus-5-5
+    effort: xhigh
+    session_id: "4b4eb9ac-6834-46f4-a779-029ffd584ae0"
+    verdict: PASS
+    scope: "Prepared code only; release, historic reports and live GA4 delivery remain unverified."

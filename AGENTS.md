@@ -77,14 +77,9 @@ stays prepare-only. An undeclared mission is BLUE and the sentence above binds u
 1. **You build — a Claude session verifies.** Your work product is a branch/diff/artifact
    that an interactive Claude session independently reviews, tests and merges
    (generator≠grader). **Never merge your own work, never push to `main`, never arm
-   auto-merge, never deploy.** Prepare; don't ship. **The one narrow exception, RULED
-   2026-09-10 (PARABELLUM, `docs/rules/RULINGS.md`):** if you are the Sol session that
-   Zero and the imperators appointed Dux of a mission declared ORANGE, you release that
-   mission yourself — push, PR-open with auto-merge armed at once, queue merge, deploy,
-   prove-live — and a FRESH Sol session outside your contribution chain signs the final
-   on-disk gate. That authority is per-mission and per-seat: it does not travel to any
-   other seat, to a Sol session that was not appointed Dux, or to an undeclared mission,
-   which is BLUE and binds you by the sentence above.
+   auto-merge, never deploy.** Prepare; don't ship. The one narrow exception — the
+   appointed Dux Sol of a mission declared ORANGE — is Builder Contract 5 above; it
+   travels to no other seat and no other mission.
 2. **Legge 5 (absolute):** never publish anything outward **on your own initiative** — no
    Instagram, no email, no WhatsApp, no client-facing sends. Drafts you originate stop at
    `drafted` in the review queue; the owner publishes. **One narrow exception, ruled by Zero
@@ -165,9 +160,9 @@ L5.1 spec: **`docs/agents/worktree-discipline.md`** · `docs/runbooks/agent-work
 ## 17.1 Conductor is a ROLE, not a model
 
 - Zero may start the interactive session with **any frontier orchestrator**: Claude (Fable/Opus/Sonnet), Codex (Sol/Terra/Luna), agy/Antigravity, Kimi. Whoever conducts inherits the **same law**: this file, the harness (gears, Evidence Pack, verdicts), CLAUDE.md invariants. Same law, different door.
-- The conductor **orchestrates and dispatches** agents per `FLEET_TOPOLOGY.json` role chains, assembles the Evidence Pack, and prepares the mechanical ship path: PR → required checks → armed auto-merge → `fly-deploy.yml` on `main`. Arming is the act of the mission's release owner — an authorized Claude session on BLUE, the appointed Dux Sol session on ORANGE (RULED 2026-09-10); every other external conductor (Codex/agy/Kimi) prepares and hands over, it never arms (Builder Contract 5). **No conductor hand-merges around checks.**
-- Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. The final on-disk gate is an **assignment to a qualified independent verifier outside the contribution chain, on the mission colour's gate seat — a fresh Claude session on Opus 5.5 xhigh in BLUE, a fresh Sol xhigh session in ORANGE — never cascading and never crossing colour, at every gear**, regardless of who conducts (RULED 2026-09-06→08 and 2026-09-10, `docs/rules/RULINGS.md`; supersedes the permanent-Opus reviewer of 2026-08-20). Work built by a seat that is not the mission's appointed Dux is always verified by that gate (Builder Contract 5). Fable 5.1 is never auto-spent: it enters only as the imperator window Zero opens with `--model`.
-- **Two imperators, equal (Fable 5.1, Astra) · two generals, equal (Opus 5.5, Sol) · one temporary Dux per mission, appointed by the imperators** — ranks, chain of communication, boot packets and bootstrap prompts in `docs/architecture/dual-consul/army-map.md`. Parity widens no permission: outside a declared ORANGE mission, no external seat merges, arms or deploys, and even inside one the authority belongs to the single appointed Dux Sol session and to nobody else (RULED 2026-09-10). **Door line, binding on every battle-window session:** before executing, read `.claude/skills/modus/SKILL.md` and the window spec you were assigned, then state your mission's colour, your Dux role, the mandate id and your worktree path.
+- The conductor **orchestrates and dispatches** agents per `FLEET_TOPOLOGY.json` role chains, assembles the Evidence Pack, and prepares the mechanical ship path: PR → required checks → armed auto-merge → `fly-deploy.yml` on `main`. Arming belongs to the mission's release owner (Builder Contract 5). **No conductor hand-merges around checks.**
+- Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. The final on-disk gate is the mission colour's fresh gate seat outside the contribution chain (fresh Opus 5.5 xhigh in BLUE, fresh Sol xhigh in ORANGE), never cascading and never crossing colour, at every gear (Builder Contract 5; `docs/rules/RULINGS.md`, RULED 2026-09-06→08 and 2026-09-10). Fable 5.1 is never auto-spent: it enters only as the imperator window Zero opens with `--model`.
+- **Two imperators, equal (Fable 5.1, Astra) · two generals, equal (Opus 5.5, Sol) · one temporary Dux per mission, appointed by the imperators** — ranks, chain of communication, boot packets and bootstrap prompts in `docs/architecture/dual-consul/army-map.md`. **Door line, binding on every battle-window session:** before executing, read `.claude/skills/modus/SKILL.md` and the window spec you were assigned, then state your mission's colour, your Dux role, the mandate id and your worktree path.
 - Client-facing outputs (quotes, comms) remain **Anthropic-interactive-only**. PII remains **local-only**. Legge 5 unchanged.
 - **REVIEW-È-INVOCABILE** (ruling Zero 2026-08-10, `research/operations/2026-08-10-fleet-order-spec.md` §3.2/§4): "serve review" is a dispatch instruction, never a parking state — "chi conduce non aspetta i grader: li convoca". The conductor invokes the grader per the role chains (§17.2 below / `FLEET_TOPOLOGY.json`) the moment a diff exists to judge; a PR is never parked on "waiting for review" without the grader having been dispatched.
 
@@ -191,11 +186,8 @@ Continuity ladder, account-lane mapping and spend order (§17.2–§17.4):
 
 - **Anti-hallucination:** never cite the output of a tool you did not run in THIS turn, and never
   build on a path you have not just verified on disk. → `docs/rules/operations.md` §6.
-- **PII is an OUTPUT boundary** (Builder Contract 4 · SYMBIOSIS Law 2 · UU PDP): processing under
-  an authorized lane is allowed, transcribing it is not — no cleartext client PII or OSINT in any
-  output, log, memory, report, alert or saved prompt. → `SYMBIOSIS.md`.
-- **Secrets:** never echo, print or commit a credential. `${VAR:+SET}` reports presence,
-  `${VAR:-default}` prints the value. → Builder Contract 3.
+- **PII is an OUTPUT boundary:** Builder Contract 4 · SYMBIOSIS Law 2 · UU PDP → `SYMBIOSIS.md`.
+- **Secrets:** Builder Contract 3.
 
 ---
 

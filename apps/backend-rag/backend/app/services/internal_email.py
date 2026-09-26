@@ -24,6 +24,18 @@ Semantics:
   warning. It NEVER raises unless ``raise_on_failure=True``. When ``pool``
   and ``email_type`` are provided, failures are also persisted so the retry
   worker can re-attempt delivery.
+- Returns ``True`` only when the send actually succeeded — HTTP 2xx AND the
+  response body's ``success`` field is ``True``. The endpoint's own provider
+  chain (Zoho/Brevo/Resend) can exhaust every leg and still answer HTTP 200
+  with ``{"success": false, ...}`` (`SendEmailResponse` in
+  ``notifications/router.py``); a bare ``raise_for_status()`` would call that
+  a delivery. ``False`` on any swallowed failure — network error, non-2xx,
+  OR a 200 that fails this check (including an unparseable/non-dict body,
+  treated as not-delivered rather than guessed at). A caller that has been
+  ignoring the return value (every caller as of 2026-09-25) sees no change —
+  ``await send_internal_email(...)`` still fires and forgets identically.
+  This exists so a caller that DOES need to know delivery, not just intent,
+  has a truthful signal instead of having to infer it from logs.
 - Schedule via FastAPI ``BackgroundTasks`` if invoked from a request handler,
   so the client does not pay the network latency.
 
@@ -51,7 +63,31 @@ from backend.services.notifications.email_http import get_email_client
 if TYPE_CHECKING:
     import asyncpg
 
+
+class EmailProviderRejected(RuntimeError):
+    """The provider explicitly rejected a keyed notification."""
+
+
+class EmailDeliveryUncertain(RuntimeError):
+    """Acceptance could not be established for a keyed notification."""
+
+
 logger = logging.getLogger(__name__)
+
+
+class InternalEmailNotDeliveredError(RuntimeError):
+    """The endpoint answered HTTP 200 but its own provider chain never sent
+    the mail (``success`` missing/false, or an unparseable body).
+
+    A ``RuntimeError`` subclass, not a bare one — so a caller with its own
+    fallback transport (``services/crm/notifiers.py::send_birthday_email``,
+    the only one today) can catch THIS specifically, distinct from a network
+    error (``httpx.HTTPError``/``OSError``), instead of a bare
+    ``except Exception`` swallowing it into a generic failure log that
+    carries whatever PII the caller's own except-block was not written to
+    redact.
+    """
+
 
 _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL",
@@ -72,13 +108,23 @@ async def send_internal_email(
     pool: asyncpg.Pool | None = None,
     practice_id: int | None = None,
     client_id: int | None = None,
-) -> None:
+    idempotency_key: str | None = None,
+) -> bool:
     """Send an email through the internal Brevo adapter.
 
     Fire-and-forget by default: catches every exception, logs a warning,
     never raises. Pass ``raise_on_failure=True`` to propagate exceptions
     instead — useful when the caller has its own fallback transport
     (e.g. Zoho) and needs to detect Brevo failures.
+
+    Returns:
+        ``True`` only when the send actually delivered: HTTP 2xx AND the
+        response body's ``success`` field is ``True``. ``False`` on any
+        swallowed failure — network error, non-2xx, or a 200 whose body
+        reports ``success=false`` (the endpoint's own provider chain
+        exhausted every leg) or has no usable ``success`` field at all.
+        When ``raise_on_failure`` is True and any of those happen, this
+        raises instead of returning ``False``.
 
     Args:
         to: primary recipient address
@@ -120,6 +166,9 @@ async def send_internal_email(
             "subject": subject,
             "body": body,
         }
+        if idempotency_key:
+            payload["idempotency_key"] = idempotency_key
+            payload["email_type"] = email_type or "portal_message"
         if cc:
             payload["cc"] = ", ".join(cc)
 
@@ -130,6 +179,27 @@ async def send_internal_email(
             json=payload,
         )
         response.raise_for_status()
+        if idempotency_key and response.json().get("success") is not True:
+            if response.json().get("delivery_uncertain"):
+                raise EmailDeliveryUncertain("email_delivery_uncertain")
+            raise EmailProviderRejected("email_provider_rejected")
+
+        # The endpoint answers HTTP 200 even when its own provider chain
+        # (Zoho -> Brevo, or Brevo -> Resend -> Zoho) exhausted every leg —
+        # `SendEmailResponse(success=False, message="All providers
+        # failed: ...")` in notifications/router.py ~:537. raise_for_status()
+        # cannot see that: a 200 never raises. A missing or unparseable body
+        # counts as NOT delivered, same as an explicit success=false — this
+        # is the one place that decides "delivered" and it must not guess.
+        try:
+            response_data = response.json()
+        except ValueError:
+            response_data = None
+        if not isinstance(response_data, dict) or response_data.get("success") is not True:
+            # Constant text, never the body's `message`: that string relays
+            # provider errors, which can name the rejected recipient, and the
+            # `except` below logs this exception's text.
+            raise InternalEmailNotDeliveredError("email API returned 200 without success=true")
 
         logger.info(
             "Internal email sent: to=%s cc_count=%d context=%s",
@@ -144,6 +214,7 @@ async def send_internal_email(
                 status="sent",
                 provider="brevo",
             )
+        return True
     except Exception as e:
         err_msg = format_send_error(e)
         logger.warning(
@@ -169,3 +240,4 @@ async def send_internal_email(
                 )
         if raise_on_failure:
             raise
+        return False

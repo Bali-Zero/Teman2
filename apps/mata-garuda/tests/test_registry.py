@@ -52,10 +52,10 @@ def test_function_info_populated():
 def test_callable_roundtrip():
     """Retrieving and calling the registered agent should work."""
     fn = registry.agents["get_unit_test_agent"]
-    result = fn(model="agy:gemini-3.5-flash")
+    result = fn(model="agy:gemini-3.8-flash-high")
     assert isinstance(result, Agent)
     assert result.name == "Unit Test Agent"
-    assert result.model == "agy:gemini-3.5-flash"
+    assert result.model == "agy:gemini-3.8-flash-high"
 
 
 def test_display_agents_info_json_safe():

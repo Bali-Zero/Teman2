@@ -57,8 +57,11 @@ class TestSafeStop:
         from backend.app.setup.app_factory import _safe_stop
 
         coro = AsyncMock()()
-        await _safe_stop("TestService", coro)
-        # Should not raise
+        with patch("backend.app.setup.app_factory.logger") as mock_logger:
+            await _safe_stop("TestService", coro)
+        # Should not raise, and must log the success line (not a timeout/error one).
+        mock_logger.info.assert_called_once_with("✅ %s stopped", "TestService")
+        mock_logger.warning.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_timeout_stop(self):
@@ -68,8 +71,16 @@ class TestSafeStop:
             await asyncio.sleep(100)
 
         # Should not raise even if slow — just log warning
-        with patch("backend.app.setup.app_factory.SHUTDOWN_TIMEOUT", 0.01):
+        with (
+            patch("backend.app.setup.app_factory.SHUTDOWN_TIMEOUT", 0.01),
+            patch("backend.app.setup.app_factory.logger") as mock_logger,
+        ):
             await _safe_stop("SlowService", slow_coro())
+
+        assert mock_logger.warning.call_count == 1
+        args, _ = mock_logger.warning.call_args
+        assert "timed out" in args[0]
+        assert args[1] == "SlowService"
 
     @pytest.mark.asyncio
     async def test_exception_stop(self):
@@ -78,8 +89,15 @@ class TestSafeStop:
         async def failing_coro():
             raise RuntimeError("boom")
 
-        # Should not propagate
-        await _safe_stop("FailService", failing_coro())
+        # Should not propagate — the error is caught and logged instead.
+        with patch("backend.app.setup.app_factory.logger") as mock_logger:
+            await _safe_stop("FailService", failing_coro())
+
+        mock_logger.warning.assert_called_once()
+        args, _ = mock_logger.warning.call_args
+        assert args[1] == "FailService"
+        assert isinstance(args[2], RuntimeError)
+        assert str(args[2]) == "boom"
 
 
 # ---------------------------------------------------------------------------

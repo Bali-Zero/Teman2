@@ -1,0 +1,86 @@
+task_id: intel-bridge-plist-pro-0925
+gear: 3
+objective: >-
+  com.matagaruda.intel-bridge.daily is now owned by Pro (registry PR #7262,
+  merged 11507a301b, config/job-ownership.yaml says owner: pro). The repo's
+  canonical copy of infra/launchagents/com.matagaruda.intel-bridge.daily.plist
+  still carried two EnvironmentVariables keys that only Mini needed
+  (GARUDA_REDIS_HOST=nuzantara.tail461666.ts.net — Redis is local on Pro —
+  and MATAGARUDA_FETCH_CONTENT=1 — the built-in fetch keeps ~2KB of
+  regex-stripped HTML, mostly nav junk, so it would feed junk into Pro's
+  pipeline). Pro's live installed plist has neither key. This PR removes
+  exactly those two key/string pairs from the repo copy so it matches Pro's
+  live plist byte-for-byte, and updates the job-ownership.yaml notes
+  sentence that flagged this drift as open to say it is now aligned. No
+  bridge or feeder code changes — the separate body/content question is
+  settled elsewhere (#7281: the feeder leaves intel_scraper items to the
+  Intel Lake router).
+constraints:
+  - >-
+    Touch ONLY infra/launchagents/com.matagaruda.intel-bridge.daily.plist
+    (remove the two Mini-only EnvironmentVariables entries) and one sentence
+    in config/job-ownership.yaml's intel-bridge.daily notes field. No
+    bridge/feeder code changes.
+  - >-
+    After the edit, `diff <(plutil -convert xml1 -o - repo.plist)
+    <(plutil -convert xml1 -o - pro-live.plist)` must be EMPTY.
+  - >-
+    plutil -lint and scripts/lint_plist_keepalive.py must both pass clean.
+  - No secrets, no client PII, no OSINT — the plist carries neither.
+acceptance:
+  - text: >-
+      WHEN the repo plist is converted to xml1 and diffed against Pro's live
+      installed plist (scp'd read-only from ~/Library/LaunchAgents/ on Pro),
+      the diff SHALL be empty.
+    probe: >-
+      diff <(plutil -convert xml1 -o -
+      infra/launchagents/com.matagaruda.intel-bridge.daily.plist)
+      <(plutil -convert xml1 -o - <scratch>/pro-live.plist)
+  - text: >-
+      WHEN scripts/lint_plist_keepalive.py scans infra/launchagents, the
+      edited plist SHALL contribute zero findings (KeepAlive=false, no
+      restart-storm shape).
+    probe: python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+  - text: >-
+      WHEN git grep searches the repo for the two removed keys, no OTHER
+      file SHALL install this same plist's EnvironmentVariables with them.
+    probe: git grep -n "MATAGARUDA_FETCH_CONTENT\|GARUDA_REDIS_HOST" -- .
+consumer_map:
+  - >-
+    Pro's installed plist at ~/Library/LaunchAgents/com.matagaruda.intel-bridge.daily.plist
+    — whoever next reinstalls the LaunchAgent from this repo copy (e.g. a
+    future re-provision or drift-reconciliation script) gets Pro's real
+    config instead of Mini's stale one.
+  - >-
+    config/job-ownership.yaml's registry consumers (drift audits, healer
+    ticks) — the notes field no longer flags this as open drift.
+risks:
+  - >-
+    This PR does not touch Pro's live plist (read-only for this builder) —
+    it only aligns the repo COPY to what is already live. If Pro's live
+    plist is ever reinstalled from a stale repo checkout before this PR
+    merges, the drift would reappear; that is a pre-existing risk this PR
+    reduces going forward, not a new one it introduces.
+  - >-
+    Two of three external council seats (kimi, agy) hit TIMEOUT on
+    arsenal_probe.py's liveness check before dispatch; both were still
+    attempted directly with the real review prompt (see journal.jsonl for
+    outcome).
+assumptions:
+  - text: >-
+      Pro's live plist, scp'd read-only during this session, reflects the
+      currently-running configuration (not a stale copy).
+    status: verified
+    probe: >-
+      scp pro:Library/LaunchAgents/com.matagaruda.intel-bridge.daily.plist
+      <scratch> && ssh pro "launchctl list | grep -i matagaruda.intel-bridge"
+      showed status 0 (last run succeeded), confirming the file launchd
+      actually has loaded.
+grader: >-
+  External council on the real diff + Pro's live plist content (not secret,
+  no client data): kimi, tp1-glm-5.2, agy — see journal.jsonl for which
+  seats actually answered vs timed out. Generator is not grader — the
+  fresh Opus gate the conductor runs signs on-disk, this PR does not
+  self-arm or self-merge.
+budget: Existing subscription seats only; no paid per-token API calls.
+pii: none

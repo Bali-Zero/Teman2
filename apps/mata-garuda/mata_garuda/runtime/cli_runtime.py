@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import signal
 import subprocess
 import time
@@ -215,7 +216,7 @@ def _oauth_cli_env(token: str) -> dict[str, str]:
 
 # Mapping model -> CLI command + flags
 DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
-DEFAULT_AGY_MODEL = os.environ.get("MATA_GARUDA_AGY_MODEL", "gemini-3.5-flash")
+DEFAULT_AGY_MODEL = os.environ.get("MATA_GARUDA_AGY_MODEL", "gemini-3.8-flash-high")
 DEFAULT_AGY_PRINT_TIMEOUT = os.environ.get("MATA_GARUDA_AGY_PRINT_TIMEOUT", "5m")
 # Sonnet 5: this is the shared execution loop for every mata-garuda Agent
 # (Agent.model defaults to bare "claude", types.py:29), a multi-turn
@@ -223,6 +224,41 @@ DEFAULT_AGY_PRINT_TIMEOUT = os.environ.get("MATA_GARUDA_AGY_PRINT_TIMEOUT", "5m"
 # subagents/workflows = Sonnet 5". Individual agents can still override with
 # Agent(model="claude:<alias>") the same way "ollama:*"/"agy:*" already work.
 DEFAULT_CLAUDE_MODEL = os.environ.get("MATA_GARUDA_CLAUDE_MODEL", "claude-sonnet-5")
+
+# Model names the CLI stopped serving (`agy models`, 2026-09-24) and the seat
+# that stands in for each. The swap is logged as a WARNING on every call: a
+# stale MATA_GARUDA_*_MODEL in a plist must be fixed there — this only keeps
+# the tick alive meanwhile instead of failing it in silence.
+RETIRED_AGY_MODELS: dict[str, str] = {"gemini-3.5-flash": "gemini-3.8-flash-high"}
+
+
+def served_agy_model(name: str) -> str:
+    replacement = RETIRED_AGY_MODELS.get(name)
+    if replacement is None:
+        return name
+    logger.warning(
+        f"[CLIRuntime] agy model {name!r} is retired by the CLI; "
+        f"using {replacement!r} — update MATA_GARUDA_*_MODEL"
+    )
+    return replacement
+
+
+def _resolve_agy_bin() -> str:
+    """The agy binary, or its ~/.local/bin install when PATH is thin.
+
+    launchd jobs run with a PATH that lacks ~/.local/bin: the gap consumer's
+    bare "agy" raised FileNotFoundError on every tick (108/day, 2026-09-06..24)
+    and the runtime fell through to Ollama without a warning. Same fallback
+    dir scripts/arsenal_probe.py resolves through.
+    """
+    override = os.environ.get("MATA_GARUDA_AGY_BIN")
+    if override:
+        return override
+    if shutil.which("agy"):
+        return "agy"
+    local = Path.home() / ".local" / "bin" / "agy"
+    return str(local) if local.is_file() else "agy"
+
 
 CLI_CONFIGS: dict[str, dict] = {
     "claude": {
@@ -241,7 +277,7 @@ CLI_CONFIGS: dict[str, dict] = {
         "model_flag": "--model",
     },
     "agy": {
-        "cmd": os.environ.get("MATA_GARUDA_AGY_BIN", "agy"),
+        "cmd": _resolve_agy_bin(),
         "print_flag": "-p",
         "system_flag": None,
         "model_flag": "--model",
@@ -487,7 +523,8 @@ class CLIRuntime:
                 combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
             cmd.extend([self.config["print_flag"], combined])
             if self.config["model_flag"] and (self.agy_model or DEFAULT_AGY_MODEL):
-                cmd.extend([self.config["model_flag"], self.agy_model or DEFAULT_AGY_MODEL])
+                model = served_agy_model(self.agy_model or DEFAULT_AGY_MODEL)
+                cmd.extend([self.config["model_flag"], model])
             if DEFAULT_AGY_PRINT_TIMEOUT:
                 cmd.extend([self.config["timeout_flag"], DEFAULT_AGY_PRINT_TIMEOUT])
             if extra_flags:

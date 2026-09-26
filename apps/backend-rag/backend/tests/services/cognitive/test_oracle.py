@@ -19,10 +19,11 @@ from backend.services.cognitive.oracle import (
     OracleCouncil,
     OracleOrchestrator,
     OracleProposal,
+    OracleResult,
     _coerce_move,
     _fallback_merge,
 )
-from backend.services.council.cli_runners import CLIRunner, RunnerResult
+from backend.services.council.cli_runners import CLIRunner, CLIRunnerError, RunnerResult
 
 # ── Mock runner ────────────────────────────────────────────
 
@@ -34,10 +35,13 @@ class MockRunner(CLIRunner):
     scripts: list[str] = field(default_factory=list)
     call_count: int = 0
     fail: bool = False
+    raise_cli_error: bool = False
 
     async def run(self, prompt, timeout=None) -> RunnerResult:
         idx = self.call_count
         self.call_count += 1
+        if self.raise_cli_error:
+            raise CLIRunnerError("binary not found: mock")
         if self.fail:
             return RunnerResult(
                 runner_name=self.name,
@@ -193,6 +197,29 @@ async def test_council_proposal_failure_isolated():
 
 
 @pytest.mark.asyncio
+async def test_council_survives_one_proponent_missing_binary():
+    """L1613: a CLIRunnerError (e.g. missing CLI binary) from one proponent must not
+    cancel the sibling tasks in the TaskGroup — it degrades that one voice only."""
+    proponents = {
+        "claude": MockRunner(scripts=[_moves_json([_valid_move("claude-A")])]),
+        "gemini": MockRunner(raise_cli_error=True),
+        "kimi": MockRunner(scripts=[_moves_json([_valid_move("kimi-A")])]),
+    }
+    judge = MockRunner(scripts=[_judge_json([_valid_move("final-1")])])
+    council = OracleCouncil(proponents=proponents, judge=judge)
+
+    proposals, final = await council.deliberate(context="ctx")
+
+    by_author = {p.author: p for p in proposals}
+    assert len(proposals) == 3
+    assert by_author["claude"].ok is True
+    assert by_author["kimi"].ok is True
+    assert by_author["gemini"].ok is False
+    assert "CLIRunnerError" in (by_author["gemini"].error or "")
+    assert final[0].thesis == "final-1"
+
+
+@pytest.mark.asyncio
 async def test_council_all_proposals_fail_no_judge_call():
     proponents = {
         "a": MockRunner(fail=True),
@@ -337,6 +364,33 @@ async def test_orchestrator_degraded_when_voice_down(cognitive_repo):
         context_fn=_fixed_context,
     )
     result = await orch.run_once()
+    assert result.degraded is True
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_not_degraded_when_all_voices_healthy(cognitive_repo):
+    proponents = {
+        "a": MockRunner(scripts=[_moves_json([_valid_move("m1")])]),
+        "b": MockRunner(scripts=[_moves_json([_valid_move("m2")])]),
+    }
+    judge = MockRunner(scripts=[_judge_json([_valid_move("final-1")])])
+    council = OracleCouncil(proponents=proponents, judge=judge)
+    orch = OracleOrchestrator(
+        cognitive_repo=cognitive_repo,
+        council=council,
+        context_fn=_fixed_context,
+    )
+    result = await orch.run_once()
+    assert result.errors == []
+    assert result.degraded is False
+
+
+def test_oracle_result_degraded_true_on_empty_vs_empty_when_errors_present():
+    """L1613: `degraded` compared two lengths of the same list, so a totally empty
+    round (proposals=[]) read as `0 < 0` -> False even though `errors` was non-empty.
+    Reproduces the bug's exact symptom directly against the dataclass."""
+    result = OracleResult(ran_at=datetime.now(timezone.utc), errors=["council: ExceptionGroup: boom"])
+    assert result.proposals == []
     assert result.degraded is True
 
 

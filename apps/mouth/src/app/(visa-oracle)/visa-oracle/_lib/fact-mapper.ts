@@ -457,13 +457,15 @@ const REVIEW_FLAG_MAP: Readonly<
 };
 
 /**
- * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
- * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
- * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
- * a non-empty candidate list in any other state — so raising it DELETES a
- * product the signed pack had already proven. It may be raised only for an
- * answer the signed vocabulary cannot decide, never for the mere fact that a
- * question was answered.
+ * ACTIVITY_BOUNDARY is on its way OUT of the hold group: A3' (`DEAD_END_
+ * DISCLOSED_FLAGS`, evaluate_path.py, slice A3'-B) turns a disclosed flag
+ * into a dead end (`NO_SUPPORTED_PATH`) instead of the hold this comment
+ * used to describe. `candidates=()` either way — `models.py` forbids a
+ * non-empty candidate list in any state that is not SUPPORTED_CANDIDATES —
+ * so raising it still DELETES a product the signed pack had already
+ * proven, which is why it may be raised only for an answer the signed
+ * vocabulary cannot decide, never for the mere fact that a question was
+ * answered.
  *
  * Keyed by question id (`tree.ts`), listing per question the answers the pack
  * decides on its own. Every OTHER answer holds, including an option added to

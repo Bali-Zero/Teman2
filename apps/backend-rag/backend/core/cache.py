@@ -150,7 +150,7 @@ class CacheService:
 
     def __init__(self) -> None:
         self.redis_available = False
-        self.redis_client = None
+        self.redis_client: Any | None = None
         self.stats = {"hits": 0, "misses": 0, "errors": 0}
         self._redis_checked = False
 
@@ -198,7 +198,7 @@ class CacheService:
         except (TypeError, ValueError):
             return False
 
-    def _generate_key(self, prefix: str, *args, **kwargs) -> str:
+    def _generate_key(self, prefix: str, *args: Any, **kwargs: Any) -> str:
         """Generate cache key from function arguments."""
         filtered_args = []
         for i, arg in enumerate(args):
@@ -280,14 +280,14 @@ class CacheService:
             if self.redis_available and self.redis_client:
                 keys = await self.redis_client.keys(pattern)
                 if keys:
-                    return await self.redis_client.delete(*keys)
+                    return int(await self.redis_client.delete(*keys))
                 return 0
             return self._memory_cache.clear_pattern(pattern)
         except Exception as e:
             logger.error("Cache clear error: %s", e)
             return 0
 
-    def get_stats(self) -> dict:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         self._try_connect_redis()
         total = self.stats["hits"] + self.stats["misses"]
@@ -351,9 +351,9 @@ def cached(
     # Use provided cache service or get default
     cache_inst = cache_service if cache_service is not None else get_cache_service()
 
-    def decorator(func: Callable) -> Any:
+    def decorator(func: Callable[..., Any]) -> Any:
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Generate cache key
             cache_key = cache_inst._generate_key(prefix, *args, **kwargs)
 
@@ -507,9 +507,9 @@ def cached_query(
     """
     cache_inst = cache_service if cache_service is not None else get_cache_service()
 
-    def decorator(func: Callable) -> Any:
+    def decorator(func: Callable[..., Any]) -> Any:
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache_key = cache_inst._generate_key(namespace, *args, **kwargs)
 
             cached_value = await cache_inst.get(cache_key)
@@ -523,8 +523,13 @@ def cached_query(
             await cache_inst.set(cache_key, result, ttl)
             return result
 
-        wrapper.cache_namespace = namespace
-        wrapper.invalidate = lambda: invalidate_namespace(namespace, cache_service=cache_inst)
-        return wrapper
+        # functools.wraps' return type has no room for custom attributes;
+        # widen to Any before attaching them.
+        wrapper_with_attrs: Any = wrapper
+        wrapper_with_attrs.cache_namespace = namespace
+        wrapper_with_attrs.invalidate = lambda: invalidate_namespace(
+            namespace, cache_service=cache_inst
+        )
+        return wrapper_with_attrs
 
     return decorator

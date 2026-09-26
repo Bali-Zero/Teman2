@@ -296,7 +296,7 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
             "— enqueued as render_incomplete", draft_id, slide_count, intended,
         )
         _tg_notify(
-            "p1", f"wr2-visibility-incomplete-{draft_id}",
+            "digest", f"wr2-visibility-incomplete-{draft_id}",
             f"⚠️ WR2: carosello draft {draft_id} rientrato in coda come "
             f"render_incomplete dal backfill (disco={slide_count}, "
             f"intento={intended!r}) — serve sguardo umano prima di pubblicare.",
@@ -751,7 +751,7 @@ def _queue_hygiene_sweep(*, dry_run: bool) -> None:
             )
             if not dry_run:
                 _tg_notify(
-                    "p2", f"wr2-queue-hygiene-{datetime.now(WITA).date()}",
+                    "digest", f"wr2-queue-hygiene-{datetime.now(WITA).date()}",
                     f"🧹 WR2 queue hygiene: {len(report.moved)} entry malformate "
                     f"(drafted, topic vuoto) spostate in quarantena.",
                 )

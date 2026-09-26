@@ -122,6 +122,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1949,10 +1950,32 @@ def build_json(
     }
 
 
-def _default_ledger_path() -> Path:
+def _default_repo_root() -> Path:
+    """PENDING-ARMS L982 (opened 2026-08-08, closed 2026-09-24): `__file__`-only
+    derivation breaks the documented escape hatch for a stale checkout (`git show
+    origin/main:scripts/pending_arms_report.py > /tmp/par_main.py && python3
+    /tmp/par_main.py ...`, the same move `proprioception.py`'s own remedy prints)
+    -- from `/tmp`, `__file__`'s parent.parent is `/`, so the ledger is looked up
+    at `/.claude/skills/modus/PENDING-ARMS.md` and the script exits 2. Mirrors
+    `proprioception.py:repo_root()`'s NUZ_REPO_ROOT-first fallback chain so the
+    same env var un-breaks both scripts identically when run from a relocated
+    copy."""
+    env = os.environ.get("NUZ_REPO_ROOT")
+    if env and (Path(env) / ".git").exists():
+        return Path(env)
+    try:
+        out = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=10)
+        if out.returncode == 0 and out.stdout.strip():
+            return Path(out.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass  # no git binary, or it timed out/errored — fall through to the __file__ guess below
     # scripts/pending_arms_report.py -> parent = scripts/, parent.parent = repo root.
-    repo_root = Path(__file__).resolve().parent.parent
-    return repo_root / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+    return Path(__file__).resolve().parent.parent
+
+
+def _default_ledger_path() -> Path:
+    return _default_repo_root() / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
 
 
 # -----------------------------------------------------------------------------

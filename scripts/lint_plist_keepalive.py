@@ -119,6 +119,8 @@ _FD_REDIRECT_RE = re.compile(r"^\d*[<>]")
 _NOHUP_RE = re.compile(r"\bnohup\b")
 _BG_TRAILING_RE = re.compile(r"(?<!&)&\s*(#.*)?$")
 
+_PLIST_NAME_RE = re.compile(r"(^|\.)plist(\.|$)")
+
 _BLOCKING_MARKERS = (
     "while true",
     "while :",
@@ -176,10 +178,17 @@ def _walk_files(root: Path, errors: list[str], suffix: Optional[str] = None) -> 
 
 
 def collect_plists(root_paths: list[Path], errors: list[str]) -> list[Path]:
+    """`endswith(".plist")` alone drops `*.plist.example`/`*.plist.disabled`
+    variants BEFORE any parse (W81-class blind spot: the audit layer never
+    sees them even though launchd/plutil would). Match "plist" as a
+    dot-delimited name segment instead, so `foo.plist` and
+    `foo.plist.example` both qualify while `notaplist.txt` still doesn't."""
     seen: set[Path] = set()
     ordered: list[Path] = []
     for root in root_paths:
-        for path in _walk_files(root, errors, suffix=".plist"):
+        for path in _walk_files(root, errors, suffix=None):
+            if not _PLIST_NAME_RE.search(path.name):
+                continue
             resolved = path.resolve()
             if resolved in seen:
                 continue

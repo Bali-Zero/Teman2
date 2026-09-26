@@ -400,6 +400,42 @@ def main() -> int:
         "(drive + deleted_at + identity dates + timestamp defaults)"
     )
 
+    # portal_messages: legacy migration_031_client_portal.py owns this schema.
+    # migrations_v2/321 extends it, but apply-all does not run legacy Python
+    # migrations. Mirror the original DDL after create_all provides its FK
+    # targets (clients and practices); keep the production migration strict.
+    with engine.begin() as conn:
+        for stmt in (
+            """
+            CREATE TABLE IF NOT EXISTS portal_messages (
+                id SERIAL PRIMARY KEY,
+                client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+                practice_id INTEGER REFERENCES practices(id) ON DELETE SET NULL,
+                subject VARCHAR(255),
+                direction VARCHAR(20) NOT NULL CHECK (direction IN ('client_to_team', 'team_to_client')),
+                content TEXT NOT NULL,
+                sent_by VARCHAR(255) NOT NULL,
+                read_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS idx_portal_messages_client
+            ON portal_messages(client_id, created_at DESC);
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS idx_portal_messages_practice
+            ON portal_messages(practice_id)
+            WHERE practice_id IS NOT NULL;
+            """,
+            """
+            CREATE INDEX IF NOT EXISTS idx_portal_messages_unread
+            ON portal_messages(client_id, direction)
+            WHERE read_at IS NULL;
+            """,
+        ):
+            conn.execute(text(stmt))
+
     # documents: prod-only legacy table, hand-created (no SQLModel class, no
     # migration file creates it). Router code (CRM enhanced documents,
     # drive poll, document-intake writer) and migration 217

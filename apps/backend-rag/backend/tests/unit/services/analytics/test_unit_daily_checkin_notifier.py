@@ -3,6 +3,7 @@ Tests for DailyCheckinNotifier
 """
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -251,10 +252,15 @@ class TestDailyCheckinNotifier:
 
         mock_pool = MagicMock()
         notifier = DailyCheckinNotifier(mock_pool)
+        # Not mocked: if the early return is skipped, this would be reached
+        # and blow up on the plain MagicMock pool (no async context manager
+        # configured), proving the "no SMTP config" branch short-circuits.
+        notifier._get_checkin_data = AsyncMock()
 
         await notifier._send_daily_report()
 
-        # Should return early without error
+        # Should return early without error, never touching the DB.
+        notifier._get_checkin_data.assert_not_awaited()
 
     @pytest.mark.asyncio
     @patch("backend.services.analytics.daily_checkin_notifier.smtplib.SMTP")
@@ -324,7 +330,7 @@ class TestDailyCheckinNotifier:
     @pytest.mark.asyncio
     @patch("backend.services.analytics.daily_checkin_notifier.smtplib.SMTP")
     @patch("backend.services.analytics.daily_checkin_notifier.settings")
-    async def test_send_daily_report_error(self, mock_settings, mock_smtp):
+    async def test_send_daily_report_error(self, mock_settings, mock_smtp, caplog):
         """Test sending daily report with error"""
         mock_settings.smtp_host = "smtp.example.com"
         mock_settings.smtp_user = "user@example.com"
@@ -346,8 +352,12 @@ class TestDailyCheckinNotifier:
         mock_smtp.side_effect = Exception("SMTP error")
 
         notifier = DailyCheckinNotifier(mock_pool)
-        # Should not raise
-        await notifier._send_daily_report()
+        # Should not raise — the SMTP failure must be caught and logged.
+        with caplog.at_level(logging.ERROR):
+            await notifier._send_daily_report()
+
+        assert "Failed to send daily email" in caplog.text
+        assert "SMTP error" in caplog.text
 
     @pytest.mark.asyncio
     @patch("backend.services.analytics.daily_checkin_notifier.settings")
@@ -358,9 +368,12 @@ class TestDailyCheckinNotifier:
 
         mock_pool = MagicMock()
         notifier = DailyCheckinNotifier(mock_pool)
+        notifier._send_daily_report = AsyncMock()
 
-        # Should not raise
+        # send_now() must delegate to _send_daily_report().
         await notifier.send_now()
+
+        notifier._send_daily_report.assert_awaited_once()
 
 
 class TestDailyCheckinNotifierFunctions:
