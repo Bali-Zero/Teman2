@@ -76,6 +76,11 @@ _proxy_client_lock = asyncio.Lock()
 # RAG-base_url client). Created lazily under the same lock; closed in close_proxy_client().
 _intake_client: httpx.AsyncClient | None = None
 
+# Long-lived SSE paths get their own pool so open streams cannot starve heavy routes.
+# EXACT match: siblings under /api/dashboard stay on the shared pool.
+_STREAM_PATHS = frozenset({"/api/dashboard/portal-challenge/events"})
+_stream_client: httpx.AsyncClient | None = None
+
 _HOP_BY_HOP_RESPONSE = frozenset(
     {
         "connection",
@@ -141,6 +146,26 @@ async def get_proxy_client() -> httpx.AsyncClient:
     return _proxy_client
 
 
+async def get_stream_client() -> httpx.AsyncClient:
+    """Separate pool for long-lived SSE paths (_STREAM_PATHS).
+
+    Every open Kita tab pins one connection for up to 240 s; in the shared pool 50 open
+    streams starved every other heavy route (CRM, chat) until they closed. A short pool
+    timeout makes an exhausted stream budget fail fast (504, EventSource backs off)
+    instead of queueing.
+    """
+    global _stream_client
+    if _stream_client is None or _stream_client.is_closed:
+        async with _proxy_client_lock:
+            if _stream_client is None or _stream_client.is_closed:
+                _stream_client = httpx.AsyncClient(
+                    base_url=get_rag_worker_url(),
+                    timeout=httpx.Timeout(300.0, connect=10.0, pool=5.0),
+                    limits=httpx.Limits(max_connections=500, max_keepalive_connections=20),
+                )
+    return _stream_client
+
+
 async def get_intake_client() -> httpx.AsyncClient:
     """Persistent client for the intake-review target (Golden Rule #10 — never per-request).
 
@@ -168,10 +193,13 @@ async def get_intake_client() -> httpx.AsyncClient:
 
 
 async def close_proxy_client() -> None:
-    global _proxy_client, _intake_client
+    global _proxy_client, _intake_client, _stream_client
     if _proxy_client and not _proxy_client.is_closed:
         await _proxy_client.aclose()
         _proxy_client = None
+    if _stream_client and not _stream_client.is_closed:
+        await _stream_client.aclose()
+        _stream_client = None
     if _intake_client and not _intake_client.is_closed:
         await _intake_client.aclose()
         _intake_client = None
@@ -266,7 +294,10 @@ async def proxy_intake_review_request(request: Request) -> Response:
 
 async def proxy_request(request: Request) -> Response:
     """Forward a request to the rag process and return its response."""
-    client = await get_proxy_client()
+    if request.url.path in _STREAM_PATHS:
+        client = await get_stream_client()
+    else:
+        client = await get_proxy_client()
 
     # Build the outgoing request: same method, path, query, headers, body
     url = str(request.url.path)

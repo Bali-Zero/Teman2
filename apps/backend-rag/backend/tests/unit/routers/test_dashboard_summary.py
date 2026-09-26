@@ -553,6 +553,31 @@ class TestPortalChallengeEndpoint:
         client = self._make_client(mock_client_user, mock_db_pool)
         assert client.get("/api/dashboard/portal-challenge/events").status_code == 403
 
+    @pytest.mark.parametrize("redis_state", ["missing", "down"])
+    def test_champion_goals_fail_before_streaming_when_redis_is_unavailable(
+        self, mock_current_user, mock_db_pool, redis_state
+    ):
+        redis = None
+        if redis_state == "down":
+            redis = MagicMock()
+            redis.ping = AsyncMock(side_effect=ConnectionError("redis unreachable"))
+            redis.time = AsyncMock(side_effect=ConnectionError("redis unreachable"))
+        manager = MagicMock()
+        manager.get_async_client.return_value = redis
+        client = self._make_client(mock_current_user, mock_db_pool)
+        with (
+            patch(
+                "backend.services.portal.challenge_leaderboard.compute_status",
+                return_value="live",
+            ),
+            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=manager),
+        ):
+            resp = client.get("/api/dashboard/portal-challenge/events")
+        assert resp.status_code == 503
+        assert resp.headers["content-type"].startswith("application/json")
+        if redis is not None:
+            redis.ping.assert_awaited_once()
+
     @pytest.mark.parametrize("fresh", [False, True])
     def test_staff_token_returns_leaderboard(
         self, mock_current_user, mock_db_pool, _bypass_cache, fresh
