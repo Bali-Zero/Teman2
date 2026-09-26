@@ -1,0 +1,51 @@
+task: >-
+  A gate session found pre-existing client PII on origin/main: three raw jsonl data files under
+  research/compliance/deep_audit_2026-04-24/ (plan.jsonl, plan.pre-batch03.jsonl, skipped.jsonl)
+  carry client full names, phone-shaped and email-shaped strings in cleartext. Handled like the
+  two earlier PII lanes (#7398 CRM exports, #7411 WA dossiers): quarantine the exact git blobs
+  off-repo on Pro (~/.agent/pii-quarantine/, 0700/0600, hash-verified), remove the three files
+  from the repo, and gitignore the pattern their producer
+  (scripts/crm_guardian_deep_audit.py, Pro-local runner, not scheduled) writes into the checkout
+  so a re-run cannot be promoted again.
+lane: research/pii-deep-audit-0424
+machine: m5
+date: 2026-09-27
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: 1801 deleted lines (three jsonl data files) plus 6 added
+  lines (.gitignore pattern), total churn 1807 — above SIZE_GEAR2_THRESHOLD (400) and below
+  SIZE_GEAR3_THRESHOLD (1828). No hot-zone path (research/ + .gitignore only).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    None of the three files is tracked on origin/main after merge.
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance/deep_audit_2026-04-24 | wc -l
+  A2: >-
+    A file matching the producer's output pattern is ignored in that directory.
+    probe: >-
+      git check-ignore -q research/compliance/deep_audit_2026-04-24/plan.jsonl
+  A3: >-
+    The canonical detector (clients.full_name + companies.company_name loaded read-only from
+    PROD, same alternation logic as scripts/_redact_pii.py pass4_dynamic) reports 0 hits on
+    whatever remains tracked in the directory (the directory is expected to be empty).
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance/deep_audit_2026-04-24
+
+out_of_scope: >-
+  scripts/crm_guardian_apply.py hardcodes PLAN_FILE at this exact repo path — it is a live,
+  resumable consumer (I1/I3 CRM-Drive consolidation, kill-switch gated), not a dead artifact
+  like the #7398/#7411 cases. Restoring a local, gitignored copy at that path (from the Pro
+  quarantine, or by re-running scripts/crm_guardian_deep_audit.py) for a future local
+  --apply run is an operator decision, out of scope here. Git history still holds the bytes;
+  a rewrite is a separate operator decision (§Solo-operatore), same posture as #7398/#7411.
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/deep-audit-0424/ (0700/0600,
+  git-hash-object-verified against the origin/main blob ids) are the audit trail and the
+  restore path if scripts/crm_guardian_apply.py needs to resume the I1/I3 consolidation.

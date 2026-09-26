@@ -944,6 +944,12 @@ research/nb-health/nb-inventory-live.json
 research/crm/*-wa-dossier-*.txt
 research/crm/*-timing-*.json
 
+# scripts/crm_guardian_deep_audit.py writes plan.jsonl/skipped.jsonl/run.log into
+# research/compliance/deep_audit_*/ of the checkout it runs from — each row carries a
+# client full_name (Builder Contract §4), and were tracked on origin/main until 2026-09-27.
+research/compliance/deep_audit_*/*.jsonl
+research/compliance/deep_audit_*/run.log
+
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
