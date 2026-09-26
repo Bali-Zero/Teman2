@@ -1511,7 +1511,8 @@ async def _process_claimed_row(
     # exact float, so `Decimal(repr(persist_score))` reproduces the sealed
     # text digit-for-digit instead of a binary-float artifact.
     persist_score_bind = decimal.Decimal(repr(persist_score)) if persist_score is not None else None
-    async with conn.transaction():
+
+    async def _finalize(*, include_served_by: bool) -> asyncpg.Record | None:
         # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
         # B2-engine.md §4 PR B2.3b, D6): same statement, same fence as
         # before — a lost fence means the whole write, carrier included,
@@ -1520,35 +1521,61 @@ async def _process_claimed_row(
         # timestamp, the SAME one meta_inbox_messages.sent_at gets below,
         # so a persisted abstained_at is exactly sent_at, never a separate
         # clock read.
-        commit_fenced = await conn.fetchrow(
-            """
-            UPDATE wa_outbox
-            SET status = 'done',
-                abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
-                evidence_score = $5::numeric,
-                served_by = $6::text
-            WHERE id = $1 AND claim_token = $2 AND status = $3
-            RETURNING id
-            """,
+        served_by_clause = ", served_by = $6::text" if include_served_by else ""
+        params: list[Any] = [
+            outbox_id, claim_token, expected_status, persist_abstained, persist_score_bind,
+        ]
+        if include_served_by:
+            params.append(persist_served_by)
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                f"""
+                UPDATE wa_outbox
+                SET status = 'done',
+                    abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+                    evidence_score = $5::numeric{served_by_clause}
+                WHERE id = $1 AND claim_token = $2 AND status = $3
+                RETURNING id
+                """,
+                *params,
+            )
+            await conn.execute(
+                """
+                UPDATE meta_inbox_messages
+                SET status = 'sent', meta_message_id = $2, sent_at = NOW()
+                WHERE id = $1
+                """,
+                message_id,
+                wamid,
+            )
+            # Fold any status receipt that raced ahead of the send commit.
+            if wamid:
+                await _apply_pending_status(conn, wamid)
+        return row
+
+    try:
+        commit_fenced = await _finalize(include_served_by=True)
+    except asyncpg.exceptions.UndefinedColumnError:
+        # Deploy-window guard (Gear-3 council finding, migration 322): the
+        # pre-deploy `run-migrations` job (fly-deploy.yml) applies pending
+        # migrations_v2 files against the PREVIOUS image, BEFORE `deploy`
+        # rolls THIS new worker code onto live traffic — migration 322
+        # itself only lands afterwards, in the separate
+        # `run-sql-v2-migrations-post-deploy` job that `needs: deploy`. A
+        # send whose completion falls inside that gap must still finalize
+        # this row to 'done': leaving it un-finalized after a REAL
+        # WhatsApp send already happened would be exactly the residual
+        # double-send window this function already documents below,
+        # reached by a new cause (a missing column, not a lost fence).
+        # served_by simply stays unset for this one row; the very next
+        # completion after the column lands persists it normally — no
+        # backfill needed.
+        logger.warning(
+            "wa_outbox: served_by column not yet applied (migration 322 "
+            "mid-deploy) — finalizing outbox=%s without it",
             outbox_id,
-            claim_token,
-            expected_status,
-            persist_abstained,
-            persist_score_bind,
-            persist_served_by,
         )
-        await conn.execute(
-            """
-            UPDATE meta_inbox_messages
-            SET status = 'sent', meta_message_id = $2, sent_at = NOW()
-            WHERE id = $1
-            """,
-            message_id,
-            wamid,
-        )
-        # Fold any status receipt that raced ahead of the send commit.
-        if wamid:
-            await _apply_pending_status(conn, wamid)
+        commit_fenced = await _finalize(include_served_by=False)
 
     if commit_fenced is None:
         logger.error(
