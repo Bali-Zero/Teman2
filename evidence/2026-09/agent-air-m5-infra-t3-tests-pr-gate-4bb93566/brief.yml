@@ -28,9 +28,15 @@ acceptance:
       "WHEN the corpus shrinks — a case removed or silently skipped — the step SHALL go red. The
       assertion is on cases that PASSED, since pytest exits 0 when every case is skipped and
       --collect-only counts skipped cases too."
-    probe: "the run step's body with an inflated FLOOR against the real 94-case corpus -> ::error::, rc 1"
+    probe: "the run step's body with an inflated FLOOR (123) against the real 122-case corpus, under bash -e with a clean venv on PATH -> '::error:: 122 below floor 123', rc 1"
   - text: "WHILE the corpus is intact and passing, the step SHALL be green and say how many passed."
-    probe: "the run step's body, FLOOR=94 -> '... 94 passing cases (floor 94)', rc 0"
+    probe: "the run step's body, FLOOR=122, clean venv, under bash -e -> 'wa_team_promises corpus: 122 passing cases (floor 122)', rc 0"
+  - text:
+      "WHEN the install step provisions the corpus's dependencies, it SHALL install everything the
+      corpus's own @pytest.mark.asyncio tests need to collect and run — this repo carries no root
+      pytest.ini/pyproject.toml/setup.cfg to supply pytest-asyncio implicitly, so its absence is
+      silent until the async tests fail at collection, not at install."
+    probe: "clean venv built from exactly the step's install line (pytest, pytest-asyncio>=1.4.0, asyncpg>=0.31.0) -> 122 passed, 21 skipped; the same venv WITHOUT pytest-asyncio reproduces CI's 15 failures"
   - text:
       "IF the workflow file is malformed, CI SHALL reject it; a paths: filter SHALL NOT coexist
       with a merge_group: trigger here, since a filter with no queue trigger has nothing to

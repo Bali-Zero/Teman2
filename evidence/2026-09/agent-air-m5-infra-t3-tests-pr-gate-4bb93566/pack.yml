@@ -25,14 +25,18 @@ what_changed: |
 
   The workflow triggers on `pull_request` and `push: main`, path-filtered on the T3 promise-gate
   corpus's actual read-set (see the file's own header comment for the file-by-file reasoning,
-  including the two files added after cross-family review below). One job step installs `pytest`
-  and `asyncpg>=0.31.0` (the only third-party import the corpus needs with REAL_PG unset), then
+  including the files added after cross-family review below and after the fresh gate's own R5).
+  One job step installs `pytest`, `pytest-asyncio>=1.4.0` and `asyncpg>=0.31.0` (the corpus's
+  `@pytest.mark.asyncio` tests need the plugin explicitly, since this repo has no root-level
+  pytest.ini/pyproject.toml/setup.cfg to supply it implicitly — this was MISSING in the first
+  version of this pack and is the fresh gate's own finding, see the new dissent entry below), then
   runs `scripts/tests/test_wa_team_promises*.py` ONCE and asserts on the number of cases that
   PASSED — not the exit code alone (0 on an all-skip run) and not the collected count (counts
   skips too). The capture is guarded `|| RC=$?` so pytest's own output survives a non-zero exit
   under GitHub's default `bash -e {0}` (scar W101/W107, same shape `queue-doctor-tests.yml`
-  documents). FLOOR=94, the corpus's real passing count today with REAL_PG unset (16 skip, the
-  real-PG opt-in cases).
+  documents). FLOOR=122, the corpus's real passing count after #7413 merged to `main`, REAL_PG
+  unset (21 skip, the real-PG opt-in cases) — superseding the original 94/16 count from before
+  #7413 merged.
 
   REAL_PG is deliberately excluded — see receipts/proof below. The four opt-in suites spin up
   their own throwaway PG cluster via `pg_ctl`/`initdb` on `PATH`, not a `DATABASE_URL`; this repo
@@ -52,6 +56,20 @@ what_changed: |
   files were added to both `paths:` lists (pull_request and push, kept symmetric), with the
   disagreement recorded rather than silently resolved in the workflow's own comment.
 
+  ROUND 3 (REWORK-BUILD, fresh final gate on `77f42ba771`): the gate ran this workflow's OWN run
+  on PR #7429 (36254345568) and found it RED — every `@pytest.mark.asyncio` test failed with
+  "async def functions are not natively supported", because the install step never installed
+  `pytest-asyncio`, and the pack's own innocence receipt had been taken on this session's
+  interpreter, which already carried the plugin globally, not on the CI-shaped environment. The
+  gate also found `FLOOR=94` stale (#7413 had merged, raising the corpus to 122/21) and four
+  executed `__init__.py` files missing from the path filter. Codex, dispatched independently by
+  the gate with a neutral prompt, found the same `pytest-asyncio` gap on its own. Fixed: the
+  install step now installs `pytest-asyncio>=1.4.0`; `FLOOR=122` with the header updated to
+  122/21; the four `__init__.py` files added to both `paths:` lists; every receipt below that
+  depends on the install step was RE-TAKEN in a clean, throwaway venv built with EXACTLY the
+  step's own install line — never this session's own interpreter, which is what let the bug
+  through the first time.
+
 proof: |
   The absence, before this diff:
     grep -rln 'test_wa_team_promises' .github/workflows/   -> 0 hits
@@ -66,21 +84,43 @@ proof: |
   "1 violation(s): `wa team promises tests` ... is not covered"; after -> "all 124 live
   workflow(s) covered".
 
-  INNOCENCE — the exact step command, run locally against the corpus as it stands on `main`:
+  CLEAN-VENV PROVENANCE (round 3, replacing the session-interpreter receipts the gate correctly
+  rejected): `python3 -m venv <scratch>` then `<scratch>/bin/pip install --quiet pytest
+  "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0"` — the step's own three packages, nothing else,
+  installed fresh. `pip list` confirms exactly `pytest 9.1.1`, `pytest-asyncio 1.4.0`, `asyncpg
+  0.31.0`. Every receipt below in this block used `<scratch>/bin/python3`, never this session's
+  own interpreter.
+
+  INNOCENCE — the exact step command, in the clean venv, against the corpus as it stands on
+  `main` after the R2 merge:
     PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q
-    -> "94 passed, 16 skipped in 0.80s"
+    -> "122 passed, 21 skipped in 0.97s"
 
   GUILT — real-file mutation, on a throwaway (never pushed) local edit to
   scripts/sql/pro_local/team_promises.sql: `promise_text` renamed to `promise_text_MUTATED`.
-  Same command, same corpus:
-    -> "7 failed, 87 passed, 16 skipped" (the SQL/constant cross-checker and the required-columns
-       test both catch it). File restored from a pre-mutation copy immediately after; `git status`
-       on it afterward shows no diff.
+  Same command, same clean venv:
+    -> "8 failed, 114 passed, 21 skipped" (the SQL/constant cross-checker, the required-columns
+       test, and a fifth case that only exists in the post-#7413 corpus —
+       `test_guilt_s2_duplicate_column_inside_one_create_body_is_rejected` — all catch it; the
+       count of 8 vs. the original pack's 7 is exactly #7413's own S2 addition, not a new defect).
+       File restored from a pre-mutation copy immediately after; `git status` on it afterward
+       shows no diff, and a re-run in the same venv confirms 122 passed, 21 skipped again.
+
+  INFLATED FLOOR — the verbatim step body (extracted from the YAML), run under `bash -e` (GitHub's
+  own default shell) with the clean venv on `PATH`:
+    FLOOR=122 -> "wa_team_promises corpus: 122 passing cases (floor 122)", rc 0
+    FLOOR=123 -> "::error:: 122 below floor 123", rc 1
+  Confirms the `-lt` comparison and the `|| RC=$?` errexit-immunity both survive GitHub's actual
+  shell, not just a bare local one.
 
   Cross-family review, both independent (see dissent below for the full text and adjudication):
     agy/gemini-3.1-pro  -> VERDICT: GO, one completeness note (tg_gateway_verdict.py; tg_notify.py
                            judged omittable)
     kimi-code/k3        -> VERDICT: NO-GO pending a 2-line fix (both files), then GO
+
+  ROUND 3 — the fresh final gate (verdict REWORK-BUILD) plus its own independently-dispatched
+  Codex pass both found the `pytest-asyncio` gap; neither council seat above had caught it. See
+  the new dissent entry below.
 
 dissent:
   - seat: agy/gemini-3.1-pro
@@ -133,6 +173,44 @@ dissent:
       "Said plainly rather than presented as a full council. Both seats that DID answer converged
       independently on the same primary finding (tg_gateway_verdict.py), which is stronger signal
       than a third seat rubber-stamping the same two."
+  - seat: "fresh final gate (Opus, PR #7429 @ 77f42ba771)"
+    objection:
+      "The workflow is red on its own PR (run 36254345568, 15 failed, 107 passed, 21 skipped).
+      All 15 failures are 'async def functions are not natively supported' — the install step
+      installs pytest and asyncpg but not pytest-asyncio, and no root pytest.ini/pyproject.toml/
+      setup.cfg supplies it implicitly. The pack's own claim that asyncpg is 'the only third-party
+      import the corpus needs' is false, and the innocence receipt (94 passed, 16 skipped) came
+      from an interpreter that already had pytest-asyncio installed globally — not the environment
+      CI actually gets. FLOOR=94 is also stale: #7413 merged before this PR's CI ran, raising the
+      corpus to 122 passed / 21 skipped, so up to 28 passing cases (including #7413's own S1-S5
+      discriminating tests) could vanish silently. Four executed package __init__.py files
+      (scripts/tests, apps/backend-rag/backend{,/services,/services/wa_copilot}) are also missing
+      from the path filter."
+    status: CONFIRMED
+    resolution:
+      "R1: added pytest-asyncio>=1.4.0 to the install step (apps/backend-rag/requirements.txt:113's
+      floor), corrected the comment. R2: merged origin/main (not rebased — the branch was already
+      pushed), set FLOOR=122, updated the header/inline comments to 122/21. R3 (this edit): removed
+      the false asyncpg-only claim, re-took every install-dependent receipt in a clean venv built
+      with exactly the step's own install line, and wrote this entry. R5: added the four
+      __init__.py files to both paths: lists. See the CLEAN-VENV PROVENANCE block in proof: above
+      for the re-taken receipts, all reproducing the gate's own numbers exactly (122/21 innocence,
+      8 failed/114 passed/21 skipped guilt — the count of 8 vs. the gate's earlier count of 7 is
+      #7413's own new S2 test, not a regression)."
+  - seat: "codex-gpt-5.6-sol (dispatched independently by the fresh final gate, read-only, neutral prompt)"
+    objection:
+      "VERDICT: NO-GO. pytest-asyncio missing, 15 async items fail with 'not natively supported',
+      the asyncpg-only comment is false (BLOCKER). FLOOR=94 is stale against a 143-collected corpus
+      (122 runnable + 21 real-PG skips) (MAJOR). The four package __init__.py files are on the
+      executed import chain but missing from paths: (LOW). Found independently — the gate's own
+      prompt to Codex never named the plugin, so this was not a leading question."
+    status: CONFIRMED
+    resolution:
+      "Same fix as the gate's own finding above (R1-R2, R5). Two independent read-only reviewers
+      (the gate session and Codex) converged on the identical root cause without seeing each
+      other's answer, which is stronger signal than either alone — recorded as its own entry
+      rather than folded silently into the gate's, since it is a genuinely separate seat's
+      finding."
 
 receipts:
   - claim: "No PR-gating workflow named the T3 promise-gate corpus before this diff."
@@ -159,23 +237,47 @@ receipts:
     exit: 0
     ts: "2026-09-27T00:10Z"
     seat: claude-sonnet-5
-  - claim: "INNOCENCE — the corpus passes 94 cases, 16 skipped (REAL_PG opt-in), on main as it stands."
+  - claim: "STALE (superseded below) — the corpus passes 94 cases, 16 skipped, but this receipt came from this session's own interpreter, which already had pytest-asyncio installed globally — not the CI-shaped environment. Kept for the record; the fresh gate correctly rejected it."
     cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
     result: "94 passed, 16 skipped in 0.80s"
     exit: 0
     ts: "2026-09-26T22:40Z"
     seat: claude-sonnet-5
-  - claim: "GUILT — renaming the real promise_text column in the SQL file turns the corpus red."
-    cmd: "sed -i column rename in scripts/sql/pro_local/team_promises.sql (throwaway, never committed), then the same pytest command"
-    result: "7 failed, 87 passed, 16 skipped"
-    exit: 1
-    ts: "2026-09-26T22:55Z"
-    seat: claude-sonnet-5
-  - claim: "The guilt mutation was reverted cleanly, no residual diff."
-    cmd: "cp <pre-mutation backup> scripts/sql/pro_local/team_promises.sql && git status --short scripts/sql/pro_local/team_promises.sql"
-    result: "(empty — no diff)"
+  - claim: "Clean venv built with exactly the step's own install line: pytest, pytest-asyncio>=1.4.0, asyncpg>=0.31.0 — nothing else."
+    cmd: 'python3 -m venv <scratch> && <scratch>/bin/pip install --quiet pytest "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0" && <scratch>/bin/python3 -m pip list'
+    result: "asyncpg 0.31.0, pytest 9.1.1, pytest-asyncio 1.4.0 — exactly the three packages, nothing extra"
     exit: 0
-    ts: "2026-09-26T22:56Z"
+    ts: "2026-09-27T00:50Z"
+    seat: claude-sonnet-5
+  - claim: "INNOCENCE (re-taken, clean venv, post-R2-merge) — the corpus passes 122 cases, 21 skipped (REAL_PG opt-in)."
+    cmd: "<clean venv>/bin/python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "122 passed, 21 skipped in 0.97s"
+    exit: 0
+    ts: "2026-09-27T00:52Z"
+    seat: claude-sonnet-5
+  - claim: "GUILT (re-taken, clean venv) — renaming the real promise_text column in the SQL file turns the corpus red."
+    cmd: "sed -i column rename in scripts/sql/pro_local/team_promises.sql (throwaway, never committed), then the same pytest command in the clean venv"
+    result: "8 failed, 114 passed, 21 skipped (the 8th failure vs. the stale pack's 7 is #7413's own new S2 test, not a regression)"
+    exit: 1
+    ts: "2026-09-27T00:54Z"
+    seat: claude-sonnet-5
+  - claim: "The guilt mutation was reverted cleanly, no residual diff, and the corpus is green again in the same clean venv."
+    cmd: "cp <pre-mutation backup> scripts/sql/pro_local/team_promises.sql && git status --short scripts/sql/pro_local/team_promises.sql && <clean venv>/bin/python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "(empty diff); 122 passed, 21 skipped"
+    exit: 0
+    ts: "2026-09-27T00:55Z"
+    seat: claude-sonnet-5
+  - claim: "Reproduced the missing-plugin bug independently, in its own clean venv: the exact CI shape (pytest + asyncpg, no pytest-asyncio) reproduces CI's exact failure count."
+    cmd: 'python3 -m venv <scratch2> && <scratch2>/bin/pip install --quiet pytest "asyncpg>=0.31.0" (deliberately WITHOUT pytest-asyncio), then the pytest command'
+    result: "15 failed, 107 passed, 21 skipped, 24 warnings in 4.35s — identical to CI run 36254345568"
+    exit: 1
+    ts: "2026-09-27T01:00Z"
+    seat: claude-sonnet-5
+  - claim: "INFLATED FLOOR, verbatim step body under bash -e (GitHub's own default shell), clean venv on PATH."
+    cmd: "step body extracted from the YAML, run as `bash -e -c '...'` with FLOOR=122 then FLOOR=123"
+    result: "FLOOR=122 -> 'wa_team_promises corpus: 122 passing cases (floor 122)', rc 0; FLOOR=123 -> '::error:: 122 below floor 123', rc 1"
+    exit: 0
+    ts: "2026-09-27T00:57Z"
     seat: claude-sonnet-5
   - claim: "Cross-family seat agy/gemini-3.1-pro reviewed the diff and returned GO with one completeness note."
     cmd: "agy -p <review prompt with full diff> --print-timeout 8m --dangerously-skip-permissions"
@@ -215,8 +317,8 @@ pii_scan_note:
   opt-in real-PG suites, which this workflow never runs; the unit half fakes all DB interaction."
 
 spend:
-  wall_clock_hours: 2
-  adversarial_rounds: 2
+  wall_clock_hours: 3
+  adversarial_rounds: 3
 
 appetite_exceeded: |
   Both ceilings (1 hour, 1 round) doubled. The single biggest cost was the codex-gpt-5.6-sol
@@ -230,6 +332,13 @@ appetite_exceeded: |
   file, a few paths" could not price a seat that goes off-task, nor a genuine two-seat
   convergence on a gap this session's own first draft missed.
 
+  ROUND 3 pushed both ceilings further: the fresh final gate found the workflow red on its own
+  PR — a defect this pack's OWN receipts should have caught, and would have, had they been taken
+  in a clean CI-shaped environment instead of this session's own interpreter. The cure was small
+  (one install token, one number, four paths) but re-taking every install-dependent receipt in a
+  fresh venv, and re-verifying the step body under GitHub's actual shell rather than a bare local
+  one, is exactly the kind of cost an appetite set before the first round cannot price either.
+
 seat_fallback_reason: |
   council_run counts one fallback seat (agy-gemini-3.1-pro) toward quorum alongside one titolare
   (kimi-code/k3). The titolare actually attempted first, codex-gpt-5.6-sol, was observed
@@ -242,7 +351,7 @@ seat_fallback_reason: |
 
 diff:
   net_lines: |
-    5 files, +506/-0 against the merge-base with origin/main
-    (d2fd26086fc269aa31fed4620c5d15c4417bd47a): the workflow (+189, including the round-2
-    path-filter fix after cross-family review), the one-line watcher-list entry, and this
-    three-file evidence pack (brief.yml +52, journal.jsonl +16, pack.yml +248).
+    5 files, +636/-0 against the merge-base with origin/main
+    (2c79f65096aaa88b1b91de798dd58f26615361cc, after the R2 merge): the workflow (+204, R1/R2/R5
+    plus the round-2 path-filter fix after cross-family review), the one-line watcher-list entry,
+    and this three-file evidence pack (brief.yml +58, journal.jsonl +16, pack.yml +357).
