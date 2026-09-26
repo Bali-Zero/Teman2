@@ -20,28 +20,20 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
   return (
     <Link
       href={`/kbli/${code.code}`}
-      className={`group block rounded-2xl border p-5 transition-all duration-300 backdrop-blur-xl
-                 hover:-translate-y-1 hover:border-[var(--kbli-accent)]/40 hover:bg-white/5
-                 hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]
+      className={`group block rounded-[var(--kbli-radius-lg)] border p-5 transition-colors duration-200
+                 hover:border-[var(--kbli-border-hover)] hover:bg-[var(--kbli-bg-card-hover)]
                  ${
                    isGold
-                     ? "border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]"
-                     : "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"
+                     ? "border-[var(--kbli-border-accent)] bg-[var(--kbli-bg-card)]"
+                     : "border-[var(--kbli-border)] bg-[var(--kbli-bg-card)]"
                  }`}
-      style={
-        isGold
-          ? {
-              boxShadow:
-                "inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)",
-            }
-          : { boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }
-      }
+      style={{ boxShadow: "var(--kbli-shadow-card)" }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {/* Code + Section */}
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="font-mono text-sm font-bold text-[var(--kbli-accent)]">
+            <span className="kbli-figure text-[18px] leading-none text-[var(--kbli-text-primary)]">
               {code.code}
             </span>
             <span className="text-xs text-[var(--foreground-muted)]">
