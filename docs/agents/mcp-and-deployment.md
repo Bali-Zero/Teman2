@@ -17,6 +17,10 @@
 - `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
 - `apps/nuzantara-mcp-browser/` — Browser automation
 
+**Physical Android QA:** iQOO client-journey checks are described in
+[`../runbooks/iqoo-live-qa.md`](../runbooks/iqoo-live-qa.md). Read its live readiness
+status before scheduling tests; a reachable Tailscale peer is not an ADB session.
+
 ## 7. Deployment Architecture
 
 ### Production Stack
