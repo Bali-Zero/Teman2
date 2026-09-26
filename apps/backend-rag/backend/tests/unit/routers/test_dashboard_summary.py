@@ -549,7 +549,12 @@ class TestPortalChallengeEndpoint:
         resp = client.get("/api/dashboard/portal-challenge")
         assert resp.status_code == 403
 
-    def test_staff_token_returns_leaderboard(self, mock_current_user, mock_db_pool):
+    def test_client_token_cannot_subscribe_to_champion_goals(self, mock_client_user, mock_db_pool):
+        client = self._make_client(mock_client_user, mock_db_pool)
+        assert client.get("/api/dashboard/portal-challenge/events").status_code == 403
+
+    @pytest.mark.parametrize("fresh", [False, True])
+    def test_staff_token_returns_leaderboard(self, mock_current_user, mock_db_pool, _bypass_cache, fresh):
         from datetime import datetime, timezone
 
         roster_rows = [
@@ -588,7 +593,9 @@ class TestPortalChallengeEndpoint:
         mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=20)
 
         client = self._make_client(mock_current_user, mock_db_pool)
-        resp = client.get("/api/dashboard/portal-challenge")
+        if fresh:
+            _bypass_cache.get.return_value = {"stale": True}
+        resp = client.get("/api/dashboard/portal-challenge" + ("?fresh=true" if fresh else ""))
 
         assert resp.status_code == 200
         body = resp.json()
@@ -596,6 +603,9 @@ class TestPortalChallengeEndpoint:
         assert body["timezone"] == "Asia/Makassar"
         assert {t["tier"] for t in body["tiers"]} == {1, 2, 3}
         assert body["team_total_activations"] == 20
+        if fresh:
+            _bypass_cache.get.assert_not_awaited()
+            _bypass_cache.set.assert_not_awaited()
 
         by_member = {e["member"]: e for e in body["entries"]}
         assert by_member["winner"]["activations"] == 20
