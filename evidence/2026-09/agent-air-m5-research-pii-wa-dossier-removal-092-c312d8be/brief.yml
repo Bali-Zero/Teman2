@@ -1,0 +1,46 @@
+task: >-
+  Remove two WhatsApp client-dossier outputs from research/crm/ on main (32 and 22 CRM
+  client-name hits, 6 and 2 phone numbers), after quarantining their exact git blobs off-repo
+  on Pro. Gitignore the pattern their producer (apps/backend-rag/scripts/nlm_pack_crm.py,
+  manual, not scheduled) writes into the checkout, so a re-run cannot be promoted. Replace the
+  10 client names in research/crm-guardian/2026-05-18-phase-1.5-ocr-layer-plan.md with the
+  rules-file placeholder. Builder Contract section 4.
+lane: research/pii-reports
+machine: m5
+date: 2026-09-26
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: 1011 deleted lines for the two dossier files plus a
+  handful of edited lines, above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD
+  (1828). No hot-zone path.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    Neither dossier file is tracked on origin/main after merge.
+    probe: >-
+      git ls-files research/crm | grep -c -E 'wa-dossier|timing-'
+  A2: >-
+    A file named like the producer's output is ignored, and the tracked S7/S12 research files
+    in the same directory are not.
+    probe: >-
+      git check-ignore -q research/crm/2099-01-01-wa-dossier-x-batch-01.txt && ! git check-ignore -q research/crm/S7-yield-FROZEN.json
+  A3: >-
+    The crm-guardian plan has no CRM client-name match left and keeps its tables intact; the
+    R1 gate passes on the diff.
+    probe: >-
+      python3 scripts/check_adversarial_review.py --diff origin/main
+
+out_of_scope: >-
+  Moving nlm_pack_crm.py's default output dir out of the repo (apps/backend-rag/** merges are
+  deploys; the gitignore closes the promotion path without one). The same two filename-derived
+  names in backend prompts, an applied migration and the scar archive. Git-history rewrite
+  (operator decision).
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/ (0700/0600, blob-verified) are the
+  audit trail if the benchmark is ever re-scored.
