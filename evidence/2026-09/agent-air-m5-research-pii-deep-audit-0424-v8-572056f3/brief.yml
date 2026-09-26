@@ -1,0 +1,244 @@
+task: >-
+  v8, supersedes #7481 (v7 of this lane; ARMED, frozen at 017c42cf). A fresh Gear-3 gate on #7481
+  (report: gate-7481.md) returned REWORK-BUILD on evidence only — the diff itself holds
+  byte-identical to #7481's head: `git diff 017c42cf HEAD -- research .gitignore docs/archive
+  scripts/crm_guardian_phase15_pilot.py` (and the other 12 non-evidence paths) = empty, re-verified
+  in this worktree. Text-only cures in this pack:
+  K1/H2 (blocking, false live-egress claim) — `L1_extraction_v3.md`/`_v4.md` were described as a
+  "live few-shot example" with `schemas.py:392` defaulting "every PRODUCTION extraction call
+  TODAY" to it, i.e. "ACTIVE cloud-LLM egress". Re-measured at this head: `schemas.py:392`'s
+  `prompt_version: str = "L1_extraction_v3"` is an unread metadata string default, no file under
+  `services/crm_guardian` reads `prompts/`, the CLI worker's `DEFAULT_PROMPT_FILE` is
+  `L1_extraction_v5.md`, and `LEGACY_V3_PROMPT_FILE` has exactly 1 occurrence in the repo — its own
+  declaration, never read. The one live cron/LaunchAgent this pack found for this pipeline — Pro's
+  `com.balizero.crm-guardian-cli-worker` (StartInterval 300s, confirmed running, most recent tick
+  2026-09-27T10:09Z) — invokes the same worker with no `--prompt-file` override, so it also runs on
+  the v5 default, never v3/v4. Rewritten below: the priority is PII in clear on a public repo, not
+  active egress.
+  K2 (blocking, false/undercounted claims) — corrected: 11 pre-existing files carry 1+ of the 7
+  names, not 9; the docstring's names occur twice in v3/v4 (not "one of the names"); test fixtures
+  carry 13+4 occurrences plus 1 in a fixture file this pack had not previously counted (not "9+2");
+  and two false sentences ("no other file references these names", "ids alone are not
+  client-identifying") are deleted below.
+  K3/H1 (blocking, memory-18721 trap) — the pilot's ids stay re-linkable: 5 of the 6 redacted
+  client_ids sit within ~300 characters of the same real full name elsewhere in the tracked tree.
+  This pack states that honestly and removes every file path for those residuals from the
+  disclosure (categories and counts only, same discipline G3 already applied to the wa_corpus
+  sweep) rather than naming them — naming them would itself be the re-identification hint.
+  K4 (blocking, Builder Contract §2) — `Bites:` restored to a post-merge probe (`git ls-tree
+  origin/main` on the deleted/quarantined paths, plus `pytest tests/wa_corpus`), not a pre-merge
+  `evidence_pack_lint` self-consistency check.
+  Nits: n1 — G4's real `GROUND_TRUTH` copy IS already in Pro quarantine (re-verified this pack:
+  `~/.agent/pii-quarantine/wa_corpus_ground_truth_local.py`, `-rw-------`, sha256
+  1dfc87fe9753a0bc…), not "not yet in Pro quarantine" as v7 said. n3 — the deleted doc's client-name
+  count is stated as ~30-36 (detector-dependent) rather than a single fixed 36. H1 and H2 (raised by
+  the fresh gate on #7472/#7474 but never logged as `dissent:` entries in v6/v7) are recorded below
+  alongside G2/G3.
+  v7, supersedes #7474 (v6 of this lane). Fresh gate on #7472 (findings carried into #7474 — the
+  shared blobs are identical) returned REWORK-BUILD on two blocking findings plus one condition
+  outside this pack's control: G2, `tests/wa_corpus/test_doc_title.py:23`'s sanitization-test
+  input string was 3 of 5 tokens of a real PROD client's name (tracked since #1099, 2026-06-17,
+  missed by v5's "every client name replaced" claim) — cured: replaced with a synthetic
+  `"Client / Alpha: Test"` string that still exercises the `/`/`:` sanitization the test checks;
+  `tests/wa_corpus` stays green. G3, the evidence itself (brief `out_of_scope`, pack's
+  "full-repo token sweep" receipt, PR body) linked a residual collision to a specific
+  file:line — which, combined with the corpus-miner md's own [CLIENT-A..D]-to-`client_id`
+  pairing, re-identified one client by name+company — cured: every such link/hint removed from
+  the evidence (counts only now, no file:line for collision sources), AND the source itself
+  deleted from the tree (quarantined on Pro first, 0700/0600, hash-verified, same convention as
+  the other 7 removed files), closing the link rather than merely describing it. G4 (the real
+  `query_lab.py` GROUND_TRUTH — re-verified THIS pack: it IS already in Pro quarantine,
+  `~/.agent/pii-quarantine/wa_corpus_ground_truth_local.py`, `-rw-------`, sha256 1dfc87fe9753a0bc…)
+  is being handled by the lead directly, outside this pack. G5 (8 further pre-existing files with
+  ≥3 client names, plus the 7 phase15-pilot names in 11 other files, not 9) is explicitly OUT of
+  this pack's scope — a separate lane is in flight for it (not yet a PR number at authoring time).
+  #7474 (v6) superseded #7472 (v5 of this lane). Found by the gate on #7470 (a different, parallel PR's
+  gate run also surfaced this): `scripts/crm_guardian_phase15_pilot.py`'s docstring listed 6
+  audited `client_id`s next to their real full names in clear — tracked on origin/main since this
+  file was added, outside every prior diff in this chain. Verified against PROD `clients.full_name`:
+  6/6 exact matches. Cured in this pack: the docstring's names replaced with synthetic
+  `Client P1..P7` labels (7 people across 6 ids — one id covers a two-person household), the
+  numeric ids and case-annotation comments kept unchanged (these ids are NOT safely
+  de-identifying on their own here — see K3/`out_of_scope` below: 5 of the 6 stay re-linkable to
+  the same real full name elsewhere in the tracked tree until a separate lane closes it). The
+  docstring itself needed no untracked-local-file relocation, unlike query_lab.py's GROUND_TRUTH.
+  The whole-tree sweep this pack ran for these 7 names (git grep, full tracked tree) found 0
+  residual inside `scripts/crm_guardian_phase15_pilot.py` after the cure, but a PRE-EXISTING
+  exposure across 11 other tracked files that this pack does NOT fix (out of scope for this lane,
+  see `out_of_scope`/`unresolved` below) — the highest-priority item there is a pair of legacy,
+  superseded prompt-template files that still carry one of the names in clear on this PUBLIC repo;
+  it is NOT a live cloud-LLM egress (re-measured this pack: the live worker's default prompt is a
+  later version, and no cron/LaunchAgent/process on M5/Pro/Mini reads those two files — see K1
+  above).
+  #7472 (v5) superseded #7468 (v4 of this lane; fresh Gear-3 gate found F1/F2 cured but
+  REWORK-BUILD on
+  a NEW finding, G1: `scripts/wa_corpus/query_lab.py`'s `GROUND_TRUTH` dict — tracked on
+  origin/main since 2026-06-17, #1099, outside every prior diff in this chain — carried 3 client
+  first names in clear (the same 3 of the 4 the corpus-miner md redacts as [CLIENT-A/B/C]), 3
+  E.164 phones, 3 company names and case details; the md's own line 192 cites `query_lab.py` as
+  the source of those chats and line 256 pairs [CLIENT-B] with numeric id 6087, so 6087 stayed
+  re-identifiable after #7468's merge. The same 3 names/1 phone also sat in
+  `scripts/wa_corpus/prompt_master.py`, `prompt_variants.py`, `tests/wa_corpus/test_doc_title.py`
+  and `tests/wa_corpus/test_reconcile.py`). Cured in this pack: all 5 files' client
+  names/phones/companies replaced with synthetic fixtures (`Client Alpha/Beta/Gamma`, `PT Contoh
+  Alpha/Beta/Gamma`, ascending `+6281234567890`-style numbers) while `tests/wa_corpus` stays green
+  (`python3 -m pytest tests/wa_corpus -q` — see acceptance A4); `query_lab.py`'s real
+  `GROUND_TRUTH` (needed to score against real indexed NLM sources) moved to an untracked,
+  gitignored `scripts/wa_corpus/_ground_truth_local.py` (0600, loaded at runtime with an
+  ImportError fallback to the synthetic fixtures — verified both branches import cleanly).
+  A full-repo token sweep for the 4 md names + 3 query_lab company names found one ADDITIONAL
+  residual inside the diff's own reach: the corpus-miner md itself still named [CLIENT-A]'s real
+  company in clear at line 156, adjacent to the very paragraph [CLIENT-A] already redacts — cured
+  with a new `[CLIENT-A-CO]` placeholder, same `adversarial_review: exempt-redaction-edit`
+  convention, R1 gate re-verified PASS. Everything else the sweep found repository-wide is
+  disclosed, not fixed, as out of scope below (dictionary/stoplist noise and one unrelated
+  pre-existing file).
+  The deletions, .gitignore and the REST of the md redaction are byte-identical to #7468's head.
+  #7468 (v4) superseded #7462 (v3 of this lane; gate found F1 blocking — brief.yml listed the
+  four redacted client first names in clear, in the same order as the md's [CLIENT-A..D]
+  placeholders, a de-anonymisation key — and F2 minor — brief/pack undercounted the md's
+  team-line phone numbers as two when it has three — both cured in #7468, unchanged here).
+  #7462 itself superseded #7453 (gate verdict REWORK-BUILD, three defects). (1)
+  Residual client PII on main
+  outside this lane's original scope: research/wa-copilot/2026-05-25-eval-set-v1.jsonl (50
+  client_full_name values + 49 client WhatsApp message bodies, added by commit 9ee0ca260f) — now
+  quarantined and removed alongside the six files from #7453. Two adjacent research/operations/
+  docs were also triaged for client-row CRM phone numbers per the gate's flag:
+  2026-06-04-wa-corpus-miner-session-report.md carried four client first names ([CLIENT-A], [CLIENT-B],
+  [CLIENT-C], [CLIENT-D]) and four client-associated phone numbers in prose — redacted to placeholders,
+  frontmatter `adversarial_review: exempt-redaction-edit` added (same convention as #7411); the three
+  distinct team-line numbers in the same prose (2 E.164 + 1 without a leading '+' embedded in a Doc
+  title) are left untouched — verified against PROD `whatsapp_contacts`: Adit's trap-number line and
+  the Doc-title number both carry `contact_type='team'`; Surya's own line (confirmed by the
+  document's own screenshot evidence) carries `contact_type='client'` in `whatsapp_contacts`, a
+  pre-existing data-quality mistag on that one row, not a client-PII exposure introduced here — and
+  the two numeric client_ids (5730, 6087) stay per Builder Contract §4's pseudonym allowance.
+  2026-08-15-adr-wa-runtime-openai-provider.md's phone-shaped tokens are
+  verified synthetic regex-test examples (a sequential placeholder "+62.812.345.678" demonstrating a
+  detector bug, and "KTPnya/KTPpun <token>" NIK-detector test cases) — left unredacted, not client PII.
+  (2) A PII output-boundary breach during #7453's review: `.claude/scripts/codex-spalla.sh:277`
+  embeds a raw `git diff HEAD | head -1000` into the prompt sent to a cloud LLM (OpenAI), and the
+  #7453 review sent 959 deleted plan.jsonl lines (969 full_name records) in cleartext. The two M5
+  transcripts are quarantined by the gate session. This PR does NOT dispatch codex-spalla.sh or any
+  external seat against this diff — disclosed as a withdrawn review in pack.yml's dissent, with R9
+  quorum skipped via seat_override. A separate lane fixes the script itself.
+  (3) pack.yml's `seat_override` in #7453 understated net churn (1871 vs the CI-measured 1963,
+  missing pack.yml's own 92 lines) — this pack's churn is computed on the FINAL commit, after every
+  file (including this brief and pack) is staged, not before.
+lane: research/pii-deep-audit-0424-v8
+machine: m5
+date: 2026-09-27
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source size, computed on the FINAL commit (all 18 changed paths, including
+  this brief and pack): `evidence_pack_lint._size_term_net_lines` on the `git diff --numstat` of the
+  merge-base to this exact commit = 2840 (728 insertions + 2112 deletions across 18 files, 3 of them
+  binary xlsx contributing 0 line-counted churn) — above SIZE_GEAR3_THRESHOLD (1828), same order of
+  magnitude as #7481's own 2731, #7474's own 2463, #7472's own 2349, #7468's own 2126, #7462's own
+  2086 and #7453's own 1963 (all smaller evidence packs; this pack's own evidence text grew by 109
+  net lines over v7's to carry the K1-K4/H1-H2 cures). `--print-floor`/`--print-floor-source` on
+  this numstat/changed-files pair independently return 3/size. No hot-zone path (research/,
+  scripts/wa_corpus/, tests/wa_corpus/, scripts/crm_guardian_phase15_pilot.py,
+  docs/archive/2026-07-orphans/ + .gitignore only).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    None of the seven files (3 jsonl + 3 xlsx + 1 wa-copilot jsonl) is tracked on origin/main after
+    merge.
+    probe: >-
+      git ls-tree -r --name-only origin/main research/compliance | grep -c -E '\.xlsx$|deep_audit_2026-04-24'; git ls-tree -r --name-only origin/main research/wa-copilot | grep -c eval-set
+  A2: >-
+    A file matching each producer's output pattern is ignored, and the two legitimate sibling files
+    (research/wa-copilot's baseline-snapshot.md, research/compliance's tracked .md reports) are not.
+    probe: >-
+      git check-ignore -q research/compliance/deep_audit_2026-04-24/plan.jsonl && git check-ignore -q research/compliance/crm_guardian_plan.xlsx && git check-ignore -q research/wa-copilot/2026-05-25-eval-set-v1.jsonl && ! git check-ignore -q research/wa-copilot/2026-05-25-baseline-snapshot.md
+  A3: >-
+    The redacted corpus-miner report carries zero residual client-name or client-phone tokens
+    (including the newly-cured company token), and passes the R1 adversarial-review gate.
+    probe: >-
+      python3 scripts/check_adversarial_review.py --files research/operations/2026-06-04-wa-corpus-miner-session-report.md
+  A4: >-
+    tests/wa_corpus stays green after the fixture swap, and query_lab.py's GROUND_TRUTH resolves
+    to the real dict when the untracked local file is present and to the synthetic fixtures when
+    it is absent (both branches exercised).
+    probe: >-
+      python3 -m pytest tests/wa_corpus -q
+  A5: >-
+    scripts/crm_guardian_phase15_pilot.py carries 0 residual client-name tokens after the cure,
+    keeps its numeric client_ids unchanged, and still runs (--help exits clean, ast.parse succeeds).
+    probe: >-
+      python3 -c "import ast; ast.parse(open('scripts/crm_guardian_phase15_pilot.py').read())" && python3 scripts/crm_guardian_phase15_pilot.py --help
+  A6: >-
+    tests/wa_corpus/test_doc_title.py carries 0 residual client-name tokens and stays green; the
+    deleted archived doc is not tracked on origin/main after merge.
+    probe: >-
+      python3 -m pytest tests/wa_corpus -q; git ls-tree -r --name-only origin/main -- docs/archive/2026-07-orphans/superpowers/specs/2026-04-01-gemini-profil-perseroan-prompts.md | wc -l
+
+out_of_scope: >-
+  scripts/crm_guardian_apply.py and scripts/crm_guardian_deep_audit.py hardcode the deep-audit repo
+  paths as their I/O contract (disclosed deviation, unchanged from #7447/#7453). Fixing
+  codex-spalla.sh's raw-diff-to-cloud exposure (Builder Contract §4) is a separate lane's mandate,
+  not this one's. research/operations/2026-08-15-adr-wa-runtime-openai-provider.md's synthetic
+  phone-shaped examples are left as-is (verified not client PII). Git history on origin/main still
+  holds all seven original blobs plus the four now-redacted tokens (plus the newly-redacted company
+  token, the test-fixture tokens this pack redacts, and the archived doc this pack deletes) in
+  their respective prior revisions; a rewrite is a separate operator decision (§Solo-operatore).
+  DISCLOSED, COUNTS ONLY, NO FILE:LINE (carried from v5/v6, cured this pack per
+  the gate's G3 finding on #7472/#7474): a repo-wide token sweep for the 4 md names + 3 query_lab
+  company names found dictionary/stoplist noise plus a small number of unrelated coincidental
+  collisions. Naming WHICH files collide is deliberately omitted here — combined with the md's own
+  [CLIENT-A..D]-to-`client_id` pairing, a collision location is itself a re-identification hint
+  (memory-18721 trap), not a neutral disclosure. One of the prior collision candidates was, on
+  closer measurement, not a coincidence at all: it shared 2 of 3 tokens of a real client's name
+  plus that client's company — that source has been REMOVED from the tree this pack (quarantined
+  on Pro, 0700/0600, `git hash-object` verified against the pre-deletion blob), not merely
+  disclosed, closing the link entirely rather than describing it.
+
+  DISCLOSED, NOT FIXED, CATEGORIES AND COUNTS ONLY, NO FILE:LINE (carried from v6/v7, cured this
+  pack per the fresh gate's K3/H1 finding on #7481 — the same memory-18721 discipline this brief
+  already applies to the wa_corpus residual sweep above, now applied to this list too; severity
+  HIGH; a dedicated follow-up lane is planned but not yet a PR number at authoring time): the same
+  6 client_ids/7 names redacted from the pilot docstring remain in clear, PROD-matched, across 11
+  other pre-existing files this lane was not asked to touch and does NOT fix here (not 9 — v7's
+  count missed a test-fixture file; re-measured by the fresh gate on this byte-identical content,
+  this pack does not re-derive the exact per-category split itself to avoid reproducing the name
+  tokens as search terms). Naming WHICH files is deliberately omitted — a file path here, combined
+  with the ids already visible in the pilot's own docstring history, is itself a re-identification
+  hint. By risk class, not by path:
+  (a) a pair of legacy, superseded prompt-template files carries one of the names as a stale
+  few-shot example. This is NOT a live cloud-LLM egress: re-measured at this head, the worker's
+  live default is a later prompt version (`LEGACY_V3_PROMPT_FILE` has 1 occurrence in the repo —
+  its own declaration, never read), and the one live cron/LaunchAgent this pack found for this
+  pipeline runs on that same later default, not on these two files. The priority is PII in clear
+  on a public repo, not active egress — changing a live prompt's example still needs its own
+  validated PR, not a point-redaction bundled here.
+  (b) one one-off data-fix script (tracked since 2026-04-08) hardcodes a 13-entry
+  director/commissioner dataset with full names, nationalities, emails, phones AND PASSPORT
+  NUMBERS in cleartext Python source — the most severe exposure class in this whole chain, and
+  one-off/idempotency-key in nature (verified but not touched: the names may be load-bearing lookup
+  keys for the script's own logic; redacting without checking every call site risks silently
+  breaking the fix).
+  (c) two historical audit/scar documents record the same real names/ids as institutional memory —
+  this repo's own convention treats scars as permanent record, so redacting them is a policy
+  question, not a mechanical one.
+  (d) the remaining files are 2 code-comment files and at least 3 test-fixture files (13+4
+  occurrences, plus 1 more in a fixture file v7's count omitted) — lower severity (test-only/
+  comment-only) but the same real-name-in-clear class.
+  None of these 11 files is touched by this PR. The `SELECT id, full_name FROM clients WHERE id IN
+  (...)` PROD check (6/6 exact matches) verified the pilot docstring's own names before its cure;
+  it was not re-run against the residual files themselves here — that belongs to the G5 lane.
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/deep-audit-0424/ (0700/0600, hash-verified)
+  are the audit trail for all seven removed files. The corpus-miner triage classified team-vs-client
+  by the report's OWN stated contact_type/team-roster context (Adit's trap-number line, the
+  Doc-title number, Surya's own line, Lia team=True-in-CRM) rather than re-querying
+  whatsapp_contacts alone, since the report already names each number's classification inline;
+  this pack additionally cross-checked all three team-line numbers against PROD `whatsapp_contacts`
+  directly (two return `contact_type='team'`, one — Surya's own line — returns the pre-existing
+  `contact_type='client'` mistag noted above).

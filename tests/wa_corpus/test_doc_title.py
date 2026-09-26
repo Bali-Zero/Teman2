@@ -2,10 +2,10 @@ from scripts.wa_corpus.renderer import doc_title
 
 
 def test_title_uses_crm_name_when_client():
-    t = doc_title("+33600000000", "Alexandre")
-    assert t == "WA · Alexandre · +33600000000"
+    t = doc_title("+6281234567890", "Client Alpha")
+    assert t == "WA · Client Alpha · +6281234567890"
     # phone is always present (stable key for search/rename)
-    assert "+33600000000" in t
+    assert "+6281234567890" in t
 
 
 def test_title_uses_phone_when_no_crm_name():
@@ -15,12 +15,12 @@ def test_title_uses_phone_when_no_crm_name():
 
 def test_title_phone_present_in_both_cases():
     # OBLIGATORY: phone is the stable key, never dropped
-    assert "+33600000000" in doc_title("+33600000000", "Alexandre")
-    assert "+33600000000" in doc_title("+33600000000", None)
+    assert "+6281234567890" in doc_title("+6281234567890", "Client Alpha")
+    assert "+6281234567890" in doc_title("+6281234567890", None)
 
 
 def test_title_sanitizes_unsafe_name_chars():
-    t = doc_title("+62123", "Gledys / Cristian: Aires")
+    t = doc_title("+62123", "Client / Alpha: Test")
     assert "/" not in t and ":" not in t
     assert "+62123" in t
 
