@@ -25,8 +25,7 @@ if [[ -f "$HOME/.nuzantara-secrets.env" ]]; then
     source "$HOME/.nuzantara-secrets.env"
     set +a
 fi
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-${BALIZEROBOT_TOKEN:-}}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-${TELEGRAM_ADMIN_CHAT_ID:-}}"
+TG_NOTIFY="${TG_NOTIFY:-$HOME/nuzantara/scripts/tg_notify.py}"
 
 mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 
@@ -34,12 +33,9 @@ log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*" | tee -a "$LOG_FILE"; }
 
 tg_alert() {
     local text="$1"
-    [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]] && return 1
-    curl -sS -m 10 -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
-        -d "text=${text}" \
-        -d "parse_mode=HTML" >/dev/null || log "telegram: post failed"
+    [[ -f "$TG_NOTIFY" ]] || { log "telegram: $TG_NOTIFY missing"; return 1; }
+    python3 "$TG_NOTIFY" --tier p0 --source disk-monitor "$text" >/dev/null 2>&1 \
+        || { log "telegram: tg_notify failed"; return 1; }
 }
 
 cooldown_active() {
