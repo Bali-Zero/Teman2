@@ -71,7 +71,7 @@
       "scope": "Cross-document consistency + legality audit of PT PMA/PMDN files (akta vs NIB vs NPWP vs OSS): name match, modal disetor vs statutory min, KBLI foreign-ownership eligibility, direksi/komisaris consistency, tax coherence. Graded PASS/WARN/FAIL/NEEDS-DATA with regulatory basis.",
       "model": "opus",
       "pii_path": "Consumes structured (non-image) fields; client identity local, only de-identified numbers to optional DeepSeek math",
-      "fills_gap": "Manual error-prone consistency checking (cf. Marta Reyes 7mo PPh21 arrears found by hand)",
+      "fills_gap": "Manual error-prone consistency checking (cf. [CLIENT-NAME-REDACTED] 7mo PPh21 arrears found by hand)",
       "codex_verdict_initial": "SHIP-WITH-FIX",
       "codex_finding": "Depends on document-intake-classifier before it exists; hardcoded PMA capital rule too brittle without live legal citation; DeepSeek math is still a paid API exception.",
       "fix_applied": "Dependency by-design (ships together). Anti-hallucination is the agent's core rule: statutory thresholds must be GROUNDED (cite PP 5/2021, Perpres 10/2021 DPI, KBLI tool) or graded NEEDS-DATA, never asserted from memory. DeepSeek clarified as the sole SANCTIONED paid exception, optional, non-PII only, prefer-local-math default.",

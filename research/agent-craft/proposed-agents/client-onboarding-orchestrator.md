@@ -6,6 +6,7 @@ model: sonnet
 color: green
 memory: user
 isolation: worktree
+adversarial_review: exempt-agent-spec-proposal # proposed agent definition from the agent-craft S17 session, not a research deliverable; touched only to replace client identifiers with placeholders
 ---
 
 # Client Onboarding Orchestrator
@@ -91,7 +92,7 @@ Any step `pending` with missing inputs → `blocked`, with explicit `missing[]` 
 Update `~/Desktop/nuzantara/research/crm/onboarding/<client-slug>.json` + a human-readable `.md`:
 ```json
 {
-  "client_slug": "marta-reyes", "service_line": "company_pma",
+  "client_slug": "[CLIENT-NAME-REDACTED]", "service_line": "company_pma",
   "progress": "4/8", "status": "blocked",
   "steps": [{"n": 1, "label": "signed quote + payment", "status": "done"},
             {"n": 2, "label": "founder docs", "status": "needs_review", "owner": "Adit"},
@@ -104,10 +105,10 @@ Update `~/Desktop/nuzantara/research/crm/onboarding/<client-slug>.json` + a huma
 
 ### Step 6 — Telegram status to Adit (PII-masked)
 ```
-ONBOARDING — marta-reyes (PT PMA) · 4/8 · BLOCKED
+ONBOARDING — [CLIENT-NAME-REDACTED] (PT PMA) · 4/8 · BLOCKED
 Blocker: KBLI not chosen + komisaris ID missing
 Next: send doc-request (draft ready, EN)
-File: research/crm/onboarding/marta-reyes.json
+File: research/crm/onboarding/[CLIENT-NAME-REDACTED].json
 ```
 
 ## Self-check
