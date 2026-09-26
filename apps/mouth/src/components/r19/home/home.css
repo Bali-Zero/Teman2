@@ -2424,3 +2424,16 @@
     padding-inline: 10px;
   }
 }
+
+/*
+ * The arrow at the end of a hero door or of the hero WhatsApp action reserves
+ * a fixed box, so its x does not depend on which font supplies the glyph. The
+ * R19 web fonts lack it; the fallback that draws it can differ before and
+ * after the swap, and on Linux it moved the arrow by half a pixel.
+ */
+:where([data-r19-home]) .entry-hero .entry-categories a > span,
+:where([data-r19-home]) .entry-hero .entry-whatsapp a > span {
+  flex: 0 0 1.25em;
+  width: 1.25em;
+  text-align: right;
+}
