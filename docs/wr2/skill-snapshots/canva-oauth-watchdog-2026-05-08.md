@@ -11,12 +11,14 @@ This snapshot is the contractual repo copy: any edit to the live script body mus
 Probes the Claude Code OAuth state for the Canva MCP connector by spawning `claude -p` with a minimal prompt that asks for the count of `mcp__claude_ai_Canva__*` tools visible in the subprocess. Healthy = integer ≥ 30. Stale = empty/non-numeric or < 30.
 
 When stale:
+
 1. Spawns a second `claude -p` carrying explicit operator authorization context, calling `mcp__claude_ai_Canva__authenticate`. Greps `https://*canva.com/authorize?...` from the response.
 2. Telegram alerts owner chat (P0) with the URL embedded as a click link plus brief operator instructions.
 3. Honors a 24h cooldown via `~/.agent/decisions/state/wr2_canva_oauth.state` so a 6-hour cron does not page 4× per day.
 4. Exits 0 on healthy, 1 on stale (with or without alert).
 
 Failure modes considered:
+
 - claude binary missing → script exits with `set -uo pipefail` propagation, plist captures stderr in launchd err log.
 - TELEGRAM_BOT_TOKEN missing → log "Telegram skipped"; no exception.
 - claude -p stdin warning polluting output → suppressed via `< /dev/null`.
@@ -35,11 +37,11 @@ last_check_ts=1778185931
 
 ## Test matrix
 
-| Path | State setup | Stub | Expected |
-|------|-------------|------|----------|
-| Healthy | (clean) | none | exit 0, state.healthy, count logged |
-| Stale + cooldown elapsed | last_alert_ts T-25h | claude returns "5" | exit 1, alert fires, state.stale |
-| Stale + cooldown active | last_alert_ts T-1h | claude returns "5" | exit 1, "alert suppressed" log line |
+| Path                     | State setup         | Stub               | Expected                            |
+| ------------------------ | ------------------- | ------------------ | ----------------------------------- |
+| Healthy                  | (clean)             | none               | exit 0, state.healthy, count logged |
+| Stale + cooldown elapsed | last_alert_ts T-25h | claude returns "5" | exit 1, alert fires, state.stale    |
+| Stale + cooldown active  | last_alert_ts T-1h  | claude returns "5" | exit 1, "alert suppressed" log line |
 
 Stub via `CANVA_WATCHDOG_TEST_PATH_PREFIX=/tmp/watchdog-shim` (test-only env var; unset in production launchd). All three paths verified live 2026-05-08 04:30-04:31 WITA before plist bootstrap.
 
@@ -50,7 +52,7 @@ Stub via `CANVA_WATCHDOG_TEST_PATH_PREFIX=/tmp/watchdog-shim` (test-only env var
 # wr2-canva-oauth-watchdog.sh — Sprint B B-NEW (2026-05-08)
 #
 # Probes the Claude Code OAuth state for the Canva MCP connector and
-# pages Antonello on Telegram when the token has gone stale (i.e. when
+# pages Zero on Telegram when the token has gone stale (i.e. when
 # `claude -p` no longer sees the mcp__claude_ai_Canva__* tool family).
 #
 # Why: Sprint B B0 instrumentation (PR #516, telemetry JSONL) showed the
@@ -213,7 +215,7 @@ probe_tool_count() {
 # unprompted authenticate calls; we pass an explicit authorization
 # context so the operator-initiated re-auth flow is allowed.
 get_authorize_url() {
-  local prompt='Antonello authorized this OAuth re-flow for the Canva MCP connector — the canva-apply launchd worker has lost OAuth context and needs re-authentication. Call mcp__claude_ai_Canva__authenticate. Echo back the authorization URL it returns (the https://mcp.canva.com/authorize?... link) on its own line, nothing else. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode call and backgrounded work is terminated at exit, leaving no URL (W89 class-audit, regulatory-watcher incident 2026-07-05).'
+  local prompt='Zero authorized this OAuth re-flow for the Canva MCP connector — the canva-apply launchd worker has lost OAuth context and needs re-authentication. Call mcp__claude_ai_Canva__authenticate. Echo back the authorization URL it returns (the https://mcp.canva.com/authorize?... link) on its own line, nothing else. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode call and backgrounded work is terminated at exit, leaving no URL (W89 class-audit, regulatory-watcher incident 2026-07-05).'
   local out claude_exit
   out=$(timeout "${PROBE_TIMEOUT}" claude -p --output-format text "$prompt" < /dev/null 2>/dev/null)
   claude_exit=$?

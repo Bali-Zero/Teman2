@@ -133,21 +133,21 @@ Pro (single-host operational reality post Air retirement 2026-04-24)
 
 ## Per-runtime escalation paths
 
-| Runtime | Human owner | Maintenance cadence | Escalation |
-|---|---|---|---|
-| OpenClaw | Antonello | Sprint 0 Track A4 upgrade plan; reactive on Telegram BOT_COMMANDS_TOO_MUCH | reload via `launchctl kickstart -k gui/501/ai.openclaw.gateway` |
-| cron-agent-python | Antonello/Asya | weekly review of sessions.db growth | restart via plist or systemd-style |
-| LaunchAgents (cell core) | Antonello | reactive on Sentinel telemetry | KeepAlive=true → auto-respawn 10s |
-| LaunchAgents (WR2) | Antonello | weekly review (newsletter Mon, oracle Sun) | per-LA `launchctl unload/load` |
-| LaunchAgents (Mata-Garuda) | Antonello | weekly review | per-LA `launchctl` |
-| LaunchAgents (Sentinel) | Antonello | reactive on alerts | per-LA `launchctl` |
-| Federation Alert Dispatcher | Antonello | reactive | LISTEN reconnect via supervisor |
-| GitHub Actions | Antonello | reactive on CI failures | re-trigger via gh CLI |
-| Fly.io services | Antonello/Asya | fly-watcher 15min telemetry | machine restart |
+| Runtime                     | Human owner | Maintenance cadence                                                        | Escalation                                                      |
+| --------------------------- | ----------- | -------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| OpenClaw                    | Zero        | Sprint 0 Track A4 upgrade plan; reactive on Telegram BOT_COMMANDS_TOO_MUCH | reload via `launchctl kickstart -k gui/501/ai.openclaw.gateway` |
+| cron-agent-python           | Zero/Asya   | weekly review of sessions.db growth                                        | restart via plist or systemd-style                              |
+| LaunchAgents (cell core)    | Zero        | reactive on Sentinel telemetry                                             | KeepAlive=true → auto-respawn 10s                               |
+| LaunchAgents (WR2)          | Zero        | weekly review (newsletter Mon, oracle Sun)                                 | per-LA `launchctl unload/load`                                  |
+| LaunchAgents (Mata-Garuda)  | Zero        | weekly review                                                              | per-LA `launchctl`                                              |
+| LaunchAgents (Sentinel)     | Zero        | reactive on alerts                                                         | per-LA `launchctl`                                              |
+| Federation Alert Dispatcher | Zero        | reactive                                                                   | LISTEN reconnect via supervisor                                 |
+| GitHub Actions              | Zero        | reactive on CI failures                                                    | re-trigger via gh CLI                                           |
+| Fly.io services             | Zero/Asya   | fly-watcher 15min telemetry                                                | machine restart                                                 |
 
 ## Action items
 
-### Sprint 0 follow-up (post-merge by Antonello)
+### Sprint 0 follow-up (post-merge by Zero)
 
 1. Apply Track A2 (Telegram skill disable) on Pro
 2. Apply Track A5 (24 frozen jobs disable) on Pro

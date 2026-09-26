@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-24
 domain: operations
 client_case: nuzantara-internal
@@ -191,7 +192,7 @@ GitHub Action che calcola pre-merge: files touched + generated-file drift + migr
 
 ## 6. Implementation status — Wave 2026-05-24
 
-### Week 1 (foundational) — 4/4 SHIPPED (draft, awaiting Antonello sign-off)
+### Week 1 (foundational) — 4/4 SHIPPED (draft, awaiting Zero sign-off)
 
 |      # | Azione                                               | Impact | Effort | PR                                                                          |
 | -----: | ---------------------------------------------------- | -----: | -----: | --------------------------------------------------------------------------- |
@@ -263,7 +264,7 @@ Tutti e 3 incident sarebbero stati **prevenuti** dai PR shipati:
 | ------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
 | Cloud LLM                       | $0                                   | Tutto Claude OAuth MAX (2 plan) + Gemini Ultra + Codex GPT-5.5 + DeepSeek $0.01/q |
 | Wall-time implementativo wave 1 | ~4h (distribuito su agent paralleli) | Real: 4 agent in ~30min wall ciascuno                                             |
-| Wall-time Antonello             | ~30 min                              | Review 4 PR draft + sign-off rulesets sensibili                                   |
+| Wall-time Zero             | ~30 min                              | Review 4 PR draft + sign-off rulesets sensibili                                   |
 
 **Decisione richiesta**:
 

@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-06
 domain: marketing
 client_case: war-room-rebuild
@@ -108,7 +109,7 @@ regolatorio (è la differenza tra "ecco il testo grezzo, arrangiati" e "ecco i f
 i numeri, le quote, cosa NON dire"). MA da solo rischia di essere **stale** sui fatti
 freschissimi. La fusione (news fresca → grounding NB verbatim) è il brief vero.
 
-> **3 opzioni per lo Step 2** (la decisione è di Antonello):
+> **3 opzioni per lo Step 2** (la decisione è di Zero):
 >
 > - **(B-ponte)** Step 2 invoca brief-interpreter + PERSISTE lo schema ricco in brief_json. Estende wr2_draft_generator a leggere i campi nuovi. Brief fortissimo, più lavoro.
 > - **(B-enrichment)** Step 2 popola la forma a 12 chiavi esistente (enrichment via LLM). Zero modifiche a valle, carosello subito, ma meno ricco.

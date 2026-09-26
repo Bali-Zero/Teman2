@@ -1,7 +1,7 @@
 # Cell Pulse Observatory — Fase 0 Design
 
 **Date:** 2026-05-01
-**Author:** Antonello Siano + Claude Opus 4.7
+**Author:** Zero + Claude Opus 4.7
 **Status:** Design complete, blockers from cross-LLM review captured below. **Implementation NOT to start until BLOCKER #1–#4 are resolved** (see §Issues to resolve before PR-1).
 
 **Cross-LLM review:** 2026-05-01, 2/4 quorum (Gemini 3.1 Pro REJECT, DeepSeek R1 APPROVE_WITH_CHANGES; Codex shell-explore overflow, NotebookLM auth fail). Convergent BLOCKER on lazy-import architecture defect. Full synthesis: `/tmp/cell-observatory-review/SYNTHESIS.md` (transient, copy embedded below in §Issues).
@@ -14,16 +14,17 @@ Fase 0 of a multi-phase plan: **OpenClaw spinal cord + cell+genoma organs** (Vis
 
 ## 2. Scoping decisions (from 6 brainstorm clarifying questions)
 
-| # | Decision |
-|---|---|
-| 1 | Vision D — full nervous system long-term |
-| 2 | Tiered trust per domain (= L2 autonomous-ops applied to biology) |
-| 3 | OpenClaw↔cell coupling via EventBus (PG LISTEN/NOTIFY + events_outbox post-PR #342) |
-| 4 | Model routing α — strict specialization: MiniMax M2 (high-volume classifier) + Kimi K2 (Fase 1+) + Qwen3-Max (Fase 2+) |
-| 5 | Phase 0 = observability-only |
-| 6 | Dashboard inside `apps/admin-dashboard-local` |
+| #   | Decision                                                                                                               |
+| --- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | Vision D — full nervous system long-term                                                                               |
+| 2   | Tiered trust per domain (= L2 autonomous-ops applied to biology)                                                       |
+| 3   | OpenClaw↔cell coupling via EventBus (PG LISTEN/NOTIFY + events_outbox post-PR #342)                                    |
+| 4   | Model routing α — strict specialization: MiniMax M2 (high-volume classifier) + Kimi K2 (Fase 1+) + Qwen3-Max (Fase 2+) |
+| 5   | Phase 0 = observability-only                                                                                           |
+| 6   | Dashboard inside `apps/admin-dashboard-local`                                                                          |
 
 Approach selected from 3 alternatives: **Approccio 2 — Listener Python + lightweight classifier MiniMax**. Rejected:
+
 - Approccio 1 (pure listener, zero LLM): too passive, no learning signal.
 - Approccio 3 (OpenClaw runtime hosts everything from day 1): too many simultaneous new dependencies, premature coupling between runtime and data.
 
@@ -82,17 +83,31 @@ Approach selected from 3 alternatives: **Approccio 2 — Listener Python + light
   "pulse_timestamp": "2026-05-01T14:32:11.847Z",
   "phase": "homeostatic",
   "sensors": [
-    {"name": "fly_health", "reachable": true, "status_code": 200, "latency_ms": 47},
-    {"name": "qdrant_health", "reachable": true, "status_code": 200, "latency_ms": 12}
+    {
+      "name": "fly_health",
+      "reachable": true,
+      "status_code": 200,
+      "latency_ms": 47
+    },
+    {
+      "name": "qdrant_health",
+      "reachable": true,
+      "status_code": 200,
+      "latency_ms": 12
+    }
   ],
   "pulse_result": {
     "classifier_self": "green",
     "trend_window_min": 15,
     "trend_label": "stable"
   },
-  "homeostatic_state": {"energy_pct": 87, "load_factor": 0.34},
+  "homeostatic_state": { "energy_pct": 87, "load_factor": 0.34 },
   "scar_signals": [],
-  "metadata": {"host": "Nuzantara", "machine_role": "Pro", "cell_core_version": "0.1.4"}
+  "metadata": {
+    "host": "Nuzantara",
+    "machine_role": "Pro",
+    "cell_core_version": "0.1.4"
+  }
 }
 ```
 
@@ -346,13 +361,13 @@ Track B: set `CELL_OBSERVATORY_EMIT=false` (or unset) in plist + `launchctl kick
 
 ## 9. Cost & resources
 
-| | |
-|---|---|
+|                                  |                                     |
+| -------------------------------- | ----------------------------------- |
 | Dev time (after Issues resolved) | 13-14 days, 7 PR (revised from 10d) |
-| MiniMax cost (3 cells) | ~$0.30/day = $9/month |
-| Pro CPU | <2% steady-state |
-| Pro memory | ~80MB |
-| Pro disk (90d) | ~150MB at 3k events/day |
+| MiniMax cost (3 cells)           | ~$0.30/day = $9/month               |
+| Pro CPU                          | <2% steady-state                    |
+| Pro memory                       | ~80MB                               |
+| Pro disk (90d)                   | ~150MB at 3k events/day             |
 
 ## 10. Issues to resolve before PR-1
 
@@ -427,6 +442,7 @@ Verify with `plutil -lint` after edit. Backup `.pre-observatory-emit` before unl
 `EventBus.emit_pg()` calls `outbox.publish()` which (per PR #342) may validate channel against an internal list. Adding `cell_pulse_observed` to `PG_CHANNEL_MAP` may not be sufficient — also need to verify allowlist in `outbox.py`. Additionally: original design assumed `_outbox_id` injection was automatic; if we go direct asyncpg per B1 fix, we MUST inject `_outbox_id` manually using the INSERT-RETURNING pattern shown in B1 fix above.
 
 **Fix:**
+
 1. Read `apps/backend-rag/backend/services/events/outbox.py` to verify allowlist scope.
 2. If allowlisted: add `cell_pulse_observed` to that list as part of PR-2.
 3. Verify B1 fix code injects `_outbox_id` correctly via INSERT RETURNING.
@@ -461,34 +477,36 @@ Verify with `plutil -lint` after edit. Backup `.pre-observatory-emit` before unl
 Both reviewers (Gemini 3.1 Pro + DeepSeek R1) independently identified BLOCKER B1. This is the strongest signal possible from cross-LLM review: convergence under independence ≈ true defect, not artifact of one model's bias. Pattern matches PR #181 prior validation (memory `decision_cross_llm_review_concrete_value.md`).
 
 Reviewers diverged on which secondary issues to prioritize:
+
 - Gemini prioritized B2 (latency coupling) and B3 (chmod) — operational risk.
 - DeepSeek prioritized B4 (allowlist) and missing items (smoke test, self-monitoring) — completeness.
 
 Both endorse: events_outbox decoupling, scar adherence (KeepAlive, no /tmp logs, chmod 0444, backup pre-edit), no Anthropic API, staged rollout, schema design.
 
 Failed reviewers:
+
 - **Codex GPT-5.4**: Twice went into shell-explore mode (file source dumps, no verdict). Lesson for future cross-LLM rounds: `codex-review` with large prompts overflows. Use `claude-redteam` (Opus CLI) substitute or split prompt into per-section reviews.
 - **NotebookLM NB-1**: Google rejected query (account-level restrictions). Needs `nlm login` re-auth before next round.
 
 ## 11. Adherence to Nuzantara golden rules + scar lessons
 
-| | |
-|---|---|
-| Virtualenv mandatory | ✅ `apps/cell-observatory-collector/.venv` |
-| No system Python | ✅ `python -m cell_observatory` |
-| Async first (httpx, asyncpg) | ✅ |
-| Type hints (Pydantic v2) | ✅ |
-| No hardcoded secrets | ✅ env-only, key in `~/.nuzantara-secrets.env` |
-| Logger never print | ✅ structlog JSON |
-| Persistent httpx.AsyncClient | ✅ |
-| KeepAlive=true on LaunchAgent | ✅ scar P0-3 |
-| Log NOT to /tmp | ✅ `~/logs/cell-observatory/` |
-| chmod 0444 plist | ✅ B3 fix preserves |
-| Backup `.pre-observatory-emit` before edit | ✅ |
-| WIP-commit-every-10min | ⚠️ enforce during impl |
-| Anthropic API key NOT used | ✅ HARD RULE |
-| MiniMax (paid per-token, NOT Anthropic) | ✅ allowed |
-| Health check NOT from `/health` masking startup_failed | ✅ collector reads its own state |
+|                                                        |                                                |
+| ------------------------------------------------------ | ---------------------------------------------- |
+| Virtualenv mandatory                                   | ✅ `apps/cell-observatory-collector/.venv`     |
+| No system Python                                       | ✅ `python -m cell_observatory`                |
+| Async first (httpx, asyncpg)                           | ✅                                             |
+| Type hints (Pydantic v2)                               | ✅                                             |
+| No hardcoded secrets                                   | ✅ env-only, key in `~/.nuzantara-secrets.env` |
+| Logger never print                                     | ✅ structlog JSON                              |
+| Persistent httpx.AsyncClient                           | ✅                                             |
+| KeepAlive=true on LaunchAgent                          | ✅ scar P0-3                                   |
+| Log NOT to /tmp                                        | ✅ `~/logs/cell-observatory/`                  |
+| chmod 0444 plist                                       | ✅ B3 fix preserves                            |
+| Backup `.pre-observatory-emit` before edit             | ✅                                             |
+| WIP-commit-every-10min                                 | ⚠️ enforce during impl                         |
+| Anthropic API key NOT used                             | ✅ HARD RULE                                   |
+| MiniMax (paid per-token, NOT Anthropic)                | ✅ allowed                                     |
+| Health check NOT from `/health` masking startup_failed | ✅ collector reads its own state               |
 
 ## 12. Future phases (out of scope for this design)
 

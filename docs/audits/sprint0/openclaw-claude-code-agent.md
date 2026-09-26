@@ -55,7 +55,7 @@ test: if no Lobster workflow references `--agent claude-code`, hypothesis
 ### Step 1 — read-only audit (MUST be done on Pro)
 
 ```bash
-# Owner: Antonello, on Pro, ~5 min:
+# Owner: Zero, on Pro, ~5 min:
 ssh pro 'python3 -c "
 import json
 d = json.load(open(\"$HOME/.openclaw/openclaw.json\"))
@@ -75,16 +75,16 @@ ssh pro 'grep -E "agent[\"=]\\s*\"?claude-code" ~/.openclaw/logs/gateway.log 2>/
 
 ### Step 2 — decide based on Step 1 outputs
 
-| Outcome | Decision | Action |
-|---|---|---|
-| Lobster workflow references it AND gateway.log shows recent calls | **document** | Add a Markdown block in `docs/openclaw/agents.md` describing model routing + tool surface |
-| Lobster workflow references it AND gateway.log silent | **document + add smoke test** | Same as above, plus add a CI smoke that invokes the agent monthly |
-| No Lobster workflow references it AND gateway.log shows NO calls in 90d | **remove** | Edit `~/.openclaw/openclaw.json` to delete the entry (with backup) |
-| No Lobster workflow references it BUT gateway.log shows old calls | **document + monitor** | Likely an external integration (Federation Orchestrator); document and review next sprint |
+| Outcome                                                                 | Decision                      | Action                                                                                    |
+| ----------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
+| Lobster workflow references it AND gateway.log shows recent calls       | **document**                  | Add a Markdown block in `docs/openclaw/agents.md` describing model routing + tool surface |
+| Lobster workflow references it AND gateway.log silent                   | **document + add smoke test** | Same as above, plus add a CI smoke that invokes the agent monthly                         |
+| No Lobster workflow references it AND gateway.log shows NO calls in 90d | **remove**                    | Edit `~/.openclaw/openclaw.json` to delete the entry (with backup)                        |
+| No Lobster workflow references it BUT gateway.log shows old calls       | **document + monitor**        | Likely an external integration (Federation Orchestrator); document and review next sprint |
 
 The default fallback when in doubt is **document, don't remove** — removal
 without understanding the original intent is the kind of change that
-Symbiosis Law 5 ("Zero come ultima istanza") gates: if Antonello created
+Symbiosis Law 5 ("Zero come ultima istanza") gates: if Zero created
 the agent for a reason, removing it is a structural decision, not a
 janitorial one.
 

@@ -7,6 +7,7 @@
 **Architecture:** Redis stream `organism:events` with local JSONL mirror. Stateless Python Supervisor (launchd on Pro) consumes events, hydrates IncidentContext from Redis TTL 10min, decides via 3-tier (YAML rules L0 → Ollama classifier L1 async → Claude CLI L2 batched → Consiglio v1 L3 irreversible only). Micro-process Actuators with `--dry-run`, WAL pre-execute, idempotency. Guardian `local_emergency_mode` fallback if Supervisor lag >5min — organism augments, never prerequisites.
 
 **Tech Stack:**
+
 - **Python 3.11+** (project requires >=3.10), `asyncio`, `redis-py`, `pydantic`, `pytest`, `pytest-asyncio`
 - **Redis** (already in prod, existing on Pro:6379)
 - **launchd** (macOS Pro+Air) for Supervisor daemon
@@ -18,6 +19,7 @@
 **Spec reference:** `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md`
 
 **Constraints:**
+
 - Golden Rule #13: zero `ANTHROPIC_API_KEY`, zero `from anthropic import`. All LLM via `claude` CLI shell-out with OAuth MAX token.
 - Autonomous Ops L2: feature branches + auto-merge when CI green; never force push; never `--no-verify`; never destructive DB ops without confirmation.
 - Shadow mode 24h observation window after each wave before activating next.
@@ -143,6 +145,7 @@ Already exists. Plan references it for `claude_brain.py` — no modification nee
 ### Task W0.1a: Create `apps/organism/` package scaffold
 
 **Files:**
+
 - Create: `apps/organism/pyproject.toml`
 - Create: `apps/organism/README.md`
 - Create: `apps/organism/organism/__init__.py`
@@ -177,6 +180,7 @@ asyncio_mode = "auto"
 - [ ] **Step 2: Write README.md**
 
 Keep it minimal — just pointer to spec:
+
 ```markdown
 # Nuzantara Autonomic Organism
 
@@ -247,6 +251,7 @@ EOF
 ### Task W0.1b: Event schema (pydantic)
 
 **Files:**
+
 - Create: `apps/organism/organism/schemas.py`
 - Create: `apps/organism/tests/test_schemas.py`
 
@@ -371,6 +376,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ### Task W0.1c: `sanitize_payload()` + deny-list
 
 **Files:**
+
 - Create: `apps/organism/organism/sanitize.py`
 - Create: `apps/organism/tests/test_sanitize.py`
 
@@ -507,6 +513,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ### Task W0.1d: Redis bus + JSONL mirror
 
 **Files:**
+
 - Create: `apps/organism/organism/redis_bus.py`
 - Create: `apps/organism/tests/test_redis_bus.py`
 
@@ -635,6 +642,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ### Task W0.1e: `emit_event()` high-level helper
 
 **Files:**
+
 - Create: `apps/organism/organism/emit.py`
 - Create: `apps/organism/tests/test_emit.py`
 
@@ -808,6 +816,7 @@ Expected: PR opened, auto-merge enabled. Wait for CI green.
 ### Task W0.2: Wire `emit_event()` in 3 blind-spot guardians
 
 **Files:**
+
 - Modify: `scripts/system_doctor.py` (add emit on every health sample)
 - Modify: `scripts/log_anomaly_detector.py` (add `~/logs/cron-agent/` to watched paths + emit)
 - Modify: `scripts/sentinel_lib/zombie_hunter.py` (relax criterion + emit)
@@ -860,6 +869,7 @@ pytest scripts/tests/test_system_doctor_emit.py -v
 - [ ] **Step 4: Add cron-agent log scan + emit to `system_doctor.py`**
 
 Add at top of file:
+
 ```python
 from pathlib import Path
 import asyncio
@@ -889,6 +899,7 @@ async def _scan_cron_agent_logs() -> list[dict]:
 ```
 
 Modify `gather_health()` to call it and emit:
+
 ```python
 async def gather_health() -> dict:
     # ... existing parallelized checks ...
@@ -917,6 +928,7 @@ pytest scripts/tests/test_system_doctor_emit.py -v
 Add `~/logs/cron-agent/` to `WATCHED_PATHS` list + `await emit_event(severity=Severity.WARNING, source="guardian.log_anomaly", kind="anomaly_detected", payload=...)` on every detection.
 
 Test:
+
 ```python
 # scripts/tests/test_log_anomaly_emit.py
 import pytest
@@ -945,6 +957,7 @@ async def test_anomaly_detection_emits_event(tmp_path, monkeypatch):
 Relax criterion: count `last_exit=1` as zombie after 3 consecutive cycles (was: 1). Emit on detection.
 
 Test:
+
 ```python
 # scripts/tests/test_zombie_hunter_emit.py
 import pytest
@@ -1000,6 +1013,7 @@ gh pr merge --auto --squash
 ### Task W0.3: Guardian `local_emergency_mode` fallback (MANDATORY)
 
 **Files:**
+
 - Create: `apps/organism/organism/heartbeat.py`
 - Create: `apps/organism/tests/test_heartbeat.py`
 - Modify: `scripts/system_doctor.py` (call `supervisor_heartbeat_check()`)
@@ -1151,6 +1165,7 @@ gh pr merge --auto --squash
 ### Task W0.4: Control panel `:1819` + blackout flag
 
 **Files:**
+
 - Create: `apps/organism/organism/blackout.py`
 - Create: `apps/organism/organism/control_panel.py`
 - Create: `apps/organism/tests/test_control_panel.py`
@@ -1410,6 +1425,7 @@ gh pr merge --auto --squash
 ### Task W1.A: Supervisor daemon (shadow mode) — PR-W1.A
 
 **Files:**
+
 - Create: `apps/organism/organism/supervisor/daemon.py` (~200 LOC)
 - Create: `apps/organism/organism/supervisor/incident_context.py` (~100 LOC)
 - Create: `apps/organism/organism/supervisor/yaml_rules.py` (~150 LOC)
@@ -1426,6 +1442,7 @@ gh pr merge --auto --squash
 - [ ] **Step 1: IncidentContext hydrate/persist**
 
 Write test first — `test_incident_context.py`:
+
 ```python
 import pytest
 from organism.schemas import Event, Severity, IncidentContext
@@ -1461,6 +1478,7 @@ async def test_append_event_roundtrip(fake_redis):
 ```
 
 Run → FAIL → implement:
+
 ```python
 # organism/supervisor/incident_context.py
 from organism.schemas import IncidentContext
@@ -1491,6 +1509,7 @@ Run → PASS. Commit `feat(organism): IncidentStore hydrate/persist with Redis T
 - [ ] **Step 2: YAML rule matcher (L0)**
 
 Write test — `test_yaml_rules.py`:
+
 ```python
 import pytest
 from organism.schemas import Event, Severity
@@ -1547,6 +1566,7 @@ def test_ignores_is_actuation_events():
 ```
 
 Run → FAIL → implement yaml_rules.py with template substitution for `{payload.<key>}`:
+
 ```python
 # organism/supervisor/yaml_rules.py
 import re
@@ -1614,23 +1634,29 @@ Commit `feat(organism): YAML rule matcher L0 with payload template substitution`
 # organism/rules/base.yaml
 rules:
   - id: cron_agent_failure_restart
-    match: {kind: cron_agent_failure, severity: [error, critical]}
-    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    match: { kind: cron_agent_failure, severity: [error, critical] }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.agent}" } }
     confidence: 0.95
 
   - id: disk_fill_cleanup_log
-    match: {kind: disk_fill, payload.percent_gte: 85}
-    action: {actuator: cleanup_log, params: {min_age_days: 30}}
+    match: { kind: disk_fill, payload.percent_gte: 85 }
+    action: { actuator: cleanup_log, params: { min_age_days: 30 } }
     confidence: 0.90
 
   - id: zombie_detected_restart
-    match: {kind: zombie_detected}
-    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    match: { kind: zombie_detected }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.agent}" } }
     confidence: 0.85
 
   - id: new_module_notify
-    match: {kind: new_module}
-    action: {actuator: notify_telegram, params: {message: "new module detected: {payload.path}"}}
+    match: { kind: new_module }
+    action:
+      {
+        actuator: notify_telegram,
+        params: { message: "new module detected: {payload.path}" },
+      }
     confidence: 0.80
 ```
 
@@ -1639,6 +1665,7 @@ Commit `feat(organism): base YAML rule set (4 starter rules)`.
 - [ ] **Step 4: Decider orchestrator (L0-only for W1)**
 
 Write test — `test_decider.py`:
+
 ```python
 import pytest
 from organism.schemas import Event, Severity
@@ -1682,6 +1709,7 @@ async def test_l0_no_match_returns_defer_decision(fake_redis):
 ```
 
 Run → FAIL → implement:
+
 ```python
 # organism/supervisor/decider.py
 from organism.schemas import Event, ActionDecision
@@ -1716,6 +1744,7 @@ Commit `feat(organism): Decider L0-only orchestrator (W1 shadow mode)`.
 - [ ] **Step 5: Daemon main loop (shadow mode — no dispatch)**
 
 Write test — `test_daemon.py`:
+
 ```python
 import pytest
 import json
@@ -1754,6 +1783,7 @@ async def test_run_once_writes_heartbeat(fake_redis, tmp_path):
 ```
 
 Run → FAIL → implement:
+
 ```python
 # organism/supervisor/daemon.py
 """Stateless Supervisor daemon — main consume loop.
@@ -1910,6 +1940,7 @@ gh pr merge --auto --squash
 ### Task W1.B: Base Actuators (restart_agent, cleanup_log, notify_telegram) — PR-W1.B
 
 **Files:**
+
 - Create: `apps/organism/organism/actuators/base.py` (~80 LOC — ActuatorBase with WAL + idempotency)
 - Create: `apps/organism/organism/actuators/restart_agent.py` (~80 LOC)
 - Create: `apps/organism/organism/actuators/cleanup_log.py` (~80 LOC)
@@ -1926,6 +1957,7 @@ gh pr merge --auto --squash
 - [ ] **Step 1: ActuatorBase abstract class with --dry-run + WAL + done-event emit**
 
 Key contract:
+
 ```python
 # organism/actuators/base.py
 import abc
@@ -2039,6 +2071,7 @@ Test with subprocess mock (no real launchctl). Commit.
 ### Task W1.C: Safety primitives — PR-W1.C
 
 **Files:**
+
 - Create: `apps/organism/organism/supervisor/circuit_breaker.py` (~100 LOC)
 - Create: `apps/organism/organism/supervisor/mutex.py` (~80 LOC)
 - Create: `apps/organism/organism/supervisor/dispatch.py` (~100 LOC — integrates CB + mutex + actuator runner)
@@ -2055,6 +2088,7 @@ Test with subprocess mock (no real launchctl). Commit.
 - **Dispatcher**: Takes `ActionDecision`, checks blackout flag (blocked → defer), checks whitelist (hardcoded SAFE_ACTUATORS set), checks CB + mutex, instantiates Actuator class, calls `.run()`, releases mutex. In W1 shadow mode: logs "would dispatch" but does not actually call `.run()`.
 
 **Hardcoded whitelist**:
+
 ```python
 # organism/supervisor/dispatch.py
 SAFE_ACTUATORS = frozenset({
@@ -2097,10 +2131,12 @@ Commit + push + PR-W1.C.
 ### Task W2.A: L2 Claude CLI integration — PR-W2.A
 
 **Files:**
+
 - Create: `apps/organism/organism/supervisor/claude_brain.py` (~200 LOC)
 - Create: `apps/organism/tests/supervisor/test_claude_brain.py`
 
 **Contract** (all steps TDD, same pattern):
+
 ```python
 # organism/supervisor/claude_brain.py
 """L2 Claude CLI brain — shell-out to claude CLI with OAuth MAX token.
@@ -2232,12 +2268,14 @@ Commit + push + PR-W2.A.
 ### Task W2.B: L1 Ollama classifier async — PR-W2.B
 
 **Files:**
+
 - Create: `apps/organism/organism/supervisor/ollama_classifier.py` (~100 LOC)
 - Create: `apps/organism/tests/supervisor/test_ollama_classifier.py`
 
 **Contract:** `async def classify(events: list[Event]) -> str` — returns bucket from `{"hardware", "deploy", "dependency", "data", "network", "unknown"}`. Shell-out to `ollama run qwen3.5:9b` with template. Result cached 10 min per correlation_id. Runs **async non-blocking** — Decider proceeds with L0/L2 while classifier finishes in background.
 
 Integration pattern in Decider:
+
 ```python
 # organism/supervisor/decider.py (extended W2)
 async def decide(self, event, ...):
@@ -2258,6 +2296,7 @@ Commit + push + PR-W2.B.
 ### Task W2.C: L3 Consiglio v1 gate — PR-W2.C
 
 **Files:**
+
 - Create: `apps/organism/organism/supervisor/consiglio_gate.py` (~100 LOC)
 - Create: `apps/organism/tests/supervisor/test_consiglio_gate.py`
 
@@ -2329,12 +2368,14 @@ Commit + push + PR-W2.C.
 ### Task W3.A: `adopt_module` actuator + git post-commit hook — PR-W3.A
 
 **Files:**
+
 - Create: `apps/organism/organism/actuators/adopt_module.py` (~200 LOC)
 - Create: `apps/organism/organism/post_commit_hook.py` (~80 LOC)
 - Create: `.husky/post-commit` (bash wrapper calling python hook)
 - Create: `apps/organism/tests/actuators/test_adopt_module.py`
 
 **Maturity signals check:**
+
 ```python
 # organism/actuators/adopt_module.py
 async def _execute(self, params):
@@ -2364,6 +2405,7 @@ def _check_maturity(self, path: Path) -> dict:
 ```
 
 **Post-commit hook:**
+
 ```python
 # organism/post_commit_hook.py
 #!/usr/bin/env python3
@@ -2392,6 +2434,7 @@ if __name__ == "__main__":
 ```
 
 Wire into `.husky/post-commit`:
+
 ```bash
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
@@ -2407,6 +2450,7 @@ Commit + push + PR-W3.A.
 ### Task W3.B: Cleanup actuators suite — PR-W3.B
 
 **Files:**
+
 - Create: `apps/organism/organism/actuators/cleanup_cache.py` (~80 LOC) — npm, pip, brew cleanup (calls existing cron script logic but idempotent)
 - Create: `apps/organism/organism/actuators/cleanup_branches.py` (~80 LOC) — `git fetch --prune && git branch -vv | awk '/gone/ {print $1}' | xargs -r git branch -D`, reuse `commit-commands:clean_gone` logic
 - Create: `apps/organism/organism/actuators/cleanup_zombie_plist.py` (~80 LOC) — scan `~/Library/LaunchAgents/com.balizero.*.plist`, check if Label in launchctl list AND script file exists, remove orphans (dry-run shows what would be removed)
@@ -2414,15 +2458,16 @@ Commit + push + PR-W3.A.
 - Test files for each
 
 Rules added to `base.yaml`:
+
 ```yaml
-  - id: scheduled_cleanup_nightly
-    match: {kind: scheduled_tick, payload.hour: 3}  # 03:00
-    action: {actuator: cleanup_log, params: {min_age_days: 30}}
-    confidence: 1.0
-  - id: scheduled_branches_weekly
-    match: {kind: scheduled_tick, payload.day_of_week: 0}  # Sunday
-    action: {actuator: cleanup_branches, params: {}}
-    confidence: 1.0
+- id: scheduled_cleanup_nightly
+  match: { kind: scheduled_tick, payload.hour: 3 } # 03:00
+  action: { actuator: cleanup_log, params: { min_age_days: 30 } }
+  confidence: 1.0
+- id: scheduled_branches_weekly
+  match: { kind: scheduled_tick, payload.day_of_week: 0 } # Sunday
+  action: { actuator: cleanup_branches, params: {} }
+  confidence: 1.0
 ```
 
 Scheduled tick: new cron entry `0 * * * * python3 -m organism.scheduled_tick` emits `scheduled_tick` event every hour.
@@ -2434,11 +2479,13 @@ Update SAFE_ACTUATORS + `base.yaml`. Commit + push + PR-W3.B.
 ### Task W3.C: `consolidate_redundancy` actuator — PR-W3.C
 
 **Files:**
+
 - Create: `apps/organism/organism/actuators/consolidate_redundancy.py` (~150 LOC)
 - Create: `apps/organism/organism/redundancies.yaml` — the 7 mappings from audit 2026-04-19
 - Create: `apps/organism/tests/actuators/test_consolidate_redundancy.py`
 
 **redundancies.yaml:**
+
 ```yaml
 redundancies:
   - id: heartbeat_systems
@@ -2447,7 +2494,13 @@ redundancies:
     strategy: merge_into_single_cron
   - id: compliance_pipeline
     description: 4 compliance systems → 1
-    targets: [compliance-ops, proactive_compliance_monitor, expiry_alerter.py, renewal-alerts]
+    targets:
+      [
+        compliance-ops,
+        proactive_compliance_monitor,
+        expiry_alerter.py,
+        renewal-alerts,
+      ]
     strategy: merge_into_single_cron
   - id: dep_audit_duplicate
     description: dep_audit.py cron duplicates weekly-dep-audit
@@ -2497,11 +2550,13 @@ Commit + push + PR-W3.C.
 ### Task W4.A: `propose_yaml_rule` actuator + Guardian V5 Learn integration — PR-W4.A
 
 **Files:**
+
 - Create: `apps/organism/organism/actuators/propose_yaml_rule.py` (~200 LOC)
 - Modify: `apps/evaluator/core_guardian/cron_guardian.py` — emit `yaml_rule_proposed` event when Learn produces candidate rule
 - Create: `apps/organism/tests/actuators/test_propose_yaml_rule.py`
 
 **Flow:**
+
 1. Guardian V5 Learn (existing `apps/evaluator/core_guardian/cron_guardian.py --learn-only`) outputs `learn_proposals.json`
 2. Script polls `learn_proposals.json` hourly, emits `yaml_rule_proposed` event per candidate
 3. Supervisor L0 rule: `yaml_rule_proposed → propose_yaml_rule actuator (L3 Consiglio required)`
@@ -2533,11 +2588,13 @@ Commit + push + PR-W4.A.
 ### Task W4.B: Gauntlet test suite — PR-W4.B
 
 **Files:**
+
 - Create: `apps/organism/tests/gauntlet/test_gauntlet_01_break_guardian.py` ... through `test_gauntlet_10_poison_pill.py`
 - Create: `apps/organism/tests/gauntlet/conftest.py` — staging fixture (isolated Redis, mock Telegram, temp JSONL)
 - Create: `apps/organism/tests/gauntlet/runbook.md` — manual execution runbook
 
 **Each gauntlet test:**
+
 ```python
 # tests/gauntlet/test_gauntlet_01_break_guardian.py
 import pytest
@@ -2584,7 +2641,7 @@ Commit + push + PR-W4.B.
 
 - [ ] **W4-check-final:** Run full gauntlet. 10/10 pass. Document results in `docs/organism/gauntlet-YYYY-MM-DD.md`. Commit.
 
-**If pass:** organism is production-validated. Success criterion met. Antonello notified via Telegram with summary.
+**If pass:** organism is production-validated. Success criterion met. Zero notified via Telegram with summary.
 **If fail N/10:** STOP — organism stays in shadow/SAFE-only mode. Open remediation PRs for failing scenarios. Re-run gauntlet after fixes.
 
 ---
@@ -2599,6 +2656,7 @@ Commit + push + PR-W4.B.
 ## Self-Review
 
 **1. Spec coverage:**
+
 - §1 Vision (4 capabilities P1): W0-W1 (repair) + W3.A (expansion) + W3.B-C (cleanup) + W4.A (robustness) ✓
 - §2 Architecture (Event Bus + Supervisor stateless + Actuators + 6 safety layers): all implemented across W0-W2 ✓
 - §3 Phases W0-W4 with migration order: matches plan waves ✓
@@ -2611,6 +2669,7 @@ Commit + push + PR-W4.B.
 **3. Type consistency:** `emit_event()` keyword-only (severity, source, kind, payload, correlation_id?, is_actuation?) — same everywhere. `ActionDecision` fields (actuator, params, confidence, tier, reasoning) — same across Decider, RuleMatcher, ClaudeBrain, ConsiglioGate. `ActuatorBase.run()` signature (params, correlation_id, dry_run) consistent with all subclasses.
 
 **4. Constraint coverage:**
+
 - Golden Rule #13: `claude_brain.py` strips `ANTHROPIC_API_KEY` from env; no `import anthropic` anywhere ✓
 - L2 auto-merge: every PR step uses `gh pr merge --auto --squash` ✓
 - Shadow mode 24h: explicit in W0 (no supervisor yet), W1 (shadow_mode=true), W2 checkpoint (48h observation before flip)

@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-25
 domain: operations
 client_case: pro-orchestrator-audit
@@ -12,7 +13,7 @@ sources:
 
 # Pro Cleanup State Snapshot — 2026-05-25 22:00 WITA
 
-Pre-cleanup snapshot before full-sweep operation requested by Antonello.
+Pre-cleanup snapshot before full-sweep operation requested by Zero.
 This file is the rollback authority — every delete below references this snapshot.
 
 ## Active processes (claude/codex)

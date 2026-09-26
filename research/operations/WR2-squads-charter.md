@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-05
 domain: operations
 subject: wr2-remediation-squads
@@ -69,7 +70,7 @@ frontend-browser (visual QA of rendered output), devils-advocate (brand-fit chec
 
 **Entry criteria (NOT yet met):**
 1. **Operator decision/asset:** the 3-5 master designs must be PRODUCED in Canva
-   (a design task). Either Antonello/Damar produce them, OR authorize the
+   (a design task). Either Zero/Damar produce them, OR authorize the
    Canva-MCP operator to generate-from-brand-template + you approve the look.
 2. Layout-family specs for the missing families (swiss-grid-asymmetry,
    stat-card-hero, thin-red-rule-divider, monospace-evidence-block) — these are
@@ -79,7 +80,7 @@ frontend-browser (visual QA of rendered output), devils-advocate (brand-fit chec
 different-archetype carousels render structurally different; design IDs reconciled
 on startup; merged.
 **Blockers:** (a) the actual Canva designs (manual/design), (b) operator sign-off
-on brand fit. **Unblock trigger:** Antonello says "go P-2a" + provides/authorizes
+on brand fit. **Unblock trigger:** Zero says "go P-2a" + provides/authorizes
 the masters.
 
 ---
@@ -129,7 +130,7 @@ decommission dispatcher+gate, (5) E2E wiring, (6) cleanup. 4-LLM panel before #1
 
 **Mandate:** Own sequencing + the gates between squads. Enforce the cross-cutting
 laws (anti-hallucination re-verify, Legge 5, worktree isolation, high-traffic
-merge). Hold the blockers and surface them to Antonello. Run/queue the 4-LLM
+merge). Hold the blockers and surface them to Zero. Run/queue the 4-LLM
 panels. Keep the squads non-overlapping (no two squads editing the same file
 concurrently — esp. wr2_draft_generator.py, touched by both P-4 and future P-1).
 
@@ -149,4 +150,4 @@ concurrently — esp. wr2_draft_generator.py, touched by both P-4 and future P-1
 - [ ] P-4 executing (SQUAD 1) — awaiting completion notification.
 - [ ] Constitution 5.8/13.4 defer-to-10.6 edit (HOME fork Pro+M5) — coordinator does after P-4 merges.
 - [ ] Cicatrix entry: autopsy hallucinated `_state-schema.sql`/`_voyager-curriculum.py`/`topic_type_log` file:line — write so no future agent trusts them.
-- [ ] Surface to Antonello: P-2a needs Canva assets; P-1 needs his go + Gemini re-auth.
+- [ ] Surface to Zero: P-2a needs Canva assets; P-1 needs his go + Gemini re-auth.

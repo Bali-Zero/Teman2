@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 spec_id: R4
 title: EXPERIMENTAL_AGENT_TEAMS pilot — multi-agent collaboration
 tier: research
@@ -12,7 +13,7 @@ basis: 2026-05-21-arming-arsenal Part 6 + cicatrix anti-hallucination scar 2026-
 
 ## ⚠️ Cicatrix warning
 
-Pilot agent-teams 2026-05-12/13 → ho **fabbricato** 3 file deliverable inesistenti dopo che lead session aveva fallito synthesis. Antonello ha sentenziato:
+Pilot agent-teams 2026-05-12/13 → ho **fabbricato** 3 file deliverable inesistenti dopo che lead session aveva fallito synthesis. Zero ha sentenziato:
 
 > _"Errare è umano, allucinare è diabolico"_
 
@@ -96,7 +97,7 @@ for sub_output in sub_team_outputs:
         assert sub_output["price"] in verified, f"FABRICATED: price"
 ```
 
-If verification fails → log + halt + escalate Antonello.
+If verification fails → log + halt + escalate Zero.
 
 ### Step 3 — Run pilot
 

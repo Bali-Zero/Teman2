@@ -7,7 +7,7 @@
 **Architecture:** 4 stream di lavoro paralleli, owner mix:
 
 - **Newsroom team** (autonomo) — scrive 4 articoli SEO commerciali high-intent (16h scrittura)
-- **Antonello** — review strategica (4h: selezione query target + review articoli)
+- **Zero** — review strategica (4h: selezione query target + review articoli)
 - **Damar** — page-level SEO refresh integrando `gemini_seo_optimizer.py`, CRM `referrer_url` capture, sitemap re-submit (12h dev)
 
 **Tech Stack:** Python 3.11 + FastAPI (backend-rag), Alembic migrations, Next.js 16 + React 19 (apps/mouth), TypeScript, `gemini_seo_optimizer.py` esistente (bali-intel-scraper), war-room newsroom pipeline esistente.
@@ -29,27 +29,27 @@
 
 Files che verranno creati o modificati:
 
-| File                                                                        | Owner              | Status           | Responsabilità                                                                                                   |
-| --------------------------------------------------------------------------- | ------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `apps/backend-rag/backend/migrations/migration_118_clients_referrer_url.py` | Damar              | NEW              | Migration Alembic: aggiunge `referrer_url`, `landing_page`, `first_touch_at` a `clients`, indice                 |
-| `apps/backend-rag/backend/services/crm/lead_intake.py`                      | Damar              | MODIFY (~30 LOC) | Capture `referrer_url` da request headers + Body, set `lead_source` based on UTM                                 |
-| `apps/mouth/src/lib/whatsapp-utm.ts`                                        | Damar              | NEW              | Helper TS: build WA link con UTM params da page slug + funnel                                                    |
-| `apps/mouth/src/app/v2/_components/HeroBlueprint.tsx`                       | Damar              | MODIFY (1 line)  | Sostituisci hardcoded WA link con `buildWhatsAppLink('home')`                                                    |
-| `apps/mouth/src/app/v2/_components/FunnelFeature.tsx`                       | Damar              | MODIFY (4 lines) | Sostituisci hardcoded WA link con `buildWhatsAppLink(funnel)`                                                    |
-| `apps/mouth/src/app/v2/_components/ZantaraFAB.tsx`                          | Damar              | MODIFY (1 line)  | UTM su FAB WA link                                                                                               |
-| `apps/mouth/src/app/(marketing)/_seo/funnel-schema.ts`                      | Damar              | NEW              | Funzione TS che genera Schema.org Service + FAQ JSON-LD per ogni funnel page (visa/kbli/tax/property)            |
-| `apps/mouth/src/app/(marketing)/page.tsx`                                   | Damar              | MODIFY (~20 LOC) | Inietta JSON-LD schema in `<head>` via Next.js metadata API                                                      |
-| `apps/mouth/src/app/sitemap.ts`                                             | Damar              | MODIFY (~10 LOC) | Aggiungi 4 funnel pages con priority 0.9 + ping GSC re-submit                                                    |
-| `apps/war-room/agents/00_topic_selector.py`                                 | Antonello (config) | MODIFY (~5 LOC)  | Inject 4 query target nelle "preferred_topics" config in modo che newsroom le pesi più alto nei prossimi 4 cicli |
-| `data/seo_kw_targets/2026-04-21-prenatal.json`                              | Antonello          | NEW              | Lista delle 4 query commerciali target con brief redazionale                                                     |
-| (4 articoli MDX) `apps/mouth/src/content/blog/<slug>.mdx`                   | Newsroom team      | NEW × 4          | Articoli SEO commerciali — autonomous via newsroom, Antonello review pre-publish                                 |
-| `scripts/gsc_resubmit_sitemap.py`                                           | Damar              | NEW (~40 LOC)    | Script one-shot per re-submit sitemap a GSC API + log conferma                                                   |
+| File                                                                        | Owner         | Status           | Responsabilità                                                                                                   |
+| --------------------------------------------------------------------------- | ------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `apps/backend-rag/backend/migrations/migration_118_clients_referrer_url.py` | Damar         | NEW              | Migration Alembic: aggiunge `referrer_url`, `landing_page`, `first_touch_at` a `clients`, indice                 |
+| `apps/backend-rag/backend/services/crm/lead_intake.py`                      | Damar         | MODIFY (~30 LOC) | Capture `referrer_url` da request headers + Body, set `lead_source` based on UTM                                 |
+| `apps/mouth/src/lib/whatsapp-utm.ts`                                        | Damar         | NEW              | Helper TS: build WA link con UTM params da page slug + funnel                                                    |
+| `apps/mouth/src/app/v2/_components/HeroBlueprint.tsx`                       | Damar         | MODIFY (1 line)  | Sostituisci hardcoded WA link con `buildWhatsAppLink('home')`                                                    |
+| `apps/mouth/src/app/v2/_components/FunnelFeature.tsx`                       | Damar         | MODIFY (4 lines) | Sostituisci hardcoded WA link con `buildWhatsAppLink(funnel)`                                                    |
+| `apps/mouth/src/app/v2/_components/ZantaraFAB.tsx`                          | Damar         | MODIFY (1 line)  | UTM su FAB WA link                                                                                               |
+| `apps/mouth/src/app/(marketing)/_seo/funnel-schema.ts`                      | Damar         | NEW              | Funzione TS che genera Schema.org Service + FAQ JSON-LD per ogni funnel page (visa/kbli/tax/property)            |
+| `apps/mouth/src/app/(marketing)/page.tsx`                                   | Damar         | MODIFY (~20 LOC) | Inietta JSON-LD schema in `<head>` via Next.js metadata API                                                      |
+| `apps/mouth/src/app/sitemap.ts`                                             | Damar         | MODIFY (~10 LOC) | Aggiungi 4 funnel pages con priority 0.9 + ping GSC re-submit                                                    |
+| `apps/war-room/agents/00_topic_selector.py`                                 | Zero (config) | MODIFY (~5 LOC)  | Inject 4 query target nelle "preferred_topics" config in modo che newsroom le pesi più alto nei prossimi 4 cicli |
+| `data/seo_kw_targets/2026-04-21-prenatal.json`                              | Zero          | NEW              | Lista delle 4 query commerciali target con brief redazionale                                                     |
+| (4 articoli MDX) `apps/mouth/src/content/blog/<slug>.mdx`                   | Newsroom team | NEW × 4          | Articoli SEO commerciali — autonomous via newsroom, Zero review pre-publish                                      |
+| `scripts/gsc_resubmit_sitemap.py`                                           | Damar         | NEW (~40 LOC)    | Script one-shot per re-submit sitemap a GSC API + log conferma                                                   |
 
 ---
 
-## Task 1: Antonello — Selezione 4 query target + brief redazionale
+## Task 1: Zero — Selezione 4 query target + brief redazionale
 
-**Owner:** Antonello (1h)
+**Owner:** Zero (1h)
 **Files:**
 
 - Create: `data/seo_kw_targets/2026-04-21-prenatal.json`
@@ -58,7 +58,7 @@ Files che verranno creati o modificati:
 
 - [ ] **Step 1: Selezionare 4 query con criteri espliciti**
 
-Criteri di selezione (Antonello in 30 min):
+Criteri di selezione (Zero in 30 min):
 
 1. Search intent: **transactional** o **commercial investigation** (NON informational generico). Esempi buoni: `"PT PMA minimum capital 2026"`, `"E33G remote worker KITAS cost"`, `"hak pakai vs HGB foreign buyer"`, `"NPWP for foreign individual Indonesia"`. Esempi cattivi: `"what is Bali"`, `"visa types Indonesia"` (troppo generico).
 2. KG coverage: query per cui Bali Zero ha già fatti strutturati (es. KG entity con ≥10 facts).
@@ -81,7 +81,7 @@ Crea `/Users/nuzantara/Desktop/nuzantara/data/seo_kw_targets/2026-04-21-prenatal
 {
   "version": 1,
   "created_at": "2026-04-21",
-  "owner": "antonello",
+  "owner": "Zero",
   "purpose": "SEO Cell pre-natal Sprint 0 — 4 articoli high commercial intent",
   "spec": "docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2",
   "queries": [
@@ -186,9 +186,9 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 ---
 
-## Task 2: Antonello — Iniezione query target nel newsroom config
+## Task 2: Zero — Iniezione query target nel newsroom config
 
-**Owner:** Antonello (30 min)
+**Owner:** Zero (30 min)
 **Files:**
 
 - Modify: `apps/war-room/agents/00_topic_selector.py:~40-60` (config block)
@@ -210,7 +210,7 @@ Expected output: trova le righe dei config nelle prime ~60 righe.
 Edit `apps/war-room/agents/00_topic_selector.py` (subito dopo gli altri config in cima):
 
 ```python
-# Sprint 0 SEO Cell pre-natal — boost preferred queries from Antonello brief
+# Sprint 0 SEO Cell pre-natal — boost preferred queries from Zero brief
 SEO_CELL_PRENATAL_BRIEF_PATH = Path(__file__).parent.parent.parent.parent / "data" / "seo_kw_targets" / "2026-04-21-prenatal.json"
 
 def _load_seo_cell_prenatal_briefs() -> list[dict]:
@@ -1505,7 +1505,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 ## Task 10: Newsroom team — Articolo 1 (visa, query q1_visa)
 
 **Owner:** Newsroom team (autonomous, 4h)
-**Reviewer:** Antonello (1h post-draft)
+**Reviewer:** Zero (1h post-draft)
 **Files:**
 
 - Create: `apps/mouth/src/content/blog/e33g-remote-worker-kitas-cost-2026.mdx`
@@ -1525,7 +1525,7 @@ python agents/00_topic_selector.py --force-query "q1_visa"
 
 Output: `apps/war-room/output/draft/e33g-remote-worker-kitas-cost-2026.draft.mdx`
 
-- [ ] **Step 2: Antonello review (1h)**
+- [ ] **Step 2: Zero review (1h)**
 
 Checklist review:
 
@@ -1579,7 +1579,7 @@ git commit -m "content(seo-cell): publish article 1/4 — E33G remote worker KIT
 First article of SEO Cell pre-natal Sprint 0 alimentation. Target query
 'E33G remote worker KITAS cost 2026' (estimated 80 search/month).
 
-Owner: newsroom war-room (autonomous draft) + Antonello review.
+Owner: newsroom war-room (autonomous draft) + Zero review.
 SEO optimization via apps/bali-intel-scraper/scripts/gemini_seo_optimizer.py.
 
 Internal links: /visa, /visa/e33g.
@@ -1605,7 +1605,7 @@ Submit URL for indexing in GSC: https://search.google.com/search-console → URL
 
 ## Task 11: Newsroom team — Articolo 2 (kbli, query q2_kbli)
 
-**Owner:** Newsroom team (4h) + Antonello review (1h)
+**Owner:** Newsroom team (4h) + Zero review (1h)
 **Files:**
 
 - Create: `apps/mouth/src/content/blog/pt-pma-minimum-capital-reality-2026.mdx`
@@ -1623,7 +1623,7 @@ Identico flow a Task 10 ma per query `q2_kbli`. Brief: `data/seo_kw_targets/2026
 
 ## Task 12: Newsroom team — Articolo 3 (tax, query q3_tax)
 
-**Owner:** Newsroom team (4h) + Antonello review (1h)
+**Owner:** Newsroom team (4h) + Zero review (1h)
 **Files:**
 
 - Create: `apps/mouth/src/content/blog/pph21-expat-foreign-income-indonesia-2026.mdx`
@@ -1640,7 +1640,7 @@ Replica Task 10 con:
 
 ## Task 13: Newsroom team — Articolo 4 (property, query q4_property)
 
-**Owner:** Newsroom team (4h) + Antonello review (1h)
+**Owner:** Newsroom team (4h) + Zero review (1h)
 **Files:**
 
 - Create: `apps/mouth/src/content/blog/hak-pakai-vs-hgb-foreign-buyer-bali-2026.mdx`
@@ -1657,7 +1657,7 @@ Replica Task 10 con:
 
 ## Task 14: Sprint 0 Done check + handoff to Plan B
 
-**Owner:** Antonello + Damar (1h congiunto)
+**Owner:** Zero + Damar (1h congiunto)
 **Files:** none modified — verifica stato
 
 **Why:** Prima di considerare Sprint 0 chiuso e iniziare Plan B (Sprint 1-4 cellula bootstrap), verifica le 6 done criteria.
@@ -1710,7 +1710,7 @@ Crea memoria MOS:
 
 - [ ] **Step 7: Schedule Plan B kick-off**
 
-Quando done criteria sono ✅, decidi con Antonello se procedere con Plan B (Sprint 1-4 cellula bootstrap, ~34h Damar) o aspettare il decision-gate W12 prima di investire ulteriormente. Spec parent §10.2 ha la logica.
+Quando done criteria sono ✅, decidi con Zero se procedere con Plan B (Sprint 1-4 cellula bootstrap, ~34h Damar) o aspettare il decision-gate W12 prima di investire ulteriormente. Spec parent §10.2 ha la logica.
 
 ---
 
@@ -1730,7 +1730,7 @@ Plan A salvato in `docs/superpowers/plans/2026-04-19-seo-cell-A-prenatal-foundat
 
 **Due opzioni di esecuzione:**
 
-1. **Subagent-Driven (recommended)** — Dispatch fresh subagent per task, review tra task, fast iteration. Adatto per Damar tasks (3, 4, 5, 6, 7, 8, 9). Antonello tasks (1, 2, 14) e Newsroom tasks (10-13) sono human-driven, no subagent needed.
+1. **Subagent-Driven (recommended)** — Dispatch fresh subagent per task, review tra task, fast iteration. Adatto per Damar tasks (3, 4, 5, 6, 7, 8, 9). Zero tasks (1, 2, 14) e Newsroom tasks (10-13) sono human-driven, no subagent needed.
 
 2. **Inline Execution** — Eseguo io tasks Damar uno-a-uno in questa sessione, batch checkpoint dopo ogni 2-3 task per review. Più lento ma più controllato.
 

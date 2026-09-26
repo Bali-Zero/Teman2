@@ -1,6 +1,7 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 title: "INTAKE Login Gate — mandatory pre-workspace clearance (3 gates)"
-status: REVIEWED by 4-LLM panel 2026-06-06 (Gemini 3.1 Pro · GPT-5.5 Codex · DeepSeek V4 Pro · Claude Opus 4.8) — awaiting Antonello approval
+status: REVIEWED by 4-LLM panel 2026-06-06 (Gemini 3.1 Pro · GPT-5.5 Codex · DeepSeek V4 Pro · Claude Opus 4.8) — awaiting Zero approval
 panel_verdict: ship-with-fixes (3/4) · redesign (1/4, Codex) — §11 records the 8 consensus fixes folded in
 author: Claude Opus 4.8 (1M)
 date: 2026-06-06
@@ -356,7 +357,7 @@ build (§10), not optional.
 
 | Q | Outcome (consensus) |
 |---|---|
-| Q1 — gate 1 scope | **by-receiver in v1** — DECIDED by Antonello 2026-06-06: ship the bigger v1. The `assigned_to` shortcut is rejected. v1 MUST carry `whatsapp_message_context.team_member_email` (and the email-intake equivalent) through `whatsapp_adapter.py` into the intake row, then scope the queue + the gate count by receiver. NO_MATCH orphans route to whoever received them. This makes the gate the direct anti-Surya control. |
+| Q1 — gate 1 scope | **by-receiver in v1** — DECIDED by Zero 2026-06-06: ship the bigger v1. The `assigned_to` shortcut is rejected. v1 MUST carry `whatsapp_message_context.team_member_email` (and the email-intake equivalent) through `whatsapp_adapter.py` into the intake row, then scope the queue + the gate count by receiver. NO_MATCH orphans route to whoever received them. This makes the gate the direct anti-Surya control. |
 | Q2 — admins gated? | **yes, with visible override** (4/4) |
 | Q3 — enforcement scope | **mutating-only + allowlist** (4/4), contingent on F1+F4 |
 | Q4 — probe outage | **fail OPEN + alert** (4/4), via F4 evaluator |
@@ -370,4 +371,4 @@ one item with real new cost (carrying `team_member_email` from
 `whatsapp_message_context` through `whatsapp_adapter.py` into the intake row, then
 filtering the queue by it). The spec's original "assigned_to v1 + fast-follow" was the
 cheap path; the panel says cheap-path v1 doesn't deliver what was approved. **This is the
-single decision to put to Antonello.**
+single decision to put to Zero.**

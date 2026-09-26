@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-01
 domain: visa
 client_case: none (category-level positioning — global influencer / content creator in Bali)
@@ -19,7 +20,7 @@ related:
 
 > The soft-lobbyist spine of the "WHEN AM I ILLEGAL? — CONTENT CREATOR" content
 > (carousel slide 10 "THE MISSING ROAD" + video beat 5). Argument register fixed by
-> Antonello: **1=soft, 2=truth, 3=constatazione (not an attack on government), 4=dual
+> Zero: **1=soft, 2=truth, 3=constatazione (not an attack on government), 4=dual
 > audience (creators + regulatory ecosystem)**. The lobbying is legitimate ONLY because
 > it is framed as alignment of interests — Indonesia gains first, the creator second.
 
@@ -61,4 +62,4 @@ The operative variable in Indonesian law is **`source + beneficiary`, NOT `mediu
 - ALWAYS lead with the Indonesia benefit, creator benefit second.
 - NEVER "the government is wrong / slow / broken". USE "Indonesia already classified it — the right move was already made; only the switch is pending."
 - "constatazione" = observe + suggest, giving the regulator credit. Not a demand.
-- The most uncomfortable fact (barter = crime ALSO for the enabling Indonesian hotel, UU 6/2011 Pasal 122 both parties ≤5yr/Rp500M) stays OUT of the public carousel/video — internal only, decision pending Antonello.
+- The most uncomfortable fact (barter = crime ALSO for the enabling Indonesian hotel, UU 6/2011 Pasal 122 both parties ≤5yr/Rp500M) stays OUT of the public carousel/video — internal only, decision pending Zero.

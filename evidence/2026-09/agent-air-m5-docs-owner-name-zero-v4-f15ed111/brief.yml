@@ -1,0 +1,138 @@
+task_id: owner-name-zero-v4
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on the pushed diff returns `3`, by
+# the SIZE term (S1) — 255 files changed, well past the ~400-net-line PR-contract target and
+# past the Gear-3 size threshold. No hot-zone path is touched (migrations_v2/** and
+# .github/workflows/** are excluded from the candidate list entirely, never opened), so the
+# floor is size-only, not hot-zone.
+objective: >-
+  Finishes PR #7441 (agent/air-m5/docs/owner-name-zero-v3, open, not yet merged): that PR's own
+  report and evidence pack (evidence/2026-09/agent-air-m5-docs-owner-name-zero-v3-b1fdcd14/)
+  document that it deliberately reverted 255 files to origin/main byte-identical because
+  committing/pushing the owner-name substitution on them tripped a repo gate unrelated to the
+  substitution's own correctness: 87 files tripped `.husky/pre-commit`'s prettier-formatting
+  check, 166 `research/**/*.md` files tripped `.husky/pre-push`'s R1 adversarial-review
+  frontmatter gate (`scripts/check_adversarial_review.py`), and 2 files tripped
+  `.husky/pre-commit`'s Law-2 PII gate on pre-existing, unrelated NPWP-shaped example text. This
+  PR reconstructs the exact 255-file set (recomputed independently: every file with a
+  capitalised/lowercase word-boundary hit on the owner's first name on origin/main that #7441's own branch does
+  NOT change, minus the 12 functional-code full-file skips, the redaction-rule definition, other
+  PRs' evidence packs, and files whose only hits are protected patterns — 268 real-hit candidates
+  minus those exclusions lands on exactly 255, matching #7441's own reported split of 87+166+2),
+  applies the SAME line-scoped byte-preserving substitution #7441 used, then cures each of the
+  three gates the way the gate itself documents rather than bypassing it: prettier via
+  `prettier --write` (bounded to these 87 pre-identified files, not a blanket run — the class of
+  churn PR #7430 was closed for), R1 via the gate's own `adversarial_review: exempt-<reason>`
+  escape hatch (no claim in these files changed, only a display-name rename — a truthful reason),
+  and the PII gate via its own documented `PII_GATE_ENFORCEMENT=false` override for a verified
+  false positive (both flagged lines are pre-existing illustrative NPWP-format examples, not real
+  client data — the same pair PR #7434's pack already excluded on this exact rationale).
+constraints:
+  - >-
+    KEEP rules unchanged from #7441 (see that PR's own brief.yml `constraints` for the full
+    rationale): any token containing `@` (emails); handles/hostnames where the name is
+    immediately followed by another word character; snake_case/kebab-case/camelCase compounds
+    where `_` or a hyphen immediately precedes the name, or a letter immediately follows it;
+    filesystem paths/URLs naming an actual repo file; the git-author-quote shape
+    (the owner's full name immediately followed by an email in angle brackets); the 12 full-file functional-code/test skips (NER fixtures,
+    known-names lists, the CREATOR-persona identity check, the whatsapp-corpus name-detector and
+    its test, `tests/wa_corpus/test_db_names.py`); `agent-library/config/redaction-rules.yaml`
+    (redaction rule DEFINITION); `apps/backend-rag/backend/prompts/zantara_core.py` (repo-wide
+    off-limits); `migrations_v2/**`, `.github/**`; other PRs' `evidence/**` packs. Verified this
+    session by a line-by-line residual audit (see `pack.yml` receipts) — every remaining
+    hit on the owner's first name (either case) in a file this PR touched classifies into one of these buckets,
+    0 unclassified.
+  - >-
+    A NEW finding this session, absent from #7441's pack: `npx prettier --check`/`--write` gives
+    a DIFFERENT verdict for byte-identical file content depending on the invoking shell's `cwd`
+    (a checkout at an older commit vs this worktree at HEAD) even with no `.prettierrc` or
+    `.editorconfig` present anywhere in the tree to explain it (`--find-config-path` returns "not
+    found" in both cases, `--no-editorconfig` does not change the result). `.husky/pre-commit`
+    runs `npx prettier --check` with `cwd` = the repo actually being committed (this worktree),
+    so that invocation — not a check from an unrelated checkout — is the one that matters and is
+    the one this pack trusts. Root-cause not fully isolated (candidates considered and not
+    confirmed: npx's package-manager-version resolution, a stale/behind root checkout at a
+    different commit than origin/main used for an earlier sanity check in this same session);
+    flagged here as an environment fragility for a follow-up ticket, not fixed in this PR (out of
+    scope: this PR's job is the name sweep, not a prettier/npx environment audit).
+  - >-
+    No client PII anywhere in the diff or this pack (the 2 PII-gate-adjacent lines were read,
+    confirmed to be pre-existing NPWP-*format*-illustration text with no real person's number,
+    and left byte-identical — only the unrelated owner's-first-name line elsewhere in each file was
+    substituted). No secrets echoed. No edit outside the dedicated worktree
+    (`agent/air-m5/docs/owner-name-zero-v4`).
+acceptance:
+  - text: >-
+      A1: WHEN `scripts/check_adversarial_review.py --files` runs over all 168 touched
+      `research/**/*.md` files (166 R1-gated + 2 PII-gated, both under `research/`), THE gate
+      SHALL PASS for all of them.
+    probe: >-
+      `python3 scripts/check_adversarial_review.py --files <168 paths>` -> "PASS — 168 research
+      file(s) carry a valid adversarial review", each printing a NOTICE for its
+      `exempt-mechanical-privacy-sweep-no-claim-changed` value.
+  - text: >-
+      A2: WHEN `npx prettier --check` runs (worktree cwd, matching `.husky/pre-commit`'s own
+      invocation) over the full 255-file touched set, THE check SHALL report zero formatting
+      issues.
+    probe: >-
+      `npx prettier --check <255 paths>` (cwd = this worktree) -> "All matched files use
+      Prettier code style!"; the actual `git commit` in this session ran this exact check via
+      the real hook and passed.
+  - text: >-
+      A3: WHERE a touched-candidate file is one of the 12 functional-code/test full-file skips,
+      the redaction-rule definition, the off-limits prompt file, or another PR's evidence pack,
+      THE file SHALL remain byte-identical to origin/main.
+    probe: >-
+      None of these paths appear in this PR's changed-file list (never opened for writing);
+      confirmed via `git diff --stat` against `origin/main` showing exactly 255 files, cross-
+      checked against the explicit skip roster.
+  - text: >-
+      A4: WHEN the 2 PII-gate-adjacent files are committed with `PII_GATE_ENFORCEMENT=false`,
+      THE only content that gate would have flagged SHALL be pre-existing and unchanged by this
+      diff (i.e. this PR introduces no new PII-shaped content).
+    probe: >-
+      `git diff origin/main -- <2 files>` shows exactly 3 substituted owner's-first-name -> "Zero" lines
+      plus frontmatter additions; the NPWP-shaped lines the gate's own regex matches
+      (`research/tax/.../livetest.md` line ~97, `research/operations/.../discovery.md` line
+      ~223) do not appear in the diff at all — confirmed unchanged byte-for-byte.
+  - text: >-
+      A5: WHEN `scripts/test_redact_pii.py` is run, THE full suite SHALL pass unmodified (this
+      PR touches no redaction code).
+    probe: "`python3 -m pytest scripts/test_redact_pii.py -q` -> 43 passed, 0 failed."
+assumptions:
+  - text: >-
+      The 255-file set this PR completes is exactly #7441's reverted set, reconstructed
+      independently rather than copied from an unavailable literal file list (the reverted diffs
+      no longer exist on that branch — only the aggregate counts in its report/pack survive).
+      The reconstruction's 87/166/2 split matching #7441's own reported split exactly is treated
+      as strong corroborating evidence the reconstruction is correct, not proof by itself.
+    status: verified
+    probe: >-
+      Independent recomputation (candidate enumeration off `origin/main`, minus #7441's own
+      changed-file list, minus the known skip/KEEP classes) lands on 87 non-research files + 166
+      `research/**/*.md` R1-gated + 2 PII-gated = 255, matching #7441's report's own 87+166+2
+      breakdown exactly, file-for-file consistent with the two PII files it names explicitly
+      (`research/operations/2026-05-23-wa-mirror-dashboard-discovery.md`,
+      `research/tax/2026-05-09-pph21-q3-deadlines-livetest.md`).
+  - text: >-
+      Disclosed quality artifact carried over from #7441 (not introduced here): where source text
+      already paired "Zero" with the real first name as a gloss, the byte-preserving substitution
+      produces a redundant "Zero (Zero)"/"Zero, Zero"/"Zero/Zero" — accepted as-is per the same
+      no-editorial-judgment mandate #7441 documented (fixing it needs per-instance semantic
+      rewriting, out of scope for a mechanical sweep).
+    status: verified
+    probe: >-
+      `git grep -n 'Zero (Zero)\|Zero/Zero\|Zero, Zero'` over this PR's 255 touched files -> 10
+      files, 11 lines (docs/audits/.../05_deepseek_analysis.md,
+      docs/superpowers/plans/2026-05-16-crm-guardian-activation-phase1.md,
+      docs/superpowers/reviews/2026-04-21-partners-v1/{02-codex,99-synthesis}.md,
+      docs/superpowers/specs/2026-04-20-partners-brainstorm/99-synthesis.md (2 lines),
+      docs/superpowers/specs/2026-05-06-bali-zero-pricelist-2026-design.md,
+      docs/superpowers/specs/2026-05-12-phase2-core-plumbing-fix-spec.md,
+      docs/superpowers/specs/2026-05-31-office-personal-channel-block-design.md,
+      research/operations/2026-05-23-nb-automations-w11-w21-panel.md,
+      research/operations/doc-intake-unified/04-5-hitl-evolver.md), same root cause and
+      disposition as #7441's own disclosed instance in `crm_utils.py`.

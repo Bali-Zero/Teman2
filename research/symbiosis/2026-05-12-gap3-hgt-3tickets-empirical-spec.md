@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-12
 domain: symbiosis
 client_case: SYMBIOSIS Gap 3 — HGT FASE 4 recovery 3-ticket consolidated spec (post empirical re-verification)
@@ -211,7 +212,7 @@ After all 3 close + 7-day metrics window passes: HGT FASE 4 activation = ~1 day 
 ## What this loop produces
 
 Doc-only. Spec landed for execution. **No autonomous code changes** because:
-- TICKET A: crm-cell is the lightest, could be autonomous, but adding a real `redis.asyncio.Redis` client requires connection-config decisions that should be Antonello-reviewed
+- TICKET A: crm-cell is the lightest, could be autonomous, but adding a real `redis.asyncio.Redis` client requires connection-config decisions that should be Zero-reviewed
 - TICKET B: production cron path, high-blast-radius — must be operator-driven
 - TICKET C: sentinel is currently live; refactor needs staged rollout
 

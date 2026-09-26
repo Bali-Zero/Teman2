@@ -140,6 +140,7 @@ cd ../nuzantara-wt/p0-7
 ### Phase 5 — Resolve duplicates
 
 For each pair:
+
 - If applied = `129_war_room_drafts.sql` (example) and not-applied = `129_intel_cognitive_layer.sql`, rename:
 
 ```bash
@@ -156,6 +157,7 @@ git mv apps/backend-rag/backend/db/migrations_v2/130_X.sql \
 ```
 
 **Sanity check:**
+
 ```bash
 PYTHONPATH=apps/backend-rag python -m backend.db.migrate apply-all --dry-run
 # Expected: no errors, shows "would apply 141 and 142"
@@ -203,7 +205,7 @@ name: Migration number uniqueness lint
 on:
   pull_request:
     paths:
-      - 'apps/backend-rag/backend/db/migrations_v2/**'
+      - "apps/backend-rag/backend/db/migrations_v2/**"
 
 jobs:
   lint:
@@ -370,7 +372,7 @@ Brainstorms saved in /tmp/kakuro-S3-brainstorms.
 
 ## Failure modes
 
-- **Production query shows BOTH duplicates applied**: Zero handoff. Both migrations applied means schema is in some valid state but cannot be reverted by file rename. Document the situation, pause work, await Antonello decision.
+- **Production query shows BOTH duplicates applied**: Zero handoff. Both migrations applied means schema is in some valid state but cannot be reverted by file rename. Document the situation, pause work, await Zero decision.
 - **Renamed file fails apply-all dry-run**: rollback rename, investigate. Possibly the file content wasn't idempotent.
 - **CI passes but SQL v2 post-deploy (P0-4) doesn't apply 141/142**: P0-4 fix may not have landed yet on main, or the renamed files weren't picked up. Check `gh run view` of fly-deploy.
 - **Coord lock stuck**: same recovery as kakuro-S1/S2.
@@ -378,5 +380,6 @@ Brainstorms saved in /tmp/kakuro-S3-brainstorms.
 ## Autonomy boundary
 
 L2 autonomous EXCEPT for:
+
 - BOTH duplicates applied scenario → Zero handoff (data integrity decision)
 - Otherwise proceed L2.

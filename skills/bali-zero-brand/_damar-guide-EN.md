@@ -14,7 +14,7 @@ it on IG. This page tells you how to do that in 5 clicks.
 1. **Open the queue page** in your browser:
    `http://localhost:8765`
 
-   If the page does not load, ask Antonello to start the queue server. The page shows all
+   If the page does not load, ask Zero to start the queue server. The page shows all
    carousels waiting for your review, with the newest at the top.
 
 2. **Click `OPEN IN CANVA`** on the first item.
@@ -56,13 +56,13 @@ it on IG. This page tells you how to do that in 5 clicks.
 
 ## States you'll see in the queue
 
-| State | What it means |
-|---|---|
-| **drafted** (yellow border) | Agent finished, waiting for your review |
-| **reviewed** | You opened it but haven't published yet |
-| **published** (green border) | You published, carousel is closed |
-| **published_with_edits** | You published after editing — **best signal for learning** |
-| **rejected** (red border) | You decided not to publish |
+| State                        | What it means                                              |
+| ---------------------------- | ---------------------------------------------------------- |
+| **drafted** (yellow border)  | Agent finished, waiting for your review                    |
+| **reviewed**                 | You opened it but haven't published yet                    |
+| **published** (green border) | You published, carousel is closed                          |
+| **published_with_edits**     | You published after editing — **best signal for learning** |
+| **rejected** (red border)    | You decided not to publish                                 |
 
 ---
 
@@ -87,12 +87,12 @@ the rejection rate should drop noticeably.
 
 ---
 
-## What if Antonello is not online?
+## What if Zero is not online?
 
 Just queue your decisions normally. Everything keeps working — the agent doesn't need
-Antonello to be online for you to publish or reject.
+Zero to be online for you to publish or reject.
 
-If the queue page won't load (e.g. `localhost:8765` shows error), text Antonello — he can
+If the queue page won't load (e.g. `localhost:8765` shows error), text Zero — he can
 restart the server. Until then, you can still publish from Canva manually; the queue will
 catch up later.
 
@@ -100,10 +100,10 @@ catch up later.
 
 ## Questions
 
-- Anything wrong, weird, or confusing → text Antonello on Telegram. Screenshot helps.
+- Anything wrong, weird, or confusing → text Zero on Telegram. Screenshot helps.
 - This document lives at `~/.claude/skills/bali-zero-brand/_damar-guide-EN.md` if you ever
-  need to find it again. (Or just ask Antonello, no need to find files.)
+  need to find it again. (Or just ask Zero, no need to find files.)
 
 ---
 
-*Bali Zero — WR2 Editorial. Last updated 2026-05-08.*
+_Bali Zero — WR2 Editorial. Last updated 2026-05-08._

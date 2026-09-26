@@ -695,16 +695,16 @@ The pipeline must handle BOTH organized and unorganized folders.
 
 ## APPENDIX B: Team Members (for assigned_to)
 
-| Name      | Email                  | Role        |
-| --------- | ---------------------- | ----------- |
-| Antonello | antonello@balizero.com | Founder     |
-| Rika      | rika@balizero.com      | Operations  |
-| Nurul     | nurul@balizero.com     | Immigration |
-| Nadia     | nadia@balizero.com     | Tax         |
-| Wayan     | wayan@balizero.com     | Admin       |
-| Kadek     | kadek@balizero.com     | Support     |
-| Gede      | gede@balizero.com      | Legal       |
-| Putu      | putu@balizero.com      | Finance     |
+| Name  | Email                  | Role        |
+| ----- | ---------------------- | ----------- |
+| Zero  | antonello@balizero.com | Founder     |
+| Rika  | rika@balizero.com      | Operations  |
+| Nurul | nurul@balizero.com     | Immigration |
+| Nadia | nadia@balizero.com     | Tax         |
+| Wayan | wayan@balizero.com     | Admin       |
+| Kadek | kadek@balizero.com     | Support     |
+| Gede  | gede@balizero.com      | Legal       |
+| Putu  | putu@balizero.com      | Finance     |
 
 ---
 

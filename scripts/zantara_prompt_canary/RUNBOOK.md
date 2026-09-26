@@ -53,12 +53,12 @@ fly secrets set ZANTARA_PROMPT_VERSION=v2 -a nuzantara-rag
 
 After the secret flip, watch in this order:
 
-| Watch | Where | Threshold for rollback |
-|---|---|---|
-| `fly logs -a nuzantara-rag` | terminal | any `Traceback`, `KeyError`, repeated `prompt_manager` errors |
-| LangSmith → `nuzantara-rag` project, last 30 min | LangSmith UI | error rate >2x baseline, p95 latency >2x baseline |
-| WhatsApp `@Balizerobot` test message | Telegram | response in your language (IT for Antonello) and references no Italian leftovers if you query in EN |
-| Pricing rule sanity check (manual) | WhatsApp test | "How much for KITAS?" → answer must reference real prices, never invent ranges |
+| Watch                                            | Where         | Threshold for rollback                                                                         |
+| ------------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------------- |
+| `fly logs -a nuzantara-rag`                      | terminal      | any `Traceback`, `KeyError`, repeated `prompt_manager` errors                                  |
+| LangSmith → `nuzantara-rag` project, last 30 min | LangSmith UI  | error rate >2x baseline, p95 latency >2x baseline                                              |
+| WhatsApp `@Balizerobot` test message             | Telegram      | response in your language (IT for Zero) and references no Italian leftovers if you query in EN |
+| Pricing rule sanity check (manual)               | WhatsApp test | "How much for KITAS?" → answer must reference real prices, never invent ranges                 |
 
 **Hold for ≥2 hours** at this stage. If clean → proceed to Day 1.
 If anything trips → see "Rollback" below.
@@ -95,12 +95,12 @@ to rollback.
 
 If 48h of data is clean:
 
-- Antonello reviews 5 sample EN responses + 5 IT responses + 3 ID responses
+- Zero reviews 5 sample EN responses + 5 IT responses + 3 ID responses
   manually. Brand voice must match Zantara persona (warm, professional,
   not corporate).
-- If Antonello signs off → leave at 100% (already there with the soft-canary
+- If Zero signs off → leave at 100% (already there with the soft-canary
   default in step 1).
-- If Antonello flags issues → list them on the PR for follow-up.
+- If Zero flags issues → list them on the PR for follow-up.
 
 ---
 
@@ -134,6 +134,7 @@ fly secrets unset ZANTARA_PROMPT_VERSION -a nuzantara-rag
 ```
 
 After rollback:
+
 1. Capture the symptom in writing (`docs/sessions/zantara-prompt-v2-rollback-YYYY-MM-DD.md`).
 2. Add a regression test to `backend/tests/unit/test_zantara_core_v2.py`
    that would have caught it.
@@ -170,6 +171,6 @@ PYTHONPATH=apps/backend-rag python3 scripts/zantara_prompt_canary/diff_prompts.p
   of a 2-hour watch session, so we accept the tradeoff.
 - **Manual quality scoring** instead of automated LLM-as-judge — Zantara
   ships in 3 languages and the model that would judge it (Gemini) is the
-  same one we are testing. Self-evaluation is unreliable here. Antonello
-  + on-call engineer eyeballing 30 traces over 48h is more truthful than
-  a 100% automated score.
+  same one we are testing. Self-evaluation is unreliable here. Zero
+  - on-call engineer eyeballing 30 traces over 48h is more truthful than
+    a 100% automated score.

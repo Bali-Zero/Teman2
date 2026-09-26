@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-04
 domain: compliance
 client_case: false
@@ -38,7 +39,7 @@ fatti su Fly. Ricostruirlo = problema duro: **estrarre fatti affidabili da chat 
 2. **v3** (append-only + finestra + gate): REJECT — conflict laundering, error accumulation, gate-placebo.
 3. **v4** (due strati deterministico+LLM): REJECT — "sposta il rischio, non lo elimina", recall <30% su IT/ID misto.
 4. **v5** (MVP umile read-only): scelto, poi superato dall'idea NLM.
-5. **SVOLTA — v6 NotebookLM grounded** (idea Antonello): non estrarre fatti, caricare chat intere
+5. **SVOLTA — v6 NotebookLM grounded** (idea Zero): non estrarre fatti, caricare chat intere
    in NLM e interrogare a read-time. NLM cita verbatim (cited_text), non allucina.
    **PILOTA-1 (chat Sahira 1-a-1) superato**: verbatim ✅, 6 fatti immigration estratti ✅, upsert drive in-place ✅.
    MA v6 → REJECT 3/3 red-team: "1 chat curata inganna".
@@ -91,12 +92,12 @@ RISKS-URGENCIES / RELATIONSHIP STATUS), ognuna con **citazione verbatim obbligat
 - flag `-p zero` DOPO il subcomando (non globale). `source delete` serve `-y`.
 - drive-sync mantiene stesso source ID; cross-NB query via `nlm cross`.
 
-## TODO manuale Antonello
+## TODO manuale Zero
 
 - Cestinare Google Doc di test: Drive (profilo zero) → `WA-Chat-Surya-6281246627424-PILOT`
   (id `1W7VcQu1c9NJvBlaIDLtSnI2BHE6P6WnEQODd8uEePz4`) — nessun MCP ha delete-Drive.
 
-## Decisioni Antonello (Law 5) prese in sessione
+## Decisioni Zero (Law 5) prese in sessione
 
 - Recap output in INGLESE (va nel CRM auto).
 - NB-per-membro (validato 85/15), non per-cliente.
@@ -164,7 +165,7 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
   Il bloccante v6 "1 chat curata inganna" è superato: 10 chat diverse gestite correttamente.
   Selezione automatica via classificatore: scelti solo i 10 CLIENT, saltati i counterpart INTERNAL.
 
-**Classificatore robusto a 3 categorie + gruppi** (richiesta Antonello) ✅
+**Classificatore robusto a 3 categorie + gruppi** (richiesta Zero) ✅
 
 - Gerarchia precedenza (ordine conta): **GROUP** (chat_type=group) > **INTERNAL** (team — `contact_type=team`
   OR è una linea `team_member_phone`; team BATTE client) > **MULTI_CLIENT** (alto volume + molti nomi) >
@@ -178,7 +179,7 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
 
 ### AGGIORNAMENTO 2026-06-04 (notte 2) — naming OBBLIGATORIO + query perfezionata
 
-**Naming Doc — OBBLIGO Antonello** ✅
+**Naming Doc — OBBLIGO Zero** ✅
 
 - Il nome del Doc è **o il nome cliente CRM, o il numero telefono** (che diventerà cliente CRM).
   Il numero è SEMPRE la chiave stabile nel title (per ricerca/rename alla conversione lead→client).
@@ -204,9 +205,9 @@ Package `scripts/wa_corpus/` — 7 moduli, **18 unit test PASS + 1 live skipped*
 
 ### AGGIORNAMENTO 2026-06-04 (notte 3) — FLUSSO AGENTICO (riconciliazione di stato)
 
-Antonello: "devi essere più strutturato e creare il flusso agentico" — non basta creare il Doc una
+Zero: "devi essere più strutturato e creare il flusso agentico" — non basta creare il Doc una
 volta, serve gestire le **transizioni di stato** ad ogni passata (es. prospect→client → il file va
-rinominato numero → nome+numero). Decisioni Antonello: rename (non archive/cancel), cron giornaliero
+rinominato numero → nome+numero). Decisioni Zero: rename (non archive/cancel), cron giornaliero
 subito, recap scritto **diretto** in `clients.strategic_recap`.
 
 **Stato CRM verificato** (anti-allucinazione, NON assunto): `strategic_recap` era VUOTO su tutte le
@@ -233,7 +234,7 @@ Recap scritto in CRM SOLO se in `clients` AND ha citazioni (retry garantisce o f
 - run2 (stessi parametri): `skip=3` → **idempotente**, zero spreco.
 - run3 (simulato prospect→client falsificando last_title a solo-numero): **`rename=1`** → Doc
   rinominato su Drive E nello state store a `WA · Johanna · +46737002611` (numero preservato). ✅
-  **Questo è esattamente il caso che Antonello chiedeva.**
+  **Questo è esattamente il caso che Zero chiedeva.**
 
 **Cron giornaliero** (`run_all_members.py` + `wa_corpus_daily_run.sh` + plist example 05:00 WITA):
 legge `wa_corpus_members.json` (email/team_phone/nb_id per i 7 membri con chat), reconcile per membro,
@@ -241,7 +242,7 @@ digest Telegram (solo TOTAL+righe membro, mai contenuto chat). **NON installato*
 crea 1 NB per membro + riempie nb_id + token, poi `launchctl bootstrap`. Membri senza nb_id → skip con
 warning. Verificato: bash -n OK, plutil -lint OK, dry-run all-members OK. 52 unit test green totali.
 
-### TODO manuale Antonello (nessun MCP delete-Drive)
+### TODO manuale Zero (nessun MCP delete-Drive)
 
 Cestinare su Drive (profilo zero) + cancellare 4 NB di test (`nlm notebook delete <id> -p zero`):
 

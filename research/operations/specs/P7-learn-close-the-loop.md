@@ -1,3 +1,6 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # PEZZO 7 — LEARN: chiudere il loop che impara (oggi NEVER_CLOSED) — in sicurezza
 
 > **Spec studio (non implementazione).** Ciclo calibrato: reuse-first (disk-state + S13-FROZEN
@@ -172,7 +175,7 @@ gated.
 
 ### 3.6 Riparare i blocchi esistenti (documentato, NON eseguito — fase studio)
 
-I fix puntuali (già nei next_actions S13, pending Antonello) restano necessari MA secondari rispetto al
+I fix puntuali (già nei next_actions S13, pending Zero) restano necessari MA secondari rispetto al
 ridisegno: restore `DEEPSEEK_API_KEY` export in secrets.env; decouple evolver dal worktree
 nuzantara-deploy (famiglia W50/W59); bootstrap dei plist in launchd. **Senza il segnale (§3.3) e la
 quarantena (§3.4), riparare evoskill farebbe solo girare a vuoto un loop pericoloso.**
@@ -265,5 +268,5 @@ come decisione), P6 (revocabilità). Il LEARN sicuro è l'integrale degli altri.
 > umano, in modo reversibile"**. Il salto non è "il loop si chiude" — è "il loop si chiude **senza
 > potersi rompere da solo**". E l'ironia onesta: **questo intero ciclo di 9 spec con council è
 > esattamente quel LEARN-manuale sicuro** — proposta (le spec) disaccoppiata dall'applicazione (gated da
-> Antonello), ancorata a disk-state verificato, con la stessa S13-FROZEN che era "il sostituto manuale
+> Zero), ancorata a disk-state verificato, con la stessa S13-FROZEN che era "il sostituto manuale
 > della chiusura che non è mai avvenuta".

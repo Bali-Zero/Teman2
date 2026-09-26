@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-18
 domain: wr3-design
 step: 7
@@ -137,7 +138,7 @@ See `/tmp/wr3-genesis-commit-msg.txt` (or recompose from this doc body).
 
 **Foundation = 8/8 leggi inviolabili dichiarate.** Runtime enforcement = pending S7.5+S7.6.
 
-## Decisions captured for Antonello (10 from Step 6 panel)
+## Decisions captured for Zero (10 from Step 6 panel)
 
 User stated "seguo il panel" = follow panel decisions verbatim. Decisions applied:
 

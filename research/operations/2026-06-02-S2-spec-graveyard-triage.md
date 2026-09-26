@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-02
 domain: operations
 title: S2 — Spec graveyard triage (11 pending specs)
@@ -79,7 +80,7 @@ The W38 spec has been annotated with this 2026-06-02 re-verification note.
   session bootstrap; executing the stale plan would silently drop load-bearing hooks. **HIGH risk.**
 - **T3.6** — The `auto:5 → auto:10` A/B targets `~/.zshenv`, but the var has since moved to
   `~/.claude/settings.json`. The spec's decision gate requires a ≥10% subagent-dispatch delta from a
-  3-session measurement it itself names as Antonello-driven-over-time, and explicitly flags
+  3-session measurement it itself names as Zero-driven-over-time, and explicitly flags
   "altering the threshold without an A/B baseline" as the anti-pattern. A blind flip violates the
   spec's own contract.
 

@@ -1,8 +1,8 @@
 ---
 title: Mini-Pro2 come server H24 — migrazione cron Pro→Mini
 date: 2026-05-10
-author: Antonello Siano (design + decisioni); brainstorming Claude Opus 4.7 + Gemini 3.1 Pro + DeepSeek Reasoner + GPT-5.4 Codex
-status: design draft pending Antonello approval
+author: Zero (design + decisioni); brainstorming Claude Opus 4.7 + Gemini 3.1 Pro + DeepSeek Reasoner + GPT-5.4 Codex
+status: design draft pending Zero approval
 ---
 
 # Mini-Pro2 come server H24 — migrazione cron Pro→Mini
@@ -15,6 +15,7 @@ senza fermare niente di critico (notifiche regolatorie, digest competitor, OSINT
 cron Codex, ecc.).
 
 **Vincoli HARD (non negoziabili)**:
+
 1. **Zero duplicazione job**: ogni LaunchAgent gira su una macchina sola.
    Doppio-trigger di un job non-idempotente (Brevo, social, Telegram broadcast)
    = email doppia ai clienti, post doppio sui social = blocker reputazionale.
@@ -28,6 +29,7 @@ cron Codex, ecc.).
    git-pull-main (5 min su Mini).
 
 **Non-goal di questo spec**:
+
 - Non migriamo WR2 microservices live (queue-server, supervisor, pg-proxy,
   canva-renderer, observatory, organism cells). Richiederebbero Postgres+Qdrant
   su Mini → fuori scope.
@@ -39,6 +41,7 @@ cron Codex, ecc.).
 ## §2 — Stato attuale (verificato 2026-05-10 09:30–10:00 WITA)
 
 ### Pro
+
 - Load avg 14.93. RAM 47/48 GB used (462 MB unused). Compressor 13 GB.
 - Ollama 3 modelli pinned 100% GPU "Forever": qwen3.5:9b (9.2 GB) + qwen3:8b
   (6 GB) + gemma4:26b (19 GB) = ~34 GB GPU.
@@ -48,6 +51,7 @@ cron Codex, ecc.).
 - Repo Pro su `bcfa95dda chore(wr2): pipeline hardening` (#568).
 
 ### Mini (Mini-Pro2.local, 192.168.110.44 LAN, 100.93.236.6 Tailscale)
+
 - Load idle. RAM 24 GB. Ollama installed, **0 modelli caricati ora**.
 - 6 modelli pulled (28 GB su disco): qwen3:8b, qwen3.5:9b, qwen2.5vl:7b,
   qwen2.5:7b, bge-m3, nomic-embed-text. **Mancano** gemma4:26b (17 GB) e
@@ -66,15 +70,17 @@ cron Codex, ecc.).
 - Repo Mini su `main`, allineato `0/0` con `origin/main`.
 
 ### Sync Pro→Mini (verificati live)
-| Daemon | Last run | Esito |
-|---|---|---|
-| memory-sync-bidirectional | 09:47:10 | 273 file = 273 file ✅ |
-| claude-config-sync | 09:26:50 | paths_changed=0 ✅ |
-| secrets-sync-mini | 04:30:03 | 5/5 file unchanged ✅ |
-| nuzantara-drive-sync | sleep | "(never exited)" — normale, prossimo fire 18:00 |
-| git-pull-main.5min (su Mini) | 07:25:58 | OK pulled to bcfa95dda ✅ |
+
+| Daemon                       | Last run | Esito                                           |
+| ---------------------------- | -------- | ----------------------------------------------- |
+| memory-sync-bidirectional    | 09:47:10 | 273 file = 273 file ✅                          |
+| claude-config-sync           | 09:26:50 | paths_changed=0 ✅                              |
+| secrets-sync-mini            | 04:30:03 | 5/5 file unchanged ✅                           |
+| nuzantara-drive-sync         | sleep    | "(never exited)" — normale, prossimo fire 18:00 |
+| git-pull-main.5min (su Mini) | 07:25:58 | OK pulled to bcfa95dda ✅                       |
 
 ### Gap noti su Mini
+
 - **Claude OAuth Keychain**: già loggato (sto girando Claude su Mini ora).
 - **Codex/Gemini/NLM auth**: Gemini ✅ (`google_accounts.json` presente), Codex ✅
   (`auth.json` presente). NLM da verificare (mai usato su Mini secondo memory).
@@ -90,6 +96,7 @@ cron Codex, ecc.).
 ## §3 — Tassonomia delle 127 automation Pro (5 cluster)
 
 ### Cluster A — CO-LOCATED CON STATO PRO (NON migrare, ~25 plist)
+
 Long-running residents che parlano con `postgresql@17` + `redis` + organism cells
 locali del Pro. Migrazione singola = rete spezzata.
 
@@ -115,6 +122,7 @@ Bridges/dispatchers Pro-bound: `meta-dispatcher`, `intel-dedup-gateway`,
 → **Restano sul Pro.** Punto.
 
 ### Cluster B — SYNC PRO↔MINI (5, già live)
+
 Già descritti §2. Mantengo, aggiungo solo health-check.
 
 ### Cluster C — CRON BATCH ZERO-DEPS-PRO (~50 candidati, target di questo spec)
@@ -123,54 +131,55 @@ Cron periodici che chiamano solo: `claude` CLI (OAuth Mini), API esterne
 (Telegram, Brevo, Canva, web fetch), file system locale, Ollama (qwen3:8b,
 qwen2.5vl:7b, bge-m3 — quelli già su Mini).
 
-| Famiglia | Job | Schedule | RAM picco | Note |
-|---|---|---|---|---|
-| siano | osint.news.daily | 06:00 | 300 MB | scraper |
-| siano | osint.backup.daily | 23:00 | 100 MB | rsync |
-| garuda | consumer.daily | 06:00 | 200 MB | local file |
-| garuda | gap-detector.twice-daily | 06:00+18:00 | 200 MB | local file |
-| matagaruda | daily-briefing | 07:00 | 100 MB | claude+Telegram |
-| matagaruda | kita-feed.daily | 05:00 | 200 MB | scraper |
-| matagaruda | weekly-digest | weekly 08:00 | 100 MB | claude+email Brevo |
-| matagaruda | invalidation-sweep | 04:00 | 50 MB | rm cache |
-| matagaruda | watcher.daily | 06:00 | 200 MB | scraper |
-| matagaruda | reg-alert.30min | every 30 min | 50 MB | curl+Telegram |
-| matagaruda | nlm-expander.weekly | weekly 09:00 | 300 MB | nlm CLI |
-| matagaruda | wr-topic | calendar | 100 MB | claude CLI |
-| matagaruda | public-channel | calendar | 100 MB | API |
-| matagaruda | wr2-bridge.hourly | 1 h | 100 MB | claude+Pro pg? **VERIFY** |
-| matagaruda | nlm-feeder-stream.hourly | 1 h | 200 MB | nlm CLI |
-| matagaruda | bridge.adaptive | 1 min | 30 MB | needs Pro org? **VERIFY** |
-| matagaruda | gap.consumer | 10 min | 100 MB | claude+local |
-| matagaruda | kg-linker | 1 h | 100 MB | local |
-| balizero | regulatory-watcher.daily | 07:00 | 300 MB | claude+gemini+nlm+Telegram |
-| balizero | competitor-monitor.monthly | 1° del mese | 7 GB | qwen2.5vl:7b ✅ Mini |
-| balizero | competitor-signal-router.weekly | weekly 06:00 | 100 MB | claude |
-| balizero | intel.nightly | 01:00 | 300 MB | scraper |
-| balizero | intel-radar-daily-digest | 18:00 | 200 MB | claude |
-| balizero | seo-cell.daily | 19:00 | 200 MB | curl+Lighthouse |
-| balizero | seo-cell.28d-check | 29° del mese | 200 MB | curl+Lighthouse |
-| balizero | setup-team.daily | 06:00 | 100 MB | claude |
-| balizero | renewal-alerts | 08:00 | 100 MB | sqlite+Telegram |
-| balizero | yield-optimizer.weekly | weekly 04:00 | 200 MB | qwen3:8b ✅ Mini |
-| balizero | client-value-predictor | 09:00 | 300 MB | claude+sqlite |
-| balizero | bz-daily-visual-pipeline | 05:00 | 500 MB | claude+canva |
-| balizero | wr2.canva-gc.weekly | weekly 04:00 | 100 MB | curl Canva |
-| balizero | wr2.daily-metrics | 06:00 | 200 MB | curl |
-| balizero | wr2.ig-scraper.daily | 03:00 | 500 MB | playwright |
-| balizero | wr2.reflexion.weekly | weekly 02:00 | 300 MB | claude |
-| balizero | wr2.voyager.weekly | weekly 02:00 | 300 MB | claude |
-| balizero | wr2.learner-nightly | 03:00 | 500 MB | claude |
-| nuzantara | nb-intel-delta-watcher.hourly | 1 h | 200 MB | nlm CLI |
-| nuzantara | nb-mitochondrial-monitor.daily | 02:00 | 200 MB | nlm CLI |
-| nuzantara | claude-max-usage-watcher | 1 h | 30 MB | curl |
-| nuzantara | cost-advisor-daily-cap | 08:00 | 50 MB | curl |
-| nuzantara | cost-advisor-weekly | weekly 07:00 | 50 MB | curl |
-| nuzantara | outbox-prune.daily | 03:00 | 50 MB | rm |
-| nuzantara | automations-reference | 23:00 | 100 MB | doc gen |
-| nuzantara | dlq-autopilot | 30 min | 100 MB | sqlite |
+| Famiglia   | Job                             | Schedule     | RAM picco | Note                       |
+| ---------- | ------------------------------- | ------------ | --------- | -------------------------- |
+| siano      | osint.news.daily                | 06:00        | 300 MB    | scraper                    |
+| siano      | osint.backup.daily              | 23:00        | 100 MB    | rsync                      |
+| garuda     | consumer.daily                  | 06:00        | 200 MB    | local file                 |
+| garuda     | gap-detector.twice-daily        | 06:00+18:00  | 200 MB    | local file                 |
+| matagaruda | daily-briefing                  | 07:00        | 100 MB    | claude+Telegram            |
+| matagaruda | kita-feed.daily                 | 05:00        | 200 MB    | scraper                    |
+| matagaruda | weekly-digest                   | weekly 08:00 | 100 MB    | claude+email Brevo         |
+| matagaruda | invalidation-sweep              | 04:00        | 50 MB     | rm cache                   |
+| matagaruda | watcher.daily                   | 06:00        | 200 MB    | scraper                    |
+| matagaruda | reg-alert.30min                 | every 30 min | 50 MB     | curl+Telegram              |
+| matagaruda | nlm-expander.weekly             | weekly 09:00 | 300 MB    | nlm CLI                    |
+| matagaruda | wr-topic                        | calendar     | 100 MB    | claude CLI                 |
+| matagaruda | public-channel                  | calendar     | 100 MB    | API                        |
+| matagaruda | wr2-bridge.hourly               | 1 h          | 100 MB    | claude+Pro pg? **VERIFY**  |
+| matagaruda | nlm-feeder-stream.hourly        | 1 h          | 200 MB    | nlm CLI                    |
+| matagaruda | bridge.adaptive                 | 1 min        | 30 MB     | needs Pro org? **VERIFY**  |
+| matagaruda | gap.consumer                    | 10 min       | 100 MB    | claude+local               |
+| matagaruda | kg-linker                       | 1 h          | 100 MB    | local                      |
+| balizero   | regulatory-watcher.daily        | 07:00        | 300 MB    | claude+gemini+nlm+Telegram |
+| balizero   | competitor-monitor.monthly      | 1° del mese  | 7 GB      | qwen2.5vl:7b ✅ Mini       |
+| balizero   | competitor-signal-router.weekly | weekly 06:00 | 100 MB    | claude                     |
+| balizero   | intel.nightly                   | 01:00        | 300 MB    | scraper                    |
+| balizero   | intel-radar-daily-digest        | 18:00        | 200 MB    | claude                     |
+| balizero   | seo-cell.daily                  | 19:00        | 200 MB    | curl+Lighthouse            |
+| balizero   | seo-cell.28d-check              | 29° del mese | 200 MB    | curl+Lighthouse            |
+| balizero   | setup-team.daily                | 06:00        | 100 MB    | claude                     |
+| balizero   | renewal-alerts                  | 08:00        | 100 MB    | sqlite+Telegram            |
+| balizero   | yield-optimizer.weekly          | weekly 04:00 | 200 MB    | qwen3:8b ✅ Mini           |
+| balizero   | client-value-predictor          | 09:00        | 300 MB    | claude+sqlite              |
+| balizero   | bz-daily-visual-pipeline        | 05:00        | 500 MB    | claude+canva               |
+| balizero   | wr2.canva-gc.weekly             | weekly 04:00 | 100 MB    | curl Canva                 |
+| balizero   | wr2.daily-metrics               | 06:00        | 200 MB    | curl                       |
+| balizero   | wr2.ig-scraper.daily            | 03:00        | 500 MB    | playwright                 |
+| balizero   | wr2.reflexion.weekly            | weekly 02:00 | 300 MB    | claude                     |
+| balizero   | wr2.voyager.weekly              | weekly 02:00 | 300 MB    | claude                     |
+| balizero   | wr2.learner-nightly             | 03:00        | 500 MB    | claude                     |
+| nuzantara  | nb-intel-delta-watcher.hourly   | 1 h          | 200 MB    | nlm CLI                    |
+| nuzantara  | nb-mitochondrial-monitor.daily  | 02:00        | 200 MB    | nlm CLI                    |
+| nuzantara  | claude-max-usage-watcher        | 1 h          | 30 MB     | curl                       |
+| nuzantara  | cost-advisor-daily-cap          | 08:00        | 50 MB     | curl                       |
+| nuzantara  | cost-advisor-weekly             | weekly 07:00 | 50 MB     | curl                       |
+| nuzantara  | outbox-prune.daily              | 03:00        | 50 MB     | rm                         |
+| nuzantara  | automations-reference           | 23:00        | 100 MB    | doc gen                    |
+| nuzantara  | dlq-autopilot                   | 30 min       | 100 MB    | sqlite                     |
 
 **Eccezioni dentro Cluster C** (richiedono refactor o restano sul Pro):
+
 - `translate.hourly` (gemma4:26b 17 GB) → resta sul Pro o riscritto con qwen3.5:9b.
 - `wr2.oracle/strategos/dossier-compiler/connector` → query Postgres@17 Pro,
   restano sul Pro.
@@ -181,7 +190,9 @@ qwen2.5vl:7b, bge-m3 — quelli già su Mini).
   in tabella, da grep prima del cluster.
 
 ### Cluster D — CODEX OVERNIGHT (~7 plist)
+
 Tutti via `~/scripts/cron-runner.sh` → `codex exec --full-auto`.
+
 - `codex-overnight-feeder` (21:00)
 - `codex-overnight-runner` (22:00)
 - `codex-research-actor` (06:00)
@@ -195,6 +206,7 @@ nel repo → conflitto fatale con `git-pull-main.5min` se gira contemporaneament
 Lock condiviso obbligatorio.
 
 ### Cluster E — WR2 microservices LIVE (NON migrare ora)
+
 Vedi §1 non-goal. Richiederebbe Postgres+Qdrant su Mini. Fuori scope.
 
 ## §4 — Critiche del panel multi-LLM (integrate)
@@ -203,6 +215,7 @@ Brainstorming 2026-05-10 con Gemini 3.1 Pro + DeepSeek Reasoner + GPT-5.4 Codex.
 Sintesi delle critiche convergenti che hanno modificato il design:
 
 ### 4.1 Race condition `git-pull-main` ↔ job in esecuzione (Gemini, Codex)
+
 > "Se cron job parte nel millisecondo in cui git sta sovrascrivendo i `.py`,
 > ottieni `ModuleNotFoundError` o sintassi corrotta."
 >
@@ -214,13 +227,15 @@ fase 1 di startup verifica il lock con `flock --timeout 30 /tmp/repo-mutating.lo
 e attende (max 30s) o esce. Codex prende lock per tutta la sua run.
 
 ### 4.2 Anti-duplicazione via `comm` è fragile (Gemini, DeepSeek, Codex)
+
 > "`launchctl list` mostra solo job attivi, non disabilitati con file `.disabled`.
 > Se Pro spento bruscamente, comm dà falsi negativi → email Brevo doppia ai clienti."
 
 **Fix doppio**:
+
 - (a) Inventario YAML centralizzato `~/Desktop/nuzantara/config/job-ownership.yaml`
   formato `<label>: { owner: pro|mini, side_effects: [brevo|telegram|social|none],
-  idempotent: bool, last_migrated: ISO8601, git_sha: <hash> }`. Source-of-truth
+idempotent: bool, last_migrated: ISO8601, git_sha: <hash> }`. Source-of-truth
   che ogni `launchctl bootstrap` consulta — rifiuta bootstrap se `owner` non
   matcha la macchina.
 - (b) Lock distribuito Redis per job con `side_effects` non vuoti. Sia Pro che
@@ -231,10 +246,12 @@ e attende (max 30s) o esce. Codex prende lock per tutta la sua run.
   Telegram se overlap.
 
 ### 4.3 RAM 24 GB stretta → semaforo concorrenza (Gemini, DeepSeek)
+
 > "macOS riserva 4-6 GB. Modello 7B ~5-6 GB. 2 job Ollama paralleli = swap."
 > "Se carichi tutti 6 modelli = ~17 GB. Resta ~7 GB per OS+Redis+50 job."
 
 **Fix**:
+
 - `OLLAMA_KEEP_ALIVE=0` env var globale Mini (modello unload dopo ogni inference).
 - Semaforo file-based: `/tmp/ollama-slot-{1,2,3}.lock`. Job Ollama-bound prende
   uno slot via `flock`; se tutti occupati, attende (max 5 min) o esce.
@@ -242,14 +259,17 @@ e attende (max 30s) o esce. Codex prende lock per tutta la sua run.
 - Codex single-thread (mai 2 codex paralleli).
 
 ### 4.4 PATH launchd non eredita .zshrc (Gemini)
+
 **Fix**: ogni plist migrato deve avere `EnvironmentVariables.PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/sbin:/usr/sbin`. Verify post-bootstrap con
 `launchctl print gui/$(id -u)/<label> | grep PATH`. Se manca → reject migrazione.
 
 ### 4.5 Log retention non migrata (Gemini)
+
 **Fix**: nuovo plist `com.nuzantara.log-prune.daily.plist` su Mini, gira 03:00
 WITA, esegue `find ~/logs/ ~/.cache/<*>/ -mtime +30 -delete` + `find /tmp/<job>-* -mtime +7 -delete`.
 
 ### 4.6 Path condivisi nascosti (DeepSeek, Codex)
+
 > "Job Cluster C che legge da `../../data/` — se Mini scrive e Pro rilegge,
 > quando Pro spento si rompe."
 >
@@ -260,12 +280,14 @@ che esegue grep dentro lo script + ogni `.env` referenziato. Se trova match → 
 job classificato dipendente Pro.
 
 ### 4.7 Secrets sync daily troppo lento (Codex)
+
 > "Job migrato oggi può girare stanotte con env vecchia se token ruotato."
 
 **Fix**: dopo ogni `launchctl bootstrap` su Mini, kickstart `secrets-sync-mini`
 on-demand: `launchctl kickstart -k gui/$(id -u)/com.nuzantara.secrets-sync-mini`.
 
 ### 4.8 Telegram come unica verifica è debole (Codex)
+
 > "Rate-limit, fallisce prima dell'alert."
 
 **Fix**: ogni job Mini deve scrivere heartbeat file `~/heartbeat/<label>.ts`
@@ -274,16 +296,19 @@ gira 09:00 WITA, alerta Telegram se job daily/weekly mancano l'heartbeat
 nell'ultima finestra schedulata.
 
 ### 4.9 Idempotency key per side-effect esterni (Codex)
+
 > "Brevo/social/Canva possono essere triggerati 2× durante transizione."
 
 **Fix**: per i job in `job-ownership.yaml` con `side_effects ≠ none` e `idempotent: false`,
 wrapper `~/scripts/mini-migration/idempotent-runner.sh <label>` che:
+
 - genera idempotency key `${label}_${schedule_window}` (es. `weekly-digest_2026-W19`)
 - consulta Redis `GET ${idempotency_key}` — se exists, exit 0 silenzioso
 - altrimenti `SET ${idempotency_key} 1 EX 86400` poi exec script
 - protegge da doppio-trigger durante migrazione.
 
 ### 4.10 Rollback policy granulare per schedule (DeepSeek)
+
 > "2 fail consecutivi su weekly = buco di 2 settimane."
 
 **Fix**: rollback automatico su 1 fail per weekly/monthly, 2 fail per daily/hourly.
@@ -300,12 +325,14 @@ Ollama → Codex".
 **Sequenza adottata** (sintesi):
 
 ### Fase 0 — Osservabilità + guardrail (settimana 1)
+
 **Nessuna migrazione di job vera.** Solo infrastruttura di sicurezza.
+
 1. Crea `config/job-ownership.yaml` (commit nel repo) con tutte le 127 label e
    classifica iniziale (`owner: pro` per tutte).
 2. Implementa `scripts/mini-migration/preflight-job.sh` (grep dependencies).
 3. Implementa `scripts/mini-migration/migrate-job.sh` (fa: preflight + lock check
-   + secrets-sync kickstart + plist transfer + bootstrap + verify).
+   - secrets-sync kickstart + plist transfer + bootstrap + verify).
 4. Implementa `scripts/mini-migration/rollback-job.sh`.
 5. Implementa `scripts/mini-migration/overlap-detector.sh` (cron daily 09:00 su
    Mini, alert Telegram).
@@ -317,7 +344,9 @@ Ollama → Codex".
     Full Disk Access. Bridge files in `~/scripts/` per ogni script in `~/Desktop/`.
 
 ### Fase 1 — Canary (settimana 2)
+
 Migra **5 job uno per famiglia**, scelti secondo criteri:
+
 - no Ollama
 - no DB/Postgres/Qdrant (preflight pulito)
 - side-effect reversibile o nullo (no Brevo, no social broadcast)
@@ -325,6 +354,7 @@ Migra **5 job uno per famiglia**, scelti secondo criteri:
 - almeno 2 fire window in 3 giorni di osservazione
 
 Candidati canary:
+
 - `siano.osint.backup.daily` (rsync, side-effect: file su disco)
 - `garuda.consumer.daily` (local file)
 - `matagaruda.invalidation-sweep` (rm cache locale)
@@ -335,7 +365,9 @@ Candidati canary:
 verde, overlap-detector pulito.
 
 ### Fase 2 — Hourly + daily web/API senza side-effect critici (settimana 3)
+
 Job che leggono web e producono log/digest, senza email Brevo o post social.
+
 - `nb-intel-delta-watcher.hourly`
 - `claude-max-usage-watcher.hourly`
 - `wr2.daily-metrics`
@@ -356,7 +388,9 @@ Job che leggono web e producono log/digest, senza email Brevo o post social.
 load Mini ≤6.
 
 ### Fase 3 — Side-effect esterni (settimana 4)
+
 Job che mandano email/Telegram broadcast/Canva — richiedono `idempotent-runner`.
+
 - `regulatory-watcher.daily` (Telegram broadcast)
 - `matagaruda.daily-briefing` (Telegram)
 - `matagaruda.kita-feed.daily` (Telegram)
@@ -373,6 +407,7 @@ Job che mandano email/Telegram broadcast/Canva — richiedono `idempotent-runner
 - `siano.osint.backup.daily`
 
 ### Fase 4 — Ollama-bound con semaforo (settimana 5)
+
 - `competitor-monitor.monthly` (qwen2.5vl:7b)
 - `competitor-signal-router.weekly` (claude+local)
 - `yield-optimizer.weekly` (qwen3:8b)
@@ -383,6 +418,7 @@ Job che mandano email/Telegram broadcast/Canva — richiedono `idempotent-runner
 - `wr2.ig-scraper.daily` (playwright + qwen2.5vl?)
 
 ### Fase 5 — Codex overnight (settimana 6)
+
 Per ultimo: i 7 plist Codex. Verifica Codex auth Mini, lock condiviso obbligatorio,
 zero parallelismo. Disabilita codex Pro contestualmente.
 
@@ -412,37 +448,39 @@ zero parallelismo. Disabilita codex Pro contestualmente.
 ```
 
 **Failure mode** in qualsiasi step: rollback automatico via `rollback-job.sh <label>`
-+ alert Telegram critico + memo + flock release.
+
+- alert Telegram critico + memo + flock release.
 
 ## §7 — Risk register (consolidato)
 
-| Rischio | Likelihood | Impact | Mitigazione |
-|---|---|---|---|
-| Job dipendenza nascosta non vista preflight (es. modulo Python che apre psql) | medium | high | preflight grep AGGRESSIVO + dry-run + canary 3 giorni + rollback |
-| OOM Mini con job Ollama paralleli | medium | high | OLLAMA_KEEP_ALIVE=0 + semaforo 3 slot + smear orari + max 1 codex |
-| Race git-pull ↔ job esecuzione | high | medium | flock /tmp/repo-mutating.lock |
-| Doppio-trigger non-idempotente (Brevo doppia email) | medium | critical | inventory YAML + Redis idempotency key + lock distribuito |
-| TCC blocca claude su ~/Desktop Mini | high | medium | bridge files in ~/scripts/, no script diretto in ~/Desktop |
-| OAuth Codex/Gemini/NLM Mini scade | medium | medium | watcher + rifresh interactive 1×/mese |
-| Pro spento mentre job Mini fa query Pro pg/qdrant | low se preflight | high | preflight rejecta → mai migrato |
-| Mini riavvio accidentale | low | high | Energy Saver Server H24 mode già attivo, KeepAlive=false sui cron |
-| Plist patch fallisce e job parte con env Pro | low | high | step 10 verify post-bootstrap, rollback se mismatch |
-| Secrets ruotati sul Pro non arrivano a Mini in tempo | medium | medium | kickstart secrets-sync post-bootstrap |
-| Log saturano disco Mini | low | medium | log-prune.daily Mini |
-| Telegram alert fallisce silenzio job morto | medium | medium | heartbeat-watchdog.daily |
-| Rollback weekly job arriva 2 settimane dopo failure | medium | high | rollback su 1 fail per weekly/monthly |
-| Inventory YAML out-of-sync col reale | medium | medium | overlap-detector.sh daily |
-| Mini network down (subnet split) durante migrazione | low | high | Tailscale fallback già configurato (memory_sync_lan_tailscale_fallback) |
+| Rischio                                                                       | Likelihood       | Impact   | Mitigazione                                                             |
+| ----------------------------------------------------------------------------- | ---------------- | -------- | ----------------------------------------------------------------------- |
+| Job dipendenza nascosta non vista preflight (es. modulo Python che apre psql) | medium           | high     | preflight grep AGGRESSIVO + dry-run + canary 3 giorni + rollback        |
+| OOM Mini con job Ollama paralleli                                             | medium           | high     | OLLAMA_KEEP_ALIVE=0 + semaforo 3 slot + smear orari + max 1 codex       |
+| Race git-pull ↔ job esecuzione                                                | high             | medium   | flock /tmp/repo-mutating.lock                                           |
+| Doppio-trigger non-idempotente (Brevo doppia email)                           | medium           | critical | inventory YAML + Redis idempotency key + lock distribuito               |
+| TCC blocca claude su ~/Desktop Mini                                           | high             | medium   | bridge files in ~/scripts/, no script diretto in ~/Desktop              |
+| OAuth Codex/Gemini/NLM Mini scade                                             | medium           | medium   | watcher + rifresh interactive 1×/mese                                   |
+| Pro spento mentre job Mini fa query Pro pg/qdrant                             | low se preflight | high     | preflight rejecta → mai migrato                                         |
+| Mini riavvio accidentale                                                      | low              | high     | Energy Saver Server H24 mode già attivo, KeepAlive=false sui cron       |
+| Plist patch fallisce e job parte con env Pro                                  | low              | high     | step 10 verify post-bootstrap, rollback se mismatch                     |
+| Secrets ruotati sul Pro non arrivano a Mini in tempo                          | medium           | medium   | kickstart secrets-sync post-bootstrap                                   |
+| Log saturano disco Mini                                                       | low              | medium   | log-prune.daily Mini                                                    |
+| Telegram alert fallisce silenzio job morto                                    | medium           | medium   | heartbeat-watchdog.daily                                                |
+| Rollback weekly job arriva 2 settimane dopo failure                           | medium           | high     | rollback su 1 fail per weekly/monthly                                   |
+| Inventory YAML out-of-sync col reale                                          | medium           | medium   | overlap-detector.sh daily                                               |
+| Mini network down (subnet split) durante migrazione                           | low              | high     | Tailscale fallback già configurato (memory_sync_lan_tailscale_fallback) |
 
 ## §8 — Success criteria
 
 Dopo Fase 5 completa (~6 settimane):
+
 - Pro load avg ≤ 8 (da 14.93)
 - Pro RAM unused ≥ 4 GB (da 462 MB)
 - Zero overlap rilevato dall'overlap-detector negli ultimi 14 giorni
 - ≥ 50 cron migrati a Mini, documentati in `project_mini_migration_2026_05_10.md`
 - `job-ownership.yaml` 100% in sync con `launchctl list` su entrambe le macchine
-- Antonello può `sudo shutdown -r now` su Pro alle 22:00 e tornare alle 08:00
+- Zero può `sudo shutdown -r now` su Pro alle 22:00 e tornare alle 08:00
   trovando: WR2 fermo (atteso, è Cluster A non migrato), tutti i digest notturni
   Telegram arrivati (Cluster C girato su Mini), zero errori critici
 - Heartbeat-watchdog daily 09:00 verde da 7 giorni consecutivi
@@ -450,7 +488,8 @@ Dopo Fase 5 completa (~6 settimane):
 ## §9 — Open questions — RISOLTE 2026-05-10 16:50
 
 ### 1. Redis cross-machine distributed lock — **SI**
-Antonello-approved: Mini punta a Redis Pro per i job con `side_effects in
+
+Zero-approved: Mini punta a Redis Pro per i job con `side_effects in
 {brevo, social, telegram-broadcast}` (renewal-alerts, weekly-digest,
 public-channel, daily-briefing, regulatory-watcher). Per i job
 `file_only/none` (cost-advisor, dlq-autopilot, monitoring) ognuno usa
@@ -463,28 +502,33 @@ redis`. Verifica post-patch: `redis-cli -h 100.107.22.111 PING` da Mini deve
 ritornare `PONG`. Aggiunto requisito Fase 0e prima di Fase 1.
 
 ### 2. wr2.reflexion / voyager / learner / ig-scraper — **Cluster A** (resta Pro)
-Antonello-decision: questi 4 plist passano a Cluster A residence. Spec §3
+
+Zero-decision: questi 4 plist passano a Cluster A residence. Spec §3
 Cluster C tabella aggiornata di conseguenza. Cluster C scende da 51 a 47
 candidati. Niente preflight/migrazione di questi 4.
 
 ### 3. Codex device slots ChatGPT Pro — **2 slot OK verificato**
+
 Verifica empirica 2026-05-10 16:50: Pro `codex login status` ritorna "Logged
 in using ChatGPT" + Mini `codex login status` ritorna "Logged in using
 ChatGPT" **simultaneamente**. `auth.json` Pro mtime 15:49 oggi (token
-rinfrescato di recente, no logout forzato). Antonello ora ha **ChatGPT Pro
+rinfrescato di recente, no logout forzato). Zero ora ha **ChatGPT Pro
 $200/mese** (upgrade da Plus $20), capacity ulteriormente piu' alta.
 Implicazione: 7 plist codex overnight migrabili a Mini Fase 5 senza
 disabilitare Codex Pro per dev sessions interactive day-time.
 
 ### 4. translate.hourly — **Resta Pro (Cluster C-exception)**
+
 gemma4:26b (17 GB) non entra in Mini 24 GB. Pro continua a gestirlo come
 ora. Documentato in §3 Cluster C "Eccezioni" + `config/job-ownership.yaml`
 `owner: pro / cluster: C_pro_bound_exception`.
 
 ### 5. Timing 6 settimane — **OK base, +1 settimana extra preflight**
-Antonello-approved baseline 6 settimane MA Fase 1 canary di stamattina ha
+
+Zero-approved baseline 6 settimane MA Fase 1 canary di stamattina ha
 rivelato che il preflight grep e' shallow (no import-trace Python). Quindi
 realistic timeline:
+
 - Sett 1: Fase 0 osservabilita' + bootstrap (DONE 2026-05-10)
 - **Sett 1.5: extension preflight (import-trace + venv smoke + repo check)** [NEW]
 - Sett 2-7: Fase 1-5 come da spec originale
@@ -496,23 +540,23 @@ Totale **7 settimane** dal 2026-05-10. Target completion: ~2026-06-28.
 ## section-10 — Action items derivati dalle risposte (2026-05-10 16:50)
 
 A1. Patch Pro `/opt/homebrew/etc/redis.conf` bind a 100.107.22.111 +
-    restart. Test `redis-cli -h 100.107.22.111 PING` da Mini.
-    [Pre-req Fase 0e — richiede sign-off Antonello, modifica config Pro live]
+restart. Test `redis-cli -h 100.107.22.111 PING` da Mini.
+[Pre-req Fase 0e — richiede sign-off Zero, modifica config Pro live]
 
 A2. Update `config/job-ownership.yaml`: 4 plist wr2.{reflexion,voyager,
-    learner,ig-scraper} -> `owner: pro / cluster: A_residence_pro`.
-    [No-risk, solo metadata]
+learner,ig-scraper} -> `owner: pro / cluster: A_residence_pro`.
+[No-risk, solo metadata]
 
 A3. Estendere `scripts/mini-migration/preflight-job.sh` con:
-    (a) Python import-trace via `importlib + ast.parse` per detecting
-        `asyncpg/psycopg/qdrant_client` transitivamente
-    (b) Verifica esistenza repo separati (OSINT-Nexus, MATA-GARUDA-NEXUS)
-    (c) Smoke-test dry-run script su Mini con env vars complete
-    (d) Check pyenv/conda env match
-    [Sett 1.5, ~3-5 ore lavoro]
+(a) Python import-trace via `importlib + ast.parse` per detecting
+`asyncpg/psycopg/qdrant_client` transitivamente
+(b) Verifica esistenza repo separati (OSINT-Nexus, MATA-GARUDA-NEXUS)
+(c) Smoke-test dry-run script su Mini con env vars complete
+(d) Check pyenv/conda env match
+[Sett 1.5, ~3-5 ore lavoro]
 
 A4. Implementare Redis idempotent-runner che switch tra
-    `REDIS_HOST=100.107.22.111` (jobs side-effect) vs `REDIS_HOST=127.0.0.1`
-    (jobs file_only). Logica gia' nel skeleton, va solo dichiarata per-label
-    nel job-ownership.yaml.
-    [Sett 2 inizio, prima della prima vera migrazione Fase 1]
+`REDIS_HOST=100.107.22.111` (jobs side-effect) vs `REDIS_HOST=127.0.0.1`
+(jobs file_only). Logica gia' nel skeleton, va solo dichiarata per-label
+nel job-ownership.yaml.
+[Sett 2 inizio, prima della prima vera migrazione Fase 1]
