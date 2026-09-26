@@ -1423,10 +1423,10 @@
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-head__title {
-  max-width: 22ch;
+  max-width: 28ch;
   margin: 0;
   font-family: var(--font-serif);
-  font-size: clamp(28px, 3.6vw, 46px);
+  font-size: clamp(28px, 3vw, 40px);
   font-weight: 450;
   line-height: 1.1;
   letter-spacing: -0.035em;
@@ -1559,9 +1559,16 @@
     border-left: 1px solid var(--r19-line);
   }
 
+  /* On the desk the side column reads in DOM order: what you get, then the
+     person to ask — the phone's reordering stops at this width. */
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-side > * {
+    order: 0;
+  }
+
   [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
     padding-top: 1.5rem;
     border-top: 1px solid var(--r19-line);
+    border-radius: 0;
   }
 
   [data-product="my"][data-garuda-voa="r19"] .voa-sheet--flow {
@@ -1733,9 +1740,14 @@
   background: var(--surface-raised);
 }
 
-[data-product="my"][data-garuda-voa="r19"] .voa-entry__heading {
+/* The key card's title is a Fraunces title, not the old uppercase eyebrow. */
+[data-product="my"][data-garuda-voa="r19"] .voa-offer .voa-entry__heading {
   font-family: var(--font-serif);
+  font-size: 22px;
   font-weight: 450;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-verdict__quiet {
