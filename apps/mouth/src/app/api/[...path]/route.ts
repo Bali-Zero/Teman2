@@ -109,6 +109,7 @@ async function proxy(req: NextRequest): Promise<Response> {
   // Extract correlation ID for logging
   const correlationId = req.headers.get("X-Correlation-ID") || "unknown";
   const isStreamingEndpoint =
+    url.pathname === "/api/dashboard/portal-challenge/events" ||
     url.pathname.includes("/agentic-rag/stream") ||
     url.pathname.includes("/agentic-rag/workspace-stream");
 
@@ -286,6 +287,7 @@ async function proxy(req: NextRequest): Promise<Response> {
     const requestInit: RequestInit = {
       method: req.method,
       headers,
+      ...(isStreamingEndpoint ? { signal: req.signal } : {}),
       redirect: "manual",
       credentials: isPublicVisaEvaluation ? "omit" : "include",
     };

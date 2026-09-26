@@ -13,7 +13,7 @@ from html import escape
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.core.config import settings
@@ -476,6 +476,7 @@ async def validate_token(
 @router.post("/complete")
 async def complete_registration(
     request: CompleteRegistrationRequest,
+    background_tasks: BackgroundTasks,
     invite_service: InviteService = Depends(get_invite_service),
 ) -> RegistrationResponse:
     """
@@ -489,6 +490,10 @@ async def complete_registration(
             token=request.token,
             pin=request.pin,
         )
+
+        from backend.services.portal.challenge_events import publish_registration_goal
+
+        background_tasks.add_task(publish_registration_goal, invite_service.pool, result["client_id"])
 
         logger.info(f"Client registration completed: {result['email']}")
 
