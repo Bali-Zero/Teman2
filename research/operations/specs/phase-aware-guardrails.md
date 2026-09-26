@@ -1,8 +1,11 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # SPEC — Phase-Aware Guardrails (pensa-libero / agisci-blindato)
 
 > **Stato:** DRAFT — da sottomettere al panel 4-LLM (CLAUDE.md §6) prima di toccare un hook.
 > **Autore:** Opus 4.8 (M5) · **Data:** 2026-06-13 · **Branch:** worktree `docs-system-shapes-agent-4llm`
-> **Origine:** decisione Antonello — "in pianificazione/architettura i modelli liberi (ma non incasinano la codebase reale); in implementazione si tiene così com'è." Discende dal verdetto `2026-06-13-system-shapes-the-agent-4llm.md`: lo scaffold è un *capability equalizer* che comprime il tetto esplorativo del frontier. Questa spec recupera quel tetto SOLO nella fase dove non c'è danno reale.
+> **Origine:** decisione Zero — "in pianificazione/architettura i modelli liberi (ma non incasinano la codebase reale); in implementazione si tiene così com'è." Discende dal verdetto `2026-06-13-system-shapes-the-agent-4llm.md`: lo scaffold è un *capability equalizer* che comprime il tetto esplorativo del frontier. Questa spec recupera quel tetto SOLO nella fase dove non c'è danno reale.
 
 ---
 

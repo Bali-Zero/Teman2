@@ -1,7 +1,7 @@
 # Bali Zero — Price List 2026 Design Spec
 
 **Date:** 2026-05-06
-**Author:** Antonello Siano (Zero) + Claude Opus 4.7 (1M ctx)
+**Author:** Zero (Zero) + Claude Opus 4.7 (1M ctx)
 **Status:** Draft — pending owner review
 **Scope:** Single artifact for client + internal use (option C — no internal/external split)
 **Source of truth:** new `bali_zero_official_prices_2026.json`
@@ -73,47 +73,25 @@ Shape evolves the existing 2025 schema with three additions: top-level `version`
     "last_updated": "2026-05-06"
   },
   "services": {
-    "single_entry_visas": {
-      /* 6 entries — unchanged from 2025 */
-    },
-    "visa_extensions": {
-      /* 1 entry */
-    },
-    "multiple_entry_visas": {
-      /* 5 entries (D1×3, D12×2) */
-    },
-    "kitas_permits": {
-      /* ~25 entries */
-    },
-    "kitap_permits": {
-      /* 5 entries — Investor=55M, Dependent=33M */
-    },
+    "single_entry_visas": {/* 6 entries — unchanged from 2025 */},
+    "visa_extensions": {/* 1 entry */},
+    "multiple_entry_visas": {/* 5 entries (D1×3, D12×2) */},
+    "kitas_permits": {/* ~25 entries */},
+    "kitap_permits": {/* 5 entries — Investor=55M, Dependent=33M */},
     "tax_accounting": {
-      "monthly_tax_basic": {
-        /* 4 tiers, range price (low–high) */
-      },
-      "monthly_tax_bundled": {
-        /* 4 tiers, includes LKPM + Annual */
-      },
-      "annual_basic_packages": {
-        /* A, B, C, D + Zero Company */
-      },
+      "monthly_tax_basic": {/* 4 tiers, range price (low–high) */},
+      "monthly_tax_bundled": {/* 4 tiers, includes LKPM + Annual */},
+      "annual_basic_packages": {/* A, B, C, D + Zero Company */},
       "annual_standalone": {
         /* LKPM, Annual Tax Co., Annual Tax Personal, Personal additional */
       }
     },
-    "company_services": {
-      /* 3 entries — Akta unified */
-    },
+    "company_services": {/* 3 entries — Akta unified */},
     "consultant_services": {
       /* PMA close, NPWPD, BPJS×2, NPWP personal, EFIN, update data */
     },
-    "other_process": {
-      /* ~21 entries */
-    },
-    "urgent_processing": {
-      /* 1/2/3 hari */
-    }
+    "other_process": {/* ~21 entries */},
+    "urgent_processing": {/* 1/2/3 hari */}
   }
 }
 ```

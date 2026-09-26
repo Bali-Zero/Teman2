@@ -7,16 +7,16 @@ description: WR3 cross-Symbiosis law precedence doctrine. When laws conflict in 
 
 > **Authoritative source for inter-law conflict resolution in WR3 pipeline.**
 > Loaded verbatim by `scripts/wr3_supervisor.py` at startup. Modify only with
-> Antonello sign-off (commit message must reference Telegram approval).
+> Zero sign-off (commit message must reference Telegram approval).
 
 ## The 4 leggi most likely to conflict in WR3
 
-| #   | Legge                | Conflict surface in WR3                                             |
-| --- | -------------------- | ------------------------------------------------------------------- |
-| 2   | OSINT blindato       | NB source_ids must never leak to brief.json/script.json/manifest    |
-| 4   | Graceful degradation | Some failures should HALT (hard_fail), others should DEGRADE-LOUD   |
-| 5   | Zero ultima istanza  | Antonello can override budget ceiling or VO requirement per-episode |
-| 7   | Numeri prima         | Every claim has claim_id, cost ceilings strict, ArcFace ≥0.6        |
+| #   | Legge                | Conflict surface in WR3                                           |
+| --- | -------------------- | ----------------------------------------------------------------- |
+| 2   | OSINT blindato       | NB source_ids must never leak to brief.json/script.json/manifest  |
+| 4   | Graceful degradation | Some failures should HALT (hard_fail), others should DEGRADE-LOUD |
+| 5   | Zero ultima istanza  | Zero can override budget ceiling or VO requirement per-episode    |
+| 7   | Numeri prima         | Every claim has claim_id, cost ceilings strict, ArcFace ≥0.6      |
 
 ## Precedence chain (highest → lowest)
 
@@ -34,11 +34,11 @@ Law 4 (Graceful degradation)
 
 ### Ruling 1 — Law 2 > Law 5 (OSINT trumps Zero override)
 
-**Scenario:** Antonello approves publishing an episode. Critic detects an NB
+**Scenario:** Zero approves publishing an episode. Critic detects an NB
 source_id leaked into manifest's `legal_citations` field.
 
-**Outcome:** Episode HALTS regardless of Antonello's pre-publish approval.
-The leak must be excised first. Antonello cannot override Law 2.
+**Outcome:** Episode HALTS regardless of Zero's pre-publish approval.
+The leak must be excised first. Zero cannot override Law 2.
 
 **Why:** OSINT compromise is reputational damage that cannot be undone post-publish.
 Zero's authority covers operational decisions, not OSINT integrity.
@@ -46,7 +46,7 @@ Zero's authority covers operational decisions, not OSINT integrity.
 ### Ruling 2 — Law 5 > Law 7 (Zero override on budget allowed)
 
 **Scenario:** wr3-shot-director hits `max_budget_usd=0.50` ceiling on Opus reasoning.
-Episode is a critical pilot. Antonello replies "go" on Telegram P0.
+Episode is a critical pilot. Zero replies "go" on Telegram P0.
 
 **Outcome:** Manual budget extension via per-episode override token. Run extends
 to (e.g.) $1.00 ceiling. Telemetry flags `manual_override_zero_approved: true`.

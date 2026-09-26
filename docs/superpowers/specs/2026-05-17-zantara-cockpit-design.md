@@ -25,7 +25,7 @@ Panel artifacts: `/tmp/cockpit-review-{deepseek,codex,gemini}.txt`, devils-advoc
 
 Bali Zero opera 16 Claude subagent + 124 launchd cron (35 agentic + 89 infra) + 50 NB attivi + 3533 sources NotebookLM. L'organismo è già **in produzione**. Mancano 2 cose:
 
-1. **Antonello vede solo via Telegram alert** — niente immediatezza operativa, niente "click to act"
+1. **Zero vede solo via Telegram alert** — niente immediatezza operativa, niente "click to act"
 2. **Le 2 file in `agent-library/` (02-patterns + 03-lessons) sono carta morta** — invecchiano da soli, già drift al merge (60 NB scritti, 50 reali)
 
 Questo spec disegna un sistema hybrid:
@@ -33,7 +33,7 @@ Questo spec disegna un sistema hybrid:
 - **A — Zantara Cockpit**: dashboard locale Pro-only con design Bloomberg terminal + 12 widget (4 globali + 4 Intel-Lake + 4 WR2). Action layer per dare ordini via intent-table.
 - **B — agent-library-evolver**: backend EvoSkill-vendored che evolve settimanalmente i 2 file, scrivendo PR draft. Il Cockpit le mostra come "Decisions Attesa" cliccabili.
 
-Insieme chiudono il loop: organismo apprende (B) → Antonello vede e governa (A) → organismo riceve direttive (A → intent queue → cron consume).
+Insieme chiudono il loop: organismo apprende (B) → Zero vede e governa (A) → organismo riceve direttive (A → intent queue → cron consume).
 
 ---
 
@@ -132,8 +132,8 @@ POST /api/cockpit/intent/create       {action, params, reason} → INSERT cockpi
 - intent='intel.rerun'       → re-emit outbox event
 - intent='wr2.approve'       → wr2_supervisor.py (CAS-aware)
 - intent='wr2.reject'        → wr2_supervisor.py
-- intent='cron.kill'         → Telegram alert to Antonello, NO auto-exec
-- intent='library.approve-pr'→ Antonello manual merge
+- intent='cron.kill'         → Telegram alert to Zero, NO auto-exec
+- intent='library.approve-pr'→ Zero manual merge
 ```
 
 **Safety layer v2** (panel finding 4-LLM):
@@ -144,7 +144,7 @@ POST /api/cockpit/intent/create       {action, params, reason} → INSERT cockpi
 4. **2-step modal** + 1s delay + reason text required for any intent
 5. **Action allowlist hardcoded** in `lib/cockpit-allowlist.ts`: 35 agentic cron labels
 6. **Audit log immutable**: `cockpit_audit_log` with HMAC-SHA256 chain (mig 182)
-7. **No `gh pr merge`** from cockpit (panel CRITICAL): cockpit emits intent, Antonello merges manually
+7. **No `gh pr merge`** from cockpit (panel CRITICAL): cockpit emits intent, Zero merges manually
 8. **No direct DB writes** to live tables: cockpit → `cockpit_intents` + `cockpit_audit_log` only
 
 **Migration numbers v2** (panel CRITICAL F1 empirical):
@@ -274,7 +274,7 @@ apps/backend-rag/backend/db/migrations_v2/
 | Limitation                                 | Severity | Plan action                 |
 | ------------------------------------------ | -------- | --------------------------- |
 | No mobile UI                               | LOW      | Tailwind responsive partial |
-| No multi-tenant                            | LOW      | Antonello-only              |
+| No multi-tenant                            | LOW      | Zero-only                   |
 | No history view                            | MEDIUM   | v2 add time-series          |
 | EvoSkill upstream refresh manual quarterly | MEDIUM   | UPSTREAM.md tracked         |
 | FTS5 BM25 threshold not calibrated         | MEDIUM   | Smoke phase 0               |

@@ -1,7 +1,7 @@
 # Nuzantara Autonomic Organism — Design
 
 **Date**: 2026-04-22
-**Author**: Claude Opus 4.7 (1M context) + Antonello Siano
+**Author**: Claude Opus 4.7 (1M context) + Zero
 **Status**: Design approved, awaiting implementation plan
 **Red-team validators**: Gemini 3.1 Pro, DeepSeek Reasoner, Claude Sonnet 4.6 (3 convergent)
 
@@ -20,6 +20,7 @@ A software "organism" living on the Nuzantara codebase 24/7, executing four P1 c
 **Cardinal principle**: the organism **augments**, does not **prerequisite**. Every guardian keeps an autonomous fallback (`local_emergency_mode`) if the Supervisor is down >5min. Introducing the organism MUST NOT create a SPOF worse than the 8 broken guardians of today.
 
 **Explicit non-goals** (YAGNI):
+
 - Replacing the 35 existing guardians. The organism is a **layer above**, not a rewrite.
 - "Smart" decisions for every event. 85% goes through hardcoded YAML; Claude CLI is last resort.
 - Multi-cloud orchestration, dynamic scaling, complex canary deploys. Nuzantara is 2 machines + Fly.io — overkill is death.
@@ -72,13 +73,14 @@ A software "organism" living on the Nuzantara codebase 24/7, executing four P1 c
 **1. Event Bus** — Redis stream `organism:events` + local JSONL mirror.
 
 Event schema:
+
 ```json
 {
   "ts": "2026-04-22T10:30:00Z",
   "severity": "critical|error|warning|info",
   "source": "guardian.system_doctor",
   "kind": "cron_agent_failure|disk_fill|deploy_rollback|new_module",
-  "payload": {"sanitized": "structured_only"},
+  "payload": { "sanitized": "structured_only" },
   "correlation_id": "uuid4",
   "is_actuation": false,
   "host": "Pro|Air"
@@ -88,12 +90,14 @@ Event schema:
 **2. Supervisor** — single Python daemon, **stateless by design**: all state lives on Redis (IncidentContext TTL 10min, keys per entity). Restart-safe by construction. Launchd on Pro, manual fallback on Air.
 
 **3. Actuator** — folder `apps/organism/actuators/*.py`, one per action, ~100 LOC each. Contract:
+
 - `--dry-run` mandatory
 - Idempotent (calling twice = calling once)
 - WAL local pre-execute (`/var/log/organism/wal/<actuator>-<uuid>.json`)
 - Emits `organism:events` with `is_actuation=true` on completion (success/failure)
 
 **4. Safety layer** (distributed, not a single module):
+
 - Circuit Breaker (15min/target cooldown)
 - Distributed Mutex (Redis lock TTL 5min)
 - Blackout flag (file + HTTP endpoint)
@@ -102,12 +106,12 @@ Event schema:
 
 ### Design choices vs rejected alternatives
 
-| Choice | Rejected alternative | Why |
-|---|---|---|
-| Custom stateless Python Supervisor | LangGraph (Gemini suggested) | LangGraph adds heavy dependency for a loop that's 200 LOC in Python; Redis reuse is more honest. LangGraph returns useful for Phase 4 auto-expansion (adoption workflow). |
-| Redis Sentinel quorum=2 (fail-close) | Sentinel quorum=1 auto-failover | 2-node Sentinel creates split-brain. Quorum=2 disables auto-failover — the only thing worse than Redis down is Redis in split-brain during a rollback. |
-| Ollama qwen3.5:9b as async pre-classifier | Ollama in critical path | 30-120s latency unacceptable for MTTD <90s; stays async to enrich Claude CLI context. |
-| Cooldown hardcoded in CODE | Cooldown in YAML | A loop could modify YAML to bypass itself. Code = runtime-immutable. |
+| Choice                                    | Rejected alternative            | Why                                                                                                                                                                       |
+| ----------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom stateless Python Supervisor        | LangGraph (Gemini suggested)    | LangGraph adds heavy dependency for a loop that's 200 LOC in Python; Redis reuse is more honest. LangGraph returns useful for Phase 4 auto-expansion (adoption workflow). |
+| Redis Sentinel quorum=2 (fail-close)      | Sentinel quorum=1 auto-failover | 2-node Sentinel creates split-brain. Quorum=2 disables auto-failover — the only thing worse than Redis down is Redis in split-brain during a rollback.                    |
+| Ollama qwen3.5:9b as async pre-classifier | Ollama in critical path         | 30-120s latency unacceptable for MTTD <90s; stays async to enrich Claude CLI context.                                                                                     |
+| Cooldown hardcoded in CODE                | Cooldown in YAML                | A loop could modify YAML to bypass itself. Code = runtime-immutable.                                                                                                      |
 
 ## 3. Phases & Migration path (4-5 days, parallel waves)
 
@@ -179,33 +183,39 @@ Single Opus session, ~4h. Single branch `feat/organism-foundations`.
 ### Safety rail (layered defense)
 
 **Layer 1 — Event sanitization** (prompt injection prevention)
+
 - Every event payload passes through `sanitize_payload()`: strip shell metacharacters, max 2KB, mandatory JSON-escape, never raw log content
 - Claude CLI receives ONLY structured templates with typed slots: `{action: "restart_guardian", guardian_id: X, failure_count: N}` — never free-form
 - DENY list hardcoded in code: if payload contains patterns like `IGNORE PREVIOUS`, `</system>`, `rm -rf`, immediate quarantine + Telegram
 
 **Layer 2 — Action whitelist/blacklist** (hardcoded in code, not YAML)
+
 - Whitelist auto-dispatch: `restart-agent`, `cleanup-log`, `notify-telegram`, `adopt-module`, `quarantine`, `propose-yaml-rule`, `consolidate-redundancy`, `patch-lint`
 - "ALWAYS HUMAN" (hardcoded blacklist): `restart-supervisor`, `rollback-deploy` on main, `drop-table`, `revoke-credential`, `fly ssh exec`, any Actuator with `--force` or `--irreversible`
 - For blacklisted actions: Telegram notify + explicit wait via `/resume?action_id=X` on HTTP endpoint
 
 **Layer 3 — Circuit Breaker + Mutex**
+
 - Cooldown 15min/target, max 2 tries → QUARANTINE + escalation
 - Mutex `lock:remediation:<target>` TTL 5min, drops events for locked target
 - `is_actuation=true` flag ignored by rule matchers (prevents Actuator→Actuator feedback loop)
 
 **Layer 4 — Blackout period** (DeepSeek critical insight)
+
 - `~/tmp/organism-pause.flag` + HTTP `POST :1819/pause?minutes=30`
 - Max expiration 2h (hardcoded, no `--forever`)
 - During pause: events queued but no Actuator dispatch, ONLY monitor + audit
 - `/resume` resumes, re-evaluates queued events with current freshness
 
 **Layer 5 — Guardian local fallback** (Claude-red critical insight)
+
 - Every guardian calls `supervisor_heartbeat_check()` every cycle
 - If consumer group lag >5min → `local_emergency_mode`: guardian reverts to pre-organism autonomous behavior for critical actions
 - When Supervisor returns online, re-emits events with `handled_locally=true` for audit (does not re-execute actions)
 - **MANDATORY**: without this, the organism creates a SPOF worse than current blind guardians
 
 **Layer 6 — Autonomous Ops L2 compliance**
+
 - PR auto-merge only if: CI green + feature branch only + no prod DB schema touch + no CLAUDE.md Golden Rules touch
 - Never `git push --force` on main (hardcoded in pre-commit)
 - Never skip hooks (`--no-verify`)
@@ -213,25 +223,27 @@ Single Opus session, ~4h. Single branch `feat/organism-foundations`.
 
 ### KPI (7 metrics, dashboard `:1819 /stats`)
 
-| Metric | Target | Formula | Alert threshold |
-|---|---|---|---|
-| MTTD (Mean Time To Detect) | <90s | `ts_event_emit - ts_failure_actual` (estimated from log) | >3min |
-| MTTR (Mean Time To Repair) | <5min | `ts_action_complete - ts_event_emit` | >10min |
-| Autonomy Ratio | 85/10/5 (YAML/LLM/human) | Tag on every decision in audit | LLM >30% = missing rules |
-| False Positive Rate | <5% | Actions manually reversed / total | >10% |
-| Circuit Breaker Trips | <3/day | Count of QUARANTINE events | >10/day = systemic issue |
-| Event Bus Lag | <1s | `XLEN organism:events` pending | >100 events pending |
-| Consiglio Dissent Rate | <30% | Non-unanimous 3/4 votes | >50% = rules too ambiguous |
+| Metric                     | Target                   | Formula                                                  | Alert threshold            |
+| -------------------------- | ------------------------ | -------------------------------------------------------- | -------------------------- |
+| MTTD (Mean Time To Detect) | <90s                     | `ts_event_emit - ts_failure_actual` (estimated from log) | >3min                      |
+| MTTR (Mean Time To Repair) | <5min                    | `ts_action_complete - ts_event_emit`                     | >10min                     |
+| Autonomy Ratio             | 85/10/5 (YAML/LLM/human) | Tag on every decision in audit                           | LLM >30% = missing rules   |
+| False Positive Rate        | <5%                      | Actions manually reversed / total                        | >10%                       |
+| Circuit Breaker Trips      | <3/day                   | Count of QUARANTINE events                               | >10/day = systemic issue   |
+| Event Bus Lag              | <1s                      | `XLEN organism:events` pending                           | >100 events pending        |
+| Consiglio Dissent Rate     | <30%                     | Non-unanimous 3/4 votes                                  | >50% = rules too ambiguous |
 
 **Weekly auto-report** (Actuator `weekly-report`, cron Sunday 08:00 WITA): posted in Telegram + committed to `docs/organism/weekly/YYYY-MM-DD.md` with dashboard link + KPI trend.
 
 ### Rollback plan
 
 **Per-wave rollback** (from section 3 checkpoints):
+
 - Wave 0-2: `touch ~/tmp/organism-pause.flag` = global pause <1s, guardians autonomous
 - Wave 3-4: disable individual Actuator via `SADD organism:config:actuators_disabled <name>`
 
 **Full rollback** (scenario: organism causes more problems than it solves)
+
 1. `launchctl unload ~/Library/LaunchAgents/com.nuzantara.organism.supervisor.plist`
 2. `redis-cli DEL organism:events organism:audit organism:config:*` (audit persisted on JSONL disk)
 3. Guardians enter `local_emergency_mode` automatically after 5min (no intervention needed)
@@ -240,26 +252,28 @@ Single Opus session, ~4h. Single branch `feat/organism-foundations`.
 
 ### Accepted residual risks
 
-| Risk | Probability | Impact | Mitigation | Accepted? |
-|---|---|---|---|---|
-| Redis master down + AOF corruption | Low | High | Local JSONL mirror + Postgres audit backup | ✅ |
-| Pro-Air split-brain | Medium | High | Sentinel quorum=2 (disables auto-failover) + Postgres lease file | ✅ |
-| Claude CLI quota exhaust | Medium | Medium | 3-tier fallback to YAML/Ollama, 10min cache, hardcoded 3/min rate limit | ✅ |
-| Action loop | Low | High | Cooldown + mutex + `is_actuation` flag + hardcoded whitelist | ✅ |
-| Prompt injection via log | Medium | High | Slot-only templates, hardcoded deny-list, sanitized payload | ✅ |
-| Supervisor OOM | Low | Medium | Stateless design, Redis is the store, launchd auto-restart | ✅ |
-| Guardian cascade (false adopt) | Low | Low | 7d probationary heartbeat-only, `.organism_ignore` opt-out | ✅ |
+| Risk                               | Probability | Impact | Mitigation                                                              | Accepted? |
+| ---------------------------------- | ----------- | ------ | ----------------------------------------------------------------------- | --------- |
+| Redis master down + AOF corruption | Low         | High   | Local JSONL mirror + Postgres audit backup                              | ✅        |
+| Pro-Air split-brain                | Medium      | High   | Sentinel quorum=2 (disables auto-failover) + Postgres lease file        | ✅        |
+| Claude CLI quota exhaust           | Medium      | Medium | 3-tier fallback to YAML/Ollama, 10min cache, hardcoded 3/min rate limit | ✅        |
+| Action loop                        | Low         | High   | Cooldown + mutex + `is_actuation` flag + hardcoded whitelist            | ✅        |
+| Prompt injection via log           | Medium      | High   | Slot-only templates, hardcoded deny-list, sanitized payload             | ✅        |
+| Supervisor OOM                     | Low         | Medium | Stateless design, Redis is the store, launchd auto-restart              | ✅        |
+| Guardian cascade (false adopt)     | Low         | Low    | 7d probationary heartbeat-only, `.organism_ignore` opt-out              | ✅        |
 
 ## 5. Success criterion — Gauntlet test
 
 5 intentional kills simultaneously on staging Pro+Air:
+
 1. Break guardian
 2. Corrupt crontab
 3. Intentional deploy bug
 4. Disk fill 90%
 5. Push broken code
 
-+ 5 infrastructural scenarios (added from red-team):
+- 5 infrastructural scenarios (added from red-team):
+
 6. Redis down 5min
 7. Pro-Air network partition
 8. Clock skew Air +5min

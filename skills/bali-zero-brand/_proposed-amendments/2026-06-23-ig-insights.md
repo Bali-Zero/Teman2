@@ -8,6 +8,7 @@
 ## In breve questa settimana
 
 > **Tre cose da ricordare:**
+>
 > 1. **Gli elenchi puntati su sfondo scuro** sono il formato che la gente salva e inoltra di più — soprattutto su visti, tasse e regole. È il nostro cavallo vincente quando l'obiettivo è "fammi salvare questo".
 > 2. **Il tono militante** (allarme, numeri-shock) fa tantissimi like ma pochissime salvate. Va bene per farsi notare, male per essere utile. Sui temi normativi meglio non abusarne.
 > 3. **I post sulla salute** vanno fortissimo (la gente li inoltra agli amici per avvisarli) — ma per ora sono solo 2, troppo pochi per esserne certi. Da tenere d'occhio.
@@ -110,7 +111,7 @@ Mechanism hypothesis: health topics serve direct personal-safety utility → imm
 
 ## Decisione
 
-Antonello rivede questo file ogni settimana. Per applicare una scoperta serve un commit git (Articolo 11.1).
+Zero rivede questo file ogni settimana. Per applicare una scoperta serve un commit git (Articolo 11.1).
 
 **Consiglio:** la Scoperta 1 (liste scure) è la più pronta da applicare subito. La 2 (tono allarme) è già utile come avviso allo storyboarder. La 4 (salute) va testata pubblicando altri post.
 

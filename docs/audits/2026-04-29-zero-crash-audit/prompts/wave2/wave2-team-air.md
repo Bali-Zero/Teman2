@@ -11,16 +11,16 @@ Sei l'orchestrator di un team agent `wave2-air`. Lanci 3 sub-agent paralleli, og
 
 **Fix assegnati a Sessione 3 (Air):**
 
-| Agent | Fix | Effort | File principali |
-|---|---|---|---|
-| **agent-X** | **P0-5 fase 1** httpx audit only | 2h | rg + report. NO rewrite (= fase 2). |
-| **agent-Y** | **P1-7** NLM auto-recovery | 4h | ~/scripts/system_doctor.py extension |
-| **agent-Z** | **P1-10** i18n provider per route group lint | 4h | scripts/lint_i18n_providers.sh + GH workflow |
+| Agent       | Fix                                          | Effort | File principali                              |
+| ----------- | -------------------------------------------- | ------ | -------------------------------------------- |
+| **agent-X** | **P0-5 fase 1** httpx audit only             | 2h     | rg + report. NO rewrite (= fase 2).          |
+| **agent-Y** | **P1-7** NLM auto-recovery                   | 4h     | ~/scripts/system_doctor.py extension         |
+| **agent-Z** | **P1-10** i18n provider per route group lint | 4h     | scripts/lint_i18n_providers.sh + GH workflow |
 
 **Sessione 1 (Pro mia)** sta lavorando su P0-1, NB-A, P1-11.
 **Sessione 2 (Pro tua)** sta lavorando su P0-2 fase 1, P1-8, NB-D.
 
-Total: 9 worker concurrent. Coordinamento via lock files (`~/.claude/locks/` su Pro, fortunatamente filesystem-shared via federation o ssh). 
+Total: 9 worker concurrent. Coordinamento via lock files (`~/.claude/locks/` su Pro, fortunatamente filesystem-shared via federation o ssh).
 
 > ⚠️ Nota Air: i lock files `~/.claude/locks/` su Air sono local Air-side. Ogni macchina ha i suoi.
 > Per coordinamento Pro+Air su gh push/merge: gh API è transactional su GitHub side, due `gh push` simultanei sullo stesso branch sarebbero bloccati comunque dal remote. Lock files prevengono race su STESSA macchina.
@@ -29,8 +29,8 @@ Total: 9 worker concurrent. Coordinamento via lock files (`~/.claude/locks/` su 
 
 - Repo path: `/Users/antonellosiano/Projects/nuzantara`
 - Venv path: `apps/backend-rag/venv` (NOT `.venv`!)
-- gh auth Air: probabilmente scaduto. Pattern preesistente (memoria 2026-04-21): se gh auth Air fail, usa `ssh pro 'gh ...'` come fallback automatico. NON chiedere ad Antonello di fare auth.
-- Memory `pattern_antonello_non_dev_2026_04_29`: NON chiedere ad Antonello azioni shell. Ogni problema → escala via shared/escalations_air.jsonl o Telegram, OR usa fallback ssh pro.
+- gh auth Air: probabilmente scaduto. Pattern preesistente (memoria 2026-04-21): se gh auth Air fail, usa `ssh pro 'gh ...'` come fallback automatico. NON chiedere ad Zero di fare auth.
+- Memory `pattern_antonello_non_dev_2026_04_29`: NON chiedere ad Zero azioni shell. Ogni problema → escala via shared/escalations_air.jsonl o Telegram, OR usa fallback ssh pro.
 
 ## Setup orchestrator
 
@@ -252,6 +252,7 @@ Agent(
 ## L2 autonomy
 
 Tutti L2. Escala solo:
+
 - Off-limits file editato
 - gh auth Pro fail E ssh pro fail E gh auth Air fail simultaneamente (= unable to PR)
 - Conflict su origin/main commit di Wave 2 Pro mentre tu stavi pushando

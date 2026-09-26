@@ -19,15 +19,15 @@ Setiap hari Damar memimpin tiga jalur editorial Bali Zero:
 2. membuat satu carousel harian yang relevan, jelas, dan layak disimpan atau dibagikan;
 3. sedikitnya tiga kali seminggu, membuat video Zantara yang mengikuti inti cerita carousel.
 
-Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Director dan, untuk video, Damar adalah sutradara.** Agent mengerjakan riset, verifikasi, struktur, draft, image generation, packaging, dan quality control. Damar mengambil keputusan editorial dan visual. Antonello memberi approval akhir untuk carousel dan video.
+Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Director dan, untuk video, Damar adalah sutradara.** Agent mengerjakan riset, verifikasi, struktur, draft, image generation, packaging, dan quality control. Damar mengambil keputusan editorial dan visual. Zero memberi approval akhir untuk carousel dan video.
 
 ### Tiga peran yang tidak boleh tertukar
 
-| Peran         | Tanggung jawab utama                                                                                                                                                                                                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Agent**     | Mencari, membaca, membandingkan, memverifikasi, memberi rekomendasi, menulis, membuat gambar dengan ImageGen, menyiapkan SEO/caption/alt text, menyiapkan prompt Flow, menyusun paket, menjalankan QA, dan menerbitkan artikel website setelah konfirmasi Damar. Agent tidak memicu publikasi social. |
-| **Damar**     | Memilih artikel dan posisi website, memilih topik dan angle carousel, memilih arah visual, menyempurnakan di Canva bila perlu, menyutradarai video, menyerahkan paket final pukul 15:00, dan menerbitkan carousel/video secara manual setelah approval.                                               |
-| **Antonello** | Memberi approval atau revisi untuk carousel dan video sebelum publikasi pukul 17:00.                                                                                                                                                                                                                  |
+| Peran     | Tanggung jawab utama                                                                                                                                                                                                                                                                                  |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent** | Mencari, membaca, membandingkan, memverifikasi, memberi rekomendasi, menulis, membuat gambar dengan ImageGen, menyiapkan SEO/caption/alt text, menyiapkan prompt Flow, menyusun paket, menjalankan QA, dan menerbitkan artikel website setelah konfirmasi Damar. Agent tidak memicu publikasi social. |
+| **Damar** | Memilih artikel dan posisi website, memilih topik dan angle carousel, memilih arah visual, menyempurnakan di Canva bila perlu, menyutradarai video, menyerahkan paket final pukul 15:00, dan menerbitkan carousel/video secara manual setelah approval.                                               |
+| **Zero**  | Memberi approval atau revisi untuk carousel dan video sebelum publikasi pukul 17:00.                                                                                                                                                                                                                  |
 
 ### Prinsip utama
 
@@ -45,7 +45,7 @@ Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Di
 
 - Agent membaca seluruh daftar artikel News Room, menyiapkan copy final, SEO, cover dengan ImageGen, caption, sumber, dan QA.
 - Setelah Damar memberi konfirmasi final presisi, **agent meng-update artikel, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live.**
-- **Damar menerbitkan carousel dan video secara manual pukul 17:00 hanya setelah approval eksplisit Antonello.** Bila approval belum ada, statusnya `HOLD`; diam bukan approval.
+- **Damar menerbitkan carousel dan video secara manual pukul 17:00 hanya setelah approval eksplisit Zero.** Bila approval belum ada, statusnya `HOLD`; diam bukan approval.
 - Sebelum action website, agent wajib memeriksa `workspace_health`. Bila write actions tidak `ready`, agent melaporkan `BRIDGE DOWN` dan berhenti. News Room UI adalah fallback insiden, bukan workflow normal.
 - Agent tidak boleh mengatakan `published` atau `live` hanya karena request, PR, merge, atau deploy dimulai. Bukti wajib berasal dari halaman publik yang benar.
 
@@ -57,7 +57,7 @@ Damar hanya perlu memutuskan:
 2. topik carousel mana yang paling kuat;
 3. arah cover mana yang paling jelas dan kuat;
 4. setting, outfit, dan regia video mana yang dipakai;
-5. apakah paket pukul 15:00 sudah layak dikirim ke Antonello.
+5. apakah paket pukul 15:00 sudah layak dikirim ke Zero.
 
 Agent mengerjakan riset, verifikasi, draft, asset, folder, penamaan file, caption, SEO, dan QA. Damar tidak perlu mengurus item ID, prompt panjang, endpoint, request key, branch, deploy, atau struktur folder teknis.
 
@@ -72,8 +72,8 @@ Agent mengerjakan riset, verifikasi, draft, asset, folder, penamaan file, captio
 | 11:15     | Pilot video EN/ID harus lulus atau disederhanakan satu kali.                                                |
 | 13:00     | Carousel dilindungi sebagai prioritas; video yang tertinggal tidak boleh merusak deadline carousel.         |
 | 14:15     | QA final. Video yang belum siap dipindahkan ke hari video berikutnya.                                       |
-| **15:00** | Agent menyusun satu paket; Damar mengirim satu link dan satu pesan kepada Antonello.                        |
-| **17:00** | Damar publish social manual hanya bila approval Antonello eksplisit. Jika tidak: `HOLD`.                    |
+| **15:00** | Agent menyusun satu paket; Damar mengirim satu link dan satu pesan kepada Zero.                             |
+| **17:00** | Damar publish social manual hanya bila approval Zero eksplisit. Jika tidak: `HOLD`.                         |
 
 ## Command Card — salin dan kirim
 
@@ -146,7 +146,7 @@ Kirim salah satu perintah ini:
 - [ ] News Room dapat dibuka dan akun Damar memiliki hak edit/upload/position/publish.
 - [ ] ImageGen tersedia di agent.
 - [ ] Flow dapat dibuka dan saved Character Zantara terlihat.
-- [ ] Canva team, folder harian, dan channel approval Antonello dapat diakses.
+- [ ] Canva team, folder harian, dan channel approval Zero dapat diakses.
 - [ ] Satu artikel dummy/internal atau item aman telah dipakai untuk membuktikan alur tanpa publikasi outward.
 
 ## Yang bukan pekerjaan Damar
@@ -169,7 +169,7 @@ Jam mulai dapat menyesuaikan jadwal kantor. Dua deadline tidak berubah: **15:00 
 | 10:15–14:40       | Produksi video pada hari video     | Berjalan paralel segera setelah content lock.                                                                                                               |
 | 12:30–14:15       | Canva dan finishing                | Layout final, thumbnail test, copy check, dan export.                                                                                                       |
 | 14:15–14:50       | QA dan packaging                   | Paket lengkap dan konsisten.                                                                                                                                |
-| **15:00**         | Penyerahan ke Antonello            | Satu paket lengkap, bukan pesan atau file terpisah-pisah.                                                                                                   |
+| **15:00**         | Penyerahan ke Zero                 | Satu paket lengkap, bukan pesan atau file terpisah-pisah.                                                                                                   |
 | 15:00–16:40       | Revisi                             | Hanya revisi yang diminta; ulangi QA pada bagian yang berubah.                                                                                              |
 | **17:00**         | Publikasi social manual oleh Damar | Hanya deliverable yang sudah disetujui eksplisit.                                                                                                           |
 
@@ -560,7 +560,7 @@ Damar memilih satu route. Elemen dari dua route hanya boleh digabung bila pesan 
 
 ## 18. Seni cover: metode yang harus dipakai
 
-Metode ini mengikuti arahan editorial Antonello untuk “Trend News in Bali” dan prinsip yang berhasil pada percakapan image direction yang sudah diperiksa: cover harus langsung dipahami, memiliki satu visual thesis, dan tidak memakai placeholder.
+Metode ini mengikuti arahan editorial Zero untuk “Trend News in Bali” dan prinsip yang berhasil pada percakapan image direction yang sudah diperiksa: cover harus langsung dipahami, memiliki satu visual thesis, dan tidak memakai placeholder.
 
 1. **Core visual thesis** — tulis satu kalimat yang menjelaskan konflik atau fakta visual.
 2. **One coherent location** — satu dunia, bukan collage yang malas.
@@ -998,7 +998,7 @@ Logo, number, code, chart, source badge, dan CTA ditambahkan di post.
 | 14:00     | Full QA.                                                                                                                       |
 | 14:15     | Jika video belum siap QA, tandai DEFERRED dan kirim carousel tepat waktu.                                                      |
 | 14:40     | Export, poster, caption, dan packaging.                                                                                        |
-| **15:00** | Penyerahan ke Antonello.                                                                                                       |
+| **15:00** | Penyerahan ke Zero.                                                                                                            |
 | **17:00** | Publikasi hanya setelah approval.                                                                                              |
 
 ## 34. QA video
@@ -1170,7 +1170,7 @@ Ketika metrics tersedia, catat:
 - kekuatan cover pada detik pertama;
 - drop-off video per adegan;
 - perbedaan retention versi ID dan EN;
-- perubahan yang dibuat Damar atau Antonello sebelum publish.
+- perubahan yang dibuat Damar atau Zero sebelum publish.
 
 Pertanyaan evaluasi utama:
 
@@ -1196,7 +1196,7 @@ Untuk setiap pekerjaan editorial, agent wajib:
 8. menggunakan Flow hanya untuk video;
 9. tidak memakai placeholder atau silent fallback;
 10. tidak menyebut sesuatu live sebelum memeriksa live state;
-11. tidak pernah memicu publikasi social; Damar menerbitkan manual hanya setelah approval Antonello;
+11. tidak pernah memicu publikasi social; Damar menerbitkan manual hanya setelah approval Zero;
 12. menyimpan output harian dalam satu paket yang mudah diperiksa.
 
 ## 41. Effort model yang disarankan
@@ -1278,6 +1278,6 @@ Gunakan **Kokpit Harian Damar** di awal dokumen untuk operasi sehari-hari. Bagia
 
 ### Kalimat yang harus diingat
 
-> **Damar memutuskan. Agent menyelidiki, membangun, dan memeriksa. Antonello menyetujui.**
+> **Damar memutuskan. Agent menyelidiki, membangun, dan memeriksa. Zero menyetujui.**
 
 > **Tidak ada cover cryptic. Tidak ada placeholder. Tidak ada publish tanpa proof.**

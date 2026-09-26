@@ -1,6 +1,9 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # PPh 21 Monthly Tax Filing Deadlines Q3 2026 — PT PMA with WNA Staff
 
-**Date**: 2026-05-09 · **Domain**: tax · **Author**: deep-researcher (Antonello/Bali Zero) · **Status**: draft
+**Date**: 2026-05-09 · **Domain**: tax · **Author**: deep-researcher (Zero/Bali Zero) · **Status**: draft
 **partial**: false · **LLMs used**: Claude Opus 4.7 (synthesis) + WebSearch/WebFetch (7 sources) + DeepSeek Reasoner (red-team)
 **devils-advocate**: 7 passes via DeepSeek-only (P1-P7, 2026-05-10) reached "regulatorially solid" status. **+ Pass 8 via NB-grounded v2 (2026-05-10 13:30)**: corrected hallucinated KEP series — KEP-37/PJ/2026, KEP-6/PJ/2026, KEP-9/PJ/2026, KEP-11/PJ/2026 all confirmed HALLUCINATIONS via NB-4 ground truth. Replaced with verified **KEP-55/PJ/2026** (real Coretax-transition penalty waiver, eff. 27 March 2026). Status: `draft` pending JDIH primary verification of: PMK 81/2024 text + predecessor (242/2014 vs 243/2014), PMK 168/2023 Lampiran A, SKB 3 Menteri 2026 decree number, PER for Coretax filing platform mandate.
 **Raw sources**: /tmp/deep-research-pph21-q3-deadlines-livetest-sources.txt

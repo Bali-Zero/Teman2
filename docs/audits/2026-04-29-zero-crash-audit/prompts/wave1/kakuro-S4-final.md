@@ -13,6 +13,7 @@
 Il 2026-04-29 ~15:09 WITA un writer non identificato ha corrotto **51 dei 54 plist project** in `~/Library/LaunchAgents/com.{nuzantara,balizero,cell}.*.plist`. Pattern di corruzione: ogni file diventa l'output JSON di un `plutil -extract <key> json` redirect lethal sopra il file stesso.
 
 S4 wave1 ha già fatto:
+
 - ✅ 53/54 plist ricostruiti (in memoria via `launchctl print` + `plistlib.dump` atomico)
 - ✅ 9 secret leakati identificati (TELEGRAM, GH_TOKEN, FLY_API_TOKEN, GOOGLE_API_KEY, ecc.)
 - ✅ Branch `feat/p0-3-launchagents` commit `c3218dba5` pushato su origin (NON merged)
@@ -21,6 +22,7 @@ S4 wave1 ha già fatto:
 - ✅ canary lite watching `cell.organism` size
 
 S4 NON ha ancora:
+
 - ❌ identificato il writer (cattura in corso)
 - ❌ disabilitato writer (perché non sa quale è)
 - ❌ aperto PR per i lint/patch scripts
@@ -137,7 +139,7 @@ CORRUPTION PATTERN: Each plist file became the JSON output of `plutil -extract <
 - `com.cell.organism.plist` content: `{"PATH":"...","HOME":"...","TELEGRAM_BOT_TOKEN":"..."}` (was EnvironmentVariables value)
 - File size dropped from ~700-1200 bytes to 20-1100 bytes
 
-WRITER SIGNATURE: 
+WRITER SIGNATURE:
 - Touches all loaded labels at once (3-second window)
 - Reads + writes (NOT just reads)
 - Uses plutil -extract internally
@@ -226,7 +228,7 @@ Resolves cicatrix STRUCTURAL 2026-04-29 P0-3 part 2 (writer identified + disable
 - Lint script `scripts/lint_launchagents.sh` enforces VADEMECUM §11
 - Patch script `scripts/patch_launchagents.sh` auto-fixes violations with --dry-run|--apply
 - 8 secrets leaked in world-readable plist; rotation list in ~/p0-3-recovery/secrets_to_rotate.txt
-  (rotation pending — Antonello manual approval per secret class)
+  (rotation pending — Zero manual approval per secret class)
 
 ## Test plan
 - [x] All 53 plist now plutil -lint OK
@@ -248,32 +250,34 @@ gh pr merge --auto --squash
 
 ## Phase 6 — Secret rotation tracking
 
-Crea task list dei 9 secret da rotare. NON ruotare automaticamente — Antonello deve approvare ogni rotation perché può rompere downstream services.
+Crea task list dei 9 secret da rotare. NON ruotare automaticamente — Zero deve approvare ogni rotation perché può rompere downstream services.
 
 Salva in `~/p0-3-recovery/secrets_rotation_plan.md`:
 
 ```markdown
 # Secrets rotation plan — post-plist-corruption 2026-04-29
 
-| # | Secret | File location | Owner | Priority | Rotation procedure |
-|---|---|---|---|---|---|
-| 1 | TELEGRAM_BOT_TOKEN | dlq-autopilot, sentinel, cell.organism | @BotFather | High | /token in @BotFather, update plist + Fly secrets |
-| 2 | GH_TOKEN | post-publish-poller | github.com | High | Settings → Personal access tokens → regenerate |
-| 3 | FLY_API_TOKEN | cell.organism | fly.io | High | flyctl tokens create / revoke old |
-| 4 | GOOGLE_API_KEY | cell.organism | console.cloud | Med | Restrict by IP first, then regenerate |
-| 5 | CELL_DATABASE_URL | cell.organism | local PG | Low | rotate PG user password |
-| 6 | FIREWORKS_API_KEY | post-publish-poller | fireworks.ai | Med | dashboard → API keys → regenerate |
-| 7 | SCRAPER_API_KEY | post-publish-poller | internal | Low | grep service, rotate, redeploy |
-| 8 | POST_PUBLISH_SECRET | post-publish-webhook | internal | Low | rotate, update endpoint |
-| 9 | CLAUDE_CODE_OAUTH_TOKEN | balizero.intel.nightly | claude.ai | High | /logout claude CLI, re-auth |
+| #   | Secret                  | File location                          | Owner         | Priority | Rotation procedure                               |
+| --- | ----------------------- | -------------------------------------- | ------------- | -------- | ------------------------------------------------ |
+| 1   | TELEGRAM_BOT_TOKEN      | dlq-autopilot, sentinel, cell.organism | @BotFather    | High     | /token in @BotFather, update plist + Fly secrets |
+| 2   | GH_TOKEN                | post-publish-poller                    | github.com    | High     | Settings → Personal access tokens → regenerate   |
+| 3   | FLY_API_TOKEN           | cell.organism                          | fly.io        | High     | flyctl tokens create / revoke old                |
+| 4   | GOOGLE_API_KEY          | cell.organism                          | console.cloud | Med      | Restrict by IP first, then regenerate            |
+| 5   | CELL_DATABASE_URL       | cell.organism                          | local PG      | Low      | rotate PG user password                          |
+| 6   | FIREWORKS_API_KEY       | post-publish-poller                    | fireworks.ai  | Med      | dashboard → API keys → regenerate                |
+| 7   | SCRAPER_API_KEY         | post-publish-poller                    | internal      | Low      | grep service, rotate, redeploy                   |
+| 8   | POST_PUBLISH_SECRET     | post-publish-webhook                   | internal      | Low      | rotate, update endpoint                          |
+| 9   | CLAUDE_CODE_OAUTH_TOKEN | balizero.intel.nightly                 | claude.ai     | High     | /logout claude CLI, re-auth                      |
 
 ## Status
-- [ ] #1 TELEGRAM (rotation pending Antonello approval)
+
+- [ ] #1 TELEGRAM (rotation pending Zero approval)
 - [ ] #2 GH_TOKEN
-... etc
+      ... etc
 ```
 
-Telegram alert per Antonello con link al file:
+Telegram alert per Zero con link al file:
+
 ```bash
 # Use existing hotfix-notify.sh
 ~/.claude/scripts/hotfix-notify.sh "🔐 Plist corruption secret rotation plan ready: ~/p0-3-recovery/secrets_rotation_plan.md (9 secrets, no auto-rotation, manual approval needed)"
@@ -282,13 +286,15 @@ Telegram alert per Antonello con link al file:
 ## Phase 7 — Cicatrix update + close
 
 Edit `.claude/rules/cicatrix-scars.md`:
+
 - Find entry "51 LaunchAgent plist corrupted by unidentified writer 2026-04-29 15:09"
-- Change to "✅ RESOLVED: ..." 
+- Change to "✅ RESOLVED: ..."
 - Add "Patched: 2026-04-29 via PR #<num>, writer identified as <NAME>, disabled via <method>"
 
 Save MOS:
+
 ```bash
-~/.claude/scripts/mem save decision "P0-3 final closure 2026-04-29: writer identified as <NAME>, disabled, 51 plist recovered, lint+patch scripts merged in PR #<num>. Cicatrix STRUCTURAL P0-3 RESOLVED. Secret rotation plan in ~/p0-3-recovery/secrets_rotation_plan.md (9 secrets, manual rotation pending Antonello)." 9
+~/.claude/scripts/mem save decision "P0-3 final closure 2026-04-29: writer identified as <NAME>, disabled, 51 plist recovered, lint+patch scripts merged in PR #<num>. Cicatrix STRUCTURAL P0-3 RESOLVED. Secret rotation plan in ~/p0-3-recovery/secrets_rotation_plan.md (9 secrets, manual rotation pending Zero)." 9
 ```
 
 ## Phase 8 — Cleanup
@@ -311,7 +317,7 @@ git worktree remove /Users/nuzantara/Desktop/nuzantara-wt/p0-3 2>/dev/null || tr
 - Disable mechanism: <how>
 - PR #<num> merged
 - Cicatrix STRUCTURAL P0-3 marked RESOLVED
-- 9 secrets rotation plan ready, NOT yet rotated (Antonello manual)
+- 9 secrets rotation plan ready, NOT yet rotated (Zero manual)
 - All 53 plist plutil -lint OK; daemon respawn verified
 - fs_usage capture stopped; canary lite stopped
 - Brainstorms in /tmp/kakuro-S4-final-brainstorms
@@ -328,8 +334,9 @@ git worktree remove /Users/nuzantara/Desktop/nuzantara-wt/p0-3 2>/dev/null || tr
 ## Autonomy boundary
 
 L2 autonomous EXCEPT:
-- Disable di un sistema critico (es. system_doctor.py) → escalate Telegram + wait Antonello go
-- Secret rotation → SEMPRE manual, Antonello approva ogni rotation
+
+- Disable di un sistema critico (es. system_doctor.py) → escalate Telegram + wait Zero go
+- Secret rotation → SEMPRE manual, Zero approva ogni rotation
 - Modifica `~/.claude/settings.json` → escalate
 
 In tutti gli altri scenari, procedi.

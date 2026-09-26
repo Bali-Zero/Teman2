@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-23
 domain: operations
 client_case: NB-automations hardening loop W44 — wr2_supervisor heartbeat task died silently, frozen 16h57m, restart restored
@@ -122,7 +123,7 @@ The outer `_run_loop` already does `SELECT 1` every 5s on `conn`. Should ALSO pr
 
 ## Bonus: makes W43 (tiered escalation) more important
 
-Even with W44's heartbeat fix, the W43 watchdog still uses flat 24h cooldown. If a NEW class of silent death happens, operator gets ONE alert + 24h silence. W43's tier escalation would have re-pinged Antonello at 2h, 4h, 8h — providing 4 chances to notice instead of 1. **W43 + W44 are complementary, not competing.**
+Even with W44's heartbeat fix, the W43 watchdog still uses flat 24h cooldown. If a NEW class of silent death happens, operator gets ONE alert + 24h silence. W43's tier escalation would have re-pinged Zero at 2h, 4h, 8h — providing 4 chances to notice instead of 1. **W43 + W44 are complementary, not competing.**
 
 ## Sources
 

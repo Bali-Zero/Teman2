@@ -1,8 +1,9 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-28
 domain: company
 client_case: bali-zero-internal-kbli-2025-bps-december-verify
-author: deep-researcher (Antonello/Bali Zero)
+author: deep-researcher (Zero/Bali Zero)
 status: draft
 sources:
   - "PRIMARY: Peraturan BPS No. 7 Tahun 2025 — KBLI 2025 (PDF 623 pp, letto direttamente: /tmp/kbli-2025.pdf da legalitas.org/download/kbli-2025-compressed.pdf, estratto /tmp/kbli-2025-full.txt)"
@@ -16,7 +17,7 @@ partial: false
 
 # KBLI 2025 + Peraturan BPS — Verifica Fonte Primaria
 
-## Question (verbatim Antonello)
+## Question (verbatim Zero)
 
 Verifica EMPIRICA con fonte primaria letta direttamente di due dubbi su KBLI Indonesia: (1) "Hanno cercato in KBLI del 2025?" — esiste davvero un KBLI 2025, qual e la fonte primaria, cosa dice sui codici content creator. (2) "E la legge Badan Statistik di dicembre 2025?" — esiste un atto BPS di dicembre 2025 che la ricerca precedente non ha visto. Determinare se il pivot "PT PMA content creator" del carosello regge.
 

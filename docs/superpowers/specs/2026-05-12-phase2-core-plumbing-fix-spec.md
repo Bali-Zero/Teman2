@@ -1,7 +1,7 @@
 # Phase 2 — Core Plumbing Fix (Spec v2 post 4-panel review)
 
 **Date**: 2026-05-12 18:35 WITA · **Revised**: 19:00 WITA post-review
-**Owner**: Antonello (Zero)
+**Owner**: Zero (Zero)
 **Predecessor**: Phase 1 (Visibility & Stability) merged via PR #614 + PR #615 corrections
 **Mode**: Mixed (script writing + cron install + runtime mutation on Pro)
 **Estimated effort**: ~7h (revised up from 5h after 4-panel review)
@@ -13,15 +13,15 @@ Drain the 2126 unconsumed events in `events_outbox`, install a prune cron to pre
 
 ## 4-panel review convergences applied (7 corrections)
 
-| # | Original spec | 4-panel verdict | Correction |
-|---|---|---|---|
-| 1 | Replay rate 50 events/sec | UNANIMOUS too aggressive (Gemini/DeepSeek/NB-1) — OOM risk on Fly 2GB | **Rate 10/sec**, batch 10, sleep 1s. Hard cap in code. Auto-pause if Redis stream growing |
-| 2 | Seed Option A (extract from observatory.db) | UNANIMOUS architectural pollution | **Option A REMOVED**. Only Option B (15-20 hand-crafted `StructuralPattern` schema-strict) |
-| 3 | Replay SELECT without locks | Gemini caught: race condition with live producers | **`SELECT ... FOR UPDATE SKIP LOCKED`** for safe concurrent claim |
-| 4 | Single-phase consumed_at mark | DeepSeek caught: abort leaves inconsistent state | **Two-phase mark**: `replay_in_progress` → `consumed_at` finalized only after pg_notify success |
-| 5 | No poison pill handling | Gemini caught: 2126 events may be the ones that crashed bridge | **DLQ table** `events_outbox_dlq` for replay-failed events + payload schema pre-validation |
-| 6 | Prune cron may delete unconsumed by age | DeepSeek caught: replay > 30d edge case | **Prune guard**: `WHERE consumed_at IS NOT NULL AND consumed_at < now()-30d` (NEVER prune unconsumed regardless of age) |
-| 7 | UUID SSOT BLOCKING for Phase 2 | NB-1 ground-truth disagreement with Gemini/DeepSeek | NB-1 wins (has code access): idempotent `POST /record` upsert on `skill_id` already protects downstream. UUID SSOT remains Phase 3 prerequisite, NOT Phase 2 blocker. Phase 2 plumbing must run before/parallel Phase 0.5a. |
+| #   | Original spec                               | 4-panel verdict                                                       | Correction                                                                                                                                                                                                                  |
+| --- | ------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Replay rate 50 events/sec                   | UNANIMOUS too aggressive (Gemini/DeepSeek/NB-1) — OOM risk on Fly 2GB | **Rate 10/sec**, batch 10, sleep 1s. Hard cap in code. Auto-pause if Redis stream growing                                                                                                                                   |
+| 2   | Seed Option A (extract from observatory.db) | UNANIMOUS architectural pollution                                     | **Option A REMOVED**. Only Option B (15-20 hand-crafted `StructuralPattern` schema-strict)                                                                                                                                  |
+| 3   | Replay SELECT without locks                 | Gemini caught: race condition with live producers                     | **`SELECT ... FOR UPDATE SKIP LOCKED`** for safe concurrent claim                                                                                                                                                           |
+| 4   | Single-phase consumed_at mark               | DeepSeek caught: abort leaves inconsistent state                      | **Two-phase mark**: `replay_in_progress` → `consumed_at` finalized only after pg_notify success                                                                                                                             |
+| 5   | No poison pill handling                     | Gemini caught: 2126 events may be the ones that crashed bridge        | **DLQ table** `events_outbox_dlq` for replay-failed events + payload schema pre-validation                                                                                                                                  |
+| 6   | Prune cron may delete unconsumed by age     | DeepSeek caught: replay > 30d edge case                               | **Prune guard**: `WHERE consumed_at IS NOT NULL AND consumed_at < now()-30d` (NEVER prune unconsumed regardless of age)                                                                                                     |
+| 7   | UUID SSOT BLOCKING for Phase 2              | NB-1 ground-truth disagreement with Gemini/DeepSeek                   | NB-1 wins (has code access): idempotent `POST /record` upsert on `skill_id` already protects downstream. UUID SSOT remains Phase 3 prerequisite, NOT Phase 2 blocker. Phase 2 plumbing must run before/parallel Phase 0.5a. |
 
 ## Prerequisites (from Phase 1 corrections, unchanged)
 
@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS events_outbox_dlq (
 ```
 
 **Tests** `tests/unit/test_replay_outbox_throttled.py` (8 tests):
+
 - rate enforcement (asserts ≤10/s under load)
 - hard cap (rejects --rate 50)
 - two-phase mark (in_progress before NOTIFY, NOW() after)
@@ -158,6 +159,7 @@ CREATE TABLE IF NOT EXISTS events_outbox_dlq (
    ```
 
 **Abort triggers**:
+
 - Redis stream growth > 2× initial
 - DLQ count > 5 (indicates systemic payload issue)
 - bridge connection drop during replay (5th cluster — investigate, do not retry blindly)
@@ -209,6 +211,7 @@ SKILLS = [
 **15-20 skills coverage**: 4 tax + 4 visa + 3 property + 3 CRM + 2 KBLI + 2-4 cross-domain. All schema-validated before XADD.
 
 **Smoke test** post-seed:
+
 ```bash
 redis-cli XLEN cell:skills        # ≥15
 redis-cli XRANGE cell:skills - + COUNT 1 | grep skill_id  # validates first entry
@@ -218,6 +221,7 @@ redis-cli XINFO STREAM cell:skills | grep length  # confirm
 ### Step 2.6 — Doc + commit + PR (1h, P0)
 
 Closure doc `research/symbiosis/2026-05-12-phase2-core-plumbing-complete.md`:
+
 - Step 2.0 plist runtime test result (kickstart log + observatory.db row)
 - Step 2.1 drop-window outbox completeness numbers
 - Step 2.2 script + tests committed
@@ -240,16 +244,16 @@ PR + auto-merge SQUASH (lessons from Phase 1: doc carefully retracts claims, no 
 
 ## Total effort (revised)
 
-| Step | Effort | Risk |
-|---|---:|---|
-| 2.0 Runtime test patched plists | 15m | low |
-| 2.1 Outbox completeness verify | 30m | low |
-| 2.2 Throttled replay script + 8 tests | 2h | medium |
-| 2.3 Dry-run + full replay execution | 1h | medium |
-| 2.4 Outbox prune cron + script | 1.5h | low |
-| 2.5 Seed cell:skills 15-20 manual | 2h | low |
-| 2.6 Doc + commit + PR | 1h | low |
-| **Total Phase 2** | **~8h** | medium |
+| Step                                  |  Effort | Risk   |
+| ------------------------------------- | ------: | ------ |
+| 2.0 Runtime test patched plists       |     15m | low    |
+| 2.1 Outbox completeness verify        |     30m | low    |
+| 2.2 Throttled replay script + 8 tests |      2h | medium |
+| 2.3 Dry-run + full replay execution   |      1h | medium |
+| 2.4 Outbox prune cron + script        |    1.5h | low    |
+| 2.5 Seed cell:skills 15-20 manual     |      2h | low    |
+| 2.6 Doc + commit + PR                 |      1h | low    |
+| **Total Phase 2**                     | **~8h** | medium |
 
 (Was 5h plan-v2, then 6h spec-v1; now 8h spec-v2 post-4-panel.)
 
@@ -274,6 +278,7 @@ Phase 2 complete when:
 ## What this loop produces (autonomous scope)
 
 Doc-only artifacts + Pro-local script + new Python file. NO autonomous:
+
 - launchctl bootstrap (operator runs)
 - Live replay execution (operator triggers `--dry-run` first, then approves live run)
 - Plist file install (operator copies to ~/Library/LaunchAgents/)

@@ -1,14 +1,16 @@
 # Proposed Amendment — 2026-05-12 — Article 14: Five SOTA Adoption Rules
 
 **Status (resolved 2026-05-12)**: PARTIAL MERGE.
+
 - **14.1 + 14.2 + 14.4 APPROVED** → merged into `constitution.md` Article 14 same day
 - **14.3 + 14.5 DEFERRED** → remain in this draft pending smoke test + promotion via Article 14.6 process
 
-**Original status**: PROPOSED, awaiting Antonello veto/approve
+**Original status**: PROPOSED, awaiting Zero veto/approve
 **Author**: Claude Opus 4.7 (this session, round 4 empirical tuning)
 **Source evidence**: `_external-bench-2026-05.md` (100 SOTA cover gallery + 30 pattern + 15 anti-pattern via Gemini+DeepSeek+Opus multi-LLM, $0.04, 22 min)
 **Implementation status**: code already shipped in commits 6011d64 / 2fe5ec3 / 1095daa + pending round-4 commit. Amendment formalises what code already enforces.
 **Companion changes**:
+
 - `tokens.json` — added swipe_indicator, regulation_badge, qr_closing namespaces
 - `layouts/_base.css` — added `.swipe-indicator`, `.regulation-badge`, `.qr-closing`, `.source-citation-footer` classes
 - `layouts/source-citation.md` — NEW layout family
@@ -40,6 +42,7 @@ Slide 2 MUST be a single-sentence framing answering "why this carousel exists fo
 **Rationale**: The SOTA editorial stack (NYT, Atlantic, Vox, WSJ) treats slide 2 as transition between hook (cover) and evidence (slide 3+). Bali Zero's previous convention skipped this and cost swipe-through rate.
 
 **Format**:
+
 - Question-form (preferred): `Bagaimana ini terjadi?` / `Apa artinya untuk PT PMA kamu?` / `What this means for your PT PMA.`
 - Statement-form (when question would sound rhetorical): `Your annual return deadline just shifted by 31 days.`
 
@@ -54,6 +57,7 @@ Every carousel in domain `{regulatory, visa, tax, property}` with `slide_count �
 For short carouseli (`slide_count ≤ 6`, typically `news-flash` or `anti-cliche` archetypes), the source-citation slide is OPTIONAL but the verbatim citation in body text (Article 6.4) remains mandatory. The standalone citation slide can be skipped to preserve narrative tempo in fast-news contexts.
 
 The slide must list:
+
 - 1-5 citations
 - Each citation: body (regulation code verbatim), issuer (ministry/agency), date (decree date), url (primary source host)
 - URL host MUST be from a known primary source: `pajak.go.id`, `jdih.kemenkumham.go.id`, `jdih.imigrasi.go.id`, `oss.go.id`, `bps.go.id`, `simbg.pu.go.id`, `kemenkeu.go.id`, etc.
@@ -87,6 +91,7 @@ The URL MUST be a regulator-issued document or registry (DJP, OSS, JDIH, Permenk
 ## Why these 5 specifically, not 30
 
 The deep research extracted **30 patterns** from 100 SOTA covers. Classification:
+
 - **22 ADOPT** — fully compatible with Bali Zero brand and likely improves performance
 - **6 PARTIAL** — adopt with adaptation
 - **2 OBSERVE** — A/B test before committing
@@ -100,15 +105,15 @@ The remaining **5 are net-new** for Bali Zero. They become Article 14 because th
 
 Anticipated objections + answers:
 
-| Objection | Answer |
-|---|---|
-| "Article 14.3 source-citation slide adds friction — readers may skip" | The data: ProPublica, The Markup carouseli with source slides have HIGHER save/share than those without. The credibility-signal increases, doesn't decrease, swipe-through. |
-| "Article 14.4 regulation badge duplicates body text citation" | Yes, intentionally. The badge is for **pre-reading recognition** (Indonesian audience pattern: scan corners before reading). Body text citation is for verification. Different cognitive moments. |
-| "Article 14.5 QR pointing away from Bali Zero loses our funnel" | Bali Zero IG funnel is NOT carousel-to-website-to-DM. It's carousel-to-DM-to-call (Brevo + WhatsApp already work). QR to primary source builds trust THIS carousel; trust builds future DMs. We give the source, they remember us. |
-| "5 new rules at once = overhaul" | All 5 are additive (no existing rule retracted). Existing carouseli still pass. New carouseli adopt incrementally as `wr2-storyboarder` updates flow through queue. |
-| "Why not wait for empirical validation on our own corpus first?" | Internal corpus is N=7 (top performers handed by Antonello). External SOTA is N=100. Statistical confidence is higher for external pattern. Internal A/B test would take 90 days minimum before significance. We borrow SOTA confidence now, validate retroactively when WR2 carouseli publish. |
+| Objection                                                             | Answer                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "Article 14.3 source-citation slide adds friction — readers may skip" | The data: ProPublica, The Markup carouseli with source slides have HIGHER save/share than those without. The credibility-signal increases, doesn't decrease, swipe-through.                                                                                                                |
+| "Article 14.4 regulation badge duplicates body text citation"         | Yes, intentionally. The badge is for **pre-reading recognition** (Indonesian audience pattern: scan corners before reading). Body text citation is for verification. Different cognitive moments.                                                                                          |
+| "Article 14.5 QR pointing away from Bali Zero loses our funnel"       | Bali Zero IG funnel is NOT carousel-to-website-to-DM. It's carousel-to-DM-to-call (Brevo + WhatsApp already work). QR to primary source builds trust THIS carousel; trust builds future DMs. We give the source, they remember us.                                                         |
+| "5 new rules at once = overhaul"                                      | All 5 are additive (no existing rule retracted). Existing carouseli still pass. New carouseli adopt incrementally as `wr2-storyboarder` updates flow through queue.                                                                                                                        |
+| "Why not wait for empirical validation on our own corpus first?"      | Internal corpus is N=7 (top performers handed by Zero). External SOTA is N=100. Statistical confidence is higher for external pattern. Internal A/B test would take 90 days minimum before significance. We borrow SOTA confidence now, validate retroactively when WR2 carouseli publish. |
 
-## Antonello veto checklist
+## Zero veto checklist
 
 Before merging into `constitution.md` Article 14, verify:
 

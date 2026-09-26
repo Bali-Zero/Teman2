@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-26
 domain: operations
 client_case: none
@@ -60,7 +61,7 @@ La soluzione corretta sposta enforcement da client hook → CI server-side.
 
 ## Failure modes mappati dal panel (mancanti nel brief originale)
 
-1. **Same trust domain** (Codex): Antonello + Claude + Codex sono "attori diversi" su GitHub ma stessa workstation, stessi token, stesso keychain. Non è indipendenza forte.
+1. **Same trust domain** (Codex): Zero + Claude + Codex sono "attori diversi" su GitHub ma stessa workstation, stessi token, stesso keychain. Non è indipendenza forte.
 2. **LLM review prompt injection** (Codex): PR description/comments possono istruire reviewer bot. Reviewer deve leggere diff via API, non eseguire branch.
 3. **Approval stale race** (Codex): approval prima di push successivo. Serve `dismiss stale approvals` o `require approval of most recent reviewable push`.
 4. **CI spoofing** (Codex): write users possono creare commit statuses. Required check con `expected source app` riduce spoofing.

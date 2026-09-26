@@ -2,7 +2,7 @@
 
 **Data:** 2 May 2026
 **Reviewer:** GPT-5.5 (Codex CLI xhigh) + Gemini 3.1 Pro (CLI) + DeepSeek V4 Reasoner (direct API)
-**Owner:** Antonello Siano / Bali Zero / Nuzantara
+**Owner:** Zero / Bali Zero / Nuzantara
 **Conduttore:** Claude Opus 4.7
 
 ---
@@ -26,6 +26,7 @@ Framework biological-lifecycle con 11 moduli:
 - **`observatory.py`**: `emit_pulse_observed()` → PG `events_outbox` + `pg_notify('cell_pulse_observed')`. Opt-in `CELL_OBSERVATORY_EMIT=true`. **Critical**: zero dipendenze da backend-rag.
 
 **3 cell vere oggi LIVE su Pro**:
+
 - `apps/cell` (organism cell, generic) — LaunchAgent
 - `apps/organism` (metacell supervisor + control panel `:1819` + scheduled-tick) — LaunchAgent
 - `apps/cell-observatory-collector` (listener PG + classifier MiniMax via OpenRouter) — LaunchAgent
@@ -46,13 +47,14 @@ Costi misurati (test reali): MiniMax M2.7 $0.0003, Qwen3-Max $0.0006, Kimi K2.6 
 ### 130 automazioni Pro (90 cron + 70 LaunchAgents)
 
 Categorizzate:
+
 - **A) Sensor/observability** (8): system-doctor, log-anomaly-detector, fly-watcher, client-health, sentinel, heartbeat-check, oss-monitor, coverage-trend
 - **B) Pipeline/ingestion** (15): NB1-10, gap-scanner, peraturan, garuda-indexer, kb-ingest, vision-doc-extractor, imigrasi-monitor
 - **C) LLM-in-loop oggi** (7): system-doctor (Claude OAuth optional), tech-orchestrator (Claude bounded), fact-checker (Claude synth), nlm-deep-research (NotebookLM), kg-builder, conversation-trainer, daily-ops, seo-guardian-observe (40min)
 - **D) Maintenance** (10): cache-cleanup, mos-maintenance, db-backup, qdrant-snapshot, fly-backup, ttl-sweep
 - **E) Notification** (5): federation-alert-dispatcher, automap-telegram, telegram-bots
 
-**Hard rule**: zero ANTHROPIC_API_KEY pay-as-you-go (Antonello ha 3 Claude MAX x20 OAuth). DeepSeek API ($0.01/query) e altri Chinese-frontier (MiniMax M2.7, Kimi K2.6, Qwen3-Max via OpenRouter, GLM 5.1) sono OK perché flat-cost. Claude/Codex/Gemini CLI restano per task grandi (1M context, code review big, architecture). OpenClaw è per cheap-frontier H24.
+**Hard rule**: zero ANTHROPIC_API_KEY pay-as-you-go (Zero ha 3 Claude MAX x20 OAuth). DeepSeek API ($0.01/query) e altri Chinese-frontier (MiniMax M2.7, Kimi K2.6, Qwen3-Max via OpenRouter, GLM 5.1) sono OK perché flat-cost. Claude/Codex/Gemini CLI restano per task grandi (1M context, code review big, architecture). OpenClaw è per cheap-frontier H24.
 
 ### Intel Scraper
 
@@ -68,9 +70,10 @@ Categorizzate:
 
 ### Q1) Fondere cell+genoma+organism con automazioni? Ha senso?
 
-Antonello chiede se il framework biologico (PulseLoop + Genome + HGT + Homeostasis + SafetyGate + Reflection) debba diventare il "sostrato comune" delle automazioni Pro, o se vada lasciato come opt-in selettivo solo per pochi casi.
+Zero chiede se il framework biologico (PulseLoop + Genome + HGT + Homeostasis + SafetyGate + Reflection) debba diventare il "sostrato comune" delle automazioni Pro, o se vada lasciato come opt-in selettivo solo per pochi casi.
 
 Mia analisi corrente (Claude Opus 4.7):
+
 - PRO: 7-9 automazioni hanno struttura `sense→think→act` denegata ma mancano Genome/HGT/Homeostasis (system-doctor, seo-guardian, fact-checker, tech-orchestrator, gap-scanner, kg-builder, research, intel-scraper, war-room).
 - CONTRO: 121 automazioni sono ETL/healthcheck/maintenance pure dove cell-core è overhead pure.
 - Verdetto provvisorio: "delega selettiva" — promuovere 9 automazioni a cell, lasciare 121 come shell. NON merge totale.
@@ -79,9 +82,10 @@ Mia analisi corrente (Claude Opus 4.7):
 
 ### Q2) Dove aggiungere OpenClaw alle automazioni? Perché è meglio?
 
-Antonello ha vincolato: OpenClaw va riservato a cheap-frontier H24, non per task big (Claude/Codex/Gemini CLI restano).
+Zero ha vincolato: OpenClaw va riservato a cheap-frontier H24, non per task big (Claude/Codex/Gemini CLI restano).
 
 Mia analisi corrente (Claude Opus 4.7):
+
 - 3 condizioni necessarie e congiunte per OpenClaw: (1) reasoning H24, (2) stato cross-call persistente, (3) multi-tool agentic loop. Se manca anche solo una, OpenClaw è overhead.
 - 5 candidate concrete: fact-checker, tech-orchestrator, seo-guardian-observe, gap-scanner, HGT cross-cell coordinator (nuovo).
 - Stima costo totale ~$0.30-0.50/giorno = $10-15/mese.

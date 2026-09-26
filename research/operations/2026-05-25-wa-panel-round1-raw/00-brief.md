@@ -1,8 +1,11 @@
+---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
+---
 # Brief: come trasformare 30k+ messaggi WhatsApp clienti storici in valore strategico
 
 ## Contesto sistema (Bali Zero / Nuzantara, 2026-05-25)
 
-**Chi siamo**: agenzia indonesiana visa+company+tax+property. Solo-dev (Antonello) + 9-10 collaboratori. Stack AI: Claude OAuth MAX, Gemini 3.1 Pro, DeepSeek V4 Pro, NotebookLM (60 NB, ~3618 sources), Ollama locale (qwen3.5/deepseek-r1/qwen2.5vl). Postgres su Fly.io, repo monorepo Python + TS.
+**Chi siamo**: agenzia indonesiana visa+company+tax+property. Solo-dev (Zero) + 9-10 collaboratori. Stack AI: Claude OAuth MAX, Gemini 3.1 Pro, DeepSeek V4 Pro, NotebookLM (60 NB, ~3618 sources), Ollama locale (qwen3.5/deepseek-r1/qwen2.5vl). Postgres su Fly.io, repo monorepo Python + TS.
 
 **Stack consumer/CRM esistente**:
 - `clients` table (~11.680 clienti, full_name + phone canonical + drive folder)
@@ -22,7 +25,7 @@
 - **3 batch già ingested 21 mag** (chat collettive aziendali):
   - YOPO company (12 msg, ago 2022-mag 2026, 17 senders interni)
   - E-ITK ONLINE (670 msg, feb 2024-mag 2026, 13 senders)
-  - INVOICE BALI ZERO (26.061 msg, ago 2022-mag 2026, 17 senders — Sahira 6574, Amanda 5023, Ari 4572, Antonello 3078, Adit 2638)
+  - INVOICE BALI ZERO (26.061 msg, ago 2022-mag 2026, 17 senders — Sahira 6574, Amanda 5023, Ari 4572, Zero 3078, Adit 2638)
 - **188 chat individuali cliente in coda** (1.88 GB scaricate da Drive, mai ingested), folder per team member (Adit 2 / Ari 30 / Krisna 52 / Sahira 51 / Surya 54). Esempio: Catia Sabatini D12 visa, periodo 17 giorni, 4 allegati (passport photos, CV)
 - **Live capture continua**: ~150-300 msg/giorno via Brevo Cloud API + Baileys mirror
 

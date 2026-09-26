@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-04
 domain: operations
 study: doc-intake-unified
@@ -173,7 +174,7 @@ Servono raggiungerli dove gia sono. Tre opzioni valutate:
 4. **RBAC riusabile**: a differenza di workspace_inbox (owner-only zero@), la review
    queue deve essere visibile al **team assegnatario** del cliente candidato
    (`verify_client_access`: team vede solo i propri clienti; admin vede tutto). Item
-   con cliente ancora non risolto (C4 candidate) -> visibili agli admin (zero/asya/antonello).
+   con cliente ancora non risolto (C4 candidate) -> visibili agli admin (zero/asya/Zero).
 
 **Complemento (non sostituto)**: **Telegram come notifier**, non come editor. Quando
 un item entra in `review_pending`, un ping Telegram al reviewer assegnato con
@@ -294,7 +295,7 @@ Dato il digest, EvoSkill puo proporre — ognuna come change in PR draft:
    MODEL_TOPOLOGY.json / tabella soglie sez. 1.1.
 
 Tutte e tre passano per evidence-lint + entailment + **draft PR + review umana**
-(Antonello/Zero). Coerente con il contratto \"PROPONE -> PR, non auto-applica\".
+(Zero/Zero). Coerente con il contratto \"PROPONE -> PR, non auto-applica\".
 
 ### 4.4 Loop di chiusura
 ```
@@ -303,7 +304,7 @@ intake -> AI estrae -> umano corregge -> intake_corrections (volume)
    |                                       [weekly evolver]
    |                                      digest -> proposta -> DRAFT PR
    |                                              |
-   +------ Antonello merge la PR (prompt/regola/soglia migliore) ----+
+   +------ Zero merge la PR (prompt/regola/soglia migliore) ----+
 ```
 Il miglioramento e **misurabile**: la `correction_rate` per (doc_type, field) deve
 **scendere** dopo una PR mergiata. Se non scende in 2-3 settimane, la PR successiva

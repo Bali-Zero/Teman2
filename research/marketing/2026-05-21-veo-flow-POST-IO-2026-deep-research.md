@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-21
 domain: marketing
 client_case: Bali Zero WR3 — Veo+Flow ecosystem POST Google I/O 2026 (19 May)
@@ -128,15 +129,15 @@ Source convergent: [costgoat.com](https://costgoat.com/pricing/google-veo), [cos
 
 | # | Action | Priority | Owner | Effort | Cost |
 |---|---|---|---|---|---|
-| 1 | **Empirical test Omni Flash via Flow UI** — 6 shots Zantara character consistency (verifica claim "persistence across edits") | **P0** | Antonello | 1h + ~$0 (Pro plan) | $0 |
+| 1 | **Empirical test Omni Flash via Flow UI** — 6 shots Zantara character consistency (verifica claim "persistence across edits") | **P0** | Zero | 1h + ~$0 (Pro plan) | $0 |
 | 2 | Compara Omni Flash 6×10s concat vs Veo 3.1 Fast 6×8s concat su same script — face consistency + audio quality | P0 | Engineer | 4h | ~$5-10 credits |
 | 3 | **Test Flow Agent FREE** su 1 episode brief — verifica se sostituisce wr3-design-architect orchestrator | **P0** | Engineer | 2h | $0 |
 | 4 | **Migrare wr3-shot-director come Flow Tool** prototype — avvia migrazione da FlowKit Chrome ext | P1 | Engineer | 8h | $0 |
 | 5 | Test Omni Flash conversational editing su 1 shot — verifica se "swap characters" mantiene Zantara identity | P1 | Engineer | 2h | $5 credits |
-| 6 | Monitor Google blog + Flow UI per AI Plus pricing announcement | P2 | Antonello | watch | $0 |
+| 6 | Monitor Google blog + Flow UI per AI Plus pricing announcement | P2 | Zero | watch | $0 |
 | 7 | Verifica Vertex AI Veo 3.1 Standard API per fallback se Flow UI rompe FlowKit | P1 | Engineer | 4h | $10-20 credits |
 | 8 | Test Lyria 3 Pro BGM per WR3 episodes — verifica match con narrative tone (regulatory professional) | P2 | Engineer | 3h | $0 (AI subscriber) |
-| 9 | **DEPRECATE FlowKit Chrome ext usage** progressivamente — set kill-switch date Aug 2026 (3 mesi safety window) | P1 | Antonello | decision | $0 |
+| 9 | **DEPRECATE FlowKit Chrome ext usage** progressivamente — set kill-switch date Aug 2026 (3 mesi safety window) | P1 | Zero | decision | $0 |
 | 10 | Update CLAUDE.md §10 + WR3 contracts per riflettere Omni Flash + Flow Tools come primary path | P2 | me | 1h | $0 |
 
 ---

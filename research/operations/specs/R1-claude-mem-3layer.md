@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 spec_id: R1
 title: claude-mem 3-layer progressive memory — evaluate vs current MOS
 tier: research
@@ -169,7 +170,7 @@ rm -rf /tmp/claude-mem-pilot
 2. **Embedding model**: `text-embedding-3-small` (Nuzantara standard) supported? If not, drift risk.
 3. **Resource cost**: vector DB local = disk + RAM. Quanto?
 4. **OSS license**: must be MIT/Apache compatibile con Nuzantara closed-source private.
-5. **Maintenance burden**: chi mantiene se Nuzantara adopt? Antonello already saturato.
+5. **Maintenance burden**: chi mantiene se Nuzantara adopt? Zero already saturato.
 
 ## Estimated breakdown
 

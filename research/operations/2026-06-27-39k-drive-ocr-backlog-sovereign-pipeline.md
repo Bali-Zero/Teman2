@@ -1,9 +1,10 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-27
 domain: operations
 client_case: internal
 status: draft
-author: deep-researcher (Antonello / Bali Zero)
+author: deep-researcher (Zero / Bali Zero)
 sources:
   - live Pro Postgres figures (intake_queue, 2026-06-27, supplied verified)
   - codebase apps/backend-rag/backend/services/intake/* (read 2026-06-27)

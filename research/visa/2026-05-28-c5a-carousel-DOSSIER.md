@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-28
 domain: visa
 client_case: bali-zero-internal-editorial-c5a-carousel
@@ -31,7 +32,7 @@ Consolida tutte le verifiche legali + la lettura editoriale + la revisione 3-LLM
 
 ## Perché il C5A è pubblicato ma non operativo — spiegazione per il carosello
 
-> **Versione "parole povere" approvata da Antonello 2026-05-28** — riusabile come base per slide / caption / risposta cliente.
+> **Versione "parole povere" approvata da Zero 2026-05-28** — riusabile come base per slide / caption / risposta cliente.
 
 ### Cosa significa in concreto
 

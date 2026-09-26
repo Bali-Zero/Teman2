@@ -5,6 +5,7 @@
 ## The problem
 
 For one 9-slide carousel with 5 hero images:
+
 - Slide 1: 35mm chiaroscuro teal-amber, dark wood desk, lamp
 - Slide 4: bright daylight, different aspect, different subject
 - Slide 7: AI-art fingerprint visible, different model bias
@@ -16,6 +17,7 @@ Even with identical prompt prefix, image generators have stochastic variance. Th
 ### Layer 1 — Topic-hash seed locking
 
 The orchestrator computes:
+
 ```python
 import hashlib
 seed = int(hashlib.md5(topic_slug.encode()).hexdigest()[:8], 16) % (2**31)
@@ -83,6 +85,7 @@ for i, slide in enumerate(slides[1:], start=2):
 ## Critic enforcement (rubric 4 image-fit)
 
 The `wr2-critic` checks per-slide:
+
 - Cinematic style consistency vs slide 1 (subjective; vision-based)
 - Same camera/grading hint
 - No AI-art fingerprints
@@ -103,4 +106,4 @@ For 5 hero images × 30 carousels/month = 150 image generations/month. Within Co
 
 ## Open question (sessione 3)
 
-Should we maintain a "canonical anchor image" for each topic-domain (visa-anchor.png, tax-anchor.png) curated by Antonello, instead of using slide-1 as the in-carousel anchor? This would give cross-carousel consistency, but reduces per-carousel artistic variation. Decide post-empirical-test.
+Should we maintain a "canonical anchor image" for each topic-domain (visa-anchor.png, tax-anchor.png) curated by Zero, instead of using slide-1 as the in-carousel anchor? This would give cross-carousel consistency, but reduces per-carousel artistic variation. Decide post-empirical-test.

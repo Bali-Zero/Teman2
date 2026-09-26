@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-06
 domain: compliance
 client_case: document-intake CRM writer (FASE 5C go-live)
@@ -94,7 +95,7 @@ migration's "mai Fly" contract.
 The codebase strongly suggests **Fork A**: `documents`/`practices`/`clients` are already
 Fly-prod tables the team reads from Fly; the "mai Fly" line reads like a guard written
 during 5B local development, not the intended final architecture. **But this is a
-sovereignty decision and belongs to Antonello, not inferred by the implementer.**
+sovereignty decision and belongs to Zero, not inferred by the implementer.**
 
 > ⚠️ **Side finding to resolve regardless of fork**: in 5B today, an `approve` call on
 > prod already writes the `dry_run` audit row to **Fly** (router on Fly pool). Confirm

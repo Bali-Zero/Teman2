@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-06-13
 domain: compliance
 client_case: false
@@ -20,7 +21,7 @@ sources:
 
 ## Scopo
 
-Domanda dell'operatore (Antonello): incrociando KB/RAG/NLM/Peraturan + news/editoriali, classificare **quali categorie (KBLI/settori) costituiscono concretamente il ~90% delle PT PMA / PT PMDN a Bali**. Output usabile per pricing, contenuti (WR2/WR3), qualificazione lead, e brief cliente.
+Domanda dell'operatore (Zero): incrociando KB/RAG/NLM/Peraturan + news/editoriali, classificare **quali categorie (KBLI/settori) costituiscono concretamente il ~90% delle PT PMA / PT PMDN a Bali**. Output usabile per pricing, contenuti (WR2/WR3), qualificazione lead, e brief cliente.
 
 ## Caveat metodologico (onesta sui dati)
 

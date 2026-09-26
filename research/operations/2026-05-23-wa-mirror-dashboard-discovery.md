@@ -1,4 +1,5 @@
 ---
+adversarial_review: exempt-mechanical-privacy-sweep-no-claim-changed
 date: 2026-05-23
 domain: operations
 client_case: internal-tooling
@@ -228,7 +229,7 @@ The webapp runs on Pro M4 48GB only (per question wording). This means:
 
 7. **Postgres NOTIFY 8KB payload limit**. Notifying with a JSON containing the full message body could exceed 8KB on long messages or media metadata. Solution: notify only `{message_id, team_member_phone, counterpart_phone, chat_type}` (well under 8KB); the SSE worker then SELECTs the full row by ID. This is the standard "outbox pointer" pattern.
 
-8. **Outbound send via wa-mirror requires bridge changes**. The README explicitly states "NOT a reply bot. v1 captures the one-to-one message stream for audit/continuity and does not send messages." Adding send capability is v2 scope and requires updating the wa-mirror README + handshake protocol. Open question: who signs off on the v2 send capability — Antonello directly, or does it need a Symbiosis Law 5 (Zero ultima istanza) escalation given compliance implications? Default: escalate via `shared/escalations.json` HIGH priority.
+8. **Outbound send via wa-mirror requires bridge changes**. The README explicitly states "NOT a reply bot. v1 captures the one-to-one message stream for audit/continuity and does not send messages." Adding send capability is v2 scope and requires updating the wa-mirror README + handshake protocol. Open question: who signs off on the v2 send capability — Zero directly, or does it need a Symbiosis Law 5 (Zero ultima istanza) escalation given compliance implications? Default: escalate via `shared/escalations.json` HIGH priority.
 
 9. **Mini-Pro2 ↔ Pro network latency**. Tailscale DERP USA latency 62ms (per MEMORY). For the SSE read path, the FastAPI listener on Pro receives pg_notify directly from the shared DB (whether the DB is on Fly or local — see §5.4) so the Tailscale leg is not in the SSE delivery path. The Tailscale leg only affects wa-mirror's PG writes (already accepted in production). **Do NOT colocate FastAPI backend on Mini-Pro2** — its 24GB RAM is committed to Ollama + wa-mirror + cron; adding the 271-router FastAPI process (RAG models + embedding cache + KG SQLite) risks OOM.
 
@@ -263,7 +264,7 @@ The main-agent spec writer should resolve these before any code:
 
 - [ ] **GATING**: obtain legal-counsel sign-off on UU PDP 27/2022 lawful basis for (a) prospect message retention, (b) centralized reply, (c) data subject rights surface. Until signed off: read-only Admin-only MVP.
 - [ ] Confirm dashboard app location: new `apps/wa-dashboard/` (recommended in this doc) vs extending `apps/admin-dashboard/`. Lock the decision.
-- [ ] Confirm v2 send-capability scope addition to wa-mirror — explicit Antonello sign-off + bridge README update.
+- [ ] Confirm v2 send-capability scope addition to wa-mirror — explicit Zero sign-off + bridge README update.
 - [ ] Define schema migrations: `wa_dashboard_threads`, `wa_dashboard_outbound_queue`, `wa_dashboard_assignments`, `wa_dashboard_tags`. Lint via Squawk (per pre-deploy hook). Use `CREATE UNIQUE INDEX … ON (col, expr(col))` for the partial-uniqueness constraint per §5.3 correction.
 - [ ] Define RBAC matrix: which user roles see which threads, who can claim, who can escalate, who can reassign.
 - [ ] Define rate-limit policy: hard-coded 15s default, env override, surfaced as UI countdown. Per-account asyncio.Lock vs Redis BullMQ — pick one.
