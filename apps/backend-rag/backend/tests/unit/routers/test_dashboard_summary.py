@@ -554,7 +554,9 @@ class TestPortalChallengeEndpoint:
         assert client.get("/api/dashboard/portal-challenge/events").status_code == 403
 
     @pytest.mark.parametrize("fresh", [False, True])
-    def test_staff_token_returns_leaderboard(self, mock_current_user, mock_db_pool, _bypass_cache, fresh):
+    def test_staff_token_returns_leaderboard(
+        self, mock_current_user, mock_db_pool, _bypass_cache, fresh
+    ):
         from datetime import datetime, timezone
 
         roster_rows = [
