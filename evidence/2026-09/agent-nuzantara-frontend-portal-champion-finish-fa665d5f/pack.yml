@@ -10,6 +10,43 @@ dissent:
       successful reconnect lands more than ~90 s after activation is not
       replayed (by design); reduced motion keeps the opacity fade and drops
       rings and spring.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      Replay after a subscriber-queue overflow read one XRANGE page of 100,
+      losing any larger backlog behind the live reader. FIXED in 38f597922a:
+      replay pages until drained; test_reconnect_replays_every_page_of_a_backlog
+      (250 events, 3 pages) times out on the previous code and passes now.
+  - seat: codex-gpt-5.6-sol (parent-native run)
+    status: CONFIRMED
+    objection: >-
+      Replay and the live reader both started exclusively after `now_ms-0`,
+      so a goal XADDed in the same millisecond as TIME reached neither.
+      FIXED in 38f597922a (both start one millisecond earlier);
+      test_fresh_subscriber_gets_a_goal_added_in_the_same_millisecond is red
+      on the previous code and green now.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      Queued goals were age-checked only on receipt and visibility change,
+      so a burst could show one minutes late; with reduced motion the
+      backdrop still faded. FIXED in 675ac54139 (dismiss drops queued goals
+      older than 90 s; no backdrop fade under reduced motion); new vitest
+      case red on the previous component, green now.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      complete_registration logged the client email (pre-existing since
+      2025-12-31, same pattern in invite_service and in the invite-sent
+      line). FIXED in 38f597922a: those three lines log client_id only; a
+      caplog assertion guards the router line.
+  - seat: kimi-code/k3 (council)
+    status: RETRACTED
+    objection: >-
+      B1 streamed SSE would die on the proxy client's read timeout between
+      15 s keepalives. Not the case: get_proxy_client sets
+      httpx.Timeout(300.0, connect=10.0); idle-stream survival through both
+      proxies re-proven locally with the production middleware stack.
 lanes:
   - lane: build
     role: build
@@ -111,4 +148,37 @@ receipts:
       backend/tests/unit/services/portal/test_challenge_events.py
     exit: 0
     ts: "2026-09-26T15:45:19Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Production middleware stack (register_middleware on both local apps:
+      PIIScanner, ActivityLogging, RateLimit, ErrorMonitoring,
+      RequestTracing, HybridAuth, Brotli/GZip, CORS) does not buffer the
+      stream: `event: ready` in <=0.09 s and `event: goal` 0.36 s after a
+      real publish on all 9 paths (rag direct, api proxy, Next x
+      br/gzip/none; Brotli flushes per chunk). An idle stream stays open
+      through the api proxy and Next with a keepalive every 15 s and ends
+      cleanly at 240.25 s; the reconnect with Last-Event-ID gets `ready` in
+      0.016 s. JSON through the api proxy decodes under br and gzip with
+      status and a custom header intact. Ten rapid reconnects: no 429.
+      Run against 2ee480fcd9 (streaming path unchanged by later commits).
+    cmd: q1_stream.py, q2_idle.py, q3_q4.py (local harness, V3)
+    exit: 0
+    ts: "2026-09-26T16:27:49Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Council fixes are covered and red-green: the 250-event paged replay
+      and the same-millisecond goal tests time out on 2ee480fcd9's
+      challenge_events.py and pass on 675ac54139; the aged-queue vitest
+      case fails on the previous component and passes; a caplog assertion
+      keeps the client email out of the registration log. Backend portal,
+      invite, dashboard and rag_proxy suites 247 passed / 8 skipped (PG
+      cases need the scratch socket); vitest 82/82.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal backend/tests/services/portal/test_invite_service.py
+      backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/unit/routers/test_dashboard_summary.py backend/tests/unit/app/test_rag_proxy_stream.py;
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files>
+    exit: 0
+    ts: "2026-09-26T16:19:00Z"
     seat: claude-opus-5-5
