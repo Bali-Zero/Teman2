@@ -5,6 +5,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { translate } from "../src/app/(visa-oracle)/visa-oracle/_lib/i18n";
 import { NOTICE_CONDITION_COPY } from "../src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter";
+import { roadCopy } from "../src/app/(visa-oracle)/visa-oracle/_components/road-copy";
 import {
   makeVisaOracleResponse,
   TEST_SOURCE_ID,
@@ -112,22 +113,30 @@ async function fulfillJson(route: Route, body: unknown): Promise<void> {
 }
 
 async function expectEngineState(page: Page, state: FixtureState) {
-  await expect(
-    page.getByRole("heading", {
-      name: translate("en", `verdict.headline.${state}`),
-    }),
-  ).toBeVisible();
+  // Re-pinned (R-3 / MV:2167): SUPPORTED_CANDIDATES no longer renders the
+  // frozen _lib/i18n "verdict.headline" string — Arrival.tsx's h1 is now
+  // the road's kicker + "Paths to consider" title (component-local
+  // road-copy.ts). getByRole's `name` is a substring match by default, so
+  // matching just the title is enough against the kicker+title concatenated
+  // accessible name. Every other state still uses the frozen headline.
+  const name =
+    state === "SUPPORTED_CANDIDATES"
+      ? roadCopy("en", "lanesTitle")
+      : translate("en", `verdict.headline.${state}`);
+  await expect(page.getByRole("heading", { name })).toBeVisible();
 }
 
 /**
  * The product name as the CANDIDATE CARD renders it — scoped to the outcome
  * column on purpose. The process rail (W-VO-T) now also names the engine's
- * own product codes in the left column, so an unscoped text match resolves
- * to two elements and trips strict mode; scoping keeps each assertion
- * pointed at the surface it was written to check.
+ * own product codes in the left column, and (R-3) the "Paths to consider"
+ * lanes list now also names it in `.oracle-lane__name`, so an unscoped or
+ * `.oracle-main__content`-scoped text match resolves to more than one
+ * element and trips strict mode; scoping to `.oracle-candidate-card` keeps
+ * this assertion pointed at the surface it was written to check.
  */
 function candidateCardText(page: Page) {
-  return page.locator(".oracle-main__content").getByText("Visit Visa C1");
+  return page.locator(".oracle-candidate-card").getByText("Visit Visa C1");
 }
 
 async function expectNoWcagViolations(page: Page): Promise<void> {
@@ -594,10 +603,19 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     await expect(
       page.getByText(/will an indonesian-registered company/i),
     ).toHaveCount(0);
-    const stayRow = page
-      .locator(".oracle-confirmation__row")
-      .filter({ hasText: /how many days do you plan to stay/i });
-    await stayRow.getByRole("button", { name: /^edit$/i }).click();
+    // Re-pinned (R-3): the confirmation card's own answer list is
+    // `display: none` (road.css — "the road above is the receipt, so the
+    // card keeps only its assumptions, its note and its one action").
+    // Editing now happens from the road record's own Change control.
+    // `data-road-record` carries the raw question id (JourneyRoad.tsx), not
+    // the confirmation card's full question-prompt text — the road's own
+    // label for this record is the short "tree.stay_days" copy ("Length of
+    // stay"), not "How many days do you plan to stay?", so target the id
+    // directly rather than re-guessing the label text. The Change button's
+    // accessible name is the aria-label "Change your answer: {question}"
+    // (road-copy.ts changeAria), not the bare word, so match a prefix.
+    const stayRow = page.locator('[data-road-record="stay_days"]');
+    await stayRow.getByRole("button", { name: /^change/i }).click();
     await page.getByRole("spinbutton").fill("45");
     await page.getByRole("button", { name: /^continue$/i }).click();
     await page.getByRole("button", { name: /^one entry$/i }).click();
@@ -606,9 +624,9 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       .check();
     await page.getByRole("button", { name: /see my options/i }).click();
     await expect(
-      page
-        .locator(".oracle-confirmation__row")
-        .filter({ hasText: /how many days do you plan to stay.*45 days/i }),
+      page.locator('[data-road-record="stay_days"]').filter({
+        hasText: /45 days/i,
+      }),
     ).toBeVisible();
     await page.getByRole("button", { name: /see my options/i }).click();
 

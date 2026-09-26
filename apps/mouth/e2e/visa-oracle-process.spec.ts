@@ -266,9 +266,14 @@ test.describe("Visa Oracle — the decision tree is a visible process", () => {
       outcome.locator('[data-process-candidate="C1"]'),
     ).toBeVisible();
     await expect(outcome).toContainText("last node of this tree");
-    await expect(rail(page, "progress", false)).toContainText(
+    // Re-pinned: "No question is open" was rejected by Zero 2026-09-22
+    // (MV:2167) as engine vocabulary — the progress rail now names the
+    // open STAGE instead of an open question. Absence is the pin; the
+    // announce region proves the rail still reports state to AT.
+    await expect(rail(page, "progress", false)).not.toContainText(
       "No question is open",
     );
+    await expect(page.locator("[data-process-announce]")).toBeAttached();
     await expectNoWcagViolations(page);
   });
 
