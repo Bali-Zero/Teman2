@@ -260,11 +260,9 @@ export function QuestionScreen({
               }}
             />
           </label>
-          <button
-            type="submit"
-            className="oracle-option-card"
-            style={{ width: "fit-content" }}
-          >
+          {/* The forward action keeps its copper identity mid-walk, as at
+              the trailhead (council CRITIQUE-v2 Oracle #3). */}
+          <button type="submit" className="oracle-cta oracle-submit">
             {translate(language, "confirmation.cta")}
             <ArrowRight aria-hidden="true" size={18} />
           </button>
