@@ -1,0 +1,824 @@
+#!/usr/bin/env python3
+"""localci runner v0.2.0 — durable coordinator for a local CI / release gate.
+
+Commands: plan | run | review | status.
+
+Statuses: QUEUED RUNNING PASS FAIL ERROR BLOCKED STALE INTERRUPTED NOT_APPLICABLE.
+Overall verdicts: PASS | SUBSET_PASS | FAIL | BLOCKED. Missing evidence is never PASS.
+
+Every receipt is bound to candidate sha, tree sha, base sha, plan hash and an
+environment hash (python/pytest/git/uv versions, platform, host, runner sha256,
+a lock hash of the venv contents and the identity of every tool a check runs).
+The coordinator is single-host: `state/coordinator.lock` is an flock, a mutual
+exclusion between processes on ONE machine, not a distributed fence.
+"""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import html
+import json
+import os
+import platform
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+RUNNER_VERSION = "0.2.0"
+STATUSES = ("QUEUED", "RUNNING", "PASS", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED", "NOT_APPLICABLE")
+BLOCKING = {"ERROR", "BLOCKED", "STALE", "RUNNING", "QUEUED", "INTERRUPTED"}
+EXECUTABLE = ("pytest", "trusted_pytest", "cmd")
+MAPPINGS = ("executed", "not_applicable_rule", "blocked", "not_implemented")
+TRUSTED_CLASSIFIER_FILES = [
+    "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
+    "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py",
+]
+BAN_TEST = "scripts/tests/test_ban_predicates.py"
+SECRET_ENV = ("FLY_API_TOKEN", "VERCEL_TOKEN", "GH_TOKEN", "GITHUB_TOKEN", "DATABASE_URL",
+              "CLAUDE_CODE_OAUTH_TOKEN", "REDIS_PASSWORD")
+# Entity rule, not a spelling: any variable that looks like a credential is stripped from check
+# environments — every ANTHROPIC_* variable (the paid per-token key lives there) and any name
+# ending in a credential suffix. The ban guards forbid spelling the paid key's name in prose.
+SECRET_ENV_PREFIXES = ("ANTHROPIC_",)
+SECRET_ENV_SUFFIXES = ("_API_KEY", "_TOKEN", "_SECRET", "PASSWORD", "_PASSWD")
+
+
+def is_secret_env(name: str) -> bool:
+    return name in SECRET_ENV or name.startswith(SECRET_ENV_PREFIXES) or name.endswith(SECRET_ENV_SUFFIXES)
+DEFAULT_MAX_ATTEMPTS = 2
+DEFAULT_DEADLINE_S = 3600
+
+
+def now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def sha256_bytes(b: bytes) -> str:
+    return hashlib.sha256(b).hexdigest()
+
+
+def sha256_file(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def sha256_json(obj) -> str:
+    return sha256_bytes(json.dumps(obj, sort_keys=True, default=str).encode())
+
+
+def git(wt: Path, *args: str) -> str:
+    return subprocess.check_output(["git", "-C", str(wt), *args], text=True).strip()
+
+
+def atomic_write(p: Path, data: str) -> None:
+    """Write-temp + fsync + rename: a reader sees the old file or the new one, never a torn one."""
+    fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=p.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+class Store:
+    def __init__(self, run_dir: Path):
+        self.run_dir = Path(run_dir)
+        self.state_path = self.run_dir / "state" / "state.json"
+        self.lock_path = self.run_dir / "state" / "coordinator.lock"
+        (self.run_dir / "state").mkdir(parents=True, exist_ok=True)
+        (self.run_dir / "receipts").mkdir(exist_ok=True)
+        (self.run_dir / "logs").mkdir(exist_ok=True)
+
+    def load(self) -> dict:
+        return json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
+
+    def save(self, st: dict) -> None:
+        st["updated_at"] = now()
+        atomic_write(self.state_path, json.dumps(st, indent=2, sort_keys=True))
+
+    def lock(self, blocking: bool = True):
+        """Exclusive flock on this host. Returns the open file (a context manager), or None if non-blocking and busy."""
+        fh = open(self.lock_path, "a+")
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        except OSError:
+            fh.close()
+            return None
+        fh.seek(0)
+        fh.truncate()
+        fh.write(str(os.getpid()))
+        fh.flush()
+        return fh
+
+    def journal(self, rec: dict) -> None:
+        with open(self.run_dir / "state" / "journal.jsonl", "a") as fh:
+            fh.write(json.dumps(rec, sort_keys=True) + "\n")
+
+
+def identity(wt: Path) -> dict:
+    dirty = git(wt, "status", "--porcelain", "--untracked-files=all")
+    return {
+        "candidate_sha": git(wt, "rev-parse", "HEAD"),
+        "tree_sha": git(wt, "rev-parse", "HEAD^{tree}"),
+        "dirty": bool(dirty),
+        "dirty_paths": dirty.splitlines()[:20],
+    }
+
+
+# ------------------------------------------------------------ environment evidence
+def _try(cmd: list[str], timeout: int = 60) -> str | None:
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def deps_lock(venv_py: str) -> tuple[str, str]:
+    """sha256 of the venv's frozen requirements — `<py> -m pip freeze`, else `uv pip freeze --python <py>`."""
+    for source, cmd in (("pip", [venv_py, "-m", "pip", "freeze"]), ("uv", ["uv", "pip", "freeze", "--python", venv_py])):
+        out = _try(cmd)
+        if out is not None:
+            return sha256_bytes(out.encode()), source
+    return "unavailable", "none"
+
+
+def tool_identity(exe: str, cwd: str | None = None) -> dict:
+    """Resolved executable path + sha256 when it is a regular file, else 'not-a-file'."""
+    cand = exe
+    if os.sep in exe and not os.path.isabs(exe) and cwd:
+        cand = str(Path(cwd) / exe)
+    found = shutil.which(cand)
+    if not found:
+        return {"path": None, "sha256": "not-a-file"}
+    real = os.path.realpath(found)
+    return {"path": real, "sha256": sha256_file(Path(real)) if os.path.isfile(real) else "not-a-file"}
+
+
+def env_fingerprint(venv_py: str, checks: dict | None = None) -> dict:
+    probe = "import sys,platform,pytest;print(sys.version.split()[0]);print(pytest.__version__);print(platform.platform())"
+    out = _try([venv_py, "-c", probe])
+    py, pt, plat = (out.split("\n") + ["", "", ""])[:3] if out else ("unavailable", "unavailable", platform.platform())
+    uv = _try(["uv", "--version"])
+    gv = _try(["git", "--version"])
+    lock_sha, lock_src = deps_lock(venv_py)
+    tools = {}
+    for name, spec in sorted((checks or {}).items()):
+        kind = spec.get("kind")
+        if kind == "cmd" and spec.get("cmd"):
+            tools[name] = tool_identity(spec["cmd"][0], spec.get("cwd"))
+        elif kind in ("pytest", "trusted_pytest"):
+            tools[name] = tool_identity(spec.get("python") or venv_py, spec.get("cwd"))
+    return {"python": py, "pytest": pt, "platform": plat, "hostname": platform.node(), "runner_version": RUNNER_VERSION,
+            "runner_sha256": sha256_file(Path(__file__)), "uv_version": uv.strip() if uv else None,
+            "git_version": gv.strip() if gv else None, "deps_lock_sha256": lock_sha, "deps_lock_source": lock_src, "tools": tools}
+
+
+def env_hash(env: dict) -> str:
+    return sha256_json(env)
+
+
+def proc_start(pid: int) -> str | None:
+    return (_try(["ps", "-o", "lstart=", "-p", str(pid)], timeout=5) or "").strip() or None
+
+
+def pid_alive(pid: int, started: str | None = None) -> bool:
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    except OSError:
+        return False
+    if started:
+        cur = proc_start(pid)
+        if cur is not None and cur != started:
+            return False  # pid recycled by an unrelated process
+    return True
+
+
+# ------------------------------------------------------------------ contexts matrix
+def load_contexts(path: str | None) -> dict:
+    """Defensive read of the required-contexts matrix. status: missing | ok | invalid."""
+    if not path:
+        return {"status": "missing", "reason": "no --contexts-file given", "required": None, "map": {}}
+    p = Path(path)
+    if not p.exists():
+        return {"status": "missing", "reason": f"{path} does not exist yet", "required": None, "map": {}}
+    try:
+        import yaml
+
+        raw = p.read_bytes()
+        doc = yaml.safe_load(raw)
+    except Exception as e:  # noqa: BLE001 — any parse failure is "invalid", never "ok"
+        return {"status": "invalid", "reason": f"unreadable contexts file: {type(e).__name__}: {e}", "required": None, "map": {}}
+    items = doc.get("contexts") if isinstance(doc, dict) else None
+    if not isinstance(items, list) or not items:
+        return {"status": "invalid", "reason": "top-level `contexts:` must be a non-empty list", "required": None, "map": {}}
+    cmap: dict = {}
+    for i, it in enumerate(items):
+        if not isinstance(it, dict) or not isinstance(it.get("name"), str) or not it["name"].strip():
+            return {"status": "invalid", "reason": f"contexts[{i}] has no string `name`", "required": None, "map": {}}
+        name = it["name"]
+        if name in cmap:
+            return {"status": "invalid", "reason": f"duplicate context name {name!r}", "required": None, "map": {}}
+        mapping = it.get("mapping")
+        note = None
+        if mapping not in MAPPINGS:
+            note, mapping = f"unknown mapping {mapping!r} treated as blocked", "blocked"
+        local = it.get("local") if isinstance(it.get("local"), dict) else {}
+        cmap[name] = {"mapping": mapping, "local": local, "check": local.get("check") if isinstance(local.get("check"), str) else None, "note": note}
+    return {"status": "ok", "reason": "", "required": list(cmap), "map": cmap, "sha256": sha256_bytes(raw)}
+
+
+def resolve_context_check(name: str, ctx: dict, checks) -> str | None:
+    for cand in (ctx.get("check"), name, f"ctx.{name}"):
+        if cand and cand in checks:
+            return cand
+    return None
+
+
+# ------------------------------------------------------------------------- plan
+def _extract_base_file(wt: Path, base: str, rel: str) -> bytes | None:
+    r = subprocess.run(["git", "-C", str(wt), "show", f"{base}:{rel}"], capture_output=True)
+    return r.stdout if r.returncode == 0 else None
+
+
+def cmd_plan(a):
+    run_dir, wt = Path(a.run_dir).resolve(), Path(a.worktree).resolve()
+    store = Store(run_dir)
+    ident = identity(wt)
+    if a.candidate and ident["candidate_sha"] != a.candidate:
+        sys.exit(f"worktree HEAD {ident['candidate_sha']} != requested candidate {a.candidate}")
+    base = git(wt, "rev-parse", a.base + "^{commit}")
+    trusted = run_dir / "state" / "trusted"
+    trusted.mkdir(parents=True, exist_ok=True)
+    for f in TRUSTED_CLASSIFIER_FILES:
+        blob = _extract_base_file(wt, base, f)
+        if blob is None:
+            sys.exit(f"trusted classifier file {f} missing at base {base[:12]} — refusing to plan without the trusted classifier")
+        (trusted / Path(f).name).write_bytes(blob)
+    changed = git(wt, "diff", "--name-only", f"{base}..{ident['candidate_sha']}").splitlines()
+    cm = json.loads(subprocess.run([sys.executable, str(trusted / "change_map.py")], input="\n".join(changed) + "\n",
+                                   capture_output=True, text=True, check=True).stdout)
+    test_mods = sorted(f for f in changed if f.startswith("scripts/tests/test_") and f.endswith(".py") and (wt / f).exists())
+    optin = [m for m in test_mods if "real_pg" in m]
+    pure = [m for m in test_mods if m not in optin]
+    venv_py = a.python or str(run_dir / "venv" / "bin" / "python")
+    if not a.python and not Path(venv_py).exists():
+        venv_py = sys.executable
+    trusted_sha: dict[str, str] = {}
+    checks = {
+        "policy.trusted_classifier_corpus": {"kind": "cmd", "cwd": str(trusted), "cmd": [sys.executable, "test_change_map.py"],
+            "purpose": "the classifier that decides which jobs run is proven on its own guilt+innocence corpus, from the BASE ref (candidate cannot self-approve)"},
+        "policy.change_map": {"kind": "record", "status": "PASS" if cm.get("mode") == "enforcing" and cm.get("reason") == "classified" else "FAIL",
+            "reason": f"trusted change_map: reason={cm.get('reason')} run_all={cm.get('run_all')} suggested={cm.get('suggested_jobs')}", "data": cm},
+        "tests.scripts_impacted": ({"kind": "pytest", "cwd": str(wt), "modules": pure, "python": venv_py,
+            "purpose": "impacted backstage tests, blocking locally (GitHub runs scripts/tests only as a report-only sweep)"} if pure else
+            {"kind": "record", "status": "NOT_APPLICABLE", "reason": "no scripts/tests/test_*.py module changed in the diff (trusted classification of the diff)"}),
+        "tests.scripts_optin_real_pg": {"kind": "record", "status": "NOT_APPLICABLE",
+            "reason": (f"opt-in modules {optin} require WA_TEAM_PROMISES_REAL_PG=1 + pg_ctl/initdb; not enabled, recorded not skipped" if optin else "no opt-in module in diff")},
+        "tests.backend_shards": {"kind": "record", "status": "BLOCKED" if ("backend-tests" in cm.get("suggested_jobs", []) or cm.get("run_all")) else "NOT_APPLICABLE",
+            "reason": ("backend-tests selected by the trusted classifier but no local backend runner exists" if ("backend-tests" in cm.get("suggested_jobs", []) or cm.get("run_all"))
+                       else f"trusted change_map suggested_jobs={cm.get('suggested_jobs')}: backend shards not selected")},
+        "tests.frontend_mouth": {"kind": "record", "status": "BLOCKED" if ("frontend-tests" in cm.get("suggested_jobs", []) or cm.get("run_all")) else "NOT_APPLICABLE",
+            "reason": ("frontend-tests selected by the trusted classifier but no local frontend runner exists" if ("frontend-tests" in cm.get("suggested_jobs", []) or cm.get("run_all"))
+                       else "mouth domain not touched per trusted change_map")},
+        "review.independent": {"kind": "review", "purpose": "a seat != builder signs the reviewed candidate identity; BLOCKED until a matching review is imported"},
+    }
+    tp_files = [BAN_TEST] + [f for f in (a.trusted_pytest or []) if f != BAN_TEST]
+    for rel in tp_files:
+        blob = _extract_base_file(wt, base, rel)
+        name = "policy.paid_anthropic_ban" if rel == BAN_TEST else f"trusted.{Path(rel).stem}"
+        if blob is None:
+            checks[name] = {"kind": "record", "status": "BLOCKED", "reason": f"trusted test {rel} is missing at base {base[:12]}"}
+            continue
+        dest = trusted / "base_files" / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(blob)
+        trusted_sha[rel] = sha256_bytes(blob)
+        checks[name] = {"kind": "trusted_pytest", "cwd": str(wt), "python": venv_py, "trusted_files": [rel],
+                        "purpose": f"{rel} extracted from BASE {base[:12]} and run against the candidate tree (candidate cannot rewrite its own guard)"}
+    for extra in (a.extra_check or []):
+        name, spec = extra.split("=", 1)
+        checks[name] = json.loads(spec)
+    ctxs = load_contexts(a.contexts_file)
+    seats = [s.strip() for s in ([a.builder_seat] if a.builder_seat else []) + (a.builder_seats.split(",") if a.builder_seats else []) if s and s.strip()]
+    created_epoch = time.time()
+    plan = {"run_id": run_dir.name, "created_at": now(), "created_epoch": created_epoch, "worktree": str(wt), "base_sha": base,
+            "candidate_sha": ident["candidate_sha"], "tree_sha": ident["tree_sha"], "changed_files": changed,
+            "trusted_classifier_sha256": sha256_file(trusted / "change_map.py"), "trusted_files_sha256": trusted_sha,
+            "builder_seat": a.builder_seat or None, "builder_seats": sorted(set(seats)),
+            "max_attempts": a.max_attempts, "deadline_s": a.deadline_s, "deadline_at": created_epoch + a.deadline_s,
+            "contexts_file": a.contexts_file, "contexts_status": ctxs["status"], "contexts_reason": ctxs["reason"],
+            "contexts_sha256": ctxs.get("sha256"), "required_contexts": ctxs["required"], "contexts_map": ctxs["map"], "checks": checks}
+    plan["plan_hash"] = sha256_json({k: v for k, v in plan.items() if k not in ("created_at", "created_epoch", "deadline_at")})
+    atomic_write(run_dir / "state" / "plan.json", json.dumps(plan, indent=2, sort_keys=True))
+    env = env_fingerprint(venv_py, checks)
+    st = {"run_id": run_dir.name, "plan_hash": plan["plan_hash"],
+          "binding": {"candidate_sha": ident["candidate_sha"], "tree_sha": ident["tree_sha"], "base_sha": base, "dirty_at_plan": ident["dirty"]},
+          "env": env, "env_hash": env_hash(env), "checks": {}}
+    for name, spec in checks.items():
+        if spec["kind"] == "record":
+            st["checks"][name] = {"status": spec["status"], "reason": spec["reason"], "at": now(), "receipt": None, "attempts": 0, "history": []}
+        else:
+            st["checks"][name] = {"status": "QUEUED", "reason": "not executed yet", "at": now(), "receipt": None, "attempts": 0, "history": []}
+    if ident["dirty"]:
+        for c in st["checks"].values():
+            c.update(status="BLOCKED", reason="worktree dirty at plan time: " + ",".join(ident["dirty_paths"]))
+    store.save(st)
+    print(json.dumps({"run_id": run_dir.name, "candidate": ident["candidate_sha"], "base": base, "plan_hash": plan["plan_hash"],
+                      "contexts": ctxs["status"], "checks": {k: v["status"] for k, v in st["checks"].items()}}, indent=1))
+
+
+# -------------------------------------------------------------------------- run
+def parse_junit(p: Path) -> dict:
+    empty = {"collected": 0, "executed": 0, "failures": None, "errors": None, "skipped": None}
+    if not p.exists():
+        return {**empty, "junit": "missing"}
+    try:
+        root = ET.parse(p).getroot()
+    except ET.ParseError:
+        return {**empty, "junit": "unparseable"}
+    suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+    t = sum(int(s.get("tests", 0)) for s in suites)
+    f = sum(int(s.get("failures", 0)) for s in suites)
+    e = sum(int(s.get("errors", 0)) for s in suites)
+    k = sum(int(s.get("skipped", 0)) for s in suites)
+    return {"collected": t, "executed": t - k, "failures": f, "errors": e, "skipped": k, "junit": str(p)}
+
+
+def classify_pytest(rc: int | None, counts: dict) -> tuple[str, str]:
+    """rc 1 -> FAIL; crash / rc 2-4 / rc 5 / zero tests / all skipped -> ERROR; PASS only with executed tests and rc 0."""
+    if rc is None:
+        return "ERROR", "no exit code — not a verdict on the candidate"
+    if rc < 0:
+        return "ERROR", f"pytest crashed (signal {-rc}) — not a verdict on the candidate"
+    if rc == 5 or counts["collected"] == 0:
+        return "ERROR", f"pytest rc={rc}: zero tests collected (junit={counts.get('junit')}) — not PASS"
+    if rc in (2, 3, 4):
+        return "ERROR", f"pytest rc={rc} (collection/internal/usage error): failures={counts['failures']} errors={counts['errors']} — not a verdict on the candidate"
+    if rc == 1:
+        return "FAIL", f"pytest rc=1: failures={counts['failures']} errors={counts['errors']}"
+    if rc == 0:
+        if counts["failures"] or counts["errors"]:
+            return "ERROR", f"rc=0 contradicts junit failures={counts['failures']} errors={counts['errors']}"
+        if counts["executed"] <= 0:
+            return "ERROR", "rc=0 but no executed test (all skipped) — not PASS"
+        return "PASS", f"{counts['executed']} executed, {counts['skipped']} skipped, 0 failed"
+    return "ERROR", f"unexpected pytest rc={rc}"
+
+
+def build_overlay(wt: Path, overlay: Path, overrides: dict[str, bytes], prefix: str = "") -> None:
+    """Mirror `wt` with symlinks, except `overrides` (rel path -> bytes) which are real files.
+
+    A base-ref test that computes REPO_ROOT from its own __file__ then sees the candidate tree
+    (through the symlinks) while the test file itself is the BASE ref's copy.
+    """
+    src = wt / prefix if prefix else wt
+    overlay.mkdir(parents=True, exist_ok=True)
+    rel = {o[len(prefix):] for o in overrides if o.startswith(prefix)}
+    dirs = {r.split("/", 1)[0] for r in rel if "/" in r}
+    files = {r for r in rel if "/" not in r}
+    if src.is_dir():
+        for entry in os.scandir(src):
+            if entry.name in dirs or entry.name in files:
+                continue
+            os.symlink(entry.path, overlay / entry.name)
+    for d in dirs:
+        build_overlay(wt, overlay / d, overrides, prefix + d + "/")
+    for f in files:
+        (overlay / f).write_bytes(overrides[prefix + f])
+
+
+def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:
+    log = run_dir / "logs" / f"{name}.log"
+    junit = run_dir / "receipts" / f"{name}.junit.xml"
+    kind = spec["kind"]
+    envx = {k: v for k, v in os.environ.items() if not is_secret_env(k)}
+    envx["PYTHONDONTWRITEBYTECODE"] = "1"
+    cwd = spec.get("cwd") or plan["worktree"]
+    if kind == "pytest":
+        if not spec.get("modules"):
+            return {"status": "ERROR", "reason": "zero test modules selected — missing evidence is not PASS", "rc": None, "counts": {"collected": 0, "executed": 0}}
+        cmd = [spec["python"], "-m", "pytest", "-p", "no:cacheprovider", "-q", f"--junitxml={junit}", *spec["modules"]]
+        envx["PYTHONPATH"] = cwd
+    elif kind == "trusted_pytest":
+        blobs: dict[str, bytes] = {}
+        for rel in spec["trusted_files"]:
+            bp = run_dir / "state" / "trusted" / "base_files" / rel
+            blob = bp.read_bytes() if bp.exists() else b""
+            if not blob or sha256_bytes(blob) != plan.get("trusted_files_sha256", {}).get(rel):
+                return {"status": "ERROR", "reason": f"trusted blob {rel} missing or differs from the plan's sha256", "rc": None, "counts": None}
+            blobs[rel] = blob
+        overlay = run_dir / "state" / "trusted" / "overlay" / name
+        shutil.rmtree(overlay, ignore_errors=True)
+        build_overlay(Path(cwd), overlay, blobs)
+        ini = run_dir / "state" / "trusted" / "pytest-trusted.ini"
+        ini.write_text("[pytest]\n")
+        cmd = [spec["python"], "-m", "pytest", "-p", "no:cacheprovider", "--noconftest", "-c", str(ini), "--rootdir", cwd, "-q",
+               f"--junitxml={junit}", *[str(overlay / r) for r in blobs]]
+        envx["PYTHONPATH"] = cwd
+    elif kind == "cmd":
+        cmd = spec["cmd"]
+    else:
+        return {"status": "ERROR", "reason": f"unknown check kind {kind!r}", "rc": None, "counts": None}
+    t0 = time.monotonic()
+    try:
+        with open(log, "w") as fh:
+            fh.write(f"# {now()} cwd={cwd} cmd={' '.join(cmd)}\n")
+            fh.flush()
+            rc = subprocess.run(cmd, cwd=cwd, env=envx, stdout=fh, stderr=subprocess.STDOUT, timeout=timeout).returncode
+    except OSError as e:
+        return {"status": "ERROR", "reason": f"unexecutable: {e}", "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": str(log)}
+    except subprocess.TimeoutExpired:
+        return {"status": "ERROR", "reason": f"timeout after {timeout}s", "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": str(log)}
+    dur = round(time.monotonic() - t0, 3)
+    if kind in ("pytest", "trusted_pytest"):
+        counts = parse_junit(junit)
+        status, reason = classify_pytest(rc, counts)
+    else:
+        counts = None
+        status, reason = ("PASS", "rc=0") if rc == 0 else (("ERROR", f"crashed (signal {-rc})") if rc < 0 else ("FAIL", f"rc={rc}"))
+    return {"status": status, "reason": reason, "rc": rc, "duration_s": dur, "counts": counts, "log": str(log)}
+
+
+def mark_interrupted(name: str, c: dict, why: str | None = None) -> None:
+    pid, started = c.get("pid"), c.get("started_at")
+    reason = why or f"coordinator interrupted while RUNNING (pid {pid} dead, started_at {started}) — never PASS"
+    c.setdefault("history", []).append({"attempt": c.get("attempts", 0), "status": "INTERRUPTED", "reason": reason, "started_at": started, "pid": pid, "ended_at": now()})
+    c.update(status="INTERRUPTED", reason=reason, at=now(), last_pid=pid)
+    c.pop("pid", None)
+    c.pop("pid_started", None)
+
+
+def reap_interrupted(st: dict, store: Store | None = None) -> list[str]:
+    """Any RUNNING check whose recorded pid is dead becomes INTERRUPTED. Persists when a store is given."""
+    hit = []
+    for name, c in st["checks"].items():
+        if c["status"] == "RUNNING" and not pid_alive(int(c.get("pid") or 0), c.get("pid_started")):
+            mark_interrupted(name, c)
+            hit.append(name)
+            if store:
+                store.journal({"event": "interrupted_check_detected", "check": name, "attempts": c.get("attempts", 0), "at": now()})
+    if hit and store:
+        store.save(st)
+    return hit
+
+
+def _verify_receipt(run_dir: Path, name: str, c: dict, st: dict, cur_hash: str) -> str | None:
+    """Return None when the PASS of an executable check is backed by a valid receipt, else the reason it is not."""
+    rp = c.get("receipt")
+    if not rp or not Path(rp).exists():
+        return "PASS without a receipt file"
+    try:
+        r = json.loads(Path(rp).read_text())
+    except ValueError:
+        return "receipt unreadable"
+    claimed = r.pop("receipt_sha256", None)
+    if claimed != sha256_json(r):
+        return "receipt sha256 does not match its content"
+    b = r.get("binding", {})
+    for k in ("candidate_sha", "tree_sha", "base_sha"):
+        if b.get(k) != st["binding"][k]:
+            return f"receipt {k} differs from the run binding"
+    if b.get("plan_hash") != st["plan_hash"]:
+        return "receipt plan_hash differs from the run plan"
+    if r.get("result", {}).get("status") != "PASS":
+        return "receipt does not record PASS"
+    if r.get("env_hash") != cur_hash:
+        return f"env drift (receipt env_hash {str(r.get('env_hash'))[:12]} != current {cur_hash[:12]})"
+    return None
+
+
+def cmd_run(a):
+    run_dir = Path(a.run_dir).resolve()
+    store = Store(run_dir)
+    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+
+    def _term(signum, frame):
+        raise KeyboardInterrupt(f"signal {signum}")
+
+    old = {s: signal.signal(s, _term) for s in (signal.SIGTERM, signal.SIGINT)} if _main_thread() else {}
+    try:
+        with store.lock():
+            st = store.load()
+            reap_interrupted(st, store)
+            wt = Path(plan["worktree"])
+            deadline_at = plan["created_epoch"] + a.deadline_s if a.deadline_s is not None else plan["deadline_at"]
+            if a.deadline_s is not None:
+                st["deadline_override_s"] = a.deadline_s
+            max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
+            if a.only:
+                if a.only not in plan["checks"]:
+                    sys.exit(f"unknown check {a.only!r}")
+                names = [a.only]
+            else:
+                names = [n for n, c in st["checks"].items() if c["status"] in ("QUEUED", "INTERRUPTED")]
+            venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
+            cur_env = env_fingerprint(venv_py, plan["checks"])
+            cur_hash = env_hash(cur_env)
+            for name in names:
+                spec, c = plan["checks"][name], st["checks"][name]
+                if spec["kind"] not in EXECUTABLE:
+                    continue
+                if c["status"] == "RUNNING":
+                    continue
+                if c["status"] == "INTERRUPTED":
+                    over_attempts = c.get("attempts", 0) >= max_attempts
+                    over_deadline = time.time() > deadline_at
+                    if over_attempts or over_deadline:
+                        c.update(status="ERROR", at=now(), reason=f"retry budget exhausted: attempts={c.get('attempts', 0)}/{max_attempts} deadline_exceeded={over_deadline}; stays blocking")
+                        store.journal({"event": "retry_budget_exhausted", "check": name, "at": now()})
+                        store.save(st)
+                        print(f"{name}: ERROR — {c['reason']}")
+                        continue
+                    c.update(status="QUEUED", reason="re-queued after interruption (within retry budget)", at=now())
+                ident = identity(wt)
+                b = st["binding"]
+                if ident["candidate_sha"] != b["candidate_sha"] or ident["tree_sha"] != b["tree_sha"] or ident["dirty"]:
+                    c.update(status="BLOCKED", reason=f"worktree moved: HEAD={ident['candidate_sha'][:12]} tree={ident['tree_sha'][:12]} dirty={ident['dirty']}", at=now())
+                    store.save(st)
+                    continue
+                attempt = c.get("attempts", 0) + 1
+                started = now()
+                c.update(status="RUNNING", reason="executing", at=started, pid=os.getpid(), pid_started=proc_start(os.getpid()), started_at=started, attempts=attempt)
+                store.save(st)
+                try:
+                    res = execute(name, spec, run_dir, plan, a.timeout)
+                except KeyboardInterrupt as e:
+                    mark_interrupted(name, c, f"coordinator received {e} while RUNNING (attempt {attempt}, started_at {started})")
+                    store.journal({"event": "interrupted_by_signal", "check": name, "at": now()})
+                    store.save(st)
+                    raise
+                except Exception as e:  # noqa: BLE001 — a crashing executor is ERROR, never a silent skip
+                    res = {"status": "ERROR", "reason": f"executor crashed: {type(e).__name__}: {e}", "rc": None, "counts": None}
+                receipt = {"check": name, "run_id": st["run_id"], "binding": {**b, "plan_hash": st["plan_hash"], "trusted_classifier_sha256": plan["trusted_classifier_sha256"]},
+                           "env": cur_env, "env_hash": cur_hash, "attempt": attempt, "result": res, "finished_at": now(), "spec": spec}
+                receipt["receipt_sha256"] = sha256_json(receipt)
+                rp = run_dir / "receipts" / f"{name}.json"
+                atomic_write(rp, json.dumps(receipt, indent=2, sort_keys=True))
+                c.setdefault("history", []).append({"attempt": attempt, "status": res["status"], "reason": res["reason"], "started_at": started, "ended_at": now(), "pid": os.getpid()})
+                c.update(status=res["status"], reason=res["reason"], at=now(), receipt=str(rp), rc=res.get("rc"), duration_s=res.get("duration_s"), counts=res.get("counts"), log=res.get("log"))
+                c.pop("pid", None)
+                c.pop("pid_started", None)
+                store.save(st)
+                print(f"{name}: {res['status']} — {res['reason']} ({res.get('duration_s')}s)")
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+
+
+def _main_thread() -> bool:
+    import threading
+
+    return threading.current_thread() is threading.main_thread()
+
+
+# ------------------------------------------------------------------ review import
+def cmd_review(a):
+    run_dir = Path(a.run_dir).resolve()
+    store = Store(run_dir)
+    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    raw = Path(a.file).read_bytes()
+    file_sha = sha256_bytes(raw)
+    with store.lock():
+        st = store.load()
+        c = st["checks"]["review.independent"]
+        b = st["binding"]
+        copy = run_dir / "receipts" / "review.independent.json"
+        atomic_write(copy, raw.decode("utf-8", "replace"))
+
+        def done(status: str, reason: str):
+            c.setdefault("history", []).append({"status": status, "reason": reason, "review_sha256": file_sha, "ended_at": now()})
+            c.update(status=status, reason=reason, at=now(), receipt=str(copy), review_sha256=file_sha)
+            store.save(st)
+            print(f"review.independent: {status} — {reason}")
+
+        try:
+            rev = json.loads(raw)
+            if not isinstance(rev, dict):
+                raise ValueError("top level is not an object")
+        except ValueError as e:
+            return done("BLOCKED", f"review file is not a JSON object: {e}")
+        want = {"reviewed_candidate_sha": b["candidate_sha"], "reviewed_tree_sha": b["tree_sha"], "reviewed_base_sha": b["base_sha"]}
+        bad = [f"{k}={str(rev.get(k))[:12]!r} != {v[:12]}" for k, v in want.items() if rev.get(k) != v]
+        if bad:
+            return done("BLOCKED", "review is not bound to this candidate identity: " + "; ".join(bad))
+        seat = rev.get("reviewer_seat")
+        if not isinstance(seat, str) or not seat.strip():
+            return done("BLOCKED", "reviewer_seat missing or empty")
+        builders = {s.strip().lower() for s in ([plan.get("builder_seat")] if plan.get("builder_seat") else []) + list(plan.get("builder_seats") or [])}
+        if rev.get("builder_seat"):
+            builders.add(str(rev["builder_seat"]).strip().lower())
+        if not plan.get("builder_seat"):
+            return done("BLOCKED", "plan recorded no builder_seat — reviewer != builder cannot be proven (plan --builder-seat)")
+        if seat.strip().lower() in builders or seat.strip().lower() == "builder":
+            return done("BLOCKED", f"reviewer seat {seat!r} is a builder seat — generator is never grader")
+        verdict = rev.get("verdict")
+        summary = str(rev.get("summary", ""))[:160]
+        if verdict == "PASS":
+            return done("PASS", f"reviewed by {seat}: {summary}")
+        if verdict == "FAIL":
+            return done("FAIL", f"reviewer {seat} verdict=FAIL: {summary}")
+        return done("BLOCKED", f"verdict must be exactly 'PASS' or 'FAIL', got {verdict!r}")
+
+
+# ----------------------------------------------------------------------- status
+def freshness(st: dict, plan: dict, run_dir: Path, cur_hash: str) -> tuple[dict, dict]:
+    ident = identity(Path(plan["worktree"]))
+    b = st["binding"]
+    stale_reason = None
+    if ident["candidate_sha"] != b["candidate_sha"]:
+        stale_reason = f"candidate moved {b['candidate_sha'][:12]} -> {ident['candidate_sha'][:12]}"
+    elif ident["tree_sha"] != b["tree_sha"]:
+        stale_reason = f"tree moved {b['tree_sha'][:12]} -> {ident['tree_sha'][:12]}"
+    elif ident["dirty"]:
+        stale_reason = "worktree dirty: " + ",".join(ident["dirty_paths"][:5])
+    view = {}
+    for name, c in st["checks"].items():
+        v = dict(c)
+        kind = plan["checks"].get(name, {}).get("kind")
+        if stale_reason and c["status"] in ("PASS", "FAIL", "NOT_APPLICABLE"):
+            v["status"], v["reason"] = "STALE", f"{stale_reason}; previous={c['status']}: {c['reason']}"
+        elif c["status"] == "PASS" and kind in EXECUTABLE:
+            why = _verify_receipt(run_dir, name, c, st, cur_hash)
+            if why and why.startswith("env drift"):
+                v["status"], v["reason"] = "STALE", f"{why}; previous=PASS: {c['reason']}"
+            elif why:
+                v["status"], v["reason"] = "ERROR", f"{why} — a PASS without a valid receipt is not PASS"
+        elif c["status"] == "PASS" and kind == "review":
+            cp = Path(c.get("receipt") or "")
+            if not cp.exists() or sha256_file(cp) != c.get("review_sha256"):
+                v["status"], v["reason"] = "BLOCKED", "review copy missing or changed since import"
+        view[name] = v
+    return view, {"worktree_now": ident, "stale_reason": stale_reason}
+
+
+def evaluate_contexts(view: dict, plan: dict) -> dict:
+    status = plan.get("contexts_status", "missing")
+    out = {"status": status, "reason": plan.get("contexts_reason", ""), "required": plan.get("required_contexts"), "results": {}, "uncovered": [], "blocked": [], "red": []}
+    if status != "ok":
+        return out
+    for name, ctx in plan["contexts_map"].items():
+        chk = resolve_context_check(name, ctx, view)
+        mapping = ctx["mapping"]
+        if mapping in ("blocked", "not_implemented"):
+            out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "BLOCKED"}
+            out["blocked"].append(name)
+            continue
+        if chk is None:
+            out["results"][name] = {"mapping": mapping, "check": None, "verdict": "UNCOVERED"}
+            out["uncovered"].append(name)
+            continue
+        s, reason = view[chk]["status"], view[chk].get("reason") or ""
+        ok = s == "PASS" or (s == "NOT_APPLICABLE" and reason.strip() != "")
+        out["results"][name] = {"mapping": mapping, "check": chk, "verdict": "OK" if ok else s}
+        if not ok:
+            (out["red"] if s == "FAIL" else out["blocked"]).append(name)
+    return out
+
+
+def overall(view: dict, plan: dict | None = None) -> str:
+    s = {v["status"] for v in view.values()}
+    if not s:
+        return "BLOCKED"
+    if "FAIL" in s:
+        return "FAIL"
+    if s & BLOCKING:
+        return "BLOCKED"
+    if any(v["status"] == "NOT_APPLICABLE" and not (v.get("reason") or "").strip() for v in view.values()):
+        return "BLOCKED"
+    if plan is None:
+        return "PASS" if s <= {"PASS", "NOT_APPLICABLE"} else "BLOCKED"
+    ctx = evaluate_contexts(view, plan)
+    if ctx["status"] == "invalid":
+        return "BLOCKED"
+    if ctx["status"] == "missing":
+        return "SUBSET_PASS"
+    if ctx["red"]:
+        return "FAIL"
+    if ctx["blocked"]:
+        return "BLOCKED"
+    if ctx["uncovered"]:
+        return "SUBSET_PASS"
+    return "PASS"
+
+
+def compute_status(run_dir: Path, write: bool = True) -> dict:
+    run_dir = Path(run_dir).resolve()
+    store = Store(run_dir)
+    plan = json.loads((run_dir / "state" / "plan.json").read_text())
+    lk = store.lock(blocking=False)
+    try:
+        st = store.load()
+        reap_interrupted(st, store if lk else None)
+    finally:
+        if lk:
+            lk.close()
+    venv_py = next((s["python"] for s in plan["checks"].values() if s.get("python")), sys.executable)
+    cur_env = env_fingerprint(venv_py, plan["checks"])
+    cur_hash = env_hash(cur_env)
+    view, fr = freshness(st, plan, run_dir, cur_hash)
+    ctx = evaluate_contexts(view, plan)
+    out = {"run_id": st["run_id"], "generated_at": now(), "overall": overall(view, plan), "candidate_sha": st["binding"]["candidate_sha"],
+           "base_sha": st["binding"]["base_sha"], "tree_sha": st["binding"]["tree_sha"], "plan_hash": st["plan_hash"], "env": cur_env,
+           "env_hash": cur_hash, "env_hash_plan": st.get("env_hash"), "builder_seat": plan.get("builder_seat"), "freshness": fr, "contexts": ctx,
+           "checks": {n: {k: v.get(k) for k in ("status", "reason", "rc", "duration_s", "counts", "receipt", "log", "at", "attempts", "review_sha256")} for n, v in view.items()}}
+    if write:
+        atomic_write(run_dir / "status.json", json.dumps(out, indent=2, sort_keys=True))
+        atomic_write(run_dir / "status.html", render_html(out))
+    return out
+
+
+def cmd_status(a):
+    out = compute_status(Path(a.run_dir))
+    if a.quiet:
+        print(out["overall"])
+    else:
+        print(json.dumps({"overall": out["overall"], "stale_reason": out["freshness"]["stale_reason"], "contexts": out["contexts"]["status"],
+                          "checks": {n: v["status"] for n, v in out["checks"].items()}}, indent=1))
+    return 0 if (not a.strict or out["overall"] == "PASS") else 1
+
+
+COLORS = {"PASS": "#1a7f37", "SUBSET_PASS": "#9a6700", "FAIL": "#cf222e", "ERROR": "#cf222e", "BLOCKED": "#9a6700", "STALE": "#9a6700",
+          "INTERRUPTED": "#bc4c00", "NOT_APPLICABLE": "#57606a", "QUEUED": "#57606a", "RUNNING": "#0969da"}
+
+
+def render_html(out: dict) -> str:
+    e = html.escape
+    rows = []
+    for n, v in sorted(out["checks"].items()):
+        c = v.get("counts") or {}
+        rows.append(f"<tr><td><code>{e(n)}</code></td><td style='color:{COLORS.get(v['status'], '#000')};font-weight:700'>{e(v['status'])}</td>"
+                    f"<td>{e(v.get('reason') or '')}</td><td>{v.get('rc') if v.get('rc') is not None else ''}</td>"
+                    f"<td>{c.get('collected', '')}/{c.get('executed', '')}/{c.get('failures', '')}/{c.get('skipped', '')}</td>"
+                    f"<td>{v.get('attempts') or ''}</td><td>{v.get('duration_s') or ''}</td></tr>")
+    ctx = out["contexts"]
+    return f"""<!doctype html><html><head><meta charset="utf-8"><title>local-ci {e(out['run_id'])}</title>
+<style>body{{font:14px system-ui;margin:24px;max-width:1200px}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #d0d7de;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#f6f8fa}}code{{font-size:12px}}</style></head>
+<body><h1>local-ci — <span style="color:{COLORS.get(out['overall'], '#000')}">{e(out['overall'])}</span></h1>
+<p>run <code>{e(out['run_id'])}</code> · {e(out['generated_at'])} · host {e(str(out['env']['hostname']))} · runner v{e(out['env']['runner_version'])}</p>
+<p>candidate <code>{out['candidate_sha']}</code><br>base <code>{out['base_sha']}</code><br>tree <code>{out['tree_sha']}</code><br>plan <code>{out['plan_hash'][:16]}</code> · env <code>{out['env_hash'][:16]}</code></p>
+<p>freshness: {e(out['freshness']['stale_reason'] or 'bound identity matches worktree')}<br>contexts: {e(ctx['status'])} · uncovered {len(ctx['uncovered'])} · blocked {len(ctx['blocked'])}</p>
+<table><tr><th>check</th><th>status</th><th>reason</th><th>rc</th><th>collected/executed/failed/skipped</th><th>attempts</th><th>s</th></tr>{''.join(rows)}</table>
+<p style="color:#57606a">PASS needs every check PASS or NOT_APPLICABLE-with-reason AND every required context covered. SUBSET_PASS is not PASS.</p></body></html>"""
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="localci")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("plan")
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--worktree", required=True)
+    p.add_argument("--base", required=True)
+    p.add_argument("--candidate")
+    p.add_argument("--python")
+    p.add_argument("--builder-seat")
+    p.add_argument("--builder-seats", help="comma-separated extra builder/contributor seats")
+    p.add_argument("--contexts-file")
+    p.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+    p.add_argument("--deadline-s", type=float, default=DEFAULT_DEADLINE_S)
+    p.add_argument("--trusted-pytest", action="append", help="extra base-ref test file to run against the candidate tree")
+    p.add_argument("--extra-check", action="append")
+    p.set_defaults(fn=cmd_plan)
+    r = sub.add_parser("run")
+    r.add_argument("--run-dir", required=True)
+    r.add_argument("--only")
+    r.add_argument("--timeout", type=int, default=900)
+    r.add_argument("--deadline-s", type=float, default=None, help="override the plan's total run deadline (seconds after plan creation)")
+    r.set_defaults(fn=cmd_run)
+    v = sub.add_parser("review")
+    v.add_argument("--run-dir", required=True)
+    v.add_argument("--file", required=True)
+    v.set_defaults(fn=cmd_review)
+    s = sub.add_parser("status")
+    s.add_argument("--run-dir", required=True)
+    s.add_argument("--quiet", action="store_true")
+    s.add_argument("--strict", action="store_true", help="exit 1 unless overall is PASS")
+    s.set_defaults(fn=cmd_status)
+    a = ap.parse_args(argv)
+    return a.fn(a) or 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
