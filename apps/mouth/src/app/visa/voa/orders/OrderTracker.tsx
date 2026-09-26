@@ -63,7 +63,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
             onClick={retry}
             style={{
               padding: "0.9rem 1.4rem",
-              borderRadius: 8,
+              borderRadius: 3,
               border: "none",
               ...VOA_PRIMARY_ACTION_STYLE,
               fontWeight: 600,
@@ -242,7 +242,7 @@ function ParcelSteps({ order }: { order: OrderView }) {
       className="voa-timeline"
       style={{
         display: "grid",
-        gap: "var(--space-2, 0.5rem)",
+        gap: 0, // one unbroken filed line down the timeline
         listStyle: "none",
         margin: 0,
         padding: 0,
@@ -380,7 +380,7 @@ function DeliveredPanel({
         display: "grid",
         gap: "var(--space-2, 0.6rem)",
         padding: "var(--space-3, 1rem)",
-        borderRadius: 12,
+        borderRadius: 4,
         border: "1px solid var(--color-border-subtle)",
         background: "var(--surface-raised)",
       }}
@@ -404,9 +404,9 @@ function DeliveredPanel({
           display: "inline-block",
           width: "fit-content",
           padding: "0.7rem 1.1rem",
-          borderRadius: 8,
-          background: "var(--bz-green)",
-          color: "var(--bz-base)",
+          borderRadius: 3,
+          background: "var(--r19-structure)",
+          color: "var(--surface-raised)",
           textDecoration: "none",
           fontWeight: 600,
         }}
@@ -466,7 +466,7 @@ function ExceptionPanel({
         display: "grid",
         gap: "var(--space-2, 0.6rem)",
         padding: "var(--space-3, 1rem)",
-        borderRadius: "0 12px 12px 0",
+        borderRadius: "0 4px 4px 0",
         border: "1px solid var(--color-border-subtle)",
         borderLeft: `4px solid ${EXCEPTION_RULE[tone]}`,
       }}
@@ -523,9 +523,9 @@ function WhatsAppHelp() {
         display: "inline-block",
         width: "fit-content",
         padding: "0.7rem 1.1rem",
-        borderRadius: 8,
-        background: "var(--bz-green)",
-        color: "var(--bz-base)",
+        borderRadius: 3,
+        background: "var(--r19-structure)",
+        color: "var(--surface-raised)",
         textDecoration: "none",
         fontWeight: 600,
       }}
