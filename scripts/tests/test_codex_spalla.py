@@ -109,6 +109,20 @@ def _make_fake_codex(tmp_path: Path) -> Path:
     return bin_dir
 
 
+def _make_fake_psql(tmp_path: Path, names: tuple[str, ...]) -> Path:
+    """A fake `psql` that ignores its connection string and args, and echoes a
+    canned name list for scripts/_redact_pii.py's `--require-dynamic-names`
+    pass4 (gate 7466 blocker 5). Every name here is invented — reused from
+    the fixture already established in scripts/test_redact_pii.py."""
+    bin_dir = tmp_path / "psql-bin"
+    bin_dir.mkdir(exist_ok=True)
+    fake = bin_dir / "psql"
+    body = "#!/usr/bin/env bash\n" + "".join(f'printf "%s\\n" "{n}"\n' for n in names)
+    fake.write_text(body)
+    fake.chmod(fake.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return bin_dir
+
+
 def _make_repo(
     tmp_path: Path, *, with_seat_lib: bool = True, dirty: bool = True
 ) -> Path:
@@ -143,17 +157,33 @@ def _make_repo(
 
 
 def _run_spalla(
-    tmp_path: Path, repo: Path, scenario: str, *args: str
+    tmp_path: Path,
+    repo: Path,
+    scenario: str,
+    *args: str,
+    with_psql: bool = True,
+    psql_names: tuple[str, ...] = ("Sofia Mueller",),
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+    """`with_psql=True` (default) wires a fake `psql` + DATABASE_URL so
+    redact_for_external's `--require-dynamic-names` (gate 7466 blocker 5) has
+    a non-empty CRM name list to load and every pre-existing test keeps
+    dispatching instead of failing closed on a fixture with no real PG.
+    `with_psql=False` reproduces the "PG genuinely unreachable" case."""
     bin_dir = _make_fake_codex(tmp_path)
+    path_entries = [str(bin_dir)]
     home = tmp_path / "home"
     home.mkdir()
     argv_log = tmp_path / "argv.log"
     env = os.environ.copy()
+    env.pop("DATABASE_URL", None)
+    env.pop("PGURL", None)
+    if with_psql:
+        path_entries.append(str(_make_fake_psql(tmp_path, psql_names)))
+        env["DATABASE_URL"] = "postgresql://fake:fake@localhost/fake"
     env.update(
         {
             "HOME": str(home),
-            "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
+            "PATH": f"{os.pathsep.join(path_entries)}{os.pathsep}{os.environ.get('PATH', '')}",
             "FAKE_CODEX_SCENARIO": scenario,
             "FAKE_CODEX_ARGV_LOG": str(argv_log),
             "FAKE_CODEX_STDIN_LOG": str(tmp_path / "stdin.log"),
@@ -171,6 +201,14 @@ def _run_spalla(
         timeout=60,
     )
     return proc, argv_log, home
+
+
+def _assert_codex_never_dispatched(argv_log: Path) -> None:
+    """The wrapper always probes `codex login status` before anything else,
+    so argv_log existing/non-empty is expected even on a refusal — the real
+    guarantee is that `exec` (the actual dispatch subcommand) never appears."""
+    if argv_log.exists():
+        assert "exec" not in argv_log.read_text()
 
 
 def _telemetry(home: Path) -> dict[str, object]:
@@ -289,6 +327,110 @@ def test_self_test_without_verdict_exits_6(tmp_path: Path) -> None:
     entry = _telemetry(home)
     assert entry["mode"] == "self-test"
     assert entry["exit_code"] == 6
+
+
+def test_pii_classed_path_refused_before_dispatch(tmp_path: Path) -> None:
+    """Guilt (gate 7466 blocker 2/S2): an untracked file under research/crm/
+    refuses the whole dispatch (exit 7) BEFORE codex is ever invoked."""
+    repo = _make_repo(tmp_path)
+    crm_dir = repo / "research" / "crm"
+    crm_dir.mkdir(parents=True)
+    (crm_dir / "secret.txt").write_text("synthetic client data placeholder\n")
+    proc, argv_log, home = _run_spalla(tmp_path, repo, "verdict", "review")
+    assert proc.returncode == 7, proc.stderr
+    assert "REFUSED" in proc.stderr
+    assert "research/crm/secret.txt" in proc.stderr
+    _assert_codex_never_dispatched(argv_log)
+    assert _telemetry(home)["exit_code"] == 7
+    assert _telemetry(home)["allow_pii_paths"] is False
+
+
+def test_allow_pii_paths_override_permits_dispatch(tmp_path: Path) -> None:
+    """Innocence: --allow-pii-paths overrides the refusal, and the override
+    itself is logged to telemetry (gate 7466 blocker 2)."""
+    repo = _make_repo(tmp_path)
+    crm_dir = repo / "research" / "crm"
+    crm_dir.mkdir(parents=True)
+    (crm_dir / "secret.txt").write_text("synthetic client data placeholder\n")
+    proc, argv_log, home = _run_spalla(
+        tmp_path, repo, "verdict", "review", "main", "--allow-pii-paths"
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert argv_log.exists()
+    assert _telemetry(home)["allow_pii_paths"] is True
+
+
+def test_rename_out_of_pii_path_is_still_refused(tmp_path: Path) -> None:
+    """Guilt (gate 7466 blocker 3/S5): `--name-only` alone prints only a
+    rename's DESTINATION — moving a file OUT of research/crm/ must still
+    refuse, on the OLD path."""
+    repo = _make_repo(tmp_path, dirty=False)
+    crm_dir = repo / "research" / "crm"
+    crm_dir.mkdir(parents=True)
+    secret = crm_dir / "secret.txt"
+    secret.write_text("synthetic client data placeholder\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "add crm file"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "mv", str(secret), str(repo / "elsewhere.txt")],
+        cwd=repo, check=True, capture_output=True,
+    )
+    proc, argv_log, _home = _run_spalla(tmp_path, repo, "verdict", "review")
+    assert proc.returncode == 7, proc.stderr
+    assert "research/crm/secret.txt" in proc.stderr
+    _assert_codex_never_dispatched(argv_log)
+
+
+def test_dispatch_artifacts_are_0600(tmp_path: Path) -> None:
+    """Gate 7466 blocker 4/S7: transcript, assistant-only file and telemetry
+    are 0600, and the log dir is 0700, on a normal successful dispatch."""
+    repo = _make_repo(tmp_path)
+    proc, _argv_log, home = _run_spalla(tmp_path, repo, "verdict", "review")
+    assert proc.returncode == 0, proc.stderr
+    entry = _telemetry(home)
+    transcript = Path(entry["transcript"])
+    last_message = transcript.with_name(transcript.name.replace(".md", ".last.md"))
+    assert stat.S_IMODE(transcript.stat().st_mode) == 0o600
+    assert stat.S_IMODE(last_message.stat().st_mode) == 0o600
+    telemetry_path = home / "logs" / "codex-spalla.jsonl"
+    assert stat.S_IMODE(telemetry_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(transcript.parent.stat().st_mode) == 0o700
+
+
+def test_missing_crm_names_fails_closed_before_dispatch(tmp_path: Path) -> None:
+    """Guilt (gate 7466 blocker 5): with no reachable CRM name list at all
+    (no DATABASE_URL, no psql), the wrapper refuses (exit 8) rather than
+    silently sending an un-redacted-for-names diff — codex is never invoked."""
+    repo = _make_repo(tmp_path)
+    proc, argv_log, home = _run_spalla(
+        tmp_path, repo, "verdict", "review", with_psql=False
+    )
+    assert proc.returncode == 8, proc.stderr
+    assert "PII name list unavailable" in proc.stderr
+    _assert_codex_never_dispatched(argv_log)
+    assert _telemetry(home)["exit_code"] == 8
+
+
+def test_crm_name_in_diff_is_redacted_before_dispatch(tmp_path: Path) -> None:
+    """Innocence (gate 7466 blocker 5): with a reachable (fake) CRM name
+    list, a fixture name present in the diff reaches codex only as
+    [CLIENT-NAME-REDACTED], never in the clear. Every name here is invented."""
+    repo = _make_repo(tmp_path, dirty=False)
+    target = repo / "file0.txt"
+    target.write_text(
+        "baseline\nClient note about Sofia Mueller and the fake case, "
+        "filler filler filler filler to clear the redactor's min-length gate.\n"
+    )
+    proc, _argv_log, home = _run_spalla(
+        tmp_path, repo, "verdict", "review", psql_names=("Sofia Mueller",)
+    )
+    assert proc.returncode == 0, proc.stderr
+    prompt = (tmp_path / "stdin.log").read_text()
+    assert "Sofia Mueller" not in prompt
+    assert "[CLIENT-NAME-REDACTED]" in prompt
+    assert _telemetry(home)["exit_code"] == 0
 
 
 def test_fixtures_are_honest() -> None:

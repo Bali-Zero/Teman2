@@ -1785,27 +1785,33 @@ cloud) with no redaction and no path guard at all. PR #7453 — a PII-removal PR
 through this wrapper: the diff deleted 959 lines of a client `plan.jsonl` (969 `full_name`
 records), and every one of those deleted lines went to OpenAI in cleartext, a Builder Contract
 rule-4 / Symbiosis Law-2 output-boundary breach. The two contaminated M5 transcripts were
-quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of every other
-`~/logs/codex-spalla/` transcript (70+ files, plus the session's own council-*/out-*.txt dumps
-to codex/kimi/gemini) against the canonical redactor's own dynamic CRM name list (12,343 client
-+ 1,789 company names from PROD, filtered to the multi-word/len>=6 subset to cut the ~30%
-single-word/short-token false-positive flood a raw alternation match produces against ordinary
-prose) found zero additional client-name hits; the handful of raw email/phone matches were RFC
-2606 test-fixture domains (`@example.com`, `@example.test`) or the `noreply@anthropic.com`
-commit-attribution boilerplate — no further leak.
+quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of the remaining 86
+`~/logs/codex-spalla/` + this session's council-*/out-*.txt transcripts (to codex/kimi/gemini)
+against the canonical redactor's own dynamic CRM name list (14,132 client+company names from
+PROD, filtered to a multi-word/len>=6 subset to cut the false-positive flood a raw alternation
+produces against ordinary prose) found zero further client-name hits in that set; the handful of
+raw email/phone matches were RFC 2606 test-fixture domains or `noreply@anthropic.com`
+commit-attribution boilerplate. A separate, independent gate review found `scripts/
+codex_tri_llm_review.py` sends full diff content to Codex+Kimi with the same defect and no
+guard at all — not wired live via any M5/Mini cron or LaunchAgent as of this writing (Pro
+unverified, ssh unreachable), so out of scope for this fix but tracked, not closed.
 
-**ANTIBODY:** every prompt an external seat receives now passes through three guards, in
-`scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper reuses them instead of
-re-implementing its own): `strip_data_file_deletes` drops every DELETED line of a `.jsonl`/
-`.csv`/`.xlsx` file before anything else runs — a suppression marker replaces it, the content
-never exists in the prompt string at any point; `redact_for_external` then pipes whatever
-remains through the ONE canonical `scripts/_redact_pii.py` (the same module the
-agent-library-evolver's DeepSeek/Gemini/NotebookLM egress path already trusts), fail-closed on
-a redactor error; `pii_path_hit` refuses the whole dispatch outright (exit 7) when the diff
-touches a PII-classed path (`research/crm/`, `research/crm-exports/`, `research/compliance/`,
-`research/wa-copilot/`, `research/personal/wa-corpus/`, `research/hr/`, `research/*/clients/`)
-unless the caller passes `--allow-pii-paths`, itself logged to telemetry. Transcripts of every
-external seat stay swept and 0600.
+**ANTIBODY:** every prompt `.claude/scripts/codex-spalla.sh` sends now passes through three
+guards in `scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper CAN reuse them instead of
+re-implementing its own — `codex_tri_llm_review.py` above does not yet): `strip_data_file_deletes`
+drops every DELETED line of a `.jsonl`/`.csv`/`.xlsx` file before anything else runs — a
+suppression marker replaces it, the content never exists in the prompt string at any point;
+`redact_for_external` then pipes whatever remains through the ONE canonical
+`scripts/_redact_pii.py` with `--require-dynamic-names` (PROD CRM name coverage is REQUIRED, not
+best-effort — a missing/unreachable name list fails closed rather than silently shipping
+`full_name` in cleartext), fail-closed on any redactor error; `pii_path_hit` refuses the whole
+dispatch outright (exit 7) when the diff touches a PII-classed path (union of a static glob list
+plus the live `PII_PATH_FRAGMENTS` tuple already declared in `scripts/async_review_supervisor.py`,
+so the two lists cannot silently drift apart) on EITHER side of a rename, unless the caller
+passes `--allow-pii-paths`, itself logged to telemetry. Every artefact this wrapper writes
+(transcript, `.last.md`, telemetry, the BLOCKER copy) is created under `umask 077` plus an
+explicit `chmod 0600`/`0700` after creation, going forward from this fix; the transcripts on
+disk before it are a separate manual cleanup, not claimed here.
 
 **GOTCHA:** a PII-REMOVAL diff is the most PII-dense diff there is — the deleted lines ARE the
 data, so a wrapper that reviews "the fix that scrubs client X's data" ships client X's data to
