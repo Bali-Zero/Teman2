@@ -145,6 +145,97 @@ def _parse_bali_zero_take(text: str) -> dict[str, str]:
     return sections
 
 
+def _classify_draft_heading(heading: str) -> str | None:
+    """Name the mapped section a draft "##" heading opens, if any. The one
+    heading grammar shared by the extractors and extra_sections (spec D8):
+    case-insensitive, optional trailing ":"."""
+    normalized = heading.strip().rstrip(":").strip().lower()
+    if normalized == "summary":
+        return "summary"
+    if normalized == "facts":
+        return "facts"
+    if normalized in {"bali zero take", "bali zero's take", "bali zero’s take"}:
+        return "bali_zero_take"
+    if normalized == "next steps":
+        return "next_steps"
+    return None
+
+
+def _split_draft_sections(content: str) -> list[tuple[str, str | None, str]]:
+    """Every "##" section of a draft in order, as (heading, mapped key, body)."""
+    headings = list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content))
+    sections: list[tuple[str, str | None, str]] = []
+    for index, heading_match in enumerate(headings):
+        body_end = headings[index + 1].start() if index + 1 < len(headings) else len(content)
+        heading = heading_match.group(1).strip()
+        body = content[heading_match.end() : body_end].strip()
+        sections.append((heading, _classify_draft_heading(heading), body))
+    return sections
+
+
+# The line grammar of a "## Next Steps" body. Spec and case table:
+# docs/specs/newsroom-next-steps-grammar-v1.md (after four PRs of layered
+# regex fixes, #7285 → #7336, each cure regressing another case).
+#
+# An audience is named only by a whole label LINE ("### For Expats",
+# "**For Expats:**", "*For Expats:*", "Investors"), never by the word inside
+# a step: a substring match relabelled "Expats should renew…" and cut
+# "expatriate" to "riate…" (gate BLOCK on #7322).
+_NEXT_STEPS_AUDIENCE_LABEL = re.compile(
+    r"^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__|\*(?!\s)|_(?!\s))?[ \t]*"
+    r"(?:For[ \t]+)?(Expat|Investor)s?[ \t]*:?[ \t]*(?:\*\*|__|\*|_)?[ \t]*:?[ \t]*$",
+    re.IGNORECASE,
+)
+_NEXT_STEPS_HEADING = re.compile(r"^[ \t]*#{1,6}[ \t]+\S")
+_NEXT_STEPS_RULE = re.compile(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+# "-Check" and "-5% tax" are not list items (markdown agrees, spec D7).
+_NEXT_STEPS_LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d{1,3}[.)])(?:[ \t]+(.*))?$")
+# Items that say "nothing yet" rather than name a step (invariant 4).
+_PLACEHOLDER_STEPS = frozenset({"tbd", "tba", "n/a", "na", "none", "todo"})
+
+
+def _parse_next_steps(body: str) -> dict[str, list[str]]:
+    """Split a "## Next Steps" body into expat / investor / general items.
+
+    Per line: a label line switches the audience; any other heading switches
+    back to general and is not an item; a list marker starts an item; a blank
+    line or a horizontal rule ends one and is never an item; any other line
+    continues the open item or starts one. Text before the first label, or
+    with no label at all, is general. Only the leading list marker is removed
+    and nothing is capped: every worded line lands in exactly one item.
+    """
+    groups: dict[str, list[str]] = {"expat": [], "investor": [], "general": []}
+    audience = "general"
+    item_audience = audience
+    item_lines: list[str] = []
+
+    def close_item() -> None:
+        text = "\n".join(item_lines).strip()
+        item_lines.clear()
+        if re.search(r"\w", text) and text.rstrip(".").strip().lower() not in _PLACEHOLDER_STEPS:
+            groups[item_audience].append(text)
+
+    for line in body.splitlines():
+        label = _NEXT_STEPS_AUDIENCE_LABEL.match(line)
+        if label or _NEXT_STEPS_HEADING.match(line):
+            close_item()
+            audience = label.group(1).lower() if label else "general"
+            continue
+        if not line.strip() or _NEXT_STEPS_RULE.match(line):
+            close_item()
+            continue
+        list_item = _NEXT_STEPS_LIST_ITEM.match(line)
+        if list_item:
+            close_item()
+            line = list_item.group(1) or ""
+        if not item_lines:
+            item_audience = audience
+        if line.strip():
+            item_lines.append(line.strip())
+    close_item()
+    return groups
+
+
 def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[str, Any]:
     """
     Convert staging item (markdown simple) to EnrichedArticle format.
@@ -159,7 +250,8 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     """
 
     title = staging_data.get("title", "Untitled")
-    content = staging_data.get("content", "")
+    # CRLF drafts must parse like LF ones (spec D8).
+    content = staging_data.get("content", "").replace("\r\n", "\n").replace("\r", "\n")
     category = staging_data.get("category", "news")
     relevance_score = staging_data.get("relevance_score", 50)
     source_url = staging_data.get("source_url", staging_data.get("url", ""))
@@ -167,99 +259,28 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Parse markdown content to extract sections
     # Format: ## Summary\n...\n## Facts\n...\n## Bali Zero Take\n...\n## Next Steps\n...
+    sections = _split_draft_sections(content)
 
-    # Extract Summary section
-    summary_match = re.search(
-        r"## Summary\s*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
+    def _mapped_body(key: str) -> str | None:
+        return next((body for _, known, body in sections if known == key), None)
+
+    summary_body = _mapped_body("summary")
     ai_summary = (
-        _summary_from_content(summary_match.group(1), limit=280)
-        if summary_match
+        _summary_from_content(summary_body, limit=280)
+        if summary_body is not None
         else _summary_from_content(content)
     )
 
-    # Extract Facts section
-    facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
-    facts = facts_match.group(1).strip() if facts_match else content
+    facts_body = _mapped_body("facts")
+    facts = facts_body if facts_body is not None else content
 
-    # Extract Bali Zero Take section
-    bali_zero_take_match = re.search(
-        r"## Bali Zero(?:['’]s)? Take:?[ \t]*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
-    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else ""
-    bali_zero_take = _parse_bali_zero_take(bali_zero_take_text)
-
-    # Extract Next Steps section
-    next_steps_match = re.search(
-        r"## Next Steps\s*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
-    next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
-
-    def _extract_labelled_items(text: str) -> list[str]:
-        """Split a labelled (For Expats/For Investors) subsection into list
-        items — unchanged from the pre-fix behavior so an innocent draft
-        with real subsections still renders exactly as before."""
-        return [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", text)
-            if item.strip()
-        ]
-
-    def _extract_general_items(text: str) -> list[str]:
-        """Split an unlabelled, audience-neutral Next Steps body into list
-        items — same >10-char noise filter the old fallback used."""
-        return [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", text)
-            if item.strip() and len(item.strip()) > 10
-        ]
-
-    # Parse Next Steps for expat and investor
-    expat_steps: list[str] = []
-    investor_steps: list[str] = []
-    general_steps: list[str] = []
-
-    # An audience is named only by a whole label LINE ("### For Expats",
-    # "**For Expats:**", "For Expats:"), never by the word inside a step: a
-    # substring match relabelled "Expats should renew…" as the expat group
-    # and cut "expatriate" to "riate…" (gate BLOCK on #7322). A label runs
-    # until the next label or heading.
-    audience_label = re.compile(
-        r"^\s*(?:#{2,4}\s*)?(?:\*\*)?\s*(?:For\s+)?(Expat|Investor)s?\s*:?\s*(?:\*\*)?\s*:?\s*$",
-        re.IGNORECASE,
-    )
-    audience_lines: dict[str, list[str]] = {}
-    current_audience: str | None = None
-    for line in next_steps_text.splitlines():
-        label = audience_label.match(line)
-        if label:
-            current_audience = label.group(1).lower()
-            audience_lines.setdefault(current_audience, [])
-        elif re.match(r"^\s*#{2,4}\s", line):
-            current_audience = None
-        elif current_audience:
-            audience_lines[current_audience].append(line)
-
-    if "expat" in audience_lines:
-        expat_steps = _extract_labelled_items("\n".join(audience_lines["expat"]).strip())
-    if "investor" in audience_lines:
-        investor_steps = _extract_labelled_items("\n".join(audience_lines["investor"]).strip())
+    bali_zero_take = _parse_bali_zero_take(_mapped_body("bali_zero_take") or "")
 
     # A draft that never names "For Expats"/"For Investors" states ONE
-    # audience-neutral list. Splitting it 50/50 between the two invents an
-    # audience the draft never named (2026-09-23 GloBE regression: the
-    # expats group got a filler, the investors group got the whole blob).
-    # Render it as a single neutral group instead — never split, never fill.
-    if not audience_lines and next_steps_text:
-        general_steps = _extract_general_items(next_steps_text)
-        if not general_steps:
-            general_steps = [next_steps_text]
+    # audience-neutral list: it lands in `general`, never split 50/50 between
+    # the two and never filled with "Review the article for specific actions"
+    # (2026-09-23 GloBE regression).
+    next_steps = _parse_next_steps(_mapped_body("next_steps") or "")
 
     # Preserve every OTHER draft "##" section instead of silently dropping it
     # (2026-09-23 GloBE regression: "## In Practice" and "## Sources" never
@@ -271,31 +292,9 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     # Facts: there is no slot before it). A draft with no "## Facts" heading
     # already carries every section inside the `facts` fallback above, so
     # nothing is collected again (gate finding F2 on #7322: printed twice).
-    def _classify_known_heading(heading: str) -> str | None:
-        normalized = heading.strip().rstrip(":").lower()
-        if normalized == "summary":
-            return "summary"
-        if normalized == "facts":
-            return "facts"
-        if normalized in {"bali zero take", "bali zero's take", "bali zero’s take"}:
-            return "bali_zero_take"
-        if normalized == "next steps":
-            return "next_steps"
-        return None
-
     extra_sections: list[dict[str, str]] = []
-    all_headings = (
-        list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content)) if facts_match else []
-    )
     last_known_anchor = "facts"
-    for index, heading_match in enumerate(all_headings):
-        heading_text = heading_match.group(1).strip()
-        body_start = heading_match.end()
-        body_end = (
-            all_headings[index + 1].start() if index + 1 < len(all_headings) else len(content)
-        )
-        body = content[body_start:body_end].strip()
-        known = _classify_known_heading(heading_text)
+    for heading_text, known, body in sections if facts_body is not None else []:
         if known:
             if known != "summary":
                 last_known_anchor = known
@@ -340,11 +339,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         "tldr": {"what": tldr_what},
         "facts": facts,
         "bali_zero_take": bali_zero_take,
-        "next_steps": {
-            "expat": expat_steps[:5],  # Limit to 5 items
-            "investor": investor_steps[:5],  # Limit to 5 items
-            "general": general_steps[:5],  # Limit to 5 items
-        },
+        "next_steps": next_steps,
         "category": category,
         "priority": priority,
         "relevance_score": relevance_score,

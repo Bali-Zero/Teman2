@@ -545,6 +545,171 @@ class TestConvertStagingToEnrichedArticle:
 
 
 # ---------------------------------------------------------------------------
+# Next Steps grammar — the case table of docs/specs/newsroom-next-steps-grammar-v1.md
+# ---------------------------------------------------------------------------
+
+_TWELVE_STEPS = [f"Step {n}: file form {n}." for n in range(1, 13)]
+
+# (case id, "## Next Steps" body, expected {expat, investor, general}); groups
+# left out of the expectation must be empty.
+NEXT_STEPS_GRAMMAR_CASES = [
+    (
+        "E1",
+        "- Investors should file LKPM every quarter.\n"
+        "- An expatriate employee must hold a KITAS.\n"
+        "- Expats: check your visa expiry date.",
+        {
+            "general": [
+                "Investors should file LKPM every quarter.",
+                "An expatriate employee must hold a KITAS.",
+                "Expats: check your visa expiry date.",
+            ]
+        },
+    ),
+    (
+        "E4",
+        "#### For Expats\n- Renew your KITAS early.\n#### For Investors\n- File LKPM every quarter.",
+        {"expat": ["Renew your KITAS early."], "investor": ["File LKPM every quarter."]},
+    ),
+    (
+        "E5",
+        "##### For Expats\n- Renew your KITAS early.\n##### For Investors\n- File LKPM every quarter.",
+        {"expat": ["Renew your KITAS early."], "investor": ["File LKPM every quarter."]},
+    ),
+    (
+        "E12",
+        "**For Expats:**\r\n- Ask your investor sponsor for RPTKA.\r\n",
+        {"expat": ["Ask your investor sponsor for RPTKA."]},
+    ),
+    (
+        "E3",
+        "- Confirm the scope first.\nInvestors\n- File the annual SPT.",
+        {"general": ["Confirm the scope first."], "investor": ["File the annual SPT."]},
+    ),
+    (
+        "E6",
+        "For Expats: renew your KITAS\nFor Investors: file the LKPM report",
+        {"general": ["For Expats: renew your KITAS\nFor Investors: file the LKPM report"]},
+    ),
+    (
+        "E7",
+        "- **For Expats:** renew your KITAS early.",
+        {"general": ["**For Expats:** renew your KITAS early."]},
+    ),
+    (
+        "E9",
+        "All readers should read the regulation first.\n### For Expats\n- Renew your KITAS early.",
+        {
+            "general": ["All readers should read the regulation first."],
+            "expat": ["Renew your KITAS early."],
+        },
+    ),
+    (
+        "E10",
+        "### For Expats\n- Renew your KITAS early.\n### For Everyone\n- Keep copies of all filings.",
+        {"expat": ["Renew your KITAS early."], "general": ["Keep copies of all filings."]},
+    ),
+    (
+        "E11",
+        "### For Expats\n- Renew your KITAS early.\n\nAll readers: keep copies.",
+        {"expat": ["Renew your KITAS early.", "All readers: keep copies."]},
+    ),
+    (
+        "E15",
+        "*For Expats:*\n- Renew your KITAS early.",
+        {"expat": ["Renew your KITAS early."]},
+    ),
+    (
+        "E16",
+        "### For Expats & Investors\n- Keep copies.",
+        {"general": ["Keep copies."]},
+    ),
+    ("E19", "\n".join(f"- {step}" for step in _TWELVE_STEPS), {"general": _TWELVE_STEPS}),
+    ("E20", "- File SPT\n- Pay PBB.", {"general": ["File SPT", "Pay PBB."]}),
+    ("E21", "1. File SPT.\n2. Pay PBB.", {"general": ["File SPT.", "Pay PBB."]}),
+    (
+        "E22",
+        "- **Deadline**: file the SPT by 31 March.",
+        {"general": ["**Deadline**: file the SPT by 31 March."]},
+    ),
+    ("E24", "TBD", {}),
+    (
+        "G1",
+        "**For Expats:**\n- Check your visa status\n\n---",
+        {"expat": ["Check your visa status"]},
+    ),
+    (
+        "G2",
+        "### For Investors\n- Review investment plan\n\n---",
+        {"investor": ["Review investment plan"]},
+    ),
+    ("G3", "None of the above applies.", {"general": ["None of the above applies."]}),
+    # Invariant 4 variants and D7.
+    ("P1", "- TBA\n- N/A.\n- none\n- todo", {}),
+    (
+        "D7",
+        "-5% tax applies to the second year.",
+        {"general": ["-5% tax applies to the second year."]},
+    ),
+    # Invariant 3: a bare bullet and the other rule spellings are not items.
+    ("R1", "- Pay PBB.\n-\n***\n___\n* * *", {"general": ["Pay PBB."]}),
+]
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [pytest.param(body, expected, id=case) for case, body, expected in NEXT_STEPS_GRAMMAR_CASES],
+)
+def test_next_steps_grammar_case_table(body: str, expected: dict[str, list[str]]) -> None:
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    content = (
+        "## Facts\nFacts here.\n## Next Steps\n" + body + "\n## Sources\n- https://example.com"
+    )
+    next_steps = convert_staging_to_enriched_article({"content": content})["next_steps"]
+
+    assert next_steps == {
+        "expat": expected.get("expat", []),
+        "investor": expected.get("investor", []),
+        "general": expected.get("general", []),
+    }
+
+
+def test_next_steps_placeholder_renders_no_section() -> None:
+    """E24 end to end: a "TBD" body leaves no Next Steps section in the MDX."""
+    from backend.app.routers.article_composer import EnrichedArticle, generate_mdx_content
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    result = convert_staging_to_enriched_article(
+        {"title": "Thin", "content": "## Facts\nFacts here.\n## Next Steps\nTBD"}
+    )
+
+    mdx = generate_mdx_content(EnrichedArticle(**result), "test-thin", None)
+    assert "## Next Steps" not in mdx
+
+
+def test_section_headings_share_one_grammar_for_colon_and_crlf() -> None:
+    """E23 / D8: a trailing ":" and CRLF line ends do not hide a section."""
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    content = (
+        "## Summary:\nThe rule changes in March.\n"
+        "## Facts:\nFacts here.\n"
+        "## Bali Zero Take\nOur take.\n"
+        "## Next Steps:\n- File SPT.\n"
+        "## Sources\n- https://example.com"
+    ).replace("\n", "\r\n")
+
+    result = convert_staging_to_enriched_article({"content": content})
+
+    assert result["ai_summary"] == "The rule changes in March."
+    assert result["facts"] == "Facts here."
+    assert result["bali_zero_take"]["our_analysis"] == "Our take."
+    assert result["next_steps"]["general"] == ["File SPT."]
+    assert [section["heading"] for section in result["extra_sections"]] == ["Sources"]
+
+
+# ---------------------------------------------------------------------------
 # Helper: ingest_intel_to_qdrant
 # ---------------------------------------------------------------------------
 
