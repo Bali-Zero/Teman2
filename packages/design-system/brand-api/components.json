@@ -186,7 +186,8 @@
         "persistKey": "string | undefined",
         "onStepChange": "(step: number, total: number) => void | undefined",
         "onAbandon": "(step: number) => void | undefined",
-        "labels": "Partial<AppWizardLabels> | undefined"
+        "labels": "Partial<AppWizardLabels> | undefined",
+        "pending": "boolean | undefined"
       },
       "useWhen": [
         "multi-step",
