@@ -224,6 +224,11 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
     # and "SET status = 'done'" are no longer on one line — pin just the
     # clause that survives unchanged.
     assert conn.sql_contains("SET status = 'done'")
+    # served_by (migration 322) rides the same terminal commit — a human
+    # send never calls the codex leg, so its bind stays NULL.
+    done_commit = conn.sql_with_args("SET status = 'done'")
+    assert len(done_commit) == 1
+    assert done_commit[0][1][-1] is None
     assert any(
         "UPDATE meta_inbox_messages" in s and "delivered" in str(a) for s, a in conn.executed
     )

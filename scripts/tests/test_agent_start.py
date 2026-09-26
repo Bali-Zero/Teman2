@@ -475,10 +475,10 @@ def test_ram_admission_load_alone_over_threshold_still_admits(fake_repo, monkeyp
     assert admit is True
 
 
-def test_ram_admission_fails_open_when_swap_sampler_raises(fake_repo, monkeypatch, caplog):
-    """Guilt-of-the-gate/innocence-of-the-lane: an exception from the sampler
-    (not just a returned None) must not crash cmd_create — it degrades to
-    fail-open, and the degradation is logged."""
+def test_ram_admission_fails_closed_when_swap_sampler_raises(fake_repo, monkeypatch, caplog):
+    """An exception from the sampler must not crash cmd_create, and must not
+    admit either: it refuses, names the override, and logs why. Load is CALM,
+    so the refusal can only come from the blind probe."""
     import logging
 
     mod, _ = fake_repo
@@ -488,26 +488,77 @@ def test_ram_admission_fails_open_when_swap_sampler_raises(fake_repo, monkeypatc
         raise RuntimeError("simulated sysctl explosion")
 
     monkeypatch.setattr(mod, "_sample_swap_usage", _boom)
-    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))  # would refuse if reached
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
 
     with caplog.at_level(logging.WARNING, logger="agent_broker"):
         admit, reason = mod.check_ram_admission()
-    assert admit is True
+    assert admit is False
     assert "could not measure" in reason.lower()
+    assert mod.RAM_ADMISSION_OVERRIDE_ENV in reason
     assert any("swap sampler raised" in r.message for r in caplog.records)
 
 
-def test_ram_admission_fails_open_when_sampler_returns_none(fake_repo, monkeypatch):
-    """The anticipated failure path (sysctl absent / bad output) also fails
-    open, distinct from the exception path above."""
+def test_ram_admission_fails_closed_when_sampler_returns_none(fake_repo, monkeypatch):
+    """The anticipated failure path (sysctl absent / bad output) refuses too."""
     mod, _ = fake_repo
     _clear_ram_override(monkeypatch)
     monkeypatch.setattr(mod, "_sample_swap_usage", lambda: None)
-    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is False
+    assert "could not measure" in reason.lower()
+
+
+def test_cmd_create_blind_probe_exits_75_and_creates_nothing(fake_repo, monkeypatch):
+    """Integration: a probe that raises stops cmd_create with the retry code."""
+    mod, repo = fake_repo
+    _clear_ram_override(monkeypatch)
+
+    def _boom():
+        raise FileNotFoundError(2, "No such file or directory", "sysctl")
+
+    monkeypatch.setattr(mod, "_sample_swap_usage", _boom)
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_create("wr2", "ram-blind")
+    assert exc.value.code == mod.RAM_ADMISSION_EXIT_CODE
+    assert not (repo / ".worktrees" / "wr2-ram-blind").exists()
+
+
+def _fake_sysctl(monkeypatch, mod, stdout, seen=None):
+    def _run(argv, **kwargs):
+        if seen is not None:
+            seen.append((argv, kwargs.get("env") or {}))
+        return subprocess.CompletedProcess(argv, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(mod.subprocess, "run", _run)
+
+
+def test_swap_probe_calls_sysctl_by_absolute_path_under_c_locale(fake_repo, monkeypatch):
+    """launchd PATHs without /usr/sbin made bare `sysctl` ENOENT (908 times on Pro)."""
+    mod, _ = fake_repo
+    seen = []
+    _fake_sysctl(monkeypatch, mod, "vm.swapusage: total = 8192.00M  used = 7257.06M  free = 934.94M", seen)
+    monkeypatch.setenv("PATH", "/opt/homebrew/bin:/usr/bin:/bin")
+
+    assert mod._sample_swap_usage() == (7257.06, 8192.0)
+    argv, env = seen[0]
+    assert argv[0] == "/usr/sbin/sysctl"
+    assert env.get("LC_ALL") == "C"
+
+
+def test_ram_admission_zero_swap_total_reads_as_healthy(fake_repo, monkeypatch):
+    """No swapfile yet (total = 0.00M) is a measurement, not a blind probe."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    _fake_sysctl(monkeypatch, mod, "vm.swapusage: total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)")
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
 
     admit, reason = mod.check_ram_admission()
     assert admit is True
-    assert "could not measure" in reason.lower()
+    assert "swap 0.0% used" in reason
 
 
 def test_ram_admission_override_bypasses_even_when_distressed(fake_repo, monkeypatch):
@@ -601,12 +652,12 @@ def test_ram_admission_locale_comma_decimal_is_parsed_via_lc_all_c(fake_repo, mo
 
     DECLARED consequence: this case never runs in CI; it can only be proved on
     a real Mac. What a runner must still cover is the other side — that a host
-    which cannot read anything degrades to fail-open instead of blocking every
-    lane — and that is the test immediately below."""
+    which cannot read anything refuses loudly instead of silently admitting —
+    and that is the test immediately below."""
     mod, _ = fake_repo
     try:
         raw = subprocess.run(
-            ["sysctl", "vm.swapusage"], capture_output=True, text=True, timeout=10
+            [mod.SYSCTL_BIN, "vm.swapusage"], capture_output=True, text=True, timeout=10
         )
     except (OSError, subprocess.SubprocessError) as exc:
         pytest.skip(f"host cannot run `sysctl vm.swapusage` ({exc})")
@@ -620,20 +671,17 @@ def test_ram_admission_locale_comma_decimal_is_parsed_via_lc_all_c(fake_repo, mo
     assert sample is not None
     used_mb, total_mb = sample
     assert 0.0 <= used_mb <= total_mb
-    assert total_mb > 0.0
 
 
-def test_ram_admission_fails_open_against_the_real_probe_on_this_host(fake_repo, monkeypatch):
+def test_ram_admission_fails_closed_against_the_real_probe_on_this_host(fake_repo, monkeypatch):
     """The case that actually runs on a Linux runner, against the REAL probe.
 
-    The sibling tests above prove fail-open with the sampler mocked. This one
-    does not mock it: it calls `_sample_swap_usage()` for real and asserts that
-    whatever this host answers — a reading on a Mac, None on a runner where
-    `sysctl` exists but has no `vm.swapusage` — a lane is still admitted.
+    The sibling tests above prove fail-closed with the sampler mocked. This one
+    does not mock it: on a runner where `sysctl` has no `vm.swapusage`, the
+    gate refuses, says it could not measure, and the override still admits.
 
-    A monitoring probe that cannot measure must never become a reason work
-    stops (family #2), and that is exactly what a platform-specific probe is
-    most likely to do on a platform nobody tested it on."""
+    Fail-open was the old contract, and it hid a probe that was ENOENT under
+    launchd for six weeks (family #2): a blind gate must be loud, not silent."""
     mod, _ = fake_repo
     _clear_ram_override(monkeypatch)
 
@@ -653,14 +701,14 @@ def test_ram_admission_fails_open_against_the_real_probe_on_this_host(fake_repo,
     monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))
 
     admit, reason = mod.check_ram_admission()
-    assert admit is True, (
-        f"a probe that cannot measure must not block admission, got: {reason}"
-    )
-    assert "could not measure" in reason.lower(), (
-        "and it must SAY it could not measure, not imply the machine was healthy"
-    )
+    assert admit is False, f"a probe that cannot measure must not admit, got: {reason}"
+    assert "could not measure" in reason.lower()
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_create("wr2", "real-probe-fail-closed", ttl_minutes=5)
+    assert exc.value.code == mod.RAM_ADMISSION_EXIT_CODE
 
-    out = mod.cmd_create("wr2", "real-probe-fail-open", ttl_minutes=5)
+    monkeypatch.setenv(mod.RAM_ADMISSION_OVERRIDE_ENV, "1")
+    out = mod.cmd_create("wr2", "real-probe-overridden", ttl_minutes=5)
     assert out.is_dir()
 
 

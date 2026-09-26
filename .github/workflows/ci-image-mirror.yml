@@ -1,0 +1,127 @@
+name: CI image mirror (GHCR)
+
+# WHY: CI `services:` pulled postgres:15/redis:7 ANONYMOUSLY from public.ecr.aws, whose
+# anonymous data quota is shared per runner egress IP — 3 of 30 `Tests & Coverage` runs
+# (2026-09-26) died at "Initialize containers" with `toomanyrequests: Data limit exceeded`.
+# This copies the upstream linux/amd64 manifest of each tag, digest-preserved, to GHCR,
+# where a pull authenticated with GITHUB_TOKEN carries no anonymous quota. Same tags.
+# The weekly upstream pull stays anonymous but is off every PR/queue critical path: a
+# failed run leaves the previous mirror serving, and this workflow is watched on main.
+
+on:
+  schedule:
+    - cron: "17 3 * * 1" # Monday 03:17 UTC — picks up upstream security rebuilds
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ci-image-mirror.yml" # a change to the image list seeds at merge
+
+concurrency:
+  group: ci-image-mirror
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  mirror:
+    name: Mirror ${{ matrix.image }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every image a workflow `services:` block pulls from ghcr.io/bali-zero/ci-mirror/
+        # must be listed here (scripts/tests/test_ci_service_images_use_mirror.py).
+        image: ["postgres:15", "redis:7"]
+    steps:
+      - name: Copy ${{ matrix.image }} (linux/amd64) to GHCR
+        env:
+          IMAGE: ${{ matrix.image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          skopeo --version
+          printf '%s' "$GH_TOKEN" | skopeo login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          dst="docker://ghcr.io/bali-zero/ci-mirror/$IMAGE"
+          # Two anonymous upstreams serving the same Docker Official Image manifests
+          # (compared in #3349): a quota refusal on one falls through to the other.
+          # --preserve-digests: skopeo refuses to copy rather than re-encode the manifest.
+          for src in "docker://docker.io/library/$IMAGE" "docker://public.ecr.aws/docker/library/$IMAGE"; do
+            if skopeo --override-os linux --override-arch amd64 copy \
+                 --retry-times 3 --preserve-digests "$src" "$dst"; then
+              echo "copied $src -> $dst, manifest sha256: $(skopeo inspect --raw "$dst" | sha256sum | cut -d' ' -f1)"
+              exit 0
+            fi
+            echo "::warning::copy from $src failed, trying the next upstream"
+          done
+          echo "::error::every upstream refused $IMAGE"
+          exit 1
+
+  prune:
+    # A tag re-pointed by an upstream rebuild leaves the old manifest untagged. Keep the two
+    # newest as rollback, delete the rest: storage stays bounded even if the packages are
+    # private (GitHub Free: 500 MB). Tagged versions are never touched.
+    name: Prune superseded ${{ matrix.package }} versions
+    needs: mirror
+    if: ${{ !cancelled() }} # one failed mirror leg must not stop pruning the other package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ["ci-mirror/postgres", "ci-mirror/redis"]
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          owner: bali-zero
+          package-name: ${{ matrix.package }}
+          package-type: container
+          delete-only-untagged-versions: "true"
+          min-versions-to-keep: 2
+
+  verify:
+    # Same shape the consumers will use: a service container pulled with a read-only
+    # GITHUB_TOKEN. Green here is the precondition for switching the consumer workflows.
+    name: Pull the mirror as service containers
+    needs: mirror
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      packages: read
+    services:
+      postgres:
+        image: ghcr.io/bali-zero/ci-mirror/postgres:15
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          POSTGRES_PASSWORD: mirror-probe
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: ghcr.io/bali-zero/ci-mirror/redis:7
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Report the versions the mirror serves
+        env:
+          PG_ID: ${{ job.services.postgres.id }}
+          REDIS_ID: ${{ job.services.redis.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$PG_ID" postgres --version
+          docker exec "$REDIS_ID" redis-server --version

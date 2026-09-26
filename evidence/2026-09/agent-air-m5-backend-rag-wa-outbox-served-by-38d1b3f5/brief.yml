@@ -1,0 +1,41 @@
+gear: 3
+task_id: backend-rag-wa-outbox-served-by
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/wa-outbox-served-by
+gate_class: opus
+l_level: L3
+objective: >-
+  Persist CodexLegResult.served_by (wa_codex_leg.py) onto wa_outbox in the SAME fenced
+  terminal UPDATE that already writes abstained_at/evidence_score (migration 314, live in
+  prod), so the ~74% support_abstain stub rate (docs/zantara-loop-state.md, Iteration 2
+  "Measured, not fixed") becomes a plain SQL GROUP BY instead of a body-hash count. Floor
+  is 3 on migrations_v2 hot-zone alone (path term; net diff is ~245 lines, well under the
+  SIZE term's own threshold) — an additive nullable column plus a one-column carrier
+  addition to an already-fenced write, not a size-driven Gear-3.
+  CORRECTION ROUND (fix-of-a-fix depth 1, gate REWORK-BUILD on PR #7392 @ 3b77978ef8): the
+  first build round invented a deploy-window race that does not exist — it assumed
+  fly-deploy.yml's own `run-migrations`/`run-sql-v2-migrations-post-deploy` jobs were the
+  only gate, and added a `wa_outbox_worker.py::_finalize()` fallback (catch
+  `asyncpg.exceptions.UndefinedColumnError`, retry without served_by) plus a dedicated test
+  for it. `apps/backend-rag/fly.toml`'s `release_command`
+  (`migrate apply-all && schema_audit`) actually runs on the NEW image BEFORE Fly replaces
+  a single machine, and `schema_audit.py`'s `_check_pending_migrations` fails the release
+  outright on a pending migration — proven against real deploy run logs for migrations
+  318/320/321 (each shows `release_command ... completed successfully` before the rolling
+  update) and precedent PR #6561, which shipped migration 318's column + writer in one PR
+  with no fallback. The fallback and its test are REMOVED in this pack's current head; the
+  migration/worker/docs text no longer claims a deploy-window gap. Two independent Gear-3
+  council seats (codex-gpt-5.6-sol, kimi-code/k3) reviewed the first-round fix and returned
+  ACCEPT-WITH-NOTES against the (then-believed-real) fallback; their notes are recorded as
+  dissent below — two are now MOOT (the mechanism they concerned is deleted), one
+  (NULL-semantics wording) still applies to the simplified column and was kept, and kimi's
+  "systemic deploy-order gap" dissent is RETRACTED with the same fly.toml/schema_audit
+  evidence. The delta from council-reviewed head to this head is a removal (fallback +
+  its test) plus text corrections, not new logic — no re-ask was needed.
+scope:
+  - "apps/backend-rag/backend/db/migrations_v2/322_wa_outbox_served_by.sql — new, additive nullable wa_outbox.served_by TEXT, no CHECK, no default, IF NOT EXISTS (318/321 convention)."
+  - "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py — persist_served_by carried like persist_score; the fenced terminal UPDATE writes served_by = $6::text unconditionally, same as evidence_score (no deploy-window fallback: fly.toml's release_command + schema_audit already guarantee the column exists before this code is ever live)."
+  - "apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py — served_by assertions across codex/support_abstain/scripted/reattached/failed-send/retry routes; a dedicated guilt-proof test."
+  - "apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py — human-send route asserts the served_by bind is NULL (never calls the codex leg)."
+  - "docs/zantara-loop-state.md — KPI: served_by block (front, after Instrument corrections) with the GROUP BY query; Iteration-2 F3 bullet updated to point at it."
