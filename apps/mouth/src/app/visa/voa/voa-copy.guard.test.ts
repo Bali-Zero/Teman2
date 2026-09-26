@@ -54,6 +54,7 @@ const SCREEN_FILES = [
   "orders/OrderTracker.tsx",
   "orders/messages.ts",
   "auth/continue/page.tsx", // magic link consumed/expired
+  "VoaCounter.tsx", // the counter: lockup, agent, order strip on every route
 ].map((rel) => join(VOA_DIR, rel));
 
 /** The DECLINE screen's copy table lives one directory tree over. */

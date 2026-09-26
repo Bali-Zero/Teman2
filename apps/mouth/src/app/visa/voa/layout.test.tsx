@@ -17,8 +17,13 @@ const notFoundMock = vi.hoisted(() =>
   }),
 );
 
+// The layout now mounts the counter (a client component that reads the
+// route and the language), so the two hooks it calls are stubbed alongside
+// the gate's notFound.
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
+  usePathname: () => "/visa/voa",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 describe("GarudaVoaLayout — server-side gate", () => {

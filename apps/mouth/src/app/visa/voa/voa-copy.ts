@@ -29,15 +29,39 @@ const en = {
   "frame.subtitle":
     "Know in 10 seconds, buy in 5 minutes, follow it like a parcel.",
 
-  "trust.questions.label": "quick questions",
-  "trust.price.label": "all-inclusive price, shown with your answer",
-  "trust.government.label": "extra to pay the government after",
-
   "hero.wa.line":
     "Rather ask a person first? Our visa desk answers on WhatsApp.",
   "hero.wa.cta": "Talk to us on WhatsApp",
-  "hero.wa.who": "That's Surya, from our team.",
   "lockup.brand": "Bali Zero",
+
+  // --- the counter (VoaCounter.tsx): lockup, agent, order strip -------------
+  "counter.aria": "Your order",
+  "counter.product": "B1 Visa on Arrival",
+  "counter.from": "from {price} all-inclusive",
+  "counter.exact": "{price} all-inclusive",
+  "counter.agent": "Surya · your agent",
+  "counter.stages.aria": "Where you are",
+  "counter.stage.check": "Check",
+  "counter.stage.result": "Result",
+  "counter.stage.passport": "Passport",
+  "counter.stage.payment": "Payment",
+  "counter.stage.tracking": "Tracking",
+  "counter.state.created": "Setting up payment",
+  "counter.state.awaiting_payment": "Awaiting payment",
+  "counter.state.paid": "Paid",
+  "counter.state.failed": "Payment not completed",
+  "counter.state.expired": "Checkout expired",
+  "counter.state.refunded": "Refunded",
+  "counter.state.Received": "Received",
+  "counter.state.In review": "In review",
+  "counter.state.Blocked": "Needs you",
+  "counter.state.Submitted": "Submitted",
+  "counter.state.Approved": "Approved",
+  "counter.state.Rejected": "Not approved",
+  "counter.state.Delivered": "Delivered",
+  "counter.pay": "Continue to payment · {price} →",
+  "landing.get.heading": "What you get",
+  "entry.sent.heading": "Your key is on its way",
   "hero.wa.message": "Hi Bali Zero, I'd like help with a Visa on Arrival.",
 
   "step.case.title": "Your case",
@@ -97,7 +121,7 @@ const en = {
     "We couldn't check eligibility right now. Please try again, or ",
   "error.eligibility.link": "message us on WhatsApp",
 
-  "wizard.stepOf": "Step {current} of {total}",
+  "wizard.stepOf": "Question {current} of {total}",
   "wizard.back": "Back",
   "wizard.next": "Next",
   "wizard.finish": "See result",
@@ -351,16 +375,39 @@ const id: Record<VoaCopyKey, string> = {
   "frame.subtitle":
     "Tahu hasilnya dalam 10 detik, beli dalam 5 menit, pantau seperti paket kiriman.",
 
-  "trust.questions.label": "pertanyaan singkat",
-  "trust.price.label":
-    "harga sudah termasuk semua biaya, tampil bersama hasil Anda",
-  "trust.government.label": "biaya tambahan ke pemerintah setelahnya",
-
   "hero.wa.line":
     "Ingin bertanya kepada orang dulu? Tim visa kami menjawab di WhatsApp.",
   "hero.wa.cta": "Hubungi kami di WhatsApp",
-  "hero.wa.who": "Itu Surya, dari tim kami.",
   "lockup.brand": "Bali Zero",
+
+  // --- the counter (VoaCounter.tsx): lockup, agent, order strip -------------
+  "counter.aria": "Pesanan Anda",
+  "counter.product": "B1 Visa on Arrival",
+  "counter.from": "mulai {price}, sudah termasuk semua biaya",
+  "counter.exact": "{price}, sudah termasuk semua biaya",
+  "counter.agent": "Surya · agen Anda",
+  "counter.stages.aria": "Posisi Anda",
+  "counter.stage.check": "Cek",
+  "counter.stage.result": "Hasil",
+  "counter.stage.passport": "Paspor",
+  "counter.stage.payment": "Pembayaran",
+  "counter.stage.tracking": "Pelacakan",
+  "counter.state.created": "Menyiapkan pembayaran",
+  "counter.state.awaiting_payment": "Menunggu pembayaran",
+  "counter.state.paid": "Lunas",
+  "counter.state.failed": "Pembayaran belum selesai",
+  "counter.state.expired": "Sesi pembayaran kedaluwarsa",
+  "counter.state.refunded": "Dana dikembalikan",
+  "counter.state.Received": "Diterima",
+  "counter.state.In review": "Sedang ditinjau",
+  "counter.state.Blocked": "Perlu tindakan Anda",
+  "counter.state.Submitted": "Sudah diajukan",
+  "counter.state.Approved": "Disetujui",
+  "counter.state.Rejected": "Tidak disetujui",
+  "counter.state.Delivered": "Terkirim",
+  "counter.pay": "Lanjut ke pembayaran · {price} →",
+  "landing.get.heading": "Yang Anda dapatkan",
+  "entry.sent.heading": "Kunci Anda sedang dikirim",
   "hero.wa.message":
     "Halo Bali Zero, saya ingin dibantu untuk Visa on Arrival.",
 
@@ -427,7 +474,7 @@ const id: Record<VoaCopyKey, string> = {
     "Kami belum dapat memeriksa kelayakan saat ini. Silakan coba lagi, atau ",
   "error.eligibility.link": "hubungi kami di WhatsApp",
 
-  "wizard.stepOf": "Langkah {current} dari {total}",
+  "wizard.stepOf": "Pertanyaan {current} dari {total}",
   "wizard.back": "Kembali",
   "wizard.next": "Lanjut",
   "wizard.finish": "Lihat hasil",

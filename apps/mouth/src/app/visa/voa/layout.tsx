@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { R19_CLASS, R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
+import { r19FontClassName } from "@/lib/theme/r19Fonts";
 import { isGarudaVoaPublicEnabled } from "./flag";
-import "../../portal/r19-fonts.css";
+import { VoaCounter } from "./VoaCounter";
+import "@/styles/r19-direction-a.css";
 import "./voa-r19.css";
 
 /**
@@ -94,9 +97,19 @@ export default function GarudaVoaLayout({
   if (!isGarudaVoaPublicEnabled()) {
     notFound();
   }
+  // R19 Direction A (BRIEF-v2 R-1) is applied HERE, on the funnel's own
+  // wrapper and nowhere above it: the var set, its class and the two faces sit
+  // on the same element, so `--font-serif`/`--font-sans` resolve where they
+  // are declared. The counter inside is the chrome all six routes share.
   return (
-    <div data-theme="operative-light" data-product="my" data-garuda-voa="r19">
-      {children}
+    <div
+      data-theme="operative-light"
+      data-product="my"
+      data-garuda-voa="r19"
+      className={`${R19_CLASS} ${r19FontClassName}`}
+      style={R19_DIRECTION_A_VARS}
+    >
+      <VoaCounter>{children}</VoaCounter>
     </div>
   );
 }

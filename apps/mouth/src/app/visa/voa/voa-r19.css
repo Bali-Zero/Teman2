@@ -64,18 +64,11 @@
    * an ink strip.
    */
   min-height: calc(100dvh - 5.5rem);
-  box-shadow: 0 0 0 100vmax var(--bz-base);
+  box-shadow: 0 0 0 100vmax var(--surface-base);
   clip-path: inset(0 -100vmax -2rem);
-  background: var(--bz-base);
-  color: var(--tx-pure);
+  background: var(--surface-base);
+  color: var(--text-primary);
   font-family: var(--font-sans);
-
-  --surface-base: var(--bz-base);
-  --text-primary: var(--tx-pure);
-  --color-text-muted: var(--tx-secondary);
-  --color-border-subtle: var(--bz-border);
-  --accent-funnel: var(--tx-pure);
-  --text-on-accent: var(--bz-base);
 }
 
 /*
@@ -89,9 +82,10 @@
  * here at 0-3-0 so the ink fill actually reaches it.
  */
 [data-product="my"][data-garuda-voa="r19"] [data-funnel] {
-  --accent-funnel: var(--tx-pure);
-  --accent-funnel-text: var(--tx-pure);
-  --text-on-accent: var(--bz-base);
+  /* R-1/Q4 (2026-09-26): copper is the single primary action of the funnel. */
+  --accent-funnel: var(--r19-copper);
+  --accent-funnel-text: var(--r19-copper);
+  --text-on-accent: var(--surface-raised);
 }
 
 /*
@@ -912,18 +906,20 @@
   min-height: 52px;
   padding: 0 2rem;
   border: none;
-  border-radius: 10px;
-  background: var(--tx-pure);
-  color: var(--bz-base);
+  border-radius: 3px;
+  background: var(--r19-copper);
+  color: var(--text-on-accent);
   font-family: var(--font-sans);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
   transition: background 160ms ease;
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__next[data-ready="false"] {
-  background: var(--tx-secondary);
+  /* "Not yet", never an error: wash + muted ink (BRIEF-v2 §2.2). */
+  background: var(--r19-wash);
+  color: var(--r19-ink-muted);
 }
 
 [data-product="my"][data-garuda-voa="r19"] .voa-wiz__assure {
@@ -1029,35 +1025,6 @@
  * other figure on this surface wears. They used to be a three-column row of
  * 2xl numerals — a dashboard between the promise and the first question.
  */
-[data-product="my"][data-garuda-voa="r19"] .voa-terms {
-  display: grid;
-  gap: 0.35rem;
-  margin: 0.25rem 0 0;
-  padding: 0.85rem 0 0;
-  border-top: 1px solid var(--bz-border);
-  list-style: none;
-  font-family: var(--font-sans);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-terms li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-}
-
-[data-product="my"][data-garuda-voa="r19"] .voa-terms__n {
-  flex: none;
-  min-width: 0.8rem;
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  line-height: 1;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--bz-data);
-}
-
 /*
  * Hero handoff — "rather ask a person first?".
  *
@@ -1210,4 +1177,752 @@
   [data-product="my"][data-garuda-voa="r19"] .voa-q {
     margin-bottom: 0.75rem;
   }
+}
+
+/*
+ * ===========================================================================
+ * «IL BANCO» — the counter (BRIEF-v2 §3.3, 2026-09-26)
+ *
+ * One calm counter from the first question to "Delivered": the lockup, the
+ * named agent and the ORDER STRIP stay put (VoaCounter.tsx, mounted by
+ * layout.tsx) while the sheet under them changes. Tokens come from the R19
+ * Direction A set the layout spreads inline (r19Vars.ts); copper appears on
+ * exactly one thing per screen — the primary action.
+ * ===========================================================================
+ */
+[data-product="my"][data-garuda-voa="r19"] .voa-counter {
+  display: grid;
+  min-width: 0;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+  padding: 0.5rem 1.25rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__brand {
+  font-family: var(--font-sans);
+  font-weight: 750;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__product {
+  padding-left: 10px;
+  border-left: 1px solid var(--r19-line-strong);
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__agent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__face {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--r19-line-strong);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The order strip: one filed line, hairline above and below. */
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__strip {
+  border-top: 1px solid var(--r19-line);
+  border-bottom: 1px solid var(--r19-line);
+  background: var(--surface-raised);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__strip-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  padding: 0.7rem 1.25rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.85rem;
+  margin: 0;
+  min-width: 0;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__item {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--r19-ink-muted);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__price {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 450;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__state {
+  padding: 2px 8px;
+  border: 1px solid var(--r19-structure);
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--r19-structure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__stages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__stage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--r19-ink-muted);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-counter__stage
+  + .voa-counter__stage::before {
+  content: "";
+  width: 14px;
+  height: 1px;
+  margin-right: 0.35rem;
+  background: var(--r19-line-strong);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__n {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1px solid var(--r19-control-border);
+  border-radius: 50%;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-counter__stage[data-state="done"]
+  .voa-counter__n {
+  border-color: var(--r19-structure);
+  background: var(--r19-structure);
+  color: var(--surface-raised);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-counter__stage[data-state="current"] {
+  font-weight: 750;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-counter__stage[data-state="current"]
+  .voa-counter__n {
+  border: 2px solid var(--r19-structure);
+  color: var(--r19-structure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__desk {
+  min-width: 0;
+  padding: 0 0 2.5rem;
+}
+
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-counter__bar {
+    min-height: 56px;
+    padding: 0.35rem 1rem;
+  }
+
+  /* The strip names the product on a phone; the bar keeps mark + brand. */
+  [data-product="my"][data-garuda-voa="r19"] .voa-counter__product {
+    display: none;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-counter__face {
+    width: 32px;
+    height: 32px;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-counter__strip-in {
+    padding: 0.6rem 1rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"]
+    .voa-counter__stage:not([data-state="current"])
+    .voa-counter__stage-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"]
+    .voa-counter__stage
+    + .voa-counter__stage::before {
+    width: 8px;
+    margin-right: 0.2rem;
+  }
+}
+
+/* --- the sheet every route files on ------------------------------------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing,
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: none;
+  margin: 0;
+  padding: 1.25rem 1rem 1.5rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-head__title {
+  max-width: 22ch;
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 3.6vw, 46px);
+  font-weight: 450;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-side {
+  display: contents;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-head {
+  order: 1;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
+  order: 2;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-main {
+  order: 3;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-get {
+  order: 4;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-get__heading {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r19-ink-muted);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-get__list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-get__list li {
+  position: relative;
+  padding-left: 1.4rem;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-get__list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 0.8rem;
+  height: 1px;
+  background: var(--r19-structure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-sheet--landing
+  .voa-hero-wa__cta {
+  padding: 0 1.25rem;
+  border-color: var(--r19-structure);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--r19-structure);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-sheet--landing
+  .voa-hero-wa__cta:hover,
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-sheet--landing
+  .voa-hero-wa__cta:focus-visible {
+  background: var(--r19-structure);
+  color: var(--surface-raised);
+}
+
+@media (min-width: 48rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing,
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--flow {
+    margin: 1.5rem 1.25rem 0;
+    padding: 2.5rem;
+    border: 1px solid var(--r19-line);
+    border-radius: 4px;
+    background: var(--surface-raised);
+  }
+}
+
+@media (min-width: 64rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    grid-template-areas:
+      "head side"
+      "main side";
+    align-items: start;
+    column-gap: 4rem;
+    row-gap: 1.75rem;
+    padding: 2.75rem 3rem 3rem;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-head {
+    grid-area: head;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-main {
+    grid-area: main;
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-side {
+    display: grid;
+    grid-area: side;
+    gap: 1.75rem;
+    padding-left: 2rem;
+    border-left: 1px solid var(--r19-line);
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--landing .voa-hero-wa {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--r19-line);
+  }
+
+  [data-product="my"][data-garuda-voa="r19"] .voa-sheet--flow {
+    padding: 3rem;
+  }
+}
+
+/* --- the wizard on the sheet: «Question X of Y», one copper action ------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__count {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--r19-ink-muted);
+}
+
+/* The step's own name is still the focus target and still announced; the
+   rail above already prints it, so the sheet does not say it twice. */
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg[data-state="done"],
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg[data-state="current"] {
+  border-top-color: var(--r19-structure);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__seg {
+  border-top-color: var(--r19-line);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__filed {
+  border-color: var(--r19-line);
+  border-left-color: var(--r19-structure);
+  border-radius: 4px;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-q {
+  font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+  letter-spacing: -0.02em;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-option {
+  border-radius: 3px;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-option[aria-pressed="true"] {
+  border-color: var(--r19-structure);
+  box-shadow: inset 0 0 0 1px var(--r19-structure);
+  background: var(--r19-wash);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-option[aria-pressed="true"]::before {
+  border-color: var(--r19-structure);
+  background: var(--r19-structure);
+  box-shadow: inset 0 0 0 3px var(--surface-raised);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-field {
+  border-color: var(--r19-control-border);
+  border-radius: 3px;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__next:hover {
+  background: var(--r19-copper-hover);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-wiz__next[data-ready="false"]:hover {
+  background: var(--r19-wash);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-wiz__next:focus-visible,
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__action:focus-visible,
+[data-product="my"][data-garuda-voa="r19"] .voa-route:focus-visible,
+[data-product="my"][data-garuda-voa="r19"] .voa-counter__lockup:focus-visible {
+  outline: 3px solid var(--r19-copper);
+  outline-offset: 3px;
+}
+
+/* --- verdict: the stamp, the exact price and the key on one sheet -------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__head {
+  display: grid;
+  gap: 0.5rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 3.4vw, 44px);
+  font-weight: 450;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__lede {
+  max-width: 40rem;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__foot {
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--r19-line);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-offer__stamp {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--r19-line);
+  border-radius: 4px;
+  background: var(--surface-base);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-offer__price {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(30px, 3.2vw, 40px);
+  font-weight: 450;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-offer__note {
+  max-width: 24rem;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+  color: var(--tx-secondary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-offer .voa-entry {
+  max-width: none;
+  margin: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--r19-line);
+  border-left: 3px solid var(--r19-structure);
+  border-radius: 4px;
+  background: var(--surface-raised);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-entry__heading {
+  font-family: var(--font-serif);
+  font-weight: 450;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-verdict__quiet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+}
+
+/* DECLINE: the mirror, then two routes — the first is the one action. */
+[data-product="my"][data-garuda-voa="r19"] .voa-decline {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 40rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-decline p {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-decline__alt {
+  padding-left: 0.9rem;
+  border-left: 3px solid var(--r19-structure);
+  font-weight: 650;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-routes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border: 1px solid var(--r19-control-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-route--primary {
+  border-color: var(--r19-copper);
+  background: var(--r19-copper);
+  color: var(--text-on-accent);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-route--primary:hover {
+  border-color: var(--r19-copper-hover);
+  background: var(--r19-copper-hover);
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-route:not(.voa-route--primary):hover {
+  background: var(--r19-wash);
+}
+
+@media (min-width: 64rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-offer {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  [data-product="my"][data-garuda-voa="r19"] .voa-route {
+    flex: 1 1 100%;
+  }
+}
+
+/* --- checkout: the review line and the priced action -------------------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__form {
+  display: grid;
+  gap: 1rem;
+  max-width: 30rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__review {
+  margin: 0;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--r19-line);
+  border-bottom: 1px solid var(--r19-line);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 450;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__action {
+  min-height: 52px;
+  padding: 0 1.6rem;
+  border: none;
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-flow__action:disabled {
+  opacity: 1;
+  background: var(--r19-wash) !important;
+  color: var(--r19-ink-muted) !important;
+  cursor: not-allowed;
+}
+
+/* --- upload: UploadFlow on the same sheet (skin only, no logic) ---------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-upload main {
+  min-height: 0;
+  max-width: 34rem;
+  margin: 0;
+  padding: 0;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-upload h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 450;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-upload ul {
+  border-radius: 4px;
+  border-color: var(--r19-line);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-upload button {
+  min-height: 48px;
+  border-radius: 3px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-upload input[type="text"] {
+  min-height: 48px;
+  border-radius: 3px;
+  font-size: 16px;
+}
+
+/* --- tracker: the states as a filed timeline ----------------------------- */
+[data-product="my"][data-garuda-voa="r19"] .voa-timeline {
+  position: relative;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-timeline li {
+  position: relative;
+  min-height: 44px;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--r19-line);
+  font-family: var(--font-sans);
+  font-size: 15px;
+}
+
+[data-product="my"][data-garuda-voa="r19"]
+  .voa-timeline
+  li[aria-current="step"] {
+  border-left: 3px solid var(--r19-structure);
+  background: var(--surface-base);
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-tracker__total {
+  display: grid;
+  gap: 0.25rem;
+}
+
+[data-product="my"][data-garuda-voa="r19"] .voa-tracker__amount {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }

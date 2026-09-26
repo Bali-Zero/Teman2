@@ -17,6 +17,6 @@ import type { CSSProperties } from "react";
  * constant never resolves to red, on this surface or any other.
  */
 export const VOA_PRIMARY_ACTION_STYLE: CSSProperties = {
-  background: "var(--state-success)",
-  color: "var(--bz-base)",
+  background: "var(--r19-copper)",
+  color: "var(--text-on-accent)",
 };

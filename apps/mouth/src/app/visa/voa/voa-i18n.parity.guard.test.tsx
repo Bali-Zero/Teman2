@@ -52,6 +52,9 @@ const CONSUMER_FILES = [
   // instead of the hook — but the copy it renders is the same register's, and
   // a hardcoded sentence there is exactly as English as one anywhere else.
   "auth/continue/page.tsx",
+  // The counter every route is served across: lockup, agent, order strip,
+  // and the price wording the checkout borrows (2026-09-26, BRIEF-v2 §3.3).
+  "VoaCounter.tsx",
 ];
 
 const CONSUMER_SRC: Record<string, string> = Object.fromEntries(
@@ -110,6 +113,7 @@ const SAME_BY_DESIGN: Partial<Record<VoaCopyKey, string>> = {
   "lead.context.pageValue": "CRM lead context, English on purpose",
   "lockup.brand":
     "the brand's own name in the identity lockup, never translated",
+  "counter.product": "the permit's printed name, never translated",
 };
 
 describe("voa-i18n — EN and ID are the same funnel, twice", () => {
@@ -462,7 +466,8 @@ describe("voa-i18n — rendered", () => {
     expect(screen.getByText("Apa yang Anda perlukan?")).toBeTruthy();
     expect(screen.getByText("Mengurus Visa on Arrival baru")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Lanjut" })).toBeTruthy();
-    expect(screen.getByText("Langkah 1 dari 4")).toBeTruthy();
+    // Q8 (owner, 2026-08-27): «domanda X di Y» — the count names a QUESTION.
+    expect(screen.getByText("Pertanyaan 1 dari 4")).toBeTruthy();
     expect(document.documentElement.lang).toBe("id");
   });
 });

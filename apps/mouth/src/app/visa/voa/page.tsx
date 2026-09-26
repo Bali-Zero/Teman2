@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { BZLogo, useFunnelApp, type WizardStep } from "@balizero/core";
+import { useFunnelApp, type WizardStep } from "@balizero/core";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import type { CaseType, Purpose } from "@/components/garuda/declineEducation";
@@ -459,30 +459,32 @@ export default function VoaEligibilityPage() {
         role="region"
         aria-label={t("frame.title")}
         data-funnel="visa"
-        className="voa-sheet"
+        className="voa-sheet voa-sheet--landing"
       >
+        {/*
+         * The lockup, the named agent and the price now live on the counter
+         * (VoaCounter.tsx, mounted by layout.tsx) — the price is the first
+         * line under the lockup, before any question (owner rulings Q6/Q9).
+         * The sheet opens on the promise instead of repeating the name.
+         */}
         <header className="voa-head">
-          <p className="voa-lockup">
-            <BZLogo variant="round" size={28} priority />
-            <span className="voa-lockup__name">{t("lockup.brand")}</span>
-          </p>
-          <h1 className="voa-head__title">{t("frame.title")}</h1>
-          <p className="voa-head__lede">{t("frame.subtitle")}</p>
-          {/* The three terms, read as a filed line rather than a scoreboard. */}
-          <ul className="voa-terms">
-            <li>
-              <span className="voa-terms__n">4</span>
-              {t("trust.questions.label")}
-            </li>
-            <li>
-              <span className="voa-terms__n">1</span>
-              {t("trust.price.label")}
-            </li>
-            <li>
-              <span className="voa-terms__n">0</span>
-              {t("trust.government.label")}
-            </li>
-          </ul>
+          <h1 className="voa-head__title">{t("frame.subtitle")}</h1>
+        </header>
+        <aside className="voa-side" aria-labelledby="voa-get-heading">
+          {/*
+           * What the price buys, in three lines already written for the
+           * verdict leg — nothing new is claimed on the way in.
+           */}
+          <div className="voa-get">
+            <h2 className="voa-get__heading" id="voa-get-heading">
+              {t("landing.get.heading")}
+            </h2>
+            <ul className="voa-get__list">
+              <li>{t("next.step1")}</li>
+              <li>{t("verdict.accept.priceFooter")}</li>
+              <li>{t("next.step4")}</li>
+            </ul>
+          </div>
           {/*
            * Measured on production 2026-09-16 at 390px: the only WhatsApp
            * controls on this page were the nav link (height 0 — it lives
@@ -491,14 +493,11 @@ export default function VoaEligibilityPage() {
            * This is that control, and it is a WhatsAppLeadButton rather than
            * a bare wa.me anchor so the tap writes a lead_intents row first: a
            * tourist who leaves the funnel for a human is a lead saved, not a
-           * lead lost. The face is the named agent the owner ruled for this
-           * funnel (Cap Dinas v2, ruling 5) — a person, not a presence dot.
+           * lead lost. Surya's face moved up to the counter, where it stays
+           * on every screen instead of this one.
            */}
           <div className="voa-hero-wa">
-            <p className="voa-hero-wa__line">
-              {t("hero.wa.line")}{" "}
-              <span className="voa-hero-wa__who">{t("hero.wa.who")}</span>
-            </p>
+            <p className="voa-hero-wa__line">{t("hero.wa.line")}</p>
             <WhatsAppLeadButton
               source="garuda_voa"
               className="voa-hero-wa__cta"
@@ -511,18 +510,10 @@ export default function VoaEligibilityPage() {
               ]}
               context={{ surface: "voa_hero" }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- a 32px staff face; the optimiser adds nothing here */}
-              <img
-                className="voa-hero-wa__face"
-                src="/static/team/surya.jpg"
-                alt=""
-                width={32}
-                height={32}
-              />
               {t("hero.wa.cta")}
             </WhatsAppLeadButton>
           </div>
-        </header>
+        </aside>
         <main className="voa-main">
           <VoaWizard
             steps={steps}

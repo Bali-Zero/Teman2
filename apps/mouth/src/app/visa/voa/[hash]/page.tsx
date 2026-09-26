@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AppFrame,
   AppShareBar,
   AppStampReveal,
   AppWhatsAppCTA,
@@ -22,6 +21,8 @@ import { VOA_PRIMARY_ACTION_STYLE } from "../voa-action-style";
 import { NextSteps } from "../NextSteps";
 import { SafeClockHero } from "../SafeClock";
 import { useVoaLocale } from "../useVoaLocale";
+import { useVoaCounter } from "../VoaCounter";
+import { mergeCheckoutHandoff } from "../checkoutHandoff";
 import { voaCopy, type VoaCopyKey } from "../voa-copy";
 import {
   clearSubmittedAnswersForHash,
@@ -106,6 +107,7 @@ export default function VoaResultPage({
   const [data, setData] = useState<VoaResult | null>(null);
   const [err, setErr] = useState<VoaCopyKey | null>(null);
   const [deleted, setDeleted] = useState(false);
+  const { report } = useVoaCounter();
 
   useEffect(() => {
     void params.then((p) => setHash(p.hash));
@@ -124,6 +126,13 @@ export default function VoaResultPage({
         }
         const result = (await res.json()) as VoaResult;
         setData(result);
+        // The counter's strip turns from the catalogue floor to THIS figure,
+        // and keeps it for the upload and checkout screens of this tab.
+        report(
+          result.verdict === "ACCEPT"
+            ? { resultId: hash, verdict: "ACCEPT", priceIdr: result.price_idr }
+            : { resultId: hash, verdict: "DECLINE" },
+        );
         // Verdict + price shown together (they render on the same screen) —
         // one event covers both funnel steps the mandate names.
         tracker.resultViewed(hash);
@@ -136,24 +145,23 @@ export default function VoaResultPage({
 
   if (deleted) {
     return (
-      <AppFrame
-        funnel="visa"
+      <VerdictSheet
         title={t("verdict.title")}
-        subtitle={t("verdict.deleted.subtitle")}
+        lede={t("verdict.deleted.subtitle")}
       >
         <ContentLangSync locale={locale} />
-        <p>
+        <p className="voa-flow__lede">
           <a href="/visa/voa">{t("verdict.startAgain")}</a>
         </p>
-      </AppFrame>
+      </VerdictSheet>
     );
   }
 
   if (err) {
     return (
-      <AppFrame funnel="visa" title={t("verdict.title")} subtitle={t(err)}>
+      <VerdictSheet title={t("verdict.title")} lede={t(err)}>
         <ContentLangSync locale={locale} />
-        <p>
+        <p className="voa-flow__lede">
           <a href="/visa/voa">{t("verdict.startAgain")}</a> {t("verdict.or")}{" "}
           <a
             href={buildWhatsAppLink("visa", t("hero.wa.message"))}
@@ -164,22 +172,19 @@ export default function VoaResultPage({
           </a>
           .
         </p>
-      </AppFrame>
+      </VerdictSheet>
     );
   }
 
   if (!data) {
     return (
-      <AppFrame
-        funnel="visa"
+      <VerdictSheet
         title={t("verdict.title")}
-        subtitle={t("verdict.loading.subtitle")}
+        lede={t("verdict.loading.subtitle")}
       >
         <ContentLangSync locale={locale} />
-        <p style={{ color: "var(--color-text-muted)" }}>
-          {t("verdict.loading.body")}
-        </p>
-      </AppFrame>
+        <p className="voa-flow__lede">{t("verdict.loading.body")}</p>
+      </VerdictSheet>
     );
   }
 
@@ -198,110 +203,79 @@ export default function VoaResultPage({
     const edu = code
       ? buildDeclineEducation(code, answers ?? SUBMITTED_FALLBACK, t)
       : null;
+    // One copper action per screen: the Oracle route when the code has one,
+    // otherwise the WhatsApp route takes the copper.
+    const oracleLeads = edu?.routeKind === "oracle";
 
     return (
-      <AppFrame
-        funnel="visa"
+      <VerdictSheet
         title={t("verdict.title")}
-        subtitle={t("verdict.decline.subtitle")}
+        lede={t("verdict.decline.subtitle")}
       >
         <ContentLangSync locale={locale} />
-        <div
-          ref={stampRef}
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: "var(--space-4, 1.5rem)",
-          }}
-        >
-          <EmptyStampReveal />
-        </div>
-        <DeleteCheckControl
-          resultId={hash ?? ""}
-          onDeleted={() => setDeleted(true)}
-        />
-        {edu ? (
-          <section
-            style={{
-              display: "grid",
-              gap: "var(--space-3, 0.9rem)",
-              maxWidth: 520,
-            }}
-          >
-            {answers ? (
-              <p style={{ margin: 0, lineHeight: 1.6 }}>{edu.mirror}</p>
-            ) : null}
-            <p style={{ margin: 0, lineHeight: 1.6 }}>{edu.forbids}</p>
-            <p style={{ margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
-              {edu.alternative}
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gap: "var(--space-2, 0.6rem)",
-                maxWidth: 320,
-              }}
-            >
-              {edu.routeKind === "oracle" ? (
+        <div className="voa-offer">
+          <div ref={stampRef} className="voa-offer__stamp">
+            <EmptyStampReveal />
+          </div>
+          {edu ? (
+            <section className="voa-decline">
+              {answers ? <p>{edu.mirror}</p> : null}
+              <p>{edu.forbids}</p>
+              <p className="voa-decline__alt">{edu.alternative}</p>
+              <div className="voa-routes">
+                {oracleLeads ? (
+                  <a
+                    href="/visa/match"
+                    className="voa-route voa-route--primary"
+                    onClick={() =>
+                      tracker.ctaClicked("try_visa_match", "/visa/match")
+                    }
+                  >
+                    {t("verdict.decline.oracle")}
+                  </a>
+                ) : null}
                 <a
-                  href="/visa/match"
-                  onClick={() =>
-                    tracker.ctaClicked("try_visa_match", "/visa/match")
+                  href={buildWhatsAppLink(
+                    "visa",
+                    t("verdict.decline.wa.message"),
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={
+                    oracleLeads ? "voa-route" : "voa-route voa-route--primary"
                   }
-                  style={{
-                    display: "inline-block",
-                    textAlign: "center",
-                    padding: "0.9rem 1.4rem",
-                    borderRadius: 8,
-                    ...VOA_PRIMARY_ACTION_STYLE,
-                    textDecoration: "none",
-                    fontWeight: 600,
-                  }}
+                  onClick={() =>
+                    tracker.ctaClicked("continue_on_whatsapp_decline", "wa.me")
+                  }
                 >
-                  {t("verdict.decline.oracle")}
+                  {t("verdict.decline.wa")}
                 </a>
-              ) : null}
-              <a
-                href={buildWhatsAppLink(
-                  "visa",
-                  t("verdict.decline.wa.message"),
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() =>
-                  tracker.ctaClicked("continue_on_whatsapp_decline", "wa.me")
-                }
-                style={{
-                  display: "inline-block",
-                  textAlign: "center",
-                  padding: "0.9rem 1.4rem",
-                  borderRadius: 8,
-                  background: "#25D366",
-                  color: "#0a0a0a",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                {t("verdict.decline.wa")}
-              </a>
-            </div>
-          </section>
-        ) : null}
-        <AppShareBar
-          url={publicUrl}
-          title={t("verdict.decline.share.title")}
-          onShare={(c) => tracker.shareClicked(c)}
-        />
-      </AppFrame>
+              </div>
+            </section>
+          ) : null}
+        </div>
+        <div className="voa-verdict__quiet">
+          <DeleteCheckControl
+            resultId={hash ?? ""}
+            onDeleted={() => setDeleted(true)}
+          />
+          <AppShareBar
+            url={publicUrl}
+            title={t("verdict.decline.share.title")}
+            onShare={(c) => tracker.shareClicked(c)}
+          />
+        </div>
+      </VerdictSheet>
     );
   }
 
-  // ACCEPT
+  // ACCEPT — the stamp, the exact price and the key, on one sheet. ORDER IS
+  // THE POINT: the step that OPENS the application sits beside the price and
+  // above "delete this check", never behind a destructive control.
   return (
-    <AppFrame
-      funnel="visa"
+    <VerdictSheet
       title={t("verdict.accept.title")}
-      subtitle={
+      lede={
         data.published_filing_deadline
           ? // Deliberately NOT "your filing window": the clock below has a
             // `passed` branch, reachable because this result page is a
@@ -311,43 +285,31 @@ export default function VoaResultPage({
             t("verdict.accept.subtitle")
           : t("verdict.accept.subtitleNoDeadline")
       }
-      footer={t("verdict.accept.priceFooter")}
     >
       <ContentLangSync locale={locale} />
-      {data.published_filing_deadline ? (
-        <SafeClockHero
-          deadline={data.published_filing_deadline}
-          handoffHref={buildWhatsAppLink("visa", t("verdict.wa.deadlineMsg"))}
-        />
-      ) : null}
       <div className="voa-offer">
-        <div
-          ref={stampRef}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "var(--space-2, 0.5rem)",
-            paddingTop: "var(--space-4, 1.5rem)",
-          }}
-        >
+        <div ref={stampRef} className="voa-offer__stamp">
           <AppStampReveal
             code={formatIDR(data.price_idr)}
             ariaLabel={t("verdict.stamp.aria", {
               price: formatIDR(data.price_idr),
             })}
           />
+          <p className="voa-offer__note">{t("verdict.accept.priceFooter")}</p>
         </div>
-        {/* ORDER IS THE POINT, and it was backwards. The step that OPENS the
-          application used to render BELOW "delete this check" — a destructive
-          control ahead of the only forward path on the screen. Reachable only
-          once `data` is set, which itself requires `hash` (see the two effects
-          above), so this is never actually empty at render time. */}
+        {/* Reachable only once `data` is set, which itself requires `hash`
+          (see the two effects above), so this is never actually empty. */}
         <MagicLinkRequestForm resultId={hash ?? ""} />
       </div>
-      <DeleteCheckControl
-        resultId={hash ?? ""}
-        onDeleted={() => setDeleted(true)}
+      {data.published_filing_deadline ? (
+        <SafeClockHero
+          deadline={data.published_filing_deadline}
+          handoffHref={buildWhatsAppLink("visa", t("verdict.wa.deadlineMsg"))}
+        />
+      ) : null}
+      <NextSteps
+        handoffHref={buildWhatsAppLink("visa", t("verdict.wa.beforePayMsg"))}
+        hasDeadline={Boolean(data.published_filing_deadline)}
       />
       <AppWhatsAppCTA
         source="garuda_voa"
@@ -364,16 +326,48 @@ export default function VoaResultPage({
         stampRef={stampRef}
         onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
       />
-      <NextSteps
-        handoffHref={buildWhatsAppLink("visa", t("verdict.wa.beforePayMsg"))}
-        hasDeadline={Boolean(data.published_filing_deadline)}
-      />
-      <AppShareBar
-        url={publicUrl}
-        title={t("verdict.share.title")}
-        onShare={(c) => tracker.shareClicked(c)}
-      />
-    </AppFrame>
+      <div className="voa-verdict__quiet">
+        <DeleteCheckControl
+          resultId={hash ?? ""}
+          onDeleted={() => setDeleted(true)}
+        />
+        <AppShareBar
+          url={publicUrl}
+          title={t("verdict.share.title")}
+          onShare={(c) => tracker.shareClicked(c)}
+        />
+      </div>
+    </VerdictSheet>
+  );
+}
+
+/**
+ * The verdict leg's sheet — the same filed paper the wizard sits on, under
+ * the same counter, instead of core's AppFrame (whose inline chrome the
+ * funnel's stylesheet cannot reach, and which core's other funnels share).
+ */
+function VerdictSheet({
+  title,
+  lede,
+  children,
+}: {
+  title: string;
+  lede?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      role="region"
+      aria-label={title}
+      data-funnel="visa"
+      className="voa-sheet voa-sheet--flow"
+    >
+      <header className="voa-flow__head">
+        <h1 className="voa-flow__title">{title}</h1>
+        {lede ? <p className="voa-flow__lede">{lede}</p> : null}
+      </header>
+      {children}
+    </section>
   );
 }
 
@@ -431,6 +425,8 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
       });
       httpStatus = res.status;
       if (res.status === 202) {
+        // The checkout in this tab prefills it instead of asking again.
+        mergeCheckoutHandoff(resultId, { email });
         setStatus("sent");
         // The CTA that continues the money funnel — never the email
         // address itself, only that a request happened.
@@ -449,7 +445,7 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
     return (
       <section aria-labelledby="voa-entry-heading" className="voa-entry">
         <h2 className="voa-entry__heading" id="voa-entry-heading">
-          {t("entry.heading")}
+          {t("entry.sent.heading")}
         </h2>
         <p className="voa-entry__status" role="status">
           {t("entry.sent")}

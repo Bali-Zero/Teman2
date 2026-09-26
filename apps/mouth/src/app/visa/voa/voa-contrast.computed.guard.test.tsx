@@ -1,3 +1,4 @@
+import { R19_DIRECTION_A_VARS } from "@/lib/theme/r19Vars";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -224,9 +225,39 @@ const THEME_SELECTOR = mountedTheme(SURFACE_SELECTOR);
  * reason this `?? {}` is not a hole.
  */
 const THEME_BLOCK = findBlock(globalsCss, THEME_SELECTOR);
+
+/**
+ * THE INLINE LAYER, and it is the one the page is actually painted with.
+ *
+ * Re-pinned 2026-09-26 with BRIEF-v2 R-1 (R19 Direction A is the family
+ * language of the four funnels): `layout.tsx` now spreads
+ * `R19_DIRECTION_A_VARS` as an inline `style` on the SAME element that
+ * carries `data-theme`/`data-product`. An inline custom property beats both
+ * globals.css blocks for every name it declares, so a ground model without it
+ * would measure a page that no longer exists — family #2 again. Derived, not
+ * assumed: the layer joins only while the layout's own code (comments
+ * stripped) still spreads it, and hex case is normalised so the values
+ * compare with the lowercase ones globals.css declares.
+ */
+function mountsR19Inline(src: string): boolean {
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
+  return /style=\{R19_DIRECTION_A_VARS\}/.test(code);
+}
+
+const R19_INLINE: Record<string, string> = mountsR19Inline(layoutSrc)
+  ? Object.fromEntries(
+      Object.entries(R19_DIRECTION_A_VARS as Record<string, string>).map(
+        ([k, v]) => [k, String(v).toLowerCase()],
+      ),
+    )
+  : {};
+
 const SURFACE_TOKENS: Record<string, string> = {
   ...(THEME_BLOCK === null ? {} : parseTokens(THEME_BLOCK)),
   ...parseTokens(extractBlock(globalsCss, SURFACE_SELECTOR)),
+  ...R19_INLINE,
 };
 
 function resolveColor(
@@ -385,6 +416,21 @@ describe("resolver + contrast math — guilt and innocence (cicatrix #3)", () =>
    * exactly the two-constants-drifting-apart shape that put the guard on the
    * wrong palette in the first place.
    */
+  it("the mounted ground is paper: the inline R19 layer is in force (R-1)", () => {
+    expect(Object.keys(R19_INLINE).length).toBeGreaterThan(10);
+    expect(SURFACE_TOKENS["--surface-base"]).toBe("#f7f4ee");
+    expect(SURFACE_TOKENS["--r19-copper"]).toBe("#a44b36");
+  });
+
+  it("GUILTY: a layout that stops spreading the R19 set drops the layer", () => {
+    expect(mountsR19Inline('<div data-theme="x" data-product="my">')).toBe(
+      false,
+    );
+    expect(mountsR19Inline("// style={R19_DIRECTION_A_VARS}\n<div />")).toBe(
+      false,
+    );
+  });
+
   it("resolves against the theme layout.tsx actually mounts", () => {
     expect(layoutSrc).toContain(`data-theme="operative-light"`);
     expect(SURFACE_SELECTOR).toBe(
@@ -1410,8 +1456,16 @@ describe("the accent is copper (owner ruling 2026-09-20)", () => {
     expect(isRedFamily(rgbOf("var(--color-red-500, #ff2d4c)"))).toBe(true);
   });
 
+  // Re-pinned 2026-09-26 (BRIEF-v2 R-1): the inline R19 layer DECLARES
+  // --cta-bg (copper) on this ground, so the var no longer falls through to
+  // the chrome's blue fallback. The detector's guilt is proven on that blue
+  // itself, and the ground's own --cta-bg is proven to be no blue at all.
   it("GUILTY: the chrome CTA's blue trips the blue detector", () => {
-    expect(isBlueFamily(rgbOf("var(--cta-bg, #3a6dff)"))).toBe(true);
+    expect(isBlueFamily(toRgb("#3a6dff"))).toBe(true);
+  });
+
+  it("INNOCENT: on the paper ground --cta-bg is copper, not the chrome's blue", () => {
+    expect(isBlueFamily(rgbOf("var(--cta-bg, #3a6dff)"))).toBe(false);
   });
 
   /**
