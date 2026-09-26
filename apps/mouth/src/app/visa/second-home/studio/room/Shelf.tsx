@@ -18,6 +18,7 @@ import { getCopy } from "@/lib/secondhome-studio/copy";
 import {
   COUNTRY_PROGRAMMES,
   MALAYSIA_MM2H_TIERS,
+  PORTUGAL_D7_INCOME_FORMULA,
   type CountryProgramme,
   type SourcedCell,
 } from "@/lib/secondhome-studio/country-comparator";
@@ -246,6 +247,32 @@ function SourceLine({ cell }: { cell: SourcedCell<unknown> }) {
   );
 }
 
+/** Portugal D7's income cell is written for developers (it names the
+ *  structured constant); the atlas composes the sentence from that
+ *  constant's own sourced cells instead. */
+function d7IncomeCell(): SourcedCell<string> {
+  const f = PORTUGAL_D7_INCOME_FORMULA;
+  const rmmg = f.rmmg2026MonthlyEur;
+  const year = (rmmg.sourceLastUpdated ?? rmmg.capturedDate).slice(0, 4);
+  const value = getCopy("room.compare.d7Income")
+    .replace("{principal}", String(f.principalPercentOfRmmg.value))
+    .replace("{rmmg}", String(rmmg.value))
+    .replace("{year}", year)
+    .replace("{adult}", String(f.additionalAdultPercentOfRmmg.value))
+    .replace("{child}", String(f.dependentChildPercentOfRmmg.value));
+  return { ...rmmg, value, caveat: undefined };
+}
+
+function compareCell(
+  programme: CountryProgramme,
+  row: (typeof COMPARE_ROWS)[number],
+): SourcedCell<string> | undefined {
+  if (programme.id === "portugal_d7" && row === "incomeRequirement") {
+    return d7IncomeCell();
+  }
+  return programme[row] as SourcedCell<string> | undefined;
+}
+
 function CompareDrawer() {
   const programmes = COMPARED.map((id) =>
     COUNTRY_PROGRAMMES.find((p) => p.id === id),
@@ -274,7 +301,7 @@ function CompareDrawer() {
               <tr key={row}>
                 <th scope="row">{getCopy(`room.compare.${row}`)}</th>
                 {programmes.map((p) => {
-                  const cell = p[row] as SourcedCell<string> | undefined;
+                  const cell = compareCell(p, row);
                   return (
                     <td key={p.id}>
                       {cell ? (

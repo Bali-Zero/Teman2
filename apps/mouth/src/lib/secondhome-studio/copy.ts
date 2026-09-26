@@ -595,6 +595,8 @@ export const COPY = {
       incomeRequirement: "Income requirement",
       workRights: "Work status",
       notRecorded: "Not recorded",
+      d7Income:
+        "{principal}% of Portugal's monthly minimum wage for the main applicant (EUR {rmmg} a month in {year}), plus {adult}% for each additional adult and {child}% for each dependent child.",
       source: "Source",
       read: "read",
       registrySource: "E33 fact registry",

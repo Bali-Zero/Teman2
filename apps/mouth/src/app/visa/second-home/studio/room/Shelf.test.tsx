@@ -137,6 +137,10 @@ describe("the shelf — five drawers of real material", () => {
     expect(headers.join(" ")).toMatch(/Indonesia/);
     expect(headers.join(" ")).toMatch(/Malaysia/);
     expect(headers.join(" ")).toMatch(/Portugal/);
+    // Developer identifiers never reach the visitor (the D7 income cell
+    // names its structured constant; the atlas composes it instead).
+    expect(dialog.textContent).not.toMatch(/\b[A-Z0-9]+_[A-Z0-9_]{3,}\b/);
+    expect(dialog.textContent).toMatch(/EUR 920 a month/);
     const links = within(dialog).getAllByRole("link");
     expect(links.length).toBeGreaterThan(0);
     for (const link of links)
