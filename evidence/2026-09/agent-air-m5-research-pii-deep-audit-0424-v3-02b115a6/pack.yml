@@ -1,0 +1,117 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+seat_override: >-
+  R9 council quorum (2 distinct COUNCIL_REVIEW_SEATS in a journal.jsonl) not convened, and NO
+  external cross-family review (codex-spalla.sh or any other seat) is dispatched against this diff
+  at all. Reason: the #7453 review via codex-spalla.sh embedded a raw `git diff HEAD | head -1000`
+  into its prompt (script bug at .claude/scripts/codex-spalla.sh:277) and sent 969 client
+  full_name records in cleartext to a cloud LLM (OpenAI) — a Builder Contract §4 output-boundary
+  breach. Re-running the same tool against this diff (which still deletes the same plan.jsonl
+  content, now alongside a WhatsApp eval-set carrying client message bodies) would repeat the
+  exposure. The cross-family review for this PR is WITHDRAWN rather than dispatched; the
+  independent adversarial pass instead comes from the fresh Gear-3 gate session that reviewed
+  #7453 (a genuinely independent seat — Opus 5.5, different session, no contribution to the
+  build) and returned REWORK-BUILD with three concrete findings, recorded below as `dissent:`,
+  all three addressed in this commit. A separate lane is fixing codex-spalla.sh itself; it is out
+  of scope here.
+
+lanes:
+  - lane: pii-deep-audit-0424-v3-build
+    role: build
+    seat: claude-sonnet-5 (authoring session — quarantine, deletion, redaction, .gitignore, brief/pack)
+
+diff:
+  behaviour_change: >-
+    Deletes seven client-PII data files from a public repo: the six from #7453 (3 jsonl under
+    research/compliance/deep_audit_2026-04-24/, 3 xlsx at research/compliance/ root) plus
+    research/wa-copilot/2026-05-25-eval-set-v1.jsonl (client_full_name + client WhatsApp message
+    bodies, added by commit 9ee0ca260f). Redacts four client first names and four client-associated
+    phone numbers (in prose, not structured columns) from
+    research/operations/2026-06-04-wa-corpus-miner-session-report.md, keeping its two team-line
+    phone numbers and two numeric client_ids intact, with `adversarial_review: exempt-redaction-edit`
+    frontmatter added. Leaves research/operations/2026-08-15-adr-wa-runtime-openai-provider.md
+    untouched (its phone-shaped tokens verified as synthetic regex-test examples, not client data).
+    No code behaviour changes: the consumer scripts referencing the deep-audit paths
+    (scripts/crm_guardian_apply.py, scripts/crm_guardian_deep_audit.py) are untouched, unchanged
+    from #7453's disclosed deviation. Extends .gitignore with a pattern for the wa-copilot
+    eval-set shape alongside the two patterns from #7453.
+  surface: >-
+    research/compliance/, research/wa-copilot/, research/operations/ (one file, redaction only) +
+    .gitignore + this evidence pack. No backend, no frontend, no migration, no credential.
+    Supersedes PR #7453 (gate verdict REWORK-BUILD: residual PII outside original scope, an
+    undisclosed PII cloud-egress during review, and a false countable claim in the prior pack).
+
+receipts:
+  - claim: "wa-copilot eval-set file quarantined on Pro before deletion, git hash-object on Pro equals the origin/main blob id"
+    cmd: "git cat-file -p 8b3e7a7093792a3912217176bdd00d6fc0e8db8e | ssh pro-lan 'cat > ~/.agent/pii-quarantine/deep-audit-0424/2026-05-25-eval-set-v1.jsonl && chmod 600 ...' ; ssh pro-lan 'git hash-object ...'"
+    result: "match: 8b3e7a7093792a3912217176bdd00d6fc0e8db8e on both sides (local blob id and remote hash-object)"
+    exit: 0
+    ts: "2026-09-27T05:43:00Z"
+    seat: claude-sonnet-5
+  - claim: "the six #7453 files re-quarantined identically in this fresh worktree (same host, same quarantine dir, hashes unchanged from #7453's pack)"
+    cmd: "git rev-parse origin/main:<path> for all 6, compared against the already-quarantined Pro copies from the #7453 pack run"
+    result: "6/6 blob ids unchanged: 62f4066c5c03.../716afe89f5cb.../b269fdc2b4ea.../f0b48d7dbb63.../9b0d38c4442.../3bdc4aef031b..."
+    exit: 0
+    ts: "2026-09-27T05:40:00Z"
+    seat: claude-sonnet-5
+  - claim: "the redacted corpus-miner report carries zero residual occurrences of the four client first names and four client phone numbers, while both team-line numbers and both numeric client_ids are unchanged"
+    cmd: "grep -c -F <token> research/operations/2026-06-04-wa-corpus-miner-session-report.md for each of the 4 names + 4 phones (expect 0) and the 2 team numbers + 2 client ids (expect unchanged counts)"
+    result: "8/8 redacted tokens at 0 occurrences; both team numbers at 2 occurrences each (unchanged); both client_ids (5730, 6087) present at their original 2 lines"
+    exit: 0
+    ts: "2026-09-27T05:50:00Z"
+    seat: claude-sonnet-5
+  - claim: "a broader multi-token (first+last name) CRM full-name sweep of the redacted report finds zero hits, confirming the single-token first-name redaction closed the file's only structural PII"
+    cmd: python3 multitoken_check.py (scratch script; clients.full_name/companies.company_name with >=2 tokens, in-memory only)
+    result: "0 multi-token hits (same as pre-redaction — this file's client identification was first-name+phone, never a matched full name)"
+    exit: 0
+    ts: "2026-09-27T05:52:00Z"
+    seat: claude-sonnet-5
+  - claim: the redacted file passes the R1 adversarial-review gate
+    cmd: python3 scripts/check_adversarial_review.py --files research/operations/2026-06-04-wa-corpus-miner-session-report.md
+    result: "NOTICE: exempt (adversarial_review: exempt-redaction-edit); PASS - 1 research file(s) carry a valid adversarial review"
+    exit: 0
+    ts: "2026-09-27T05:53:00Z"
+    seat: claude-sonnet-5
+  - claim: ".gitignore covers the wa-copilot eval-set shape without sweeping up the legitimate baseline-snapshot report in the same directory"
+    cmd: "git check-ignore -q research/wa-copilot/2026-05-25-eval-set-v1.jsonl (expect rc=0); git check-ignore -q research/wa-copilot/2026-05-25-baseline-snapshot.md (expect rc=1)"
+    result: "eval-set rc=0 (ignored), baseline-snapshot rc=1 (correctly not ignored)"
+    exit: 0
+    ts: "2026-09-27T05:55:00Z"
+    seat: claude-sonnet-5
+  - claim: no code, script, or cron consumes the wa-copilot eval-set path (dead artifact, unlike the deep-audit files)
+    cmd: 'git grep -n "eval-set-v1" -- . '':!research/wa-copilot/*'''
+    result: "0 hits — no consumer"
+    exit: 0
+    ts: "2026-09-27T05:57:00Z"
+    seat: claude-sonnet-5
+
+dissent:
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7453 independent Gear-3 gate)"
+    objection: >-
+      Residual client PII left on origin/main outside #7453's original scope:
+      research/wa-copilot/2026-05-25-eval-set-v1.jsonl (50 client_full_name values, 49 client
+      WhatsApp message bodies), plus two research/operations/ docs needing triage for client-row
+      CRM phone numbers in prose.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7453 independent Gear-3 gate)"
+    objection: >-
+      Client PII sent in cleartext to a cloud LLM during #7453's review: codex-spalla.sh embeds a
+      raw diff into its Codex prompt with no redaction pass, and the #7453 dispatch carried 959
+      deleted plan.jsonl lines (969 full_name records) to OpenAI. Undisclosed in that PR's pack.
+    status: CONFIRMED
+  - seat: "opus-5-5-gate (fresh session, M5, PR #7453 independent Gear-3 gate)"
+    objection: >-
+      pack.yml's seat_override in #7453 declared net churn 1871, but the CI-equivalent size term
+      on the mb-to-head numstat measures 1963 (1871 omitted the pack.yml file's own 92 lines) —
+      a false countable claim, though the gear conclusion (3) was unaffected either way.
+    status: CONFIRMED
+
+unresolved: >-
+  research/operations/2026-06-04-wa-corpus-miner-session-report.md's `client_case: false`
+  frontmatter predates this PR and appears inaccurate given the file's content (real client
+  first-name+phone identifiers) — not corrected here (out of scope, a taxonomy fix belongs to a
+  separate pass over the research/ corpus, not a PII-removal PR). codex-spalla.sh's raw-diff
+  exposure is a separate lane's fix, tracked outside this PR. Git history on origin/main still
+  holds all seven removed blobs and the corpus-miner report's prior unredacted revisions; a
+  rewrite is a separate operator decision (§Solo-operatore), same posture as every prior lane in
+  this chain (#7398/#7411/#7447/#7453).
