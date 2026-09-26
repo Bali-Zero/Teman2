@@ -85,9 +85,11 @@ name: wa team promises tests
 # `postgresql-16` (server package, puts `pg_ctl`/`initdb` on `PATH`) to this
 # runner, or gives the real-PG suites a `DATABASE_URL` mode of their own.
 #
-# The 94/16 unit-vs-skip split below is this corpus's floor the day this file
-# was written (`test_wa_team_promises*.py`, REAL_PG unset): the 16 skips are
-# exactly the real-PG opt-in cases this file does not enable.
+# The 122/21 unit-vs-skip split below is this corpus's floor after #7413
+# merged to main (2026-09-27, `test_wa_team_promises*.py`, REAL_PG unset):
+# the 21 skips are exactly the real-PG opt-in cases this file does not
+# enable. (Superseded the original 94/16 count from before #7413 merged —
+# found stale by the same fresh gate that found the missing plugin above.)
 
 on:
   pull_request:
@@ -97,7 +99,11 @@ on:
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
       - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - "apps/backend-rag/backend/__init__.py"
+      - "apps/backend-rag/backend/services/__init__.py"
+      - "apps/backend-rag/backend/services/wa_copilot/__init__.py"
       - "scripts/tg_gateway_verdict.py"
       - "scripts/tg_notify.py"
       - ".github/workflows/wa-team-promises-tests.yml"
@@ -113,7 +119,11 @@ on:
       - "scripts/sql/pro_local/team_promises*.sql"
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
+      - "scripts/tests/__init__.py"
       - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - "apps/backend-rag/backend/__init__.py"
+      - "apps/backend-rag/backend/services/__init__.py"
+      - "apps/backend-rag/backend/services/wa_copilot/__init__.py"
       - "scripts/tg_gateway_verdict.py"
       - "scripts/tg_notify.py"
       - ".github/workflows/wa-team-promises-tests.yml"
@@ -141,15 +151,20 @@ jobs:
           python-version: "3.11"
 
       # setup-python provisions a CLEAN interpreter: pip/setuptools/wheel
-      # only. `asyncpg` ships manylinux wheels (no compiler needed) and is
-      # the only third-party import the corpus needs when REAL_PG is unset —
-      # `scripts/wa_team_promises.py` and the wa_copilot regex module it
-      # imports are otherwise stdlib-only. Measured locally: `pip show
-      # asyncpg` on this repo's own `apps/backend-rag/requirements.txt` pins
-      # `>=0.31.0`; pinned here to the same floor so this job never drifts
-      # ahead of what the runtime actually ships.
+      # only. `asyncpg` ships manylinux wheels (no compiler needed).
+      # `pytest-asyncio` is ALSO required, and this was missed in the first
+      # draft — found by the fresh gate on PR #7429 and reproduced in CI (run
+      # 36254345568): every `@pytest.mark.asyncio` test in
+      # test_wa_team_promises.py (`test_run_init_schema_*`,
+      # `test_cli_main_*`) failed with "async def functions are not natively
+      # supported" without the plugin, since this repo has no root-level
+      # pytest.ini/pyproject.toml/setup.cfg to supply it implicitly. Same
+      # shape as `lint-golden-rule-10.yml:51`. Pinned to `>=1.4.0`, the floor
+      # in `apps/backend-rag/requirements.txt:113` (and what
+      # `requirements.lock.txt` pins), so this job never drifts ahead of what
+      # the runtime actually ships.
       - name: Install test deps
-        run: pip install --quiet pytest "asyncpg>=0.31.0"
+        run: pip install --quiet pytest "pytest-asyncio>=1.4.0" "asyncpg>=0.31.0"
 
       # ONE run, and the assertion is on tests that PASSED — not on tests
       # collected, and not on the exit code alone. Each of those three is a
@@ -169,7 +184,7 @@ jobs:
       - name: The T3 promise gate corpus still refuses to fabricate a measurement
         run: |
           set -uo pipefail
-          FLOOR=94   # the corpus size on main when this file was written (REAL_PG unset)
+          FLOOR=122   # the corpus size on main after #7413 merged (REAL_PG unset)
           RC=0
           OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
