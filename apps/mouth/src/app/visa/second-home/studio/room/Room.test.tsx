@@ -59,6 +59,10 @@ describe("the room — wall, desk, shelf around the wizard", () => {
     // pins the rule that builds it: below 64rem the wrapper is the strip,
     // ordered before the desk, avatar column 40px.
     const css = readFileSync(resolve(__dirname, "studio-room.css"), "utf-8");
+    // Mobile ruling: the action row is in-flow below 64rem (desktop stays sticky).
+    expect(css).toMatch(
+      /@media \(max-width: 63\.99rem\)\s*\{[^@]*?\.bz-shs-room \.bz-shs-actions\s*\{\s*position:\s*static;/,
+    );
     expect(css).toMatch(
       /@media \(max-width: 63\.99rem\)\s*\{[^@]*?\.bz-shs-room \.bz-shs-wall-top\s*\{[^}]*order:\s*2;[^}]*grid-template-columns:\s*40px/,
     );

@@ -174,6 +174,12 @@
   .bz-shs-room .bz-shs-card {
     padding-top: 16px;
   }
+  /* Ruling 2026-09-26 (team lead): below 64rem the Back/Continue row sits
+   * IN-FLOW right after the options, never sticky, so no option can ever sit
+   * under it. Desktop keeps QuestionCard's sticky footer. */
+  .bz-shs-room .bz-shs-actions {
+    position: static;
+  }
   .bz-shs-room .bz-shs-wall-top {
     order: 2;
     display: grid;
