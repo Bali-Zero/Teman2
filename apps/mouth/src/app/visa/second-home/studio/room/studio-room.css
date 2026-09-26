@@ -83,6 +83,10 @@
     0 0 0 5px var(--r19-line),
     0 10px 22px -18px rgb(29 44 59 / 45%);
 }
+/* Ari + chart wrapper: invisible on the desktop wall, the mobile strip below */
+.bz-shs-room .bz-shs-wall-top {
+  display: contents;
+}
 .bz-shs-room .bz-shs-frame--ari {
   order: 2;
   display: flex;
@@ -146,6 +150,130 @@
 .bz-shs-room .bz-shs-progress-sounding[data-state="current"]::before,
 .bz-shs-room .bz-shs-progress-sounding[data-state="current"]::after {
   background: var(--r19-structure);
+}
+
+/* The mobile wall is ONE compact strip above the sheet: Ari 40px, the role on
+ * one line, the chart as one labelled line + a thin scale. It must stay
+ * ≤72px so the first sheet's last option clears the sticky Back/Continue row
+ * at 390×844 (BRIEF-v2 §2.5; probed in the render scenario). */
+@media (max-width: 63.99rem) {
+  /* vertical economy above the sheet: every px here is a px of options
+   * clearing the sticky action row */
+  .bz-shs-room .bz-shs-room-grid {
+    gap: 8px;
+  }
+  .bz-shs-room .bz-shs-door {
+    min-height: 44px;
+  }
+  .bz-shs-room .bz-shs-masthead {
+    font-size: 1.75rem !important;
+  }
+  .bz-shs-room .bz-shs-desk {
+    padding-top: 8px;
+  }
+  .bz-shs-room .bz-shs-card {
+    padding-top: 16px;
+  }
+  .bz-shs-room .bz-shs-wall-top {
+    order: 2;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 4px;
+    align-items: center;
+    margin: 5px;
+    padding: 8px 12px;
+    background: var(--surface-raised);
+    border: 1px solid var(--r19-line-strong);
+    border-radius: 2px;
+    box-shadow:
+      0 0 0 4px var(--surface-raised),
+      0 0 0 5px var(--r19-line);
+  }
+  .bz-shs-room .bz-shs-wall-top > .bz-shs-frame {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .bz-shs-room .bz-shs-wall-top > .bz-shs-frame--ari {
+    display: contents;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-ari-photo {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 40px;
+    height: 40px;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-ari-caption {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-ari-name {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-ari-line {
+    display: none;
+  }
+  .bz-shs-room
+    .bz-shs-wall-top:not(:has(.bz-shs-frame--chart))
+    .bz-shs-ari-line {
+    display: block;
+    font-size: 15px;
+  }
+  .bz-shs-room .bz-shs-wall-top > .bz-shs-frame--chart {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-frame-title {
+    flex: none;
+    margin: 0;
+    padding: 0;
+    font-size: 10px;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-rail {
+    display: contents;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-meta {
+    order: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-meta p {
+    font-size: 12.5px;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-current {
+    display: block !important;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-name {
+    display: none !important;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-scale {
+    order: 2;
+    flex: 1 0 100%;
+    gap: 4px;
+  }
+  .bz-shs-room .bz-shs-wall-top .bz-shs-progress-sounding {
+    min-height: 8px;
+  }
 }
 
 /* ── desk ────────────────────────────────────────────────────────────── */

@@ -32,32 +32,39 @@ export function Wall({ chart, map }: WallProps) {
   const ari = ariLine();
   return (
     <aside className="bz-shs-wall" aria-label={getCopy("room.wall.label")}>
-      {ari ? (
-        <figure className="bz-shs-frame bz-shs-frame--ari">
-          <Image
-            className="bz-shs-ari-photo"
-            src={ari.photo}
-            alt=""
-            width={56}
-            height={56}
-          />
-          <figcaption className="bz-shs-ari-caption">
-            <span className="bz-shs-ari-name">
-              {ari.name} · {ari.role}
-            </span>
-            <span className="bz-shs-ari-line">
-              {getCopy("room.wall.deskLine")}
-            </span>
-          </figcaption>
-        </figure>
-      ) : null}
-      {chart ? (
-        <figure className="bz-shs-frame bz-shs-frame--chart">
-          <figcaption className="bz-shs-frame-title">
-            {getCopy("room.wall.chartTitle")}
-          </figcaption>
-          {chart}
-        </figure>
+      {ari || chart ? (
+        // One wrapper: two frames on the desktop wall, ONE compact strip above
+        // the sheet on mobile (≤72px, so the sheet's options clear the sticky
+        // Back/Continue row at 390×844 — BRIEF-v2 §2.5).
+        <div className="bz-shs-wall-top">
+          {ari ? (
+            <figure className="bz-shs-frame bz-shs-frame--ari">
+              <Image
+                className="bz-shs-ari-photo"
+                src={ari.photo}
+                alt=""
+                width={56}
+                height={56}
+              />
+              <figcaption className="bz-shs-ari-caption">
+                <span className="bz-shs-ari-name">
+                  {ari.name} · {ari.role}
+                </span>
+                <span className="bz-shs-ari-line">
+                  {getCopy("room.wall.deskLine")}
+                </span>
+              </figcaption>
+            </figure>
+          ) : null}
+          {chart ? (
+            <figure className="bz-shs-frame bz-shs-frame--chart">
+              <figcaption className="bz-shs-frame-title">
+                {getCopy("room.wall.chartTitle")}
+              </figcaption>
+              {chart}
+            </figure>
+          ) : null}
+        </div>
       ) : null}
       {map ? (
         <figure className="bz-shs-frame bz-shs-frame--map">

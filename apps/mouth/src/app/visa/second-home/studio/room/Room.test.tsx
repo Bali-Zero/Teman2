@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,6 +45,23 @@ describe("the room — wall, desk, shelf around the wizard", () => {
     const desk = screen.getByRole("main", { name: "Ari's desk" });
     expect(within(desk).getByRole("radiogroup")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("Ari and the chart share one wrapper that becomes a single strip above the sheet on mobile", () => {
+    const { container } = render(<StudioApp />);
+    const strip = container.querySelector<HTMLElement>(".bz-shs-wall-top");
+    expect(strip).not.toBeNull();
+    expect(
+      within(strip!).getByText("Ari · Team Leader, Setup"),
+    ).toBeInTheDocument();
+    expect(within(strip!).getByRole("progressbar")).toBeInTheDocument();
+    // jsdom has no layout; the ≤72px strip is proven by the render probe. This
+    // pins the rule that builds it: below 64rem the wrapper is the strip,
+    // ordered before the desk, avatar column 40px.
+    const css = readFileSync(resolve(__dirname, "studio-room.css"), "utf-8");
+    expect(css).toMatch(
+      /@media \(max-width: 63\.99rem\)\s*\{[^@]*?\.bz-shs-room \.bz-shs-wall-top\s*\{[^}]*order:\s*2;[^}]*grid-template-columns:\s*40px/,
+    );
   });
 
   it("opening a drawer mid-flow leaves the question, the answer and the saved plan untouched", () => {
