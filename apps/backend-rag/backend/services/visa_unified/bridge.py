@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ _CONTEXT_TTL = timedelta(days=30)
 
 @dataclass(frozen=True)
 class FunnelContext:
-    """Snapshot of a wizard completion, safe to inject into an LLM prompt."""
+    """Snapshot of a wizard completion or a Visa Clock run, safe to inject into an LLM prompt."""
 
     check_hash: str
     nationality: str
@@ -31,28 +31,63 @@ class FunnelContext:
     estimated_cost_idr: int | None
     alternatives: list[str]
     referral_mode: bool
+    branch: str = "match"
+    visa_type: str | None = None
+    entry_date: date | None = None
+    expiry_date: date | None = None
+    extensions_possible: int | None = None
+    extension_days: int | None = None
+
+
+def _as_date(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+    return value if isinstance(value, date) else None
 
 
 async def get_funnel_context(check_hash: str, pool: Any) -> FunnelContext | None:
-    """Load the wizard snapshot for `check_hash`.
+    """Load the wizard / Visa Clock snapshot for `check_hash`.
 
-    Returns None when the row is absent or older than _CONTEXT_TTL.
-    The TTL is a safety net against long-held JWTs replaying ancient
-    wizard state; authoritative freshness comes from the JWT's `exp`.
+    Returns None when the row is absent, or when a match row is older than
+    _CONTEXT_TTL. The TTL is a safety net against long-held JWTs replaying
+    ancient wizard state; authoritative freshness comes from the JWT's `exp`.
+    Clock rows have no TTL: GET /api/visa/clock/{hash} re-issues a fresh JWT
+    for them at any age.
     """
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT hash, nationality, purpose, duration_months, budget_band,
+            SELECT hash, branch, nationality, purpose, duration_months, budget_band,
                    recommended_visa, recommendation_reason, alternatives,
-                   estimated_cost_idr, created_at
+                   estimated_cost_idr, created_at,
+                   visa_type, entry_date, expiry_date,
+                   extensions_possible, extension_days
               FROM visa_checks
-             WHERE hash = $1 AND branch = 'match'
+             WHERE hash = $1
             """,
             check_hash,
         )
     if row is None:
         return None
+
+    if row.get("branch") == "clock":
+        return FunnelContext(
+            check_hash=row["hash"],
+            nationality="",
+            purpose="",
+            duration_months=0,
+            budget_band="",
+            recommended_visa=None,
+            estimated_cost_idr=None,
+            alternatives=[],
+            referral_mode=False,
+            branch="clock",
+            visa_type=row["visa_type"],
+            entry_date=_as_date(row["entry_date"]),
+            expiry_date=_as_date(row["expiry_date"]),
+            extensions_possible=row["extensions_possible"],
+            extension_days=row["extension_days"],
+        )
 
     created_at = row["created_at"]
     if created_at and created_at.tzinfo is None:
@@ -84,8 +119,50 @@ async def get_funnel_context(check_hash: str, pool: Any) -> FunnelContext | None
     )
 
 
+def _clock_preamble(context: FunnelContext) -> str:
+    """Ground-truth preamble for a visitor who ran the Visa Clock (no identifiers)."""
+    today = datetime.now(timezone.utc).date()
+    facts: list[str] = []
+    if context.visa_type:
+        facts.append(f"visa type {context.visa_type}")
+    if context.entry_date:
+        facts.append(f"entry date {context.entry_date.isoformat()}")
+    ended = False
+    if context.expiry_date:
+        days = (context.expiry_date - today).days
+        ended = days < 0
+        if ended:
+            remaining = f"already ended {-days} day{'s' if days != -1 else ''} ago"
+        elif days == 0:
+            remaining = "ends today"
+        else:
+            remaining = f"{days} day{'s' if days != 1 else ''} remaining"
+        facts.append(f"permitted stay ends {context.expiry_date.isoformat()} ({remaining})")
+    if context.extensions_possible is not None:
+        if context.extensions_possible and context.extension_days:
+            facts.append(
+                f"the catalogue allows {context.extensions_possible} extension(s) "
+                f"of {context.extension_days} days each"
+            )
+        elif not context.extensions_possible:
+            facts.append("the catalogue lists no extension for this visa")
+    preamble = (
+        "The user is already in Indonesia and just used our Visa Clock. "
+        f"Ground truth from the clock: {'; '.join(facts) or 'no dates recorded'}. "
+        "Always quote these dates as given. Never invent dates, fees, fines or "
+        "penalties, and give no prices in chat: say Bali Zero will confirm on "
+        "WhatsApp."
+    )
+    if ended:
+        preamble += (
+            " The permitted stay has already ended: give no procedural advice "
+            "and direct the user to the Bali Zero visa team today."
+        )
+    return preamble + "\n\n"
+
+
 def augment_chat_system_prompt(context: FunnelContext, base_prompt: str) -> str:
-    """Prepend wizard ground-truth to an Oracle chat system prompt.
+    """Prepend wizard / Visa Clock ground-truth to an Oracle chat system prompt.
 
     For normal (non-abstained) completions, the augmentation names the
     recommended visa, the Bali Zero IDR cost, and the ranked alternatives,
@@ -94,7 +171,14 @@ def augment_chat_system_prompt(context: FunnelContext, base_prompt: str) -> str:
     For wizard_abstained completions, the augmentation explicitly tells
     the LLM NOT to produce a recommendation: it should gather details
     for a WhatsApp handoff instead.
+
+    For Visa Clock runs, the augmentation states the visa type, the entry
+    and permitted-stay dates, and the days remaining, and forbids invented
+    dates, fees or penalties.
     """
+    if context.branch == "clock":
+        return _clock_preamble(context) + base_prompt
+
     if context.referral_mode:
         preamble = (
             "The user just completed our visa wizard and their case did not "
