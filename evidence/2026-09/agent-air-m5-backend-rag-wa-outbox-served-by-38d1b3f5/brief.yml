@@ -1,0 +1,33 @@
+gear: 3
+task_id: backend-rag-wa-outbox-served-by
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/wa-outbox-served-by
+gate_class: opus
+l_level: L3
+objective: >-
+  Persist CodexLegResult.served_by (wa_codex_leg.py) onto wa_outbox in the SAME fenced
+  terminal UPDATE that already writes abstained_at/evidence_score (migration 314, live in
+  prod), so the ~74% support_abstain stub rate (docs/zantara-loop-state.md, Iteration 2
+  "Measured, not fixed") becomes a plain SQL GROUP BY instead of a body-hash count. Floor
+  is 3 on migrations_v2 hot-zone alone (path term; net diff is ~245 lines, well under the
+  SIZE term's own threshold) — an additive nullable column plus a one-column carrier
+  addition to an already-fenced write, not a size-driven Gear-3.
+  During review, a real defect was found and fixed in the same PR (not deferred): the
+  fly-deploy.yml pipeline applies migrations_v2 on the PREVIOUS image before `deploy` rolls
+  the new worker onto 100% of live traffic, and again afterwards on the fresh image — so
+  there is a real, once-per-deploy window where the new worker's served_by bind would hit
+  `asyncpg.exceptions.UndefinedColumnError` before migration 322 has actually run.
+  `wa_outbox_worker.py::_finalize()` now retries the fenced write without served_by on
+  exactly that exception, so the row still finalizes to 'done' and no residual double-send
+  window opens for this new cause. Two independent Gear-3 council seats (codex-gpt-5.6-sol,
+  kimi-code/k3) reviewed the fix and returned ACCEPT-WITH-NOTES; their notes (tighten the
+  NULL-semantics wording, narrow the exception scope further, a non-blocking Literal-type
+  suggestion for wa_codex_leg.py) are recorded as dissent below — the wording note was
+  applied in-PR, the other two are follow-ups, not blockers.
+scope:
+  - "apps/backend-rag/backend/db/migrations_v2/322_wa_outbox_served_by.sql — new, additive nullable wa_outbox.served_by TEXT, no CHECK, no default, IF NOT EXISTS (318/321 convention)."
+  - "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py — persist_served_by carried like persist_score; _finalize() helper writes it in the same fenced terminal UPDATE and falls back to the pre-322 shape on UndefinedColumnError (deploy-window guard)."
+  - "apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py — served_by assertions across codex/support_abstain/scripted/reattached/failed-send/retry routes; a dedicated guilt-proof test; a dedicated deploy-window-fallback guilt+innocence test (drops/restores the column live)."
+  - "apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py — human-send route asserts the served_by bind is NULL (never calls the codex leg)."
+  - "docs/zantara-loop-state.md — KPI: served_by block (front, after Instrument corrections) with the GROUP BY query; Iteration-2 F3 bullet updated to point at it."
