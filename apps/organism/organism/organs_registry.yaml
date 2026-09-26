@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2c9616d5280e38467382f9a57d8177108e1f07965f5db56fbe90ac68e94146fb # pragma: allowlist secret
+checksum: d7320bec8364db68ffb26c1e9f0252a2ffe9f297bf5a28ce55cc1a1ca4bcccac # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3116,5 +3116,28 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/nlm-watchdog.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.s7_yield_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: scripts/s7-yield-run.sh
+  dependencies: []
+  recovery_action: human_only
+  recovery_params:
+    host: pro
+    label: com.balizero.s7-yield.weekly
+  severity_on_silence: warning
+  notes: S7 CRM yield draft generator, Sunday 04:00 WITA via cron-runner.sh ->
+    scripts/s7-yield-run.sh -> scripts/s7_yield_draft_local.py (read-only DB role,
+    local Ollama only, drafts under $HOME outside the repo). human_only because a
+    re-run produces a fresh batch of client pitch drafts; the healer must not trigger
+    that on its own. expected_hb_seconds is 8 days for a weekly job. Kill switch
+    S7_YIELD_ENABLED=false (S7_YIELD_OFF=1 still honoured) writes status=disabled.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.s7_yield_weekly.json
     timestamp_field: ts
     status_field: status
