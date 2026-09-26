@@ -81,7 +81,7 @@ async def test_champion_sse_yields_before_upstream_closes(monkeypatch):
     async def get_client() -> httpx.AsyncClient:
         return client
 
-    monkeypatch.setattr(rag_proxy, "get_proxy_client", get_client)
+    monkeypatch.setattr(rag_proxy, "get_stream_client", get_client)
     try:
         response = await asyncio.wait_for(
             rag_proxy.proxy_request(_request("/api/dashboard/portal-challenge/events")),
@@ -126,7 +126,7 @@ async def test_champion_sse_disconnect_closes_upstream(monkeypatch):
     async def get_client() -> httpx.AsyncClient:
         return client
 
-    monkeypatch.setattr(rag_proxy, "get_proxy_client", get_client)
+    monkeypatch.setattr(rag_proxy, "get_stream_client", get_client)
     try:
         response = await rag_proxy.proxy_request(_request("/api/dashboard/portal-challenge/events"))
         iterator = response.body_iterator
@@ -158,7 +158,7 @@ async def test_champion_sse_disconnect_before_first_chunk_closes_upstream(monkey
     async def send(message):
         pass
 
-    monkeypatch.setattr(rag_proxy, "get_proxy_client", get_client)
+    monkeypatch.setattr(rag_proxy, "get_stream_client", get_client)
     try:
         request = _request("/api/dashboard/portal-challenge/events")
         response = await rag_proxy.proxy_request(request)
@@ -196,3 +196,62 @@ async def test_json_proxy_keeps_status_headers_and_body(monkeypatch):
         assert upstream.closed is True
     finally:
         await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("/api/dashboard/portal-challenge/events", "stream"),
+        ("/api/dashboard/portal-challenge/events-archive", "shared"),
+        ("/api/dashboard/portal-challenge", "shared"),
+        ("/api/dashboard/summary", "shared"),
+        ("/api/crm/clients", "shared"),
+    ],
+)
+async def test_only_champion_events_use_the_stream_pool(monkeypatch, path, expected):
+    used: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "application/json"}, content=b"{}")
+
+    client = httpx.AsyncClient(
+        base_url="http://rag.internal:8080", transport=httpx.MockTransport(handle)
+    )
+
+    async def shared() -> httpx.AsyncClient:
+        used.append("shared")
+        return client
+
+    async def stream() -> httpx.AsyncClient:
+        used.append("stream")
+        return client
+
+    monkeypatch.setattr(rag_proxy, "get_proxy_client", shared)
+    monkeypatch.setattr(rag_proxy, "get_stream_client", stream)
+    try:
+        response = await rag_proxy.proxy_request(_request(path))
+        assert response.status_code == 200
+        assert used == [expected]
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_stream_client_is_a_separate_pool_closed_on_shutdown(monkeypatch):
+    monkeypatch.setenv("RAG_WORKER_URL", "http://rag.internal:8080")
+    monkeypatch.setattr(rag_proxy, "_proxy_client", None)
+    monkeypatch.setattr(rag_proxy, "_stream_client", None)
+    shared = await rag_proxy.get_proxy_client()
+    stream = await rag_proxy.get_stream_client()
+    try:
+        assert stream is not shared
+        assert await rag_proxy.get_stream_client() is stream
+        assert str(stream.base_url) == "http://rag.internal:8080"
+        # An exhausted stream budget fails fast instead of queueing like the shared pool.
+        assert stream.timeout.pool is not None and stream.timeout.pool <= 5.0
+        assert stream.timeout.read == shared.timeout.read
+    finally:
+        await rag_proxy.close_proxy_client()
+    assert shared.is_closed and stream.is_closed
+    assert rag_proxy._proxy_client is None and rag_proxy._stream_client is None
