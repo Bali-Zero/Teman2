@@ -1,0 +1,172 @@
+# Gear-3 Evidence Pack — wa_outbox.served_by (migration 322 + the fenced-write carrier).
+# Precedent modeled on evidence/2026-09/agent-nuzantara-backend-rag-b2-3a-schema-f39f3ec2/
+# (migration-only schema PR, same table) and the newer council format in
+# evidence/2026-09/agent-nuzantara-mouth-portal-reply-reminders-con-efdb78db/ (council_run ->
+# council-journal.jsonl). Written by the Claude session that built this PR (Sonnet 5, lane
+# backend-rag, worktree .worktrees/backend-rag-wa-outbox-served-by). Every receipt below ran
+# in this session against an isolated, dedicated local Postgres 17 database
+# (nuzantara_test_wa322) created solely for this PR's own verification — never the shared
+# CI/dev nuzantara_test.
+task_id: backend-rag-wa-outbox-served-by
+gear: 3
+mission_colour: BLUE
+gate_class: opus
+brief_ref: evidence/brief.yml
+base_sha: "a6768f8a7b709a97e3f5e801c9edad2fce7cf86b" # pragma: allowlist secret — origin/main at council time
+head_sha: "cf4170257d99209589b71d8e43a67be226b8ba8b" # pragma: allowlist secret — this pack's HEAD
+pii_scan: clean
+outcome: >-
+  Additive nullable column + a one-column carrier addition to an already-fenced production
+  write (migration 314, live). No production release, no real WhatsApp send, no client data
+  in this pack. A real deploy-window defect was found during review and fixed in the same
+  PR (see dissent) rather than deferred.
+
+compute_floor: 3
+compute_floor_source: path
+compute_floor_note: "evidence_pack_lint.compute_floor(files, numstat) on the staged diff (migrations_v2 hot zone, path term); net diff ~245 lines, well under the SIZE term's own threshold — this is a path-sourced floor, not a size-sourced one."
+
+deploy_impact:
+  merging_deploys: true
+  path: "apps/backend-rag/** -> fly-deploy.yml (nuzantara-rag)"
+  order: >-
+    Pre-deploy `run-migrations` runs apply-all via `flyctl ssh console` against the CURRENTLY
+    DEPLOYED (previous) image -- migration 322 is not in that image's checkout, so this step
+    is a no-op for it. `deploy` then rolls the NEW image (worker code that references
+    served_by) onto 100% of production traffic; `flyctl deploy --strategy rolling` does not
+    return until every machine is replaced and healthy. `run-sql-v2-migrations-post-deploy`
+    (needs: deploy) only starts after that, ssh-ing into the FRESH image to apply 322.
+    CONSEQUENCE (found this review, fixed this PR): there is a real, once-per-deploy window
+    where the new worker is fully live before the column exists. `_finalize()` in
+    wa_outbox_worker.py now catches exactly `asyncpg.exceptions.UndefinedColumnError` on the
+    served_by-bearing UPDATE and retries the pre-322 shape, so the row still finalizes to
+    'done' (no residual double-send) with served_by simply unset for that one row.
+  lock: >-
+    ADD COLUMN IF NOT EXISTS ... TEXT NULL with no default is catalog-only on Postgres >= 11
+    (no table rewrite, no row touched) -- same reasoning as migrations 314/318. SET LOCAL
+    lock_timeout='5s' / statement_timeout='30s' bound the ACCESS EXCLUSIVE wait, matching
+    314's convention; ~450 rows in production (per migration 318's own measurement) makes the
+    DDL itself instant regardless.
+  rollback: >-
+    Routine rollback = revert the worker commit only, keep the column (314/318 convention) --
+    the old worker's fenced UPDATE names status/abstained_at/evidence_score explicitly and
+    never references served_by, so a bare revert is safe by construction. A real
+    `DROP COLUMN` in production is a separately authorized destructive action, never part of
+    a routine revert; the migration's own ROLLBACK section exists for isolated up/down/up
+    validation (proven in receipts/roundtrip-up-down-up.txt), not a deploy-time path.
+
+numbering:
+  chosen: 322
+  last_on_main: "321_portal_reply_and_email.sql (git ls-tree origin/main a6768f8a7b)"
+  open_prs_swept: "gh pr list --state open --json number,files at open time: zero PRs claim a migrations_v2 number"
+
+lanes:
+  - lane: wa-outbox-served-by-build
+    role: build
+    seat: claude-sonnet-5
+  - lane: wa-outbox-served-by-council-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+    artifact: reviews/codex-gpt-5.6-sol-r1.md
+  - lane: wa-outbox-served-by-council-kimi
+    role: review
+    seat: kimi-code/k3
+    artifact: reviews/kimi-code-k3-r1.md
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: 'The _finalize() except clause wraps the WHOLE three-statement transaction (wa_outbox UPDATE + meta_inbox_messages UPDATE + _apply_pending_status), not just the served_by-bearing statement -- an UndefinedColumnError from either of the other two (hypothetically, an unrelated future column typo) would be misattributed to "migration 322 pending" and retried needlessly.'
+    status: PLAUSIBLE
+    resolution: >-
+      Kept as-is rather than restructured: neither of the other two statements references
+      served_by, so this exact exception from them is not reachable by anything in this diff
+      -- only a genuinely unrelated future bug could trigger it, and that bug would raise the
+      SAME exception class on the retry too (the retry's SQL is unchanged for those two
+      statements), so the failure stays loud rather than silently swallowed. Splitting the
+      wa_outbox UPDATE into its own transaction to narrow the catch exactly would change this
+      write's atomicity with the meta_inbox_messages UPDATE, which is a bigger behavioral
+      change than this PR's scope warrants. Recorded here rather than fixed silently.
+  - seat: codex-gpt-5.6-sol
+    objection: 'The migration and column COMMENT''s original wording ("NULL = no completion") is too narrow: a row finalized via the deploy-window fallback, or a historical row predating this column, also reads NULL and neither means "no completion happened".'
+    status: CONFIRMED
+    resolution: >-
+      Reworded in this PR (commit cf4170257d): the migration header, the column COMMENT, and
+      docs/zantara-loop-state.md's KPI block now say "route not recorded" and enumerate all
+      four NULL causes (failed generation, a route that never calls the codex leg, a
+      historical row, or the deploy-window fallback), and explicitly note this is NOT the
+      same narrower meaning NULL has for evidence_score.
+  - seat: codex-gpt-5.6-sol
+    objection: "The test's real DROP COLUMN / ADD COLUMN cycle needs a sacrificial, isolated database; the diff alone does not prove that isolation."
+    status: PLAUSIBLE
+    resolution: >-
+      True from the diff alone -- the isolation is a property of the test fixture module
+      (test_wa_outbox_worker_carrier.py's own documented header: TEST_DATABASE_URL default
+      nuzantara_test, CI's dedicated postgres:15 service, per-xdist-worker clones under
+      backend/tests/conftest.py, one file completes before the next starts without xdist),
+      unchanged by this PR. This session additionally ran the new test against a PRIVATE,
+      dedicated local database (nuzantara_test_wa322) created solely for this PR, never the
+      shared nuzantara_test -- receipts/pytest-final.txt.
+  - seat: kimi-code/k3
+    objection: "wa_codex_leg.CodexLegResult.served_by is a plain str, not a Literal[...] of the closed vocabulary -- the DB has no CHECK (by design, see Q2) and the type system doesn't enforce it either, so a future typo'd value would flow straight through."
+    status: PLAUSIBLE
+    resolution: >-
+      Not fixed in this PR: wa_codex_leg.py is outside this diff's scope (this PR only adds a
+      carrier for an existing field, it does not touch the producer). A cheap follow-up, not
+      a blocker for this PR's own correctness.
+  - seat: kimi-code/k3
+    objection: "The deploy-pipeline ordering that creates the deploy-window gap is systemic (fly-deploy.yml's pre-deploy migration job always sees the PREVIOUS image's checkout) and will recur for every future additive column+writer pair, not just this one."
+    status: CONFIRMED
+    resolution: >-
+      Correct and out of scope for this PR -- the `_finalize()` guard is the right LOCAL
+      mitigation for this column; a systemic fix (e.g. gating deploy on the migration job
+      seeing the NEW checkout) is a separate infra PR. Not filed as a ticket by this session;
+      flagged here for the release owner to triage.
+
+limitations:
+  - "No production release, no real WhatsApp send, no client PII in this pack or its receipts (synthetic phone numbers only, matching the pre-existing test module's own convention)."
+  - "The deploy-window fallback is proven against a live-dropped/restored column in an isolated test database, not against an actual rolling Fly deploy — the mechanism (fly-deploy.yml job ordering) is read from the workflow file, not independently re-run."
+  - "Council review was a static diff review (both seats: no tool execution, no test run) — the actual test suite (46 carrier+mocked tests, 24 migration lint/rollback tests, 70 total) was run and its output captured by this session, not independently reproduced by either council seat."
+
+release_requirements:
+  - "Fresh independent Opus 5.5 gate on the exact committed SHA before merge (repo Builder Contract §5)."
+  - "Coordinator/release owner confirms migration 322 lands via fly-deploy.yml's run-sql-v2-migrations-post-deploy job after this PR's merge, then runs the KPI query from docs/zantara-loop-state.md against PROD (Bites observation)."
+  - "First real outbox row created after deploy must show a non-NULL served_by matching CodexLegResult.served_by's closed vocabulary."
+
+cloud_ok: >-
+  Builder Contract §4 / SYMBIOSIS Law 2: this is a code-only lane. Both council seats received
+  only the repository diff (migration SQL, worker Python, test Python, one markdown doc) and a
+  static question set — no client rows, names, addresses, phone numbers, documents or
+  credentials. Test fixtures use synthetic phone numbers (matching the pre-existing test
+  module's own documented convention). This attests the actual no-PII scope of this review, not
+  a general exception.
+
+receipts:
+  - claim: "Full carrier + mocked worker + migration lint/rollback suite, final state, isolated DB"
+    cmd: "PYTHONPATH=.:../crm-cell pytest backend/tests/unit/services/test_wa_outbox_worker_carrier.py backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/db/test_migration_uniqueness.py backend/tests/db/test_migration_apply_strips_rollback.py backend/tests/db/test_migration_base_rollback.py backend/tests/db/test_migration_rollback_extraction.py backend/tests/app/setup/test_garuda_environment_matches_schema.py"
+    result: "70 passed"
+    exit: 0
+    ts: "2026-09-26T11:04:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/pytest-final.txt
+  - claim: "Guilt proof: the new served_by test fails against origin/main's worker (no column reference, no bind), passes against this PR's cure"
+    cmd: "cp aside; git show origin/main:<path> > <path>; pytest ...::test_served_by_persists_support_abstain -v; cp restore"
+    result: "1 failed against origin/main (assert None == 'support_abstain'); 46/46 passed after restore"
+    exit: 1
+    ts: "2026-09-26T11:03:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/guilt-cases.txt
+  - claim: "Migration 322 round-trip up -> down -> up on an isolated dedicated Postgres 17 database, zero failures"
+    cmd: "python -m backend.db.migrate apply-all (bootstrap); MigrationManager.rollback_migration('322_wa_outbox_served_by'); MigrationManager.apply_all_pending()"
+    result: "column + both ledger rows present before, absent after rollback, present again after reapply; reapply result {'applied': [322], 'skipped': [], 'failed': []}"
+    exit: 0
+    ts: "2026-09-26T11:02:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/roundtrip-up-down-up.txt
+  - claim: "Deterministic Gear-3 floor, path-sourced (migrations_v2 hot zone), on the full origin/main...HEAD diff"
+    cmd: "python3 scripts/evidence_pack_lint.py --changed-files-file <f> --numstat-file <f> --print-floor / --print-floor-source"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-26T11:01:00Z"
+    seat: claude-sonnet-5
+    artifact: receipts/floor.txt

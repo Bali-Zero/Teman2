@@ -1,0 +1,13 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m   [100%][0m
+============================= slowest 10 durations =============================
+0.04s call     backend/tests/app/setup/test_garuda_environment_matches_schema.py::test_environment_check_clauses_are_internally_consistent
+0.03s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_generated_supported_label_false_sets_score_only
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_generated_abstain_label_true_sets_abstained_at_eq_sent_at
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_retry_then_later_attempt_persists_its_own_carrier
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_takeover_mid_generation_aborts_before_send
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_stale_claim_at_terminal_commit_persists_nothing
+0.02s call     backend/tests/db/test_migration_apply_strips_rollback.py::test_apply_does_not_execute_rollback_section
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_support_negative_never_sets_abstained_at[False]
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_reattached_completion_persists_nothing
+0.02s setup    backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_discarded_stand_down_persists_nothing
+[32m[32m[1m70 passed[0m[32m in 4.28s[0m[0m

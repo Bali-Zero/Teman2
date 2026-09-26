@@ -1,0 +1,21 @@
+$ export DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_test_wa322
+$ PYTHONPATH=.:../crm-cell python3 receipts/roundtrip_322.py
+Orphan migrations in _schema_versions (files removed): [9999]. These are already applied and will be ignored.
+BEFORE: (True, True, True)
+rollback_ok: True
+AFTER ROLLBACK: (False, False, False)
+reapply result: {'applied': [322], 'skipped': [], 'failed': []}
+AFTER REAPPLY: (True, True, True)
+
+BEFORE/AFTER tuple = (served_by column exists in information_schema, row exists in
+_schema_versions WHERE migration_number=322, row exists in schema_migrations WHERE
+migration_name='322_wa_outbox_served_by'). rollback_migration() clears BOTH ledgers
+(2026-09-01 fix, migration_manager.py) and apply_all_pending() re-applies cleanly with
+zero failures on the very next call -- proves migration 322's ROLLBACK section is
+correctly extracted by split_migration_sql() (the forward DDL never executes the
+DROP COLUMN, and the DROP COLUMN is never left half-applied).
+
+Isolated dedicated Postgres 17 database (nuzantara_test_wa322, created fresh for this
+PR's own verification, never the shared CI/dev nuzantara_test), bootstrapped via
+scripts/ci_bootstrap_schema.py then python -m backend.db.migrate apply-all (321
+migrations applied cleanly, 322 last).
