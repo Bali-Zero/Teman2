@@ -25,6 +25,7 @@ import os
 import httpx
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 logger = logging.getLogger("zantara.backend")
 
@@ -74,6 +75,11 @@ _proxy_client_lock = asyncio.Lock()
 # Dedicated, persistent client for the intake-review target (Codex P0#2 — do NOT reuse the
 # RAG-base_url client). Created lazily under the same lock; closed in close_proxy_client().
 _intake_client: httpx.AsyncClient | None = None
+
+# Long-lived SSE paths get their own pool so open streams cannot starve heavy routes.
+# EXACT match: siblings under /api/dashboard stay on the shared pool.
+_STREAM_PATHS = frozenset({"/api/dashboard/portal-challenge/events"})
+_stream_client: httpx.AsyncClient | None = None
 
 _HOP_BY_HOP_RESPONSE = frozenset(
     {
@@ -140,6 +146,26 @@ async def get_proxy_client() -> httpx.AsyncClient:
     return _proxy_client
 
 
+async def get_stream_client() -> httpx.AsyncClient:
+    """Separate pool for long-lived SSE paths (_STREAM_PATHS).
+
+    Every open Kita tab pins one connection for up to 240 s; in the shared pool 50 open
+    streams starved every other heavy route (CRM, chat) until they closed. A short pool
+    timeout makes an exhausted stream budget fail fast (504, EventSource backs off)
+    instead of queueing.
+    """
+    global _stream_client
+    if _stream_client is None or _stream_client.is_closed:
+        async with _proxy_client_lock:
+            if _stream_client is None or _stream_client.is_closed:
+                _stream_client = httpx.AsyncClient(
+                    base_url=get_rag_worker_url(),
+                    timeout=httpx.Timeout(300.0, connect=10.0, pool=5.0),
+                    limits=httpx.Limits(max_connections=500, max_keepalive_connections=20),
+                )
+    return _stream_client
+
+
 async def get_intake_client() -> httpx.AsyncClient:
     """Persistent client for the intake-review target (Golden Rule #10 — never per-request).
 
@@ -167,10 +193,13 @@ async def get_intake_client() -> httpx.AsyncClient:
 
 
 async def close_proxy_client() -> None:
-    global _proxy_client, _intake_client
+    global _proxy_client, _intake_client, _stream_client
     if _proxy_client and not _proxy_client.is_closed:
         await _proxy_client.aclose()
         _proxy_client = None
+    if _stream_client and not _stream_client.is_closed:
+        await _stream_client.aclose()
+        _stream_client = None
     if _intake_client and not _intake_client.is_closed:
         await _intake_client.aclose()
         _intake_client = None
@@ -265,7 +294,10 @@ async def proxy_intake_review_request(request: Request) -> Response:
 
 async def proxy_request(request: Request) -> Response:
     """Forward a request to the rag process and return its response."""
-    client = await get_proxy_client()
+    if request.url.path in _STREAM_PATHS:
+        client = await get_stream_client()
+    else:
+        client = await get_proxy_client()
 
     # Build the outgoing request: same method, path, query, headers, body
     url = str(request.url.path)
@@ -276,13 +308,38 @@ async def proxy_request(request: Request) -> Response:
 
     body = await request.body()
 
+    resp = None
+    streaming = False
     try:
-        resp = await client.request(
-            method=request.method,
-            url=url,
-            headers=headers,
-            content=body,
-            follow_redirects=True,
+        upstream_request = client.build_request(
+            method=request.method, url=url, headers=headers, content=body
+        )
+        resp = await client.send(upstream_request, stream=True, follow_redirects=True)
+        content_type = resp.headers.get("content-type", "")
+        if "text/event-stream" in content_type:
+            streaming = True
+
+            async def stream_body():
+                try:
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+                finally:
+                    await resp.aclose()
+
+            return StreamingResponse(
+                stream_body(),
+                status_code=resp.status_code,
+                headers=_filter_response_headers(resp.headers),
+                media_type="text/event-stream",
+                background=BackgroundTask(resp.aclose),
+            )
+
+        content = await resp.aread()
+        return Response(
+            content=content,
+            status_code=resp.status_code,
+            headers=_filter_response_headers(resp.headers),
+            media_type=content_type or None,
         )
     except httpx.ConnectError as e:
         logger.error(f"RAG proxy connect error for {request.method} {url}: {e}")
@@ -298,23 +355,9 @@ async def proxy_request(request: Request) -> Response:
             status_code=504,
             media_type="application/json",
         )
-
-    # Return response — handle streaming for SSE/chunked responses
-    content_type = resp.headers.get("content-type", "")
-    if "text/event-stream" in content_type:
-        return StreamingResponse(
-            resp.aiter_bytes(),
-            status_code=resp.status_code,
-            headers=_filter_response_headers(resp.headers),
-            media_type="text/event-stream",
-        )
-
-    return Response(
-        content=resp.content,
-        status_code=resp.status_code,
-        headers=_filter_response_headers(resp.headers),
-        media_type=content_type or None,
-    )
+    finally:
+        if resp is not None and not streaming:
+            await resp.aclose()
 
 
 def create_proxy_router() -> APIRouter:

@@ -1,0 +1,101 @@
+task: >-
+  PORTAL-CHAMPION-FINALE-20260926 (BLUE, Dux Opus 5.5 xhigh). Owner intent:
+  kita.balizero.com/dashboard for the whole team makes Portal Champion
+  compelling for the final stretch — an interactive leaderboard with
+  contender photos — and whenever a team member earns a point every
+  logged-in Kita screen shows a celebratory GOAL animation naming that
+  member. Recovery + release of the Codex-prepared 19-file candidate of
+  2026-09-25 (frozen manifest aggregate sha256 d528380df865…069f), replayed
+  byte-exact onto current main, plus the internal API-to-RAG proxy fix
+  without which the rag-process SSE stream is buffered until it closes.
+  Campaign scoring, prize amounts and campaign dates are unchanged; events
+  carry staff presentation fields only, never client identity.
+lane: frontend/portal-champion-finish-0926
+machine: Pro
+date: "2026-09-26"
+
+gear: 3
+gear_reason: >-
+  Declared by the mandate (recovery of a full-stack SSE feature on the
+  release critical path; backend-rag deploys on merge, mouth needs an
+  explicit promote) and equal to the deterministic floor: 3, source `size`
+  (+2330/-73 across 28 files against merge-base 4b49607683 including this
+  evidence; +1956 for code, tests and plan alone; no hot-zone path),
+  measured with `scripts/evidence_pack_lint.py --print-floor
+  --print-floor-source`. No design choice changes, so there is no
+  architecture council; the Gear-3 council_run is two cross-family REVIEW
+  seats on the recovered candidate, followed by a fresh Opus 5.5 final gate.
+  The diff exceeds the ~400-net-line guideline because it is a frozen,
+  already-reviewed candidate plus its consumer-bound proxy fix and the
+  final gate's pool-isolation fix; about 900 of the added lines are tests. Splitting the proxy fix out would leave
+  that PR without its consumer (Builder Contract §2).
+
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    The 19 recovered files are byte-identical to the frozen manifest and no
+    candidate path drifted upstream between the original base a872cfa673
+    and origin/main 806a684c38.
+    probe: >-
+      /tmp/portal-champion-finish-0926/recover.py replay (19/19 MATCH) and
+      `git diff --name-status a872cfa673 origin/main -- <candidate paths>`
+      (empty). The per-file manifest is not committed: detect-secrets
+      reads its sha256 values as secrets; it stays in the release scratch
+      directory and in the builder review transcript it was recovered from.
+  A2: >-
+    Backend unit, scratch-PostgreSQL and real-Redis behaviour: goal SQL
+    parity with canonical scoring (duplicates, aliases, staff, deleted,
+    test/pilot tags, prior activation excluded), atomic publish-once dedup,
+    two subscribers, reconnect replay, 90-second window, future cursor,
+    reader teardown, non-blocking publish that swallows Redis/SQL failure.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/app/test_rag_proxy_stream.py
+      (+ CHAMPION_TEST_PG_SOCKET for the PG cases)
+  A3: >-
+    Frontend: celebration dedup/stale/clock-offset/reconnect/backoff,
+    widget order and contender selection, streaming Next proxy; tsc clean.
+    probe: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files> &&
+      ../../node_modules/.bin/tsc --noEmit
+  A4: >-
+    Full local chain: SSE bytes arrive before upstream close through BOTH
+    the Next proxy and the API rag_proxy; a goal published by the real
+    publish path reaches two simultaneous authenticated synthetic Chrome
+    sessions; unauthorized 401/403 on both proxies; duplicate suppressed;
+    missed goal replayed after a rag-process outage without reload.
+  A5: >-
+    Production: backend deploy SHA and frontend kita /api/health commit
+    equal the merge; authenticated live dashboard renders the arena with
+    portraits (image load counts only) and the events stream answers
+    `event: ready` through kita. No artificial production event is created.
+  A6: >-
+    Open event streams cannot starve other API-to-RAG traffic (final-gate
+    round 1): with 100 open streams through the real create_proxy_router a
+    heavy GET still returns 200 in under 1 s, shutdown closes the stream
+    client, a hidden tab holds no stream and resumes from its cursor when
+    visible, and a Redis outage answers 503 before any stream starts.
+    probe: >-
+      pool probe adapted from the gate's (N=100 and N=200) plus
+      test_rag_proxy_stream.py, TestPortalChallengeEndpoint and
+      PortalChampionCelebration.test.tsx, each red on 26162e7963.
+
+out_of_scope: >-
+  Scoring rules, prize amounts, campaign dates, client communications,
+  lockfiles, hooks/guards/settings, fly.toml/.env, and the pre-existing
+  realtime WebSocket client (src/lib/realtime.tsx) that defaults to the
+  production URL in local dev.
+
+assumptions:
+  - text: >-
+      Staff portraits served from /static/team are public staff UI and
+      intended; roster avatars that point at a missing file fall back to
+      initials (ChampionPortrait onError).
+    status: unverified
+    probe: >-
+      migration 229 values: 16/16 pass the portrait allow-list, 14/16 files
+      exist in apps/mouth/public/static/team; live load counts at PROVE-LIVE.

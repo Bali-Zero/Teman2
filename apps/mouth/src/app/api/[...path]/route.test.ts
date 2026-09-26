@@ -107,6 +107,44 @@ function bodyArrayBuffer(text: string): ArrayBuffer {
 import { logger } from "@/lib/logger";
 import { DELETE, GET, PATCH, POST, PUT } from "./route";
 
+describe("Portal Champion streaming proxy", () => {
+  it("forwards events before the upstream stream closes and cancels upstream with the request", async () => {
+    const abort = new AbortController();
+    const upstreamBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode("event: ready\ndata: {}\n\n"),
+        );
+      },
+    });
+    const upstream = new Response(upstreamBody, {
+      headers: { "Content-Type": "text/event-stream" },
+    });
+    const buffer = vi.spyOn(upstream, "arrayBuffer");
+    vi.mocked(global.fetch).mockResolvedValueOnce(upstream);
+    const request = Object.assign(
+      new MockNextRequest(
+        "https://kita.balizero.com/api/dashboard/portal-challenge/events",
+        { headers: { "Last-Event-ID": "123-0" } },
+      ),
+      { signal: abort.signal },
+    );
+    const response = await GET(request as never);
+    expect(buffer).not.toHaveBeenCalled();
+    expect(response.headers.get("content-type")).toBe("text/event-stream");
+    const calls = vi.mocked(global.fetch).mock.calls;
+    const options = calls[calls.length - 1]?.[1];
+    expect(options?.signal).toBe(abort.signal);
+    expect(new Headers(options?.headers).get("last-event-id")).toBe("123-0");
+    const reader = response.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toContain(
+      "event: ready",
+    );
+    await reader.cancel();
+    vi.clearAllMocks();
+  });
+});
+
 describe("proxy catch-all route — CSRF header promotion (Bug A)", () => {
   const CSRF_TOKEN = "test-csrf-token-abc123";
 

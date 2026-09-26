@@ -198,3 +198,47 @@ async def test_round2_ca_residual_matches_real_pg_catalog(pg_socket_dir, sql, ex
     # Everywhere else, the static parser (no DB at all) must land on the
     # SAME column set PG itself produced.
     assert parse_declared_columns(sql) == expected
+
+
+# --- S6 (carried-forward condition on PR #7413's re-gate,
+# pull/7413#issuecomment-5847256465): pre-existing, silent only in the
+# static layer — measured here against the SAME throwaway PG17 cluster. ---
+
+_S6_REAL_PG_CASES = [
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a SMALLSERIAL, b FLOAT, c CHAR);",
+        {"t": {("a", "smallint", True), ("b", "double precision", False), ("c", "character", False)}},
+        id="S6c-smallserial-float-char-type-fallback",
+    ),
+    pytest.param(
+        f"CREATE TABLE IF NOT EXISTS t ({'a' * 64} TEXT);",
+        {"t": {("a" * 63, "text", False)}},
+        id="S6b-64-byte-identifier-is-silently-truncated-by-pg-not-rejected",
+    ),
+    pytest.param(
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "CREATE UNIQUE INDEX IF NOT EXISTS conflict_slot ON t (a);\n"
+        "CREATE TABLE IF NOT EXISTS conflict_slot (bogus_col TEXT NOT NULL);",
+        {"t": {("a", "text", False)}},
+        id="S6a-index-table-namespace-skips-the-later-create-table",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql, expected", _S6_REAL_PG_CASES)
+async def test_s6_residual_matches_real_pg_catalog(pg_socket_dir, sql, expected, request):
+    case_id = request.node.callspec.id
+    db = f"s6_{case_id[:4].lower()}_{id(sql) % 100000}"
+    truth = await _fresh_scratch_db(pg_socket_dir, db, sql)
+    assert truth == expected
+    if case_id.startswith("S6b"):
+        # S6(b): PG accepts and silently truncates (truth above) — the
+        # static parser must reject outright rather than risk a collision
+        # it cannot detect, same as R5/R7's precedent.
+        with pytest.raises(UnrecognizedSqlShapeError):
+            parse_declared_columns(sql)
+        return
+    # S6a/S6c: the static parser (no DB at all) must land on the SAME
+    # column set PG itself produced.
+    assert parse_declared_columns(sql) == expected

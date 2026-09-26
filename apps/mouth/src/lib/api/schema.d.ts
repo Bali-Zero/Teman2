@@ -7104,6 +7104,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/dashboard/portal-challenge/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Portal Challenge Events */
+    get: operations["portal_challenge_events_api_dashboard_portal_challenge_events_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/dashboard/role-metrics": {
     parameters: {
       query?: never;
@@ -24558,6 +24575,8 @@ export interface components {
     PortalChallengeEntry: {
       /** Activations */
       activations: number;
+      /** Avatar Url */
+      avatar_url?: string | null;
       /** Award Tier */
       award_tier: number | null;
       /** Department */
@@ -39065,7 +39084,9 @@ export interface operations {
   };
   get_portal_challenge_api_dashboard_portal_challenge_get: {
     parameters: {
-      query?: never;
+      query?: {
+        fresh?: boolean;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -39079,6 +39100,35 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PortalChallengeResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  portal_challenge_events_api_dashboard_portal_challenge_events_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
     };

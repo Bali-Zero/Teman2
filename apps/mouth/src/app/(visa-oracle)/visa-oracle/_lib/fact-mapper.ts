@@ -148,13 +148,13 @@ function countryCodesFact(
 }
 
 function pairedBooleanFact(
-  left: string | undefined,
-  right: string | undefined,
+  ...values: (string | undefined)[]
 ): FactValue<boolean> {
-  if (left !== undefined && right !== undefined && left !== right) {
+  const defined = values.filter((value) => value !== undefined);
+  if (defined.length > 1 && new Set(defined).size > 1) {
     return unknownFact(CONFLICTING);
   }
-  return booleanFact(left ?? right);
+  return booleanFact(defined[0]);
 }
 
 const ENTRY_PATTERNS = [
@@ -520,10 +520,12 @@ export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   // `property`/`undecided` added (PR-D3, D3-3): both used to stay
   // undecidable because "no pack rule grants either an E33F path" — that was
   // only true because `getCategoryQuestionIds` (flow.ts) never asked
-  // `family_sponsor_confirmed` on these two branches. Now both do (`property`
-  // unconditionally as a fallback; `undecided` via `retirement_undecided_
-  // basis`), so both are exactly as decidable as `family_sponsor` was above,
-  // for the identical reason.
+  // the sponsor-confirmation question on these two branches. Now both do
+  // (`property` unconditionally as a fallback; `undecided` via
+  // `retirement_undecided_basis`) — since PR-M as the penjamin wording,
+  // `retirement_penjamin_confirmed`, same `family.sponsor_confirmed` fact —
+  // so both are exactly as decidable as `family_sponsor` was above, for the
+  // identical reason.
   retirement_basis: [
     "bank_deposit",
     "passive_income",
@@ -656,6 +658,12 @@ export function mapDisclosedReviewFlags(
   // PACK — see "no E31D rule reads family.sponsor_status_code"
   // (fact-mapper.test.ts), which goes red the day that happens; it is not
   // a reason to re-add this frontend hold.
+  // PR-M (owner ruling 2026-09-27): `retirement_penjamin_confirmed` is
+  // deliberately NOT in this list. A retiree without a penjamin is not
+  // ambiguous — they simply do not have one yet, and from rule pack seq-24
+  // onward they are an E33F candidate with the penjamin note on the verdict,
+  // not a human review. (Its "not sure" is also mapped to "no" by
+  // `resolveConservativeAnswers` before this function reads anything.)
   if (
     facts.family_sponsor_status_code === "unsure" ||
     facts.family_sponsor_confirmed === "unsure"
@@ -727,6 +735,20 @@ export function mapSponsorType(
 }
 
 /**
+ * The sponsor-confirmation answer the two sponsor's-permit facts below key
+ * on. The retirement branch asks its own penjamin sibling of the family
+ * question (PR-M, owner ruling 2026-09-27) — same `family.sponsor_confirmed`
+ * fact, no other branch asks it — so those two facts must follow whichever of
+ * the two was answered: without this a retiree's "no" would stop resolving
+ * them NOT_APPLICABLE and start resolving NOT_ASKED, a wire change the
+ * copy-only rename must not make. `business_sponsor_confirmed` is
+ * deliberately NOT read here — that D12 sibling never fed them.
+ */
+function sponsorConfirmedAnswer(facts: OracleFacts): string | undefined {
+  return facts.family_sponsor_confirmed ?? facts.retirement_penjamin_confirmed;
+}
+
+/**
  * D4a (owner ruling SHWEB-20260911, 2026-09-13). Nine ELIGIBILITY rules
  * (`el.e31{b,e,h,j}-*`) read `family.sponsor_status_code`, every one
  * `on_unknown: NO_EFFECT` — while the UI took the sponsor's permit as free
@@ -792,13 +814,14 @@ export function mapSponsorType(
  * actual predicate, only worked around it.
  */
 function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
-  if (facts.family_sponsor_confirmed === "no") {
+  const sponsorConfirmed = sponsorConfirmedAnswer(facts);
+  if (sponsorConfirmed === "no") {
     return unknownFact(NOT_APPLICABLE);
   }
-  if (facts.family_sponsor_confirmed === "unsure") {
+  if (sponsorConfirmed === "unsure") {
     return unknownFact(UNVERIFIED);
   }
-  if (facts.family_sponsor_confirmed !== "yes") {
+  if (sponsorConfirmed !== "yes") {
     return facts.family_sponsor_status_code === undefined
       ? unknownFact(NOT_ASKED)
       : unknownFact(UNVERIFIED);
@@ -824,13 +847,14 @@ function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
 function mapFamilySponsorPermitBasis(
   facts: OracleFacts,
 ): FactValue<KnownValue<"family.sponsor_permit_basis">> {
-  if (facts.family_sponsor_confirmed === "no") {
+  const sponsorConfirmed = sponsorConfirmedAnswer(facts);
+  if (sponsorConfirmed === "no") {
     return unknownFact(NOT_APPLICABLE);
   }
-  if (facts.family_sponsor_confirmed === "unsure") {
+  if (sponsorConfirmed === "unsure") {
     return unknownFact(UNVERIFIED);
   }
-  if (facts.family_sponsor_confirmed !== "yes") {
+  if (sponsorConfirmed !== "yes") {
     return facts.family_sponsor_permit_basis === undefined
       ? unknownFact(NOT_ASKED)
       : unknownFact(UNVERIFIED);
@@ -1023,13 +1047,19 @@ export function mapOracleFactsToApplicantFacts(
     "family.sponsor_permit_basis": mapFamilySponsorPermitBasis(facts),
     // `business_sponsor_confirmed` (tree.ts) is the D12-explorer sibling of
     // `family_sponsor_confirmed` — company/guarantor wording instead of
-    // family wording, same engine fact. `businessExplorerQuestionIds`
-    // (flow.ts) asks exactly one of the two per walk, so `pairedBooleanFact`
-    // resolves it the same way `investment.pt_pma_committed` merges
+    // family wording — and `retirement_penjamin_confirmed` is the E33F-only
+    // sibling (owner ruling 2026-09-27, PR-M): penjamin wording instead of
+    // family-sponsor wording, "not sure" conservatively mapped to "no". All
+    // three write the SAME engine fact; the branch sequences
+    // (`businessExplorerQuestionIds`, the retirement branch of
+    // `getCategoryQuestionIds`, flow.ts) ask exactly one of the three per
+    // walk, so `pairedBooleanFact` resolves it the same way
+    // `investment.pt_pma_committed` merges
     // `investment_pt_pma`/`remote_pt_pma` above.
     "family.sponsor_confirmed": pairedBooleanFact(
       facts.family_sponsor_confirmed,
       facts.business_sponsor_confirmed,
+      facts.retirement_penjamin_confirmed,
     ),
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),

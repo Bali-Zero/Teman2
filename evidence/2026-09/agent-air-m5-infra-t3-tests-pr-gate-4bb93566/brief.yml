@@ -1,0 +1,58 @@
+task_id: wa-team-promises-gate-0926
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Close gate condition C-D on PR #7413 (the T3 R5/R1 rework): give
+  `scripts/tests/test_wa_team_promises*.py` a PR-gating executor.
+
+  Measured this session: `grep -rln 'test_wa_team_promises' .github/workflows/` returns NOTHING
+  before this diff. The corpus's only runner was `scripts-tests-sweep.yml` — nightly,
+  `continue-on-error: true`, report-only — and `WA_TEAM_PROMISES_REAL_PG=1` never ran in CI at
+  all. #7413's own gate comment names this gap explicitly as C-D, owner "coordinator", deadline
+  "before T3 PR-3 merges", and states the fix plainly: "wire the unit files into a PR-gating job
+  path-filtered on scripts/wa_team_promises.py, scripts/sql/pro_local/team_promises.sql and
+  scripts/tests/test_wa_team_promises*, then correct the Bites: line."
+
+  Gear is 3 DETERMINISTICALLY by PATH: the diff adds a file under `.github/workflows/`, a hot
+  zone. Reproduced with the real tool: `evidence_pack_lint.py --print-floor` against this diff's
+  own numstat/patch/changed-files returns `3`.
+
+acceptance:
+  - text:
+      "WHEN a PR touches the corpus, the script it drives, the wa_copilot regex module it imports
+      at module scope, the autouse conftest, or this workflow, the workflow SHALL trigger; and
+      WHERE none of those change, it SHALL stay silent rather than run and pass vacuously."
+    probe: "the on: block's two paths lists, symmetric, this file included"
+  - text:
+      "WHEN the corpus shrinks — a case removed or silently skipped — the step SHALL go red. The
+      assertion is on cases that PASSED, since pytest exits 0 when every case is skipped and
+      --collect-only counts skipped cases too."
+    probe: "the run step's body with an inflated FLOOR (123) against the real 122-case corpus, under bash -e with a clean venv on PATH -> '::error:: 122 below floor 123', rc 1"
+  - text: "WHILE the corpus is intact and passing, the step SHALL be green and say how many passed."
+    probe: "the run step's body, FLOOR=122, clean venv, under bash -e -> 'wa_team_promises corpus: 122 passing cases (floor 122)', rc 0"
+  - text:
+      "WHEN the install step provisions the corpus's dependencies, it SHALL install everything the
+      corpus's own @pytest.mark.asyncio tests need to collect and run — this repo carries no root
+      pytest.ini/pyproject.toml/setup.cfg to supply pytest-asyncio implicitly, so its absence is
+      silent until the async tests fail at collection, not at install."
+    probe: "clean venv built from exactly the step's install line (pytest, pytest-asyncio>=1.4.0, asyncpg>=0.31.0) -> 122 passed, 21 skipped; the same venv WITHOUT pytest-asyncio reproduces CI's 15 failures"
+  - text:
+      "IF the workflow file is malformed, CI SHALL reject it; a paths: filter SHALL NOT coexist
+      with a merge_group: trigger here, since a filter with no queue trigger has nothing to
+      diverge from; and this workflow's push:main trigger SHALL be covered by
+      main-push-failure-watch.yml."
+    probe: "actionlint on the new file -> clean; scripts/check_watcher_coverage.py -> all covered"
+  - text:
+      "REAL-PG (WA_TEAM_PROMISES_REAL_PG=1) is explicitly OUT of this gate's scope, because the
+      four opt-in suites spin up their OWN throwaway cluster via pg_ctl/initdb found on PATH, not
+      a DATABASE_URL — a different shape from this repo's only existing PG-in-CI pattern (the
+      GHCR-mirror service container in scripts-tests-sweep.yml). No workflow in this repo runs
+      the local-cluster shape (measured: `git grep -n 'pg_ctl\\|initdb' .github/workflows/`
+      returns nothing). Inventing that setup here would be exactly what the coordinator's C-D
+      spec says not to do."
+    probe: "the workflow's own header comment states this and the reasoning; left for a follow-up"
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

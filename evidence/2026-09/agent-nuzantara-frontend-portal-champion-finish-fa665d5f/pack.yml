@@ -1,0 +1,267 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+council_run: council-journal.jsonl
+dissent:
+  - seat: claude-opus-5-5 (V2 verifier)
+    status: PLAUSIBLE
+    objection: >-
+      Non-blocking: EventSource cannot tell 401 from 503, so an expired
+      session retries about every 60 s until reload; a goal whose first
+      successful reconnect lands more than ~90 s after activation is not
+      replayed (by design); reduced motion keeps the opacity fade and drops
+      rings and spring.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      Replay after a subscriber-queue overflow read one XRANGE page of 100,
+      losing any larger backlog behind the live reader. FIXED in 38f597922a:
+      replay pages until drained; test_reconnect_replays_every_page_of_a_backlog
+      (250 events, 3 pages) times out on the previous code and passes now.
+  - seat: codex-gpt-5.6-sol (parent-native run)
+    status: CONFIRMED
+    objection: >-
+      Replay and the live reader both started exclusively after `now_ms-0`,
+      so a goal XADDed in the same millisecond as TIME reached neither.
+      FIXED in 38f597922a (both start one millisecond earlier);
+      test_fresh_subscriber_gets_a_goal_added_in_the_same_millisecond is red
+      on the previous code and green now.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      Queued goals were age-checked only on receipt and visibility change,
+      so a burst could show one minutes late; with reduced motion the
+      backdrop still faded. FIXED in 675ac54139 (dismiss drops queued goals
+      older than 90 s; no backdrop fade under reduced motion); new vitest
+      case red on the previous component, green now.
+  - seat: codex-gpt-5.6-sol (council, CLI and parent-native runs)
+    status: CONFIRMED
+    objection: >-
+      complete_registration logged the client email (pre-existing since
+      2025-12-31, same pattern in invite_service and in the invite-sent
+      line). FIXED in 38f597922a: those three lines log client_id only; a
+      caplog assertion guards the router line.
+  - seat: kimi-code/k3 (council)
+    status: RETRACTED
+    objection: >-
+      B1 streamed SSE would die on the proxy client's read timeout between
+      15 s keepalives. Not the case: get_proxy_client sets
+      httpx.Timeout(300.0, connect=10.0); idle-stream survival through both
+      proxies re-proven locally with the production middleware stack.
+  - seat: claude-opus-5-5 xhigh (fresh final gate, round 1)
+    status: CONFIRMED
+    objection: >-
+      Every open Kita tab pinned one connection of the single 50-connection
+      API-to-RAG pool that also carries CRM, dashboard and chat; with 50
+      open streams a heavy GET timed out (gate pool probe). FIXED in
+      85a9783cf1 (the events path gets its own client with a fail-fast pool
+      timeout, closed on shutdown; a Redis preflight returns 503 before
+      streaming) and 4a7dada708 (a hidden tab closes its stream and resumes
+      from its cursor when visible). The same probe with 100 and with 200
+      open streams returns the heavy GET 200 in at most 0.01 s.
+lanes:
+  - lane: build
+    role: build
+    seat: codex (external builder, 2026-09-25, prepare-only)
+    note: >-
+      Original 19-file candidate, frozen with per-file hashes; three prior
+      Claude review rounds ended PASS with source conditions (goal SQL
+      aggregation, reconnect cursor, inline publish latency — all present
+      in the frozen bytes).
+  - lane: recovery+release
+    role: build
+    seat: claude-opus-5-5 xhigh
+    note: >-
+      Replayed the Codex transcript's completed FileChange items and the
+      recorded prettier/ruff runs onto base a872cfa673 (transcript as data;
+      no historic shell command executed) → 19/19 byte-identical to the
+      manifest; no upstream drift. Integrated the uncommitted rag_proxy
+      SSE fix verbatim. Only own change: a mechanical ruff-format commit
+      restricted to lines this branch added.
+  - lane: verify-unit
+    role: review
+    seat: claude-sonnet-5
+  - lane: verify-e2e
+    role: review
+    seat: claude-opus-5-5
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 xhigh (fresh, outside the contribution chain)
+  - lane: release-carry
+    role: build
+    seat: claude-opus-5-5 xhigh
+    note: >-
+      PR #7432 (branch agent/nuzantara/frontend/portal-champion-finish-0926,
+      gated head 3510042970) was armed, then went red on catD's avatar_url
+      lint. An armed branch is frozen, so the chain was cherry-picked
+      unchanged onto a fresh origin/main (d2e0a1a50b) on a new branch; the
+      short SHAs cited in this pack are the #7432 branch commits. All 26
+      touched files are blob-identical to 3510042970 plus the one-line
+      AvatarUrl fix.
+  - lane: release-carry-2
+    role: build
+    seat: claude-opus-5-5 xhigh
+    note: >-
+      PR #7435 (branch agent/nuzantara/frontend/portal-champion-finale-r2-0927,
+      gated head 06747d8d2e) was armed, then CI failed the OpenAPI schema pin.
+      The chain was cherry-picked onto fresh origin/main (4b49607683) on a
+      new branch: the 26 carried files are blob-identical to 06747d8d2e, and
+      the only new change is the generated contract (schema.d.ts and its pin).
+receipts:
+  - claim: >-
+      Backend targeted suite (portal challenge events/leaderboard,
+      dashboard_summary, portal_invite + p0 capability, rag_proxy stream +
+      intake split, router manifest + registration parity): 503 passed.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest <9 files>
+    exit: 0
+    ts: "2026-09-26T15:24:30Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Goal SQL on a throwaway PostgreSQL 18 cluster (unix socket only,
+      synthetic temp tables): 8/8 executed (valid, duplicate, alias, staff,
+      deleted, test tag, pilot tag, previous activation).
+    cmd: >-
+      CHAMPION_TEST_PG_SOCKET=<scratch> PYTHONPATH=. .venv/bin/python -m
+      pytest backend/tests/unit/services/portal/test_challenge_events_postgres.py
+    exit: 0
+    ts: "2026-09-26T15:25:33Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Real throwaway Redis against the real challenge_events module: Lua
+      publish-once dedup (XLEN 1), two subscribers get the same id,
+      reconnect replay, 90-second window both sides, future cursor falls
+      back to now, reader teardown, publish returns <0.01 s and swallows
+      missing-Redis and SQL errors.
+    cmd: PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/python redis_proof.py
+    exit: 0
+    ts: "2026-09-26T15:28:54Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Frontend: 81 vitest cases in 6 files pass; tsc --noEmit clean; eslint
+      0 errors on the 12 changed files (one pre-existing warning on an
+      unchanged line of layout.tsx).
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files>
+      --maxWorkers=2 && ../../node_modules/.bin/tsc --noEmit
+    exit: 0
+    ts: "2026-09-26T15:29:42Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Full local chain (real dashboard_summary router + real auth chain
+      with a throwaway JWT secret, real create_proxy_router, Next dev
+      proxy, throwaway Redis + PG18): `event: ready` arrives in 0.079 s via
+      the API proxy and 0.030 s via Next while the stream stays open; a
+      real publish lands `event: goal` on both open streams within 0.25 s;
+      JSON status/body/custom header preserved through both proxies.
+    cmd: p1_stream.py (local harness)
+    exit: 0
+    ts: "2026-09-26T15:31:30Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Two simultaneous authenticated synthetic Chrome sessions (/dashboard
+      and /notifications with reduced motion) both show "GOAL oleh
+      <synthetic>" 0.52 s after publish_registration_goal; 390 px arena has
+      no horizontal overflow; 0 broken images; anonymous → 401 and client
+      role → 403 via Next and via the API proxy with no celebration; a
+      duplicate publish leaves XLEN unchanged and shows no second overlay;
+      after a 17.6 s rag-process outage the goal published during the gap
+      appears on both pages 2.3 s after recovery without reload; 0 page
+      JavaScript errors.
+    cmd: p2_p5_browser.cjs (local harness, Playwright + Chrome)
+    exit: 0
+    ts: "2026-09-26T15:40:36Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      After the mechanical ruff-format commit the affected backend tests
+      still pass (86 passed) and the files added lines are format-clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/routers/test_dashboard_summary.py
+      backend/tests/unit/routers/test_portal_invite.py
+      backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/unit/services/portal/test_challenge_events.py
+    exit: 0
+    ts: "2026-09-26T15:45:19Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Production middleware stack (register_middleware on both local apps:
+      PIIScanner, ActivityLogging, RateLimit, ErrorMonitoring,
+      RequestTracing, HybridAuth, Brotli/GZip, CORS) does not buffer the
+      stream: `event: ready` in <=0.09 s and `event: goal` 0.36 s after a
+      real publish on all 9 paths (rag direct, api proxy, Next x
+      br/gzip/none; Brotli flushes per chunk). An idle stream stays open
+      through the api proxy and Next with a keepalive every 15 s and ends
+      cleanly at 240.25 s; the reconnect with Last-Event-ID gets `ready` in
+      0.016 s. JSON through the api proxy decodes under br and gzip with
+      status and a custom header intact. Ten rapid reconnects: no 429.
+      Run against 2ee480fcd9 (streaming path unchanged by later commits).
+    cmd: q1_stream.py, q2_idle.py, q3_q4.py (local harness, V3)
+    exit: 0
+    ts: "2026-09-26T16:27:49Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Council fixes are covered and red-green: the 250-event paged replay
+      and the same-millisecond goal tests time out on 2ee480fcd9's
+      challenge_events.py and pass on 675ac54139; the aged-queue vitest
+      case fails on the previous component and passes; a caplog assertion
+      keeps the client email out of the registration log. Backend portal,
+      invite, dashboard and rag_proxy suites 247 passed / 8 skipped (PG
+      cases need the scratch socket); vitest 82/82.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/services/portal backend/tests/services/portal/test_invite_service.py
+      backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/unit/routers/test_dashboard_summary.py backend/tests/unit/app/test_rag_proxy_stream.py;
+      cd apps/mouth && ../../node_modules/.bin/vitest run <6 files>
+    exit: 0
+    ts: "2026-09-26T16:19:00Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      Final-gate condition fix: the gate's own probe through the real
+      create_proxy_router with 100 and with 200 open event streams returns
+      the heavy GET 200 in at most 0.01 s (previous code: ReadTimeout at 50
+      streams), and close_proxy_client closes both clients. New tests are
+      red on 26162e7963 and green now: exact-path stream-pool selection and
+      lifecycle, 503 before streaming when Redis is down, hidden tab closes
+      the EventSource and the visible tab reconnects with ?last_event_id=.
+      Affected backend files 457 passed / 8 skipped (unchanged PG cases);
+      celebration vitest 10/10; tsc clean.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python pool_probe_fix.py 100
+      (and 200); PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/app/test_rag_proxy_stream.py backend/tests/unit/app/test_rag_proxy_intake_split.py
+      backend/tests/unit/routers/test_dashboard_summary.py backend/tests/unit/services/portal/test_challenge_events.py
+      backend/tests/setup/test_router_manifest.py backend/tests/setup/test_manifest_registration_parity.py;
+      cd apps/mouth && npx vitest run src/components/workspace/PortalChampionCelebration.test.tsx
+    exit: 0
+    ts: "2026-09-26T16:58:26Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      catD's avatar_url lint (scripts/lint_avatar_url_validators.py
+      --strict) failed on PR #7432 because PortalChallengeEntry declared
+      avatar_url as a bare str. It now uses the shared AvatarUrl type; the
+      lint reports 5 guarded, 1 allowlisted, 0 unguarded, and the dashboard
+      router tests pass (46). Values already pass portrait_url()'s
+      /static/team allow-list, so responses are unchanged.
+    cmd: >-
+      python3 scripts/lint_avatar_url_validators.py --strict; cd apps/backend-rag &&
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/routers/test_dashboard_summary.py
+    exit: 0
+    ts: "2026-09-26T17:24:10Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      The OpenAPI schema pin test failed on #7435 because the feature adds
+      the events route, the leaderboard's fresh query parameter and
+      avatar_url. The test passes on origin/main d2e0a1a50b and fails on
+      06747d8d2e. `npm run contract:visa-oracle` regenerated schema.d.ts
+      (+52/-1, portal-challenge paths only) and the pin, which now equals the
+      live hash CI reported; the Visa Oracle contract validator exits 0, and
+      the pin test and tsc pass.
+    cmd: >-
+      cd apps/mouth && npm run contract:visa-oracle; cd ../backend-rag &&
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/unit/scripts/test_generate_openapi_schema_pin.py;
+      cd ../mouth && ../../node_modules/.bin/tsc --noEmit
+    exit: 0
+    ts: "2026-09-26T18:03:00Z"
+    seat: claude-sonnet-5

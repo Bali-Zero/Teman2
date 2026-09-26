@@ -30,7 +30,11 @@ const DASHBOARD_DIR = (() => {
 })();
 
 /** The widget's own rendered sources — test files excluded on purpose. */
-const WIDGET_FILES = ["r19.tsx", "PortalChallengeWidget.tsx"];
+const WIDGET_FILES = [
+  "r19.tsx",
+  "PortalChallengeWidget.tsx",
+  "ChampionArena.tsx",
+];
 
 /**
  * The scanner. Two shapes only: a read of the danger token, and a literal

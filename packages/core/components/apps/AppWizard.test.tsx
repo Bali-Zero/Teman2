@@ -104,6 +104,60 @@ describe("AppWizard", () => {
     });
     expect(navigator.vibrate).toHaveBeenCalledWith([20, 30, 20]);
   });
+
+  it("leaves the finish button enabled and not busy when nothing is pending", () => {
+    const { getByTestId, getByText } = render(
+      <AppWizard steps={makeSteps()} onComplete={vi.fn()} />,
+    );
+    fireEvent.click(getByTestId("a-btn"));
+    fireEvent.click(getByText(/^Next$/));
+    const finish = getByText(/See result/) as HTMLButtonElement;
+    expect(finish.disabled).toBe(false);
+    expect(finish.getAttribute("aria-busy")).toBe("false");
+  });
+
+  it("disables the finish button and does not call onComplete again while pending", () => {
+    const onComplete = vi.fn();
+    const { getByTestId, getByText, rerender } = render(
+      <AppWizard steps={makeSteps()} onComplete={onComplete} />,
+    );
+    fireEvent.click(getByTestId("a-btn"));
+    fireEvent.click(getByText(/^Next$/));
+    fireEvent.click(getByTestId("b-btn"));
+    fireEvent.click(getByText(/See result/));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+
+    rerender(<AppWizard steps={makeSteps()} onComplete={onComplete} pending />);
+    const finish = getByText(/See result/) as HTMLButtonElement;
+    expect(finish.disabled).toBe(true);
+    expect(finish.getAttribute("aria-busy")).toBe("true");
+    fireEvent.click(finish);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores next() from a step's own render helper while pending", () => {
+    const onComplete = vi.fn();
+    const steps: WizardStep[] = [
+      {
+        id: "only",
+        title: "Only",
+        render: ({ next }) => (
+          <button data-testid="inline-next" onClick={next}>
+            go
+          </button>
+        ),
+      },
+    ];
+    const { getByTestId, rerender } = render(
+      <AppWizard steps={steps} onComplete={onComplete} pending />,
+    );
+    fireEvent.click(getByTestId("inline-next"));
+    expect(onComplete).not.toHaveBeenCalled();
+
+    rerender(<AppWizard steps={steps} onComplete={onComplete} />);
+    fireEvent.click(getByTestId("inline-next"));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
 });
 
 /**

@@ -148,7 +148,7 @@ FROM window_activations;
 """.strip()
 
 ROSTER_SQL = """
-SELECT lower(email) AS email, name AS display_name, department, role, active
+SELECT lower(email) AS email, name AS display_name, department, role, active, avatar
 FROM team_members
 WHERE active = TRUE
   AND lower(email) LIKE '%@balizero.com'
@@ -174,7 +174,35 @@ def build_aggregates_sql() -> str:
 def build_recent_activations_sql() -> str:
     """Last 10 activation events in the window, most recent first. No client data."""
     start_ts, end_ts = _window_ts()
-    return (_SHARED_CTES + "\n" + _RECENT_ACTIVATIONS_SELECT).format(start_ts=start_ts, end_ts=end_ts)
+    return (_SHARED_CTES + "\n" + _RECENT_ACTIVATIONS_SELECT).format(
+        start_ts=start_ts, end_ts=end_ts
+    )
+
+
+def build_goal_sql() -> str:
+    start_ts, end_ts = _window_ts()
+    return (
+        _SHARED_CTES
+        + """
+, scored_creators AS (
+    SELECT lower(created_by) AS creator_email, COUNT(DISTINCT client_id) AS activations
+    FROM window_activations
+    GROUP BY 1
+)
+SELECT lower(activation.created_by) AS creator_email,
+       MIN(activation.used_at) AS at,
+       member.name AS display_name, member.avatar, member.role,
+       scored.activations
+FROM window_activations activation
+JOIN scored_creators scored ON scored.creator_email = lower(activation.created_by)
+JOIN team_members member ON lower(member.email) = lower(activation.created_by)
+WHERE activation.client_id = $1 AND member.active = TRUE
+GROUP BY lower(activation.created_by), member.name, member.avatar, member.role, scored.activations
+HAVING MIN(activation.used_at) >= NOW() - INTERVAL '90 seconds'
+ORDER BY MIN(activation.used_at) DESC
+LIMIT 1
+"""
+    ).format(start_ts=start_ts, end_ts=end_ts)
 
 
 def build_team_total_activations_sql() -> str:
@@ -323,6 +351,7 @@ def compute_awards(members: list[MemberActivations]) -> list[AwardedEntry]:
     best-ranked tax member with >= TAX_FALLBACK_THRESHOLD activations gets
     `TAX_FALLBACK_BONUS_IDR` instead (at most one fallback winner).
     """
+
     def sort_key(m: MemberActivations) -> tuple[int, datetime, str]:
         never = datetime.max.replace(tzinfo=timezone.utc)
         last = m.last_activation_at or never
@@ -366,7 +395,9 @@ def compute_awards(members: list[MemberActivations]) -> list[AwardedEntry]:
                 tax_bonus_idr=0,
                 total_prize_idr=prize_idr,
                 next_tier_threshold=next_threshold,
-                to_next_tier=(next_threshold - m.activations) if next_threshold is not None else None,
+                to_next_tier=(next_threshold - m.activations)
+                if next_threshold is not None
+                else None,
             )
         )
 

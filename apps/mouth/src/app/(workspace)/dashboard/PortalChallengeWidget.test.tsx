@@ -158,6 +158,46 @@ describe("PortalChallengeWidget", () => {
     mockedHook.mockReset();
   });
 
+  it("leads with the race and keeps rules and prize details collapsed below it", () => {
+    mockQuery(response());
+    render(<PortalChallengeWidget identity="fixture" />);
+    const arena = screen.getByTestId("champion-arena");
+    const details = screen
+      .getByText("Hadiah, posisi saya & aturan")
+      .closest("details")!;
+    expect(details.open).toBe(false);
+    expect(
+      arena.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(details).toContainElement(screen.getByTestId("podium-tier-1"));
+  });
+
+  it("selects a contender and shows the points needed to pass the next rival", () => {
+    mockQuery(
+      response({
+        entries: [
+          entry({ member: "leader", display_name: "Leader", activations: 23 }),
+          entry({
+            member: "chaser",
+            display_name: "Chaser",
+            activations: 20,
+            rank: 2,
+            award_tier: 2,
+          }),
+        ],
+      }),
+    );
+    render(<PortalChallengeWidget identity="fixture" />);
+    fireEvent.click(
+      within(screen.getByTestId("champion-arena")).getByRole("button", {
+        name: "Chaser",
+      }),
+    );
+    expect(
+      screen.getByText("4 poin untuk melewati Leader."),
+    ).toBeInTheDocument();
+  });
+
   it("renders nothing when there is no authenticated identity", () => {
     mockQuery(response());
     const { container } = render(<PortalChallengeWidget identity="" />);
@@ -242,7 +282,9 @@ describe("PortalChallengeWidget", () => {
     const rankMarkers = screen.getAllByText("–");
     expect(rankMarkers).toHaveLength(2);
     // Alphabetical: Ari before Budi, regardless of the backend-given rank.
-    const names = screen.getAllByText(/^(Ari|Budi)$/).map((n) => n.textContent);
+    const names = within(screen.getByTestId("champion-ranking"))
+      .getAllByText(/^(Ari|Budi)$/)
+      .map((n) => n.textContent);
     expect(names).toEqual(["Ari", "Budi"]);
   });
 
@@ -381,12 +423,13 @@ describe("PortalChallengeWidget", () => {
     );
     mockQuery(response({ entries }));
     render(<PortalChallengeWidget identity="ari@balizero.com" />);
-    expect(screen.queryByText("Member 6")).not.toBeInTheDocument();
+    const ranking = within(screen.getByTestId("champion-ranking"));
+    expect(ranking.queryByText("Member 6")).not.toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: /lihat semua/i });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Member 6")).toBeInTheDocument();
+    expect(ranking.getByText("Member 6")).toBeInTheDocument();
   });
 
   it("feed marks activity from the last hour with a copper dot", () => {

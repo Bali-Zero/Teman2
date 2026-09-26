@@ -1012,11 +1012,14 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
     // `bank_deposit` the LARGEST dead end (30 walks ending NEEDS_INPUT on
     // `family.sponsor_confirmed` because it was never asked on this branch)
     // and `property`/`undecided` were allowlisted for the same reason.
-    // `family.sponsor_confirmed` is `el.e33f.retirement`'s fact, independent
-    // of the financial basis chosen — a below-threshold deposit or property
-    // may still have a confirmed family sponsor — so every basis that can
-    // reach E33F now asks it as a fallback, not only the two bases whose
-    // NAME says "sponsor".
+    // PR-M (owner ruling 2026-09-27) renamed the question this branch asks
+    // to `retirement_penjamin_confirmed` — an E33F needs a penjamin, not a
+    // family sponsor — but it is still `el.e33f.retirement`'s fact
+    // (`family.sponsor_confirmed`, merged by `pairedBooleanFact`), and it is
+    // still independent of the financial basis chosen — a below-threshold
+    // deposit or property may still have a confirmed penjamin — so every
+    // basis that can reach E33F still asks it as a fallback, not only the
+    // two bases whose NAME says "sponsor".
     const undecidedChoice = facts.retirement_undecided_basis;
     const branchQuestions =
       branch === "bank_deposit"
@@ -1025,27 +1028,34 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "secondhome_state_bank",
             "secondhome_own_name",
             "secondhome_passive_income_usd",
-            "family_sponsor_confirmed",
+            "retirement_penjamin_confirmed",
           ]
         : branch === "property"
           ? [
               "secondhome_property_value_usd",
-              // `el.e33f.retirement` needs BOTH `secondhome.
-              // passive_monthly_income_usd >= 3000` AND `family.
-              // sponsor_confirmed == true` (fact-mapper.ts's
-              // ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS comment) — measured
-              // 2026-09-13: without asking passive income too, a `property`
-              // walk that answers `family_sponsor_confirmed = no` still
-              // dead-ends NEEDS_INPUT on the passive-income fact instead of
-              // resolving to NO_SUPPORTED_PATH, because the rule's AND does
-              // not short-circuit on the known-false sponsor conjunct.
+              // `el.e33f.retirement` reads BOTH `secondhome.
+              // passive_monthly_income_usd` and `family.sponsor_confirmed`
+              // (fact-mapper.ts) — measured 2026-09-13: without asking
+              // passive income too, a `property` walk whose penjamin answer
+              // is "no" still dead-ends NEEDS_INPUT on the passive-income
+              // fact instead of resolving decisively, because the rule AND
+              // does not short-circuit on the known-false penjamin
+              // conjunct. PR-M (2026-09-27): the wording is a penjamin, not
+              // a family sponsor, and from rule pack seq-24 onward a missing
+              // penjamin no longer excludes E33F at all — the applicant
+              // stays an E33F candidate and the verdict carries the penjamin
+              // note — so asking both keeps the rule decidable in either
+              // pack world.
               "secondhome_passive_income_usd",
-              "family_sponsor_confirmed",
+              "retirement_penjamin_confirmed",
             ]
           : branch === "passive_income"
-            ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
+            ? ["secondhome_passive_income_usd", "retirement_penjamin_confirmed"]
             : branch === "family_sponsor"
-              ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
+              ? [
+                  "secondhome_passive_income_usd",
+                  "retirement_penjamin_confirmed",
+                ]
               : branch === "undecided"
                 ? [
                     "retirement_undecided_basis",
@@ -1055,12 +1065,12 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
                           "secondhome_state_bank",
                           "secondhome_own_name",
                           "secondhome_passive_income_usd",
-                          "family_sponsor_confirmed",
+                          "retirement_penjamin_confirmed",
                         ]
                       : undecidedChoice === "family_sponsor"
                         ? [
                             "secondhome_passive_income_usd",
-                            "family_sponsor_confirmed",
+                            "retirement_penjamin_confirmed",
                           ]
                         : // `still_unsure` (or not yet answered): no evidence
                           // question follows. `family.sponsor_confirmed`

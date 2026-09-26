@@ -213,6 +213,7 @@ on:
       - tg-gateway
       - token-lint
       - Verify the Verifiers (meta-gate)
+      - wa team promises tests
       - Watcher coverage (main-push-failure-watch self-conformance)
       - worker-plane review panel tests
       - WR2 master template guard

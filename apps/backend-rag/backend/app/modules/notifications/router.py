@@ -25,6 +25,8 @@ from backend.app.modules.notifications.service import NotificationService
 from backend.app.services.internal_email import EmailDeliveryUncertain
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
+from backend.security.pii_log_identifier import redact_identifier_for_log
+from backend.services.notifications.email_audit import _bounded_scrub
 from backend.services.notifications.email_http import get_email_client
 
 logger = logging.getLogger(__name__)
@@ -552,14 +554,26 @@ async def send_direct_email(
         )
         if result:
             tag = "primary" if idx == 0 else f"fallback={name}"
+            # C4 (PR #7385 gate follow-up): `request.to`/`request.subject` are
+            # caller-supplied PII/free-text (the latter can itself carry an
+            # address, e.g. "Re: matteo@example.com") — never logged raw.
+            # Reuses email_audit's own digest + bounded scrub, not a new regex.
             logger.info(
-                f"Direct email sent to {request.to} via {name} ({tag}) — {request.subject!r}"
+                "Direct email sent to %s via %s (%s) — %s",
+                redact_identifier_for_log(request.to),
+                name,
+                tag,
+                _bounded_scrub(request.subject, 120),
             )
             return SendEmailResponse(
                 success=True,
                 message=f"Email sent to {request.to} via {name}",
             )
-        logger.warning(f"Provider {name} failed for {request.to}, trying next in chain")
+        logger.warning(
+            "Provider %s failed for %s, trying next in chain",
+            name,
+            redact_identifier_for_log(request.to),
+        )
 
     return SendEmailResponse(
         success=False,
@@ -591,7 +605,14 @@ async def _send_via_zoho_smtp(
             attachments=attachments,
         )
     except Exception as e:
-        logger.error("Zoho SMTP failed for %s: %s", to_email, e)
+        # C4: `e`'s text is provider-supplied and can echo the recipient back
+        # (an SMTP bounce quoting the address), so it is scrubbed the same
+        # way `email_audit.notify_email_failure_critical` scrubs `error`.
+        logger.error(
+            "Zoho SMTP failed for %s: %s",
+            redact_identifier_for_log(to_email),
+            _bounded_scrub(str(e), 400),
+        )
         return False
 
 
