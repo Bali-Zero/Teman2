@@ -11,7 +11,8 @@ start of EVERY session (SessionStart, matcher `startup`) and:
   - picks ONLY the jump this window was opened FOR: `NZ_JUMP_FROM=<from>` in
     the env, set by nz-jump.sh (interactive, typed by window_jump.sh or by a
     human) and by the cascade wrapper's hop (headless). That file must still be
-    unclaimed (`to_session` null), fresh (< MAX_AGE_S) and not our own;
+    unclaimed (`to_session` null), fresh (< MAX_AGE_S from its latest gesture,
+    not from when the guard first tripped — see `pick_jump`) and not our own;
   - a window opened BY HAND (plain `claude`, no NZ_JUMP_FROM) gets NOTHING.
     Until 2026-09-09 it fell back to "the freshest unclaimed same-cwd jump",
     so for 15 minutes after every guard trip any window Zero opened in
@@ -67,7 +68,18 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
     another window; the same evening it handed a hand-opened interactive
     session a stale mandate. `cwd` is kept in the signature for the payload
     but is no longer a filter — the launcher has already cd'd into the jump's
-    cwd, and a hand-opened window is refused whatever its cwd."""
+    cwd, and a hand-opened window is refused whatever its cwd.
+
+    Freshness is judged from the LATEST gesture, not the first one: the guard
+    retries the gesture (context_window_guard.py's `_stamp_gesture_attempt`)
+    and stamps `last_gesture_ts` on every attempt, but `ts` is written once,
+    when the guard first tripped. A retry hours later still mints a real new
+    window (2026-09-26, session cefbda50: guard tripped at ts, the retry
+    opened the window that actually asked for the jump) and must be judged
+    fresh from ITS OWN gesture. `last_gesture_ts`, when present and parseable,
+    wins; a missing or unparseable one falls back to `ts` — a garbage
+    `last_gesture_ts` must not crash and must not launder a stale `ts` into a
+    fresh jump either."""
     if not want:
         return None
     now = time.time() if now is None else now
@@ -79,7 +91,11 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
         ts = float(j.get("ts") or 0)
     except (TypeError, ValueError):
         return None
-    if now - ts > MAX_AGE_S or j.get("from_session") == session_id:
+    try:
+        reference = float(j["last_gesture_ts"])
+    except (KeyError, TypeError, ValueError):
+        reference = ts
+    if now - reference > MAX_AGE_S or j.get("from_session") == session_id:
         return None
     return (p, j)
 

@@ -21,7 +21,8 @@ import time
 HOOK = pathlib.Path(__file__).resolve().parent / "context_jump_resume.py"
 
 
-def _home_with_jump(cwd, *, to_session=None, age_s=0, handoff=True):
+def _home_with_jump(cwd, *, to_session=None, age_s=0, handoff=True, gesture_age_s=None,
+                     last_gesture_ts=None):
     home = pathlib.Path(tempfile.mkdtemp())
     d = home / ".organism" / "context-guard"
     d.mkdir(parents=True)
@@ -32,10 +33,15 @@ def _home_with_jump(cwd, *, to_session=None, age_s=0, handoff=True):
             "mandate": "Ruling Zero 2026-09-09: cinque cose, in ordine, senza chiedere.",
             "objective": [], "successful_commands": ["gh pr create ...", "pytest -q"],
             "successful_file_changes": ["scripts/x.py"], "risks": [], "next_action": "arm the PR"}))
-    (d / "pending-jump-old.json").write_text(json.dumps({
+    jump = {
         "from_session": "old", "to_session": to_session, "model": "claude-sonnet-5",
         "cwd": cwd, "handoff_path": str(hp), "hops": 1, "ts": time.time() - age_s,
-        "mandate": "MANDATO IN CATENA: cinque cose, in ordine, senza chiedere."}))
+        "mandate": "MANDATO IN CATENA: cinque cose, in ordine, senza chiedere."}
+    if gesture_age_s is not None:
+        jump["last_gesture_ts"] = time.time() - gesture_age_s
+    elif last_gesture_ts is not None:
+        jump["last_gesture_ts"] = last_gesture_ts
+    (d / "pending-jump-old.json").write_text(json.dumps(jump))
     return home
 
 
@@ -113,6 +119,20 @@ def test_fresh_unclaimed_jump_is_injected_and_stamped():
     assert jump["to_session"] == "new" and jump.get("claimed_ts")
 
 
+def test_retried_gesture_is_fresh_even_when_ts_is_hours_old():
+    # 2026-09-26, session cefbda50: ts=14:40, retry (last_gesture_ts)=18:28 —
+    # the window that retry opened must not be judged stale off the first ts.
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, gesture_age_s=60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is not None and jump["to_session"] == "new"
+
+
+def test_garbage_last_gesture_ts_with_fresh_ts_is_still_picked():
+    home = _home_with_jump(os.getcwd(), last_gesture_ts="x")
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is not None and jump["to_session"] == "new"
+
+
 def test_missing_handoff_still_injects_a_recovery_context():
     home = _home_with_jump(os.getcwd(), handoff=False)
     rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
@@ -129,6 +149,30 @@ def test_already_claimed_jump_is_mute():
 
 def test_stale_jump_is_mute():
     home = _home_with_jump(os.getcwd(), age_s=20 * 60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_stale_ts_with_no_last_gesture_ts_is_still_mute():
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_stale_ts_with_stale_last_gesture_ts_is_still_mute():
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, gesture_age_s=20 * 60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] is None
+
+
+def test_fresh_ts_but_claimed_stays_mute_regardless_of_gesture():
+    home = _home_with_jump(os.getcwd(), to_session="someone-else", gesture_age_s=60)
+    rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and jump["to_session"] == "someone-else"
+
+
+def test_garbage_last_gesture_ts_with_stale_ts_is_mute():
+    home = _home_with_jump(os.getcwd(), age_s=3 * 60 * 60, last_gesture_ts="x")
     rc, out, jump = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
     assert rc == 0 and out is None and jump["to_session"] is None
 
