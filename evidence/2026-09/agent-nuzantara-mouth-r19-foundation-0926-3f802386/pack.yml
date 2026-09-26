@@ -8,13 +8,22 @@ council_note: >-
   times for the Kimi and Codex runs, dispatch_ts and done_ts files for the two TP1 runs), because
   scripts/council_journal.py stamps the clock at the moment of the call and cannot record a dispatch
   that already happened. Codex GPT-5.6 (titolare) returned "workspace is out of credits" and produced no
-  review; that is recorded as ok:false. The two qualifying seats are the titolari kimi-code/k3 and
-  tp1-qwen3.8-max. tp1-glm-5.2 (reserve) also judged, after a truncated first attempt.
+  review; that is recorded as ok:false. It was dispatched before the pack author knew that Codex is also
+  the snapshot's builder (see lanes_note), so a completed run would not have been an independent review
+  either; the line stays as the record of what was tried. The two qualifying seats are the titolari
+  kimi-code/k3 and tp1-qwen3.8-max. tp1-glm-5.2 (reserve) also judged, after a truncated first attempt.
 seat_fallback_reason: >-
   tp1-glm-5.2 (reserve) was seated as a third reviewer because the third titolare, codex-gpt-5.6-sol,
   was unavailable: every dispatch on 2026-09-26 ended "ERROR: Your workspace is out of credits"
-  (scratch p2-codex.txt, lines 51-52). Quorum itself rests on two titolari (kimi-code/k3, tp1-qwen3.8-max).
+  (scratch p2-codex.txt, lines 51-52). That titolare is also the snapshot's builder, so it could not have
+  served as an independent reviewer of this diff in any case. Quorum itself rests on two titolari
+  (kimi-code/k3, tp1-qwen3.8-max).
 lanes:
+  - lane: r19-snapshot-author
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (external prepare-only builder of the 24-25 September 2026 snapshot that this branch
+      copies; attribution confirmed by Zero on 2026-09-26, the session log was not located locally)
   - lane: r19-foundation-integration
     role: build
     seat: >-
@@ -30,33 +39,37 @@ lanes:
   - lane: glm-red-team
     role: review
     seat: tp1-glm-5.2
-  - lane: codex-red-team
-    role: review
-    seat: codex-gpt-5.6-sol
-    status: unavailable, workspace out of credits, no review produced
   - lane: final-gate
     role: review
     seat: claude-opus-5-5 (fresh read-only session outside the contribution chain)
     status: pending, signs after this pack is committed
 lanes_note: >-
-  D3 (seat diversity among build lanes) is NOT satisfied by naming a non-Anthropic builder, and this pack
-  does not pretend otherwise. The r19 code is a byte-copy of a snapshot authored by an external
-  prepare-only builder whose seat identity is not recorded anywhere in the snapshot's own evidence (its
-  brief.yml, pack.yml, preserved pack.json and brief.md, and the plan documents say only "external
-  builder, prepare-only"). That seat is therefore not declared as a lane; the Claude work on this branch
-  (integration, one guard cure, one added test, verification) is declared as a single build lane. If the
-  external seat is identified, add it as a second build lane.
+  D3 (seat diversity among build lanes) is met by the first build lane, the external prepare-only builder
+  of the snapshot, named as Codex (GPT-5.6 Sol). That attribution rests on Zero's confirmation of
+  2026-09-26 and on nothing in the repository: the snapshot's own evidence (brief.yml, pack.yml, preserved
+  pack.json and brief.md, and the plan documents) says only "external builder, prepare-only", and the
+  session log was not located locally. The lint can only read the seat string, so it cannot tell a
+  recorded attribution from a remembered one; this note is where the difference is kept. The Claude work on
+  this branch (integration, one guard cure, one added test, verification) is the second build lane.
+  Consequence for the council: Codex authored the code, so a Codex review would not have been independent
+  of the author, and no Codex review lane is declared.
 snapshot_provenance: >-
   apps/mouth/src/components/r19/**, the four R19 font subsets, the R19 image assets, NavShell.module.css,
-  the NavShell variant change and the rumahVars aliases are copied byte-for-byte from the read-only snapshot
-  worktree .worktrees/mouth-r19-cutover-audit-20260924. Deltas from the snapshot, all inside new files:
+  the NavShell variant change and the rumahVars aliases are copied from the read-only snapshot worktree
+  .worktrees/mouth-r19-cutover-audit-20260924, authored by Codex as an external prepare-only builder
+  (attribution confirmed by Zero on 2026-09-26; see lanes_note). Deltas from the snapshot, all inside new files:
   Footer.tsx and destinations.ts import GOOGLE_MAPS_URL from lib/trust-figures instead of redeclaring it
   (the existing trust-figures guard bans a second copy); one R19Presentation test is it.skip because it
   asserts the MobileNav drawer change that belongs to the activation unit; 22 ts and tsx files are
   prettier-formatted for the pre-commit gate.
 spend:
-  wall_clock_hours: 2
+  wall_clock_hours: 1.5
   adversarial_rounds: 2
+spend_note: >-
+  Wall clock measured from the creation of this worktree (git reflog, 2026-09-26T14:18:14Z) to the last
+  lint run (about 15:50Z), which is 1.5 hours; work on the snapshot itself, on 24-25 September, is not
+  counted because it belongs to the preparation mandate. Adversarial rounds: one (Kimi K3, with a Codex
+  attempt that failed for credits) and one (Qwen 3.8 Max and GLM 5.2, with a GLM retry inside it).
 pii_scan: clean
 pii_scan_note: >-
   Added-line sweep for e-mail, +62 numbers, passport, NPWP, NIK, KTP: only the company WhatsApp number and
@@ -215,15 +228,6 @@ dissent:
       The skip is real and is documented in the test and in the brief. It is not a defect: MobileNav's
       non-R19 behaviour is the current product, and the drawer theming it would assert belongs to the activation
       unit, which un-skips it.
-  - seat: codex-gpt-5.6-sol
-    verdict: NONE
-    objection: >-
-      No review was produced: the workspace is out of credits. The Gear-3 council therefore has two titolari
-      plus one reserve rather than the three titolari.
-    status: PLAUSIBLE
-    disposition: >-
-      Recorded rather than hidden; see seat_fallback_reason. Nothing in the diff was left unread by a seat that
-      answered.
 residual_risks:
   - >-
     next build was run once, by the conducting session, on the tree before the rebase and before the NavShell
@@ -233,4 +237,10 @@ residual_risks:
     generation. No review seat and no local run measured a change in the global CSS output; the CI build is the
     first place it would show.
   - >-
-    D3 seat diversity is not demonstrated (see lanes_note); the external builder seat is unidentified.
+    D3 seat diversity is met on Zero's word, not on a record: the snapshot's evidence does not name its builder
+    and the Codex session log was not located locally (see lanes_note). Nothing in the repository lets a later
+    reader verify the attribution.
+  - >-
+    The council has two titolari (Kimi K3, Qwen 3.8 Max) and one reserve (GLM 5.2). The third titolare, Codex,
+    was unavailable for credits and is also the author, so this diff has no reviewer from the author's family.
+    That is the independence the rule asks for, not a gap, but it is why the council is one titolare short.
