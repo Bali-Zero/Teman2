@@ -28,6 +28,15 @@ objective: |
   `_redact_token`'s peel only strips a delimiter AT the token's own edge. No current caller produces
   this in `subject` — real callers pass a plain string — but the fix removes the class of shape
   structurally rather than relying on that staying true.
+
+  Also corrects two wording NITs the #7426 gate found in THIS PR's own touched code/tests (N1/N2:
+  the K1 block comment and a test docstring over-attributed which of the three old regexes were
+  quadratic). N4 (a wording fix to #7426's OWN evidence brief) is explicitly OUT of this PR: this
+  repo's `evidence_paths.py --resolve brief` requires exactly one `evidence/*/brief.yml` per PR
+  diff, so a second PR touching that file is needed — attempted here first, reverted in a follow-up
+  commit in this same branch once the push hook's `[floor-needs-brief]` ambiguity error explained
+  why (`AmbiguousEvidencePathError`, `scripts/ci/evidence_paths.py:232`), tracked as a separate
+  follow-up rather than silently dropped.
 constraints:
   - "One PR, three gate conditions the mandate itself bundled (team-lead's dispatch names all three
     for this single follow-up) — not three separate PRs, per the mandate."
@@ -82,13 +91,6 @@ acceptance:
       (not all three — the leading peel was anchored and already linear), and a new test SHALL
       cover the actually-quadratic shape (`a@b`+`!`*n+`x`, ending in a non-matching character).
     probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py::test_scrub_email_tokens_handles_a_trailing_run_ending_in_a_non_delimiter_without_hanging"
-  - text: >-
-      (N4, PR #7426 gate wording NITs) the #7426 evidence pack's own brief.yml SHALL correct two
-      claims: K2's acceptance criterion overclaimed "both address/fragment present" on
-      `b491d10138` (only the fragment survives there), and a risk bullet claimed the byte-identical
-      proof ran against `b491d10138` (it ran against `37c03c1874`, the actual parent — b491 differs
-      in 2,141 corpus cases and would show diffs, not 0).
-    probe: "grep -n 'Corrected per the #7426 gate' evidence/2026-09/agent-air-m5-backend-rag-senderpii-k1k2-5d2b31a4/brief.yml"
   - text: >-
       No regression: the full notifications/security/newsletter/mail_loop/crm/birthday/integrations
       test set, plus the 3 core RAG suites named in `apps/backend-rag/CLAUDE.md` §11, SHALL still
@@ -147,11 +149,10 @@ budget: >-
   1 build lane (this session), no cross-family review lane — Gear 2 (declared; recomputed locally
   with this branch's own `scripts/evidence_pack_lint.py --print-floor` against the CI-equivalent
   changed-files/numstat inputs: floor 2, matching the declared gear). 4 files touched in the code
-  change (2 source + 2 test), +457/-40 there; this brief and a 2-line wording fix to #7426's own
-  brief.yml are evidence-only and outside that count. Net line count runs slightly past the
-  Builder Contract's ~400-line guidance because the mandate itself bundled three separate gate
-  conditions (C4, K3, K4) into this one follow-up rather than three PRs — declared here rather than
-  split against the mandate's own instruction.
+  change (2 source + 2 test), +457/-40 there; this brief is evidence-only and outside that count.
+  Net line count runs slightly past the Builder Contract's ~400-line guidance because the mandate
+  itself bundled three separate gate conditions (C4, K3, K4) into this one follow-up rather than
+  three PRs — declared here rather than split against the mandate's own instruction.
 pii: >-
   none — every address in this PR's diff/tests/pack is a synthetic
   `*.example`/`*.example.test`/`sender.pii.probe@example.com` shape; no production `to_email`,
