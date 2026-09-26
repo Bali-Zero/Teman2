@@ -130,6 +130,18 @@ describe("getArticleBySlug (MDX-first)", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("renders a backend article whose cover is only a storage key", async () => {
+    existsSyncMock.mockReturnValue(false);
+    mockFetchOnce({
+      success: true,
+      data: { ...BACKEND_ITEM, image_url: "covers/news-example.jpg" },
+    });
+
+    const article = await getArticleBySlug(CATEGORY, SLUG);
+
+    expect(article?.coverImage).toBe("/static/blog/oss-guide.jpg");
+  });
+
   it("returns null when neither a local MDX nor a backend row exists", async () => {
     existsSyncMock.mockReturnValue(false);
     mockFetchOnce({ success: false }, true);

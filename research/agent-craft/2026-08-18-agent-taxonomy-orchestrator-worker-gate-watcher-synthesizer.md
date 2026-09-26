@@ -237,7 +237,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [20] source `8d0ba049…`
 
-> -------------------------------------------------------------------------------- name: client-case-quote-generator description: Generates a Bali Zero internal-print A4 PDF client quote (visa/property/tax/regulatory) covering cost, timeline, risk, deliverables, and pricing. Loads bali-zero-brand skill (surface=internal-print-a4), uses Claude Opus 4.7 for brand-voice synthesis, delegates numerical math (tax projections, cost breakdowns, deadline arithmetic) to DeepSeek Reasoner ($0.01/q acceptable per CLAUDE.md), renders via existing surfaces/internal-print-a4/_render.py Playwright→PDF pipeline. Use when Antonello says "quote case for [client X]" or "draft brief for [Marta Reyes / Marina Pinyaylova / etc.]". tools: Read, Write, Edit, Bash, WebFetch model: opus isolation: worktree color: blue
+> -------------------------------------------------------------------------------- name: client-case-quote-generator description: Generates a Bali Zero internal-print A4 PDF client quote (visa/property/tax/regulatory) covering cost, timeline, risk, deliverables, and pricing. Loads bali-zero-brand skill (surface=internal-print-a4), uses Claude Opus 4.7 for brand-voice synthesis, delegates numerical math (tax projections, cost breakdowns, deadline arithmetic) to DeepSeek Reasoner ($0.01/q acceptable per CLAUDE.md), renders via existing surfaces/internal-print-a4/_render.py Playwright→PDF pipeline. Use when Antonello says "quote case for [client X]" or "draft brief for [[CLIENT-NAME-REDACTED] / [CLIENT-NAME-REDACTED] / etc.]". tools: Read, Write, Edit, Bash, WebFetch model: opus isolation: worktree color: blue
 
 ### [21] source `357bc3cb…`
 

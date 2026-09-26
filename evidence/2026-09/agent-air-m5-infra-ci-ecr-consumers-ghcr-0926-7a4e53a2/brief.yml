@@ -1,0 +1,61 @@
+task_id: ci-ecr-consumers-ghcr-0926
+gear: 3
+colour: BLUE
+objective: >-
+  PR-2 of 2 of the ECR anonymous-quota cure. Point the 9 CI service images
+  (tests.yml x5, scripts-tests-sweep.yml x2, fly-deploy.yml x1,
+  intel-router-tests.yml x1) at ghcr.io/bali-zero/ci-mirror/ with a
+  credentials block carrying the job's own GITHUB_TOKEN, and retire ECR from
+  the pin test so an anonymous ECR service image is guilt again. Same tags,
+  same manifests: no version change.
+ground:
+  measured_at: "2026-09-26T12:15Z-12:30Z"
+  mirror_live: >-
+    PR-1 #7390 merged 2026-09-26T12:14:43Z. Its push-triggered seed run
+    36241309807 succeeded in every job: both mirror legs copied from
+    docker.io (no fallback needed); mirrored manifest sha256 postgres:15
+    e27d24a29acce1b554771ba68c43afa55446069d228310451bb8c96c1531d2cb and
+    redis:7 95acc00495ddacfec75111ba47021f903121a890311d49264c723b4423ac9601,
+    both identical to the docker.io linux/amd64 digests recorded at 10:19Z;
+    the verify job ran `docker login` then pulled both from ghcr.io as
+    service containers with a packages:read GITHUB_TOKEN and printed
+    "postgres (PostgreSQL) 15.19" and "Redis server v=7.4.11"; prune ran
+    and had nothing to delete.
+  visibility: >-
+    The packages are PRIVATE: an anonymous ghcr.io token request for
+    bali-zero/ci-mirror/{postgres,redis} returns HTTP 401. Consumers
+    therefore need the credentials block, which PR-2 adds everywhere.
+  permissions: >-
+    None of the 6 consumer jobs declares workflow- or job-level permissions,
+    so they inherit the repo default `read` (contents and packages).
+  actionlint: >-
+    The 4 consumer workflows carry the same 22 pre-existing shellcheck
+    findings on origin/main and on this diff (line numbers stripped, set
+    compared), so this diff adds none.
+  siblings: >-
+    12:20Z no open PR touches the service blocks; #7102 (codecov bump in
+    tests.yml) stays open and untouched.
+design: >-
+  Mechanical application of the design chosen and proven in PR-1: same
+  image refs as the verify job that already pulled them successfully, same
+  credentials block, and the pin test now sanctions only the ghcr prefix.
+constraints:
+  - Touch only the 9 service `image:` lines (plus their credentials blocks) in the 4 consumer workflows, the pin test, and this evidence directory.
+  - No version change, no permissions change, no new secret.
+acceptance:
+  - text: >-
+      WHEN Tests & Coverage runs on this PR, its service containers SHALL be
+      pulled from ghcr.io/bali-zero/ci-mirror/ after a docker login, and the
+      run log SHALL contain no public.ecr.aws line.
+    probe: gh run view <tests run> --log | grep -c public.ecr.aws (0) and grep "Pulling from bali-zero/ci-mirror"
+  - text: IF any workflow service image names public.ecr.aws or drops the credentials block, THEN the pin test SHALL fail.
+    probe: python3 -m pytest scripts/tests/test_ci_service_images_use_mirror.py plus the two cp-backed mutations
+  - text: WHEN actionlint runs on the 4 consumer workflows, it SHALL report exactly the pre-existing finding set.
+    probe: bash scratchpad/al_main.sh
+assumptions:
+  - text: A fork or Dependabot pull_request run's read-only GITHUB_TOKEN can pull the repo's own private package.
+    status: unverified
+    probe: the next Dependabot PR's Tests & Coverage Initialize containers step
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

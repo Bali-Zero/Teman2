@@ -5,6 +5,10 @@ research/operations/2026-09-11-bot-staff-room/B2-engine.md §4 PR B2.3b and
 label, its normalised score and the opaque package reference from
 ``wa_codex_leg.py``'s parsed sealed wire into ``wa_outbox_worker.py``'s
 terminal ``done`` write (``abstained_at``/``evidence_score``, migration 314).
+``served_by`` (migration 322) rides the SAME fenced write — it is the
+`CodexLegResult.served_by` value verbatim, the durable answer to "which
+route served this row" (`docs/zantara-loop-state.md`'s support_abstain
+rate gap).
 
 Deliberately a SEPARATE module from ``test_wa_outbox_worker.py`` (which uses
 a fully mocked ``ScriptedConn`` and asserts on SQL text) — these tests need
@@ -16,7 +20,8 @@ Fixture pattern copied from ``backend/tests/app/routers/conftest.py``
 CI's ``postgres:15`` service uses (``.github/workflows/tests.yml``). Skips
 cleanly (does not fail) when the DB is unreachable or lacks
 ``wa_outbox``/``meta_inbox_threads``/``meta_inbox_messages`` or migration
-314's two columns, matching that same conftest's documented convention.
+314's two columns or migration 322's ``served_by``, matching that same
+conftest's documented convention.
 
 ``wa_codex_leg.attempt`` is stubbed per case (never the real broker/RAG
 call — no network, no generation, no send beyond the stubbed
@@ -43,7 +48,11 @@ _DEFAULT_DB_URL = os.environ.get(
 )
 
 _REQUIRED_TABLES = ("wa_outbox", "meta_inbox_threads", "meta_inbox_messages")
-_REQUIRED_COLUMNS = (("wa_outbox", "abstained_at"), ("wa_outbox", "evidence_score"))
+_REQUIRED_COLUMNS = (
+    ("wa_outbox", "abstained_at"),
+    ("wa_outbox", "evidence_score"),
+    ("wa_outbox", "served_by"),
+)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -82,7 +91,7 @@ async def db_pool() -> asyncpg.Pool:
                     if not exists:
                         skip_reason = (
                             f"wa_outbox_worker carrier tests: {table}.{column} "
-                            "missing (migration 314 not applied to the test DB)"
+                            "missing (migration 314 or 322 not applied to the test DB)"
                         )
                         break
         if skip_reason is None:
@@ -254,7 +263,8 @@ async def _seed_row(
 async def _fetch_carrier(pool: asyncpg.Pool, outbox_id: int) -> asyncpg.Record:
     async with pool.acquire() as conn:
         return await conn.fetchrow(
-            "SELECT status, abstained_at, evidence_score FROM wa_outbox WHERE id = $1",
+            "SELECT status, abstained_at, evidence_score, served_by "
+            "FROM wa_outbox WHERE id = $1",
             outbox_id,
         )
 
@@ -310,6 +320,7 @@ async def test_generated_supported_label_false_sets_score_only(
     assert float(carrier["evidence_score"]) == 0.42
     # I83: exact NUMERIC text, not just the float-equal check above.
     assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == "0.42"
+    assert carrier["served_by"] == "codex"
 
 
 # ── 2. generated-abstain-label ──────────────────────────────────────────────
@@ -379,6 +390,10 @@ async def test_retry_then_later_attempt_persists_its_own_carrier(
     carrier_after_first = await _fetch_carrier(db_pool, row["outbox_id"])
     assert carrier_after_first["abstained_at"] is None
     assert carrier_after_first["evidence_score"] is None
+    # The first attempt's own fall-off never reached the codex leg's
+    # served completion branch, so it never had a served_by to carry —
+    # this is the "NULL on a failed generation" case.
+    assert carrier_after_first["served_by"] is None
 
     # Fast-forward past the backoff window (test setup only — the worker
     # itself decides the real backoff; this just makes the row due again
@@ -396,6 +411,7 @@ async def test_retry_then_later_attempt_persists_its_own_carrier(
     carrier_after_second = await _fetch_carrier(db_pool, row["outbox_id"])
     assert carrier_after_second["abstained_at"] is None
     assert float(carrier_after_second["evidence_score"]) == 0.55
+    assert carrier_after_second["served_by"] == "codex"
 
 
 # ── 4. stale claim — commit_fenced None → both stay NULL ───────────────────
@@ -524,6 +540,9 @@ async def test_failed_send_at_max_attempts_persists_nothing(
     assert carrier["status"] == "failed"
     assert carrier["abstained_at"] is None
     assert carrier["evidence_score"] is None
+    # The send never reached the terminal 'done' commit, so served_by was
+    # never written either — same "nothing persisted as a send" rule.
+    assert carrier["served_by"] is None
 
 
 # ── 7. discarded completion (stand_down) — nothing persisted ───────────────
@@ -575,6 +594,9 @@ async def test_scripted_greeting_persists_nothing(
     carrier = await _fetch_carrier(db_pool, row["outbox_id"])
     assert carrier["abstained_at"] is None
     assert carrier["evidence_score"] is None
+    # served_by is NOT gated on evidence_abstain_label/evidence_score being
+    # set — it is written unconditionally from the served completion.
+    assert carrier["served_by"] == "scripted_greeting"
 
 
 # ── 9. support-negative — served_by="support_abstain", never "codex" ───────
@@ -617,6 +639,44 @@ async def test_support_negative_never_sets_abstained_at(
     assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == repr(0.15)
 
 
+async def test_served_by_persists_support_abstain(
+    db_pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dedicated guilt proof for the gap this migration closes
+    (docs/zantara-loop-state.md, Iteration 2): before migration 322 +
+    the worker carrier change, ``served_by`` did not exist on ``wa_outbox``
+    at all and the support-negative stub route was invisible in SQL —
+    only `logger.info("wa_outbox: %s served ...")` said so. This test must
+    FAIL against origin/main's worker (no ``served_by`` column, no bind
+    param), proving the fix is actually in force, not just plausible."""
+    row = await _seed_row(db_pool)
+    monkeypatch.setattr(
+        wa_codex_leg,
+        "attempt",
+        _codex_leg_stub(
+            [
+                wa_codex_leg.CodexLegResult(
+                    text="Mi scuso, ti metto in contatto con un umano.",
+                    reason="support_unsupported",
+                    served_by="support_abstain",
+                    evidence_abstain_label=True,
+                    evidence_score=0.10,
+                    package_ref="pkg-hash-served-by-support-abstain",
+                )
+            ]
+        ),
+    )
+    whatsapp = _StubWhatsApp()
+    outcome = await process_outbox_once(db_pool, whatsapp, _never_bot_gen)
+    assert outcome == "sent"
+    carrier = await _fetch_carrier(db_pool, row["outbox_id"])
+    # D6 (unchanged by this PR): the stub never sets abstained_at, even
+    # though it now has its OWN durable marker in served_by.
+    assert carrier["abstained_at"] is None
+    assert carrier["served_by"] == "support_abstain"
+    assert carrier["served_by"] != "codex"
+
+
 # ── 10. reattached completion — served_by="codex", all three carrier
 #        fields None (F1/I83: a REATTACHED completion's rebuilt sealed wire
 #        does not describe the package that generated the text) ───────────
@@ -649,4 +709,7 @@ async def test_reattached_completion_persists_nothing(
     carrier = await _fetch_carrier(db_pool, row["outbox_id"])
     assert carrier["status"] == "done"
     assert carrier["abstained_at"] is None
+    # served_by is written unconditionally from leg.served_by, unlike the
+    # other two carrier fields which the REATTACHED leg zeroes out here.
+    assert carrier["served_by"] == "codex"
     assert carrier["evidence_score"] is None

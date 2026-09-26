@@ -784,6 +784,20 @@ EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE = datetime.date(2026, 9, 12)
 #: the same value `resolve_evidence_path("brief", ...)` falls back to.
 EVIDENCE_ROOT_BRIEF_PATH = "evidence/brief.yml"
 
+# Rule 15 (plain-scalar `#`-truncation, PENDING-ARMS 2026-08-25) — same
+# "flip date lives in code" reasoning as the two deprecations above, and for
+# the same measured reason: a census of the CURRENT corpus (2026-09-26,
+# 966 evidence/**/*.yml files) found 295 files where an unquoted plain
+# scalar is ALREADY silently truncated at a ` #` — overwhelmingly "(PR
+# #NNNN)"/"(superscar #N)" references outside a `>` block, the house style
+# for short one-line brief/dissent/note fields. Flipping this straight to a
+# FAIL would brick most in-flight PRs on their very next commit for a
+# writing habit nobody has been told to change yet; a 2-week grace (matching
+# EVIDENCE_ROOT_DEPRECATION_DATE's own precedent) makes the finding visible
+# today (NOTICE) and a hard gate once authors have had the same runway to
+# adopt `>`/quoting that the two rules above gave for their own migrations.
+PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE = datetime.date(2026, 10, 10)
+
 
 # --------------------------------------------------------------------- utils
 
@@ -1403,6 +1417,94 @@ def check_size_budget(raw: bytes) -> list[str]:
     if tokens > SIZE_TOKEN_CAP:
         return [f"size: approx {tokens} tokens exceeds the {SIZE_TOKEN_CAP} hard cap"]
     return []
+
+
+#: A plain (unquoted) YAML scalar's value ends where the FIRST value on the
+#: line starts — this regex captures whatever follows the `key:`/`- ` marker,
+#: raw, before any YAML-aware truncation happens.
+_YAML_DASH_RE = re.compile(r"^(\s*)-\s+(.*)$")
+_YAML_KEY_RE = re.compile(r"^([A-Za-z0-9_.\[\]-]+:\s*)(.*)$")
+
+
+def check_no_plain_scalar_hash_truncation(
+    raw: bytes, today: datetime.date | None = None
+) -> tuple[list[str], list[str]]:
+    """Rule 15. GUILT: a plain (unquoted, unfolded) YAML scalar whose value
+    contains ` #` — `yaml.safe_load` treats an unquoted ` #` as a comment
+    start, so everything from there onward is silently discarded with NO
+    syntax error (measured 2026-08-25: a pack's own `seat: team-lead (...,
+    Dissent #3)` loaded as `'team-lead (..., Dissent'`, the pack still
+    parsed, and the lint — which only ever failed on a syntax error —
+    reported it clean). This reads the RAW bytes line-by-line, before
+    yaml.safe_load ever runs, which is the only point the discarded half
+    still exists to look at. Returns (violations, notices); before
+    PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE every finding is a NOTICE
+    (a corpus census re-measured 2026-09-26 found real evidence files already
+    carrying this shape — see the constant's own comment for why a grace
+    period is not optional here), on/after it is a violation. `today`
+    overridable for tests, same seam as check_pack_not_at_deprecated_root.
+
+    INNOCENCE, deliberately narrow (superscar #3): a quoted scalar
+    (`'...'`/`"..."`), a flow collection (`[...]`/`{...}`), a block scalar
+    header (`>`/`|` and their `-`/`+` chomping variants) — AND, critically,
+    every CONTINUATION line of a block scalar already open (a `#` inside a
+    `>`/`| ` body is literal text, never a comment; the first draft of this
+    rule ignored that and misfired on roughly two-thirds of every real pack
+    in the repo, flagging ordinary prose ONE indentation level under an
+    already-folded field. Block-scalar-ness is tracked purely by
+    indentation, exactly as YAML itself resolves it: once a header line
+    opens one at column N, every following line indented MORE than N (or
+    blank) is inside it, and the first line back at or below N closes it)
+    — plus an empty value and a bare `# comment` with nothing before it
+    (there is nothing FOR YAML to have truncated). The convention this rule
+    enforces going forward is the one the module's own dated packs already
+    use for free text: a `>` folded block scalar, or quote it."""
+    findings: list[str] = []
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return [], []
+    block_scalar_indent: int | None = None
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+        if block_scalar_indent is not None:
+            if not stripped or indent > block_scalar_indent:
+                continue  # still inside the open block scalar's body
+            block_scalar_indent = None  # back at/below the header's column — it closed; re-evaluate this line below
+        if not stripped or stripped.startswith("#"):
+            continue
+        body = stripped
+        dash_match = _YAML_DASH_RE.match(line)
+        if dash_match:
+            body = dash_match.group(2)
+        key_match = _YAML_KEY_RE.match(body)
+        value = (key_match.group(2) if key_match else body).rstrip()
+        if not value:
+            continue
+        if value[0] in "|>":
+            block_scalar_indent = indent
+            continue
+        if value[0] in "'\"[{":
+            continue
+        if " #" not in value:
+            continue
+        truncated_to = value.split(" #", 1)[0].strip()
+        if not truncated_to:
+            continue  # `key:  # comment` — an empty field with a trailing comment, nothing lost
+        findings.append(
+            f"YAML plain-scalar truncation (line {lineno}): value is silently "
+            f"cut at ` #` — loads as {truncated_to!r}, discarding everything "
+            f"after it, with no syntax error. Quote the value or use a `>` "
+            f"folded block scalar."
+        )
+    if not findings:
+        return [], []
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE:
+        return [], findings
+    return findings, []
 
 
 def check_brief_ref_exists(
@@ -3184,6 +3286,15 @@ def lint(
     gear = raw_gear if type(raw_gear) is int and raw_gear in VALID_GEARS else None
 
     violations: list[str] = []
+    # Runs on the RAW bytes, same reasoning as check_size_budget above: the
+    # text yaml.safe_load discards at a ` #` mid-scalar only still exists to
+    # inspect before parsing.
+    hash_trunc_violations, hash_trunc_notices = check_no_plain_scalar_hash_truncation(
+        raw, today=today
+    )
+    violations += hash_trunc_violations
+    for _notice in hash_trunc_notices:
+        print(f"evidence_pack_lint: NOTICE — {_notice}", file=sys.stderr)
     violations += check_receipts_have_provenance(pack, gear)
     violations += check_pii_scan_clean(pack)
     violations += brief_violations
@@ -3394,13 +3505,25 @@ _COUNT_WORDS: dict[str, int] = {
 }
 _COUNT_WORD_ALT = "|".join(_COUNT_WORDS)
 
-_FILES_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+files?\b", re.IGNORECASE)
+#: `\b` alone is not a left boundary against a hyphenated identifier: `\b`
+#: fires at ANY non-word/word transition, including the `-` in "seq-17", so
+#: `\b(\d+)\s+commits?\b` still matched "17 commits" inside "the seq-17
+#: commit" (measured 2026-08-31, PR #5333 — a guard-over-match, superscar
+#: #3). `(?<![\w-])` additionally refuses a digit run immediately preceded
+#: by a hyphen or word character, so a hyphenated identifier like "seq-17"
+#: or "PR-4" no longer donates its trailing digits to the count claim,
+#: while "the 17 commits" (preceded by whitespace/start) still matches.
+#: Applied to all three digit-claim regexes below — they share the exact
+#: same left-boundary shape, so the same phrasing ("the batch-9 files",
+#: "run-64 tests") would have misread each of them identically.
+_LEFT_BOUND = r"(?<![\w-])"
+_FILES_CLAIM_RE = re.compile(rf"{_LEFT_BOUND}(\d{{1,5}})\s+files?\b", re.IGNORECASE)
 #: "+1195/-119", "+1195 / -119", "+1195/−119" (U+2212 minus, seen in prose).
 _DIFFSTAT_CLAIM_RE = re.compile(r"\+\s?(\d{1,7})\s*/\s*[-−]\s?(\d{1,7})\b")
 _COMMITS_CLAIM_RE = re.compile(
-    rf"\b(\d{{1,4}}|{_COUNT_WORD_ALT})\s+commits?\b", re.IGNORECASE
+    rf"{_LEFT_BOUND}(\d{{1,4}}|{_COUNT_WORD_ALT})\s+commits?\b", re.IGNORECASE
 )
-_TESTS_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+tests?\b", re.IGNORECASE)
+_TESTS_CLAIM_RE = re.compile(rf"{_LEFT_BOUND}(\d{{1,5}})\s+tests?\b", re.IGNORECASE)
 _INTEGER_RE = re.compile(r"\d{1,7}")
 
 _NUMSTAT_CMD = "git diff --numstat $(git merge-base origin/main HEAD)..HEAD"
@@ -3496,6 +3619,36 @@ def _iter_countable_scalars(pack: dict[str, Any]) -> list[tuple[str, str]]:
     return out
 
 
+#: The `diff` block's own headline scalars — the permanent record a reader
+#: checks first, and the reason PR #5424 could declare `files: 4 / insertions:
+#: 70` against a real `7 files changed, 561 insertions(+)` and still lint
+#: `clean`: `_iter_countable_scalars` above walks the SAME `diff` subtree but
+#: only collects `str` nodes, so an int-typed field is invisible to it by
+#: construction — measured 2026-08-30/31 two ways, `diff: {files: 42,
+#: net_lines: 999999}` with a digit-free note (no prose phrase to catch) and
+#: PR #5424's `files: 4 / insertions: 70`. `net_lines` is compared against
+#: insertions-minus-deletions, matching `_size_term_net_lines()`'s own
+#: added-minus-deleted convention elsewhere in this file.
+_DIFF_INT_FIELDS: tuple[str, ...] = ("files", "insertions", "deletions", "net_lines")
+
+
+def _diff_int_claims(pack: dict[str, Any]) -> list[tuple[str, int]]:
+    """(field-name, value) for every INTEGER field in `_DIFF_INT_FIELDS`
+    present directly under `pack["diff"]` — deliberately narrow (superscar
+    #3): only the `diff` block's own known headline fields, never a nested
+    string this rule's prose scan already covers, and never `lanes` (no
+    known lane ever carries these keys)."""
+    out: list[tuple[str, int]] = []
+    diff_node = pack.get("diff")
+    if not isinstance(diff_node, dict):
+        return out
+    for field in _DIFF_INT_FIELDS:
+        value = diff_node.get(field)
+        if type(value) is int:  # exclude bool — True/False is not a count
+            out.append((field, value))
+    return out
+
+
 def _receipt_integers(pack: dict[str, Any]) -> set[int]:
     """Every integer appearing in the receipts' `claim`/`result` prose.
 
@@ -3530,6 +3683,43 @@ def check_countable_claims(
     scalars = _iter_countable_scalars(pack)
     totals = parse_numstat_totals(numstat_text)
     receipt_ints = _receipt_integers(pack)
+
+    # ---- (d) diff block's own INT-typed headline fields ------------------
+    # Same source of truth as (a) above (the numstat blob), but a DIFFERENT
+    # claim shape: a literal `diff: {files: 4}` YAML integer rather than a
+    # "4 files" phrase inside a string, so it needs its own comparison —
+    # `_iter_countable_scalars` never sees it (str-only walk).
+    for int_field, claimed in _diff_int_claims(pack):
+        if totals is None:
+            notices.append(
+                f"countable claim (countable-claims rule): diff.{int_field} declares "
+                f"{claimed} but no `git diff --numstat` was supplied (--numstat-file) "
+                f"— not verified this run"
+            )
+            continue
+        files, insertions, deletions, has_binary = totals
+        measured = {
+            "files": files,
+            "insertions": insertions,
+            "deletions": deletions,
+            "net_lines": insertions - deletions,
+        }[int_field]
+        if claimed == measured:
+            continue
+        message = (
+            f"countable claim (countable-claims rule): diff.{int_field} declares "
+            f"{claimed} but the diff measures {measured} — computed from "
+            f"`{_NUMSTAT_CMD}`. Correct the pack to the computed value or drop the "
+            f"field."
+        )
+        if has_binary and int_field != "files":
+            notices.append(
+                message + " (NOTICE only: this diff contains a binary file, "
+                "whose line counts numstat cannot report — the computed "
+                "totals are a lower bound.)"
+            )
+        else:
+            violations.append(message)
 
     for field, text in scalars:
         # ---- (a) diff stats -------------------------------------------

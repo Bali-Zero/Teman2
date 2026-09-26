@@ -1,0 +1,246 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Pro worktree .worktrees/mouth-r19-cutover-audit-20260924, docs/plans/r19-cutover-20260924/PLAN.md
+  section 5 step 2 (dormant foundation); snapshot archived at Pro ~/.agent/snapshots/r19-cutover-audit-20260926.tgz.
+council_run: council-journal.jsonl
+council_note: >-
+  The journal is hand-authored from the seats' own artifact timestamps (file birth and modification
+  times for the Kimi and Codex runs, dispatch_ts and done_ts files for the two TP1 runs), because
+  scripts/council_journal.py stamps the clock at the moment of the call and cannot record a dispatch
+  that already happened. Codex GPT-5.6 (titolare) returned "workspace is out of credits" and produced no
+  review; that is recorded as ok:false. It was dispatched before the pack author knew that Codex is also
+  the snapshot's builder (see lanes_note), so a completed run would not have been an independent review
+  either; the line stays as the record of what was tried. The two qualifying seats are the titolari
+  kimi-code/k3 and tp1-qwen3.8-max. tp1-glm-5.2 (reserve) also judged, after a truncated first attempt.
+seat_fallback_reason: >-
+  tp1-glm-5.2 (reserve) was seated as a third reviewer because the third titolare, codex-gpt-5.6-sol,
+  was unavailable: every dispatch on 2026-09-26 ended "ERROR: Your workspace is out of credits"
+  (scratch p2-codex.txt, lines 51-52). That titolare is also the snapshot's builder, so it could not have
+  served as an independent reviewer of this diff in any case. Quorum itself rests on two titolari
+  (kimi-code/k3, tp1-qwen3.8-max).
+lanes:
+  - lane: r19-snapshot-author
+    role: build
+    seat: >-
+      codex-gpt-5.6-sol (external prepare-only builder of the 24-25 September 2026 snapshot that this branch
+      copies; attribution confirmed by Zero on 2026-09-26, the session log was not located locally)
+  - lane: r19-foundation-integration
+    role: build
+    seat: >-
+      claude-opus-5-5 (conducting session: integration, NavShell default-vs-paper test, next build and
+      bundle guards, this pack) with claude-sonnet-5 (scoped implementer subagent: byte-copy of the
+      snapshot, cure of the trust-figures guard red, prettier)
+  - lane: kimi-red-team
+    role: review
+    seat: kimi-code/k3
+  - lane: qwen-red-team
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: glm-red-team
+    role: review
+    seat: tp1-glm-5.2
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5-5 (fresh read-only session outside the contribution chain)
+    status: pending, signs after this pack is committed
+lanes_note: >-
+  D3 (seat diversity among build lanes) is met by the first build lane, the external prepare-only builder
+  of the snapshot, named as Codex (GPT-5.6 Sol). That attribution rests on Zero's confirmation of
+  2026-09-26 and on nothing in the repository: the snapshot's own evidence (brief.yml, pack.yml, preserved
+  pack.json and brief.md, and the plan documents) says only "external builder, prepare-only", and the
+  session log was not located locally. The lint can only read the seat string, so it cannot tell a
+  recorded attribution from a remembered one; this note is where the difference is kept. The Claude work on
+  this branch (integration, one guard cure, one added test, verification) is the second build lane.
+  Consequence for the council: Codex authored the code, so a Codex review would not have been independent
+  of the author, and no Codex review lane is declared.
+snapshot_provenance: >-
+  apps/mouth/src/components/r19/**, the four R19 font subsets, the R19 image assets, NavShell.module.css,
+  the NavShell variant change and the rumahVars aliases are copied from the read-only snapshot worktree
+  .worktrees/mouth-r19-cutover-audit-20260924, authored by Codex as an external prepare-only builder
+  (attribution confirmed by Zero on 2026-09-26; see lanes_note). Deltas from the snapshot, all inside new files:
+  Footer.tsx and destinations.ts import GOOGLE_MAPS_URL from lib/trust-figures instead of redeclaring it
+  (the existing trust-figures guard bans a second copy); one R19Presentation test is it.skip because it
+  asserts the MobileNav drawer change that belongs to the activation unit; 22 ts and tsx files are
+  prettier-formatted for the pre-commit gate.
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 2
+spend_note: >-
+  Wall clock measured from the creation of this worktree (git reflog, 2026-09-26T14:18:14Z) to the last
+  lint run (about 15:50Z), which is 1.5 hours; work on the snapshot itself, on 24-25 September, is not
+  counted because it belongs to the preparation mandate. Adversarial rounds: one (Kimi K3, with a Codex
+  attempt that failed for credits) and one (Qwen 3.8 Max and GLM 5.2, with a GLM retry inside it).
+pii_scan: clean
+pii_scan_note: >-
+  Added-line sweep for e-mail, +62 numbers, passport, NPWP, NIK, KTP: only the company WhatsApp number and
+  the company support e-mail, both already public on origin/main (contact page), plus two marketing
+  sentences that contain the word passport. No client data. The diff sent to the TP1 seats had those two
+  company contact values replaced by placeholders and excluded all binaries.
+receipts:
+  - claim: nothing outside apps/mouth/src/components/r19 imports components/r19
+    cmd: >-
+      grep -rn "components/r19" apps/mouth/src packages --include='*.ts' --include='*.tsx' |
+      grep -v "^apps/mouth/src/components/r19/" | wc -l
+    result: matches=0
+    exit: 0
+    ts: 2026-09-26T15:28:33Z
+    seat: claude-sonnet-5
+  - claim: --r19-paper is declared, in CSS declaration form, in exactly one file outside r19, the page-local login-upgraded scope
+    cmd: grep -rn -- "--r19-paper\s*:" apps/mouth/src
+    result: files=apps/mouth/src/app/portal/login-upgraded/page.tsx
+    exit: 0
+    ts: 2026-09-26T15:28:34Z
+    seat: claude-sonnet-5
+  - claim: that scope cannot cascade into a RUMAH_VARS consumer, and no selector targets the new data-nav attributes
+    cmd: >-
+      grep -rnE "RUMAH_VARS|rumahVars|merahPutihDay|NewsPageClient|<NavShell" apps/mouth/src/app/portal ;
+      grep -lE "RUMAH_VARS|rumahVars|merahPutihDay" apps/mouth/src/app/layout.tsx apps/mouth/src/app/portal/layout.tsx ;
+      grep -rnE "data-nav" apps/mouth/src packages apps/mouth/e2e --include='*.css' --include='*.ts' --include='*.tsx'
+      | grep -vE "NavShell.tsx|NavShell.module.css|NavShell.test"
+    result: portal_matches=0 ancestor_layout_matches=0 (both layout files exist) data_nav_outside_navshell=0
+    exit: 0
+    ts: 2026-09-26T15:34:47Z
+    seat: claude-sonnet-5
+  - claim: every NavShell production call site omits variant (the only variant="paper" is in the NavShell unit test)
+    cmd: python3 scan of every <NavShell JSX tag under apps and packages, top-level prop names only
+    result: production sites=14, passing variant=0; test-file sites=6, passing variant=1 (packages/core/components/NavShell.test.tsx)
+    exit: 0
+    ts: 2026-09-26T15:33:51Z
+    seat: claude-sonnet-5
+  - claim: every rumahVars alias falls back to the exact literal it replaced
+    cmd: >-
+      python3 compare of RUMAH_VARS in git show origin/main:apps/mouth/src/lib/theme/rumahVars.ts against the
+      working file
+    result: keys=23 wrapped=18 fallback_equals_old=18 untouched_identical=5 mismatches=0
+    exit: 0
+    ts: 2026-09-26T15:28:34Z
+    seat: claude-sonnet-5
+  - claim: typecheck is clean
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: no output
+    exit: 0
+    ts: 2026-09-26T15:29:10Z
+    seat: claude-sonnet-5
+  - claim: apps/mouth vitest suite green at head 0c92839220
+    cmd: cd apps/mouth && npx vitest --run
+    result: Test Files 551 passed (551); Tests 7266 passed, 3 skipped (7269)
+    exit: 0
+    ts: 2026-09-26T15:30:21Z
+    seat: claude-sonnet-5
+  - claim: packages/core vitest suite green at head 0c92839220, including the NavShell default-versus-paper test
+    cmd: cd packages/core && npx vitest --run
+    result: Test Files 38 passed (38); Tests 188 passed (188)
+    exit: 0
+    ts: 2026-09-26T15:30:34Z
+    seat: claude-sonnet-5
+  - claim: production build compiles and generates every static page with the foundation in the tree
+    cmd: cd apps/mouth && npx next build --webpack
+    result: >-
+      Compiled successfully in 47s; Finished TypeScript in 38.4s; 1740 of 1740 static pages. Run by the
+      conducting session (log kept on Pro scratch, p2-build.log, modified 15:09:51Z) on the tree of commit
+      7cce92ffb1, before the rebase onto 806a684c38 and before the NavShell test commit; the rebase moved the
+      base across five wa-team script and evidence files and zero files in apps/mouth or packages, and a test
+      file is not part of the build.
+    exit: 0
+    ts: 2026-09-26T15:09:51Z
+    seat: claude-opus-5-5
+  - claim: public login bundle guard passes on that build output
+    cmd: cd apps/mouth && node scripts/assert-public-login-bundle.mjs
+    result: "PUBLIC_LOGIN_BUNDLE_OK: inspected 5 assets; no internal API route prefixes found"
+    exit: 0
+    ts: 2026-09-26T15:28:12Z
+    seat: claude-sonnet-5
+  - claim: roster chunk guard passes on that build output
+    cmd: cd apps/mouth && node scripts/assert-roster-not-in-public-chunks.mjs
+    result: "ROSTER_CHUNK_ASSERT OK: scanned 511 chunks; public files 1580 scanned"
+    exit: 0
+    ts: 2026-09-26T15:28:13Z
+    seat: claude-sonnet-5
+  - claim: the dead .paper rules that ship through the packages/core barrel are small (the one measurable cost of the change)
+    cmd: >-
+      python3 scan of apps/mouth/.next/static/css/*.css for rules carrying the NavShell_paper module class
+    result: one chunk of twelve, css/2e9b1e8722fc2125.css, 2569 bytes in total, about 1632 bytes of paper rules uncompressed
+    exit: 0
+    ts: 2026-09-26T15:34:47Z
+    seat: claude-sonnet-5
+  - claim: the qwen3.8-max red-team run on the redacted diff plus verbatim command outputs returned a usable verdict
+    cmd: >-
+      python3 scripts/tp1_call.py --model qwen3.8-max --effort medium --timeout 1500 --task-file
+      p3-review-prompt.txt
+    result: VERDICT INERT, 2372 bytes, dispatched 15:27:43Z, returned 15:29:28Z
+    exit: 0
+    ts: 2026-09-26T15:29:28Z
+    seat: claude-sonnet-5
+  - claim: the glm-5.2 red-team run, second attempt after a truncated first one, returned a usable verdict
+    cmd: >-
+      python3 scripts/tp1_call.py --model glm-5.2 --effort high --max-tokens 32000 --timeout 1500 --task-file
+      p3-review-prompt.txt
+    result: VERDICT INCONCLUSIVE with three PLAUSIBLE findings, all resolved by command (see dissent), 2552 bytes, dispatched 15:29:48Z
+    exit: 0
+    ts: 2026-09-26T15:31:44Z
+    seat: claude-sonnet-5
+dissent:
+  - seat: kimi-code/k3
+    verdict: INERT
+    objection: >-
+      Nits only. The default NavShell class string gains a trailing space, and four @font-face rules in files
+      nothing imports declare new family names (R19 Fraunces, R19 Manrope, R19 Home Fraunces, R19 Home Manrope).
+    status: CONFIRMED
+    disposition: >-
+      Both are real and neither changes rendering: the new family names collide with no existing family
+      (the portal declares the unprefixed Fraunces and Manrope), and the unimported files never reach a bundle.
+      Accepted, ships as is.
+  - seat: tp1-qwen3.8-max
+    verdict: INERT
+    objection: >-
+      NavShell.tsx imports NavShell.module.css unconditionally and packages/core/index.ts re-exports NavShell,
+      so the dead .paper rules ship in the CSS of every page that loads NavShell: bytes go up, rendering does not.
+    status: CONFIRMED
+    disposition: >-
+      Measured on the build output: one 2569-byte chunk carries about 1632 bytes of paper rules uncompressed.
+      Accepted as the cost of a scoped CSS module; the alternative is inline style objects, which is a larger
+      change to a shared component.
+  - seat: tp1-glm-5.2
+    verdict: INCONCLUSIVE
+    objection: >-
+      A page-local --r19-paper (login-upgraded, value f7f4ee) could cascade into a RUMAH_VARS consumer rendered
+      inside that scope and flip --surface-base from f7f6f2.
+    status: RETRACTED
+    disposition: >-
+      Falsified by command. RUMAH_VARS, merahPutihDay and NavShell appear nowhere under apps/mouth/src/app/portal
+      and not in app/layout.tsx or app/portal/layout.tsx, so --surface-base is never declared inside that scope.
+  - seat: tp1-glm-5.2
+    verdict: INCONCLUSIVE
+    objection: >-
+      The data-nav-* attributes are added unconditionally, so a pre-existing global selector on those names
+      would now match.
+    status: RETRACTED
+    disposition: >-
+      Falsified by command. grep for data-nav in css, ts and tsx under apps/mouth/src, packages and
+      apps/mouth/e2e finds nothing outside NavShell.tsx, NavShell.module.css and the NavShell unit test.
+  - seat: tp1-glm-5.2
+    verdict: INCONCLUSIVE
+    objection: >-
+      One R19Presentation test is it.skip, so the activation PR inherits a known-skipped test and a MobileNav
+      defect.
+    status: CONFIRMED
+    disposition: >-
+      The skip is real and is documented in the test and in the brief. It is not a defect: MobileNav's
+      non-R19 behaviour is the current product, and the drawer theming it would assert belongs to the activation
+      unit, which un-skips it.
+residual_risks:
+  - >-
+    next build was run once, by the conducting session, on the tree before the rebase and before the NavShell
+    test commit. CI runs it again on the real merge candidate.
+  - >-
+    Tailwind v4 scans every source file automatically, so the new r19 files are new inputs to utility
+    generation. No review seat and no local run measured a change in the global CSS output; the CI build is the
+    first place it would show.
+  - >-
+    D3 seat diversity is met on Zero's word, not on a record: the snapshot's evidence does not name its builder
+    and the Codex session log was not located locally (see lanes_note). Nothing in the repository lets a later
+    reader verify the attribution.
+  - >-
+    The council has two titolari (Kimi K3, Qwen 3.8 Max) and one reserve (GLM 5.2). The third titolare, Codex,
+    was unavailable for credits and is also the author, so this diff has no reviewer from the author's family.
+    That is the independence the rule asks for, not a gap, but it is why the council is one titolare short.

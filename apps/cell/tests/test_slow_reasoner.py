@@ -1,9 +1,11 @@
 """Tests for SLOW reasoner + DNA interpreter."""
 from unittest.mock import AsyncMock, patch
 
+import httpx
+
 import pytest
 from cell.core.dna_interpreter import DNAInterpreter
-from cell.slow.reasoner import SlowReasoner
+from cell.slow.reasoner import SlowReasoner, _tier0_busy
 
 # --- Reasoner ---
 
@@ -152,7 +154,7 @@ async def test_reasoner_escalates_low_confidence():
     reasoner = SlowReasoner()
     call_count = 0
 
-    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0, **_kw) -> tuple[str, float]:
         nonlocal call_count
         call_count += 1
         if model == "qwen3.5:9b":
@@ -160,7 +162,8 @@ async def test_reasoner_escalates_low_confidence():
         else:
             return '{"action": "alert_human", "reason": "better to alert", "confidence": 0.9}', 0.0
 
-    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama):
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama), \
+            patch.object(reasoner, "_unload_model", new_callable=AsyncMock):
         proposal = await reasoner.think(
             health_status="red",
             response_time_ms=0,
@@ -176,14 +179,172 @@ async def test_reasoner_9b_failure_escalates_to_27b():
     """Qwen 9B fails → escalates to Qwen 27B."""
     reasoner = SlowReasoner()
 
-    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0, **_kw) -> tuple[str, float]:
         if model == "qwen3.5:9b":
             raise Exception("Ollama not running")
         return '{"action": "alert_human", "reason": "9b down", "confidence": 0.8}', 0.0
 
-    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama):
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama), \
+            patch.object(reasoner, "_unload_model", new_callable=AsyncMock):
         proposal = await reasoner.think(
             health_status="yellow",
             response_time_ms=8000,
         )
         assert proposal.tier_used == 1
+
+
+
+def _timeout():
+    return httpx.ReadTimeout("")
+
+
+def _record(reasoner, events, fast_outcomes, heavy_reply='{"action": "alert_human", "reason": "deep", "confidence": 0.9}'):
+    """Wire mocks that append ('call', model, keep_alive) / ('unload', model) to events."""
+    outcomes = list(fast_outcomes)
+
+    async def mock_ollama(model, system, user, timeout=30.0, keep_alive=None):
+        events.append(("call", model, keep_alive))
+        if model == reasoner._model_fast:
+            nxt = outcomes.pop(0)
+            if isinstance(nxt, BaseException):
+                raise nxt
+            return nxt, 0.0
+        return heavy_reply, 0.0
+
+    async def mock_unload(model):
+        events.append(("unload", model))
+
+    reasoner._busy_retry_s = 0
+    return (patch.object(reasoner, "_call_ollama", side_effect=mock_ollama),
+            patch.object(reasoner, "_unload_model", side_effect=mock_unload))
+
+
+LOW = '{"action": "restart_service", "reason": "maybe", "confidence": 0.3}'
+
+
+@pytest.mark.asyncio
+async def test_low_confidence_unloads_9b_then_calls_27b_without_keeping_it():
+    reasoner, events = SlowReasoner(), []
+    p1, p2 = _record(reasoner, events, [LOW])
+    with p1, p2:
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+    assert proposal.tier_used == 1
+    assert events == [("call", "qwen3.5:9b", None), ("unload", "qwen3.5:9b"), ("call", "qwen3.8:27b-mlx", 0)]
+
+
+@pytest.mark.asyncio
+async def test_busy_9b_twice_never_loads_the_27b():
+    """Pro 2026-09-26 20:50: a 9b held by the translator is busy, not broken."""
+    reasoner, events = SlowReasoner(), []
+    p1, p2 = _record(reasoner, events, [_timeout(), _timeout()])
+    with p1, p2:
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+    assert events == [("call", "qwen3.5:9b", None), ("call", "qwen3.5:9b", None)]
+    assert proposal.action == "alert_human" and proposal.tier_used == 0
+
+
+@pytest.mark.asyncio
+async def test_busy_9b_on_green_returns_none_without_27b():
+    reasoner, events = SlowReasoner(), []
+    busy = httpx.HTTPStatusError("busy", request=httpx.Request("POST", "http://x"), response=httpx.Response(503))
+    p1, p2 = _record(reasoner, events, [busy, busy])
+    with p1, p2:
+        proposal = await reasoner.think(health_status="green", response_time_ms=100)
+    assert proposal.action == "none"
+    assert all(e[1] == "qwen3.5:9b" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_busy_9b_answering_on_retry_is_used():
+    reasoner, events = SlowReasoner(), []
+    ok = '{"action": "alert_human", "reason": "down", "confidence": 0.8}'
+    p1, p2 = _record(reasoner, events, [_timeout(), ok])
+    with p1, p2:
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+    assert proposal.tier_used == 0 and proposal.action == "alert_human"
+    assert len(events) == 2
+
+
+@pytest.mark.asyncio
+async def test_real_9b_error_escalates_with_keep_alive_0():
+    reasoner, events = SlowReasoner(), []
+    p1, p2 = _record(reasoner, events, [httpx.ConnectError("refused")])
+    with p1, p2:
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+    assert proposal.tier_used == 1
+    assert events == [("call", "qwen3.5:9b", None), ("unload", "qwen3.5:9b"), ("call", "qwen3.8:27b-mlx", 0)]
+
+
+@pytest.mark.asyncio
+async def test_failed_unload_still_reaches_tier1(caplog):
+    """Memory hygiene must never block the alert path."""
+    import logging
+
+    reasoner = SlowReasoner()
+    calls = []
+
+    async def mock_ollama(model, system, user, timeout=30.0, keep_alive=None):
+        calls.append((model, keep_alive))
+        return (LOW if model == "qwen3.5:9b" else '{"action": "alert_human", "reason": "d", "confidence": 0.9}'), 0.0
+
+    class _Down:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            raise httpx.ConnectError("refused")
+
+        async def __aexit__(self, *a):
+            return False
+
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama), \
+            patch("cell.slow.reasoner.httpx.AsyncClient", _Down), \
+            caplog.at_level(logging.WARNING, logger="cell.slow"):
+        proposal = await reasoner.think(health_status="red", response_time_ms=0)
+    assert proposal.tier_used == 1
+    assert calls[-1] == ("qwen3.8:27b-mlx", 0)
+    assert any("Unload of qwen3.5:9b before Tier 1 failed" in r.message for r in caplog.records)
+
+
+def test_tier0_busy_classification():
+    req = httpx.Request("POST", "http://x")
+    assert _tier0_busy(httpx.ReadTimeout(""))
+    assert _tier0_busy(httpx.HTTPStatusError("q", request=req, response=httpx.Response(503)))
+    assert not _tier0_busy(httpx.HTTPStatusError("e", request=req, response=httpx.Response(500)))
+    assert not _tier0_busy(httpx.ConnectError("refused"))
+    assert not _tier0_busy(ValueError("bad json"))
+
+
+@pytest.mark.asyncio
+async def test_call_ollama_sends_keep_alive_only_when_asked():
+    reasoner = SlowReasoner()
+    sent = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "{}"}}
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json):
+            sent.append(json)
+            return _Resp()
+
+    with patch("cell.slow.reasoner.httpx.AsyncClient", _Client):
+        await reasoner._call_ollama("m", "s", "u")
+        await reasoner._call_ollama("m", "s", "u", keep_alive=0)
+        await reasoner._unload_model("m")
+    assert "keep_alive" not in sent[0]
+    assert sent[1]["keep_alive"] == 0
+    assert sent[2] == {"model": "m", "keep_alive": 0}

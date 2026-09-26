@@ -252,10 +252,10 @@ SCRIPTS_COUPLING: frozenset[str] = frozenset(
         "scripts/openclaw_whatsapp_bridge.py", "scripts/patch_pricing_contact_block.py", "scripts/pending_arms_report.py", "scripts/pg-to-organism-bridge.py", "scripts/pg.sh", "scripts/portal_challenge_leaderboard.py", "scripts/pricelist_2026/schema.py", "scripts/probes/intel_lake_e2e_probe.py", "scripts/provision_zantara_codex.sh", "scripts/pytest_guards/pytest_verbosity_guard.py",
         "scripts/rag_canary.py", "scripts/repair_description_fields.py", "scripts/repair_swallowed_titles.py", "scripts/s7_yield_dispatch.py", "scripts/scrape_competitor_serp.py", "scripts/sentinel_lib/__init__.py", "scripts/sentinel_lib/alerter.py", "scripts/sentinel_lib/circuit_breaker.py", "scripts/sentinel_lib/classifier.py", "scripts/sentinel_lib/escalations.py",
         "scripts/sentinel_lib/guardrail_liveness.py", "scripts/sentinel_lib/incident_detector.py", "scripts/sentinel_lib/metrics.py", "scripts/sentinel_lib/repairer.py", "scripts/sentinel_lib/zombie_hunter.py", "scripts/sentry-quota-check.sh", "scripts/setup_chatgpt_marketing_tunnel.sh", "scripts/sota_infer_personas.py", "scripts/sota_literature_research.py", "scripts/suite_growth_probe.py",
-        "scripts/sync_frontend_prices.py", "scripts/sync_kbli_dataset.sh", "scripts/test_cron_single_voice.sh", "scripts/tests/test_adversarial_review_gate.py", "scripts/tests/test_install_claude_code_version_skew.sh", "scripts/tests/test_intake_dsn_guard_covers_every_var.py", "scripts/tests/test_kbli_68112_pp28_mice_collision.py", "scripts/tests/test_merah_putih_day_contrast.py",
-        "scripts/tests/test_pytest_verbosity_guard.py", "scripts/tests/test_test_deps_declared.py", "scripts/tg_notify.py", "scripts/token_lint.py", "scripts/tp1_call.py", "scripts/translate-articles-cron-wrapper.sh", "scripts/vercel_prod_deploy.py", "scripts/wa_codex_seat_probe.py", "scripts/wa_media_pull_worker.py", "scripts/wa_mirror_intake_sweeper.py",
-        "scripts/whatsapp_export_backfill/import_staging.py", "scripts/wr2-cron-wrapper.sh", "scripts/wr2_bootstrap_canva_oauth.py", "scripts/wr2_canva_pdf_render.py", "scripts/wr2_daily_reconciler.py", "scripts/wr2_damar_publish_consumer.py", "scripts/wr2_draft_generator.py", "scripts/wr2_fact_checker.py", "scripts/wr2_fact_extractor.py", "scripts/wr2_html_render_apply.py",
-        "scripts/wr2_ig_profile_harvester.py", "scripts/wr2_ig_publish.py", "scripts/wr2_image_generator.py", "scripts/wr2_queue_writer.py", "scripts/wr2_rerender_requeue.py", "scripts/wr2_supervisor.py", "scripts/wr2_topic_selector.py", "scripts/wr2_validate_master.py", "scripts/wr3_supervisor.py",
+        "scripts/sync_frontend_prices.py", "scripts/sync_kbli_dataset.sh", "scripts/test_cron_single_voice.sh", "scripts/tests/test_adversarial_review_gate.py", "scripts/tests/test_install_claude_code_version_skew.sh", "scripts/tests/test_intake_dsn_guard_covers_every_var.py", "scripts/tests/test_kbli_68112_pp28_mice_collision.py", "scripts/tests/test_lint_home_fork.py",
+        "scripts/tests/test_merah_putih_day_contrast.py", "scripts/tests/test_pytest_verbosity_guard.py", "scripts/tests/test_test_deps_declared.py", "scripts/tg_notify.py", "scripts/token_lint.py", "scripts/tp1_call.py", "scripts/translate-articles-cron-wrapper.sh", "scripts/vercel_prod_deploy.py", "scripts/wa_codex_seat_probe.py", "scripts/wa_media_pull_worker.py",
+        "scripts/wa_mirror_intake_sweeper.py", "scripts/whatsapp_export_backfill/import_staging.py", "scripts/wr2-cron-wrapper.sh", "scripts/wr2_bootstrap_canva_oauth.py", "scripts/wr2_canva_pdf_render.py", "scripts/wr2_daily_reconciler.py", "scripts/wr2_damar_publish_consumer.py", "scripts/wr2_draft_generator.py", "scripts/wr2_fact_checker.py", "scripts/wr2_fact_extractor.py",
+        "scripts/wr2_html_render_apply.py", "scripts/wr2_ig_profile_harvester.py", "scripts/wr2_ig_publish.py", "scripts/wr2_image_generator.py", "scripts/wr2_queue_writer.py", "scripts/wr2_rerender_requeue.py", "scripts/wr2_supervisor.py", "scripts/wr2_topic_selector.py", "scripts/wr2_validate_master.py", "scripts/wr3_supervisor.py",
     )
 )
 # END SCRIPTS_COUPLING
@@ -319,6 +319,13 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     # defect being cured. The security posture of an infra/-only PR is
     # therefore byte-identical to before this change; only the six product
     # suites stop being bought.
+    # Second genuine read found by the census (2026-09-26): the backend test
+    # apps/backend-rag/backend/tests/services/events/
+    # test_bridge_heartbeat_polling_grandfathered.py resolves this exact
+    # script by literal path (_WATCHDOG_SCRIPT) and runs assertions on it, so
+    # an edit to the script must buy the backend suite. Scoped to the ONE
+    # file, not infra/scripts/, whose other members stay on the catch-all.
+    ("infra/scripts/pg-organism-bridge-watchdog.sh", frozenset({"backend_python", "fleet_ops", "security_sensitive"})),
     ("infra/", frozenset({"fleet_ops", "security_sensitive"})),
     ("config/", frozenset({"infra_workflows", "security_sensitive"})),
     ("data/", frozenset({"backend_python", "docs_content_data"})),

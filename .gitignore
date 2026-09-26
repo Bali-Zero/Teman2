@@ -786,6 +786,17 @@ apps/evaluator/nlm_deep_research/*_state.json
 apps/evaluator/nlm_deep_research/coverage_matrix.json
 apps/evaluator/nlm_deep_research/*.lock
 apps/evaluator/nlm_deep_research/output/
+# Per-run output the evaluator crons leave in Pro's main checkout (found untracked there
+# 2026-09-26, never committed, 0 tracked on main): daily_sweep.py writes a dated
+# sweep_report_<date>.txt on every run, and the KBLI/article indexing sweep family writes its
+# reports and submit-state beside the state files already ignored above. Logs, not research.
+apps/evaluator/sweep_report_*.txt
+apps/evaluator/indexing_sweep_report_*.txt
+apps/evaluator/kbli_indexing_submit_state.json
+# meta_one_steward.py (Pro-resident) keeps its ledger, daily Graph snapshots and monthly
+# Business Suite exports in shared/meta_one/ by default (META_ONE_STATE_DIR). Machine state
+# rewritten on every tick; nothing under it has ever been committed.
+shared/meta_one/
 apps/mouth/scripts/kbli_data_backup.json
 apps/mouth/scripts/kbli_english_keywords.json
 scripts/.rag_canary/
@@ -927,6 +938,11 @@ apps/backend-rag/scripts/output/*campaign*.csv
 **/dq_clients*.csv
 **/dq_orphan_clients*.csv
 research/nb-health/nb-inventory-live.json
+# apps/backend-rag/scripts/nlm_pack_crm.py writes WhatsApp client dossiers and their
+# timing file into research/crm/ of the checkout it runs from. They are client PII by
+# construction (Builder Contract §4) and must never be promoted: two were, until 2026-09-26.
+research/crm/*-wa-dossier-*.txt
+research/crm/*-timing-*.json
 
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/

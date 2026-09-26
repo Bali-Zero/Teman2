@@ -25,6 +25,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -65,6 +66,25 @@ def _core_organs_expected_here() -> tuple[str, ...]:
 DEFAULT_SIDECAR_DIR = os.path.expanduser("~/.organism/last_seen")
 DEFAULT_ALERTS_FILE = os.path.expanduser("~/.organism/alerts/open.jsonl")
 DEFAULT_STALE_DAYS = 7
+
+# Organs declared ON-COMMAND (run by hand, not on a schedule) live in
+# infra/organism/on_command_organs.json — today the WR2 family, Zero ruling
+# 2026-09-01 "WR2 runs only on command". The SessionStart brief already drops
+# them (organism_heartbeat_brief.py); this CLI did not, so `--json` fed
+# proprioception's P1 organs_heartbeat 24 stale + 7 "label not loaded" WR2
+# findings every tick for 25 days: intent declared, defeated in the reader
+# (superscar #2). Applied in main() only, so importers of scan_sidecars_status()
+# are unchanged. Only the by-decision shapes are dropped: stale/dead_channel (no
+# schedule, so no breath is promised) and unhealthy "label not loaded" (the label
+# is off by decision). A LOADED on-command organ that fails (wr2.pg_proxy is kept
+# live) still surfaces. Missing/malformed file -> no patterns -> nothing hidden.
+_THIS_FILE = globals().get("__file__")
+_REPO_ROOT = (
+    os.path.dirname(os.path.dirname(os.path.abspath(_THIS_FILE)))
+    if _THIS_FILE and os.path.isfile(_THIS_FILE)
+    else os.path.expanduser("~/nuzantara")  # piped via `ssh host python3 -`
+)
+DEFAULT_ON_COMMAND_FILE = os.path.join(_REPO_ROOT, "infra", "organism", "on_command_organs.json")
 
 # arsenal_probe's AUTOMATED recurring heartbeat is a promise only on its primary
 # node (docs/runbooks/arsenal-probe.md §How it is armed: "Mini (primary)"). Any
@@ -562,6 +582,33 @@ def scan_sidecars_status(
     return findings
 
 
+def load_on_command_patterns(path: str) -> tuple[str, ...]:
+    """Patterns from on_command_organs.json; any failure -> () (hide nothing)."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            patterns = json.load(fh).get("patterns", [])
+        return tuple(p for p in patterns if isinstance(p, str))
+    except Exception:  # noqa: BLE001 — fail-visible: an unreadable list hides nothing
+        return ()
+
+
+def split_on_command(
+    findings: list[StaleFinding], patterns: tuple[str, ...]
+) -> tuple[list[StaleFinding], list[StaleFinding]]:
+    """Return (kept, declared_off). See DEFAULT_ON_COMMAND_FILE for the contract."""
+    kept: list[StaleFinding] = []
+    off: list[StaleFinding] = []
+    for f in findings:
+        by_decision = f.kind in ("stale", "dead_channel") or (
+            f.kind == "unhealthy" and "label not loaded" in f.detail
+        )
+        if by_decision and any(fnmatch.fnmatchcase(f.organ_id, p) for p in patterns):
+            off.append(f)
+        else:
+            kept.append(f)
+    return kept, off
+
+
 _COVERAGE_BRANCH_RE = re.compile(r"^codex/coverage-(?P<module>.+)-(?P<ts>\d{8}_\d{6})$")
 
 
@@ -689,9 +736,15 @@ def emit_alerts(findings: list[StaleFinding], alerts_file: str = DEFAULT_ALERTS_
     return alerts_file
 
 
-def _human_report(findings: list[StaleFinding]) -> str:
+def _human_report(findings: list[StaleFinding], declared_off: int = 0) -> str:
+    off_line = (
+        f"  (+{declared_off} on-command organ finding(s) not paged — declared off"
+        " in infra/organism/on_command_organs.json)"
+        if declared_off else ""
+    )
     if not findings:
-        return "✅ organism heartbeat: all organs breathing + healthy (no findings)"
+        ok = "✅ organism heartbeat: all organs breathing + healthy (no findings)"
+        return ok + ("\n" + off_line if off_line else "")
     not_breathing = [f for f in findings if f.kind not in ("unhealthy", "warning")]
     unhealthy = [f for f in findings if f.kind == "unhealthy"]
     warning = [f for f in findings if f.kind == "warning"]
@@ -719,6 +772,8 @@ def _human_report(findings: list[StaleFinding]) -> str:
         lines.append(f"  — breathing, not working this tick ({len(warning)}):")
         for f in sorted(warning, key=lambda x: x.organ_id):
             lines.append(f"    ⚠️  {f.organ_id}: {f.detail}")
+    if off_line:
+        lines.append(off_line)
     return "\n".join(lines)
 
 
@@ -750,12 +805,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repo-slug", default="Balizero1987/Teman2",
                      help="GitHub repo slug for the coverage-branch scan's `gh pr list`")
     ap.add_argument("--coverage-branch-stale-hours", type=float, default=24.0)
+    ap.add_argument(
+        "--on-command-file", default=None,
+        help=("on-command organ patterns (default: infra/organism/on_command_organs.json,"
+              " applied only when scanning the default sidecar dir; '' disables)"),
+    )
     args = ap.parse_args(argv)
 
     if not args.no_cross_host_sync:
         sync_cross_host_sidecars(args.dir)
 
     findings = scan_sidecars_status(args.dir, stale_days=args.stale_days)
+    on_command_file = args.on_command_file
+    if on_command_file is None:
+        on_command_file = (
+            DEFAULT_ON_COMMAND_FILE
+            if os.path.abspath(args.dir) == os.path.abspath(DEFAULT_SIDECAR_DIR)
+            else ""
+        )
+    patterns = load_on_command_patterns(on_command_file) if on_command_file else ()
+    findings, declared_off = split_on_command(findings, patterns)
 
     if not args.no_coverage_branch_scan:
         findings = findings + scan_stale_coverage_branches(
@@ -771,7 +840,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps([f.to_dict() for f in findings]))
     elif not args.emit:
-        print(_human_report(findings))
+        print(_human_report(findings, declared_off=len(declared_off)))
 
     # exit 1 if any core guardian has a dead channel, or a coverage branch is
     # stuck without a PR — both are actionable now, not just advisory.

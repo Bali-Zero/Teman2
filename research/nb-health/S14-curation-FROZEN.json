@@ -2,7 +2,7 @@
   "session": "S14-nb-curation-sweep",
   "generated_wita": "2026-06-02",
   "machine": "Pro",
-  "profile": "default (antonellosiano@gmail.com — AI Ultra)",
+  "profile": "default ([OWNER-PERSONAL-EMAIL-REDACTED] — AI Ultra)",
   "law_osint": "NB-INTEL Pro-only, never cloud, never team (Law 2)",
   "methodology": {
     "nb_count_probe": "nlm notebook list -p default --json (independent re-count)",
@@ -366,7 +366,7 @@
     {
       "uuid": "6f2bc4fd-9fe1-4124-a78f-b3cb1705ac45",
       "uuid_prefix": "6f2bc4fd",
-      "title": "August 2025 Income Tax Return for The Creative Agency",
+      "title": "August 2025 Income Tax Return for [COMPANY-NAME-REDACTED]",
       "source_count": 24,
       "updated_at": "2026-06-01T20:27:39Z",
       "family": "RESEARCH-ADHOC",
@@ -546,7 +546,7 @@
     {
       "uuid": "27b4e05f-3fb9-47ac-8204-526f46cfb8a2",
       "uuid_prefix": "27b4e05f",
-      "title": "Meet 2026-05-13 Salvatore Iorio — Bali Real Estate",
+      "title": "Meet 2026-05-13 [CLIENT-NAME-REDACTED] — Bali Real Estate",
       "source_count": 2,
       "updated_at": "2026-06-01T20:28:39Z",
       "family": "RESEARCH-ADHOC",
@@ -566,7 +566,7 @@
     {
       "uuid": "6dfee545-b1fe-4ccc-8c09-f3ac8cf48625",
       "uuid_prefix": "6dfee545",
-      "title": "Kura Kura Bali Crisis 2026-05-12 — OSINT briefing",
+      "title": "[INTERNAL-DOSSIER-REDACTED]",
       "source_count": 2,
       "updated_at": "2026-06-01T20:28:10Z",
       "family": "RESEARCH-ADHOC",
@@ -616,7 +616,7 @@
     {
       "uuid": "afd7fc4e-2568-4fff-861f-67b661842ece",
       "uuid_prefix": "afd7fc4e",
-      "title": "Piano di Ristrutturazione e Conformità per PT Wirramanda",
+      "title": "Piano di Ristrutturazione e Conformità per [COMPANY-NAME-REDACTED]",
       "source_count": 1,
       "updated_at": "2026-06-01T20:28:55Z",
       "family": "RESEARCH-ADHOC",

@@ -31,6 +31,7 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_PATH,
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
+    PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
     REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE,
     SEAT_RULES_ENFORCEMENT_DATE,
@@ -51,6 +52,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_gear_floor,
     check_ground_truth_lane,
     check_lanes_build_seat_diversity,
+    check_no_plain_scalar_hash_truncation,
     check_pack_not_at_deprecated_root,
     check_pii_local_seat,
     check_pii_scan_clean,
@@ -246,6 +248,101 @@ def test_size_innocence_at_cap_passes():
     from evidence_pack_lint import SIZE_TOKEN_CAP
 
     assert check_size_budget(b"x" * (SIZE_TOKEN_CAP * 4)) == []
+
+
+# ------------------------------------------ check_no_plain_scalar_hash_truncation
+
+_HASH_TRUNC_POST_FLIP = PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE
+_HASH_TRUNC_PRE_FLIP = PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+
+
+def test_hash_trunc_guilt_mapping_value_convicted_post_flip():
+    """GUILT (the exact PR #4920 shape): a plain `key: value` field whose
+    value contains ` #` is convicted on/after the enforcement date, and the
+    message names the TRUNCATED value YAML actually loads."""
+    raw = b'seat: team-lead (structural review, Dissent #3)\n'
+    violations, notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP)
+    assert notices == []
+    assert len(violations) == 1
+    assert "team-lead (structural review, Dissent" in violations[0]
+    assert "Dissent #3" not in violations[0]  # the truncated tail must never resurface
+
+
+def test_hash_trunc_guilt_list_item_value_convicted():
+    """GUILT: a bare list-item scalar (no `key:`) is the same shape."""
+    raw = b'- team-lead (structural review, Dissent #3)\n'
+    violations, _notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP)
+    assert len(violations) == 1
+
+
+def test_hash_trunc_innocence_pre_flip_notices_never_convicts():
+    """INNOCENCE (grace period): the identical guilty content NOTICEs, not
+    fails, before the enforcement date — same discipline as
+    EVIDENCE_ROOT_DEPRECATION_DATE's own rollout."""
+    raw = b'seat: team-lead (structural review, Dissent #3)\n'
+    violations, notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_PRE_FLIP)
+    assert violations == []
+    assert len(notices) == 1
+
+
+def test_hash_trunc_innocence_quoted_value_never_fires():
+    """INNOCENCE: quoting the value is the documented cure and must pass."""
+    raw = b'seat: "team-lead (structural review, Dissent #3)"\n'
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_innocence_folded_block_scalar_body_never_fires():
+    """INNOCENCE (the regression this rule's first draft shipped with): a `#`
+    inside an already-open `>` folded block scalar's BODY is literal text,
+    never a YAML comment — a scan that does not track block-scalar
+    indentation misreads roughly two-thirds of this repo's real evidence
+    corpus this way. Two block scalars back to back, the second closing at
+    column 0, both innocent."""
+    raw = (
+        b"note: >\n"
+        b"  see PR #4920 and superscar #3 for the full context,\n"
+        b"  neither is truncated because both lines are folded-block body\n"
+        b"seat: sonnet-5\n"
+        b"dissent_reason: >\n"
+        b"  a second block scalar, referencing issue #17 too\n"
+    )
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_innocence_bare_comment_line_never_fires():
+    """INNOCENCE: a full-line `# comment` and `key:  # comment` on an empty
+    field truncate nothing — there is no preceding content to lose."""
+    raw = b"# a real top-of-file comment\nnote:  # just a comment, field left empty\n"
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_end_to_end_through_lint(tmp_path):
+    """RED-FIRST PROOF through lint(): the same pack fails post-flip and
+    NOTICEs (exit 0) pre-flip, with nothing else about the pack changing."""
+    brief_path = tmp_path / "evidence" / "brief.yml"
+    brief_path.parent.mkdir(parents=True, exist_ok=True)
+    brief_path.write_text(yaml.safe_dump({"task_id": "t", "gear": 1, "grader": "codex-sol"}), encoding="utf-8")
+    pack_path = tmp_path / "evidence" / "pack.yml"
+    pack_path.write_text(
+        "brief_ref: evidence/brief.yml\n"
+        "receipts:\n"
+        "  - claim: tests pass\n"
+        "    cmd: pytest -q\n"
+        "    exit: 0\n"
+        "    ts: '2026-08-10T00:00:00Z'\n"
+        "    seat: sonnet-5\n"
+        "dissent: []\n"
+        "pii_scan: clean\n"
+        "note: fixed in Dissent #3\n",
+        encoding="utf-8",
+    )
+    exit_code, violations = lint(pack_path, tmp_path, None, today=_HASH_TRUNC_POST_FLIP)
+    assert exit_code == 1
+    assert any("YAML plain-scalar truncation" in v for v in violations)
+
+    exit_code, violations = lint(pack_path, tmp_path, None, today=_HASH_TRUNC_PRE_FLIP)
+    assert exit_code == 0
+    assert violations == []
 
 
 # --------------------------------------------------------- check_brief_ref_exists
@@ -3162,6 +3259,32 @@ def test_countable_guilt_wrong_commit_count_rejected_digit_and_word():
     assert all("git rev-list --count" in v for v in violations)
 
 
+def test_countable_innocence_hyphenated_identifier_is_not_a_count_claim():
+    """INNOCENCE (superscar #3, guard-over-match — PR #5333): a bare `\\b`
+    fires at the `-` in "seq-17" as readily as at whitespace, so
+    "the seq-17 commit" was misread as a claim of "17 commits" and convicted
+    against a 2-commit branch. The identical trailing digits inside a
+    hyphenated identifier must never be read as a count, for any of the
+    three digit-claim fields (commits/files/tests share the same shape)."""
+    assert check_countable_claims(
+        {"diff": {"net_lines": "the seq-17 commit touched run-64 tests across PR-4 files"},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=2,
+    ) == ([], [])
+
+
+def test_countable_guilt_ordinary_commit_count_still_convicted_after_boundary_fix():
+    """GUILT: tightening the left boundary must not blind the rule to the
+    ordinary phrasing it exists to catch — "17 commits" preceded by
+    whitespace still convicts against a differing measured count."""
+    violations, _ = check_countable_claims(
+        {"diff": {"net_lines": "across 17 commits"}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 1
+    assert "17 commits" in violations[0] and "has 6" in violations[0]
+
+
 def test_countable_guilt_unsubstantiated_test_count_rejected():
     """GUILT: "the 44 tests" with no receipt reporting 44 is prose asserting a
     measurement nobody took."""
@@ -3223,6 +3346,105 @@ def test_countable_innocence_binary_file_downgrades_line_counts_to_notice():
     )
     assert violations == []
     assert any("+10/-2" in n for n in notices)
+
+
+def test_countable_guilt_int_typed_diff_fields_invisible_to_prose_scan_now_convicted():
+    """GUILT (measured 2026-08-30/31, PR #5424 shape): `diff.files`/
+    `diff.net_lines` as YAML INTEGERS — not a "N files" phrase inside a
+    string — are the pack's own permanent headline record, and
+    `_iter_countable_scalars`'s str-only walk cannot see them at all. A note
+    carrying no digits plus wrong int fields used to lint clean regardless of
+    --numstat-file; it must now convict on every diverging field."""
+    violations, _notices = check_countable_claims(
+        {"diff": {"files": 42, "net_lines": 999999, "note": "no digits here"},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert "diff.files declares 42 but the diff measures 2" in joined
+    assert "diff.net_lines declares 999999 but the diff measures 1777" in joined
+
+
+def test_countable_guilt_int_field_insertions_and_deletions_convicted():
+    """GUILT (the literal PR #5424 fields): `files`/`insertions` as integers,
+    contradicting `git diff --shortstat`."""
+    violations, _ = check_countable_claims(
+        {"diff": {"files": 4, "insertions": 70}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert "diff.files declares 4 but the diff measures 2" in joined
+    assert "diff.insertions declares 70 but the diff measures 1860" in joined
+
+
+def test_countable_innocence_int_fields_matching_measurement_pass():
+    """INNOCENCE: the rule convicts inaccuracy, not the act of declaring an
+    int field — correct values pass exactly like correct prose does."""
+    assert check_countable_claims(
+        {"diff": {"files": 2, "insertions": 1860, "deletions": 83, "net_lines": 1777},
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_int_fields_unmeasured_notices_never_convicts():
+    """INNOCENCE: with no numstat supplied, a wrong int field NOTICEs — same
+    'could not measure' discipline as every other countable-claims source."""
+    violations, notices = check_countable_claims(
+        {"diff": {"files": 42}, "receipts": CC_RECEIPTS}, None, commits=None,
+    )
+    assert violations == []
+    assert any("diff.files declares 42" in n for n in notices)
+
+
+def test_countable_innocence_int_fields_binary_downgrades_line_counts_only():
+    """INNOCENCE: a binary file makes the line-count fields (insertions/
+    deletions/net_lines) an unreliable lower bound, so they NOTICE — but
+    `files` is unaffected by a binary row and stays enforced."""
+    numstat = "10\t2\ta.py\n-\t-\tlogo.png\n"
+    violations, notices = check_countable_claims(
+        {"diff": {"files": 99, "insertions": 999}, "receipts": CC_RECEIPTS},
+        numstat, commits=1,
+    )
+    assert len(violations) == 1
+    assert "diff.files declares 99" in violations[0]
+    assert any("diff.insertions declares 999" in n for n in notices)
+
+
+def test_countable_innocence_int_field_outside_diff_block_out_of_scope():
+    """INNOCENCE (superscar #3): an int named `files`/`net_lines` anywhere
+    OTHER than directly under `diff` (e.g. inside a `lanes` entry, or a
+    non-dict `diff`) is not this rule's business."""
+    assert check_countable_claims(
+        {"lanes": [{"lane": "D1", "role": "build", "seat": "codex", "files": 42}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+    assert check_countable_claims(
+        {"diff": "not a mapping", "receipts": CC_RECEIPTS}, CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_end_to_end_int_fields_red_pack_fails_and_green_pack_passes(tmp_repo):
+    """RED-FIRST PROOF, end to end through lint(): the exact PR #5424 shape
+    (`diff: {files: 4, insertions: 70}` against a real bigger diff) fails,
+    and correcting the ints to the measured values passes."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2)
+
+    wrong = write_pack(diff={"files": 4, "insertions": 70}, receipts=CC_RECEIPTS)
+    exit_code, violations = lint(wrong, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6)
+    assert exit_code == 1
+    assert len([v for v in violations if "countable claim" in v]) == 2
+
+    right = write_pack(
+        diff={"files": 2, "insertions": 1860, "deletions": 83}, receipts=CC_RECEIPTS
+    )
+    exit_code, violations = lint(right, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6)
+    assert exit_code == 0
+    assert violations == []
 
 
 def test_parse_numstat_totals_guilt_and_innocence():

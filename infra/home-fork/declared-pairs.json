@@ -454,6 +454,24 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.agent/shepherd/pusher.py",
+      "repo": "infra/shepherd/pusher.py",
+      "_note": "Session pusher (Zero's mandate 2026-09-20: nudge the sessions when they stop, cron every 3 minutes). Run by LaunchAgent com.nuzantara.session-pusher.3min (StartInterval 180, no KeepAlive) on M5. Types a fixed nudge into the Ghostty window of each lane listed in ~/.agent/shepherd/pusher-lanes.txt, resolving the window by a title stamp on the pid's tty the same way window_jump.sh does, and reading window_jump_native.applescript that window_jump.sh writes at runtime. Was an undeclared HOME-only file (launchagent_reconcile home_fork_target, 2026-09-26) and the PENDING-ARMS 'm5-canonical-checkout-is-124-commits-behind' item named it as a daemon whose code age nothing stated. Promoted verbatim (sha256 0e14f3c4...94ecb) from the live copy, which is the canon. macOS+Ghostty only, hence m5.",
+      "machines": ["m5"]
+    },
+    {
+      "live": "~/Applications/Claude Seats.app/Contents/Resources/scripts/claude_seat_quota.py",
+      "repo": "scripts/claude_seat_quota.py",
+      "_note": "Claude Seats desk widget (infra/seat-widget, #6183). LaunchAgent com.nuzantara.claude-seats runs the compiled binary ~/Applications/Claude Seats.app/Contents/MacOS/ClaudeSeats, which has no byte canon (swiftc output of infra/seat-widget/main.swift) and is therefore allow-listed by its exact path only. infra/seat-widget/build.sh also COPIES two repo files into the bundle, and those copies do have a byte canon, so they are declared here instead of hiding under a whole-bundle allow. This one is the quota probe the widget runs when no remote host is configured. Cure for drift: re-run infra/seat-widget/build.sh on that machine (it re-signs the bundle), never a bare cp into a signed bundle.",
+      "machines": ["m5", "pro"]
+    },
+    {
+      "live": "~/Applications/Claude Seats.app/Contents/Resources/FLEET_TOPOLOGY.json",
+      "repo": "FLEET_TOPOLOGY.json",
+      "_note": "Claude Seats desk widget (infra/seat-widget, #6183). LaunchAgent com.nuzantara.claude-seats runs the compiled binary ~/Applications/Claude Seats.app/Contents/MacOS/ClaudeSeats, which has no byte canon (swiftc output of infra/seat-widget/main.swift) and is therefore allow-listed by its exact path only. infra/seat-widget/build.sh also COPIES two repo files into the bundle, and those copies do have a byte canon, so they are declared here instead of hiding under a whole-bundle allow. This one is read locally for the email-to-slot labels (accounts.anthropic.slots) even when the numbers come over ssh. Found stale on M5 and Pro on 2026-09-26: bundled copy from 2026-09-15, repo slots changed since. Cure for drift: re-run infra/seat-widget/build.sh on that machine.",
+      "machines": ["m5", "pro"]
+    },
+    {
       "live": "~/.claude/hooks/context_jump_resume.py",
       "repo": "infra/claude-hooks/context_jump_resume.py",
       "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. SessionStart injector (matcher startup): injects the handoff as additionalContext and stamps to_session in pending-jump.json. Mute when no fresh unclaimed jump from this cwd.",
@@ -1146,6 +1164,24 @@
       "repo": "infra/launchagents/com.nuzantara.secrets-permissions-audit.plist",
       "machines": ["pro"],
       "_note": "PENDING-ARMS L301: installed live by copy (S2 custody lane, 2026-09-10) but never declared, so lint_home_fork could not see drift between ~/Library/LaunchAgents/ and infra/launchagents/ for this canon plist."
+    },
+    {
+      "live": "~/scripts/disk-monitor.sh",
+      "repo": "scripts/pro/disk-monitor.sh",
+      "machines": ["pro"],
+      "_note": "Pro-only (launchd com.nuzantara.disk-monitor, 10 min). Brought into canon 2026-09-26: the HOME-only copy measured `df /` (the sealed APFS system snapshot) and stayed silent while /System/Volumes/Data hit 100%. Not present on Mini or M5 (measured)."
+    },
+    {
+      "live": "~/scripts/ollama-single-manager.sh",
+      "repo": "scripts/pro/ollama-single-manager.sh",
+      "machines": ["pro"],
+      "_note": "Pro-only (launchd com.nuzantara.ollama, StartInterval 120, execs `ollama serve` with the memory caps). Brought into canon 2026-09-26 to cap llama-server's host prompt cache (LLAMA_ARG_CACHE_RAM) after swap exhaustion; the HOME-only copy dated 2026-09-02."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.s7-yield.weekly.plist",
+      "repo": "infra/launchagents/com.balizero.s7-yield.weekly.plist",
+      "machines": ["pro"],
+      "_note": "Pro-only S7 CRM yield draft job (Sunday 04:00). Installed live by copy on 2026-08-20 (s7-cutover) and never tracked; brought into canon 2026-09-26 byte-identical to the live copy. Its payload scripts/s7-yield-run.sh runs from the repo checkout (not a HOME copy), so it is tracked in the same PR and needs no pair of its own."
     }
   ],
   "allow": [
@@ -1153,6 +1189,7 @@
     "~/Library/Google/GoogleSoftwareUpdate/*",
     "~/scripts/mini-git-pull-bridge.sh",
     "~/Applications/WR2 Control.app/*",
+    "~/Applications/Claude Seats.app/Contents/MacOS/ClaudeSeats",
     "~/.local/bin/zero-design/*",
     "~/.openclaw-node-host/service-env/ai.openclaw.node-env-wrapper.sh",
     "~/.openclaw/service-env/ai.openclaw.gateway-env-wrapper.sh",

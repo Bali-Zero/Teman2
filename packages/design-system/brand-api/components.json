@@ -398,6 +398,7 @@
       "import": "@balizero/core/components/NavShell",
       "source": "packages/core/components/NavShell.tsx",
       "props": {
+        "variant": "\"default\" | \"paper\" | undefined",
         "logo": "ReactNode",
         "items": "NavItem[]",
         "actions": "ReactNode",

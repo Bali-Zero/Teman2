@@ -1,0 +1,153 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+diff: >-
+  PR-1 of 2. New .github/workflows/ci-image-mirror.yml: a mirror job copies
+  the linux/amd64 manifest of docker.io/library/{postgres:15,redis:7} (falling
+  back to public.ecr.aws) digest-preserving into ghcr.io/bali-zero/ci-mirror/;
+  a verify job pulls both back as service containers with credentials =
+  github.actor / secrets.GITHUB_TOKEN under packages:read and prints their
+  versions; a prune job deletes only untagged versions beyond the two newest.
+  One line in main-push-failure-watch.yml registers the new workflow name. The
+  service-image pin test sanctions the ghcr prefix next to the ECR one and adds
+  guilt checks for ghcr service refs that the mirror does not produce, that
+  lack the job's own GITHUB_TOKEN, or whose job token has no packages:read,
+  with synthetic guilt and innocence fixtures and digest-aware repo parsing.
+  No consumer workflow and no image version changes here.
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: ground
+    role: read
+    seat: claude-opus-5-5
+  - lane: red-team-r1
+    role: review
+    seat: codex-gpt-6-astra
+  - lane: red-team-r2
+    role: review
+    seat: kimi-code/k3
+  - lane: red-team-r3
+    role: review
+    seat: codex-gpt-5.6-sol
+receipts:
+  - claim: 6 of 9 failed Tests & Coverage runs in the last 150 are ECR anonymous quota, all since 2026-09-26T04:24Z (61 runs), one of them merge_group
+    cmd: bash scratchpad/ecr_census.sh 150 (gh run list --workflow tests.yml --limit 150, then gh run view --log-failed | grep toomanyrequests)
+    exit: 0
+    ts: "2026-09-26T10:18Z"
+    seat: claude-opus-5-5
+  - claim: PROD PostgreSQL is 17.9 while the CI service image is 15, so the major skew pre-exists and stays out of this mandate
+    cmd: scripts/pg.sh -At -c "SHOW server_version"
+    exit: 0
+    ts: "2026-09-26T10:08Z"
+    seat: claude-opus-5-5
+  - claim: repo default workflow token is read (contents and packages), repo PUBLIC, org plan free
+    cmd: gh api repos/Bali-Zero/Teman2/actions/permissions/workflow ; gh repo view --json visibility ; gh api /orgs/Bali-Zero --jq .plan.name
+    exit: 0
+    ts: "2026-09-26T10:10Z"
+    seat: claude-opus-5-5
+  - claim: runner image 20260920.314.1 ships Skopeo 1.13.3, whose docs list --preserve-digests on copy and --override-os/--override-arch as global options
+    cmd: curl runner-images Ubuntu2404-Readme.md | grep Skopeo ; curl skopeo v1.13.3 docs/skopeo-copy.1.md | grep preserve-digests
+    exit: 0
+    ts: "2026-09-26T10:12Z"
+    seat: claude-opus-5-5
+  - claim: upstream linux/amd64 digests recorded for the post-seed comparison (postgres:15 sha256:e27d24a29acc..., redis:7 sha256:95acc00495dd...)
+    cmd: bash scratchpad/digests.sh
+    exit: 0
+    ts: "2026-09-26T10:19Z"
+    seat: claude-opus-5-5
+  - claim: actionlint 1.7.12 reports no finding on the two changed workflows
+    cmd: actionlint .github/workflows/ci-image-mirror.yml .github/workflows/main-push-failure-watch.yml
+    exit: 0
+    ts: "2026-09-26T10:57Z"
+    seat: claude-opus-5-5
+  - claim: watcher coverage, errexit-decap and timeout-floor lints all clean with the new workflow
+    cmd: python3 scripts/check_watcher_coverage.py ; python3 scripts/lint_workflow_errexit_decap.py ; python3 scripts/lint_workflow_timeout_floor.py
+    exit: 0
+    ts: "2026-09-26T10:57Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      pin test 6 passed. Mutations M1 credentials removed, M2 unmirrored tag,
+      M3 typo'd path, M4 verify job removed, M5 packages none, M7 digest-ref
+      evasion each turn it red; M6 an unrelated ghcr container image stays
+      green; every mutated file restored byte-identical
+    cmd: python3 -m pytest -q -p no:cacheprovider scripts/tests/test_ci_service_images_use_mirror.py (plus cp-backed mutations)
+    exit: 0
+    ts: "2026-09-26T10:57Z"
+    seat: claude-opus-5-5
+  - claim: three review rounds by three seats, recorded in journal.jsonl; R9 quorum met by the two titolari kimi-code/k3 and codex-gpt-5.6-sol
+    cmd: codex exec --sandbox read-only (default model, then -m gpt-5.6-sol) ; kimi -p -m kimi-code/k3
+    exit: 0
+    ts: "2026-09-26T10:52Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: codex-gpt-6-astra
+    objection: The ghcr check verified credentials but not the job's effective token permissions.
+    status: CONFIRMED
+    resolution: _token_can_read_packages added, with guilt and innocence fixtures (mutation M5).
+  - seat: codex-gpt-6-astra
+    objection: The non-vacuity check counted textual occurrences, comments included.
+    status: CONFIRMED
+    resolution: it now counts parsed service refs (mutation M4).
+  - seat: codex-gpt-6-astra
+    objection: The ghcr prefix check over-matched unrelated ghcr images.
+    status: CONFIRMED
+    resolution: applies only to postgres/redis refs (mutation M6 stays green).
+  - seat: kimi-code/k3
+    objection: The mirror's own docker.io source is an anonymous pull on a shared runner IP, so the seed run can fail.
+    status: CONFIRMED
+    resolution: falls back to public.ecr.aws (same manifests) with skopeo --retry-times 3; a failed weekly run leaves the previous mirror serving and pages via the watcher.
+  - seat: kimi-code/k3
+    objection: First-push packages are private and never pruned; a Free org caps private package storage at 500 MB.
+    status: CONFIRMED
+    resolution: prune job keeps the two newest untagged versions and never touches tagged ones; flipping the packages public is listed for the operator.
+  - seat: kimi-code/k3
+    objection: The header claimed byte-identical tags, but only the selected linux/amd64 manifest is preserved.
+    status: CONFIRMED
+    resolution: comment reworded.
+  - seat: kimi-code/k3
+    objection: ubuntu-latest contradicts the pinned skopeo premise.
+    status: CONFIRMED
+    resolution: runs-on ubuntu-24.04 and skopeo --version printed.
+  - seat: kimi-code/k3
+    objection: import yaml may be missing in CI.
+    status: RETRACTED
+    resolution: immune-enforcement.yml installs PyYAML==6.0.3 before running this test.
+  - seat: kimi-code/k3
+    objection: The watcher only sees push failures, so a failing weekly mirror is silent.
+    status: RETRACTED
+    resolution: main-push-failure-watch.yml's own SCOPE comment covers push- and schedule-triggered runs on main.
+  - seat: kimi-code/k3
+    objection: Only services blocks are audited; container and docker run pulls are not; the credential check rejects a PAT; MIRRORED_IMAGES duplicates the matrix.
+    status: PLAUSIBLE
+    resolution: kept. No consumer uses container or docker run for these images, and a PAT would be a new credential needing owner authorization.
+  - seat: codex-gpt-5.6-sol
+    objection: MIRROR_PREFIXES still accepts the failing ECR prefix, so a consumer can stay on ECR with tests green.
+    status: PLAUSIBLE
+    resolution: deliberate for PR-1, whose consumers cannot move before the mirror is seeded. PR-2 moves them and drops ECR from the sanctioned set.
+  - seat: codex-gpt-5.6-sol
+    objection: prune is skipped when either mirror leg fails.
+    status: CONFIRMED
+    resolution: prune runs if not cancelled.
+  - seat: codex-gpt-5.6-sol
+    objection: GITHUB_TOKEN was matched as a substring, so secrets.GITHUB_TOKEN_BOGUS passed.
+    status: CONFIRMED
+    resolution: exact expression match, with a guilt fixture.
+  - seat: codex-gpt-5.6-sol
+    objection: Digest references evaded repo-name parsing.
+    status: CONFIRMED
+    resolution: _repo_name strips the digest and host port (mutation M7).
+  - seat: claude-opus-5-5
+    objection: >-
+      The mandate asked that the CI image major equal PROD's. PROD is 17.9 and
+      CI is 15; this PR keeps 15 because the same mandate forbids changing what
+      the tests run against. The skew stays open as its own concern.
+    status: PLAUSIBLE
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 3
+appetite_exceeded: >-
+  Three rounds against a declared two. R9 quorum needs two titolari; the first
+  round ran on the codex default model gpt-6-astra, which is not a council
+  seat, so a third round on codex-gpt-5.6-sol was needed after a qwen3.8-max
+  attempt timed out at 600 s.

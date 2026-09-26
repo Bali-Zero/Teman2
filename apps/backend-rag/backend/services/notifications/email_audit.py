@@ -198,6 +198,201 @@ async def record_email_result(
         logger.warning("email_audit: record_email_result failed for %d: %s", row_id, exc)
 
 
+# `error`/`subject` are caller-supplied free text and can themselves carry
+# the recipient's address (e.g. a provider bounce message quoting it back).
+# Redacting only `to_email` below is not enough for this Telegram alert —
+# it is an OUTPUT, not storage.
+#
+# Markdown delimiters are part of the TOKEN SHAPE again (C1, PR #7385 gate
+# follow-up — restores the round-1 shape): excluding them entirely (M5,
+# round 2) fixed the `*Delivery to a@b*` case but broke any address that
+# itself CONTAINS a delimiter — `first_last@x` matched only `last@x` (the
+# `_` split the local part in two, and the stray `first_` before it never
+# matched anything, so it survived unredacted); `x@sub_domain` matched
+# only `x@sub` for the same reason on the domain side. Excluding
+# `@`/whitespace/quotes/backtick/angle-brackets is enough to keep one
+# match from spanning two addresses or leaking past a sentence boundary;
+# `*_[]()` inside a token are the address's own characters until proven
+# otherwise. What M5 actually needed is peeling, not exclusion — see
+# `_redact_token` below: a LEADING/TRAILING run of delimiter chars right
+# at the very edge of a token (never in the interior) still belongs to
+# the surrounding Markdown, not the address, and goes back into the
+# output unredacted, keeping `*Delivery to a@b*`'s closing `*` (and
+# Telegram's parse_mode="Markdown" balance) intact.
+#
+# K1 (PR #7417 gate follow-up, CodeQL alert 9200, `py/polynomial-redos`):
+# this used to be three `re` patterns — `_EMAIL_TOKEN_RE.sub(...)` plus two
+# peel regexes. All three have the same shape CodeQL flagged on C6's
+# `_TRAILING_PARTIAL_TOKEN_RE`: an unanchored (or `.search`-driven) scan
+# whose failure mode backtracks per START POSITION, so a non-matching run
+# costs O(length²) rather than O(length) — measured 1.05-1.64s at 20k
+# chars for each of the three. `_bounded_scrub` bounds every caller to
+# 120/400 chars (a few ms even at that cost), so this was never a live
+# DoS, but the fix is the same one C6 already established: replace with a
+# construct that cannot backtrack. Below, `_scrub_word` is a single
+# forward pass (each character visited a bounded number of times, never
+# re-scanned from an earlier position — the same "two-pointer" shape as
+# `_strip_trailing_partial_token`), and `_redact_token`'s peel uses
+# `str.lstrip`/`str.rstrip` over explicit character sets — a builtin, not
+# a regex, so there is no pattern for CodeQL (or an adversarial input) to
+# find a blowup in.
+_MD_DELIMS = "*_[]()"
+_TRAILING_PUNCT_CHARS = _MD_DELIMS + ".,;:!?"
+#: A token never spans one of these, beyond whitespace — matches the
+#: `<>"'`` backtick chars the old `_EMAIL_TOKEN_RE`'s two character
+#: classes excluded (`@` is handled separately below: it is *within* a
+#: token, as the local/domain separator, never a boundary).
+_HARD_BOUNDARY_CHARS = "<>\"'`"
+
+
+def _redact_token(token: str) -> str:
+    """Peel edge Markdown/punctuation off ``token``, digest the core.
+
+    A leading run of `*_[]()` and a trailing run of that same set plus
+    sentence punctuation (`.,;:!?`) are peeled off and reattached to the
+    output verbatim — they belong to the surrounding text, not the
+    address (e.g. `(a@b).` keeps its parenthesis and period). Anything
+    INSIDE the token (e.g. `first_last@x`'s `_`) is part of the address
+    as far as this function is concerned and is consumed into the digest
+    like any other character, so no fragment of it survives. `@` is never
+    in either strip set, so a token can never be peeled down past its own
+    `@` — there is always something left to digest.
+    """
+    core = token.lstrip(_MD_DELIMS)
+    prefix = token[: len(token) - len(core)]
+    stripped_core = core.rstrip(_TRAILING_PUNCT_CHARS)
+    suffix = core[len(stripped_core) :]
+    return prefix + redact_identifier_for_log(stripped_core) + suffix
+
+
+def _scrub_word(word: str) -> str:
+    """Redact every `local@domain`-shaped span in ``word`` (no boundary
+    chars in it — see `_scrub_email_tokens`), left to right, non-overlapping.
+
+    Single forward pass: ``i`` only ever advances, and every `str.find`
+    call starts where the last one left off, so each character of
+    ``word`` is examined a bounded number of times across the whole call
+    — linear, matching the local/domain classes' own exclusion of `@`
+    from each other (a local or domain part can never itself contain a
+    second `@`, so the first `@` found always demarcates local from
+    domain, and the next `@` after it — if any — ends the domain and
+    starts the next candidate token).
+    """
+    out: list[str] = []
+    i = 0
+    n = len(word)
+    while i < n:
+        at = word.find("@", i)
+        if at == -1:
+            out.append(word[i:])
+            break
+        if at == i:
+            # Empty local part right here — this `@` can't start a match.
+            # Emit it literally, retry from the next character (mirrors
+            # the old regex failing to match at this position and the
+            # scanner advancing by one).
+            out.append(word[i])
+            i += 1
+            continue
+        second_at = word.find("@", at + 1)
+        domain_end = second_at if second_at != -1 else n
+        if domain_end == at + 1:
+            # Empty domain (e.g. "a@@b") — this `@` can't complete a
+            # match either. Emit local text + this `@` literally, retry
+            # right after it.
+            out.append(word[i : at + 1])
+            i = at + 1
+            continue
+        out.append(_redact_token(word[i:domain_end]))
+        i = domain_end
+    return "".join(out)
+
+
+def _scrub_email_tokens(text: str) -> str:
+    """Replace every email-shaped token in ``text`` with its log-safe digest.
+
+    Splits ``text`` into boundary-free "words" (whitespace and
+    `_HARD_BOUNDARY_CHARS` never belong to a token, so they pass through
+    untouched) and hands each word to `_scrub_word`. Both passes are
+    single forward scans — see the K1 comment above the module-level
+    constants for why that matters.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch.isspace() or ch in _HARD_BOUNDARY_CHARS:
+            out.append(ch)
+            i += 1
+            continue
+        j = i
+        while j < n and not (text[j].isspace() or text[j] in _HARD_BOUNDARY_CHARS):
+            j += 1
+        out.append(_scrub_word(text[i:j]))
+        i = j
+    return "".join(out)
+
+
+#: A truncation cut can land mid-token (e.g. right after `@`, or inside a
+#: domain) and leave a fragment `_scrub_email_tokens` cannot match — its
+#: regex needs at least one character on BOTH sides of `@`. `leak.probe@`
+#: with nothing after `@` never matches, so it would survive truncation
+#: unredacted. This strips a trailing PARTIAL token — the same case is
+#: reachable whether or not `@` is actually present in it.
+def _strip_trailing_partial_token(text: str) -> str:
+    """Drop the trailing run of non-whitespace chars — same result as
+    ``re.sub(r"\\S+$", "", text)``, replaced (C6, CodeQL alert 9192,
+    ``py/polynomial-redos``) because that pattern is genuinely polynomial:
+    fed 20k chars directly it measured ~2.0s, even though its only caller
+    (`_bounded_scrub`) already bounds every call to its own 120/400-char
+    ``limit`` (~1.4ms there) and the shape is unreachable at the size that
+    made it slow. A right-to-left linear scan for the last whitespace
+    character has the same worst case on any input size — it walks the
+    string once, never backtracks.
+    """
+    i = len(text)
+    while i > 0 and not text[i - 1].isspace():
+        i -= 1
+    return text[:i]
+
+
+def _bounded_scrub(text: str, limit: int) -> str:
+    """Truncate to ``limit`` chars, drop a trailing partial token, then scrub.
+
+    Order matters (M4, PR #7385 round 2). Scrubbing BEFORE truncating would
+    run the regex over unbounded caller-supplied text — measured quadratic
+    on a long non-matching run (20k chars ~= 1.05s) — so truncation happens
+    first, bounding every call to this function's own ``limit``. But
+    truncating first can cut an address mid-token; if the cut did not land
+    on a whitespace boundary, the trailing partial token is dropped entirely
+    before scrubbing runs, rather than left for the regex to (fail to) catch.
+
+    Only applied when the cut is actually mid-token: both `text[limit - 1]`
+    (the last kept char) AND `text[limit]` (the first dropped char) must be
+    non-whitespace (C3, PR #7385 gate follow-up). Checking only the first
+    of those — the pre-fix shape — could not tell "cut mid-token" apart
+    from "cut landed exactly on a token boundary", and dropped a COMPLETE
+    last token whenever the very next original character happened to be
+    whitespace (e.g. `limit=3` on `"abc def"`: `text[3]` is a space, `"abc"`
+    is whole, but the old check saw `"abc"[-1]` was not whitespace and
+    stripped it to `""` anyway). A single token longer than `limit` with no
+    whitespace at all in it — the shape this function exists to bound —
+    still collapses to an empty field either way: there is no boundary to
+    keep any of it on.
+    """
+    was_truncated = len(text) > limit
+    truncated = text[:limit]
+    if (
+        was_truncated
+        and truncated
+        and not truncated[-1].isspace()
+        and not text[limit].isspace()
+    ):
+        truncated = _strip_trailing_partial_token(truncated).rstrip()
+    return _scrub_email_tokens(truncated)
+
+
 def notify_email_failure_critical(
     *,
     email_type: str,
@@ -222,8 +417,8 @@ def notify_email_failure_critical(
         return
 
     practice_fragment = f" (practice #{practice_id})" if practice_id else ""
-    short_subj = (subject or "").strip()[:120]
-    short_err = error.strip().replace("\n", " ")[:400]
+    short_subj = _bounded_scrub((subject or "").strip(), 120)
+    short_err = _bounded_scrub(error.strip().replace("\n", " "), 400)
 
     # Tell the operator whether to wait for retry or act immediately.
     # Non-resurrectable types (personalized HTML / attachments) bypass the

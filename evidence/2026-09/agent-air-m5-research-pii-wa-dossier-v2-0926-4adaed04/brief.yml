@@ -1,0 +1,54 @@
+task: >-
+  Supersedes #7410, which the gate BLOCKED because the crm-guardian plan still carried first-name,
+  surname and company-name tokens of the rows whose full names it had redacted. Remove two
+  WhatsApp client-dossier outputs from research/crm/ on main, after quarantining their exact git
+  blobs off-repo on Pro. Gitignore the pattern their producer
+  (apps/backend-rag/scripts/nlm_pack_crm.py, manual, not scheduled) writes into the checkout, so
+  a re-run cannot be promoted. In research/crm-guardian/2026-05-18-phase-1.5-ocr-layer-plan.md,
+  replace every client full name, every client first-name and surname token, both company
+  names and the two non-client person names with placeholders. The numeric client ids stay:
+  they are the pseudonym the Builder Contract section 4 asks for.
+lane: research/pii-reports
+machine: m5
+date: 2026-09-26
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: 1027 deleted lines, almost all in the two dossier files,
+  plus 22 added lines, above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828).
+  No hot-zone path.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    Neither dossier file is tracked on origin/main after merge.
+    probe: >-
+      git ls-files research/crm | grep -c -E 'wa-dossier|timing-'
+  A2: >-
+    A file named like the producer's output is ignored, and the tracked S7/S12 research files
+    in the same directory are not.
+    probe: >-
+      git check-ignore -q research/crm/2099-01-01-wa-dossier-x-batch-01.txt && ! git check-ignore -q research/crm/S7-yield-FROZEN.json
+  A3: >-
+    The plan carries no CRM client full name, and no capitalised token of it is a CRM client or
+    company name token other than ordinary words, placeholders and the owner's first name. Both
+    sweeps load names from PROD in memory and print only file:line and sha1[:8]. Before this
+    PR's token pass the file held 18 hits of the ten targeted tokens; after it, 0.
+    probe: >-
+      a full-name sweep and a token sweep against the clients and companies tables, run by the
+      authoring session; the R1 gate on the diff: python3 scripts/check_adversarial_review.py --diff origin/main
+
+out_of_scope: >-
+  Moving nlm_pack_crm.py's default output dir out of the repo (apps/backend-rag/** merges are
+  deploys; the gitignore closes the promotion path without one). The same client tokens in
+  research/compliance/deep_audit_2026-04-24/plan*.jsonl, docs/scars/, docs/superpowers/plans/
+  and one research/operations note, listed by hash in the lane report for a separate PR.
+  Git-history rewrite (operator decision).
+
+assumptions: >-
+  The quarantine copies at Pro ~/.agent/pii-quarantine/ (0700/0600, blob-verified) are the
+  audit trail if the benchmark is ever re-scored. A dictionary-word name that is neither a CRM
+  token nor non-English would pass both sweeps; the rows the gate named were read by hand.

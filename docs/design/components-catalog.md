@@ -295,6 +295,7 @@
 - **source**: `packages/core/components/NavShell.tsx`
 - **use when**: navigation, shell, layout, page frame
 - **props**:
+  - `variant`: `"default" | "paper" | undefined`
   - `logo`: `ReactNode`
   - `items`: `NavItem[]`
   - `actions`: `ReactNode`

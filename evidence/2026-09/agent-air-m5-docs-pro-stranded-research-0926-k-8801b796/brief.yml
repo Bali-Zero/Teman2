@@ -1,0 +1,83 @@
+task_id: pro-stranded-research-0926-k
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: >-
+  Promote 20 cron research outputs that sit untracked in Pro's main checkout
+  (research/nb-health 13, research/nb-monitor 5, research/sota-social-2026-v1 2)
+  onto main, the same way #3771 and #4293 promoted their older peers, so Pro's
+  `git status` stops carrying them and the reports stop living on one disk only.
+  Lane K of the 2026-09-26 fleet-clean campaign; Lane A prepared the three
+  promotion commits and suspended at this Harness floor.
+scope: >-
+  Only the 20 report files and this evidence directory. The 11 correctly-slugged
+  research/agent-craft notes stay out: three cite the retracted claim
+  kim-2025-17x-error-amplification-as-cause without annotation and `antidotes`
+  blocks them; the agent-craft lane annotates before any promotion. No producer
+  (cron, script, plist) is changed.
+acceptance:
+  - text: >-
+      WHEN this PR merges, all 20 paths SHALL exist on origin/main (the three
+      directories gain exactly these 20 files and nothing else).
+    probe: >-
+      git diff --name-only --diff-filter=A MERGE_SHA^ MERGE_SHA -- research/
+      | wc -l   # expect 20
+  - text: >-
+      12 of the 20 blobs SHALL be byte-identical to Pro's untracked copies
+      (11 nb-health snapshots and 09_wr2_weights_2026-08.json).
+    probe: >-
+      on Pro, before removing the copies, for each of the 20 paths:
+      git show origin/main:PATH | cmp -s - PATH && echo IDENT   # expect 12 IDENT
+  - text: >-
+      The other 8 SHALL differ from Pro's copies only by (a) the 4-line R1
+      frontmatter block (`---`, `adversarial_review: exempt-machine-report ...`,
+      `---`, blank) prepended to the 5 nb-monitor reports and the monthly
+      report, the same block their tracked peers already carry, and (b)
+      single-line substitutions whose new line carries a placeholder token
+      (`<client-redacted>`, `<person-redacted>` or `[INTERNAL-DOSSIER-REDACTED]`):
+      8 per nb-monitor report, 1 in each of 2026-08-24-curation.md and
+      2026-08-26-health.md. Every removed line has a placeholder-bearing
+      replacement; no other line changes.
+    probe: >-
+      on Pro, for each of the 8 paths: diff PATH <(git show origin/main:PATH)
+      | grep '^>' | grep -vE '^> (---|adversarial_review: exempt-machine-report|$)'
+      | grep -cvE '<client-redacted>|<person-redacted>|INTERNAL-DOSSIER-REDACTED'
+      # expect 0 on every path
+  - text: >-
+      No committed line SHALL carry client PII or OSINT: no e-mail- or
+      phone-shaped string in the 20 files, and no client, client company,
+      client tax-return or out-of-repo dossier title (redaction-rules.yaml
+      kura_kura_btid_case) in the nb-monitor notebook tables. Private
+      individuals named in quoted press titles are redacted; public officials
+      in press titles are kept.
+    probe: >-
+      git grep -nE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][a-z]{2,}|[+]62[0-9 -]{8,}'
+      origin/main -- research/nb-health research/nb-monitor
+      research/sota-social-2026-v1   # expect no hit in the 20 paths
+  - text: >-
+      WHEN Pro pulls the merge after its 20 untracked copies are removed,
+      `git status --short | wc -l` in Pro's main checkout SHALL drop by 20
+      and list none of the 20 paths.
+    probe: >-
+      ssh pro 'cd ~/nuzantara && git status --short | wc -l' before and after;
+      git status --short -- research/nb-health research/nb-monitor
+      research/sota-social-2026-v1   # expect empty
+assumptions:
+  - text: >-
+      These outputs are machine reports, not research deliverables, and carry
+      the same R1 exemption line as their tracked peers.
+    status: verified
+    probe: git show origin/main:research/nb-monitor/report-2026-W33.md | head -3
+  - text: >-
+      Pro's untracked copies are the originals the cron wrote; the branch
+      copies were taken from them, not regenerated.
+    status: verified
+    probe: cmp per file against a fresh ssh tar of Pro's copies this session (12 IDENT, 8 differ as described above)
+budget: Existing subscription seats only; no paid per-token API calls.
+council_reason: >-
+  Floor 2 from the size term alone (about 1.4k lines of generated reports, no
+  hot-zone path, no code). No council: the change is data promotion plus
+  redaction. A fresh read-only Opus 5.5 session outside this chain posts the
+  harness/fable-gate verdict on the head sha (RULED 2026-09-10).
+pii: redacted
