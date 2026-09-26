@@ -172,3 +172,27 @@ Known NOT fixed here (reported to the ledger, out of scope for this diff):
   operator-only per repo convention). If it still shows stale/wrong seat statuses after this
   fix lands, that is a receptor-side issue (possibly reading a stale cached run, or a `--read-last`
   call against an old `last.json`), not this tool.
+
+## 2026-09-26: agy needs its own timeout floor on M5, and a local (not repo) permission fix
+
+`--seats agy` on M5 flip-flopped between `UNKNOWN_ERR` ("...Add an allow-rule under
+permissions.allow in settings.json...") and `TIMEOUT` under the shared 40s `DEFAULT_TIMEOUTS`
+budget. Reproduced directly (no ssh, three back-to-back `agy -p "Reply with exactly: PONG"`
+runs): 58.8s, no output at all inside 30s, 74.7s; a 110s budget then returned `LIVE` at 94.6s.
+`--dangerously-skip-permissions` and `--sandbox` did **not** shorten this — ruling out a
+permissions gap as the SPEED cause. `DEFAULT_TIMEOUTS["agy"]` is now bumped to 120 specifically
+on `machine_label() == "m5"` (Pro/Mini keep 40, which is correct for them per the 2026-09-24
+measurement above).
+
+Bumping the timeout also surfaced the REAL failure once the probe had enough runway to let agy
+finish its own graceful denial-report instead of being killed mid-flight: agy's own transcript
+(`~/.gemini/antigravity-cli/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`)
+showed it opportunistically ran `git status && git log -n 3 --oneline` (an onboarding step, not
+the prompt) and then `git diff <path>` on whatever file the probing worktree happened to have
+modified at that moment — and `command(git diff)` was missing from
+`~/.gemini/antigravity-cli/settings.json`'s `permissions.allow`, next to the already-present
+`command(git status)`/`command(git log)`/`command(git branch)`/`command(git remote)`. Added
+`command(git diff)` there (a per-machine, git-ignored config file, **not** a repo path — no PR
+carries this half of the fix, apply it by hand on any other seat that hits the same denial).
+Both fixes together: `python3 scripts/arsenal_probe.py --seats agy --table` now reads `LIVE` in
+~60-80s on M5, comfortably inside the new 120s budget.

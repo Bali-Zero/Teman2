@@ -249,7 +249,9 @@ function defaultCoverImage(category: ArticleCategory): string {
 }
 
 /**
- * An MDX article's cover: what frontmatter states, or the category's cover.
+ * An article's cover: a browser image URL, or the category's shipped cover.
+ * Reject bare storage keys before next/image. Remote URLs must still satisfy
+ * the separate host/protocol allowlist in next.config.ts.
  *
  * What it replaced was `frontmatter.coverImage || frontmatter.image?.src ||
  * `/static/blog/${folder}/${slug}.jpg`` — a guess nobody verified. Measured
@@ -280,7 +282,25 @@ export function resolveCoverImage(
   explicit: string | null | undefined,
   category: ArticleCategory,
 ): string {
-  return explicit || defaultCoverImage(category);
+  if (explicit?.startsWith("/") && !explicit.startsWith("//")) return explicit;
+
+  if (explicit) {
+    try {
+      const url = new URL(explicit);
+      if (
+        url.protocol === "http:" ||
+        url.protocol === "https:" ||
+        explicit.startsWith("data:image/") ||
+        url.protocol === "blob:"
+      ) {
+        return explicit;
+      }
+    } catch {
+      // Storage keys such as "covers/file.jpg" are not browser image URLs.
+    }
+  }
+
+  return defaultCoverImage(category);
 }
 
 /**
@@ -350,8 +370,10 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     slug: item.slug,
     title: item.title,
     excerpt: cleanExcerpt(item.summary || item.ai_summary),
-    coverImage:
-      item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    coverImage: resolveCoverImage(
+      item.image_url,
+      normalizeCategory(item.category),
+    ),
     cardImage: deriveCardImage(item.image_url),
     category: normalizeCategory(item.category),
     author: {
@@ -381,8 +403,10 @@ function backendToArticle(item: BackendNewsItem): Article {
     title: item.title,
     excerpt: cleanExcerpt(item.summary || item.ai_summary),
     content: item.content || "",
-    coverImage:
-      item.image_url || defaultCoverImage(normalizeCategory(item.category)),
+    coverImage: resolveCoverImage(
+      item.image_url,
+      normalizeCategory(item.category),
+    ),
     cardImage: deriveCardImage(item.image_url),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),

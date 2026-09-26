@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Search, Newspaper } from "lucide-react";
@@ -103,6 +103,15 @@ export default function NewsPageClient({
   initialQuery,
 }: NewsPageClientProps) {
   const [query, setQuery] = useState(initialQuery ?? "");
+  const [visibleCount, setVisibleCount] = useState(12);
+  const isSearching = query.trim().length > 0;
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (visibleCount > 12) {
+      gridRef.current?.querySelectorAll("a")[visibleCount - 12]?.focus();
+    }
+  }, [visibleCount]);
 
   const articles = serverArticles || [];
 
@@ -117,8 +126,9 @@ export default function NewsPageClient({
     );
   }, [articles, query]);
 
-  // NewsHero carousel uses the top 5; grid shows the rest.
-  const gridArticles = filtered.slice(5, 17);
+  // Featured articles belong to browsing; search must include its first hit.
+  const gridResults = isSearching ? filtered : filtered.slice(5);
+  const gridArticles = gridResults.slice(0, visibleCount);
 
   return (
     // MYTHOS Stage-B Batch 1: Rumah Putih light, scoped per-page on this
@@ -132,9 +142,7 @@ export default function NewsPageClient({
         color: "var(--text-primary)",
       }}
     >
-      {/* Hero — NewsHero carousel (reused from homepage) */}
-      <NewsHero articles={articles.slice(0, 5)} />
-
+      <h1 className="sr-only">Bali Zero News</h1>
       {/* Search bar strip */}
       <section
         style={{
@@ -161,7 +169,10 @@ export default function NewsPageClient({
             <input
               type="search"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setVisibleCount(12);
+              }}
               placeholder="Search KITAS, KBLI, tax deadline, zoning…"
               aria-label="Search articles"
               className="flex-1 bg-transparent border-0 outline-none text-[14px]"
@@ -170,7 +181,10 @@ export default function NewsPageClient({
             {query && (
               <button
                 type="button"
-                onClick={() => setQuery("")}
+                onClick={() => {
+                  setQuery("");
+                  setVisibleCount(12);
+                }}
                 className="text-[11px] font-semibold px-3 py-1.5 rounded-full"
                 style={{
                   background: "var(--accent-funnel, #3a6dff)",
@@ -184,102 +198,109 @@ export default function NewsPageClient({
         </div>
       </section>
 
-      {/* Topic pills */}
-      <section
-        style={{
-          borderTop: "1px solid var(--border-subtle)",
-          borderBottom: "1px solid var(--border-subtle)",
-          padding: "20px clamp(24px, 4vw, 40px)",
-        }}
-      >
-        <div className="max-w-[1400px] mx-auto flex flex-wrap gap-2">
-          {TOPICS.map((t) => (
-            <Link
-              key={t.id}
-              href={t.href}
-              className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full transition"
-              style={{
-                background:
-                  "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
-                border:
-                  "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 22%, transparent)",
-                color: "var(--text-primary)",
-              }}
-            >
-              {t.name}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Keep the search input stable when browsing content disappears. */}
+      {!isSearching && <NewsHero articles={articles.slice(0, 5)} />}
 
-      {/* Section cards (6 colorful) */}
-      <section
-        style={{
-          padding: "clamp(32px, 4vw, 56px) clamp(24px, 4vw, 40px)",
-          borderTop: "1px solid var(--border-subtle)",
-        }}
-      >
-        <div className="max-w-[1400px] mx-auto">
-          <div
-            className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
-          >
-            Browse by topic
-          </div>
-          <h2
-            className="font-extrabold tracking-tight mb-8"
+      {!isSearching && (
+        <>
+          {/* Topic pills */}
+          <section
             style={{
-              fontSize: "clamp(26px, 2.8vw, 36px)",
-              lineHeight: 1.1,
-              color: "var(--text-primary)",
+              borderTop: "1px solid var(--border-subtle)",
+              borderBottom: "1px solid var(--border-subtle)",
+              padding: "20px clamp(24px, 4vw, 40px)",
             }}
           >
-            Six sections. Every regulation that affects expats and investors in
-            Indonesia.
-          </h2>
-          <div
-            className="grid gap-4"
+            <div className="max-w-[1400px] mx-auto flex flex-wrap gap-2">
+              {TOPICS.map((t) => (
+                <Link
+                  key={t.id}
+                  href={t.href}
+                  className="text-[12px] font-semibold px-3.5 py-1.5 rounded-full transition"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 22%, transparent)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {t.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* Section cards (6 colorful) */}
+          <section
             style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              padding: "clamp(32px, 4vw, 56px) clamp(24px, 4vw, 40px)",
+              borderTop: "1px solid var(--border-subtle)",
             }}
           >
-            {SECTIONS.map((s) => (
-              <Link
-                key={s.title}
-                href={s.href}
-                className="group relative rounded-2xl p-6 transition-all hover:-translate-y-1 overflow-hidden"
+            <div className="max-w-[1400px] mx-auto">
+              <div
+                className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
+                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              >
+                Browse by topic
+              </div>
+              <h2
+                className="font-extrabold tracking-tight mb-8"
                 style={{
-                  background: `color-mix(in srgb, ${s.accent} 10%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${s.accent} 32%, transparent)`,
-                  boxShadow: `0 10px 30px color-mix(in srgb, ${s.accent} 16%, transparent)`,
-                  backdropFilter: "blur(20px) saturate(160%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                  fontSize: "clamp(26px, 2.8vw, 36px)",
+                  lineHeight: 1.1,
+                  color: "var(--text-primary)",
                 }}
               >
-                <div
-                  className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-2"
-                  style={{ color: s.accent }}
-                >
-                  {s.title}
-                </div>
-                <div
-                  className="text-[20px] font-extrabold tracking-tight mb-3"
-                  style={{ color: "var(--text-primary)", lineHeight: 1.15 }}
-                >
-                  {s.description}
-                </div>
-                <div
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold opacity-80 group-hover:opacity-100 transition"
-                  style={{ color: s.accent }}
-                >
-                  Explore
-                  <ArrowRight size={12} strokeWidth={2.2} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+                Six sections. Every regulation that affects expats and investors
+                in Indonesia.
+              </h2>
+              <div
+                className="grid gap-4"
+                style={{
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                }}
+              >
+                {SECTIONS.map((s) => (
+                  <Link
+                    key={s.title}
+                    href={s.href}
+                    className="group relative rounded-2xl p-6 transition-all hover:-translate-y-1 overflow-hidden"
+                    style={{
+                      background: `color-mix(in srgb, ${s.accent} 10%, transparent)`,
+                      border: `1px solid color-mix(in srgb, ${s.accent} 32%, transparent)`,
+                      boxShadow: `0 10px 30px color-mix(in srgb, ${s.accent} 16%, transparent)`,
+                      backdropFilter: "blur(20px) saturate(160%)",
+                      WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                    }}
+                  >
+                    <div
+                      className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-2"
+                      style={{ color: s.accent }}
+                    >
+                      {s.title}
+                    </div>
+                    <div
+                      className="text-[20px] font-extrabold tracking-tight mb-3"
+                      style={{ color: "var(--text-primary)", lineHeight: 1.15 }}
+                    >
+                      {s.description}
+                    </div>
+                    <div
+                      className="inline-flex items-center gap-1.5 text-[12px] font-semibold opacity-80 group-hover:opacity-100 transition"
+                      style={{ color: s.accent }}
+                    >
+                      Explore
+                      <ArrowRight size={12} strokeWidth={2.2} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Latest grid */}
       <section
@@ -291,7 +312,7 @@ export default function NewsPageClient({
       >
         <div className="max-w-[1400px] mx-auto">
           <div className="flex items-end justify-between mb-8 flex-wrap gap-3">
-            <div>
+            <div role="status" aria-atomic="true">
               <div
                 className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-2"
                 style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
@@ -305,21 +326,32 @@ export default function NewsPageClient({
                   color: "var(--text-primary)",
                 }}
               >
-                {query
+                {isSearching
                   ? `${filtered.length} result${filtered.length === 1 ? "" : "s"} for "${query}"`
                   : "What's new this week"}
               </h2>
             </div>
           </div>
-          {gridArticles.length === 0 && !query && (
+          {!isSearching && filtered.length > 0 && gridResults.length === 0 && (
             <p
               className="text-[14px]"
               style={{ color: "var(--text-secondary)" }}
             >
-              Fresh pieces are publishing daily. Check back soon.
+              All available articles are featured above.
+            </p>
+          )}
+          {filtered.length === 0 && (
+            <p
+              className="text-[14px]"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {isSearching
+                ? "No articles match your search. Try another term or clear the search."
+                : "No articles are available yet. Check back soon."}
             </p>
           )}
           <div
+            ref={gridRef}
             className="grid gap-6"
             style={{
               gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
@@ -393,6 +425,19 @@ export default function NewsPageClient({
               </Link>
             ))}
           </div>
+          {gridArticles.length < gridResults.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((count) => count + 12)}
+              className="mt-8 min-h-11 rounded-full border px-5 py-2 text-sm font-semibold"
+              style={{
+                borderColor: "var(--border-default)",
+                color: "var(--text-primary)",
+              }}
+            >
+              Show more articles
+            </button>
+          )}
         </div>
       </section>
     </div>
