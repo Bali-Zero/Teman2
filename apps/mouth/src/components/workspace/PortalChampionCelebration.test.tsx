@@ -184,6 +184,46 @@ describe("workspace-wide celebrations", () => {
     expect(FakeSource.instances).toHaveLength(2);
   });
 
+  it("closes the stream in a hidden tab and resumes from its cursor when visible", () => {
+    let visibility: DocumentVisibilityState = "hidden";
+    const spy = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockImplementation(() => visibility);
+    const flip = (next: DocumentVisibilityState) =>
+      act(() => {
+        visibility = next;
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    try {
+      mount();
+      expect(FakeSource.instances).toHaveLength(0);
+      flip("visible");
+      const first = FakeSource.instances[0];
+      act(() => {
+        first.dispatchEvent(
+          new MessageEvent("ready", {
+            lastEventId: "123-0",
+            data: JSON.stringify({ server_time: new Date().toISOString() }),
+          }),
+        );
+      });
+      flip("hidden");
+      expect(first.close).toHaveBeenCalledOnce();
+      expect(FakeSource.instances).toHaveLength(1);
+      flip("visible");
+      expect(FakeSource.instances).toHaveLength(2);
+      expect(FakeSource.instances[1].url).toBe(
+        "/api/dashboard/portal-challenge/events?last_event_id=123-0",
+      );
+      act(() => FakeSource.instances[1].goal("124-0", goal()));
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "GOAL oleh Contender",
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("uses server time even when the laptop clock is wrong", () => {
     mount();
     const serverTime = Date.now() + 3600_000;

@@ -49,7 +49,7 @@ export function useChampionGoals(
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!identity || typeof EventSource === "undefined") return;
-    let source: EventSource;
+    let source: EventSource | undefined;
     let stopped = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let retries = 0;
@@ -61,11 +61,12 @@ export function useChampionGoals(
         queryKey: ["portal-challenge", identity],
       });
     const connect = () => {
-      if (stopped) return;
-      source = new EventSource(
+      if (stopped || source) return;
+      const current = new EventSource(
         `/api/dashboard/portal-challenge/events${lastId ? `?last_event_id=${encodeURIComponent(lastId)}` : ""}`,
       );
-      source.addEventListener("ready", (event) => {
+      source = current;
+      current.addEventListener("ready", (event) => {
         const message = event as MessageEvent<string>;
         lastId = message.lastEventId || lastId;
         retries = 0;
@@ -77,7 +78,7 @@ export function useChampionGoals(
         }
         refresh();
       });
-      source.addEventListener("goal", (event) => {
+      current.addEventListener("goal", (event) => {
         const message = event as MessageEvent<string>;
         if (!message.lastEventId || seen.has(message.lastEventId)) return;
         const goal = parseChampionGoal(message.data, Date.now() + clockOffset);
@@ -88,24 +89,43 @@ export function useChampionGoals(
         refresh();
         onGoal(goal);
       });
-      source.onerror = () => {
-        if (source.readyState !== EventSource.CLOSED || stopped) return;
-        source.close();
+      current.onerror = () => {
+        if (
+          current.readyState !== EventSource.CLOSED ||
+          stopped ||
+          source !== current
+        )
+          return;
+        current.close();
+        source = undefined;
         const delay = Math.min(60_000, 5_000 * 2 ** Math.min(retries++, 4));
         retryTimer = setTimeout(connect, delay + Math.random() * 1000);
       };
-      source.addEventListener("closed", () => {
+      current.addEventListener("closed", () => {
         stopped = true;
         clearTimeout(retryTimer);
-        source.close();
+        current.close();
+        source = undefined;
         refresh();
       });
     };
-    connect();
+    // A hidden tab holds no stream (each one pins an API→RAG connection); on return it
+    // resumes from its cursor, and replay covers the 90 s a hidden queue would keep.
+    const followVisibility = () => {
+      if (stopped) return;
+      clearTimeout(retryTimer);
+      if (document.visibilityState === "hidden") {
+        source?.close();
+        source = undefined;
+      } else connect();
+    };
+    followVisibility();
+    document.addEventListener("visibilitychange", followVisibility);
     return () => {
       stopped = true;
       clearTimeout(retryTimer);
-      source.close();
+      document.removeEventListener("visibilitychange", followVisibility);
+      source?.close();
     };
   }, [identity, onGoal, queryClient]);
 }
