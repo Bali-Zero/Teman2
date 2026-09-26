@@ -39,8 +39,26 @@ name: wa team promises tests
 #     (`_PROMISE_PATTERNS_RE`, `_TEMPORAL_CUES`) at module scope — a change
 #     there can break the clause-splitter tests in
 #     `test_wa_team_promises_scan.py` while touching none of the paths the
-#     spec listed. Measured: no test file names it directly, all reach it
-#     transitively through `import scripts.wa_team_promises`.
+#     spec listed.
+#   - `scripts/tg_gateway_verdict.py` is listed for the same reason, found by
+#     a cross-family review pass (kimi-code/k3 and agy/gemini-3.1-pro, both
+#     independently): `scripts/wa_team_promises.py:71` imports
+#     `extract_gateway_verdict` from it at module scope too — a rename or
+#     deletion there breaks COLLECTION of the entire corpus, not just one
+#     test, while touching no other listed path.
+#   - `scripts/tg_notify.py` is ALSO listed, on the same review's finding:
+#     `test_wa_team_promises_scan.py`'s B2 cadence-sim test loads the REAL
+#     file via `importlib.util.spec_from_file_location` + `exec_module` (not
+#     a fake), to exercise the digest's real dedup/cadence logic. It is a
+#     widely shared Telegram-notify module (114 references across
+#     `scripts/`), so this is a narrower case than `scripts/mq.sh`'s omission
+#     below: the corpus does not merely import a neighboring module, it
+#     LOADS AND RUNS this exact file, so an edit to it can silently break the
+#     one test that exercises it while this workflow stays unarmed on that
+#     PR — the read-set principle wins over the noise-cost concern here, and
+#     the reviewers disagreed with each other on the balance (agy: leave it
+#     out, mirroring `mq.sh`; kimi: include it, NO-GO without it) before this
+#     was settled by the read-set principle itself, not by majority.
 #   - `scripts/tests/conftest.py` is listed for the same reason
 #     `queue-doctor-tests.yml` lists it: its fixtures are `autouse=True`.
 #   - `scripts/wa_team_promises_scan_cron.sh` IS listed even though the
@@ -80,6 +98,8 @@ on:
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - "scripts/tg_gateway_verdict.py"
+      - "scripts/tg_notify.py"
       - ".github/workflows/wa-team-promises-tests.yml"
   push:
     branches:
@@ -94,6 +114,8 @@ on:
       - "scripts/tests/test_wa_team_promises*.py"
       - "scripts/tests/conftest.py"
       - "apps/backend-rag/backend/services/wa_copilot/team_promises.py"
+      - "scripts/tg_gateway_verdict.py"
+      - "scripts/tg_notify.py"
       - ".github/workflows/wa-team-promises-tests.yml"
 
 permissions:

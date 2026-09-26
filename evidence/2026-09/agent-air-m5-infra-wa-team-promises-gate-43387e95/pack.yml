@@ -1,0 +1,248 @@
+brief_ref: evidence/2026-09/agent-air-m5-infra-wa-team-promises-gate-43387e95/brief.yml
+council_run: "journal.jsonl"
+plan_ref:
+  "PR (agent/air-m5/infra/t3-tests-pr-gate, base main) — 'ci(wa-team): gate T3 promise tests on
+  PR (closes C-D on #7413)'. Dispatched by the coordinator (team-lead) as the C-D closure task on
+  PR #7413's gate comment (`gh api repos/Bali-Zero/Teman2/issues/comments/5846951975`), which
+  names the fix explicitly: wire scripts/tests/test_wa_team_promises*.py into a PR-gating job."
+lanes:
+  - lane: wa-team-promises-gate-build
+    role: build
+    seat:
+      claude-sonnet-5 (conducting session — measured the absence, wrote the workflow, ran the
+      cross-family review itself, applied both seats' findings by hand, wrote this pack; no
+      reviewing seat has write access to this tree)
+  - lane: wa-team-promises-gate-council-agy
+    role: review
+    seat: "agy/gemini-3.1-pro (verdict GO, one completeness note; see dissent)"
+  - lane: wa-team-promises-gate-council-kimi
+    role: review
+    seat: "kimi-code/k3 (verdict NO-GO pending a 2-line fix, then GO; see dissent)"
+
+what_changed: |
+  Three files: one new workflow (`.github/workflows/wa-team-promises-tests.yml`), one line added
+  to `main-push-failure-watch.yml`'s `workflows:` list, and this evidence pack.
+
+  The workflow triggers on `pull_request` and `push: main`, path-filtered on the T3 promise-gate
+  corpus's actual read-set (see the file's own header comment for the file-by-file reasoning,
+  including the two files added after cross-family review below). One job step installs `pytest`
+  and `asyncpg>=0.31.0` (the only third-party import the corpus needs with REAL_PG unset), then
+  runs `scripts/tests/test_wa_team_promises*.py` ONCE and asserts on the number of cases that
+  PASSED — not the exit code alone (0 on an all-skip run) and not the collected count (counts
+  skips too). The capture is guarded `|| RC=$?` so pytest's own output survives a non-zero exit
+  under GitHub's default `bash -e {0}` (scar W101/W107, same shape `queue-doctor-tests.yml`
+  documents). FLOOR=94, the corpus's real passing count today with REAL_PG unset (16 skip, the
+  real-PG opt-in cases).
+
+  REAL_PG is deliberately excluded — see receipts/proof below. The four opt-in suites spin up
+  their own throwaway PG cluster via `pg_ctl`/`initdb` on `PATH`, not a `DATABASE_URL`; this repo
+  has no workflow running that shape, only the GHCR-mirror service-container shape (which answers
+  on a socket and puts no binaries on `PATH`). Wiring either shape here would be inventing a new
+  PG setup, which the coordinator's C-D spec explicitly said not to do.
+
+  ROUND 2 (after cross-family review): both `agy/gemini-3.1-pro` and `kimi-code/k3`, independently
+  and without seeing each other's answer, found the SAME real gap — `scripts/tg_gateway_verdict.py`
+  is imported at module scope by `scripts/wa_team_promises.py:71` (`extract_gateway_verdict`), so a
+  rename/deletion there breaks COLLECTION of the entire corpus while triggering nothing. `kimi`
+  additionally flagged `scripts/tg_notify.py`, which one test (`test_wa_team_promises_scan.py`'s B2
+  cadence-sim) loads and executes via `importlib.util.spec_from_file_location` — a real module
+  load, not a fake. `agy` judged that one omittable (mirroring `queue-doctor-tests.yml`'s deliberate
+  non-inclusion of `scripts/mq.sh`); on inspection the analogy does not hold: `mq.sh` has ZERO
+  references from the corpus, while `tg_notify.py` is actually loaded and run by a real test. Both
+  files were added to both `paths:` lists (pull_request and push, kept symmetric), with the
+  disagreement recorded rather than silently resolved in the workflow's own comment.
+
+proof: |
+  The absence, before this diff:
+    grep -rln 'test_wa_team_promises' .github/workflows/   -> 0 hits
+
+  The floor, from the real tool rather than by inspection (hot-zone path, `.github/workflows/*`):
+    evidence_pack_lint.py --print-floor --numstat-file <numstat> --patch-file <patch>
+      --changed-files-file <changed>   -> 3
+
+  actionlint on both changed workflow files: clean.
+
+  scripts/check_watcher_coverage.py: before this diff's `main-push-failure-watch.yml` edit ->
+  "1 violation(s): `wa team promises tests` ... is not covered"; after -> "all 124 live
+  workflow(s) covered".
+
+  INNOCENCE — the exact step command, run locally against the corpus as it stands on `main`:
+    PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q
+    -> "94 passed, 16 skipped in 0.80s"
+
+  GUILT — real-file mutation, on a throwaway (never pushed) local edit to
+  scripts/sql/pro_local/team_promises.sql: `promise_text` renamed to `promise_text_MUTATED`.
+  Same command, same corpus:
+    -> "7 failed, 87 passed, 16 skipped" (the SQL/constant cross-checker and the required-columns
+       test both catch it). File restored from a pre-mutation copy immediately after; `git status`
+       on it afterward shows no diff.
+
+  Cross-family review, both independent (see dissent below for the full text and adjudication):
+    agy/gemini-3.1-pro  -> VERDICT: GO, one completeness note (tg_gateway_verdict.py; tg_notify.py
+                           judged omittable)
+    kimi-code/k3        -> VERDICT: NO-GO pending a 2-line fix (both files), then GO
+
+dissent:
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "scripts/tg_gateway_verdict.py is imported at module scope by scripts/wa_team_promises.py
+      (line 71, `extract_gateway_verdict`) and is missing from the path filter — a rename/deletion
+      there breaks collection of the whole corpus while triggering nothing."
+    status: CONFIRMED
+    resolution: "Added to both paths: lists."
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "scripts/tg_notify.py is loaded dynamically by test_wa_team_promises_scan.py's B2
+      cadence-sim test, but omitting it is reasonable — analogous to queue-doctor-tests.yml's
+      deliberate non-inclusion of scripts/mq.sh, since including a shared 114-reference Telegram
+      sink would arm this workflow on unrelated edits."
+    status: RETRACTED
+    resolution:
+      "The analogy does not hold on inspection: mq.sh has ZERO references from the queue-doctor
+      corpus (queue_doctor.py never calls it), which is WHY queue-doctor-tests.yml could safely
+      omit it. tg_notify.py has a real, non-zero reference: the B2 test loads and executes the
+      actual file via importlib. Read-set membership, not sharing breadth, is the omission test
+      queue-doctor-tests.yml itself states. Added to both paths: lists; see kimi's identical
+      finding below, reached independently."
+  - seat: kimi-code/k3
+    objection:
+      "scripts/tg_gateway_verdict.py AND scripts/tg_notify.py are both missing from the path
+      filter — the corpus's own measured-completeness claim ('all reach it transitively through
+      import scripts.wa_team_promises') is falsified by wa_team_promises.py's own next import
+      line. Verdict NO-GO until both are added."
+    status: CONFIRMED
+    resolution: "Both added to both paths: lists (pull_request and push, kept symmetric)."
+  - seat: kimi-code/k3
+    objection:
+      "pytest is unpinned; the floor parser scrapes pytest's human-readable summary line, which
+      is not a stable interface across major pytest versions."
+    status: CONFIRMED
+    resolution:
+      "Left as a documented LOW-severity nit, not fixed in this PR: queue-doctor-tests.yml and
+      every sibling in this family (mq-oracle-tests.yml, pajak-monitor-tests.yml, ...) share the
+      identical unpinned-pytest + summary-line-scrape shape — fixing it here alone would diverge
+      from the copied pattern rather than follow it, and a repo-wide pytest floor-parser pin is a
+      separate, cross-cutting PR, not this C-D closure's scope."
+  - seat: claude-sonnet-5 (conducting session, on its own council)
+    objection:
+      "Only two of the three usual cross-family seats answered (codex-gpt-5.6-sol's background
+      run explored unrelated repo context and never returned a scoped verdict on this diff within
+      a reasonable wall-clock budget) — this pack rests on two outside opinions, not three."
+    status: CONFIRMED
+    resolution:
+      "Said plainly rather than presented as a full council. Both seats that DID answer converged
+      independently on the same primary finding (tg_gateway_verdict.py), which is stronger signal
+      than a third seat rubber-stamping the same two."
+
+receipts:
+  - claim: "No PR-gating workflow named the T3 promise-gate corpus before this diff."
+    cmd: "grep -rln 'test_wa_team_promises' .github/workflows/"
+    result: "0 hits"
+    exit: 0
+    ts: "2026-09-26T22:30Z"
+    seat: claude-sonnet-5
+  - claim: "Deterministic gear floor for this diff is 3, sourced from a hot-zone path hit."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --numstat-file <numstat> --patch-file <patch> --changed-files-file <changed>"
+    result: "3"
+    exit: 0
+    ts: "2026-09-26T23:05Z"
+    seat: claude-sonnet-5
+  - claim: "Both changed workflow files are actionlint-clean."
+    cmd: "actionlint .github/workflows/wa-team-promises-tests.yml .github/workflows/main-push-failure-watch.yml"
+    result: "no findings"
+    exit: 0
+    ts: "2026-09-27T00:10Z"
+    seat: claude-sonnet-5
+  - claim: "The new workflow's push:main trigger is covered by the failure watcher, after the fix."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "✓ watcher-coverage: all 124 live workflow(s) covered by main-push-failure-watch.yml"
+    exit: 0
+    ts: "2026-09-27T00:10Z"
+    seat: claude-sonnet-5
+  - claim: "INNOCENCE — the corpus passes 94 cases, 16 skipped (REAL_PG opt-in), on main as it stands."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_wa_team_promises*.py -q"
+    result: "94 passed, 16 skipped in 0.80s"
+    exit: 0
+    ts: "2026-09-26T22:40Z"
+    seat: claude-sonnet-5
+  - claim: "GUILT — renaming the real promise_text column in the SQL file turns the corpus red."
+    cmd: "sed -i column rename in scripts/sql/pro_local/team_promises.sql (throwaway, never committed), then the same pytest command"
+    result: "7 failed, 87 passed, 16 skipped"
+    exit: 1
+    ts: "2026-09-26T22:55Z"
+    seat: claude-sonnet-5
+  - claim: "The guilt mutation was reverted cleanly, no residual diff."
+    cmd: "cp <pre-mutation backup> scripts/sql/pro_local/team_promises.sql && git status --short scripts/sql/pro_local/team_promises.sql"
+    result: "(empty — no diff)"
+    exit: 0
+    ts: "2026-09-26T22:56Z"
+    seat: claude-sonnet-5
+  - claim: "Cross-family seat agy/gemini-3.1-pro reviewed the diff and returned GO with one completeness note."
+    cmd: "agy -p <review prompt with full diff> --print-timeout 8m --dangerously-skip-permissions"
+    result: "VERDICT: GO; 4 numbered finding sections, 1 completeness note (tg_gateway_verdict.py)"
+    exit: 0
+    ts: "2026-09-26T23:40Z"
+    seat: agy/gemini-3.1-pro
+  - claim: "Cross-family seat kimi-code/k3 reviewed the diff and returned NO-GO pending a 2-line fix."
+    cmd: "kimi -p <review prompt with full diff>"
+    result: "VERDICT: NO-GO pending path-filter fix (tg_gateway_verdict.py + tg_notify.py); everything else GO"
+    exit: 0
+    ts: "2026-09-26T23:41Z"
+    seat: kimi-code/k3
+  - claim: "tg_gateway_verdict.py is imported at module scope by the production script the corpus tests."
+    cmd: "grep -n 'tg_gateway_verdict\\|extract_gateway_verdict' scripts/wa_team_promises.py"
+    result: "line 71: from scripts.tg_gateway_verdict import extract_gateway_verdict; line 595: call site"
+    exit: 0
+    ts: "2026-09-27T00:00Z"
+    seat: claude-sonnet-5
+  - claim: "tg_notify.py is loaded and executed by a real test, not merely referenced."
+    cmd: "sed -n '320,345p' scripts/tests/test_wa_team_promises_scan.py"
+    result: "importlib.util.spec_from_file_location on the real scripts/tg_notify.py path, then spec.loader.exec_module(tgn)"
+    exit: 0
+    ts: "2026-09-27T00:02Z"
+    seat: claude-sonnet-5
+  - claim: "tg_notify.py is a widely shared module across the script tree, unlike mq.sh's zero references from its corpus."
+    cmd: "grep -rl 'tg_notify' scripts/ --include='*.py' --include='*.sh' | wc -l"
+    result: "114"
+    exit: 0
+    ts: "2026-09-27T00:03Z"
+    seat: claude-sonnet-5
+
+pii_scan: clean
+pii_scan_note:
+  "No client data of any kind is touched. The diff is one CI workflow, one watcher-list line, and
+  this evidence pack. The corpus it arms reads WhatsApp promise-candidate rows only inside its own
+  opt-in real-PG suites, which this workflow never runs; the unit half fakes all DB interaction."
+
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings (1 hour, 1 round) doubled. The single biggest cost was the codex-gpt-5.6-sol
+  council seat: its background run took roughly 18 minutes exploring unrelated repo context
+  (CLAUDE.md, the modus SKILL.md, army-map.md) rather than staying scoped to the review prompt,
+  then crashed inside its own read-only sandbox attempting to run pytest itself, without ever
+  returning a verdict on the diff — recorded in the dissent/journal as unusable rather than
+  silently retried or omitted. The second round (path-filter fix + re-verification after both
+  usable seats independently converged on the same finding) is the other real cost, and is the
+  kind of overrun this pack would rather record than absorb: an appetite set from "one workflow
+  file, a few paths" could not price a seat that goes off-task, nor a genuine two-seat
+  convergence on a gap this session's own first draft missed.
+
+seat_fallback_reason: |
+  council_run counts one fallback seat (agy-gemini-3.1-pro) toward quorum alongside one titolare
+  (kimi-code/k3). The titolare actually attempted first, codex-gpt-5.6-sol, was observed
+  unavailable in the sense that matters here — not a quota/auth error, but a run that never
+  returned a scoped verdict on this diff (see the codex council_unusable journal entry and the
+  dissent entry above). tp1-qwen3.8-max, the remaining titolare, was not attempted: two council
+  seats were dispatched in parallel to bound wall-clock cost once codex was clearly not going to
+  finish inside the appetite, and both returned real, independently-converging findings, which
+  this session judged sufficient rather than dispatching a third seat for its own sake.
+
+diff:
+  net_lines: |
+    5 files, +506/-0 against the merge-base with origin/main
+    (d2fd26086fc269aa31fed4620c5d15c4417bd47a): the workflow (+189, including the round-2
+    path-filter fix after cross-family review), the one-line watcher-list entry, and this
+    three-file evidence pack (brief.yml +52, journal.jsonl +16, pack.yml +248).
