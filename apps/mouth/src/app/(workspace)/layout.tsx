@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
 import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
+import { PortalChampionCelebration } from "@/components/workspace/PortalChampionCelebration";
 import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -437,6 +438,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             onRefresh={refetchGate}
             onEnter={() => setGateBypassed(true)}
           />
+          <PortalChampionCelebration key={user.email} identity={user.email} />
         </ToastProvider>
       </I18nProvider>
     );
@@ -530,6 +532,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           onClose={() => setIsZantaraOpen(false)}
         />
         <KitaCommandPalette />
+        <PortalChampionCelebration key={user.email} identity={user.email} />
       </ToastProvider>
     </I18nProvider>
   );

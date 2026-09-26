@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -835,8 +836,8 @@ async def get_role_metrics(
 # report `scripts/portal_challenge_leaderboard.py` so the two can never
 # disagree about who is winning.
 
-PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v1"
-PORTAL_CHALLENGE_CACHE_TTL = 30  # seconds — the widget polls every 60s
+PORTAL_CHALLENGE_CACHE_KEY = "dashboard:portal_challenge:v2"
+PORTAL_CHALLENGE_CACHE_TTL = 30
 
 
 class PortalChallengeTier(BaseModel):
@@ -854,6 +855,7 @@ class PortalChallengeTaxRules(BaseModel):
 class PortalChallengeEntry(BaseModel):
     member: str
     display_name: str
+    avatar_url: str | None = None
     department: str | None
     is_tax: bool
     is_me: bool
@@ -924,6 +926,9 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
     )
     awarded = compute_awards(members)
     display_by_email = {m.email: m.display_name for m in members}
+    from backend.services.portal.challenge_events import portrait_url
+
+    avatar_by_email = {row["email"]: portrait_url(row.get("avatar")) for row in roster_records}
 
     return {
         "status": compute_status(datetime.now(timezone.utc)),
@@ -948,6 +953,7 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
                 "email": e.email,
                 "member": e.member,
                 "display_name": e.display_name,
+                "avatar_url": avatar_by_email.get(e.email),
                 "department": e.department,
                 "is_tax": e.is_tax,
                 "rank": e.rank,
@@ -979,22 +985,25 @@ async def _build_portal_challenge_payload(db_pool: asyncpg.Pool) -> dict[str, An
 
 @router.get("/portal-challenge", response_model=PortalChallengeResponse)
 async def get_portal_challenge(
+    fresh: bool = False,
     current_user: dict = Depends(require_team_member),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PortalChallengeResponse:
     """Portal Champion challenge leaderboard — staff-only (`require_team_member`
     rejects a client token with 403), powers the kita home page live widget.
     """
-    payload = await _cache.get(PORTAL_CHALLENGE_CACHE_KEY)
+    payload = None if fresh else await _cache.get(PORTAL_CHALLENGE_CACHE_KEY)
     if payload is None:
         payload = await _build_portal_challenge_payload(db_pool)
-        await _cache.set(PORTAL_CHALLENGE_CACHE_KEY, payload, PORTAL_CHALLENGE_CACHE_TTL)
+        if not fresh:
+            await _cache.set(PORTAL_CHALLENGE_CACHE_KEY, payload, PORTAL_CHALLENGE_CACHE_TTL)
 
     current_email = (current_user.get("email") or "").strip().lower()
     entries = [
         PortalChallengeEntry(
             member=e["member"],
             display_name=e["display_name"],
+            avatar_url=e.get("avatar_url"),
             department=e["department"],
             is_tax=e["is_tax"],
             is_me=e["email"] == current_email,
@@ -1024,4 +1033,26 @@ async def get_portal_challenge(
         recent_activations=[
             PortalChallengeRecentActivation(**r) for r in payload["recent_activations"]
         ],
+    )
+
+
+@router.get("/portal-challenge/events")
+async def portal_challenge_events(
+    request: Request,
+    current_user: dict = Depends(require_team_member),
+) -> StreamingResponse:
+    from backend.core.redis_manager import RedisManager
+    from backend.services.portal.challenge_events import goal_fanout
+    from backend.services.portal.challenge_leaderboard import compute_status
+
+    if compute_status(datetime.now(timezone.utc)) == "closed":
+        return StreamingResponse(iter(["event: closed\ndata: {}\n\n"]), media_type="text/event-stream")
+
+    redis = RedisManager.get_instance().get_async_client()
+    if redis is None:
+        raise HTTPException(status_code=503, detail="Live celebrations temporarily unavailable")
+    return StreamingResponse(
+        goal_fanout.events(redis, request.headers.get("last-event-id") or request.query_params.get("last_event_id")),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no"},
     )
