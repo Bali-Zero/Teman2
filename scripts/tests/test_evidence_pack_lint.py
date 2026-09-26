@@ -31,6 +31,7 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_PATH,
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
+    PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
     REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE,
     SEAT_RULES_ENFORCEMENT_DATE,
@@ -51,6 +52,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_gear_floor,
     check_ground_truth_lane,
     check_lanes_build_seat_diversity,
+    check_no_plain_scalar_hash_truncation,
     check_pack_not_at_deprecated_root,
     check_pii_local_seat,
     check_pii_scan_clean,
@@ -246,6 +248,101 @@ def test_size_innocence_at_cap_passes():
     from evidence_pack_lint import SIZE_TOKEN_CAP
 
     assert check_size_budget(b"x" * (SIZE_TOKEN_CAP * 4)) == []
+
+
+# ------------------------------------------ check_no_plain_scalar_hash_truncation
+
+_HASH_TRUNC_POST_FLIP = PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE
+_HASH_TRUNC_PRE_FLIP = PLAIN_SCALAR_HASH_TRUNCATION_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+
+
+def test_hash_trunc_guilt_mapping_value_convicted_post_flip():
+    """GUILT (the exact PR #4920 shape): a plain `key: value` field whose
+    value contains ` #` is convicted on/after the enforcement date, and the
+    message names the TRUNCATED value YAML actually loads."""
+    raw = b'seat: team-lead (structural review, Dissent #3)\n'
+    violations, notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP)
+    assert notices == []
+    assert len(violations) == 1
+    assert "team-lead (structural review, Dissent" in violations[0]
+    assert "Dissent #3" not in violations[0]  # the truncated tail must never resurface
+
+
+def test_hash_trunc_guilt_list_item_value_convicted():
+    """GUILT: a bare list-item scalar (no `key:`) is the same shape."""
+    raw = b'- team-lead (structural review, Dissent #3)\n'
+    violations, _notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP)
+    assert len(violations) == 1
+
+
+def test_hash_trunc_innocence_pre_flip_notices_never_convicts():
+    """INNOCENCE (grace period): the identical guilty content NOTICEs, not
+    fails, before the enforcement date — same discipline as
+    EVIDENCE_ROOT_DEPRECATION_DATE's own rollout."""
+    raw = b'seat: team-lead (structural review, Dissent #3)\n'
+    violations, notices = check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_PRE_FLIP)
+    assert violations == []
+    assert len(notices) == 1
+
+
+def test_hash_trunc_innocence_quoted_value_never_fires():
+    """INNOCENCE: quoting the value is the documented cure and must pass."""
+    raw = b'seat: "team-lead (structural review, Dissent #3)"\n'
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_innocence_folded_block_scalar_body_never_fires():
+    """INNOCENCE (the regression this rule's first draft shipped with): a `#`
+    inside an already-open `>` folded block scalar's BODY is literal text,
+    never a YAML comment — a scan that does not track block-scalar
+    indentation misreads roughly two-thirds of this repo's real evidence
+    corpus this way. Two block scalars back to back, the second closing at
+    column 0, both innocent."""
+    raw = (
+        b"note: >\n"
+        b"  see PR #4920 and superscar #3 for the full context,\n"
+        b"  neither is truncated because both lines are folded-block body\n"
+        b"seat: sonnet-5\n"
+        b"dissent_reason: >\n"
+        b"  a second block scalar, referencing issue #17 too\n"
+    )
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_innocence_bare_comment_line_never_fires():
+    """INNOCENCE: a full-line `# comment` and `key:  # comment` on an empty
+    field truncate nothing — there is no preceding content to lose."""
+    raw = b"# a real top-of-file comment\nnote:  # just a comment, field left empty\n"
+    assert check_no_plain_scalar_hash_truncation(raw, today=_HASH_TRUNC_POST_FLIP) == ([], [])
+
+
+def test_hash_trunc_end_to_end_through_lint(tmp_path):
+    """RED-FIRST PROOF through lint(): the same pack fails post-flip and
+    NOTICEs (exit 0) pre-flip, with nothing else about the pack changing."""
+    brief_path = tmp_path / "evidence" / "brief.yml"
+    brief_path.parent.mkdir(parents=True, exist_ok=True)
+    brief_path.write_text(yaml.safe_dump({"task_id": "t", "gear": 1, "grader": "codex-sol"}), encoding="utf-8")
+    pack_path = tmp_path / "evidence" / "pack.yml"
+    pack_path.write_text(
+        "brief_ref: evidence/brief.yml\n"
+        "receipts:\n"
+        "  - claim: tests pass\n"
+        "    cmd: pytest -q\n"
+        "    exit: 0\n"
+        "    ts: '2026-08-10T00:00:00Z'\n"
+        "    seat: sonnet-5\n"
+        "dissent: []\n"
+        "pii_scan: clean\n"
+        "note: fixed in Dissent #3\n",
+        encoding="utf-8",
+    )
+    exit_code, violations = lint(pack_path, tmp_path, None, today=_HASH_TRUNC_POST_FLIP)
+    assert exit_code == 1
+    assert any("YAML plain-scalar truncation" in v for v in violations)
+
+    exit_code, violations = lint(pack_path, tmp_path, None, today=_HASH_TRUNC_PRE_FLIP)
+    assert exit_code == 0
+    assert violations == []
 
 
 # --------------------------------------------------------- check_brief_ref_exists
