@@ -1,9 +1,11 @@
 import {
   buildDeclineEducation,
+  nationalityLabel,
   primaryDeclineCode,
   type DeclineCode,
   type EligibilitySubmission,
 } from "./declineEducation";
+import { VOA_COPY, voaCopy } from "../../app/visa/voa/voa-copy";
 
 /**
  * Bite-proof for owner decision 5 / constraint 5b: "A DECLINE is positively
@@ -91,6 +93,29 @@ describe("buildDeclineEducation — mirror uses the customer's OWN answer, not a
       nationality: "XYZ",
     });
     expect(edu.mirror).toContain("XYZ");
+  });
+
+  it("NATIONALITY_NOT_ELIGIBLE names the COUNTRY, from the picker's own label — not the ISO-3 wire code", () => {
+    const edu = buildDeclineEducation("NATIONALITY_NOT_ELIGIBLE", {
+      ...baseAnswers,
+      nationality: "ITA",
+    });
+    expect(edu.mirror).toContain(VOA_COPY.en["nationality.ITA"]);
+    expect(edu.mirror).not.toMatch(/\bITA\b/);
+  });
+
+  it("the country name follows the reader's language", () => {
+    const edu = buildDeclineEducation(
+      "NATIONALITY_NOT_ELIGIBLE",
+      { ...baseAnswers, nationality: "DEU" },
+      voaCopy("id"),
+    );
+    expect(edu.mirror).toContain(VOA_COPY.id["nationality.DEU"]);
+    expect(edu.mirror).not.toMatch(/\bDEU\b/);
+  });
+
+  it("the picker's catch-all is never dressed up as a country", () => {
+    expect(nationalityLabel("OTHER", voaCopy("en"))).toBe("OTHER");
   });
 
   it("GROUP_CASE names the actual traveller count", () => {

@@ -98,12 +98,16 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
         reason_codes: ["NATIONALITY_NOT_ELIGIBLE"],
       }),
     });
+    // The mirror names the COUNTRY from the picker's own label (2026-09-26),
+    // never the ISO-3 wire code the hand-off stores.
     seedSubmittedAnswers("opaque-test-hash", { trip: { nationality: "USA" } });
 
     renderWithHash();
 
     await waitFor(() =>
-      expect(screen.getByText(/passport from USA/)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/passport from United States/),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -160,7 +164,9 @@ describe("VoaResultPage — DECLINE (owner decision 5, constraint 5b)", () => {
     renderWithHash();
 
     await waitFor(() =>
-      expect(screen.getByText(/passport from USA/)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/passport from United States/),
+      ).toBeInTheDocument(),
     );
     expect(window.localStorage.getItem("bz.garuda_voa.submitted")).toBeNull();
   });

@@ -22,6 +22,7 @@
  */
 
 import {
+  VOA_COPY,
   voaCopy,
   type VoaCopyFn,
   type VoaCopyKey,
@@ -139,13 +140,27 @@ void _ALL_SENTENCES_PRESENT;
  * The verdict screen passes its own `t`, which is how a visitor who asked for
  * Bahasa reads the DECLINE education in Bahasa.
  */
+/**
+ * The country NAME the visitor picked, in the reader's language, from the
+ * very labels the wizard's nationality picker shows (`nationality.<ISO-3>` in
+ * voa-copy.ts) — no second country table. The mirror used to print the wire
+ * code ("a passport from ITA"), which is the contract's spelling, never the
+ * visitor's. A code the picker has no label for (or its catch-all "OTHER")
+ * is echoed as sent rather than dressed up as a country it may not be.
+ */
+export function nationalityLabel(iso: string, t: VoaCopyFn): string {
+  const key = `nationality.${iso}`;
+  if (iso === "OTHER" || !(key in VOA_COPY.en)) return iso;
+  return t(key as VoaCopyKey);
+}
+
 export function buildDeclineEducation(
   code: DeclineCode,
   answers: EligibilitySubmission,
   t: VoaCopyFn = voaCopy("en"),
 ): DeclineEducation {
   const params = {
-    nationality: answers.nationality,
+    nationality: nationalityLabel(answers.nationality, t),
     purpose: t(PURPOSE_KEY[answers.purpose]),
     travellers: answers.travellers,
     case: t(
