@@ -7,7 +7,15 @@ Writes a machine-owned JSON to research/nb-health/nb-inventory-live.json
 (--write flag) that the nb-curator brain reads instead of making ~88
 sequential `nlm query` calls.
 
-Stdlib-only. Compatible with /usr/bin/python3 (no venv required).
+Stdlib-only apart from PyYAML, which the redactor needs and /usr/bin/python3
+on Pro has. Compatible with /usr/bin/python3 (no venv required).
+
+Titles are REDACTED before the file is written. The brain that reads this file
+is a cloud model (agy/Gemini, Claude fallback), and it copies titles into the
+health report that gets promoted to the repo. Some NotebookLM titles name a
+client (Builder Contract §4), so they go through `scripts/_redact_pii.py`
+(`nb_titles` + pass1-3 of `agent-library/config/redaction-rules.yaml`). If the
+redactor cannot load, titles are WITHHELD, never written raw.
 
 Exit codes:
   0  ok (dry-run or written)
@@ -19,12 +27,14 @@ Stderr / logging: progress + warnings.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import logging
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("nb-inventory")
@@ -46,6 +56,7 @@ NB_INTEL: dict[str, str] = {
 # Output path: <repo-root>/research/nb-health/nb-inventory-live.json
 # __file__ is scripts/nb_generate_inventory.py → parent.parent = repo root.
 OUTPUT_PATH = Path(__file__).resolve().parent.parent / "research" / "nb-health" / "nb-inventory-live.json"
+REDACT_PII_PATH = Path(__file__).resolve().parent / "_redact_pii.py"
 
 
 # ── Pure I/O helpers (testable via mock) ───────────────────────────────────────
@@ -151,6 +162,45 @@ def build_inventory(
     }
 
 
+# ── Redaction (fail closed) ────────────────────────────────────────────────────
+
+def load_title_redactor(path: Path = REDACT_PII_PATH) -> Any:
+    """The repo redactor with static rules, or None if it cannot load (logged)."""
+    try:
+        spec = importlib.util.spec_from_file_location("nuzantara_redact_pii", path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"no loader for {path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module  # dataclasses resolve their module by name
+        spec.loader.exec_module(module)
+        return module.Redactor.load_static()
+    except Exception as e:  # noqa: BLE001 — any failure must end in WITHHELD, not raw
+        logger.error("title redactor unavailable, titles withheld: %s: %s", type(e).__name__, e)
+        return None
+
+
+def redact_inventory(inventory: dict, redactor: Any) -> dict:
+    """Replace every free-text title in the inventory, in place, and return it.
+
+    Notebook titles go through `redact_notebook_title` (id-aware); NB-INTEL source
+    titles (press/regulation headlines) through `redact_fragment`. With no redactor,
+    both are withheld: an empty-looking inventory is loud, a raw one is a leak.
+    """
+    for nb in inventory.get("notebooks", []):
+        nid = str(nb.get("id") or "")
+        if redactor is None:
+            nb["title"] = f"[NB-TITLE-WITHHELD:{nid[:8]}]"
+        else:
+            nb["title"] = redactor.redact_notebook_title(nb.get("title") or "", nid)
+    for section in inventory.get("nb_intel", {}).values():
+        section["titles"] = [
+            "[SOURCE-TITLE-WITHHELD]" if redactor is None else redactor.redact_fragment(t or "")
+            for t in section.get("titles", [])
+        ]
+    inventory["redaction"] = "withheld" if redactor is None else "applied"
+    return inventory
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -185,8 +235,8 @@ def main() -> int:
             logger.error("nlm source list error for %s (%s): %s", key, uuid, e)
             return 3
 
-    # Step 3: build inventory (pure)
-    inventory = build_inventory(notebooks, nb_intel_sources)
+    # Step 3: build inventory (pure), then redact titles before anything reads it
+    inventory = redact_inventory(build_inventory(notebooks, nb_intel_sources), load_title_redactor())
 
     # Step 4: optionally write JSON
     written = False
@@ -200,7 +250,12 @@ def main() -> int:
         logger.info("Written %d bytes to %s", size, OUTPUT_PATH)
 
     # Step 5: print one-line JSON summary to stdout (for wrapper log parsing)
-    print(json.dumps({"notebooks": len(notebooks), "nb_intel": len(NB_INTEL), "written": written}))
+    print(json.dumps({
+        "notebooks": len(notebooks),
+        "nb_intel": len(NB_INTEL),
+        "written": written,
+        "redaction": inventory["redaction"],
+    }))
     return 0
 
 
