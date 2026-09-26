@@ -1,0 +1,258 @@
+# Gear-3 evidence pack — seq-24 candidate (E33F: a retiree without a confirmed sponsor becomes a candidate).
+# Written by the PR-A implementer (Claude Sonnet 5, a teammate of the session that owns this mandate).
+# Every receipt below is a command this writer executed in this turn (2026-09-26, 21:23Z-21:29Z), not
+# narrated from memory. Precedent for the shape: evidence/2026-09/agent-air-m5-backend-rag-seq23-candidate/ (#7174).
+#
+# WHAT THIS PACK DOES NOT CARRY, ON PURPOSE: council/journal.jsonl and independent dissent. The
+# review seats are the owning session's lane (generator != grader) — the implementer did not
+# dispatch, simulate or narrate any council round, and no reviewer verdict is asserted here. The
+# owning session appends its `council_run`, the reviewer lanes and their dissent before arming.
+# The `dissent` block below is the implementer's OWN residual-risk notes, labelled as such
+# (seat: self-review, not an independent refuter) so the block is honest rather than empty.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: Zero, 2026-09-27 — E33F no-sponsor -> candidate; fold = seq-24, rollback = seq-25; Option A (no new reason code, the note lives in the mouth)
+mission: Visa Oracle seq-24 — PR-A (backend-rag), candidate seq-24 (UNSIGNED, UNACTIVATED)
+lanes:
+  - lane: seq24-fold
+    role: build
+    seat: Claude Sonnet 5 (PR-A implementer teammate)
+  - lane: seq24-ground-truth
+    role: ground_truth
+    seat: >-
+      session (this implementer) — the pack asserts no new regulatory figure and registers no new
+      fact; its ground truth is the signed seq-23 pack and the fold/activation code already on
+      origin/main, not a notebook.
+    nb: >-
+      Six files this fold reads but never edits, hashed at the merge-base and confirmed untouched
+      by this diff: rulepack-prod-023.source.json (the donor: the two rules edited, the four rules
+      that keep reading family.sponsor_confirmed), rulepack-prod-023.signed.json (the anchor's
+      signature and payload digest), backend/services/visa_engine/bundle.py (StaticTrustStore,
+      canonicalize_json, verify_rule_pack), backend/services/visa_engine/models.py
+      (RulePackPayload), docs/runbooks/visa-engine-key-ceremony.md (the PUBLIC trust store JSON
+      used to run the fold — never a private key), and fold_pack_seq23.py (the fold this one is
+      the smaller sibling of).
+    query_hash: "52cf02c2ad3fedf02386314ff96f9ceba62605463b568082f72c30ebc9d41f66" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the six files concatenated in that order via `git show
+      <merge-base>:<path>`, computed this turn; `git diff --name-only` on the same six paths is
+      empty (see receipt below).
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3, by size: `evidence_pack_lint.py --print-floor` over this diff's numstat prints 3.
+      The generated pack rulepack-prod-024.source.json is 9,267 lines and is NOT size-excluded
+      (the same convention #7174 and #6663 carried it under); fold_pack_seq24.py is ~610 lines and
+      test_seq24_pack.py ~1,030. The ~400-net-line PR-contract target cannot apply to a whole
+      generated pack; the hand-written part is the fold (~610) and the tests. Judgement agrees:
+      a candidate production rule pack over apps/backend-rag/**, where merging is itself the deploy.
+  - id: D-smaller-sibling
+    decision: >-
+      fold_pack_seq24.py is fold_pack_seq23.py's smaller sibling, self-contained like every prior
+      fold (each fold is a frozen historical artifact; none imports an earlier one). Kept from
+      seq-23: the anchor verification against the public trust store, _IDENTITY_KEYS, the
+      uuid5 rule_pack_id derivation, assert_only_expected_changes (now: retire 1 / modify 1 /
+      insert 0, plus a surviving-order check), the twin-basis antibody, and the derived review
+      inventory (exactly 1 HUMAN_REVIEW rule, 0 escalations). Added, because this fold's risk is
+      different from seq-23's: _assert_sponsor_readers (the post-fold reader set of
+      family.sponsor_confirmed is EXACTLY the four rules the ruling keeps),
+      _assert_retired_rule_is_the_expected_shape (SPONSOR_REQUIRED has one emitter before the
+      fold and it is the retired rule — a second emitter aborts), and
+      _assert_no_rule_emits_sponsor_required (none after). Dropped: the retirement-bound and
+      REQUIRE_REVIEW-donor machinery, which had no counterpart here.
+  - id: D-candidate-pins
+    decision: >-
+      The census's candidate mode grades a `.source.json` above the highest signed pack against
+      EXPECTED_OUTCOME_BY_SEQUENCE[<its sequence>]; without a pin it fails "no pins for candidate
+      seq-24". Every seq-24 number was DERIVED by running the candidate replay, then pinned — none
+      typed from the brief: one walk moves (offshore/retirement/property/age64/sponsor_no,
+      NO_SUPPORTED_PATH -> SUPPORTED_CANDIDATES [E33F]); state census 99 SUPPORTED_CANDIDATES / 13
+      NO_SUPPORTED_PATH / 3 HUMAN_REVIEW_REQUIRED / 1 NEEDS_INPUT; the one dead-end walk
+      (offshore/retirement/undecided/age64/still_unsure) now blocks on
+      secondhome.passive_monthly_income_usd (source question secondhome_passive_income_usd,
+      QUESTION_NOT_IN_THIS_WALK — checked against the walk's own `asked` list, which lacks it)
+      instead of family.sponsor_confirmed; the two Studio-held walks are unchanged. Two additions
+      beyond the pins, both small: the by-sequence state census was hoisted from a local in the
+      state-census test to module level (EXPECTED_STATE_CENSUS_BY_SEQUENCE) so the candidate test
+      can grade against it BEFORE signing, and the candidate test also checks the allowlist
+      rows' stated reasons (_unaskable_violations), the fact census and the held-walk set.
+receipts:
+  - claim: HEAD sha, merge-base and branch of the working tree this evidence describes (nothing committed yet).
+    cmd: git rev-parse HEAD && git merge-base origin/main HEAD && git branch --show-current
+    result: "HEAD 3b3741d1ddfda197b00c82ca4b404a6dcc1881bb, merge-base 3b3741d1ddfda197b00c82ca4b404a6dcc1881bb, branch agent/nuzantara/backend-rag/seq24-fold (origin/main as last fetched here, no fetch run)"
+    exit: 0
+    ts: "2026-09-26T21:25:22Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The fold runs against the signed seq-23 anchor under the PUBLIC trust store and emits H24 — never on a digest constant alone.
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON='<public array from
+      docs/runbooks/visa-engine-key-ceremony.md>' .venv/bin/python -m
+      backend.scripts.visa_engine.fold_pack_seq24 --seq23-source
+      backend/services/visa_engine/contracts/packs/rulepack-prod-023.source.json --output <scratch>
+    result: "fold_pack_seq24: seq-24 payload_sha256 = 5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272"
+    exit: 0
+    ts: "2026-09-26T21:28:51Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The committed source JSON is exactly what the fold emits (regenerated to a scratch path, repo prettier applied, cmp'd).
+    cmd: >-
+      fold ... --output <scratch>/rulepack-prod-024.source.json; prettier --write <scratch file>;
+      cmp -s <scratch file> backend/services/visa_engine/contracts/packs/rulepack-prod-024.source.json;
+      python3: json.load(raw fold output) == json.load(committed)
+    result: "cmp post-prettier IDENTICAL; semantic raw==committed True; canonicalized (JCS) digest 5a569091f84a858f1957cdf96086ee7212f67d13a8225d64492a7212093cd272 both times (the digest is format-independent); prettier --check prints 'All matched files use Prettier code style'"
+    exit: 0
+    ts: "2026-09-26T21:28:51Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The seq-23 -> seq-24 diff is exactly the ruling — nothing else moved (json.tool diff of the two sources).
+    cmd: >-
+      diff <(python3 -m json.tool rulepack-prod-023.source.json) <(python3 -m json.tool
+      rulepack-prod-024.source.json); git diff --no-index --stat <the two files> (prettier-formatted)
+    result: "hunks: the whole hf.e33f.sponsor-required object removed; the third `all` conjunct {eq family.sponsor_confirmed true} and the required_facts entry family.sponsor_confirmed removed from el.e33f.retirement; version 2026.9.23 -> 2026.9.27, sequence 23 -> 24, created_at/created_by, rule_pack_id a72aa24f-... -> ecea2663-35ed-586d-aa52-9ed1849e0060, previous_payload_sha256 3d7555af... -> e5f791b5...; --stat 6 insertions(+), 37 deletions(-); rules 114 -> 113"
+    exit: 0
+    ts: "2026-09-26T21:28:37Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The engine, run on the same retiree (RETIREMENT, income 5000, born 1960) for each sponsor answer, accepts on seq-24 what seq-23 refused — and seq-23 is unchanged (the witness discriminates).
+    cmd: scratch probe (never committed) evaluating E33F's product proof and the applicant-facing decision on both compiled packs at 2026-09-27T12:00Z; the same personas are the pinned tests in test_seq24_pack.py::TestE33fEngineWitnesses
+    result: >-
+      sponsor TRUE: seq-23 SUPPORTED / seq-24 SUPPORTED. sponsor FALSE: seq-23 EXCLUDED
+      [SPONSOR_REQUIRED by hf.e33f.sponsor-required] / seq-24 SUPPORTED, decision SUPPORTED_CANDIDATES
+      [E33F]. sponsor UNKNOWN: seq-23 BLOCKED_UNKNOWN on family.sponsor_confirmed (decision
+      NEEDS_INPUT naming it) / seq-24 SUPPORTED, decision SUPPORTED_CANDIDATES [E33F]. Income 2000
+      still EXCLUDED RETIREMENT_INCOME_BELOW_THRESHOLD, age 35 still EXCLUDED AGE_BELOW_55 on
+      seq-24 (no SPONSOR_REQUIRED alongside, unlike seq-23).
+    exit: 0
+    ts: "2026-09-26T21:27:21Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The seq-24 gates and the census (with the new pins) are green.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq24_pack.py backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "138 passed in 15.64s (85 in test_seq24_pack.py, 53 in test_interview_walk_census.py). Before the pins were added the candidate census test failed 'no pins for candidate seq-24' — 1 failed / 52 passed — and its own replay printed the moved walk and the new dead-end fact, from which the pins were derived."
+    exit: 0
+    ts: "2026-09-26T21:28:52Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The whole visa_engine test package with the candidate on disk — 2 failed + 31 errors, ALL in two DB-fixture files; the rest green.
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine
+    result: >-
+      2 failed, 2719 passed, 1 skipped, 1 warning, 31 errors in 178.97s. The 31 errors are all
+      test_evaluate_endpoint.py at fixture setup (evaluate_schema -> restore_garuda_voa_retention_fk
+      -> asyncpg TooManyColumnsError 'tables can have at most 1600 columns'); the 2 failures are
+      test_visa_engine_retention_fk_registry.py (an AssertionError that migration 281 is not live in
+      the deployed schema, and an UndefinedColumnError on policy_scope) and fail identically when
+      that file is run alone (2 failed, 2 passed in 0.21s). Both files reference no rule pack
+      (grep -c 'rulepack|fold_pack|seq2[0-9]' = 0 for each) and the failures are a local test
+      database's schema state, not a pack byte. NOT re-run on a clean baseline checkout by this
+      writer — stated, not assumed.
+    exit: 1
+    ts: "2026-09-26T21:26:35Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: Lint on the touched files. The census file already fails `ruff format --check` at HEAD (pre-existing drift, not introduced here), so only this PR's own line in it was formatted by hand.
+    cmd: >-
+      .venv/bin/ruff check <fold, test_seq24_pack, census>; .venv/bin/ruff format --check
+      <fold, test_seq24_pack>; git show HEAD:<census> | .venv/bin/ruff format --check --stdin-filename <census> -
+    result: "ruff check: All checks passed! (3 files); ruff format --check: 2 files already formatted; census file at HEAD: would be reformatted (rc=1) — three pre-existing spots, none of them in this diff"
+    exit: 0
+    ts: "2026-09-26T21:28:37Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: Diff size, and the Gear floor it implies.
+    cmd: >-
+      git diff --numstat + `git diff --no-index --numstat /dev/null <new file>` for the three new
+      files, fed to `python3 scripts/evidence_pack_lint.py --numstat-file ... --changed-files-file ... --print-floor`
+    result: "tracked +111/-29 (the census); new: fold_pack_seq24.py 608, rulepack-prod-024.source.json 9267, test_seq24_pack.py 1031; --print-floor prints 3"
+    exit: 0
+    ts: "2026-09-26T21:28:37Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: The six ground-truth files this fold reads are untouched by this diff.
+    cmd: >-
+      git diff --name-only -- <the six paths> | wc -l; { for f in <the six paths>; do git show
+      "<merge-base>:$f"; done; } | shasum -a 256
+    result: "0 changed; concat sha256 52cf02c2ad3fedf02386314ff96f9ceba62605463b568082f72c30ebc9d41f66"
+    exit: 0
+    ts: "2026-09-26T21:28:37Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: PII scan of the new hand-written files and the generated pack — no email, passport-like or 16-digit string.
+    cmd: >-
+      grep -cE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' / grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' /
+      grep -cE '\b[0-9]{16}\b' on fold_pack_seq24.py, test_seq24_pack.py, rulepack-prod-024.source.json, brief.yml
+    result: "0 / 0 / 0 on all four, and on this pack.yml (the census diff carries only rule ids, walk labels and counts)"
+    exit: 0
+    ts: "2026-09-26T21:28:37Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Acceptance probe 1 — fold integrity (anchor, chain, identity, determinism, disk == fold output, H24 pinned, CLI refusals)."
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq24_pack.py::TestFoldIntegrity
+    result: "17 passed in 1.58s"
+    exit: 0
+    ts: "2026-09-26T21:30:13Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Acceptance probe 2 — the two edits by id, and the fold's refusal of a base that has drifted from the shape the ruling was written against."
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_seq24_pack.py::TestDispositionTableRows
+      backend/tests/services/visa_engine/test_seq24_pack.py::TestEditPreconditions
+    result: "33 passed in 1.18s"
+    exit: 0
+    ts: "2026-09-26T21:30:15Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Acceptance probe 3 — the E33F engine witnesses (sponsor TRUE/FALSE/UNKNOWN candidate on seq-24, refused on seq-23; income and age bounds; no product proof emits SPONSOR_REQUIRED; guilt reverts turn the witness red)."
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq24_pack.py::TestE33fEngineWitnesses
+    result: "23 passed in 2.08s"
+    exit: 0
+    ts: "2026-09-26T21:30:17Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Acceptance probe 4 — the twin-basis antibody and the derived review inventory (1 review rule, 0 escalations)."
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_seq24_pack.py::TestAntibodies
+      backend/tests/services/visa_engine/test_seq24_pack.py::TestDerivedInventory
+    result: "10 passed in 0.92s"
+    exit: 0
+    ts: "2026-09-26T21:30:20Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Acceptance probe 5 — the census, with the seq-24 candidate graded against its own pins."
+    cmd: PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "53 passed in 13.30s"
+    exit: 0
+    ts: "2026-09-26T21:30:22Z"
+    seat: Claude Sonnet 5 (PR-A implementer)
+  - claim: "Independent read-only re-derivation of the seq-23 -> seq-24 diff by a separate subagent (its own script over the two source JSON files). This receipt is the SUBAGENT's reported output, relayed here — this writer did not execute it; it agrees with the json.tool diff receipt above, which this writer did."
+    cmd: "python3 heredoc (json module) run by a general-purpose sonnet subagent comparing rulepack-prod-023.source.json (A) with rulepack-prod-024.source.json (B); read-only"
+    result: >-
+      differing top-level keys = version, sequence, created_at, created_by, rule_pack_id,
+      previous_payload_sha256 only; rules 114 -> 113; A-only ids = [hf.e33f.sponsor-required], B-only ids = [];
+      the only non-identical common rule = el.e33f.retirement (differing keys when, required_facts:
+      the third `all` arg {eq family.sponsor_confirmed true} and the required_facts entry family.sponsor_confirmed
+      gone); relative order of the 113 common rules identical; rules reading family.sponsor_confirmed:
+      A = [el.c2.business, el.c6.social, el.e31d-stepchild-support, el.e33f.retirement,
+      hf.e33f.sponsor-required, hf.minor-without-confirmed-sponsor], B = [el.c2.business, el.c6.social,
+      el.e31d-stepchild-support, hf.minor-without-confirmed-sponsor]; reason_code SPONSOR_REQUIRED in A only.
+    exit: 0
+    ts: "2026-09-26T21:30:59Z"
+    seat: Claude Sonnet 5 subagent (general-purpose, read-only), relayed by the PR-A implementer
+dissent:
+  - seat: claude-sonnet-5 (PR-A implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      Policy weight, not a code defect: after this pack an applicant who told us they have NO
+      sponsor is shown E33F as a candidate, and the only place the sponsor requirement still
+      appears is the mouth's note (Option A). The pack no longer expresses the requirement, so if
+      the E33F source makes a sponsor a condition of the visa, the applicant-facing guard is that
+      note alone. Zero ruled it (2026-09-27); it is flagged so the seq-24 ACTIVATION is not run
+      before PR-M's note is live in production.
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5 (PR-A implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      The allowlist row for offshore/retirement/undecided/age64/still_unsure now asserts the
+      branch never routes to `secondhome_passive_income_usd`. That is a claim about the mouth's
+      tree.ts, checked here against the corpus's `asked` list. If PR-M (or any later mouth change)
+      starts asking it, the row goes stale and the dead-end guard will demand its deletion — by
+      design, but the two PRs are then coupled through one census row that neither owns.
+    status: PLAUSIBLE
+  - seat: claude-sonnet-5 (PR-A implementer, SELF-REVIEW — not an independent refuter)
+    objection: >-
+      test_seq24_pack.py is ~1,030 lines / 85 tests for a two-rule fold (test_seq23_pack.py is 578
+      for a 23-rule one). Most of the surplus is guilt/innocence twins on the fold's own
+      preconditions (TestEditPreconditions) and the sponsor-conjunct-restored engine reverts; a
+      reviewer may judge some of them over-built. Nothing there is dead — each one turns red when
+      its named defect is put back in a scratch copy — but the size is a cost to read.
+    status: PLAUSIBLE
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1
+council_run: council-journal.jsonl

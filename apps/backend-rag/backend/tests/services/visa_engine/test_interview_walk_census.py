@@ -573,6 +573,20 @@ _STILL_UNSURE_RETIREMENT_ROW: tuple[DeadEnd, ...] = (
         why_unaskable=QUESTION_NOT_IN_THIS_WALK,
     ),
 )
+#: seq-24 (2026-09-27, Zero's E33F ruling): `el.e33f.retirement` no longer
+#: reads `family.sponsor_confirmed`, so the honest "still can't say" retiree
+#: stops dead-ending on the sponsor question and dead-ends on the NEXT fact the
+#: rule reads, `secondhome.passive_monthly_income_usd`. The question that sets
+#: it (`secondhome_passive_income_usd`) exists in tree.ts but this walk's
+#: `retirement_undecided_basis` branch never routes to it — the same shape as
+#: the row above, on the fact that now decides. Measured on the seq-24 candidate.
+_STILL_UNSURE_RETIREMENT_ROW_SEQ24: tuple[DeadEnd, ...] = (
+    DeadEnd(
+        fact="secondhome.passive_monthly_income_usd",
+        source_question="secondhome_passive_income_usd",
+        why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+    ),
+)
 #: Slice A7-B, 2026-09-21: `person.guardian_consent` — no question in
 #: tree.ts set it yet (B3-bis: the mouth sent it as UNKNOWN, contract-only
 #: that PR), so the ONE walk the fact's UnknownFact arm reached
@@ -607,6 +621,11 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
     # row; confirmed by running the replay, not carried over unverified.
     23: {
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
+    # seq-24 candidate: same walk, the fact that now blocks it moves from the
+    # sponsor question to the passive-income question (see the row's comment).
+    24: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW_SEQ24,
     },
 }
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
@@ -1155,11 +1174,31 @@ _SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
 #: `_SEQ22_OUTCOME_CHANGES`.
 _SEQ23_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {}
 
+#: seq-24 (2026-09-27, Zero's E33F ruling): ONE walk moves over seq-23 —
+#: `offshore/retirement/property/age64/sponsor_no`. The retiree who answered
+#: the sponsor question "no" used to dead-end on `hf.e33f.sponsor-required`
+#: (`SPONSOR_REQUIRED`, NO_SUPPORTED_PATH, nothing to lose); with that rule
+#: retired and `el.e33f.retirement` no longer reading
+#: `family.sponsor_confirmed`, the walk's own age (64) and passive income clear
+#: the route and E33F is its candidate. Measured against
+#: `rulepack-prod-024.source.json` (candidate replay), never assumed. The
+#: other retirement walks already named E33F (or dead-end on the income/age
+#: filters, which stay) and do not move.
+_SEQ24_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/retirement/property/age64/sponsor_no": ("SUPPORTED_CANDIDATES", ("E33F",)),
+}
+
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
     20: _EXPECTED_OUTCOME_ON_SEQ20,
     21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
     22: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES},
     23: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES, **_SEQ23_OUTCOME_CHANGES},
+    24: {
+        **_EXPECTED_OUTCOME_ON_SEQ20,
+        **_SEQ22_OUTCOME_CHANGES,
+        **_SEQ23_OUTCOME_CHANGES,
+        **_SEQ24_OUTCOME_CHANGES,
+    },
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1171,6 +1210,50 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_S
 EXPECTED_STATE_CENSUS: dict[str, int] = dict(
     Counter(state for state, _ in EXPECTED_OUTCOME.values())
 )
+
+#: The ENGINE-side state census per sequence — the literal the state-census
+#: test compares the signed sequence's replay against, and the candidate test
+#: compares the candidate's replay against BEFORE it is signed. Each row is
+#: re-measured, never carried over.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
+    20: {
+        "HUMAN_REVIEW_REQUIRED": 1,
+        "NEEDS_INPUT": 2,
+        "NO_SUPPORTED_PATH": 17,
+        "SUPPORTED_CANDIDATES": 96,
+    },
+    21: {
+        "HUMAN_REVIEW_REQUIRED": 1,
+        "NEEDS_INPUT": 1,
+        "NO_SUPPORTED_PATH": 17,
+        "SUPPORTED_CANDIDATES": 97,
+    },
+    22: {
+        "HUMAN_REVIEW_REQUIRED": 3,
+        "NEEDS_INPUT": 1,
+        "NO_SUPPORTED_PATH": 14,
+        "SUPPORTED_CANDIDATES": 98,
+    },
+    # Slice A9.3: re-measured on the signed seq-23 tree (the replay
+    # command is in the signing PR). Identical to seq-22: no walk's
+    # engine-only outcome moves (`_SEQ23_OUTCOME_CHANGES` is empty).
+    23: {
+        "HUMAN_REVIEW_REQUIRED": 3,
+        "NEEDS_INPUT": 1,
+        "NO_SUPPORTED_PATH": 14,
+        "SUPPORTED_CANDIDATES": 98,
+    },
+    # seq-24 (Zero's E33F ruling): the one walk that moves
+    # (`offshore/retirement/property/age64/sponsor_no`) goes
+    # NO_SUPPORTED_PATH -> SUPPORTED_CANDIDATES [E33F]; nothing else
+    # moves. Measured on the candidate replay.
+    24: {
+        "HUMAN_REVIEW_REQUIRED": 3,
+        "NEEDS_INPUT": 1,
+        "NO_SUPPORTED_PATH": 13,
+        "SUPPORTED_CANDIDATES": 99,
+    },
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1206,6 +1289,10 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     22: {"family.sponsor_confirmed": 1},
     # Slice A9.3: measured on the signed seq-23 tree, identical to seq-22.
     23: {"family.sponsor_confirmed": 1},
+    # seq-24 candidate: E33F no longer reads the sponsor fact, so the one
+    # dead-end walk blocks on the passive-income fact instead. Measured on the
+    # candidate replay.
+    24: {"secondhome.passive_monthly_income_usd": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1320,6 +1407,14 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
     # Slice A9.3: seq-23 carries `review.e33.below-threshold-studio` forward
     # byte-identical, so the same two walks hold — measured on the signed tree.
     23: frozenset(
+        {
+            "offshore/invest/bank_deposit/below_threshold",
+            "offshore/invest/property/below_threshold",
+        }
+    ),
+    # seq-24 carries the Studio rule forward untouched — same two walks,
+    # measured on the candidate replay (3 HUMAN_REVIEW_REQUIRED walks in all).
+    24: frozenset(
         {
             "offshore/invest/bank_deposit/below_threshold",
             "offshore/invest/property/below_threshold",
@@ -2234,6 +2329,21 @@ def test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack(
     assert not violations, "candidate-pack outcomes moved:\n  " + "\n  ".join(violations)
     dead_ends = _dead_end_violations(replayed, WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence])
     assert not dead_ends, "candidate-pack dead ends:\n  " + "\n  ".join(dead_ends)
+    unaskable = _unaskable_violations(walks, WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence])
+    assert not unaskable, "candidate-pack allowlist reasons are false:\n  " + "\n  ".join(unaskable)
+    census = dict(Counter(outcome["state"] for outcome in replayed.values()))
+    assert census == EXPECTED_STATE_CENSUS_BY_SEQUENCE[sequence]
+    fact_census = Counter(
+        fact
+        for outcome in replayed.values()
+        if outcome["state"] == "NEEDS_INPUT"
+        for fact in outcome["missing_facts"]
+    )
+    assert dict(fact_census) == EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[sequence]
+    held = {
+        label for label, outcome in replayed.items() if outcome["state"] == "HUMAN_REVIEW_REQUIRED"
+    }
+    assert held == PRIVACY_HELD_WALKS | STUDIO_HELD_WALKS_BY_SEQUENCE[sequence]
 
 
 def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
@@ -2359,35 +2469,7 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
     # reasoning A7-B used (this fact is not rule-pack-sequence-dependent);
     # only 22 is the active `_SIGNED_SEQUENCE` this test actually runs
     # against, and that row is the one re-measured directly.
-    by_sequence = {
-        20: {
-            "HUMAN_REVIEW_REQUIRED": 1,
-            "NEEDS_INPUT": 2,
-            "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 96,
-        },
-        21: {
-            "HUMAN_REVIEW_REQUIRED": 1,
-            "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 17,
-            "SUPPORTED_CANDIDATES": 97,
-        },
-        22: {
-            "HUMAN_REVIEW_REQUIRED": 3,
-            "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 14,
-            "SUPPORTED_CANDIDATES": 98,
-        },
-        # Slice A9.3: re-measured on the signed seq-23 tree (the replay
-        # command is in the signing PR). Identical to seq-22: no walk's
-        # engine-only outcome moves (`_SEQ23_OUTCOME_CHANGES` is empty).
-        23: {
-            "HUMAN_REVIEW_REQUIRED": 3,
-            "NEEDS_INPUT": 1,
-            "NO_SUPPORTED_PATH": 14,
-            "SUPPORTED_CANDIDATES": 98,
-        },
-    }
+    by_sequence = EXPECTED_STATE_CENSUS_BY_SEQUENCE
     assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
     assert census["NEEDS_INPUT"] == len(WALK_DEAD_END_ALLOWLIST)
     # NOT a claim about production, and no longer a claim the corpus cannot
