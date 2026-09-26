@@ -1,0 +1,104 @@
+task_id: s7-yield-canon-0926
+gear: 3
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+objective: >-
+  Bring the live Pro LaunchAgent com.balizero.s7-yield.weekly into repo canon.
+  Since the 2026-08-20 s7-cutover its plist existed only in Pro's
+  ~/Library/LaunchAgents. Its wrapper scripts/s7-yield-run.sh reached main
+  byte-identical in #7386. A tracked plist is an organ in the eyes of the
+  required check "Every organ is born with its genes", so this PR also gives
+  the organ its genes: G1 registry entry, G2 heartbeat on every exit path, and
+  G5 kill switch with a disabled heartbeat. Lane K of the 2026-09-26
+  fleet-clean campaign; the lead ruled GO for the Gear-3 ceremony.
+constraints:
+  - >-
+    The plist is added byte-identical to Pro's live copy and declared as a Pro
+    HOME-fork pair; it is not edited, so no reinstall is needed for content.
+  - >-
+    The wrapper keeps its PII contract: heartbeat notes carry an exit code or
+    a fixed phrase only, never client data; drafts stay under $HOME and are
+    never printed. S7_YIELD_OFF=1 keeps working next to the new
+    S7_YIELD_ENABLED=false.
+  - >-
+    recovery_action is human_only: a healer re-run would draft a fresh batch
+    of client pitches, which a machine must not trigger on its own.
+  - >-
+    The registry checksum line is updated in place; running
+    validate_organs_registry.py --update-checksum would rewrite the whole file
+    through yaml.safe_dump and drop its comments.
+  - >-
+    No change to s7_yield_draft_local.py, cron-runner.sh or any other organ.
+acceptance:
+  - text: >-
+      The organ-conformance gate SHALL report 0 regressions and 0
+      non-conformant births with the new plist tracked.
+    probe: python3 infra/organ-conformance/check_organ_conformance.py
+  - text: >-
+      WHEN S7_YIELD_ENABLED=false or S7_YIELD_OFF=1, the wrapper SHALL exit 0,
+      write status=disabled and never run the payload; WHEN the payload exits
+      0 it SHALL write ok; WHEN the payload exits N>0 it SHALL write error and
+      exit N; WHEN the payload script is missing it SHALL write error and exit
+      1; WHEN the heartbeat library is absent the exit code SHALL be unchanged.
+      Six of the seven cases SHALL fail against origin/main's wrapper.
+    probe: python3 -m pytest -q scripts/tests/test_s7_yield_run_wrapper.py
+  - text: >-
+      organs_registry.yaml SHALL validate, checksum included, with the new
+      pro.s7_yield_weekly entry.
+    probe: python3 apps/organism/organism/tools/validate_organs_registry.py
+  - text: >-
+      The tracked plist SHALL be byte-identical to Pro's live copy.
+    probe: >-
+      shasum -a 256 infra/launchagents/com.balizero.s7-yield.weekly.plist;
+      ssh pro 'shasum -a 256 ~/Library/LaunchAgents/com.balizero.s7-yield.weekly.plist'
+  - text: >-
+      WHEN Pro has pulled the merge, lint_home_fork --check on Pro SHALL count
+      one more declared pair than before (203 before this PR) with no breach
+      naming s7, and the s7 label SHALL load again after bootout/bootstrap.
+    probe: >-
+      ssh pro 'cd ~/nuzantara && python3 scripts/lint_home_fork.py --check --no-fetch --json'
+      (pairs_declared, check_breaches); launchctl print gui/<uid>/com.balizero.s7-yield.weekly
+consumer_map:
+  - >-
+    scripts/lint_home_fork.py --check and proprioception home_fork_scripts:
+    they compare the declared pair live vs repo from now on.
+  - >-
+    apps/cell bridge_state_reader and the organism sentinel: they read
+    ~/.organism/last_seen/pro.s7_yield_weekly.json through the registry's
+    state_file bridge.
+  - >-
+    The healer: human_only means it reports silence and never kickstarts.
+  - >-
+    launchd on Pro: the wrapper runs from the checkout, so the new wrapper is
+    live as soon as Pro pulls.
+risks:
+  - >-
+    Until the first Sunday run after the pull (2026-09-27 04:00 WITA), the
+    heartbeat file does not exist and the bridge reads "state file not found"
+    for this organ. Expected once, not a regression.
+  - >-
+    launchagent-state-bridge.py still tracks the retired
+    com.balizero.yield-optimizer.weekly label as failed. That is a separate
+    false red owned by another lane and is not touched here.
+assumptions:
+  - text: >-
+      The registry checksum covers the parsed organs list only, so an in-place
+      edit of the checksum line is equivalent to --update-checksum.
+    status: verified
+    probe: validate_organs_registry.py compute_checksum(organs); validator passes after the in-place edit
+  - text: >-
+      heartbeat.sh passes status=disabled through, and the healer exempts it.
+    status: verified
+    probe: grep -n disabled scripts/lib/heartbeat.sh (lines 154-165, 227)
+grader: >-
+  One council round, no consensus-seeking, fixed modus panel with Claude
+  excluded because Claude built it: Gemini via agy (constructive), Codex
+  (red team), Kimi k3 (refuter). Every finding is re-verified and disposed in
+  the pack. Then a fresh read-only Opus session posts harness/fable-gate on the
+  final head.
+budget: Existing subscription seats only; no paid per-token API calls.
+pii: none
