@@ -47,6 +47,27 @@ describe("NavShell", () => {
     expect(queryByText("Services")).toBeNull();
   });
 
+  it("keeps the default chrome unless the paper variant is asked for", () => {
+    const base = render(
+      <NavShell logo={<span />} items={ITEMS} actions={<span />} />,
+    ).container.querySelector("nav")!;
+    const paper = render(
+      <NavShell
+        variant="paper"
+        logo={<span />}
+        items={ITEMS}
+        actions={<span />}
+      />,
+    ).container.querySelector("nav")!;
+    const extra = [...paper.classList].filter(
+      (c) => !base.classList.contains(c),
+    );
+    expect(extra).toHaveLength(1);
+    expect(base.getAttribute("style")).toBe(paper.getAttribute("style"));
+    expect(base.querySelector("[data-nav-logo]")).toBeTruthy();
+    expect(base.querySelector("[data-nav-actions]")).toBeTruthy();
+  });
+
   it("reads only semantic tokens (no inline hex)", () => {
     const { container } = render(
       <NavShell logo={<span />} items={ITEMS} actions={<span />} />,
