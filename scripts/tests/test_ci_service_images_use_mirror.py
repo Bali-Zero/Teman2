@@ -34,6 +34,7 @@ share the failure mode this diff cures.
 (`toomanyrequests: Data limit exceeded`, 3 of 30 runs). `ci-image-mirror.yml`
 copies the same manifests to `ghcr.io/bali-zero/ci-mirror/`, pulled with
 GITHUB_TOKEN. A ghcr ref must be one that workflow produces AND carry credentials.
+The consumers now pull ONLY from the ghcr mirror; an ECR ref is guilt again.
 """
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 MIRRORED_IMAGES = ("postgres", "redis")
 ECR_PREFIX = "public.ecr.aws/docker/library/"
 GHCR_PREFIX = "ghcr.io/bali-zero/ci-mirror/"
-MIRROR_PREFIXES = (ECR_PREFIX, GHCR_PREFIX)
+MIRROR_PREFIXES = (GHCR_PREFIX,)  # ECR retired 2026-09-26: anonymous data quota
 MIRROR_WORKFLOW = WORKFLOWS_DIR / "ci-image-mirror.yml"
 
 # `image: <repo>:<tag>` anywhere under a `services:` block. Deliberately a
@@ -70,6 +71,20 @@ def _repo_name(ref: str) -> str:
     return ref.split("@", 1)[0].rsplit("/", 1)[-1].split(":", 1)[0]
 
 
+def _resolved_job_images(doc: Any) -> list[str]:
+    refs: list[str] = []
+    for job in ((doc or {}).get("jobs") or {}).values():
+        if not isinstance(job, dict):
+            continue
+        box = job.get("container")
+        boxes = [box] + list((job.get("services") or {}).values())
+        for item in boxes:
+            ref = item.get("image") if isinstance(item, dict) else item
+            if isinstance(ref, str):
+                refs.append(ref)
+    return refs
+
+
 def _all_workflow_files() -> list[Path]:
     files = sorted(WORKFLOWS_DIR.glob("*.yml")) + sorted(WORKFLOWS_DIR.glob("*.yaml"))
     assert files, f"no workflow files found under {WORKFLOWS_DIR} — the glob is broken, not the repo"
@@ -85,6 +100,11 @@ def test_guilt_no_workflow_pulls_postgres_or_redis_straight_from_docker_hub() ->
             ref = m.group(1)
             if _repo_name(ref) in MIRRORED_IMAGES and not ref.startswith(MIRROR_PREFIXES):
                 offenders.append(f"{path.relative_to(REPO_ROOT)}: image: {ref}")
+        # The parsed view too: a YAML alias (`image: *pg`) or a job `container:`
+        # resolves to a ref the raw-line regex above never sees.
+        for ref in _resolved_job_images(yaml.safe_load(text)):
+            if _repo_name(ref) in MIRRORED_IMAGES and not ref.startswith(MIRROR_PREFIXES):
+                offenders.append(f"{path.relative_to(REPO_ROOT)}: resolved image: {ref}")
     assert not offenders, (
         "unmirrored postgres/redis service image(s) found — this is the exact "
         "container-init failure mode queue_rearm.sh exists to recover from:\n"

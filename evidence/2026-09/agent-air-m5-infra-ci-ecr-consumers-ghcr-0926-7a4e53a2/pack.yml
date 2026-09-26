@@ -1,0 +1,101 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+pii_scan: clean
+diff: >-
+  PR-2 of 2. The 9 service images in tests.yml (backend-shard postgres and
+  redis, e2e-tests postgres and redis, visa-oracle-fullstack-smoke postgres),
+  fly-deploy.yml (pre-deploy-gate postgres), scripts-tests-sweep.yml (sweep
+  postgres and redis) and intel-router-tests.yml (test postgres) move from
+  public.ecr.aws/docker/library/ to ghcr.io/bali-zero/ci-mirror/, each with a
+  credentials block (github.actor / secrets.GITHUB_TOKEN). The pin test now
+  sanctions only the ghcr prefix, so an ECR service image is guilt again, and
+  its guilt check also reads resolved YAML (aliases, job container images).
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+  - lane: ground
+    role: read
+    seat: claude-opus-5-5
+  - lane: red-team-sol
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: red-team-kimi
+    role: review
+    seat: kimi-code/k3
+receipts:
+  - claim: PR-1 (PR 7390) merged; its seed run 36241309807 succeeded in all 5 jobs, digests identical to upstream, verify served PostgreSQL 15.19 and Redis 7.4.11 from ghcr.io after docker login
+    cmd: gh pr view 7390 --json mergedAt ; gh run view 36241309807 --json jobs ; gh run view 36241309807 --log | grep -E "manifest sha256|PostgreSQL|Redis server"
+    exit: 0
+    ts: "2026-09-26T12:17Z"
+    seat: claude-opus-5-5
+  - claim: the mirror packages are private (anonymous ghcr token request HTTP 401, anonymous manifest GET HTTP 403)
+    cmd: curl https://ghcr.io/token?scope=repository:bali-zero/ci-mirror/{postgres,redis}:pull
+    exit: 0
+    ts: "2026-09-26T12:18Z"
+    seat: claude-opus-5-5
+  - claim: PR-1 content is on origin/main by blob (ci-image-mirror.yml d7ad8c6252f8 on both sides)
+    cmd: git show origin/main:.github/workflows/ci-image-mirror.yml | git hash-object --stdin ; git hash-object <PR-1 worktree copy>
+    exit: 0
+    ts: "2026-09-26T12:19Z"
+    seat: claude-opus-5-5
+  - claim: none of the 6 consumer jobs declares workflow- or job-level permissions, so each inherits the repo default read (contents and packages)
+    cmd: python3 yaml scan of the 4 workflows for permissions keys on jobs with services
+    exit: 0
+    ts: "2026-09-26T12:27Z"
+    seat: claude-opus-5-5
+  - claim: 9 image lines moved, 0 ECR image lines left, pin test 6 passed
+    cmd: python3 scratchpad/pr2_apply.py <worktree> ; python3 -m pytest -q -p no:cacheprovider scripts/tests/test_ci_service_images_use_mirror.py
+    exit: 0
+    ts: "2026-09-26T12:18Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      mutations P1 one consumer back on ECR, P2 one consumer without
+      credentials, A1 ECR behind a YAML alias, A2 ECR as job container each
+      turn the pin red; the tree is restored and green afterwards
+    cmd: bash scratchpad/pr2_mutate.sh ; bash scratchpad/pr2_alias.sh
+    exit: 0
+    ts: "2026-09-26T12:26Z"
+    seat: claude-opus-5-5
+  - claim: actionlint reports the same 22 pre-existing findings on origin/main and on this diff; watcher, errexit and timeout lints clean
+    cmd: bash scratchpad/al_main.sh ; python3 scripts/check_watcher_coverage.py ; python3 scripts/lint_workflow_errexit_decap.py ; python3 scripts/lint_workflow_timeout_floor.py
+    exit: 0
+    ts: "2026-09-26T12:19Z"
+    seat: claude-opus-5-5
+  - claim: two titolare review seats ran on this diff, recorded in journal.jsonl
+    cmd: codex exec -m gpt-5.6-sol ; kimi -p -m kimi-code/k3 (scratchpad/pr2_reviews.sh)
+    exit: 0
+    ts: "2026-09-26T12:25Z"
+    seat: claude-opus-5-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: The ECR guilt test read raw image lines, so a YAML alias resolving to ECR evaded it.
+    status: CONFIRMED
+    resolution: the test also checks resolved services and job container images (mutations A1, A2).
+  - seat: kimi-code/k3
+    objection: The PROD pre-deploy gate now depends on an authenticated GHCR pull, a new single point of failure.
+    status: PLAUSIBLE
+    resolution: accepted. GHCR shares the availability domain of the Actions runner that already gates the deploy, while the ECR anonymous quota is failing today.
+  - seat: kimi-code/k3
+    objection: Pulls depend on the repo default token permission; a future permissions block without packages breaks them silently.
+    status: RETRACTED
+    resolution: PR-1's pin already fails any job whose effective permissions omit packages (_token_can_read_packages, mutation M5 in PR 7390).
+  - seat: kimi-code/k3
+    objection: Private packages break CI runs inside forks and local repro.
+    status: PLAUSIBLE
+    resolution: the repo has 0 forks; flipping the packages public (operator, GitHub UI) removes it.
+  - seat: kimi-code/k3
+    objection: Dropping ECR from the sanctioned prefixes removes the emergency escape hatch during a GHCR outage.
+    status: PLAUSIBLE
+    resolution: kept. A deliberate revert edits the one-line prefix tuple in the same PR.
+  - seat: kimi-code/k3
+    objection: Private package storage on the Free plan is capped at 500 MB.
+    status: PLAUSIBLE
+    resolution: the PR-1 prune job keeps at most two superseded versions; the public flip removes the cap.
+  - seat: kimi-code/k3
+    objection: ECR_PREFIX is now a dead constant.
+    status: RETRACTED
+    resolution: still used by the path-typo test.
+spend:
+  wall_clock_hours: 0.4
+  adversarial_rounds: 1

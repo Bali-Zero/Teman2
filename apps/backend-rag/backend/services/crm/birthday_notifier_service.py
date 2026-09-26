@@ -19,6 +19,7 @@ import asyncpg
 import httpx
 
 from backend.app.core.config import settings
+from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.notifications.email_branding import logo_header_html
 
@@ -337,10 +338,16 @@ class BirthdayNotifierService:
                     )
                     response.raise_for_status()
                 sent_via_brevo = True
-                logger.info(f"Birthday email sent to {client['email']} via Brevo ({language})")
+                logger.info(
+                    "Birthday email sent to %s via Brevo (%s)",
+                    redact_identifier_for_log(client["email"]),
+                    language,
+                )
             except Exception as brevo_err:
                 logger.warning(
-                    f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}"
+                    "Brevo failed for birthday %s, trying Zoho: %s",
+                    redact_identifier_for_log(client["email"]),
+                    type(brevo_err).__name__,
                 )
 
             # Fallback: Zoho
@@ -352,12 +359,24 @@ class BirthdayNotifierService:
                     content=html_content,
                     is_html=True,
                 )
-                logger.info(f"Birthday email sent to {client['email']} via Zoho ({language})")
+                logger.info(
+                    "Birthday email sent to %s via Zoho (%s)",
+                    redact_identifier_for_log(client["email"]),
+                    language,
+                )
 
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send birthday email to {client.get('email')}: {e}")
+            # Type only, never the message or traceback: an exception raised
+            # while mailing a client can carry the client's address in its
+            # text, and `redact_identifier_for_log` only covers the argument
+            # this line passes itself.
+            logger.error(
+                "Failed to send birthday email to %s: %s",
+                redact_identifier_for_log(client.get("email")),
+                type(e).__name__,
+            )
             return False
 
     async def run_birthday_notifications(self) -> dict[str, Any]:
@@ -400,8 +419,8 @@ class BirthdayNotifierService:
             return stats
 
         except Exception as e:
-            logger.error("Birthday notification run failed: %s", e)
-            stats["error"] = str(e)
+            logger.error("Birthday notification run failed: %s", type(e).__name__)
+            stats["error"] = type(e).__name__
             return stats
 
 

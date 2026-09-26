@@ -29,10 +29,15 @@ never calls the codex leg, so it correctly stays NULL — including it in the de
 undercount the real support_abstain rate):
 
 ```sql
-SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
+SELECT served_by, count(*) FROM wa_outbox WHERE needs_generation AND status = 'done' AND created_at > GREATEST(now()-interval '7 days', '2026-09-26 12:53:06+00') GROUP BY 1 ORDER BY 2 DESC;
 ```
 
-`NULL` (within that scope) means a failed generation — the row never reached a served completion.
+The `GREATEST` floor is the end of the deploy that shipped the column (run 36242358705,
+2026-09-26T12:53:06Z). Inside `needs_generation AND status = 'done'` a `NULL` can only be a row
+completed BEFORE migration 322 was live — a failed generation never reaches `status = 'done'` —
+so without the floor the NULL bucket is historical for the first 7 days and inflates the
+denominator. From 2026-10-03 the floor is inert. A `NULL` that appears above the floor is a
+defect in the terminal write, not a KPI bucket.
 `apps/backend-rag/fly.toml`'s `release_command` (`migrate apply-all && schema_audit`) runs on the
 NEW image before Fly replaces any machine and fails the release outright on a pending migration,
 so there is no deploy-window gap: the column exists before this worker code is ever live (verified
