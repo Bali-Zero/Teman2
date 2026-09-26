@@ -74,7 +74,7 @@ jobs:
         run: python3 scripts/dynamic_workflow.py --selftest
 
       - name: pytest test_dynamic_workflow.py
-        run: python -m pytest scripts/tests/test_dynamic_workflow.py -v
+        run: python -m pytest scripts/tests/test_dynamic_workflow.py scripts/tests/test_dynamic_workflow_skill.py -v
 
       - name: pytest lint wrapper tests
         run: python -m pytest scripts/tests/test_lint_workflow_script.py scripts/tests/test_lint_model_cards.py -v

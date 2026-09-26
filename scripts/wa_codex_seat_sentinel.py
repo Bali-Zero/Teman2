@@ -66,6 +66,19 @@ _GAUGE_STALENESS_LIMIT_S: Final[float] = 600.0
 _BREAKER_FAILURE_LIMIT: Final[int] = 3
 _GAUGE_QUERY_TIMEOUT_S: Final[int] = 30
 
+# daemon_silent cause discriminator (2026-09-25 incident, second occurrence
+# of the 2026-08-20/23 class): neither input needs a secret or sudo — `ps`
+# reads another user's process start time fine, and the Homebrew package's
+# `package.json` is a world-readable file, not something that needs `node`
+# to execute. The pin VALUE itself (`WA_CODEX_CLI_VERSION_PIN`) stays
+# unreadable without sudo — the discriminator names a PROBABLE cause, never
+# a proven one.
+_DAEMON_MODULE_PATTERN: Final[str] = "backend.services.integrations.wa_codex_daemon"
+_ENV_HOMEBREW_CODEX_PACKAGE_JSON: Final[str] = "WA_CODEX_HOMEBREW_PACKAGE_JSON"
+_DEFAULT_HOMEBREW_CODEX_PACKAGE_JSON: Final[str] = (
+    "/opt/homebrew/lib/node_modules/@openai/codex/package.json"
+)
+
 RED: Final[str] = "RED"
 WARN: Final[str] = "WARN"
 
@@ -144,7 +157,47 @@ def _probe_side(
     return verdicts
 
 
-def _gauge_side(gauge_row: tuple[str, str, int, float]) -> list[Verdict]:
+def _pin_drift_message(
+    daemon_start: Optional[datetime],
+    pkg_version: Optional[str],
+    pkg_mtime: Optional[datetime],
+) -> str:
+    """The `daemon_silent` alert text — pure, no I/O, this is the
+    discriminator under test.
+
+    Names a probable version-pin pause plainly (CLI version, when it
+    changed, when the daemon started, both cure commands) ONLY when all
+    three facts are in hand AND the package changed strictly AFTER the
+    daemon started while the daemon is alive. Every other case falls back
+    to the plain `DAEMON_SILENT_MSG` — unchanged from before this
+    discriminator existed — and never raises: `daemon_start is None` means
+    the daemon is not running at all (the dead case, not a pause), and a
+    missing/unreadable package is a fact this organ cannot back with a file
+    mtime, so it must not invent one.
+    """
+    if daemon_start is None or pkg_version is None or pkg_mtime is None:
+        return DAEMON_SILENT_MSG
+    if pkg_mtime <= daemon_start:
+        return DAEMON_SILENT_MSG
+    return (
+        f"{DAEMON_SILENT_MSG} — probable cause: version-pin pause. The shared "
+        f"Homebrew codex CLI is now {pkg_version}, changed at "
+        f"{pkg_mtime.isoformat(sep=' ')} — AFTER the daemon started at "
+        f"{daemon_start.isoformat(sep=' ')}. This is a PROBABLE cause, not "
+        "proof: the pin value itself (WA_CODEX_CLI_VERSION_PIN) cannot be "
+        "read without sudo. Cure:\n"
+        "sudo sed -i '' 's/^WA_CODEX_CLI_VERSION_PIN=.*/WA_CODEX_CLI_VERSION_PIN="
+        f"{pkg_version}/' /Users/zantara-codex/.wa-codex-broker.env\n"
+        "sudo launchctl kickstart -k system/com.balizero.wa-codex-broker"
+    )
+
+
+def _gauge_side(
+    gauge_row: tuple[str, str, int, float],
+    daemon_start: Optional[datetime] = None,
+    pkg_version: Optional[str] = None,
+    pkg_mtime: Optional[datetime] = None,
+) -> list[Verdict]:
     # The gauge row is single-row by CHECK (id = 1); the query pins WHERE
     # id = 1 anyway, like every other reader (Kimi r1 m10).
     _last_seen_raw, breaker_state, consecutive_failures, staleness_s = gauge_row
@@ -152,7 +205,15 @@ def _gauge_side(gauge_row: tuple[str, str, int, float]) -> list[Verdict]:
     if breaker_state != "closed" or consecutive_failures >= _BREAKER_FAILURE_LIMIT:
         verdicts.append(Verdict(RED, "breaker_open", BREAKER_MSG))
     if staleness_s > _GAUGE_STALENESS_LIMIT_S:
-        verdicts.append(Verdict(RED, "daemon_silent", DAEMON_SILENT_MSG))
+        # condition string stays "daemon_silent" regardless of the message
+        # text below — dedup keys on the condition, never the measurement.
+        verdicts.append(
+            Verdict(
+                RED,
+                "daemon_silent",
+                _pin_drift_message(daemon_start, pkg_version, pkg_mtime),
+            )
+        )
     return verdicts
 
 
@@ -162,6 +223,9 @@ def evaluate(
     gauge_row: Optional[tuple[str, str, int, float]],
     now: datetime,
     probe_interval_s: float = DEFAULT_PROBE_INTERVAL_S,
+    daemon_start: Optional[datetime] = None,
+    pkg_version: Optional[str] = None,
+    pkg_mtime: Optional[datetime] = None,
 ) -> list[Verdict]:
     """Pure classification over both sources. `now` is a parameter, not
     `datetime.now()` read internally, so a test controls freshness exactly.
@@ -181,7 +245,9 @@ def evaluate(
             "handled by the caller before this function runs, never "
             "silently folded into an empty (= healthy-looking) verdict list."
         )
-    return _probe_side(probe_status, probe_age_s, probe_interval_s) + _gauge_side(gauge_row)
+    return _probe_side(probe_status, probe_age_s, probe_interval_s) + _gauge_side(
+        gauge_row, daemon_start, pkg_version, pkg_mtime
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +351,113 @@ def _read_gauge() -> Optional[tuple[str, str, int, float]]:
         return None
 
     return (_last_seen_raw, breaker_state, consecutive_failures, staleness_s)
+
+
+def _ps_bin() -> str:
+    return "/bin/ps" if os.path.exists("/bin/ps") else "ps"
+
+
+def _find_daemon_pid() -> Optional[int]:
+    """PID of the live wa-codex-broker daemon, matched on the EXACT module
+    invocation (`-m backend.services.integrations.wa_codex_daemon` as two
+    adjacent argv tokens) — never a substring of some other argv entry
+    (family #3, guard-over-match: a grep of this very file, or a longer
+    module path that happens to contain the same text, must not count).
+    `ps` lists another user's (zantara-codex) process fine without root —
+    only that user's files and env are boundary-walled, not its argv."""
+    try:
+        proc = subprocess.run(
+            [_ps_bin(), "-axo", "pid=,args="],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            env={**os.environ, "LC_ALL": "C", "LANG": "C"},
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        pid_str, args = parts
+        tokens = args.split()
+        for i, tok in enumerate(tokens):
+            if tok == "-m" and i + 1 < len(tokens) and tokens[i + 1] == _DAEMON_MODULE_PATTERN:
+                try:
+                    return int(pid_str)
+                except ValueError:
+                    break
+    return None
+
+
+def _daemon_start_time(pid: int) -> Optional[datetime]:
+    """The daemon process's own start time (`ps -o lstart=`), same technique
+    as `session_declaration.py::process_start` — no cooperation needed from
+    the process itself, and no root needed to read another user's.
+    `LC_ALL=C`/`LANG=C` force `ps` to render `lstart` in the English/POSIX
+    format the parser below expects — on a host whose user locale is
+    non-English (e.g. Pro, Italian), an unforced `ps` prints a localized
+    date (`ven 25 set 02:06:31 2026`), `strptime` fails, and this always
+    falls back to None, silently killing the pin-drift discriminator."""
+    try:
+        proc = subprocess.run(
+            [_ps_bin(), "-p", str(pid), "-o", "lstart="],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            env={**os.environ, "LC_ALL": "C", "LANG": "C"},
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    raw = proc.stdout.strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%a %b %d %H:%M:%S %Y")
+    except ValueError:
+        logger.warning("ps lstart unparseable: %r", raw)
+        return None
+
+
+def _homebrew_codex_package_json_path() -> Path:
+    return Path(
+        os.environ.get(
+            _ENV_HOMEBREW_CODEX_PACKAGE_JSON, _DEFAULT_HOMEBREW_CODEX_PACKAGE_JSON
+        )
+    )
+
+
+def _read_homebrew_codex_package() -> tuple[Optional[str], Optional[datetime]]:
+    """(version, mtime) of the shared Homebrew codex CLI's `package.json` —
+    read as a plain file, no `node`/`codex` execution needed. Missing,
+    unreadable, or malformed all fold to (None, None): the pin-drift
+    discriminator must fall back to today's plain wording on this input,
+    never crash the sentinel over a package it cannot introspect."""
+    path = _homebrew_codex_package_json_path()
+    try:
+        raw = path.read_text()
+        mtime_epoch = path.stat().st_mtime
+    except OSError:
+        return None, None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("homebrew codex package.json is not valid JSON: %s", path)
+        return None, None
+    version = data.get("version")
+    if not isinstance(version, str) or not version:
+        logger.warning("homebrew codex package.json missing/malformed version: %s", path)
+        return None, None
+    return version, datetime.fromtimestamp(mtime_epoch)
 
 
 def hostname() -> str:
@@ -394,7 +567,20 @@ def run(now: Optional[datetime] = None) -> int:
         )
         return EXIT_CANNOT_VERIFY
 
-    verdicts = evaluate(probe_status, probe_age_s, gauge_row, now, _probe_interval_s())
+    daemon_pid = _find_daemon_pid()
+    daemon_start = _daemon_start_time(daemon_pid) if daemon_pid is not None else None
+    pkg_version, pkg_mtime = _read_homebrew_codex_package()
+
+    verdicts = evaluate(
+        probe_status,
+        probe_age_s,
+        gauge_row,
+        now,
+        _probe_interval_s(),
+        daemon_start,
+        pkg_version,
+        pkg_mtime,
+    )
 
     if not verdicts:
         print(f"wa-codex-seat-sentinel [{host}]: all conditions healthy")

@@ -151,7 +151,11 @@ class TestAuditorLogErrors:
                 user_id="user",
             )
 
-        # Should not raise - the exception is caught internally
+        # Should not raise - the exception is caught internally, and since the
+        # mocked _flush_buffer never clears the buffer, every subsequent log()
+        # call (while len(buffer) >= buffer_size) retries the flush.
+        assert len(auditor._buffer) == 101
+        assert auditor._flush_buffer.await_count == 2
 
     @pytest.mark.asyncio
     async def test_log_with_none_metadata(self, mock_pool: tuple) -> None:
@@ -200,8 +204,10 @@ class TestAuditorFlushBufferError:
 
         conn.execute = AsyncMock(side_effect=Exception("DB error"))
 
-        # Should not raise; error is logged
+        # Should not raise; error is logged, and the buffer must NOT be
+        # cleared since the write to the DB never completed.
         await auditor._flush_buffer()
+        assert len(auditor._buffer) == 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -265,11 +271,13 @@ class TestCreateHRBonusEntry:
         conn.fetchrow = AsyncMock(return_value=None)  # no practice_type
 
         svc = EnhancedCRMService(pool)
-        # Should not raise
+        # Should not raise, and must bail out before ever attempting the
+        # ledger INSERT since there is no practice_type to attach it to.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_bonus_no_rate(self, mock_pool: tuple) -> None:
@@ -283,10 +291,13 @@ class TestCreateHRBonusEntry:
         )
 
         svc = EnhancedCRMService(pool)
+        # Must bail out before the ledger INSERT since there is no active
+        # bonus rate for this practice type.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_bonus_no_employee(self, mock_pool: tuple) -> None:
@@ -301,10 +312,13 @@ class TestCreateHRBonusEntry:
         )
 
         svc = EnhancedCRMService(pool)
+        # Must bail out before the ledger INSERT since no active HR employee
+        # matches the assignee's email.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_bonus_duplicate(self, mock_pool: tuple) -> None:
@@ -319,10 +333,13 @@ class TestCreateHRBonusEntry:
         )
 
         svc = EnhancedCRMService(pool)
+        # Must bail out before the ledger INSERT since a bonus already
+        # exists for this practice/employee pair.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_bonus_success(self, mock_pool: tuple) -> None:
@@ -350,10 +367,13 @@ class TestCreateHRBonusEntry:
         conn.fetchval = AsyncMock(return_value=False)  # table not exists
 
         svc = EnhancedCRMService(pool)
+        # Must bail out immediately, before any further query is issued.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.fetchrow.assert_not_awaited()
+        conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_bonus_exception_does_not_propagate(self, mock_pool: tuple) -> None:
@@ -361,11 +381,13 @@ class TestCreateHRBonusEntry:
         conn.fetchval = AsyncMock(side_effect=Exception("unexpected"))
 
         svc = EnhancedCRMService(pool)
-        # Should not raise
+        # Should not raise, and the unhandled error must abort before the
+        # ledger INSERT is ever attempted.
         await svc._create_hr_bonus_entry(
             1,
             {"assigned_to": "alice@balizero.com"},
         )
+        conn.execute.assert_not_awaited()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

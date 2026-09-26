@@ -136,6 +136,18 @@ Env overrides:
                                  the CI-secret path is for GitHub Actions; a local organ reads
                                  the process env). Missing -> WARN + skip send, never fatal.
 
+Exit code (main(), `--tick`/`--report`/neither):
+    0 = clean tick (nothing CANNOT-VERIFY, no re-arm WRITE failing under budget) or `--report`
+        succeeded; also the disabled-organ no-op (QUEUE_SHEPHERD_ENABLED=false)
+    1 = usage error: neither `--tick` nor `--report` was passed (argparse help printed)
+    2 = CANNOT-VERIFY this tick (a read failed — candidates, state, or a re-arm PR read; see
+        the S1 "ARM THE ARMER" section above). Fail-closed: nothing re-armed or cancelled on
+        the unreadable side, never folded into a silent rearmed=0
+    3 = `rearm_write_failed > 0`: at least one PR's re-arm WRITE has failed
+        REARM_WRITE_FAIL_LIMIT (3) consecutive times (K-3, Kimi council finding, S1
+        2026-09-11) — the tick otherwise completed and DID re-arm/cancel what it could, but is
+        reported NOT ok because a write is persistently failing underneath it
+
 Tests: scripts/tests/test_queue_shepherd.py.
 """
 

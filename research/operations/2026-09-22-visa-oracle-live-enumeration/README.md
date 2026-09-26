@@ -5,6 +5,7 @@ client_case: none
 sources:
   - prove-live-b4-2-full-sweep-report-20260922.json (252/252 walks, live)
   - prove-live-b52-manifest-raw-main-1c6d2240-20260922.json (post-A6-2, post-B5-2 manifest, 252 walks)
+  - prove-live-a9-seq23-full-sweep-report-20260924.json (252/252 walks, live, post-seq-23-activation re-sweep against the same manifest)
 discovered_by: session (M5), vo-builder-b4-2-report
 adversarial_review: codex
 ---
@@ -651,3 +652,132 @@ the committed JSON, both printed in the PR body's proof fences: distribution
 `49f0144323e1a1229992d57f8d8dbf2753f6d7a351b28e4254eefea6e57f8ac9`, `requests_used_total 253`.
 No new claim in this addendum's scope is uncorroborated by a command in the PR body.
 
+### A9 addendum (2026-09-24, TP1 council — not a codex pass)
+
+The frontmatter `adversarial_review: codex` names the seat that reviewed this file's ORIGINAL
+B4-2/B4-2b sections (above); it predates the A9 addendum below and does not describe it. The A9
+addendum's own review is a 2-seat TP1 council, per R9's Gear-3 quorum (`COUNCIL_REVIEW_SEATS`):
+**`tp1-qwen3.8-max`** (titolare, probed live first) and **`tp1-deepseek-v4-pro`** (reserve,
+substituting for `codex-gpt-5.6-sol`/`kimi-code/k3`, both TIMEOUT on a direct liveness probe —
+named in this PR's `evidence/.../pack.yml` `seat_fallback_reason`). Each ran independently
+against the same task (`scripts/tp1_call.py`, task file =
+`evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/refuter-runs/refuter-task.txt`):
+the addendum's claims (census, `sequence`/`http_status`, the 15-walk moved-state diff, the
+28-HUMAN_REVIEW breakdown, the 4 new reason codes) checked against JSON excerpts of the two
+committed report files.
+
+Verdict: both **BLOCK**, 3 findings combined (2 from `tp1-qwen3.8-max`, 1 from
+`tp1-deepseek-v4-pro`), all 3 traced to the SAME root cause and all 3 RETRACTED:
+
+1. **The `payload_sha256` claim was not verifiable from the review excerpt** (the excerpt
+   omitted that field to keep the task file a manageable size for a TP1 call) — not a defect in
+   the README. Re-verified directly against the full committed JSON:
+   `{w["rule_pack"]["payload_sha256"] for w in walks}` has exactly one member,
+   `e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204`, on all 252/252 walks —
+   matches the README verbatim.
+2. **The "4 new reason codes, absent from B4-2b" claim was not verifiable from the B4-2b
+   excerpt** (that excerpt carried only `walk_id`/`engine_state`, no `reason_codes`, so the
+   review task's own instructions asked the seats to assume an empty universe if load-bearing —
+   both seats correctly flagged the assumption rather than silently accepting it) — not a defect
+   in the README. Independently recomputed from BOTH full committed JSONs' `reason_codes`
+   (a proper `Counter` difference, not an assumed-empty universe): the A9-only set is exactly
+   `E33G_LOCAL_COMPANY_NOT_ALLOWED` ×7, `STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED` ×4,
+   `E33G_LOCAL_MARKET_NOT_ALLOWED` ×2, `RETIREMENT_INCOME_BELOW_THRESHOLD` ×1 — matches the
+   README exactly, no extra or missing code.
+
+All other claims the review task COULD check from the excerpts (census 185/8/31/28/252,
+`sequence`=23 and `http_status`=200 on all 252, the 15 moved walk_ids with exact transitions,
+the 28-HUMAN_REVIEW breakdown 25/2/1) came back clean from both seats on the first pass — no
+discrepancy, no fix needed. Full transcripts, the task file, and the journal:
+`evidence/2026-09/agent-air-m5-docs-vo-a9-sweep-research-1648e458/{council.jsonl,refuter-runs/}`.
+
+Not in scope for either TP1 seat (the task was numeric/set claims over the JSON data only): the
+`git log --grep "A3'-B"` provenance claim below, and the activation id/timestamp provenance —
+both are text/history claims, not derivable from the report JSONs. That gap is why the fresh
+on-disk gate (not this council) is what caught the qualifier this claim was missing.
+
+
+## A9 addendum (2026-09-24): seq-23 activated in production, 252-walk re-sweep
+
+Seq-23 (`rule_pack_id a72aa24f-344a-58c1-809d-076a9227a1f0`, payload sha256
+`e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204`) was activated in production
+2026-09-24T11:27:25Z by `vo-ceremony-a9-activate` (activation_id
+`5ba3b03c-693a-4ae4-b76a-130977450d3e`). Full ceremony record, including the runbook-drift and
+ceremony-transport findings, is `PROVELIVE-A9-ACTIVATION-REPORT.md` (not committed here). Step 8
+ran 8 targeted prove-live probes (8/8 as expected, no rollback); step 9 re-ran the same B4-class
+252-walk sweep against this directory's manifest
+(`prove-live-b52-manifest-raw-main-1c6d2240-20260922.json`) with the same driver command used for
+B4-2/B4-2b:
+
+```
+$ … backend.scripts.visa_engine.enumerate_live \
+    --manifest prove-live-b52-manifest-raw-main-1c6d2240-20260922.json \
+    --report prove-live-a9-seq23-full-sweep-report-20260924.json \
+    --max-requests 260 --rate-per-minute 25 --dry-run
+plan: pending=252 total=252 already_recorded=0 never_attempted=252 retryable_harness_reds=0 max_requests=260 rate_per_minute=25.0 max_consecutive_harness_reds=3 health_probes_outside_budget=2 estimated_minutes=10.08
+$ … backend.scripts.visa_engine.enumerate_live \
+    --manifest prove-live-b52-manifest-raw-main-1c6d2240-20260922.json \
+    --report prove-live-a9-seq23-full-sweep-report-20260924.json \
+    --max-requests 260 --rate-per-minute 25
+wrote 252/252 walks to prove-live-a9-seq23-full-sweep-report-20260924.json (stopped_reason=completed, requests_used_this_run=252, requests_used_total=252)
+SWEEP_RC=0
+```
+
+Report JSON: `prove-live-a9-seq23-full-sweep-report-20260924.json`, sha256
+`899ce88d9314d17cb8cc0d13770374ada19c119d46e4a706a8a929dcc084c808`.
+
+### Census (derived by command from the JSON's `engine_state`, `rule_pack.sequence`, `http_status` — never typed)
+
+| | B4-2b (seq-22) | **A9 sweep (seq-23)** |
+|---|---|---|
+| SUPPORTED_CANDIDATES | 172 | **185** |
+| NEEDS_INPUT | 6 | **8** |
+| NO_SUPPORTED_PATH | 31 | **31** |
+| HUMAN_REVIEW_REQUIRED | 43 | **28** |
+| total | 252 | 252 |
+| `rule_pack.sequence` | 22 ×252 | **23 ×252** (payload `e5f791b5…72204` ×252) |
+| `http_status` | — | **200 ×252** |
+
+`HUMAN_REVIEW_REQUIRED = 28` breaks down (by command, over `review_reasons`) as
+`DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` ×25 (adapter hold on the mouth-side flag; closes with
+A3'-B, not built as of this sweep — on this PR's merge-base `587f468fe7`, `git log 587f468fe7
+--grep "A3'-B" --format=%h` returns 2 commits, `d5843d0e93` (A3'-M, #7172) and `01d1f99b60`
+(#7160), neither of which BUILDS A3'-B — both merely mention it as future work; no commit's own
+subject is A3'-B itself (`git log 587f468fe7 --format=%s | grep -c "A3'-B"` → `0`). The same
+grep on a later `origin/main` also matches this PR's own squash commit, whose messages quote the
+string),
+`SECOND_HOME_BELOW_THRESHOLD_STUDIO` ×2 (D23, owner decision), `DISCLOSED_CRIMINAL_RECORD_REVIEW`
+×1 (G1's allowed exception).
+
+### The 15 walks that moved state vs B4-2b (derived by set-intersection over `walk_id`, diffing `engine_state`)
+
+`shared = 252` (same 252 `walk_id`s in both files — no label added or dropped since B4-2b). 13
+walks moved `HUMAN_REVIEW_REQUIRED → SUPPORTED_CANDIDATES`, 2 moved
+`HUMAN_REVIEW_REQUIRED → NEEDS_INPUT`; the other 237 kept state.
+
+| walk_id | B4-2b state | A9 state |
+|---|---|---|
+| `edge/current_status_code=other` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `edge/current_status_code=unsure` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `edge/in_indonesia=unsure` | HUMAN_REVIEW_REQUIRED | NEEDS_INPUT |
+| `edge/nationalities=unsure` | HUMAN_REVIEW_REQUIRED | NEEDS_INPUT |
+| `edge/stay_permit_code=unsure` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/ambiguous_sponsor` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/blacklist` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/diplomatic_passport` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/health_flag` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/immigration_investigation` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/not_certain` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/overstay` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/pep_or_sanctions` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/prior_refusal` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+| `review-gate/source_of_funds_unclear` | HUMAN_REVIEW_REQUIRED | SUPPORTED_CANDIDATES |
+
+New reason codes observed live and absent from B4-2b entirely (by command, over
+`review_reasons`/`no_path_reasons`): `E33G_LOCAL_COMPANY_NOT_ALLOWED` ×7,
+`STUDY_ADMISSION_OR_SPONSOR_NOT_CONFIRMED` ×4, `E33G_LOCAL_MARKET_NOT_ALLOWED` ×2,
+`RETIREMENT_INCOME_BELOW_THRESHOLD` ×1.
+
+**No finding in this sweep**: HUMAN_REVIEW = 28 = the runbook's expectation (A3'-B not live, so
+the 25 `ACTIVITY_BOUNDARY` walks are still held by the adapter flag), 0 transport errors, 0
+harness reds, sequence 23 on all 252, HTTP 200 on all 252.

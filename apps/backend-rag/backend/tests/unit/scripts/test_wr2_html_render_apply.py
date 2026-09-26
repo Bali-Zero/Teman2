@@ -449,16 +449,22 @@ def test_run_claude_json_timeout_budget_from_env(monkeypatch):
         captured["timeout"] = k.get("timeout")
         raise _sp.TimeoutExpired(cmd="claude", timeout=k.get("timeout"))
 
+    # Freeze time.monotonic so claude_vision's deadline/remaining computation
+    # is exact regardless of scheduler contention: the assertion is about the
+    # ENV-derived budget, not the post-deadline wall-clock remainder, which
+    # under load previously encoded "less than 100ms elapses between two
+    # adjacent statements" (PENDING-ARMS L820 dialect B).
+    monkeypatch.setattr(claude_vision.time, "monotonic", lambda: 1000.0)
     monkeypatch.setattr(claude_vision, "_run_process_group", _capture)
     monkeypatch.delenv("WR2_VISION_TIMEOUT_S", raising=False)
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == pytest.approx(180, abs=0.1)
+    assert captured["timeout"] == 180
 
     monkeypatch.setenv("WR2_VISION_TIMEOUT_S", "300")
     with pytest.raises(claude_vision.VisionTimeout):
         claude_vision._run_claude_json("p", {"type": "object"})
-    assert captured["timeout"] == pytest.approx(300, abs=0.1)
+    assert captured["timeout"] == 300
 
 
 def test_run_claude_json_pins_vision_model(monkeypatch):

@@ -56,8 +56,7 @@ class TestConvertStagingToEnrichedArticle:
         }
         result = convert_staging_to_enriched_article(data)
         assert result["priority"] == "low"
-        assert result["tldr"]["risk_level"] == "Low"
-        assert result["tldr"]["should_worry"] == "No"
+        assert result["tldr"] == {"what": "Some minor content."}
 
     def test_medium_relevance(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
@@ -70,7 +69,24 @@ class TestConvertStagingToEnrichedArticle:
         }
         result = convert_staging_to_enriched_article(data)
         assert result["priority"] == "medium"
-        assert result["tldr"]["should_worry"] == "Depends"
+        assert set(result["tldr"]) == {"what"}
+
+    def test_high_relevance_does_not_become_reader_risk(self) -> None:
+        """Guilt: the GloBE article (2026-09-24) told expats "Should I Worry? Yes /
+        Risk Level: High / Expats and investors in Indonesia" because relevance
+        85 was read as reader risk. Priority stays editorial; the TL;DR keeps
+        only what the draft says."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Indonesia Records 1,460 GloBE Taxpayer Registrations",
+            "content": "## Facts\nThe tax office recorded 1,460 GloBE registrations.",
+            "category": "tax-legal",
+            "relevance_score": 85,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["priority"] == "high"
+        assert result["tldr"] == {"what": "The tax office recorded 1,460 GloBE registrations."}
 
     def test_no_sections(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
@@ -170,6 +186,205 @@ class TestConvertStagingToEnrichedArticle:
         result = convert_staging_to_enriched_article(data)
         assert len(result["next_steps"]["expat"]) >= 1
         assert len(result["next_steps"]["investor"]) >= 1
+        # Innocence: a draft with real For Expats/For Investors subsections
+        # never grows a fabricated neutral group on top of them.
+        assert result["next_steps"]["general"] == []
+
+    def test_next_steps_without_audience_split_is_one_neutral_group(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) had no "For Expats"/"For
+        Investors" subsections — a single audience-neutral Next Steps body —
+        and the converter split it 50/50 between the two, inventing an
+        audience the draft never named. It must land in one neutral group
+        instead, never split, never filled with a stock filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n"
+                "Ask the group tax team to confirm the scope assessment first.\n\n"
+                "Review the separate reporting obligations with a qualified adviser."
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert len(next_steps["general"]) >= 1
+        joined = " ".join(next_steps["general"])
+        assert "Review the article for specific actions" not in joined
+        assert "confirm the scope assessment" in joined
+
+    def test_neutral_steps_that_mention_expats_or_investors_stay_neutral(self) -> None:
+        """Guilt (gate BLOCK on #7322): the audience regex matched "expat" /
+        "investor" as a SUBSTRING anywhere in the body, so a neutral step that
+        merely mentioned them ("Expats should…", "an expatriate-friendly…")
+        was relabelled to that audience and truncated from the match onward
+        ("expatriate" → "riate…"). Only a label LINE names an audience."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        steps = [
+            "Expats should renew their KITAS before it lapses.",
+            "Investors must file the LKPM report every quarter.",
+            "Hire an expatriate-friendly tax adviser for the annual SPT.",
+        ]
+        data = {
+            "title": "Neutral Steps",
+            "content": (
+                "## Facts\nFacts here.\n"
+                "## Bali Zero Take\nOur take.\n"
+                "## Next Steps\n" + "\n".join(f"- {s}" for s in steps)
+            ),
+            "category": "visa",
+            "relevance_score": 80,
+        }
+        next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+        assert next_steps["general"] == steps
+
+    def test_audience_label_lines_in_heading_bold_and_colon_forms(self) -> None:
+        """Innocence for the fix above: a real label LINE still names its
+        audience whether it is a heading, a bold line or a bare "For X:"
+        line, and a step under it that mentions the other audience stays
+        where it is."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        for expat_label, investor_label in [
+            ("### For Expats", "### For Investors"),
+            ("**For Expats:**", "**For Investors:**"),
+            ("For Expats:", "For Investors:"),
+        ]:
+            data = {
+                "title": "Labelled Steps",
+                "content": (
+                    "## Facts\nFacts here.\n"
+                    "## Next Steps\n"
+                    f"{expat_label}\n"
+                    "- Check your visa status\n"
+                    "- Ask your investor sponsor for the RPTKA letter\n"
+                    f"{investor_label}\n"
+                    "- Review investment plan\n"
+                ),
+                "category": "visa",
+                "relevance_score": 80,
+            }
+            next_steps = convert_staging_to_enriched_article(data)["next_steps"]
+            assert next_steps["expat"] == [
+                "Check your visa status",
+                "Ask your investor sponsor for the RPTKA letter",
+            ], expat_label
+            assert next_steps["investor"] == ["Review investment plan"], investor_label
+            assert next_steps["general"] == [], expat_label
+
+    def test_next_steps_never_emits_filler_and_omits_empty_groups(self) -> None:
+        """Guilt: a Next Steps section too short to yield any real item must
+        stay empty (and the MDX layer omits the section), never the
+        "Review the article for specific actions" filler."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Thin Article",
+            "content": "## Facts\nFacts here.\n## Next Steps\nTBD",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        for group in (next_steps["expat"], next_steps["investor"], next_steps["general"]):
+            for item in group:
+                assert "Review the article for specific actions" not in item
+        assert next_steps["expat"] == []
+        assert next_steps["investor"] == []
+
+    def test_next_steps_absent_yields_no_filler(self) -> None:
+        """Guilt: a draft with no "## Next Steps" section at all must not
+        grow one out of filler text."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Next Steps",
+            "content": "## Facts\nJust the facts.",
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        next_steps = result["next_steps"]
+        assert next_steps == {"expat": [], "investor": [], "general": []}
+
+    def test_extra_sections_preserved_in_draft_order(self) -> None:
+        """Guilt: the GloBE article (2026-09-23) lost its "## In Practice"
+        and "## Sources" sections — the converter only ever extracted
+        Summary/Facts/Bali Zero Take/Next Steps and silently dropped any
+        other "##" section. Every other section must survive, in order,
+        anchored to the mapped section it followed."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "GloBE Registrations",
+            "content": (
+                "## Facts\nFacts here.\n\n"
+                "## In Practice\nPractical detail here.\n\n"
+                "## Bali Zero Take\nOur take.\n\n"
+                "## Next Steps\n- Do the thing.\n\n"
+                "## Sources\n"
+                "- [Source One](https://example.com/one)\n"
+                "- [Source Two](https://example.com/two)\n"
+            ),
+            "category": "tax",
+            "relevance_score": 92,
+        }
+        result = convert_staging_to_enriched_article(data)
+        extras = result["extra_sections"]
+        assert [section["heading"] for section in extras] == ["In Practice", "Sources"]
+        in_practice, sources = extras
+        assert in_practice["insert_after"] == "facts"
+        assert "Practical detail here." in in_practice["body"]
+        assert sources["insert_after"] == "next_steps"
+        assert "[Source One](https://example.com/one)" in sources["body"]
+        assert "[Source Two](https://example.com/two)" in sources["body"]
+
+    def test_extra_sections_do_not_duplicate_mapped_headings(self) -> None:
+        """Guilt: Summary/Facts/Bali Zero Take/Next Steps must never also
+        appear a second time in extra_sections."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "Mapped Only",
+            "content": (
+                "## Summary\nSum.\n## Facts\nFacts.\n"
+                "## Bali Zero Take\nTake.\n## Next Steps\n- Step one here.\n"
+            ),
+            "category": "news",
+            "relevance_score": 50,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["extra_sections"] == []
+
+    def test_draft_without_facts_heading_does_not_emit_sections_twice(self) -> None:
+        """Guilt (gate finding F2 on #7322): with no "## Facts" heading the
+        whole draft falls back into `facts`, so an unmapped section is
+        already there verbatim — carrying it again as an extra section
+        printed it twice."""
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        data = {
+            "title": "No Facts Heading",
+            "content": (
+                "Opening paragraph.\n"
+                "## In Practice\nWhat this changes for a PT PMA.\n"
+                "## Next Steps\n- Confirm the filing deadline.\n"
+            ),
+            "category": "tax",
+            "relevance_score": 60,
+        }
+        result = convert_staging_to_enriched_article(data)
+        assert result["facts"].count("What this changes for a PT PMA.") == 1
+        assert result["extra_sections"] == []
 
     def test_tags_generation(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
@@ -327,6 +542,171 @@ class TestConvertStagingToEnrichedArticle:
         )
 
         assert result["ai_summary"] == " ".join(["word"] * 55) + "…"
+
+
+# ---------------------------------------------------------------------------
+# Next Steps grammar — the case table of docs/specs/newsroom-next-steps-grammar-v1.md
+# ---------------------------------------------------------------------------
+
+_TWELVE_STEPS = [f"Step {n}: file form {n}." for n in range(1, 13)]
+
+# (case id, "## Next Steps" body, expected {expat, investor, general}); groups
+# left out of the expectation must be empty.
+NEXT_STEPS_GRAMMAR_CASES = [
+    (
+        "E1",
+        "- Investors should file LKPM every quarter.\n"
+        "- An expatriate employee must hold a KITAS.\n"
+        "- Expats: check your visa expiry date.",
+        {
+            "general": [
+                "Investors should file LKPM every quarter.",
+                "An expatriate employee must hold a KITAS.",
+                "Expats: check your visa expiry date.",
+            ]
+        },
+    ),
+    (
+        "E4",
+        "#### For Expats\n- Renew your KITAS early.\n#### For Investors\n- File LKPM every quarter.",
+        {"expat": ["Renew your KITAS early."], "investor": ["File LKPM every quarter."]},
+    ),
+    (
+        "E5",
+        "##### For Expats\n- Renew your KITAS early.\n##### For Investors\n- File LKPM every quarter.",
+        {"expat": ["Renew your KITAS early."], "investor": ["File LKPM every quarter."]},
+    ),
+    (
+        "E12",
+        "**For Expats:**\r\n- Ask your investor sponsor for RPTKA.\r\n",
+        {"expat": ["Ask your investor sponsor for RPTKA."]},
+    ),
+    (
+        "E3",
+        "- Confirm the scope first.\nInvestors\n- File the annual SPT.",
+        {"general": ["Confirm the scope first."], "investor": ["File the annual SPT."]},
+    ),
+    (
+        "E6",
+        "For Expats: renew your KITAS\nFor Investors: file the LKPM report",
+        {"general": ["For Expats: renew your KITAS\nFor Investors: file the LKPM report"]},
+    ),
+    (
+        "E7",
+        "- **For Expats:** renew your KITAS early.",
+        {"general": ["**For Expats:** renew your KITAS early."]},
+    ),
+    (
+        "E9",
+        "All readers should read the regulation first.\n### For Expats\n- Renew your KITAS early.",
+        {
+            "general": ["All readers should read the regulation first."],
+            "expat": ["Renew your KITAS early."],
+        },
+    ),
+    (
+        "E10",
+        "### For Expats\n- Renew your KITAS early.\n### For Everyone\n- Keep copies of all filings.",
+        {"expat": ["Renew your KITAS early."], "general": ["Keep copies of all filings."]},
+    ),
+    (
+        "E11",
+        "### For Expats\n- Renew your KITAS early.\n\nAll readers: keep copies.",
+        {"expat": ["Renew your KITAS early.", "All readers: keep copies."]},
+    ),
+    (
+        "E15",
+        "*For Expats:*\n- Renew your KITAS early.",
+        {"expat": ["Renew your KITAS early."]},
+    ),
+    (
+        "E16",
+        "### For Expats & Investors\n- Keep copies.",
+        {"general": ["Keep copies."]},
+    ),
+    ("E19", "\n".join(f"- {step}" for step in _TWELVE_STEPS), {"general": _TWELVE_STEPS}),
+    ("E20", "- File SPT\n- Pay PBB.", {"general": ["File SPT", "Pay PBB."]}),
+    ("E21", "1. File SPT.\n2. Pay PBB.", {"general": ["File SPT.", "Pay PBB."]}),
+    (
+        "E22",
+        "- **Deadline**: file the SPT by 31 March.",
+        {"general": ["**Deadline**: file the SPT by 31 March."]},
+    ),
+    ("E24", "TBD", {}),
+    (
+        "G1",
+        "**For Expats:**\n- Check your visa status\n\n---",
+        {"expat": ["Check your visa status"]},
+    ),
+    (
+        "G2",
+        "### For Investors\n- Review investment plan\n\n---",
+        {"investor": ["Review investment plan"]},
+    ),
+    ("G3", "None of the above applies.", {"general": ["None of the above applies."]}),
+    # Invariant 4 variants and D7.
+    ("P1", "- TBA\n- N/A.\n- none\n- todo", {}),
+    (
+        "D7",
+        "-5% tax applies to the second year.",
+        {"general": ["-5% tax applies to the second year."]},
+    ),
+    # Invariant 3: a bare bullet and the other rule spellings are not items.
+    ("R1", "- Pay PBB.\n-\n***\n___\n* * *", {"general": ["Pay PBB."]}),
+]
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [pytest.param(body, expected, id=case) for case, body, expected in NEXT_STEPS_GRAMMAR_CASES],
+)
+def test_next_steps_grammar_case_table(body: str, expected: dict[str, list[str]]) -> None:
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    content = (
+        "## Facts\nFacts here.\n## Next Steps\n" + body + "\n## Sources\n- https://example.com"
+    )
+    next_steps = convert_staging_to_enriched_article({"content": content})["next_steps"]
+
+    assert next_steps == {
+        "expat": expected.get("expat", []),
+        "investor": expected.get("investor", []),
+        "general": expected.get("general", []),
+    }
+
+
+def test_next_steps_placeholder_renders_no_section() -> None:
+    """E24 end to end: a "TBD" body leaves no Next Steps section in the MDX."""
+    from backend.app.routers.article_composer import EnrichedArticle, generate_mdx_content
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    result = convert_staging_to_enriched_article(
+        {"title": "Thin", "content": "## Facts\nFacts here.\n## Next Steps\nTBD"}
+    )
+
+    mdx = generate_mdx_content(EnrichedArticle(**result), "test-thin", None)
+    assert "## Next Steps" not in mdx
+
+
+def test_section_headings_share_one_grammar_for_colon_and_crlf() -> None:
+    """E23 / D8: a trailing ":" and CRLF line ends do not hide a section."""
+    from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+    content = (
+        "## Summary:\nThe rule changes in March.\n"
+        "## Facts:\nFacts here.\n"
+        "## Bali Zero Take\nOur take.\n"
+        "## Next Steps:\n- File SPT.\n"
+        "## Sources\n- https://example.com"
+    ).replace("\n", "\r\n")
+
+    result = convert_staging_to_enriched_article({"content": content})
+
+    assert result["ai_summary"] == "The rule changes in March."
+    assert result["facts"] == "Facts here."
+    assert result["bali_zero_take"]["our_analysis"] == "Our take."
+    assert result["next_steps"]["general"] == ["File SPT."]
+    assert [section["heading"] for section in result["extra_sections"]] == ["Sources"]
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +912,7 @@ class TestSubmitFromScraper:
                 "enrichment": {},
             }
             mock_stg.check_duplicate.return_value = existing_item
-            mock_stg.load_staging_item.return_value = dict(existing_item)
+            mock_stg.backfill_enrichment_if_absent.return_value = True
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 
@@ -556,20 +936,23 @@ class TestSubmitFromScraper:
         assert result["duplicate"] is True
         assert result["success"] is True
         assert result["enrichment_backfilled"] is True
-        mock_stg.load_staging_item.assert_called_once_with("news", "news-2026-existing")
-        mock_stg.save_staging_item.assert_called_once()
-        saved_type, saved_id, saved_data = mock_stg.save_staging_item.call_args[0]
-        assert saved_type == "news"
-        assert saved_id == "news-2026-existing"
-        assert saved_data["enrichment"] == enrichment_obj
+        # Merge goes through the locked helper (W-L610), not a raw load/save —
+        # see backfill_enrichment_if_absent in intel_staging_service.py.
+        mock_stg.backfill_enrichment_if_absent.assert_called_once_with(
+            "news", "news-2026-existing", enrichment_obj
+        )
 
     @pytest.mark.asyncio
     async def test_duplicate_skips_backfill_when_existing_already_has_enrichment(
         self,
     ) -> None:
         """INNOCENCE: an existing duplicate that ALREADY carries a
-        non-empty enrichment dict must not be touched — no load/save call,
-        no `enrichment_backfilled` key in the response."""
+        non-empty enrichment dict must not be overwritten. The router no
+        longer short-circuits on the (possibly stale, read-outside-any-lock)
+        `duplicate` snapshot's own `enrichment` field — that pre-check was
+        itself part of the W-L610 race — so it still calls the atomic
+        `backfill_enrichment_if_absent` helper, which re-checks under its
+        per-item lock and correctly no-ops here."""
         from backend.app.routers.intel import ScraperSubmission
         from backend.app.routers.intel_scraper import submit_from_scraper
 
@@ -585,9 +968,11 @@ class TestSubmitFromScraper:
                 "item_id": "news-2026-existing2",
                 "enrichment": {"the_facts": "Already there."},
             }
+            mock_stg.backfill_enrichment_if_absent.return_value = False
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 
+            new_enrichment = {"the_facts": "New but should not overwrite."}
             submission = ScraperSubmission(
                 title="Duplicate again",
                 content="Content",
@@ -597,14 +982,15 @@ class TestSubmitFromScraper:
                 relevance_score=50,
                 extraction_method="auto",
                 tier="tier1",
-                enrichment={"the_facts": "New but should not overwrite."},
+                enrichment=new_enrichment,
             )
             result = await submit_from_scraper(submission=submission, _api_key_verified=None)
 
         assert result["duplicate"] is True
         assert "enrichment_backfilled" not in result
-        mock_stg.load_staging_item.assert_not_called()
-        mock_stg.save_staging_item.assert_not_called()
+        mock_stg.backfill_enrichment_if_absent.assert_called_once_with(
+            "news", "news-2026-existing2", new_enrichment
+        )
 
     @pytest.mark.asyncio
     async def test_duplicate_skips_backfill_when_existing_is_published(self) -> None:
@@ -672,7 +1058,7 @@ class TestSubmitFromScraper:
                 "item_id": "news-2026-existing3",
                 "enrichment": {},
             }
-            mock_stg.load_staging_item.side_effect = OSError("disk error")
+            mock_stg.backfill_enrichment_if_absent.side_effect = OSError("disk error")
             mock_dup.labels.return_value.inc = MagicMock()
             mock_latency.labels.return_value.observe = MagicMock()
 

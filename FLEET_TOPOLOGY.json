@@ -224,7 +224,16 @@
     "agy": {
       "entry": "agy",
       "reads": ["GEMINI.md", "AGENTS.md"],
-      "models": ["gemini-3.1-pro", "gemini-3.5-flash"],
+      "models": [
+        "gemini-3.1-pro-high",
+        "gemini-3.1-pro-low",
+        "gemini-3.8-flash-high",
+        "gemini-3.8-flash-medium",
+        "gemini-3.8-flash-low"
+      ],
+      "harness": "antigravity-cli 1.2.9 on Pro/M5 (`agy --print`, --model, --json-schema, --output-format json); Antigravity IDE on M5 = same AI Ultra account, GUI-only, prepare-only",
+      "contexts": "LIVE from a login session and from a gui/501 LaunchAgent (probe 2026-09-24: 6.8 s session, 8.9 s launchd alone, 13.7 s launchd with all seats concurrent)",
+      "probe_2026_09_24": "T1 PONG 8 s default / 8 s 3.8-flash-high / 12 s 3.8-flash-low / 68 s 3.1-pro-high · T2 seeded off-by-one found by both 3.8-flash-high (11 s) and 3.1-pro-high (20 s), JSON as asked · T3 --json-schema respected but 144 s · T4 needle in 120 KB inline prompt found in 12 s · T6 scripts/arsenal_probe.py --seats agy LIVE 6770 ms",
       "fence": "candidate-only (MODEL_TOPOLOGY notes)"
     },
     "kimi": {

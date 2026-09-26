@@ -812,10 +812,17 @@ async def test_target_attestation_accepts_pg_visible_unqualified_regclass_text()
     """A real search_path=public regclass rendering must not fail attestation."""
     mod = _load()
 
-    await mod.attest_target(
+    result = await mod.attest_target(
         _AttestConnection(mod, _valid_target_attestation()),
         expect_read_only=False,
     )
+
+    # attest_target's only non-raising outcome is `None` (see its signature
+    # `-> None`); reaching this line at all is the real assertion (a broken
+    # attestation raises TargetContractError instead of returning), and this
+    # pins the documented contract explicitly so the function can't silently
+    # start returning something else.
+    assert result is None
 
 
 @pytest.mark.parametrize(

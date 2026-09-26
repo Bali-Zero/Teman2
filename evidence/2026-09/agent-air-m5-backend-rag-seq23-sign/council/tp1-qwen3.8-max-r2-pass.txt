@@ -1,0 +1,22 @@
+## Re-judgement of Round-1 MEDIUM findings
+
+### MEDIUM 1 – Census pin identical to seq-22; no `_SEQ23_OUTCOME_CHANGES` mechanism visible
+
+**WITHDRAWN.**
+M1 directly answers the concern. It confirms (a) `_SEQ23_OUTCOME_CHANGES = {}` exists (merged via PR #7174), (b) the 116-walk census replay produces zero outcome violations and zero dead-end violations, and (c) the state census is exactly {HRR 3, NI 1, NSP 14, SC 98}. The reason the counts don't shift is visible in M4: the gold-fixture baseline supplies *innocent KNOWN* values (`overstay_days = 0`, `violation_history = []`, `sponsor_confirmed = False`), so every HARD_FILTER condition evaluates FALSE on the census walk and no product is excluded. The empty outcome-changes dict is therefore correct, not laundered.
+
+### MEDIUM 2 – `<REDACTED>`: UNKNOWN persona allegedly cannot produce BLOCKED_UNKNOWN on `intent.purposes`
+
+**WITHDRAWN.**
+M2's row for `<REDACTED>` shows the UNKNOWN persona yielding exactly `E33 BLOCKED_UNKNOWN ['intent.purposes']` with decision `NEEDS_INPUT ['intent.purposes']`. The rule does *not* short-circuit to PASS/NOT_APPLICABLE; it gates on the `purposes` set and reports the fact as missing when it is UNKNOWN. M5 further confirms all 93 tests in the file pass on the real signed pack and that reverting this single row turns its witness red, so the `unknown_fact` field is truthful and the witness is not vacuous.
+
+### MEDIUM 3 – EVALUATED_AT vs. `valid_period.from`; silent vacuous pass if rules are not yet in force
+
+**WITHDRAWN.**
+M3 measures the max `valid_period.from` across all inserted rules as `2026-09-23T00:00:00Z`, which equals EVALUATED_AT. Moreover, M3 explains the structural guard I missed: the TRUE-persona witness *requires* the rule's `rule_id` to appear in `Reason.rule_ids` with an EXCLUDED proof. A rule not in force cannot produce that proof, so the witness would be RED, not silently green. M5's guilt-revert result (any single-row revert turns that row's witness red, 93/93 pass on the real pack) empirically confirms no vacuous-pass path exists.
+
+---
+
+No MEDIUM is upheld. No HIGH existed in Round 1.
+
+VERDICT: PASS

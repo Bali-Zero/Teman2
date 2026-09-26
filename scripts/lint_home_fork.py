@@ -17,11 +17,16 @@ This lint is that rule with an exit contract, in two arms:
               merged at runtime with proprioception's own pair list so the two
               SSOTs cannot silently drift): sha256(live) vs sha256(repo twin).
               Divergence or missing repo twin => breach.
-  --discover  Parse ~/Library/LaunchAgents/*.plist (Program/ProgramArguments)
-              and `crontab -l`: every HOME-rooted payload path that is not
-              inside the repo checkout, not a declared pair, and not
-              allow-listed is an UNDECLARED finding — a fork candidate nobody
-              is watching.
+  --discover  Parse ~/Library/LaunchAgents/*.plist (Program/ProgramArguments),
+              `crontab -l`, and JSON hook registries (e.g. `.codex/hooks.json`
+              — an untracked, per-machine file the same way `.mcp.json` is):
+              every HOME-rooted payload path that is not inside the repo
+              checkout, not a declared pair, and not allow-listed is an
+              UNDECLARED finding — a fork candidate nobody is watching. A JSON
+              registry entry hardcoding an absolute HOME path is exactly the
+              shape a plist/crontab-only scan cannot see (W347: an untracked
+              in-repo copy invoked by absolute path from a *.json registry
+              read "0 undeclared payloads" until this arm existed).
 
 Default (no flag) runs both arms. Exit code is a bitmask:
     0 = clean · 1 = --check divergence · 2 = --discover undeclared ·
@@ -77,6 +82,9 @@ def _canonical_repo_root() -> Path:
 
 REPO_ROOT = _canonical_repo_root()
 DEFAULT_CONFIG = REPO_ROOT / "infra" / "home-fork" / "declared-pairs.json"
+# Untracked, per-machine — same shape as `.mcp.json` — so absence is normal,
+# not an error (see the `.exists()` guard in discover_undeclared).
+DEFAULT_JSON_HOOK_REGISTRIES = [REPO_ROOT / ".codex" / "hooks.json"]
 
 # Executed-payload extensions (candidate even if not currently executable-bit).
 _EXEC_EXTS = {".sh", ".bash", ".zsh", ".py", ".rb", ".pl", ".js", ".mjs"}
@@ -692,6 +700,30 @@ def discover_bak_shadows(
     return findings
 
 
+def _walk_json_strings(obj: Any) -> list[str]:
+    """Every string leaf in a parsed JSON value, recursively.
+
+    A hook registry's shape is not standardized (unlike a plist's
+    Program/ProgramArguments) — the payload path can sit under any key, at
+    any depth. Walking every string leaf is the same "read the value, not
+    the key name" discipline `extract_home_paths` already applies to shell
+    text, applied to JSON structure instead.
+    """
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, dict):
+        out: list[str] = []
+        for v in obj.values():
+            out.extend(_walk_json_strings(v))
+        return out
+    if isinstance(obj, list):
+        out = []
+        for v in obj:
+            out.extend(_walk_json_strings(v))
+        return out
+    return []
+
+
 def discover_undeclared(
     plist_dirs: list[Path],
     crontab_text: str,
@@ -700,11 +732,19 @@ def discover_undeclared(
     declared_lives: set[str],
     allow: list[str],
     errors: list[str],
+    json_registries: Optional[list[Path]] = None,
 ) -> list[str]:
     """The --discover arm: HOME-executed payloads nobody declared.
 
-    Operational failures (unreadable dir/plist — TCC denial included) go into
-    `errors`, never silently skipped: a scan that cannot see is not clean.
+    Operational failures (unreadable dir/plist/registry — TCC denial
+    included) go into `errors`, never silently skipped: a scan that cannot
+    see is not clean.
+
+    `json_registries` (default: none, keyword-only-in-effect so every
+    existing positional call site is unaffected) are JSON hook-registry
+    files — e.g. an untracked `.codex/hooks.json` — parsed for HOME-rooted
+    payload paths the same way a plist's Program/ProgramArguments are: see
+    `_walk_json_strings`.
     """
     findings: list[str] = []
     # (origin, normalized-path, always_payload) — Program / argv[0] IS executed
@@ -758,6 +798,20 @@ def discover_undeclared(
             if isinstance(program_args, list):
                 for pos, arg in enumerate(program_args):
                     _collect_arg(origin, str(arg), pos)
+
+    for reg_path in (json_registries or []):
+        if not reg_path.exists():
+            continue  # not every machine/checkout carries this untracked file
+        try:
+            registry = json.loads(reg_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            errors.append(
+                f"json hook registry unreadable/unparseable ({type(exc).__name__}): {reg_path}"
+            )
+            continue
+        origin = f"json:{reg_path.name}"
+        for value in _walk_json_strings(registry):
+            _collect_arg(origin, value, 0)
 
     for line_no, line in enumerate(crontab_text.splitlines(), start=1):
         stripped = line.strip()
@@ -842,6 +896,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         "proprioception twin exposes)",
     )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument(
+        "--json-hook-registry",
+        type=Path,
+        action="append",
+        default=None,
+        help=(
+            "JSON hook-registry file to scan in --discover (repeatable). "
+            f"Default: {DEFAULT_JSON_HOOK_REGISTRIES} (skipped silently if absent)."
+        ),
+    )
     parser.add_argument(
         "--system", action="store_true",
         help="also scan /Library/LaunchAgents + /Library/LaunchDaemons (read-only)",
@@ -938,8 +1002,20 @@ def main(argv: Optional[list[str]] = None) -> int:
         except (OSError, subprocess.TimeoutExpired) as exc:
             errors.append(f"crontab -l unavailable ({type(exc).__name__})")
         declared_lives = {p["live"] for p in pairs}
+        json_registries = (
+            args.json_hook_registry
+            if args.json_hook_registry is not None
+            else DEFAULT_JSON_HOOK_REGISTRIES
+        )
         undeclared = discover_undeclared(
-            plist_dirs, crontab, args.home, args.repo_root, declared_lives, allow, errors
+            plist_dirs,
+            crontab,
+            args.home,
+            args.repo_root,
+            declared_lives,
+            allow,
+            errors,
+            json_registries=json_registries,
         )
         bak_shadows = discover_bak_shadows(pairs, args.home, label, errors, args.system)
 

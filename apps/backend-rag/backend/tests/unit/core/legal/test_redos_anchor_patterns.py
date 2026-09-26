@@ -521,23 +521,19 @@ class TestChunkerCallerAssumption:
         assert chunks[1].startswith("Pasal 1\n")
         assert chunks[-1].startswith("Pasal 3\n")
 
-    def test_known_gap_split_by_pasal_mispairs_its_own_split_output(self) -> None:
+    def test_gap_closed_split_by_pasal_no_longer_mispairs_its_output(self) -> None:
         """
-        PRE-EXISTING, NOT this commit's doing — pinned so a fix trips here on purpose.
-
-        `re.split()` on a two-group pattern yields `[pre, g1, g2, between, g1, g2, ...]`
-        — stride THREE — while `_split_by_pasal` walks it with `range(1, len(splits), 2)`.
-        From the second article on, every pair is off by one: `Pasal 2`'s number becomes
-        the BODY of a numberless chunk and its text is welded to the following `BAB`
-        heading under a bogus `Pasal` label. Only the first and last chunks are sane.
-
-        Verified byte-identical under the pre-fix pattern, so the ReDoS cure neither
-        caused nor worsened it. Its blast radius is every legal chunk in the vector
-        store, which is why it is a separate change and not a rider on this one.
+        PENDING-ARMS L847, closed: `_split_by_pasal` now reads `PASAL_PATTERN.finditer()`
+        matches directly (the same approach `structure_parser.py` already used for this
+        pattern) instead of walking `re.split()`'s output at a fixed, wrong stride. This
+        test used to PIN the bug (`chunks[2] == "Pasal \\n2"`, `Pasal 2`'s number welded
+        to a numberless chunk and its real text bogus-labelled under the next article) —
+        it now pins the fix: every article after the first parses with its own number
+        and its own text, not the neighbour's.
         """
         chunks = self._split(LegalCleaner().clean(DOCUMENTS["canonical"]))
-        assert chunks[2] == "Pasal \n2"
-        assert chunks[3].startswith("Pasal UU ini berasaskan")
+        assert chunks[2] == "Pasal 2\nUU ini berasaskan pemerataan hak."
+        assert chunks[3] == "Pasal 3\nKetentuan lebih lanjut diatur dengan PP."
 
     def test_and_this_is_what_would_break_if_it_ever_did(self) -> None:
         """Documents the failure mode explicitly, so a future change to

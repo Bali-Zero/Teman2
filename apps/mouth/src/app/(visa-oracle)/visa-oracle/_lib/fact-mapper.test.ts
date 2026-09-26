@@ -159,16 +159,20 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
 });
 
 // Slice A6-2 (DRAFT-SPEC-A6-1.v3.md §2.3/§2.4): the wire seam resolves only
-// the seven declared, one-directional branches. Every remaining unsure stays
+// the declared, one-directional branches. Every remaining unsure stays
 // visible as uncertainty and therefore preserves the human-review hold.
+// Slice A6-bis adds two more (`diaspora_documents`, `retirement_basis`),
+// nine in total.
 describe("resolveConservativeAnswers — the wire seam (A6-2)", () => {
-  it("resolves exactly the seven declared conservative questions and retains other unsure answers", () => {
+  it("resolves exactly the nine declared conservative questions and retains other unsure answers", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure?.mode === "conservative")
         .map(([id]) => id)
         .sort(),
     ).toEqual([
+      "diaspora_documents",
+      "retirement_basis",
       "secondhome_deposit_usd",
       "secondhome_own_name",
       "secondhome_passive_income_usd",
@@ -1560,6 +1564,42 @@ describe("mapDisclosedReviewFlags — monotone abstention metadata", () => {
     expect(
       mapDisclosedReviewFlags({ secondhome_state_bank: "unsure" }),
     ).not.toContain("NOT_CERTAIN");
+  });
+
+  // Slice A6-bis: `diaspora_documents`/`retirement_basis` join the
+  // declared-conservative group. Neither has a scalar wire factPath the way
+  // the CONSERVATIVE_ANSWERS table's rows do — `diaspora_documents` maps to
+  // no fact at all (HUMAN_CONTEXT) and `retirement_basis` only feeds the
+  // derived `depositBasisDecisivelyNotChosen` helper — so the S3 direction
+  // measurement compares the WHOLE `facts` object between the raw `unsure`
+  // answer and the conservative value directly, both resolved through
+  // `resolveConservativeAnswers` first (mapOracleFactsToApplicantFacts.ts:921).
+  it("direction (S3): diaspora_documents unsure is pack-inert — no ACTIVITY_BOUNDARY, facts unchanged from the conservative default", () => {
+    expect(
+      resolveConservativeAnswers({ diaspora_documents: "unsure" }),
+    ).toEqual({ diaspora_documents: "no" });
+    expect(mapDisclosedReviewFlags({ diaspora_documents: "unsure" })).toEqual(
+      [],
+    );
+    expect(mapFacts({ diaspora_documents: "unsure" }).facts).toEqual(
+      mapFacts({ diaspora_documents: "no" }).facts,
+    );
+  });
+
+  it("direction (S3): retirement_basis unsure resolves to undecided — no ACTIVITY_BOUNDARY, and the conservative default never adds a candidate over the raw category-only walk", () => {
+    expect(resolveConservativeAnswers({ retirement_basis: "unsure" })).toEqual({
+      retirement_basis: "undecided",
+    });
+    expect(mapDisclosedReviewFlags({ retirement_basis: "unsure" })).toEqual([]);
+    // The retirement branch of `depositBasisDecisivelyNotChosen` only reads
+    // `retirement_basis` when `category === "retirement"` — exercised here,
+    // not the bare-question call above, so the derived secondhome.* facts
+    // are actually reached.
+    expect(
+      mapFacts({ category: "retirement", retirement_basis: "unsure" }).facts,
+    ).toEqual(
+      mapFacts({ category: "retirement", retirement_basis: "undecided" }).facts,
+    );
   });
 
   it("synthetic direction fixture: zero cannot satisfy el.e33e.retirement or el.e33f.retirement at secondhome.passive_monthly_income_usd", () => {

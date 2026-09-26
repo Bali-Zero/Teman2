@@ -21,9 +21,9 @@ from pythonjsonlogger import jsonlogger
 from structlog.stdlib import LoggerFactory
 
 # Environment-based configuration
-ENVIRONMENT = getattr(__import__("os").environ, "ENVIRONMENT", "development")
-LOG_LEVEL = getattr(__import__("os").environ, "LOG_LEVEL", "INFO").upper()
-LOG_FORMAT = getattr(__import__("os").environ, "LOG_FORMAT", "console")
+ENVIRONMENT = __import__("os").environ.get("ENVIRONMENT", "development")
+LOG_LEVEL = __import__("os").environ.get("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = __import__("os").environ.get("LOG_FORMAT", "console")
 
 
 class PerformanceLogger:

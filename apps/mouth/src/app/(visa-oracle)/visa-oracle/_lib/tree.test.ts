@@ -287,8 +287,10 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
   // here even though `tsc` alone cannot enforce it inside `vitest`
   // (esbuild transpiles the file, it does not typecheck it). Both
   // cardinalities are LITERAL, never derived from the table under test
-  // (GATE-A2G OBS-A2g-4): Slice A6-2 moves exactly seven branches to
-  // `conservative`, leaving 47 `human-review` blocks.
+  // (GATE-A2G OBS-A2g-4): Slice A6-2 moved exactly seven branches to
+  // `conservative`; slice A6-bis (`diaspora_documents`, `retirement_basis`
+  // — both Group A, "no-fact-path") moves two more, leaving 45
+  // `human-review` blocks and 9 `conservative` ones.
   it("every human-review notSure block declares a because, and the A6-2 cardinality is pinned", () => {
     const entries = Object.entries(QUESTIONS);
     expect(
@@ -300,10 +302,10 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     ).toEqual([]);
     expect(
       entries.filter(([, q]) => q.notSure?.mode === "human-review"),
-    ).toHaveLength(47);
+    ).toHaveLength(45);
     expect(
       entries.filter(([, q]) => q.notSure?.mode === "conservative"),
-    ).toHaveLength(7);
+    ).toHaveLength(9);
   });
 
   // INNOCENCE (FIX-B, spec F2): exactly 14 questions declare no `notSure`

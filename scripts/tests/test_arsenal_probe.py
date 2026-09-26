@@ -345,6 +345,203 @@ def test_scrub_leaves_short_status_words_untouched():
     assert ap.scrub(text) == text
 
 
+# ---------------------------------------------------------------------------
+# scrub() — PROVENANCE-based keep=, not shape/context (scar #3, r3 redesign,
+# 2026-09-25, gate-scrub-7314-r2 REWORK-BUILD)
+#
+# Rounds 1 and 2 tried to decide from SHAPE (a regex on the token) or CONTEXT
+# (the text around a match) whether a long token was a secret, and each round
+# under-matched a real secret that origin/main redacted. This round decides
+# by PROVENANCE instead: _SECRET_RE, and every redaction origin/main performs,
+# are UNCHANGED — scrub() adds only a keyword-only `keep` parameter, and the
+# ONE exception is a match whose exact text is a member of the caller-supplied
+# `keep` set AND is itself a pure single-case letters-and-underscore
+# identifier. With keep=None or an empty set, scrub() is byte-identical to
+# origin/main for every input (PARITY, proved below).
+# ---------------------------------------------------------------------------
+
+# INNOCENCE fixture, unchanged from r1/r2: pure identifiers a caller might
+# legitimately want to keep.
+_SCRUB_INNOCENCE = [
+    "secondhome_property_value_usd",
+    "edge/secondhome_property_value_usd=unsure",
+    "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "SECOND_HOME_BELOW_THRESHOLD_STUDIO",
+    "review_hold_inventory_expected_count",
+]
+
+
+def _synthetic_guilt_cases() -> dict[str, str]:
+    """Secret-shaped strings generated HERE, never copied from env/file (SYNTHETIC).
+
+    Reused as the bulk of the parity corpus below: every one of these must
+    still be caught by _SECRET_RE and redacted, keep= or not, unless its exact
+    text is explicitly named in keep.
+    """
+    import random
+    import string
+
+    rng = random.Random(20260925)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    return {
+        "mixed_case_alnum_with_digits_40": rand_alnum(40),
+        "ghp_prefixed": "ghp_" + rand_alnum(36),
+        "sk_prefixed": "sk-" + rand_alnum(48),
+        "akia_prefixed": "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "jwt_shaped": "eyJ" + rand_alnum(10) + "." + rand_alnum(10) + "." + rand_alnum(10),
+        "hex_digest_64": "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "lower_alnum_with_digits_30": "".join(
+            rng.choice(string.ascii_lowercase + string.digits) for _ in range(30)
+        ),
+        "identifier_prefix_random_digit_tail": "secret_token_value_" + rand_alnum(24),
+        "mixed_case_underscored_no_digits": "SecretToken_ValueHere_ExtraPaddingSegment",
+        "lowercase_letters_no_underscore_32": rand_alnum(32, string.ascii_lowercase),
+        "uppercase_letters_no_underscore_32": rand_alnum(32, string.ascii_uppercase),
+        "leading_underscore": "_" + "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)),
+        "trailing_underscore": "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(4)) + "_",
+        "double_underscore": rand_alnum(10, string.ascii_lowercase) + "__" + rand_alnum(14, string.ascii_lowercase),
+        "ghp_embedded_standalone": "ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "ghp_embedded_in_snake_prefix": "my_token_ghp_" + rand_alnum(36, string.ascii_lowercase),
+        "akia_embedded_in_snake_prefix": "AWS_KEY_AKIA" + rand_alnum(16, string.ascii_uppercase),
+        "akia_all_upper_tail": "AKIA" + rand_alnum(30, string.ascii_uppercase + string.digits),
+    }
+
+
+def _parity_corpus() -> list[str]:
+    """>=40 synthetic inputs — the 18 GUILT shapes, the 5 INNOCENCE identifiers,
+    4 credential contexts (key=value / bearer, F1's shapes), and a mixed-bag
+    tail (bare prefixes, JWT, hex, AKIA, plain prose, short identifiers below
+    the 24-char floor) — reused from the gate reports for the keep=None /
+    keep=frozenset() / no-keep parity proof.
+    """
+    import random
+    import string
+
+    rng = random.Random(20260925)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    pw = "_".join(rand_alnum(6, string.ascii_lowercase) for _ in range(5))
+    contexts = [
+        f"PASSWORD={pw}",
+        f'{{"api_key": "{pw}"}}',
+        f"https://x.example/cb?access_token={pw}&x=1",
+        f"authorization: bearer {pw}",
+    ]
+    tail = [
+        "the request timed out after 45 seconds with no response",
+        "HTTP 200 OK model glm-5.2 responded",
+        "Authorization: Bearer " + rand_alnum(30),
+        "key sk-" + rand_alnum(40),
+        "token ghp_" + rand_alnum(36),
+        "eyJ" + rand_alnum(15) + "." + rand_alnum(15) + "." + rand_alnum(15),
+        "AKIA" + rand_alnum(16, string.ascii_uppercase + string.digits),
+        "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+        "plain english sentence with no secret at all in it whatsoever",
+        "a_short_id",
+        "AN_UPPER_ID",
+        "mixedCaseWord",
+        "",
+    ]
+    return list(_synthetic_guilt_cases().values()) + list(_SCRUB_INNOCENCE) + contexts + tail
+
+
+def test_parity_corpus_has_at_least_40_inputs():
+    assert len(_parity_corpus()) >= 40
+
+
+def test_scrub_keep_none_and_empty_are_byte_identical_to_unconditional_redaction():
+    # PARITY (R3 spec): with keep=None (the default) or an empty frozenset,
+    # scrub() must be byte-identical to redacting every match unconditionally
+    # — i.e. to origin/main's behavior — for every corpus input.
+    for text in _parity_corpus():
+        wrapped = f"value observed: {text} end of line"
+        baseline = ap.scrub(wrapped)
+        assert ap.scrub(wrapped, keep=None) == baseline
+        assert ap.scrub(wrapped, keep=frozenset()) == baseline
+
+
+def test_scrub_keeps_identifiers_named_in_keep():
+    # INNOCENCE: only an identifier WE explicitly named in keep survives.
+    text = "edge/secondhome_property_value_usd=unsure and DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    kept = ap.scrub(
+        text,
+        keep=frozenset({"secondhome_property_value_usd", "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}),
+    )
+    assert kept == text
+
+
+def test_scrub_redacts_pure_identifier_not_in_keep_even_with_other_keep_entries():
+    # GUILT (a): a pure-identifier synthetic passphrase NOT in keep is
+    # redacted, even while keep holds OTHER identifiers.
+    import random
+    import string
+
+    rng = random.Random(1)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    other = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {pw} and {other} end of line"
+    # guard-of-the-guard: with no keep at all, this exact fixture is redacted
+    assert ap.scrub(f"value observed: {pw} end of line") == "value observed: <REDACTED> end of line"
+    scrubbed = ap.scrub(text, keep=frozenset({other}))
+    assert pw not in scrubbed
+    assert other in scrubbed
+
+
+def test_scrub_redacts_kept_value_that_is_not_a_pure_identifier():
+    # GUILT (b): a value present in keep that is NOT a pure identifier (has a
+    # digit, or is ghp_-prefixed with digits) is still redacted — keep only
+    # ever protects the pure-identifier shape, never a secret-shaped value
+    # just because it was named.
+    import random
+    import string
+
+    rng = random.Random(2)
+
+    def rand_alnum(n: int, chars: str = string.ascii_letters + string.digits) -> str:
+        return "".join(rng.choice(chars) for _ in range(n))
+
+    with_digit = "secondhome_property_value_usd1"
+    ghp_with_digits = "ghp_" + rand_alnum(36)
+    for value in (with_digit, ghp_with_digits):
+        text = f"value observed: {value} end of line"
+        # guard-of-the-guard: redacted with no keep at all
+        assert ap.scrub(text) == "value observed: <REDACTED> end of line", value
+        scrubbed = ap.scrub(text, keep=frozenset({value}))
+        assert value not in scrubbed, f"{value}: kept despite not being a pure identifier"
+
+
+def test_scrub_extra_secrets_wins_even_when_the_same_value_is_in_keep():
+    # GUILT (c): a value that is BOTH in keep AND passed as extra_secrets is
+    # still redacted — extra_secrets is applied first and unconditionally, so
+    # a caller token can never be kept regardless of shape.
+    ident = "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"
+    text = f"value observed: {ident} end of line"
+    assert ap.scrub(text) == "value observed: <REDACTED> end of line"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, [ident], keep=frozenset({ident}))
+    assert ident not in scrubbed
+
+
+def test_scrub_redacts_password_context_passphrase_not_in_keep():
+    # GUILT (d): a snake-case passphrase in a credential-named key=value line
+    # (built below) is redacted when it is not in keep, even while keep holds
+    # an unrelated identifier.
+    import random
+    import string
+
+    rng = random.Random(3)
+    pw = "_".join("".join(rng.choice(string.ascii_lowercase) for _ in range(6)) for _ in range(5))
+    text = f"PASSWORD={pw}"
+    assert ap.scrub(text) == "PASSWORD=<REDACTED>"  # guard-of-the-guard
+    scrubbed = ap.scrub(text, keep=frozenset({"DISCLOSED_ACTIVITY_BOUNDARY_REVIEW"}))
+    assert pw not in scrubbed
+
+
+
 def test_evidence_tail_truncates_and_scrubs():
     long_secret = "x" * 40
     text = f"prefix {long_secret} suffix " + ("padding " * 40)
@@ -2729,3 +2926,97 @@ def test_probe_agy_asks_for_file_capture_not_a_pipe(monkeypatch):
 
     assert status == module.LIVE
     assert seen.get("capture_via_files") is True
+
+
+def test_agy_budget_covers_cold_start_plus_contention():
+    """2026-09-24: agy's cold start (language server + token refresh) is ~7 s before
+    the model even sees the prompt; warm answers land in 7-12 s; the all-seats
+    concurrent probe pushed one run past the old 15 s budget with EMPTY stdout and
+    the digest read TIMEOUT for a live seat. Pin >= 3x the warm p95 so a future
+    "tidy every seat back to 15" has to come here and read why."""
+    assert ap.DEFAULT_TIMEOUTS["agy"] >= 36
+    # innocence: the budget is agy-specific — the other CLI seats keep 15
+    assert ap.DEFAULT_TIMEOUTS["claude"] == 15 and ap.DEFAULT_TIMEOUTS["kimi"] == 15
+
+
+# ---------------------------------------------------------------- codex install channels
+
+
+def test_codex_candidates_prefer_the_standalone_channel():
+    """~/.local/bin (codex self-upgrade channel, owns config.toml's schema) before
+    /opt/homebrew/bin (npm copy) — 2026-09-24: the homebrew 0.149.0 could not parse the
+    config the standalone 0.155.1 had written, and every thin-$PATH probe called codex dead."""
+    ap = _load_module()
+    assert ap.CODEX_BIN_CANDIDATES[0] == "~/.local/bin/codex"
+    assert "/opt/homebrew/bin/codex" in ap.CODEX_BIN_CANDIDATES
+
+
+def _two_codex_channels(tmp_path):
+    local = tmp_path / "local-bin" / "codex"
+    homebrew = tmp_path / "homebrew-bin" / "codex"
+    for f in (local, homebrew):
+        f.parent.mkdir(parents=True)
+        f.write_text("#!/bin/sh\n")
+        f.chmod(0o755)
+    return str(local), str(homebrew)
+
+
+def test_resolve_codex_prefers_the_standalone_even_when_homebrew_is_first_on_path(monkeypatch, tmp_path):
+    """guilt: resolve_bin is $PATH-first and would return the homebrew copy here."""
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: homebrew)
+    assert ap.resolve_codex() == (local, True)
+    assert ap.resolve_bin("codex", [local, homebrew]) == (homebrew, True), "the shape resolve_bin still has"
+
+
+def test_resolve_codex_thin_path_reports_not_on_path_but_still_the_standalone(monkeypatch, tmp_path):
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (local, False)
+
+
+def test_resolve_codex_homebrew_only_host_still_answers(monkeypatch, tmp_path):
+    """innocence: a Mac with only the npm copy (M5 today?) keeps working."""
+    ap = _load_module()
+    local, homebrew = _two_codex_channels(tmp_path)
+    Path(local).unlink()
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [local, homebrew])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (homebrew, False)
+
+
+def test_resolve_codex_no_channel_is_resolve_bins_verdict(monkeypatch, tmp_path):
+    ap = _load_module()
+    monkeypatch.setattr(ap, "CODEX_BIN_CANDIDATES", [str(tmp_path / "nope" / "codex")])
+    monkeypatch.setattr(ap, "COMMON_BIN_DIRS", [str(tmp_path / "nothing")])
+    monkeypatch.setattr(ap.shutil, "which", lambda name, path=None: None)
+    assert ap.resolve_codex() == (None, False)
+
+
+def test_both_codex_probes_resolve_through_resolve_codex(monkeypatch):
+    """Reverting probe_codex / probe_codex_spark to resolve_bin(...) must fail here."""
+    ap = _load_module()
+    calls: list[str] = []
+
+    def fake_resolve_codex():
+        calls.append("resolve_codex")
+        return None, False
+
+    monkeypatch.setattr(ap, "resolve_codex", fake_resolve_codex)
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: (_ for _ in ()).throw(AssertionError("resolve_bin must not be used for codex")))
+    assert ap.probe_codex(5)[0] == ap.NOT_INSTALLED
+    assert ap.probe_codex_spark(5)[0] == ap.NOT_INSTALLED
+    assert calls == ["resolve_codex", "resolve_codex"]
+
+
+def test_codex_probe_budget_covers_the_measured_cold_start():
+    """32 s cold PONG measured 2026-09-24 (standalone 0.155.1, thin $PATH, Stop hooks
+    included); 15 s guaranteed TIMEOUT for a live seat. Pin >= 45 so a future
+    "tidy every seat back to 15" has to come here and read why."""
+    ap = _load_module()
+    assert ap.DEFAULT_TIMEOUTS["codex"] >= 45
+    assert ap.DEFAULT_TIMEOUTS["codex-spark"] >= 45

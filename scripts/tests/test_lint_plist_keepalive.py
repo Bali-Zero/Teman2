@@ -234,6 +234,39 @@ def test_run_guilt_nohup(tmp_path: Path) -> None:
     assert "nohup" in result["findings"][0]
 
 
+def test_run_guilt_plist_example_variant_not_dropped_before_parse(tmp_path: Path) -> None:
+    """W81-class: a `*.plist.example` template with the SAME one-shot smell
+    as a live plist must not escape discovery just because the filename
+    carries a trailing `.example` — the historical blind spot this row
+    names (com.nuzantara.agent-worktree-cleanup.daily.plist.example)."""
+    repo = make_repo(tmp_path)
+    wrapper = repo / "apps" / "worker" / "run.sh"
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("#!/bin/bash\nnohup node server.js &\n")
+    write_plist(
+        repo / "infra" / "launchagents" / "com.test.example-template.plist.example",
+        keepalive=True,
+        program_args=["/bin/zsh", str(wrapper)],
+    )
+    result = lpk.run(default_roots(repo), repo, verbose=False)
+    assert result["exit"] == 1
+    assert len(result["findings"]) == 1
+    assert "com.test.example-template.plist.example" in result["findings"][0]
+
+
+def test_collect_plists_innocence_name_not_a_plist_segment(tmp_path: Path) -> None:
+    """A filename that merely contains the substring "plist" without it
+    being a dot-delimited segment (e.g. a stray `notaplist.txt`) must stay
+    unmatched — the widened discovery targets the `*.plist*` FAMILY, not
+    the substring "plist" anywhere in a name (superscar #3 discipline)."""
+    repo = make_repo(tmp_path)
+    (repo / "infra" / "launchagents" / "notaplist.txt").write_text("irrelevant")
+    errors: list[str] = []
+    found = lpk.collect_plists(default_roots(repo), errors)
+    assert found == []
+    assert errors == []
+
+
 def test_run_innocence_blocking_loop_wrapper(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     wrapper = repo / "apps" / "worker" / "run.sh"

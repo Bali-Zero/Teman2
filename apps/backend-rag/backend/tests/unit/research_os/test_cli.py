@@ -43,14 +43,31 @@ def test_fixtures_check_validates_full_tree() -> None:
     assert json.loads(result.stdout)["valid"] is True
 
 
-def test_hash_cli_prints_lowercase_sha256(tmp_path: Path) -> None:
-    payload_path = tmp_path / "object.json"
-    payload_path.write_text(
-        json.dumps({"contract_version": "research-os/v1.0.0", "value": 1}), encoding="utf-8"
-    )
-    result = _run_cli("hash", "--file", str(payload_path))
+def test_hash_cli_prints_lowercase_sha256() -> None:
+    fixture = FIXTURES_ROOT / "object_successor_edge" / "valid_minimal.json"
+    result = _run_cli("hash", "--contract", "object_successor_edge", "--file", str(fixture))
     assert result.returncode == 0
     assert len(json.loads(result.stdout)["object_hash"]) == 64
+
+
+def test_hash_cli_rejects_bool_for_int_field_as_type_error(tmp_path: Path) -> None:
+    """PENDING-ARMS L1298: `hash` must validate before hashing, strictly enough
+    that a JSON `bool` silently swallowed into an `int` field by pydantic's lax
+    coercion (`sample.overall: false` -> `0`) is caught HERE, at the hash step,
+    rather than surfacing downstream as a misleading `object_hash_mismatch`."""
+    fixture = FIXTURES_ROOT / "metric_result" / "valid_minimal.json"
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
+    payload["sample"]["overall"] = False
+    bad_path = tmp_path / "bad_metric_result.json"
+    bad_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = _run_cli("hash", "--contract", "metric_result", "--file", str(bad_path))
+
+    assert result.returncode == 1
+    body = json.loads(result.stdout)
+    assert body["valid"] is False
+    assert body["error"] == "schema_validation_failed"
+    assert "integer" in body["detail"]
 
 
 def test_compat_cli_reports_breaking_reasons(tmp_path: Path) -> None:

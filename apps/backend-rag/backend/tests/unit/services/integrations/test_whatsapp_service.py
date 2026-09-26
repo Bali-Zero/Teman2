@@ -94,7 +94,8 @@ class TestClientLifecycle:
     @pytest.mark.asyncio
     async def test_close_when_none(self, service):
         service._client = None
-        await service.close()  # Should not raise
+        await service.close()
+        assert service._client is None
 
 
 # ============================================================

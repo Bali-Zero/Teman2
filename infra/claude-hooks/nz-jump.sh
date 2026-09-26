@@ -36,7 +36,7 @@ if model and "[1m]" not in model and default.endswith("[1m]"):
     if base == model or ("-" not in base and model.startswith(f"claude-{base}-")):
         model += "[1m]"
 d["model"] = model
-for k in ("model", "cwd", "hops", "permission_mode"):
+for k in ("model", "cwd", "hops", "permission_mode", "mandate_id"):
     print(f"{k.upper()}=" + shlex.quote(str(d.get(k) or "")))
 EOF
 )"
@@ -44,9 +44,20 @@ EOF
 ARGS=()
 [ -n "$MODEL" ] && ARGS+=(--model "$MODEL")
 [ -n "$PERMISSION_MODE" ] && ARGS+=(--permission-mode "$PERMISSION_MODE")
+# PENDING-ARMS L2027: re-export the parent's mandate id (a fresh window never
+# inherits it) so this session's budget/deadline tracking keys under the SAME
+# mandate as its parent, per child_workflow.py's mandate_id(). Unresolved →
+# SAY SO now, at start (dry-run included), rather than silently proceeding
+# under a session_id key.
+if [ -n "$MANDATE_ID" ]; then
+    export NUZANTARA_MANDATE_ID="$MANDATE_ID"
+else
+    echo "nz-jump: WARNING — parent mandate id unresolved; this window's budget/deadline tracking is NOT linked to session $FROM" >&2
+fi
 if [ -n "${NZ_JUMP_DRY:-}" ]; then
     printf 'nz-jump: dry-run argv\n'
     printf '%s\n' claude "${ARGS[@]}"
+    printf 'nz-jump: dry-run mandate_id=%s\n' "$MANDATE_ID"
     exit 0
 fi
 echo "nz-jump: continuing session $FROM (hop ${HOPS:-?}) in $(pwd)"

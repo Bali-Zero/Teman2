@@ -139,9 +139,21 @@ REQUIRED_SEATS = {
 DEFAULT_TIMEOUTS = {
     "claude": 15,
     "kimi": 15,
-    "agy": 15,
-    "codex": 15,
-    "codex-spark": 15,
+    # agy: 40, not 15. Measured 2026-09-24 on Pro: warm PONG 6.8-12 s from a login
+    # session, 8.9 s under a gui/501 LaunchAgent, but agy's own log for the 03:33Z
+    # healer-context run shows ~7 s of cold start (language-server spawn, token refresh,
+    # "Experiments refreshed after login") BEFORE the model call — under the all-seats
+    # concurrent probe that run crossed 15 s with EMPTY stdout and the digest read
+    # `agy TIMEOUT` for a seat that answered in 7 s a minute later. capture_via_files
+    # (probe_agy) already removed the pipe-leak reason the budget was ever 15; a dead
+    # agy now costs the run 40 s once, a live one still returns in ~9.
+    "agy": 40,
+    # codex / codex-spark: 60, not 15. Measured 2026-09-24 on Pro under a thin
+    # launchd-like $PATH: the standalone 0.155.1 answers PONG in 32 s cold (its
+    # Stop hooks run before the reply lands), so a 15 s budget reads TIMEOUT for
+    # a seat that is alive. Same lineage as agy above.
+    "codex": 60,
+    "codex-spark": 60,
     "jules": 15,
     "ollama": 15,
     "nlm": 15,
@@ -223,20 +235,48 @@ _SECRET_RE = re.compile(
 
 _SECRET_ENV_NAME_RE = re.compile(r"(TOKEN|KEY|PASSWORD|SECRET)", re.IGNORECASE)
 
+# PROVENANCE, not shape or context (scar #3 rounds 1-2 both under-matched by
+# guessing from a prefix regex or the text around a match — see history).
+# Identifies a pure letters-and-underscore identifier, single-case, for use by
+# scrub()'s keep= parameter below.
+_PURE_IDENTIFIER_RE = re.compile(r"[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+")
 
-def scrub(text: str, extra_secrets: Optional[list[str]] = None) -> str:
+
+def scrub(
+    text: str,
+    extra_secrets: Optional[list[str]] = None,
+    *,
+    keep: Optional["frozenset[str]"] = None,
+) -> str:
     """Redact credential-shaped substrings from evidence before it can be logged.
 
     extra_secrets: exact credential VALUES this probe loaded (keychain token, parsed
     env.master value) — replaced unconditionally even if they don't match the
-    generic shape (e.g. a short-but-still-sensitive value).
+    generic shape (e.g. a short-but-still-sensitive value), and BEFORE keep is
+    ever consulted, so a caller token can never be kept.
+
+    keep: an optional, caller-supplied set of exact strings this call site
+    itself sent elsewhere (its own PROVENANCE, not a guess at shape or
+    context). A match is left intact only when its exact text is a member of
+    `keep` AND is itself a pure letters-and-underscore identifier. Residual:
+    such a value, if it also happens to be sensitive, was already present in
+    what we sent. With keep=None (the default) or an empty set, this function
+    is byte-identical to redacting every match unconditionally.
     """
     out = text
     for secret in extra_secrets or []:
         if secret:
             out = out.replace(secret, "<REDACTED>")
-    out = _SECRET_RE.sub("<REDACTED>", out)
-    return out
+    if not keep:
+        return _SECRET_RE.sub("<REDACTED>", out)
+
+    def _replace(m: "re.Match[str]") -> str:
+        tok = m.group(0)
+        if tok in keep and _PURE_IDENTIFIER_RE.fullmatch(tok):
+            return tok
+        return "<REDACTED>"
+
+    return _SECRET_RE.sub(_replace, out)
 
 
 def evidence_tail(text: str, extra_secrets: Optional[list[str]] = None, limit: int = 160) -> str:
@@ -420,6 +460,29 @@ def run_probe_cmd(
 # an interactive shell seconds earlier (scar family #2 Esiste!=Armato, W108 lineage: the
 # sensor was measuring its OWN environment's poverty, not the seat's absence).
 COMMON_BIN_DIRS = ["~/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "~/.kimi-code/bin"]
+# codex has TWO install channels on a Mac: the standalone one codex's self-upgrade
+# writes under ~/.local/bin (and whose config.toml schema it also rewrites), and the
+# npm-global one under /opt/homebrew/bin. Under a thin launchd $PATH the fallback
+# ORDER decides which one answers — on 2026-09-24 the homebrew copy (0.149.0) could
+# not parse the config the standalone (0.155.1) had written, so every launchd probe
+# and the post-publish poller reported codex dead while an interactive shell (whose
+# $PATH had ~/.local/bin first) saw it live. Standalone first.
+CODEX_BIN_CANDIDATES = ["~/.local/bin/codex", "/opt/homebrew/bin/codex"]
+
+
+def resolve_codex() -> tuple[Optional[str], bool]:
+    """codex, channel-first. resolve_bin is $PATH-first, which is right for every
+    other seat but wrong here: a session whose $PATH lists /opt/homebrew/bin before
+    ~/.local/bin would hand the probe the npm copy even though the standalone is
+    installed. Take the first existing CODEX_BIN_CANDIDATES; via_path reports whether
+    ANY codex is on this process's $PATH (the NOT_ON_PATH note is about $PATH poverty,
+    not about which channel answered). No channel present -> resolve_bin's verdict."""
+    on_path = shutil.which("codex") is not None
+    for cand in CODEX_BIN_CANDIDATES:
+        expanded = os.path.expanduser(cand)
+        if Path(expanded).exists():
+            return expanded, on_path
+    return resolve_bin("codex", CODEX_BIN_CANDIDATES)
 
 
 def resolve_bin(name: str, extra_paths: Optional[list[str]] = None) -> tuple[Optional[str], bool]:
@@ -855,7 +918,7 @@ def probe_kimi(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    binp, via_path = resolve_codex()
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(
@@ -874,7 +937,7 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
 
 def probe_codex_spark(timeout: float) -> tuple[str, str, int]:
     t0 = time.monotonic()
-    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    binp, via_path = resolve_codex()
     if not binp:
         return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
     res = run_probe_cmd(

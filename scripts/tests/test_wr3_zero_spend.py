@@ -474,6 +474,22 @@ async def test_submit_clip_zero_spend_renders_placeholder_and_opens_no_socket(
     assert result.veo_job_id.startswith("placeholder:")
 
 
+def test_shot_id_to_index_matches_production_schema() -> None:
+    """L352: the real shot-pack schema keys shots by `shot_id` ("s<digits>"),
+    not the bare `index` int `render_shot_pack` used to read — a shape the
+    production driver (`wr3_render_episode.py::_shot_index`) never emits.
+    No ffmpeg needed: this is the pure conversion, independent of the
+    placeholder-render pipeline below."""
+    import wr3_flowkit_client as fk
+
+    assert fk.shot_id_to_index("s1") == 1
+    assert fk.shot_id_to_index("s042") == 42
+    with pytest.raises(ValueError):
+        fk.shot_id_to_index("shot-2")
+    with pytest.raises(ValueError):
+        fk.shot_id_to_index("2")
+
+
 @requires_ffmpeg
 @pytest.mark.asyncio
 async def test_render_shot_pack_zero_spend_renders_all_placeholders_no_setup(
@@ -489,12 +505,15 @@ async def test_render_shot_pack_zero_spend_renders_all_placeholders_no_setup(
     async def _boom(*_a, **_k):
         raise AssertionError("network path reached")
 
+    # Real shot-pack schema keys shots by shot_id ("s<digits>"), not a bare
+    # "index" int — this fixture used to carry the fake shape and render
+    # never executed under production's actual field name (L352).
     shot_pack = {
         "episode_id": "ep-zero-spend-pack",
         "shots": [
-            {"index": 1, "positive_prompt": "shot one"},
-            {"index": 2, "positive_prompt": "shot two"},
-            {"index": 3, "positive_prompt": "shot three"},
+            {"shot_id": "s1", "positive_prompt": "shot one"},
+            {"shot_id": "s2", "positive_prompt": "shot two"},
+            {"shot_id": "s3", "positive_prompt": "shot three"},
         ],
     }
     sp_path = tmp_path / "shot-pack.json"

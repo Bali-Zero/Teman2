@@ -1,0 +1,84 @@
+gear: 3
+gear_reason: >-
+  Floor measured on the merge-base diff (merge-base b8826f4494, HEAD 2f14e3b49e — post-rebase
+  onto origin/main): non-fixture churn dominated by the folded pack
+  rulepack-prod-023.source.json (~9,450 lines) and fold_pack_seq23.py (~865 lines) plus
+  test_seq23_pack.py (~578 lines) — total well past SIZE_GEAR3_THRESHOLD, source "size" the
+  source JSON is NOT size-excluded per the mission's own evidence-pack convention (#6663
+  carried it the same way). Judgement agrees independently of the floor: this PR folds a
+  candidate production rule pack (unsigned, unactivated) over apps/backend-rag/**, where
+  merging a PR is itself the deploy (memory
+  discovery_merging_a_backend_rag_pr_deploys_by_itself_2026_09_01) — the runtime stays on the
+  DB-active pack until a separate signing/activation ceremony (A9), but the candidate bytes
+  ship live the moment this merges.
+ruling: MANDATE-vo.md Slice A8-1 (DRAFT-SPEC-A8-1.v2 §1)
+mission: VISA-ORACLE-DW-20260919 — Slice A8-1 (backend-rag, candidate seq-23, UNSIGNED, UNACTIVATED)
+objective: >-
+  Fold seq-23 DIRECTLY from the signed seq-22 anchor (previous_payload_sha256
+  3d7555afcc9496b451bc86235624b4a88d35aabb9df354778dcf9b0b3b276e37, verified via the public
+  production trust store's assert_anchor_is_a_verified_signed_artifact, never taken on the
+  digest constant alone). Retires 8 REQUIRE_REVIEW rules (calling-visa, citizenship-conflict,
+  active-overstay, minor-without-guardian, bridging.adverse-history, e33.work-rangkap-kegiatan,
+  e33g.local-market, e33g.local-company-ownership) and replaces each with an hf.* HARD_FILTER/
+  EXCLUDE rule that names the same fact pattern as a dead end (on_unknown NEEDS_INPUT). Inserts
+  3 further hf.* rules with no review.* predecessor (hf.study.admission-or-sponsor-unconfirmed,
+  hf.e33e/f.retirement-income-below-minimum), each the negation of the SUPPORT rule it
+  shadows, on_unknown NO_EFFECT so an unknown fact stays with the donor SUPPORT rule's own
+  NEEDS_INPUT. Modifies 4 existing HARD_FILTER rules' on_unknown only (HUMAN_REVIEW ->
+  NEEDS_INPUT): hf.bridging.{offshore,from-visit-itk,to-bridging}, hf.b1.not-voa-nationality.
+  Brings review.e33.below-threshold-studio (D23 "OPTION B-STUDIO") forward byte-identical — it
+  stays the one HUMAN_REVIEW-stage rule in the candidate pack (A8.4's derived inventory:
+  pack_review_rules == 1, pack_unknown_escalations == 0). UNSIGNED, UNACTIVATED throughout —
+  the runtime keeps serving the DB-active pack (evaluate_path.py:1919-1945); this PR never
+  signs, activates or arms.
+scope:
+  - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq23.py (new)
+  - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-023.source.json (new, GENERATED)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq23_pack.py (new, dedicated)
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py (seq-23 candidate rows; also a pre-existing #6489 test-debt fix, see decisions)
+  - evidence/2026-09/agent-air-m5-backend-rag-seq23-candidate/**
+constraints:
+  - Forbidden - evaluate_path.py, HOLDING_DISCLOSED_FLAGS, every SIGNED pack byte,
+    engine-adapter.ts, test_review_hold_inventory.py (brought UNCHANGED, per A8-1's own
+    mandate clause) — none touched by this diff.
+  - No HARD_FILTER/EXCLUDE rule (at any stage) may read a synthesised Second-Home twin-basis
+    fact (secondhome.bank_deposit_usd / bank_deposit_at_state_bank / bank_deposit_in_own_name /
+    qualifying_property_value_usd) — antibody re-run on this fold's own output
+    (assert_no_hard_filter_reads_a_synthesised_twin_basis_fact), copied from fold_pack_seq22.py
+    in spirit (same four guarded facts, same guilt/innocence shape).
+  - The two RETIREMENT thresholds (E33E/E33F) must be read from their own donor SUPPORT rules
+    and asserted equal, never typed twice (_assert_e33e_e33f_retirement_bounds_are_equal).
+  - review.e33.below-threshold-studio stays byte-identical.
+  - Output path refuses a `.signed.json` suffix or an input collision.
+  - No DB, no production POST, no key file opened, no credential printed, no client PII.
+  - Serialize with A3'-B (both edit test_interview_walk_census.py) — confirmed by
+    `git log --oneline b8826f4494..origin/main` before push that A3'-B has not merged.
+acceptance:
+  - text: "A8.1 the fold SHALL verify its seq-22 anchor against the public trust store (never a digest constant alone) and SHALL set previous_payload_sha256/rollback_of_payload_sha256/sequence/rule_pack_id to the anchor/null/23/a72aa24f-344a-58c1-809d-076a9227a1f0"
+    probe: "pytest backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_fold_refuses_without_a_verifiable_anchor backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_fold_chains_to_seq22 backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_fold_identity_fields"
+  - text: "A8.1b the output path SHALL be refused if it ends in .signed.json or collides with an input"
+    probe: "pytest backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_output_refuses_a_signed_path backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_output_refuses_to_collide_with_an_input"
+  - text: "A8.2 the fold SHALL touch EXACTLY the 8 removed / 11 inserted / 4 modified ids of DRAFT-SPEC-A8-1.v2 §1, byte-identical everywhere else"
+    probe: "pytest backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_fold_retires_eight_inserts_eleven_modifies_four backend/tests/services/visa_engine/test_seq23_pack.py::TestFoldIntegrity::test_fold_edits_no_rule_outside_the_disposition_table backend/tests/services/visa_engine/test_seq23_pack.py::TestDispositionTableRows"
+  - text: "A8.3 no HARD_FILTER/EXCLUDE rule SHALL read a synthesised Second-Home twin-basis fact, and the two RETIREMENT bounds SHALL be equal, read from their own donors"
+    probe: "pytest backend/tests/services/visa_engine/test_seq23_pack.py::TestAntibodies"
+  - text: "A8.4 the candidate's derived inventory SHALL show pack_review_rules == 1 (Studio only) and pack_unknown_escalations == 0"
+    probe: "pytest backend/tests/services/visa_engine/test_seq23_pack.py::TestDerivedInventory"
+  - text: "A8.5 the census SHALL add the candidate rows for sequence 23 and leave every _SIGNED_SEQUENCE-keyed literal untouched; the previously-SKIPPED candidate tests SHALL show passed"
+    probe: "pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_cure_forward_guard.py"
+  - text: "A8.6 offline replay of the 19 held walks (review_reasons carrying a pack code) from the live 252-walk B4-2b sweep SHALL show none HUMAN_REVIEW_REQUIRED except the 2 Studio walks and review-gate/{criminal_record,activity_boundary}, and edge/nationalities=unsure SHALL read NEEDS_INPUT [person.nationalities]"
+    probe: "scratch script (never committed), transcript in the PR body"
+consumer_map:
+  - >-
+    The candidate census tests (test_interview_walk_census.py), SKIPPED on main today because
+    no candidate source pack sits above the highest signed one — this PR is what un-skips them,
+    and the Bites line names the CI shard log that shows them `passed`.
+  - >-
+    Slice A8-2 (mouth, opens after this PR merges): engine-adapter.ts's SUPPORT_REASON_COPY
+    gains the 10 codes this fold's disposition table names.
+  - >-
+    Slice A9 (conductor ceremony): signs and activates this candidate — this PR's job is to
+    make that ceremony's job checkable, not to sign or activate anything itself.
+appetite:
+  budget: 1 PR, unarmed
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

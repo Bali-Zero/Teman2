@@ -141,9 +141,12 @@ describe("PMA editorial disclosure boundary", () => {
     // 2026-09-23 (#7136 OSS refresh ADOPT carry): 93113/93193 carried into
     // lot 1/lot 2 by the compiler itself, same relabel, neither certified.
     // 720→722 located / 839→837 gaps / 36 certified unchanged.
+    // 2026-09-25: 50121's canonicalIntel de-certified — its pma_kondisi/
+    // pma_nota cure moved the certified pmaFingerprint. 50121 stays located
+    // (TERBATAS/49 unchanged): 722/837 unaffected, 36 -> 35 certified.
     expect(located).toHaveLength(722);
     expect(gaps).toHaveLength(837);
-    expect(located.filter((record) => record.intel_2026)).toHaveLength(36);
+    expect(located.filter((record) => record.intel_2026)).toHaveLength(35);
 
     for (const record of gaps) {
       const disclosed = discloseKbliEditorial(

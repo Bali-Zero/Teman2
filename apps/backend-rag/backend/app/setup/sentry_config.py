@@ -84,10 +84,26 @@ _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
 # `input_tokens`/`output_tokens` constantly for LLM call debugging (see
 # `backend/llm/genai_client.py`, `generate_structured` callers) — substring
 # `"token"` would redact every one of those and make Sentry useless for LLM
-# diagnosis. This does NOT cover `access_token`/`refresh_token`/`csrf_token`
-# (Drive OAuth, auth cookies) — those are a pre-existing gap, out of scope
-# for the L4 PR that added this line; tracked separately, not fixed here.
-_PII_EXACT_KEYS: frozenset[str] = frozenset({"name", "username", "token"})
+# diagnosis. "token" alone does NOT cover a key named `access_token` or
+# `refresh_token` (both are exact-match "token" != exact-match "access_token").
+#
+# L1405/L1437 (2026-09-24): enumerated explicitly below, exact-match for the
+# same reason as bare "token" — `access_token`/`refresh_token` are Drive OAuth
+# (`google_drive_service.py`, `admin_drive_auth.py`, `admin_zoho_auth.py`
+# response/row dict keys) and `csrf_token`/`nz_access_token`/`nz_csrf_token`
+# are the auth-cookie bearer and its cookie-jar names (`cookie_auth.py`).
+_PII_EXACT_KEYS: frozenset[str] = frozenset(
+    {
+        "name",
+        "username",
+        "token",
+        "access_token",
+        "refresh_token",
+        "csrf_token",
+        "nz_access_token",
+        "nz_csrf_token",
+    }
+)
 
 # Keys to treat as "query-string-ish" — the value is a URL-encoded param
 # blob that we redact by key rather than parsing.

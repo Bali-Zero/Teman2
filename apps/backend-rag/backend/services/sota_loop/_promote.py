@@ -208,7 +208,7 @@ def promote_research_output(
 
         full_message = (
             f"{commit_subject}\n\n{commit_body}\n\n"
-            "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+            "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
         )
         commit = _run(["git", "commit", "-m", full_message], cwd=wt_path, timeout=_GIT_TIMEOUT)
         if commit.returncode != 0:

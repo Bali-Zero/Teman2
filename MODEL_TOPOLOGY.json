@@ -61,7 +61,7 @@
   "roles": {
     "cron_primary": "qwen3.5:9b",
     "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
-    "agy_gemini_flash_high": "agy/Gemini 3.5 Flash (High)",
+    "agy_gemini_flash_high": "agy/Gemini 3.8 Flash (High)",
     "agy_gemini_pro_high": "agy/Gemini 3.1 Pro (High)",
     "swarm_fast_review": "agy_gemini_flash_high",
     "swarm_deep_review": "agy_gemini_pro_high",
@@ -102,6 +102,6 @@
     "mini_ram_policy": "Mini has 24GB RAM: keep only qwen2.5:7b warm by default. Load qwen3:8b, qwen3.5:9b, or qwen2.5vl:7b cold only for explicit jobs and do not install/use gemma4:26b on Mini.",
     "think_false": "Always set think:false for qwen3/3.5 API calls, otherwise content is empty and response goes to thinking field",
     "keep_alive_bug": "Always send explicit keep_alive in every API request to prevent timer reset (GitHub #5272)",
-    "agy_swarm_commander": "Agy Gemini 3.5 Flash High and Gemini 3.1 Pro High are cloud adjunct reviewers only. They run through scripts/agy_swarm_commander.py with hard timeouts, prompt-hash audit, and candidate-only output. They must not write KG nodes, merge identities, request credentials, or scrape private accounts."
+    "agy_swarm_commander": "Agy Gemini 3.8 Flash High and Gemini 3.1 Pro High are cloud adjunct reviewers only. They run through scripts/agy_swarm_commander.py with hard timeouts, prompt-hash audit, and candidate-only output. They must not write KG nodes, merge identities, request credentials, or scrape private accounts."
   }
 }

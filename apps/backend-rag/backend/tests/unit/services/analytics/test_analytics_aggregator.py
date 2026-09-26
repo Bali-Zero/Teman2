@@ -126,7 +126,14 @@ class TestClose:
     @pytest.mark.asyncio
     async def test_close_no_client(self, aggregator):
         aggregator._client = None
-        await aggregator.close()  # Should not raise
+        with patch(
+            "backend.services.analytics.analytics_aggregator.logger"
+        ) as mock_logger:
+            await aggregator.close()
+        assert aggregator._client is None
+        mock_logger.info.assert_called_once_with(
+            "AnalyticsAggregator HTTP client closed."
+        )
 
 
 # ── get_overview_stats ──────────────────────────────────────────────────────

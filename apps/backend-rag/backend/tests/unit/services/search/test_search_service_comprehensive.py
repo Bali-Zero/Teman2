@@ -226,6 +226,44 @@ class TestSearchService:
         assert result.get("search_type") == "hybrid_rrf"
 
     @pytest.mark.asyncio
+    async def test_hybrid_search_never_silently_substitutes_requested_collection(
+        self, search_service, mock_qdrant_client
+    ):
+        """L2104: `nuzantara_general_hybrid` has no registered vector_db, so
+        `_prepare_search_context` falls back to `legal_unified` — the
+        substitution must be visible on the result, never silent."""
+        search_service.query_router.route_query = MagicMock(
+            return_value={"collection_name": "nuzantara_general_hybrid"},
+        )
+
+        async def mock_hybrid_search(*args, **kwargs):
+            return {
+                "ids": ["1"],
+                "documents": ["doc1"],
+                "metadatas": [{"tier": "S"}],
+                "distances": [0.1],
+                "total_found": 1,
+                "search_type": "hybrid_rrf",
+            }
+
+        mock_qdrant_client.hybrid_search = mock_hybrid_search
+
+        def get_collection(name: str):
+            return None if name == "nuzantara_general_hybrid" else mock_qdrant_client
+
+        search_service.collection_manager.get_collection.side_effect = get_collection
+
+        result = await search_service.hybrid_search(
+            query="test",
+            user_level=1,
+            limit=5,
+            collection_override="nuzantara_general_hybrid",
+        )
+
+        assert result["collection"] == "legal_unified"
+        assert result["collection_substituted"] is True
+
+    @pytest.mark.asyncio
     async def test_hybrid_search_fallback(self, search_service):
         """Test hybrid search fallback to dense-only"""
         mock_bm25 = MagicMock()
@@ -482,6 +520,7 @@ class TestSearchService:
             vector_db,
             chroma_filter,
             tier_values,
+            collection_substituted,
         ) = await search_service._prepare_search_context(
             query="test",
             user_level=1,
@@ -492,6 +531,7 @@ class TestSearchService:
         assert embedding is not None
         assert collection is not None
         assert vector_db is not None
+        assert collection_substituted is False
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_zantara_books(self, search_service):
@@ -506,6 +546,7 @@ class TestSearchService:
             vector_db,
             chroma_filter,
             tier_values,
+            collection_substituted,
         ) = await search_service._prepare_search_context(
             query="test",
             user_level=2,
@@ -514,6 +555,7 @@ class TestSearchService:
             apply_filters=True,
         )
         assert collection == "zantara_books"
+        assert collection_substituted is False
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_apply_filters_false(self, search_service):
@@ -528,6 +570,7 @@ class TestSearchService:
             vector_db,
             chroma_filter,
             tier_values,
+            collection_substituted,
         ) = await search_service._prepare_search_context(
             query="test query",
             user_level=1,
@@ -544,7 +587,7 @@ class TestSearchService:
             "collection_name": "tax_genius",
             "collections": ["tax_genius"],
         }
-        _, collection, _, chroma_filter, _ = await search_service._prepare_search_context(
+        _, collection, _, chroma_filter, _, _ = await search_service._prepare_search_context(
             query="test tax query",
             user_level=1,
             tier_filter=None,
@@ -563,7 +606,7 @@ class TestSearchService:
             "collection_name": "visa_oracle",
             "collections": ["visa_oracle"],
         }
-        _, collection, _, chroma_filter, _ = await search_service._prepare_search_context(
+        _, collection, _, chroma_filter, _, _ = await search_service._prepare_search_context(
             query="test query",
             user_level=1,
             tier_filter=None,
@@ -599,6 +642,7 @@ class TestSearchService:
             vector_db,
             chroma_filter,
             tier_values,
+            collection_substituted,
         ) = await search_service._prepare_search_context(
             query="test query",
             user_level=1,
@@ -606,8 +650,9 @@ class TestSearchService:
             collection_override=None,
             apply_filters=None,
         )
-        # Should fallback to legal_unified
+        # Should fallback to legal_unified, and the fallback must be reported
         assert collection == "legal_unified"
+        assert collection_substituted is True
 
     @pytest.mark.asyncio
     async def test_prepare_search_context_collection_fallback_fails(self, search_service):

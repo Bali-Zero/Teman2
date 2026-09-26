@@ -1011,7 +1011,7 @@ def _attach_price_quotes(
     return Decision.model_validate(payload)
 
 
-#: The disclosures that still force a human hold (owner ruling 2026-09-13 —
+#: The disclosure that still forces a human hold (owner ruling 2026-09-13 —
 #: memory `decision-oracle-human-review-only-for-criminal-matters-ceremony-
 #: roles-authorized-2026-09-13`: "human review survives for a disclosed
 #: criminal matter and nothing else; every other disclosure becomes a named
@@ -1020,16 +1020,19 @@ def _attach_price_quotes(
 #: ``VISA_ORACLE_HOLDING_FLAGS`` is unset — see that function for the
 #: fleet-wide kill switch that can widen this set without a redeploy.
 #:
-#: ``ACTIVITY_BOUNDARY`` STAYS here (gate vo-gate-a1, PR #6839, OBS-1 HIGH):
-#: it is the flag `fact-mapper.ts` raises for what the signed pack CANNOT
-#: decide — the seven undecidable `other_purpose` values (OD-2) and
-#: `diaspora_connection = dual` (OD-3) — and PLAN's own OD-2/OD-3 defaults
-#: name a dead end, not a condition, for exactly this reason. It is released
-#: only once slice A3 sub-classifies the raise in `fact-mapper.ts` into named
-#: dead ends. Until then this adapter cannot tell "undecidable by design"
-#: apart from "decided but disclosed", so it holds the whole flag.
+#: ``ACTIVITY_BOUNDARY`` LEFT this set in Slice A3'-B (PLAN
+#: VISA-ORACLE-DW-20260919): it is the flag `fact-mapper.ts` raises for what
+#: the signed pack CANNOT decide — the seven undecidable `other_purpose`
+#: values (OD-2) and `diaspora_connection = dual` (OD-3) — and PLAN's own
+#: OD-2/OD-3 defaults name a dead end, not a condition, for exactly this
+#: reason. Slice A3 sub-classified the raise in `fact-mapper.ts` into named
+#: dead ends, so this adapter can now tell "undecidable by design" apart
+#: from "decided but disclosed" and no longer needs to hold the whole flag —
+#: see ``DEAD_END_DISCLOSED_FLAGS`` below for where it lives now. The
+#: fleet-wide kill switch can still widen the hold to include it explicitly
+#: (``_resolve_holding_flags``).
 HOLDING_DISCLOSED_FLAGS: frozenset[DisclosedReviewFlag] = frozenset(
-    {DisclosedReviewFlag.CRIMINAL_RECORD, DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+    {DisclosedReviewFlag.CRIMINAL_RECORD}
 )
 
 #: Env override for ``HOLDING_DISCLOSED_FLAGS`` — a comma-separated list of
@@ -1070,11 +1073,15 @@ def _resolve_holding_flags() -> frozenset[DisclosedReviewFlag]:
       kill switch — this is intentionally stricter than "keep what parsed").
     - every token recognised -> exactly that set.
 
-    ``CRIMINAL_RECORD`` and ``ACTIVITY_BOUNDARY`` are unioned into every
-    return path below — no env value, malformed or not, can ever release
-    either of the two disclosures ``HOLDING_DISCLOSED_FLAGS`` never
-    releases. The raw env value is never logged (only a count), even though
-    it is operator-controlled and not applicant data, to keep this adapter's
+    ``CRIMINAL_RECORD`` is unioned into every return path below — no env
+    value, malformed or not, can ever release the one disclosure
+    ``HOLDING_DISCLOSED_FLAGS`` never releases. ``ACTIVITY_BOUNDARY`` is no
+    longer in that floor (Slice A3'-B): by default it resolves to a named
+    dead end, not a hold (see ``DEAD_END_DISCLOSED_FLAGS``), but the kill
+    switch can still widen the hold to include it explicitly, and every
+    fail-closed shape above holds it along with every other flag. The raw
+    env value is never logged (only a count), even though it is
+    operator-controlled and not applicant data, to keep this adapter's
     "nothing sensitive in a log line" posture uniform — at most one WARNING
     per evaluation.
     """
@@ -1155,9 +1162,11 @@ _DISCLOSED_REVIEW_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = Map
 #: OD-5 of `VISA-ORACLE-DW-20260919/PLAN.md`; narrowed from ten to nine by
 #: gate vo-gate-a1's OBS-1 HIGH — see ``HOLDING_DISCLOSED_FLAGS`` above).
 #: Every code matches ``ReasonCode``'s open pattern (``models.py:95``), so
-#: this needs no schema bump and no pack re-sign. ``CRIMINAL_RECORD`` and
-#: ``ACTIVITY_BOUNDARY`` are deliberately absent — both only hold, never
-#: condition, while they remain in ``HOLDING_DISCLOSED_FLAGS``.
+#: this needs no schema bump and no pack re-sign. ``CRIMINAL_RECORD`` is
+#: deliberately absent — it only holds, never conditions, while it remains
+#: in ``HOLDING_DISCLOSED_FLAGS``. ``ACTIVITY_BOUNDARY`` is also absent, for
+#: a different reason since Slice A3'-B: it neither holds nor conditions —
+#: it names a dead end (``DEAD_END_DISCLOSED_FLAGS`` below).
 _DISCLOSED_CONDITION_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
     {
         DisclosedReviewFlag.HEALTH_CONCERN: "DISCLOSED_HEALTH_CONCERN_CONDITION",
@@ -1174,6 +1183,30 @@ _DISCLOSED_CONDITION_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = 
         DisclosedReviewFlag.PAST_OVERSTAY: "DISCLOSED_PAST_OVERSTAY_CONDITION",
         DisclosedReviewFlag.BLACKLIST_ENTRY: "DISCLOSED_BLACKLIST_ENTRY_CONDITION",
         DisclosedReviewFlag.IMMIGRATION_INVESTIGATION: "DISCLOSED_IMMIGRATION_INVESTIGATION_CONDITION",
+    }
+)
+
+#: The one disclosure that names a dead end instead of either a hold or a
+#: condition (Slice A3'-B, PLAN VISA-ORACLE-DW-20260919): unlike
+#: ``HOLDING_DISCLOSED_FLAGS`` (still forces ``HUMAN_REVIEW_REQUIRED``) or
+#: ``_DISCLOSED_CONDITION_REASON_CODES`` above (adds a notice to the pack's
+#: own kept candidate), ``ACTIVITY_BOUNDARY`` is the flag `fact-mapper.ts`
+#: raises for what the signed pack CANNOT decide at all — it has no
+#: eligibility answer to abstain from, so on a base the pack otherwise
+#: supported it names a dead end instead of borrowing that base's candidate.
+DEAD_END_DISCLOSED_FLAGS: frozenset[DisclosedReviewFlag] = frozenset(
+    {DisclosedReviewFlag.ACTIVITY_BOUNDARY}
+)
+
+#: The dead-end reason code for each ``DEAD_END_DISCLOSED_FLAGS`` member —
+#: the mirror of ``_DISCLOSED_REVIEW_REASON_CODES``/
+#: ``_DISCLOSED_CONDITION_REASON_CODES`` for this third outcome. Every code
+#: matches ``SOURCELESS_NO_PATH_CODES`` on the mouth side
+#: (``engine-adapter.ts``), so a sourceless no-path reason renders without a
+#: citation.
+_DISCLOSED_NO_PATH_REASON_CODES: MappingProxyType[DisclosedReviewFlag, str] = MappingProxyType(
+    {
+        DisclosedReviewFlag.ACTIVITY_BOUNDARY: "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH",
     }
 )
 
@@ -1498,25 +1531,47 @@ def _apply_disclosed_review_flags(
     decision: Decision,
     flags: tuple[DisclosedReviewFlag, ...],
 ) -> Decision:
-    """Split disclosures into a hold and named conditions.
+    """Split disclosures into a hold, a named dead end, and named conditions.
 
     Monotone abstention adapter for review disclosures outside the pack:
-    it cannot create or retain candidates for a flag that holds, and a
-    conditioning flag may only ADD a notice — it can never create, reorder
-    or remove a candidate, and never lowers the state. Empty ``source_refs``
-    is intentional throughout: these codes describe an applicant disclosure,
-    not a legal eligibility claim, so they must not borrow a regulatory
-    citation that the signed RulePack did not declare.
+    it cannot create or retain candidates for a flag that holds or dead-ends,
+    and a conditioning flag may only ADD a notice — it can never create,
+    reorder or remove a candidate, and never lowers the state. Empty
+    ``source_refs`` is intentional throughout: these codes describe an
+    applicant disclosure, not a legal eligibility claim, so they must not
+    borrow a regulatory citation that the signed RulePack did not declare.
 
-    Only the flags in ``_resolve_holding_flags()`` (``CRIMINAL_RECORD`` and
-    ``ACTIVITY_BOUNDARY`` always, plus whatever ``VISA_ORACLE_HOLDING_FLAGS``
-    restores) rewrite the decision to a hold; every other disclosed flag
-    becomes a named ``notices`` condition on the decision the pack already
-    reached, per the 2026-09-13 ruling — see ``HOLDING_DISCLOSED_FLAGS``
-    above. Conditioning flags are sorted into ``DisclosedReviewFlag``'s own
-    declaration order before their notices are built (gate vo-gate-a1,
+    Only the flags in ``_resolve_holding_flags()`` (``CRIMINAL_RECORD``
+    always, plus whatever ``VISA_ORACLE_HOLDING_FLAGS`` restores) rewrite
+    the decision to a hold on their own — this ALWAYS takes priority over
+    the dead-end branch below, on any pack state, per the 2026-09-13
+    ruling (see ``HOLDING_DISCLOSED_FLAGS`` above). A flag in
+    ``DEAD_END_DISCLOSED_FLAGS`` (``ACTIVITY_BOUNDARY`` by default — Slice
+    A3'-B) that is disclosed ALONGSIDE a holding flag, or that reaches a
+    pack already at ``HUMAN_REVIEW_REQUIRED``, joins that same hold instead
+    of dead-ending: there is no dead end to name once the outcome is
+    already a human review, so the dead-end flag is named by its own
+    ``_REVIEW`` code and folded into the hold's seed — byte-identical to
+    before Slice A3'-B moved it out of ``HOLDING_DISCLOSED_FLAGS`` (gate-
+    a3p-b rework HIGH-1; see ``test_activity_boundary_oracle_innocence``,
+    B3).
+
+    A dead-end flag that is NOT held and does NOT reach an
+    already-``HUMAN_REVIEW_REQUIRED`` pack names a dead end instead: on a
+    pack base that reached ``SUPPORTED_CANDIDATES`` or ``NEEDS_INPUT``, it
+    rewrites the decision to ``NO_SUPPORTED_PATH`` with only the dead-end
+    reason(s) — there is no pack verdict to abstain from. On a pack base
+    already at ``NO_SUPPORTED_PATH``, the dead-end reason(s) are appended
+    after the pack's own. On every other pack state (``TEMPORARILY_
+    UNAVAILABLE``) — or when no dead-end flag is present — the pack's own
+    decision is kept verbatim, today's path.
+
+    Every other disclosed flag becomes a named ``notices`` condition on the
+    decision the pack already reached, per the 2026-09-13 ruling. Both the
+    conditioning and the dead-end flags are sorted into ``DisclosedReviewFlag``'s
+    own declaration order before their reasons are built (gate vo-gate-a1,
     OBS-5 LOW), so two requests naming the same flags in a different order
-    produce byte-identical ``notices``.
+    produce byte-identical output.
     """
 
     if not flags:
@@ -1525,10 +1580,40 @@ def _apply_disclosed_review_flags(
         return decision
 
     holding_flags = _resolve_holding_flags()
-    holding = tuple(flag for flag in flags if flag in holding_flags)
+    _raw_holding = tuple(flag for flag in flags if flag in holding_flags)
+    # A dead-end flag (``ACTIVITY_BOUNDARY`` by default) only actually
+    # dead-ends when it would otherwise be the thing deciding the outcome.
+    # The moment a real holding flag is ALSO disclosed, or the pack is
+    # ALREADY at ``HUMAN_REVIEW_REQUIRED``, the request is going to a human
+    # review regardless of the dead-end flag — before Slice A3'-B moved
+    # ``ACTIVITY_BOUNDARY`` out of ``HOLDING_DISCLOSED_FLAGS``, it rode
+    # along in ``holding`` in exactly these two situations (gate-a3p-b
+    # rework HIGH-1), and this branch reproduces that byte-for-byte: the
+    # dead-end flag(s) join ``holding`` — named by their ``_REVIEW`` code,
+    # not their no-path code — instead of being dropped or overridden.
+    if _raw_holding or decision.state is DecisionState.HUMAN_REVIEW_REQUIRED:
+        holding = tuple(
+            flag for flag in flags if flag in holding_flags or flag in DEAD_END_DISCLOSED_FLAGS
+        )
+    else:
+        holding = _raw_holding
+    dead_end = tuple(
+        sorted(
+            (
+                flag
+                for flag in flags
+                if flag in DEAD_END_DISCLOSED_FLAGS and flag not in holding_flags
+            ),
+            key=lambda flag: _DISCLOSED_FLAG_DECLARATION_ORDER[flag],
+        )
+    )
     conditioning = tuple(
         sorted(
-            (flag for flag in flags if flag not in holding_flags),
+            (
+                flag
+                for flag in flags
+                if flag not in holding_flags and flag not in DEAD_END_DISCLOSED_FLAGS
+            ),
             key=lambda flag: _DISCLOSED_FLAG_DECLARATION_ORDER[flag],
         )
     )
@@ -1543,17 +1628,84 @@ def _apply_disclosed_review_flags(
     )
 
     if not holding:
-        # No holding flag survived the split: the pack's own decision is
-        # kept verbatim — state, candidates, missing_facts, no_path_reasons
-        # and quotes all as the pack decided — with only the condition
-        # notices appended. decision_id/public_id are NOT re-seeded here:
-        # this decision did not change, so re-seeding would break the
-        # idempotency binding for an identical decision. ``decision_integrity``
-        # is nulled defensively (gate vo-gate-a1, OBS-6 LOW): this adapter is
-        # documented to run strictly before ``seal_decision``, so the
-        # incoming value is always already ``None`` — nulling it here closes
-        # the latent trap if that ordering is ever changed upstream, rather
-        # than relying on a contract this function cannot itself enforce.
+        dead_end_reasons = tuple(
+            Reason(
+                code=_DISCLOSED_NO_PATH_REASON_CODES[flag],
+                rule_ids=(f"system.disclosed-no-path.{flag.value.lower().replace('_', '-')}",),
+                source_refs=(),
+            )
+            for flag in dead_end
+        )
+        # ``"no-path:"`` prefixes the seed so a dead-end id can never
+        # collide with the kill-switch hold's id for the SAME flag set —
+        # `_apply_disclosed_review_flags` can reach either outcome for
+        # ACTIVITY_BOUNDARY depending on ``VISA_ORACLE_HOLDING_FLAGS``, and
+        # the two must be distinguishable idempotency keys.
+        dead_end_seed = ",".join(flag.value for flag in dead_end)
+        dead_end_decision_id = (
+            uuid.uuid5(decision.decision_id, f"no-path:{dead_end_seed}") if dead_end else None
+        )
+        dead_end_public_id = (
+            hashlib.sha256(f"{decision.public_id}:no-path:{dead_end_seed}".encode()).hexdigest()[
+                :20
+            ]
+            if dead_end
+            else None
+        )
+        if dead_end and decision.state in (
+            DecisionState.SUPPORTED_CANDIDATES,
+            DecisionState.NEEDS_INPUT,
+        ):
+            # The pack reached a candidate or asked a question — but a
+            # dead-end flag means the pack cannot decide this applicant at
+            # all, so there is no verdict to abstain from: it becomes the
+            # decision, not an addition to it.
+            payload = decision.model_dump(mode="python")
+            payload.update(
+                {
+                    "decision_id": dead_end_decision_id,
+                    "public_id": dead_end_public_id,
+                    "state": "NO_SUPPORTED_PATH",
+                    "candidates": (),
+                    "missing_facts": (),
+                    "no_path_reasons": dead_end_reasons,
+                    "outage": None,
+                    "quotes": (),
+                    "notices": (*decision.notices, *condition_notices),
+                    "trace_sha256": decision.trace_sha256,
+                    "decision_integrity": None,
+                }
+            )
+            return Decision.model_validate(payload)
+        if dead_end and decision.state is DecisionState.NO_SUPPORTED_PATH:
+            # The pack already named its own dead end(s); ours are appended,
+            # never replacing what the pack itself proved.
+            payload = decision.model_dump(mode="python")
+            payload.update(
+                {
+                    "decision_id": dead_end_decision_id,
+                    "public_id": dead_end_public_id,
+                    "no_path_reasons": (*decision.no_path_reasons, *dead_end_reasons),
+                    "notices": (*decision.notices, *condition_notices),
+                    "trace_sha256": decision.trace_sha256,
+                    "decision_integrity": None,
+                }
+            )
+            return Decision.model_validate(payload)
+        # No holding flag survived the split, and either no dead-end flag
+        # applies or the pack state is one a dead end cannot touch (already
+        # HUMAN_REVIEW_REQUIRED, or TEMPORARILY_UNAVAILABLE): the pack's own
+        # decision is kept verbatim — state, candidates, missing_facts,
+        # no_path_reasons and quotes all as the pack decided — with only the
+        # condition notices appended. decision_id/public_id are NOT
+        # re-seeded here: this decision did not change, so re-seeding would
+        # break the idempotency binding for an identical decision.
+        # ``decision_integrity`` is nulled defensively (gate vo-gate-a1,
+        # OBS-6 LOW): this adapter is documented to run strictly before
+        # ``seal_decision``, so the incoming value is always already
+        # ``None`` — nulling it here closes the latent trap if that
+        # ordering is ever changed upstream, rather than relying on a
+        # contract this function cannot itself enforce.
         payload = decision.model_dump(mode="python")
         payload["notices"] = (*decision.notices, *condition_notices)
         payload["decision_integrity"] = None

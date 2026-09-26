@@ -1,0 +1,108 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "Remainder of the W-H prose lot (commit fbf085e1fa, never shipped), re-graded on origin/main f300402e0e (after PR #7231). Four defect families: (1) 50135/50221/51101/50222 pullQuotes say Bali is not moratorium-blocked without stating the national 49% foreign-ownership cap that still applies; the 2026-09-17 replacements are re-applied verbatim because their old_sha256 still matches. (2) 53200 whatYouNeed ends with an unverified precise date ('13 May 2026') for a moratorium that does not block this code; the record's own l4_bali.moratorium.effective says only 'third week of May 2026'. PR #7231 rewrote this field, so the lot's replacement (which still carried the inverted 49% formula) is void: the cure now drops only the dated sentence from the #7231 text. (3) 50133 whatYouNeed ends with a dangling self-referential fragment; same treatment, drop only that sentence from the #7231 text. (4) 93114 editorial asserts unqualified Bali registrability ('registrable in Bali by a PT PMA', 'Open in Bali (high-risk track)') against its own l4_bali verdict BLOCCATO_DIPENDE_SCOPE/needs_review. The lot's replacement for it was re-authored: since 2026-09-17 the record's per_skala is OSS-sourced (golf scope Tinggi at every scale, other courts Menengah Rendah at every scale), so the lot's 'golf at the Besar scale / other scopes at Mikro-Kecil-Menengah' is no longer what the record says, and the lot kept 'Bali's permanent moratorium blocks PMA registration for Low and Medium-Low risk activities', which contradicts the record's own l4_bali.moratorium.rule (18 business fields, not every low/medium-low activity; until further policy). The new text states risk by scope, never by scale, and quotes the moratorium as the record does. Only paragraph 4 of the body changes; paragraphs 1-3 are carried verbatim. 93114 is not certified in canonicalIntel, so its editorial is withheld from every surface today: this is a latent-defect cure.",
+  "codes": {
+    "50135": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #21"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "a7e03189aa1b30f1570f41f45db221730db52078ad8d1fd5c560183a98be5676",
+          "new": "PMA registration for this activity in Bali is not blocked by the moratorium at the Big scale identified here, up to the national 49% foreign-ownership cap."
+        }
+      }
+    },
+    "50221": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #26"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "faf7f37e12ca70d84481bd5bffdd23b547e647e8b1a2c3ee24d7d6843c2ad33f",
+          "new": "For this activity, Bali is therefore not moratorium-blocked for PMA registration, up to the national 49% foreign-ownership cap."
+        }
+      }
+    },
+    "51101": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #31"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "e08d97dab89e03b21a165851305459dbfd9b2ef0ee5eed5703db49f3713b9e97",
+          "new": "In Bali, the relevant fact is equally plain: PMA registration is not barred by the provincial moratorium on the record’s terms, up to the national 49% foreign-ownership cap."
+        }
+      }
+    },
+    "50222": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #27"
+      },
+      "fields": {
+        "editorial.pullQuote": {
+          "old_sha256": "b91dc5b70904d547026ddbbbcf74d6e3ebb4d80cec6ee4c9a822743bd1a3e3d2",
+          "new": "A foreign-owned business may register this specialised inland cargo activity, up to the national 49% foreign-ownership ceiling, and Bali’s cited moratorium does not prevent that registration."
+        }
+      }
+    },
+    "53200": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #32"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "9f24b7b271fb23904d6bcf3f841d1023bb413863c5b497f99edb38911331820c",
+          "new": "Foreign ownership in this activity is capped at 49%: foreign shareholders can hold up to 49% of a PT PMA, and the rest of the shares must be held by Indonesian shareholders. The cap is set by Perpres 49/2021, Lampiran III, entry #32, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at high risk."
+        }
+      }
+    },
+    "50133": {
+      "expect": {
+        "pma_max_asing": 49,
+        "pma_status": "TERBATAS",
+        "pma_official_basis_contains": "entry #22"
+      },
+      "fields": {
+        "whatYouNeed": {
+          "old_sha256": "9c99779c62a6ce041d86285d4183fe57b15d0021868b1dd67c73b4d6b3150733",
+          "new": "Foreign ownership in this activity is capped at 49%: foreign shareholders can hold up to 49% of a PT PMA, and the rest of the shares must be held by Indonesian shareholders. The cap is set by Perpres 49/2021, Lampiran III, entry #22, and applies throughout Indonesia. Bali does not add a block on top of it — the island's moratorium suspends PMA registration only for low and medium-low risk lines, and this activity is recorded at medium-high risk."
+        }
+      }
+    },
+    "93114": {
+      "expect": {
+        "pma_max_asing": 100,
+        "pma_status": "TERBUKA"
+      },
+      "fields": {
+        "editorial.standfirst": {
+          "old_sha256": "b52bacdb2a82266bfaaf0a569108c86cf04df946af2780a4068bf5a3a2bf4ba4",
+          "new": "A national opening for sports-field facilities, with Bali's registration status scope-dependent and still to be confirmed."
+        },
+        "editorial.body": {
+          "old_sha256": "2532975438c38a3aec7089ea250518d9c604898d125123c777ba404a3a28fe68",
+          "new": "This activity is the business of providing venues and facilities for sport as its principal undertaking: golf, badminton, volleyball, basketball and tennis. The emphasis is on the place and the facility itself—the operational setting in which these sports are played. That gives the code a practical clarity. It is for an enterprise whose core activity is making those grounds, courts and sporting facilities available, rather than treating sport as a peripheral feature of another business.\n\nThe activity is open across the full stated range of business scales: Mikro, Kecil, Menengah and Besar. That breadth matters because the commercial form of a sporting facility can vary considerably while remaining anchored in the same central proposition: providing the sporting space. A founder should therefore keep the declared activity faithful to that core. The record describes a facility-provider, not an undefined lifestyle concept; its centre of gravity is the availability of golf, badminton, volleyball, basketball or tennis facilities as the main business activity.\n\nNationally, the position is direct. The activity is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. In other words, the record places no national foreign-share cap below full ownership for this activity. Its stated national basis is Perpres 10/2021, 49/2021. For an international founder, that is the essential starting point: the activity is nationally open and can sit within a foreign-investment structure at the stated ceiling.\n\nBali requires a more exact reading, and the record does not settle it either way. The Governor's moratorium request asked Bali to close OSS to PMA registration for low and medium-low risk activities; as applied, Bali closed OSS to new PMA licensing for 18 business fields named in KBLI 2020 numbering, not for every such activity. Golf facilities are recorded at Tinggi risk, outside those tiers, and no Perpres reservation for them was located. The other sports-field scopes — badminton, volleyball, basketball, tennis and similar courts — are recorded at Menengah Rendah risk and are flagged blocked in Bali as a precaution, and whether OSS licenses this code for a PT PMA is not yet confirmed. The national opening is real; the Bali pathway described here is not a settled fact."
+        },
+        "editorial.pullQuote": {
+          "old_sha256": "eed6a105740a36426e49cea66b294c66842062c01c517c0c91f7b7124858c50e",
+          "new": "Bali's status for this activity is scope-dependent: golf facilities are recorded at high risk, outside the low and medium-low tiers of the moratorium request, while the other sports-field scopes are flagged blocked as a precaution, and OSS eligibility for a PT PMA is not yet confirmed."
+        },
+        "editorial.byTheNumbers[2].value": {
+          "old_sha256": "7014402a00f4ad90b0eaf70258d2b50e8062062339403037bb17f7d7d0b91224",
+          "new": "Scope-dependent — confirm before registering"
+        }
+      }
+    }
+  }
+}

@@ -25,8 +25,10 @@ export interface OracleOption {
  * groups, computed from each question's `decisionMapping.factPaths` against
  * `rulepack-prod-022.signed.json`'s `required_facts`/`on_unknown`, never
  * hand-copied:
- *  - Group A, 11 questions, `kind: "HUMAN_CONTEXT"` — no factPaths exist for
- *    `resolveConservativeAnswers` to reach. Tag `"no-fact-path"`.
+ *  - Group A, 9 questions (11 before slice A6-bis moved `diaspora_documents`
+ *    and `retirement_basis` to `conservative`), `kind: "HUMAN_CONTEXT"` — no
+ *    factPaths exist for `resolveConservativeAnswers` to reach. Tag
+ *    `"no-fact-path"`.
  *  - Group B, 6 questions — every consuming rule declares
  *    `on_unknown: "NO_EFFECT"` (or no rule consumes the path at all): the
  *    fact is pack-inert. Tag `"unknown-is-inert"`.
@@ -54,8 +56,10 @@ export type NotSureHoldReason =
 
 /** How a question's "Not sure?" affordance resolves (design doc §3/§4):
  * either it forces HUMAN_REVIEW_REQUIRED — and `because` NAMES why no
- * conservative default exists for this fact (`NotSureHoldReason`) — or it
- * takes a named conservative branch and the assumption is visibly logged.
+ * conservative default exists for this fact (`NotSureHoldReason`; A3'
+ * (slice A3'-B) turns the `"activity-boundary-a3prime"` reason into a dead
+ * end instead, `NO_SUPPORTED_PATH`, not a hold) — or it takes a named
+ * conservative branch and the assumption is visibly logged.
  * Absent = no NotSure affordance rendered. */
 export type NotSureBehavior =
   | { mode: "human-review"; because: NotSureHoldReason }
@@ -1352,7 +1356,15 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.retirement_basis" },
-    notSure: { mode: "human-review", because: "no-fact-path" },
+    // Slice A6-bis: no rule reads this raw answer directly (only the
+    // derived `depositBasisDecisivelyNotChosen`/`propertyBasisDecisively
+    // NotChosen` helpers in fact-mapper.ts do, and `"undecided"` is already
+    // one of the five decidable values `ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS`
+    // lists for this question) — holding on the bare "not sure" only
+    // deletes a candidate the pack could still assess. `"undecided"` is
+    // the honest conservative value: it is what the applicant would have
+    // picked to mean the same thing.
+    notSure: { mode: "conservative", conservativeValue: "undecided" },
   },
   // D3-3 (PR-D3, owner ruling SHWEB-20260911): `undecided` stopped being a
   // dead end. Instead of holding on the bare label, this presents the two
@@ -1612,7 +1624,13 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "no", labelI18nKey: "q.boolean.no" },
     ],
     whyWeAsk: { i18nKey: "why.diaspora_documents" },
-    notSure: { mode: "human-review", because: "no-fact-path" },
+    // Slice A6-bis: no rule reads this fact at all (HUMAN_CONTEXT, and
+    // `fact-mapper.ts` maps it to nothing) — the ACTIVITY_BOUNDARY hold
+    // was pack-inert, deleting a candidate the pack never needed this
+    // answer to reach. "no" is the honest conservative default: it is the
+    // answer that asks the consultant to confirm rather than assuming
+    // documentation exists.
+    notSure: { mode: "conservative", conservativeValue: "no" },
   },
   other_purpose: {
     id: "other_purpose",

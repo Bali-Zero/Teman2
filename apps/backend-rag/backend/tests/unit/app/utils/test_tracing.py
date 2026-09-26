@@ -72,10 +72,14 @@ class TestTracingUtilities:
             mock_span.set_attribute.assert_called()
 
     @patch("backend.app.utils.tracing.OTEL_AVAILABLE", False)
-    def test_add_span_event_not_available(self):
+    @patch("backend.app.utils.tracing.trace")
+    def test_add_span_event_not_available(self, mock_trace):
         """Test add_span_event when OpenTelemetry not available"""
-        # Should not raise exception
-        add_span_event("test_event", {"key": "value"})
+        # Should not raise exception, and must take the early-return path —
+        # never touching `trace` at all.
+        result = add_span_event("test_event", {"key": "value"})
+        assert result is None
+        mock_trace.get_current_span.assert_not_called()
 
     @patch("backend.app.utils.tracing.OTEL_AVAILABLE", True)
     @patch("backend.app.utils.tracing.trace")
@@ -89,10 +93,14 @@ class TestTracingUtilities:
         mock_span.add_event.assert_called_once_with("test_event", attributes={"key": "value"})
 
     @patch("backend.app.utils.tracing.OTEL_AVAILABLE", False)
-    def test_set_span_attribute_not_available(self):
+    @patch("backend.app.utils.tracing.trace")
+    def test_set_span_attribute_not_available(self, mock_trace):
         """Test set_span_attribute when OpenTelemetry not available"""
-        # Should not raise exception
-        set_span_attribute("key", "value")
+        # Should not raise exception, and must take the early-return path —
+        # never touching `trace` at all.
+        result = set_span_attribute("key", "value")
+        assert result is None
+        mock_trace.get_current_span.assert_not_called()
 
     @patch("backend.app.utils.tracing.OTEL_AVAILABLE", True)
     @patch("backend.app.utils.tracing.trace")
@@ -106,7 +114,11 @@ class TestTracingUtilities:
         mock_span.set_attribute.assert_called_once_with("key", "value")
 
     @patch("backend.app.utils.tracing.OTEL_AVAILABLE", False)
-    def test_set_span_status_not_available(self):
+    @patch("backend.app.utils.tracing.trace")
+    def test_set_span_status_not_available(self, mock_trace):
         """Test set_span_status when OpenTelemetry not available"""
-        # Should not raise exception
-        set_span_status("ok")
+        # Should not raise exception, and must take the early-return path —
+        # never touching `trace` at all.
+        result = set_span_status("ok")
+        assert result is None
+        mock_trace.get_current_span.assert_not_called()

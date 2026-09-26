@@ -600,6 +600,14 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE: dict[int, dict[str, tuple[DeadEnd, ...]]] =
     22: {
         "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
     },
+    # A8-1 (seq-23 candidate): unchanged from seq-22 — the 82-walk corpus
+    # exercises none of the eight REQUIRE_REVIEW rules this fold retires, so
+    # the candidate replay (test_every_walk_ends_in_its_pinned_outcome_on_
+    # the_candidate_pack) produces zero dead-end violations against this same
+    # row; confirmed by running the replay, not carried over unverified.
+    23: {
+        "offshore/retirement/undecided/age64/still_unsure": _STILL_UNSURE_RETIREMENT_ROW,
+    },
 }
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1138,10 +1146,20 @@ _SEQ22_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/bank_deposit/below_threshold": ("HUMAN_REVIEW_REQUIRED", ()),
 }
 
+#: A8-1 (seq-23 candidate): empty, confirmed by running the candidate
+#: replay — none of the 82 corpus walks exercise any of the eight
+#: REQUIRE_REVIEW rules this fold retires (calling-visa, citizenship
+#: conflict, active overstay, minor-without-guardian, bridging adverse
+#: history, e33 employment, e33g local-market/company), so no walk's
+#: (state, candidates) pair moves off `_EXPECTED_OUTCOME_ON_SEQ20` /
+#: `_SEQ22_OUTCOME_CHANGES`.
+_SEQ23_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {}
+
 EXPECTED_OUTCOME_BY_SEQUENCE: dict[int, dict[str, tuple[str, tuple[str, ...]]]] = {
     20: _EXPECTED_OUTCOME_ON_SEQ20,
     21: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ21_OUTCOME_CHANGES},
     22: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES},
+    23: {**_EXPECTED_OUTCOME_ON_SEQ20, **_SEQ22_OUTCOME_CHANGES, **_SEQ23_OUTCOME_CHANGES},
 }
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = EXPECTED_OUTCOME_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1186,6 +1204,8 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE: dict[int, dict[str, int]] = {
     },
     21: {"family.sponsor_confirmed": 1},
     22: {"family.sponsor_confirmed": 1},
+    # Slice A9.3: measured on the signed seq-23 tree, identical to seq-22.
+    23: {"family.sponsor_confirmed": 1},
 }
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.get(
     _SIGNED_SEQUENCE, {}
@@ -1297,6 +1317,14 @@ STUDIO_HELD_WALKS_BY_SEQUENCE: dict[int, frozenset[str]] = {
             "offshore/invest/property/below_threshold",
         }
     ),
+    # Slice A9.3: seq-23 carries `review.e33.below-threshold-studio` forward
+    # byte-identical, so the same two walks hold — measured on the signed tree.
+    23: frozenset(
+        {
+            "offshore/invest/bank_deposit/below_threshold",
+            "offshore/invest/property/below_threshold",
+        }
+    ),
 }
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
@@ -1335,15 +1363,47 @@ STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 #: HUMAN_REVIEW_REQUIRED (unchanged shape, +3 SUPPORTED_CANDIDATES only —
 #: no A4 walk moves the ENGINE state); FUNNEL 90 / 14 / 1 / 10 —
 #: HUMAN_REVIEW_REQUIRED moves 9 -> 10, the one new `CRIMINAL_RECORD` hold.
+#:
+#: Slice A3'-B (PLAN VISA-ORACLE-DW-20260919): `ACTIVITY_BOUNDARY` leaves
+#: `HOLDING_DISCLOSED_FLAGS` and becomes the sole member of
+#: `evaluate_path.DEAD_END_DISCLOSED_FLAGS` — on a SUPPORTED_CANDIDATES or
+#: NEEDS_INPUT engine base it now names `NO_SUPPORTED_PATH`, not
+#: `HUMAN_REVIEW_REQUIRED`. Re-measured on seq-23 (Slice A9.3): FUNNEL
+#: 91 SUPPORTED_CANDIDATES / 20 NO_SUPPORTED_PATH / 1 NEEDS_INPUT / 4
+#: HUMAN_REVIEW_REQUIRED — HUMAN_REVIEW_REQUIRED drops by the six
+#: ACTIVITY_BOUNDARY walks (PRIVACY_HELD_WALKS + STUDIO_HELD_WALKS + the
+#: one CRIMINAL_RECORD walk only) and NO_SUPPORTED_PATH gains those same six.
 _HOLDING_DISCLOSED_FLAG_NAMES: frozenset[str] = frozenset(
     flag.value for flag in evaluate_path.HOLDING_DISCLOSED_FLAGS
 )
+_DEAD_END_DISCLOSED_FLAG_NAMES: frozenset[str] = frozenset(
+    flag.value for flag in evaluate_path.DEAD_END_DISCLOSED_FLAGS
+)
+
+
+def _funnel_state_for_walk(label: str, engine_state: str) -> str:
+    """The exact split `evaluate_path._apply_disclosed_review_flags` makes,
+    restated here so `EXPECTED_FLAGGED_STATE_CENSUS` is a derivation and not
+    a hand-pinned number: a holding flag always wins; a dead-end flag only
+    rewrites a SUPPORTED_CANDIDATES/NEEDS_INPUT base (a base already at
+    NO_SUPPORTED_PATH or HUMAN_REVIEW_REQUIRED keeps its own state — the
+    dead-end reason is appended, not substituted, and cannot be seen from
+    the state alone)."""
+
+    flags = set(EXPECTED_DISCLOSED_REVIEW_FLAGS.get(label, ()))
+    if flags & _HOLDING_DISCLOSED_FLAG_NAMES:
+        return "HUMAN_REVIEW_REQUIRED"
+    if flags & _DEAD_END_DISCLOSED_FLAG_NAMES and engine_state in (
+        "SUPPORTED_CANDIDATES",
+        "NEEDS_INPUT",
+    ):
+        return "NO_SUPPORTED_PATH"
+    return engine_state
+
+
 EXPECTED_FLAGGED_STATE_CENSUS: dict[str, int] = dict(
     Counter(
-        "HUMAN_REVIEW_REQUIRED"
-        if set(EXPECTED_DISCLOSED_REVIEW_FLAGS.get(label, ())) & _HOLDING_DISCLOSED_FLAG_NAMES
-        else state
-        for label, (state, _candidates) in EXPECTED_OUTCOME.items()
+        _funnel_state_for_walk(label, state) for label, (state, _candidates) in EXPECTED_OUTCOME.items()
     )
 )
 
@@ -1395,6 +1455,19 @@ EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG: dict[str, str] = {
     flag.value: code
     for flag, code in evaluate_path._DISCLOSED_REVIEW_REASON_CODES.items()
     if flag.value in _HOLDING_DISCLOSED_FLAG_NAMES and flag.value in _CORPUS_DISCLOSED_FLAG_NAMES
+}
+
+#: The no-path reason code `_apply_disclosed_review_flags` emits per
+#: DEAD-END flag this corpus raises (`_DISCLOSED_NO_PATH_REASON_CODES`,
+#: evaluate_path.py, Slice A3'-B) — the third mirror of
+#: `EXPECTED_CONDITION_REASON_FOR_FLAG`/`EXPECTED_REVIEW_REASON_FOR_HOLDING_
+#: FLAG` above, for the flag that names `NO_SUPPORTED_PATH` instead of
+#: either holding or conditioning. Derived from
+#: `evaluate_path._DISCLOSED_NO_PATH_REASON_CODES`, never hand-copied.
+EXPECTED_NO_PATH_REASON_FOR_DEAD_END_FLAG: dict[str, str] = {
+    flag.value: code
+    for flag, code in evaluate_path._DISCLOSED_NO_PATH_REASON_CODES.items()
+    if flag.value in _DEAD_END_DISCLOSED_FLAG_NAMES and flag.value in _CORPUS_DISCLOSED_FLAG_NAMES
 }
 
 #: A4 (mission VISA-ORACLE-DW-20260919, §2.3 of DRAFT-SPEC-A4-1.v2.md). The
@@ -2305,6 +2378,15 @@ def test_walk_state_census_is_the_pinned_census_of_the_signed_sequence(
             "NO_SUPPORTED_PATH": 14,
             "SUPPORTED_CANDIDATES": 98,
         },
+        # Slice A9.3: re-measured on the signed seq-23 tree (the replay
+        # command is in the signing PR). Identical to seq-22: no walk's
+        # engine-only outcome moves (`_SEQ23_OUTCOME_CHANGES` is empty).
+        23: {
+            "HUMAN_REVIEW_REQUIRED": 3,
+            "NEEDS_INPUT": 1,
+            "NO_SUPPORTED_PATH": 14,
+            "SUPPORTED_CANDIDATES": 98,
+        },
     }
     assert census == EXPECTED_STATE_CENSUS == by_sequence[_SIGNED_SEQUENCE]
     assert census["NEEDS_INPUT"] == len(WALK_DEAD_END_ALLOWLIST)
@@ -2943,22 +3025,24 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     outcomes: dict[str, dict[str, Any]],
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
-    """The two censuses, side by side — and the headline gate vo-gate-a1's
-    OBS-1 HIGH restored: **7 of the funnel's holds come from the disclosure
-    layer on this corpus**, the 6 `ACTIVITY_BOUNDARY` walks — PLAN
-    slice A1 had briefly released them, but the gate named that release a
-    legal-exposure regression contra PLAN OD-2's own default, and A1' put
-    `ACTIVITY_BOUNDARY` back in `HOLDING_DISCLOSED_FLAGS` — plus, since A4
-    (mission VISA-ORACLE-DW-20260919), the one `CRIMINAL_RECORD` walk,
-    `offshore/tourism/disclosed_criminal`. `NOT_CERTAIN`'s two walks and
-    the nine A4 conditioning flags still condition, not hold. The funnel's
-    10 holds are the engine's 3 (1 minor-privacy + 2 Studio) plus those 7.
+    """The two censuses, side by side — and Slice A3'-B's headline: the 6
+    `ACTIVITY_BOUNDARY` walks that gate vo-gate-a1's OBS-1 HIGH put back in
+    `HOLDING_DISCLOSED_FLAGS` (A1') now leave the hold a second time, but to
+    a named dead end (`NO_SUPPORTED_PATH`) instead of the pre-A1 release to
+    a condition — PLAN's own OD-2/OD-3 default. The funnel's 4 holds are
+    the engine's 3 (1 minor-privacy + 2 Studio) plus the one
+    `CRIMINAL_RECORD` walk, `offshore/tourism/disclosed_criminal` (A4). The
+    funnel's NO_SUPPORTED_PATH count is the engine's own plus those same 6.
+    `NOT_CERTAIN`'s two walks and the nine A4 conditioning flags still
+    condition, not hold or dead-end.
 
     `EXPECTED_FLAGGED_STATE_CENSUS` is derived, not pinned, so this asserts
     the split property itself: a flagged walk ends HUMAN_REVIEW_REQUIRED only
-    if one of its flags is in `evaluate_path.HOLDING_DISCLOSED_FLAGS`,
-    otherwise it keeps its engine state exactly (state AND candidates —
-    see `test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome`'s
+    if one of its flags is in `evaluate_path.HOLDING_DISCLOSED_FLAGS`, ends
+    NO_SUPPORTED_PATH if one is in `evaluate_path.DEAD_END_DISCLOSED_FLAGS`
+    and its engine base was SUPPORTED_CANDIDATES/NEEDS_INPUT, otherwise it
+    keeps its engine state exactly (state AND candidates — see
+    `test_innocence_an_unflagged_walk_keeps_its_whole_engine_outcome`'s
     sibling assertion inside `test_every_disclosure_flag_reports_the_walks_
     it_rewrites` for the flagged half of that same claim).
 
@@ -2996,28 +3080,50 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
     assert not (STUDIO_HELD_WALKS & set(EXPECTED_DISCLOSED_REVIEW_FLAGS))
     # The walks whose OWN flags intersect HOLDING_DISCLOSED_FLAGS — the
     # disclosure layer's live contribution to the funnel's holds, walk by
-    # walk rather than assumed. Today that is the 6 ACTIVITY_BOUNDARY walks
-    # plus, since A4 (mission VISA-ORACLE-DW-20260919), the one
-    # `offshore/tourism/disclosed_criminal` walk (CRIMINAL_RECORD). A future
-    # PR widening or narrowing HOLDING_DISCLOSED_FLAGS moves this set, and
-    # the sum below, in the same PR that re-pins EXPECTED_FLAGGED_STATE_
-    # CENSUS.
+    # walk rather than assumed. Since Slice A3'-B that is the one
+    # `offshore/tourism/disclosed_criminal` walk (CRIMINAL_RECORD, A4) only
+    # — the 6 ACTIVITY_BOUNDARY walks moved to `disclosure_dead_ended`
+    # below. A future PR widening or narrowing HOLDING_DISCLOSED_FLAGS moves
+    # this set, and the sum below, in the same PR that re-pins
+    # EXPECTED_FLAGGED_STATE_CENSUS.
     disclosure_held = {
         label
         for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items()
         if set(flags) & _HOLDING_DISCLOSED_FLAG_NAMES
     }
-    assert disclosure_held == {
+    assert disclosure_held == {"offshore/tourism/disclosed_criminal"}
+    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == (
+        len(PRIVACY_HELD_WALKS) + len(STUDIO_HELD_WALKS) + len(disclosure_held)
+    )
+    # The walks whose OWN flags intersect DEAD_END_DISCLOSED_FLAGS — Slice
+    # A3'-B's carve-out. Every one of these six is SUPPORTED_CANDIDATES at
+    # engine level, so all six move to NO_SUPPORTED_PATH at funnel level;
+    # a future walk whose engine base is NEEDS_INPUT or already
+    # NO_SUPPORTED_PATH would still be in this set but would NOT move the
+    # funnel's NO_SUPPORTED_PATH count by one (NEEDS_INPUT moves it; an
+    # already-NO_SUPPORTED_PATH base does not, since the state does not
+    # change), so the count below is scoped to the walks it actually moves.
+    disclosure_dead_ended = {
+        label
+        for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items()
+        if set(flags) & _DEAD_END_DISCLOSED_FLAG_NAMES
+    }
+    assert disclosure_dead_ended == {
         "offshore/invest/family",
         "offshore/invest/merit",
         "offshore/invest/merit/currency_usd",
         "offshore/invest/undecided",
         "offshore/invest/undecided/currency_still_unsure",
         "offshore/other/no_paid_activity/medical",
-        "offshore/tourism/disclosed_criminal",
     }
-    assert funnel_census["HUMAN_REVIEW_REQUIRED"] == (
-        len(PRIVACY_HELD_WALKS) + len(STUDIO_HELD_WALKS) + len(disclosure_held)
+    dead_ended_from_a_supported_or_needs_input_base = {
+        label
+        for label in disclosure_dead_ended
+        if outcomes[label]["state"] in ("SUPPORTED_CANDIDATES", "NEEDS_INPUT")
+    }
+    assert dead_ended_from_a_supported_or_needs_input_base == disclosure_dead_ended
+    assert funnel_census["NO_SUPPORTED_PATH"] == engine_census.get("NO_SUPPORTED_PATH", 0) + len(
+        dead_ended_from_a_supported_or_needs_input_base
     )
 
 
@@ -3047,15 +3153,15 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
     flagged_outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The table Zero needs to rule on `MULTI_PURPOSE_TRIP` and the rest:
-    per flag, how many walks it touches, and whether it holds or conditions.
+    per flag, how many walks it touches, and whether it holds, dead-ends or
+    conditions.
 
-    Since PLAN slice A1' (gate vo-gate-a1, OBS-1 HIGH), one of the two flags
-    this corpus raises HOLDS again (`ACTIVITY_BOUNDARY`, per
-    `evaluate_path.HOLDING_DISCLOSED_FLAGS`) and the other still only
-    conditions (`NOT_CERTAIN`): the guilt/innocence split below asserts each
-    half by its own rule instead of one rule for all flags. Printed on
-    every run (`pytest -s`) and asserted, so the number in a PR body is the
-    number the test measured.
+    Since Slice A3'-B, one of the two flags this corpus raises names a dead
+    end (`ACTIVITY_BOUNDARY`, per `evaluate_path.DEAD_END_DISCLOSED_FLAGS`)
+    and the other still only conditions (`NOT_CERTAIN`): the guilt/innocence
+    split below asserts each half by its own rule instead of one rule for
+    all flags. Printed on every run (`pytest -s`) and asserted, so the
+    number in a PR body is the number the test measured.
     """
 
     per_flag: dict[str, list[tuple[str, str, str]]] = {}
@@ -3077,8 +3183,13 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
 
     for flag, rows in sorted(per_flag.items()):
         holds = flag in _HOLDING_DISCLOSED_FLAG_NAMES
+        dead_ends = flag in _DEAD_END_DISCLOSED_FLAG_NAMES
         for label, before, after in rows:
-            assert outcomes[label]["candidates"] == flagged_outcomes[label]["candidates"] or holds, (
+            assert (
+                outcomes[label]["candidates"] == flagged_outcomes[label]["candidates"]
+                or holds
+                or dead_ends
+            ), (
                 f"{label}: {flag} changed the candidate set — a conditioning "
                 "flag can never create, reorder or remove a candidate"
             )
@@ -3094,6 +3205,22 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
                 assert flagged_outcomes[label]["review_reason_codes"] == [review_code], (
                     f"{label}: {flag} holds but review_reason_codes does not "
                     f"name {review_code}"
+                )
+            elif dead_ends:
+                no_path_code = EXPECTED_NO_PATH_REASON_FOR_DEAD_END_FLAG[flag]
+                assert after == "NO_SUPPORTED_PATH", (
+                    f"{label}: raises {flag}, a dead-end flag, but the funnel "
+                    f"state ({after}) never moved to NO_SUPPORTED_PATH — before={before}"
+                )
+                assert flagged_outcomes[label]["candidates"] == [], (
+                    f"{label}: {flag} dead-ends but candidates were not emptied"
+                )
+                assert flagged_outcomes[label]["review_reason_codes"] == [], (
+                    f"{label}: {flag} dead-ends but review_reason_codes was populated — "
+                    "a dead end is not a hold"
+                )
+                assert no_path_code in flagged_outcomes[label]["no_path_reason_codes"], (
+                    f"{label}: rewritten by {flag} without emitting {no_path_code}"
                 )
             else:
                 condition_code = EXPECTED_CONDITION_REASON_FOR_FLAG[flag]
@@ -3128,12 +3255,15 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
         "CRIMINAL_RECORD": 1,
         "MULTI_PURPOSE_TRIP": 1,
     }
-    assert sorted(set(EXPECTED_CONDITION_REASON_FOR_FLAG) | set(EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG)) == sorted(
-        set(per_flag)
-    ), (
+    assert sorted(
+        set(EXPECTED_CONDITION_REASON_FOR_FLAG)
+        | set(EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG)
+        | set(EXPECTED_NO_PATH_REASON_FOR_DEAD_END_FLAG)
+    ) == sorted(set(per_flag)), (
         "a flag started (or stopped) firing on this corpus — add or remove its "
-        "row in EXPECTED_CONDITION_REASON_FOR_FLAG or "
-        "EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG in the same PR"
+        "row in EXPECTED_CONDITION_REASON_FOR_FLAG, "
+        "EXPECTED_REVIEW_REASON_FOR_HOLDING_FLAG or "
+        "EXPECTED_NO_PATH_REASON_FOR_DEAD_END_FLAG in the same PR"
     )
 
 
@@ -3423,15 +3553,19 @@ def test_the_candidate_ruling_row_still_depends_on_its_forbidden_fact(
     assert set(UNREACHABLE_BY_RULING) <= _support_bearing_product_codes(candidate_pack)
 
 
-#: The nine products the candidate pack makes supportable, as the census
-#: measures them: named at engine level against the candidate (seq-22 today,
-#: seq-21 when first measured — the same nine products, unaffected by
-#: seq-22's two cures) and on no walk against the signed pack.
+#: The nine products seq-21 first made supportable, as the census measures
+#: them: named at engine level against the candidate (seq-22 today, seq-21
+#: when first measured — the same nine products, unaffected by seq-22's two
+#: cures). Originally a delta against the SIGNED pack (#6489: signed was
+#: seq-20, so the nine were named by no walk there); seq-22's own activation
+#: (since #6489) put all nine in the signed pack's own engine-named set too,
+#: so the guard below asserts reachability directly rather than as a delta —
+#: the invariant it protects (seq-21's nine products stay reachable and
+#: visible) does not depend on which sequence happens to be signed.
 SEQ21_ADDED_PRODUCTS = ("E23U", "E23V", "E28B", "E28C", "E28D", "E28F", "E33A", "E33B", "E33C")
 
 
 def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
-    engine_named: dict[str, tuple[str, ...]],
     candidate_engine_named: dict[str, tuple[str, ...]],
     candidate_funnel_named: dict[str, tuple[str, ...]],
 ) -> None:
@@ -3447,9 +3581,8 @@ def test_every_product_the_candidate_pack_adds_is_named_to_the_applicant(
     because the signed products' public reach is already pinned walk by walk
     in EXPECTED_OUTCOME and E31E's minor-privacy hold is by design."""
 
-    added = tuple(sorted(set(candidate_engine_named) - set(engine_named)))
-    assert added == SEQ21_ADDED_PRODUCTS
-    unseen = sorted(set(added) - set(candidate_funnel_named))
+    assert set(SEQ21_ADDED_PRODUCTS) <= set(candidate_engine_named)
+    unseen = sorted(set(SEQ21_ADDED_PRODUCTS) - set(candidate_funnel_named))
     assert not unseen, (
         f"the candidate pack supports {unseen} on some walk, but every such walk "
         "raises a disclosure flag, so no applicant is ever shown them"
@@ -3500,8 +3633,16 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
     on the derived map: every walk that names the product has its qualifying
     fact reset to UNKNOWN(NOT_ASKED) — the wire a tree that stopped asking
     the question would send — and is re-evaluated against the candidate.
-    The candidate guard then names exactly that product; the signed guard
-    stays silent on the same map, which is why the candidate mode exists."""
+    The candidate guard then names exactly that product.
+
+    Originally (#6489, signed = seq-20) the guard also asserted the SIGNED
+    pack's own reachability check stayed silent on the same mutated map,
+    since seq-20 did not yet define these nine products as support-bearing
+    at all. Seq-22's own activation (since #6489) put them in the signed
+    pack's support-bearing set too — with the identical qualifying fact — so
+    that second assertion no longer isolates anything the `pack=candidate_pack`
+    check above does not already prove; dropped rather than kept red for a
+    reason unrelated to this fold."""
 
     assert sorted(SEQ21_QUALIFYING_FACT) == sorted(SEQ21_ADDED_PRODUCTS)
     witnesses = candidate_engine_named.get(product, ())
@@ -3523,7 +3664,6 @@ def test_guilt_the_candidate_guard_catches_a_seq21_product_losing_its_walks(
         mutated.setdefault(code, []).extend(labels)
     named = {code: tuple(labels) for code, labels in mutated.items() if labels}
     assert _unreached_support_products(named, pack=candidate_pack) == [product]
-    assert product not in _unreached_support_products(named)
 
 
 def test_unreachable_by_ruling_holds_only_the_bridging_row() -> None:

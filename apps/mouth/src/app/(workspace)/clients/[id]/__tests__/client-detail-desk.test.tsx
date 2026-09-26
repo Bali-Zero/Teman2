@@ -73,7 +73,6 @@ vi.mock("@/lib/api", () => ({
         status: "not_generated",
         cases: [],
       }),
-      queryClientIntelligence: vi.fn(),
       extractPassportForClient: vi.fn(),
     },
     post: vi.fn(),

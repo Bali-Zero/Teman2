@@ -214,8 +214,15 @@ async def test_unregister_removes_alias(registry):
 
 @pytest.mark.asyncio
 async def test_unregister_nonexistent_noop(registry):
+    cls = _make_plugin_class("test.untouched")
+    await registry.register(cls)
+
     # Should not raise
     await registry.unregister("does.not.exist")
+
+    # A no-op unregister must leave the rest of the registry state intact.
+    assert "test.untouched" in registry._plugins
+    assert len(registry._plugins) == 1
 
 
 @pytest.mark.asyncio

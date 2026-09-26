@@ -677,5 +677,14 @@ class TestLogActivity:
     ) -> None:
         mock_pool._conn.fetchval = AsyncMock(side_effect=Exception("DB error"))
 
-        # Should not raise
-        await service._log_activity(user_id="user1", operation="sent")
+        with patch(
+            "backend.services.integrations.zoho_email_service.logger"
+        ) as mock_logger:
+            await service._log_activity(user_id="user1", operation="sent")
+
+        mock_pool._conn.execute.assert_not_called()
+        mock_logger.warning.assert_called_once()
+        assert (
+            mock_logger.warning.call_args.args[0]
+            == "[Email Activity] Failed to log activity: %s"
+        )

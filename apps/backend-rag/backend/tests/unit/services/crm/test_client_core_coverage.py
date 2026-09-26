@@ -1042,10 +1042,13 @@ async def test_close(crm_service):
 
 
 @pytest.mark.asyncio
-async def test_hr_bonus_skips_no_assigned_to(crm_service):
+async def test_hr_bonus_skips_no_assigned_to(crm_service, mock_pool):
     service, _ = crm_service
-    # Should complete without error (early return)
+    pool, conn = mock_pool
+
     await service._create_hr_bonus_entry(1, {"assigned_to": None})
+
+    pool.acquire.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -1053,9 +1056,12 @@ async def test_hr_bonus_skips_when_table_not_exists(crm_service, mock_pool):
     service, _ = crm_service
     pool, conn = mock_pool
     conn.fetchval = AsyncMock(return_value=False)  # table doesn't exist
+    conn.fetchrow = AsyncMock()
 
     await service._create_hr_bonus_entry(1, {"assigned_to": "agent@balizero.com"})
-    # Should return early, no exception
+
+    conn.fetchval.assert_called_once()
+    conn.fetchrow.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -1064,8 +1070,11 @@ async def test_hr_bonus_failure_does_not_propagate(crm_service, mock_pool):
     pool, conn = mock_pool
     conn.fetchval = AsyncMock(side_effect=Exception("unexpected db error"))
 
-    # Should log warning but not raise
-    await service._create_hr_bonus_entry(1, {"assigned_to": "agent@balizero.com"})
+    with patch("backend.services.crm.client_core.logger") as mock_logger:
+        await service._create_hr_bonus_entry(1, {"assigned_to": "agent@balizero.com"})
+
+    mock_logger.exception.assert_called_once()
+    assert mock_logger.exception.call_args.args[0] == "HR bonus hook failed for practice %s: %s"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -84,12 +84,23 @@ async def test_rapid_increments_debounce_into_single_publish(
 
 @pytest.mark.asyncio
 async def test_publish_skipped_when_redis_absent(monkeypatch: pytest.MonkeyPatch) -> None:
-    """increment_kg_version must not raise when Redis is unavailable."""
+    """increment_kg_version must not raise when Redis is unavailable, and the
+    in-process version counter still advances so readers can fall back to
+    on-read version checks."""
     monkeypatch.setattr(kg_cache, "_get_async_redis", lambda: None)
 
-    # Should not raise — graceful degradation.
-    kg_cache.increment_kg_version()
+    new_version = kg_cache.increment_kg_version()
+
+    assert new_version == 1
+    assert kg_cache.get_kg_version() == 1
+
+    # Should not raise — graceful degradation. The debounced publish task
+    # still runs to completion and records the version before bailing out
+    # on the missing Redis client (it never reaches the `redis_client.publish`
+    # call, so no mock is needed to prove that).
     await asyncio.sleep(kg_cache._PUBLISH_DEBOUNCE_SEC + 0.05)
+    assert kg_cache._publish_state["last_version"] == 1
+    assert kg_cache._publish_state["pending"] is False
 
 
 # ── Listener ──────────────────────────────────────────────────────────────

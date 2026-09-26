@@ -112,7 +112,19 @@ def main() -> None:
         "(4) falsifiable acceptance criteria. Run /stadio-zero, or state in one line why you skip "
         "(trivial task). This does NOT block — it reminds."
     )
-    print(json.dumps({"systemMessage": reminder}))
+    # PENDING-ARMS L1087: `systemMessage` alone reaches the operator's terminal
+    # only, per the Claude Code hooks doc — never the agent this hook exists to
+    # steer. `hookSpecificOutput.additionalContext` (permissionDecision:"allow")
+    # is what actually surfaces in Claude's own context (orchestrate_gate.py's
+    # fix, mirrored here). Keep `systemMessage` too — the operator still benefits.
+    print(json.dumps({
+        "systemMessage": reminder,
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "additionalContext": reminder,
+        },
+    }))
     sys.exit(0)
 
 

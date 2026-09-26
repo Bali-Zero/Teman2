@@ -37,12 +37,15 @@ function expectQuestion(state: FlowState, questionId: string): void {
 }
 
 describe("Slice A6-2 — declared conservative Not sure branches", () => {
-  it("keeps the seven conservative branches separate from in_indonesia", () => {
+  it("keeps the nine conservative branches separate from in_indonesia", () => {
     const conservative = Object.entries(QUESTIONS)
       .filter(([, question]) => question.notSure?.mode === "conservative")
       .map(([id]) => id)
       .sort();
     expect(conservative).toEqual([
+      // Slice A6-bis.
+      "diaspora_documents",
+      "retirement_basis",
       "secondhome_deposit_usd",
       "secondhome_own_name",
       "secondhome_passive_income_usd",

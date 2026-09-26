@@ -1,0 +1,84 @@
+task_id: wr2-ig-ci-wiring
+gear: 3
+objective: >-
+  Cherry-pick the one follow-up left on the pushed branch
+  origin/agent/air-m5/wr2/ig-metrics-import after PR #7171 (WR2 IG dashboard
+  importer) merged as f34070ba92: commit 05338510ef wires
+  wr2_ig_metrics_scraper.py, wr2_ig_dashboard_import.py and their two test
+  files into .github/workflows/wr2-queue-tests.yml's path triggers and pytest
+  invocation, and adds openpyxl to the battery's pip install line so the
+  dashboard importer's .xlsx parsing has its dependency in CI. #7171's own
+  brief (evidence/2026-09/agent-air-m5-wr2-ig-metrics-import/brief.yml)
+  scoped this out as "a separate Gear-3 follow-up" because it is Gear-2 by
+  size alone but the diff touches a GitHub Actions workflow file, which this
+  harness floors at Gear 3 regardless of size.
+constraints:
+  - >-
+    The change touches ONLY .github/workflows/wr2-queue-tests.yml — no
+    application code, no test file content, no other workflow.
+  - >-
+    The two writers (wr2_ig_metrics_scraper.py, wr2_ig_dashboard_import.py)
+    both depend on wr2_queue_writer.queue_lock/write_queue_atomic, which this
+    battery already exercises for its other tests; without their own tests in
+    the same battery, a future change to that lock contract could break them
+    with no CI check noticing (the exact "esiste≠armato" shape #7171's brief
+    named as its own follow-up).
+  - No client PII: the diff is CI wiring only, no data of any kind.
+acceptance:
+  - text: >-
+      WHEN the workflow's pytest invocation runs with PYTHONPATH=apps/backend-rag
+      against all 26 listed test files plus scripts/wr2_html_renderer/tests,
+      it SHALL pass in full, proving the two newly-wired test files coexist
+      with the rest of the battery under the declared dependency set
+      (including openpyxl).
+    probe: >-
+      python -m pytest <26 files> scripts/wr2_html_renderer/tests -q
+  - text: >-
+      WHEN either wr2_ig_metrics_scraper.py, wr2_ig_dashboard_import.py, or
+      either of their two test files changes on a future PR, the workflow's
+      `pull_request.paths` list SHALL re-trigger this battery.
+    probe: "pull_request.paths entries for the two scripts and two test files"
+consumer_map:
+  - >-
+    GitHub Actions itself, on every PR touching the four newly-listed paths
+    (or the workflow file): the wr2-queue-tests job now installs openpyxl and
+    runs test_wr2_ig_metrics_scraper.py + test_wr2_ig_dashboard_import.py
+    alongside the rest of the WR2 queue-surface battery, closing the gap
+    #7171 shipped a working importer/scraper pair through without.
+risks:
+  - >-
+    The local proof run (780 passed) used a venv
+    (apps/backend-rag/.venv) that already had pytest/openpyxl/pytest-asyncio/
+    asyncpg/numpy/pydantic/httpx pre-installed — it does not, by itself, prove
+    a COLD `pip install` with only the workflow's declared package list is
+    sufficient for a clean CI runner. Flagged by the GLM-5.2 council seat as a
+    non-blocking caveat; not re-verified in a scratch venv within this PR's
+    scope because the package list is unchanged from #7171's own PR body
+    except the openpyxl addition, and openpyxl has no further transitive
+    runtime deps needed by the two test files (confirmed by reading them:
+    stdlib + pytest + the sibling wr2_queue_writer module only).
+assumptions:
+  - text: >-
+      openpyxl is the ONLY dependency the two new test files need beyond what
+      the battery's pip line already installs (pytest, pytest-asyncio,
+      asyncpg, numpy, pydantic, httpx, Pillow, pyyaml).
+    status: verified
+    probe: >-
+      grep -n '^import\|^from' scripts/wr2_ig_metrics_scraper.py
+      scripts/wr2_ig_dashboard_import.py
+      scripts/tests/test_wr2_ig_metrics_scraper.py
+      scripts/tests/test_wr2_ig_dashboard_import.py
+grader: >-
+  Three-seat external council (kimi-code/k3, tp1-glm-5.2, agy-gemini-3.1-pro),
+  single round, hostile prompt, each seat independent of the build lane and
+  of each other, journal.jsonl next to this brief. All three: OK. Generator is
+  not grader — codex-gpt-5.6-sol (titolare) was excluded per explicit task
+  instruction citing today's timeout risk (confirmed borderline by
+  arsenal_probe.py this session: 14588ms against the 15000ms ceiling,
+  transitioning FROM a TIMEOUT classification earlier this session);
+  tp1-qwen3.8-max (titolare) was live and fast (2327ms, confirmed by the same
+  probe run) but not engaged — the task's mandate specified GLM-5.2/TP1 and
+  Gemini/agy as the two seats to pair with Kimi, a scoping choice rather than
+  an observed unavailability.
+budget: Existing subscription seats only; no paid per-token API calls.
+pii: none

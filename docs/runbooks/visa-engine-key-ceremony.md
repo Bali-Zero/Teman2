@@ -38,13 +38,17 @@ operator only). Local Desktop copy removed after verified upload.
 ## Trust-store JSON (verbatim, public)
 
 The exact JSON array staged as the `VISA_ENGINE_TRUST_STORE_KEYS_JSON`
-secret value — reconstructed from the table above, `valid_to` and
-`revoked_at` both `null` for both entries:
+secret value since the 2026-07-25 relabel (ERRATA below, digest
+`ab319439ecf92a0f`) — the key material of the table above under the
+relabeled kids, `valid_to` and `revoked_at` both `null` for both entries.
+Every signed production pack's protected header carries
+`kid: prod-2026-07-1`; an array still naming the minted `2026-07-prod-1`
+rejects them all with `unknown signing key_id`:
 
 ```json
 [
   {
-    "kid": "2026-07-test-1",
+    "kid": "test-2026-07-1",
     "public_key": "hPwtyP1ekdj_n-BK4M97dyWnRxW1RJ-uGcnVsX5buHM",
     "environment": "TEST",
     "valid_from": "2026-07-19T00:00:00Z",
@@ -52,7 +56,7 @@ secret value — reconstructed from the table above, `valid_to` and
     "revoked_at": null
   },
   {
-    "kid": "2026-07-prod-1",
+    "kid": "prod-2026-07-1",
     "public_key": "gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA",
     "environment": "PRODUCTION",
     "valid_from": "2026-07-19T00:00:00Z",

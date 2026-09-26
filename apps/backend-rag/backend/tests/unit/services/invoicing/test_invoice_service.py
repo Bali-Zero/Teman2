@@ -355,7 +355,11 @@ class TestUpdatePracticeWithInvoice:
             invoice_info={"invoice_number": "INV-003", "source": "local_pdf"},
             triggered_by="admin@balizero.com",
         )
-        # Should not raise
+        update_call = conn.execute.call_args_list[0]
+        docs_json = update_call[0][1]
+        parsed = docs_json if isinstance(docs_json, dict) else json.loads(docs_json)
+        assert parsed["old_key"] == "val"
+        assert parsed["invoice"]["invoice_number"] == "INV-003"
 
     @pytest.mark.asyncio
     async def test_handles_invalid_json_documents(self, service, mock_db_pool):
@@ -369,7 +373,10 @@ class TestUpdatePracticeWithInvoice:
             invoice_info={"invoice_number": "INV-004", "source": "local_pdf"},
             triggered_by="admin@balizero.com",
         )
-        # Should not raise; documents should still have invoice key
+        update_call = conn.execute.call_args_list[0]
+        docs_json = update_call[0][1]
+        parsed = docs_json if isinstance(docs_json, dict) else json.loads(docs_json)
+        assert parsed == {"invoice": {"invoice_number": "INV-004", "source": "local_pdf"}}
 
     @pytest.mark.asyncio
     async def test_no_practice_row_skips_invoices_insert(self, service, mock_db_pool):
@@ -402,7 +409,8 @@ class TestUpdatePracticeWithInvoice:
             },
             triggered_by="admin@balizero.com",
         )
-        # Should not raise
+        insert_call = conn.execute.call_args_list[1]
+        assert insert_call[0][-1] is None  # generated_at falls back to None
 
 
 # ============================================================

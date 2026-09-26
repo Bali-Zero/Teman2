@@ -17,7 +17,11 @@ from backend.services.garuda_orders.payment_inbox_watch import (
     QuarantinedEvent,
     QuarantineSnapshot,
 )
-from backend.services.garuda_orders.quarantine_alarm import REALERT_SECONDS, QuarantineAlarm
+from backend.services.garuda_orders.quarantine_alarm import (
+    LIFETIME_REMINDER_SECONDS,
+    REALERT_SECONDS,
+    QuarantineAlarm,
+)
 
 
 def _snapshot(
@@ -258,6 +262,47 @@ def test_the_quiet_notice_is_announced_exactly_once():
     assert alarm.decide(_snapshot(recent=0, lifetime=1), now=10.0) is not None
     alarm.confirm_sent(10.0)
     assert alarm.decide(_snapshot(recent=0, lifetime=1), now=20.0) is None
+
+
+def test_a_standing_lifetime_total_gets_a_reminder_after_the_long_cadence():
+    """RED IF: once the quiet notice has fired, a `lifetime > 0` condition goes
+    silent FOREVER instead of getting one more message a day (L1600). This is
+    the exact defect: 26 hourly pages, then permanent silence, while the row
+    stays unhandled forever."""
+
+    alarm = QuarantineAlarm()
+    alarm.decide(_one(), now=0.0)
+    alarm.confirm_sent(0.0)
+    alarm.decide(_snapshot(recent=0, lifetime=1), now=10.0)  # the quiet notice
+    alarm.confirm_sent(10.0)
+
+    # Short-term: still silent (the existing, unchanged guarantee).
+    assert alarm.decide(_snapshot(recent=0, lifetime=1), now=20.0) is None
+
+    # After the long cadence: the standing lifetime total still deserves a
+    # word, even though `recent` never moved off zero.
+    reminder = alarm.decide(
+        _snapshot(recent=0, lifetime=1), now=10.0 + LIFETIME_REMINDER_SECONDS
+    )
+    assert reminder is not None
+    assert "1 refused callback" in reminder
+    assert "do not clear themselves" in reminder
+
+
+def test_a_restarted_process_eventually_reminds_about_pre_existing_quarantines():
+    """RED IF: a fresh `QuarantineAlarm` (e.g. after a process restart) with a
+    pre-existing `lifetime > 0` stays silent forever because `_last_signature`
+    starts at `None` — the exact restart scenario named in L1600: "if the
+    process restarts after the age-out not even the quiet notice fires,
+    because a fresh alarm ignores lifetime > 0 when recent == 0"."""
+
+    alarm = QuarantineAlarm()
+    # Immediately after construction: no elapsed time, so no reminder yet —
+    # this must stay true, it is `test_a_clean_window_with_history_still_stays_silent_if_it_never_paged`'s guarantee.
+    assert alarm.decide(_snapshot(recent=0, lifetime=12), now=0.0) is None
+    reminder = alarm.decide(_snapshot(recent=0, lifetime=12), now=LIFETIME_REMINDER_SECONDS)
+    assert reminder is not None
+    assert "12 refused callbacks" in reminder
 
 
 # --------------------------------------------------------------------------

@@ -39,6 +39,92 @@ Console snapshots: sources with no API live in `~/.agent/seat-usage/console_quot
 - Quota % Anthropic via cswap (`cswap list` espone finestre 5h/7d) — parse dell'output come sorgente aggiuntiva.
 - Refresh automatico dell'artifact Cowork via scheduled task.
 
+## Task outcomes and observed usage (`task-outcome/1`)
+
+The existing collector and its 30-minute LaunchAgent also consume
+`~/.agent/cost-ledger/task-outcomes/*.json`. The additive `tasks` and `tasks_meta`
+fields are emitted only when manifests exist and do not change `seats[]`.
+Use `--task-outcomes DIR` to select a directory;
+`--tasks-only` prints the task report without writing the snapshot. No additional
+daemon is needed. `task_outcome_manifest.example.json` is a valid shape with
+placeholder hashes and an explicitly unknown outcome; replace every placeholder.
+
+The release owner writes one redacted manifest per task after consulting the
+independent gate. These are **trusted outcome attestations**, not a replacement
+for the gate or a cryptographic verification of the artifact named by its hash.
+Never mark an outcome complete merely because a session exited or a PR merged.
+`verified_complete` requires an evidence SHA-256, verification time, at least
+one non-gate participant, and a distinct listed `gate` session observed in logs
+(`verifier_role=fresh-gate`). The verifier must be a conversation root, with no
+parent and no participant of any role descending from it. Sibling gates and
+gate-role ancestors do not establish independence. The graph combines native and declared parent edges,
+including cross-provider edges. Missing, ambiguous or cyclic lineage cannot
+establish independence. The gate needs a reducer-selected event inside the task
+window no later than verification time; zero-delta repeats and unrelated old
+activity are insufficient. The verifier must be declared as overhead. Independent fresh
+CLI roots have their usage included even without a
+shared conversation parent. Never erase a real contribution edge for eligibility.
+`verification_issues` reports failed root, activity and overhead requirements
+separately from usage completeness. CI-only attestations remain `unknown` and outside the denominator until a CI
+evidence join exists. It also requires a closed, timezone-aware
+`started_utc`/`ended_utc` interval ending no later than the snapshot time and
+containing the verification time. Otherwise the
+collector downgrades the outcome to `unknown`.
+
+Hash **the full identifier**, with SHA-256 and no truncation. Claude main sessions
+use `sessionId`; a sidecar's logical identity is `sessionId:agent-<full-agent-id>`
+(the sidecar filename stem). Codex uses the first `session_meta.payload.id` in
+each file, ignoring metadata embedded by a fork; native children
+link through `source.subagent.thread_spawn.parent_thread_id`. The collector adds
+observed local descendants once, including retries. Explicit child rows override
+inherited `overhead`/attempt metadata. Cross-provider CLI children must be listed
+explicitly: their parent cannot be discovered from a native same-provider tree.
+
+Provider-native counter names stay separate: Claude `input_tokens`,
+`cache_read_input_tokens`, `cache_creation_input_tokens`, `output_tokens`; Codex
+`input_tokens`, `cached_input_tokens`, `output_tokens`, `reasoning_output_tokens`.
+For Codex, cached input is a subset of total input: uncached input is
+`input_tokens - cached_input_tokens`; reasoning output is a subset of output.
+For Claude, input, cache-read input and cache-creation input are separate buckets.
+Do not sum the Codex subsets into their totals or treat its total input as raw
+uncached input. Keep the provider breakdown instead of adding unlike counters.
+`usage_events` counts observed response groups/cumulative updates, **not API calls**.
+Codex repeats are deduplicated, increments are counted across counter resets,
+and the first event uses `last_token_usage` to avoid billing inherited cumulative
+history to a child. Claude reuses the existing per-field streaming reducer.
+Window attribution uses the latest response timestamp / cumulative-update
+timestamp and is observed, provisional usage, not a provider invoice.
+
+Missing sessions, missing counters, damaged records, incomplete response identity,
+and overlapping task attribution are visible and exclude a task from the verified
+denominator. Unknown is never zero. `failed_or_retried_sessions` counts declared
+rows with `status=failed` or `attempt>1`; both failed and successful attempts still
+contribute usage. `overhead_tokens` is a subset of `by_provider`, not extra spend.
+An explicitly declared non-overhead participant with no selected usage in its own
+session or attributed descendants inside the window
+is incomplete (`declared_session_without_window_usage`), not a zero-cost worker.
+The mean includes only verified tasks with complete observed usage and is withheld
+across different task classes/cohorts. It is not a causal savings estimate.
+
+Coverage is **local Claude/Codex logs in the configured profile map and existing
+mtime window**. A task starting before that scan window is marked
+`lineage_possibly_truncated` and excluded from the denominator; increase `--days`
+to cover it. There is no automatic cross-host or other-provider accounting.
+List nonlocal sessions too: missing joins must remain incomplete until their usage
+is available in the configured sources. Undiscovered remote/manual child sessions
+cannot be inferred, so the manifest author must declare them. Outcome metadata is
+not proof that the session list is exhaustive. Keep all audit/review/probe sessions
+in the task tree and mark overhead instead of silently excluding them.
+
+Only hashes, controlled enums, counters, booleans and timestamps are accepted;
+unknown fields are rejected without echoing their content. Classes are
+`infra-hooks|workflow|code|docs|research|operations|other`; cohorts are
+`baseline|pre-token-efficiency-six|post-token-efficiency-six|compact-only|manual`.
+Roles are `dux|implementer|review|gate|probe|release`. Optional session status is
+`unknown|succeeded|failed`; outcome status is
+`verified_complete|failed|abandoned|unknown`. Per-host activation and rollback
+remain the existing collector install/LaunchAgent lifecycle.
+
 ## cswap — Claude-profile rotation (2026-08-11)
 
 `cswap.py` swaps `CLAUDE_CONFIG_DIR` across the seats mapped in `seat_map.json`

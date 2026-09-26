@@ -469,10 +469,18 @@ if (LIVE_PARITY) {
       test(`sample ${i} renders its recorded verdict`, async ({ page }) => {
         const sample = samples[i];
 
-        // U7: the guard needs the evaluate prefix, or the honest run is
-        // RED on its own mock (`installNoWriteGuard`'s `page.on("request")`
-        // listener in `no-write-context.ts` records a request even when a
-        // spec's own route fulfils it).
+        // U7: this prefix is dead code against the base URL THIS gated run
+        // targets. `no-write-context.ts`'s `unexpectedWrites()` returns
+        // early at `OWN_ORIGIN_RE.test(url.hostname)` — `127.0.0.1` never
+        // matches `OWN_ORIGIN_RE` (`balizero.com` / `nuzantara-rag.fly.dev`
+        // only) — one line before it ever consults
+        // `allowedWritePathPrefixes`. Dropping the prefix here does not
+        // redden this spec (GATE-B3-V3-REPORT-7038.md, finding F2, "U7-a").
+        // It IS load-bearing where U7 means it: the prove-live run against
+        // https://balizero.com, an own-origin host, where a dropped or
+        // narrowed prefix DOES turn the guard's own request recorder red.
+        // Kept here anyway so the local and prove-live runs stay
+        // byte-identical in shape.
         const guard = await installNoWriteGuard(page, {
           allowedWritePathPrefixes: ["/api/visa-oracle/evaluate"],
         });

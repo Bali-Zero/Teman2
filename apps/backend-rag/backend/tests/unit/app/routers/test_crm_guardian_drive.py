@@ -72,7 +72,10 @@ def test_require_admin_rejects_non_admin() -> None:
 
 
 def test_require_admin_accepts_admin_role() -> None:
-    crm_guardian_drive._require_admin({"email": "admin@internal", "role": "admin"})
+    try:
+        crm_guardian_drive._require_admin({"email": "admin@internal", "role": "admin"})
+    except HTTPException as exc:
+        pytest.fail(f"admin role must pass _require_admin, got {exc.status_code}: {exc.detail}")
 
 
 def test_get_admin_user_accepts_admin_api_key() -> None:

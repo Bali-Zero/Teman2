@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,9 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
-
-const POLL_INTERVAL = 30000; // 30 seconds
+import { usePortalUnreadMessages } from "@/hooks/usePortalUnreadMessages";
 
 interface PortalBottomNavProps {
   readonly variant?: "client" | "partner";
@@ -22,35 +20,7 @@ interface PortalBottomNavProps {
 
 export function PortalBottomNav({ variant = "client" }: PortalBottomNavProps) {
   const pathname = usePathname();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const fetchUnreadCount = useCallback(async () => {
-    if (variant === "partner") return;
-    try {
-      const data = await api.portal.getMessages(1, 0);
-      setUnreadCount(data.unreadCount);
-    } catch (err) {
-      // Silently fail - not critical for nav
-    }
-  }, [variant]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchUnreadCount();
-  }, [fetchUnreadCount]);
-
-  // Polling for unread messages
-  useEffect(() => {
-    const interval = setInterval(fetchUnreadCount, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
-
-  // Refetch when navigating away from messages
-  useEffect(() => {
-    if (pathname !== "/portal/messages" && pathname !== "/portal/chat") {
-      fetchUnreadCount();
-    }
-  }, [pathname, fetchUnreadCount]);
+  const { data: unreadCount } = usePortalUnreadMessages(variant === "client");
 
   const tabs =
     variant === "partner"
@@ -126,7 +96,7 @@ export function PortalBottomNav({ variant = "client" }: PortalBottomNavProps) {
                 />
                 {showBadge && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-[var(--bz-copper)] text-white text-[9px] font-[650] tabular-nums">
-                    {tab.badge > 99 ? "99+" : tab.badge}
+                    {(tab.badge ?? 0) > 99 ? "99+" : tab.badge}
                   </span>
                 )}
               </div>

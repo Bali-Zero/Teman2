@@ -50,7 +50,7 @@ DEFAULT_GAP_AGENT_MODEL = os.environ.get(
 )
 DEFAULT_REGULATION_AGENT_MODEL = os.environ.get(
     "MATA_GARUDA_REGULATION_AGENT_MODEL",
-    "agy:gemini-3.5-flash",
+    "agy:gemini-3.8-flash-high",
 )
 
 PUBLIC_RESEARCH_AGENT_MODELS: dict[str, str] = {

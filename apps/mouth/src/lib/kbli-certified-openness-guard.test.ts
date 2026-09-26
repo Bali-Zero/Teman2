@@ -247,20 +247,22 @@ describe("KBLI certified-openness guard", () => {
 
   it("actually walks the corpus — a vacuous pass is impossible", () => {
     // Pinned against getAllCodes()/getGoldCodes() 2026-09-16 — the same
-    // numbers kbli-editorial-certification.test.ts pins (36/8 since #6640) for the served
-    // certified partitions. A drift here means the certified corpus itself
-    // changed shape; re-run the scanner before touching this number.
-    expect(intelGroups).toHaveLength(36);
+    // numbers kbli-editorial-certification.test.ts pins (35/8 since 50121's
+    // decert) for the served certified partitions. A drift here means the
+    // certified corpus itself changed shape; re-run the scanner before
+    // touching this number.
+    expect(intelGroups).toHaveLength(35);
     expect(goldGroups).toHaveLength(8);
 
     const totalFieldsScanned = groups.reduce(
       (sum, g) => sum + Object.keys(g.fields).length,
       0,
     );
-    // Pinned 2026-09-16 after #6640 de-certified canonicalIntel 47221:
-    // 796 intel_2026 string fields (36 codes, including the nested
+    // Pinned after canonicalIntel 50121 was de-certified (its pma_kondisi/
+    // pma_nota cure moved the certified pmaFingerprint):
+    // 774 intel_2026 string fields (35 codes, including the nested
     // `editorial` block) + 52 gold string fields (8 codes).
-    expect(totalFieldsScanned).toBe(848);
+    expect(totalFieldsScanned).toBe(826);
   });
 
   it("flags every certified openness claim not already human-reviewed", () => {

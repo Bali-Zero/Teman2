@@ -1,11 +1,11 @@
 {
   "generator": "apps/mouth/scripts/visa-oracle/replay-no-path-doors.py",
   "pack": {
-    "file": "rulepack-prod-022.signed.json",
-    "sequence": 22,
-    "version": "2026.9.16"
+    "file": "rulepack-prod-023.signed.json",
+    "sequence": 23,
+    "version": "2026.9.23"
   },
-  "as_of": "2026-09-16 17:48:07.053088+00:00",
+  "as_of": "2026-09-24 09:32:53.364322+00:00",
   "age_55_birth_date": "1971-09-01",
   "walk_corpus_fingerprint": "1a1d4998f341e3b49cf41d31a0e7beb9d919b0f8435542b800b7c3e04b07b3fa",
   "walks": [
@@ -77,7 +77,8 @@
       "state": "NO_SUPPORTED_PATH",
       "no_path_reason_codes": [
         "INDONESIAN_EMPLOYER_NOT_ALLOWED",
-        "INDONESIAN_SOURCE_COMPENSATION_BANNED"
+        "INDONESIAN_SOURCE_COMPENSATION_BANNED",
+        "E33G_LOCAL_COMPANY_NOT_ALLOWED"
       ],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
@@ -163,7 +164,8 @@
       "state": "NO_SUPPORTED_PATH",
       "no_path_reason_codes": [
         "INDONESIAN_EMPLOYER_NOT_ALLOWED",
-        "INDONESIAN_SOURCE_COMPENSATION_BANNED"
+        "INDONESIAN_SOURCE_COMPENSATION_BANNED",
+        "E33G_LOCAL_COMPANY_NOT_ALLOWED"
       ],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
@@ -231,7 +233,10 @@
       "why": "age is still the only named cause, yet at 55 the pack supports nothing",
       "ui": { "secondhome_passive_income_usd": "0" },
       "state": "NO_SUPPORTED_PATH",
-      "no_path_reason_codes": ["AGE_BELOW_55"],
+      "no_path_reason_codes": [
+        "AGE_BELOW_55",
+        "RETIREMENT_INCOME_BELOW_THRESHOLD"
+      ],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": ["E33"], "AGE_55": [] }
     }
   ]

@@ -1,0 +1,198 @@
+# Gear-3 evidence pack — seq-23 candidate (Slice A8-1, VISA-ORACLE-DW-20260919, resumed build).
+# Written by vo-builder-a8-1 (Claude Sonnet 5), resuming a prior instance of the same builder
+# that died mid-work (OS restart, ~19:50Z 2026-09-22) with uncommitted work in this worktree.
+# Every inherited file was re-verified against the spec before being trusted (fold re-run and
+# cmp -s'd against the inherited source JSON: byte-identical); every receipt below is a command
+# this writer actually executed in this turn, not narrated from memory.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: MANDATE-vo.md Slice A8-1 (DRAFT-SPEC-A8-1.v2 §1)
+mission: VISA-ORACLE-DW-20260919 — Slice A8-1, seq-23 candidate (UNSIGNED, UNACTIVATED)
+lanes:
+  - lane: a8-1-fold
+    role: build
+    seat: Claude Sonnet 5 (vo-builder-a8-1, resumed after a prior instance's OS-restart death)
+  - lane: a8-1-council-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (codex exec --sandbox read-only -c model_reasoning_effort=high; round 1
+      transcript died on a reconnect storm before reaching a verdict, on inherited content this
+      writer had not yet finished verifying; round 2 on the FINAL post-rebase content, VERDICT
+      OK — independent scratch probes on STUDY/RETIREMENT boolean races, 59/61 relevant tests
+      green in its own read-only sandbox, H23 confirmed, edit-set conformance confirmed)
+  - lane: a8-1-council-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (kimi -p, non-interactive; agy was dispatched first per the mission's
+      seat-preference order but every attempt — with and without an explicit
+      command-verification ask — was auto-denied a "command" tool permission that headless mode
+      cannot grant, so this writer fell back to kimi per the resume note's own "(or kimi)"
+      allowance rather than pass --dangerously-skip-permissions, which the builder contract's
+      sandbox-bypass ban covers in spirit). VERDICT OK — independently re-derived: read
+      fold_pack_seq23.py end to end, diffed seq-22 vs seq-23 rule-by-rule in its own Python,
+      re-ran the twin-basis antibody, re-computed H23, re-ran the full 345/345 suite. Two
+      non-blocking advisories, both folded into this pack's dissent below.
+  - lane: a8-1-ground-truth
+    role: ground_truth
+    seat: >-
+      session (this writer) — the pack asserts no new regulatory figure and registers no new
+      fact; its ground truth is the signed seq-22 pack and the fold/activation code already on
+      origin/main, not a notebook.
+    nb: >-
+      Five files this fold reads but never edits, hashed at the current merge-base and
+      confirmed untouched by this diff: rulepack-prod-022.source.json (donor rules' when/scope/
+      product_version_ids/source_refs/safety_critical, the STUDY/RETIREMENT SUPPORT rules' own
+      bounds), rulepack-prod-022.signed.json (the anchor's signature and payload digest),
+      backend/services/visa_engine/bundle.py (StaticTrustStore, canonicalize_json,
+      verify_rule_pack), backend/services/visa_engine/models.py (RulePackPayload), and
+      docs/runbooks/visa-engine-key-ceremony.md (the public trust store JSON this writer used
+      to run the fold — never a private key).
+    query_hash: "2d1bbba6d79d83ca1a978ed47c0fee7b37c0ac5bbca434708adffe57251bf481" # pragma: allowlist secret
+    note: >-
+      query_hash = sha256 of the five files concatenated in that order via `git show
+      <merge-base>:<path>`, computed this turn; `git diff --name-only <merge-base>...HEAD` on
+      the same five paths is empty for all five (see receipt below).
+council_run: council/journal.jsonl
+pii_scan: clean
+decisions:
+  - id: D-gear
+    decision: >-
+      Gear 3, by size: the folded pack rulepack-prod-023.source.json (9,298 added lines,
+      NOT size-excluded per the mission's own evidence-pack convention — #6663 carried its
+      source JSON the same way) plus fold_pack_seq23.py (865) and test_seq23_pack.py (578).
+      Judgement agrees independently: a candidate production rule-pack over apps/backend-rag/**,
+      where merging a PR is itself the deploy.
+  - id: D-inherited-verified
+    decision: >-
+      Every file left uncommitted by the dead prior instance was treated as UNVERIFIED and
+      checked against MANDATE-vo.md §Slice A8-1 + DRAFT-SPEC-A8-1.v2 §1 before being trusted.
+      The fold script (fold_pack_seq23.py) was read in full and matches the disposition table
+      row for row. The source JSON (rulepack-prod-023.source.json) was re-derived by re-running
+      the fold from the seq-22 source under the public trust store env and compared with
+      `cmp -s` against the inherited file: byte-identical (see receipt). The census file's
+      uncommitted diff was a SCRATCH PROBE the dead instance had explicitly marked as a
+      placeholder ("refined from the candidate replay's own violation output before this PR
+      ships") — this writer ran that replay and found the placeholder's empty
+      `_SEQ23_OUTCOME_CHANGES` and single-row dead-end allowlist entry were in fact CORRECT (zero
+      outcome/dead-end violations on the 116-walk corpus), so the comment was rewritten to say
+      so rather than left claiming an unfinished probe.
+  - id: D-census-test-debt
+    decision: >-
+      test_every_product_the_candidate_pack_adds_is_named_to_the_applicant and its guilt
+      counterpart (test_interview_walk_census.py, added #6489 when signed==seq-20/21) compared
+      the candidate pack against "the signed pack" as a DELTA (candidate_engine_named minus
+      engine_named). Seq-22's own activation since #6489 put the same nine seq-21-added products
+      in the signed pack's OWN engine-named set too, so the delta became structurally impossible
+      the moment ANY candidate pack existed above seq-22 — which this PR is the first to create
+      (the candidate census tests were SKIPPED on main precisely because no such candidate
+      existed). Fixed here, not deferred: rewritten as a direct reachability assertion (the
+      invariant these tests protect — the nine products stay reachable and visible — does not
+      depend on which sequence happens to be signed). Outside A8-1's own disposition table, but
+      required for A8-1's own acceptance bar ("the candidate census tests must now show passed,
+      not skipped"). Both council seats independently reviewed this fix (question 5 in both
+      rounds) and confirmed it sound; see dissent for the coverage-loss nuance kimi raised.
+  - id: D-a86-replay
+    decision: >-
+      A8.6's offline replay harness was cross-checked against the SIGNED pack FIRST (all 19/19
+      rows reproduce the live 252-walk B4-2b sweep's own recorded engine_state/review_reasons
+      exactly) before being pointed at the candidate, to rule out a harness bug before trusting
+      its candidate-pack output. Full 19-row table in the PR body.
+receipts:
+  - claim: HEAD sha and merge-base, post-rebase onto a freshly fetched origin/main.
+    cmd: git fetch -q origin main && git rev-parse HEAD && git merge-base origin/main HEAD
+    result: "HEAD 2f14e3b49e20512da5b3364ec81ad156d1471e14, merge-base b8826f4494d0f5af4e031eaf5fb230ef1d532e63"
+    exit: 0
+    ts: "2026-09-22T23:45:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: Diff size against the merge-base (never a two-dot diff against the tip of main).
+    cmd: git diff --shortstat "$(git merge-base origin/main HEAD)" HEAD
+    result: "4 files changed, 10780 insertions(+), 11 deletions(-)"
+    exit: 0
+    ts: "2026-09-22T23:45:10Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: The regenerated source JSON is byte-identical to the inherited/committed one.
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON='[{"kid": "prod-2026-07-1", ...}]'
+      .venv/bin/python -m backend.scripts.visa_engine.fold_pack_seq23 --seq22-source
+      rulepack-prod-022.source.json --output /tmp/regenerated-023.json; cmp -s
+      rulepack-prod-023.source.json /tmp/regenerated-023.json (raw, pre-Prettier); python3 -c
+      "json.load(a)==json.load(b)" (post-Prettier, semantic)
+    result: "H23 e5f791b5232fd1369ef3b94ca7bb5f349f9bb6eb4073895aa9f7deb682e72204 both times; raw cmp -s IDENTICAL pre-Prettier, semantically identical post-Prettier"
+    exit: 0
+    ts: "2026-09-22T23:03:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: Full required test suite green, pre-rebase AND post-rebase.
+    cmd: >-
+      PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq23_pack.py
+      backend/tests/services/visa_engine/test_interview_walk_census.py
+      backend/tests/services/visa_engine/test_cure_forward_guard.py
+      backend/tests/services/visa_engine/test_seq20_pack.py
+      backend/tests/services/visa_engine/test_seq21_pack.py
+      backend/tests/services/visa_engine/test_seq22_pack.py
+      backend/tests/scripts/visa_engine/test_review_hold_inventory.py
+    result: "345 passed (pre-rebase, post-census-fix); 345 passed again post-rebase onto origin/main b8826f4494"
+    exit: 0
+    ts: "2026-09-22T23:40:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: A3'-B has not merged (serialization check before push).
+    cmd: git log --oneline b8826f4494..origin/main
+    result: "4 commits (#7159 healer, #7160 ci-routing, #7162 mouth-e2e docs, #7164 modus docs) — none touch test_interview_walk_census.py or the visa_engine tree"
+    exit: 0
+    ts: "2026-09-22T23:45:20Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: PII scan of the full merge-base diff — no email, phone, passport-like or 16-digit string.
+    cmd: >-
+      git diff "$(git merge-base origin/main HEAD)" HEAD > full.diff; grep -cE
+      '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' full.diff; grep -cE
+      '(\+?[0-9][0-9().-]{7,}[0-9])' full.diff; grep -cE '\b[A-Z]{1,2}[0-9]{6,9}\b' full.diff;
+      grep -cE '\b[0-9]{16}\b' full.diff
+    result: "5 @pytest.fixture false positives, 411 phone-shaped hits (sampled: UUIDs, ISO dates, FOLD_VERSION/kid constants — none a real phone number), 0 passport-like, 0 16-digit"
+    exit: 0
+    ts: "2026-09-22T23:46:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: The five ground-truth files this fold reads are untouched by this diff.
+    cmd: >-
+      git diff --name-only "$(git merge-base origin/main HEAD)"...HEAD -- <the five paths>
+      (empty); { for f in <the five paths>; do git show "$MB:$f"; done; } | shasum -a 256
+    result: "empty diff for all five; concat sha256 2d1bbba6d79d83ca1a978ed47c0fee7b37c0ac5bbca434708adffe57251bf481"
+    exit: 0
+    ts: "2026-09-22T23:47:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+  - claim: A8.6 offline replay harness reproduces the live signed-pack report exactly before being pointed at the candidate.
+    cmd: scratch script (a86_replay.py, transcript in the PR body), cross-check section
+    result: "19/19 rows match the live 252-walk B4-2b sweep's own engine_state/review_reasons"
+    exit: 0
+    ts: "2026-09-22T23:20:00Z"
+    seat: Claude Sonnet 5 (vo-builder-a8-1)
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      BRIDGING adverse-history: 8 of the 10 review-gate/* held walks now resolve to
+      SUPPORTED_CANDIDATES because hf.bridging.adverse-history is PRODUCTS-scoped (BRIDGING
+      only, copied verbatim from the donor, never GLOBAL) while the retired REQUIRE_REVIEW
+      stage's precedence outranked SUPPORTED unconditionally regardless of scope. Post-fold, a
+      DEPORTATION/BLACKLIST-history applicant with non-BRIDGING candidates gets those candidates
+      with no human ever seeing the disclosed history — the pack never gated other products on
+      it, but the practical effect in seq-22 was that a human always saw it via the walk-level
+      hold. Not a code defect (the fold implements the disposition table faithfully and the
+      donor was already PRODUCTS-scoped), but a real behavioral delta with policy weight.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection: >-
+      The census-test rewrite (D-census-test-debt) drops the equality form's ability to catch a
+      TENTH product becoming engine-reachable in the candidate beyond the nine seq-21 named.
+      Argued non-blocking because this fold inserts only EXCLUDE-effect rules, which cannot
+      create new reachability, and assert_only_expected_changes already pins the entire ruleset
+      — but the coverage loss is real for a FUTURE fold that adds a SUPPORT rule, and a tighter
+      form (`set(candidate_engine_named) == set(engine_named)` for a fold that adds nothing) was
+      not adopted here.
+    status: PLAUSIBLE
+  - seat: kimi-code/k3
+    objection: >-
+      Applicant-facing copy for the 11 new reason codes / explain.* keys is not part of this
+      PR and is downstream mouth-layer work (Slice A8-2) — flagged so activation (A9) does not
+      proceed assuming copy already exists.
+    status: CONFIRMED
+appetite:
+  budget: 1 PR, unarmed, resumed after a dead prior instance
+  stop_loss: three reds on the same cause suspends; a fix-of-a-fix stops at depth 1

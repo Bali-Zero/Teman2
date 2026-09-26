@@ -507,30 +507,6 @@ export class CrmApi {
   }
 
   /**
-   * Query the CRM Oracle (NotebookLM) for a specific client.
-   */
-  async queryClientIntelligence(
-    clientId: number,
-    question: string,
-  ): Promise<{
-    answer: string;
-    citations: Array<{ source_id: string; cited_text: string }>;
-  }> {
-    return this.client.request<{
-      answer: string;
-      citations: Array<{ source_id: string; cited_text: string }>;
-    }>(
-      `/api/crm/intelligence/${clientId}/query`,
-      {
-        method: "POST",
-        body: JSON.stringify({ question }),
-        headers: { "Content-Type": "application/json" },
-      },
-      30000,
-    );
-  }
-
-  /**
    * Get client interaction timeline
    */
   async getClientTimeline(
@@ -1277,6 +1253,12 @@ export class CrmApi {
 
   async getPortalUnreadCount(): Promise<{
     total_unread: number;
+    total_pending?: number;
+    pending_by_client?: {
+      client_id: number;
+      client_name: string;
+      pending_count: number;
+    }[];
     by_client: {
       client_id: number;
       client_name: string;
@@ -1287,6 +1269,12 @@ export class CrmApi {
       success: boolean;
       data: {
         total_unread: number;
+        total_pending?: number;
+        pending_by_client?: {
+          client_id: number;
+          client_name: string;
+          pending_count: number;
+        }[];
         by_client: {
           client_id: number;
           client_name: string;

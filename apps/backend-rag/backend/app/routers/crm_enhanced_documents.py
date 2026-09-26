@@ -12,7 +12,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StrictInt
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_service_write import verify_crm_write_key
@@ -522,10 +522,15 @@ async def get_client_ocr_status(
         }
 
 
+class ExtractVisaRequest(BaseModel):
+    file_id: str = Field(..., min_length=1)  # keeps "" rejected, like the old `if not file_id`
+    doc_id: StrictInt | None = None  # strict: lax int would turn `true` into document id 1
+
+
 @router.post("/clients/{client_id}/extract-visa")
 async def extract_visa_data(
     client_id: int,
-    body: dict = Body(...),
+    body: ExtractVisaRequest,
     pool: Any = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
@@ -537,12 +542,8 @@ async def extract_visa_data(
     """
     async with pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
-    file_id = body.get("file_id")
-    doc_id = body.get("doc_id")
-    if not file_id:
-        raise HTTPException(status_code=400, detail="file_id required")
 
-    return await _auto_ocr_visa(pool, client_id, file_id, doc_id)
+    return await _auto_ocr_visa(pool, client_id, body.file_id, body.doc_id)
 
 
 # ============================================

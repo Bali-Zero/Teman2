@@ -10,12 +10,33 @@ import json
 import logging
 import time
 from collections import defaultdict
-from typing import Any, Protocol
+from typing import Any, Protocol, TypedDict
 
 from backend.core.plugins.plugin import Plugin, PluginInput, PluginOutput
 from backend.core.plugins.registry import registry
 
 logger = logging.getLogger(__name__)
+
+
+class PluginMetrics(TypedDict):
+    """Per-plugin execution counters tracked by ``PluginExecutor._metrics``."""
+
+    calls: int
+    successes: int
+    failures: int
+    total_time: float
+    last_error: str | None
+    last_success: float | None
+    cache_hits: int
+    cache_misses: int
+
+
+class CircuitBreakerState(TypedDict):
+    """Per-plugin circuit-breaker state tracked by ``PluginExecutor._circuit_breakers``."""
+
+    failures: int
+    last_failure_time: float
+
 
 # Constants for circuit breaker
 CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5
@@ -81,20 +102,22 @@ class PluginExecutor:
         """
         self.redis = redis_client
         self._redis_available = redis_client is not None
-        self._metrics = defaultdict(
-            lambda: {
-                "calls": 0,
-                "successes": 0,
-                "failures": 0,
-                "total_time": 0.0,
-                "last_error": None,
-                "last_success": None,
-                "cache_hits": 0,
-                "cache_misses": 0,
-            },
+        self._metrics: defaultdict[str, PluginMetrics] = defaultdict(
+            lambda: PluginMetrics(
+                calls=0,
+                successes=0,
+                failures=0,
+                total_time=0.0,
+                last_error=None,
+                last_success=None,
+                cache_hits=0,
+                cache_misses=0,
+            ),
         )
-        self._rate_limits = defaultdict(list)  # plugin -> [timestamps]
-        self._circuit_breakers = {}  # plugin -> {failures, last_failure_time}
+        # plugin -> [timestamps]
+        self._rate_limits: defaultdict[str, list[float]] = defaultdict(list)
+        # plugin -> {failures, last_failure_time}
+        self._circuit_breakers: dict[str, CircuitBreakerState] = {}
         logger.info("Initialized PluginExecutor")
 
     async def execute(
@@ -218,6 +241,11 @@ class PluginExecutor:
                         error=f"Plugin execution failed after {retry_count + 1} attempts: {e!s}",
                         metadata={"attempts": retry_count + 1},
                     )
+
+        # Unreachable in practice: range(retry_count + 1) always iterates at least
+        # once, and its last iteration (attempt == retry_count) always returns via
+        # one of the handlers above. Satisfies mypy's exhaustiveness check.
+        raise RuntimeError(f"Plugin {plugin_name} execution loop exited without a result")
 
     async def _execute_with_monitoring(
         self,
@@ -374,7 +402,7 @@ class PluginExecutor:
         plugin_name: str,
         input_data: dict[str, Any],
         output: PluginOutput,
-    ):
+    ) -> None:
         """
         Cache execution result
 
@@ -425,7 +453,9 @@ class PluginExecutor:
 
         # Update circuit breaker
         if plugin_name not in self._circuit_breakers:
-            self._circuit_breakers[plugin_name] = {"failures": 0, "last_failure_time": 0}
+            self._circuit_breakers[plugin_name] = CircuitBreakerState(
+                failures=0, last_failure_time=0.0
+            )
 
         self._circuit_breakers[plugin_name]["failures"] += 1
         self._circuit_breakers[plugin_name]["last_failure_time"] = time.time()
@@ -465,7 +495,7 @@ class PluginExecutor:
         Returns:
             Dictionary with metrics
         """
-        metrics = dict(self._metrics[plugin_name])
+        metrics: dict[str, Any] = dict(self._metrics[plugin_name])
 
         if metrics["calls"] > 0:
             metrics["avg_time"] = metrics["total_time"] / metrics["calls"]

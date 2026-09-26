@@ -327,9 +327,24 @@ def test_golden_rules_summary():
 
     This is useful for CI/CD to get a single pass/fail result.
     """
-    # This test just ensures other tests ran
-    # (pytest will fail if any of the above failed)
-    pass
+    # This is a scan-and-report test like the other Golden Rule checks in
+    # this file: without a real assertion on the scan's OWN result, every
+    # rule above could silently be checking zero files (e.g. DIRS_TO_CHECK
+    # pointing at renamed/missing directories) and this module would report
+    # a clean codebase for the wrong reason -- an empty scan, not compliant
+    # code. Pin the scan surface as non-trivial so that failure mode is
+    # itself caught.
+    file_counts = {
+        str(directory): len(get_python_files(directory))
+        for directory in DIRS_TO_CHECK
+        if directory.exists()
+    }
+    total_files = sum(file_counts.values())
+    assert total_files > 0, (
+        "Golden Rules scan surface is empty: DIRS_TO_CHECK resolved to zero "
+        f"Python files ({file_counts}), so every rule in this module would "
+        "pass vacuously instead of actually checking the codebase"
+    )
 
 
 # ========== PYTEST CONFIGURATION ==========

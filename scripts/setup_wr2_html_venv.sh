@@ -16,7 +16,7 @@
 #       backend's own requirements-prod.txt (minus the editable cell-core line,
 #       which is DNA-recording, unused by the renderer, and unresolvable here).
 set -euo pipefail
-REPO="${WR2_REPO_ROOT:-$HOME/nuzantara-deploy}"
+REPO="${WR2_REPO_ROOT:-$HOME/nuzantara}"
 PYENV_PY="${PYENV_PY311:-$HOME/.pyenv/versions/3.11.11/bin/python}"
 VENV="$REPO/.venv-wr2-html"
 VPY="$VENV/bin/python"

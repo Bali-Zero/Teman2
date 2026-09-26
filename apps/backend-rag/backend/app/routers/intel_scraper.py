@@ -145,6 +145,97 @@ def _parse_bali_zero_take(text: str) -> dict[str, str]:
     return sections
 
 
+def _classify_draft_heading(heading: str) -> str | None:
+    """Name the mapped section a draft "##" heading opens, if any. The one
+    heading grammar shared by the extractors and extra_sections (spec D8):
+    case-insensitive, optional trailing ":"."""
+    normalized = heading.strip().rstrip(":").strip().lower()
+    if normalized == "summary":
+        return "summary"
+    if normalized == "facts":
+        return "facts"
+    if normalized in {"bali zero take", "bali zero's take", "bali zero’s take"}:
+        return "bali_zero_take"
+    if normalized == "next steps":
+        return "next_steps"
+    return None
+
+
+def _split_draft_sections(content: str) -> list[tuple[str, str | None, str]]:
+    """Every "##" section of a draft in order, as (heading, mapped key, body)."""
+    headings = list(re.finditer(r"(?m)^##[ \t]+(.+?)[ \t]*$", content))
+    sections: list[tuple[str, str | None, str]] = []
+    for index, heading_match in enumerate(headings):
+        body_end = headings[index + 1].start() if index + 1 < len(headings) else len(content)
+        heading = heading_match.group(1).strip()
+        body = content[heading_match.end() : body_end].strip()
+        sections.append((heading, _classify_draft_heading(heading), body))
+    return sections
+
+
+# The line grammar of a "## Next Steps" body. Spec and case table:
+# docs/specs/newsroom-next-steps-grammar-v1.md (after four PRs of layered
+# regex fixes, #7285 → #7336, each cure regressing another case).
+#
+# An audience is named only by a whole label LINE ("### For Expats",
+# "**For Expats:**", "*For Expats:*", "Investors"), never by the word inside
+# a step: a substring match relabelled "Expats should renew…" and cut
+# "expatriate" to "riate…" (gate BLOCK on #7322).
+_NEXT_STEPS_AUDIENCE_LABEL = re.compile(
+    r"^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*|__|\*(?!\s)|_(?!\s))?[ \t]*"
+    r"(?:For[ \t]+)?(Expat|Investor)s?[ \t]*:?[ \t]*(?:\*\*|__|\*|_)?[ \t]*:?[ \t]*$",
+    re.IGNORECASE,
+)
+_NEXT_STEPS_HEADING = re.compile(r"^[ \t]*#{1,6}[ \t]+\S")
+_NEXT_STEPS_RULE = re.compile(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+# "-Check" and "-5% tax" are not list items (markdown agrees, spec D7).
+_NEXT_STEPS_LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d{1,3}[.)])(?:[ \t]+(.*))?$")
+# Items that say "nothing yet" rather than name a step (invariant 4).
+_PLACEHOLDER_STEPS = frozenset({"tbd", "tba", "n/a", "na", "none", "todo"})
+
+
+def _parse_next_steps(body: str) -> dict[str, list[str]]:
+    """Split a "## Next Steps" body into expat / investor / general items.
+
+    Per line: a label line switches the audience; any other heading switches
+    back to general and is not an item; a list marker starts an item; a blank
+    line or a horizontal rule ends one and is never an item; any other line
+    continues the open item or starts one. Text before the first label, or
+    with no label at all, is general. Only the leading list marker is removed
+    and nothing is capped: every worded line lands in exactly one item.
+    """
+    groups: dict[str, list[str]] = {"expat": [], "investor": [], "general": []}
+    audience = "general"
+    item_audience = audience
+    item_lines: list[str] = []
+
+    def close_item() -> None:
+        text = "\n".join(item_lines).strip()
+        item_lines.clear()
+        if re.search(r"\w", text) and text.rstrip(".").strip().lower() not in _PLACEHOLDER_STEPS:
+            groups[item_audience].append(text)
+
+    for line in body.splitlines():
+        label = _NEXT_STEPS_AUDIENCE_LABEL.match(line)
+        if label or _NEXT_STEPS_HEADING.match(line):
+            close_item()
+            audience = label.group(1).lower() if label else "general"
+            continue
+        if not line.strip() or _NEXT_STEPS_RULE.match(line):
+            close_item()
+            continue
+        list_item = _NEXT_STEPS_LIST_ITEM.match(line)
+        if list_item:
+            close_item()
+            line = list_item.group(1) or ""
+        if not item_lines:
+            item_audience = audience
+        if line.strip():
+            item_lines.append(line.strip())
+    close_item()
+    return groups
+
+
 def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[str, Any]:
     """
     Convert staging item (markdown simple) to EnrichedArticle format.
@@ -159,7 +250,8 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     """
 
     title = staging_data.get("title", "Untitled")
-    content = staging_data.get("content", "")
+    # CRLF drafts must parse like LF ones (spec D8).
+    content = staging_data.get("content", "").replace("\r\n", "\n").replace("\r", "\n")
     category = staging_data.get("category", "news")
     relevance_score = staging_data.get("relevance_score", 50)
     source_url = staging_data.get("source_url", staging_data.get("url", ""))
@@ -167,96 +259,53 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
 
     # Parse markdown content to extract sections
     # Format: ## Summary\n...\n## Facts\n...\n## Bali Zero Take\n...\n## Next Steps\n...
+    sections = _split_draft_sections(content)
 
-    # Extract Summary section
-    summary_match = re.search(
-        r"## Summary\s*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
+    def _mapped_body(key: str) -> str | None:
+        return next((body for _, known, body in sections if known == key), None)
+
+    summary_body = _mapped_body("summary")
     ai_summary = (
-        _summary_from_content(summary_match.group(1), limit=280)
-        if summary_match
+        _summary_from_content(summary_body, limit=280)
+        if summary_body is not None
         else _summary_from_content(content)
     )
 
-    # Extract Facts section
-    facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
-    facts = facts_match.group(1).strip() if facts_match else content
+    facts_body = _mapped_body("facts")
+    facts = facts_body if facts_body is not None else content
 
-    # Extract Bali Zero Take section
-    bali_zero_take_match = re.search(
-        r"## Bali Zero(?:['’]s)? Take:?[ \t]*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
-    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else ""
-    bali_zero_take = _parse_bali_zero_take(bali_zero_take_text)
+    bali_zero_take = _parse_bali_zero_take(_mapped_body("bali_zero_take") or "")
 
-    # Extract Next Steps section
-    next_steps_match = re.search(
-        r"## Next Steps\s*\n(.*?)(?=\n## |$)",
-        content,
-        re.DOTALL | re.IGNORECASE,
-    )
-    next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
+    # A draft that never names "For Expats"/"For Investors" states ONE
+    # audience-neutral list: it lands in `general`, never split 50/50 between
+    # the two and never filled with "Review the article for specific actions"
+    # (2026-09-23 GloBE regression).
+    next_steps = _parse_next_steps(_mapped_body("next_steps") or "")
 
-    # Parse Next Steps for expat and investor
-    expat_steps = []
-    investor_steps = []
+    # Preserve every OTHER draft "##" section instead of silently dropping it
+    # (2026-09-23 GloBE regression: "## In Practice" and "## Sources" never
+    # reached the MDX). Walk every "##" heading in draft order; the four
+    # mapped ones above are consumed into their own fields and skipped here,
+    # everything else is carried through verbatim with an anchor recording
+    # which mapped section it immediately followed, so the renderer can slot
+    # it back after that section (one that precedes Facts lands right after
+    # Facts: there is no slot before it). A draft with no "## Facts" heading
+    # already carries every section inside the `facts` fallback above, so
+    # nothing is collected again (gate finding F2 on #7322: printed twice).
+    extra_sections: list[dict[str, str]] = []
+    last_known_anchor = "facts"
+    for heading_text, known, body in sections if facts_body is not None else []:
+        if known:
+            if known != "summary":
+                last_known_anchor = known
+            continue
+        if body:
+            extra_sections.append(
+                {"heading": heading_text, "body": body, "insert_after": last_known_anchor}
+            )
 
-    # Try to extract expat and investor sections
-    expat_match = re.search(
-        r"(?:###\s*)?(?:For\s+)?Expat[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        next_steps_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if expat_match:
-        expat_text = expat_match.group(1).strip()
-        # Extract list items
-        expat_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", expat_text)
-            if item.strip()
-        ]
-
-    investor_match = re.search(
-        r"(?:###\s*)?(?:For\s+)?Investor[s]?[:\s]*(.*?)(?=\n(?:###|##)|$)",
-        next_steps_text,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if investor_match:
-        investor_text = investor_match.group(1).strip()
-        # Extract list items
-        investor_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", investor_text)
-            if item.strip()
-        ]
-
-    # If no specific sections found, try to extract all list items
-    if not expat_steps and not investor_steps:
-        all_steps = [
-            item.strip().lstrip("- ").lstrip("* ")
-            for item in re.split(r"\n(?=-|\*)", next_steps_text)
-            if item.strip() and len(item.strip()) > 10
-        ]
-        # Split between expat and investor (rough heuristic)
-        mid_point = len(all_steps) // 2
-        expat_steps = (
-            all_steps[:mid_point] if all_steps else ["Review the article for specific actions"]
-        )
-        investor_steps = (
-            all_steps[mid_point:] if all_steps else ["Review the article for specific actions"]
-        )
-
-    # Ensure we have at least one step for each
-    if not expat_steps:
-        expat_steps = ["Review the article for specific actions"]
-    if not investor_steps:
-        investor_steps = ["Review the article for specific actions"]
-
-    # Determine priority based on relevance_score
+    # Editorial priority: how much the story matters to Bali Zero (it feeds
+    # `trending`), not how exposed the reader is.
     if relevance_score >= 75:
         priority = "high"
     elif relevance_score >= 50:
@@ -264,14 +313,10 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     else:
         priority = "low"
 
-    # Generate TLDR from summary and facts
+    # The TL;DR states only what the draft supports. A staging item carries no
+    # reader-risk, audience or date field, so those rows stay empty instead of
+    # being derived from relevance_score or filled with a stock audience.
     tldr_what = _summary_from_content(facts, limit=150) or title
-    tldr_who = "Expats and investors in Indonesia"
-    tldr_when = "Check article for specific dates"
-    tldr_should_worry = (
-        "Depends" if priority == "medium" else ("Yes" if priority == "high" else "No")
-    )
-    tldr_risk_level = priority.capitalize()
 
     # Generate tags from category and title
     ai_tags = [category]
@@ -291,19 +336,10 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
     return {
         "title": title,
         "headline": title,
-        "tldr": {
-            "should_worry": tldr_should_worry,
-            "what": tldr_what,
-            "who": tldr_who,
-            "when": tldr_when,
-            "risk_level": tldr_risk_level,
-        },
+        "tldr": {"what": tldr_what},
         "facts": facts,
         "bali_zero_take": bali_zero_take,
-        "next_steps": {
-            "expat": expat_steps[:5],  # Limit to 5 items
-            "investor": investor_steps[:5],  # Limit to 5 items
-        },
+        "next_steps": next_steps,
         "category": category,
         "priority": priority,
         "relevance_score": relevance_score,
@@ -317,6 +353,7 @@ def convert_staging_to_enriched_article(staging_data: dict[str, Any]) -> dict[st
         "seo_title": staging_data.get("seo_title"),
         "seo_description": staging_data.get("seo_description"),
         "cover_image_alt": staging_data.get("cover_image_alt"),
+        "extra_sections": extra_sections,
     }
 
 
@@ -429,23 +466,27 @@ async def submit_from_scraper(
             # the existing item doesn't already have a usable one. Never
             # let a heal failure turn a successful dedup into a 500 —
             # log and fall through to the unchanged response shape.
+            #
+            # The merge itself goes through `backfill_enrichment_if_absent`
+            # (per-item fcntl advisory lock, same one `compare_and_set_status`
+            # uses) rather than a raw load/save here: two same-URL submissions
+            # racing this read-modify-write could both see "empty" and both
+            # write, silently losing one payload under last-write-wins
+            # (W-L610). The lock serializes the racers instead.
             enrichment_backfilled = False
             new_enrichment = submission.enrichment
-            existing_enrichment = duplicate.get("enrichment")
             dup_item_id = duplicate.get("item_id")
             if (
                 isinstance(new_enrichment, dict)
                 and new_enrichment
-                and not (isinstance(existing_enrichment, dict) and existing_enrichment)
                 and dup_item_id
                 and duplicate.get("status") in (None, "pending")
             ):
                 try:
-                    existing_full = staging_service.load_staging_item(intel_type, dup_item_id)
-                    if existing_full is not None:
-                        existing_full["enrichment"] = new_enrichment
-                        staging_service.save_staging_item(intel_type, dup_item_id, existing_full)
-                        enrichment_backfilled = True
+                    enrichment_backfilled = staging_service.backfill_enrichment_if_absent(
+                        intel_type, dup_item_id, new_enrichment
+                    )
+                    if enrichment_backfilled:
                         logger.info(
                             "Backfilled enrichment onto duplicate staging item",
                             extra={"item_id": dup_item_id},
@@ -868,6 +909,7 @@ async def _publish_staging_item(
             from backend.app.routers.article_composer import (
                 BaliZeroTake,
                 EnrichedArticle,
+                ExtraSection,
                 NextSteps,
                 PublishRequest,
                 TLDRSection,
@@ -898,6 +940,10 @@ async def _publish_staging_item(
                 seo_title=enriched_dict.get("seo_title"),
                 seo_description=enriched_dict.get("seo_description"),
                 cover_image_alt=enriched_dict.get("cover_image_alt"),
+                extra_sections=[
+                    ExtraSection(**section)
+                    for section in enriched_dict.get("extra_sections", [])
+                ],
             )
 
             # Prepare cover image if available

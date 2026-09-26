@@ -10,15 +10,20 @@ All operations are async to avoid blocking the event loop.
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Any
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
+
+if TYPE_CHECKING:
+    from backend.app.core.config import Settings
 
 try:
     from backend.app.core.config import settings
 except ImportError:
-    settings = None
+    settings: "Settings | None" = None  # type: ignore[no-redef]  # standalone-execution fallback; backend.app.core.config always resolves in the real deploy path
 
 try:
     from backend.core.collection_registry import canonicalize_collection_name
@@ -36,7 +41,7 @@ try:
     )
 except ImportError:
     # Fallback for standalone execution
-    class QdrantServerError(Exception):
+    class QdrantServerError(Exception):  # type: ignore[no-redef]  # standalone-execution fallback; backend.core.exceptions always resolves in the real deploy path
         def __init__(
             self, message: str, status_code: int, response_text: str | None = None
         ) -> None:
@@ -44,10 +49,10 @@ except ImportError:
             self.status_code = status_code
             self.response_text = response_text
 
-    class QdrantConnectionError(Exception):
+    class QdrantConnectionError(Exception):  # type: ignore[no-redef]  # standalone-execution fallback; see above
         pass
 
-    class QdrantTimeoutError(Exception):
+    class QdrantTimeoutError(Exception):  # type: ignore[no-redef]  # standalone-execution fallback; see above
         pass
 
 
@@ -58,17 +63,19 @@ except ImportError:
     from contextlib import contextmanager
 
     @contextmanager
-    def trace_span(name: Any, attrs: Any = None) -> Any:
+    def trace_span(span_name: str, attributes: dict[str, Any] | None = None) -> Any:
         yield
 
-    def set_span_attribute(key: Any, value: Any) -> Any:
+    def set_span_attribute(key: str, value: Any) -> None:
         pass
 
-    def set_span_status(status: Any, msg: Any = None) -> Any:
+    def set_span_status(status: str, description: str | None = None) -> None:
         pass
 
 
 logger = logging.getLogger(__name__)
+
+_RetryResultT = TypeVar("_RetryResultT")
 
 # Constants
 DEFAULT_OPENAI_DIMENSIONS = 1536
@@ -198,10 +205,10 @@ def _extract_point_metadata(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _retry_with_backoff(
-    func,
+    func: Callable[[], Awaitable[_RetryResultT]],
     max_retries: int = MAX_RETRIES,
     base_delay: float = RETRY_BASE_DELAY,
-):
+) -> _RetryResultT:
     """
     Retry function with exponential backoff.
 
@@ -216,7 +223,7 @@ async def _retry_with_backoff(
     Raises:
         Exception: If all retries fail
     """
-    last_exception = None
+    last_exception: Exception | None = None
     for attempt in range(max_retries + 1):
         try:
             return await func()
@@ -234,6 +241,12 @@ async def _retry_with_backoff(
                 # The outer except block in search() already increments it after
                 # _retry_with_backoff raises. Incrementing here too causes double-counting.
                 raise last_exception from e
+    # Unreachable in practice: range(max_retries + 1) always iterates at least once
+    # (max_retries defaults to a non-negative constant), so the loop above always
+    # either returns or raises. Satisfies mypy's exhaustiveness check.
+    raise RuntimeError(
+        "_retry_with_backoff exhausted retries without capturing an exception"
+    ) from last_exception
 
 
 class QdrantClient:
@@ -334,7 +347,7 @@ class QdrantClient:
             self._http_client = None
             logger.debug("✅ Closed Qdrant HTTP client")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "QdrantClient":
         """
         Async context manager entry.
 
@@ -344,7 +357,12 @@ class QdrantClient:
         await self._get_client()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """
         Async context manager exit.
 
@@ -484,7 +502,7 @@ class QdrantClient:
         if not isinstance(query_embedding[0], (int, float)):
             raise TypeError("query_embedding must be list of numbers")
 
-        async def _do_search():
+        async def _do_search() -> dict[str, Any]:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}/points/search"
 
@@ -652,7 +670,7 @@ class QdrantClient:
                     "total_found": 0,
                 }
 
-    async def get_stats(self) -> dict:
+    async def get_stats(self) -> dict[str, Any]:
         """
         Get statistics about the collection.
 
@@ -965,7 +983,12 @@ class QdrantClient:
                 results = response.json().get("result", [])
 
                 # Transform to Qdrant format
-                formatted = {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
+                formatted: dict[str, list[Any]] = {
+                    "ids": [],
+                    "embeddings": [],
+                    "documents": [],
+                    "metadatas": [],
+                }
 
                 for point in results:
                     formatted["ids"].append(str(point["id"]))
@@ -1130,7 +1153,11 @@ class QdrantClient:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}/points/scroll"
 
-            payload = {"limit": limit, "with_payload": True, "with_vectors": False}
+            payload: dict[str, Any] = {
+                "limit": limit,
+                "with_payload": True,
+                "with_vectors": False,
+            }
 
             # Add filter if provided
             if metadata_filter:
@@ -1282,7 +1309,7 @@ class QdrantClient:
         if not query_sparse or not query_sparse.get("indices"):
             return await self.search(query_embedding, filter=filter, limit=limit)
 
-        async def _do_hybrid_search():
+        async def _do_hybrid_search() -> dict[str, Any]:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}/points/query"
 

@@ -369,3 +369,212 @@ def test_guilt_fallback_refuses_rc0_with_no_canonical_verdict(
 
     assert wa.send_to_gateway("msg", "host", wa.RED, "auth_death") is False
     capsys.readouterr()
+
+
+# ------------------------------------------- daemon_silent cause discriminator
+#
+# 2026-09-25 incident (second occurrence of the 2026-08-20/23 class): the
+# Homebrew codex CLI upgraded and the daemon paused claiming 3.5 minutes
+# later, but the `daemon_silent` alert only ever said "dead / version-pin
+# pause / host down" — nobody knew which. `_pin_drift_message` is the pure
+# discriminator; guilt+innocence+dead+missing-package below are its four
+# named cases, plus the I/O readers that feed it.
+
+_DAEMON_START = datetime(2026, 9, 25, 1, 0, 0)
+_PKG_CHANGED_AFTER = datetime(2026, 9, 25, 1, 7, 6)
+_PKG_CHANGED_BEFORE = datetime(2026, 9, 24, 23, 0, 0)
+
+
+def test_guilt_pin_drift_package_newer_than_daemon_start_names_the_cause() -> None:
+    msg = wa._pin_drift_message(_DAEMON_START, "0.156.1", _PKG_CHANGED_AFTER)
+    assert "daemon silent" in msg  # today's wording still opens the alert
+    assert "probable cause: version-pin pause" in msg
+    assert "0.156.1" in msg
+    assert str(_PKG_CHANGED_AFTER.isoformat(sep=" ")) in msg
+    assert str(_DAEMON_START.isoformat(sep=" ")) in msg
+    assert "PROBABLE cause, not" in msg
+    assert "cannot be read without sudo" in msg
+    assert (
+        "sudo sed -i '' 's/^WA_CODEX_CLI_VERSION_PIN=.*/WA_CODEX_CLI_VERSION_PIN=0.156.1/' "
+        "/Users/zantara-codex/.wa-codex-broker.env" in msg
+    )
+    assert "sudo launchctl kickstart -k system/com.balizero.wa-codex-broker" in msg
+
+
+def test_innocence_pin_drift_package_older_than_daemon_start_keeps_plain_wording() -> None:
+    msg = wa._pin_drift_message(_DAEMON_START, "0.156.1", _PKG_CHANGED_BEFORE)
+    assert msg == wa.DAEMON_SILENT_MSG
+
+
+def test_innocence_pin_drift_package_changed_exactly_at_daemon_start_is_not_guilt() -> None:
+    """Equal timestamps are not "AFTER" — no cause is invented from a tie."""
+    msg = wa._pin_drift_message(_DAEMON_START, "0.156.1", _DAEMON_START)
+    assert msg == wa.DAEMON_SILENT_MSG
+
+
+def test_innocence_pin_drift_daemon_not_running_keeps_the_dead_wording() -> None:
+    """`daemon_start=None` is the "not running at all" case — a pause needs
+    a live daemon to pause; this must not be read as one."""
+    msg = wa._pin_drift_message(None, "0.156.1", _PKG_CHANGED_AFTER)
+    assert msg == wa.DAEMON_SILENT_MSG
+
+
+def test_innocence_pin_drift_missing_package_falls_back_and_never_crashes() -> None:
+    assert wa._pin_drift_message(_DAEMON_START, None, None) == wa.DAEMON_SILENT_MSG
+    assert wa._pin_drift_message(_DAEMON_START, "0.156.1", None) == wa.DAEMON_SILENT_MSG
+    assert wa._pin_drift_message(_DAEMON_START, None, _PKG_CHANGED_AFTER) == wa.DAEMON_SILENT_MSG
+
+
+def test_guilt_evaluate_wires_pin_drift_into_the_daemon_silent_verdict() -> None:
+    """The discriminator must actually reach the alert `evaluate()` emits —
+    condition stays "daemon_silent" (dedup unchanged), only the message
+    text carries the named cause."""
+    verdicts = wa.evaluate(
+        _probe(),
+        10.0,
+        _gauge(staleness_s=700.0),
+        NOW,
+        daemon_start=_DAEMON_START,
+        pkg_version="0.156.1",
+        pkg_mtime=_PKG_CHANGED_AFTER,
+    )
+    silent = [v for v in verdicts if v.condition == "daemon_silent"]
+    assert len(silent) == 1
+    assert silent[0].level == wa.RED
+    assert silent[0].condition == "daemon_silent"
+    assert "probable cause: version-pin pause" in silent[0].message
+
+
+def test_innocence_evaluate_without_pin_drift_inputs_keeps_plain_daemon_silent() -> None:
+    """Same staleness as above, no discriminator inputs supplied (matches
+    every pre-existing caller of `evaluate()`) — the alert text must not
+    change for callers that never pass the new arguments."""
+    verdicts = wa.evaluate(_probe(), 10.0, _gauge(staleness_s=700.0), NOW)
+    silent = [v for v in verdicts if v.condition == "daemon_silent"]
+    assert len(silent) == 1
+    assert silent[0].message == wa.DAEMON_SILENT_MSG
+
+
+# ------------------------------------------------- pin-drift I/O readers
+
+
+def test_guilt_find_daemon_pid_matches_the_exact_module_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stdout = (
+        "  501 -bash\n"
+        "  777 grep -f backend.services.integrations.wa_codex_daemon fake\n"
+        "  888 /usr/local/lib/wa-codex-broker/.venv/bin/python3 -m "
+        "backend.services.integrations.wa_codex_daemon\n"
+    )
+    monkeypatch.setattr(
+        wa.subprocess, "run", lambda *a, **k: _FakeProc2(0, stdout)
+    )
+    assert wa._find_daemon_pid() == 888
+
+
+def test_innocence_find_daemon_pid_ignores_a_substring_only_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Family #3 (guard-over-match): a process merely mentioning the module
+    string somewhere on its argv — never as the exact `-m <module>` pair —
+    must not be picked as the daemon."""
+    stdout = "  999 vim backend.services.integrations.wa_codex_daemon_notes.txt\n"
+    monkeypatch.setattr(
+        wa.subprocess, "run", lambda *a, **k: _FakeProc2(0, stdout)
+    )
+    assert wa._find_daemon_pid() is None
+
+
+def test_innocence_find_daemon_pid_no_process_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(wa.subprocess, "run", lambda *a, **k: _FakeProc2(0, "  501 -bash\n"))
+    assert wa._find_daemon_pid() is None
+
+
+def test_guilt_daemon_start_time_parses_ps_lstart(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        wa.subprocess,
+        "run",
+        lambda *a, **k: _FakeProc2(0, "Thu Sep 25 01:00:00 2026\n"),
+    )
+    assert wa._daemon_start_time(888) == datetime(2026, 9, 25, 1, 0, 0)
+
+
+def test_innocence_daemon_start_time_unparseable_output_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(wa.subprocess, "run", lambda *a, **k: _FakeProc2(0, "garbage\n"))
+    assert wa._daemon_start_time(888) is None
+
+
+def test_guilt_daemon_start_time_runs_ps_in_the_c_locale(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """On Pro the user locale is Italian, and an unforced `ps -o lstart=`
+    there prints `ven 25 set 02:06:31 2026` (2026-09-25 prove-live finding):
+    `strptime`'s English format never parses that, so the pin-drift
+    discriminator silently went inert in production. Forcing
+    `LC_ALL=C`/`LANG=C` on the subprocess env is what keeps `ps` emitting
+    the English `lstart` format this parser expects, on every host locale."""
+    captured: dict = {}
+
+    def _fake_run(*args: object, **kwargs: object) -> "_FakeProc2":
+        captured.update(kwargs)
+        return _FakeProc2(0, "Thu Sep 25 01:00:00 2026\n")
+
+    monkeypatch.setattr(wa.subprocess, "run", _fake_run)
+    wa._daemon_start_time(888)
+    env = captured.get("env")
+    assert env is not None
+    assert env.get("LC_ALL") == "C"
+    assert env.get("LANG") == "C"
+
+
+def test_innocence_daemon_start_time_italian_locale_lstart_returns_none_not_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact string Pro's `ps` printed before this fix — proves WHY the
+    C-locale env override above is load-bearing: without it, `strptime`
+    cannot parse an Italian `lstart` line, and the honest behavior is
+    CANNOT-VERIFY (None), never a crash or a guessed datetime."""
+    monkeypatch.setattr(
+        wa.subprocess,
+        "run",
+        lambda *a, **k: _FakeProc2(0, "ven 25 set 02:06:31 2026\n"),
+    )
+    assert wa._daemon_start_time(888) is None
+
+
+def test_guilt_read_homebrew_codex_package_reads_version_and_mtime(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pkg = tmp_path / "package.json"
+    pkg.write_text('{"name": "@openai/codex", "version": "0.156.1"}')
+    monkeypatch.setenv(wa._ENV_HOMEBREW_CODEX_PACKAGE_JSON, str(pkg))
+    version, mtime = wa._read_homebrew_codex_package()
+    assert version == "0.156.1"
+    assert mtime is not None
+
+
+def test_innocence_read_homebrew_codex_package_missing_file_is_none_none(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv(wa._ENV_HOMEBREW_CODEX_PACKAGE_JSON, str(tmp_path / "nope.json"))
+    assert wa._read_homebrew_codex_package() == (None, None)
+
+
+def test_innocence_read_homebrew_codex_package_malformed_json_is_none_none(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pkg = tmp_path / "package.json"
+    pkg.write_text("{not json")
+    monkeypatch.setenv(wa._ENV_HOMEBREW_CODEX_PACKAGE_JSON, str(pkg))
+    assert wa._read_homebrew_codex_package() == (None, None)
+
+
+class _FakeProc2:
+    def __init__(self, rc: int, stdout: str) -> None:
+        self.returncode = rc
+        self.stdout = stdout

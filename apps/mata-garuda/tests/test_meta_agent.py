@@ -286,12 +286,12 @@ class TestCLIRuntime:
     def test_build_command_agy(self):
         from mata_garuda.runtime.cli_runtime import CLIRuntime
 
-        rt = CLIRuntime(model="agy:gemini-3.5-flash")
+        rt = CLIRuntime(model="agy:gemini-3.8-flash-high")
         cmd = rt._build_command("hello", system_prompt="You are helpful")
         assert cmd[0] == "agy"
         assert "-p" in cmd
         assert "--model" in cmd
-        assert "gemini-3.5-flash" in cmd
+        assert "gemini-3.8-flash-high" in cmd
         assert "--print-timeout" in cmd
         assert "5m" in cmd
         # agy prepends system prompt to user prompt.

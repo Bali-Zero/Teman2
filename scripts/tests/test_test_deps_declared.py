@@ -264,10 +264,13 @@ def test_every_inline_installed_dep_is_declared() -> None:
 def test_manifest_may_declare_extras() -> None:
     """INNOCENCE: manifest-only entries are legitimate, not a violation."""
     extras = declared_packages() - inline_installed_packages()
-    assert "mypy" in extras and "testcontainers" in extras, (
-        "expected dev-only tooling (mypy, testcontainers) to be declared and NOT "
-        "installed by the backend job. If that changed, re-read this test's "
-        "premise — do not delete the declarations to make it green."
+    # testcontainers left the manifest on purpose in #7235 (dead test pins); the
+    # premise — a declared-but-not-installed dev tool is legitimate — still
+    # needs one live witness, and mypy is it.
+    assert "mypy" in extras, (
+        "expected dev-only tooling (mypy) to be declared and NOT installed by "
+        "the backend job. If that changed, re-read this test's premise — do not "
+        "delete the declaration to make it green."
     )
 
 

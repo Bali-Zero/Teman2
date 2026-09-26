@@ -83,7 +83,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -100,6 +102,18 @@ from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring
 )
 
 TP1_LIVE_SLUGS = frozenset(TP1_SEAT_MODELS.values())
+
+# PROVENANCE for scrub()'s keep= (gate-scrub-7314 r3): the identifiers WE sent
+# in the prompt are safe to echo back verbatim in the answer, because they were
+# already present in our own outbound artifact. Same shape scrub() itself
+# matches for the exemption — single-case letters joined by underscores — with
+# a length floor so a short, common word pair does not accidentally qualify.
+_PROMPT_IDENTIFIER_RE = re.compile(r"[a-z]+(?:_[a-z]+)+|[A-Z]+(?:_[A-Z]+)+")
+
+
+def _prompt_identifiers(text: str) -> "frozenset[str]":
+    """Every maximal single-case snake/SCREAMING_SNAKE run of 24+ chars in `text`."""
+    return frozenset(m.group(0) for m in _PROMPT_IDENTIFIER_RE.finditer(text) if len(m.group(0)) >= 24)
 
 # Empirically confirmed live (2026-08-27, HTTP 400 on the rejected value):
 # the TP1-OAI gateway's `reasoning_effort` field accepts exactly
@@ -167,6 +181,27 @@ MEASURED_DEFAULT_EFFORT = {
 # Calibrating this properly needs stall-length data this repo does not yet
 # collect — tracked in PENDING-ARMS rather than guessed at a second time.
 SILENCE_TIMEOUT_SECONDS = 300.0
+
+# PENDING-ARMS L1835: a JSONDecodeError against qwen3.8-max destroyed its own
+# body — nothing persisted it, only a 200-char stderr tail survived, and that
+# tail looked well-formed while the damage sat somewhere in the ~43KB middle.
+# A module-level path (not a hardcoded literal inline) so tests can
+# monkeypatch it to tmp_path instead of touching the real scratch dir.
+TP1_UNPARSEABLE_SCRATCH_DIR = Path(tempfile.gettempdir()) / "tp1-call-unparseable"
+
+
+def _persist_unparseable_body(full_body: str) -> Optional[Path]:
+    """Best-effort evidence capture: write the raw body that failed to parse
+    to a scratch file and return its path, so the NEXT occurrence is
+    analyzable from a captured body instead of gone. Never raises — a
+    failure to persist evidence must not mask the original parse failure."""
+    try:
+        TP1_UNPARSEABLE_SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+        path = TP1_UNPARSEABLE_SCRATCH_DIR / f"{time.time_ns()}.json"
+        path.write_text(full_body, encoding="utf-8")
+        return path
+    except OSError:
+        return None
 
 
 class StillGenerating(Exception):
@@ -515,10 +550,16 @@ def extract_answer(
         choice = parsed["choices"][0]
         message = choice["message"]
     except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
+        dump_path = _persist_unparseable_body(full_body)
+        location = (
+            f"raw body saved to {dump_path}"
+            if dump_path is not None
+            else "raw body NOT saved (persist failed)"
+        )
         return (
             None,
             None,
-            f"unparseable response ({type(e).__name__}): {full_body[-200:]}",
+            f"unparseable response ({type(e).__name__}), {location}: {full_body[-200:]}",
         )
     content = message.get("content")
     if isinstance(content, str) and content.strip():
@@ -667,7 +708,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if warning:
         sys.stderr.write(f"tp1_call: warning: {scrub(warning, [token])}\n")
     assert answer is not None
-    answer = scrub(answer, [token])
+    answer = scrub(answer, [token], keep=_prompt_identifiers(prompt))
     sys.stdout.write(answer if answer.endswith("\n") else answer + "\n")
     return 0
 

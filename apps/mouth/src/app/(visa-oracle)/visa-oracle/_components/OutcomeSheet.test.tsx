@@ -14,13 +14,17 @@ import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
   SECOND_HOME_STUDIO_URL,
 } from "../_lib/engine-adapter";
-import { mapDisclosedReviewFlags } from "../_lib/fact-mapper";
+import {
+  ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+  mapDisclosedReviewFlags,
+} from "../_lib/fact-mapper";
 import { QUESTIONS, REVIEW_GATE_ITEMS } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
 import { assumptionDisplay } from "./ConfirmationCard";
 import type { Language } from "../_lib/flow";
 import type {
   HumanReviewOutcome,
+  NoSupportedPathOutcome,
   OutcomeCandidate,
   OutcomeReason,
   OutcomeState,
@@ -744,7 +748,9 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
   // inferred" sentence for them — now FALSE, since a value WAS inferred.
   // `assumptionDisplay` must resolve their own `assumption.<id>` key
   // instead of falling through to `assumption.generic`, in both languages.
-  const SEVEN_DECLARED_CONSERVATIVE_QUESTIONS = [
+  // Slice A6-bis adds two more: `diaspora_documents` ("no") and
+  // `retirement_basis` ("undecided"), nine in total.
+  const NINE_DECLARED_CONSERVATIVE_QUESTIONS = [
     "secondhome_deposit_usd",
     "secondhome_property_value_usd",
     "secondhome_passive_income_usd",
@@ -752,9 +758,11 @@ describe("OutcomeSheet — PR-O4 review causes", () => {
     "secondhome_own_name",
     "study_admission_confirmed",
     "study_sponsor_confirmed",
+    "diaspora_documents",
+    "retirement_basis",
   ] as const;
 
-  it.each(SEVEN_DECLARED_CONSERVATIVE_QUESTIONS)(
+  it.each(NINE_DECLARED_CONSERVATIVE_QUESTIONS)(
     "assumptionDisplay names the value assumed for %s instead of falling through to the generic sentence (A6-4b)",
     (questionId) => {
       for (const language of ["en", "id"] as const) {
@@ -994,18 +1002,127 @@ describe("OutcomeSheet — REVIEW_GATE_CAUSE_ITEM keys enumerated from source te
     expect(duplicates).toEqual([]);
   });
 
-  it("declares exactly the key set REVIEW_GATE_ITEMS derives — an extra or a missing row is named", () => {
+  // A3'-M (M4) named exception: DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH is a
+  // NO_SUPPORTED_PATH code, never a DisclosedReviewFlag one —
+  // `_DISCLOSED_REVIEW_REASON_CODES` (evaluate_path.py) never carries it, so
+  // `reviewCodeByFlag`/`mapDisclosedReviewFlags` cannot derive it the way
+  // every other row here is derived. It is named and excluded from the
+  // derived-set comparison below rather than silently failing it — an
+  // ADDITION beyond this one exception still goes red.
+  const NO_PATH_ONLY_KEYS = ["DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"];
+
+  it("declares exactly the key set REVIEW_GATE_ITEMS derives, plus A3'-M's one declared NO_PATH exception — an extra or a missing row is named", () => {
     const flagToReviewCode = reviewCodeByFlag();
     const derived = REAL_REVIEW_GATE_ITEMS.map((item) => {
       const [flag] = mapDisclosedReviewFlags({ review_gate: item });
       return flagToReviewCode[flag];
     }).sort();
-    const declared = [...sourceDeclaredKeys()].sort();
+    const declared = sourceDeclaredKeys()
+      .filter((key) => !NO_PATH_ONLY_KEYS.includes(key))
+      .sort();
     expect(declared).toEqual(derived);
+    for (const key of NO_PATH_ONLY_KEYS) {
+      expect(sourceDeclaredKeys()).toContain(key);
+    }
   });
 
-  it("declares exactly as many rows as REVIEW_GATE_ITEMS has real checklist items (derived, not typed)", () => {
-    expect(sourceDeclaredKeys().length).toEqual(REAL_REVIEW_GATE_ITEMS.length);
+  it("declares exactly as many rows as REVIEW_GATE_ITEMS has real checklist items, plus one for A3'-M's declared NO_PATH exception (derived, not typed)", () => {
+    expect(sourceDeclaredKeys().length).toEqual(
+      REAL_REVIEW_GATE_ITEMS.length + NO_PATH_ONLY_KEYS.length,
+    );
+  });
+});
+
+// Slice A3'-M (M4): the sourceless dead end names its cause exactly like
+// `DISCLOSED_ACTIVITY_BOUNDARY_REVIEW` does — same table
+// (`ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS`), same undecidable-answer branch,
+// different destination state. This suite ENUMERATES every undecidable
+// answer (tree.ts's own option lists, plus "unsure", minus the decidable
+// table) rather than a curated few, so a question added to the table later
+// without a matching tree.ts option — or a tree.ts option added without
+// updating the table — cannot silently go untested.
+describe("OutcomeSheet — DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH names the same undecidable causes as the _REVIEW hold (A3'-M M4)", () => {
+  const CODE = "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH";
+
+  interface UndecidableCase {
+    questionId: string;
+    answer: string;
+  }
+
+  function undecidableCases(): UndecidableCase[] {
+    const cases: UndecidableCase[] = [];
+    for (const [questionId, decidable] of Object.entries(
+      ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+    ) as [string, readonly string[]][]) {
+      const question = QUESTIONS[questionId];
+      if (!question) {
+        throw new Error(
+          `${questionId} (ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS) is no longer a question in tree.ts`,
+        );
+      }
+      const optionKeys = question.options.map((option) => option.key);
+      const undecidable = [...optionKeys, "unsure"].filter(
+        (key) => !decidable.includes(key),
+      );
+      for (const answer of undecidable) {
+        cases.push({ questionId, answer });
+      }
+    }
+    return cases;
+  }
+
+  const CASES = undecidableCases();
+
+  it("guards the guard: the enumeration is non-empty", () => {
+    expect(CASES.length).toBeGreaterThan(0);
+  });
+
+  it.each(CASES)(
+    "names $questionId as the demonstrated cause for its own undecidable answer $answer (M4)",
+    ({ questionId, answer }) => {
+      const causes = demonstratedReviewCauses(CODE, { [questionId]: answer });
+      expect(causes.length).toBeGreaterThan(0);
+      expect(causes.some((cause) => cause.questionId === questionId)).toBe(
+        true,
+      );
+    },
+  );
+
+  it("attributes the review-gate item to activity_boundary (M4, REVIEW_GATE_CAUSE_ITEM)", () => {
+    expect(
+      demonstratedReviewCauses(CODE, { review_gate: "activity_boundary" }),
+    ).toEqual([{ questionId: "review_gate", value: "activity_boundary" }]);
+  });
+
+  it("innocence: a DECIDABLE answer names no cause", () => {
+    expect(
+      demonstratedReviewCauses(CODE, { business_activity: "meetings" }),
+    ).toEqual([]);
+  });
+
+  it("innocence: no answer at all names no cause", () => {
+    expect(demonstratedReviewCauses(CODE, {})).toEqual([]);
+  });
+
+  it("renders [data-review-cause] and the Edit button on a NO_SUPPORTED_PATH sheet, and the button reopens the right question (M4 wiring, FIX-3)", () => {
+    const onEditMissingInput = vi.fn();
+    const { container } = render(
+      <OutcomeSheet
+        language="en"
+        outcome={{
+          ...(outcomeFor("NO_SUPPORTED_PATH") as NoSupportedPathOutcome),
+          noPathReasons: [{ ...reason, code: CODE }],
+          alternatives: [],
+        }}
+        facts={{ category: "business", business_activity: "training" }}
+        onEditMissingInput={onEditMissingInput}
+      />,
+    );
+    expect(container.querySelectorAll("[data-review-cause]")).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Edit your answer to:/ }),
+    );
+    expect(onEditMissingInput).toHaveBeenCalledWith("business_activity");
   });
 });
 

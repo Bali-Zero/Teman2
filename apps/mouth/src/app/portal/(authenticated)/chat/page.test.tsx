@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 /**
  * ChatPage – infinite-fetch regression test.
  *
@@ -22,7 +23,12 @@ import {
   afterEach,
   afterAll,
 } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+} from "@testing-library/react";
 import React from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -114,6 +120,49 @@ afterAll(() => {
 });
 
 describe("ChatPage – infinite-fetch regression", () => {
+  it("marks messages arriving on a later poll without looping", async () => {
+    mockGetMessages
+      .mockResolvedValueOnce(EMPTY_RESPONSE)
+      .mockResolvedValue(UNREAD_RESPONSE);
+    mockMarkMessageRead.mockResolvedValue(undefined);
+    await act(async () => {
+      render(<ChatPage />);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+    });
+    expect(mockMarkMessageRead).toHaveBeenCalledTimes(1);
+    expect(mockGetMessages.mock.calls.length).toBeLessThanOrEqual(3);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    expect(mockGetMessages.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+
+  it("keeps unread while hidden and reads on returning to the conversation", async () => {
+    const visibility = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("hidden");
+    mockGetMessages.mockResolvedValue(UNREAD_RESPONSE);
+    mockMarkMessageRead.mockResolvedValue(undefined);
+    await act(async () => {
+      render(<ChatPage />);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+    });
+    expect(mockMarkMessageRead).not.toHaveBeenCalled();
+    visibility.mockReturnValue("visible");
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(mockMarkMessageRead).toHaveBeenCalledTimes(1);
+    visibility.mockRestore();
+  });
+
   it("distinguishes an initial load failure from a truthful empty inbox and recovers", async () => {
     mockGetMessages
       .mockRejectedValueOnce(new Error("synthetic offline"))
@@ -314,3 +363,14 @@ describe("ChatPage – day-theme semantic tokens (WS3 slice 6)", () => {
     expect(html).not.toContain("201,169,110");
   });
 });
+
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}

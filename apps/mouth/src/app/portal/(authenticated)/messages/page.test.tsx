@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 /**
  * MessagesPage – smoke test.
  *
@@ -7,7 +8,7 @@
  * from /portal/chat.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render as rtlRender, act } from "@testing-library/react";
 import React from "react";
 
 // Mock Next.js navigation (required by portal layout providers)
@@ -108,3 +109,14 @@ describe("MessagesPage – /portal/messages alias", () => {
     expect(container.innerHTML).not.toContain("#0c0c0e"); // token-lint-ok: drain-guard assertion string, not a color usage
   });
 });
+
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
