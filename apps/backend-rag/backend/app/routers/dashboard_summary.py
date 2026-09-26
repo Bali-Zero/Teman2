@@ -1053,6 +1053,15 @@ async def portal_challenge_events(
     redis = RedisManager.get_instance().get_async_client()
     if redis is None:
         raise HTTPException(status_code=503, detail="Live celebrations temporarily unavailable")
+    # Fail before the 200 headers: a stream that breaks after them makes EventSource retry
+    # every 3 s, while a 503 closes it and the client's capped backoff applies.
+    try:
+        await redis.ping()
+    except Exception as exc:
+        logger.warning("portal challenge events: redis preflight failed (%s)", type(exc).__name__)
+        raise HTTPException(
+            status_code=503, detail="Live celebrations temporarily unavailable"
+        ) from None
     return StreamingResponse(
         goal_fanout.events(
             redis, request.headers.get("last-event-id") or request.query_params.get("last_event_id")
