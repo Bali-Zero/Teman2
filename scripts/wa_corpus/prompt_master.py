@@ -1,9 +1,10 @@
 """The grounded prompt-master (v5, winner of the query-lab) + recap validator.
 
-Selected by query_lab.py over real Surya chats (Alexandre / Johanna / Fabio):
+Selected by query_lab.py over real Surya chats (anonymised here as Client
+Alpha / Client Beta / Client Gamma — see query_lab.py's GROUND_TRUTH):
 two-level structure = HEADLINE + a GENERAL RECAP from several points of view +
 SPECIFIC POINTS, all source-grounded with verbatim citations. On the lab it
-scored full recall (5/5 ground-truth facts on Alexandre) with zero
+scored full recall (5/5 ground-truth facts on Client Alpha) with zero
 hallucinations and stayed under 2000 chars.
 
 Note (lab finding): NLM is non-deterministic about populating structured
