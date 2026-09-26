@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import VoaEligibilityPage from "./page";
 
 /**
@@ -36,7 +42,7 @@ vi.mock("@balizero/core", async (importOriginal) => {
 
 const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
 
-function fillIssuanceHappyPath() {
+function fillIssuanceUpToLastStep() {
   fireEvent.click(
     screen.getByRole("button", { name: /Get a new Visa on Arrival/ }),
   );
@@ -56,6 +62,10 @@ function fillIssuanceHappyPath() {
   fireEvent.click(
     screen.getByLabelText("Storage and deletion notice acknowledgement"),
   );
+}
+
+function fillIssuanceHappyPath() {
+  fillIssuanceUpToLastStep();
   fireEvent.click(screen.getByRole("button", { name: "See result" }));
 }
 
@@ -170,6 +180,71 @@ describe("VoaEligibilityPage — wire contract", () => {
       "/api/visa/voa/eligibility-checks",
       null,
     );
+  });
+});
+
+/**
+ * Every attempt mints its own Idempotency-Key, so the key cannot dedupe a
+ * double tap: two POSTs under two keys are two result rows. The guard has to
+ * live in the page — a disabled button for the human, a ref for the tap that
+ * lands before React has re-rendered it.
+ */
+describe("VoaEligibilityPage — double submit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    fetchMock.mockReset();
+  });
+
+  it("posts once and disables the button while the first submit is in flight", async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    render(<VoaEligibilityPage />);
+    fillIssuanceHappyPath();
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const finish = screen.getByRole("button", { name: "See result" });
+    await waitFor(() => expect(finish).toBeDisabled());
+    expect(finish).toHaveAttribute("aria-busy", "true");
+
+    fireEvent.click(finish);
+    fireEvent.click(finish);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("collapses two taps landing in the same tick into one POST", () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    render(<VoaEligibilityPage />);
+    fillIssuanceUpToLastStep();
+
+    const finish = screen.getByRole("button", { name: "See result" });
+    act(() => {
+      finish.click();
+      finish.click();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-arms after a failure: the retry POSTs again under a fresh Idempotency-Key", async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockReturnValue(new Promise(() => {}));
+    render(<VoaEligibilityPage />);
+    fillIssuanceHappyPath();
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    const finish = screen.getByRole("button", { name: "See result" });
+    expect(finish).toBeEnabled();
+    expect(finish).toHaveAttribute("aria-busy", "false");
+
+    fireEvent.click(finish);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    const keys = fetchMock.mock.calls.map(
+      ([, init]) => init.headers["Idempotency-Key"] as string,
+    );
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBeTruthy();
+    expect(keys[0]).not.toBe(keys[1]);
   });
 });
 
