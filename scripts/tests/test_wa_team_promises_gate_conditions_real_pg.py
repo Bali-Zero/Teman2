@@ -15,12 +15,19 @@ contract; this proves what actually LANDS in Postgres matches it too.
 C2: for each of 6 guilt shapes (core-column wrong type, a domain hiding
 behind a column name, NOT NULL missing, each of the two unique indexes in
 the wrong shape, and duplicate rows that make the unique index build itself
-fail) run_init_schema leaves the catalog byte-for-byte where it started —
-proven by a snapshot of pg_attribute + pg_index + pg_constraint before and
-after, not just "an exception was raised". A mutation-proof test then loads
-a SCRATCH copy of the module (never the real file — never edited-then-`git
-checkout`ed back) with verification moved OUTSIDE the transaction, and shows
-the exact same assertions go RED against it: the DDL survives the mismatch.
+fail — the last of these relabeled *PG statement atomicity*, since it proves
+Postgres's own per-statement guarantee, not run_init_schema's wrapping
+transaction) run_init_schema leaves the catalog byte-for-byte where it
+started — proven by a snapshot of pg_attribute + pg_index (+ each index's
+own `pg_get_indexdef`) + pg_constraint + each table's BIGSERIAL sequence
+existence before and after, not just "an exception was raised". The
+candidates-index guilt case's pre-existing table now omits `cue` so
+run_init_schema's own ADD COLUMN IF NOT EXISTS is a genuine mutation there
+too, not a no-op the rollback never has to undo. A mutation-proof test then
+loads a SCRATCH copy of the module (never the real file — never
+edited-then-`git checkout`ed back) with verification moved OUTSIDE the
+transaction, and shows the exact same assertions go RED against it: the DDL
+survives the mismatch.
 
 C3: loads the LITERAL migrations_v2/200 team_promises CREATE (the one Fly
 shape, frozen there — see the SQL file's own header comment) against an
@@ -107,10 +114,29 @@ async def _fresh_database(sockdir, name: str):
             await admin2.close()
 
 
+async def _sequence_exists(conn, table_oid, table: str, serial_column: str) -> bool:
+    """Whether `table`'s `serial_column` still owns a live sequence — asked
+    only if the table itself exists (`pg_get_serial_sequence` errors on a
+    relation that doesn't). C2 fix (c): a BIGSERIAL PRIMARY KEY's sequence
+    is catalog surface run_init_schema's DDL could touch (CREATE TABLE
+    creates it) just as much as a column or index, so it belongs in the
+    before/after snapshot too."""
+    if table_oid is None:
+        return False
+    seq = await conn.fetchval(
+        "SELECT pg_get_serial_sequence($1, $2)", f"public.{table}", serial_column
+    )
+    if seq is None:
+        return False
+    return bool(await conn.fetchval("SELECT to_regclass($1) IS NOT NULL", seq))
+
+
 async def _catalog_snapshot(conn) -> dict:
-    """pg_attribute + pg_index + pg_constraint for whichever of the two
-    tables currently exist, plus each table's existence flag — the whole
-    catalog surface run_init_schema's DDL could possibly touch."""
+    """pg_attribute + pg_index (+ each index's pg_get_indexdef) +
+    pg_constraint for whichever of the two tables currently exist, plus each
+    table's existence flag and its BIGSERIAL PRIMARY KEY's sequence
+    existence (C2 fix (c)) — the whole catalog surface run_init_schema's DDL
+    could possibly touch."""
     tp_oid = await conn.fetchval("SELECT to_regclass('public.team_promises')::oid")
     tpc_oid = await conn.fetchval("SELECT to_regclass('public.team_promise_candidates')::oid")
     oids = [oid for oid in (tp_oid, tpc_oid) if oid is not None] or [0]
@@ -119,7 +145,8 @@ async def _catalog_snapshot(conn) -> dict:
         "WHERE attrelid = ANY($1::oid[]) AND attnum > 0 AND NOT attisdropped "
         "ORDER BY attrelid, attname", oids)
     idx = await conn.fetch(
-        "SELECT indrelid, indexrelid, indisunique, indisvalid, indnkeyatts, indkey::text "
+        "SELECT indrelid, indexrelid, indisunique, indisvalid, indnkeyatts, indkey::text, "
+        "pg_get_indexdef(indexrelid) AS indexdef "
         "FROM pg_index WHERE indrelid = ANY($1::oid[]) ORDER BY indexrelid", oids)
     cons = await conn.fetch(
         "SELECT conrelid, conname, contype, pg_get_constraintdef(oid) AS def "
@@ -127,6 +154,8 @@ async def _catalog_snapshot(conn) -> dict:
     return {
         "tp_exists": tp_oid is not None,
         "tpc_exists": tpc_oid is not None,
+        "tp_seq_exists": await _sequence_exists(conn, tp_oid, "team_promises", "promise_id"),
+        "tpc_seq_exists": await _sequence_exists(conn, tpc_oid, "team_promise_candidates", "id"),
         "attrs": tuple(tuple(r.values()) for r in attrs),
         "idx": tuple(tuple(r.values()) for r in idx),
         "cons": tuple(tuple(r.values()) for r in cons),
@@ -257,7 +286,6 @@ CREATE TABLE team_promise_candidates (
     clause_idx INTEGER NOT NULL,
     clause_hash TEXT NOT NULL,
     promise_type TEXT NOT NULL,
-    cue TEXT,
     due_at_hint TEXT,
     status TEXT NOT NULL DEFAULT 'unjudged'
         CHECK (status IN ('unjudged', 'judged_true', 'judged_false', 'quarantined')),
@@ -268,6 +296,12 @@ CREATE TABLE team_promise_candidates (
 CREATE UNIQUE INDEX uix_team_promise_candidates_msg_clause
     ON team_promise_candidates (message_id);
 """
+# C2 fix (a): `cue` is deliberately ABSENT above (unlike every other
+# non-core column) so team_promises.sql's own
+# `ALTER TABLE team_promise_candidates ADD COLUMN IF NOT EXISTS cue TEXT;`
+# is a genuine mutation, not a no-op — without this gap, EVERY statement
+# run_init_schema executes here would already be true, so before==after
+# would hold trivially even if the transaction's rollback were broken.
 
 _DUPLICATE_ROWS_DDL = f"""
 CREATE TABLE team_promises (
@@ -376,7 +410,17 @@ async def test_guilt_tpc_index_shape_mismatch_rolls_back_leaving_bad_index_untou
 
 
 @pytest.mark.asyncio
-async def test_guilt_duplicate_rows_abort_index_creation_and_never_creates_candidates(pg_socket_dir):
+async def test_pg_statement_atomicity_duplicate_rows_abort_index_creation_and_never_creates_candidates(
+    pg_socket_dir,
+):
+    """C2 fix (b), relabeled from *_guilt_*: `CREATE UNIQUE INDEX` failing
+    on a duplicate (message_id, promise_type) pair is undone by POSTGRES'S
+    OWN per-statement atomicity, not by run_init_schema's wrapping
+    transaction — the failing statement never reaches a second one, so
+    there is nothing for OUR rollback to undo here. Kept in the C2 suite
+    because it is still a scenario the caller must survive with the catalog
+    byte-for-byte unchanged and candidates absent, just proven by PG's own
+    guarantee rather than ours."""
     async with _fresh_database(pg_socket_dir, "gate_c2_dup_rows") as pool:
         async with pool.acquire() as conn:
             await conn.execute(_DUPLICATE_ROWS_DDL)
