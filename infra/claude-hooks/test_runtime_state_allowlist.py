@@ -23,6 +23,14 @@ inverted sign — it wants its own guilt+innocence, not just a new "yes"):
               (a broken/missing allowlist file — or wrong machine — is
               guilt too, same as the historical all-or-nothing probe).
 
+  SHIPPED-ALLOWLIST PIN (2026-09-26) — the two append-union ledgers,
+              shared/escalations_pro.jsonl and shared/hotfix_audit.jsonl,
+              are dirtied on M5 and Mini too, not only Pro. Loading the REAL
+              allowlist file: both dirty together open the exception on
+              m5, mini and pro (innocence); a Pro-only path dirty on m5, a
+              ledger plus any undeclared file, or an undeclared host label
+              keep it shut (guilt).
+
     python3 infra/claude-hooks/test_runtime_state_allowlist.py
 Exit 0 = allowlist behaves on both polarities. Exit 1 = regression.
 
@@ -143,6 +151,7 @@ def main() -> int:
         (repo / "docs").mkdir()
         (repo / pa_rel).parent.mkdir(parents=True)  # apps/bali-intel-scraper/data/
         (repo / "shared" / "escalations_pro.jsonl").write_text("{}\n")
+        (repo / "shared" / "hotfix_audit.jsonl").write_text("{}\n")
         (repo / pa_rel).write_text("[]\n")
         (repo / "docs" / "AUTOMATIONS_REFERENCE.md").write_text("# ref\n")
         (repo / "apps.py").write_text("x = 1\n")
@@ -221,6 +230,43 @@ def main() -> int:
             failures.append("INTEGRATION: ff-only pull exception does not open on Pro with only declared-dirty files")
         _git(repo, "checkout", "--", "shared/escalations_pro.jsonl")
 
+        # ---- SHIPPED-ALLOWLIST PIN: the REAL file, not a fixture, for the union ledgers
+        mod.RUNTIME_STATE_ALLOWLIST_PATH = HERE / "runtime_state_allowlist.json"
+        ledgers = ["shared/escalations_pro.jsonl", "shared/hotfix_audit.jsonl"]
+
+        def _dirty(*rels: str) -> None:
+            for rel in rels:
+                (repo / rel).write_text('{"appended": true}\n')
+
+        def _reset() -> None:
+            _git(repo, "checkout", "--", *ledgers, pa_rel, "apps.py")
+
+        for label in ("m5", "mini", "pro"):
+            mod._machine_label = lambda hostname=None, _l=label: _l
+            _dirty(*ledgers)
+            if not mod._main_tree_tracked_clean():
+                failures.append(f"SHIPPED INNOCENCE: both union ledgers dirty on {label} wrongly shut the exception")
+            if not (mod._only_ffonly_pull(cmd_scan) and mod._main_tree_tracked_clean()):
+                failures.append(f"SHIPPED INTEGRATION: ff-only pull does not open on {label} with only the union ledgers dirty")
+            _reset()
+
+        mod._machine_label = lambda hostname=None: "m5"
+        _dirty(pa_rel)
+        if mod._main_tree_tracked_clean():
+            failures.append("SHIPPED GUILT: Pro-only published_articles.json dirty on m5 wrongly opens the exception")
+        _reset()
+        _dirty("shared/hotfix_audit.jsonl", "apps.py")
+        if mod._main_tree_tracked_clean():
+            failures.append("SHIPPED GUILT: hotfix ledger + undeclared apps.py dirty on m5 wrongly opens the exception")
+        _reset()
+        mod._machine_label = lambda hostname=None: "some-laptop"
+        _dirty(*ledgers)
+        if mod._main_tree_tracked_clean():
+            failures.append("SHIPPED GUILT: union ledgers dirty on an undeclared host label wrongly open the exception")
+        _reset()
+        mod._machine_label = lambda hostname=None: "pro"
+        mod.RUNTIME_STATE_ALLOWLIST_PATH = allowlist_fixture
+
     if failures:
         print("FAIL — runtime-state allowlist regressions:")
         for f in failures:
@@ -228,7 +274,9 @@ def main() -> int:
         return 1
     print("OK — every REAL allowlist path is a tracked blob (W91 reality-check, exact not "
           "pathspec: 3 guilt), and the allowlist opens the ff-only exception ONLY for declared "
-          "Pro paths (2 innocence + 5 guilt + 1 integration + 1 baseline)")
+          "Pro paths (2 innocence + 5 guilt + 1 integration + 1 baseline), and the SHIPPED "
+          "allowlist opens it for the two union ledgers on m5/mini/pro only (3 innocence + 3 "
+          "integration + 3 guilt)")
     return 0
 
 
