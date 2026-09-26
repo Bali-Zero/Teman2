@@ -99,6 +99,23 @@ function engineErrorResponse(status: number): Response {
 }
 
 async function expectStateHeading(state: FixtureState) {
+  if (state === "SUPPORTED_CANDIDATES") {
+    // Re-pinned (BRIEF-v2 R-3/R-7): the SUPPORTED arrival is ArrivalLanes —
+    // «Paths to consider» with the qualifier INSIDE the heading, never the
+    // approval-reading "Supported paths found" as the page's h1.
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: /suggested visa path — subject to conditions\s*paths to consider/i,
+    });
+    expect(heading).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        level: 1,
+        name: translate("en", "verdict.headline.SUPPORTED_CANDIDATES"),
+      }),
+    ).toBeNull();
+    return;
+  }
   expect(
     await screen.findByRole("heading", {
       name: translate("en", `verdict.headline.${state}`),
@@ -194,7 +211,9 @@ describe("OracleShell authoritative evaluate integration", () => {
     await expectStateHeading(state);
     expect(global.fetch).toHaveBeenCalledOnce();
     if (state === "SUPPORTED_CANDIDATES") {
-      expect(screen.getByText("Visit Visa C1")).toBeInTheDocument();
+      // Re-pinned (R-3): the engine's name shows twice — its arrival lane
+      // and its detail card — and nowhere else.
+      expect(screen.getAllByText("Visit Visa C1")).toHaveLength(2);
     } else {
       expect(screen.queryByText("Visit Visa C1")).toBeNull();
     }
@@ -447,7 +466,8 @@ describe("OracleShell authoritative evaluate integration", () => {
     global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
     render(<OracleShell internalMode />);
 
-    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+    // Re-pinned (R-3): lane + detail card.
+    expect(await screen.findAllByText("Visit Visa C1")).toHaveLength(2);
     // Never show an engine decision without saying what it is.
     expect(screen.getByText(/INTERNAL PREVIEW/)).toBeInTheDocument();
   });
@@ -459,7 +479,8 @@ describe("OracleShell authoritative evaluate integration", () => {
     global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
     render(<OracleShell internalMode />);
 
-    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+    // Re-pinned (R-3): lane + detail card.
+    expect(await screen.findAllByText("Visit Visa C1")).toHaveLength(2);
   });
 
   it("public traffic never sees the internal preview notice", async () => {

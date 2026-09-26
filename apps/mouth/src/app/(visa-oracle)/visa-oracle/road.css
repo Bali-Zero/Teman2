@@ -129,3 +129,453 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-root .oracle-tile {
   border-radius: 3px;
 }
+
+/* ═══ «La strada» — the road (BRIEF-v2 §3.1) ═════════════════════════════ */
+.oracle-root .oracle-main__content > .oracle-question {
+  max-width: none;
+}
+.oracle-road {
+  --road-gutter: 44px;
+  position: relative;
+  max-width: calc(var(--oracle-reading-width) + var(--road-gutter));
+  padding-left: var(--road-gutter);
+  min-width: 0;
+}
+.oracle-road[data-road-at="verdict"] {
+  max-width: calc(52rem + var(--road-gutter));
+}
+@media (max-width: 39.99rem) {
+  .oracle-road {
+    --road-gutter: 30px;
+  }
+}
+.oracle-road__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+.oracle-road > :not(.oracle-road__canvas) {
+  position: relative;
+  z-index: 1;
+}
+
+/* the drawing: ink = said, pencil = unsure / said before an edit */
+.oracle-road__seg,
+.oracle-road__cap {
+  stroke: var(--road-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+}
+.oracle-road__seg--pencil {
+  stroke: var(--road-pencil);
+  stroke-dasharray: 3 5;
+}
+.oracle-road__seg--copper {
+  stroke: var(--road-copper);
+  stroke-width: 3;
+}
+.oracle-road__seg--fresh {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: oracle-road-draw 280ms var(--motion-ease-standard, ease-out)
+    forwards;
+}
+@keyframes oracle-road-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.oracle-road__stub {
+  stroke: var(--road-stub);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.oracle-road__exit {
+  stroke: var(--road-stub);
+  stroke-width: 1.5;
+  fill: none;
+}
+.oracle-road__exit--back {
+  stroke: var(--road-pencil);
+  stroke-dasharray: 3 5;
+}
+.oracle-road__node-ink {
+  fill: var(--road-ink);
+}
+.oracle-road__node-pencil,
+.oracle-road__node-ghost {
+  fill: var(--oracle-bg);
+  stroke: var(--road-pencil);
+  stroke-width: 1.5;
+}
+.oracle-road__head-ring {
+  fill: var(--oracle-bg);
+  stroke: var(--road-ink);
+  stroke-width: 2;
+}
+.oracle-road__head-dot {
+  fill: var(--road-ink);
+}
+.oracle-road__arrival-ring {
+  fill: var(--oracle-bg);
+  stroke: var(--road-copper);
+  stroke-width: 2.5;
+}
+.oracle-road__arrival-dot {
+  fill: var(--road-copper);
+}
+.oracle-road__edge line {
+  stroke: var(--road-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.oracle-road__pencil-ring circle {
+  fill: var(--oracle-bg);
+  stroke: var(--road-pencil);
+  stroke-width: 1.75;
+  stroke-dasharray: 3 3;
+}
+.oracle-road__pencil-ring .oracle-road__pencil-dot {
+  fill: var(--road-pencil);
+  stroke: none;
+}
+.oracle-road__specialist circle {
+  fill: var(--oracle-bg);
+  stroke: var(--road-structure);
+  stroke-width: 2;
+}
+.oracle-road__specialist .oracle-road__specialist-dot {
+  fill: var(--road-structure);
+  stroke: none;
+}
+.oracle-road__pause circle {
+  fill: var(--oracle-bg);
+  stroke: var(--road-pencil);
+  stroke-width: 1.75;
+  stroke-dasharray: 2 4;
+}
+
+/* the records: the road behind you */
+.oracle-road__records {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+}
+.oracle-road__record {
+  padding: 0;
+}
+.oracle-road__stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--road-structure);
+}
+.oracle-road__stage::after {
+  content: "";
+  flex: 1;
+  min-width: 1.5rem;
+  height: 1px;
+  background: var(--oracle-border-strong);
+}
+.oracle-road__records > li:first-child .oracle-road__stage {
+  margin-top: 0;
+}
+.oracle-road__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding-block: 6px;
+  border-bottom: 1px solid var(--oracle-border);
+}
+.oracle-road__node {
+  position: absolute;
+  left: calc(var(--road-gutter) / -2);
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.oracle-road__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.oracle-road__label {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--oracle-ink-faint);
+}
+.oracle-road__answer {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  color: var(--oracle-ink);
+  overflow-wrap: anywhere;
+}
+.oracle-road__record[data-road-status="pencil"] .oracle-road__answer {
+  color: var(--oracle-ink-faint);
+  font-style: italic;
+}
+.oracle-road__change {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--oracle-ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--oracle-border-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.oracle-road__change:hover {
+  color: var(--oracle-ink);
+  text-decoration-color: currentColor;
+}
+.oracle-road__pruned {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: 12.5px;
+  color: var(--oracle-ink-faint);
+}
+
+/* the head: where you stand */
+.oracle-roadhead {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.oracle-roadhead > legend.oracle-roadhead__stage {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-top: 0;
+}
+.oracle-roadhead > legend + * {
+  clear: both;
+}
+.oracle-roadhead__counter {
+  margin-bottom: var(--space-3);
+}
+.oracle-roadhead .oracle-question {
+  gap: var(--space-5);
+}
+.oracle-roadhead .oracle-option-card,
+.oracle-roadhead .oracle-tile {
+  min-height: 52px;
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  box-shadow: none;
+}
+.oracle-roadhead .oracle-option-card:hover,
+.oracle-roadhead .oracle-tile:hover {
+  border-color: var(--road-structure);
+}
+.oracle-roadhead
+  :is(.oracle-option-card, .oracle-tile):is(
+    [aria-current="true"],
+    [aria-pressed="true"]
+  ) {
+  border: 2px solid var(--road-ink);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+}
+.oracle-roadhead .oracle-paths-counter {
+  color: var(--oracle-ink-muted);
+}
+/* the review: the road above is the receipt, so the card keeps only its
+   assumptions, its note and its one action */
+.oracle-roadhead[data-road-head="confirmation"]
+  > .oracle-question
+  > section:first-of-type {
+  display: none;
+}
+
+/* the trailhead */
+.oracle-roadhead[data-road-head="framing"] .oracle-headline {
+  font-size: clamp(2rem, 4.2vw, 3.1rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+/* answers said before an edit — pencil, below the head */
+.oracle-road__earlier {
+  margin-top: var(--space-8);
+}
+.oracle-road__earlier-title {
+  margin: 0 0 var(--space-2);
+  font-size: 12.5px;
+  color: var(--oracle-ink-faint);
+}
+.oracle-road__earlier-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.oracle-road__earlier-item {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  min-height: 40px;
+  padding-block: 8px;
+  border-bottom: 1px dashed var(--oracle-border-strong);
+}
+.oracle-road__earlier-item .oracle-road__answer {
+  color: var(--oracle-ink-faint);
+  font-style: italic;
+}
+
+/* checking plaque */
+.oracle-root .oracle-plaque {
+  border: 1px solid var(--oracle-border-strong);
+  border-radius: 4px;
+  background: var(--oracle-bg-elevated);
+  box-shadow: none;
+  padding: var(--space-6);
+}
+.oracle-plaque__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--oracle-ink);
+}
+
+/* arrivals */
+.oracle-root .oracle-arrival.oracle-verdict-card,
+.oracle-root .oracle-arrival .oracle-verdict-card {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+.oracle-arrival {
+  margin-bottom: var(--space-8);
+}
+.oracle-arrival__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+.oracle-arrival__kicker {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--road-structure);
+}
+.oracle-arrival__body {
+  margin: var(--space-3) 0 0;
+  max-width: 42ch;
+}
+.oracle-arrival__line {
+  margin: var(--space-4) 0 0;
+  max-width: 46ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--oracle-ink-muted);
+}
+.oracle-lanes {
+  list-style: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.oracle-lane {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-height: 64px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--oracle-border-strong);
+  border-left: 3px solid var(--road-structure);
+  border-radius: 4px;
+  background: var(--oracle-bg-elevated);
+}
+.oracle-lane:first-child {
+  border-left-color: var(--road-copper);
+}
+.oracle-lane__name {
+  font-family: var(--font-serif);
+  font-weight: 450;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--oracle-ink);
+}
+.oracle-root .oracle-verdict-chip {
+  border-radius: 3px;
+}
+.oracle-arrival--edge .oracle-headline,
+.oracle-arrival--pencil .oracle-headline,
+.oracle-arrival--specialist .oracle-headline,
+.oracle-arrival--outage .oracle-headline {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+.oracle-arrival--edge + .oracle-outcome .oracle-option-card,
+.oracle-arrival--pencil + .oracle-outcome .oracle-option-card {
+  border-style: dashed;
+}
+
+/* the margin map stays, quieter than the road */
+@media (min-width: 64rem) {
+  .oracle-root .oracle-main {
+    grid-template-columns: 15rem minmax(0, 1fr);
+  }
+  .oracle-root .oracle-main__tree {
+    font-size: 0.9375rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oracle-road__seg--fresh {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+@media (forced-colors: active) {
+  .oracle-road__canvas {
+    display: none;
+  }
+}
+@media print {
+  .oracle-road__canvas {
+    display: none;
+  }
+}

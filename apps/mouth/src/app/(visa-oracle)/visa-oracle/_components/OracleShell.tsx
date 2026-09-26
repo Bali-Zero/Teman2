@@ -64,7 +64,9 @@ import { LivingTree } from "./LivingTree";
 import { PathsCounter } from "./PathsCounter";
 import { QuestionScreen } from "./QuestionScreen";
 import { ConfirmationCard } from "./ConfirmationCard";
-import { VerdictReveal } from "./VerdictReveal";
+import { JourneyRoad } from "./JourneyRoad";
+import { Arrival, CheckingPlaque } from "./Arrival";
+import type { RoadHeadStatus } from "./RoadCanvas";
 import { OutcomeSheet } from "./OutcomeSheet";
 import { ConsentHandoff, type ConsentHandoffProps } from "./ConsentHandoff";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
@@ -898,6 +900,12 @@ function OracleShellRuntime({
   }, [clearAllEvaluationIdentities]);
 
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
+  const roadHeadStatus: RoadHeadStatus =
+    current.kind !== "verdict"
+      ? "head"
+      : evaluating || outcome === null
+        ? "checking"
+        : outcome.state;
   // Leaving a verdict or starting/retrying evaluation clears outcome before contact renders.
   const outcomeAssessmentReference =
     outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
@@ -999,142 +1007,152 @@ function OracleShellRuntime({
 
           <div className="oracle-main__content">
             <div ref={setConsultantSlot} className="oracle-consultant-slot" />
-            {current.kind === "question" &&
-              !HIDE_COUNTER_ON.has(current.questionId) && (
-                <div style={{ marginBottom: "var(--space-4)" }}>
-                  <PathsCounter
-                    language={language}
-                    count={interviewBranchesRemaining}
-                    visible
-                  />
+            <JourneyRoad
+              language={language}
+              current={current}
+              history={state.history}
+              facts={state.facts}
+              visitedVerdict={state.history.some(
+                (node) => node.kind === "verdict",
+              )}
+              headStatus={roadHeadStatus}
+              reducedMotion={reducedMotion === true}
+              onEdit={handleEdit}
+            >
+              {current.kind === "question" &&
+                !HIDE_COUNTER_ON.has(current.questionId) && (
+                  <div className="oracle-roadhead__counter">
+                    <PathsCounter
+                      language={language}
+                      count={interviewBranchesRemaining}
+                      visible
+                    />
+                  </div>
+                )}
+
+              {current.kind === "framing" && (
+                <div className="oracle-question oracle-framing">
+                  <h1 className="oracle-headline" tabIndex={-1}>
+                    {translate(language, "framing.title")}
+                  </h1>
+                  <p className="oracle-subhead">
+                    {translate(language, "framing.body")}
+                  </p>
+                  <button
+                    type="button"
+                    className="oracle-cta"
+                    data-road-exit
+                    onClick={startInterview}
+                  >
+                    {translate(language, "framing.cta")}
+                    <ArrowRight aria-hidden="true" size={18} />
+                  </button>
+                  <div className="oracle-framing__resume">
+                    <label className="oracle-checklist__item">
+                      <input
+                        type="checkbox"
+                        checked={resumeEnabled}
+                        onChange={(event) =>
+                          handleResumeOptIn(event.currentTarget.checked)
+                        }
+                      />
+                      {sessionCopy.resumeOptIn}
+                    </label>
+                    <p className="oracle-question__hint">
+                      {sessionCopy.resume}
+                    </p>
+                  </div>
                 </div>
               )}
 
-            {current.kind === "framing" && (
-              <div className="oracle-question oracle-framing">
-                <h1 className="oracle-headline" tabIndex={-1}>
-                  {translate(language, "framing.title")}
-                </h1>
-                <p className="oracle-subhead">
-                  {translate(language, "framing.body")}
-                </p>
-                <button
-                  type="button"
-                  className="oracle-cta"
-                  onClick={startInterview}
-                >
-                  {translate(language, "framing.cta")}
-                  <ArrowRight aria-hidden="true" size={18} />
-                </button>
-                <div className="oracle-framing__resume">
-                  <label className="oracle-checklist__item">
-                    <input
-                      type="checkbox"
-                      checked={resumeEnabled}
-                      onChange={(event) =>
-                        handleResumeOptIn(event.currentTarget.checked)
-                      }
+              {current.kind === "question" && (
+                <QuestionScreen
+                  key={current.questionId}
+                  language={language}
+                  question={QUESTIONS[current.questionId]}
+                  onAnswer={(value) => answer(current.questionId, value)}
+                  onSkip={() => skip(current.questionId)}
+                  onBack={back}
+                  canGoBack={canGoBack}
+                  noticeI18nKey={noticeFor(current.questionId, lane)}
+                  conflictI18nKey={conflictNoticeFor(
+                    current.questionId,
+                    state.blockedAnswer,
+                  )}
+                  currentAnswer={state.facts[current.questionId]}
+                  facts={state.facts}
+                />
+              )}
+
+              {current.kind === "confirmation" && (
+                <ConfirmationCard
+                  language={language}
+                  facts={state.facts}
+                  assumptions={assumptions}
+                  interviewBranchesRemaining={interviewBranchesRemaining}
+                  onBack={back}
+                  onEdit={handleEdit}
+                  onConfirm={revealVerdict}
+                />
+              )}
+
+              {current.kind === "verdict" &&
+                (evaluating || outcome === null ? (
+                  <CheckingPlaque language={language}>
+                    <p className="oracle-subhead">{sessionCopy.evaluating}</p>
+                  </CheckingPlaque>
+                ) : (
+                  <>
+                    <Arrival
+                      language={language}
+                      outcome={outcome}
+                      isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
                     />
-                    {sessionCopy.resumeOptIn}
-                  </label>
-                  <p className="oracle-question__hint">{sessionCopy.resume}</p>
-                </div>
-              </div>
-            )}
-
-            {current.kind === "question" && (
-              <QuestionScreen
-                key={current.questionId}
-                language={language}
-                question={QUESTIONS[current.questionId]}
-                onAnswer={(value) => answer(current.questionId, value)}
-                onSkip={() => skip(current.questionId)}
-                onBack={back}
-                canGoBack={canGoBack}
-                noticeI18nKey={noticeFor(current.questionId, lane)}
-                conflictI18nKey={conflictNoticeFor(
-                  current.questionId,
-                  state.blockedAnswer,
-                )}
-                currentAnswer={state.facts[current.questionId]}
-                facts={state.facts}
-              />
-            )}
-
-            {current.kind === "confirmation" && (
-              <ConfirmationCard
-                language={language}
-                facts={state.facts}
-                assumptions={assumptions}
-                interviewBranchesRemaining={interviewBranchesRemaining}
-                onBack={back}
-                onEdit={handleEdit}
-                onConfirm={revealVerdict}
-              />
-            )}
-
-            {current.kind === "verdict" &&
-              (evaluating || outcome === null ? (
-                <div
-                  className="oracle-verdict-card"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <p className="oracle-subhead">{sessionCopy.evaluating}</p>
-                </div>
-              ) : (
-                <>
-                  <VerdictReveal
-                    language={language}
-                    state={outcome.state}
-                    provenance={outcome.provenance}
-                    legalStatus={outcome.candidates[0]?.legal.status}
-                    isSecondHomeStudioOnly={isSecondHomeStudioOnly(outcome)}
-                  />
-                  <OutcomeSheet
-                    language={language}
-                    outcome={outcome}
-                    facts={state.facts}
-                    onSelectCategory={handleSelectCategory}
-                    onEditMissingInput={handleEdit}
-                    onAskMissingInput={handleAskFollowUp}
-                  />
-                  <div
-                    className="oracle-no-print"
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "var(--space-4)",
-                      marginTop: "var(--space-6)",
-                    }}
-                  >
-                    {outcome.state === "TEMPORARILY_UNAVAILABLE" &&
-                      outcome.outage.retryable && (
-                        <button
-                          type="button"
-                          className="oracle-cta"
-                          onClick={retryEvaluation}
-                        >
-                          {sessionCopy.retry}
-                        </button>
-                      )}
-                    <button
-                      type="button"
-                      className="oracle-question__back"
-                      onClick={handleReviewAnswers}
+                    <OutcomeSheet
+                      language={language}
+                      outcome={outcome}
+                      facts={state.facts}
+                      onSelectCategory={handleSelectCategory}
+                      onEditMissingInput={handleEdit}
+                      onAskMissingInput={handleAskFollowUp}
+                    />
+                    <div
+                      className="oracle-no-print"
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "var(--space-4)",
+                        marginTop: "var(--space-6)",
+                      }}
                     >
-                      {translate(language, "verdict.edit_answers" as I18nKey)}
-                    </button>
-                    <button
-                      type="button"
-                      className="oracle-question__back"
-                      onClick={handleRestart}
-                    >
-                      {translate(language, "restart.button")}
-                    </button>
-                  </div>
-                </>
-              ))}
+                      {outcome.state === "TEMPORARILY_UNAVAILABLE" &&
+                        outcome.outage.retryable && (
+                          <button
+                            type="button"
+                            className="oracle-cta"
+                            onClick={retryEvaluation}
+                          >
+                            {sessionCopy.retry}
+                          </button>
+                        )}
+                      <button
+                        type="button"
+                        className="oracle-question__back"
+                        onClick={handleReviewAnswers}
+                      >
+                        {translate(language, "verdict.edit_answers" as I18nKey)}
+                      </button>
+                      <button
+                        type="button"
+                        className="oracle-question__back"
+                        onClick={handleRestart}
+                      >
+                        {translate(language, "restart.button")}
+                      </button>
+                    </div>
+                  </>
+                ))}
+            </JourneyRoad>
           </div>
         </main>
 
