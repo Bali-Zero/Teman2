@@ -107,3 +107,10 @@ Crediti esauriti → la catena di fallback di `FLEET_TOPOLOGY.json` decide; mai 
 - Worktree discipline (AGENTS.md §0.5) per ogni mutazione; off-limits files invariati.
 - Lingua: italiano con Zero, inglese per codice/commit.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).
+
+## Physical mobile QA
+
+iQOO physical client QA, including display-off operation, is verified on Pro.
+Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
+readiness, session ownership and the synthetic-vs-live evidence boundary.
+Do not assume connectivity or authenticated client access from this entry.

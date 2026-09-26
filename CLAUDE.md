@@ -111,3 +111,10 @@ User writes colloquial Italian — translate internally, reply Italian. Never as
 
 > Authoritative last update: `git log -1 --format=%cd -- CLAUDE.md` in repo root.
 > Maintained by: Bali Zero AI Team.
+
+## Physical mobile QA
+
+iQOO physical client QA, including display-off operation, is verified on Pro.
+Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
+readiness, session ownership and the synthetic-vs-live evidence boundary.
+Do not assume connectivity or authenticated client access from this entry.

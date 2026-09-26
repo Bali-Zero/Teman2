@@ -287,3 +287,10 @@ Gemini CLI è DEPRECATO (2026-06-18) — la porta Google è **agy/Antigravity**.
 - Quota AI Ultra: refresh ~5h + cap settimanali; overage a crediti = spesa per-token → richiede GO di Zero.
 - PII: mai. Quote cliente: mai. Legge 5: mai pubblicare **di propria iniziativa** — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).
+
+## Physical mobile QA
+
+iQOO physical client QA, including display-off operation, is verified on Pro.
+Read [`docs/runbooks/iqoo-live-qa.md`](docs/runbooks/iqoo-live-qa.md) for current
+readiness, session ownership and the synthetic-vs-live evidence boundary.
+Do not assume connectivity or authenticated client access from this entry.
