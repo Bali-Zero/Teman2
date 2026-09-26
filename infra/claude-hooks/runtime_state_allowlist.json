@@ -8,8 +8,8 @@
     },
     {
       "path": "shared/hotfix_audit.jsonl",
-      "machines": ["m5", "pro", "mini"],
-      "reason": "prod-hotfix audit ledger, appended by ~/.claude/scripts/hotfix-notify.sh, which the PostToolUse Bash hook bash_call_log.sh invokes on every Bash call; it appends one line to <git toplevel of the session cwd>/shared/hotfix_audit.jsonl whenever a command is hotfix-shaped (fly ssh + DDL/DML, fly secrets set, fly machines restart/destroy/stop). The notifier and the hook are installed identically on all three hosts, so any session whose cwd is main dirties it. Observed 2026-09-26: 3 uncommitted lines on M5 main, all from sessions with cwd=/Users/balizero/nuzantara"
+      "machines": ["m5"],
+      "reason": "prod-hotfix audit ledger, appended by ~/.claude/scripts/hotfix-notify.sh, which the PostToolUse Bash hook bash_call_log.sh invokes on every Bash call; it appends one line to <git toplevel of the session cwd>/shared/hotfix_audit.jsonl whenever a command is hotfix-shaped (fly ssh + DDL/DML, fly secrets set, fly machines restart/destroy/stop). The notifier and the hook are installed identically on all three hosts, so any session whose cwd is main dirties it. Observed 2026-09-26: 3 uncommitted lines on M5 main, all from sessions with cwd=/Users/balizero/nuzantara, and every committed line also comes from M5. Scoped to m5 ONLY, on evidence and not on where the writer is installed: scripts/pro/pro-git-pull.sh reads every entry whose machines include \"pro\" as PRO-AUTHORITATIVE and keeps the local copy on a collision, which is wrong for a ledger M5 writes (a Pro-local copy would win over M5's promoted lines). Widen to another host only when that host's main is observed dirty with it"
     },
     {
       "path": "apps/bali-intel-scraper/data/published_articles.json",
