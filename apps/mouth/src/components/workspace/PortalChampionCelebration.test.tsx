@@ -116,6 +116,22 @@ describe("workspace-wide celebrations", () => {
     expect(screen.getByText("GOAL oleh Second")).toBeInTheDocument();
   });
 
+  it("drops queued goals that aged past 90 seconds before their turn", () => {
+    vi.useFakeTimers();
+    mount();
+    act(() => {
+      FakeSource.instances[0].goal("100-0", goal());
+      FakeSource.instances[0].goal(
+        "101-0",
+        goal({ member: "second", display_name: "Second" }),
+      );
+    });
+    vi.setSystemTime(Date.now() + 91_000);
+    fireEvent.click(screen.getByRole("button", { name: "Tutup selebrasi" }));
+    expect(screen.queryByText("GOAL oleh Second")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
   it("revalidates the standing at connect and never celebrates a stale event", () => {
     const { invalidate } = mount();
     act(() => {
