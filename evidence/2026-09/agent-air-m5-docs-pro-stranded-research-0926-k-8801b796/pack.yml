@@ -1,0 +1,49 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+dissent: []
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5-5
+    note: >-
+      Lane A (fleet-clean 2026-09-26) copied the 20 untracked files from Pro's
+      main checkout into a broker worktree, prepended the R1 exemption block to
+      the six files that lacked it, and removed the agent-craft notes. Lane K
+      re-created the worktree (Lane A's lease was ORPHAN), cherry-picked
+      Lane A's commits onto fresh origin/main, scanned for PII, redacted client,
+      client-company, client tax-return, out-of-repo dossier and private-person
+      names to placeholders, and wrote this brief. The final gate is not a
+      lane here: a fresh read-only session outside this chain posts the
+      harness/fable-gate status on the head sha.
+receipts:
+  - claim: >-
+      Of the 20 branch files, 12 are byte-identical to Pro's untracked copies
+      taken by ssh tar this session; 8 differ only by the 4-line R1
+      frontmatter (6 files) and placeholder-bearing line substitutions
+      (7 files), and each of those 8 has zero added lines outside those two
+      classes.
+    cmd: >-
+      for f in <20 paths>; do cmp -s PRO_COPY/$f $f && echo IDENT; diff
+      PRO_COPY/$f $f | grep '^>' | grep -vE '^> (---|adversarial_review:
+      exempt-machine-report|$)' | grep -cvE
+      '<client-redacted>|<person-redacted>|INTERNAL-DOSSIER-REDACTED'; done
+    exit: 0
+    ts: "2026-09-26T10:19:26Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      After redaction, the 20 files carry no e-mail-shaped or phone-shaped
+      string and none of the six redacted entity strings; the two remaining
+      keyword hits are a regulation title (NPWP/NIK) and a JSON boolean key.
+    cmd: >-
+      grep -cEi e-mail/phone/keyword regexes over the 20 files; per-entity
+      grep -il over the 20 files (counts only, names kept out of every log)
+    exit: 0
+    ts: "2026-09-26T10:19:26Z"
+    seat: claude-opus-5-5
+  - claim: >-
+      The diff is 20 added files, +1439 lines, 0 deletions, all under
+      research/nb-health, research/nb-monitor and research/sota-social-2026-v1.
+    cmd: git diff --numstat origin/main...HEAD -- research/
+    exit: 0
+    ts: "2026-09-26T10:19:26Z"
+    seat: claude-opus-5-5
