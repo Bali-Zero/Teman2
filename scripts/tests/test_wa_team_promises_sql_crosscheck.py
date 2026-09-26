@@ -75,6 +75,27 @@ unconditional between two CREATEs or two ALTERs (path-independent). S5:
 the reserved-column-name set, and the real-PG R4/R6a companion cases now
 also assert the static parser rejects, not just that PG does.
 
+S6 (carried-forward condition on PR #7413's re-gate,
+pull/7413#issuecomment-5847256465 — pre-existing, silent only in this
+static layer, the runtime `SchemaMismatchError` guard already catches all
+three against the real catalog): measured directly against a throwaway
+PG17 17.10 cluster. (a) A `CREATE TABLE IF NOT EXISTS` whose name is
+already occupied by an EARLIER `CREATE UNIQUE INDEX` in the same parse is
+a PG no-op too — table and index names share ONE relation namespace per
+schema, so `_parse_create_table`'s already-created check and
+`_parse_create_unique_index` both read/write one shared
+`occupied_relations` set, not `_parse_create_table`'s own private one.
+(b) PG silently truncates any identifier over 63 bytes (NAMEDATALEN-1)
+rather than erroring — collision-prone and impossible for this static
+layer to reproduce faithfully, so every identifier (table, column, index)
+over 63 bytes is now rejected outright, matching S1's typmod precedent.
+(c) `SMALLSERIAL`/`FLOAT`/`CHAR`, once past `_parse_column_def`'s typmod
+gate, used to fall through `_TYPE_ALIASES.get(raw_type, raw_type.lower())`
+to `"smallserial"`/`"float"`/`"char"` — none of which `format_type()` ever
+returns; PG's real spellings are `"smallint"`/`"double precision"`/
+`"character"`, now in `_TYPE_ALIASES` alongside the existing serial/varchar
+entries.
+
 Purely static — no DB, no asyncpg. See test_wa_team_promises_real_pg.py for
 the real-Postgres companion (catalog row count against the SAME
 `_REQUIRED_COLUMNS`, opt-in).
@@ -95,6 +116,7 @@ from scripts.wa_team_promises import _REQUIRED_COLUMNS, _SQL_PATH
 _TYPE_ALIASES = {
     "BIGSERIAL": "bigint",
     "SERIAL": "integer",
+    "SMALLSERIAL": "smallint",
     "BIGINT": "bigint",
     "INT8": "bigint",
     "INTEGER": "integer",
@@ -102,9 +124,11 @@ _TYPE_ALIASES = {
     "INT4": "integer",
     "TEXT": "text",
     "VARCHAR": "character varying",
+    "CHAR": "character",
     "BOOLEAN": "boolean",
     "BOOL": "boolean",
     "TIMESTAMPTZ": "timestamp with time zone",
+    "FLOAT": "double precision",
 }
 
 # serial-family pseudo-types create a NOT NULL column (backed by a DEFAULT
@@ -157,6 +181,24 @@ _RESERVED_COLUMN_NAMES = frozenset({
     "JOIN", "LEFT", "LIKE", "NATURAL", "NOTNULL", "OUTER", "OVERLAPS",
     "RIGHT", "SIMILAR", "TABLESAMPLE", "VERBOSE",
 })
+
+# S6(b): PG's NAMEDATALEN is 64 bytes, one of which is the null terminator,
+# so any identifier over 63 BYTES (not characters — PG counts bytes) is
+# silently truncated at CREATE time, never rejected. Measured directly: a
+# 64-byte identifier lands in pg_attribute/pg_class already cut to exactly
+# 63 bytes. Two different over-length names sharing the same 63-byte prefix
+# would collide into ONE column/relation — a static parser cannot reproduce
+# PG's truncation (or its collision) faithfully, so every over-length
+# identifier is rejected outright instead, matching S1's typmod precedent.
+_MAX_IDENTIFIER_BYTES = 63
+
+
+def _check_identifier_length(
+    name: str, index: int, sql: str, stmt_tokens: list[_Token]
+) -> None:
+    if len(name.encode("utf-8")) > _MAX_IDENTIFIER_BYTES:
+        raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
+
 
 # Characters this file never uses for real syntax OUTSIDE a string literal —
 # Round-1 finding: round-0's regex-over-text let a `/* ... */` block
@@ -428,6 +470,7 @@ def _read_qualified_name(
             raise UnrecognizedSqlShapeError(index, "?", _stmt_text(sql, stmt_tokens))
         name = tokens[pos].value
         pos += 1
+    _check_identifier_length(name, index, sql, stmt_tokens)
     return name.lower(), pos
 
 
@@ -492,6 +535,7 @@ def _parse_column_def(
     name = tokens[0].value.lower()
     if tokens[0].value.upper() in _RESERVED_COLUMN_NAMES:
         raise UnrecognizedSqlShapeError(index, tokens[0].value, _stmt_text(sql, stmt_tokens))
+    _check_identifier_length(tokens[0].value, index, sql, stmt_tokens)
     if len(tokens) < 2 or tokens[1].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, name, _stmt_text(sql, stmt_tokens))
     raw_type = tokens[1].value.upper()
@@ -559,7 +603,7 @@ def _parse_column_def(
 def _parse_create_table(
     index: int, stmt_tokens: list[_Token], sql: str,
     declared: dict[str, dict[str, tuple[str, bool]]],
-    created_tables: set[str],
+    occupied_relations: set[str],
     create_body_cols: set[tuple[str, str]],
 ) -> None:
     """Round-2 R1, REWORK S2/S3: `CREATE TABLE IF NOT EXISTS` on a table
@@ -573,7 +617,12 @@ def _parse_create_table(
     already-created table's repeat is then discarded, matching PG's own
     no-op. `create_body_cols` records every (table, name) this parse ever
     saw in a winning CREATE body — S4 (`_parse_alter_table`) needs it to
-    tell a CREATE-body column apart from an ALTER-added one."""
+    tell a CREATE-body column apart from an ALTER-added one. S6(a):
+    `occupied_relations` is shared with `_parse_create_unique_index` — PG
+    keeps tables and indexes in ONE relation namespace per schema, so a
+    name an earlier `CREATE UNIQUE INDEX` already claimed makes THIS
+    `CREATE TABLE IF NOT EXISTS` a no-op too, the same as an earlier
+    `CREATE TABLE` of the same name would."""
     table, pos = _read_qualified_name(stmt_tokens, 5, index, sql, stmt_tokens)
     if pos >= len(stmt_tokens) or not (
         stmt_tokens[pos].kind == "PUNCT" and stmt_tokens[pos].value == "("
@@ -583,7 +632,7 @@ def _parse_create_table(
     if close_pos != len(stmt_tokens) - 1:
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
     body = stmt_tokens[pos + 1: close_pos]
-    already_created = table in created_tables
+    already_created = table in occupied_relations
     this_body: dict[str, tuple[str, bool]] = {}
     for element in _split_top_level_commas_tok(body):
         if not element:
@@ -601,7 +650,7 @@ def _parse_create_table(
     for name, spec in this_body.items():
         per_table[name] = spec
         create_body_cols.add((table, name))
-    created_tables.add(table)
+    occupied_relations.add(table)
 
 
 def _parse_alter_table(
@@ -645,11 +694,21 @@ def _parse_alter_table(
         per_table[name] = (pg_type, notnull)
 
 
-def _parse_create_unique_index(index: int, stmt_tokens: list[_Token], sql: str) -> None:
+def _parse_create_unique_index(
+    index: int, stmt_tokens: list[_Token], sql: str, occupied_relations: set[str]
+) -> None:
+    """S6(a): the index's own name shares PG's ONE relation namespace with
+    every table `_parse_create_table` claims in `occupied_relations` — an
+    index has no columns of its own to cross-check, but claiming its name
+    here is what lets a LATER `CREATE TABLE IF NOT EXISTS` of the same name
+    correctly read itself as already-occupied (a PG no-op), instead of
+    parsing a table PG never actually creates."""
     pos = 6  # past CREATE UNIQUE INDEX IF NOT EXISTS
     if pos >= len(stmt_tokens) or stmt_tokens[pos].kind != "WORD":
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
-    pos += 1  # the index's own name — never schema-qualified in real syntax
+    index_name = stmt_tokens[pos].value  # never schema-qualified in real syntax
+    _check_identifier_length(index_name, index, sql, stmt_tokens)
+    pos += 1
     on_kw = _kw(stmt_tokens[pos]) if pos < len(stmt_tokens) else None
     if on_kw != "ON":
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
@@ -662,6 +721,7 @@ def _parse_create_unique_index(index: int, stmt_tokens: list[_Token], sql: str) 
     close_pos = _find_matching_close(stmt_tokens, pos, index, sql, stmt_tokens)
     if close_pos != len(stmt_tokens) - 1:
         raise UnrecognizedSqlShapeError(index, "CREATE", _stmt_text(sql, stmt_tokens))
+    occupied_relations.add(index_name.lower())
 
 
 def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
@@ -681,11 +741,16 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
     {(table, name), ...} of every column a winning CREATE body declared —
     threaded through so `_parse_alter_table` can tell a CREATE-body column
     apart from an ALTER-added one (only the former is path-DEPENDENT: PG
-    applies the CREATE body's own shape over a later ALTER that disagrees)."""
+    applies the CREATE body's own shape over a later ALTER that disagrees).
+    S6(a): `occupied_relations` is a per-call, LOCAL set shared by
+    `_parse_create_table` and `_parse_create_unique_index` — PG keeps
+    tables and indexes in ONE relation namespace per schema, so either one
+    can claim a name that makes the OTHER's later same-named
+    `IF NOT EXISTS` a no-op."""
     tokens = _tokenize(sql)
     statements = _split_into_statements(tokens)
     declared: dict[str, dict[str, tuple[str, bool]]] = {}
-    created_tables: set[str] = set()
+    occupied_relations: set[str] = set()
     create_body_cols: set[tuple[str, str]] = set()
     for index, stmt_tokens in enumerate(statements):
         if not stmt_tokens:
@@ -695,14 +760,14 @@ def parse_declared_columns(sql: str) -> dict[str, set[tuple[str, str, bool]]]:
             return _kw(_toks[pos]) if pos < len(_toks) else None
 
         if kw(0) == "CREATE" and kw(1) == "TABLE" and kw(2) == "IF" and kw(3) == "NOT" and kw(4) == "EXISTS":
-            _parse_create_table(index, stmt_tokens, sql, declared, created_tables, create_body_cols)
+            _parse_create_table(index, stmt_tokens, sql, declared, occupied_relations, create_body_cols)
         elif kw(0) == "ALTER" and kw(1) == "TABLE":
             _parse_alter_table(index, stmt_tokens, sql, declared, create_body_cols)
         elif (
             kw(0) == "CREATE" and kw(1) == "UNIQUE" and kw(2) == "INDEX"
             and kw(3) == "IF" and kw(4) == "NOT" and kw(5) == "EXISTS"
         ):
-            _parse_create_unique_index(index, stmt_tokens, sql)
+            _parse_create_unique_index(index, stmt_tokens, sql, occupied_relations)
         else:
             raise UnrecognizedSqlShapeError(
                 index, kw(0) or stmt_tokens[0].value, _stmt_text(sql, stmt_tokens)
@@ -916,6 +981,93 @@ def test_innocence_s4_alter_redeclares_a_create_body_column_identically_is_accep
     assert "    cue                TEXT\n);" in sql
     declared = parse_declared_columns(sql)
     assert ("cue", "text", False) in declared["team_promise_candidates"]
+
+
+def test_guilt_s6a_index_occupies_relation_namespace_blocks_later_create_table():
+    """S6(a), measured against a throwaway PG17 cluster: `CREATE TABLE
+    IF NOT EXISTS conflict_slot (...)` after an earlier `CREATE UNIQUE
+    INDEX IF NOT EXISTS conflict_slot ON ...` is a PG no-op — table and
+    index names share ONE relation namespace per schema, so PG sees
+    `conflict_slot` already occupied and skips the table entirely (the
+    relation stays an index, `relkind='i'`, never becomes a table). Before
+    this fix, `_parse_create_table`'s own private `created_tables` set
+    never learned about the index's name, so this parse would silently
+    invent columns for a table PG never created."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "CREATE UNIQUE INDEX IF NOT EXISTS conflict_slot ON t (a);\n"
+        "CREATE TABLE IF NOT EXISTS conflict_slot (bogus_col TEXT NOT NULL);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("a", "text", False)}}
+    assert "conflict_slot" not in declared
+
+
+def test_innocence_s6a_index_after_its_own_table_is_unaffected():
+    """The ordinary, non-colliding shape this file actually uses: an index
+    created ON a table already declared, no name collision — must stay
+    exactly as before."""
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_t_a ON t (a);"
+    )
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {("a", "text", False)}}
+
+
+_S6B_LONG_NAME = "a" * 64  # 64 bytes, one over PG's NAMEDATALEN-1 limit
+
+
+def test_guilt_s6b_column_name_over_63_bytes_is_rejected():
+    """S6(b), measured: PG doesn't error on a 64-byte column name, it
+    silently truncates to 63 bytes at CREATE time. Two different
+    over-length names sharing that 63-byte prefix would collide into ONE
+    column — a static parser can't reproduce PG's truncation (or the
+    collision) faithfully, so it must reject outright instead."""
+    sql = f"CREATE TABLE IF NOT EXISTS t ({_S6B_LONG_NAME} TEXT);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s6b_table_name_over_63_bytes_is_rejected():
+    sql = f"CREATE TABLE IF NOT EXISTS {_S6B_LONG_NAME} (a TEXT);"
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_guilt_s6b_index_name_over_63_bytes_is_rejected():
+    sql = (
+        "CREATE TABLE IF NOT EXISTS t (a TEXT);\n"
+        f"CREATE UNIQUE INDEX IF NOT EXISTS {_S6B_LONG_NAME} ON t (a);"
+    )
+    with pytest.raises(UnrecognizedSqlShapeError):
+        parse_declared_columns(sql)
+
+
+def test_innocence_s6b_identifier_exactly_63_bytes_is_accepted():
+    """The boundary itself: exactly 63 bytes is PG's own limit, not
+    truncated, and must stay accepted."""
+    name_63 = "a" * 63
+    sql = f"CREATE TABLE IF NOT EXISTS t ({name_63} TEXT);"
+    declared = parse_declared_columns(sql)
+    assert declared == {"t": {(name_63, "text", False)}}
+
+
+def test_guilt_s6c_smallserial_float_char_type_fallback_is_corrected():
+    """S6(c), measured against a throwaway PG17 cluster: `format_type()`
+    on the real catalog returns `smallint`/`double precision`/`character`
+    for `SMALLSERIAL`/`FLOAT`/`CHAR` — none of which
+    `_TYPE_ALIASES.get(raw_type, raw_type.lower())`'s old fallback ever
+    produced (`smallserial`/`float`/`char`)."""
+    sql = "CREATE TABLE IF NOT EXISTS t (a SMALLSERIAL, b FLOAT, c CHAR);"
+    declared = parse_declared_columns(sql)
+    assert declared == {
+        "t": {
+            ("a", "smallint", True),
+            ("b", "double precision", False),
+            ("c", "character", False),
+        }
+    }
 
 
 # --- C5 Round 0: 8 shapes the pre-tokenizer regex parser under-matched
