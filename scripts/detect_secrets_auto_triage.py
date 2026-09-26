@@ -1239,16 +1239,6 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.claude/skills/.*\.md$"),
         ".claude/skills markdown: ledger/skill docs, credentials are illustrative or revoked",
     ),
-    # Fake-Gemini cleanup audit backup: CSV snapshot from the deleted
-    # `drive_autowatcher` producer. The high-entropy hits are serialized
-    # source/fact snapshot payloads preserved for the cleanup audit trail,
-    # not executable credentials or deployable secret material.
-    (
-        re.compile(
-            r"^research/operations/2026-05-20-crm-workspace-ai-snapshots-fake-gemini-backup\.csv$"
-        ),
-        "fake-Gemini cleanup audit backup CSV: serialized audit snapshots, not credentials",
-    ),
     # Orchestrator zero-baseline JSON snapshots: diagnostic state captures
     # (git commit SHAs, counts) written by orchestrator cleanup sessions. The
     # high-entropy hits are 40-char git object SHAs, not credentials.
