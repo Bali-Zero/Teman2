@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./NavShell.module.css";
 
 export interface NavItem {
   label: string;
@@ -6,6 +7,7 @@ export interface NavItem {
 }
 
 interface NavShellProps {
+  variant?: "default" | "paper";
   logo: ReactNode;
   items: NavItem[];
   actions: ReactNode;
@@ -41,10 +43,11 @@ export function NavShell({
   slotAfter,
   children,
   accentBar,
+  variant = "default",
 }: NavShellProps) {
   return (
     <nav
-      className="flex items-center px-5 md:px-10 h-14 backdrop-blur-xl"
+      className={`flex items-center px-5 md:px-10 h-14 backdrop-blur-xl ${variant === "paper" ? styles.paper : ""}`}
       style={{
         position: "fixed",
         top: 0,
@@ -57,20 +60,28 @@ export function NavShell({
         boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       }}
     >
-      <div className="mr-auto opacity-75 transition-opacity hover:opacity-100">
+      <div
+        data-nav-logo
+        className="mr-auto opacity-75 transition-opacity hover:opacity-100"
+      >
         {logo}
       </div>
 
       {slotBefore ? (
-        <div className="mr-4 hidden md:flex">{slotBefore}</div>
+        <div data-nav-before className="mr-4 hidden md:flex">
+          {slotBefore}
+        </div>
       ) : null}
 
       {children ? (
-        <div className="hidden md:flex flex-1 items-center justify-center">
+        <div
+          data-nav-center
+          className="hidden md:flex flex-1 items-center justify-center"
+        >
           {children}
         </div>
       ) : (
-        <ul className="hidden md:flex gap-0.5 list-none">
+        <ul data-nav-center className="hidden md:flex gap-0.5 list-none">
           {items.map((item) => (
             <li key={item.href}>
               <a
@@ -85,9 +96,15 @@ export function NavShell({
         </ul>
       )}
 
-      {slotAfter ? <div className="ml-auto md:ml-4">{slotAfter}</div> : null}
+      {slotAfter ? (
+        <div data-nav-slot className="ml-auto md:ml-4">
+          {slotAfter}
+        </div>
+      ) : null}
 
-      <div className="ml-4 hidden md:flex gap-2">{actions}</div>
+      <div data-nav-actions className="ml-4 hidden md:flex gap-2">
+        {actions}
+      </div>
 
       {accentBar ? (
         <span

@@ -1,0 +1,132 @@
+@font-face {
+  font-family: "R19 Fraunces";
+  src: url("/fonts/fraunces-r19-latin.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "R19 Manrope";
+  src: url("/fonts/manrope-r19-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+.root,
+.drawer {
+  --public-header-height: 72px;
+  --r19-fab-shadow: 0 8px 24px rgba(29, 44, 59, 0.18);
+  background: var(--r19-paper);
+  color: var(--r19-ink);
+  font-family: var(--font-sans);
+}
+.root {
+  min-height: 100vh;
+}
+.root :where(h1, h2, h3) {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-synthesis-weight: none;
+}
+.root :where([id]) {
+  scroll-margin-top: calc(var(--public-header-height) + 20px);
+}
+.root :where(a, button, input, select, textarea):focus-visible,
+.drawer :where(a, button, input, select, textarea):focus-visible,
+.root :global(#zantara-fab):focus-visible,
+.root :global(#top) :where(a, button):focus-visible {
+  outline: 2px solid var(--r19-copper);
+  outline-offset: 4px;
+}
+.root :where(input, textarea) {
+  min-width: 0;
+}
+.root :global(.r19-news-masthead) {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px clamp(24px, 4vw, 40px) 12px;
+}
+.root :global(.r19-news-masthead h1) {
+  font-size: clamp(38px, 5vw, 68px);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  margin: 12px 0;
+}
+.root :global(.r19-news-masthead p) {
+  max-width: 48rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+@media (min-width: 981px) {
+  .root,
+  .drawer {
+    --public-header-height: 88px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root *,
+  .root *::before,
+  .root *::after,
+  .drawer *,
+  .drawer *::before,
+  .drawer *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.root :global(.brand-tagline) {
+  color: var(--r19-ink);
+  text-shadow: none;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-synthesis-weight: none;
+}
+
+.root :global(#top) :global(.hero-aspect) :where(a, button):focus-visible {
+  outline-color: var(--r19-paper);
+  box-shadow: 0 0 0 6px var(--r19-ink);
+}
+.root :global(.r19-search):focus-within {
+  outline: 2px solid var(--r19-copper);
+  outline-offset: 4px;
+}
+.root :global(.r19-search input):focus-visible {
+  outline: none;
+}
+
+/* The mobile photograph needs a darker base beneath the existing gradient
+   so the 10px dateline meets 4.5:1 at its brightest sampled glyph. */
+@media (max-width: 767px) {
+  .root :global(.hero-gradient) {
+    background-color: rgba(18, 16, 22, 0.14);
+  }
+}
+
+/* Reserve the short, fixed CTA label's width before the UI font arrives. */
+.root :global(.hero-aspect .cta-primary) {
+  min-width: 13rem;
+  justify-content: space-between;
+}
+
+/* Keep copy in the sizing flow so longer headings grow the photograph
+   instead of clipping the primary action below an absolute overlay. */
+.root :global(.hero-aspect) {
+  display: grid;
+  aspect-ratio: auto;
+  min-height: max(560px, min(125vw, 90vh));
+  max-height: none;
+}
+.root :global(.r19-hero-copy) {
+  position: relative;
+  grid-area: 1 / 1;
+  min-width: 0;
+  padding-top: 32px;
+}
+@media (min-width: 768px) {
+  .root :global(.hero-aspect) {
+    min-height: max(560px, 42.857142857vw);
+  }
+  .root :global(.r19-hero-copy) {
+    padding-block: 48px;
+  }
+}

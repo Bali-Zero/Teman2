@@ -1,0 +1,53 @@
+task: >-
+  Second unit of the R19 public-site cutover (plan: Pro worktree mouth-r19-cutover-audit-20260924,
+  docs/plans/r19-cutover-20260924/PLAN.md §5 step 2 "Dormant foundation"). Land, inert, the R19
+  presentation layer prepared by an external prepare-only seat: apps/mouth/src/components/r19/**
+  (scoped presentation wrapper, route policy, home sections, journal adapter, tests), the Latin
+  Fraunces/Manrope subsets and R19 image assets under public/, an opt-in variant="paper" on
+  packages/core NavShell, and var(--r19-*, <old literal>) aliases in rumahVars. Nothing imports
+  components/r19 yet, NavShell's default is unchanged, and every alias falls back to the literal
+  it replaces, so production renders the same. The visible switch is a later single unit.
+lane: mouth
+machine: pro
+date: 2026-09-26
+
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, source size (scripts/evidence_pack_lint.py --print-floor): 57 files,
+  about +4800 net, dominated by new files (home.css alone 2366 lines) and 16 binaries. The work
+  does not split usefully below ~400 lines: every file is new and unimported, so a smaller cut
+  adds merges without adding safety.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    Inert: no file outside apps/mouth/src/components/r19/ imports it; no NavShell consumer passes
+    variant; every rumahVars alias falls back to the exact literal it replaced; no --r19-* property
+    is defined on an ancestor of a RUMAH_VARS page.
+    probe: >-
+      grep -rn "components/r19" apps/mouth/src packages | grep -v "^apps/mouth/src/components/r19/" → empty;
+      18 NavShell JSX sites, 0 pass variant; 18/18 fallbacks equal origin/main literals;
+      grep -- "--r19-paper\s*:" → only portal/login-upgraded (page-local, no RUMAH_VARS).
+  A2: >-
+    Builds and tests green.
+    probe: >-
+      apps/mouth: next build --webpack rc 0, public login bundle guard rc 0, roster chunk guard rc 0,
+      tsc rc 0, vitest 551 files / 7266 passed; packages/core vitest 188 passed incl. the new
+      NavShell default-vs-paper test.
+  A3: >-
+    After promote, balizero.com renders as before: no Fraunces/Manrope request, same nav height.
+    probe: >-
+      public-domain browser check of / and /news after the production deployment is promoted.
+
+out_of_scope: >-
+  Activating R19 anywhere (blog layout, homepage, v2 components, MobileNav drawer theming): the
+  single activation unit. One R19Presentation test is it.skip because it asserts the MobileNav
+  drawer change that belongs to that unit. Visa Oracle, Second Home/Studio, GARUDA VOA, KBLI.
+
+assumptions: >-
+  Deviations from the byte-identical snapshot: two r19 files import GOOGLE_MAPS_URL from
+  @/lib/trust-figures instead of redeclaring it (existing guard), 22 ts/tsx files prettier-
+  formatted. ESLint cannot run locally (eslint-plugin-react vs ESLint 10); CI lints.

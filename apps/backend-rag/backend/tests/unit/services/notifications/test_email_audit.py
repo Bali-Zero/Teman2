@@ -18,6 +18,8 @@ from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.notifications.email_audit import (
     CRITICAL_EMAIL_TYPES,
     _bounded_scrub,
+    _redact_token,
+    _scrub_email_tokens,
     _strip_trailing_partial_token,
     format_send_error,
     is_critical,
@@ -564,6 +566,15 @@ def test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters(
     (`a*` survived bare); `x@sub_domain.example` matched only `x@sub`
     (`_domain.example` survived bare). No fragment of the address may
     survive scrubbing, whether or not it happens to touch `@`.
+
+    K2 (PR #7417 gate follow-up): the body asserted against here is the
+    raw urlencoded POST payload — `urllib.parse.urlencode` (via
+    `quote_plus`) percent-encodes both `@` (-> `%40`) and `*` (-> `%2A`),
+    so `address not in body` and (for `asterisk_in_local`) `fragment not
+    in body` were true regardless of what actually got redacted: neither
+    literal character can ever survive urlencoding, cure or no cure.
+    Parse the payload back into its `text` field first and assert on
+    THAT — the same string Telegram actually renders.
     """
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
 
@@ -576,9 +587,12 @@ def test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters(
             error=f"delivery to {address} failed",
         )
 
+    import urllib.parse
+
     body = mock_open.call_args[0][1].decode()
-    assert address not in body
-    assert fragment not in body
+    text = urllib.parse.parse_qs(body)["text"][0]
+    assert address not in text
+    assert fragment not in text
 
 
 def test_scrub_preserves_markdown_wrapping_delimiters_around_a_delimiter_bearing_address(
@@ -774,3 +788,64 @@ def test_bounded_scrub_handles_200k_char_single_token_without_hanging():
     the pattern."""
     text = "a" * 200_000
     assert _bounded_scrub(text, 400) == ""
+
+
+# ----------------------------------------------------------------------
+# _scrub_email_tokens / _scrub_word / _redact_token — K1 (PR #7417 gate
+# follow-up, CodeQL alert 9200, py/polynomial-redos): the token scan and
+# both peel steps used to be `re` patterns with the same quadratic shape
+# C6 already removed from `_strip_trailing_partial_token`. Replaced with
+# a linear forward scan (`_scrub_word`) and `str.lstrip`/`str.rstrip`
+# peeling (`_redact_token`) — behaviour-only tests, never wall-time, per
+# the same convention C6's own 200k tests use.
+# ----------------------------------------------------------------------
+
+
+def test_scrub_email_tokens_handles_200k_non_matching_chars_without_hanging():
+    """The exact shape the gate measured at 1.05-1.28s/20k on the old
+    `_EMAIL_TOKEN_RE.sub(...)` (no `@` anywhere, so every start position
+    used to backtrack all the way down before failing): completes here,
+    and — since nothing in a run of `!` is email-shaped — is untouched."""
+    text = "!" * 200_000
+    assert _scrub_email_tokens(text) == text
+
+
+def test_scrub_email_tokens_handles_200k_char_trailing_punctuation_run_without_hanging():
+    """The other half of K1: the old `_TRAILING_MD_DELIM_PUNCT_RE.search(...)`
+    measured 1.64s/20k on a delimiter/punctuation run (`.search` tries
+    every possible start position). `_redact_token`'s `str.rstrip` has no
+    such failure mode: this completes, and — since `!` is itself one of
+    the trailing sentence-punctuation chars this function peels off, the
+    same way a real `email@x.com!!!` keeps its `!!!` outside the digest —
+    the address is redacted while the whole 200k-char run survives
+    verbatim as the trailing punctuation it's being treated as."""
+    token = "a@b" + "!" * 200_000
+    out = _scrub_email_tokens(token)
+    assert out.endswith("!" * 200_000)
+    assert out[: len(out) - 200_000].startswith("id:")
+
+
+def test_scrub_email_tokens_fully_digests_a_400_char_single_token():
+    """K1's own suggested proof: the bound `_bounded_scrub` actually uses
+    (400 chars, the `error` field's limit) must still redact a token that
+    fills the entire bound, not just short ones the linear rewrite could
+    special-case."""
+    local = "q" * 196
+    domain = "b" * 200 + ".example.test"
+    token = f"{local}@{domain}"
+    assert len(token) >= 400
+    out = _scrub_email_tokens(token[:400])
+    assert local not in out
+    assert "b" * 50 not in out
+    assert out.startswith("id:")
+
+
+def test_redact_token_peels_edges_and_digests_the_core():
+    """Direct unit test of the peeling helper K1 introduced — the
+    leading/trailing behaviour `_scrub_email_tokens`'s integration tests
+    exercise indirectly, isolated to its own function."""
+    out = _redact_token("(first_last@example.com).")
+    assert out.startswith("(")
+    assert out.endswith(").")
+    assert "first_last" not in out
+    assert "example.com" not in out
