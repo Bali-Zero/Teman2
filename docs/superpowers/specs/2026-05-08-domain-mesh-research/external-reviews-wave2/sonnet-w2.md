@@ -406,7 +406,7 @@ Fix: either keep `foundations/__init__.py` minimal (no NERExtractor re-export), 
 
 ### E2. `arxiv_sanity_scorer.py` — model is not persisted between cron runs
 
-The `ArxivSanityScorer` is an in-memory object. There is no `save()`/`load()` method. If Antonello trains the model from tagged papers and the process exits, the trained model is gone. Phase 1 will need to rehydrate the model on every run. The plan mentions "Train on Antonello's tagged papers" but does not specify where those papers come from or how the model persists. A `joblib.dump`/`joblib.load` pair for `(vectorizer, model)` is the canonical sklearn persistence pattern. Without it, the scorer is useful only within a single process session — not for the daily cron pattern the plan envisions.
+The `ArxivSanityScorer` is an in-memory object. There is no `save()`/`load()` method. If Zero trains the model from tagged papers and the process exits, the trained model is gone. Phase 1 will need to rehydrate the model on every run. The plan mentions "Train on Zero's tagged papers" but does not specify where those papers come from or how the model persists. A `joblib.dump`/`joblib.load` pair for `(vectorizer, model)` is the canonical sklearn persistence pattern. Without it, the scorer is useful only within a single process session — not for the daily cron pattern the plan envisions.
 
 ### E3. `opensanctions_id.py` — non-commercial license boundary
 

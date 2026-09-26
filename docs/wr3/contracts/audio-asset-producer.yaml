@@ -2,7 +2,7 @@
 # Schema: docs/wr3/contracts/_schema.yaml v1.0.0
 # Description: Veo audio nativo primary (extracted from Veo clips) + Chatterbox fallback + voice
 #   corpus accumulator (~/Desktop/Zantara-Voice-Corpus/<episode_id>.wav). Music bed + license
-#   attribution unchanged. Override 2026-05-22 Antonello — pilot-A confirmed Veo audio Emma-grade.
+#   attribution unchanged. Override 2026-05-22 Zero — pilot-A confirmed Veo audio Emma-grade.
 #   Cartesia BANNED Law 6 (Chatterbox is the local fallback path, not Cartesia).
 # audio_provider: veo_native (extract) + chatterbox_fallback
 
@@ -84,7 +84,7 @@ law_compliance:
   law_2_osint_blindato: "No NB access"
   law_3_event_driven: "Consumes pre_render_ready in parallel with shot-director; emits assembly_ready"
   law_4_graceful_degradation: "Veo audio bad → Chatterbox cascade; Chatterbox crash → degrade-loud subtitles only, never silent"
-  law_5_zero_authority: "Antonello per-episode exception path via Telegram P0 if Cartesia needed (NORMALLY BANNED). Veo audio nativo override 2026-05-22."
+  law_5_zero_authority: "Zero per-episode exception path via Telegram P0 if Cartesia needed (NORMALLY BANNED). Veo audio nativo override 2026-05-22."
   law_6_local_sovereignty: "Veo audio nativo via Flow API (existing cloud touchpoint, no new surface). Chatterbox Pro M4 local Emma seed=42 cfg_weight=0.30 as fallback. Cartesia BANNED Law 6 sovranità."
   law_7_numbers_first: "LUFS measured per-clip + concat, normalized to -14 ±1; outside [-15,-13] LUFS triggers ffmpeg loudnorm; >±5 LUFS triggers fallback"
   law_8_past_present_future: "Loads voice cortex (Emma seed pinned). Voice corpus accumulator ~/Desktop/Zantara-Voice-Corpus/ collects Veo audio for future voice/avatar cloning (50+ wav threshold for custom Chatterbox training)"

@@ -51,7 +51,7 @@ export { initialsOf } from "@/lib/team-initials";
 
 // ── THE ROSTER ───────────────────────────────────────────────────────────────
 // Verified 2026-06-15 against team_members DB + founder confirmation.
-// Photos delivered by Antonello 2026-06-15; batik placeholders removed where a real
+// Photos delivered by Zero 2026-06-15; batik placeholders removed where a real
 // photo now exists. Members still without a real photo render the initials fallback.
 export const TEAM_ROSTER: RosterMember[] = [
   // ── Leadership ──────────────────────────────────────────────────────────

@@ -72,7 +72,7 @@ async def apply(conn: Any) -> None:
             svc["typical_duration_days"],
         )
 
-    # HR bonus rate for visa_voa — Rp 30.000 (Antonello directive 2026-05-27).
+    # HR bonus rate for visa_voa — Rp 30.000 (Zero directive 2026-05-27).
     # voa_extension bonus rate already inserted by migration_069b (Rp 10.000).
     # Use the same ON CONFLICT pattern as 069b for rerunnability.
     await conn.execute(

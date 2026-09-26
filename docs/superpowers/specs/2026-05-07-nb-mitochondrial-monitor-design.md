@@ -2,7 +2,7 @@
 
 **Branch**: `feat/nb-mitochondrial-monitor-2026-05-07`
 **Date**: 2026-05-07
-**Author**: Antonello Siano (Zero) + Claude Opus 4.7
+**Author**: Zero (Zero) + Claude Opus 4.7
 **Reference**: NB Lifecycle Round 2 memo (`project_nb_lifecycle_round2_2026_05_04.md`), SYMBIOSIS.md §145-160 Pilastro 7
 
 ---

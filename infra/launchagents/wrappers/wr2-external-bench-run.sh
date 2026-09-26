@@ -139,7 +139,7 @@ Budget: ~30 min wall-clock, ≤\$0.10 cost (DeepSeek 2 calls).
 
 When done, log to ${LOG} a one-line summary: 'wr2-external-bench ${YEAR_MONTH} DONE: <N patterns extracted, X ADOPT / Y PARTIAL / Z OBSERVE / W REJECT>'.
 
-Telegram notify Antonello after write (per agent spec Step 5) with the executive summary."
+Telegram notify Zero after write (per agent spec Step 5) with the executive summary."
 
 CLAUDE_BIN="${HOME}/.local/bin/claude"
 [ -x "$CLAUDE_BIN" ] || CLAUDE_BIN="/opt/homebrew/bin/claude"

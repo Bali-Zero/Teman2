@@ -38,7 +38,7 @@ valori avatar DB agli stessi path `/static/team/*` (sito e portal coerenti).
 ### Fase 1 — asset fisici
 
 - [ ] Inventario foto reali mancanti: Surya, Vino, Damar, Veronika, Angel, Kadek,
-      Dewa Ayu, Faisha, Rina, Nina (+ Zainal in book-data). → Antonello fornisce i file.
+      Dewa Ayu, Faisha, Rina, Nina (+ Zainal in book-data). → Zero fornisce i file.
 - [ ] Ricomprimere `adit.png` e `dea.png` (20MB → <500KB) con sharp/squoosh.
 - [ ] Depositare le nuove foto in `public/static/team/<slug>.jpg|png`.
 
@@ -67,5 +67,5 @@ valori avatar DB agli stessi path `/static/team/*` (sito e portal coerenti).
 
 - Lavoro nel worktree `.worktrees/mouth-team-photos-ssot`.
 - Off-limits non toccati. Email rule N/A. Nessun PII.
-- Le foto reali dei membri mancanti le deve fornire Antonello (non le posso generare —
+- Le foto reali dei membri mancanti le deve fornire Zero (non le posso generare —
   sono persone reali).

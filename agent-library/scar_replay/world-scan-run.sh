@@ -13,7 +13,7 @@
 #   2. TRANSLATE (world_scan_translate.py + DeepSeek): each pattern -> draft probe
 #      with a DETERMINISTIC executability gate (ADOPT/OBSERVE/REJECT).
 #   3. STAGE: write drafts to research/operations/_proposed/<date>-world-scan.md.
-#   4. NOTIFY: Telegram summary to Antonello. NEVER auto-merge; human promotes
+#   4. NOTIFY: Telegram summary to Zero. NEVER auto-merge; human promotes
 #      an ADOPT draft into scar_probes.py by hand.
 #
 # Cron: weekly (1st-of-week guard inside). Schedule via LaunchAgent.

@@ -53,7 +53,7 @@ harness's scoring-is-local-executable rule.
    regex + judgment-deferral anti-markers + snake_case family check → ADOPT / OBSERVE / REJECT.
 5. **STAGE + NOTIFY** — write all drafts to
    `research/operations/_proposed/<YYYY-Www>-world-scan-probes.md` (ADOPT first), Telegram a one-line
-   summary to Antonello. **Stop there.** A human reads the ADOPT drafts and, for the good ones,
+   summary to Zero. **Stop there.** A human reads the ADOPT drafts and, for the good ones,
    writes a real `Probe` in `scar_probes.py` (fixture + assertion as code) and commits it. The loop
    that _promotes_ is a human; world-scan only _proposes_.
 

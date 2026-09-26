@@ -114,7 +114,7 @@
     "file_mtime": "2026-05-30 22:47 (rewrite/re-serialization, NOT new escalations — newest content ts is still 2026-05-24)",
     "top_jobs_by_count": {"zombie_hunter": 107, "articles_indexing_daily": 105, "daily_ops_autopilot": 105, "quality_orchestrator": 105, "comfyui_server": 105, "gdrive_pg_backup": 105, "practice_lifecycle_check": 104, "fly_qdrant_backup": 104, "health_check": 104, "nlm_bridge": 104},
     "dlq_json_state": "all 13 jobs TERMINAL (drained) — W61 add_to_dlq attempts-preservation fix is WORKING. No live retry loop.",
-    "verdict": "STORM IS HISTORICAL AND CONTAINED. The 1.17MB tracked append-only file is accumulated DEBT (the documented 'weekly digest / pruning' gap from W61), but the escalation loop is dead. Pruning is NOT a safe additive fix (sentinel tooling may parse this file) — deferred to Antonello."
+    "verdict": "STORM IS HISTORICAL AND CONTAINED. The 1.17MB tracked append-only file is accumulated DEBT (the documented 'weekly digest / pruning' gap from W61), but the escalation loop is dead. Pruning is NOT a safe additive fix (sentinel tooling may parse this file) — deferred to Zero."
   },
 
   "golden_rules_backend_compliance": {

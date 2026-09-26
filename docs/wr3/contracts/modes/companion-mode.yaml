@@ -83,7 +83,7 @@ sub_modes:
     voice_register: "analitico"
     activation: "automatic_on_publish"
 
-  # ── Opt-in short sub-mode (Antonello flag `--story`) ─────────────────
+  # ── Opt-in short sub-mode (Zero flag `--story`) ─────────────────
   # Was the automatic default until 2026-07-26. Demoted, not deleted: the
   # capability is still worth having, but it must be a deliberate choice.
   #
@@ -115,7 +115,7 @@ sub_modes:
     voice_register: "ironico" # see ~/.claude/skills/bali-zero-brand/wr3/companion-mode-spec.md
     activation: "antonello_flag --story (WR2 brief.companion_story=true)"
 
-  # ── Opt-in text-only sub-mode (Antonello flag `--engage`) ────────────
+  # ── Opt-in text-only sub-mode (Zero flag `--engage`) ────────────
   # NO video, NO voice — text-only. Generates an IG comment + DM reply
   # template in Zantara voice for community engagement.
   comment_interactive:
@@ -132,7 +132,7 @@ sub_modes:
       hard_halt_on_exceed: false
     critic_lane_mask:
       # Brand voice ONLY — no visual/audio artifacts to gate.
-      # Manual review by Antonello before publishing as IG comment.
+      # Manual review by Zero before publishing as IG comment.
       lane_1_identity_arcface: false
       lane_2_audio_sync: false
       lane_3_brand_voice: true
@@ -165,7 +165,7 @@ law_compliance:
   law_2_osint_blindato: "NB source_ids never touched — claim_ids inherited transitively from WR2"
   law_3_event_driven: "Consumes wr2_episode_published, emits wr3_episode_brief_requested with mode=companion_from_carousel"
   law_4_graceful_degradation: "Missing brief → log skip; claim_ids empty → log skip (degrading to a shorter format would silently defeat the ruled envelope)"
-  law_5_zero_authority: "comment_interactive sub-mode REQUIRES manual Antonello publish (no autopublish)"
+  law_5_zero_authority: "comment_interactive sub-mode REQUIRES manual Zero publish (no autopublish)"
   law_6_local_sovereignty: "All dispatch on local Pro/Mini (Flow API only cloud touchpoint, same as standard WR3)"
   law_7_numbers_first: "Per-sub-mode ceilings enforced; inherited claim_ids preserve numeric verbatim"
   law_8_past_present_future: "Voice register pulled from ~/.claude/skills/bali-zero-brand/wr3/companion-mode-spec.md"

@@ -137,7 +137,7 @@ the OLD `whatsapp_team_sessions` row.
 | 1. Migration 173 (whatsapp_team_sessions + index extensions) | claude | 30min |
 | 2. Baileys Node.js daemon scaffolding | claude | 4h |
 | 3. Deploy on Mini-Pro2 (launchd plist + secrets) | claude | 1h |
-| 4. Onboard Antonello first (validation) | claude+ant | 10min |
+| 4. Onboard Zero first (validation) | claude+ant | 10min |
 | 5. Onboard Adit (trusted second user) | ant+adit | 15min |
 | 6. Onboard Surya | ant+surya | 15min |
 | 7. Onboard rest of team | ant + each | 30min × 8 = 4h spread over 2 days |

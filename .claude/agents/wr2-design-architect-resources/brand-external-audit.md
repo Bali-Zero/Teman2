@@ -12,7 +12,7 @@
 - **Hero copy verbatim**: _"Most people moving to Bali pick the wrong visa in the first month. Sign a lease that does not hold up under PP 18/2021. Find out only at tax time. We spend our days fixing that."_
 - **Differentiator**: _"AI drafts. Our licensed Indonesian team signs."_
 - **Trust markers**:
-  - "5,000+ expats and founders · since 2019" (home) vs "since 2020" (about) vs "Est. 2003" (Instagram bio) — **incoerenza data fondazione**, da chiarire con Antonello
+  - "5,000+ expats and founders · since 2019" (home) vs "since 2020" (about) vs "Est. 2003" (Instagram bio) — **incoerenza data fondazione**, da chiarire con Zero
   - "Filed this month: 47 KITAS, 9 PT PMAs"
   - "Licensed konsultan pajak · Registered PPJK"
   - "4.9 ★ · 627 Google reviews"
@@ -155,4 +155,4 @@ NO CTA hard-sell. CTA implicito = brand recognition + WhatsApp.
 - **Instagram feed non scrappabile via WebFetch** (placeholder PNG). Per cattura post-grid + caption verbatim + hashtag empirici servono mcp\_\_playwright o screenshot manuali su @balizero0.
 - **Articoli blog JS-rendered**: WebFetch ha restituito solo navigation/footer. Body editorial verbatim non catturato — inferenza basata su headline patterns + struttura "Facts/Take" dei WR2.
 - **Service pages 404** (`/visa-oracle`, `/coretax`, `/property-map`, `/kbli-2025`): URLs nominali in home non risolvono. Reali service pages vivono su `mo.balizero.com/services/...` ma quel sotto-dominio rifiuta WebFetch (HTTP 403).
-- **Inconsistenza data fondazione**: home "since 2019", about "since 2020", IG bio "Est. 2003". Da chiarire con Antonello prima di hardcodare nei carousel.
+- **Inconsistenza data fondazione**: home "since 2019", about "since 2020", IG bio "Est. 2003". Da chiarire con Zero prima di hardcodare nei carousel.

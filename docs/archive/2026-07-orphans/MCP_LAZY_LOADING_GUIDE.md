@@ -503,6 +503,6 @@ For custom MCP servers (like Nuzantara-specific tools), follow the same pattern:
 
 ---
 
-**Maintained by:** Claude Code + Antonello
+**Maintained by:** Claude Code + Zero
 **Last Updated:** 2026-02-02
 **Next Review:** 2026-03-02 (or when adding new MCP servers)

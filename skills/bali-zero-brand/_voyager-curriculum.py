@@ -169,7 +169,7 @@ def select_proposal(gaps):
             f"At next carousel run, after completing the user-requested production carousel, "
             f"generate ONE additional exploration carousel filling this gap: {top['missing']}. "
             "Tag the run with is_exploration=1 in topic_type_log. Do NOT auto-publish; route to "
-            "human-review-queue with state=drafted as usual. Antonello reviews + decides whether "
+            "human-review-queue with state=drafted as usual. Zero reviews + decides whether "
             "to graduate it to production."
         ),
         "all_gaps_detected": gaps[:10],

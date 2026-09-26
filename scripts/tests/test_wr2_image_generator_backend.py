@@ -560,7 +560,7 @@ def test_backend_unavailable_error_is_runtime_error(wig):
 
 
 def test_desk_pen_cliche_ban_reaches_final_image_prompt(wig):
-    """The document/deed-on-a-desk-with-a-pen cliché ban (Antonello 2026-06-13)
+    """The document/deed-on-a-desk-with-a-pen cliché ban (Zero 2026-06-13)
     must be in the prompt that EVERY image backend actually receives.
 
     Regression guard for the wiring bug found 2026-06-13: the draft-generator's

@@ -3,7 +3,7 @@
 #
 # Runs heartbeat_monitor --truth and sends the resulting table to Telegram
 # every morning. This is the operational counterpart to PR #244's
-# truth_dashboard CLI: instead of relying on Antonello to ssh in and run
+# truth_dashboard CLI: instead of relying on Zero to ssh in and run
 # the command, the digest is pushed daily so silent failures (GATEWAY_LIES,
 # DEAD pipelines) become visible without manual intervention.
 #

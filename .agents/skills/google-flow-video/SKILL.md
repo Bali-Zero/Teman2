@@ -1,6 +1,6 @@
 ---
 name: google-flow-video
-description: "Generate AI video assets via Google Labs Flow + Veo 3.1 on Antonello's AI Ultra plan. Use when asked to create video shorts/reels/B-roll/explainers for Bali Zero, ZANTARA. Operational, not academic."
+description: "Generate AI video assets via Google Labs Flow + Veo 3.1 on Zero's AI Ultra plan. Use when asked to create video shorts/reels/B-roll/explainers for Bali Zero, ZANTARA. Operational, not academic."
 trigger_keywords:
   [
     "flow",

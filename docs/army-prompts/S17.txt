@@ -1,5 +1,5 @@
 # DESC: S17 — Crea agenti SOTA nuovi (libertà creativa) (ONDA 3, M5 sonnet, 4-LLM panel)
-ORCHESTRATORE sessione S17 "new-sota-agents". Libertà creativa (richiesta Antonello).
+ORCHESTRATORE sessione S17 "new-sota-agents". Libertà creativa (richiesta Zero).
 Autonomia piena in loop, no conferme.
 
 PASSO 0:
@@ -24,7 +24,7 @@ TOPOLOGIA (skill writing-skills + sota-architecture-loop 8-step per ognuno):
   FROZEN.json + 4-LLM panel verdict per ognuno. commit → push → PR draft → STOP.
 
 VINCOLI: rispetta i ban (no ANTHROPIC_API_KEY, CLI-only). NON registrare in cron senza
-Antonello. Proposte, non auto-deploy. OUTPUT: agent defs + FROZEN + panel. --release.
+Zero. Proposte, non auto-deploy. OUTPUT: agent defs + FROZEN + panel. --release.
 
 Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
 ARMY_DONE S17 <numero-PR-o-url>

@@ -15,14 +15,14 @@ adversarial_review: kimi-k3
 > **Status: NOT EXECUTED this session — deliberately deferred.** Closing BUCO #1
 > autonomously is blocked by two structural gates (below). This spec captures the
 > empirical ground truth + the exact safe sequence so the next executor (operator
-> or a follow-up session WITH Antonello's CODEOWNERS approval) can run it without
+> or a follow-up session WITH Zero's CODEOWNERS approval) can run it without
 > tripping the pending-forever trap.
 
 ## Why it could not be done autonomously this session
 
 1. **CODEOWNERS TIER-1 anti-injection** — `/.github/workflows/ @Balizero1987`
    (`.github/CODEOWNERS:27`). Every edit to a workflow file (needed for the
-   skip→success sentinel) requires Antonello's review; it is NOT self-mergeable
+   skip→success sentinel) requires Zero's review; it is NOT self-mergeable
    by an agent, by design. `verify-the-verifiers.yml` is additionally
    tamper-evident (sha256 `.github/verify-the-verifiers.sha256` + the workflow
    lists itself in its own `paths:`).
@@ -95,7 +95,7 @@ jobs:
       # every real step below gains:  if: steps.relevant.outputs.run == 'true'
 ```
 Notes:
-- `verify-the-verifiers.yml` is tamper-evident — this edit needs Antonello's
+- `verify-the-verifiers.yml` is tamper-evident — this edit needs Zero's
   CODEOWNERS review AND must not alter the protected `.py`/sha256 (it doesn't;
   only the workflow YAML changes). Confirm the sha256 step still passes.
 - Prefer the explicit `git diff` gate over `dorny/paths-filter` to avoid adding a
@@ -103,7 +103,7 @@ Notes:
 
 ## Step 2 — merge + confirm green-stable on main
 
-After Antonello approves + the sentinel PR merges:
+After Zero approves + the sentinel PR merges:
 ```
 gh run list --workflow verify-the-verifiers.yml --branch main -L 5 --json conclusion
 gh run list --workflow p1s2-mutation-incremental.yml --branch main -L 5 --json conclusion

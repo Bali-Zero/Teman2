@@ -178,7 +178,7 @@ The workflow `.github/workflows/auto-merge-whitelist.yml` auto-enables
 3. **Diff does NOT touch** any path owned by @Balizero1987 in CODEOWNERS
    (workflows, fly.toml, migrations, auth, billing, pricing, launchagents).
 
-If any check fails, the workflow exits silently; Antonello reviews manually.
+If any check fails, the workflow exits silently; Zero reviews manually.
 
 **Anti-pattern guard**: the workflow itself is owned by @Balizero1987 in CODEOWNERS,
 so a malicious PR cannot modify the whitelist to widen its scope.

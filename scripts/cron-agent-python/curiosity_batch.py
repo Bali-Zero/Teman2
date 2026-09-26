@@ -2,7 +2,7 @@
 """
 Curiosita Pilastro 6 -- weekly batch
 Legge top 10 findings da cell_curiosity_findings (by information_gain DESC)
-Invia Telegram batch ad Antonello per review.
+Invia Telegram batch ad Zero per review.
 
 Schema reale cell_curiosity_findings:
   id, source, question, method, finding, actionable,

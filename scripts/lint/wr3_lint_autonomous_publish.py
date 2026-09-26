@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """WR3 Lint — Law 5 (Zero ultima istanza).
 
-Symbiosis Law 5: Strategic decisions require Antonello's Telegram approval.
+Symbiosis Law 5: Strategic decisions require Zero's Telegram approval.
 For WR3 episode pipeline, this means:
   - Episode is STAGED to Drive after critic PASS (automatic ok)
-  - Episode is PUBLISHED to IG/TT/YT only after Antonello manual action
+  - Episode is PUBLISHED to IG/TT/YT only after Zero manual action
   - NO direct posting to social platforms from any WR3 script
 
 Checks:
@@ -71,7 +71,7 @@ def check(repo_root: Path) -> list[LintFinding]:
                     law=LAW_NUMBER,
                     file=str(py_path.relative_to(repo_root)),
                     line=line_no,
-                    message=f"Social platform direct publish detected — manual Antonello action required: {line.strip()[:100]}",
+                    message=f"Social platform direct publish detected — manual Zero action required: {line.strip()[:100]}",
                 ))
 
             # Drive upload sanity — ensure 'staging' appears in surrounding ±3 lines

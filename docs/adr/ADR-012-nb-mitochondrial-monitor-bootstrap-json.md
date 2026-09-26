@@ -9,7 +9,7 @@
 > The decision itself is unchanged; only its identifier moved. Canonical id: **D-012**.
 
 **Status:** Accepted (2026-05-07)
-**Authors:** Antonello Siano (Zero), Claude Opus 4.7
+**Authors:** Zero (Zero), Claude Opus 4.7
 **Related:** spec `2026-05-07-nb-mitochondrial-monitor-design.md`
 
 ## Context

@@ -76,7 +76,7 @@ law_compliance:
   law_2_osint_blindato: "No NB access. Manifest includes claim_ids verbatim from brief.json"
   law_3_event_driven: "Consumes assembly_ready (fired by EITHER clip-renderer OR audio-asset-producer — this consumer is the fs-presence join enforcer, NOT the producers)"
   law_4_graceful_degradation: "Variant failure degrades, master failure halts"
-  law_5_zero_authority: "Manifest is the immutable artifact Antonello reviews pre-publish"
+  law_5_zero_authority: "Manifest is the immutable artifact Zero reviews pre-publish"
   law_6_local_sovereignty: "ffmpeg evermeet static /tmp/ffmpeg-full/ffmpeg local"
   law_7_numbers_first: "Manifest 18 mandatory fields (claim_ids, asset_hashes, contract_versions, costs)"
   law_8_past_present_future: "Manifest sha256 anchors enable past episode comparison"

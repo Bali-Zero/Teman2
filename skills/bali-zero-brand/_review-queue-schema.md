@@ -6,7 +6,7 @@
 
 `~/nuzantara/apps/war-room/output/queue/human-review-queue.json`
 
-Single JSON array. Append-only by orchestrator. Modified in-place by Damar's tooling (or by Antonello if Damar unavailable).
+Single JSON array. Append-only by orchestrator. Modified in-place by Damar's tooling (or by Zero if Damar unavailable).
 
 ## Schema
 
@@ -69,7 +69,7 @@ drafted → reviewed → published        (happy path)
 drafted → reviewed → rejected         (Damar refuses to publish)
 drafted → reviewed → published_with_edits  (Damar edited then published)
 drafted → ignored                      (no action 14 days → auto-archive)
-drafted → withdrawn                    (Antonello pulls the carousel before review)
+drafted → withdrawn                    (Zero pulls the carousel before review)
 ```
 
 ### State definitions
@@ -81,7 +81,7 @@ drafted → withdrawn                    (Antonello pulls the carousel before re
 - **published_with_edits**: Damar made changes in Canva before publishing. The `designer_override_diff` MUST be filled — this is the gold-standard learning signal.
 - **rejected**: Damar refused publication. `damar_notes` field MUST contain the reason.
 - **ignored**: 14 days elapsed without review. Auto-transitioned by daily cron. NOT a learning signal — could mean "Damar busy" or "topic stale" or "carousel bad". Don't optimize against ignored.
-- **withdrawn**: Antonello pulled before Damar acted. Reason in `damar_notes` (overloaded with `withdrawn_reason` semantics).
+- **withdrawn**: Zero pulled before Damar acted. Reason in `damar_notes` (overloaded with `withdrawn_reason` semantics).
 
 ## Required fields per state transition
 

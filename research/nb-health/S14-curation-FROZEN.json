@@ -807,7 +807,7 @@
   "curation_proposals": {
     "P1_HIGH_cleanup_marked_delete": {
       "rationale": "6 NB self-titled [MERGED-INTO-*] or [ARCHIVED-DELETE-*] dated 2026-05-07 still live 25d later, holding 445 sources total. Content already merged into target NBs (dc5d01cd / d2a05271). These are pure cleanup-debt: deletable NBs (not sources) inflating NB count + storage. Each verify target NB absorbed content before delete.",
-      "action": "Antonello approves NB-level delete (nlm notebook delete <uuid>) after spot-check target absorbed content. NOT source-level delete.",
+      "action": "Zero approves NB-level delete (nlm notebook delete <uuid>) after spot-check target absorbed content. NOT source-level delete.",
       "candidates": [
         {
           "uuid": "201b4b94-deda-40a9-9fcb-0e67a3f81e52",
@@ -950,7 +950,7 @@
     },
     "P3_LOW_empty_scaffolds": {
       "rationale": "17 empty NBs (0 sources) + 1 probe-sandbox. Most are orphaned research_start scaffolds (UU Cipta Kerja, Bali Minimum Wage, HGB Property, KITAS/KITAP Research, etc.) never populated. Pure NB-count noise. Low risk to delete but verify none is an intentional in-progress scaffold (75b73262 Air-M5 created 2026-06-02 — KEEP, fresh).",
-      "action": "Antonello approves batch NB delete of confirmed-orphan scaffolds. Exclude any <48h old.",
+      "action": "Zero approves batch NB delete of confirmed-orphan scaffolds. Exclude any <48h old.",
       "candidates": [
         {
           "uuid": "75b73262-8357-443d-93be-212d736d8c44",
@@ -1048,7 +1048,7 @@
   "constraints_honored": {
     "no_autonomous_source_delete": true,
     "no_autonomous_nb_delete": true,
-    "curated_nb_0_14": "dedup/summarize proposals only; Antonello approves delete",
+    "curated_nb_0_14": "dedup/summarize proposals only; Zero approves delete",
     "osint_law_2": "NB-INTEL data never left Pro; only counts/UUIDs/proposals captured"
   },
   "priority_summary": {

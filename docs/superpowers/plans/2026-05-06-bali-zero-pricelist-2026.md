@@ -1956,7 +1956,7 @@ Scan the QR code on the PDF closing page with a phone camera. It should open Wha
 
 - [ ] **Step 4: Final summary message to owner**
 
-In the chat, summarize for Antonello:
+In the chat, summarize for Zero:
 
 - Pipeline runs: `python3 -m scripts.pricelist_2026.generate && python3 -m scripts.pricelist_2026.render_pdf`
 - Source of truth: `apps/backend-rag/backend/data/bali_zero_official_prices_2026.json`

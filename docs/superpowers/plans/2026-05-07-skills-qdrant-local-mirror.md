@@ -1151,7 +1151,7 @@ Frontmatter:
 ```markdown
 ---
 name: NB Lifecycle Round 4-bis (Qdrant LOCAL mirror, R10 forensic-informed)
-description: Replaces R4 P1+P4 hybrid. 304 rows mirrored to local Pro Qdrant collection bali_zero_skills_local. No P1 retire — SQLite stays primary. Decision 2026-05-06 by Antonello.
+description: Replaces R4 P1+P4 hybrid. 304 rows mirrored to local Pro Qdrant collection bali_zero_skills_local. No P1 retire — SQLite stays primary. Decision 2026-05-06 by Zero.
 type: project
 ---
 ```

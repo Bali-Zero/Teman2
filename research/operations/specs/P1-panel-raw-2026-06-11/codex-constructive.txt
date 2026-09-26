@@ -41,7 +41,7 @@ Concrete change: use a captured `:r4_enabled_at_utc` timestamp; filter HTML lane
 Why safer: avoids counting legacy Canva renders or ambiguous `updated_at > '2026-06-11'` local/UTC boundaries.
 
 11. §4 R2: Don’t delete manual-Canva support under a WR2-lane cleanup label.
-Concrete change: move `scripts/lint_canva_pending.py` to an “Antonello manual Canva decision” list, or keep it and remove only the stale IGPublisher reference.
+Concrete change: move `scripts/lint_canva_pending.py` to an “Zero manual Canva decision” list, or keep it and remove only the stale IGPublisher reference.
 VERIFIED: the file is not a renderer daemon but still contains an IG publisher reference. Safer because Canva remains allowed for manual special pieces.
 
 12. §4 R3: Expand worktree subsumption diff paths.

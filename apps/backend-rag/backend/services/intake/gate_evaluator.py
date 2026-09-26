@@ -185,7 +185,7 @@ async def evaluate_gate_status(
         logger.warning("gate_evaluator: empty user_email, failing OPEN")
         return _degraded(as_of)
 
-    # Operator kill-switch (Antonello 2026-06-18): temporarily disable the whole
+    # Operator kill-switch (Zero 2026-06-18): temporarily disable the whole
     # login gate fleet-wide WITHOUT a code change or data mutation. Flip with
     #   fly secrets set INTAKE_GATE_DISABLED=true  -a nuzantara-rag
     # and revert with  fly secrets unset INTAKE_GATE_DISABLED. When set, every

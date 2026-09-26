@@ -1,7 +1,7 @@
 # Visa Funnel Fusion — unifying Visa Check and Visa Oracle
 
 **Date:** 2026-04-21
-**Author:** Claude (Opus 4.7, 1M ctx) — brainstormed with Antonello (Zero) + redteamed by Codex CLI, DeepSeek R1, Gemini 2.5 Pro (NotebookLM auth broken, skipped)
+**Author:** Claude (Opus 4.7, 1M ctx) — brainstormed with Zero (Zero) + redteamed by Codex CLI, DeepSeek R1, Gemini 2.5 Pro (NotebookLM auth broken, skipped)
 **Scope:** `apps/mouth/src/app/visa/*`, `apps/mouth/src/app/(visa-oracle)/*`, `apps/mouth/src/components/visa-oracle/*`, `apps/mouth/src/middleware.ts`, `apps/backend-rag/backend/services/visa_unified/*` (new), `apps/backend-rag/backend/app/routers/visa_check.py`, minor edits to `visa_oracle.py`. DNS on `visa.balizero.com`.
 **Branch target:** `feat/visa-funnel-fusion` (from `main`, post-merge)
 **Budget:** 5 working days.

@@ -58,7 +58,7 @@ law_compliance:
   law_2_osint_blindato: "Reads episode artifacts only (no NB)"
   law_3_event_driven: "Cron Sun 02:30 WITA — standalone, not orchestrator hot-path"
   law_4_graceful_degradation: "Cascade Sonnet→Gemini→defer (never silent fail)"
-  law_5_zero_authority: "Skill drafts in _proposed/ require Antonello manual graduation"
+  law_5_zero_authority: "Skill drafts in _proposed/ require Zero manual graduation"
   law_6_local_sovereignty: "Local execution"
   law_7_numbers_first: "Max 10 lessons/week/agent (skill growth bound)"
   law_8_past_present_future: "Voyager curriculum — past episodes → future skills"

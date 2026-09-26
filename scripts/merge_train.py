@@ -8,7 +8,7 @@ Phase 0 (current): DRY-RUN — every mutating action is logged with the
 decision it WOULD take, nothing is executed. Flip via the runtime config
 file (~/.agent/merge-train.config: {"enabled": true, "dry_run": false}).
 
-Design directive (Antonello 2026-06-12): no human-first alerts — the
+Design directive (Zero 2026-06-12): no human-first alerts — the
 state file carries PROGRESS semantics (not just mtime) so the deadman
 can detect a zombie train and self-repair (kickstart) before any human
 notification.

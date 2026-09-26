@@ -1,6 +1,6 @@
 ---
 name: backend-verifier
-description: Use when need to verify Nuzantara backend health, run pytest, check Fly deploy status, audit router/service registration. Read-only by default — escalate to Antonello if write needed.
+description: Use when need to verify Nuzantara backend health, run pytest, check Fly deploy status, audit router/service registration. Read-only by default — escalate to Zero if write needed.
 tools: Bash, Read, Grep, Glob, WebFetch
 disallowedTools: Edit, Write, MultiEdit, NotebookEdit
 model: sonnet

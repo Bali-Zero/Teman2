@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """past/ population helper.
 
-Antonello curates a set of past WR2 carousels (PNG export + brief.md). This script imports
+Zero curates a set of past WR2 carousels (PNG export + brief.md). This script imports
 them into `~/.claude/skills/bali-zero-brand/past/` with a normalized naming convention so
 the wr2-design-architect can retrieve them as in-context style references.
 
@@ -19,7 +19,7 @@ Usage examples:
   # Single import (interactive prompts for missing fields)
   python3 _past-import.py import --png /path/to/carousel.png --brief /path/to/brief.md
 
-  # Batch from CSV (Antonello's preferred curation flow)
+  # Batch from CSV (Zero's preferred curation flow)
   python3 _past-import.py batch --csv ~/Desktop/wr2-curation.csv
 
   # CSV columns: date, topic_slug, domain, register, layout_primary, png_path, brief_path, ig_url, ig_saves, notes

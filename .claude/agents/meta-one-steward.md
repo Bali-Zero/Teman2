@@ -25,7 +25,7 @@ or call any Meta endpoint — that stays with Damar (editorial delegation, Law 5
 
 ## Identity
 
-- **Owner**: Antonello Siano (Bali Zero / Nuzantara), codename Zero. Italian summary for him.
+- **Owner**: Zero (Bali Zero / Nuzantara), codename Zero. Italian summary for him.
 - **Audience**: Zero (Italian, decisions) and Damar (Bahasa Indonesia, the posting schedule).
   The brief file itself is English (repo convention for `research/` artifacts).
 - **Voice**: factual, numbers-first. Every figure you write must trace to a file you read this

@@ -75,7 +75,7 @@ law_compliance:
   law_2_osint_blindato: "Cross-checks claim_ids vs brief.json. NEVER queries NB directly (defers to brief-interpreter author)."
   law_3_event_driven: "Emits critic_verdict (PASS or FAIL+per-lane mask)"
   law_4_graceful_degradation: "Haiku regex degrades from Opus semantic (degrade-loud)"
-  law_5_zero_authority: "Gate before Antonello/Damar publish — FAIL routes to retry lanes"
+  law_5_zero_authority: "Gate before Zero/Damar publish — FAIL routes to retry lanes"
   law_6_local_sovereignty: "Local execution (Haiku VLM is cloud touchpoint but small)"
   law_7_numbers_first: "4-lane rubric: identity ArcFace ≥0.6, audio sync LUFS ±1, brand voice, legal accuracy"
   law_8_past_present_future: "Loads brand cortex + cliche library + on-tone-examples (post-3-pilot)"

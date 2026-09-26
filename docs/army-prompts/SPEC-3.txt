@@ -16,7 +16,7 @@ LE 3 LEGGI ANTI-AUTODISTRUZIONE:
 PREREQUISITO: DOPO R1 (WR3 deve girare prima di fonderlo — non fondere un sistema rotto).
 
 MISSIONE: WR2 (8 agenti carousel) e WR3 (13 agenti video) condividono il PATTERN ma
-duplicano 2-3 agenti quasi-gemelli. Decisione Antonello: ripara WR3 (fatto in R1) E POI
+duplicano 2-3 agenti quasi-gemelli. Decisione Zero: ripara WR3 (fatto in R1) E POI
 fondi. NON merge totale (WR3 ha 8 agenti video-specifici: clip-renderer, audio-asset-
 producer, shot-director, pre-render-gatekeeper, post-assembler, b-roll-curator — non hanno
 gemello WR2). Fusione = ESTRARRE PRIMITIVE CONDIVISE. Riferimento: dossier §6 M2/duplicati

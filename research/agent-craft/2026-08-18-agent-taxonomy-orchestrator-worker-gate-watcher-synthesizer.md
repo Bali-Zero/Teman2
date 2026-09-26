@@ -34,7 +34,7 @@ Per la risposta: (1) cita verbatim le fonti rilevanti tra i tuoi 86 sources, (2)
     > *"For sequential pipelines (brief → storyboard → layout → critic in chain, like WR2): single-agent batte multi-agent di 39–70%. Multi-agent in WR2 is justified by context-isolation and model-routing economy (Sonnet workers + Opus critic + Haiku vision-pre-pass), not by parallelism gain."* [3]
 
 *   **I Watcher ad ambito ristretto:**
-    > *"This agent does NOT trigger downstream agents. It writes a file + sends a notification. If Antonello wants to act on a delta, he reads the file and decides manually."* [4]
+    > *"This agent does NOT trigger downstream agents. It writes a file + sends a notification. If Zero wants to act on a delta, he reads the file and decides manually."* [4]
 
 *   **I Gate (I validatori e i red-team asincroni):**
     > *"A validator is a deterministic script embedded within a skill that verifies whether an agent's actions meet organizational standards—without requiring human approval... Validators shift the governance team's operational model from governance-as-approval [...] to governance-as-code"* [5, 6].
@@ -169,7 +169,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [4] source `d6bf2f6f…`
 
-> This agent does NOT trigger downstream agents. It writes a file + sends a notification. If Antonello wants to act on a delta, he reads the file and decides manually. Future enhancement: emit specific service_line events to a queue that other agents subscribe to (out of scope today).
+> This agent does NOT trigger downstream agents. It writes a file + sends a notification. If Zero wants to act on a delta, he reads the file and decides manually. Future enhancement: emit specific service_line events to a queue that other agents subscribe to (out of scope today).
 
 ### [5] source `f6c76ff7…`
 
@@ -181,7 +181,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [7] source `8d0ba049…`
 
-> Step 6 — Render to PDF Wait for completion. Verify the PDF exists and is non-trivial size (>20KB indicates rendering succeeded). Step 6.5 — Devil's Advocate red-team (mandatory pre-render gate) Client quotes are the highest-stakes deliverable (signed PDF, sent to client, IDR ##jt at stake). Before Step 7 QA, invoke devils-advocate on the HTML draft : Read returned verdict : BLOCK → 1+ critical (regulatory hallucination, math error, missing PMK citation). STOP. Surface to user. Do NOT proceed to PDF render. NEEDS_FIX → fix and re-invoke devils-advocate. Max 2 iterations. After 2 still NEEDS_FIX, surface to Antonello with [NEEDS HUMAN REVIEW] flag. PASS → continue to Step 7.
+> Step 6 — Render to PDF Wait for completion. Verify the PDF exists and is non-trivial size (>20KB indicates rendering succeeded). Step 6.5 — Devil's Advocate red-team (mandatory pre-render gate) Client quotes are the highest-stakes deliverable (signed PDF, sent to client, IDR ##jt at stake). Before Step 7 QA, invoke devils-advocate on the HTML draft : Read returned verdict : BLOCK → 1+ critical (regulatory hallucination, math error, missing PMK citation). STOP. Surface to user. Do NOT proceed to PDF render. NEEDS_FIX → fix and re-invoke devils-advocate. Max 2 iterations. After 2 still NEEDS_FIX, surface to Zero with [NEEDS HUMAN REVIEW] flag. PASS → continue to Step 7.
 
 ### [8] source `74917ad2…`
 
@@ -237,7 +237,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [20] source `8d0ba049…`
 
-> -------------------------------------------------------------------------------- name: client-case-quote-generator description: Generates a Bali Zero internal-print A4 PDF client quote (visa/property/tax/regulatory) covering cost, timeline, risk, deliverables, and pricing. Loads bali-zero-brand skill (surface=internal-print-a4), uses Claude Opus 4.7 for brand-voice synthesis, delegates numerical math (tax projections, cost breakdowns, deadline arithmetic) to DeepSeek Reasoner ($0.01/q acceptable per CLAUDE.md), renders via existing surfaces/internal-print-a4/_render.py Playwright→PDF pipeline. Use when Antonello says "quote case for [client X]" or "draft brief for [[CLIENT-NAME-REDACTED] / [CLIENT-NAME-REDACTED] / etc.]". tools: Read, Write, Edit, Bash, WebFetch model: opus isolation: worktree color: blue
+> -------------------------------------------------------------------------------- name: client-case-quote-generator description: Generates a Bali Zero internal-print A4 PDF client quote (visa/property/tax/regulatory) covering cost, timeline, risk, deliverables, and pricing. Loads bali-zero-brand skill (surface=internal-print-a4), uses Claude Opus 4.7 for brand-voice synthesis, delegates numerical math (tax projections, cost breakdowns, deadline arithmetic) to DeepSeek Reasoner ($0.01/q acceptable per CLAUDE.md), renders via existing surfaces/internal-print-a4/_render.py Playwright→PDF pipeline. Use when Zero says "quote case for [client X]" or "draft brief for [[CLIENT-NAME-REDACTED] / [CLIENT-NAME-REDACTED] / etc.]". tools: Read, Write, Edit, Bash, WebFetch model: opus isolation: worktree color: blue
 
 ### [21] source `357bc3cb…`
 
@@ -261,7 +261,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [26] source `e18bc146…`
 
-> Devil's Advocate (Red Teamer) You are the contrarian. You exist to STRESS-TEST conclusions before they reach a client or get published. You do NOT confirm. You do NOT congratulate. You attack. Identity Owner : Antonello Siano. Italian conversation, English findings. Stance : skeptical, surgical, irreverent. Better to surface a 5% concern than to silently let a 50% bug ship. Voice : terse, direct, citation-heavy. Like a veteran legal/tax/audit reviewer. NO marketing voice. NO niceties. Why DeepSeek Reasoner?
+> Devil's Advocate (Red Teamer) You are the contrarian. You exist to STRESS-TEST conclusions before they reach a client or get published. You do NOT confirm. You do NOT congratulate. You attack. Identity Owner : Zero. Italian conversation, English findings. Stance : skeptical, surgical, irreverent. Better to surface a 5% concern than to silently let a 50% bug ship. Voice : terse, direct, citation-heavy. Like a veteran legal/tax/audit reviewer. NO marketing voice. NO niceties. Why DeepSeek Reasoner?
 
 ### [27] source `d6bf2f6f…`
 
@@ -269,7 +269,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [28] source `d6bf2f6f…`
 
-> Regulatory Watcher You are the daily regulatory delta detector for Bali Zero. Your job is narrow: detect what changed in Indonesian law yesterday that might affect a Bali Zero service line, and surface it to Antonello in two channels (file + Telegram). You are NOT a researcher. You don't write articles, you don't speculate, you don't translate paraphrasing. You catch deltas and cite verbatim. Identity Owner : Antonello Siano (Bali Zero / Nuzantara), agency providing visa/immigration/tax/property/regulatory/HR/health services to expat founders, investors, and high-information immigrants in Bali. Audience for your output : Antonello + ops team (~5 people). Italian conversation OK; English regulatory citations always. Voice : terse, factual, regulatory-numerical. No marketing voice. No "exciting news" framing.
+> Regulatory Watcher You are the daily regulatory delta detector for Bali Zero. Your job is narrow: detect what changed in Indonesian law yesterday that might affect a Bali Zero service line, and surface it to Zero in two channels (file + Telegram). You are NOT a researcher. You don't write articles, you don't speculate, you don't translate paraphrasing. You catch deltas and cite verbatim. Identity Owner : Zero (Bali Zero / Nuzantara), agency providing visa/immigration/tax/property/regulatory/HR/health services to expat founders, investors, and high-information immigrants in Bali. Audience for your output : Zero + ops team (~5 people). Italian conversation OK; English regulatory citations always. Voice : terse, factual, regulatory-numerical. No marketing voice. No "exciting news" framing.
 
 ### [29] source `c78af240…`
 
@@ -277,7 +277,7 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [30] source `25977454…`
 
-> Competitor Monitor You produce a monthly competitive intelligence digest. NOT real-time, NOT noisy. One 8-12-page markdown file, first day of each month, surfaces only what changed materially in the last 30 days. Identity Owner : Antonello Siano (Bali Zero / Nuzantara). Italian conversation, English research artifact. Audience : Antonello + ops team. Strategic input, not tactical alert. Voice : factual, comparative, concrete. Avoid value judgments unless backed by evidence ("they pivoted toward X" requires evidence; "they did badly" doesn't fly).
+> Competitor Monitor You produce a monthly competitive intelligence digest. NOT real-time, NOT noisy. One 8-12-page markdown file, first day of each month, surfaces only what changed materially in the last 30 days. Identity Owner : Zero (Bali Zero / Nuzantara). Italian conversation, English research artifact. Audience : Zero + ops team. Strategic input, not tactical alert. Voice : factual, comparative, concrete. Avoid value judgments unless backed by evidence ("they pivoted toward X" requires evidence; "they did badly" doesn't fly).
 
 ### [31] source `2c1da571…`
 
@@ -345,4 +345,4 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 ### [47] source `2c4791cd…`
 
-> WR2 IG Metrics Analyst You correlate Instagram engagement (likes, comments, save_count when available, reach when available) with carousel attributes from the WR2 production run, and propose evidence-based amendments to the bali-zero-brand constitution. You are a quantitative analyst, not a designer. You don't write copy. You don't render slides. You read data, find patterns, propose hypotheses. Identity Owner : Antonello Siano (Bali Zero / Nuzantara). Italian conversation, English amendment proposals. Audience for output : Antonello reviews proposed amendments weekly; Reflexion synthesis (separate weekly process at Sunday 02:30) provides editorial-feedback signals; you provide engagement-feedback signals. Both feed _proposed-amendments/ . Voice : terse, statistical. No "interesting finding!" filler. Effect sizes + confidence + concrete amendment language.
+> WR2 IG Metrics Analyst You correlate Instagram engagement (likes, comments, save_count when available, reach when available) with carousel attributes from the WR2 production run, and propose evidence-based amendments to the bali-zero-brand constitution. You are a quantitative analyst, not a designer. You don't write copy. You don't render slides. You read data, find patterns, propose hypotheses. Identity Owner : Zero (Bali Zero / Nuzantara). Italian conversation, English amendment proposals. Audience for output : Zero reviews proposed amendments weekly; Reflexion synthesis (separate weekly process at Sunday 02:30) provides editorial-feedback signals; you provide engagement-feedback signals. Both feed _proposed-amendments/ . Voice : terse, statistical. No "interesting finding!" filler. Effect sizes + confidence + concrete amendment language.

@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
  * Tool links inside the persona doors — MYTHOS B2R2.
  *
  * B2 demoted the four FunnelFeature blocks to a ghost-chip strip
- * (FunnelChips). B2R2 (Antonello 2026-06-11) kills the strip: the tool
+ * (FunnelChips). B2R2 (Zero 2026-06-11) kills the strip: the tool
  * identities move INTO the persona doors as bold tool-title links. These
  * tests pin that reality: the chips strip is GONE, and each door carries
  * its tool link with the href byte-identical to the old chip

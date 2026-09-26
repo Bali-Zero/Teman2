@@ -132,7 +132,7 @@
     "high_priority_count": 4,
     "high_priority_jobs": "wa-mirror-attention-classifier (2026-05-26, W57 InvalidPasswordError era)",
     "partial_cleanup_done": "_cleared-expiry-noise-20260530 subdir present (operator already swept some today)",
-    "verdict": "Unbounded HOME-dir accumulation (415 files, ~30min cadence). OPERATOR/HOME state (~/.agent), OUT OF repo write-scope for an agent in FASE A. Candidate for a cleanup LaunchAgent (cf. cicatrix W62). Flag for Antonello."
+    "verdict": "Unbounded HOME-dir accumulation (415 files, ~30min cadence). OPERATOR/HOME state (~/.agent), OUT OF repo write-scope for an agent in FASE A. Candidate for a cleanup LaunchAgent (cf. cicatrix W62). Flag for Zero."
   },
 
   "launchagents": {
@@ -147,7 +147,7 @@
       { "label": "com.cell.organism", "last_exit": 1 },
       { "label": "com.nuzantara.openclaw-whatsapp-bridge", "last_exit": -15 }
     ],
-    "verdict": "6 failing loaded crons. WR2 supervisor cluster (74/75) + com.cell.organism (exit 1, the crisis-recovery daemon — recurring per discovery_cell_pulse_observed_gate_off_2026_05_22) are notable. HOME/LaunchAgent state, OUT of repo write-scope + FASE-A read-only on LaunchAgents. Flag for Antonello / self-healing actuator. The 167-vs-53 plist growth (4x since 2026-04-29 scar) is itself worth a hygiene pass."
+    "verdict": "6 failing loaded crons. WR2 supervisor cluster (74/75) + com.cell.organism (exit 1, the crisis-recovery daemon — recurring per discovery_cell_pulse_observed_gate_off_2026_05_22) are notable. HOME/LaunchAgent state, OUT of repo write-scope + FASE-A read-only on LaunchAgents. Flag for Zero / self-healing actuator. The 167-vs-53 plist growth (4x since 2026-04-29 scar) is itself worth a hygiene pass."
   },
 
   "cicatrix_open_structural": {
@@ -160,7 +160,7 @@
       "still_open": [
         "W62 — agent worktree broker TTL violated (no auto-cleanup) — STRUCTURAL, proposed LaunchAgent not shipped",
         "W38 — backend_rag_v2 rolsuper=t — PENDING ANTONELLO (do NOT execute demotion)",
-        "agent-library-evolver shares worktree with wr2-deploy-puller — design decision pending Antonello",
+        "agent-library-evolver shares worktree with wr2-deploy-puller — design decision pending Zero",
         "12+1 mata_garuda LaunchAgents active-active Pro+Mini — STRUCTURAL",
         "Test infra mock != prod stack — STRUCTURAL",
         "Untracked-files-lost-on-sibling-branch-switch — STRUCTURAL, OBSERVED LIVE THIS SESSION (Mini-Pro2 git-checkout wiped this audit's untracked deliverables; confirmed by Mini operator)",

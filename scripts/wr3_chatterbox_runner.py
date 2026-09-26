@@ -11,7 +11,7 @@ Output:
   apps/war-room/output/episode/<slug>/audio/vo.wav (LUFS-normalized to -14 ±1)
 
 Cartesia API is BANNED per Symbiosis Law 6 (cloud TTS = sovereignty violation).
-Per-episode exception path: Antonello via Telegram P0 reply within 30 min.
+Per-episode exception path: Zero via Telegram P0 reply within 30 min.
 
 Environment:
   WR3_CHATTERBOX_BIN     path to chatterbox-tts CLI (default: chatterbox-tts on PATH)
@@ -26,7 +26,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-# Production Zantara voice locked params (do not modify without Antonello sign-off)
+# Production Zantara voice locked params (do not modify without Zero sign-off)
 EMMA_SEED = 42
 EMMA_CFG_WEIGHT = 0.30
 EMMA_TEMPERATURE = 0.70

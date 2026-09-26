@@ -27,7 +27,7 @@ import { TrustBar } from "@/components/trust/TrustBar";
  *
  * source="homepage_hero" is NOT YET in the backend LeadSource enum
  * (apps/backend-rag/backend/services/lead_capture/source.py) — needs
- * Antonello to add it. Until then /api/lead/capture will reject the
+ * Zero to add it. Until then /api/lead/capture will reject the
  * source and WhatsAppLeadButton's built-in catch falls back to the bare
  * wa.me link automatically (captured=false tracked), so this ships safe
  * today with zero user-facing risk — lead capture just activates the

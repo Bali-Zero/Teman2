@@ -155,7 +155,7 @@ dump_local() {
         kill "$PROXY_PID" 2>/dev/null; kill "$(lsof -ti:"$PROXY_PORT" 2>/dev/null)" 2>/dev/null
         unset PGPASSWORD
         grep -qiE 'permission denied|must be (owner|superuser)' /tmp/nuz-db-dump.err \
-            && die "readonly role hit a permission error mid-dump — STOP, surface to Antonello (do NOT escalate role)"
+            && die "readonly role hit a permission error mid-dump — STOP, surface to Zero (do NOT escalate role)"
         return 1
     fi
     kill "$PROXY_PID" 2>/dev/null; kill "$(lsof -ti:"$PROXY_PORT" 2>/dev/null)" 2>/dev/null
@@ -341,7 +341,7 @@ REMOTE
         if grep -q 'FLYSSH-PERM' /tmp/flyssh.err 2>/dev/null; then
             RO_PASS=""; unset PGPASSWORD 2>/dev/null || true
             sed 's/^/    /' /tmp/flyssh.err >&2
-            die "readonly role hit a permission error mid-dump — STOP, surface to Antonello (do NOT escalate role)"
+            die "readonly role hit a permission error mid-dump — STOP, surface to Zero (do NOT escalate role)"
         fi
         # Success = rc 0 AND a non-trivial custom-format dump (header magic 'PGDMP', > 1KB)
         if [ "$rc" -eq 0 ] && [ -s "$DUMP_FILE" ] \

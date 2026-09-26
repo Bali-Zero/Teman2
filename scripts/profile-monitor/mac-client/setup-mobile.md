@@ -1,6 +1,6 @@
 # Setup Mobile — Smartphone aziendale Bali Zero
 
-> **Audience**: Antonello (esecutore unico — setup tecnico smartphone non delegabile)
+> **Audience**: Zero (esecutore unico — setup tecnico smartphone non delegabile)
 > **Quando**: dopo firma PKWTT lunedì 19 maggio 2026, in parallelo a setup Mac
 > **Durata stimata**: 15-20 minuti per dipendente
 

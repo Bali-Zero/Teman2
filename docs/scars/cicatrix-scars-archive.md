@@ -518,7 +518,7 @@ _Discovered: 2026-05-20 03:00 WITA durante Phase A audit · Patched PR-B1a `feat
 
 - `_PRESS_GENERAL_RE` deve mai includere `.go.id` o `kemenkumham/*` — quelli sono gov authoritative, lì TLD strict. Mix-up = fake gov authority bypass.
 - `_SUBDOMAIN_PREFIX` regex usa `(?:...)` non-capturing — non rompere `re.match(_PRESS_GENERAL_RE, domain).group(0)` (non c'è group, usa `.group(0)`).
-- Backfill cron NON è attivo automaticamente — solo invocato manualmente da Antonello via `python -m backend.services.intel.intel_lake_router --backfill`.
+- Backfill cron NON è attivo automaticamente — solo invocato manualmente da Zero via `python -m backend.services.intel.intel_lake_router --backfill`.
 
 ---
 
@@ -689,7 +689,7 @@ _Discovered: 2026-05-17 evening after Phase 1 production-flip pilot · Resolved:
 
 Both clients' Drive folders contained documents primarily naming a _business partner_ (Snizhana Yaroshenko for Ozolin's PT Trading House, Andrey Pozdnyakov for Sofia's PT Milkup). Gemini, with no document content and no identity-anchor instruction, defaulted to the filename frequency mode. The bug was silent: the ai_summary JSON validated against the v2 schema (passport+identity were optional), the AiSummaryCard frontend rendered "Andrey Pozdnyakov" for Sofia's profile without warning.
 
-Discovered via smartness audit on 6 production-flip outputs (clients 70, 83, 266, 278, 283, 350) that Antonello requested before scaling bulk enqueue. The audit ranked outputs on identity fidelity, content-grounded fields populated, and confidence calibration — Phase 1 scored 0/3 on identity-bearing fields for 2/6 clients despite the model self-reporting confidence 0.4–0.7.
+Discovered via smartness audit on 6 production-flip outputs (clients 70, 83, 266, 278, 283, 350) that Zero requested before scaling bulk enqueue. The audit ranked outputs on identity fidelity, content-grounded fields populated, and confidence calibration — Phase 1 scored 0/3 on identity-bearing fields for 2/6 clients despite the model self-reporting confidence 0.4–0.7.
 
 12 `clients.ai_summary` rows were purged 2026-05-18 01:57 WITA (`~/backups/crm_guardian_purge_20260518/pre-purge-ai-summaries.json` for audit) before re-running with Phase 1.5.
 
@@ -1521,7 +1521,7 @@ redis-cli XGROUP DELCONSUMER garuda:enriched nlm_feeder nlm_feeder-debug
 
 Post-cleanup: consumer count 4→1, pending claim count 5→82 (nlm_feeder-1 now owns the recovered batch + its own 5). 82 will drain via existing `com.matagaruda.nlm-feeder-stream.hourly.plist` cron at ~20msg/cycle (4h ETA).
 
-**ANTIBODY (deferred for nexus-bridge):** No code references `nexus-bridge` consumer group. 3 options documented (DELETE clean / RESTORE worker / LEAVE noisy). Selected option C (leave noisy) pending Antonello sign-off — the W10 W5 lag monitor will keep alerting at lag=2279 as background noise.
+**ANTIBODY (deferred for nexus-bridge):** No code references `nexus-bridge` consumer group. 3 options documented (DELETE clean / RESTORE worker / LEAVE noisy). Selected option C (leave noisy) pending Zero sign-off — the W10 W5 lag monitor will keep alerting at lag=2279 as background noise.
 
 **GOTCHA:**
 
@@ -1716,7 +1716,7 @@ _Resolution: 2026-05-23 ~04:30 WITA continuation of Wave 3 · Severity: shipped 
 
 3. **Phase 2 — auth-fail root cause diagnosis**: Pro `apps/backend-rag/.env` `DATABASE_URL` had 15-char password (`2zEjit43IF6gNUV`). Fly app `nuzantara-rag` env had 31-char current. **Cicatrix 2026-05-21 P0 SECURITY rotation was already silently executed lato Fly** (someone rotated, Pro never sync'd). Cicatrix status was "OPEN — awaiting decision" but reality was "RESOLVED — Pro just stale".
 
-4. **Phase 4 actions shipped** (with explicit Antonello "go"):
+4. **Phase 4 actions shipped** (with explicit Zero "go"):
    - **Action 1** (no-risk Pro env sync): `apps/backend-rag/.env` updated 15→31-char, backup `.env.pre-pwd-sync-20260522-232311` preserved. 2 lines replaced (`DATABASE_URL`, `DATABASE_URL_FLY`).
    - **Action 2** (prod DDL via `fly ssh console` + `psql -h 127.0.0.1 -p 5433 -U repmgr` admin):
      ```sql
@@ -1750,7 +1750,7 @@ _Resolution: 2026-05-23 ~04:30 WITA continuation of Wave 3 · Severity: shipped 
 - **`backend_rag_v2` rolsuper=t** is a P1 SECURITY finding orthogonal to T3.2 scope. Future spec: `ALTER ROLE backend_rag_v2 NOSUPERUSER` + explicit per-table grants. Risk: breaks app on missing grant. Defer to dedicated spec.
 - **Guardrails T1.2 SQL destructive pattern blocks Write tool** when SQL contains `DROP TABLE`, `REVOKE`, etc. (correctly! my own work applied to me). Workaround: write via Bash heredoc `cat > /tmp/foo.sql <<'SQLEOF' ... SQLEOF` — bypasses Write hook because it's not a `Write` tool call. Operator approved verbally — no two-key flag needed for in-session ops.
 - **macOS BSD `shred -u` doesn't exist on default install** — fallback chain: `shred -u || rm -P || rm`. Tested on /tmp ephemerals containing password.
-- **Cicatrix 2026-05-21 P0 SECURITY status update REQUIRED**: status was "OPEN — awaiting decision by Antonello" but rotation was empirically already executed lato Fly. Should be updated to "RESOLVED — rotation silently applied + Pro env sync 2026-05-23".
+- **Cicatrix 2026-05-21 P0 SECURITY status update REQUIRED**: status was "OPEN — awaiting decision by Zero" but rotation was empirically already executed lato Fly. Should be updated to "RESOLVED — rotation silently applied + Pro env sync 2026-05-23".
 - **DATABASE_URL_LOCAL was NOT updated** by Action 1 — it points to `localhost:5432/nuzantara` (intended local mirror), uses different password `nuzantara:<pwd>`. Correctly untouched. Only `DATABASE_URL` + `DATABASE_URL_FLY` (which both target prod) were sync'd.
 - **Stolon proxy/keeper architecture**: Fly Postgres runs Stolon — port 5432 is proxy that routes to current primary. Internal port 5433 is direct PG. `repmgr` admin must connect via 5433 + `pg_hba` requires TCP (not socket) for `repmgr`. The Pro fly-pg-proxy LaunchAgent does `fly proxy 15432:5432` → hits Stolon proxy, which works for app roles but admin DDL goes via fly ssh + 5433 direct.
 - **Required next step**: restart Claude Code session — deferred tools `mcp__postgres-nuzantara__*` will become available via ToolSearch only after restart.
@@ -1809,13 +1809,13 @@ _Discovered: 2026-05-22 04:35 WITA during T3.2 pre-flight execution · Severity:
 
 ### ⚠️ STRUCTURAL: KG-linker dead-upstream — months of no-op without alert (2026-05-22)
 
-_Discovered: 2026-05-22 04:45 WITA Loop iteration 4 NB-automations hardening · Severity: P1 (silent business impact) · Status: **OBSERVABILITY FIXED on commit 9ad41b893; underlying missing-feature remains OPEN — deferred to Antonello decision**_
+_Discovered: 2026-05-22 04:45 WITA Loop iteration 4 NB-automations hardening · Severity: P1 (silent business impact) · Status: **OBSERVABILITY FIXED on commit 9ad41b893; underlying missing-feature remains OPEN — deferred to Zero decision**_
 
 **TRAUMA:** Audit `~/logs/matagaruda-kg-linker.log`: 614 runs with `processed=0` vs 22 runs with `processed>=1`. BUT every non-idle run had `skipped_no_entities == processed` and `entities_total: 0`. Empirical Redis: `garuda:enriched` has 1503 entries, **ZERO** with `entities` field. `mata_garuda/workers/ner_worker.py` exists as a library but **NO LaunchAgent triggers it** — only imported by its own tests. Production pipeline missing NER step between `garuda:raw` (3655) and `garuda:enriched` (1503). KG SQLite total: `entities: 6, relations: 4, observations: 6` — months of "running" cron building nothing. Cron logs `last exit 0` per launchctl: false-positive on health probes.
 
 **ANTIBODY (observability-only):** `scripts/run_kg_linker.py` tracks consecutive dead-upstream runs in `~/.agent/decisions/kg-linker-dead-upstream-runs.json`. Counter increments on `processed>0 AND entities_total==0`. After threshold `KG_LINKER_DEAD_UPSTREAM_RUNS` (default 5) hits, `logger.warning("KG-linker dead-upstream alert: N consecutive runs ... investigate ner_worker pipeline.")` to stderr → launchd error log. Healthy run (entities>0) deletes sidecar; idle (processed==0) leaves counter alone. 4/4 unit tests pass. Smoke 04:50 WITA verified.
 
-**ANTIBODY (missing feature, NOT shipped):** Wire `ner_worker` into production via new LaunchAgent + worker loop. Requires Antonello decisions: (a) LLM — local Ollama qwen3.5:9b vs claude-haiku OAuth vs Gemini free; (b) cadence — batch 5min/50 vs continuous; (c) budget — 3655 entries/24h entity extraction. Deferred.
+**ANTIBODY (missing feature, NOT shipped):** Wire `ner_worker` into production via new LaunchAgent + worker loop. Requires Zero decisions: (a) LLM — local Ollama qwen3.5:9b vs claude-haiku OAuth vs Gemini free; (b) cadence — batch 5min/50 vs continuous; (c) budget — 3655 entries/24h entity extraction. Deferred.
 
 **GOTCHA:** Threshold 5 ≈ 5h @ 3600s cron. Below 3 risks noise from single empty-hour. Sidecar name distinct from 3 bridge sidecars. Tracker is in `scripts/run_kg_linker.py` (runner level), not in `workers/kg_linker.py` (library stays pure). Tests use `importlib.reload` + monkeypatch on `_STREAK_PATH` and `_STREAK_THRESHOLD` (module-level constants).
 
@@ -1857,7 +1857,7 @@ _Discovered: 2026-05-22 02:55 WITA during devils-advocate gate post-Wave 1 build
 
 1. **T1.2 H5 (CRITICAL):** `MCP_DESTRUCTIVE_PATTERN` regex (iter-5 lookahead) blocked **22/44 = 50% of nuzantara-mcp toolset** as false positives — including routine `create_client`, `create_practice`, `update_client`, `notebook_create`, `note_update`, `set_reminder`. The Spec-promoted verb list (`create|update|merge|deploy|promote|rollback|cancel|rerun|insert|modify|patch|set|write|alter`) was overbroad for the production reality where 90% of MCP "create\_\*" tools are routine CRM ops, not destructive. Bali Zero CRM workflows would have crashed on first real use within hours of deploy.
 
-2. **T1.1 H2 (HIGH):** `DISPATCH_KEYWORDS = ("Task(", '"subagent_type"', "Agent(")` — the string `"Agent("` appears **0 times** in actual Claude Code transcripts (empirically scanned 1955 lines, 3.1MB). Real tool_use blocks store `{"name": "TaskCreate"}` not `Agent(...)` Python-call syntax. Hook would have triggered false-positive nudges in sessions where TaskCreate was actually dispatched, training Antonello to ignore the reminder.
+2. **T1.1 H2 (HIGH):** `DISPATCH_KEYWORDS = ("Task(", '"subagent_type"', "Agent(")` — the string `"Agent("` appears **0 times** in actual Claude Code transcripts (empirically scanned 1955 lines, 3.1MB). Real tool_use blocks store `{"name": "TaskCreate"}` not `Agent(...)` Python-call syntax. Hook would have triggered false-positive nudges in sessions where TaskCreate was actually dispatched, training Zero to ignore the reminder.
 
 3. **T1.5 H6 (MEDIUM):** alzheimer-hook had `STATE_KEY="${MFILE//\//_}_${TODAY_KEY}"` path-based dedup. Empirical discovery: `~/.claude/projects/-Users-nuzantara/memory/MEMORY.md` and `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/MEMORY.md` share **inode 123213483** (same file, 2 access paths). Path-string dedup → 2× Telegram alerts per threshold breach, trains operator to ignore alerts.
 
@@ -1989,7 +1989,7 @@ Without the flag: Cell pulses internally, sensors fire, cortex thinks, actions t
 
 **ANTIBODY (deferred):**
 
-- Decision pending operator (Antonello): set `CELL_OBSERVATORY_EMIT=true` in `apps/cell/.env` to restore historical observability? Cost: 1 row per pulse in `events_outbox` (~1380/day, persistent table) + 1 row in SQLite + Redis stream bytes. Benefit: dashboard continuity, anomaly detection, weekly Cell health reports.
+- Decision pending operator (Zero): set `CELL_OBSERVATORY_EMIT=true` in `apps/cell/.env` to restore historical observability? Cost: 1 row per pulse in `events_outbox` (~1380/day, persistent table) + 1 row in SQLite + Redis stream bytes. Benefit: dashboard continuity, anomaly detection, weekly Cell health reports.
 - If yes: add line to `.env`, `launchctl bootout + bootstrap` to pick up new env. Verify with `sqlite3 ~/.cell-observatory/observatory.db "SELECT count(*) FROM pulse_events WHERE cell_id='cell' AND pulse_timestamp/1000 > strftime('%s','now') - 600"` within 5 min.
 - Mention also in `apps/cell/launchagent/README.md` resurrection section so the variable is not lost on future re-bootstraps.
 
@@ -2023,9 +2023,9 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 
 `localhost:15432` è il proxy fly-pg-proxy-wrapper.sh → tunnel su `nuzantara-postgres.flycast` Fly internal — quindi password produzione, non solo dev.
 
-**CI Detect Secrets gate fail di PR #802** ha correttamente flaggato 4 dei file (gli altri 28 sono già "allowlisted" da audit precedente → detect-secrets baseline `.secrets.baseline` li ignora). Claude Opus 4.7 ha fatto **admin override** del gate senza ispezionare il contenuto, categorizzando "pre-existing = OK". Quando Antonello ha challengiato "perché dici OK?", verifica empirica ha rivelato il leak.
+**CI Detect Secrets gate fail di PR #802** ha correttamente flaggato 4 dei file (gli altri 28 sono già "allowlisted" da audit precedente → detect-secrets baseline `.secrets.baseline` li ignora). Claude Opus 4.7 ha fatto **admin override** del gate senza ispezionare il contenuto, categorizzando "pre-existing = OK". Quando Zero ha challengiato "perché dici OK?", verifica empirica ha rivelato il leak.
 
-**ANTIBODY (NOT YET shipped — decisione operativa pending Antonello)**:
+**ANTIBODY (NOT YET shipped — decisione operativa pending Zero)**:
 
 Opzione A (raccomandata): rotate password + scrub repo
 
@@ -2083,7 +2083,7 @@ _Discovered/built: 2026-05-29 during a WR2-fragility session ("AppleScript e app
 - **prettier mangles `mcp__claude_ai_Canva__*` tool names** (`__` → markdown bold). The STEP -2 ToolSearch list MUST live inside a code-fence in both the installed skill and the mirror, else prettier corrupts the tool names. Baseline sha256 must be regenerated after any prettier pass.
 - **stream-json `transaction_id` is ESCAPED** (`\"transaction_id\":\"...\"`) inside a serialized tool_result string — regex over the raw stream must tolerate backslashes.
 - **stream-json over a subprocess PIPE deadlocks** for `claude -p` (it doesn't flush line-by-line into a pipe) — redirect to a FILE and poll, don't use `subprocess.PIPE` + reader thread for live monitoring.
-- **24 throwaway Canva designs** accumulated across feasibility + this build (Canva MCP has no delete-design) — listed in `research/operations/2026-05-29-wr2-canva-headless-feasibility.md`. **2026-05-29 cleanup**: the 23 IDs listed in the feasibility doc were collected into trash folder `FAHLDbQuzlc` (`_TRASH WR2 throwaway 2026-05-29 (delete me)`, https://www.canva.com/folder/FAHLDbQuzlc) via `move-item-to-folder` (23/23 success, verified via `list-folder-items`). Canva MCP exposes no delete-design, so the LAST step was manual: open the folder → select all → Move to Trash. **2026-05-30: DONE** — Antonello emptied the folder manually; `list-folder-items FAHLDbQuzlc` now returns `[]` (verified empirically). The "24" was a rounding of the 23 doc-listed IDs; the pristine master `DAHKzVykbbA` was confirmed NOT in the trash folder (and was NOT deleted). Folder `FAHK-KcnLVk` (the original test folder) may still hold older artifacts — left as-is.
+- **24 throwaway Canva designs** accumulated across feasibility + this build (Canva MCP has no delete-design) — listed in `research/operations/2026-05-29-wr2-canva-headless-feasibility.md`. **2026-05-29 cleanup**: the 23 IDs listed in the feasibility doc were collected into trash folder `FAHLDbQuzlc` (`_TRASH WR2 throwaway 2026-05-29 (delete me)`, https://www.canva.com/folder/FAHLDbQuzlc) via `move-item-to-folder` (23/23 success, verified via `list-folder-items`). Canva MCP exposes no delete-design, so the LAST step was manual: open the folder → select all → Move to Trash. **2026-05-30: DONE** — Zero emptied the folder manually; `list-folder-items FAHLDbQuzlc` now returns `[]` (verified empirically). The "24" was a rounding of the 23 doc-listed IDs; the pristine master `DAHKzVykbbA` was confirmed NOT in the trash folder (and was NOT deleted). Folder `FAHK-KcnLVk` (the original test folder) may still hold older artifacts — left as-is.
 
 **Reference**: plan `docs/superpowers/plans/2026-05-29-wr2-canva-headless-actuator.md`, spec `research/operations/specs/2026-05-29-wr2-canva-headless-actuator.md`, feasibility `research/operations/2026-05-29-wr2-canva-headless-feasibility.md`. Commits on `feat/wr2-canva-headless-actuator-2026-05-29`: probe `e4293bec3`, sanitize `fb1159405`, skill v4 `a24bb4ca`, lease `73fb9322`, quota `2c2e6d6bf`, orchestration `413e539eb`, dispatch `b206c80ab`, KeyError guard `bfafea76e`. Family: reverses the 2026-05-13 wr2_canva_apply decommission; cousin of the WR2 canva-renderer cron wrapper scars (2026-05-23).
 
@@ -2253,7 +2253,7 @@ A worktree NESTED inside another worktree. Branch `agent/nuzantara/wr2/playwrigh
 
 _Discovered: 2026-05-27 00:30-01:40 WITA durante setup cascade Codex→Opus 4.7 fallback per quota-exhaust · Severity: INFO (config change clean ship + 1 latent orphan wrapper identificato) · Status: **SHIPPED in `~/.openclaw/openclaw.json` con backup `.pre-claude-fallback-20260527-005214`**_
 
-**TRAUMA (the real story, not the config change):** Setup cascade richiesto da Antonello: Codex GPT-5.5 primary → Opus 4.7 fallback su 429. Empirical discovery durante setup ha identificato **3 trappole architetturali** che meritano memoria:
+**TRAUMA (the real story, not the config change):** Setup cascade richiesto da Zero: Codex GPT-5.5 primary → Opus 4.7 fallback su 429. Empirical discovery durante setup ha identificato **3 trappole architetturali** che meritano memoria:
 
 1. **Confusione "token MAX Antonellosiano"**: Keychain ha entry `token:default:antonellosiano@gmail.com` che NON è Anthropic OAuth — è **Google OAuth refresh token Gmail scope** (`{"refresh_token":"1//0gy1...", "services":["gmail"], "scopes":["gmail.modify",...]}`). Il vero Anthropic Claude token sta in `Claude Code-credentials*` Keychain entries con `claudeAiOauth` JSON shape (`{accessToken: sk-ant-oat01-*, refreshToken: sk-ant-ort01-*, ...}`).
 
@@ -2314,7 +2314,7 @@ Durante setup ho scoperto `~/scripts/openclaw-gateway-launchd.sh:27` punta a nod
 
 5. **claude-cli model catalog**: source `/opt/homebrew/lib/node_modules/openclaw/dist/cli-catalog-DwwgRqUQ.js` hardcoda `claude-opus-4-7` come opus default. `claude --version` 2.1.150 supporta `--model claude-opus-4-7` via OAuth MAX. Catalog `model list` può mostrare lista parziale (defaults sample) — controllare anche source code per verifica completa.
 
-**Anti-pattern catch durante setup**: avevo concluso "antonellosiano MAX token non esiste in Keychain" basandomi su 1 keychain query inconcludente. Antonello ha challengiato "impossibile, hai anche il token max", ho re-checkato con tool diverso (`security dump-keychain | grep -iE "antonellosiano"`) e ho trovato 2 entry effettivamente presenti. **Lesson reinforce CLAUDE.md Anti-hallucination rule 5**: operatore challenge ("non è vero", "impossibile") = trigger re-verification, NON difesa di quanto detto.
+**Anti-pattern catch durante setup**: avevo concluso "antonellosiano MAX token non esiste in Keychain" basandomi su 1 keychain query inconcludente. Zero ha challengiato "impossibile, hai anche il token max", ho re-checkato con tool diverso (`security dump-keychain | grep -iE "antonellosiano"`) e ho trovato 2 entry effettivamente presenti. **Lesson reinforce CLAUDE.md Anti-hallucination rule 5**: operatore challenge ("non è vero", "impossibile") = trigger re-verification, NON difesa di quanto detto.
 
 **Reference**:
 
@@ -2329,7 +2329,7 @@ Durante setup ho scoperto `~/scripts/openclaw-gateway-launchd.sh:27` punta a nod
 
 _Discovered: 2026-05-26 16:00-19:40 WITA — multi-wave (1 architecture map / 2 panel review / 3 code+test ship / 4 review-gate / e2e chaos test / commit+push) · Severity: P1 (3 wa-mirror LaunchAgents broken 3 giorni via ModuleNotFoundError) · Status: **SHIPPED commits 41a36990e + 83d07dbe1 on feat/wr2-c5a-pilot-and-p1-structural-fixes-2026-05-26**_
 
-**TRAUMA:** 3 wa-mirror LaunchAgent (`com.balizero.wa-mirror-attention-{classifier,realtime,digest}`) crash-looping da 3 giorni per `ModuleNotFoundError: asyncpg`. Cause: plist exec'd a Homebrew externally-managed Python 3.14 (PEP 668 blocks pip install), NON pyenv 3.11.11 con asyncpg+httpx già installati. Antonello vuole zero Telegram, sistema auto-fixa.
+**TRAUMA:** 3 wa-mirror LaunchAgent (`com.balizero.wa-mirror-attention-{classifier,realtime,digest}`) crash-looping da 3 giorni per `ModuleNotFoundError: asyncpg`. Cause: plist exec'd a Homebrew externally-managed Python 3.14 (PEP 668 blocks pip install), NON pyenv 3.11.11 con asyncpg+httpx già installati. Zero vuole zero Telegram, sistema auto-fixa.
 
 **ANTIBODY (3-layer self-healing stack shipped):**
 
@@ -2675,7 +2675,7 @@ Cronologia 2026-05-24:
 
 Compounding: 4 file WR2 (`scripts/wr2_draft_generator.py`, `scripts/wr2_topic_selector.py` + 2 test) dirty mai-committed sul worktree (probabilmente artefatto debug sibling-session pre-checkout `program/base`).
 
-Discovery via GEN-5 test scenario "sto avendo problemi con il deploy" prompt vago: Claude ha letto `~/logs/wr2-deploy-pull.log` + identificato pattern `branch=program/base, expected deploy/main` ripetuto da 32h. Antonello non aveva ricevuto alert (suppression attiva).
+Discovery via GEN-5 test scenario "sto avendo problemi con il deploy" prompt vago: Claude ha letto `~/logs/wr2-deploy-pull.log` + identificato pattern `branch=program/base, expected deploy/main` ripetuto da 32h. Zero non aveva ricevuto alert (suppression attiva).
 
 **ANTIBODY (immediate recovery shipped):**
 
@@ -2692,7 +2692,7 @@ Discovery via GEN-5 test scenario "sto avendo problemi con il deploy" prompt vag
 - **Opzione B**: evolver fa `git worktree add /tmp/evolver-$$` ad-hoc + cleanup post-run (no persistent state)
 - **Opzione C**: deploy-puller skip silently se branch `program/*` (whitelist `evolver-managed-branches`) + alert solo se altro branch wrong
 
-Opzione A è la più chiara (zero magic), B è più ergonomic (auto-cleanup), C è zero-friction ma maschera classi di errore future. Decision pending Antonello.
+Opzione A è la più chiara (zero magic), B è più ergonomic (auto-cleanup), C è zero-friction ma maschera classi di errore future. Decision pending Zero.
 
 **GOTCHA:**
 
@@ -2738,7 +2738,7 @@ Audit snapshot: `research/operations/audits/2026-05-23-w38-backend-rag-v2-rolsup
 
 **GOTCHA:**
 
-- **DO NOT EXECUTE `ALTER ROLE backend_rag_v2 NOSUPERUSER` without explicit Antonello approval.** W38 deliberately stopped at spec drafting per task constraint.
+- **DO NOT EXECUTE `ALTER ROLE backend_rag_v2 NOSUPERUSER` without explicit Zero approval.** W38 deliberately stopped at spec drafting per task constraint.
 - **6/8 existing `CREATE EXTENSION` calls in migrations are idempotent no-ops** because the extensions are already installed; new migrations adding a non-trusted extension (e.g., a hypothetical `pg_hint_plan` or `postgis_topology`) would fail. The Stage B `ADMIN_DATABASE_URL` split is what unblocks future schema work without re-elevating the app role.
 - **OWNER ≠ SUPER**: post-demotion, `backend_rag_v2` retains ALL on its 227 owned tables via OWNER grant. The 12 non-owned tables (e.g., partitioned children, mata_garuda tables) need verification that explicit grants cover them all. Migration 156 + T3.2 cascade already cover 244 of 244.
 - **`pg_monitor` membership is mandatory** for the demotion to be transparent — `health_monitor.py:288` calls `pg_ls_waldir()` which needs it. Without the GRANT, WAL monitoring silently disables (already-handled with try/except + WARN log per code, but loses visibility).
@@ -2927,7 +2927,7 @@ _Discovered: 2026-06-08 during the WhatsApp quality-loop session · Severity: P2
 
 _Discovered: 2026-06-09 ~21:40 WITA during a "fixa tutto" on the M5 startup diagnostic (5 MCP servers `failed`, 19 plugin `cache-miss` errors) · Severity: RESOLVED · Status: **FIXED + empirically verified** (all 5 venvs import, GitHub PAT HTTP 200, 7/7 marketplaces updated) — requires Claude Code restart to re-spawn_
 
-**TRAUMA**: The M5 (`balizero@Air-M5`) Claude Code diagnostic showed two failure clusters that turned out to share ONE root cause — **Pro→M5 path-drift** (family W50/W51/W52). (1) All 5 venv-backed MCP servers (`ga4-analytics`, `ocr-tesseract`, `nuzantara-mcp`, `nuzantara-mcp-advanced`, `nuzantara-browser`) failed `posix_spawn` ENOENT: their `.venv` dirs were **copied from the Pro** (mtime 15-25 feb/mar), so the `bin/python3` symlinks pointed at `/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3` (and one set at a dead `python3.14`) — interpreters that do not exist on M5 where the user is `balizero`, not `nuzantara`. The venvs even had working entrypoint scripts (`ga4-mcp-server`, `mcp-ocr`) with shebangs hardcoded to `/Users/nuzantara/...`. (2) All 19 plugin errors were `cache-miss` because `~/.claude/plugins/known_marketplaces.json` had every `installLocation` set to `/Users/nuzantara/.claude/plugins/marketplaces/...` (the real dirs DID exist under `/Users/balizero/...`, only the JSON pointer was wrong) → `claude plugin marketplace update` refused with "corrupted installLocation". Compounding: this all surfaced AFTER Antonello clarified the M5 doctrine — "thin-client NON per il coding, M5 deve essere UGUALE, qui codifichiamo" — i.e. the dev environment (venvs, MCP, marketplaces) MUST be native on M5, not borrowed from the Pro.
+**TRAUMA**: The M5 (`balizero@Air-M5`) Claude Code diagnostic showed two failure clusters that turned out to share ONE root cause — **Pro→M5 path-drift** (family W50/W51/W52). (1) All 5 venv-backed MCP servers (`ga4-analytics`, `ocr-tesseract`, `nuzantara-mcp`, `nuzantara-mcp-advanced`, `nuzantara-browser`) failed `posix_spawn` ENOENT: their `.venv` dirs were **copied from the Pro** (mtime 15-25 feb/mar), so the `bin/python3` symlinks pointed at `/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3` (and one set at a dead `python3.14`) — interpreters that do not exist on M5 where the user is `balizero`, not `nuzantara`. The venvs even had working entrypoint scripts (`ga4-mcp-server`, `mcp-ocr`) with shebangs hardcoded to `/Users/nuzantara/...`. (2) All 19 plugin errors were `cache-miss` because `~/.claude/plugins/known_marketplaces.json` had every `installLocation` set to `/Users/nuzantara/.claude/plugins/marketplaces/...` (the real dirs DID exist under `/Users/balizero/...`, only the JSON pointer was wrong) → `claude plugin marketplace update` refused with "corrupted installLocation". Compounding: this all surfaced AFTER Zero clarified the M5 doctrine — "thin-client NON per il coding, M5 deve essere UGUALE, qui codifichiamo" — i.e. the dev environment (venvs, MCP, marketplaces) MUST be native on M5, not borrowed from the Pro.
 
 **ANTIBODY**: (1) For each of the 5 MCP servers: `rm -rf <dir>/.venv` then recreate native — `uv venv --python 3.11 <dir>/.venv` + install. The 2 pip-packaged ones reinstalled from PyPI at their pinned versions read off the copied `dist-info` (`google-analytics-mcp==2.0.1`, `mcp-ocr==0.1.4`); the 3 app ones `uv pip install -e <dir>` from their `pyproject.toml`. `mcp-ocr` also needed the SYSTEM dep `tesseract` (`brew install tesseract` → 5.5.2). Verified empirically: each server's module imports under its native interpreter (not just "binary exists"). (2) Marketplace fix: backup `known_marketplaces.json` then a single replace-all `/Users/nuzantara/.claude/plugins/marketplaces/` → `/Users/balizero/...` (after confirming all 7 target dirs already existed) — re-update succeeded 7/7. (3) The 2 missing MCP tokens (`GITHUB_PERSONAL_ACCESS_TOKEN`, `NUZANTARA_API_KEY`) pulled from the Pro (`~/.zshrc` / `~/.nuzantara-secrets.env`) into M5 `~/.zshenv` (chmod 600) WITHOUT printing values (ssh-pipe, value never in transcript); GitHub PAT validated live (api.github.com/user HTTP 200). `LANGSMITH_API_KEY` does not exist even on the Pro → left unset (optional, tracing-only). Memory `decision_m5_air_fleet_join_2026_05_31.md` updated with the "dev-uguale-al-Pro, venvs NATIVE not copied" rule.
 

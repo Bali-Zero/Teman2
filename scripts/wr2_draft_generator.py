@@ -284,7 +284,7 @@ NEGATIVE_PROMPT: str = (
     "hands holding objects, passport close-ups, generic handshake, "
     "stock photo aesthetic, text overlays, watermark, logo, "
     "deformed hands, extra fingers, distorted faces, illegible text, "
-    # 2026-06-13 (Antonello): the document-and-pen-on-a-desk cliché is the
+    # 2026-06-13 (Zero): the document-and-pen-on-a-desk cliché is the
     # single most off-brand image WR2 keeps producing. Ban it explicitly.
     "document on a desk, contract on a table, land deed on a desk, "
     "fountain pen, signing pen, pen resting on paper, hand signing, "
@@ -407,7 +407,7 @@ HARD RULES:
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - LAST slide = CTA to Bali Zero
 - HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
-- BANNED IMAGE CLICHÉ (HARD — Antonello 2026-06-13): NEVER a document / deed /
+- BANNED IMAGE CLICHÉ (HARD — Zero 2026-06-13): NEVER a document / deed /
   contract / form lying on a desk or table with a pen (especially a fountain
   pen) resting on or beside it, NEVER paperwork close-ups, NEVER a hand signing,
   NEVER an official seal close-up. This "papers + pen on a desk" image is the
@@ -1488,7 +1488,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
         normalised[0]["is_cover"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
-        # SMART hero (decision Antonello 2026-06-13, supersedes 2026-06-12
+        # SMART hero (decision Zero 2026-06-13, supersedes 2026-06-12
         # option A): the MODEL decides which slides deserve a photo. Minimal
         # defensive rules only:
         #   - the cover (slide 1) is ALWAYS hero (a carousel needs at least one

@@ -49,7 +49,7 @@ apps/backend-rag/.venv/bin/python scripts/verify_connectome.py --json /tmp/conne
 
 Exit 1 ⇔ at least one REGRESSED edge.
 
-**Cron (authorized by Antonello 2026-06-13):** `com.nuzantara.verify-connectome`
+**Cron (authorized by Zero 2026-06-13):** `com.nuzantara.verify-connectome`
 via `infra/launchagents/install_verify_connectome.sh` —
 daily 07:30 WITA on the Pro (runtime home `~/nuzantara-deploy`) and
 weekly Monday 08:30 on M5 (covers m5-local edges the Pro cannot probe).
