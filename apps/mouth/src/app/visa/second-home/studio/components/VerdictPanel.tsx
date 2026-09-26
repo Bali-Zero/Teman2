@@ -146,17 +146,6 @@ export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {/* Three panes of glass lit by the band — decoration only; the band's
-          words and icon below carry the meaning. */}
-      <div
-        aria-hidden="true"
-        className="bz-shs-window-panes"
-        style={{ color: style.borderColor }}
-      >
-        <span />
-        <span />
-        <span />
-      </div>
       <p
         style={{
           margin: 0,

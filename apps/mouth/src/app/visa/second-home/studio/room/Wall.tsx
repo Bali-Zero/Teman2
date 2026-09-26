@@ -19,6 +19,9 @@ export interface WallProps {
   chart: ReactNode | null;
   /** The custody map, product-gated by the caller exactly as before. */
   map: ReactNode | null;
+  /** The plan ledger (MemoPreview), docked under the chart — council FIX 3,
+   *  2026-09-26: beside the sheet it floated, belonging to neither zone. */
+  ledger?: ReactNode | null;
 }
 
 /**
@@ -28,7 +31,7 @@ export interface WallProps {
  * so each frame can take its own place in the single column: portrait and
  * chart as a strip above the desk, the map after it.
  */
-export function Wall({ chart, map }: WallProps) {
+export function Wall({ chart, map, ledger = null }: WallProps) {
   const ari = ariLine();
   return (
     <aside className="bz-shs-wall" aria-label={getCopy("room.wall.label")}>
@@ -65,6 +68,14 @@ export function Wall({ chart, map }: WallProps) {
             </figure>
           ) : null}
         </div>
+      ) : null}
+      {ledger ? (
+        <section
+          className="bz-shs-ledger"
+          aria-label={getCopy("room.desk.ledgerLabel")}
+        >
+          {ledger}
+        </section>
       ) : null}
       {map ? (
         <figure className="bz-shs-frame bz-shs-frame--map">

@@ -97,6 +97,10 @@
 .bz-shs-room .bz-shs-frame--chart {
   order: 3;
 }
+.bz-shs-room .bz-shs-ledger {
+  order: 5;
+  min-width: 0;
+}
 .bz-shs-room .bz-shs-frame--map {
   order: 5;
   padding: 14px 8px 8px;
@@ -308,19 +312,6 @@
     margin-left: auto !important;
   }
 }
-/* The ledger sits BESIDE the sheet only when the desk itself is wide enough
- * for both — measured on the desk (container query), not the viewport,
- * because the wall and the shelf take their share first. Below that it
- * follows the sheet. */
-@container bz-shs-desk (min-width: 42rem) {
-  .bz-shs-room .bz-shs-layout {
-    grid-template-columns: minmax(0, 1fr) 16.5rem;
-  }
-  .bz-shs-room .bz-shs-layout > aside {
-    position: sticky;
-    top: 88px;
-  }
-}
 .bz-shs-room .bz-shs-card {
   border-color: var(--r19-line);
   box-shadow:
@@ -348,22 +339,6 @@
     0 0 0 6px var(--surface-raised),
     0 0 0 7px var(--r19-line-strong),
     0 22px 44px -30px rgb(29 44 59 / 55%);
-}
-.bz-shs-window-panes {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  height: 44px;
-}
-.bz-shs-window-panes span {
-  display: block;
-  border-radius: 1px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, currentColor 22%, transparent),
-    color-mix(in srgb, currentColor 6%, transparent)
-  );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent);
 }
 .bz-shs-room .bz-shs-window-title {
   font-weight: 450;
@@ -474,7 +449,7 @@
 .bz-shs-room .bz-shs-drawer-scrim {
   position: absolute;
   inset: 0;
-  background: rgb(29 44 59 / 34%);
+  background: rgb(29 44 59 / 10%);
 }
 .bz-shs-room .bz-shs-drawer {
   position: absolute;
@@ -787,8 +762,6 @@
     gap: 22px;
     align-content: start;
     align-self: start;
-    position: sticky;
-    top: 88px;
   }
   .bz-shs-room .bz-shs-desk {
     grid-area: desk;
@@ -916,12 +889,13 @@
   .bz-shs-room .bz-shs-drawer-front::after {
     content: "";
     position: absolute;
-    right: 14px;
-    top: calc(50% - 2px);
-    width: 14px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--r19-control-border);
+    right: 18px;
+    top: calc(50% - 5px);
+    width: 9px;
+    height: 9px;
+    border-top: 2px solid var(--r19-control-border);
+    border-right: 2px solid var(--r19-control-border);
+    transform: rotate(45deg);
   }
   .bz-shs-room .bz-shs-drawer-front-title {
     font-family: var(--font-serif);
@@ -939,7 +913,7 @@
   .bz-shs-room .bz-shs-drawer {
     top: var(--bz-shs-chrome-top);
     left: auto;
-    width: min(34rem, 44vw);
+    width: min(27rem, 34vw);
     max-height: none;
     border-top: 0;
     border-left: 1px solid var(--r19-line-strong);
@@ -951,7 +925,7 @@
     display: none;
   }
   .bz-shs-room .bz-shs-drawer[data-drawer="compare"] {
-    width: min(52rem, 66vw);
+    width: min(44rem, 56vw);
   }
   .bz-shs-room .bz-shs-drawer-head {
     padding: 22px 28px 16px;

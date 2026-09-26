@@ -813,7 +813,19 @@ export function StudioApp() {
           )}
         </div>
 
-        <Wall chart={railChart} map={showCustodyMap ? <CustodyMap /> : null} />
+        <Wall
+          chart={railChart}
+          map={showCustodyMap ? <CustodyMap /> : null}
+          ledger={
+            currentQuestion ? (
+              <MemoPreview
+                plan={plan}
+                total={railSequence.length}
+                familyAnswered={familyPassed}
+              />
+            ) : null
+          }
+        />
 
         {isVerdictStage && verdict ? (
           <div
@@ -879,16 +891,6 @@ export function StudioApp() {
                   headingRef={stageHeadingRef}
                 />
               </div>
-              <aside
-                className="bz-shs-ledger"
-                aria-label={getCopy("room.desk.ledgerLabel")}
-              >
-                <MemoPreview
-                  plan={plan}
-                  total={railSequence.length}
-                  familyAnswered={familyPassed}
-                />
-              </aside>
             </div>
           </main>
         ) : null}
