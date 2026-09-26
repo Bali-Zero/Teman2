@@ -738,6 +738,12 @@
       "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote — declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) — until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
     },
     {
+      "live": "~/.nuzantara-cron/nlm_watchdog_cron.sh",
+      "repo": "scripts/nlm_watchdog_cron.sh",
+      "machines": ["m5"],
+      "_note": "Installed 2026-09-26 by the #7358 deploy (install -m 0755 from the repo file); cmp-identical to the repo twin before this pair was declared."
+    },
+    {
       "live": "~/scripts/nb-agents-daily-dr.sh",
       "repo": "scripts/nb-agents-daily-dr.sh",
       "_note": "PROMOTED 2026-08-08. Was HOME-only and undeclared while carrying three cures made live on 2026-08-07 (empty nlm alias -> hardcoded NB id; the flat-vs-{value:} JSON shape; a slug step whose error text became the FILENAME, `otloggedinleaserunlogin`). Promoted together with the fix that made its `claude` call reachable at all: under `bash -lc`, the shell its crontab line uses, `claude` is not on PATH and no OAuth seat is in the env, so the bare invocation degraded to the default slug every night. Now routes through scripts/lib/claude_seat.sh. Live consumer: crontab 07:30 daily via cron-state.sh.",
