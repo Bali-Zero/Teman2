@@ -1,7 +1,7 @@
 # Visa Check — UI/UX Design Spec
 
 **Date**: 2026-04-20
-**Author**: Claude Opus 4.7 (with Antonello Siano)
+**Author**: Claude Opus 4.7 (with Zero Siano)
 **Status**: Design approved — ready for implementation plan
 **Scope**: Redesign of the 5 pages under `apps/mouth/src/app/visa/` shipped on 2026-04-20 (commit `0f8d653fa` + follow-ups `e1e964469`, `466b57cd8`, `dc83c8432`) from barebone-inline-CSS to production UI.
 

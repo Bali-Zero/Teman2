@@ -47,7 +47,7 @@ class Rule(str, Enum):
 
 
 TEST_NAME_MARKERS: tuple[str, ...] = ("test", "demo", "autocheck")
-OWNER_CLIENT_ID = 68  # Antonello Siano — always excluded
+OWNER_CLIENT_ID = 68  # Zero Siano — always excluded
 
 
 def compute_rule(plan_row: dict, *, exceptions: set[tuple[str, str]] | None = None) -> Rule:

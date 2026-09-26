@@ -20,7 +20,7 @@ Your 140 migrations use a custom format (`-- UPGRADE` / `-- ROLLBACK` blocks in 
 1. **Adapter in CI** – a small script (bash or Python) that, for each migration file, splits the `UPGRADE` block into `NNN_up.sql` and the `ROLLBACK` block into `NNN_down.sql`, then feeds this temporary directory to Atlas. This adds ~20 lines of CI surface but leaves your native runner untouched.
 2. **Migrate to Atlas-native format** – rename all 140 files and modify `migration_manager` to read `_up` + `_down` pairs. This is a one‑time cost but introduces risk: the runner must be carefully rewritten, and every developer needs to learn a new naming convention.
 
-Given the principle "NOT replace runner", the **adapter in CI** is clearly superior. It's lightweight, reversible, and doesn't touch the production‑proven runner. Future Antonello will thank us for not breaking a working system, while still getting the linting benefit. If years later you decide to adopt Atlas as a runner, the format change can be done then – but not now.
+Given the principle "NOT replace runner", the **adapter in CI** is clearly superior. It's lightweight, reversible, and doesn't touch the production‑proven runner. Future Zero will thank us for not breaking a working system, while still getting the linting benefit. If years later you decide to adopt Atlas as a runner, the format change can be done then – but not now.
 
 ### C. Edge Cases and False Positives
 
@@ -83,7 +83,7 @@ Adopt Atlas **exclusively as a CI lint gate** with the following concrete steps:
 
 5. **Add `-- atlas:nolint` comments** on data‑only or complex functional migrations as needed.
 
-After deployment, the first run will emit warnings only for new modifications. The team will be guided to always include a rollback block. PR #302's class of bug will be caught automatically. Future Antonello will thank us for a zero‑friction safety net that didn't require rewriting the migration runner.
+After deployment, the first run will emit warnings only for new modifications. The team will be guided to always include a rollback block. PR #302's class of bug will be caught automatically. Future Zero will thank us for a zero‑friction safety net that didn't require rewriting the migration runner.
 
 ---
 

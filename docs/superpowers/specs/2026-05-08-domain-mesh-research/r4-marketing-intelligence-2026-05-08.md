@@ -1012,7 +1012,7 @@ Avoid Substack 10% rake. Keep Beehiiv mental note as backup if Bali Zero adds cr
 2. OUTLINE    — Claude Skills (NB-7) + DeepSeek Reasoner (cheap)
 3. DRAFT      — WR2 Codex primary, Playwright fallback (already shipped)
 4. FACT-CHECK — bipolar verifier pattern (LLM main + NB ground truth specialistico)
-5. EDIT       — human (Antonello) + Claude Sonnet quick passes
+5. EDIT       — human (Zero) + Claude Sonnet quick passes
 6. PUBLISH    — Astro mouth (IT/EN/ID hreflang)
 7. DISTRIBUTE — Brevo newsletter + IG Reels (account proprio) + Reddit/X organic + LinkedIn
 8. MEASURE    — Brevo MCP analytics → NB-7 feedback loop → step 1 next cycle
@@ -1041,7 +1041,7 @@ Avoid Substack 10% rake. Keep Beehiiv mental note as backup if Bali Zero adds cr
 
 > "Human review remains critical for tasks like fact-checking and maintaining brand standards in the automated workflow."
 
-**Bali Zero application**: Antonello = "soul" + brand voice + final approval. Agents = "spine" of research + draft + distribute + measure. Editorial NB-7 = institutional memory layer.
+**Bali Zero application**: Zero = "soul" + brand voice + final approval. Agents = "spine" of research + draft + distribute + measure. Editorial NB-7 = institutional memory layer.
 
 ---
 

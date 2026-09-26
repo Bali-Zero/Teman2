@@ -5,7 +5,7 @@
 Codex gpt-5.6-sol xhigh red-team review of the branch carrying this amendment found the "proposed"
 framing below does not match what actually landed in the live prompt blocks: `wr2-storyboarder.md`
 and `wr2-brief-interpreter.md` already carried parts of this ruleset, and four of the 17 rules
-directly contradict a currently-enforced constitutional gate or cron validator. Until Antonello/Zero
+directly contradict a currently-enforced constitutional gate or cron validator. Until Zero/Zero
 reconciles each one, **rules 1, 5, 12, and 17 are NOT active** in the live agent prompts — the
 trimmed prompt blocks in both agent files now say so explicitly, and only the six
 constitution-compatible sub-rules stay live (audience-register-follows-real-audience,
@@ -38,7 +38,7 @@ Zero approves — never activate a rule number here piecemeal against a contradi
 
 ---
 
-**Status**: PROPOSED, awaiting Antonello/Zero veto/approve on Rule 1 specifically (see flag below);
+**Status**: PROPOSED, awaiting Zero/Zero veto/approve on Rule 1 specifically (see flag below);
 Rules 2-17 are additive clarifications of existing constitution intent and can merge on the normal
 Article 11 amendment path once smoke-tested on a live carousel. **Rules 1, 5, 12, 17 additionally
 blocked by the constitutional conflicts above — see that section, not just the Rule 1 flag.**
@@ -279,7 +279,7 @@ Read together: the audience saves and forwards content that tells them what chan
 their own words, at their own reading level — not content that announces a rule and stops. Rules
 1-17 above are that principle applied slide-by-slide.
 
-## Antonello/Zero veto checklist
+## Zero/Zero veto checklist
 
 - [ ] Read this amendment file fully.
 - [ ] Decide on Rule 1 specifically (header flag above) — approve as skill-level guidance only, OR

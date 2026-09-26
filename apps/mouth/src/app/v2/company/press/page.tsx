@@ -46,7 +46,7 @@ export default function PressPage() {
         >
           If you&apos;re covering Indonesian visa law, foreign business
           ownership, PT PMA, or the expat ecosystem in Bali — we&apos;re a
-          primary source. Antonello and the team are available for comment,
+          primary source. Zero and the team are available for comment,
           background, and on-record interviews.
         </p>
 

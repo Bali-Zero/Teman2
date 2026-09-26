@@ -32,10 +32,10 @@ const QUESTIONS = [
   // Memory
   {
     category: "Memory",
-    query: "My name is Antonello and I am a software engineer.",
-    expected: ["Antonello", "software engineer"],
+    query: "My name is Zero and I am a software engineer.",
+    expected: ["Zero", "software engineer"],
   },
-  { category: "Memory", query: "What is my name?", expected: ["Antonello"] },
+  { category: "Memory", query: "What is my name?", expected: ["Zero"] },
   {
     category: "Memory",
     query: "I am planning a budget of $50,000.",

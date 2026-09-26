@@ -420,7 +420,7 @@ def _hero_visible_in_png(png_path: Path, family: str | None = None) -> bool:
     canvas. A real photo has color variance where it is exposed; a covered/missing
     hero is near-uniform (flat black or flat antracite).
 
-    LAYOUT-AWARE sampling (Antonello 2026-06-13): the top-third assumption breaks
+    LAYOUT-AWARE sampling (Zero 2026-06-13): the top-third assumption breaks
     any layout whose scrim+text covers the top. We sample where the PHOTO is
     EXPOSED for the given family:
       - cover-photo / photo-headline-yellow-sub / photo-fullbleed / default/None/

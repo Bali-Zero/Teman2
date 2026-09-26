@@ -225,7 +225,7 @@ PROPOSALS = [
         "name": "FIX-evolution-loop-closure",
         "kind": "infra-fix",
         "problem": "THE central finding: the entire autonomous evolution loop has NEVER closed. (a) reflexion-synth wrote 0 lessons.md; (b) Voyager _proposed/ empty; (c) EvoSkill auto-evolver FATAL on every run (DEEPSEEK_API_KEY env-drift 05-31, evoskill-crash 05-19/05-24). The hand-written 02/03 (one-shot 2026-05-17) is the ONLY synthesis that exists.",
-        "proposal": "NOT a new skill — an infra-fix proposal (for Antonello): (1) evolver: restore DEEPSEEK_API_KEY export in secrets.env + decouple from nuzantara-deploy worktree (cicatrix program/base family); (2) reflexion-synth: lower the synthesis threshold OR seed it from the cicatrix/memory corpus (which IS rich) instead of waiting on starved metrics; (3) regenerate 01-inventory.md (drifted 16->34 agents). This S13 FROZEN IS the manual substitute for the closure that never happened.",
+        "proposal": "NOT a new skill — an infra-fix proposal (for Zero): (1) evolver: restore DEEPSEEK_API_KEY export in secrets.env + decouple from nuzantara-deploy worktree (cicatrix program/base family); (2) reflexion-synth: lower the synthesis threshold OR seed it from the cicatrix/memory corpus (which IS rich) instead of waiting on starved metrics; (3) regenerate 01-inventory.md (drifted 16->34 agents). This S13 FROZEN IS the manual substitute for the closure that never happened.",
         "agents_served": ["wr3-reflexion-synth","wr2-ig-metrics-analyst","wr3-yt-metrics-analyst","ALL (01-inventory)"],
         "evidence": "0 lessons.md; empty _proposed/; FATAL log trail; 01-inventory says 16 subagents (now 34)",
         "priority": "P1",
@@ -254,7 +254,7 @@ FROZEN = {
         "NO production agent modified (proposals live in _proposed/ only)",
         "WR3 Contract 2 respected (proposals do not make non-brief-interpreter agents call NB)",
         "Anti-hallucination: every finding carries a file/scar/episode/log source anchor",
-        "Antonello approves any append to lessons.md / graduation (L2 autonomous ops — draft PR, human merge)",
+        "Zero approves any append to lessons.md / graduation (L2 autonomous ops — draft PR, human merge)",
     ],
     "next_actions_for_antonello": [],  # filled below post-adversarial
 }

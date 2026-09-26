@@ -1,6 +1,6 @@
 """Candidate prompt formulations under test. The winner becomes prompt_master.
 
-Antonello's target: a GENERAL recap from several points of view + some SPECIFIC
+Zero's target: a GENERAL recap from several points of view + some SPECIFIC
 points, all strictly source-grounded with verbatim citations.
 """
 from __future__ import annotations

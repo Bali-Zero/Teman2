@@ -6,7 +6,7 @@ such injector ever existed — the file was hand-maintained and could silently
 drift from `tokens.json`. This module makes that comment true.
 
 The brand source of truth is `~/.claude/skills/bali-zero-brand/tokens.json`
-(closed namespace, owner Antonello). This generator reads it and emits the
+(closed namespace, owner Zero). This generator reads it and emits the
 exact `:root { --token: value; }` block the layouts reference via `var(--*)`.
 
 Design notes:

@@ -3,7 +3,7 @@ date: 2026-05-18
 domain: wr3-design
 client_case: WR3 Video Production Room — Step 2 atomic verb decomposition + Agent/Tool classification
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro + NB-AGENTS bipolar) + my draft 103 verbs
-status: draft pending Antonello decision gate
+status: draft pending Zero decision gate
 adversarial_review: codex
 adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annotation added to this file: the Kim et al. 17.2x citation, RETRACTED[kim-2025-17x-error-amplification-as-cause], DO NOT RESTORE it — it measures Independent (parallel, no coordination), not peer-to-peer, and Table 4 gives p=0.658. This file does NOT assert the separate ranking claim registered as `kim-2025-ranking-supports-the-no-peer-rule`, so this key certifies no correction of it (narrowed 2026-08-02 after cross-family review caught the note claiming more than the body delivers). The dated body below was NOT re-reviewed and is not certified by this key."
 ---
@@ -30,7 +30,7 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 > la citazione come motivazione._
 3. 4-LLM panel parallel: Gemini 3.1 Pro (6.8KB) + Codex GPT-5.5 (77KB) + DeepSeek V4 Pro (11.6KB) + NB-AGENTS (31.7KB)
 4. Synthesis (this doc)
-5. Decision gate Antonello
+5. Decision gate Zero
 
 ## Part A — Convergent panel verdicts (4/4 unanimous)
 
@@ -195,7 +195,7 @@ Codex schema (most comprehensive):
   "qa_verdicts": {shot_id: {arcface: 0.87, vlm: true, critic: "PASS"}},
   "retry_counts": {verb: int},
   "event_sequence": [{ts, phase, verb, status}, ...],
-  "human_signoff": {damar: bool, antonello: bool},
+  "human_signoff": {damar: bool, zero: bool},
   "publish_scope": "staging|public"
 }
 ```
@@ -464,7 +464,7 @@ NB-AGENTS unique bootstrap pattern: **Cross-LLM Bipolar Verifier** as critic sub
 - DeepSeek V4 Pro: `/tmp/wr3-step2/deepseek.txt` (11.6KB) — collapse 5.2-5.5 + 6.2-6.5, Indonesian-specific verbs (verify_anchor_release UU PDP, cross_verify_nb_intel_codes, review_kpi_compliance BPOM), cold-start fallback verbs (register_canonical_embedding, initialise_empty_corpus)
 - NB-AGENTS bipolar: `/tmp/wr3-step2/nb-agents.txt` (31.7KB) — MetaGPT SOPs argument for collapse, Voyager skill library applied to critic approval, Reflexion verbal feedback for retry prompts, Cross-LLM Bipolar Verifier as cold-start critic substitute, 3 mandatory phase boundaries to disk
 
-## Decision gate (Antonello)
+## Decision gate (Zero)
 
 Step 2 dossier closed. Three options:
 

@@ -216,7 +216,7 @@ Read brief.audience_segment. If domain is regulatory/visa/tax/property AND audie
 
 **Check 5.5 — Source-citation slide present (Article 14.3 DEFERRED, SOTA pattern #11)**
 
-Note: Article 14.3 was DEFERRED 2026-05-12 (Antonello partial-approval of Art 14). Layout `source-citation.md` exists in repo and can be used opt-in by any storyboarder run, but is not constitutionally required. This check operates as a soft-fail-only ADVISORY (no score deduction, info-only feedback). Will upgrade to soft-fail-enforced when Art 14.3 is promoted via Art 14.6 process.
+Note: Article 14.3 was DEFERRED 2026-05-12 (Zero partial-approval of Art 14). Layout `source-citation.md` exists in repo and can be used opt-in by any storyboarder run, but is not constitutionally required. This check operates as a soft-fail-only ADVISORY (no score deduction, info-only feedback). Will upgrade to soft-fail-enforced when Art 14.3 is promoted via Art 14.6 process.
 
 For regulatory/visa/tax/property domain carouseli WITH `slide_count ≥ 7`, scan slides for one with `layout: source-citation`. Required position: slide N-1 (penultimate), OR slide N (last) if no elegant-close. For `slide_count ≤ 6` (typically news-flash/anti-cliche), source-citation slide is OPTIONAL — body-text verbatim citation per Article 6.4 is the fallback credibility infrastructure.
 
@@ -399,7 +399,7 @@ Do NOT write lessons for:
 
 - Single-slide bugs (one-off, no recurrence) — flag in retry_feedback only
 - Personal-taste violations (use forbidden-phrases.md instead)
-- Issues that contradict constitution (escalate to Antonello via TODO, not \_lessons)
+- Issues that contradict constitution (escalate to Zero via TODO, not \_lessons)
 
 After writing a lesson, append a single line to your verdict JSON:
 

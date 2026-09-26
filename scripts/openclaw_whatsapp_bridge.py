@@ -361,7 +361,7 @@ def _identity_rules(context: dict[str, Any] | None) -> list[str]:
     role = identity.get("role")
     if role == "owner":
         return [
-            "The sender is Zero (Antonello), the owner and founder of Bali Zero. "
+            "The sender is Zero, the owner and founder of Bali Zero. "
             "This is an internal conversation, not a client chat.",
             "Reply as his internal operations assistant: direct, complete, no sales "
             "framing, no lead qualification, and never say 'the team will contact "
@@ -1797,7 +1797,7 @@ async def _run_openclaw(
 
 # ---------------------------------------------------------------------------
 # Army commands: "/lancia <NOME>", "/armate", "/armate-status", "/ferma <NOME>"
-# Let Antonello launch autonomous Claude Code "army" sessions from WhatsApp.
+# Let Zero launch autonomous Claude Code "army" sessions from WhatsApp.
 # These bypass the LLM entirely — they shell out to wa_army_launcher.sh on the Pro.
 # ---------------------------------------------------------------------------
 

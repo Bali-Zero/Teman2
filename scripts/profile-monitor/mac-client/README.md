@@ -6,8 +6,8 @@ Cartella di asset distribuibili per il setup dei dispositivi aziendali dei nuovi
 
 | File | Scopo | Audience |
 |---|---|---|
-| **`setup-balizero.sh`** | Setup unificato Mac: profilo + Tailscale + daemon + Handbook immutable | Antonello esegue dal profilo `balizero` del Mac dipendente |
-| **`setup-mobile.md`** | Procedura step-by-step smartphone (SIM + WA Business + wa-mirror QR) | Antonello segue manualmente |
+| **`setup-balizero.sh`** | Setup unificato Mac: profilo + Tailscale + daemon + Handbook immutable | Zero esegue dal profilo `balizero` del Mac dipendente |
+| **`setup-mobile.md`** | Procedura step-by-step smartphone (SIM + WA Business + wa-mirror QR) | Zero segue manualmente |
 
 ## Asset sottostanti
 
@@ -26,7 +26,7 @@ Cartella di asset distribuibili per il setup dei dispositivi aziendali dei nuovi
 - [ ] SIM Telkomsel allocata (vedi `~/nuzantara/research/hr/sim-registry.md`)
 - [ ] Dipendente porta Mac personale (per setup profilo `balizero`)
 - [ ] Pro acceso, profile-monitor wrapper attivo, Tailscale online
-- [ ] Antonello connesso a Tailscale e in grado di invitare device tailnet
+- [ ] Zero connesso a Tailscale e in grado di invitare device tailnet
 
 ### Procedura A — Mobile (manuale, ~15-20 min)
 
@@ -84,7 +84,7 @@ scp -r ~/nuzantara/scripts/profile-monitor/mac-client/ balizero@mac-dipendente.l
 
 ## Disinstallazione (offboarding)
 
-Eseguire SOLO da Antonello quando un dipendente lascia Bali Zero:
+Eseguire SOLO da Zero quando un dipendente lascia Bali Zero:
 
 ```bash
 # 1. Stop daemon
@@ -122,7 +122,7 @@ psql "$(grep DATABASE_URL_LOCAL ~/.nuzantara-secrets.env | cut -d= -f2-)" \
   -c "SELECT counterpart_phone, MAX(created_at) FROM whatsapp_message_context GROUP BY counterpart_phone;"
 
 # 4. Test alert: chiedi al dipendente di fare logout dal profilo balizero
-#    → Antonello deve ricevere alert Telegram entro 10 secondi
+#    → Zero deve ricevere alert Telegram entro 10 secondi
 ```
 
 ## Troubleshooting
@@ -134,7 +134,7 @@ Vedi `setup-mobile.md` per smartphone. Per Mac:
 | `setup-balizero.sh` errore "Profilo non balizero" | Sei loggato sul profilo sbagliato. Logout e relogin al profilo `balizero`. |
 | Wrapper Pro non raggiungibile | (a) Tailscale non connesso sul Mac. (b) Pro spento. (c) Wrapper crashato — su Pro: `launchctl kickstart -k gui/$(id -u)/com.balizero.profile-monitor-wrapper` |
 | Daemon non avvia (LastExitStatus != 0) | Controlla `~/Library/Logs/balizero-profile-monitor.error.log` |
-| Handbook ancora eliminabile dopo install | Antonello esegue `chflags uchg ~/Desktop/employee-handbook-v1-ID.pdf` manualmente |
+| Handbook ancora eliminabile dopo install | Zero esegue `chflags uchg ~/Desktop/employee-handbook-v1-ID.pdf` manualmente |
 
 ## Aggiornamenti futuri
 

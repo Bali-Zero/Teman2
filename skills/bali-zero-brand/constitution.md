@@ -2,7 +2,7 @@
 
 > Hard rules. Non-negotiable. The wr2-critic subagent enforces these. Violations = hard fail, route back to layout-composer.
 >
-> Last revision: 2026-09-02. Owner: Antonello Siano.
+> Last revision: 2026-09-02. Owner: Zero Siano.
 
 ---
 
@@ -36,7 +36,7 @@
   2.4 **Critic enforcement**: critic agent receives the layout JSON which declares for each element its `zone_type` (text | hero-photo | overlay | logo). Palette check applies only to `text` and `logo` zones. Photo bounds are skipped.
   2.5 **Reason for region-aware rule**: a hard-blanket palette rule (the prior version) made teal-amber photo grading impossible (teal = blue-green). Region-aware preserves brand visual identity (cinematic photo treatment) without compromising text-zone legibility.
 
-  2.6 **Total-black flat-bg restraint** (added 2026-05-09 after Antonello aesthetic critique on QA + statement-bomb slides): pure `#000000` flat background WITHOUT texture/gradient/photo is permitted ONLY when text occupies ≥35% of canvas area visually. Below threshold the slide reads as "placeholder/unfinished" rather than "minimalist editorial". When text is sparse (statement-bomb ≤8 words, qa-dialogue, elegant-close), one of the following MUST be present:
+  2.6 **Total-black flat-bg restraint** (added 2026-05-09 after Zero aesthetic critique on QA + statement-bomb slides): pure `#000000` flat background WITHOUT texture/gradient/photo is permitted ONLY when text occupies ≥35% of canvas area visually. Below threshold the slide reads as "placeholder/unfinished" rather than "minimalist editorial". When text is sparse (statement-bomb ≤8 words, qa-dialogue, elegant-close), one of the following MUST be present:
 
 - radial gradient (warm 5% center → black 100% edge), OR
 - micro paper-grain texture (rgba opacity ≤2%), OR
@@ -183,7 +183,7 @@ Forbidden in elegant-close:
 3. Body slides MUST teach: **1 rule + 1 consequence + 1 actionable next step** (or set of N where N matches a count promise per Article 6.3.1)
 4. Audience tilt: **investor / business operator > local / cultural tourist**. Pure-cultural content empirically gets 0% Explore push and ≤3% non-follower reach (`respect` post case).
 
-**Hard fail (Article 6.9.fail)** — cover heading + subhead together MUST contain at least ONE of the following six **empirical anchors** (refined 2026-05-12 after Antonello edge-case challenge — pure editorial commentary like `Two Boys. Two Faiths. One Island.` was being wrongly rejected):
+**Hard fail (Article 6.9.fail)** — cover heading + subhead together MUST contain at least ONE of the following six **empirical anchors** (refined 2026-05-12 after Zero edge-case challenge — pure editorial commentary like `Two Boys. Two Faiths. One Island.` was being wrongly rejected):
 
 1. **Concrete number** — count, percentage, currency, hectares, years (`37,881`, `$7B`, `25%`)
 2. **Regulation / code** — verbatim Indonesian regulatory cite (`KEP-71/PJ/2026`, `Permenkumham 22/2023`, `UU 26/2007`)
@@ -258,7 +258,7 @@ The following phrases are absolutely banned. Soft-match (case-insensitive substr
 
 10.1 **Critic panel mandatory**: every carousel must pass `wr2-critic` before output. Skip = hard fail at orchestrator level.
 10.2 **Human-in-loop on publish**: agent never publishes to Instagram. Damar publishes manually. (Owner-binding decision OB-1, 2026-05-07.)
-10.3 **No autonomous skill writes to main**: skill changes go to `_proposed/`. Antonello commits to main weekly.
+10.3 **No autonomous skill writes to main**: skill changes go to `_proposed/`. Zero commits to main weekly.
 10.4 **Cost = zero**: only OAuth Claude (subagents), free Gemini CLI, NotebookLM, DeepSeek API ($0.01/q OK). Never use ANTHROPIC*API_KEY, OpenAI API, Vertex AI billed runtime. (CLAUDE.md HARD RULE.)
 10.5 **Idempotency of FACTS + STRUCTURE only** (amended 2026-06-04 after WR2 autopsy): re-running the same brief must keep the \_verifiable* layer stable — same key numbers, same legal citations, same slide count, same archetype. It must NOT force the _expressive_ layer (register, image-style mode, layout family, copy phrasing, hero composition) to be identical. Drift in facts/structure = hard fail; drift in expression is EXPECTED and good. (Prior wording made expressive variety itself a hard fail — that rewarded the monotony this constitution now forbids in 10.6.)
 
@@ -266,8 +266,8 @@ The following phrases are absolutely banned. Soft-match (case-insensitive substr
 
 ## Article 11 — Amendment process
 
-11.1 Constitution is amended only by Antonello, via git commit to `~/.claude/skills/bali-zero-brand/constitution.md`.
-11.2 The reflective loop (weekly cron) may _propose_ amendments by writing to `~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-<slug>.md`. Antonello reviews and merges.
+11.1 Constitution is amended only by Zero, via git commit to `~/.claude/skills/bali-zero-brand/constitution.md`.
+11.2 The reflective loop (weekly cron) may _propose_ amendments by writing to `~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-<slug>.md`. Zero reviews and merges.
 11.3 All amendments must include: rule number, change, rationale (why), date, link to triggering carousel(s).
 
 ## Article 13 — Editorial archetypes (closed taxonomy)
@@ -329,13 +329,13 @@ Each archetype maps to 1-2 default image modes. Variation enforced: max 2 carous
 
   12.3 **Surface-specific overrides allowed only** for typography sizing (e.g., A4 brief uses larger headline scale than 1080×1350) and layout constraints (e.g., A4 brief has cover + interior page distinction; carousel has cover + closing). NEVER override palette tokens, voice rules, forbidden phrases, or regulatory citation discipline.
 
-  12.4 **Adding a new surface** requires constitutional amendment (Article 11.1). Proposing in `_proposed-amendments/` is open to any agent; merging requires Antonello git-commit.
+  12.4 **Adding a new surface** requires constitutional amendment (Article 11.1). Proposing in `_proposed-amendments/` is open to any agent; merging requires Zero git-commit.
 
 ## Article 14 — SOTA Adoption Rules (added 2026-05-12, partial merge — subset 14.1/14.2/14.4 approved; 14.3/14.5 deferred)
 
 Bali Zero IG carousel design must remain aligned with global editorial state-of-the-art (`_external-bench-YYYY-MM.md`). The following rules formalise the gap-closing changes adopted after the 2026-05-12 100-cover SOTA audit. Source evidence: `_external-bench-2026-05.md`.
 
-**Status (2026-05-12 Antonello decision)**: 14.1 + 14.2 + 14.4 APPROVED, merged. 14.3 + 14.5 DEFERRED pending smoke test (status preserved in `_proposed-amendments/2026-05-12-five-sota-adoption-rules.md`).
+**Status (2026-05-12 Zero decision)**: 14.1 + 14.2 + 14.4 APPROVED, merged. 14.3 + 14.5 DEFERRED pending smoke test (status preserved in `_proposed-amendments/2026-05-12-five-sota-adoption-rules.md`).
 
 ### 14.1 — Swipe indicator on inner slides (APPROVED, SOTA pattern #10)
 
@@ -395,12 +395,12 @@ Deferred rules (14.3, 14.5) graduate to APPROVED via the standard amendment proc
 1. A/B test on ≥3 carouseli where deferred rule is opt-in active via brief field
 2. Measure Save/Like and Share/Like delta vs `_empirical-metrics-2026-05-12.md` baseline after 14 days
 3. If delta is positive AND not contradicted by `_external-bench-YYYY-MM.md` next monthly run, propose promotion in `_proposed-amendments/`
-4. Antonello git-commit promotes the rule into Article 14 (deferred → approved)
+4. Zero git-commit promotes the rule into Article 14 (deferred → approved)
 5. Critic Rubric 5 corresponding check upgrades from soft-fail-advisory to soft-fail-enforced
 
 ## Article 15 — Banned Type-as-Design Patterns (added 2026-05-13)
 
-The 2026-05-12 SOTA audit (`research/wr2-design-sota/2026-05-12-type-as-design-inner-slides.md`) catalogued 10 type-as-design patterns observed in editorial publishers worldwide. After visual review of 5 mockups (`/tmp/wr2_5patterns_observe_mockup.py`), Antonello rejected the following five patterns on 2026-05-13 with the verdict "gimmick visivi — distraggono dal contenuto utility".
+The 2026-05-12 SOTA audit (`research/wr2-design-sota/2026-05-12-type-as-design-inner-slides.md`) catalogued 10 type-as-design patterns observed in editorial publishers worldwide. After visual review of 5 mockups (`/tmp/wr2_5patterns_observe_mockup.py`), Zero rejected the following five patterns on 2026-05-13 with the verdict "gimmick visivi — distraggono dal contenuto utility".
 
 **Banned patterns (hard fail in critic Rubric 5 if present in any slide):**
 

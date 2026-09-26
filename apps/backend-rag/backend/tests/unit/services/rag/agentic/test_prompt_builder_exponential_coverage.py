@@ -475,7 +475,7 @@ class TestBuildSystemPromptPersonas:
     def test_build_system_prompt_creator_persona(self):
         """Test creator persona activation"""
         builder = SystemPromptBuilder()
-        context = {"profile": {"email": "antonello@example.com", "name": "Antonello"}}
+        context = {"profile": {"email": "antonello@example.com", "name": "Zero"}}
         prompt = builder.build_system_prompt(
             user_id="antonello@example.com",
             context=context,

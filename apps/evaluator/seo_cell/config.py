@@ -20,7 +20,7 @@ DB_PATH = DATA_DIR / "seo_cell.db"
 # Same SA has GSC owner role for balizero.com
 GOOGLE_CREDENTIALS_PATH = PROJECT_ROOT / ".secrets" / "google-credentials.json"
 
-# Brief path — Task 1 output (owner Antonello), consumed here as lightweight
+# Brief path — Task 1 output (owner Zero), consumed here as lightweight
 # signal once present. Missing file = no-op, never blocks.
 SEO_BRIEF_PATH = PROJECT_ROOT / "data" / "seo_kw_targets" / "2026-04-21-prenatal.json"
 

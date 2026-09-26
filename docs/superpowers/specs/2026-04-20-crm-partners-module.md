@@ -3,7 +3,7 @@
 **Date:** 2026-04-20
 **Author:** Claude Opus 4.7 (1M context) — council: Gemini 2.5 Pro + Codex
 gpt-5.4 xhigh + DeepSeek-Reasoner + NotebookLM NB-2
-**Status:** Design approved by Antonello. Ready for implementation plan.
+**Status:** Design approved by Zero. Ready for implementation plan.
 **Owner of fiscal sign-off:** Asya.
 **Origin:** Multi-LLM council brainstorm,
 `docs/superpowers/specs/2026-04-20-partners-brainstorm/`.
@@ -46,7 +46,7 @@ Council rationale: see sibling `2026-04-20-partners-brainstorm/99-synthesis.md`.
 - In-portal messaging.
 - New subdomain `partners.balizero.com`.
 
-### Known open items (answered by Antonello; non-blocking)
+### Known open items (answered by Zero; non-blocking)
 
 - Default commission rate `10.0` (percentage). Per-partner override at creation.
 - Auto-writeoff threshold: `system_settings.partner_clawback_auto_writeoff_idr`
@@ -337,7 +337,7 @@ Two new permission bits on `users`:
 - `finance.approve_commission`
 - `finance.mark_paid`
 
-Seeded for Zero, Antonello, Asya. Check current user model before
+Seeded for Zero, Asya. Check current user model before
 including in migration 119 vs. a dedicated smaller migration.
 
 Helper: `verify_partner_access(user, partner_id) -> Partner`:

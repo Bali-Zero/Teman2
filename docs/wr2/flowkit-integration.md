@@ -8,7 +8,7 @@
 
 ## Why FlowKit
 
-The empirical POC on 2026-05-03 (Antonello's Ultra account, see memory
+The empirical POC on 2026-05-03 (Zero's Ultra account, see memory
 `discovery_flowkit_poc_test_2026_05_03.md`) verified that FlowKit gives a
 direct HTTP path to the same `GEM_PIX_2` (Nano Banana Pro) model that the
 Playwright path drives via the Gemini web UI. Concrete numbers:

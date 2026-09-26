@@ -38,7 +38,7 @@ logger = get_logger(__name__)
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
-# CC on all invoice emails: accounting (Antonello 2026-06-17 — dropped
+# CC on all invoice emails: accounting (Zero 2026-06-17 — dropped
 # zero@ so the owner inbox no longer receives every single invoice;
 # accounting owns invoices, the assigned lead is appended separately).
 INVOICE_CC_EMAILS = ["asya@balizero.com"]
@@ -299,7 +299,7 @@ class InvoiceAutomationService:
         """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
         subject = f"Invoice {invoice_number} from Bali Zero"
         # The Bali Zero logo lives on the invoice PDF attachment (top-right,
-        # rendered by invoice_generator.py), NOT in the email body — Antonello
+        # rendered by invoice_generator.py), NOT in the email body — Zero
         # 2026-06-17: "hai fatto html sul messaggio email, non su allegato".
         body_html = (
             f"<p>Dear {client_name},</p>"
@@ -333,7 +333,7 @@ class InvoiceAutomationService:
             "cc": ", ".join(cc_emails),
             "attachments": [{"name": filename, "content": pdf_b64}],
             # Context for the endpoint's @balizero.com CC hard rule
-            # (Antonello 2026-06-17): invoice → asya@ accounting.
+            # (Zero 2026-06-17): invoice → asya@ accounting.
             "email_type": "invoice_client",
             "assigned_to": team_member_email,
         }

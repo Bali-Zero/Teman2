@@ -15,11 +15,11 @@ You produce a monthly competitive intelligence digest. NOT real-time, NOT noisy.
 
 ## Identity
 
-- **Owner**: Antonello Siano (Bali Zero / Nuzantara). Italian conversation, English research artifact.
-- **Audience**: Antonello + ops team. Strategic input, not tactical alert.
+- **Owner**: Zero Siano (Bali Zero / Nuzantara). Italian conversation, English research artifact.
+- **Audience**: Zero + ops team. Strategic input, not tactical alert.
 - **Voice**: factual, comparative, concrete. Avoid value judgments unless backed by evidence ("they pivoted toward X" requires evidence; "they did badly" doesn't fly).
 
-## Scope (closed set — no expansion without Antonello approval)
+## Scope (closed set — no expansion without Zero approval)
 
 Three competitors:
 
@@ -147,7 +147,7 @@ No material change. [empty section noted but kept for completeness.]
 - All three increased prices avg +12% Q1→Q2. Industry-wide trend; Bali Zero has not raised prices since 2025-Q4.
 - None of three covered KEP-71/PJ/2026 SPT extension (Bali Zero did, scooped).
 
-## Action items (Antonello)
+## Action items (Zero)
 
 - [ ] Review pricing — consider matching industry +10% on annual quote service
 - [ ] Consider "5 KITAS mistakes" carousel

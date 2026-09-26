@@ -1,0 +1,135 @@
+task_id: owner-name-zero-v2
+gear: 3
+l_level: L1
+gate_class: sonnet
+# Floor measured this session: `python3 scripts/evidence_pack_lint.py --print-floor
+# --numstat-file <numstat> --changed-files-file <changed>` on the staged diff returns `3`,
+# by the SIZE term (S1) — 271 files, +611/-611 (1222 net lines), well past the ~400-net-line
+# PR-contract target and past the Gear-3 size threshold. No hot-zone path is touched
+# (migrations_v2/** and .github/workflows/** are excluded from the sweep entirely, never even
+# opened for writing), so the floor is size-only, not hot-zone.
+objective: >-
+  Supersedes PR #7430, which was defective (whole-file trailing-whitespace churn: 359 files,
+  +9456/-7986, for ~500 real word substitutions). This v2 rebuild replaces the owner's first
+  name ("Antonello"/"antonello") with his codename "Zero" across prose, comments, docstrings,
+  markdown, and display-text YAML/JSON string values repo-wide (Bali-Zero/Teman2), per Zero's
+  explicit privacy directive relayed by the coordinating session — while leaving every
+  identifier, email address, file path, redaction-rule definition, and functional code/data
+  value untouched — using a BYTE-PRESERVING write step this time: every line that does not
+  itself contain a substituted match is carried through unchanged at the byte level (no
+  decode/re-encode round-trip, no strip, no newline normalisation, no formatter run), so
+  `git diff --numstat` added == deleted == the count of lines that actually changed, per file,
+  with zero collateral churn.
+constraints:
+  - >-
+    KEEP unchanged (verified file-by-file; see pack.yml `diff.shape`/`dissent`): every email
+    address and anything containing `@`; `antonellosiano`/`sianoantonello` handles and
+    hostnames; file-system paths and URLs; kebab/snake/camelCase compound tokens containing the
+    name (`needs-antonello`, `needs-antonello-on-pro`, `action_needs_antonello`,
+    `antonello-lab`/`antonello_lab`-style enum/status values persisted in DBs and ledgers);
+    git/CODEOWNERS/GitHub logins; a literal `git log`-style author-string quote
+    (`Antonello Siano <noreply@anthropic.com>`, 2 occurrences, both in
+    `.claude/skills/modus/PENDING-ARMS.md`) — a forensic claim about what a specific git
+    identity actually was, not a prose mention, protected by a dedicated regex guard
+    (`\s+Siano\s*<`) added after this v2's own adversarial review caught it changing meaning.
+  - >-
+    FULL-FILE SKIP (289 files, never opened for writing): the 10 functional/off-limits files
+    carried over from the superseded PR's review (`zantara_core.py` off-limits;
+    `collective_memory_workflow.py` + its test, the NER known-names dict; `staging_promoter.py`,
+    `identity_resolver.py`, `prompt_builder.py`, `scripts/profile-monitor/wrapper.py` —
+    case-sensitive substring/dict-key functional matches; `audit_privacy_outputs.py` + its test,
+    the PII-leak-detector regex; `tests/wa_corpus/test_db_names.py`, the stopword collision with
+    "Bali Zero"); 186 `research/**/*.md` files that fail `scripts/check_adversarial_review.py`'s
+    R1 gate (missing `adversarial_review:` frontmatter, a pre-existing gap unrelated to this
+    sweep — verified via `--files` against the exact candidate list, not touched at all this
+    time rather than touch-then-revert); 2 research docs
+    (`research/operations/2026-05-23-wa-mirror-dashboard-discovery.md`,
+    `research/tax/2026-05-09-pph21-q3-deadlines-livetest.md`) whose PRE-EXISTING content trips
+    the `.husky/pre-commit` Law-2 PII gate (unrelated to this sweep's own edit); ALL of
+    `evidence/**` (6 files) — evidence packs are point-in-time verification records that quote
+    git-log/author-identity facts as evidence (e.g. "it leaned on the git author string
+    `Antonello Siano`, which is only this machine's identity" in another PR's already-merged
+    pack), so editing them retroactively would misrepresent what was actually verified at
+    authoring time; `agent-library/config/redaction-rules.yaml` (a redaction-RULE definition —
+    the whole file stays untouched, including its prose `description:` fields, per the
+    superseded PR's constraint, this time enforced by a wholesale file-skip rather than a
+    line-level exception); 86 files that were `prettier --check`-clean on origin/main and are
+    NOT after a naive word substitution (a shorter word breaks a markdown table's column
+    padding or a wrapped line's width, which prettier enforces on the WHOLE file, not the diff)
+    — `.husky/pre-commit`'s formatting gate checks staged-file content, not diff hunks, so
+    running `prettier --write` to re-pass it would reintroduce the exact whole-file reformatting
+    churn this v2 exists to eliminate; excluded from the sweep instead, each verified
+    individually against its origin/main content to confirm the regression is real (not a
+    pre-existing failure) before exclusion.
+  - >-
+    Applied migrations under `**/migrations_v2/**` and all of `.github/workflows/**` are
+    excluded from the sweep by git-pathspec at candidate-enumeration time — never matched, never
+    opened, never in any diff.
+  - >-
+    No client PII anywhere in the diff or this pack. No secrets echoed. No edit outside the
+    dedicated worktree (`agent/air-m5/docs/owner-name-zero-v2`).
+acceptance:
+  - text: >-
+      A1: WHEN a case-insensitive, word-boundary scan of tracked files for "antonello" is run
+      on origin/main (excluding migrations_v2 and .github), THE count SHALL be materially
+      higher than the same scan on the working tree after this sweep.
+    probe: >-
+      git grep -c -w -iE 'antonello' <ref> -- ':!**/migrations_v2/**' ':!.github/workflows/**'
+      ':!evidence/**' | awk -F: total (see pack.yml receipts): 1674 matching lines on
+      origin/main -> 1067 on the committed tree; every remaining line falls into a documented
+      KEEP/full-file-skip class.
+  - text: >-
+      A2 (the defect this v2 exists to fix): WHEN `git diff --numstat` is computed for every
+      changed file, THE added-line count SHALL equal the deleted-line count AND SHALL equal the
+      number of lines in that file's origin/main content that the sweep's own `transform_line()`
+      function actually changes — i.e. zero collateral churn on untouched lines, for every one
+      of the 271 changed files, no exceptions.
+    probe: >-
+      a dedicated Python check (pack.yml receipts) re-derives, independently of the sweep run
+      itself, `transform_line()` applied line-by-line to each file's origin/main content and
+      compares the resulting changed-line count against `git diff --numstat`'s added/deleted
+      columns for that exact file — PASS for all 271 files, 611 added == 611 deleted == 611
+      independently-recomputed changed lines, aggregate AND per-file.
+  - text: >-
+      A3: WHEN every touched .py/.json/.yaml/.yml/.sh file is parsed, THE parse SHALL succeed
+      with zero errors.
+    probe: >-
+      py_compile + json.load + yaml.safe_load + bash -n over the full touched-file list (271
+      files) — zero errors (pack.yml receipts)
+  - text: >-
+      A4: WHEN the test suites that reference a touched module are run individually (one file at
+      a time, to avoid a pre-existing cross-file test-isolation defect this session also
+      reproduced and confirmed unrelated), THEY SHALL pass at the same rate as on origin/main.
+    probe: >-
+      pytest per-file (backend-rag unit tests via its own `.venv`, scripts/tests, tests/wa_corpus,
+      infra/scar-gates) — see pack.yml receipts
+  - text: >-
+      A5: WHERE a touched file is a functional PII-leak detector, a name-extraction NER
+      dictionary, an email/identity substring-match list, a redaction-rule definition, an
+      evidence pack, or a literal git-log author-string quote, THE literal identifier/quote
+      SHALL be left byte-identical to origin/main even if prose elsewhere in the same repo was
+      renamed.
+    probe: >-
+      manual file-by-file adversarial review this session (see pack.yml dissent — this v2 pass
+      caught two NEW classes the superseded PR's review had missed: `redaction-rules.yaml`'s
+      prose `description:` field, and the `Antonello Siano <email>` git-author-quote pattern in
+      `.claude/skills/modus/PENDING-ARMS.md` and another PR's `evidence/**/pack.yml`)
+assumptions:
+  - text: >-
+      "Zero" is the owner's standing codename per CLAUDE.md ("Owner codename: Zero (nome reale
+      PRIVATO)"), already used identically elsewhere in this repo, so replacing the first name
+      with it is consistent with existing convention rather than introducing a new one.
+    status: verified
+    probe: >-
+      grep CLAUDE.md for the codename line; unchanged from the superseded PR's own verification
+  - text: >-
+      A byte-preserving, line-scoped write (decode/substitute/re-encode ONLY the specific lines
+      that contain a real match; pass every other line through as raw, untouched bytes) is
+      sufficient to eliminate the whole-file-churn defect without needing a full AST/formatter
+      round-trip, because the substitution never changes line COUNT (word-for-word swap within
+      a line) and every line ending / indentation / trailing-whitespace byte outside the matched
+      span is left exactly as origin/main wrote it.
+    status: verified
+    probe: >-
+      the per-file equality proof (A2 above) — added == deleted == independently-recomputed
+      changed-line count, for all 271 files, with zero exceptions

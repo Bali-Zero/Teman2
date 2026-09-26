@@ -61,7 +61,7 @@ parked below.
   `backend/services/rag/agentic/prompt_builder.py`; `backend/llm/` holds
   `prompt_manager.py`, the versioned door `ZANTARA_MASTER_TEMPLATE` comes
   from) — computes `is_creator`/`is_team` from email heuristics
-  (`"antonello"|"siano" in email` → creator; `"@balizero.com" in email` or
+  (`"zero"|"siano" in email` → creator; `"@balizero.com" in email` or
   `profile.role` contains `"admin"` → team). Persona overlay application at
   `:547-552` (`CREATOR_PERSONA`/`TEAM_PERSONA`, imported from
   `backend.prompts.zantara_core` — off-limits file, read-only, never

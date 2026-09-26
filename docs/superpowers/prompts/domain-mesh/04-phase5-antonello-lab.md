@@ -1,18 +1,18 @@
-# Phase 5 — Antonello Lab (B4)
+# Phase 5 — Zero Lab (B4)
 
 > **Prerequisiti**: Phase 0 foundations. Phase 1+ optional ma utile.
 >
 > **Stima**: 6-9 giorni solo-dev.
 >
-> **Pre-azione richiesta a Antonello**: decisione su B4.a (4/2/1 NB-INTEL distinti) + B4.b (morning briefing daily/weekly/on-demand).
+> **Pre-azione richiesta a Zero**: decisione su B4.a (4/2/1 NB-INTEL distinti) + B4.b (morning briefing daily/weekly/on-demand).
 >
-> **Differenza dagli altri domini**: questo è **personale**, non Bali Zero. Lifecycle ottimizzato per Antonello come singolo utente.
+> **Differenza dagli altri domini**: questo è **personale**, non Bali Zero. Lifecycle ottimizzato per Zero come singolo utente.
 
 ---
 
 ## PROMPT (drop-in)
 
-Continuiamo il Domain Mesh. Phase 5: implementa il dominio **Antonello Lab (B4)** — research personale (AI papers, code, robotics, frontier science).
+Continuiamo il Domain Mesh. Phase 5: implementa il dominio **Zero Lab (B4)** — research personale (AI papers, code, robotics, frontier science).
 
 Prima di tutto, leggi:
 
@@ -35,7 +35,7 @@ Prima di tutto, leggi:
 
 2. **Personal relevance scorer** (R5 zero-cost):
    - **Already in Phase 0**: `arxiv_sanity_scorer.py` (SVM-on-tfidf, calibrated)
-   - **Train data**: Antonello tags papers/repos via `/lab tag <id> relevant|not_relevant` slash command
+   - **Train data**: Zero tags papers/repos via `/lab tag <id> relevant|not_relevant` slash command
    - Salva in SQLite `antonello_lab.sqlite` table `tagged_items`
    - **Zero LLM cost** scoring (R5 Karpathy pattern)
 
@@ -63,7 +63,7 @@ Prima di tutto, leggi:
    - Output consolidato in workbench
 
 7. **Cross-pollination**:
-   - Detector: paper letto da Antonello → check rilevanza Bali Zero (es. tax-LLM paper → alert Veronika)
+   - Detector: paper letto da Zero → check rilevanza Bali Zero (es. tax-LLM paper → alert Veronika)
    - Telegram `#antonello-lab` segnala anche al canale del dominio relevant
 
 8. **Long-term KG**:
@@ -99,7 +99,7 @@ Prima di tutto, leggi:
 
 ### R5 architecture pattern (R5 §7)
 
-3-tier "second brain" Antonello:
+3-tier "second brain" Zero:
 
 - **Tier 1 (Obsidian-like)**: notes locali in `~/Desktop/nuzantara/research/`
 - **Tier 2 (Readwise-like)**: NB-INTEL-\* aggregator with scoring → SQLite
@@ -116,7 +116,7 @@ Daily Telegram briefing è il "punto di accesso" al sistema, non il sistema stes
 - Atomic mv snapshot
 - Branch hijack push post commit
 
-### Pre-azione richiesta a Antonello
+### Pre-azione richiesta a Zero
 
 **PRIMA di partire**:
 

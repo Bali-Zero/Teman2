@@ -52,7 +52,7 @@
 CREATE TABLE IF NOT EXISTS cockpit_audit_log (
     id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    actor TEXT NOT NULL DEFAULT 'antonello',
+    actor TEXT NOT NULL DEFAULT 'zero',
     action TEXT NOT NULL,
     params_json JSONB NOT NULL DEFAULT '{}'::jsonb,
     result TEXT NOT NULL CHECK (result IN ('success', 'denied', 'error')),

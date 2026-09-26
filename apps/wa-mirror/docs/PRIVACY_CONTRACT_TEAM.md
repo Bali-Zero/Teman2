@@ -76,13 +76,13 @@ sudah ada di sistem,
    Pesan historis terkait klien tetap di CRM karena tergolong "data klien
    Bali Zero", bukan data pribadi Anda.
 
-### Yang TIDAK boleh dilakukan oleh Bali Zero / Antonello
+### Yang TIDAK boleh dilakukan oleh Bali Zero / Zero
 
 - Menggunakan pesan prospect/non-klien di luar kebutuhan bisnis Bali Zero.
   Semua akses tetap melalui RBAC dan audit trail.
 - Memberikan akses ke pesan Anda kepada anggota tim lain yang tidak terkait
   klien yang sama. RBAC: Surya melihat pesan klien yang dia tangani; Adit
-  melihat pesan klien yang dia tangani; Antonello (owner) melihat semua
+  melihat pesan klien yang dia tangani; Zero (owner) melihat semua
   pesan klien.
 - Menggunakan isi pesan untuk evaluasi non-profesional (mis. menilai gaya
   bicara pribadi Anda).
@@ -159,13 +159,13 @@ existing "Linked Devices" feature of WhatsApp. Goal:
    CRM because they qualify as "Bali Zero client data", not your personal
    data.
 
-### What Bali Zero / Antonello may NOT do
+### What Bali Zero / Zero may NOT do
 
 - Use prospect/non-client messages outside Bali Zero business needs. All
   access still goes through RBAC and audit trail.
 - Grant access to your messages to other team members not associated with
   the same client. RBAC: Surya sees messages of clients he handles;
-  Adit sees messages of clients he handles; Antonello (owner) sees all
+  Adit sees messages of clients he handles; Zero (owner) sees all
   client messages.
 - Use message content for non-professional evaluation (e.g. judge your
   personal communication style).

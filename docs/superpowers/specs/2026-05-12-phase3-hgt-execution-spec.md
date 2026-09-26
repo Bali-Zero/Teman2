@@ -1,7 +1,7 @@
 # Phase 3 — HGT FASE 4 Execution Spec (v2 — post 4-panel review)
 
 **Date**: 2026-05-12 21:30 WITA · **Revised**: 21:45 WITA post-review
-**Author**: Antonello (Zero) via Claude Opus 4.7 max
+**Author**: Zero via Claude Opus 4.7 max
 **Predecessor**: Phase 2 Core Plumbing complete (PR #620 merged; events_outbox drained 3 unconsumed, cell:skills seed 18, sentinel-1 consumer-group ready)
 **Mode**: Spec doc only — execution scope deferred to operator-approval per ticket
 **Estimated effort**: ~5 days code + 14-day soak + 0.5 day FASE 4 lift (revised from 7-day in v1)

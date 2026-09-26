@@ -26,7 +26,7 @@ adversarial_review_note: "Key added 2026-08-02. SCOPE = the ONE retraction annot
 | Q6  | Cost ceiling per agent             | **Dynamic per agent class** in I/O contract: Text/Planning ~$0.05-0.15, Render/VLM $1.00+                                                            | **CRITICO**: cambio + correzione cost-model                                                            |
 | Q7  | Idempotence protocol               | **Bifurcated**: planning agents strict JSON diff, render agents semantic idempotence (3 seeds pass critic) + manifest/prompt-hash idempotent         | Cambio: 2 tier                                                                                         |
 | Q8  | Memory seed file                   | **Strict separation of concerns**: frontmatter = runtime routing, genesis.md = immutable history/why, lessons.md = ongoing                           | Cambio: 3 distinct files                                                                               |
-| Q9  | Skill demotion gracefulness        | **FAIL ≥2 → `_quarantine/` (suspend)**, archive richiede Antonello PR + upstream-contamination check                                                 | Cambio: quarantine pre-archive                                                                         |
+| Q9  | Skill demotion gracefulness        | **FAIL ≥2 → `_quarantine/` (suspend)**, archive richiede Zero PR + upstream-contamination check                                                 | Cambio: quarantine pre-archive                                                                         |
 | Q10 | Genesis ritual scaling             | **1 PR `wr3-room-genesis` con 13 signed commits** (1 per agent, 5 artifacts each)                                                                    | Cambio: bisectable, not mega-commit                                                                    |
 
 ## CRITICO — Codex global red flag (Veo cost model errore)
@@ -76,7 +76,7 @@ cost_model:
 
 | Artefatto    | Path                                                  | Contenuto                                                             | Mutabilità                             |
 | ------------ | ----------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------- |
-| Agent file   | `~/.claude/agents/<name>.md`                          | Frontmatter + system prompt body                                      | Mutable via PR Antonello               |
+| Agent file   | `~/.claude/agents/<name>.md`                          | Frontmatter + system prompt body                                      | Mutable via PR Zero               |
 | Skill cortex | `~/.claude/skills/bali-zero-brand/wr3/<name>/`        | `SKILL.md` + dominio-specifico (`camera-grammar.md`, etc.)            | Immutable post-graduation (v2 pattern) |
 | I/O contract | `~/Desktop/nuzantara/docs/wr3/contracts/<name>.yaml`  | Input/output schema + failure codes + **cost_model + lifecycle_tier** | Versioned (manifest pin)               |
 | Test fixture | `~/Desktop/nuzantara/tests/wr3/<name>_smoke.py`       | 1 happy + 1 edge                                                      | Mutable for test expansion             |
@@ -102,7 +102,7 @@ contract_version: 1.0.0
 - 1 PR `wr3-room-genesis`
 - 13 signed commits (1 per agent, 5 artifacts each)
 - Reviewable + bisectable + atomic per-agent rollback
-- Antonello review weekly, merge after smoke tests green
+- Zero review weekly, merge after smoke tests green
 - Final commit: `feat(wr3): activate room — all 13 agents bootstrapped + baseline_signed skills`
 
 ### Fase 2 — IMPARA (learning, gated)
@@ -200,7 +200,7 @@ idempotence:
 _proposed/<skill>-v1.md (Voyager autonomous draft)
     ↓ 3 successful uses (critic ≥ threshold)
     ↓ skill assigned skill_id + version 1.0.0 + sha256 hash
-    ↓ Antonello git diff review (weekly)
+    ↓ Zero git diff review (weekly)
     ↓ git commit to main
 <skill>-v1.md (active, immutable)
 ```
@@ -219,7 +219,7 @@ _proposed/<skill>-v1.md (Voyager autonomous draft)
 | ---- | -------------------------------- | ------------------------------------------------------------- |
 | 1    | Critic FAIL ≥2 with this skill   | Skill → `_quarantine/<skill>.md`, orchestrator suspends usage |
 | 2    | Reflexion-synth analyzes 2 FAILs | Determine root cause: skill decay vs upstream contamination   |
-| 3a   | Skill confirmed decay            | Antonello PR review → `_archived/`                            |
+| 3a   | Skill confirmed decay            | Zero PR review → `_archived/`                            |
 | 3b   | Upstream contamination           | Quarantine lifted, lesson goes to upstream agent (Q1)         |
 
 ### Fase 6 — MUORE (sunset, tiered)
@@ -232,7 +232,7 @@ _proposed/<skill>-v1.md (Voyager autonomous draft)
 | **scheduled** | Missed cron window ≥3 consecutive                                                    | LaunchAgent failure log                     |
 | **fallback**  | Eligible opportunity unused ≥10 times (e.g., b-roll-curator skipped 10 Veo failures) | Orchestrator counter                        |
 | **all**       | Critic FAIL ≥5 consecutive                                                           | Orchestrator monitor → QUARANTINE           |
-| **all**       | Cost overrun ≥3× budget over 7d                                                      | yt-metrics-analyst → HALT + Antonello alert |
+| **all**       | Cost overrun ≥3× budget over 7d                                                      | yt-metrics-analyst → HALT + Zero alert |
 | **all**       | Symbiosis Law violation                                                              | Lint scan → quarantine + cicatrix entry     |
 
 **Rebirth via Voyager fork:**
@@ -260,7 +260,7 @@ Tabella riassuntiva (4 agent + 9 supporting per template):
 | wr3-editorial-bench       | scheduled      | reasoning     | $1 monthly                              | reference-brand-list-12                                                                                 | Report due 1st Mon 07:00 WITA                                |
 | wr3-b-roll-curator        | fallback       | text_planning | $0.10                                   | stock-source-list, license-verification-protocol                                                        | License-clean rate 1.0, eligible-opportunity used vs skipped |
 
-## Open questions per Antonello (decision gate)
+## Open questions per Zero (decision gate)
 
 1. **Flow Pro plan vs Gemini API for Veo**: confermo che restiamo su Flow UI Pro ($10/mo 3500 cr promo) e NON Gemini API ($0.10/sec)? Cost differential 28× — Flow è no-brainer financialmente, ma Pro plan ha rate limit / TOS commercial-use da verificare.
 2. **Lifecycle tier per agent**: tabella sopra mette tutti pipeline agent come `core` (30-45d death). Eccezione `b-roll-curator` = `fallback`. Confermi o vuoi qualche pipeline agent come `scheduled` (es. editorial-bench)?

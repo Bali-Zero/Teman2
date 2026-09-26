@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 /// Two-language UI (Italian / Indonesian) with an in-app switch, persisted across launches.
-/// Default = Italian (Antonello's language); Indonesian for the Bali Zero team.
+/// Default = Italian (Zero's language); Indonesian for the Bali Zero team.
 enum Lang: String, CaseIterable {
     case it, id
     var flag: String { self == .it ? "🇮🇹" : "🇮🇩" }

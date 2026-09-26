@@ -46,7 +46,7 @@ consumes: []
 
 failure_modes:
   - code: hard_fail
-    action: "Pool empty for shot brief → episode flags 'b_roll_unavailable' + Telegram P0 (Antonello may approve cinematic gap)"
+    action: "Pool empty for shot brief → episode flags 'b_roll_unavailable' + Telegram P0 (Zero may approve cinematic gap)"
     telegram_p0_on: true
 
 law_compliance:

@@ -416,7 +416,7 @@ def _build_prompt(channel: str, agent_name: str, payload: dict) -> str:
         verdict = payload.get("verdict", "PENDING")
         return base + f"Critic verdict: {verdict}. Route retry lane OR proceed to staged."
     if channel == "wr3_episode_staged":
-        return base + "Move to Drive staging. Telegram P0 to Antonello for manual publish."
+        return base + "Move to Drive staging. Telegram P0 to Zero for manual publish."
     return base + "Unrecognized channel — no-op."
 
 

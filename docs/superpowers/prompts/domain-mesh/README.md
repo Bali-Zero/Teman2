@@ -20,7 +20,7 @@ Prompt drop-in per continuare il **Domain Mesh autonomic system** (Bali Zero / N
 | **Phase 2** | Setup Team extend (Property + Labor) | `01-phase2-setup-team-extend.md` | 5-7 giorni |
 | **Phase 3** | B2 Tax Engine | `02-phase3-tax-engine.md` | 10-14 giorni |
 | **Phase 4** | B3 Marketing Pulse | `03-phase4-marketing.md` | 7-10 giorni |
-| **Phase 5** | B4 Antonello Lab | `04-phase5-antonello-lab.md` | 6-9 giorni |
+| **Phase 5** | B4 Zero Lab | `04-phase5-antonello-lab.md` | 6-9 giorni |
 | **Phase 6** | B5 Bali Macro | `05-phase6-bali-macro.md` | 5-8 giorni |
 | **Phase 7** | B6 Nexus OSINT | `06-phase7-nexus-osint.md` | 7-10 giorni |
 | **Phase 8** | Cross-domain federation | `07-phase8-cross-domain-federation.md` | 8-12 giorni |
@@ -61,17 +61,17 @@ Tutte seguono questa pipeline:
 
 ## Ordine consigliato (priorità business)
 
-Se Antonello vuole massimo impatto business veloce:
+Se Zero vuole massimo impatto business veloce:
 
 1. **Phase 2** (Setup Team complete) — chiude il dominio già operativo
 2. **Phase 3** (Tax Engine) — Veronika beneficia direttamente, alta utilizzazione clienti
 3. **Phase 4** (Marketing) — content engine accelera dispatch
 4. **Phase 6** (Bali Macro) — feeds altre fasi con cross-domain context
 5. **Phase 7** (Nexus OSINT) — KYC due diligence + curiosità autorità
-6. **Phase 5** (Antonello Lab) — personale, può aspettare
+6. **Phase 5** (Zero Lab) — personale, può aspettare
 7. **Phase 8** (Federation) — chiusura sistema
 
-Se Antonello vuole **systems thinking first** (federation power asap):
+Se Zero vuole **systems thinking first** (federation power asap):
 
 1. Phase 2 quick-win
 2. Phase 8 SUBSET (cross-domain alert routing solo) — sblocca routing tra B1 + B6

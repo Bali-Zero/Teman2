@@ -122,7 +122,7 @@ class WaMirrorEnrichmentSensor:
       - repairable: True iff any label has ModuleNotFoundError class
       - labels: per-label detail incl. parsed error_class + missing_module
 
-    Anti-Telegram (Antonello rule 2026-05-26): sensor never sends alerts;
+    Anti-Telegram (Zero rule 2026-05-26): sensor never sends alerts;
     only logs to cell logger. Downstream emit_enrichment_repair_request
     (called by pulse.py) is the only escalation path.
     """
