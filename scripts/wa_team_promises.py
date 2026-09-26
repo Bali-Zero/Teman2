@@ -393,7 +393,7 @@ def _acquire_scan_lock_or_none() -> int | None:
     every path prints a `wa_team_promises: ...` line, cron never sees a
     bare silent exit)."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    fd = os.open(str(_SCAN_LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o644)
+    fd = os.open(str(_SCAN_LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o600)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return fd
@@ -407,6 +407,9 @@ def _release_scan_lock(fd: int) -> None:
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
     except OSError:
+        # Best-effort cleanup: the scan already ran to completion (or the
+        # caller is exiting anyway); process exit reclaims the fd/lock
+        # regardless, so a failure here must never crash the cron tick.
         pass
 
 

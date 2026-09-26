@@ -199,6 +199,20 @@ def test_scan_lock_is_exclusive_then_releasable(tmp_path, monkeypatch):
     wtp._release_scan_lock(fd3)
 
 
+def test_scan_lock_file_is_created_owner_only(tmp_path, monkeypatch):
+    """CodeQL #9161: the lock file must never be group/world readable —
+    0o644 would let any local user see whether a scan is in flight."""
+    monkeypatch.setattr(wtp, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(wtp, "_SCAN_LOCK_FILE", tmp_path / "scan.lock")
+
+    fd = wtp._acquire_scan_lock_or_none()
+    try:
+        mode = os.stat(wtp._SCAN_LOCK_FILE).st_mode & 0o777
+        assert mode == 0o600
+    finally:
+        wtp._release_scan_lock(fd)
+
+
 # E — digest: counts only. A clause, name, phone or client id must have NO
 # path into the line the gateway sends. REWORK B2 (replaces A4): the digest
 # now reports YESTERDAY's completed totals (three counts:
