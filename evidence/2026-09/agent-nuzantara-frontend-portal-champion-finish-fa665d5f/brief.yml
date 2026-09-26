@@ -19,8 +19,8 @@ gear_reason: >-
   Declared by the mandate (recovery of a full-stack SSE feature on the
   release critical path; backend-rag deploys on merge, mouth needs an
   explicit promote) and equal to the deterministic floor: 3, source `size`
-  (+2252/-71 across 26 files against merge-base d2e0a1a50b including this
-  evidence; +1904 for code, tests and plan alone; no hot-zone path),
+  (+2330/-73 across 28 files against merge-base 4b49607683 including this
+  evidence; +1956 for code, tests and plan alone; no hot-zone path),
   measured with `scripts/evidence_pack_lint.py --print-floor
   --print-floor-source`. No design choice changes, so there is no
   architecture council; the Gear-3 council_run is two cross-family REVIEW
