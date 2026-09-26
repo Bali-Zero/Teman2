@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # G2: disk usage + log size monitor
 # Runs every 30min via launchd com.nuzantara.disk-monitor
+# --dry-run: print readings and alerts; send, write and cooldown nothing.
 
 set -uo pipefail
+
+DRY_RUN=0
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
 
 # Innervation W1.1: emit organism sidecar — keep legacy state file too.
 ORGAN_ID_W1="pro.disk_monitor"
@@ -14,6 +18,9 @@ fi
 ROOT_THRESHOLD_PCT=85
 LOGS_DIR_THRESHOLD_MB=500
 SINGLE_LOG_THRESHOLD_MB=50
+SWAP_THRESHOLD_PCT=50
+VM_THRESHOLD_MB=8192
+VM_VOLUME="${DISK_MONITOR_VM_VOLUME:-/System/Volumes/VM}"
 STATE_FILE="$HOME/.agent/decisions/disk_monitor.json"
 LOG_FILE="$HOME/logs/disk-monitor.log"
 COOLDOWN_FILE="$HOME/.agent/decisions/disk_monitor.cooldown"
@@ -29,7 +36,10 @@ TG_NOTIFY="${TG_NOTIFY:-$HOME/nuzantara/scripts/tg_notify.py}"
 
 mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 
-log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*" | tee -a "$LOG_FILE"; }
+log() {
+    local line="[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*"
+    if (( DRY_RUN )); then echo "$line"; else echo "$line" | tee -a "$LOG_FILE"; fi
+}
 
 tg_alert() {
     local text="$1"
@@ -40,6 +50,7 @@ tg_alert() {
 
 cooldown_active() {
     local key="$1"
+    (( DRY_RUN )) && return 1
     [[ ! -f "$COOLDOWN_FILE" ]] && return 1
     local last
     last=$(grep "^$key:" "$COOLDOWN_FILE" 2>/dev/null | tail -1 | cut -d: -f2)
@@ -50,6 +61,7 @@ cooldown_active() {
 
 cooldown_set() {
     local key="$1"
+    (( DRY_RUN )) && return 0
     touch "$COOLDOWN_FILE"
     grep -v "^$key:" "$COOLDOWN_FILE" > "$COOLDOWN_FILE.tmp" 2>/dev/null || true
     echo "$key:$(date +%s)" >> "$COOLDOWN_FILE.tmp"
@@ -114,6 +126,40 @@ if (( ${#big_logs[@]} > 0 )); then
     fi
 fi
 
+# --- 4. swap + VM volume ---
+# The 2026-09-25/26 ENOSPC bursts on Pro were macOS swap: swapfiles in
+# /System/Volumes/VM share the APFS container with Data, grew to >=18 GiB under
+# RAM over-commit, and jetsam LOWSWAP killed 164/209 processes. `df` on Data
+# never shows it, so read the swap and the VM volume directly.
+swap_line="${DISK_MONITOR_SWAPUSAGE:-$(LC_ALL=C /usr/sbin/sysctl -n vm.swapusage 2>/dev/null)}"
+read -r swap_total_mb swap_used_mb < <(printf '%s\n' "$swap_line" | LC_ALL=C awk '
+    function mb(v,  u, n) { gsub(",", ".", v); u = substr(v, length(v)); n = substr(v, 1, length(v) - 1) + 0
+        if (u == "G") n *= 1024; else if (u == "K") n /= 1024; return int(n + 0.5) }
+    { for (i = 1; i < NF; i++) { if ($i == "total") t = mb($(i + 2)); if ($i == "used") u = mb($(i + 2)) } }
+    END { print t + 0, u + 0 }')
+swap_pct=0
+(( swap_total_mb > 0 )) && swap_pct=$(( swap_used_mb * 100 / swap_total_mb ))
+vm_used_mb="${DISK_MONITOR_VM_USED_MB:-}"
+if [[ -z "$vm_used_mb" ]]; then
+    vm_used_mb=0
+    [[ -d "$VM_VOLUME" ]] && vm_used_mb=$(df -k "$VM_VOLUME" | awk 'NR==2 {print int($3 / 1024)}')
+fi
+log "swap: used ${swap_used_mb}/${swap_total_mb} MB (${swap_pct}%) · VM volume ${VM_VOLUME}: ${vm_used_mb} MB"
+if (( swap_pct > SWAP_THRESHOLD_PCT )) && ! cooldown_active "swap_high"; then
+    alerts+=("🧠 <b>Swap</b>: ${swap_used_mb}/${swap_total_mb} MB used (${swap_pct}%, threshold ${SWAP_THRESHOLD_PCT}%) — RAM over-commit, jetsam LOWSWAP risk")
+    cooldown_set "swap_high"
+fi
+if (( vm_used_mb > VM_THRESHOLD_MB )) && ! cooldown_active "vm_volume_big"; then
+    alerts+=("🌀 <b>VM volume</b> ${VM_VOLUME}: ${vm_used_mb} MB (threshold ${VM_THRESHOLD_MB} MB) — swapfiles eat the Data container's free space")
+    cooldown_set "vm_volume_big"
+fi
+
+if (( DRY_RUN )); then
+    echo "dry-run: ${#alerts[@]} alert(s); nothing sent, written or cooled down"
+    (( ${#alerts[@]} > 0 )) && printf '%s\n' "${alerts[@]}"
+    exit 0
+fi
+
 # --- state file (human-readable JSON, sentinel-trackable) ---
 big_logs_json="[]"
 if (( ${#big_logs[@]} > 0 )); then
@@ -135,6 +181,10 @@ cat > "$STATE_FILE" <<EOF
   "root_pct": $root_pct,
   "logs_dir_mb": $logs_size_mb,
   "big_logs": $big_logs_json,
+  "swap_used_mb": $swap_used_mb,
+  "swap_total_mb": $swap_total_mb,
+  "swap_pct": $swap_pct,
+  "vm_volume_mb": $vm_used_mb,
   "alerts_fired": ${#alerts[@]}
 }
 EOF
@@ -157,10 +207,10 @@ EOF
 if declare -F emit_organ_last_seen >/dev/null 2>&1; then
     if (( ${#alerts[@]} > 0 )); then
         emit_organ_last_seen "$ORGAN_ID_W1" "degraded" \
-            "{\"root_pct\":${root_pct},\"logs_dir_mb\":${logs_size_mb},\"alerts\":${#alerts[@]}}" || true
+            "{\"root_pct\":${root_pct},\"logs_dir_mb\":${logs_size_mb},\"swap_pct\":${swap_pct},\"vm_volume_mb\":${vm_used_mb},\"alerts\":${#alerts[@]}}" || true
     else
         emit_organ_last_seen "$ORGAN_ID_W1" "ok" \
-            "{\"root_pct\":${root_pct},\"logs_dir_mb\":${logs_size_mb}}" || true
+            "{\"root_pct\":${root_pct},\"logs_dir_mb\":${logs_size_mb},\"swap_pct\":${swap_pct},\"vm_volume_mb\":${vm_used_mb}}" || true
     fi
 fi
 
