@@ -579,11 +579,8 @@ function CandidateCard({
             </p>
           )}
         </div>
-        <span className="oracle-candidate-card__rank oracle-tabular-nums">
-          {translate(language, "outcome.rank" as I18nKey, {
-            rank: candidate.rank,
-          })}
-        </span>
+        {/* No "Rank N" pill: the order IS the engine's order, and a rank
+            label reads as a recommendation (BRIEF-v2 R-3). */}
       </header>
 
       <div className="oracle-axis-grid">

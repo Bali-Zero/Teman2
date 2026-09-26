@@ -148,6 +148,10 @@ html[data-oracle-theme-bootstrap="dark"]
   .oracle-road {
     --road-gutter: 30px;
   }
+  .oracle-road__stage {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+  }
 }
 .oracle-road__canvas {
   position: absolute;
@@ -263,7 +267,7 @@ html[data-oracle-theme-bootstrap="dark"]
 /* the records: the road behind you */
 .oracle-road__records {
   list-style: none;
-  margin: 0 0 var(--space-8);
+  margin: 0 0 2rem;
   padding: 0;
 }
 .oracle-road__record {
@@ -273,7 +277,7 @@ html[data-oracle-theme-bootstrap="dark"]
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-5) 0 var(--space-2);
+  margin: 1.25rem 0 var(--space-2);
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 700;
@@ -285,7 +289,7 @@ html[data-oracle-theme-bootstrap="dark"]
 .oracle-road__stage::after {
   content: "";
   flex: 1;
-  min-width: 1.5rem;
+  min-width: 0.75rem;
   height: 1px;
   background: var(--oracle-border-strong);
 }
@@ -382,7 +386,7 @@ html[data-oracle-theme-bootstrap="dark"]
   margin-bottom: var(--space-3);
 }
 .oracle-roadhead .oracle-question {
-  gap: var(--space-5);
+  gap: 1.25rem;
 }
 .oracle-roadhead .oracle-option-card,
 .oracle-roadhead .oracle-tile {
@@ -417,6 +421,9 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 
 /* the trailhead */
+.oracle-roadhead[data-road-head="framing"] .oracle-headline + .oracle-subhead {
+  margin-top: var(--space-3);
+}
 .oracle-roadhead[data-road-head="framing"] .oracle-headline {
   font-size: clamp(2rem, 4.2vw, 3.1rem);
   line-height: 1.08;
@@ -425,7 +432,7 @@ html[data-oracle-theme-bootstrap="dark"]
 
 /* answers said before an edit — pencil, below the head */
 .oracle-road__earlier {
-  margin-top: var(--space-8);
+  margin-top: 2rem;
 }
 .oracle-road__earlier-title {
   margin: 0 0 var(--space-2);
@@ -479,7 +486,7 @@ html[data-oracle-theme-bootstrap="dark"]
   padding: 0;
 }
 .oracle-arrival {
-  margin-bottom: var(--space-8);
+  margin-bottom: 2rem;
 }
 .oracle-arrival__title {
   display: flex;
@@ -521,14 +528,11 @@ html[data-oracle-theme-bootstrap="dark"]
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   min-height: 64px;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) 1.25rem;
   border: 1px solid var(--oracle-border-strong);
   border-left: 3px solid var(--road-structure);
   border-radius: 4px;
   background: var(--oracle-bg-elevated);
-}
-.oracle-lane:first-child {
-  border-left-color: var(--road-copper);
 }
 .oracle-lane__name {
   font-family: var(--font-serif);
