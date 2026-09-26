@@ -68,8 +68,12 @@ def _patched_wrapper(tmp_path: Path, name: str = "wrapper-copy.sh", **overrides:
         assert key in _PATCHABLE_KEYS, f"{key} is not a declared patchable constant"
         pattern = rf"^{key}=.*$"
         replacement = f'{key}="{value}"'
-        text, n = re.subn(pattern, replacement, text, count=1, flags=re.M)
-        assert n == 1, f"could not patch {key}= in a copy of {_WRAPPER}"
+        # count=0 (all occurrences): N1 (gate 2026-09-26) re-asserts
+        # HOME_DIR/RUNTIME_DIR/VENV_PY a second time after `set +a`, so a
+        # patched copy must rewrite BOTH declarations or the test would
+        # silently exercise the wrapper's real production paths post-source.
+        text, n = re.subn(pattern, replacement, text, count=0, flags=re.M)
+        assert n >= 1, f"could not patch {key}= in a copy of {_WRAPPER}"
     dst.write_text(text)
     dst.chmod(dst.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return dst
@@ -101,8 +105,13 @@ def _plant_pinned_codex(world: dict, version: str) -> Path:
 
 
 def _run(wrapper: Path) -> subprocess.CompletedProcess[str]:
+    # N2 (gate 2026-09-26): explicit `/bin/sh`, never a PATH-resolved `sh`
+    # — the NUL-probe's `read -d ''` is a bash extension dash rejects, and
+    # macOS's own `/bin/sh` IS bash 3.2 (the wrapper's only two real
+    # runtimes: this, and macos-latest CI's bash), so this must never
+    # silently resolve to a dash on some other PATH.
     return subprocess.run(
-        ["sh", str(wrapper)], capture_output=True, text=True, timeout=15, check=False,
+        ["/bin/sh", str(wrapper)], capture_output=True, text=True, timeout=15, check=False,
     )
 
 
@@ -180,6 +189,56 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
         os.mkfifo(pin_file)
     elif kind == "embedded_nul":
         pin_file.write_bytes(b"WA_CODEX_CLI_VERSION_PIN=9.9.9\n\x00JUNK\n")
+    elif kind == "nul_same_line_planted":
+        # C1 (gate 2026-09-26): the existing `embedded_nul` case puts the
+        # NUL on its OWN line (a `\n` before it), so the exactly-one-line
+        # check alone already rejects it — non-discriminating for the NUL
+        # probe specifically. This one is genuinely ONE line (a single
+        # trailing newline, NUL mid-content) WITH the binary planted, so
+        # removing only the NUL probe is provably what flips the verdict
+        # (mutation-verified below, not merely asserted).
+        pin_file.write_bytes(b"WA_CODEX_CLI_VERSION_PIN=9.9.9\x00JUNK\n")
+        _plant_pinned_codex(world, "9.9.9")
+    elif kind == "two_lines_diff_versions_planted":
+        # The existing `two_lines` case repeats the SAME version on both
+        # lines, so removing the line-count guard cannot be told apart
+        # from keeping it (either way the resolved version is 9.9.9).
+        # Different versions, BOTH planted, make the guard's effect
+        # observable: with it, exit 78; without it, the read loop's last
+        # line wins and 9.9.9 gets silently applied.
+        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=1.1.1\nWA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+        _plant_pinned_codex(world, "1.1.1")
+        _plant_pinned_codex(world, "9.9.9")
+    elif kind == "bad_semver_planted":
+        # The existing `bad_semver` case never plants a binary, so
+        # removing `_is_semver` alone would still fail closed at the
+        # binary-existence check instead — masking the guard under test.
+        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9\n")
+        _plant_pinned_codex(world, "9.9")
+    elif kind == "traversal_escape_planted":
+        # `_is_semver` is the ONLY guard keeping the derived binary path
+        # under PINNED_CODEX_ROOT at all — nothing canonicalizes
+        # `$PINNED_CODEX_ROOT/$ver/bin/codex` before the `-f`/`-x` check.
+        # Planted one level ABOVE pinned_root (a sibling "escape" dir) so
+        # that, without the semver guard, the derived path would resolve
+        # there and be accepted.
+        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=../escape\n")
+        # `codex/..` only resolves through a REAL `codex` directory — the
+        # kernel cannot walk `..` past a path component that does not
+        # exist on disk, even though the final target one level up does.
+        world["pinned_root"].mkdir(parents=True, exist_ok=True)
+        escape_bin = world["pinned_root"].parent / "escape" / "bin" / "codex"
+        escape_bin.parent.mkdir(parents=True, exist_ok=True)
+        _make_executable(escape_bin, _FAKE_CODEX_STUB.format(version="../escape"))
+    elif kind == "bin_is_directory":
+        # C2 (gate 2026-09-26): a directory at the derived binary path is
+        # traversable (`-x` on a 0755 dir is true), so the OLD `-x`-only
+        # check silently APPLIED it. A valid pin, a valid version — only
+        # the binary itself is wrong.
+        pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+        bin_path = world["pinned_root"] / "9.9.9" / "bin" / "codex"
+        bin_path.mkdir(parents=True)
+        bin_path.chmod(0o755)
     else:
         raise AssertionError(f"unknown case {kind!r}")
     return pin_file
@@ -190,6 +249,8 @@ def _invalid_pin_case(tmp_path: Path, world: dict, kind: str) -> Path:
     [
         "bad_semver", "unknown_key", "two_lines", "empty", "bin_missing", "symlink_pin",
         "directory", "dev_null", "fifo", "embedded_nul",
+        "nul_same_line_planted", "two_lines_diff_versions_planted", "bad_semver_planted",
+        "traversal_escape_planted", "bin_is_directory",
     ],
 )
 def test_guilt_present_but_invalid_pin_refuses(tmp_path: Path, world: dict, kind: str) -> None:
@@ -255,6 +316,147 @@ def test_guilt_daemon_env_cannot_clobber_the_resolved_pin(tmp_path: Path, world:
     assert f"WA_CODEX_BIN={pinned_bin}" in result.stdout
 
 
+def test_guilt_unsearchable_runtime_dir_refuses_not_legacy(tmp_path: Path, world: dict) -> None:
+    """C3 (gate 2026-09-26, corrected per the delta-council catch: the
+    first version of this test broke RUNTIME_DIR's mode while the pin file
+    lived OUTSIDE it — siblings, not container/contents — so `[ -e
+    "$CODEX_PIN_FILE" ]` was never actually blocked by the broken mode; the
+    test only proved the new top-level guard fires, not the real defect).
+    The pin file now lives INSIDE RUNTIME_DIR: `[ -e "$CODEX_PIN_FILE" ]`
+    cannot traverse an unsearchable RUNTIME_DIR to even STAT it, so a pin
+    file that genuinely exists behind a broken directory mode used to read
+    as "no pin file here" and fall into legacy (rc 0, whatever the env's
+    WA_CODEX_BIN says) — reproduced live on Pro's own layout (gate's
+    eacces.py E1/E2). RUNTIME_DIR EXISTS here (unlike a fresh,
+    never-provisioned machine) but is not other-traversable, which is a
+    broken/obstructed state, never legitimate absence."""
+    _write_daemon_env(
+        world,
+        WA_CODEX_CLI_VERSION_PIN="0.0.1",
+        WA_CODEX_BIN="/opt/homebrew/bin/codex",
+        WA_CODEX_BROKER_ENABLED="true",
+    )
+    pin_file = world["runtime"] / "codex-pin.env"
+    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+    _plant_pinned_codex(world, "9.9.9")
+    wrapper = _base_wrapper(tmp_path, world, pin_file)
+    world["runtime"].chmod(0o644)
+    try:
+        result = _run(wrapper)
+    finally:
+        world["runtime"].chmod(0o755)
+    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
+    assert "not searchable" in result.stderr, result.stderr
+    heartbeat_file = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
+    hb = heartbeat_file.read_text()
+    assert '"status":"refused"' in hb, hb
+    assert '"note":"pin invalid"' in hb, hb
+
+
+def test_guilt_invalid_pin_beats_the_kill_switch(tmp_path: Path, world: dict) -> None:
+    """N3 (gate 2026-09-26): pin validation happens strictly BEFORE the
+    daemon env is even sourced, so an invalid pin must refuse (exit 78)
+    even when that same env also sets the kill switch — the kill switch
+    is checked only after `set +a`, which an invalid pin never reaches."""
+    _write_daemon_env(
+        world,
+        WA_CODEX_CLI_VERSION_PIN="0.0.1",
+        WA_CODEX_BIN="/opt/homebrew/bin/codex",
+        WA_CODEX_BROKER_ENABLED="false",
+    )
+    pin_file = tmp_path / "codex-pin.env"
+    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9\n")  # bad_semver, no binary planted
+    wrapper = _base_wrapper(tmp_path, world, pin_file)
+    result = _run(wrapper)
+    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
+    heartbeat_file = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
+    hb = heartbeat_file.read_text()
+    assert '"status":"refused"' in hb, hb
+    assert '"note":"pin invalid"' in hb, hb
+
+
+def test_guilt_env_cannot_clobber_post_source_literals(tmp_path: Path, world: dict) -> None:
+    """N1 (gate 2026-09-26, dedicated regression requested by the delta
+    council — the existing clobber test only tries the pin's OWN
+    variables). A plain DATA assignment in the daemon env, exported by
+    `set -a`, would otherwise redefine RUNTIME_DIR/VENV_PY/TAG for the
+    REST of the script (the cd target, the exec target, and the §6
+    proof-line prefix) after the source. The re-assert right after
+    `set +a` must win: the daemon still execs the wrapper's OWN (here,
+    test-patched) VENV_PY/RUNTIME_DIR, and the proof line still carries
+    the real TAG, never the env's.
+
+    Round 2 (codex-gpt-5.6-sol delta, 2026-09-27): the original version of
+    this test only clobbered 3 of the 6 wrapper-private literals the N1
+    block re-asserts (RUNTIME_DIR/VENV_PY/TAG), never HOME_DIR/ORGAN_ID/
+    SIDECAR_DIR, and never looked at the heartbeat file at all — proven by
+    a live mutation that dropped the HOME_DIR/ORGAN_ID/SIDECAR_DIR lines
+    from the wrapper's re-assert block while this test stayed green. Now
+    all six are clobbered, and the heartbeat is asserted to land at the
+    wrapper's OWN (test-patched) HOME_DIR/ORGAN_ID path, never the
+    hostile one."""
+    _write_daemon_env(
+        world,
+        WA_CODEX_CLI_VERSION_PIN="0.0.1",
+        WA_CODEX_BIN="/opt/homebrew/bin/codex",
+        WA_CODEX_BROKER_ENABLED="true",
+        RUNTIME_DIR="/nonexistent-evil-runtime",
+        VENV_PY="/nonexistent-evil-venv",
+        TAG="stale-tag",
+        HOME_DIR="/nonexistent-evil-home",
+        ORGAN_ID="evil.organ",
+        SIDECAR_DIR="/nonexistent-evil-sidecar",
+    )
+    pin_file = tmp_path / "codex-pin.env"
+    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+    pinned_bin = _plant_pinned_codex(world, "9.9.9")
+
+    wrapper = _base_wrapper(tmp_path, world, pin_file)
+    result = _run(wrapper)
+    assert result.returncode == 0, result.stderr
+    assert "WA_CODEX_CLI_VERSION_PIN=9.9.9" in result.stdout
+    assert f"WA_CODEX_BIN={pinned_bin}" in result.stdout
+    assert "wa-codex-broker-wrapper: " in result.stderr
+    assert "stale-tag:" not in result.stderr
+    assert "evil" not in result.stderr
+
+    heartbeat_path = world["home"] / ".organism" / "last_seen" / "pro.wa_codex_broker.json"
+    assert heartbeat_path.is_file(), (
+        "heartbeat must land at the wrapper's OWN HOME_DIR/ORGAN_ID, "
+        f"not the hostile one; not found at {heartbeat_path}"
+    )
+    heartbeat_body = heartbeat_path.read_text()
+    assert '"status":"starting"' in heartbeat_body
+    assert '"note":"exec daemon"' in heartbeat_body
+    assert not (tmp_path / "nonexistent-evil-sidecar").exists()
+    assert not Path("/nonexistent-evil-home").exists()
+
+
+def test_guilt_mode_000_pin_reports_unreadable_not_line_count(tmp_path: Path, world: dict) -> None:
+    """N4 (gate 2026-09-26): before this fix, a pin file with permission
+    bits 0000 misreported "must carry exactly one line" — the read loop
+    silently sees zero lines under EACCES, which happens to also be a
+    truthy `_pin_lines -ne 1`, but the wrong DIAGNOSIS. A dedicated
+    `[ -r ]` check names the real cause."""
+    _write_daemon_env(
+        world,
+        WA_CODEX_CLI_VERSION_PIN="0.0.1",
+        WA_CODEX_BIN="/opt/homebrew/bin/codex",
+        WA_CODEX_BROKER_ENABLED="true",
+    )
+    pin_file = tmp_path / "codex-pin.env"
+    pin_file.write_text("WA_CODEX_CLI_VERSION_PIN=9.9.9\n")
+    pin_file.chmod(0o000)
+    try:
+        wrapper = _base_wrapper(tmp_path, world, pin_file)
+        result = _run(wrapper)
+    finally:
+        pin_file.chmod(0o644)
+    assert result.returncode == 78, (result.returncode, result.stdout, result.stderr)
+    assert "not readable" in result.stderr, result.stderr
+    assert "must carry exactly one line" not in result.stderr
+
+
 # --- innocence ---------------------------------------------------------------
 
 def test_innocence_valid_pin_overrides_env(tmp_path: Path, world: dict) -> None:
@@ -308,7 +510,13 @@ def test_pin_applied_log_line(tmp_path: Path, world: dict) -> None:
     wrapper = _base_wrapper(tmp_path, world, pin_file)
     result = _run(wrapper)
     assert result.returncode == 0, result.stderr
-    pattern = r"wa-codex-broker-wrapper: \S+ pin applied: codex 9\.9\.9 at " + re.escape(str(pinned_bin))
+    # N5 (gate 2026-09-26): `\S+` accepted anything for the timestamp;
+    # tightened to the `date -u +%Y-%m-%dT%H:%M:%SZ` shape the wrapper
+    # actually emits.
+    pattern = (
+        r"wa-codex-broker-wrapper: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z pin applied: codex 9\.9\.9 at "
+        + re.escape(str(pinned_bin))
+    )
     assert re.search(pattern, result.stderr), result.stderr
 
 

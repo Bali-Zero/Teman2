@@ -75,6 +75,10 @@ heartbeat() { # $1 status, $2 note
 }
 
 # --- pin-file version validator (builtins only — no `expr`, no PATH lookup) ---
+# Marker-wrapped (N6, gate 2026-09-26) so PR-2's installer test
+# (test_semver_validators_agree) can extract this exact predicate text
+# instead of re-typing a copy.
+# >>> _is_semver
 _is_semver() {
     case $1 in
         *[!0-9.]*|.*|*.|*..*|*.*.*.*) return 1 ;;
@@ -82,6 +86,7 @@ _is_semver() {
     esac
     return 1
 }
+# <<< _is_semver
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "$TAG: env file missing: $ENV_FILE - refusing to start (run provisioning)" >&2
@@ -116,6 +121,22 @@ fi
 # run shell commands is full code execution as zantara-codex regardless
 # (spec §8 #2, out of scope by design) — this closes the DATA-only,
 # accidental-or-stale-value class, which is F5's actual scope.
+# RUNTIME_DIR not searchable (gate 2026-09-26): `[ -e "$CODEX_PIN_FILE" ]`
+# cannot traverse an unsearchable ancestor, so a pin file that genuinely
+# exists behind a broken directory mode is indistinguishable, at that test
+# alone, from a pin file that was never installed — and the latter is the
+# ONLY case legacy is allowed to cover. RUNTIME_DIR existing-but-not-
+# searchable is a broken/obstructed state, never legitimate absence, so it
+# fails closed here, BEFORE the daemon env (which could itself claim a
+# different RUNTIME_DIR) is ever sourced. A RUNTIME_DIR that does not exist
+# at all is the genuine "nothing installed yet" case and falls through to
+# legacy exactly as before.
+if [ -d "$RUNTIME_DIR" ] && [ ! -x "$RUNTIME_DIR" ]; then
+    echo "$TAG: pin directory not searchable: $RUNTIME_DIR - refusing (cannot verify pin absence)" >&2
+    heartbeat "refused" "pin invalid"
+    exit 78
+fi
+
 _wcbw_pin_ver=""
 _wcbw_pin_bin=""
 if [ -L "$CODEX_PIN_FILE" ]; then
@@ -128,15 +149,25 @@ elif [ -e "$CODEX_PIN_FILE" ]; then
         heartbeat "refused" "pin invalid"
         exit 78
     fi
+    if [ ! -r "$CODEX_PIN_FILE" ]; then
+        echo "$TAG: pin file is not readable: $CODEX_PIN_FILE" >&2
+        heartbeat "refused" "pin invalid"
+        exit 78
+    fi
     # NUL-byte guard (spalla review 2026-09-26): a shell variable cannot
     # represent a NUL byte at all, so `read -r` alone silently truncates a
     # line AT its first NUL and the truncated remainder can slip past the
     # "exactly one line" count below as if it were never there. `read -d
-    # ''` (NUL as the delimiter, a bash/dash builtin extension — not an
-    # external tool, so still "builtins only") returns 0 when it DID find a
-    # delimiter before EOF and non-zero when it read to EOF with none: a
-    # clean file always hits EOF first (rc != 0), so rc == 0 here can only
-    # mean the file contains at least one NUL.
+    # ''` (NUL as the delimiter) is a BASH extension — dash rejects it
+    # outright (`read: Illegal option -d`, gate 2026-09-26 correction of
+    # this comment's prior claim that dash also supports it) — still a
+    # shell BUILTIN, not an external tool, so "builtins only" still holds;
+    # this wrapper's only two actual runtimes are macOS's own `/bin/sh`
+    # (itself bash 3.2 in a POSIX-ish mode) and macos-latest CI's bash, so
+    # the extension is always available where this file ever really runs.
+    # Returns 0 when it DID find a delimiter before EOF and non-zero when
+    # it read to EOF with none: a clean file always hits EOF first (rc !=
+    # 0), so rc == 0 here can only mean the file contains at least one NUL.
     if IFS= read -r -d '' _pin_nul_probe < "$CODEX_PIN_FILE"; then
         echo "$TAG: pin file contains a NUL byte: $CODEX_PIN_FILE" >&2
         heartbeat "refused" "pin invalid"
@@ -169,8 +200,11 @@ elif [ -e "$CODEX_PIN_FILE" ]; then
         exit 78
     fi
     _wcbw_pin_bin="$PINNED_CODEX_ROOT/$_wcbw_pin_ver/bin/codex"
-    if [ ! -x "$_wcbw_pin_bin" ]; then
-        echo "$TAG: pinned binary missing or not executable: $_wcbw_pin_bin" >&2
+    # `-x` alone is true for a directory too (a 0755 dir is "executable" in
+    # the traverse sense) — gate 2026-09-26, reproduced: a directory planted
+    # at this path was silently APPLIED. Require a regular file first.
+    if [ ! -f "$_wcbw_pin_bin" ] || [ ! -x "$_wcbw_pin_bin" ]; then
+        echo "$TAG: pinned binary missing, not a regular file, or not executable: $_wcbw_pin_bin" >&2
         heartbeat "refused" "pin invalid"
         exit 78
     fi
@@ -186,6 +220,20 @@ set -- "$_wcbw_pin_ver" "$_wcbw_pin_bin"
 set -a
 . "$ENV_FILE"
 set +a
+
+# N1 (gate 2026-09-26): re-assert every wrapper-private literal a `set -a`
+# export could have let the daemon env clobber by plain DATA (no alias, no
+# function — reproduced with RUNTIME_DIR/VENV_PY, and TAG governs the §6
+# proof line below). These six names are NEVER meant to be env-
+# configurable; ENV_FILE itself was already resolved from HOME_DIR's
+# ORIGINAL value before the source above, so redefining HOME_DIR here does
+# not retroactively change where the env file was read from.
+HOME_DIR="/Users/zantara-codex"
+RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
+VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
+TAG="wa-codex-broker-wrapper"
+ORGAN_ID="pro.wa_codex_broker"
+SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
 
 # G5_kill_switch — operator stop without uninstall (set in the env file or
 # the plist). Clean exit 0 stays DOWN under KeepAlive.SuccessfulExit=false;

@@ -1,0 +1,24 @@
+M1_no_nul_probe: exit=1
+=========================== short test summary info ============================
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M1_no_nul_probe.py::test_guilt_present_but_invalid_pin_refuses[nul_same_line_planted]
+1 failed, 25 passed in 1.38s
+
+M2_no_line_count: exit=1
+=========================== short test summary info ============================
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M2_no_line_count.py::test_guilt_present_but_invalid_pin_refuses[two_lines_diff_versions_planted]
+1 failed, 25 passed in 1.32s
+
+M5_no_semver_check: exit=1
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M5_no_semver_check.py::test_guilt_present_but_invalid_pin_refuses[bad_semver_planted]
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M5_no_semver_check.py::test_guilt_present_but_invalid_pin_refuses[traversal_escape_planted]
+2 failed, 24 passed in 1.42s
+
+M3_no_symlink_check: exit=1
+=========================== short test summary info ============================
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M3_no_symlink_check.py::test_guilt_present_but_invalid_pin_refuses[symlink_pin]
+1 failed, 25 passed in 1.24s
+
+M6_no_binary_check: exit=1
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M6_no_binary_check.py::test_guilt_present_but_invalid_pin_refuses[bin_missing]
+FAILED ../../../../../private/tmp/claude-501/-Users-balizero-nuzantara/1c4e7c25-3766-4cfd-9444-0e8e7eaeccf7/scratchpad/pr1_rework/test_M6_no_binary_check.py::test_guilt_present_but_invalid_pin_refuses[bin_is_directory]
+2 failed, 24 passed in 1.45s

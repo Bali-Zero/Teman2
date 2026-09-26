@@ -1,23 +1,9 @@
 brief_ref: evidence/brief.yml
-council_run: null
+council_run: council-journal.jsonl
 pii_scan: clean
-seat_override: >-
-  Builder-only dispatch (Claude Sonnet 5, lane
-  infra/codexpin-v3-pr1-wrapper) implementing PR-1 of an already-scoped,
-  already-3-times-reviewed spec (spec_codexpin_v3.md, itself written
-  against three prior cross-family BLOCK rounds: #7313 r0, #7313 r1, #7340
-  r0). No formal 2-seat COUNCIL_REVIEW_SEATS quorum was convened; instead a
-  genuine 2-round adversarial pass ran via the codex-second-opinion skill
-  (read-only sandbox, Codex CLI OAuth seat), which found and disposed 2
-  BLOCKER + 1 MEDIUM (see dissent: below) — real, reproduced findings, not
-  a self-review. The task's own mandate is explicit: "Do NOT arm, do NOT
-  merge. The coordinator gates it." — the coordinating session runs the
-  fleet's own council/harness-fable-gate before arming PR-1/2/3. This pack
-  documents the build + the adversarial pass + the guilt/innocence
-  receipt, not a merge-time gate signature.
 spend:
-  wall_clock_hours: 2
-  adversarial_rounds: 2
+  wall_clock_hours: 4
+  adversarial_rounds: 4
 lanes:
   - lane: build
     role: build
@@ -57,6 +43,65 @@ lanes:
       re-verified as still present at the time of round 2's report; it was
       fixed immediately after with a `read -r -d ''` builtin probe and is
       covered by the `embedded_nul` pytest case.
+  - lane: gate-r0
+    role: review
+    seat: fresh-opus-5.5-gate + council (codex-gpt-5.6-sol, kimi-code/k3)
+    note: >-
+      Gear-3 gate on PR #7420 @ 08a5d93537 returned REWORK-BUILD: the
+      5-guard mutants stayed green (tests non-discriminating), the
+      derived-binary check accepted a directory, an EACCES pin path fell
+      through to legacy instead of failing closed, and this pack's own
+      `seat_override` masked the R9 council-quorum requirement. Council
+      convened BY THE GATE: codex-gpt-5.6-sol REWORK, kimi-code/k3
+      ACCEPT-WITH-NOTES. See council-journal.jsonl lines 1-2 (copied
+      verbatim from the gate's own draft) and reviews/codex-gpt-5.6-sol-r1.md
+      / reviews/kimi-code-k3-r1.md.
+  - lane: rework-c1-c4
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      C1: 4 new discriminating fixtures planting the binary/tree the fault
+      would otherwise resolve to (nul_same_line_planted,
+      two_lines_diff_versions_planted, bad_semver_planted,
+      traversal_escape_planted); all 5 guards proven via real subprocess
+      mutation (mutant-table.md). C2: derived binary check is now
+      `[ -f ] && [ -x ]`, with a dedicated bin_is_directory test. C3: an
+      EACCES pin directory now exits 78 "pin invalid" before the legacy
+      fallback, with a dedicated chmod-000 test (pin file placed INSIDE
+      the unreadable dir per delta round 1's correction). C4: this pack
+      drops `seat_override`, wires `council_run`, and gets a delta
+      re-review from the gate's own codex-gpt-5.6-sol seat (2 rounds, see
+      below). N1-N7 cheap items implemented; N1's regression extended
+      per delta round 2 (see below).
+  - lane: delta-review-round1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (gate's own dispatch mechanism: env -i,
+      --sandbox read-only, model_reasoning_effort=high)
+    note: >-
+      VERDICT: REWORK. C1 closed. C2 open: the mandatory
+      bin/codex-as-0755-directory fixture was missing (the existing
+      `directory` case made the PIN FILE a directory, not the binary).
+      C3 partially closed: the fixture placed the pin file as a SIBLING of
+      the broken-permission directory, not inside it, so the real
+      fallback-to-legacy defect was never reproduced. N1/N4 flagged as
+      lacking dedicated regressions. Could not independently re-run
+      pytest/mutations (read-only sandbox, no writable tmp). See
+      reviews/codex-gpt-5.6-sol-delta1-prompt.txt and
+      council-journal.jsonl line 3.
+  - lane: delta-review-round2
+    role: review
+    seat: codex-gpt-5.6-sol (gate's own dispatch mechanism)
+    note: >-
+      VERDICT: REWORK, one remaining gap. C2/C3/N4 all independently
+      CONFIRMED fixed by the seat's own live shell mutation. N1's
+      regression (test_guilt_env_cannot_clobber_post_source_literals)
+      clobbered only 3 of the 6 protected wrapper-private literals
+      (RUNTIME_DIR/VENV_PY/TAG, not HOME_DIR/ORGAN_ID/SIDECAR_DIR) and
+      never checked the heartbeat file, proven by the seat's own mutation.
+      Fixed afterward (see dissent below) but NOT re-reviewed by this
+      seat within the coordinator's time-box — see council-journal.jsonl
+      line 4 and reviews/codex-gpt-5.6-sol-delta2-prompt.txt.
 dissent:
   - seat: codex-gpt-5.6-spalla
     objection: >-
@@ -102,22 +147,106 @@ dissent:
       "$CODEX_PIN_FILE"`, builtin `-d` — a bash/dash extension available
       on macOS's own /bin/sh and on macos-latest CI, the only two shells
       this wrapper ever actually runs under) returns 0 only when it found
-      a NUL delimiter before EOF, which a clean file never does. Covered
-      by test_guilt_present_but_invalid_pin_refuses[embedded_nul].
+      a NUL delimiter before EOF, which a clean file never does.
+      CORRECTED (gate 2026-09-26 REWORK-BUILD, C1): the pre-existing
+      `embedded_nul` case put the NUL on its OWN line, which the
+      exactly-one-line check alone already rejected regardless of the NUL
+      probe — it never isolated the guard it claimed to cover, so
+      deleting the NUL probe left the suite green. The real covering case
+      is the new `nul_same_line_planted` fixture (NUL genuinely mid-line,
+      single trailing newline, binary planted so the fault resolves
+      instead of being masked by a later guard) — mutation-verified:
+      removing the NUL probe now turns exactly that case red.
+  - seat: codex-gpt-5.6-sol (gate-convened, delta rounds)
+    objection: >-
+      REWORK-BUILD (gate 2026-09-26, PR #7420 @ 08a5d93537): the 5-guard
+      mutants stayed green against the then-current 17-test file (NUL
+      probe, one-line check, `_is_semver`, derived-binary check all
+      non-discriminating), the derived binary check accepted a 0755
+      directory at bin/codex, an EACCES pin path fell through to legacy
+      instead of failing closed, and this pack's `seat_override` masked
+      the R9 council-quorum requirement.
+    status: CONFIRMED
+    disposition: >-
+      Fixed in this rework: C1 (4 new discriminating fixtures, all 5
+      guards mutation-verified — mutant-table.md), C2 (`[ -f ] && [ -x ]`
+      + dedicated bin_is_directory test), C3 (EACCES on the pin's
+      directory now exits 78 "pin invalid" before legacy, with a
+      dedicated test), C4 (`seat_override` dropped, `council_run` wired
+      to this journal). Delta re-review by the gate's own
+      codex-gpt-5.6-sol seat: round 1 REWORK (C2 fixture missing, C3
+      fixture not isolating), round 2 REWORK (C2/C3/N4 confirmed fixed;
+      one remaining gap in N1's regression, see next entry). No round-3
+      accept was obtained within the coordinator's time-box — the fresh
+      re-gate decides whether the council (kimi ACCEPT-WITH-NOTES + this
+      seat's round-2 REWORK, with the round-2 gap fixed but unconfirmed)
+      is sufficient.
+  - seat: codex-gpt-5.6-sol (delta round 2)
+    objection: >-
+      N1's regression (test_guilt_env_cannot_clobber_post_source_literals)
+      clobbered only 3 of the 6 protected wrapper-private literals
+      (RUNTIME_DIR/VENV_PY/TAG, not HOME_DIR/ORGAN_ID/SIDECAR_DIR) and
+      never checked the heartbeat file at all; proven by the seat's own
+      live mutation (removing just the HOME_DIR/ORGAN_ID/SIDECAR_DIR
+      re-asserts left the test green).
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the test now sets hostile values for all 6 names and asserts
+      the heartbeat JSON (`$SIDECAR_DIR/$ORGAN_ID.json`) lands at the
+      wrapper's OWN (test-patched) HOME_DIR/ORGAN_ID path with
+      `"status":"starting"`/`"note":"exec daemon"`, never the hostile
+      destination. Mutation-verified: removing the HOME_DIR/ORGAN_ID/
+      SIDECAR_DIR re-asserts from the wrapper's N1 block now turns this
+      test red. NOT re-reviewed by codex-gpt-5.6-sol (round 3 not
+      obtained within the coordinator's time-box) — see
+      council-journal.jsonl line 4.
 receipts:
   - claim: >-
-      All 17 wrapper pytest cases pass on the final shipped wrapper.
+      All 26 wrapper pytest cases pass on the final shipped wrapper, up
+      from 17 at the gated head (08a5d93537): +5 new
+      test_guilt_present_but_invalid_pin_refuses parametrize IDs (C1's 4
+      discriminating fixtures + C2's bin_is_directory) and +4 new
+      standalone tests (C3's test_guilt_unsearchable_runtime_dir_refuses_
+      not_legacy, N3's test_guilt_invalid_pin_beats_the_kill_switch,
+      N1's test_guilt_env_cannot_clobber_post_source_literals, N4's
+      test_guilt_mode_000_pin_reports_unreadable_not_line_count); N1's
+      own test was later extended in place (round 2 fix), not re-added
+      as a new test — see mutant-table.md for the per-guard mapping.
     cmd: python3 -m pytest scripts/tests/test_wa_codex_broker_wrapper.py -q
     exit: 0
-    ts: "2026-09-26T14:18:43Z"
+    ts: "2026-09-26T17:08:08Z"
     seat: claude-sonnet-5
   - claim: >-
-      The wrapper is valid POSIX sh and bash after every edit.
+      The wrapper is valid POSIX sh and bash after every edit (rework-
+      build re-run).
     cmd: >-
       sh -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh &&
       bash -n infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
     exit: 0
-    ts: "2026-09-26T14:18:46Z"
+    ts: "2026-09-26T17:08:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      Mutation harness (5 core guards + C2 bin-is-directory + N1
+      6-name/heartbeat + N4 mode-000): deleting any guard from a real
+      subprocess-run copy of the wrapper turns exactly the expected
+      test(s) red, never fewer. See receipts/mutant-table.md for the
+      per-guard mapping.
+    cmd: >-
+      real subprocess mutation harness (scratch script, not committed):
+      copy wrapper -> delete one guard block -> repoint a copy of
+      test_wa_codex_broker_wrapper.py's _WRAPPER at it -> python3 -m
+      pytest as a real subprocess -> confirm exactly the expected red(s)
+    exit: 0
+    ts: "2026-09-26T17:08:08Z"
+    seat: claude-sonnet-5
+  - claim: >-
+      actionlint and scripts_coupling_census stay clean after the
+      rework-build changes.
+    cmd: >-
+      actionlint .github/workflows/wa-codex-pin.yml && python3
+      scripts/ci/scripts_coupling_census.py --check
+    exit: 0
+    ts: "2026-09-26T17:08:08Z"
     seat: claude-sonnet-5
   - claim: >-
       The new workflow file is actionlint-clean.
