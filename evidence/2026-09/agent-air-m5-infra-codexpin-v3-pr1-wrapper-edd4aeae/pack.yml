@@ -1,6 +1,12 @@
 brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 pii_scan: clean
+appetite_exceeded: >-
+  Brief declared 2h/2 adversarial rounds; the REWORK-BUILD response ran 2
+  more delta-council rounds (4 total) and ~4h wall clock — the gate's own
+  REWORK-BUILD verdict and the delta council's own findings (C1 fixture
+  isolation, then round-1 and round-2 codex-gpt-5.6-sol gaps) drove every
+  extra round; none were self-inflicted rework of the same defect twice.
 spend:
   wall_clock_hours: 4
   adversarial_rounds: 4
