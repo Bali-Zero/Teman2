@@ -17,10 +17,28 @@ objective: |
 
   This round (commit b3c5fdec5d) fixes all five findings plus the helper's own robustness bug, one
   fix per finding, guilt-tested against 9666233cff so each fix is falsifiable rather than asserted.
+
+  Round 2 (commit 9ca6ee5527): the gate on round 1 (`e4c69946eb`) returned REWORK-BUILD with six
+  more findings, written up as `spec_7385_r2.md` (M1-M6). M1 was a LIVE leak this pack's own round-1
+  text had wrongly cleared: `newsletter.py`'s double opt-in passed a raw address through
+  `send_internal_email`'s `log_context=` free-text field, printed verbatim by `internal_email.py`.
+  M2 was a round-1-introduced regression in this pack's own guilt test (an `exc_info is None`
+  assertion that slid into the wrong test function, leaving the real one vacuous). M3/M6 close the
+  `upload_attachment` filename leak the round-1 fix narrowed but did not finish (still logged the
+  raw filename at 5 sites plus a round-1-introduced unbounded extension field). M4/M5 fix the
+  round-1 Telegram-scrub itself: a truncate-then-scrub order that could leave a local-part fragment
+  past the 120/400-char cut, and a token class broad enough to swallow Markdown delimiters, which
+  could 400 the alert send outright (dropping the alert is worse than the leak it was fixing). This
+  is the LAST round per the gate's own framing — a further REWORK suspends the PR.
 constraints:
   - "Depth-1 fix-of-a-fix rule (CLAUDE.md Builder Contract #1): this is round 1 correcting round 0;
     if THIS round's fix were itself found wrong, the next step is a spec, not a round 2 patch —
     not exercised here because every fix passed its own guilt/innocence pair."
+  - "Round 2 is itself a spec-driven correction of round 1 (the gate wrote `spec_7385_r2.md` rather
+    than leaving this session to re-derive scope), which is why it is permitted to go beyond
+    depth-1 while round 1 was not: round 1 corrected round 0 informally, round 2 corrects round 1
+    against a written, gate-authored spec naming each finding. The gate declared this the LAST
+    round regardless — a further REWORK suspends the PR rather than issuing a round 3."
   - 'Return/raise behaviour on every touched call site must stay byte-identical to before this
     round except where the review explicitly named the change (`to=None`''s failure site moving
     back to `",".join(to)`, matching origin/main) — this is a logging-only fix, not a behavior
@@ -63,6 +81,35 @@ acceptance:
       surrogate code point, it SHALL return an `id:`-prefixed digest rather than raising, and the
       digest for any already-valid-UTF-8 input SHALL be unchanged from before this fix.
     probe: "pytest backend/tests/unit/security/test_pii_log_identifier.py"
+  - text: >-
+      (M1) WHEN the newsletter double-opt-in confirmation send logs its `log_context`, the log line
+      SHALL NOT contain the recipient's address; every other `log_context=` caller of
+      `send_internal_email` in the repo SHALL pass a fixed tag or a bare identifier (client_id,
+      practice_id, request_id, ...), never an address, name or subject.
+    probe: "pytest backend/tests/unit/app/routers/test_newsletter_confirmation_email.py"
+  - text: >-
+      (M2) WHEN the birthday notifier's client-addressed send fails, no log record emitted on that
+      path SHALL carry `exc_info`/a traceback — this is the round-1 guilt test itself, restored
+      after a round-1 copy/paste slid its assertion into the wrong test function.
+    probe: "pytest backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py"
+  - text: >-
+      (M3/M6) WHEN `upload_attachment` logs at any of its INFO or ERROR sites (request received,
+      size-too-large, filename-too-long, filename-sanitized, uploaded, provider-error, HTTP-error),
+      the log line SHALL carry the filename's extension only when it matches `[A-Za-z0-9]{1,8}`
+      (else the literal `other`) plus its length, and SHALL NOT contain the filename itself.
+    probe: "pytest backend/tests/unit/services/integrations/test_zoho_email_service.py"
+  - text: >-
+      (M4) WHEN the critical-email Telegram alert's subject/error text is truncated to its 120/400
+      char bound and the cut falls inside or immediately after an email-shaped token, the address
+      fragment SHALL NOT survive into the sent alert text (truncate, drop the trailing partial
+      token, then scrub — never scrub before truncating, and never scrub the unbounded text).
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
+  - text: >-
+      (M5) WHEN the scrub in M4 replaces an email-shaped token adjacent to Markdown delimiters
+      (`*_[]()`) or trailing punctuation, it SHALL NOT consume the delimiter/punctuation itself —
+      the alert's Markdown SHALL stay balanced (equal `*`/`_` counts), since an unbalanced send is
+      rejected by Telegram (400) and drops the alert entirely, which is worse than the leak.
+    probe: "pytest backend/tests/unit/services/notifications/test_email_audit.py"
 consumer_map:
   - "`backend/services/integrations/zoho_email_service.py` — live send/reply/forward/upload path
     behind the Zoho-mail integration used by the CRM email UI; `_request`'s warning line is the one
@@ -77,6 +124,11 @@ consumer_map:
     imported by every one of the above plus the client-bot/team-bot identity paths (per that
     module's own docstring); the surrogate-input fix benefits every caller, not just this PR's
     three files."
+  - "`backend/app/routers/newsletter.py`'s double-opt-in confirmation send — the live path the
+    gate found still leaking (M1); every other `log_context=` caller of `send_internal_email`
+    (crm_practices, portal_invite, hr_leave_notifier, crm/notifiers, funnel_email/scheduler,
+    portal_message_email, rag/agentic/reasoning) was re-grepped and confirmed fixed-tag-only, not
+    changed since none needed it."
 risks:
   - "Two pre-existing pytest failures were observed in the pre-push `quickcheck` run on this
     branch (`test_evaluate_endpoint.py` — `UndefinedTableError` on a local-PG idempotency table;
@@ -88,21 +140,54 @@ risks:
     newly-coupled and STALE — unrelated to this PR's own file set (that test file is not part of
     this diff); not fixed here since fixing it would touch files outside this PR's authorized
     scope, per the same one-fix-per-finding discipline this round is measured against."
-  - "`upload_attachment`'s pre-validation logs (request-received, size-too-large, filename-too-long,
-    filename-sanitized — lines ~1221/1232/1241/1250 pre-round-1) still log the raw filename. Out of
-    the review's named scope (which was the two POST-request failure logs at ~1287/1327); flagged,
-    not fixed, to keep this round's diff to exactly what the spec named."
+  - "RESOLVED round 2 (M3/M6): `upload_attachment`'s pre-validation logs (request-received,
+    size-too-large, filename-too-long, filename-sanitized — lines ~1221/1232/1241/1250) were
+    flagged here as still logging the raw filename, out of round 1's named scope. The gate named
+    them explicitly (M6); fixed this round with the same extension+length whitelist as the two
+    round-1 sites, all seven now covered by one helper (`_safe_filename_ext`)."
+  - "Round 2's M4/M5 fix is itself a fix-of-a-fix on round 1's own Telegram scrub (`email_audit.py`)
+    — the Builder Contract's depth-1 rule permits this because the correction comes from a written,
+    gate-authored spec (`spec_7385_r2.md`) naming the exact defect, not from this session
+    re-deriving scope; the gate declared round 2 the LAST round regardless."
+  - "M4's 3-way parametrized guilt test (`cut_right_after_at`/`cut_inside_local_part`/
+    `cut_inside_domain`) only falsifies the OLD code on `cut_right_after_at`: the other two cut
+    positions happen to pass on `e4c69946eb` too (the old regex already tolerated 1+ char after
+    `@`, and the local-part case's truncated fragment structurally never contains the full
+    substring the assertion checks). Not a gap in the fix — a limitation of the 3-position probe
+    inherited from the gate's own `probe_audit.py` — flagged rather than overclaiming all 3 prove
+    guilt."
+  - "Two pre-existing pytest failures were observed in the pre-push `quickcheck` run on this
+    branch (`test_evaluate_endpoint.py` — `UndefinedTableError` on a local-PG idempotency table;
+    `test_article_composer_integration.py::test_compose_article_rate_limit` — a rate-limiter timing
+    assertion; `test_genai_stream_awaits_the_sdk_coroutine.py` — an installed `google-genai` version
+    drift). All three are environment/pre-existing, unrelated to any file this PR touches; not
+    fixed here, flagged rather than hidden."
+  - "The `scripts_coupling_census` advisory flagged `scripts/tests/test_lint_home_fork.py` as
+    newly-coupled and STALE — unrelated to this PR's own file set (that test file is not part of
+    this diff); not fixed here since fixing it would touch files outside this PR's authorized
+    scope, per the same one-fix-per-finding discipline this round is measured against."
 grader: |
-  Cross-family review: Codex FIX-FIRST (read-only) against commit 9666233cff, given the round-0
-  diff and told to find residual leaks. Found the five sites this round fixes plus the helper's
-  surrogate-input bug — see `dissent:` in pack.yml for the full finding and disposition. Each fix
-  carries its own guilt test (fails on 9666233cff, passes on this round's head) rather than a
-  single after-the-fact review claim; verified locally by re-running each new test against a
-  `cp`-restored copy of 9666233cff's version of the touched file (`git stash` forbidden per this
-  session's own instructions), one file at a time, then restoring the cure.
-budget:
-  1 build lane (this session, correcting round 0) + 1 cross-family review lane (Codex
-  FIX-FIRST, prior round). Gear 2, no council gate.
+  Round 1: Cross-family review, Codex FIX-FIRST (read-only) against commit 9666233cff, given the
+  round-0 diff and told to find residual leaks. Found the five sites round 1 fixed plus the
+  helper's surrogate-input bug.
+
+  Round 2: on-disk gate against round 1's head (`e4c69946eb`) returned REWORK-BUILD with six more
+  findings (M1-M6, `spec_7385_r2.md`), including a live leak this pack's own round-1 text had
+  wrongly cleared (M1) and a regression the round-1 fix itself introduced in both the product code
+  (M3's unbounded extension field) and its own guilt test (M2's slid assertion) — see `dissent:` in
+  pack.yml for both rounds' full findings and dispositions. Each fix, both rounds, carries its own
+  guilt test (fails on the pre-fix head, passes on the cure) rather than an after-the-fact review
+  claim; verified locally by re-running each new test against a `cp`-restored copy of the pre-fix
+  file (`git stash` forbidden per this session's own instructions), one file at a time, then
+  restoring the cure. M2's regression, having no separable pre-fix FILE version (it is a one-line
+  slide inside a test file this session itself wrote), was instead proven by mutation: inject
+  `exc_info=True` at the guarded product-code log site, confirm the restored assertion catches it,
+  revert the mutation.
+budget: >-
+  Round 1: 1 build lane (this session) plus 1 cross-family review lane (Codex FIX-FIRST). Round 2:
+  1 build lane (this session) plus 1 on-disk gate lane (this session's own final-round
+  instruction). Gear 2 throughout (14 files, +1476/-49 stays under SIZE_GEAR3_THRESHOLD=1828), no
+  council gate.
 pii:
   none — every address in this PR's diff/tests/pack is a synthetic `*.example`/`*.example.org`
-  literal.
+  literal (e.g. `leak.probe@example.com`).

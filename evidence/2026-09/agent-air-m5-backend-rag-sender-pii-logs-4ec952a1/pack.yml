@@ -3,38 +3,46 @@
 # the lint resolves brief_ref against THAT root, so this must read the literal
 # evidence/brief.yml even though the real brief lives beside this file.
 brief_ref: evidence/brief.yml
-plan_ref: "PR #7385 round 1 — spec written from a cross-family review (Codex FIX-FIRST, read-only) run against commit 9666233cff; no separate docs/plans/ file, the review itself is the spec this round implements one finding at a time."
+plan_ref: "PR #7385 round 1 — spec written from a cross-family review (Codex FIX-FIRST, read-only) run against commit 9666233cff. Round 2 — spec written from the on-disk gate's REWORK-BUILD verdict against round 1's head (e4c69946eb): docs/plans/ has no separate file for either round, the review/gate output itself is the spec each round implements one finding at a time (`spec_7385_r1.md`/`spec_7385_r2.md` in the session scratchpad)."
 lanes:
-  - lane: sender-pii-r1
+  - lane: sender-pii-build
     role: build
-    seat: "claude-sonnet-5 (this session, senderpii-r1)"
+    seat: "claude-sonnet-5 (this session) — round 1 (senderpii-r1) and round 2 (senderpii-r2), same seat"
   - lane: senderpii-review
     role: review
-    seat: "codex FIX-FIRST, read-only, prior round — found 5 residual leak sites plus a crash bug in the redaction helper itself"
+    seat: "codex FIX-FIRST, read-only, round 1 — found 5 residual leak sites plus a crash bug in the redaction helper itself"
+  - lane: senderpii-gate-r1
+    role: review
+    seat: "on-disk gate (opus), round 1 head e4c69946eb — REWORK-BUILD, 6 findings (M1-M6), spec_7385_r2.md"
   - lane: final-gate
     role: review
-    seat: "this session — every receipt below re-run locally before commit"
+    seat: "this session — every receipt below re-run locally before commit, both rounds"
 seat_diversity: degraded
 seat_diversity_note: >-
-  One build lane this round, so the D3 floor (>=2 build lanes) does not fire and this field stays
-  "degraded" on that basis. The review side is not degraded: a cross-family seat (Codex) gated the
-  round-0 diff and returned five concrete leak sites plus a helper crash bug this session's own
-  round-0 pass had missed — the argument for cross-family review stated as a measurement, not a
-  principle.
+  One build seat across both rounds (this session), so the D3 floor (>=2 build lanes) does not fire
+  and this field stays "degraded" on that basis. The review side is not degraded in either round:
+  a cross-family seat (Codex) gated the round-0 diff in round 1, and an on-disk gate (opus) gated
+  round 1's own head in round 2 — each independently returned concrete findings this session's own
+  prior pass had missed, including one live leak round 1's own pack text wrongly cleared (M1) and
+  a regression round 1 itself introduced (M2/M3) — the argument for review independent of the
+  builder stated as a measurement, not a principle.
 diff:
   net_lines: >-
-    12 files, +904/-39, commit count unmeasured (no --commit-count, no pull_request payload) —
+    14 files, +1476/-49, commit count unmeasured (no --commit-count, no pull_request payload) —
     the canonical `evidence_pack_lint.py --print-measured` sentence for the whole PR (round 0 +
-    round 1 code/test changes + this evidence pack) against origin/main, pasted rather than
-    hand-derived so it cannot drift from what the countable-claims rule itself checks.
+    round 1 + round 2 code/test changes + this evidence pack) against origin/main, pasted rather
+    than hand-derived so it cannot drift from what the countable-claims rule itself checks.
     `--print-floor` over the same diff reads floor two, source "size" (churn at or above
-    SIZE_GEAR2_THRESHOLD=400, no hot-zone path hit).
+    SIZE_GEAR2_THRESHOLD=400, below SIZE_GEAR3_THRESHOLD=1828, no hot-zone path hit).
   behaviour_change: >-
     Logging/alerting only. No return value, no raised-exception TYPE, no payload sent to the
     Zoho/Brevo/Telegram providers changes for any valid input. The one deliberate exception-SITE
     change: Zoho `send_email`/`forward_email` with `to=None` now raises its `TypeError` at the
     payload-build step (`",".join(to)`), matching origin/main's failure site exactly, instead of
-    one line earlier inside the redaction comprehension the round-0 diff introduced.
+    one line earlier inside the redaction comprehension the round-0 diff introduced. Round 2 adds
+    no further behaviour change: `newsletter.py`'s `log_context=` argument is a log-only tag, never
+    read back by any caller; the Telegram alert's truncate-then-scrub reorder changes what text is
+    IN the sent alert (never whether one is sent, for any input under the pre-existing char bound).
 receipts:
   - claim:
       "Every test in the five touched files (2 new source-adjacent test files, 3 files with
@@ -129,14 +137,124 @@ receipts:
     exit: 0
     ts: "2026-09-26T11:12Z"
     seat: "session (final gate)"
+  - claim:
+      "Round 2: every test in the seven files the gate's M1-M6 findings touch passes on the
+      round-2 head, plus test_birthday_notifier_service.py and test_internal_email.py as
+      out-of-scope regression checks."
+    cmd:
+      "PYTHONPATH=. pytest backend/tests/unit/app/routers/test_newsletter_confirmation_email.py
+      backend/tests/unit/services/integrations/test_zoho_email_service.py
+      backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py
+      backend/tests/services/crm/test_birthday_notifier_service.py
+      backend/tests/unit/services/notifications/test_email_audit.py
+      backend/tests/unit/app/services/test_internal_email.py
+      backend/tests/unit/security/test_pii_log_identifier.py"
+    result: "158 passed, 0 failed."
+    exit: 0
+    ts: "2026-09-26T12:15Z"
+    seat: "session (final gate)"
+  - claim:
+      "M1 guilt: the new log_context test FAILS against e4c69946eb's version of newsletter.py
+      (raw address printed via `internal_email.py`'s INFO log) and PASSES on the cure. Every other
+      `log_context=` caller re-grepped and confirmed fixed-tag-only, unchanged since none needed a
+      fix."
+    cmd: "cp app/routers/newsletter.py /tmp/*.cure; git show
+      e4c69946eb:apps/backend-rag/backend/app/routers/newsletter.py >
+      app/routers/newsletter.py; pytest
+      backend/tests/unit/app/routers/test_newsletter_confirmation_email.py; cp /tmp/*.cure
+      app/routers/newsletter.py; git grep -n 'log_context=' -- apps/backend-rag/backend"
+    result: >-
+      Pre-fix: 1 failed (test_send_confirmation_email_never_logs_raw_address_via_log_context —
+      `leak.probe@example.com` present in caplog via internal_email.py's INFO line), 9 passed.
+      Cure restored via `cp`, verified byte-identical. Grep: 11 `log_context=` call sites, all
+      fixed-tag/bare-identifier shaped.
+    exit: 1
+    ts: "2026-09-26T12:02Z"
+    seat: "session (final gate)"
+  - claim:
+      "M2 mutation guilt: injecting `exc_info=True` at birthday_notifier_service.py's
+      client-addressed failure log (the site the round-1 test itself guards) makes the RESTORED
+      `test_no_traceback_is_emitted_on_failure` assertion fail; reverting the mutation restores a
+      clean pass. Proves the round-1 assertion-slide regression is closed by mutation rather than
+      by a separable pre-fix file version (the bug was inside this session's own test file, not
+      the product code)."
+    cmd:
+      "cp services/crm/birthday_notifier_service.py /tmp/*.cure; <inline python: insert
+      exc_info=True into the logger.error(...) call at the client-addressed-send except block>;
+      pytest backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py; cp /tmp/*.cure
+      services/crm/birthday_notifier_service.py"
+    result: >-
+      Mutated: 2 failed (test_no_traceback_is_emitted_on_failure — the restored assertion catches
+      the injected exc_info; test_guilt_zoho_failure_after_brevo_failure_never_logs_address_or_text
+      — collateral, the traceback rendering also printed the raw address), 5 passed. Cure restored
+      via `cp`, verified byte-identical; full file re-run afterward: 13 passed.
+    exit: 1
+    ts: "2026-09-26T12:05Z"
+    seat: "session (final gate)"
+  - claim:
+      "M3/M6 guilt: the new/expanded upload_attachment tests (5 sites: request-received,
+      file-too-large, filename-too-long, filename-sanitized, uploaded, plus the two round-1
+      provider-error/HTTP-error sites) FAIL against e4c69946eb's version of
+      zoho_email_service.py (raw filename still logged, and the round-1 extension field itself
+      unbounded) and PASS on the cure."
+    cmd: "cp services/integrations/zoho_email_service.py /tmp/*.cure; git show
+      e4c69946eb:apps/backend-rag/backend/services/integrations/zoho_email_service.py >
+      services/integrations/zoho_email_service.py; pytest
+      backend/tests/unit/services/integrations/test_zoho_email_service.py; cp /tmp/*.cure
+      services/integrations/zoho_email_service.py"
+    result: >-
+      Pre-fix: 6 failed (test_error_response_logs_no_filename_or_address,
+      test_file_too_large_logs_no_filename, test_filename_too_long_logs_no_filename,
+      test_filename_sanitized_logs_no_filename, test_upload_request_and_success_info_logs_no_filename,
+      test_extension_whitelist_rejects_non_alnum_shapes), 54 passed. Cure restored via `cp`,
+      verified byte-identical; full file re-run afterward: 60 passed.
+    exit: 1
+    ts: "2026-09-26T12:09Z"
+    seat: "session (final gate)"
+  - claim:
+      "M4/M5 guilt: the new truncation-boundary and Markdown-balance tests FAIL against
+      e4c69946eb's version of email_audit.py (a cut right after `@` leaves the local part; an
+      untruncated subject ending in `*` loses its closing delimiter) and PASS on the cure."
+    cmd: "cp services/notifications/email_audit.py /tmp/*.cure; git show
+      e4c69946eb:apps/backend-rag/backend/services/notifications/email_audit.py >
+      services/notifications/email_audit.py; pytest
+      backend/tests/unit/services/notifications/test_email_audit.py; cp /tmp/*.cure
+      services/notifications/email_audit.py"
+    result: >-
+      Pre-fix: 2 failed (test_telegram_alert_scrubs_address_cut_by_truncation[cut_right_after_at]
+      — `leak.probe` survives the old truncate-before-scrub order;
+      test_telegram_alert_scrub_preserves_markdown_balance — 3 `*` in the alert text, unbalanced),
+      25 passed. The other 2 of 3 parametrized cut-position cases
+      (cut_inside_local_part/cut_inside_domain) pass on OLD code too — a limitation of the
+      3-position probe, not an incomplete fix; noted in brief.yml's risks. Cure restored via `cp`,
+      verified byte-identical; full file re-run afterward: 27 passed.
+    exit: 1
+    ts: "2026-09-26T12:12Z"
+    seat: "session (final gate)"
+  - claim: "Round 2: no new lint surface and the FastAPI import chain still resolves."
+    cmd: 'ruff check backend/services/integrations/zoho_email_service.py
+      backend/services/notifications/email_audit.py backend/app/routers/newsletter.py
+      backend/services/crm/birthday_notifier_service.py
+      backend/tests/unit/services/integrations/test_zoho_email_service.py
+      backend/tests/unit/services/notifications/test_email_audit.py
+      backend/tests/unit/app/routers/test_newsletter_confirmation_email.py
+      backend/tests/services/crm/test_birthday_notifier_service_pii_logs.py; python -c ''from
+      backend.app.routers.newsletter import router; from
+      backend.services.integrations.zoho_email_service import ZohoEmailService; from
+      backend.services.notifications.email_audit import notify_email_failure_critical; print("OK")'''
+    result: "ruff: All checks passed! Import chain: OK."
+    exit: 0
+    ts: "2026-09-26T12:21Z"
+    seat: "session (final gate)"
 pii_scan: clean
 cloud_ok: >-
-  CLAUDE.md Builder Contract 4 / SYMBIOSIS Law 2: every cloud seat in this pack (this session,
-  Codex FIX-FIRST) worked only on repository diffs, docstrings and synthetic test fixtures —
-  `leak.probe@example.com` and similarly obviously-fake addresses, never a real Bali Zero client
-  row, name, address or document. This attests the actual no-PII scope of this fix (a logging-only
-  change to code paths that touch CRM data at runtime, not a change exercised against runtime CRM
-  data itself), not an exception allowing cloud processing of real client data.
+  CLAUDE.md Builder Contract 4 / SYMBIOSIS Law 2: every cloud seat in this pack, both rounds (this
+  session, Codex FIX-FIRST, the on-disk gate) worked only on repository diffs, docstrings and
+  synthetic test fixtures — `leak.probe@example.com` and similarly obviously-fake addresses, never
+  a real Bali Zero client row, name, address or document. This attests the actual no-PII scope of
+  this fix (a logging-only change to code paths that touch CRM data at runtime, not a change
+  exercised against runtime CRM data itself), not an exception allowing cloud processing of real
+  client data.
 dissent:
   - seat: "codex FIX-FIRST (read-only), against commit 9666233cff"
     objection: >-
@@ -163,3 +281,37 @@ dissent:
       `birthday_notifier_service.py`'s `JSONDecodeError` `str(exc)[:80]` at custom_fields parsing —
       its message is position-only (no field content), so redacting it further would remove
       diagnostic value without closing a leak.
+  - seat: "on-disk gate (opus), against round 1 head e4c69946eb"
+    objection: >-
+      REWORK-BUILD, 6 findings (`spec_7385_r2.md`). M1: `app/routers/newsletter.py:89` passed
+      `log_context=f"newsletter-double-optin email={email}"` — a raw address, live on the double
+      opt-in path — and this pack's own round-1 text had wrongly asserted every `log_context=`
+      caller was fixed-tag-only. M2: round 1's own guilt test
+      (`test_no_traceback_is_emitted_on_failure`) lost its `assert exc_info is None` — it slid into
+      the next test function, leaving the real one vacuous (would pass even if `exc_info=True` were
+      reintroduced). M3: round 1's new `upload_attachment` extension field
+      (`filename.rsplit(".",1)[-1]`) was itself unbounded — `First.Lastname` or `scan.a@b` as an
+      "extension" reaches the log verbatim. M6: `upload_attachment`'s four pre-validation log sites
+      (request-received, file-too-large, filename-too-long, filename-sanitized) plus the
+      already-touched success log still logged the raw filename — round 1 fixed only the two
+      POST-failure sites the review had named. M4: the Telegram alert's scrub ran AFTER truncation,
+      so a cut landing right after `@` left the local part in the sent text. M5: the scrub's token
+      class (`[^\s@<>"'`]+`) consumed Markdown delimiters (`*`/`_`) adjacent to the match, so a
+      subject like `*Delivery to a@b*` lost its closing `*` — an unbalanced Telegram Markdown send
+      is rejected (400), dropping the alert entirely, which the review called worse than the leak
+      it was closing.
+    status: CONFIRMED
+    disposition: >-
+      All six findings fixed this round, one fix per finding (see the M1-M6 acceptance criteria in
+      brief.yml), each guilt-tested against `e4c69946eb` (M2 by mutation, since its defect had no
+      separable pre-fix file — see the M2 receipt in this file). Every `log_context=` caller in the
+      repo re-grepped post-fix and confirmed fixed-tag/bare-identifier shaped (11 sites). Explicitly
+      OUT of scope per the spec's own framing, left for a follow-up PR:
+      `app/modules/notifications/router.py:555-556,562,594`;
+      `waiting_documents_service.py`/`completed_process_service.py`'s "Email sent to %s via Zoho
+      fallback"; `email_audit.py:117,163,199` (DB exception text, not the Telegram alert path this
+      PR closes). NITs noted, not fixed: quoted local parts / `%40` / fullwidth `＠` not scrubbed by
+      the email-token regex; one-shot iterators in to/cc/bcc would be consumed by the log
+      comprehension before the real send (every current caller passes a list, not an iterator, so
+      this is latent, not live). A single `_` in a subject already broke the alert's Markdown on
+      `main` before this PR — pre-existing, out of scope, noted per the spec's own instruction.
