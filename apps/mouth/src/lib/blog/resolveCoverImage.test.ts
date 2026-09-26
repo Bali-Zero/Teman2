@@ -45,6 +45,15 @@ describe("resolveCoverImage — the rule", () => {
     );
   });
 
+  it.each(["covers/news-example.jpg", "//cdn.example.com/a.jpg", "https://"])(
+    "uses a shipped cover for an invalid browser image source: %s",
+    (source) => {
+      expect(resolveCoverImage(source, "business")).toBe(
+        "/static/blog/oss-guide.jpg",
+      );
+    },
+  );
+
   it("falls back to the category cover when frontmatter is silent", () => {
     expect(resolveCoverImage(undefined, "taxes")).toBe(
       "/static/blog/tax-calendar.jpg",
