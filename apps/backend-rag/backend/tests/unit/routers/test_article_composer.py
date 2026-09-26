@@ -74,13 +74,17 @@ def test_client():
     """Create FastAPI test client.
 
     Disables the slowapi rate limiter so tests that hit /compose multiple
-    times in a row don't trip the 10/minute cap meant for real clients.
+    times in a row don't trip the 10/minute cap meant for real clients, and
+    re-enables it afterwards: the limiter is module-global, so leaving it off
+    silently disabled it for every later test on the same xdist worker
+    (test_compose_article_rate_limit then saw 11x500 and never a 429).
     """
     from fastapi import FastAPI
 
     from backend.app.dependencies import get_current_user
     from backend.app.routers.article_composer import limiter
 
+    was_enabled = limiter.enabled
     limiter.enabled = False
     app = FastAPI()
     app.include_router(router)
@@ -92,7 +96,8 @@ def test_client():
         "email": "zero@balizero.com",
         "role": "admin",
     }
-    return TestClient(app)
+    yield TestClient(app)
+    limiter.enabled = was_enabled
 
 
 @pytest.fixture
