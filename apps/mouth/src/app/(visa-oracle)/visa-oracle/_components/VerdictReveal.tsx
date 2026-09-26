@@ -55,6 +55,24 @@ export const LEGAL_STATUS_ICON: Record<
 
 /** A restrained state reveal. Motion never carries decision meaning and is
  * removed entirely for people who prefer reduced motion. */
+/**
+ * The chip's `data-state` must name one of the four frozen outcome colours
+ * oracle.css declares (`eligible|likely|conditional|likely-not`). Emitting
+ * the lower-cased legal status (`supported`, `not_supported`, `unknown`)
+ * left three of four chips uncoloured. UNKNOWN follows the axis rule
+ * (oracle.css `.oracle-axis[data-status="unknown"]` shares the conditional
+ * colour): an unsettled status must never borrow a "likely" hue.
+ */
+export const LEGAL_STATUS_CHIP_STATE: Record<
+  LegalSupportStatus,
+  "eligible" | "likely" | "conditional" | "likely-not"
+> = {
+  SUPPORTED: "eligible",
+  CONDITIONAL: "conditional",
+  NOT_SUPPORTED: "likely-not",
+  UNKNOWN: "conditional",
+};
+
 export function VerdictReveal({
   language,
   state,
@@ -137,7 +155,7 @@ export function VerdictReveal({
       {legalStatus && (
         <span
           className="oracle-verdict-chip"
-          data-state={legalStatus.toLowerCase()}
+          data-state={LEGAL_STATUS_CHIP_STATE[legalStatus]}
         >
           {(() => {
             const Icon = LEGAL_STATUS_ICON[legalStatus];

@@ -109,3 +109,31 @@ describe("VerdictReveal — the Studio description never repeats the reason body
     }
   });
 });
+
+describe("VerdictReveal — the legal-status chip names a frozen state colour", () => {
+  // GUILT: the chip used to emit `legalStatus.toLowerCase()`, so only
+  // CONDITIONAL matched a colour rule; SUPPORTED, NOT_SUPPORTED and UNKNOWN
+  // rendered as uncoloured text. Every status must land on one of the four
+  // `[data-state]` values oracle.css declares.
+  const DECLARED = new Set(["eligible", "likely", "conditional", "likely-not"]);
+  for (const [status, expected] of [
+    ["SUPPORTED", "eligible"],
+    ["CONDITIONAL", "conditional"],
+    ["NOT_SUPPORTED", "likely-not"],
+    ["UNKNOWN", "conditional"],
+  ] as const) {
+    it(`${status} → ${expected}`, () => {
+      const { container } = render(
+        <VerdictReveal
+          language="en"
+          state="SUPPORTED_CANDIDATES"
+          provenance="ENGINE"
+          legalStatus={status}
+        />,
+      );
+      const chip = container.querySelector(".oracle-verdict-chip");
+      expect(chip?.getAttribute("data-state")).toBe(expected);
+      expect(DECLARED.has(chip?.getAttribute("data-state") ?? "")).toBe(true);
+    });
+  }
+});
