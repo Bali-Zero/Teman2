@@ -1,0 +1,46 @@
+task: >-
+  First unit of the R19 public-site cutover (plan: Pro worktree mouth-r19-cutover-audit-20260924,
+  docs/plans/r19-cutover-20260924/PLAN.md §2 and §5 step 1). Ship the bounded preflight repairs
+  prepared by an external prepare-only seat (commit 0f0294db03, cherry-picked unchanged onto
+  current main): the mobile menu becomes a real dialog (focus enters, Tab wraps, Escape closes,
+  focus returns, closed drawer leaves the accessibility tree); /news search starts at result zero,
+  drops the unrelated hero while filtering, states a zero-result search and reaches every result
+  in batches of 12; a backend cover that is only a storage key no longer crashes next/image; the
+  footer category links go to canonical /news?category= destinations and the wordmark reads as
+  a plain tagline. No design change: the R19 visual identity ships in later units.
+lane: mouth
+machine: pro
+date: 2026-09-26
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2 (scripts/evidence_pack_lint.py --print-floor on the diff against
+  origin/main a6dec60277): 8 files, +498/-249, no hot-zone path.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The 13 new regression tests fail against main's code and pass on this branch.
+    probe: >-
+      copy the four test files onto a detached origin/main worktree and run vitest: 13 failed;
+      same run on the branch: 10 files / 66 tests passed.
+  A2: >-
+    No regression in the rest of mouth.
+    probe: >-
+      cd apps/mouth && npx vitest --run → 548 files, 7235 passed, 2 skipped; npx tsc --noEmit → rc 0.
+  A3: >-
+    Live after promote: /news?q=<rare term> lists matches from the first one, and the mobile menu
+    closes on Escape on balizero.com.
+    probe: >-
+      browser check on the public domain after the production deployment is promoted.
+
+out_of_scope: >-
+  The R19 fonts, palette, homepage composition and blog chrome (dormant foundation and single
+  activation units follow). Visa Oracle, Second Home/Studio, GARUDA VOA, KBLI: untouched.
+
+assumptions: >-
+  ESLint could not run locally: eslint-plugin-react in the shared node_modules throws
+  "contextOrFilename.getFilename is not a function" on ESLint 10 — a toolchain defect, CI lints.

@@ -17,6 +17,8 @@ import pytest
 from backend.security.pii_log_identifier import redact_identifier_for_log
 from backend.services.notifications.email_audit import (
     CRITICAL_EMAIL_TYPES,
+    _bounded_scrub,
+    _strip_trailing_partial_token,
     format_send_error,
     is_critical,
     log_email_attempt,
@@ -442,34 +444,73 @@ def test_telegram_alert_scrubs_addresses_from_subject_and_error_text(monkeypatch
     ["@", "leak.pr", "@exa"],
     ids=["cut_right_after_at", "cut_inside_local_part", "cut_inside_domain"],
 )
-def test_telegram_alert_scrubs_address_cut_by_truncation(monkeypatch, cut_at):
-    """M4 (PR #7385 round 2): `error`/`subject` are truncated to 400/120
-    chars BEFORE the R3 scrub runs (truncating AFTER would run the regex
-    over unbounded text — quadratic, measured ~1s at 20k chars). A cut
-    landing right after `@`, inside the local part, or inside the domain
-    leaves a fragment `_scrub_email_tokens`'s regex cannot match at all (it
-    needs >=1 character on BOTH sides of `@`), so that fragment used to
-    survive the scrub untouched — a leak specifically CAUSED by truncating
-    before scrubbing rather than after."""
+@pytest.mark.parametrize(
+    "field,limit",
+    [("subject", 120), ("error", 400)],
+    ids=["subject_120", "error_400"],
+)
+def test_telegram_alert_scrubs_address_cut_by_truncation(monkeypatch, field, limit, cut_at):
+    """M4 (PR #7385 round 2), sharpened + parametrized by C2 (PR #7385 gate
+    follow-up): `error`/`subject` are truncated to 400/120 chars BEFORE the
+    R3 scrub runs (truncating AFTER would run the regex over unbounded
+    text — quadratic, measured ~1s at 20k chars). A cut landing right
+    after `@`, inside the local part, or inside the domain leaves a
+    fragment `_scrub_email_tokens`'s regex cannot match at all (it needs
+    >=1 character on BOTH sides of `@`), so that fragment used to survive
+    the scrub untouched — a leak specifically CAUSED by truncating before
+    scrubbing rather than after.
+
+    C2 sharpens two things the round-2 test left loose: it only exercised
+    `error` (400 chars) — `subject` (120 chars) goes through the same
+    `_bounded_scrub` call with a different limit and was never itself
+    driven through a cut; and it asserted `local not in body`, which would
+    still pass if a SHORTER fragment of `local` (rather than the whole
+    string) had leaked, because a substring is never equal to the whole
+    string it's part of. `local[:7]` catches a partial leak the original
+    assertion's shape could not.
+    """
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
     local = "leak.probe"
     addr = f"{local}@example.com"
     idx = addr.index(cut_at) + len(cut_at) if cut_at != "leak.pr" else len("leak.pr")
-    padding = "x " * 400
-    prefix = padding[: 400 - idx]
-    error = prefix + addr + " trailing text"
+    padding = "x " * limit
+    prefix = padding[: limit - idx]
+    payload = prefix + addr + " trailing text"
+
+    kwargs = {
+        "email_type": "welcome",
+        "to_email": "ok@example.com",
+        "subject": "ok",
+        "practice_id": 1,
+        "error": "e",
+    }
+    kwargs[field] = payload
 
     with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
-        notify_email_failure_critical(
-            email_type="welcome",
-            to_email="ok@example.com",
-            subject="ok",
-            practice_id=1,
-            error=error,
-        )
+        notify_email_failure_critical(**kwargs)
 
     body = mock_open.call_args[0][1].decode()
-    assert local not in body
+    assert local[:7] not in body
+
+
+def test_local_prefix_assertion_catches_a_partial_leak_full_local_assertion_missed():
+    """Rationale test for the C2 sharpening above — not a regression guilt
+    test (there is no code cure here, only a test-assertion change, and
+    the M4 code fix already ships on `b491d10138`, so a test built the OLD
+    way already passes there too). This shows CONCRETELY why `local[:7]
+    not in body` is the stronger of the two shapes: a body that leaked
+    only a same-or-shorter FRAGMENT of `local` (e.g. a partial redaction
+    that stopped one character short of the full address) satisfies "the
+    full string is not in the body" while still containing an obvious
+    fragment of it.
+    """
+    local = "leak.probe"
+    leaked_body = "Error: delivery to leak.pr******* failed"
+
+    assert local not in leaked_body  # the round-2 assertion: passes despite the leak
+    assert local[:7] in leaked_body  # ...because it only checked the WHOLE string
+    with pytest.raises(AssertionError):
+        assert local[:7] not in leaked_body  # the sharpened assertion: catches it
 
 
 def test_telegram_alert_scrub_preserves_markdown_balance(monkeypatch):
@@ -501,6 +542,108 @@ def test_telegram_alert_scrub_preserves_markdown_balance(monkeypatch):
     assert subj_line.count("*") % 2 == 0
 
 
+@pytest.mark.parametrize(
+    "address,fragment",
+    [
+        ("first_last@example.com", "first_"),
+        ("a*b@example.com", "a*"),
+        ("x@sub_domain.example", "_domain"),
+    ],
+    ids=["underscore_in_local", "asterisk_in_local", "underscore_in_domain"],
+)
+def test_scrub_leaves_no_fragment_when_address_itself_contains_md_delimiters(
+    monkeypatch, address, fragment
+):
+    """C1 (PR #7385 gate follow-up, M5 residual): excluding `*_[]()` from
+    the token class ENTIRELY (M5, round 2) fixed `*Delivery to a@b*` but
+    broke matching for an address that itself CONTAINS one of those chars
+    — the class stopped matching THROUGH it, splitting one token into two
+    pieces and leaving whichever piece didn't touch `@` unmatched:
+    `first_last@example.com` matched only `last@example.com`
+    (`first_` survived bare); `a*b@example.com` matched only `b@example.com`
+    (`a*` survived bare); `x@sub_domain.example` matched only `x@sub`
+    (`_domain.example` survived bare). No fragment of the address may
+    survive scrubbing, whether or not it happens to touch `@`.
+    """
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject="ok",
+            practice_id=1,
+            error=f"delivery to {address} failed",
+        )
+
+    body = mock_open.call_args[0][1].decode()
+    assert address not in body
+    assert fragment not in body
+
+
+def test_scrub_preserves_markdown_wrapping_delimiters_around_a_delimiter_bearing_address(
+    monkeypatch,
+):
+    """C1: the restored token class must not reopen the M5 leak it fixed —
+    an address that both CONTAINS a delimiter and is WRAPPED in one must
+    still redact fully while leaving the wrapping delimiter in place, e.g.
+    `_Re: <addr>_` and `(<addr>).` in the PR #7385 gate comment.
+    """
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    addr = "first_last@example.com"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject=f"_Re: {addr}_",
+            practice_id=1,
+            error=f"({addr}).",
+        )
+
+    import urllib.parse
+
+    text = urllib.parse.parse_qs(mock_open.call_args[0][1].decode())["text"][0]
+    assert addr not in text
+    assert "first_" not in text  # the fragment the old exclusion-based class left bare
+    subj_line = next(line for line in text.splitlines() if line.startswith("*Subject:*"))
+    err_line = next(line for line in text.splitlines() if line.startswith("*Error:*"))
+    # Wrapping delimiters preserved verbatim around the digest.
+    assert subj_line.startswith("*Subject:* _Re: ") and subj_line.endswith("_")
+    assert err_line.startswith("*Error:* `(")
+    assert err_line.endswith(").`")
+
+
+def test_scrub_subject_markdown_delimiter_parity_equals_input(monkeypatch):
+    """C1: subject-line `*`/`_` parity must equal the input's when the
+    delimiters are pure Markdown wrapping (not characters belonging to the
+    address itself) — the peel-and-reattach in `_scrub_email_tokens`
+    neither drops nor introduces a delimiter it did not consume from the
+    address's own interior.
+    """
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+    addr = "leak.probe@example.com"
+    subject = f"*_Update for {addr}_*"
+
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="ok@example.com",
+            subject=subject,
+            practice_id=1,
+            error="e",
+        )
+
+    import urllib.parse
+
+    text = urllib.parse.parse_qs(mock_open.call_args[0][1].decode())["text"][0]
+    subj_line = next(line for line in text.splitlines() if line.startswith("*Subject:*"))
+    output_subject = subj_line[len("*Subject:* ") :]
+    assert output_subject.count("*") == subject.count("*")
+    assert output_subject.count("_") == subject.count("_")
+    assert "leak.probe" not in output_subject
+
+
 def test_missing_token_warning_does_not_log_the_recipient_address(monkeypatch, caplog):
     """The no-token early return logs a warning; it must be address-free too.
 
@@ -523,3 +666,111 @@ def test_missing_token_warning_does_not_log_the_recipient_address(monkeypatch, c
     assert "marco.bianchi" not in joined
     assert "example.org" not in joined
     assert redact_identifier_for_log(address) in joined
+
+
+# ----------------------------------------------------------------------
+# _bounded_scrub — truncation-boundary diagnostics (C3, PR #7385 gate
+# follow-up, NIT)
+# ----------------------------------------------------------------------
+
+
+def test_bounded_scrub_single_overlong_token_becomes_an_empty_field():
+    """C3: a single token longer than `limit`, with no whitespace anywhere
+    in it, has no boundary to keep any of it on — `_bounded_scrub`
+    collapses it to an empty field rather than a truncated fragment.
+    Documented behaviour, not a regression fix: true on `b491d10138` too,
+    since the trailing-partial-token strip removes the WHOLE truncated
+    string when none of it is whitespace.
+    """
+    text = "a" * 200
+    assert _bounded_scrub(text, 120) == ""
+
+
+def test_bounded_scrub_keeps_a_complete_last_token_at_the_exact_boundary():
+    """C3: guilt test — fails on b491d10138. A cut that lands EXACTLY on a
+    whitespace boundary (the character right AFTER `limit`, i.e.
+    ``text[limit]``, is itself whitespace) means the kept text ends on a
+    COMPLETE token, not a partial one — there is nothing to strip. The
+    pre-fix check looked only at ``truncated[-1]`` (the last KEPT
+    character); it could not tell "this is mid-token" apart from "this
+    coincidentally ends a token right at the cut", and dropped a complete
+    trailing token in the second case too.
+
+    ``_bounded_scrub("abcde fghij", 5)`` on b491d10138 returns ``""`` —
+    "abcde" is whole (``text[5]`` is a space) but gets stripped anyway.
+    """
+    text = "abcde fghij"
+    assert text[5] == " "  # the cut lands exactly on the boundary
+    assert _bounded_scrub(text, 5) == "abcde"
+
+
+def test_bounded_scrub_still_strips_a_genuinely_mid_token_cut():
+    """Non-regression companion to the boundary test above: when the
+    character right after the cut is NOT whitespace (a real mid-token
+    cut, not a coincidental boundary), the partial token is still
+    dropped — the C3 fix narrows the condition, it does not disable it.
+    """
+    text = "abcdef ghijkl"
+    assert text[5] == "f"  # not a boundary — "abcde" is only half of "abcdef"
+    assert _bounded_scrub(text, 5) == ""
+
+
+# ----------------------------------------------------------------------
+# _strip_trailing_partial_token — linear replacement for the polynomial
+# `_TRAILING_PARTIAL_TOKEN_RE = r"\S+$"` sub (C6, PR #7385 gate follow-up,
+# CodeQL alert 9192, py/polynomial-redos)
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "   ",
+        "abc",
+        "abc def",
+        "abc def ",
+        " abc",
+        "abc\tdef",
+        "abc\ndef",
+        "leak.pr",
+        "leak.probe@example.co",
+        "a" * 500,
+    ],
+)
+def test_strip_trailing_partial_token_matches_the_old_regex_on_existing_cases(text):
+    """C6: proves `_strip_trailing_partial_token` produces the IDENTICAL
+    output to the regex it replaces (`re.sub(r"\\S+$", "", text)`) on
+    every shape `_bounded_scrub` actually feeds it — the swap changes
+    performance characteristics only, never behaviour.
+    """
+    import re as _re
+
+    assert _strip_trailing_partial_token(text) == _re.sub(r"\S+$", "", text)
+
+
+def test_strip_trailing_partial_token_handles_200k_chars_without_hanging():
+    """C6: the replaced shape measured ~2.0s at 20k chars fed directly
+    (gate addendum, CodeQL alert 9192) — genuinely polynomial, not just
+    slow. This is NOT run against the old regex at this size (that IS the
+    vulnerability the fix closes; reproducing it here would risk hanging
+    the test run rather than proving anything the CodeQL scan and the
+    20k-char measurement in the gate addendum don't already show). It
+    only proves the linear replacement completes and is still CORRECT at
+    a size an order of magnitude past the measured slow point — asserting
+    on behaviour, never on wall time, per the follow-up mandate.
+    """
+    text = "a" * 200_000
+    assert _strip_trailing_partial_token(text) == ""
+
+    text_with_boundary = ("a" * 100_000) + " " + ("b" * 99_999)
+    assert _strip_trailing_partial_token(text_with_boundary) == ("a" * 100_000) + " "
+
+
+def test_bounded_scrub_handles_200k_char_single_token_without_hanging():
+    """Same shape through the real call path (`_bounded_scrub`), not just
+    the helper in isolation — proves the fix closes CodeQL alert 9192 on
+    the function it was actually raised against, not a duplicate copy of
+    the pattern."""
+    text = "a" * 200_000
+    assert _bounded_scrub(text, 400) == ""
