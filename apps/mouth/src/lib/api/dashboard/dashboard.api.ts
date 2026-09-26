@@ -81,6 +81,7 @@ export interface PortalChallengeTaxRules {
 export interface PortalChallengeEntry {
   member: string;
   display_name: string;
+  avatar_url?: string | null;
   department: string | null;
   is_tax: boolean;
   is_me: boolean;
@@ -129,7 +130,7 @@ export const dashboardApi = {
    */
   async getPortalChallenge(): Promise<PortalChallengeResponse> {
     return api.request<PortalChallengeResponse>(
-      "/api/dashboard/portal-challenge",
+      "/api/dashboard/portal-challenge?fresh=true",
     );
   },
 };

@@ -32,6 +32,8 @@ import { cn } from "@/lib/utils";
 import "../../portal/r19-fonts.css";
 import { CARD, EYEBROW, FOCUS, HAIRLINE, SERIF, StatePill } from "./r19";
 import { usePortalChallenge } from "./_lib/usePortalChallenge";
+import { ChampionArena } from "./ChampionArena";
+import { ChampionPortrait } from "@/components/workspace/ChampionPortrait";
 import type {
   PortalChallengeEntry,
   PortalChallengeResponse,
@@ -472,6 +474,11 @@ function RankingRow({
         {isZeroState ? "–" : entry.rank}
       </span>
       <div className="min-w-0 flex items-center gap-1.5">
+        <ChampionPortrait
+          name={entry.display_name}
+          src={entry.avatar_url}
+          className="size-9"
+        />
         <span className="text-[12px] font-semibold text-[var(--tx-pure)] truncate">
           {entry.display_name}
         </span>
@@ -502,7 +509,7 @@ function RankingList({
   const visible = expanded ? sorted : sorted.slice(0, 5);
 
   return (
-    <div className={cn(CARD, "flex flex-col")}>
+    <div data-testid="champion-ranking" className={cn(CARD, "flex flex-col")}>
       <div className={cn(HAIRLINE, "border-x-0 border-t-0 px-4 py-3")}>
         <span className={EYEBROW}>Papan Peringkat</span>
       </div>
@@ -758,7 +765,11 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
                 className="mb-3 h-[3px] w-14 rounded-sm bg-[var(--bz-copper)]"
               />
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--bz-kita-ink-panel-copper)]">
-                14–29 September 2026 · WITA
+                {data.status === "closed"
+                  ? "Hasil akhir"
+                  : data.status === "upcoming"
+                    ? "Bersiap untuk bertanding"
+                    : "Final sprint · Setiap poin berarti"}
               </p>
               <h2
                 className="mt-1 text-[clamp(26px,3.2vw,36px)] leading-[1.05] tracking-[-0.02em]"
@@ -767,9 +778,9 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
                 Portal Champion
               </h2>
             </div>
-            <div>
+            <div className="flex items-center gap-3">
               <span
-                className="block font-black tabular-nums text-[clamp(52px,8vw,84px)]"
+                className="block font-black tabular-nums text-3xl"
                 style={{ ...SERIF, lineHeight: 0.9, marginBottom: "0.35em" }}
               >
                 {data.team_total_activations}
@@ -783,37 +794,52 @@ export function PortalChallengeWidget({ identity }: { identity: string }) {
           </div>
           <div className="flex flex-col items-end gap-2.5">
             <CountdownBlocks data={data} now={now} />
-            <RulesDrawer data={data} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        {data.tiers.map((t) => (
-          <PodiumCard
-            key={t.tier}
-            tier={t.tier}
-            threshold={t.threshold}
-            prizeIdr={t.prize_idr}
-            entries={data.entries}
-            isZeroState={isZeroState}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1fr_1fr]">
-        <MyPositionCard
-          me={me}
-          tiers={data.tiers}
-          taxSuperBonusIdr={data.tax_rules.podium_super_bonus_idr}
-        />
-        <TaxStrip data={data} />
-      </div>
+      <ChampionArena data={data} />
 
       <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[1.4fr_1fr]">
         <RankingList entries={data.entries} isZeroState={isZeroState} />
         <LiveFeed activations={data.recent_activations} now={now} />
       </div>
+
+      <details className={cn(CARD, "p-4")}>
+        <summary
+          className={cn(
+            FOCUS,
+            "cursor-pointer text-sm font-semibold text-[var(--tx-pure)]",
+          )}
+        >
+          Hadiah, posisi saya & aturan
+        </summary>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bz-text-1)] p-4 text-[var(--bz-surface)]">
+          <span className="text-xs">14–29 September 2026 · WITA</span>
+          <RulesDrawer data={data} />
+        </div>
+        <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          {data.tiers.map((t) => (
+            <PodiumCard
+              key={t.tier}
+              tier={t.tier}
+              threshold={t.threshold}
+              prizeIdr={t.prize_idr}
+              entries={data.entries}
+              isZeroState={isZeroState}
+            />
+          ))}
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2.5 xl:grid-cols-[1fr_1fr]">
+          <MyPositionCard
+            me={me}
+            tiers={data.tiers}
+            taxSuperBonusIdr={data.tax_rules.podium_super_bonus_idr}
+          />
+          <TaxStrip data={data} />
+        </div>
+      </details>
     </section>
   );
 }

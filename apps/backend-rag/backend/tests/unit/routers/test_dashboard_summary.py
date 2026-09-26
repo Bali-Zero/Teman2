@@ -549,7 +549,39 @@ class TestPortalChallengeEndpoint:
         resp = client.get("/api/dashboard/portal-challenge")
         assert resp.status_code == 403
 
-    def test_staff_token_returns_leaderboard(self, mock_current_user, mock_db_pool):
+    def test_client_token_cannot_subscribe_to_champion_goals(self, mock_client_user, mock_db_pool):
+        client = self._make_client(mock_client_user, mock_db_pool)
+        assert client.get("/api/dashboard/portal-challenge/events").status_code == 403
+
+    @pytest.mark.parametrize("redis_state", ["missing", "down"])
+    def test_champion_goals_fail_before_streaming_when_redis_is_unavailable(
+        self, mock_current_user, mock_db_pool, redis_state
+    ):
+        redis = None
+        if redis_state == "down":
+            redis = MagicMock()
+            redis.ping = AsyncMock(side_effect=ConnectionError("redis unreachable"))
+            redis.time = AsyncMock(side_effect=ConnectionError("redis unreachable"))
+        manager = MagicMock()
+        manager.get_async_client.return_value = redis
+        client = self._make_client(mock_current_user, mock_db_pool)
+        with (
+            patch(
+                "backend.services.portal.challenge_leaderboard.compute_status",
+                return_value="live",
+            ),
+            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=manager),
+        ):
+            resp = client.get("/api/dashboard/portal-challenge/events")
+        assert resp.status_code == 503
+        assert resp.headers["content-type"].startswith("application/json")
+        if redis is not None:
+            redis.ping.assert_awaited_once()
+
+    @pytest.mark.parametrize("fresh", [False, True])
+    def test_staff_token_returns_leaderboard(
+        self, mock_current_user, mock_db_pool, _bypass_cache, fresh
+    ):
         from datetime import datetime, timezone
 
         roster_rows = [
@@ -588,7 +620,9 @@ class TestPortalChallengeEndpoint:
         mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=20)
 
         client = self._make_client(mock_current_user, mock_db_pool)
-        resp = client.get("/api/dashboard/portal-challenge")
+        if fresh:
+            _bypass_cache.get.return_value = {"stale": True}
+        resp = client.get("/api/dashboard/portal-challenge" + ("?fresh=true" if fresh else ""))
 
         assert resp.status_code == 200
         body = resp.json()
@@ -596,6 +630,9 @@ class TestPortalChallengeEndpoint:
         assert body["timezone"] == "Asia/Makassar"
         assert {t["tier"] for t in body["tiers"]} == {1, 2, 3}
         assert body["team_total_activations"] == 20
+        if fresh:
+            _bypass_cache.get.assert_not_awaited()
+            _bypass_cache.set.assert_not_awaited()
 
         by_member = {e["member"]: e for e in body["entries"]}
         assert by_member["winner"]["activations"] == 20
