@@ -1776,3 +1776,44 @@ deliberately, tracked in the ledger rather than patched blind.
 was measuring the wrong thing the whole time. Cousin to #8 (network/proxy fragility as invisible
 long-running failure) in spirit: a long-running daemon silently wrong about its one job, never
 crashed, never logged an error, just watching an answer that could never move.
+
+## W140 — a PII-removal diff's own deleted lines went to Codex in cleartext — 2026-09-26
+
+**TRAUMA:** `.claude/scripts/codex-spalla.sh` embedded the raw `git diff` (committed +
+uncommitted + untracked-file bodies) straight into the prompt sent to the Codex CLI (OpenAI
+cloud) with no redaction and no path guard at all. PR #7453 — a PII-removal PR — was reviewed
+through this wrapper: the diff deleted 959 lines of a client `plan.jsonl` (969 `full_name`
+records), and every one of those deleted lines went to OpenAI in cleartext, a Builder Contract
+rule-4 / Symbiosis Law-2 output-boundary breach. The two contaminated M5 transcripts were
+quarantined (`~/.agent/pii-quarantine/`, 0600) on discovery. A sweep of every other
+`~/logs/codex-spalla/` transcript (70+ files, plus the session's own council-*/out-*.txt dumps
+to codex/kimi/gemini) against the canonical redactor's own dynamic CRM name list (12,343 client
++ 1,789 company names from PROD, filtered to the multi-word/len>=6 subset to cut the ~30%
+single-word/short-token false-positive flood a raw alternation match produces against ordinary
+prose) found zero additional client-name hits; the handful of raw email/phone matches were RFC
+2606 test-fixture domains (`@example.com`, `@example.test`) or the `noreply@anthropic.com`
+commit-attribution boilerplate — no further leak.
+
+**ANTIBODY:** every prompt an external seat receives now passes through three guards, in
+`scripts/lib/spalla_redact.sh` (shared, so a sibling wrapper reuses them instead of
+re-implementing its own): `strip_data_file_deletes` drops every DELETED line of a `.jsonl`/
+`.csv`/`.xlsx` file before anything else runs — a suppression marker replaces it, the content
+never exists in the prompt string at any point; `redact_for_external` then pipes whatever
+remains through the ONE canonical `scripts/_redact_pii.py` (the same module the
+agent-library-evolver's DeepSeek/Gemini/NotebookLM egress path already trusts), fail-closed on
+a redactor error; `pii_path_hit` refuses the whole dispatch outright (exit 7) when the diff
+touches a PII-classed path (`research/crm/`, `research/crm-exports/`, `research/compliance/`,
+`research/wa-copilot/`, `research/personal/wa-corpus/`, `research/hr/`, `research/*/clients/`)
+unless the caller passes `--allow-pii-paths`, itself logged to telemetry. Transcripts of every
+external seat stay swept and 0600.
+
+**GOTCHA:** a PII-REMOVAL diff is the most PII-dense diff there is — the deleted lines ARE the
+data, so a wrapper that reviews "the fix that scrubs client X's data" ships client X's data to
+the reviewer, precisely when everyone's attention is on the fix, not the review channel. A raw
+CRM-name alternation match is a poor detector on its own: 4,238 of the 14,132 loaded names were
+single words and 1,303 were four characters or fewer, so an unfiltered sweep would have called
+almost every transcript "guilty" — the false-positive flood would have buried the two real hits.
+
+**Family: #4 (Secret/PII in the clear)** — cousin to W-numbers on the trigger hook's own secret
+hygiene: same family, but the payload here is CLIENT PII carried by the CONTENT of a diff, not a
+credential carried by a command string.
