@@ -126,7 +126,12 @@ export function PortalChampionCelebration({ identity }: { identity: string }) {
     [],
   );
   const dismiss = useCallback(
-    () => setGoals((pending) => pending.slice(1)),
+    () =>
+      setGoals((pending) =>
+        pending
+          .slice(1)
+          .filter((goal) => Date.now() - goal.receivedAt <= 90_000),
+      ),
     [],
   );
   useChampionGoals(identity, receive);
@@ -204,9 +209,9 @@ export function PortalChampionCelebration({ identity }: { identity: string }) {
         {current && visible && identity && (
           <motion.aside
             key={`${current.member}:${current.at}`}
-            initial={{ opacity: 0 }}
+            initial={reduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[color-mix(in_srgb,var(--bz-text-1)_88%,transparent)] p-5 text-[var(--bz-surface)] backdrop-blur-md"
             aria-label="Selebrasi Portal Champion"
             role="dialog"
