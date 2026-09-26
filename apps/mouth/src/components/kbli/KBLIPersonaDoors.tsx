@@ -49,34 +49,34 @@ function handleDoorClick(door: KBLIDoor): void {
 export function KBLIPersonaDoors() {
   return (
     <nav aria-label="Other ways in">
-      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+      <ul className="grid grid-cols-1 gap-1 sm:grid-cols-3 sm:gap-6">
         {DOORS.map(({ id, href, icon: Icon, label, subtext, note }) => (
           <li key={id}>
             <a
               href={href}
               onClick={() => handleDoorClick(id)}
-              className="group flex h-full min-h-[44px] items-start gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 no-underline sm:p-4 transition-colors duration-200 hover:border-white/[0.14] hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white/60"
+              className="group flex h-full min-h-[44px] items-start gap-3 border-t border-[var(--kbli-text-primary)] bg-transparent px-1 pb-3 pt-3 no-underline transition-colors duration-200 hover:bg-[var(--kbli-bg-surface-hover)] focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--kbli-accent)] sm:px-2 sm:pt-4"
             >
               <Icon
                 size={18}
                 strokeWidth={1.8}
                 aria-hidden="true"
-                className="mt-0.5 shrink-0 text-zinc-400"
+                className="mt-0.5 shrink-0 text-[var(--kbli-text-secondary)]"
               />
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-zinc-100">
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-[var(--kbli-text-primary)] group-hover:text-[var(--kbli-accent)]">
                   {label}
                   <ArrowRight
                     size={14}
                     aria-hidden="true"
-                    className="text-zinc-500 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-300"
+                    className="text-[var(--kbli-accent)] transition-transform duration-200 group-hover:translate-x-0.5"
                   />
                 </span>
-                <span className="mt-1 hidden text-[13px] leading-relaxed text-zinc-300 sm:block">
+                <span className="mt-1 hidden text-[13px] leading-relaxed text-[var(--kbli-text-secondary)] sm:block">
                   {subtext}
                 </span>
                 {note ? (
-                  <span className="mt-1 block text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400 sm:mt-2">
+                  <span className="mt-1 block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--kbli-text-secondary)] sm:mt-2">
                     {note}
                   </span>
                 ) : null}
