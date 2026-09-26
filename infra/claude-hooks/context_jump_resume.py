@@ -11,7 +11,8 @@ start of EVERY session (SessionStart, matcher `startup`) and:
   - picks ONLY the jump this window was opened FOR: `NZ_JUMP_FROM=<from>` in
     the env, set by nz-jump.sh (interactive, typed by window_jump.sh or by a
     human) and by the cascade wrapper's hop (headless). That file must still be
-    unclaimed (`to_session` null), fresh (< MAX_AGE_S) and not our own;
+    unclaimed (`to_session` null), fresh (< MAX_AGE_S from its latest gesture,
+    not from when the guard first tripped — see `pick_jump`) and not our own;
   - a window opened BY HAND (plain `claude`, no NZ_JUMP_FROM) gets NOTHING.
     Until 2026-09-09 it fell back to "the freshest unclaimed same-cwd jump",
     so for 15 minutes after every guard trip any window Zero opened in
@@ -38,6 +39,7 @@ Kill switch: CONTEXT_JUMP_OFF=1.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -67,7 +69,22 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
     another window; the same evening it handed a hand-opened interactive
     session a stale mandate. `cwd` is kept in the signature for the payload
     but is no longer a filter — the launcher has already cd'd into the jump's
-    cwd, and a hand-opened window is refused whatever its cwd."""
+    cwd, and a hand-opened window is refused whatever its cwd.
+
+    Freshness is judged from the LATEST gesture, not the first one: the guard
+    retries the gesture (context_window_guard.py's `_stamp_gesture_attempt`)
+    and stamps `last_gesture_ts` on every attempt, but `ts` is written once,
+    when the guard first tripped. A retry hours later still mints a real new
+    window (2026-09-26, session cefbda50: guard tripped at ts, the retry
+    opened the window that actually asked for the jump) and must be judged
+    fresh from ITS OWN gesture. The reference time is `max(ts, last_gesture_ts)`
+    when `last_gesture_ts` is present and a FINITE float; a missing,
+    unparseable, NaN or infinite one falls back to `ts` alone — `float("nan")`
+    and `float("inf")` both parse without raising, and both would otherwise
+    launder a stale `ts` into a fresh jump (`now - nan > MAX_AGE_S` and
+    `now - inf > MAX_AGE_S` are both False), so they are rejected explicitly
+    via `math.isfinite`. `max()` also means a `last_gesture_ts` older than
+    `ts` can never make a fresher `ts` look stale."""
     if not want:
         return None
     now = time.time() if now is None else now
@@ -79,7 +96,18 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
         ts = float(j.get("ts") or 0)
     except (TypeError, ValueError):
         return None
-    if now - ts > MAX_AGE_S or j.get("from_session") == session_id:
+    try:
+        last_gesture_ts = float(j["last_gesture_ts"])
+        if not math.isfinite(last_gesture_ts):
+            raise ValueError("last_gesture_ts not finite")
+    except (KeyError, TypeError, ValueError):
+        reference = ts
+    else:
+        # last_gesture_ts is always >= ts in real data (the guard only stamps
+        # it on a RETRY, after ts); max() is the defensive floor so an older
+        # last_gesture_ts can never make a fresher ts look stale.
+        reference = max(ts, last_gesture_ts)
+    if now - reference > MAX_AGE_S or j.get("from_session") == session_id:
         return None
     return (p, j)
 

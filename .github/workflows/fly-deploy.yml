@@ -33,7 +33,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:15
+        image: ghcr.io/bali-zero/ci-mirror/postgres:15
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test

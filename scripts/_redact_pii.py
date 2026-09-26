@@ -45,7 +45,7 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +90,7 @@ class RedactionConfig:
     pass3_generic: list[dict[str, Any]]
     pass4_dynamic: list[dict[str, Any]]
     gate: GateConfig
+    nb_titles: dict[str, Any] = field(default_factory=dict)
 
 
 _YAML_STRICT_LIB = Path(__file__).resolve().parent / "lib" / "yaml_strict.py"
@@ -194,13 +195,49 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> RedactionConfig:
             f"An empty rule set is a disarmed control, not a permissive one."
         )
 
+    nb_titles = _validate_nb_titles(raw.get("nb_titles"), path)
+
     return RedactionConfig(
         pass1=raw.get("pass1", []) or [],
         pass2_team_first=raw.get("pass2_team_first", []) or [],
         pass3_generic=raw.get("pass3_generic", []) or [],
         pass4_dynamic=raw.get("pass4_dynamic", []) or [],
         gate=gate,
+        nb_titles=nb_titles,
     )
+
+
+_UUID_RE = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+
+
+def _validate_nb_titles(section: Any, path: Path) -> dict[str, Any]:
+    """Validate the report-writer-only `nb_titles` section (absent -> empty).
+
+    Same posture as the passes above: an entry that cannot be applied is refused at load,
+    never skipped at redaction time, because a skipped title rule prints the title.
+    """
+    if section is None:
+        return {}
+    if not isinstance(section, dict):
+        raise RedactionError(f"redaction rules at {path}: `nb_titles` must be a mapping.")
+    seen: set[str] = set()
+    for rule in section.get("rules") or []:
+        rid = rule.get("id")
+        if not rid or rid in seen or "pattern" not in rule:
+            raise RedactionError(
+                f"redaction rules at {path}: nb_titles rule {rid!r} needs a unique `id` and "
+                f"a `pattern` — an unnamed or duplicate rule is shadowed in silence."
+            )
+        seen.add(rid)
+    for entry in section.get("sensitive_notebooks") or []:
+        nid = str(entry.get("id", ""))
+        if not _UUID_RE.fullmatch(nid) or not entry.get("replace"):
+            raise RedactionError(
+                f"redaction rules at {path}: nb_titles.sensitive_notebooks entry {nid!r} needs "
+                f"a full lowercase notebook uuid and a `replace` token — a prefix could match "
+                f"the wrong notebook, and a missing token would print the title."
+            )
+    return section
 
 
 def _compile_rule(rule: dict[str, Any]) -> re.Pattern[str] | None:
@@ -366,6 +403,56 @@ class Redactor:
                 compiled = _compile_rule(rule)
                 if compiled is not None:
                     self._compiled[rid] = compiled
+        # Separate table: nb_titles rules must never shadow (or be shadowed by) a pass rule id.
+        self._nb_compiled: dict[str, re.Pattern[str]] = {
+            rule["id"]: re.compile(rule["pattern"])
+            for rule in config.nb_titles.get("rules") or []
+        }
+
+    @classmethod
+    def load_static(cls) -> "Redactor":
+        """Canonical rules, pass4 deliberately EMPTY — for report writers.
+
+        The writers that call this (nb-monitor registry, nb-curator inventory) run under
+        launchd with no DATABASE_URL, so pass4 would be out of scope anyway; saying so here
+        keeps a reader from assuming CRM names are covered. Titles are covered by the
+        `nb_titles` section instead.
+        """
+        return cls(config=load_config(), runtime_names={})
+
+    def redact_fragment(self, text: str) -> str:
+        """Apply passes 1-4 to a SHORT string: a title, a table cell, a JSON value.
+
+        `redact()` refuses anything under `gate.min_remaining_chars` and empty input — right
+        for a document leaving for an LLM, wrong for a 30-character notebook title, which is
+        legitimately short. Rules and fail-closed error handling are the same.
+        """
+        if not text:
+            return text
+        text = self._apply_pass(text, self.config.pass1, "pass1")
+        text = self._apply_pass(text, self.config.pass2_team_first, "pass2")
+        text = self._apply_pass(text, self.config.pass3_generic, "pass3")
+        if any(self.runtime_names.values()):
+            text = self._apply_dynamic_pass(text)
+        return text
+
+    def redact_notebook_title(self, title: str, notebook_id: str | None = None) -> str:
+        """A NotebookLM title as a report may print it.
+
+        A notebook listed in `nb_titles.sensitive_notebooks` loses its whole title (matched
+        on the full uuid or an 8+ char prefix, the form reports carry). Otherwise the
+        `nb_titles` rules run, then passes 1-4 via `redact_fragment`.
+        """
+        nid = (notebook_id or "").strip().lower()
+        if len(nid) >= 8:
+            for entry in self.config.nb_titles.get("sensitive_notebooks") or []:
+                if str(entry["id"]).startswith(nid):
+                    return str(entry["replace"])
+        if not title:
+            return title
+        for rule in self.config.nb_titles.get("rules") or []:
+            title = _apply_rule(title, rule, self._nb_compiled[rule["id"]])
+        return self.redact_fragment(title)
 
     @classmethod
     def load_default(

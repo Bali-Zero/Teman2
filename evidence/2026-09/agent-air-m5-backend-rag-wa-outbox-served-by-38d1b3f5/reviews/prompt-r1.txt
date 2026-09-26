@@ -1,0 +1,530 @@
+You are an independent Gear-3 council reviewer for a Nuzantara (Bali Zero) backend-rag PR.
+Read-only review: no PII, no client data, no secrets in this prompt — only a code diff, a
+migration, and synthetic test output. Do not claim to have run anything; you have no tools.
+
+CONTEXT: `wa_outbox` (WhatsApp bot outbox table) gets a new nullable TEXT column `served_by`
+(migration 322) that records which route served a reply (codex | support_abstain |
+scripted_media_ack | scripted_greeting | scripted_human_handoff | scripted_identity | NULL).
+It rides in the SAME fenced terminal UPDATE that already writes `abstained_at`/`evidence_score`
+(migration 314, already live in production) — this UPDATE runs AFTER the WhatsApp Graph send has
+already irreversibly happened; it is best-effort bookkeeping, not the send itself.
+
+Below is the full `git diff origin/main...HEAD` for this PR (5 files, ~232 net lines): the new
+migration, the worker change (including a `_finalize()` retry helper), and test changes.
+
+Please answer THREE specific questions, each with a clear verdict (ACCEPT / ACCEPT-WITH-NOTES /
+REWORK) and reasoning:
+
+(1) DEPLOY-WINDOW SAFETY OF THE FENCED UPDATE GAINING A BIND.
+`fly-deploy.yml` applies `migrations_v2/*.sql` via `python -m backend.db.migrate apply-all` TWICE:
+once in a `run-migrations` job that runs BEFORE `deploy` (via `flyctl ssh console` into the
+CURRENTLY-DEPLOYED, i.e. PREVIOUS, image — so it never sees this PR's new migration 322, which
+only ships inside the new image's checkout), and once in `run-sql-v2-migrations-post-deploy`,
+which `needs: deploy` and therefore only starts AFTER the rolling `flyctl deploy` job has already
+returned — and `flyctl deploy --strategy rolling` does not return until every machine is replaced
+and already serving 100% of live traffic. So there is a real window, once per deploy, where the
+NEW worker code (referencing `served_by` in its fenced UPDATE) is fully live in production before
+migration 322 has actually run. Can the new bind ever fail where the old 2-column UPDATE (status/
+abstained_at/evidence_score, migration 314, already in prod) did not — by type mismatch, a NULL
+that the column rejects, or (this specific case) the column not existing yet? We believe the
+answer is yes for the missing-column case specifically, and shipped a mitigation: `_finalize()`
+in the diff below tries the full UPDATE first and, ONLY on `asyncpg.exceptions.UndefinedColumnError`,
+retries the same fenced write without the `served_by` clause in a fresh transaction, so the row
+still finalizes to 'done' and the send is never silently left un-finalized (which would risk a
+duplicate Graph send on the next retry — the exact "residual double-send window" this file's own
+pre-existing comments already document for a lost fence, here reached by a different cause).
+Is this mitigation sufficient? Is the exception class correctly scoped (should it also catch
+anything else)? Is there a cleaner way? Rate ACCEPT/ACCEPT-WITH-NOTES/REWORK.
+
+(2) ROLLBACK SAFETY OF THE COLUMN.
+Migration 322 is additive-only: `ALTER TABLE public.wa_outbox ADD COLUMN IF NOT EXISTS served_by
+TEXT NULL` (no default, no CHECK, catalog-only — no table rewrite). Its ROLLBACK section is
+`DROP COLUMN IF EXISTS served_by`. The stated routine-rollback plan (in the migration's own header
+and the PR body) is: revert the WORKER commit only, and let the column stay (same convention as
+migration 314's abstained_at/evidence_score, and 318's inbound_message_id) — a real `DROP COLUMN`
+in production is a separately authorized destructive action, never part of a routine revert. Is
+this safe? Any risk from the deliberate absence of a CHECK constraint (the PR's own reasoning:
+a CHECK would make the post-send bookkeeping UPDATE fail on any future served_by value not yet
+in the constraint's vocabulary, which is worse than an unconstrained free-text column here)?
+
+(3) PII.
+`served_by` only ever holds one of a closed set of fixed vocabulary tokens produced by
+`CodexLegResult.served_by` in `wa_codex_leg.py` (`codex`, `support_abstain`,
+`scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`, `scripted_identity`) or NULL
+— never message text, a phone number, or any client-supplied value. Confirm this reading of the
+diff (grep it yourself in the diff below) and flag anything you see that could ever put
+client-identifying data into this column.
+
+Answer point-by-point (1), (2), (3), each with a verdict. If REWORK, name exactly what must change.
+
+=== FULL DIFF (git diff origin/main...HEAD) ===
+diff --git a/apps/backend-rag/backend/db/migrations_v2/322_wa_outbox_served_by.sql b/apps/backend-rag/backend/db/migrations_v2/322_wa_outbox_served_by.sql
+new file mode 100644
+index 0000000000..90686c9de2
+--- /dev/null
++++ b/apps/backend-rag/backend/db/migrations_v2/322_wa_outbox_served_by.sql
+@@ -0,0 +1,64 @@
++-- 322_wa_outbox_served_by.sql
++--
++-- THE GAP (docs/zantara-loop-state.md, Iteration 2 "Measured, not fixed" +
++-- "Next gap"): ~74% of client questions that reach retrieval get the fixed
++-- `support_abstain` stub, but that rate is invisible in SQL. `abstained_at`
++-- stays NULL for a `support_abstain` completion BY DESIGN (D6/B2.3b,
++-- migration 314's own header: it means "a GENERATED reply whose frozen
++-- evidence label was true", never "a refusal stub was delivered"), and
++-- `wa_outbox_worker.py` only LOGS `leg.served_by`
++-- (`logger.info("wa_outbox: %s served outbox=%s", ...)`) — nothing durable
++-- on the row says which route served it. `CodexLegResult.served_by`
++-- (`wa_codex_leg.py`) already carries the closed vocabulary this column
++-- stores verbatim: `codex` (default), `support_abstain`,
++-- `scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`,
++-- `scripted_identity`.
++--
++-- NO CHECK CONSTRAINT, DELIBERATELY: the post-send bookkeeping UPDATE that
++-- writes this column runs AFTER the irreversible Graph send (worker
++-- comment above that UPDATE: "The Graph send has now IRREVERSIBLY
++-- happened. Everything below is best-effort bookkeeping"). A CHECK would
++-- make that UPDATE fail the day a new `served_by` value ships before this
++-- column's vocabulary is widened — turning a bookkeeping miss into a
++-- transaction abort on a message that was already delivered. Nullable, no
++-- default: NULL means the row never carried a completion (failed
++-- generation, or a route — human-send, non-generation — that never called
++-- the codex leg), same meaning NULL already has for `evidence_score`.
++--
++-- LOCKS: ADD COLUMN with neither a type needing a rewrite nor a default is
++-- a catalog-only change on Postgres >= 11 — no table rewrite, no row
++-- touched (same rationale as migrations 314/318). `wa_outbox` is ~450 rows
++-- in production; SET LOCAL bounds this the same as 314 out of caution, not
++-- necessity.
++--
++-- IF NOT EXISTS: mirrors 318/321 (the two most recent ADD COLUMNs on this
++-- table), not 314's fail-fast — a same-named column already present in the
++-- right shape (TEXT, nullable, no default) is a no-op worth tolerating
++-- here since nothing downstream depends on catching that drift loudly.
++--
++-- NUMBERING: `git ls-tree origin/main -- apps/backend-rag/backend/db/migrations_v2`
++-- checked this turn — 321_portal_reply_and_email.sql is the last file;
++-- `gh pr list --state open --json number,files` (this turn) shows no open
++-- PR touching migrations_v2. 322 is free against both.
++
++SET LOCAL lock_timeout = '5s';
++SET LOCAL statement_timeout = '30s';
++
++ALTER TABLE public.wa_outbox ADD COLUMN IF NOT EXISTS served_by TEXT NULL;
++
++COMMENT ON COLUMN public.wa_outbox.served_by IS
++    'CodexLegResult.served_by verbatim (wa_codex_leg.py): codex (default), '
++    'support_abstain, scripted_media_ack, scripted_greeting, '
++    'scripted_human_handoff, scripted_identity. NULL = no completion (failed '
++    'generation, or a route that never called the codex leg). No CHECK: '
++    'written after the irreversible send, must never abort the bookkeeping '
++    'UPDATE on an unrecognized value.';
++
++-- === ROLLBACK ===
++-- Additive and nullable: dropping it loses no other invariant, but the
++-- routine rollback of the writer (revert the worker commit) can KEEP this
++-- column, same as 314's abstain columns — the writer stops populating it,
++-- the column just goes quiet. Drop it only as a separately authorized
++-- cleanup once nothing reads it.
++SET LOCAL lock_timeout = '5s';
++ALTER TABLE public.wa_outbox DROP COLUMN IF EXISTS served_by;
+diff --git a/apps/backend-rag/backend/services/integrations/wa_outbox_worker.py b/apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
+index e2e31e953d..487b92a1a8 100644
+--- a/apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
++++ b/apps/backend-rag/backend/services/integrations/wa_outbox_worker.py
+@@ -925,6 +925,7 @@ async def _process_claimed_row(
+     # unscored bot route that never reaches the codex leg's carrier.
+     persist_abstained = False
+     persist_score: float | None = None
++    persist_served_by: str | None = None
+     package_ref: str | None = None
+     if needs_generation:
+         if thread["human_handling"]:
+@@ -1082,6 +1083,7 @@ async def _process_claimed_row(
+                     leg.served_by == "codex" and leg.evidence_abstain_label is True
+                 )
+                 persist_score = leg.evidence_score
++                persist_served_by = leg.served_by
+                 package_ref = leg.package_ref
+                 logger.info(
+                     "wa_outbox: %s served outbox=%s", leg.served_by, outbox_id
+@@ -1104,6 +1106,7 @@ async def _process_claimed_row(
+             # like a route that never called the leg at all.
+             persist_abstained = False
+             persist_score = None
++            persist_served_by = None
+             package_ref = None
+         finally:
+             heartbeat_task.cancel()
+@@ -1508,7 +1511,8 @@ async def _process_claimed_row(
+     # exact float, so `Decimal(repr(persist_score))` reproduces the sealed
+     # text digit-for-digit instead of a binary-float artifact.
+     persist_score_bind = decimal.Decimal(repr(persist_score)) if persist_score is not None else None
+-    async with conn.transaction():
++
++    async def _finalize(*, include_served_by: bool) -> asyncpg.Record | None:
+         # B2.3b carrier (research/operations/2026-09-11-bot-staff-room/
+         # B2-engine.md §4 PR B2.3b, D6): same statement, same fence as
+         # before — a lost fence means the whole write, carrier included,
+@@ -1517,33 +1521,61 @@ async def _process_claimed_row(
+         # timestamp, the SAME one meta_inbox_messages.sent_at gets below,
+         # so a persisted abstained_at is exactly sent_at, never a separate
+         # clock read.
+-        commit_fenced = await conn.fetchrow(
+-            """
+-            UPDATE wa_outbox
+-            SET status = 'done',
+-                abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+-                evidence_score = $5::numeric
+-            WHERE id = $1 AND claim_token = $2 AND status = $3
+-            RETURNING id
+-            """,
++        served_by_clause = ", served_by = $6::text" if include_served_by else ""
++        params: list[Any] = [
++            outbox_id, claim_token, expected_status, persist_abstained, persist_score_bind,
++        ]
++        if include_served_by:
++            params.append(persist_served_by)
++        async with conn.transaction():
++            row = await conn.fetchrow(
++                f"""
++                UPDATE wa_outbox
++                SET status = 'done',
++                    abstained_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
++                    evidence_score = $5::numeric{served_by_clause}
++                WHERE id = $1 AND claim_token = $2 AND status = $3
++                RETURNING id
++                """,
++                *params,
++            )
++            await conn.execute(
++                """
++                UPDATE meta_inbox_messages
++                SET status = 'sent', meta_message_id = $2, sent_at = NOW()
++                WHERE id = $1
++                """,
++                message_id,
++                wamid,
++            )
++            # Fold any status receipt that raced ahead of the send commit.
++            if wamid:
++                await _apply_pending_status(conn, wamid)
++        return row
++
++    try:
++        commit_fenced = await _finalize(include_served_by=True)
++    except asyncpg.exceptions.UndefinedColumnError:
++        # Deploy-window guard (Gear-3 council finding, migration 322): the
++        # pre-deploy `run-migrations` job (fly-deploy.yml) applies pending
++        # migrations_v2 files against the PREVIOUS image, BEFORE `deploy`
++        # rolls THIS new worker code onto live traffic — migration 322
++        # itself only lands afterwards, in the separate
++        # `run-sql-v2-migrations-post-deploy` job that `needs: deploy`. A
++        # send whose completion falls inside that gap must still finalize
++        # this row to 'done': leaving it un-finalized after a REAL
++        # WhatsApp send already happened would be exactly the residual
++        # double-send window this function already documents below,
++        # reached by a new cause (a missing column, not a lost fence).
++        # served_by simply stays unset for this one row; the very next
++        # completion after the column lands persists it normally — no
++        # backfill needed.
++        logger.warning(
++            "wa_outbox: served_by column not yet applied (migration 322 "
++            "mid-deploy) — finalizing outbox=%s without it",
+             outbox_id,
+-            claim_token,
+-            expected_status,
+-            persist_abstained,
+-            persist_score_bind,
+-        )
+-        await conn.execute(
+-            """
+-            UPDATE meta_inbox_messages
+-            SET status = 'sent', meta_message_id = $2, sent_at = NOW()
+-            WHERE id = $1
+-            """,
+-            message_id,
+-            wamid,
+         )
+-        # Fold any status receipt that raced ahead of the send commit.
+-        if wamid:
+-            await _apply_pending_status(conn, wamid)
++        commit_fenced = await _finalize(include_served_by=False)
+ 
+     if commit_fenced is None:
+         logger.error(
+@@ -1557,12 +1589,13 @@ async def _process_claimed_row(
+ 
+     logger.info(
+         "wa_outbox: sent (outbox=%s thread=%s wamid=%s abstained=%s "
+-        "evidence_score=%s package_ref=%s)",
++        "evidence_score=%s served_by=%s package_ref=%s)",
+         outbox_id,
+         thread_id,
+         wamid,
+         persist_abstained,
+         persist_score,
++        persist_served_by,
+         package_ref,  # opaque hash — never the query/wire/text it covers
+     )
+     return "sent"
+diff --git a/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py b/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
+index 062ecc8efd..c17d8b2e43 100644
+--- a/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
++++ b/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker.py
+@@ -224,6 +224,11 @@ async def test_human_send_happy_path_applies_staged_status() -> None:
+     # and "SET status = 'done'" are no longer on one line — pin just the
+     # clause that survives unchanged.
+     assert conn.sql_contains("SET status = 'done'")
++    # served_by (migration 322) rides the same terminal commit — a human
++    # send never calls the codex leg, so its bind stays NULL.
++    done_commit = conn.sql_with_args("SET status = 'done'")
++    assert len(done_commit) == 1
++    assert done_commit[0][1][-1] is None
+     assert any(
+         "UPDATE meta_inbox_messages" in s and "delivered" in str(a) for s, a in conn.executed
+     )
+diff --git a/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py b/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
+index 1464473501..9b27062a9f 100644
+--- a/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
++++ b/apps/backend-rag/backend/tests/unit/services/test_wa_outbox_worker_carrier.py
+@@ -5,6 +5,10 @@ research/operations/2026-09-11-bot-staff-room/B2-engine.md §4 PR B2.3b and
+ label, its normalised score and the opaque package reference from
+ ``wa_codex_leg.py``'s parsed sealed wire into ``wa_outbox_worker.py``'s
+ terminal ``done`` write (``abstained_at``/``evidence_score``, migration 314).
++``served_by`` (migration 322) rides the SAME fenced write — it is the
++`CodexLegResult.served_by` value verbatim, the durable answer to "which
++route served this row" (`docs/zantara-loop-state.md`'s support_abstain
++rate gap).
+ 
+ Deliberately a SEPARATE module from ``test_wa_outbox_worker.py`` (which uses
+ a fully mocked ``ScriptedConn`` and asserts on SQL text) — these tests need
+@@ -16,7 +20,8 @@ Fixture pattern copied from ``backend/tests/app/routers/conftest.py``
+ CI's ``postgres:15`` service uses (``.github/workflows/tests.yml``). Skips
+ cleanly (does not fail) when the DB is unreachable or lacks
+ ``wa_outbox``/``meta_inbox_threads``/``meta_inbox_messages`` or migration
+-314's two columns, matching that same conftest's documented convention.
++314's two columns or migration 322's ``served_by``, matching that same
++conftest's documented convention.
+ 
+ ``wa_codex_leg.attempt`` is stubbed per case (never the real broker/RAG
+ call — no network, no generation, no send beyond the stubbed
+@@ -43,7 +48,11 @@ _DEFAULT_DB_URL = os.environ.get(
+ )
+ 
+ _REQUIRED_TABLES = ("wa_outbox", "meta_inbox_threads", "meta_inbox_messages")
+-_REQUIRED_COLUMNS = (("wa_outbox", "abstained_at"), ("wa_outbox", "evidence_score"))
++_REQUIRED_COLUMNS = (
++    ("wa_outbox", "abstained_at"),
++    ("wa_outbox", "evidence_score"),
++    ("wa_outbox", "served_by"),
++)
+ 
+ 
+ @pytest_asyncio.fixture(scope="function")
+@@ -82,7 +91,7 @@ async def db_pool() -> asyncpg.Pool:
+                     if not exists:
+                         skip_reason = (
+                             f"wa_outbox_worker carrier tests: {table}.{column} "
+-                            "missing (migration 314 not applied to the test DB)"
++                            "missing (migration 314 or 322 not applied to the test DB)"
+                         )
+                         break
+         if skip_reason is None:
+@@ -254,7 +263,8 @@ async def _seed_row(
+ async def _fetch_carrier(pool: asyncpg.Pool, outbox_id: int) -> asyncpg.Record:
+     async with pool.acquire() as conn:
+         return await conn.fetchrow(
+-            "SELECT status, abstained_at, evidence_score FROM wa_outbox WHERE id = $1",
++            "SELECT status, abstained_at, evidence_score, served_by "
++            "FROM wa_outbox WHERE id = $1",
+             outbox_id,
+         )
+ 
+@@ -310,6 +320,7 @@ async def test_generated_supported_label_false_sets_score_only(
+     assert float(carrier["evidence_score"]) == 0.42
+     # I83: exact NUMERIC text, not just the float-equal check above.
+     assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == "0.42"
++    assert carrier["served_by"] == "codex"
+ 
+ 
+ # ── 2. generated-abstain-label ──────────────────────────────────────────────
+@@ -379,6 +390,10 @@ async def test_retry_then_later_attempt_persists_its_own_carrier(
+     carrier_after_first = await _fetch_carrier(db_pool, row["outbox_id"])
+     assert carrier_after_first["abstained_at"] is None
+     assert carrier_after_first["evidence_score"] is None
++    # The first attempt's own fall-off never reached the codex leg's
++    # served completion branch, so it never had a served_by to carry —
++    # this is the "NULL on a failed generation" case.
++    assert carrier_after_first["served_by"] is None
+ 
+     # Fast-forward past the backoff window (test setup only — the worker
+     # itself decides the real backoff; this just makes the row due again
+@@ -396,6 +411,7 @@ async def test_retry_then_later_attempt_persists_its_own_carrier(
+     carrier_after_second = await _fetch_carrier(db_pool, row["outbox_id"])
+     assert carrier_after_second["abstained_at"] is None
+     assert float(carrier_after_second["evidence_score"]) == 0.55
++    assert carrier_after_second["served_by"] == "codex"
+ 
+ 
+ # ── 4. stale claim — commit_fenced None → both stay NULL ───────────────────
+@@ -524,6 +540,9 @@ async def test_failed_send_at_max_attempts_persists_nothing(
+     assert carrier["status"] == "failed"
+     assert carrier["abstained_at"] is None
+     assert carrier["evidence_score"] is None
++    # The send never reached the terminal 'done' commit, so served_by was
++    # never written either — same "nothing persisted as a send" rule.
++    assert carrier["served_by"] is None
+ 
+ 
+ # ── 7. discarded completion (stand_down) — nothing persisted ───────────────
+@@ -575,6 +594,9 @@ async def test_scripted_greeting_persists_nothing(
+     carrier = await _fetch_carrier(db_pool, row["outbox_id"])
+     assert carrier["abstained_at"] is None
+     assert carrier["evidence_score"] is None
++    # served_by is NOT gated on evidence_abstain_label/evidence_score being
++    # set — it is written unconditionally from the served completion.
++    assert carrier["served_by"] == "scripted_greeting"
+ 
+ 
+ # ── 9. support-negative — served_by="support_abstain", never "codex" ───────
+@@ -617,6 +639,96 @@ async def test_support_negative_never_sets_abstained_at(
+     assert await _fetch_evidence_score_text(db_pool, row["outbox_id"]) == repr(0.15)
+ 
+ 
++async def test_served_by_persists_support_abstain(
++    db_pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    """Dedicated guilt proof for the gap this migration closes
++    (docs/zantara-loop-state.md, Iteration 2): before migration 322 +
++    the worker carrier change, ``served_by`` did not exist on ``wa_outbox``
++    at all and the support-negative stub route was invisible in SQL —
++    only `logger.info("wa_outbox: %s served ...")` said so. This test must
++    FAIL against origin/main's worker (no ``served_by`` column, no bind
++    param), proving the fix is actually in force, not just plausible."""
++    row = await _seed_row(db_pool)
++    monkeypatch.setattr(
++        wa_codex_leg,
++        "attempt",
++        _codex_leg_stub(
++            [
++                wa_codex_leg.CodexLegResult(
++                    text="Mi scuso, ti metto in contatto con un umano.",
++                    reason="support_unsupported",
++                    served_by="support_abstain",
++                    evidence_abstain_label=True,
++                    evidence_score=0.10,
++                    package_ref="pkg-hash-served-by-support-abstain",
++                )
++            ]
++        ),
++    )
++    whatsapp = _StubWhatsApp()
++    outcome = await process_outbox_once(db_pool, whatsapp, _never_bot_gen)
++    assert outcome == "sent"
++    carrier = await _fetch_carrier(db_pool, row["outbox_id"])
++    # D6 (unchanged by this PR): the stub never sets abstained_at, even
++    # though it now has its OWN durable marker in served_by.
++    assert carrier["abstained_at"] is None
++    assert carrier["served_by"] == "support_abstain"
++    assert carrier["served_by"] != "codex"
++
++
++async def test_served_by_column_missing_mid_deploy_still_finalizes(
++    db_pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    """Guilt+innocence for the deploy-window gap the Gear-3 council raised
++    (see wa_outbox_worker.py's `_finalize` docstring): fly-deploy.yml's
++    pre-deploy `run-migrations` job applies pending SQL against the
++    PREVIOUS image, before `deploy` rolls this worker's new served_by
++    write onto live traffic — migration 322 itself only lands afterwards,
++    in `run-sql-v2-migrations-post-deploy`. Simulates that exact window by
++    dropping the column mid-test: the worker must still finalize the row
++    to 'done' (no residual double-send) with served_by simply unset,
++    never crash the whole tick."""
++    row = await _seed_row(db_pool)
++    monkeypatch.setattr(
++        wa_codex_leg,
++        "attempt",
++        _codex_leg_stub(
++            [
++                wa_codex_leg.CodexLegResult(
++                    text="Generato durante la finestra di deploy.",
++                    reason="completed",
++                    served_by="codex",
++                    evidence_abstain_label=False,
++                    evidence_score=0.44,
++                    package_ref="pkg-hash-deploy-window",
++                )
++            ]
++        ),
++    )
++    async with db_pool.acquire() as conn:
++        await conn.execute("ALTER TABLE wa_outbox DROP COLUMN served_by")
++    try:
++        whatsapp = _StubWhatsApp()
++        outcome = await process_outbox_once(db_pool, whatsapp, _never_bot_gen)
++        assert outcome == "sent"
++        # Guilt: exactly ONE send — the fallback must not re-invoke the
++        # Graph API (the send already happened irreversibly before the
++        # column-missing terminal write is even attempted).
++        assert len(whatsapp.calls) == 1
++        async with db_pool.acquire() as conn:
++            carrier = await conn.fetchrow(
++                "SELECT status, abstained_at, evidence_score FROM wa_outbox WHERE id = $1",
++                row["outbox_id"],
++            )
++        assert carrier["status"] == "done"
++        assert carrier["abstained_at"] is None
++        assert float(carrier["evidence_score"]) == 0.44
++    finally:
++        async with db_pool.acquire() as conn:
++            await conn.execute("ALTER TABLE wa_outbox ADD COLUMN served_by TEXT NULL")
++
++
+ # ── 10. reattached completion — served_by="codex", all three carrier
+ #        fields None (F1/I83: a REATTACHED completion's rebuilt sealed wire
+ #        does not describe the package that generated the text) ───────────
+@@ -649,4 +761,7 @@ async def test_reattached_completion_persists_nothing(
+     carrier = await _fetch_carrier(db_pool, row["outbox_id"])
+     assert carrier["status"] == "done"
+     assert carrier["abstained_at"] is None
++    # served_by is written unconditionally from leg.served_by, unlike the
++    # other two carrier fields which the REATTACHED leg zeroes out here.
++    assert carrier["served_by"] == "codex"
+     assert carrier["evidence_score"] is None
+diff --git a/docs/zantara-loop-state.md b/docs/zantara-loop-state.md
+index bd0851815f..2a6c78f4dd 100644
+--- a/docs/zantara-loop-state.md
++++ b/docs/zantara-loop-state.md
+@@ -19,6 +19,21 @@
+ - **Broker liveness is `wa_broker_gauge.broker_last_seen_at` advancing** (the daemon polls every
+   2s), never `breaker_state` — the breaker stays `closed` while the daemon is paused.
+ 
++## KPI: served_by (migration 322, closes the F3/Iteration-2 gap below)
++
++`served_by` is `CodexLegResult.served_by` verbatim, persisted in the SAME fenced terminal write
++as `abstained_at`/`evidence_score` (`wa_outbox_worker.py`). Before this column, the
++`support_abstain` rate (Iteration 2 "Measured, not fixed") was only visible by hashing message
++bodies — this makes it a plain `GROUP BY`:
++
++```sql
++SELECT served_by, count(*) FROM wa_outbox WHERE created_at > now()-interval '7 days' GROUP BY 1 ORDER BY 2 DESC;
++```
++
++`NULL` means no completion (failed generation, or a route — human send — that never called the
++codex leg); the closed vocabulary otherwise is `codex`, `support_abstain`,
++`scripted_media_ack`, `scripted_greeting`, `scripted_human_handoff`, `scripted_identity`.
++
+ ## Iteration 1 — 2026-09-25 (M5)
+ 
+ | Gate    | Re-measured                                                                                                                                                                                                                                                                                                                            | Verdict                                  |
+@@ -56,7 +71,7 @@ Red team F1: constant text in en/id/it/ru/fr (uk → en); fenced once per outbox
+ 
+ ### Measured, not fixed (inputs for the next gaps)
+ 
+-- **F3 is invisible in SQL**: in 30 days, 23 of ~31 questions that reached retrieval got the fixed `support_abstain` stub (EN ×17, ID ×6). `abstained_at` stays NULL on them by design (D6/B2.3b), and `served_by` is not persisted. Count stubs by body hash until a `served_by` column exists. The lever is KB coverage (F9), not the gate.
++- **F3 is invisible in SQL**: in 30 days, 23 of ~31 questions that reached retrieval got the fixed `support_abstain` stub (EN ×17, ID ×6). `abstained_at` stays NULL on them by design (D6/B2.3b). `served_by` is now persisted (migration 322, see the KPI block above) — the `GROUP BY` there replaces the body-hash count from here on. The lever is KB coverage (F9), not the gate.
+ - **F7 holds**: 0 inbound answered twice in 30 days. 5 pairs of identical stubs within 2 minutes are one stub per inbound in a burst (UX, not a duplicate send).
+ - **T3-T7 have no living organ**: `team_promises`, `action_queue`, `whatsapp_practice_candidates` exist only on Fly, unfed since the 2026-05-24 cutover. On Pro, `wa_dashboard_outbound_queue`, `wa_dashboard_threads` and 14-day `whatsapp_operator_actions` are all 0.
+ - **Open defects found by review** (own PRs): ingestion stores `body` only for `type=='text'`, so captions are lost; `notify_human_handoff` returns True even when the email failed silently (the B2.5-2 handoff copy depends on it); the Homebrew codex is shared between the broker daemon and every agent seat (dedicated pinned binary = sudo provisioning).

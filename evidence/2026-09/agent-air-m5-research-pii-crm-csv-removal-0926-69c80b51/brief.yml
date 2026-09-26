@@ -1,0 +1,41 @@
+task: >-
+  Remove two CSV exports taken straight out of the CRM from research/operations/ on main:
+  the fake-Gemini cleanup backup (709 rows, 700 distinct client company names, 355 client
+  ids, email-shaped strings in 458 rows) and the deferred shareholders list (226 rows of
+  company, person, role, nationality). Client PII in cleartext on main violates Builder
+  Contract section 4. No code reads either file and no producer writes them again.
+lane: research/pii-reports
+machine: m5
+date: 2026-09-26
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: the diff is 937 deleted lines (710 + 227, the two
+  CSVs), above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone
+  path. Deleting the 2612 now-stale .secrets.baseline findings in the same diff would add
+  ~21k deleted lines and lift the floor to 3 for bookkeeping, so it is left to a follow-up.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
+
+acceptance:
+  A1: >-
+    Neither CSV exists on origin/main after merge, and no tracked file references the
+    deferred-shareholders CSV.
+    probe: >-
+      git ls-files research/operations | grep -c -E 'fake-gemini-backup|shareholders-not-in-crm'
+  A2: >-
+    The detect-secrets auto-triage tests still pass with the baseline untouched.
+    probe: >-
+      python3 -m pytest -q scripts/tests/test_detect_secrets_auto_triage.py
+
+out_of_scope: >-
+  Rewriting git history to purge the bytes (operator decision: it breaks every clone and
+  worktree on M5, Pro and Mini). Pruning the stale .secrets.baseline entries and the dead
+  auto-triage rule for the removed backup file.
+
+assumptions: >-
+  The fake-Gemini cleanup audit trail is recoverable from git history if the operator ever
+  needs it; no live process reads it from the working tree (git grep shows only the
+  secrets baseline and the triage rule).

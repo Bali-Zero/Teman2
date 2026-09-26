@@ -44,9 +44,16 @@ Validity is NOT re-implemented here. It is delegated to
 CI gate runs. A second, independent notion of "valid R1 frontmatter" would drift
 from the first one and the drift would be invisible (superscar #9).
 
+REDACTION (added 2026-09-26): with --fix, once the declaration is settled the
+report BODY goes through `scripts/_redact_pii.py` — table cells as notebook titles
+(`nb_titles` shapes + pass1-3), other lines through pass1-3 only. The inventory the
+brain reads is already redacted; this is the second layer for a brain that looks
+titles up on its own. The frontmatter is never touched. A redactor that cannot load
+is a REFUSAL (exit 4): an unverified report must not read as a clean one.
+
 Exit codes: 0 ok · 2 usage · 3 artifact missing/empty/undecodable ·
-4 present but carries a declaration this gate refuses to touch · 5 needs a fix
-and --fix was not given.
+4 present but carries a declaration this gate refuses to touch, or the redactor
+is unavailable · 5 needs a fix and --fix was not given.
 """
 
 from __future__ import annotations
@@ -207,6 +214,64 @@ def evaluate(report: Path) -> Tuple[int, str, Optional[str]]:
     return NEEDS_FIX, f"{report.name}: {what}", repaired
 
 
+def _load_redactor():
+    """The repo redactor (static rules), or None with the reason."""
+    try:
+        import _redact_pii  # scripts/ is on sys.path (top of file)
+
+        return _redact_pii.Redactor.load_static(), ""
+    except Exception as exc:  # noqa: BLE001 — any failure is a refusal, never a pass
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+def _redact_line(line: str, redactor) -> str:
+    stripped = line.strip()
+    if stripped.startswith("|") and stripped.endswith("|") and len(stripped) > 1:
+        cells = line.split("|")
+        return "|".join(
+            cell if not cell.strip() else cell.replace(cell.strip(), redactor.redact_notebook_title(cell.strip()))
+            for cell in cells
+        )
+    return redactor.redact_fragment(line)
+
+
+def redact_body(text: str, redactor) -> Tuple[str, int]:
+    """Redact everything after the frontmatter; return (text, changed_line_count)."""
+    lines = text.split("\n")
+    start = 0
+    fm_lines, close_idx = _split_frontmatter(text)
+    if fm_lines is not None and close_idx is not None:
+        start = close_idx + 1
+    changed = 0
+    for i in range(start, len(lines)):
+        new = _redact_line(lines[i], redactor)
+        if new != lines[i]:
+            lines[i] = new
+            changed += 1
+    return "\n".join(lines), changed
+
+
+def _redact_in_place(report: Path, fix: bool) -> int:
+    redactor, why = _load_redactor()
+    if redactor is None:
+        print(
+            f"REDACTOR UNAVAILABLE ({why}) — {report.name} was not checked for client identifiers; "
+            "refusing to call it clean",
+            file=sys.stderr,
+        )
+        return REFUSED
+    text = report.read_text(encoding="utf-8")
+    redacted, changed = redact_body(text, redactor)
+    if not changed:
+        return OK
+    if not fix:
+        print(f"NEEDS FIX (run with --fix): {report.name}: {changed} line(s) carry identifiers", file=sys.stderr)
+        return NEEDS_FIX
+    report.write_text(redacted, encoding="utf-8")
+    print(f"REDACTED: {changed} line(s) in {report.name}")
+    return OK
+
+
 def _verify_after_write(report: Path) -> Tuple[bool, str]:
     verdict = r1.evaluate_file(report)
     return verdict.ok, verdict.reason
@@ -217,7 +282,7 @@ def run(report: Path, fix: bool) -> int:
 
     if code == OK:
         print(msg)
-        return OK
+        return _redact_in_place(report, fix)
     if code in (MISSING, REFUSED):
         print(msg, file=sys.stderr)
         return code
@@ -239,7 +304,7 @@ def run(report: Path, fix: bool) -> int:
         )
         return REFUSED
     print(f"REPAIRED: {msg} — now passes R1 ({reason})")
-    return OK
+    return _redact_in_place(report, fix)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

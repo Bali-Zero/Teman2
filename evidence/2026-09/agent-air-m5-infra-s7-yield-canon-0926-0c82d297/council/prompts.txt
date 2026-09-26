@@ -1,0 +1,15 @@
+Council round 1, dispatched 2026-09-26T11:13Z from M5 with env -i (HOME, USER, LOGNAME, PATH, LANG, TERM, TMPDIR only) and stdin from /dev/null, cwd = the PR worktree.
+
+Seats and commands:
+- constructive: agy --mode plan -p <prompt>          (attempt 1 without --mode plan: no judgement, headless tool auto-denied)
+- red team:     codex exec --sandbox read-only -C <worktree> <prompt>   (no -m; M5 default model gpt-6-astra)
+- refuter:      kimi -p <prompt> -m kimi-code/k3
+
+Every prompt = one role line + a shared body. The body is: a description of the change (plist added byte-identical and declared as a Pro pair; registry entry pro.s7_yield_weekly, human_only, 8-day heartbeat, in-place checksum; wrapper heartbeat on every exit, S7_YIELD_ENABLED=false kill switch; sandbox test), the G1/G2/G3/G5/G9/G10 check+why lines from infra/organ-conformance/genes.json, the out-of-scope list, the rules (read-only; never run launchctl, ps, env, printenv, security or read ~/Library plists; severity + file:line + evidence per finding; last line VERDICT: PASS|REWORK|BLOCK), and the full `git diff origin/main...4c6c800699 -- . ':!evidence'`.
+
+Role lines:
+- constructive: "You are the CONSTRUCTIVE reviewer on a one-round council. Find what would make this change more correct and more robust in production; prefer concrete, minimal fixes. Then give the verdict." (the retry prepended: "IMPORTANT: do NOT call any tool (no shell, no file reads). Everything you need is in this message; answer from it alone.")
+- red team: "You are the RED TEAM on a one-round council. Try to break this change: wrong exit codes, heartbeat lies (green while failing, or silence), kill-switch bypass, registry/checksum corruption, a plist that is not really what launchd loads, PII leaking into a heartbeat or log, anything that would page someone falsely or hide a real failure. Then give the verdict."
+- refuter: "You are the REFUTER on a one-round council. Assume the author's claims are false until the code proves them: that the plist is unchanged, that every exit path writes a heartbeat, that the exit code propagates, that the kill switch writes disabled, that the checksum is valid, that the tests would fail on the old wrapper. Refute or confirm each with evidence. Then give the verdict."
+
+Verbatim outputs: codex-gpt-6-astra.txt, kimi-code-k3.txt, agy-gemini-3.1-pro.txt (attempt 2), agy-gemini-3.1-pro-attempt1-stderr.txt.

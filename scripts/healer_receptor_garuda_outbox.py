@@ -120,6 +120,17 @@ def fetch(url: str) -> tuple[object | None, str | None]:
             last = f"HTTP {exc.code}"
         except urllib.error.URLError as exc:
             last = f"unreachable: {exc.reason}"
+        except TimeoutError:
+            # A CONNECT-phase timeout comes back wrapped as URLError above.
+            # A READ-phase timeout (connection opened, response never
+            # finished) propagates as a bare TimeoutError instead — urllib's
+            # do_open() only wraps the request()/connect() call in
+            # `except OSError: raise URLError(...)`, not getresponse().
+            # Uncaught, this crashed the receptor outright, the exact
+            # opposite of this function's documented "never raises"
+            # contract (scar family #8 — network flap must degrade to a
+            # verdict, not a traceback).
+            last = "read timed out"
         except (ValueError, UnicodeDecodeError) as exc:
             last = f"unreadable answer: {type(exc).__name__}"
     return None, last or "no attempt succeeded"

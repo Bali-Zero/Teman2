@@ -1,0 +1,24 @@
+GUILT CASE — new served_by test fails against origin/main's worker
+Procedure: cp wa_outbox_worker.py aside; git show origin/main:<path> > <path>; run the
+new test; restore with cp (git stash never used, per repo convention).
+
+$ pytest backend/tests/unit/services/test_wa_outbox_worker_carrier.py::test_served_by_persists_support_abstain -v
+backend/tests/unit/services/test_wa_outbox_worker_carrier.py F [100%]
+FAILED ... test_served_by_persists_support_abstain
+    assert carrier["served_by"] == "support_abstain"
+AssertionError: assert None == 'support_abstain'
+1 failed in 4.35s
+
+Cause: origin/main's wa_outbox worker has no served_by column reference and no bind —
+the fenced UPDATE never writes it, so it reads back NULL. Proves the test actually
+exercises the new code path, not a tautology.
+
+After `cp` restoring this PR's worker: same test passes (see receipts/pytest-final.txt,
+69/69 carrier+mocked+migration-lint tests green, this test included).
+
+CORRECTION-ROUND NOTE: the earlier version of this pack also carried a second guilt case
+for a deploy-window fallback (a dropped-column test on `_finalize()`). That fallback and
+its test are REMOVED in this pack's current head — the premise (a real deploy-window gap)
+was refuted (see pack.yml's dissent, first entry): `fly.toml`'s release_command +
+schema_audit.py already guarantee the column exists before the worker is ever live, so no
+fallback or guilt case for it is needed, same as migration 314 never needed one.

@@ -158,9 +158,13 @@ class TestSendInternalEmail:
             "a swallowed HTTP failure must return False, not the pre-2026-09-25 "
             "None (falsy, but not the explicit truthful signal a caller can rely on)"
         )
-        assert any("HTTP 500" in record.getMessage() for record in caplog.records), (
-            "send_internal_email must log the swallowed HTTP failure, not silently drop it"
+        assert any("HTTPStatusError" in record.getMessage() for record in caplog.records), (
+            "send_internal_email must log the swallowed HTTP failure's TYPE, not silently drop it"
         )
+        # `format_send_error`'s HTTPStatusError branch embeds the provider's
+        # own response body, which can name the rejected recipient — the log
+        # line must carry the exception TYPE only, never that text.
+        assert "500 Server Error" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_network_error_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -184,9 +188,11 @@ class TestSendInternalEmail:
                 )
 
         assert result is False
-        assert any("connection refused" in record.getMessage() for record in caplog.records), (
-            "send_internal_email must log the swallowed network failure, not silently drop it"
+        assert any("ConnectError" in record.getMessage() for record in caplog.records), (
+            "send_internal_email must log the swallowed network failure's TYPE, not silently "
+            "drop it"
         )
+        assert "connection refused" not in caplog.text
 
     @pytest.mark.asyncio
     async def test_http_200_with_success_false_is_treated_as_not_delivered(
@@ -222,10 +228,12 @@ class TestSendInternalEmail:
 
         assert result is False
         # The endpoint's `message` relays provider errors, which can name the
-        # rejected recipient: the log carries a constant label, never that text.
+        # rejected recipient: the log carries the exception TYPE only, never
+        # that text (not even this module's own constant `raise` text).
         assert "rejected.client@example.com" not in caplog.text
         assert "All providers failed" not in caplog.text
-        assert "200 without success=true" in caplog.text
+        assert "200 without success=true" not in caplog.text
+        assert "InternalEmailNotDeliveredError" in caplog.text
 
     @pytest.mark.asyncio
     async def test_http_200_with_unparseable_body_is_treated_as_not_delivered(self) -> None:
@@ -379,3 +387,32 @@ class TestRecipientNeverReachesTheLog:
         assert redact_identifier_for_log(recipient) in joined
         assert "cc_count=2" in joined
         assert "test req=1" in joined
+
+    @pytest.mark.asyncio
+    async def test_failure_log_never_carries_the_exceptions_own_text(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A provider error can name the recipient it rejected in its OWN
+        message text (see the `InternalEmailNotDeliveredError` `raise`
+        comment) — this is not specific to that one exception type. Proves
+        the guilt shape directly: any exception whose text carries a
+        synthetic address must never surface that text in the log, for
+        every branch this function's `except Exception` can take."""
+        leak = "leak.probe@example.com"
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(
+            side_effect=httpx.ConnectError(f"connection refused for {leak}"),
+        )
+
+        with patch(
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
+        ):
+            with caplog.at_level(logging.WARNING, logger="backend.app.services.internal_email"):
+                result = await send_internal_email(to=leak, subject="x", body="<p>x</p>")
+
+        assert result is False
+        assert leak not in caplog.text
+        assert "ConnectError" in caplog.text

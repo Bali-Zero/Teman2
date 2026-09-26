@@ -125,6 +125,7 @@ on:
       - check-skills-canonical
       - check-tailnet-acl
       - check-wal-continuity-probe
+      - CI image mirror (GHCR)
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
       - cron - cert monitor (daily 07:00 WITA)

@@ -388,11 +388,15 @@ ORPHAN_TTL_MULTIPLE = 2
 # it: verified empirically, same live sysctl call, comma with the session's
 # real locale vs period under LC_ALL=C.
 #
-# Fail-open (superscar #2, "esiste non armato" cuts both ways: a gate that
-# blocks work because IT is broken is worse than one that lets a broken
-# machine through once): any sysctl/loadavg failure, timeout, or parse miss
-# admits the lane, logging that the machine could NOT be measured — which is a
-# distinct claim from "the machine is fine" and must never be read as one.
+# Fail-CLOSED (2026-09-26): any sysctl/loadavg failure, timeout, or parse miss
+# REFUSES the lane with exit 75 and names the override. It was fail-open, and
+# that is how it stayed blind: the probe called bare `sysctl`, launchd jobs
+# whose PATH lacks /usr/sbin got ENOENT, and Pro's broker log holds 908
+# "No such file or directory: 'sysctl'" admissions (2026-08-16 -> 2026-09-26)
+# against 673 real measurements. The probe now uses an absolute path, and a
+# probe that breaks again is loud instead of silently admitting.
+# total = 0.00M is NOT a failure: macOS has no swapfile yet (M5 after boot),
+# which is the healthiest state and reads as 0% swap.
 #
 # LIMIT this gate does NOT claim to fix: it blocks the NEXT lane's admission.
 # It does nothing for the 883 processes already running tonight, and nothing
@@ -407,6 +411,7 @@ RAM_ADMISSION_DEFAULT_LOAD_RATIO_MAX = 5.0
 # every validation error in this file already uses, so a caller (cron wrapper,
 # CI) can tell "machine is busy, retry later" apart from "you typo'd the lane".
 RAM_ADMISSION_EXIT_CODE = 75
+SYSCTL_BIN = "/usr/sbin/sysctl"
 
 
 # ---------------------------------------------------------------------------
@@ -579,8 +584,8 @@ def _float_env(name: str, default: float) -> float:
     """Parse a float from env, falling back to `default` on missing/bad value.
 
     A malformed override (typo, empty string) must not crash the broker — it
-    degrades to the built-in default, same fail-open spirit as the rest of
-    this gate.
+    degrades to the built-in default: a typo in a threshold is not a blind
+    probe, so it must not refuse lanes either.
     """
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -607,7 +612,7 @@ def _sample_swap_usage() -> tuple[float, float] | None:
         env = dict(os.environ)
         env["LC_ALL"] = "C"
         proc = subprocess.run(
-            ["sysctl", "vm.swapusage"],
+            [SYSCTL_BIN, "vm.swapusage"],
             capture_output=True,
             text=True,
             timeout=3,
@@ -633,7 +638,7 @@ def _sample_swap_usage() -> tuple[float, float] | None:
         used_mb = float(m.group(2))
     except ValueError:
         return None
-    if total_mb <= 0:
+    if total_mb < 0 or used_mb < 0:
         return None
     return used_mb, total_mb
 
@@ -662,11 +667,10 @@ def _sample_load_ratio() -> tuple[float, int] | None:
 def check_ram_admission() -> tuple[bool, str]:
     """Admission decision for creating a NEW lane. Returns (admit, reason).
 
-    admit=True means "go ahead" — either the machine is healthy, the operator
-    overrode the gate, OR the machine could not be measured (fail-open: not
-    being able to check is not the same claim as being fine, see the log line
-    in the last branch). admit=False means both swap-% and load-per-core are
-    over their configured thresholds — REFUSED, not merely warned.
+    admit=True means "go ahead" — the machine is healthy or the operator
+    overrode the gate. admit=False means both swap-% and load-per-core are
+    over their configured thresholds, OR the machine could not be measured
+    (fail-closed, see the RAM_ADMISSION module comment) — REFUSED, not warned.
 
     Both signals must be over threshold (AND), not either alone (OR): a same-
     night cross-fleet sample (see module comment) found swap-% alone reads
@@ -685,29 +689,30 @@ def check_ram_admission() -> tuple[bool, str]:
     # broken gate, not a working one (superscar #2). The samplers already
     # catch the exceptions they anticipate (OSError, TimeoutExpired) — this
     # is the backstop for whatever they don't, so "the sampler raised" always
-    # degrades to fail-open, never to an unhandled exception that takes the
-    # whole `agent_start.py` invocation down with it.
+    # degrades to a clear refusal, never to an unhandled exception that takes
+    # the whole `agent_start.py` invocation down with it.
     try:
         swap_sample = _sample_swap_usage()
     except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see above
-        logger.warning("RAM admission: swap sampler raised %r — fail-open", exc)
+        logger.warning("RAM admission: swap sampler raised %r — fail-closed", exc)
         swap_sample = None
     try:
         load_sample = _sample_load_ratio()
     except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see above
-        logger.warning("RAM admission: load sampler raised %r — fail-open", exc)
+        logger.warning("RAM admission: load sampler raised %r — fail-closed", exc)
         load_sample = None
     if swap_sample is None or load_sample is None:
-        msg = (
-            "RAM admission gate: could not measure machine state "
-            "(sysctl/getloadavg unavailable or unparseable) — admitting, "
-            "fail-open. This is NOT a claim the machine is healthy."
+        reason = (
+            "REFUSED: RAM admission gate could not measure machine state "
+            f"({SYSCTL_BIN} vm.swapusage or getloadavg failed or was unparseable, "
+            f"see {LOG_FILE}). An unmeasured machine is not admitted. "
+            f"Fix the probe, or one-time override: {RAM_ADMISSION_OVERRIDE_ENV}=1."
         )
-        logger.warning(msg)
-        return True, msg
+        logger.warning(reason)
+        return False, reason
 
     used_mb, total_mb = swap_sample
-    swap_pct = used_mb / total_mb * 100.0
+    swap_pct = used_mb / total_mb * 100.0 if total_mb > 0 else 0.0
     load5, ncpu = load_sample
     load_ratio = load5 / ncpu
 

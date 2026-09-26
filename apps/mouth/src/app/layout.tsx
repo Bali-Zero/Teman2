@@ -130,12 +130,11 @@ export const metadata: Metadata = {
     creator: "@balizero",
     site: "@balizero",
   },
+  // index/follow are left to crawler defaults on purpose: this root layout is
+  // shared by every host, and kita.balizero.com is noindex via X-Robots-Tag
+  // (proxy.ts). Stating "index, follow" here contradicted that header.
   robots: {
-    index: true,
-    follow: true,
     googleBot: {
-      index: true,
-      follow: true,
       "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,
