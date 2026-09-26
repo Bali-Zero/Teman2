@@ -311,7 +311,7 @@ async def send_invitation(
                 client_id=request.client_id,
             )
             email_sent = True
-            logger.info(f"Invitation email sent to {request.email}")
+            logger.info(f"Invitation email sent (client_id={request.client_id})")
         except Exception as email_err:
             email_error = str(email_err)
             logger.warning("Failed to send invitation email: %s", email_err)
@@ -497,7 +497,7 @@ async def complete_registration(
             publish_registration_goal, invite_service.pool, result["client_id"]
         )
 
-        logger.info(f"Client registration completed: {result['email']}")
+        logger.info(f"Client registration completed (client_id={result['client_id']})")
 
         return RegistrationResponse(
             success=True,

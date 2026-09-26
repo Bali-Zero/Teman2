@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 STREAM = "portal-champion:goals:v1"
 CACHE_KEY = "dashboard:portal_challenge:v2"
 MAX_AGE_MS = 90_000
+REPLAY_PAGE = 100
 PUBLISH_ONCE = """
 if redis.call('EXISTS', KEYS[2]) == 1 then return false end
 local event_id = redis.call('XADD', KEYS[1], 'MAXLEN', '~', 2000, '*', 'goal', ARGV[1])
@@ -103,6 +104,9 @@ class GoalFanout:
         seconds, microseconds = await redis.time()
         now_ms = int(seconds) * 1000 + int(microseconds) // 1000
         valid_last_id = bool(last_id and re.fullmatch(r"\d{1,16}-\d{1,16}", last_id))
+        # Both cursors are exclusive, so start one millisecond early: an XADD in the
+        # same millisecond as TIME gets id `now_ms-0` and must not fall between them.
+        start = f"{now_ms - 1}-0"
         cursor = (
             max(
                 last_id,
@@ -110,22 +114,25 @@ class GoalFanout:
                 key=lambda value: tuple(map(int, value.split("-"))),
             )
             if valid_last_id and int(last_id.split("-")[0]) <= now_ms
-            else f"{now_ms}-0"
+            else start
         )
         queue: asyncio.Queue = asyncio.Queue(maxsize=100)
         self.subscribers.add(queue)
         if self.task is None or self.task.done():
-            self.task = asyncio.create_task(self._read(redis, f"{now_ms}-0"))
+            self.task = asyncio.create_task(self._read(redis, start))
         try:
             ready = json.dumps(
                 {"server_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds")}
             )
             yield f"retry: 3000\nevent: ready\nid: {cursor}\ndata: {ready}\n\n"
-            replay = await redis.xrange(STREAM, min=f"({cursor}", max="+", count=100)
-            for event_id, fields in replay:
-                if int(event_id.split("-")[0]) >= now_ms - MAX_AGE_MS:
-                    yield f"event: goal\nid: {event_id}\ndata: {fields['goal']}\n\n"
+            while True:
+                replay = await redis.xrange(STREAM, min=f"({cursor}", max="+", count=REPLAY_PAGE)
+                for event_id, fields in replay:
                     cursor = event_id
+                    if int(event_id.split("-")[0]) >= now_ms - MAX_AGE_MS:
+                        yield f"event: goal\nid: {event_id}\ndata: {fields['goal']}\n\n"
+                if len(replay) < REPLAY_PAGE:
+                    break
             deadline = time.monotonic() + 240
             while time.monotonic() < deadline:
                 try:
