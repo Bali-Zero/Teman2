@@ -43,6 +43,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -190,7 +191,11 @@ async def test_c1_real_pg_catalog_matches_required_columns_exactly(pg_socket_dir
         for table, cols in _REQUIRED_COLUMNS.items()
         for name, pg_type, notnull in cols
     }
-    assert len(expected) == 26
+    # 26 -> 27: PR #7367 (T3 PR-2 rework, spec addendum A2/B1) added
+    # team_promise_candidates.revised_at — bumping the pin, not deriving it
+    # from _REQUIRED_COLUMNS itself, keeps this a real sanity check rather
+    # than a tautology against the same source the test is meant to verify.
+    assert len(expected) == 27
     assert actual == expected
 
 
@@ -485,6 +490,13 @@ def _write_mutated_module(tmp_path: Path) -> Path:
 def _import_mutated(dest_path: Path):
     spec = importlib.util.spec_from_file_location("wa_team_promises_mutated_notxn", dest_path)
     mod = importlib.util.module_from_spec(spec)
+    # REWORK (PR #7367 B1): must be registered in sys.modules BEFORE
+    # exec_module runs — `@dataclass(slots=True) ScanMetrics` in the mutated
+    # source resolves its own module via `sys.modules[cls.__module__]` while
+    # building the slotted replacement class, so an unregistered module
+    # raises `AttributeError: 'NoneType' object has no attribute '__dict__'`
+    # instead of ever reaching the mutation this test means to prove RED.
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     mod._SQL_PATH = wa_team_promises._SQL_PATH  # the scratch copy's own __file__-relative
     return mod                                  # path is wrong; point it at the real SQL

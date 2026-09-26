@@ -1,65 +1,87 @@
 gear: 2
-task_id: t3-schema-guard
+task_id: t3-scanner
 lane: wa-team
 host: air-m5 (M5)
-branch: agent/air-m5/wa-team/t3-schema-guard
+branch: agent/air-m5/wa-team/t3-scanner
 gate_class: none
 l_level: L2
 objective: >-
-  PR #7342 round-2 FIX-FIRST correction (review_7342_r2_out.txt, head
-  cce93510cd) for T3's schema+guard PR-1 — last correction round per an
-  exact spec addendum. Floor is 2 on SIZE alone, unchanged from round 1 —
-  no hot-zone path hit, no new auth/route/schema-on-Fly surface. Round 1's
-  four findings were confirmed cured; round 1's own column-check was itself
-  incomplete: _REQUIRED_COLUMNS covered only the four ALTER-added columns,
-  and information_schema.data_type reads a DOMAIN over text as "text" (its
-  base type), so a core column with the wrong type, a missing core column,
-  or a domain swapped in for a declared type all passed --init-schema
-  silently. Fix per the addendum: _REQUIRED_COLUMNS is now the single
-  source of truth for EVERY column of both tables (name, Postgres type,
-  NOT NULL) as declared in team_promises.sql, cross-checked by a new unit
-  test that parses the SQL file and asserts every declared column appears
-  in the constant (and vice versa). verify_required_columns() now queries
-  pg_attribute directly (attrelid = to_regclass(...)::oid, attnum > 0, NOT
-  attisdropped) and compares atttypid = '<type>'::regtype — which fails for
-  a domain, since its atttypid is the domain's OWN oid, never the base
-  type's (verified against a live Homebrew Postgres 17 cluster before
-  writing the fix). information_schema is no longer used anywhere in this
-  script. A mismatch raises SchemaMismatchError('<table>.<column>'),
-  allowlist-validated, inside the same transaction as the DDL and both
-  index checks — rollback on any gap, never OK on an incomplete/mistyped
-  schema. Both round-2 findings red-proved against cce93510cd in an
-  isolated scratch copy (never `git checkout --`): old code's ALTER-only
-  contract never even had "message_id" as a key, so a wrong-type or
-  missing CORE column could never be caught; and a domain-over-text column
-  reads as plain "text" via information_schema, so old code's string
-  comparison ('text' == 'text') accepted it. The opt-in real-Postgres
-  companion now exercises a genuine domain-over-text mismatch AND an
-  index-only mismatch (columns untouched) against a real cluster —
-  verified passing on M5 (Homebrew postgresql@17) before this push.
+  Second REWORK round on PR #7367 (T3 PR-2), spec addendum v2 (B1-B4), after the fresh gate's
+  narrow REWORK-DESIGN verdict on 90c4326fde. Keeps A1, A2, A3 (amended by B3), A5, A6, A7, A8 of
+  the first addendum; B2 REPLACES A4. This is the LAST round on this PR (a third REWORK suspends
+  the lane).
+  B1 (merge-tree red): the branch predated #7366 (merged into origin/main as c1ee9cb0b9); on the
+  merged tree, two of #7366's opt-in real-PG tests went red because of this PR's own
+  `team_promise_candidates.revised_at` column: `test_c1_real_pg_catalog_matches_required_columns_
+  exactly`'s pin (26 -> 27) and `test_mutation_proof_verify_outside_transaction_lets_the_ddl_
+  survive`'s `_import_mutated` (needed to register the scratch module in `sys.modules` BEFORE
+  `exec_module`, or `@dataclass(slots=True) ScanMetrics` can't resolve its own module while
+  building the slotted class). Rebased onto current `origin/main` (59cabcbd25, which contains
+  #7366; #7395/C5 is still open, unrelated) via a plain `git rebase origin/main` (one commit
+  dropped as already-upstream) and fixed both tests in `test_wa_team_promises_gate_conditions_
+  real_pg.py`. The whole T3 suite is green on the rebased tree.
+  B2 (replaces A4 — the digest design was actually broken): A4's premise was false — `tg_notify`
+  dedups BEFORE spooling, so a per-day key on a live-growing "today" count only let the first
+  tick or two of the day through, each showing a stale near-zero total (gate simulation: 6
+  records over 3 days, all "today 0", against a true ~120/day). B2 reports YESTERDAY's completed
+  (fixed) total instead — `promises: yesterday N (revised R), unjudged U` — but the per-day key
+  alone still isn't exactly-once: `tg_notify`'s ladder opens a SECOND opportunity ~6h after the
+  first hit, same key, same day (proven empirically against the real module before the fix
+  landed: 2 sends/day, both correct-content but a duplicate). The actual fix is
+  `_is_first_digest_opportunity_of_the_day`: the digest is only ATTEMPTED during the midnight WITA
+  hour (00:00-00:59) — `tg_notify`'s own dedup then only needs to collapse however many ticks land
+  in that ONE hour, removing the ladder's later-in-the-day opportunity entirely instead of hoping
+  it gets absorbed. No local state file: a missed 00:00 tick is covered by 00:15/00:30/00:45.
+  Proven with a fake-clock simulation against the REAL `scripts/tg_notify.py` (own sys.modules
+  entry, scratch spool dir), same methodology as the gate's own `a4_cadence_sim.py`: 3 simulated
+  days of `*/15` ticks with business-hours (08:00-18:00 WITA) activity reach the spool exactly
+  ONCE per day, with the true previous-day total (0, then 120, then 120).
+  B3 (conjunction split, pre-activation): the right boundary is `(?=\s)` (an actual whitespace
+  char), not `\b` — a bare word boundary also fires between a word char and adjacent punctuation,
+  so "e-mail" and "e' pronto" used to split and lose the due hint that followed. The plain
+  sentence-punctuation period is narrowed the same way, plus a small NAMED exception for "e.g."
+  specifically (the one abbreviation the addendum's guilt case names) via a fixed-width negative
+  lookbehind — not general abbreviation detection. Re-verified read-only on Pro (this head,
+  89e5612f25, `git archive` scratch copy in `/tmp`, removed after): `--scan --dry-run` ->
+  `scanned=10143 clauses=359 candidates_new=359 candidates_revised=0`; a separate in-memory,
+  read-only probe (import the scratch copy's own `_split_clauses`/`_match_clause`, one SELECT, no
+  writes) confirms `candidates=359 due_hints=35` — matching the gate's own `pro_split_probe.log`
+  (359 = 359, 35 = 35) exactly: the fix changes WHICH clauses split for some messages, not how
+  many candidates or due hints end up proposed.
+  B4 (low, all landed this round): the real-PG guilt docstring's TypeError claim was wrong (both
+  heads share `run_scan`'s signature; the real guilt is `assert 0 == 1`) — corrected. `--dry-run`
+  help text no longer mentions a watermark. The 30-day floor is `created_at >=` (was `>`) —
+  pinned with a static SQL-text assertion (true instant-equality against a moving `now()` isn't
+  testable in a live system). The A5 lock/commit-order test now checks commit visibility from an
+  INDEPENDENT connection, opened INSIDE both callbacks (own thread + its own `asyncio.run`, since
+  the callbacks are sync and called from inside cli_main's running loop) — not inferred after
+  `cli_main` returns. PR body top sections and this brief's sizes are rewritten for the rebased,
+  reworked diff.
+  Carried to PR-3 as a condition (NOT built here, per the gate's own routing): Codex's positional-
+  revision HIGH (a shrinking/growing body can leave an orphan unjudged row, or place new text at
+  an already-judged index) — rare on Pro (<=23 of 10,152 rows re-upserted in 30 days), owned by
+  the PR-3 spec author, due before PR-3 merges.
 scope:
   - >-
-    scripts/wa_team_promises.py — _REQUIRED_COLUMNS rebuilt as {table:
-    [(column, pg_type, not_null), ...]} covering every column of both
-    tables; _ALLOWED_SCHEMA_IDENTIFIERS derived from it
-    (f"{table}.{column}" for every entry, plus the two index names);
-    verify_required_columns() rewritten against pg_attribute/atttypid/
-    regtype, information_schema removed entirely.
+    scripts/wa_team_promises.py — B2: `_wita_today`/`_fetch_digest_counts`/`_digest_line`/
+    `_send_scan_digest` reshaped around yesterday's completed window (`_wita_yesterday_window`,
+    `_DIGEST_COUNTS_SQL`'s `[start, end)` filter); new `_is_first_digest_opportunity_of_the_day`
+    gates the attempt to the midnight WITA hour, wired into `cli_main`. B3:
+    `_CLAUSE_SPLIT_RE`'s conjunction and period alternatives narrowed to require trailing
+    whitespace (plus the named "e.g." exception). B4: `created_at >=` (30-day floor), `--dry-run`
+    help text. A1-A2/A5-A7 (first addendum) carried over unchanged through the rebase.
   - >-
-    scripts/sql/pro_local/team_promises.sql — unchanged this round (the
-    round-1 CREATE TABLE / ALTER ADD COLUMN split already matches the new
-    Python contract 1:1, confirmed by the new cross-check test).
+    scripts/tests/test_wa_team_promises_gate_conditions_real_pg.py (#7366's file — B1) — the C1
+    pin 26 -> 27 (with a comment naming this PR) and `_import_mutated` registering the scratch
+    module in `sys.modules` before `exec_module`. No other change to this file.
   - >-
-    scripts/tests/test_wa_team_promises.py — 20 tests (was 16):
-    parametrized column-mismatch guilt cases (core wrong-type, core
-    missing, core NOT NULL mismatch, ALTER-column missing) plus the SQL-
-    file/constant cross-check test; SQL-text assertions updated to
-    pg_attribute/atttypid/regtype present, information_schema absent. All
-    pass; ruff clean.
+    scripts/tests/test_wa_team_promises_scan.py — new pure-unit coverage: B3's guilt (e-mail,
+    e.g., e' pronto never split; the exact e-mail/e.g. due-hint-loss regressions Codex named) and
+    innocence (a real standalone "e"/"and" still splits) cases; B2's cadence simulation against
+    the real `tg_notify.py` plus a direct test of the midnight-hour gate; B4's static `>=`
+    assertion; digest tests updated to the "yesterday" 3-count signature.
   - >-
-    scripts/tests/test_wa_team_promises_real_pg.py — extended: after the
-    complete-schema+idempotent baseline, mutates one column to a real
-    Postgres DOMAIN over text and asserts the mismatch is caught by
-    identifier (not silently accepted), then a genuine index-only
-    mismatch (unaffected columns) is caught separately. Verified passing
-    on M5 before this push.
+    scripts/tests/test_wa_team_promises_scan_real_pg.py — B4: the guilt docstring correction, and
+    the A5 test's independent-connection commit-visibility check (plus forcing the new
+    midnight-hour gate open, since this test is about lock/commit ordering, not daily cadence).
+    A1/A2/A7 real-PG scenarios (first addendum) carried over unchanged through the rebase.
