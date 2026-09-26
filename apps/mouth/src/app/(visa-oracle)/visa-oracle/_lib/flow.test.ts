@@ -46,6 +46,10 @@ describe("Slice A6-2 — declared conservative Not sure branches", () => {
       // Slice A6-bis.
       "diaspora_documents",
       "retirement_basis",
+      // PR-M (owner ruling 2026-09-27): the E33F penjamin sibling maps a
+      // "not sure" retiree to "no" — they are not ambiguous, they simply do
+      // not have a penjamin yet.
+      "retirement_penjamin_confirmed",
       "secondhome_deposit_usd",
       "secondhome_own_name",
       "secondhome_passive_income_usd",
@@ -215,7 +219,7 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["sponsor_category", "NONE"],
       ["retirement_basis", "passive_income"],
       ["secondhome_passive_income_usd", "3000"],
-      ["family_sponsor_confirmed", "yes"],
+      ["retirement_penjamin_confirmed", "yes"],
       ["stay_days", "365"],
     ],
   },
@@ -313,7 +317,7 @@ describe("retirement evidence branches", () => {
         "secondhome_state_bank",
         "secondhome_own_name",
         "secondhome_passive_income_usd",
-        "family_sponsor_confirmed",
+        "retirement_penjamin_confirmed",
         "stay_days",
       ],
     ],
@@ -323,7 +327,7 @@ describe("retirement evidence branches", () => {
         "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
-        "family_sponsor_confirmed",
+        "retirement_penjamin_confirmed",
         "stay_days",
       ],
     ],
@@ -333,7 +337,7 @@ describe("retirement evidence branches", () => {
         "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
-        "family_sponsor_confirmed",
+        "retirement_penjamin_confirmed",
         "stay_days",
       ],
     ],
@@ -357,7 +361,7 @@ describe("retirement evidence branches", () => {
         ["secondhome_state_bank", "yes"],
         ["secondhome_own_name", "yes"],
         ["secondhome_passive_income_usd", "3000"],
-        ["family_sponsor_confirmed", "yes"],
+        ["retirement_penjamin_confirmed", "yes"],
         ["stay_days", "365"],
       ],
     },
@@ -365,7 +369,7 @@ describe("retirement evidence branches", () => {
       basis: "passive_income",
       answers: [
         ["secondhome_passive_income_usd", "3000"],
-        ["family_sponsor_confirmed", "yes"],
+        ["retirement_penjamin_confirmed", "yes"],
         ["stay_days", "365"],
       ],
     },
@@ -373,7 +377,7 @@ describe("retirement evidence branches", () => {
       basis: "family_sponsor",
       answers: [
         ["secondhome_passive_income_usd", "3000"],
-        ["family_sponsor_confirmed", "yes"],
+        ["retirement_penjamin_confirmed", "yes"],
         ["stay_days", "365"],
       ],
     },
@@ -1470,13 +1474,12 @@ describe("PR-3 · wants_onshore_conversion is asked OFFSHORE in the invest branc
 });
 
 describe("PR-3 · family_sponsor_confirmed reaches the invest and other branches", () => {
-  it.each(["invest", "other", "family", "retirement", "diaspora"] as const)(
+  it.each(["invest", "other", "family", "diaspora"] as const)(
     "guilt: %s asks it exactly once",
     (category) => {
       const ids = getCategoryQuestionIds({
         category,
         investment_vehicle: "pt_pma",
-        retirement_basis: "passive_income",
       });
       expect(
         ids.filter((id) => id === "family_sponsor_confirmed"),
@@ -1490,6 +1493,45 @@ describe("PR-3 · family_sponsor_confirmed reaches the invest and other branches
         "family_sponsor_confirmed",
       );
     }
+  });
+});
+
+// PR-M (owner ruling 2026-09-27): the retirement branch asks the E33F-only
+// penjamin sibling instead — same `family.sponsor_confirmed` fact, penjamin
+// wording. The family question must not appear on the retirement branch.
+describe("PR-M · retirement asks retirement_penjamin_confirmed, never the family wording", () => {
+  it("guilt: every retirement basis asks the penjamin sibling exactly once and never family_sponsor_confirmed", () => {
+    for (const retirementBasis of [
+      "bank_deposit",
+      "property",
+      "passive_income",
+      "family_sponsor",
+    ] as const) {
+      const ids = getCategoryQuestionIds({
+        category: "retirement",
+        retirement_basis: retirementBasis,
+      });
+      expect(
+        ids.filter((id) => id === "retirement_penjamin_confirmed"),
+      ).toHaveLength(1);
+      expect(ids).not.toContain("family_sponsor_confirmed");
+    }
+    const undecided = getCategoryQuestionIds({
+      category: "retirement",
+      retirement_basis: "undecided",
+      retirement_undecided_basis: "deposit_or_income",
+    });
+    expect(
+      undecided.filter((id) => id === "retirement_penjamin_confirmed"),
+    ).toHaveLength(1);
+    expect(undecided).not.toContain("family_sponsor_confirmed");
+  });
+
+  it("innocence: a not-sure on the penjamin question is a conservative no, not a human-review hold", () => {
+    expect(QUESTIONS.retirement_penjamin_confirmed.notSure).toEqual({
+      mode: "conservative",
+      conservativeValue: "no",
+    });
   });
 });
 
@@ -1581,9 +1623,10 @@ describe("PR-3 · the second_home branch (owner ruling 3)", () => {
       "retirement_basis",
       "secondhome_property_value_usd",
       // Added (PR-D3, D3-3): `property` now asks the same E33F fallback
-      // pair every other retirement basis does — see flow.ts.
+      // pair every other retirement basis does — see flow.ts. PR-M: the
+      // sponsor half of the pair is the penjamin wording.
       "secondhome_passive_income_usd",
-      "family_sponsor_confirmed",
+      "retirement_penjamin_confirmed",
       "stay_days",
     ]);
   });

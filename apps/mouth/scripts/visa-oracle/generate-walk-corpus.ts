@@ -468,7 +468,8 @@ export function enumerateScenarios(): Scenario[] {
   });
 
   // D3-3: retirement branches that used to dead-end. `property`'s negative
-  // sponsor answer (the age64/sponsor=yes walk is already the corpus's
+  // sponsor answer (PR-M: the penjamin wording, `retirement_penjamin_confirmed`;
+  // the age64/penjamin=yes walk is already the corpus's
   // regenerated default for `offshore/retirement/property/age64`).
   scenarios.push({
     label: "offshore/retirement/property/age64/sponsor_no",
@@ -477,7 +478,7 @@ export function enumerateScenarios(): Scenario[] {
       category: "retirement",
       retirement_basis: "property",
       birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
-      family_sponsor_confirmed: "no",
+      retirement_penjamin_confirmed: "no",
     },
   });
   // `bank_deposit` was the funnel census's LARGEST dead end (30 production
@@ -497,7 +498,7 @@ export function enumerateScenarios(): Scenario[] {
       // cures the deposit-below-threshold dead end rather than merely
       // failing both products.
       secondhome_passive_income_usd: "5000",
-      family_sponsor_confirmed: "yes",
+      retirement_penjamin_confirmed: "yes",
     },
   });
   // `undecided` becomes a real question. `deposit_or_income` is already the

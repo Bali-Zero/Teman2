@@ -289,8 +289,10 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
   // cardinalities are LITERAL, never derived from the table under test
   // (GATE-A2G OBS-A2g-4): Slice A6-2 moved exactly seven branches to
   // `conservative`; slice A6-bis (`diaspora_documents`, `retirement_basis`
-  // — both Group A, "no-fact-path") moves two more, leaving 45
-  // `human-review` blocks and 9 `conservative` ones.
+  // — both Group A, "no-fact-path") moves two more; PR-M adds
+  // `retirement_penjamin_confirmed` (E33F penjamin sibling, conservative
+  // "no", owner ruling 2026-09-27) — leaving 45 `human-review` blocks and
+  // 10 `conservative` ones.
   it("every human-review notSure block declares a because, and the A6-2 cardinality is pinned", () => {
     const entries = Object.entries(QUESTIONS);
     expect(
@@ -305,7 +307,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     ).toHaveLength(45);
     expect(
       entries.filter(([, q]) => q.notSure?.mode === "conservative"),
-    ).toHaveLength(9);
+    ).toHaveLength(10);
   });
 
   // INNOCENCE (FIX-B, spec F2): exactly 14 questions declare no `notSure`
