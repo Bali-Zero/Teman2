@@ -1170,6 +1170,12 @@
       "repo": "scripts/pro/disk-monitor.sh",
       "machines": ["pro"],
       "_note": "Pro-only (launchd com.nuzantara.disk-monitor, 10 min). Brought into canon 2026-09-26: the HOME-only copy measured `df /` (the sealed APFS system snapshot) and stayed silent while /System/Volumes/Data hit 100%. Not present on Mini or M5 (measured)."
+    },
+    {
+      "live": "~/scripts/ollama-single-manager.sh",
+      "repo": "scripts/pro/ollama-single-manager.sh",
+      "machines": ["pro"],
+      "_note": "Pro-only (launchd com.nuzantara.ollama, StartInterval 120, execs `ollama serve` with the memory caps). Brought into canon 2026-09-26 to cap llama-server's host prompt cache (LLAMA_ARG_CACHE_RAM) after swap exhaustion; the HOME-only copy dated 2026-09-02."
     }
   ],
   "allow": [
