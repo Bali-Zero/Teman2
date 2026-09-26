@@ -41,7 +41,8 @@ export function CheckingPlaque({
 /**
  * SUPPORTED: the paths the engine returned, in ITS order, as plain paper
  * plaques — no rank words, no seal, no stamp, no date. The qualifier sits
- * inside the heading so the result never reads as approval. Names come from
+ * inside the heading AND in every lane's status mark, so no path ever reads
+ * as an approval on its own. Names come from
  * the engine's own display payload; this component never names a visa.
  */
 export function ArrivalLanes({
@@ -105,12 +106,23 @@ export function ArrivalLanes({
               <span className="oracle-lane__name">
                 {candidate.name[language] ?? candidate.name.en}
               </span>
+              {/* The legal status never travels alone: a bare "Supported"
+                  read as an approval (council CRITIQUE-v2 Oracle #2), so the
+                  qualifier sits in the same mark, on the same line. */}
               <span
                 className="oracle-verdict-chip oracle-lane__chip"
                 data-state={LEGAL_STATUS_CHIP_STATE[status]}
               >
-                <Icon aria-hidden="true" size={16} />
-                {translate(language, `outcome.status.${status}` as I18nKey)}
+                <Icon aria-hidden="true" size={15} />
+                <span className="oracle-lane__status">
+                  {translate(language, `outcome.status.${status}` as I18nKey)}
+                </span>
+                {status === "SUPPORTED" && (
+                  <span className="oracle-lane__qualifier">
+                    {" — "}
+                    {roadCopy(language, "laneQualifier")}
+                  </span>
+                )}
               </span>
             </li>
           );

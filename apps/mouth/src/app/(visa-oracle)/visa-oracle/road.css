@@ -519,10 +519,10 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 .oracle-lane {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-2);
   min-height: 64px;
   padding: var(--space-4) 1.25rem;
   border: 1px solid var(--oracle-border-strong);
@@ -540,6 +540,25 @@ html[data-oracle-theme-bootstrap="dark"]
 }
 .oracle-root .oracle-verdict-chip {
   border-radius: 3px;
+}
+/* The lane's status is a quiet mark under the name, never a badge: the
+   frozen state colour stays on the icon and the word, the qualifier follows
+   in muted ink on the same line (CRITIQUE-v2 Oracle #2). */
+.oracle-root .oracle-lane__chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.4rem;
+  padding: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.oracle-lane__qualifier,
+.oracle-axis__qualifier {
+  color: var(--oracle-ink-muted);
+  font-weight: 400;
 }
 .oracle-arrival--edge .oracle-headline,
 .oracle-arrival--pencil .oracle-headline,

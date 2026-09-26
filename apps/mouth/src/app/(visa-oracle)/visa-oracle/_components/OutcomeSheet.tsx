@@ -37,6 +37,7 @@ import {
 } from "../_lib/outcome-view-model";
 import { type I18nKey } from "../_lib/i18n";
 import { plainTranslate as translate } from "./plain-copy";
+import { roadCopy } from "./road-copy";
 import { ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS } from "../_lib/fact-mapper";
 import {
   SECOND_HOME_STUDIO_REVIEW_REASON_CODE,
@@ -470,6 +471,13 @@ function AxisBadge({
       <span className="oracle-axis__value">
         <Icon aria-hidden="true" size={16} />
         {translate(language, `outcome.status.${status}` as I18nKey)}
+        {/* Legal "Supported" never stands alone (CRITIQUE-v2 Oracle #2). */}
+        {labelKey === "outcome.axis.legal" && status === "SUPPORTED" && (
+          <span className="oracle-axis__qualifier">
+            {" — "}
+            {roadCopy(language, "laneQualifier")}
+          </span>
+        )}
       </span>
     </div>
   );
