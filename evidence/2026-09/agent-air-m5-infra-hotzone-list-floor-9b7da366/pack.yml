@@ -2,7 +2,7 @@ brief_ref: evidence/brief.yml
 council_run: "council-journal.jsonl"
 plan_ref:
   "PR (agent/air-m5/infra/hotzone-list-floor, base main): coordinator ruling 2026-09-27,
-  prerequisite of codexpin PR-1 #7420. Dispatched by the coordinator (team-lead) as a narrow
+  prerequisite of codexpin PR-1 (#7420). Dispatched by the coordinator (team-lead) as a narrow
   harness cure; the builder never arms or merges, a fresh gate judges."
 lanes:
   - lane: hotzone-list-floor-build
