@@ -14,6 +14,7 @@ Contract under test:
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -153,3 +154,142 @@ async def test_from_override_via_env(monkeypatch):
         await send_via_resend(to_email="x@y.com", subject="s", body="b")
     payload = fake_client.post.call_args.kwargs["json"]
     assert payload["from"] == "Ops <ops@send.balizero.com>"
+
+
+# ---------------------------------------------------------------------------
+# C3 (fresh gate on #7449, follow-up mandate): none of the three log call
+# sites in send_via_resend() may carry the raw recipient address or an
+# unscrubbed provider body/exception. Guilt+innocence per site.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_success_log_does_not_leak_the_recipient_and_carries_the_digest(
+    monkeypatch, caplog
+):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(return_value=_mk_response(202))
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.INFO, logger="backend.services.notifications.resend_http"),
+    ):
+        await send_via_resend(to_email="alice@example.com", subject="hello", body="<p>hi</p>")
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "alice@example.com" not in joined
+    assert "id:" in joined
+
+
+@pytest.mark.asyncio
+async def test_success_log_escapes_a_newline_in_the_subject(monkeypatch, caplog):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(return_value=_mk_response(202))
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.INFO, logger="backend.services.notifications.resend_http"),
+    ):
+        await send_via_resend(
+            to_email="x@y.com", subject="Invoice ready\nX-Injected: evil", body="b"
+        )
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "\nX-Injected" not in joined
+    assert "\\nX-Injected" in joined
+
+
+@pytest.mark.asyncio
+async def test_success_log_scrubs_an_address_embedded_in_the_subject(monkeypatch, caplog):
+    """GUILT (R2, fresh gate on #7488 — this was mutant O6, previously
+    untested): the newline-escaping test above only proves `repr()` runs; it
+    never puts an address IN the subject, so a mutant that drops
+    `_bounded_scrub(subject, 120)` and keeps only `repr(subject)` survived
+    every existing test. A personalized subject line (e.g. `Re: invoice for
+    <name> <addr>`) is exactly the caller-supplied-text case the module
+    comment on `notify_email_failure_critical` already warns about."""
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    addr = "subject.leak@example.com"
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(return_value=_mk_response(202))
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.INFO, logger="backend.services.notifications.resend_http"),
+    ):
+        await send_via_resend(
+            to_email="other@example.com", subject=f"Re: invoice for {addr}", body="b"
+        )
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert addr not in joined
+    assert "subject.leak" not in joined
+    assert "Re: invoice for" in joined  # non-PII prose survives
+
+
+@pytest.mark.asyncio
+async def test_error_log_does_not_leak_the_recipient_or_the_raw_response_body(
+    monkeypatch, caplog
+):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(
+        return_value=_mk_response(422, '{"error":"unknown address bob@example.com"}')
+    )
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.ERROR, logger="backend.services.notifications.resend_http"),
+    ):
+        result = await send_via_resend(to_email="bob@example.com", subject="s", body="b")
+    assert result is False
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "bob@example.com" not in joined
+    assert "id:" in joined
+    assert "unknown address" in joined  # non-PII diagnostic text survives
+
+
+@pytest.mark.asyncio
+async def test_error_log_innocence_keeps_a_non_pii_status_code_readable(monkeypatch, caplog):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(return_value=_mk_response(429, "rate limited"))
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.ERROR, logger="backend.services.notifications.resend_http"),
+    ):
+        await send_via_resend(to_email="x@y.com", subject="s", body="b")
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "429" in joined
+    assert "rate limited" in joined
+
+
+@pytest.mark.asyncio
+async def test_exception_log_does_not_leak_the_recipient_or_exception_text(monkeypatch, caplog):
+    monkeypatch.setenv("RESEND_API_KEY", "re_key")
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(
+        side_effect=httpx.ConnectError("connect failed for carol@example.com")
+    )
+    with (
+        patch(
+            "backend.services.notifications.resend_http.get_email_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
+        caplog.at_level(logging.ERROR, logger="backend.services.notifications.resend_http"),
+    ):
+        result = await send_via_resend(to_email="carol@example.com", subject="s", body="b")
+    assert result is False
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "carol@example.com" not in joined
+    assert "id:" in joined

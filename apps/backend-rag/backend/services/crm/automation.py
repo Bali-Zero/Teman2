@@ -328,16 +328,29 @@ class ProcessAutomationService:
                         practice_data=practice_data,
                     )
                     results["client_notified"] = True
-                    logger.info(f"Process start email sent to client {client_data['email']}")
+                    logger.info(
+                        "Process start email sent to client %s",
+                        redact_identifier_for_log(client_data["email"]),
+                    )
                 except (httpx.HTTPError, ValueError) as e:
+                    # R1 (fresh gate on this PR): this branch no longer attaches
+                    # the traceback kwarg — it rendered the exception's own
+                    # message a second time, past the already-scrubbed %s slot,
+                    # so a bounce quoting the address back would survive in
+                    # exception.message/.traceback (prod StructuredFormatter)
+                    # and the /api/debug/logs ring buffer even though the log
+                    # line's own text is clean. The exception TYPE still
+                    # survives for diagnosis.
                     logger.error(
-                        "Failed to send process start email to client: %s", e, exc_info=True
+                        "Failed to send process start email to client: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error sending process start email to client: %s",
-                        e,
-                        exc_info=True,
+                        "Unexpected error sending process start email to client: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
@@ -352,15 +365,20 @@ class ProcessAutomationService:
                     results["team_leader_notified"] = True
                     logger.info(
                         "Process start notification sent to team leader %s",
-                        team_leader_email,
+                        redact_identifier_for_log(team_leader_email),
                     )
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
+                    # Same R1 fix as the client branch above — no traceback kwarg.
+                    logger.error(
+                        "Failed to send notification to team leader: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
+                    )
                 except Exception as e:
                     logger.error(
-                        "Unexpected error notifying team leader: %s",
-                        e,
-                        exc_info=True,
+                        "Unexpected error notifying team leader: %s: %s",
+                        type(e).__name__,
+                        _bounded_scrub(str(e), 400),
                     )
 
             await _log_activity(
