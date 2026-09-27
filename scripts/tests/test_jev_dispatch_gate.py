@@ -105,26 +105,48 @@ def test_redact_masks_credentials_tokens_and_names_keeps_technical_runs():
 
 
 def _straddle(head_len: int, token: str, filler: str = "x") -> str:
-    """Place `token` so that the cut at head_len falls in its middle."""
-    start = head_len - len(token) // 2
-    return filler * start + token + filler * 3000
+    """Place `token` (space-delimited, as in any real prompt) so that the cut
+    at head_len falls in its middle."""
+    start = head_len - len(token) // 2 - 1
+    return filler * start + " " + token + " " + filler * 3000
 
 
-def test_window_redact_never_splits_a_token_at_the_head_cut():
+TOKENS = ("mario.rossi@example.id", "tok_" + "A" * 33, "Giovanni Bianchi")
+
+
+def test_redact_then_clip_never_splits_a_token_at_the_head_cut():
     H, T = G.HEAD_CHARS, G.TAIL_CHARS
-    for token in ("mario.rossi@example.id", "tok_" + "A" * 33, "Giovanni Bianchi"):
-        out = G.window_redact(_straddle(H, token), H, T)
+    for token in TOKENS:
+        out = G.redact_then_clip(_straddle(H, token), H, T)
         assert token not in out and token[: len(token) // 2] not in out.replace("[...]", "")
         assert "rossi" not in out and "Bianchi" not in out and "AAAA" not in out
 
 
-def test_window_redact_never_splits_a_token_at_the_tail_cut():
+def test_redact_then_clip_never_splits_a_token_at_the_tail_cut():
     H, T = G.HEAD_CHARS, G.TAIL_CHARS
-    for token in ("mario.rossi@example.id", "tok_" + "A" * 33, "Giovanni Bianchi"):
-        text = "x" * (H + 3000) + token + "x" * (T - len(token) // 2)
-        out = G.window_redact(text, H, T)
+    for token in TOKENS:
+        text = "x" * (H + 3000) + " " + token + " " + "x" * (T - len(token) // 2 - 1)
+        out = G.redact_then_clip(text, H, T)
         assert token not in out and "rossi" not in out and "Bianchi" not in out and "AAAA" not in out
         assert len(out) <= H + T + len("\n[...]\n")
+
+
+def test_redact_then_clip_survives_masks_shrinking_the_head_by_more_than_any_margin():
+    # gate r3: with windowed redaction, >512 chars of shrinkage before the cut
+    # slid the cut past the margin. Redacting everything first has no margin.
+    H, T = G.HEAD_CHARS, G.TAIL_CHARS
+    shrink = ("tok_" + "A" * 60 + " ") * 40          # 40 masks × ~58 chars shrink ≈ 2.3k
+    text = shrink + "x" * (H + 512 - len(shrink) - 8) + " Giovanni Bianchi " + "x" * 3000
+    out = G.redact_then_clip(text, H, T)
+    assert "Bianchi" not in out and "Giovanni" not in out and "AAAA" not in out
+
+
+def test_redact_is_linear_on_pathological_inputs():
+    import time
+    for txt in ("a" * 200_000, "a." * 100_000, "+62 " * 50_000, "Aaa " * 50_000, "a@" * 100_000, "token=x " * 30_000):
+        t0 = time.time()
+        G.redact(txt)
+        assert time.time() - t0 < 1.5
 
 
 def test_redact_masks_short_bearer_whole():

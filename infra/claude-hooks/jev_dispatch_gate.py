@@ -27,7 +27,7 @@ MODES (env JEV_DISPATCH_GATE): enforce (default) · observe (receipts, never
 mutates) · off. Deadline JEV_DISPATCH_GATE_DEADLINE_S (4 s) bounds the wait.
 RECEIPTS: ~/.agent/jev-dispatch-gate/receipts.jsonl — probabilities, decision,
 latency, prompt sha (12 hex). Never the prompt. `--report` aggregates them.
-PII: description+prompt pass a deterministic redactor on margin windows, then are cut
+PII: description+prompt pass a deterministic linear-time redactor, then are cut
 (credential assignments, emails, opaque tokens, digit runs, phones, runs of
 capitalised words unless all are technical; plus the repo redactor when
 importable) BEFORE any byte leaves; PII-shaped dispatches skip Jev entirely;
@@ -36,7 +36,7 @@ names are not recognised without a name list — the PII-shaped skip and the
 over-redaction bias of the name rule are the cover (the repo redactor's static
 passes do not carry CRM names: load_static leaves pass4 empty by design).
 Egress contract: docs/specs/2026-09-27-jev-dispatch-gate-egress-spec.md —
-windowed redaction, every cut AFTER the mask with a 512-char margin.
+redact the whole text with linear-time masks, then cut; never cut first.
 `updatedInput` must carry the whole tool_input back to Claude Code (contract),
 so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
 the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
@@ -86,21 +86,27 @@ STATE_DIR = pathlib.Path(
 RECEIPTS = STATE_DIR / "receipts.jsonl"
 DENIED_DIR = STATE_DIR / "denied"
 DENY_TTL_S = 24 * 3600
-HEAD_CHARS, TAIL_CHARS, MARGIN = 5000, 1500, 512
+HEAD_CHARS, TAIL_CHARS = 5000, 1500
 
 PII_SHAPED = re.compile(
     r"\b(pii|ktp|nik|npwp|passport|paspor)\b|\bclient[_ -]?(id|data|record|file|case|dossier)s?\b",
     re.IGNORECASE,
 )
+# Every mask has BOUNDED lookahead so redaction is linear in the input
+# (spec §3): the unbounded email local part was quadratic on a 100k run
+# without "@" (Codex finding), and any cut BEFORE the mask leaks at the cut
+# when masks shrink the window (gate r2/r3 findings) — so the whole text is
+# redacted first and cut after. Measured worst case: 0.6 s on 200k
+# pathological chars (bare word-character run vs the email mask).
 SECRET = re.compile(
-    r"\b(token|secret|password|passwd|api[_-]?key|apikey|authorization)\b\s*[:=]\s*(?:bearer\s+)?\S+"
-    r"|\b(bearer)\s+\S+",
+    r"\b(token|secret|password|passwd|api[_-]?key|apikey|authorization)\b[ \t]*[:=][ \t]*(?:bearer[ \t]+)?\S+"
+    r"|\b(bearer)[ \t]+\S+",
     re.IGNORECASE,
 )
 OPAQUE = re.compile(r"\b[A-Za-z0-9_-]{32,}\b")
-EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+EMAIL = re.compile(r"[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}")
 MODEL_FAMILY = re.compile(r"^(?:claude-)?(opus|sonnet|haiku)(?:$|[-\d])")
-PHONE = re.compile(r"(?<![\w/])\+?\d[\d\s().-]{7,}\d(?![\w/])")
+PHONE = re.compile(r"(?<![\w/])\+?\d[\d \t().-]{7,40}\d(?![\w/])")
 DIGITS = re.compile(r"(?<![\w/.:-])\d{6,}(?![\w/.:-])")
 NAME_RUN = re.compile(r"\b[A-Z][a-zà-ÿ]{2,}(?:[ \t]+[A-Z][a-zà-ÿ]{2,})+\b")
 TECH_WORDS = {
@@ -198,24 +204,22 @@ def redact(text: str, repo_layer=None) -> str:
     return NAME_RUN.sub(_run, text)
 
 
-def window_redact(text: str, head: int, tail: int, repo_layer=None) -> str:
-    """docs/specs/2026-09-27-jev-dispatch-gate-egress-spec.md §3: every cut
-    happens AFTER redaction and every redacted window extends MARGIN past the
-    cut it serves, so a maskable token shorter than MARGIN can never be split
-    by a cut (r2 gate finding: clip-before-redact leaked fragments)."""
-    if len(text) <= head + tail + 2 * MARGIN:
-        return redact(text, repo_layer)
-    h = redact(text[: head + MARGIN], repo_layer)[:head]
-    t = redact(text[-(tail + MARGIN):], repo_layer)[-tail:]
-    return h + "\n[...]\n" + t
+def redact_then_clip(text: str, head: int, tail: int, repo_layer=None) -> str:
+    """docs/specs/2026-09-27-jev-dispatch-gate-egress-spec.md §3: the WHOLE
+    text is redacted, then cut. A cut on a redacted string can split at most
+    a placeholder; no cut ever precedes a mask (gate r2/r3 findings)."""
+    red = redact(text, repo_layer)
+    if len(red) <= head + tail:
+        return red
+    return red[:head] + "\n[...]\n" + (red[-tail:] if tail else "")
 
 
 def build_state(tool_input: dict, repo_layer=None) -> dict:
     return {
-        "description": window_redact(str(tool_input.get("description") or ""), 500, 0, repo_layer)[:500],
+        "description": redact_then_clip(str(tool_input.get("description") or ""), 500, 0, repo_layer),
         "subagent_type": str(tool_input.get("subagent_type") or "general-purpose")[:80],
         "requested_model": str(tool_input.get("model") or "inherit")[:80],
-        "prompt": window_redact(str(tool_input.get("prompt") or ""), HEAD_CHARS, TAIL_CHARS, repo_layer),
+        "prompt": redact_then_clip(str(tool_input.get("prompt") or ""), HEAD_CHARS, TAIL_CHARS, repo_layer),
     }
 
 

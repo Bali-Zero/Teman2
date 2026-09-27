@@ -26,23 +26,30 @@ Exactly one JSON object per judged dispatch, sent to the TypeSafe endpoint pinne
 - The credential: the hook never reads `TYPESAFE_API_KEY`; only the pinned client does.
 - Any prompt or description text into receipts, stdout messages or the deny reason.
 
-## 3. Windowed redaction — the invariant the r2 gate found missing
+## 3. Redact everything, then cut — and why the two earlier shapes are rejected
 
-Redaction masks tokens; a cut can split a token; a split token escapes the mask. Therefore
-**every cut happens AFTER redaction, and every redacted window extends MARGIN = 512 chars past
-the cut it serves**:
+Redaction masks tokens; a cut can split a token; a split token escapes the mask. **No cut may
+precede a mask.** The whole text is redacted, then cut:
 
 ```
-head = redact(text[: HEAD + MARGIN])[: HEAD]
-tail = redact(text[-(TAIL + MARGIN):])[-TAIL:]
-state.prompt = head + "\n[...]\n" + tail        # only when len(text) > HEAD + TAIL + 2·MARGIN
+red = redact(text)
+state.prompt = red if len(red) <= HEAD + TAIL else red[:HEAD] + "\n[...]\n" + red[-TAIL:]
 ```
 
-Invariant: a maskable token shorter than MARGIN that straddles a cut lies entirely inside the
-window that serves that cut, so it is masked whole before the cut; the cut can split at most a
-placeholder. Tokens ≥ MARGIN chars are opaque runs by construction and are masked by the
-≥32-char opaque rule inside whichever window sees them. The regexes therefore only ever run on
-≤ HEAD + MARGIN or ≤ TAIL + MARGIN chars, which is what bounds the hook's time.
+A cut on a redacted string can split at most a placeholder. The time bound comes from the
+masks, not from the cut: every pattern has bounded lookahead, so redaction is linear in the
+input — email local part ≤ 64 chars and ≤ 8 domain labels of ≤ 63; phone body 7–40 chars with
+no newline; digit and opaque runs are greedy single passes; name runs are structured; the
+credential value is one `\S+`. Measured worst case 0.6 s on 200 000 pathological characters (a bare run of word characters against the email mask).
+
+Rejected shapes, recorded so nobody rebuilds them:
+
+- **clip-then-redact** (correction r1, PR #7487): the cut splits tokens and the fragments
+  escape every pattern — an email local part, 31 of 37 chars of an opaque token and half a
+  surname reached the vendor (gate r2).
+- **windowed redaction with a margin** (correction r2): cutting the REDACTED window at a fixed
+  offset assumes masks do not move the cut; when masks shrink the window by more than the
+  margin the cut slides past it and the fragment at the window edge leaks (gate r3).
 
 Masks, in order: credential assignments (`token|secret|password|passwd|api_key|apikey|
 authorization` `[:=]` value, and `bearer` + value) → `[SECRET]`; emails → `[EMAIL]`; opaque runs
@@ -62,7 +69,9 @@ config — **it does not cover CRM client names** (`load_static` leaves pass4 em
 ## 5. Tests that pin this spec (`scripts/tests/test_jev_dispatch_gate.py`)
 
 - an email, a 37-char opaque token and a two-word name placed exactly across the head cut and
-  across the tail cut never appear in `build_state()` output, not even as fragments;
-- `build_state()` output length is bounded by HEAD + TAIL + separators + placeholders;
+  across the tail cut never appear in the outbound prompt, not even as fragments;
+- the same holds when masks before the cut shrink the text by far more than any margin;
+- every mask finishes in under 1.5 s on 200 000 pathological characters of six shapes;
+- the outbound prompt length is bounded by HEAD + TAIL + separator;
 - `Authorization: Bearer <short>` is masked whole;
 - a 200 000-char prompt is judged in under 4 s with exit 0.
