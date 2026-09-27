@@ -533,7 +533,7 @@ export function ArticleClient({
               )}
 
               {/* Author card */}
-              <div className="mt-12 p-6 rounded-2xl bg-[var(--r19-surface)] border border-[var(--r19-line)]">
+              <div className="mt-12 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]">
                 <div className="flex items-start gap-4">
                   {article.author.avatar ? (
                     <Image
@@ -565,7 +565,7 @@ export function ArticleClient({
               </div>
 
               {/* WhatsApp consultation CTA — tracked lead handoff */}
-              <div className="mt-12 p-6 rounded-2xl bg-[rgba(37,211,102,0.06)] border border-[rgba(37,211,102,0.2)]">
+              <div className="mt-12 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]">
                 <h2 className="font-serif text-xl font-medium text-[var(--r19-ink)]">
                   Questions about how this applies to your case?
                 </h2>

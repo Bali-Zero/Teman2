@@ -21,7 +21,7 @@ export function AnswerBox({ children, className = "" }: AnswerBoxProps) {
   return (
     <div
       className={`
-        relative my-6 p-6 rounded-lg border-l-4 border-[var(--r19-copper)]
+        relative my-6 p-6 rounded-[8px] border-l-4 border-[var(--r19-copper)]
         bg-[var(--r19-wash)]
         ${className}
       `}
@@ -59,7 +59,7 @@ export function KeyTakeaway({
   return (
     <div
       className={`
-        my-6 p-6 rounded-lg bg-[var(--r19-surface)] border border-[var(--r19-line)]
+        my-6 p-6 rounded-[8px] bg-[var(--r19-surface)] border border-[var(--r19-line)]
         ${className}
       `}
       data-key-takeaway="true"

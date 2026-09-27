@@ -38,7 +38,8 @@ const FORBIDDEN: RegExp[] = [
   /\bfont-black\b/,
   /\bfont-extrabold\b/,
   /bg-gradient-to-\w+\s+from-\[#/,
-  /\b(?:sky|blue|cyan|teal|emerald|lime|amber|orange|red|rose|pink|fuchsia|purple|violet|indigo)-(?:400|500|600)\b/,
+  /\b(?:sky|blue|cyan|teal|emerald|green|lime|amber|orange|red|rose|pink|fuchsia|purple|violet|indigo)-(?:400|500|600)\b/,
+  /\b(?:bg|text|border|from|via|to|ring)-\[(?:#|rgba?\()/,
 ];
 
 function assertNoForbiddenClasses(html: string) {
