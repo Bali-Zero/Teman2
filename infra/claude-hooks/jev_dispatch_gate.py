@@ -12,8 +12,10 @@ CONTRACT (stdin = PreToolUse JSON, stdout = hook JSON, exit 0 always):
   skip   — not an Agent dispatch, `fork`, no prompt, PII-shaped text (cabled
            regex, never a model), gate off, vendor unavailable → no output.
   deny   — Jev is confident (needs_agent <= DENY_MAX) the task is a single
-           lookup/one-command action AND it is not a verdict/review. ONE-SHOT:
-           the prompt hash is remembered; the same dispatch re-issued passes.
+           lookup/one-command action AND is_verdict <= VERDICT_MAX (both
+           probabilities present: a missing axis is no opinion). ONE-SHOT: a
+           marker file per prompt hash is persisted atomically BEFORE the deny;
+           the same dispatch re-issued passes; no marker → no deny.
   downgrade — only ever DOWN, only when the caller named the model:
            opus+grunt → haiku · opus+implementer → sonnet · sonnet+grunt → haiku,
            at tier confidence >= TIER_MIN and is_verdict <= VERDICT_MAX.
@@ -25,10 +27,16 @@ MODES (env JEV_DISPATCH_GATE): enforce (default) · observe (receipts, never
 mutates) · off. Deadline JEV_DISPATCH_GATE_DEADLINE_S (4 s) bounds the wait.
 RECEIPTS: ~/.agent/jev-dispatch-gate/receipts.jsonl — probabilities, decision,
 latency, prompt sha (12 hex). Never the prompt. `--report` aggregates them.
-PII: description+prompt pass a deterministic redactor (emails, phones, digit
-runs, runs of capitalised words unless all are technical; plus the repo
-redactor when importable) BEFORE any byte leaves; PII-shaped dispatches skip
-Jev entirely. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
+PII: description+prompt are clipped, then pass a deterministic redactor
+(credential assignments, emails, opaque tokens, digit runs, phones, runs of
+capitalised words unless all are technical; plus the repo redactor when
+importable) BEFORE any byte leaves; PII-shaped dispatches skip Jev entirely;
+a redactor exception skips Jev. Known limit: lowercase or single-word personal
+names are not recognised without a name list — the PII-shaped skip and the
+repo redactor's CRM names (when DATABASE_URL is set) are the cover.
+`updatedInput` must carry the whole tool_input back to Claude Code (contract),
+so the ORIGINAL prompt appears on the hook's stdout: that stdout is read by
+the process that produced the prompt, it is not egress. Test seam: JEV_DISPATCH_GATE_FAKE_ANSWERS (JSON) replaces the
 network call — tests only, documented like NZ_JUMP_DRY.
 """
 from __future__ import annotations
@@ -38,6 +46,7 @@ import json
 import os
 import pathlib
 import re
+import signal
 import sys
 import threading
 import time
@@ -45,16 +54,25 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 SCRIPTS = HERE.parent.parent / "scripts"
 
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
 MODE = os.environ.get("JEV_DISPATCH_GATE", "enforce").strip().lower()
-DEADLINE_S = float(os.environ.get("JEV_DISPATCH_GATE_DEADLINE_S", "4"))
-DENY_MAX = float(os.environ.get("JEV_DISPATCH_GATE_DENY_MAX", "0.10"))
-TIER_MIN = float(os.environ.get("JEV_DISPATCH_GATE_TIER_MIN", "0.85"))
+DEADLINE_S = _env_float("JEV_DISPATCH_GATE_DEADLINE_S", 4.0)
+DENY_MAX = _env_float("JEV_DISPATCH_GATE_DENY_MAX", 0.10)
+TIER_MIN = _env_float("JEV_DISPATCH_GATE_TIER_MIN", 0.85)
 VERDICT_MAX = 0.10
 STATE_DIR = pathlib.Path(
     os.environ.get("JEV_DISPATCH_GATE_STATE", os.path.expanduser("~/.agent/jev-dispatch-gate"))
 )
 RECEIPTS = STATE_DIR / "receipts.jsonl"
-DENIED = STATE_DIR / "denied.json"
+DENIED_DIR = STATE_DIR / "denied"
 DENY_TTL_S = 24 * 3600
 HEAD_CHARS, TAIL_CHARS = 5000, 1500
 
@@ -62,7 +80,10 @@ PII_SHAPED = re.compile(
     r"\b(pii|ktp|nik|npwp|passport|paspor)\b|\bclient[_ -]?(id|data|record|file|case|dossier)s?\b",
     re.IGNORECASE,
 )
+SECRET = re.compile(r"(?i)\b(token|secret|password|passwd|api[_-]?key|apikey|bearer|authorization)\b\s*[:=]\s*\S+")
+OPAQUE = re.compile(r"\b[A-Za-z0-9_-]{32,}\b")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+MODEL_FAMILY = re.compile(r"^(?:claude-)?(opus|sonnet|haiku)(?:$|[-\d])")
 PHONE = re.compile(r"(?<![\w/])\+?\d[\d\s().-]{7,}\d(?![\w/])")
 DIGITS = re.compile(r"(?<![\w/.:-])\d{6,}(?![\w/.:-])")
 NAME_RUN = re.compile(r"\b[A-Z][a-zà-ÿ]{2,}(?:[ \t]+[A-Z][a-zà-ÿ]{2,})+\b")
@@ -73,6 +94,14 @@ TECH_WORDS = {
     "Instagram", "Visa", "Oracle", "News", "Room", "War", "Second", "Home", "Builder", "Contract",
     "Golden", "Rule", "Rules", "Bahasa", "Indonesia", "Indonesian", "Italian", "English", "Gear",
     "Pending", "Arms", "Fly", "Postgres", "Read", "Write", "Edit", "Bash", "Agent", "Explore",
+    "Binary", "Search", "Tree", "Abstract", "Syntax", "Type", "Safe", "System", "One", "Server",
+    "Client", "Queue", "Merge", "Branch", "Worktree", "Hook", "Hooks", "Skill", "Skills", "Token",
+    "Model", "Test", "Tests", "Lint", "Guard", "Gate", "Review", "Panel", "Council", "Spec", "Design",
+    "Data", "Plane", "Schema", "Migration", "Table", "Index", "Cache", "Redis", "Machine", "Cron",
+    "Daemon", "Memory", "Recall", "Evidence", "Pack", "Brief", "Ledger", "Report", "Verdict",
+    "Block", "Pass", "Deny", "Allow", "Dispatch", "Router", "Routing", "Sentinel", "Autopilot",
+    "Intake", "Garuda", "Cowork", "Chrome", "Vision", "Screen", "Screens", "Sharing", "Harness",
+    "Floor", "Merah", "Putih", "Canary", "Vercel", "Tigris", "Sonar", "Bandit", "Detect", "Secrets",
 }
 
 QUESTIONS = {
@@ -114,11 +143,8 @@ QUESTIONS = {
 
 
 def _family(model) -> str | None:
-    s = str(model or "").lower()
-    for fam in ("opus", "sonnet", "haiku"):
-        if fam in s:
-            return fam
-    return None
+    m = MODEL_FAMILY.match(str(model or "").strip().lower())
+    return m.group(1) if m else None
 
 
 def is_pii_shaped(text: str) -> bool:
@@ -143,7 +169,9 @@ def redact(text: str, repo_layer=None) -> str:
             text = repo_layer(text)
         except Exception:
             pass
+    text = SECRET.sub(lambda m: f"{m.group(1)}=[SECRET]", text)
     text = EMAIL.sub("[EMAIL]", text)
+    text = OPAQUE.sub("[TOKEN]", text)
     text = DIGITS.sub("[NUM]", text)
     text = PHONE.sub("[PHONE]", text)
 
@@ -161,11 +189,13 @@ def _clip(text: str) -> str:
 
 
 def build_state(tool_input: dict, repo_layer=None) -> dict:
+    # Clip BEFORE redacting: the regexes run on a bounded string, so a 100k
+    # prompt cannot drag the hook past its deadline (Codex finding, 2026-09-27).
     return {
-        "description": redact(str(tool_input.get("description") or ""), repo_layer),
-        "subagent_type": str(tool_input.get("subagent_type") or "general-purpose"),
-        "requested_model": str(tool_input.get("model") or "inherit"),
-        "prompt": _clip(redact(str(tool_input.get("prompt") or ""), repo_layer)),
+        "description": redact(_clip(str(tool_input.get("description") or ""))[:500], repo_layer),
+        "subagent_type": str(tool_input.get("subagent_type") or "general-purpose")[:80],
+        "requested_model": str(tool_input.get("model") or "inherit")[:80],
+        "prompt": redact(_clip(str(tool_input.get("prompt") or "")), repo_layer),
     }
 
 
@@ -198,7 +228,7 @@ def decide(tool_input: dict, answers: dict | None, denied_before: bool, mode: st
     na, verdict = _prob(answers, "needs_agent"), _prob(answers, "is_verdict")
     tier, conf = _choice(answers, "tier")
     out.update(needs_agent=na, tier=tier, tier_conf=conf, verdict=verdict)
-    if na is not None and na <= DENY_MAX and (verdict is None or verdict <= 0.5) and not denied_before:
+    if na is not None and na <= DENY_MAX and verdict is not None and verdict <= VERDICT_MAX and not denied_before:
         out["action"] = "deny"
         out["reason"] = (
             f"jev-dispatch-gate: Jev judges this dispatch does not need a separate agent "
@@ -246,13 +276,31 @@ def _ask_jev(state: dict, deadline: float) -> tuple[dict | None, str]:
     return (answers, "ok") if answers else (None, "none")
 
 
-def _denied_load() -> dict:
+def _deny_marker(sha: str) -> bool | None:
+    """Persist the one-shot marker BEFORE any deny is emitted.
+
+    True  = created now, this is the first deny for this hash;
+    False = a fresh marker already exists, the re-issue must pass;
+    None  = the marker cannot be persisted, so no deny is allowed at all —
+            a deny whose "second call passes" promise cannot be kept is a lie.
+    One file per hash, O_CREAT|O_EXCL: two parallel identical dispatches get
+    exactly one deny, and parallel distinct dispatches never lose each other's
+    marker (the read-modify-write on one JSON did, gate 2026-09-27).
+    """
     try:
-        d = json.loads(DENIED.read_text(encoding="utf-8"))
-        now = time.time()
-        return {k: v for k, v in d.items() if now - float(v) < DENY_TTL_S}
+        DENIED_DIR.mkdir(parents=True, exist_ok=True)
+        path = DENIED_DIR / sha
+        for _ in range(2):
+            try:
+                os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+                return True
+            except FileExistsError:
+                if time.time() - path.stat().st_mtime < DENY_TTL_S:
+                    return False
+                path.unlink(missing_ok=True)
+        return False
     except Exception:
-        return {}
+        return None
 
 
 def _receipt(row: dict) -> None:
@@ -288,22 +336,24 @@ def gate(payload: dict) -> dict | None:
         _receipt({**row, "action": "skip", "skip": skip})
         return None
     t0 = time.time()
-    state = build_state(tool_input, _repo_redactor())
+    try:
+        state = build_state(tool_input, _repo_redactor())
+    except Exception:
+        _receipt({**row, "action": "skip", "skip": "redaction_failed"})
+        return None
     answers, status = _ask_jev(state, DEADLINE_S)
-    denied = _denied_load()
-    d = decide(tool_input, answers, sha in denied, MODE)
+    d = decide(tool_input, answers, False, MODE)
+    if d["action"] == "deny":
+        first = _deny_marker(sha)
+        if first is not True:
+            d = decide(tool_input, answers, True, MODE)
+            d["deny_suppressed"] = "already_denied" if first is False else "state_unwritable"
     row.update(action=d["action"], new_model=d["model"], needs_agent=d["needs_agent"], tier=d["tier"],
                tier_conf=d["tier_conf"], verdict=d["verdict"], jev_status=status,
                latency_ms=int((time.time() - t0) * 1000), state_chars=len(json.dumps(state)),
-               would=d.get("would"))
+               would=d.get("would"), deny_suppressed=d.get("deny_suppressed"))
     _receipt(row)
     if d["action"] == "deny":
-        denied[sha] = time.time()
-        try:
-            STATE_DIR.mkdir(parents=True, exist_ok=True)
-            DENIED.write_text(json.dumps(denied), encoding="utf-8")
-        except Exception:
-            pass
         return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                        "permissionDecisionReason": d["reason"]}}
     if d["action"] == "downgrade":
@@ -338,9 +388,14 @@ def main(argv: list[str]) -> int:
         print(json.dumps(report(), indent=2))
         return 0
     try:
+        # Whole-process bound: import, redaction, vendor wait and filesystem
+        # together, not only the vendor thread. Alarm → no decision, exit 0.
+        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError()))
+        signal.setitimer(signal.ITIMER_REAL, DEADLINE_S + 3)
         payload = json.load(sys.stdin)
         out = gate(payload)
-    except Exception:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    except BaseException:  # noqa: BLE001 — TimeoutError from the alarm included
         return 0
     if out:
         print(json.dumps(out, ensure_ascii=False))

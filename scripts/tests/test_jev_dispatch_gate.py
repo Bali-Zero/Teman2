@@ -44,8 +44,12 @@ def test_deny_is_one_shot_innocence():
     assert G.decide(OPUS, _ans(needs=0.04), denied_before=True)["action"] != "deny"
 
 
-def test_no_deny_when_verdict_shaped():
+def test_no_deny_when_verdict_shaped_or_verdict_axis_missing():
     assert G.decide(OPUS, _ans(needs=0.04, verdict=0.9), denied_before=False)["action"] != "deny"
+    assert G.decide(OPUS, _ans(needs=0.04, verdict=0.3), denied_before=False)["action"] != "deny"
+    no_axis = _ans(needs=0.04)
+    del no_axis["is_verdict"]
+    assert G.decide(OPUS, no_axis, denied_before=False)["action"] != "deny"
 
 
 def test_downgrade_opus_implementer_to_sonnet():
@@ -89,6 +93,21 @@ def test_redact_masks_pii_keeps_paths_and_tech_pairs():
     assert "[NAME]" in s and "[EMAIL]" in s and "[PHONE]" in s and "[NUM]" in s
     assert "Mario" not in s and "Rossi" not in s and "mario@" not in s
     assert "scripts/agent_start.py" in s and "Bali Zero" in s and "Visa Oracle" in s
+
+
+def test_redact_masks_credentials_tokens_and_names_keeps_technical_runs():
+    s = G.redact("token=abc123XYZ authorization: Bearer x api_key = k9 sha 3f2a9c0d1e4b5a6f7d8c9b0a1f2e3d4c5b6a7f8e "
+                 "Binary Search Tree and Abstract Syntax Tree for Ibu Sari Dewi and Type Safe System One")
+    assert "abc123XYZ" not in s and "Bearer x" not in s and "k9" not in s and "[SECRET]" in s
+    assert "3f2a9c0d1e4b5a6f7d8c9b0a1f2e3d4c5b6a7f8e" not in s and "[TOKEN]" in s
+    assert "Binary Search Tree" in s and "Abstract Syntax Tree" in s and "Type Safe System One" in s
+    assert "Sari" not in s and "Dewi" not in s
+
+
+def test_family_is_anchored_not_substring():
+    assert G._family("haiku-opus") == "haiku"
+    assert G._family("claude-opus-5-5") == "opus" and G._family("sonnet") == "sonnet"
+    assert G._family("opusish") is None and G._family("inherit") is None and G._family("fable") is None
 
 
 def test_pii_shaped_detection():
@@ -145,6 +164,49 @@ def test_hook_subprocess_innocence_bash_fork_pii_off_are_silent():
     assert out == "" and rows[-1]["skip"] == "off"
     out, rows = _run({"tool_name": "Agent", "tool_input": OPUS}, {**fake, "JEV_DISPATCH_GATE": "observe"})
     assert out == "" and rows[-1]["action"] == "allow" and rows[-1]["would"] == "deny"
+
+
+def test_hook_subprocess_unwritable_state_never_denies():
+    with tempfile.TemporaryDirectory() as tmp:
+        blocker = pathlib.Path(tmp, "file")
+        blocker.write_text("x")
+        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": str(blocker / "state"),
+               "JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans(needs=0.02, tier="grunt")), "JEV_DISPATCH_GATE": "enforce"}
+        for _ in range(3):
+            p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"tool_name": "Agent", "tool_input": OPUS}),
+                               capture_output=True, text=True, env=env)
+            assert p.returncode == 0
+            assert json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"] == "allow"
+
+
+def test_hook_subprocess_parallel_distinct_dispatches_each_denied_exactly_once():
+    from concurrent.futures import ThreadPoolExecutor
+    fake = json.dumps(_ans(needs=0.02, tier="grunt"))
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "JEV_DISPATCH_GATE_STATE": tmp, "JEV_DISPATCH_GATE_FAKE_ANSWERS": fake, "JEV_DISPATCH_GATE": "enforce"}
+        payloads = [json.dumps({"tool_name": "Agent", "tool_input": {**OPUS, "prompt": f"lookup {i}"}}) for i in range(12)]
+
+        def run(p):
+            return json.loads(subprocess.run([sys.executable, str(HOOK)], input=p, capture_output=True, text=True, env=env).stdout)["hookSpecificOutput"]["permissionDecision"]
+
+        with ThreadPoolExecutor(12) as ex:
+            first = list(ex.map(run, payloads))
+            second = list(ex.map(run, payloads))
+    assert first.count("deny") == 12 and second.count("deny") == 0
+
+
+def test_hook_subprocess_malformed_env_still_exit_0():
+    out, rows = _run({"tool_name": "Agent", "tool_input": OPUS},
+                     {"JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans()), "JEV_DISPATCH_GATE_DEADLINE_S": "abc"})
+    assert json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "allow" and rows[-1]["action"] == "downgrade"
+
+
+def test_hook_subprocess_huge_prompt_is_bounded():
+    import time
+    t0 = time.time()
+    out, rows = _run({"tool_name": "Agent", "tool_input": {**OPUS, "prompt": "a" * 200_000}},
+                     {"JEV_DISPATCH_GATE_FAKE_ANSWERS": json.dumps(_ans()), "JEV_DISPATCH_GATE": "enforce"})
+    assert time.time() - t0 < 4 and rows[-1]["action"] == "downgrade" and rows[-1]["state_chars"] < 8000
 
 
 def test_hook_subprocess_malformed_stdin_is_silent():
